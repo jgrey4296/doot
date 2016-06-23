@@ -1,0 +1,12 @@
+* Bookmark organiser
+A Python 3 program to load in firefox json exported bookmarks,
+and safari exported html bookmarks, 
+which creates a trie of the uri's, removing duplicates, 
+re-exports to json.
+** Features
+*** DONE json read
+*** TODO json navigation
+*** TODO html read
+*** TODO html navigation
+** Future
+*** TODO Tagging
