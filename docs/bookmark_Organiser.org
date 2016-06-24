@@ -5,8 +5,11 @@ which creates a trie of the uri's, removing duplicates,
 re-exports to json.
 ** Features
 *** DONE json read
+*** DONE json bookmark extraction
+*** TODO json simplification
 *** TODO json navigation
 *** TODO html read
 *** TODO html navigation
+*** TODO json export
 ** Future
 *** TODO Tagging

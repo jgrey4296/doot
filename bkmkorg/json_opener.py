@@ -2,7 +2,7 @@
 import os
 import json
 import util
-import IPython
+
 
 def open_file(filename):
     x = None
@@ -41,11 +41,16 @@ def extractBookmarks(jsonContents):
                 queue = queue + head['children']
     #loop finished, bookmarks now contains all uri's
     return bookmarks
+
+def open_and_extract_bookmarks(filename):
+    print('Starting json opener')
+    contents = open_file(filename)
+    jsonContents = readJson(contents)
+    bookmarks = extractBookmarks(jsonContents)
+    return bookmarks
     
 if __name__ == '__main__':
-    print('Starting json opener')
-    contents = open_file('Firefox.json')
-    jsonContents = readJson(contents)
-    bookmarks = extractBookmarks(jsonContents)    
+    bookmarks = open_and_extract_bookmarks('Firefox.json')
+    import IPython
     IPython.embed()
     
