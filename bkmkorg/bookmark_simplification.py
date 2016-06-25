@@ -1,6 +1,8 @@
 #!/Users/jgrey/anaconda/bin/python
 
 import json_opener
+import html_opener
+import netscape_bookmark_exporter as ns_b_e
 import re
 
 slashSplit = re.compile(r'/+')
@@ -32,7 +34,12 @@ def insert_trie(trie,pair):
             
         currentChild = currentChild[x]
 
-    currentChild['__leaf'] = pair[0]
+    if '__leaf' in currentChild and not currentChild['__leaf'][1] == pair[1]:
+        print('overwriting:')
+        print(currentChild['__leaf'])
+        print(pair)
+    else:
+        currentChild['__leaf'] = pair
     
     
 #split up a uri by its /'s:
@@ -63,12 +70,29 @@ def slice_uri(uri):
         print(uri)
         return None
 
+def flattenTrie(trie):
+    outputData = []
+    toProcess = list(trie.items())
+    while len(toProcess) > 0:
+        current = toProcess.pop()
+        if current[0] == '__leaf' and type(current[1]) == tuple:
+            outputData.append(current[1])
+        elif type(current[1]) == dict:
+            toProcess = toProcess + list(current[1].items())
+        else:
+            raise Exception('unknown trie component')
+    return outputData
+    
 
 if __name__ == '__main__':
     print('starting on simplification')
-    bookmarks = json_opener.open_and_extract_bookmarks('Firefox.json')
+    json_bookmarks = json_opener.open_and_extract_bookmarks('Firefox.json')
+    #html_bookmarks = html_opener.open_and_extract_bookmarks('Safari.html')
+    bookmarks = json_bookmarks
     filtered = filterBadLinks(bookmarks)
     trie = create_trie(filtered)
-    
+    #convert the trie back to individual bookmarks:
+    flattened = flattenTrie(trie)
+    ns_b_e.exportBookmarks(flattened)
     import IPython
     IPython.embed()
