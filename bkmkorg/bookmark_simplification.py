@@ -82,7 +82,14 @@ def flattenTrie(trie):
         else:
             raise Exception('unknown trie component')
     return outputData
-    
+
+def groupTrie(trie):
+    outputData = {}
+    for tName,data in trie.items():
+        for dName,instances in data.items():
+            outputData[dName] = flattenTrie(instances)
+    return outputData
+
 
 if __name__ == '__main__':
     print('starting on simplification')
@@ -92,7 +99,9 @@ if __name__ == '__main__':
     filtered = filterBadLinks(bookmarks)
     trie = create_trie(filtered)
     #convert the trie back to individual bookmarks:
-    flattened = flattenTrie(trie)
-    ns_b_e.exportBookmarks(flattened)
+    #flattened = flattenTrie(trie)
+    #ns_b_e.exportBookmarks(flattened)
+    grouped = groupTrie(trie)
+    ns_b_e.exportBookmarks(grouped)
     import IPython
     IPython.embed()
