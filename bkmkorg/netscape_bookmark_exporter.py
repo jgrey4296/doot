@@ -4,6 +4,8 @@ Exports a given trie to Netscape bookmark file format
 Main function: exportBookmarks
 """
 import logging
+import IPython
+from bookmark_organiser.bkmkorg.util import bookmarkTuple
 
 groupCount = 0
 listCount = 0
@@ -22,19 +24,19 @@ def footer():
     return "</HTML>"
 
 
-#assumes [title,uri]
-def bookmarkToItem(bkmk):
-    logging.debug("Exporting link: {}".format(bkmk[0]))
+#assumes bkmkTuple(title,uri,tags)
+def bookmarkToItem(bkmkTuple):
+    logging.debug("Exporting link: {}".format(bkmkTuple.name))
     #add the link:
-    if len(bkmk) == 3:
-        tags = 'TAGS="{}"'.format(" ".join(bkmk[2]))
-    else:
-        tags = ""
-    item = '<DT><A HREF="{}" {}>{}</A>'.format(bkmk[1],tags, bkmk[0])
+    tags = 'TAGS="{}"'.format(" ".join(bkmkTuple.tags))
+    item = '<DT><A HREF="{}" {}>{}</A>'.format(bkmkTuple.url,tags, bkmkTuple.name)
     return item
 
 def bookmarksToNetscapeString(data):
-    strings = [convertData(x) for x in sorted(data)]
+    try:
+        strings = [convertData(x) for x in sorted(data,key=lambda x: x.name)]
+    except AttributeError as e:
+        IPython.embed()
     wrapped = "\n".join(strings)
     return wrapped
 
@@ -44,19 +46,19 @@ def groupToNetscapeString(name, data):
 
 def convertData(data):
     global groupCount, listCount, entryCount
-    if type(data) == tuple:
+    if isinstance(data,bookmarkTuple):
         entryCount += 1
         return bookmarkToItem(data)
-    elif type(data) == list:
+    elif isinstance(data,list):
         listCount += 1
         return bookmarksToNetscapeString(data)
-    elif type(data) == dict:
+    elif isinstance(data,dict):
         groupCount += 1
         items = sorted([x for x in data.items()])
         subGroups = [groupToNetscapeString(x[0],x[1]) for x in items]
         return '\n'.join(subGroups)
     else:
-        logging.debug('unrecognised data type')
+        raise Exception('unrecognised conversion type')
     
 def exportBookmarks(data):
     """ Main method, returns a complete bookmark string to write to a file """
