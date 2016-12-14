@@ -1,13 +1,13 @@
 #!/Users/jgrey/anaconda/bin/python
 import os
 from bs4 import BeautifulSoup
-from bookmark_organiser.bkmkorg.json_opener import open_file
-from bookmark_organiser.bkmkorg.util import open_file
+from collections import namedtuple
+from bookmark_organiser.bkmkorg.util import open_file,bookmarkTuple
 import logging
 
 def getLinks(aSoup):
     tags = aSoup.find_all('a')
-    tupleList = [tuple([x.string,x.get('href')]) for x in tags]
+    tupleList = [bookmarkTuple(x.string,x.get('href'),x.get('tags') or []) for x in tags]
     return tupleList
 
 def open_and_extract_bookmarks(filename):
@@ -19,7 +19,3 @@ def open_and_extract_bookmarks(filename):
     return tupleList
 
 
-if __name__ == '__main__':
-    bookmarks = open_and_extract_bookmarks('Safari.html')
-    import IPython
-    IPython.embed()
