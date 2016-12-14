@@ -1,3 +1,6 @@
 *__pycache__
 data/*
+raw_bookmarks
 cleanedBookmarks.html
+simplified_bookmarks.html
+*.log

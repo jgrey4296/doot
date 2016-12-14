@@ -3,6 +3,9 @@ A Python 3 program to load in firefox json exported bookmarks,
 and safari exported html bookmarks, 
 which creates a trie of the uri's, removing duplicates, 
 re-exports to json.
+Safari bookmarks+reading list are best retrieved by importing
+into chrome, then exporting as html
+
 ** Features
 *** DONE json read
 *** DONE json bookmark extraction

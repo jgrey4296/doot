@@ -1,14 +1,8 @@
 #!/Users/jgrey/anaconda/bin/python
 import os
 import json
-import util
-
-
-def open_file(filename):
-    x = None
-    with open("../data/"+filename, 'r') as f:
-        x = f.read()
-    return x
+import bookmark_organiser.bkmkorg.util
+from bookmark_organiser.bkmkorg.util import open_file
 
 def readJson(text):
     return json.loads(text)

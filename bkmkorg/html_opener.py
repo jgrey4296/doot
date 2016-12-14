@@ -1,8 +1,9 @@
 #!/Users/jgrey/anaconda/bin/python
 import os
 from bs4 import BeautifulSoup
-from json_opener import open_file
-import util
+from bookmark_organiser.bkmkorg.json_opener import open_file
+from bookmark_organiser.bkmkorg.util import open_file
+import logging
 
 def getLinks(aSoup):
     tags = aSoup.find_all('a')
@@ -10,10 +11,11 @@ def getLinks(aSoup):
     return tupleList
 
 def open_and_extract_bookmarks(filename):
-    print('Starting html opener')
+    logging.info('Starting html opener for: {}'.format(filename))
     rawHtml = open_file(filename)
     soup = BeautifulSoup(rawHtml,'html.parser')
     tupleList = getLinks(soup)
+    logging.info("Found {} links".format(len(tupleList)))
     return tupleList
 
 
