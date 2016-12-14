@@ -20,6 +20,8 @@ EXPORT_NAME = "simplified_bookmarks.html"
 HTMLREGEX = re.compile(r'.*\.html')
 #Extracted data:
 ex_data = {}
+#for verification:
+allurls = set()
 
 #setup logging:
 LOGLEVEL = logging.DEBUG
@@ -31,16 +33,20 @@ console.setLevel(logging.INFO)
 logging.getLogger('').addHandler(console)
 
 logging.info("Collecting files")
+
+
 #Get the html files
 rawHtmls = [f for f in listdir(RAWDIR) if isfile(join(RAWDIR,f)) and HTMLREGEX.match(f)]
 
 for f in rawHtmls:
-    #Get [(name,link)]s
+    #Get [(name,url)]s
     logging.info("Processing File: {}".format(f))
     bookmarks = html_opener.open_and_extract_bookmarks(join(RAWDIR,f))
-    for pair in bookmarks:
-        logging.debug("inserting: {}".format(pair[0]))
-        bs.insert_trie(ex_data,pair)
+    for bkmkTuple in bookmarks:
+        logging.debug("inserting: {}".format(bkmkTuple.name))
+        result = bs.insert_trie(ex_data,bkmkTuple)
+        if result:
+            allurls.add(bkmkTuple.url)
 
 entries,overwrites = bs.returnCounts()
 logging.info("Insertions finished: {} entries | {} overwrites".format(entries,overwrites))        
@@ -50,6 +56,11 @@ finalTrie = bs.groupTrie(ex_data)
 logging.info("Converting to html string")
 
 bookmark_html_string = nbe.exportBookmarks(finalTrie)
+#verify:
+for url in allurls:
+    if url not in bookmark_html_string:
+        raise Exception("Missing Url: {}".format(url))
+
 logging.info("Saving html string")
 util.writeToFile(join(".",EXPORT_NAME),bookmark_html_string)
 
