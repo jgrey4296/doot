@@ -5,6 +5,7 @@ A File to process tuple lists of bookmarks into a trie that simplifies into simi
 """
 import bookmark_organiser.bkmkorg.json_opener
 import bookmark_organiser.bkmkorg.netscape_bookmark_exporter as ns_b_e
+from bookmark_organiser.bkmkorg.util import bookmarkTuple
 import re
 import logging
 
@@ -37,21 +38,21 @@ def create_trie(data):
         insert_trie(trie,x)
     return trie
 
-def insert_trie(trie,pair):
+def insert_trie(trie,bkmkTuple):
     """
-    Modify a trie, inserting a bookmark pair in, furthest down the trie 
+    Modify a trie, inserting a bookmark tuple in, furthest down the trie 
     based on url components
     """
     #side effect: update the passed in trie
     #takes a tuple of (name,link)
-    if pair[0] is None:
-        logging.debug("No Name: {}".format(pair))
-        pair = tuple(["Unknown Name",pair[1]])
+    if bkmkTuple.name is None:
+        logging.debug("No Name: {}".format(bkmkTuple))
+        bkmkTuple = bookmarkTuple("Unknown Name",bkmkTuple.url,bkmkTuple.tags)
     
-    uri_list = slice_uri(pair[1])
+    uri_list = slice_uri(bkmkTuple.url)
     if uri_list is None:
-        logging.debug("Skipping: {}".format(pair))
-        return
+        logging.debug("Skipping: {}".format(bkmkTuple))
+        return False
 
     currentChild = trie
 
@@ -60,17 +61,18 @@ def insert_trie(trie,pair):
             currentChild[x] = {}
         currentChild = currentChild[x]
 
-    if '__leaf' in currentChild and not currentChild['__leaf'][1] == pair[1]:
+    if '__leaf' in currentChild and not currentChild['__leaf'].url == bkmkTuple.url:
         logging.debug('Overwriting:')
         logging.debug(currentChild['__leaf'])
-        logging.debug(pair)
+        logging.debug(bkmkTuple)
         global overwriteCount
         overwriteCount += 1
     else:
         global entryCount
-        currentChild['__leaf'] = pair
+        currentChild['__leaf'] = bkmkTuple
         entryCount += 1
-    
+
+    return True
     
 #split up a uri by its /'s:
 #returns [string]
@@ -95,31 +97,33 @@ def slice_uri(uri):
         logging.debug("Found an unrecognised bookmark type: {}".format(uri))
         return None
 
-def flattenTrie(trie):
-    """ Converts a sub-trie to its minimal form,
-    ie: any sequence of branches that only have 1 leaf are collapsed together
-    """
-    outputData = []
-    toProcess = list(trie.items())
-    while len(toProcess) > 0:
-        current = toProcess.pop()
-        if current[0] == '__leaf' and isinstance(current[1],tuple):
-            outputData.append(current[1])
-        elif isinstance(current[1],dict):
-            toProcess = toProcess + list(current[1].items())
+def groupTrie(trie):
+    """ top level grouping """
+    outputData = {}
+    currentList = list(trie.items())
+    while len(currentList) > 0:
+        name,data = currentList.pop()
+        if isinstance(data,bookmarkTuple):
+            outputData[name] = [data]
+        elif isinstance(data,dict):
+            outputData[name] = subTrie(data)
         else:
-            raise Exception('unknown trie component')
+            raise Exception("Unexpected type in top level grouping")
     return outputData
 
-def groupTrie(trie):
-    """
-    Takes the root of a trie and flattens the entire thing
-    """
-    outputData = {}
-    for tName,data in trie.items():
-        for dName,instances in data.items():
-            outputData[dName] = flattenTrie(instances)
+def subTrie(trie):
+    """ sub-level trie grouping """
+    outputData = []
+    if isinstance(trie,bookmarkTuple):
+        outputData.append(trie)
+    elif isinstance(trie,list):
+        for x in trie:
+            outputData += subTrie(x)
+    elif isinstance(trie,dict):
+        for x in trie.values():
+            outputData += subTrie(x)
     return outputData
+
 
 def returnCounts():
     global entryCount,overwriteCount
@@ -128,18 +132,3 @@ def returnCounts():
     overwriteCount = 0
     return vals
 
-
-if __name__ == '__main__':
-    logging.debug('starting on simplification')
-    json_bookmarks = json_opener.open_and_extract_bookmarks('Firefox.json')
-    #html_bookmarks = html_opener.open_and_extract_bookmarks('Safari.html')
-    bookmarks = json_bookmarks
-    filtered = filterBadLinks(bookmarks)
-    trie = create_trie(filtered)
-    #convert the trie back to individual bookmarks:
-    #flattened = flattenTrie(trie)
-    #ns_b_e.exportBookmarks(flattened)
-    grouped = groupTrie(trie)
-    ns_b_e.exportBookmarks(grouped)
-    import IPython
-    IPython.embed()
