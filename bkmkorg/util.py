@@ -1,6 +1,9 @@
 import IPython
 from os.path import isfile
 import logging
+from collections import namedtuple
+
+bookmarkTuple = namedtuple("bookmark","name url tags")
 
 def interact():
     IPython.embed()
