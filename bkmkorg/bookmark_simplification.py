@@ -3,7 +3,6 @@
 A File to process tuple lists of bookmarks into a trie that simplifies into similar domains.
 
 """
-import bookmark_organiser.bkmkorg.json_opener
 import bookmark_organiser.bkmkorg.netscape_bookmark_exporter as ns_b_e
 from bookmark_organiser.bkmkorg.util import bookmarkTuple
 import re
