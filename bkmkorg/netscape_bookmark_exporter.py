@@ -26,7 +26,7 @@ def footer():
 
 #assumes bkmkTuple(title,uri,tags)
 def bookmarkToItem(bkmkTuple):
-    logging.debug("Exporting link: {}".format(bkmkTuple.name))
+    logging.debug("Exporting link: {}".format(bkmkTuple.url))
     #add the link:
     tags = 'TAGS="{}"'.format(" ".join(bkmkTuple.tags))
     item = '<DT><A HREF="{}" {}>{}</A>'.format(bkmkTuple.url,tags, bkmkTuple.name)
@@ -34,11 +34,12 @@ def bookmarkToItem(bkmkTuple):
 
 def bookmarksToNetscapeString(data):
     try:
-        strings = [convertData(x) for x in sorted(data,key=lambda x: x.name)]
+        strings = [convertData(x) for x in data]
+        wrapped = "\n".join(strings)
+        return wrapped
     except AttributeError as e:
         IPython.embed()
-    wrapped = "\n".join(strings)
-    return wrapped
+
 
 def groupToNetscapeString(name, data):
     group = "<DT><H3 FOLDED> {} </H3> \n\t <DL><p> \n\t\t {} \n\t </DL><p>\n".format(name,convertData(data))
@@ -46,17 +47,13 @@ def groupToNetscapeString(name, data):
 
 def convertData(data):
     global groupCount, listCount, entryCount
-    if isinstance(data,bookmarkTuple):
-        entryCount += 1
-        return bookmarkToItem(data)
-    elif isinstance(data,list):
-        listCount += 1
-        return bookmarksToNetscapeString(data)
-    elif isinstance(data,dict):
+    if isinstance(data,dict):
         groupCount += 1
-        items = sorted([x for x in data.items()])
-        subGroups = [groupToNetscapeString(x[0],x[1]) for x in items]
-        return '\n'.join(subGroups)
+        keys = sorted([x for x in data.keys()])
+        subGroups = [groupToNetscapeString(x,data[x]) for x in keys if isinstance(data[x],dict) and x != '__path']
+        items = [bookmarkToItem(data[x]) for x in keys if isinstance(data[x],bookmarkTuple) and x != '__path']
+        combined = subGroups + items
+        return '\n'.join(combined)
     else:
         raise Exception('unrecognised conversion type')
     
