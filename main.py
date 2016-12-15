@@ -55,11 +55,17 @@ logging.info("Grouping Trie")
 finalTrie = bs.groupTrie(ex_data)
 logging.info("Converting to html string")
 
+IPython.embed()
 bookmark_html_string = nbe.exportBookmarks(finalTrie)
+verifyTrailingSlashRemoval = re.compile(r'(.*?)(?:/?)$')
 #verify:
 for url in allurls:
-    if url not in bookmark_html_string:
-        raise Exception("Missing Url: {}".format(url))
+    snippedUrl = verifyTrailingSlashRemoval.findall(url)[0]
+    if snippedUrl not in bookmark_html_string:
+        #raise Exception("Missing Url: {}".format(snippedUrl))
+        logging.warning("Unsnipped Url: {}".format(url))
+        logging.warning("Missing Url: {}".format(snippedUrl))
+        IPython.embed()
 
 logging.info("Saving html string")
 util.writeToFile(join(".",EXPORT_NAME),bookmark_html_string)
