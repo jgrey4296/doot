@@ -8,6 +8,7 @@ import bookmark_organiser.bkmkorg.netscape_bookmark_exporter as ns_b_e
 from bookmark_organiser.bkmkorg.util import bookmarkTuple
 import re
 import logging
+from collections import namedtuple
 
 #REGEXS:
 slashSplit = re.compile(r'/+')
@@ -21,7 +22,6 @@ httpreg = re.compile(r'(http(?:s)?:/(?:/)?)(.*)')
 
 entryCount = 0
 overwriteCount = 0
-
 
 def filterBadLinks(data):
     """
@@ -98,31 +98,78 @@ def slice_uri(uri):
         return None
 
 def groupTrie(trie):
-    """ top level grouping """
-    outputData = {}
-    currentList = list(trie.items())
-    while len(currentList) > 0:
-        name,data = currentList.pop()
-        if isinstance(data,bookmarkTuple):
-            outputData[name] = [data]
-        elif isinstance(data,dict):
-            outputData[name] = subTrie(data)
-        else:
-            raise Exception("Unexpected type in top level grouping")
-    return outputData
+    """ dfs the trie """
+    logging.debug("Grouping the Trie")
+    POP = namedtuple('Pop',"name")
+    PUSH = namedtuple('Push',"name")
+    Entry = namedtuple('Entry',"name dict parent")
+    Leaf = namedtuple("Leaf","name bkmk parent")
+    
+    output = {'__path':''}
+    frontier = [Entry("root",trie, output)]
+        
+    while len(frontier) > 0:
+        node = frontier.pop()
+        if isinstance(node,POP):
+            logging.debug("Popping: {}".format(node.name))
+        elif isinstance(node,PUSH):
+            logging.debug("Pushing: {}".format(node.name))
+        elif isinstance(node,Entry):
+            name = node.name
+            data = node.dict
+            parent = node.parent
+            logging.debug("Entry: {}".format(name))
+            if isinstance(data,bookmarkTuple):
+                if name != "__leaf":
+                    raise Exception("Unexpected non-leaf bkmkTuple")
+                logging.debug("Early Leaf")
+                frontier.append(Leaf(data.name,data,parent))                
+            elif len(data.keys()) == 1:
+                logging.debug("Only one child")
+                subName,subData = list(data.items())[0]
+                if subName == "__leaf":
+                    newNode = {'__path':"{}/{}".format(parent['__path'],name)}
+                    parent[name] = newNode
+                    leafName = subData.name
+                    logging.debug("Adding Leaf name: {}".format(leafName))
+                    frontier.append(Leaf(leafName,subData,newNode))
+                else:
+                    combinedName = "{}/{}".format(name,subName)
+                    logging.debug("Combined name: {}".format(combinedName))
+                    newEntry = Entry(combinedName,subData,parent)
+                    frontier.append(newEntry)
+            else:
+                logging.debug("Multiple children")
+                logging.debug("New Node: {} --> {}".format(parent['__path'], name))
+                newNode = {'__path':"{}/{}".format(parent['__path'],name)}
+                parent[name] = newNode
+                children = [POP(name)] + [Entry(x,y,newNode) for x,y in data.items()] + [PUSH(name)]
+                frontier += children
 
-def subTrie(trie):
-    """ sub-level trie grouping """
-    outputData = []
-    if isinstance(trie,bookmarkTuple):
-        outputData.append(trie)
-    elif isinstance(trie,list):
-        for x in trie:
-            outputData += subTrie(x)
-    elif isinstance(trie,dict):
-        for x in trie.values():
-            outputData += subTrie(x)
-    return outputData
+        if isinstance(node,Leaf):
+            name = node.name
+            bkmk = node.bkmk
+            parent = node.parent
+            logging.debug("Leaf: {} --> {}".format(parent['__path'],name))
+            logging.debug("Leaf url: {}".format(bkmk.url))
+            if name in parent:
+                if isinstance(parent[name],list):
+                    urls = [x.url for x in parent[name]]
+                else:
+                    urls = [parent[name].url]
+                                               
+                if bkmk.url in urls:
+                    continue
+                else:
+                    old = parent[name]
+                    if isinstance(old,list):
+                            old.append(bkmk)
+                    else:
+                            parent[name] = [old,bkmk]
+            else:
+                parent[name] = bkmk
+
+    return output
 
 
 def returnCounts():
