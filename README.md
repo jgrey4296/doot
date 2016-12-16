@@ -8,7 +8,7 @@ This program loads those in, **ignoring** groups but **preserving** tags,
 stores them in a trie based on the bookmarks url path, removes duplicates,
 then collapses trie paths that have only a single child. This collapsed trie
 is then exported out as the file 'simplified_bookmarks.html' for reloading 
-into Firefox/Chrome/Safari
+into Firefox/Chrome/Safari.
 
 ## Usage
 
@@ -16,4 +16,13 @@ Create the directory ./raw_bookmarks, and fill it with the html files exported f
 
 run *python main.py* 
 
-Reload the simplified bookmarks back into your browser. 
+Reload the simplified bookmarks back into your browser.
+
+
+## Dependencies
+** Python 3.5 ** (may work on any python3+, untested)
+IPython, BeautifulSoup, and other std library python (re, namedtuples...)
+
+
+## TODO
+Add more comments and test
