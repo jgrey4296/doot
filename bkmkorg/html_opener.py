@@ -6,8 +6,18 @@ from bookmark_organiser.bkmkorg.util import open_file,bookmarkTuple
 import logging
 
 def getLinks(aSoup):
-    tags = aSoup.find_all('a')
-    tupleList = [bookmarkTuple(x.string,x.get('href'),x.get('tags') or []) for x in tags]
+    bkmks = aSoup.find_all('a')
+    tupleList = []
+    for x in bkmks:
+        tagString = x.get('tags')
+        if tagString is not None:
+            indTags = tagString.split(',')
+        else:
+            indTags = []
+        tagSet = set(indTags)
+        newBkmk = bookmarkTuple(x.string,x.get('href'),tagSet)
+        tupleList.append(newBkmk)
+
     return tupleList
 
 def open_and_extract_bookmarks(filename):

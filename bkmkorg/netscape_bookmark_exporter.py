@@ -28,7 +28,7 @@ def footer():
 def bookmarkToItem(bkmkTuple):
     logging.debug("Exporting link: {}".format(bkmkTuple.url))
     #add the link:
-    tags = 'TAGS="{}"'.format(" ".join(bkmkTuple.tags))
+    tags = 'TAGS="{}"'.format(",".join(bkmkTuple.tags))
     item = '<DT><A HREF="{}" {}>{}</A>'.format(bkmkTuple.url,tags, bkmkTuple.name)
     return item
 

@@ -43,7 +43,7 @@ def insert_trie(trie,bkmkTuple):
     based on url components
     """
     #side effect: update the passed in trie
-    #takes a tuple of (name,link)
+    #takes a bookmarkTuple
     if bkmkTuple.name is None:
         logging.debug("No Name: {}".format(bkmkTuple))
         bkmkTuple = bookmarkTuple("Unknown Name",bkmkTuple.url,bkmkTuple.tags)
@@ -97,7 +97,7 @@ def slice_uri(uri):
         return None
 
 def groupTrie(trie):
-    """ dfs the trie """
+    """ dfs the trie, collapsing paths together of only 1 child """
     logging.debug("Grouping the Trie")
     POP = namedtuple('Pop',"name")
     PUSH = namedtuple('Push',"name")
@@ -158,13 +158,22 @@ def groupTrie(trie):
                     urls = [parent[name].url]
                                                
                 if bkmk.url in urls:
-                    continue
+                    #already exists, combine the tags
+                    existingTuple = parent[name]
+                    unionTags = bkmk.tags.union(parent[name].tags)
+
+                    parent[name] = bookmarkTuple(existingTuple.name,
+                                                 existingTuple.url,
+                                                 unionTags)
+
                 else:
-                    old = parent[name]
-                    if isinstance(old,list):
-                            old.append(bkmk)
-                    else:
-                            parent[name] = [old,bkmk]
+                    logging.warning("Unexpected duplication")
+                    IPython.embed()
+                    # old = parent[name]
+                    # if isinstance(old,list):
+                    #         old.append(bkmk)
+                    # else:
+                    #         parent[name] = [old,bkmk]
             else:
                 parent[name] = bkmk
 

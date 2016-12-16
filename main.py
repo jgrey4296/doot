@@ -17,6 +17,7 @@ import IPython
 
 RAWDIR = "raw_bookmarks"
 EXPORT_NAME = "simplified_bookmarks.html"
+SPECIFIC_BOOKMARK_FILE = None #"tag_test_bookmarks.html"
 HTMLREGEX = re.compile(r'.*\.html')
 #Extracted data:
 ex_data = {}
@@ -36,12 +37,13 @@ logging.info("Collecting files")
 
 
 #Get the html files
-rawHtmls = [f for f in listdir(RAWDIR) if isfile(join(RAWDIR,f)) and HTMLREGEX.match(f)]
+rawHtmls = [f for f in listdir(RAWDIR) if isfile(join(RAWDIR,f)) and HTMLREGEX.match(f) and (SPECIFIC_BOOKMARK_FILE is None or f == SPECIFIC_BOOKMARK_FILE)]
 
 for f in rawHtmls:
     #Get [(name,url)]s
     logging.info("Processing File: {}".format(f))
     bookmarks = html_opener.open_and_extract_bookmarks(join(RAWDIR,f))
+
     for bkmkTuple in bookmarks:
         logging.debug("inserting: {}".format(bkmkTuple.name))
         result = bs.insert_trie(ex_data,bkmkTuple)
