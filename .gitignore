@@ -4,3 +4,4 @@ raw_bookmarks
 cleanedBookmarks.html
 simplified_bookmarks.html
 *.log
+*.html
