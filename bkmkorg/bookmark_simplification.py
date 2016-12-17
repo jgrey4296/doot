@@ -8,6 +8,7 @@ from bookmark_organiser.bkmkorg.util import bookmarkTuple
 import re
 import logging
 from collections import namedtuple
+from bookmark_organiser.verifySites import verifyUrl, TOFIX_TAG, VERIFIED_TAG
 
 #REGEXS:
 slashSplit = re.compile(r'/+')
@@ -61,13 +62,20 @@ def insert_trie(trie,bkmkTuple):
         currentChild = currentChild[x]
 
     if '__leaf' in currentChild and not currentChild['__leaf'].url == bkmkTuple.url:
-        logging.debug('Overwriting:')
-        logging.debug(currentChild['__leaf'])
-        logging.debug(bkmkTuple)
-        global overwriteCount
-        overwriteCount += 1
+        raise Exception("Name and url exist but don't match")
     else:
         global entryCount
+        tofix_or_verified_tag_in_bkmk_tags = (TOFIX_TAG in bkmkTuple.tags \
+                                              or VERIFIED_TAG in bkmkTuple.tags)
+        if not tofix_or_verified_tag_in_bkmk_tags:
+            if verifyUrl(bkmkTuple.url):
+                logging.debug('Verifed')
+                bkmkTuple.tags.add(VERIFIED_TAG)
+            else:
+                logging.debug('tofix')
+                bkmkTuple.tags.add(TOFIX_TAG)
+
+
         currentChild['__leaf'] = bkmkTuple
         entryCount += 1
 

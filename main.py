@@ -12,13 +12,22 @@ from bookmark_organiser.bkmkorg import html_opener
 from bookmark_organiser.bkmkorg import bookmark_simplification as bs
 from bookmark_organiser.bkmkorg import netscape_bookmark_exporter as nbe
 from bookmark_organiser.bkmkorg import util
+from verifySites import verifyUrl
 import logging
 import IPython
+from time import sleep
 
+#Special bookmark files to process first:
+FORCED_ORDER = ["verified_bookmarks.html","partial_tagged_bookmarks.html"]
+
+#Settings
 RAWDIR = "raw_bookmarks"
 EXPORT_NAME = "simplified_bookmarks.html"
 SPECIFIC_BOOKMARK_FILE = None #"tag_test_bookmarks.html"
 HTMLREGEX = re.compile(r'.*\.html')
+VERIFY_FLAG = True
+SLEEP_PERIOD = 20
+SLEEP_AMNT = 2
 #Extracted data:
 ex_data = {}
 #for verification:
@@ -37,19 +46,28 @@ logging.info("Collecting files")
 
 
 #Get the html files
-rawHtmls = [f for f in listdir(RAWDIR) if isfile(join(RAWDIR,f)) and HTMLREGEX.match(f) and (SPECIFIC_BOOKMARK_FILE is None or f == SPECIFIC_BOOKMARK_FILE)]
+rawHtmls = [f for f in listdir(RAWDIR) if isfile(join(RAWDIR,f)) and HTMLREGEX.match(f) and (SPECIFIC_BOOKMARK_FILE is None or f == SPECIFIC_BOOKMARK_FILE) and f not in FORCED_ORDER]
 
-for f in rawHtmls:
+orderedHtmls = [x for x in FORCED_ORDER if isfile(join(RAWDIR,x))] + rawHtmls
+
+IPython.embed()
+
+
+for f in orderedHtmls:
     #Get [(name,url)]s
     logging.info("Processing File: {}".format(f))
     bookmarks = html_opener.open_and_extract_bookmarks(join(RAWDIR,f))
-
-    for bkmkTuple in bookmarks:
-        logging.debug("inserting: {}".format(bkmkTuple.name))
-        result = bs.insert_trie(ex_data,bkmkTuple)
-        if result:
-            allurls.add(bkmkTuple.url)
-
+    num_bookmarks = len(bookmarks)
+    logging.info("Found {} bookmarks to add".format(num_bookmarks))
+    for i,bkmkTuple in enumerate(bookmarks):
+        if bkmkTuple.url not in allurls:
+            logging.debug("inserting {}/{}: {}".format(i,num_bookmarks,bkmkTuple.name))
+            result = bs.insert_trie(ex_data,bkmkTuple)
+            #Store the bkmk url in the total url set
+            if result:
+                allurls.add(bkmkTuple.url)
+            
+            
 entries,overwrites = bs.returnCounts()
 logging.info("Insertions finished: {} entries | {} overwrites".format(entries,overwrites))        
 #IPython.embed()
