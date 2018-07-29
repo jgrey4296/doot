@@ -1,4 +1,7 @@
-#!/Users/jgrey/anaconda/bin/python
+"""
+Utility to open and parse a netscape bookmark file
+"""
+
 import os
 from bs4 import BeautifulSoup
 from collections import namedtuple
@@ -21,6 +24,9 @@ def getLinks(aSoup):
     return tupleList
 
 def open_and_extract_bookmarks(filename):
+    """
+    The Main Utility. Takes the path to a filename, returns a list of bookmark tuples
+    """
     logging.info('Starting html opener for: {}'.format(filename))
     rawHtml = open_file(filename)
     soup = BeautifulSoup(rawHtml,'html.parser')
