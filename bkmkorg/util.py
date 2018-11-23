@@ -5,9 +5,6 @@ from collections import namedtuple
 
 bookmarkTuple = namedtuple("bookmark","name url tags")
 
-def interact():
-    IPython.embed()
-
 def open_file(filename):
     logging.debug("Opening file: {}".format(filename))
     x = None
