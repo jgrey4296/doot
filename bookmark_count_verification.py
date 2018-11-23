@@ -23,7 +23,7 @@ ex_data = {}
 
 #setup logging:
 LOGLEVEL = logging.DEBUG
-logFileName = "tor_tag_consolidation.log"
+logFileName = "log.tor_tag_consolidation"
 logging.basicConfig(filename=logFileName,level=LOGLEVEL,filemode='w')
 
 console = logging.StreamHandler()
@@ -38,6 +38,6 @@ bookmarks = html_opener.open_and_extract_bookmarks(FOCUS_FILE)
 
 logging.info("Loaded: {}".format(len(bookmarks)))
 
-IPython.embed()
+IPython.embed(simple_prompt=True)
 
 
