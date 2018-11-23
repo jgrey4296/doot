@@ -1,7 +1,6 @@
 *__pycache__
 data/*
 raw_bookmarks
-cleanedBookmarks.html
-simplified_bookmarks.html
-*.log
+log.*
 *.html
+.DS_STORE
