@@ -16,7 +16,7 @@ a single child. This collapsed trie is then exported out as the file
 
 Create the directory ./raw_bookmarks, and fill it with the html files exported from your browsers.
 
-run *python main.py* 
+run *python trie-aggregator.py* 
 
 Reload the simplified bookmarks back into your browser.
 
