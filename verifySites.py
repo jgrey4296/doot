@@ -1,6 +1,6 @@
 """
 Top level website verification for bookmarks.
-Anything that doesnt respond with a 200 code gets a 'tocheck'
+Anything that responds with a 400 code gets a 'tocheck'
 tag added to its bookmark
 """
 
