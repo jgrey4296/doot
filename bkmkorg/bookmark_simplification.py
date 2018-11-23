@@ -75,8 +75,14 @@ def insert_trie(trie,bkmkTuple):
                 logging.debug('tofix')
                 bkmkTuple.tags.add(TOFIX_TAG)
 
-
-        currentChild['__leaf'] = bkmkTuple
+        #merge tag sets
+        tagSet = Set()
+        if '__leaf' in currentChild:
+            tagSet.update(currentChild['__leaf'].tags)
+        tagSet.update(bkmkTuple.tags)
+        currentChild['__leaf'] = bookmarkTuple(bkmkTuple.name,
+                                               bkmkTuple.url,
+                                               tagSet)
         entryCount += 1
 
     return True

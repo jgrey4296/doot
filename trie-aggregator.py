@@ -60,7 +60,6 @@ for f in orderedHtmls:
     num_bookmarks = len(bookmarks)
     logging.info("Found {} bookmarks to add".format(num_bookmarks))
     for i,bkmkTuple in enumerate(bookmarks):
-        if bkmkTuple.url not in allurls:
             logging.debug("inserting {}/{}: {}".format(i,num_bookmarks,bkmkTuple.name))
             result = bs.insert_trie(ex_data,bkmkTuple)
             #Store the bkmk url in the total url set
