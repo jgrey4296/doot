@@ -38,7 +38,7 @@ def bookmarksToNetscapeString(data):
         wrapped = "\n".join(strings)
         return wrapped
     except AttributeError as e:
-        IPython.embed()
+        IPython.embed(simple_prompt=True)
 
 
 def groupToNetscapeString(name, data):
@@ -58,7 +58,7 @@ def convertData(data):
         raise Exception('unrecognised conversion type')
     
 def exportBookmarks(data):
-    """ Main method, returns a complete bookmark string to write to a file """
+    """ Main function, returns a complete bookmark string to write to a file """
     formattedString = "{} {} {}".format(header(),convertData(data),footer())
     logging.info("Finished converted bookmarks: {} groups | {} lists | {} entries".format(groupCount,listCount,entryCount))
     return formattedString
