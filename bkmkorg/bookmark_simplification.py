@@ -10,6 +10,7 @@ import logging
 from collections import namedtuple
 from bookmark_organiser.verifySites import verifyUrl, TOFIX_TAG, VERIFIED_TAG
 
+VERIFY = False
 #REGEXS:
 slashSplit = re.compile(r'/+')
 #for skipping:
@@ -67,7 +68,7 @@ def insert_trie(trie,bkmkTuple):
         global entryCount
         tofix_or_verified_tag_in_bkmk_tags = (TOFIX_TAG in bkmkTuple.tags \
                                               or VERIFIED_TAG in bkmkTuple.tags)
-        if not tofix_or_verified_tag_in_bkmk_tags:
+        if VERIFY and not tofix_or_verified_tag_in_bkmk_tags:
             if verifyUrl(bkmkTuple.url):
                 logging.debug('Verifed')
                 bkmkTuple.tags.add(VERIFIED_TAG)
@@ -76,7 +77,7 @@ def insert_trie(trie,bkmkTuple):
                 bkmkTuple.tags.add(TOFIX_TAG)
 
         #merge tag sets
-        tagSet = Set()
+        tagSet = set()
         if '__leaf' in currentChild:
             tagSet.update(currentChild['__leaf'].tags)
         tagSet.update(bkmkTuple.tags)
@@ -182,7 +183,7 @@ def groupTrie(trie):
 
                 else:
                     logging.warning("Unexpected duplication")
-                    IPython.embed()
+                    IPython.embed(simple_prompt=True)
                     # old = parent[name]
                     # if isinstance(old,list):
                     #         old.append(bkmk)
