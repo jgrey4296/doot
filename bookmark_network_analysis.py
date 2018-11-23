@@ -1,7 +1,7 @@
 # Setup root_logger:
 import logging as root_logger
 LOGLEVEL = root_logger.DEBUG
-logFileName = "bkmk_network.log"
+logFileName = "log.bkmk_network"
 root_logger.basicConfig(filename=logFileName, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
