@@ -35,7 +35,7 @@ allurls = set()
 
 #setup logging:
 LOGLEVEL = logging.DEBUG
-logFileName = "bookmark_consolidation.log"
+logFileName = "log.bookmark_consolidation"
 logging.basicConfig(filename=logFileName,level=LOGLEVEL,filemode='w')
 
 console = logging.StreamHandler()
@@ -47,11 +47,11 @@ logging.info("Collecting files")
 
 #Get the html files
 rawHtmls = [f for f in listdir(RAWDIR) if isfile(join(RAWDIR,f)) and HTMLREGEX.match(f) and (SPECIFIC_BOOKMARK_FILE is None or f == SPECIFIC_BOOKMARK_FILE) and f not in FORCED_ORDER]
-
+#Override with higher priority files:
 orderedHtmls = [x for x in FORCED_ORDER if isfile(join(RAWDIR,x))] + rawHtmls
 
-IPython.embed()
-
+#inspect continuing
+IPython.embed(simple_prompt=True)
 
 for f in orderedHtmls:
     #Get [(name,url)]s
@@ -69,12 +69,12 @@ for f in orderedHtmls:
             
 entries,overwrites = bs.returnCounts()
 logging.info("Insertions finished: {} entries | {} overwrites".format(entries,overwrites))        
-#IPython.embed()
+#IPython.embed(simple_prompt=True)
 logging.info("Grouping Trie")
 finalTrie = bs.groupTrie(ex_data)
 logging.info("Converting to html string")
 
-IPython.embed()
+IPython.embed(simple_prompt=True)
 bookmark_html_string = nbe.exportBookmarks(finalTrie)
 verifyTrailingSlashRemoval = re.compile(r'(.*?)(?:/?)$')
 #verify:
@@ -84,7 +84,7 @@ for url in allurls:
         #raise Exception("Missing Url: {}".format(snippedUrl))
         logging.warning("Unsnipped Url: {}".format(url))
         logging.warning("Missing Url: {}".format(snippedUrl))
-        IPython.embed()
+        IPython.embed(simple_prompt=True)
 
 logging.info("Saving html string")
 util.writeToFile(join(".",EXPORT_NAME),bookmark_html_string)
