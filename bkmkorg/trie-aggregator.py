@@ -5,29 +5,44 @@ extracts each link and name, then organises them,
 then exports them to ./cleaned_bookmarks.html,
 also in netscape html format
 """
-from os.path import isfile,join,exists
+from os.path import isfile,join,exists, expanduser
 from os import listdir
 import re
-from bookmark_organiser.bkmkorg import html_opener 
-from bookmark_organiser.bkmkorg import bookmark_simplification as bs
-from bookmark_organiser.bkmkorg import netscape_bookmark_exporter as nbe
-from bookmark_organiser.bkmkorg import util
-from verifySites import verifyUrl
+import html_opener
+import bookmark_simplification as bs
+import netscape_bookmark_exporter as nbe
+import plain_exporter as pe
+import util
 import logging
 import IPython
 from time import sleep
+
+import argparse
+
+#see https://docs.python.org/3/howto/argparse.html
+parser = argparse.ArgumentParser("")
+parser.add_argument('-s', '--source', default="~/github/bookmark_organiser/raw_bookmarks")
+parser.add_argument('-e', '--export', default="simplified_bookmarks")
+parser.add_argument('-v', '--verify', action="store_true")
+parser.add_argument('--period', default=20, help="sleep period")
+parser.add_argument('--amnt',   default=2, help="sleep amount")
+
+args = parser.parse_args()
+
 
 #Special bookmark files to process first:
 FORCED_ORDER = ["verified_bookmarks.html","partial_tagged_bookmarks.html"]
 
 #Settings
-RAWDIR = "raw_bookmarks"
-EXPORT_NAME = "simplified_bookmarks.html"
-SPECIFIC_BOOKMARK_FILE = None #"tag_test_bookmarks.html"
+EXPORT_NAME = expanduser(args.export)
 HTMLREGEX = re.compile(r'.*\.html')
-VERIFY_FLAG = True
-SLEEP_PERIOD = 20
-SLEEP_AMNT = 2
+VERIFY_TRAILING_SLASH_REMOVAL = re.compile(r'(ftp|http(?:s)?:/(?:/)?)(.*?)(?:/?)$')
+RAWDIR = expanduser(args.source)
+SLEEP_AMNT = args.amnt
+SLEEP_PERIOD = args.period
+SPECIFIC_BOOKMARK_FILE = None #"tag_test_bookmarks.html"
+VERIFY_FLAG = args.verify
+
 #Extracted data:
 ex_data = {}
 #for verification:
@@ -37,13 +52,12 @@ allurls = set()
 LOGLEVEL = logging.DEBUG
 logFileName = "log.bookmark_consolidation"
 logging.basicConfig(filename=logFileName,level=LOGLEVEL,filemode='w')
-
 console = logging.StreamHandler()
 console.setLevel(logging.INFO)
 logging.getLogger('').addHandler(console)
 
-logging.info("Collecting files")
 
+logging.info("Collecting files")
 
 #Get the html files
 rawHtmls = [f for f in listdir(RAWDIR) if isfile(join(RAWDIR,f)) and HTMLREGEX.match(f) and (SPECIFIC_BOOKMARK_FILE is None or f == SPECIFIC_BOOKMARK_FILE) and f not in FORCED_ORDER]
@@ -51,7 +65,7 @@ rawHtmls = [f for f in listdir(RAWDIR) if isfile(join(RAWDIR,f)) and HTMLREGEX.m
 orderedHtmls = [x for x in FORCED_ORDER if isfile(join(RAWDIR,x))] + rawHtmls
 
 #inspect continuing
-IPython.embed(simple_prompt=True)
+#IPython.embed(simple_prompt=True)
 
 for f in orderedHtmls:
     #Get [(name,url)]s
@@ -65,21 +79,22 @@ for f in orderedHtmls:
             #Store the bkmk url in the total url set
             if result:
                 allurls.add(bkmkTuple.url)
-            
-            
+
+
 entries,overwrites = bs.returnCounts()
-logging.info("Insertions finished: {} entries | {} overwrites".format(entries,overwrites))        
+logging.info("Insertions finished: {} entries | {} overwrites".format(entries,overwrites))
 #IPython.embed(simple_prompt=True)
 logging.info("Grouping Trie")
 finalTrie = bs.groupTrie(ex_data)
 logging.info("Converting to html string")
 
-IPython.embed(simple_prompt=True)
+#IPython.embed(simple_prompt=True)
 bookmark_html_string = nbe.exportBookmarks(finalTrie)
-verifyTrailingSlashRemoval = re.compile(r'(.*?)(?:/?)$')
-#verify:
+
+
+#verify all found urls are in the exported string
 for url in allurls:
-    snippedUrl = verifyTrailingSlashRemoval.findall(url)[0]
+    snippedUrl = VERIFY_TRAILING_SLASH_REMOVAL.findall(url)[0][1]
     if snippedUrl not in bookmark_html_string:
         #raise Exception("Missing Url: {}".format(snippedUrl))
         logging.warning("Unsnipped Url: {}".format(url))
@@ -87,6 +102,6 @@ for url in allurls:
         IPython.embed(simple_prompt=True)
 
 logging.info("Saving html string")
-util.writeToFile(join(".",EXPORT_NAME),bookmark_html_string)
+util.writeToFile(join(".",EXPORT_NAME + ".html"),bookmark_html_string)
 
-        
+pe.exportBookmarks(finalTrie, join(".", EXPORT_NAME + ".txt"))

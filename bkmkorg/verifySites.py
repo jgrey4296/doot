@@ -7,10 +7,10 @@ tag added to its bookmark
 from os.path import isfile,join,exists
 from os import listdir
 import re
-from bookmark_organiser.bkmkorg import html_opener 
-from bookmark_organiser.bkmkorg import bookmark_simplification as bs
-from bookmark_organiser.bkmkorg import netscape_bookmark_exporter as nbe
-from bookmark_organiser.bkmkorg import util
+import html_opener
+import bookmark_simplification as bs
+import netscape_bookmark_exporter as nbe
+import util
 import logging
 import IPython
 import requests

@@ -5,7 +5,7 @@ to make sure i haven't lost any
 from os.path import isfile,join,exists
 from os import listdir
 import re
-from bookmark_organiser.bkmkorg import html_opener 
+from bookmark_organiser.bkmkorg import html_opener
 from bookmark_organiser.bkmkorg import bookmark_simplification as bs
 from bookmark_organiser.bkmkorg import netscape_bookmark_exporter as nbe
 from bookmark_organiser.bkmkorg import util
@@ -39,5 +39,3 @@ bookmarks = html_opener.open_and_extract_bookmarks(FOCUS_FILE)
 logging.info("Loaded: {}".format(len(bookmarks)))
 
 IPython.embed(simple_prompt=True)
-
-

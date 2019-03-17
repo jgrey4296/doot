@@ -1,3 +1,6 @@
+"""
+Creates a graph of TAGS <-> LINKS for inspection 
+"""
 # Setup root_logger:
 import logging as root_logger
 LOGLEVEL = root_logger.DEBUG
@@ -9,13 +12,19 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
-import IPython
-import networkx as nx
-from bookmark_organiser.bkmkorg import html_opener
-from os.path import join,isfile,exists,isdir
 from os import listdir
+from os.path import join,isfile,exists,isdir, expanduser
+import IPython
+import argparse
+import html_opener
+import networkx as nx
 
-FOCUS_FILE = 'tor_bookmarks.html'
+#see https://docs.python.org/3/howto/argparse.html
+parser = argparse.ArgumentParser("")
+parser.add_argument('source', help="The source file to make a graph from")
+args = parser.parse_args()
+
+FOCUS_FILE = expanduser(args.source)
 
 if not isfile(FOCUS_FILE):
     logging.exception("File does not exist");
@@ -47,4 +56,3 @@ except Exception as e:
     IPython.embed(simple_prompt=True)
 else:
     IPython.embed(simple_prompt=True)
-    
