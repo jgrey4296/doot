@@ -5,7 +5,7 @@ Main function: exportBookmarks
 """
 import logging
 import IPython
-from bookmark_organiser.bkmkorg.util import bookmarkTuple
+from util import bookmarkTuple
 
 groupCount = 0
 listCount = 0
@@ -56,7 +56,7 @@ def convertData(data):
         return '\n'.join(combined)
     else:
         raise Exception('unrecognised conversion type')
-    
+
 def exportBookmarks(data):
     """ Main function, returns a complete bookmark string to write to a file """
     formattedString = "{} {} {}".format(header(),convertData(data),footer())
