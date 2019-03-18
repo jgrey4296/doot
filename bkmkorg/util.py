@@ -5,6 +5,10 @@ from shutil import copyfile
 from hashlib import sha256
 import logging
 from collections import namedtuple
+import regex
+
+hashtag_re = regex.compile(r'#(\w+)')
+http_re= regex.compile(r'(http|pic\.twitter)')
 
 bookmarkTuple = namedtuple("bookmark","name url tags")
 
@@ -19,31 +23,39 @@ class TweetData:
         self.time = time
 
 
-    def to_org(self, media_dir, header_level="*****"):
+    def to_org(self, media_dir, indent=3):
         tags = []
         if bool(self.links):
             tags.append("has_link")
         if bool(self.media):
-            tags.append(":has_media:")
+            tags.append("has_media")
 
         permalink = ":PERMALINK: [[https://twitter.com{}][{}]]".format(self.permalink,
                                                                        self.permalink)
         time = ":TIME: {}".format(self.time)
 
+        media = "\n".join(["[[file:{}][{}]]".format(join(media_dir,x),x) for x in self.media])
+        links = "\n".join(["[[{}][{}]]".format(x,x) for x in self.links])
+
+        cleaned_content = self.content.replace("\n", "")
+        new_lined_content, count = http_re.subn("\n\g<0>", cleaned_content)
+
+        hashtags = hashtag_re.findall(new_lined_content)
+        tags += hashtags
+
+        total_content = "{}\n{}\n{}".format(new_lined_content, media, links)
+
         gap = ""
         tagStr = ""
         if bool(tags):
-            gap = "                    "
-            tagStr = ":{}:".format(":".join(tags))
+            gap = " " * 20
+            tagStr = ":{}:".format(":".join(set(tags)))
 
-        header = "{} {}{}{}\n".format(header_level, self.username,gap,tagStr)
+        header = "{} {}{}{}\n".format(indent*"*", self.username,gap,tagStr)
         props = ":PROPERTIES:\n{}\n{}\n:END:\n".format(permalink, time)
 
-        media = "\n".join(["[[file:{}][{}]]".format(join(media_dir,x),x) for x in self.media])
-        links = "\n".join(["[[{}][{}]]".format(x,x) for x in self.links])
-        content = "{}\n{}\n{}".format(self.content, media, links)
 
-        return "{}{}{}\n".format(header,props,content)
+        return "{}{}{}\n".format(header,props,total_content)
 
 class ThreadData:
 
@@ -64,9 +76,12 @@ class ThreadData:
     def __len__(self):
         return len(self.tweets)
 
-    def to_org(self, media_dir):
-        subthread = "**** {}".format(self.name)
-        tweets = "\n".join([x.to_org(media_dir) for x in self.tweets])
+    def to_org(self, media_dir, indent=3):
+        if len(self) == 0:
+            return ""
+
+        subthread = "{} {} ({})".format(indent * "*", self.name, len(self.tweets))
+        tweets = "\n".join([x.to_org(media_dir, indent + 1) for x in self.tweets])
         return "{}\n{}".format(subthread,
                                tweets)
 
@@ -85,51 +100,65 @@ class TwitterData:
         usernames = [self.tweet.username]
         usernames += [y for x in self.descendants for y in x.usernames()]
         usernames += self.ancestors.usernames()
-        return usernames
+        return set(usernames)
 
     def links(self):
         links = []
         links += self.tweet.links
         links += self.ancestors.links()
         links += [y for x in self.descendants for y in x.links()]
-        return links
+        return set(links)
 
     def media(self):
         media = []
         media += self.tweet.media
         media += self.ancestors.media()
         media += [y for x in self.descendants for y in x.media()]
-        return media
+        return set(media)
 
     def media_to_org(self, media_dir):
         media = self.media()
-        result = ""
+        if not bool(media):
+            return ""
+        result = []
         for x in media:
             the_path = join(media_dir, x)
-            result += "[[file:{}][{}]]\n".format(the_path, x)
-        return result
+            result.append("[[file:{}][{}]]\n".format(the_path, x))
+        as_org = "{} Media ({})\n{}".format(3 * "*",
+                                            len(result),
+                                            "\n".join(result))
+        return as_org
+
+    def links_to_org(self):
+        links = self.links()
+        if not bool(links):
+            return ""
+
+        formatted_links = ["[[{}][{}]]".format(x,x) for x in links]
+        return "{} Links ({})\n{}".format(3 * "*",
+                                          len(links),
+                                          "\n".join(formatted_links))
 
     def to_org(self, media_dir):
         """ Print as an Org Document """
-        participants = ":{}:".format(":".join(self.usernames()))
-        header = "** Thread: {}                    {}\n".format(self.tweet.time,
-                                                                participants)
+        header = "** Thread: {}\n".format(self.tweet.time)
+
         #add ancestors if any
-        ancestors = ""
-        if len(self.ancestors) > 0:
-            ancestors = "*** Ancestors\n{}".format(self.ancestors.to_org(media_dir))
+        ancestors = self.ancestors.to_org(media_dir, 3)
 
         #add tweet
-        tweet = self.tweet.to_org(media_dir, header_level="***")
+        tweet = self.tweet.to_org(media_dir, 3)
 
         #add descendants if any
         descendants = ""
         if len(self.descendants) > 0:
-            desc_strs = "\n".join([x.to_org(media_dir) for x in self.descendants])
-            descendants = "*** Descendants\n{}".format(desc_strs)
+            desc_strs = "\n".join([x.to_org(media_dir, 4) for x in self.descendants])
+            descendants = "*** Descendants ({})\n{}".format(len(self.descendants),
+                                                            desc_strs)
+                                              
 
-        media = "*** Media\n{}".format(self.media_to_org(media_dir))
-        links = "*** Links\n{}".format("\n".join(set(self.links())))
+        media = self.media_to_org(media_dir)
+        links = self.links_to_org()
 
 
         return "{}{}{}{}{}{}\n".format(header,

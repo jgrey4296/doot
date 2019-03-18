@@ -167,7 +167,7 @@ if __name__ == "__main__":
         mkdir(args.output)
 
     if isfile(args.target):
-        parser = TwitterParser(args.file)
+        parser = TwitterParser(args.target)
         output = parser.process()
         output.save(args.output)
     else:
