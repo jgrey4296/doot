@@ -160,27 +160,27 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-o', '--output', default="./output")
     parser.add_argument('-c', '--count', default=10)
-    parser.add_argument('-t', '--target')
+    parser.add_argument('-s', '--source')
     args = parser.parse_args()
 
     if not isdir(args.output):
         mkdir(args.output)
 
-    if isfile(args.target):
-        parser = TwitterParser(args.target)
+    if isfile(args.source):
+        parser = TwitterParser(args.source)
         output = parser.process()
         output.save(args.output)
     else:
-        assert(isdir(args.target))
-        targets = [x for x in listdir(args.target) if splitext(x)[1] == ".html"]
+        assert(isdir(args.source))
+        targets = [x for x in listdir(args.source) if splitext(x)[1] == ".html"]
         for i, the_target in enumerate(targets):
             try:
-                parser = TwitterParser(join(args.target, the_target))
+                parser = TwitterParser(join(args.source, the_target))
                 output = parser.process()
                 output.save(args.output)
             except Exception as e:
                 logging.warning("AN ERROR OCCURED FOR: {}".format(the_target))
                 with open(join(args.output, "errors.txt"), "a") as f:
-                    f.write(the_target)
+                    f.write("{}\n".format(the_target))
             if i % args.count == 0:
                 sleep(args.count)
