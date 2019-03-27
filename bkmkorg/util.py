@@ -155,7 +155,7 @@ class TwitterData:
             desc_strs = "\n".join([x.to_org(media_dir, 4) for x in self.descendants])
             descendants = "*** Descendants ({})\n{}".format(len(self.descendants),
                                                             desc_strs)
-                                              
+
 
         media = self.media_to_org(media_dir)
         links = self.links_to_org()
