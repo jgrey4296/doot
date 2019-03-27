@@ -65,7 +65,7 @@ logging.info("Completely new to transfer: {}".format(len(totally_new)))
 target_for_new = None
 if bool(totally_new) and args.newgroup:
     new_group_num = len([x for x in listdir(args.output) if isdir(x)])
-    target_for_new = join(args.output, "group_{}".format(new_group_num])
+    target_for_new = join(args.output, "group_{}".format(new_group_num))
     logging.info("Making new group: {}".format(target_for_new))
     assert(not isdir(target_for_new))
     mkdir(target_for_new)
