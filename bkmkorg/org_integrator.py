@@ -24,7 +24,7 @@ newly_parsed = []
 if isfile(args.source):
     newly_parsed = [args.source]
 else:
-    newly_parsed = [x in listdir(args.source) if splitext(x)[1] == '.org']
+    newly_parsed = [x for x in listdir(args.source) if splitext(x)[1] == '.org']
 
 logging.info("Newly parsed to transfer: {}".format(len(newly_parsed)))
 
