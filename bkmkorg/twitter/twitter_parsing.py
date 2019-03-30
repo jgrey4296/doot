@@ -1,11 +1,11 @@
 """
-A Module to parse saved twitter threads 
+A Module to parse saved twitter threads
 """
 from bs4 import BeautifulSoup
 from os import listdir, mkdir
 from os.path import join, isfile, exists, isdir, splitext, expanduser, split
 from time import sleep
-import util
+import bkmkorg.util as util
 # Setup root_logger:
 import logging as root_logger
 LOGLEVEL = root_logger.DEBUG
@@ -161,7 +161,13 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--output', default="./output")
     parser.add_argument('-c', '--count', default=10)
     parser.add_argument('-s', '--source')
+    parser.add_argument('-q', '--quit', action="store_true")
     args = parser.parse_args()
+
+    if args.quit:
+        logging.info("Quitting")
+        IPython.embed(simple_prompt=True)
+        quit()
 
     if not isdir(args.output):
         mkdir(args.output)
