@@ -5,7 +5,7 @@ Main function: exportBookmarks
 """
 import logging
 import IPython
-from util import bookmarkTuple
+from bkmkorg.util import bookmarkTuple
 
 groupCount = 0
 listCount = 0
@@ -13,6 +13,7 @@ entryCount = 0
 
 
 def header():
+    """ Creates the Header for the entire bookmark file """
     s = """<!DOCTYPE NETSCAPE-Bookmark-file-1>
     <HTML>
     <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
@@ -21,15 +22,17 @@ def header():
     return s
 
 def footer():
+    """ Finishs the bookmark file """
     return "</HTML>"
 
 
-#assumes bkmkTuple(title,uri,tags)
 def bookmarkToItem(bkmkTuple):
+    """ Converts a single bookmark to html """
+    assert(isinstance(bkmkTuple, bookmarkTuple))
     logging.debug("Exporting link: {}".format(bkmkTuple.url))
     #add the link:
     tags = 'TAGS="{}"'.format(",".join(bkmkTuple.tags))
-    item = '<DT><A HREF="{}" {}>{}</A>'.format(bkmkTuple.url,tags, bkmkTuple.name)
+    item = '<DT><A HREF="{}" {}>{}</A>'.format(bkmkTuple.url,tags, bkmkTuple.name.replace('\n',''))
     return item
 
 def bookmarksToNetscapeString(data):
@@ -54,11 +57,16 @@ def convertData(data):
         items = [bookmarkToItem(data[x]) for x in keys if isinstance(data[x],bookmarkTuple) and x != '__path']
         combined = subGroups + items
         return '\n'.join(combined)
+    elif isinstance(data,list):
+        entryCount = len(data)
+        return "\n".join([bookmarkToItem(x) for x in data])
     else:
         raise Exception('unrecognised conversion type')
 
-def exportBookmarks(data):
+def exportBookmarks(data, target):
     """ Main function, returns a complete bookmark string to write to a file """
     formattedString = "{} {} {}".format(header(),convertData(data),footer())
     logging.info("Finished converted bookmarks: {} groups | {} lists | {} entries".format(groupCount,listCount,entryCount))
-    return formattedString
+
+    with open(target, 'w') as f:
+        f.write(formattedString)
