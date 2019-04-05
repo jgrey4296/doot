@@ -5,14 +5,13 @@ extracts each link and name, then organises them,
 then exports them to ./cleaned_bookmarks.html,
 also in netscape html format
 """
-from os.path import isfile,join,exists, expanduser
+from os.path import isfile,join,exists, expanduser, abspath
 from os import listdir
 import re
 import html_opener
 import bookmark_simplification as bs
 import netscape_bookmark_exporter as nbe
 import plain_exporter as pe
-import util
 import logging
 import IPython
 from time import sleep
@@ -34,7 +33,7 @@ args = parser.parse_args()
 FORCED_ORDER = ["verified_bookmarks.html","partial_tagged_bookmarks.html"]
 
 #Settings
-EXPORT_NAME = expanduser(args.export)
+EXPORT_NAME = abspath(expanduser(args.export))
 HTMLREGEX = re.compile(r'.*\.html')
 VERIFY_TRAILING_SLASH_REMOVAL = re.compile(r'(ftp|http(?:s)?:/(?:/)?)(.*?)(?:/?)$')
 RAWDIR = expanduser(args.source)
@@ -89,19 +88,5 @@ finalTrie = bs.groupTrie(ex_data)
 logging.info("Converting to html string")
 
 #IPython.embed(simple_prompt=True)
-bookmark_html_string = nbe.exportBookmarks(finalTrie)
-
-
-#verify all found urls are in the exported string
-for url in allurls:
-    snippedUrl = VERIFY_TRAILING_SLASH_REMOVAL.findall(url)[0][1]
-    if snippedUrl not in bookmark_html_string:
-        #raise Exception("Missing Url: {}".format(snippedUrl))
-        logging.warning("Unsnipped Url: {}".format(url))
-        logging.warning("Missing Url: {}".format(snippedUrl))
-        IPython.embed(simple_prompt=True)
-
-logging.info("Saving html string")
-util.writeToFile(join(".",EXPORT_NAME + ".html"),bookmark_html_string)
-
+nbe.exportBookmarks(finalTrie, "{}.html".format(EXPORT_NAME))
 pe.exportBookmarks(finalTrie, join(".", EXPORT_NAME + ".txt"))
