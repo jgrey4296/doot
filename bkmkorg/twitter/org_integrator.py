@@ -89,6 +89,7 @@ if bool(totally_new) and args.newgroup:
     mkdir(target_for_new)
 else:
     potential_groups = [x for x in listdir(args.output) if isdir(join(args.output, x))]
+    #todo: change to selecting the smallest group
     target_for_new = join(args.output, choice(potential_groups))
     logging.info("Reusing group: {}".format(target_for_new))
 
