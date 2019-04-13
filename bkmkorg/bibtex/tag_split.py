@@ -3,6 +3,7 @@ Script to split a library into bib files based on tags
 """
 import IPython
 import bibtexparser as b
+from bibtexparser.bibdatabase import BibDatabase
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
 from bibtexparser import customization as c
@@ -27,7 +28,7 @@ logging = root_logger.getLogger(__name__)
 #see https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser("")
 parser.add_argument('-t', '--target', default="~/Mega/library.bib")
-parser.add_argument('-o', '--output', default="bibtex")
+parser.add_argument('-o', '--output', default="tag_split")
 args = parser.parse_args()
 
 args.target = abspath(expanduser(args.target))
@@ -50,14 +51,10 @@ def custom(record):
     # record = c.author(record)
     # record = c.editor(record)
     # record = c.journal(record)
-    record = c.keyword(record)
+    # record = c.keyword(record)
     # record = c.link(record)
     # record = c.doi(record)
-    if "keywords" in record:
-        record["keywords"] = [i.strip() for i in re.split(',|;', record["keywords"].replace('\n', ''))]
-    if "mendeley-tags" in record:
-        record["mendeley-tags"] = [i.strip() for i in re.split(',|;', record["mendeley-tags"].replace('\n', ''))]
-
+    record['tags'] = [i.strip() for i in re.split(',|;', record["tags"].replace("\n",""))]
     # record['p_authors'] = []
     # if 'author' in record:
     #     record['p_authors'] = [c.splitname(x, False) for x in record['author']]
@@ -71,9 +68,16 @@ with open(args.target, 'r') as f:
 
 
 #go through entries, creating a new db for each tag, and year, and author
+db_dict = {}
+for entry in db.entries:
+    for tag in entry['tags']:
+        if tag not in db_dict:
+            db_dict[tag] = BibDatabase()
+        db_dict[tag].entries.append(entry)
 
-
-logging.info("Bibtex loaded")
+logging.info("Writing Bibtex")
 writer = BibTexWriter()
-with open(args.output,'w') as f:
-        f.write(writer.write(db))
+
+for k,v in db_dict.items():
+    with open(join(args.output, "{}.bib".format(k)),'w') as f:
+        f.write(writer.write(v))
