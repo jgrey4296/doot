@@ -57,11 +57,16 @@ def custom(record):
     record = c.keyword(record)
     record = c.link(record)
     record = c.doi(record)
-    if "keywords" in record:
-        record["keywords"] = [i.strip() for i in re.split(',|;', record["keywords"].replace('\n', ''))]
-    if "mendeley-tags" in record:
-        record["mendeley-tags"] = [i.strip() for i in re.split(',|;', record["mendeley-tags"].replace('\n', ''))]
+    tags = set()
 
+    if 'tags' in record:
+        tags.update([i.strip() for i in re.split(',|;', record["tags"].replace('\n', ''))])
+    if "keywords" in record:
+        tags.update([i.strip() for i in re.split(',|;', record["keywords"].replace('\n', ''))])
+    if "mendeley-tags" in record:
+        tags.update([i.strip() for i in re.split(',|;', record["mendeley-tags"].replace('\n', ''))])
+
+    record['tags'] = tags
     record['p_authors'] = []
     if 'author' in record:
         record['p_authors'] = [c.splitname(x, False) for x in record['author']]
@@ -95,12 +100,7 @@ for i, entry in enumerate(db.entries):
         count += 1
 
     #get tags
-    if "keywords" in entry:
-        tags = set(entry['keywords'])
-    else:
-        tags = set()
-    if "mendeley-tags" in entry:
-        tags.update(entry['mendeley-tags'])
+    tags = entry['tags']
 
     for x in tags:
         if x not in all_tags:
@@ -161,13 +161,17 @@ with open("{}_tags".format(args.output), 'w') as f:
     logging.info("Writing Tags")
     f.write("\n".join(tag_str))
 
+with open("{}_all_tags".format(args.output), 'w') as f:
+    logging.info("Writing all Tags")
+    f.write("\n".join([x for x in all_tags.keys()]))
+
 longest_tag = 10 + max([len(x) for x in all_tags.keys()])
 most_tags = max([x for x in all_tags.values()])
 tag_bar = []
-with open("{}_tags_bar".format(args.output), 'w') as f:
-    logging.info("Writing Tags Bar")
-    for k,v in all_tags.items():
-        f.write(make_bar(k, v, longest_tag, most_tags))
+# with open("{}_tags_bar".format(args.output), 'w') as f:
+#     logging.info("Writing Tags Bar")
+#     for k,v in all_tags.items():
+#         f.write(make_bar(k, v, longest_tag, most_tags))
 
 year_str = ["{} : {}".format(k,v) for k,v in all_years.items()]
 with open("{}_years".format(args.output), 'w') as f:
@@ -177,10 +181,10 @@ with open("{}_years".format(args.output), 'w') as f:
 longest_year = 10 + max([len(x) for x in all_years.keys()])
 most_year = max([x for x in all_years.values()])
 
-with open("{}_years_bar".format(args.output), 'w') as f:
-    logging.info("Writing Years")
-    for k,v in all_years.items():
-        f.write(make_bar(k, v, longest_year, most_year))
+# with open("{}_years_bar".format(args.output), 'w') as f:
+#     logging.info("Writing Years")
+#     for k,v in all_years.items():
+#         f.write(make_bar(k, v, longest_year, most_year))
 
 # with open("{}_non_tagged".format(args.output), 'w') as f:
 #     logging.info("Writing non_tagged")
