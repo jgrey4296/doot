@@ -34,12 +34,11 @@ args = parser.parse_args()
 
 args.target = abspath(expanduser(args.target))
 args.output = abspath(expanduser(args.output))
-args.filter = abspath(expanduser(args.filter))
-args.sub = abspath(expanduser(args.sub))
+if args.filter:
+    args.filter = abspath(expanduser(args.filter))
+if args.sub:
+    args.sub = abspath(expanduser(args.sub))
 assert(exists(args.target))
-
-if not isdir(args.output):
-    mkdir(args.output)
 
 logging.info("Targeting: {}".format(args.target))
 logging.info("Output to: {}".format(args.output))
@@ -53,13 +52,9 @@ def custom(record):
     # record = c.author(record)
     # record = c.editor(record)
     # record = c.journal(record)
-    record = c.keyword(record)
     # record = c.link(record)
     # record = c.doi(record)
-    if "keywords" in record:
-        record["keywords"] = [i.strip() for i in re.split(',|;', record["keywords"].replace('\n', ''))]
-    if "mendeley-tags" in record:
-        record["mendeley-tags"] = [i.strip() for i in re.split(',|;', record["mendeley-tags"].replace('\n', ''))]
+    record['tags'] = set([i.strip() for i in re.split(',|;', record['tags'].replace('\n',''))])
 
     # record['p_authors'] = []
     # if 'author' in record:
@@ -72,14 +67,35 @@ with open(args.target, 'r') as f:
     logging.info("Loading bibtex")
     db = b.load(f, parser)
 
+# Get the filter terms
+filter = set()
+if args.filter and exists(args.filter):
+    logging.info("Loading filter")
+    with open(args.filter, 'r') as f:
+        lines = f.read().split('\n')
+    filter = set([x.strip() for x in lines])
 
-# filter tags of entries
+# get the substitute tags
+sub = {}
+subset = set()
+if args.sub and exists(args.sub):
+    logging.info("Loading Sub")
+    with open(args.sub, 'r') as f:
+        lines = f.read().split('\n')
+    sub = { x.strip() : y.strip() for a in lines for x,y in a.split(':')}
+    subset = set(list(sub.keys()))
+
+# Perform the filtering and substituting
+logging.info("Performing filter and sub")
+for ent in db.entries:
+    ent['tags'].difference_update(filter)
+    inter = ent['tags'].intersection(subset)
+    ent['tags'].difference_update(inter)
+    ent['tags'].update([subset[x] for x in inter])
+    ent['tags'] = ",".join(ent['tags'])
 
 
-# substitutes tags of entries
-
-
-logging.info("Bibtex loaded")
+logging.info("Writing")
 writer = BibTexWriter()
-with open(args.output,'w') as f:
+with open("{}.bib".format(args.output),'w') as f:
         f.write(writer.write(db))
