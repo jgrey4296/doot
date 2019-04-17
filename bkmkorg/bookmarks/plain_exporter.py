@@ -2,14 +2,14 @@
 A Plain Text exporter for bookmarks
 """
 import logging as root_logger
-from util import bookmarkTuple
+from bkmkorg.util import bookmarkTuple
 
 logging = root_logger.getLogger(__name__)
 
 def tuple_to_str(bkmk_tuple):
     return "{} ||| :{}: ||| {}".format(bkmk_tuple.name,
-                                     ":".join(bkmk_tuple.tags),
-                                     bkmk_tuple.url)
+                                       ":".join(bkmk_tuple.tags),
+                                       bkmk_tuple.url)
 
 
 def exportBookmarks(data, filename):
@@ -18,8 +18,8 @@ def exportBookmarks(data, filename):
     #print out the items that are bookmark tuples
     logging.info("Converting data to text")
 
-    frontier = [data]
-    with open(filename, 'a') as f:
+    frontier = data
+    with open(filename, 'w') as f:
         while bool(frontier):
             current = frontier.pop()
             if isinstance(current, bookmarkTuple):
