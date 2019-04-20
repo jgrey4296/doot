@@ -39,14 +39,15 @@ def fileToHash(filename):
 #read the output file
 logging.info("Loading Existing")
 with open(args.output,'r') as f:
-    text = f.read()
+    text = f.read().split('\n')
 
 #extract existing files
-path_re = re.compile(r'^*+\s+(?:TODO|DONE)? \[\[file:([\w/\.~]+)\]')
+path_re = re.compile(r'^\*\*+\s+(?:TODO|DONE)?\[\[file:([\w/\.~]+)\]')
 
 logging.info("Finding links")
-files_so_far = path_re.findall(text)
-expanded_files = [expanduser(abspath(x)) for x in files_so_far]
+path_matches = [path_re.findall(x) for x in text]
+path_merge = [y for x in path_matches for y in x]
+expanded_files = [abspath(expanduser(x)) for x in path_merge]
 logging.info("Found: {}".format(len(expanded_files)))
 #hash them
 logging.info("Hashing")
@@ -58,7 +59,7 @@ file_types = ['.png', '.gif', '.jpg', '.jpeg']
 
 logging.info("Scraping Source Directory")
 files_in_dir = listdir(args.source)
-imgs_in_dir = [x for x in files_in_dir if splitext(x)[1] in file_types
+imgs_in_dir = [x for x in files_in_dir if splitext(x)[1].lower() in file_types
                and x[0] != '.']
 full_paths = [abspath(expanduser(join(args.source, x))) for x in imgs_in_dir]
 logging.info("Scraped: {}".format(len(full_paths)))
