@@ -1,0 +1,81 @@
+#------------------------------
+# Simple program to integrate papers into a collection
+#------------------------------
+import argparse
+from os.path import join, isfile, exists, isdir, splitext, expanduser, split, abspath
+from os import listdir, mkdir
+from hashlib import sha256
+from shutil import copyfile
+import IPython
+import regex as re
+import logging as root_logger
+LOGLEVEL = root_logger.DEBUG
+LOG_FILE_NAME = "log.md5PaperChecker"
+root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
+
+console = root_logger.StreamHandler()
+console.setLevel(root_logger.INFO)
+root_logger.getLogger('').addHandler(console)
+logging = root_logger.getLogger(__name__)
+##############################
+import argparse
+
+#see https://docs.python.org/3/howto/argparse.html
+parser = argparse.ArgumentParser("")
+parser.add_argument('-s', '--source')
+parser.add_argument('-o', '--output')
+
+args = parser.parse_args()
+args.source = abspath(expanduser(args.source))
+args.output = abspath(expanduser(args.output))
+
+assert(splitext(args.output)[1] == '.org')
+
+def fileToHash(filename):
+    logging.debug("Hashing: {}".format(filename))
+    with open(filename, 'br') as f:
+        return sha256(f.read()).hexdigest()
+
+#read the output file
+logging.info("Loading Existing")
+with open(args.output,'r') as f:
+    text = f.read()
+
+#extract existing files
+path_re = re.compile(r'^*+\s+(?:TODO|DONE)? \[\[file:([\w/\.~]+)\]')
+
+logging.info("Finding links")
+files_so_far = path_re.findall(text)
+expanded_files = [expanduser(abspath(x)) for x in files_so_far]
+logging.info("Found: {}".format(len(expanded_files)))
+#hash them
+logging.info("Hashing")
+current_hashes = { fileToHash(x) for x in expanded_files }
+
+
+#read the source directory
+file_types = ['.png', '.gif', '.jpg', '.jpeg']
+
+logging.info("Scraping Source Directory")
+files_in_dir = listdir(args.source)
+imgs_in_dir = [x for x in files_in_dir if splitext(x)[1] in file_types
+               and x[0] != '.']
+full_paths = [abspath(expanduser(join(args.source, x))) for x in imgs_in_dir]
+logging.info("Scraped: {}".format(len(full_paths)))
+
+logging.info("Hashing")
+total_hashes = { fileToHash(x) : x for x in full_paths }
+
+#get the difference
+logging.info("Getting difference of hashes")
+to_add = set(total_hashes.keys()).difference(current_hashes)
+
+text_template = "** [[file://{}][{}]]\n"
+
+#append unlinked files
+logging.info("Appending to output: {}".format(len(to_add)))
+with open(args.output, 'a') as f:
+    for h in to_add:
+        filename = total_hashes[h]
+        f.write(text_template.format(filename, split(filename)[1]))
+
