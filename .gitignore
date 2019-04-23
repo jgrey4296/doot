@@ -9,3 +9,8 @@ checked_errors.txt
 simplified_bookmarks.txt
 errors.txt
 output
+GPATH
+GTAGS
+GRTAGS
+cscope.out
+gtags_file_list
