@@ -2,9 +2,9 @@
 Integrate new bookmarks into the main bookmark file
 """
 import argparse
-from html_opener import open_and_extract_bookmarks
-from org_exporter import exportBookmarks as org_export
-from netscape_bookmark_exporter import exportBookmarks as html_export
+from bkmkorg.io.import_netscape import open_and_extract_bookmarks
+from bkmkorg.io.export_org import exportBookmarks as org_export
+from bkmkorg.io.export_netscape import exportBookmarks as html_export
 # Setup root_logger:
 from os.path import splitext, split, exists, expanduser, abspath
 import logging as root_logger

@@ -2,16 +2,14 @@
 Compare 2 bibtex files
 """
 
-
-import IPython
-import bibtexparser as b
-from bibtexparser.bparser import BibTexParser
 from bibtexparser import customization as c
-from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath
-from os import listdir
-import regex as re
+from bibtexparser.bparser import BibTexParser
 from math import ceil
+from os import listdir
+from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath
 import argparse
+import bibtexparser as b
+import regex as re
 # Setup root_logger:
 from os.path import splitext, split
 import logging as root_logger
@@ -44,3 +42,22 @@ for t in args.target:
     all_dbs.append(db)
 
 logging.info("DB Sizes: {}".format(", ".join([str(len(x.entries)) for x in all_dbs])))
+
+sorted_dbs = sorted([(len(x.entries), x) for x in all_dbs] ,reverse=True)
+
+head = sorted_dbs[0][1]
+rst = sorted_dbs[1:]
+head_set = set([x['ID'] for x in head.entries])
+
+missing_keys = set([])
+for _,db in rst:
+    db_set = set([x['ID'] for x in db.entries])
+    if head_set.issuperset(db_set):
+        continue
+
+
+    missing_keys.update(db_set.difference(head_set))
+
+
+logging.info("{} Keys missing from master: {}".format(len(missing_keys), "\n".join(missing_keys)))
+

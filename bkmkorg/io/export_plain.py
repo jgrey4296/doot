@@ -2,7 +2,7 @@
 A Plain Text exporter for bookmarks
 """
 import logging as root_logger
-from bkmkorg.util import bookmarkTuple
+from bkmkorg.bookmark_data import bookmarkTuple
 
 logging = root_logger.getLogger(__name__)
 

@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 from os import listdir, mkdir
 from os.path import join, isfile, exists, isdir, splitext, expanduser, split
 from time import sleep
-import bkmkorg.util as util
+import bkmkorg.twitter_data as util
 # Setup root_logger:
 import logging as root_logger
 LOGLEVEL = root_logger.DEBUG

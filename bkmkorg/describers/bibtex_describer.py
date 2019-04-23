@@ -4,17 +4,15 @@ Giving stats, non-tagged entries,
 year distributions
 firstnames, surnames.
 """
-import IPython
-import bibtexparser as b
-from bibtexparser.bparser import BibTexParser
 from bibtexparser import customization as c
-from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath
-from os import listdir
-import regex as re
+from bibtexparser.bparser import BibTexParser
 from math import ceil
+from os import listdir
+from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath, split
 import argparse
+import bibtexparser as b
+import regex as re
 # Setup root_logger:
-from os.path import splitext, split
 import logging as root_logger
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
@@ -215,4 +213,3 @@ with open("{}_missing_file".format(args.output), 'w') as f:
     f.write("\n".join(missing_file))
 
 logging.info("Complete")
-IPython.embed(simple_prompt=True)

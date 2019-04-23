@@ -5,7 +5,7 @@ Main function: exportBookmarks
 """
 import logging
 import IPython
-from bkmkorg.util import bookmarkTuple
+from bkmkorg.bookmark_data import bookmarkTuple
 
 groupCount = 0
 listCount = 0

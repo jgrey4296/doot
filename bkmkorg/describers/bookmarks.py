@@ -2,9 +2,8 @@
 Stat generator for bookmarks
 """
 
-# Setup root_logger:
 from os.path import splitext, split, exists, expanduser, abspath
-from html_opener import open_and_extract_bookmarks
+from bkmkorg.io.import_netscape import open_and_extract_bookmarks
 import logging as root_logger
 from urllib.parse import urlparse
 import argparse

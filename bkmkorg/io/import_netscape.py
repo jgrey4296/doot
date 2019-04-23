@@ -5,7 +5,7 @@ Utility to open and parse a netscape bookmark file
 import os
 from bs4 import BeautifulSoup
 from collections import namedtuple
-from bkmkorg.util import bookmarkTuple
+from bkmkorg.bookmark_data import bookmarkTuple
 import logging
 
 

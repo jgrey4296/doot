@@ -3,8 +3,8 @@ Split the bookmark library by top level domain
 """
 
 # Setup root_logger:
-from html_opener import open_and_extract_bookmarks
-from org_exporter import exportBookmarks as org_export
+from bkmkorg.io.import_netscape import open_and_extract_bookmarks
+from bkmkorg.io.export_org import exportBookmarks as org_export
 from os.path import splitext, split, abspath, exists, isdir, join
 from os import mkdir
 from urllib.parse import urlparse

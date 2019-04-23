@@ -1,12 +1,12 @@
 #------------------------------
 # Simple program to integrate papers into a collection
 #------------------------------
-import argparse
-from os.path import join, isfile, exists, isdir, splitext, expanduser, split
-from os import listdir, mkdir
 from hashlib import sha256
+from os import listdir, mkdir
+from os.path import join, isfile, exists, isdir, splitext, expanduser, split
 from shutil import copyfile
 import IPython
+import argparse
 import logging as root_logger
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.md5PaperChecker"
@@ -18,42 +18,14 @@ root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
 
-LIBRARY = [
-    "~/Mega/Mendeley"
-]
-
-#The source of potentially un-integrated papers
-INBOX = [
-    "~/Mega/deduplicated",
-    "~/Desktop/pdfs",
-    "~/Desktop/from ipad"
-    #"~/Desktop/deduplicated"
-    #"/Volumes/DOCUMENTS/Old/missingpapers",
-    # "/Volumes/DOCUMENTS/Old/research",
-    # "/Users/jgrey/Desktop/feb_2018_pdfs",
-    # "/Users/jgrey/Desktop/feb_12_2018_pdfs"
-    #"/Volumes/DOCUMENTS/mac mini/mac_mini_pdfs"
-    #"~/mega/pdfs"
-    # "/Volumes/DOCUMENTS/Papers",
-    #  "/Volumes/DOCUMENTS/Old",
-    # "/Volumes/DOCUMENTS/mendeley"
-]
-#Where to put papers that need to be integrated
-TARGET = "/Users/jgrey/Desktop/sanity_check"
-
-
 #see https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser("")
 parser.add_argument('-l', '--library', action='append')
-parser.add_argument('-s', '--source', action='append')
-parser.add_argument('-o', '--output', default=TARGET)
+parser.add_argument('-o', '--output', default="/Users/jgrey/Desktop/sanity_check")
 parser.add_argument('-q', '--quit', action='store_true')
+parser.add_argument('-s', '--source', action='append')
 
 args = parser.parse_args()
-if args.library is None:
-    args.library = LIBRARY
-if args.source is None:
-    args.source = INBOX
 
 logging.info("MD5 LIBRARY: {}".format(args.library))
 logging.info("MD5 SOURCE: {}".format(args.source))
@@ -99,13 +71,6 @@ logging.info("Starting")
 library_pdfs = getAllPdfs(args.library,9)
 logging.info("Num of Library pdfs: {}".format(len(library_pdfs)))
 library_hashmap = { fileToHash(x) : x for x in library_pdfs }
-# if len(library_hashmap) != len(library_pdfs):
-#     for x in library_pdfs:
-#         file_hash = fileToHash(x)
-#         if file_hash in library_hashmap:
-#             logging.warning("Library Conflict: {} - {} - {}".format(file_hash, x, library_hashmap[file_hash]))
-#         else:
-#             library_hashmap[file_hash] = x
 library_set = set(library_hashmap.keys())
 
 inbox_pdfs = getAllPdfs(args.source,5)

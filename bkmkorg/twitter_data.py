@@ -10,9 +10,17 @@ import regex
 hashtag_re = regex.compile(r'#(\w+)')
 http_re= regex.compile(r'(http|pic\.twitter)')
 
-bookmarkTuple = namedtuple("bookmark","name url tags")
+
+def conversation_p(tag):
+    """ A Simple twitter conversation predicate """
+    cls = tag['class']
+    tc = "ThreadedConversation" in cls
+    tcs = "ThreadedConversation--selfThread" in cls
+    lt = "ThreadedConversation--loneTweet" in cls
+    return tc and not (tcs or lt)
 
 class TweetData:
+    """ A Simple Class to hold tweet data """
 
     def __init__(self, username, content, media, links, permalink, time):
         self.username = username
@@ -58,6 +66,7 @@ class TweetData:
         return "{}{}{}\n".format(header,props,total_content)
 
 class ThreadData:
+    """ A Simple class to hold twitter threads """
 
     def __init__(self, name, tweets):
         #threads are lists of lists of tweets
@@ -86,6 +95,7 @@ class ThreadData:
                                tweets)
 
 class TwitterData:
+    """ A Simple Class to hold an entire saved twitter page """
 
     def __init__(self, tweet, ancestors, descendants, file_path):
         self.tweet = tweet
@@ -210,11 +220,3 @@ class TwitterData:
         with open(abspath(b), 'rb') as f:
             b_hash = sha256(f.read()).hexdigest()
         return a_hash == b_hash
-
-
-def conversation_p(tag):
-    cls = tag['class']
-    tc = "ThreadedConversation" in cls
-    tcs = "ThreadedConversation--selfThread" in cls
-    lt = "ThreadedConversation--loneTweet" in cls
-    return tc and not (tcs or lt)

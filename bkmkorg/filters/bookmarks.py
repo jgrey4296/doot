@@ -1,13 +1,14 @@
 """
 A Simpler trie usage bookmark processor
 """
-from trie import Trie
-from netscape_bookmark_exporter import exportBookmarks as html_exporter
-from org_exporter import exportBookmarks as org_exporter
-from plain_exporter import exportBookmarks as plain_exporter
+from bkmkorg.utils.trie import Trie
+from bkmkorg.io.import_netscape import open_and_extract_bookmarks
+from bkmkorg.io.export_netscape import exportBookmarks as html_exporter
+from bkmkorg.io.export_org import exportBookmarks as org_exporter
+from bkmkorg.io.export_plain import exportBookmarks as plain_exporter
 from os.path import isfile,join,exists, expanduser, abspath
 from os import listdir
-import html_opener
+import opener
 import logging
 import IPython
 import argparse
@@ -28,7 +29,7 @@ if args.query is not None:
 
 the_trie = Trie()
 #load any sources
-bkmk_sources = [html_opener.open_and_extract_bookmarks(f) for f in args.source]
+bkmk_sources = [open_and_extract_bookmarks(f) for f in args.source]
 
 #insert into the trie
 for bkmk_group in bkmk_sources:

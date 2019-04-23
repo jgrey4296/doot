@@ -1,16 +1,16 @@
 """
 Script to combine multiple bibtex files into one
 """
-import IPython
-import bibtexparser as b
+from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
-from bibtexparser import customization as c
-from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath
-from os import listdir, mkdir
-import regex as re
 from math import ceil
+from os import listdir, mkdir
+from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath
+import IPython
 import argparse
+import bibtexparser as b
+import regex as re
 # Setup root_logger:
 from os.path import splitext, split
 import logging as root_logger
@@ -27,15 +27,12 @@ logging = root_logger.getLogger(__name__)
 #see https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser("")
 parser.add_argument('-t', '--target', action="append")
-parser.add_argument('-o', '--output', default="./output/integrated")
+parser.add_argument('-o', '--output', default="./output/integrated.bib")
 args = parser.parse_args()
 
 args.target = [abspath(expanduser(x)) for x in args.target]
 args.output = abspath(expanduser(args.output))
 assert(all([exists(x) for x in args.target]))
-
-if not isdir(args.output):
-    mkdir(args.output)
 
 
 logging.info("Targeting: {}".format(args.target))
@@ -71,38 +68,33 @@ for x in args.target:
         db = b.load(f, parser)
         dbs.append(db)
 
-main = dbs[0]
-#Load in all keys and check for conflicts
-keys = {}
-not_in_main = []
-conflicts = {}
-on_main = True
+main_db = None
+if exists(args.output):
+    parser = BibTexParser(common_strings=False)
+    parser.ignore_nonstandard_types = False
+    parser.homogenise_fields = True
+    parser.customization = custom
+    with open(args.output, 'r') as f:
+        logging.info("Loading output: {}".format(args.output))
+        main_db = b.load(f, parser)
+else:
+    main_db = bp.BibDatabase()
+
+main_set = set(main_db.get_entry_dict().keys())
+
+missing_entries = []
+missing_keys_main = set()
 for db in dbs:
-    for entry in db.entries:
-        if entry['ID'] not in keys:
-            keys[entry['ID']] = entry
-            if not on_main:
-                not_in_main.append(entry)
-            continue
-        elif entry['ID'] not in conflicts:
-            conflicts[entry['ID']] = []
-        conflicts[entry['ID']].append(entry)
+    db_dict = db.get_entry_dict()
+    db_set = set(db_dict.keys())
+    missing_keys = db_set.difference(main_set)
+    missing_keys_main.update(missing_keys)
+    missing_entries += [db_dict[x] for x in missing_keys]
 
-    on_main = False
-
-logging.info("Conflicts: ")
-for k,v in conflicts.items():
-    orig = keys[k]
-    logging.info("Original: {} - {} - {} - {}".format(orig['ID'], orig['author'], orig['year'], orig['title']))
-    for c in v:
-        logging.info("Conflict: {} - {} - {} - {}".format(c['ID'], c['author'], c['year'], c['title']))
-    logging.info("-----")
-
-IPython.embed(simple_prompt=True)
-
-main.entries += not_in_main
+logging.info("{} missing entries".format(len(missing_entries)))
+main_db.entries = missing_entries
 
 logging.info("Bibtex loaded")
 writer = BibTexWriter()
-with open(join(args.output, "integrated.bib"),'w') as f:
-        f.write(writer.write(main))
+with open(join(args.output),'a') as f:
+        f.write(writer.write(main_db))
