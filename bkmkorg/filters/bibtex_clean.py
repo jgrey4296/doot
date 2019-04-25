@@ -1,6 +1,7 @@
 """
 Script to clean a bibtex file, converting everything to unicode
 """
+import IPython
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
@@ -8,7 +9,7 @@ from hashlib import sha256
 from math import ceil
 from os import listdir, mkdir
 from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath, commonpath, realpath
-from shutil import copyfile
+from shutil import copyfile, move
 import IPython
 import argparse
 import bibtexparser as b
@@ -44,12 +45,6 @@ parser = BibTexParser(common_strings=False)
 parser.ignore_nonstandard_types = False
 parser.homogenise_fields = True
 
-def make_bar(k, v, left_pad_v, right_scale_v):
-    pad = ((10 + left_pad_v) - len(k))
-    bar = ceil(((100 - pad) / right_scale_v) * v)
-    full_str = "{}{}({}) : {}>\n".format(k, " " * pad, v, "=" *  bar)
-    return full_str
-
 def file_to_hash(filename):
     if not isfile(filename):
         raise Exception(filename)
@@ -57,9 +52,15 @@ def file_to_hash(filename):
         return sha256(f.read()).hexdigest()
 
 def add_slash_if_necessary(x):
-    if x[0] != '/':
+    if x[0] != '/' and x[0] != "~":
         x = '/' + x
     return x.strip()
+
+def safe_splitname(s):
+    s = s.strip()
+    if s.endswith(","):
+        s = s[:-1]
+    return c.splitname(s)
 
 def custom(record):
     try:
@@ -67,7 +68,7 @@ def custom(record):
     except TypeError as e:
         logging.warning("Unicode Error on: {}".format(record['ID']))
         record['error'] = 'unicode'
-
+    file_set = None
     try:
         #add md5 of associated files
         files = [add_slash_if_necessary(y) for x in record['file'].split(';') for y in x.split(':') if bool(y.strip()) and y.strip().lower() != 'pdf']
@@ -81,12 +82,12 @@ def custom(record):
         logging.warning("File Error: {} : {}".format(record['ID'], e.args[0]))
         record['error'] = 'file'
 
-    #todo: if file is not in the library common prefix, move it there
+    #if file is not in the library common prefix, move it there
     #look for year, then first surname, then copy in, making dir if necessary
     if file_set:
         for x in file_set:
             try:
-                current_path = realpath(x)
+                current_path = realpath(abspath(expanduser(x)))
                 common = commonpath([current_path, args.library])
                 if common != args.library:
                     logging.info("Found file outside library: {}".format(current_path))
@@ -94,24 +95,27 @@ def custom(record):
                     #get the author and year
                     year = record['year']
                     authors = c.getnames([i.strip() for i in record["author"].replace('\n', ' ').split(" and ")])
-                    authors_split = [c.splitname(a) for a in authors]
+                    authors_split = [safe_splitname(a) for a in authors]
                     author_surnames = [a['last'][0] for a in authors_split]
-                    new_path = join(args.library, year, ", ".join(author_surnames))
-                    logging.info("New Path: {}".format(new_path))
+                    year_path = join(args.library, year)
+                    author_path = join(year_path, ", ".join(author_surnames))
+                    logging.info("New Path: {}".format(author_path))
                     #create directory if necessary
                     #copy file
-                    full_new_path = join(new_path, split(current_path)[1])
+                    full_new_path = join(author_path, split(current_path)[1])
                     logging.info("Copying file")
                     logging.info("From: {}".format(current_path))
                     logging.info("To: {}".format(full_new_path))
                     response = input("Enter to confirm: ")
                     if response == "":
                         logging.info("Proceeding")
-                        if not exists(new_path):
-                            mkdir(new_path)
-                        if exists(full_new_path):
-                            raise Exception("File already exists")
-                        copyfile(x, full_new_path)
+                        if not exists(year_path):
+                            mkdir(year_path)
+                        if not exists(author_path):
+                            mkdir(author_path)
+                        if not exists(full_new_path):
+                            copyfile(current_path, full_new_path)
+                            move(current_path, "{}__x".format(current_path))
                         file_set.remove(x)
                         file_set.add(full_new_path)
                         record['file'] = ";".join(file_set)
@@ -119,7 +123,6 @@ def custom(record):
                 logging.info("Issue copying file for: {}".format(x))
                 logging.info(e)
                 record['error'] = 'file_copy'
-
 
     #regularize keywords
     try:
