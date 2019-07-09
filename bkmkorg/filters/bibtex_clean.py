@@ -87,7 +87,8 @@ def custom(record):
     if file_set:
         for x in file_set:
             try:
-                current_path = realpath(abspath(expanduser(x)))
+                logging.info("Expanding: {}".format(x))
+                current_path = abspath(expanduser(x))
                 common = commonpath([current_path, args.library])
                 if common != args.library:
                     logging.info("Found file outside library: {}".format(current_path))
@@ -162,7 +163,7 @@ logging.info("Bibtex loaded")
 #Get errors and write them out:
 errored = [x for x in db.entries if 'error' in x]
 
-with open('{}.errors'.format(args.output), 'w') as f:
+with open('{}.errors'.format(args.output), 'a') as f:
     f.write("\n".join(["{} : {}".format(x['ID'], x['error']) for x in errored]))
 
 writer = BibTexWriter()
