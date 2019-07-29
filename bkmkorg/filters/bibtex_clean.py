@@ -28,7 +28,14 @@ logging = root_logger.getLogger(__name__)
 ##############################
 
 #see https://docs.python.org/3/howto/argparse.html
-parser = argparse.ArgumentParser("")
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 epilog=
+                                 "\n".join(["Specify a Target bibtex file,",
+                                            "Output file,",
+                                            "And the Location of the pdf library.",
+                                            "Cleans names and moves all non-library pdfs into the library.",
+                                            "Records errors in an 'error' field for an entry."]))
+
 parser.add_argument('-t', '--target', default="~/Mega/library.bib")
 parser.add_argument('-o', '--output', default="bibtex")
 parser.add_argument('-l', '--library', default="~/MEGA/Mendeley")
@@ -46,8 +53,6 @@ parser.ignore_nonstandard_types = False
 parser.homogenise_fields = True
 
 def file_to_hash(filename):
-    if not isfile(filename):
-        raise Exception(filename)
     with open(filename, 'rb') as f:
         return sha256(f.read()).hexdigest()
 
@@ -67,7 +72,7 @@ def custom(record):
         record = c.convert_to_unicode(record)
     except TypeError as e:
         logging.warning("Unicode Error on: {}".format(record['ID']))
-        record['error'] = 'unicode'
+        record['error'] = str(e)
     file_set = None
     try:
         #add md5 of associated files
@@ -78,9 +83,18 @@ def custom(record):
             record['hashes'] = ";".join(hashes)
             #regularize format of files list
             record['file'] = ";".join(file_set)
-    except Exception as e:
+        else:
+            saved_hashes = set(record['hashes'].split(';'))
+            hashes = set([file_to_hash(x) for x in file_set])
+            if saved_hashes.symmetric_difference(hashes):
+                raise Exception("Hash Mismatches", saved_hashes.difference(hashes), hashes.difference(saved_hashes))
+
+    except FileNotFoundError as e:
         logging.warning("File Error: {} : {}".format(record['ID'], e.args[0]))
-        record['error'] = 'file'
+        record['error'] = "File Error: {}".format(e.args[0])
+    except Exception as e:
+        logging.warning("Error: {}".format(e.args[0]))
+        record['error'] = "{} : / :".format(e.args[0], e.args[1])
 
     #if file is not in the library common prefix, move it there
     #look for year, then first surname, then copy in, making dir if necessary
@@ -123,7 +137,7 @@ def custom(record):
             except Exception as e:
                 logging.info("Issue copying file for: {}".format(x))
                 logging.info(e)
-                record['error'] = 'file_copy'
+                record['error'] = str(e)
 
     #regularize keywords
     try:
