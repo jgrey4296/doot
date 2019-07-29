@@ -22,12 +22,10 @@ import argparse
 
 parser = argparse.ArgumentParser("")
 parser.add_argument('-l', '--library')
-parser.add_argument('-s', '--source')
 parser.add_argument('-o', '--output')
 parser.add_argument('-c', '--count', default=200)
 
 args = parser.parse_args()
-args.source = abspath(expanduser(args.source))
 args.library = abspath(expanduser(args.library))
 args.output = abspath(expanduser(args.output))
 

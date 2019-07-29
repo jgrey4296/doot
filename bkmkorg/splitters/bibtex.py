@@ -26,9 +26,15 @@ logging = root_logger.getLogger(__name__)
 ##############################
 
 #see https://docs.python.org/3/howto/argparse.html
-parser = argparse.ArgumentParser("")
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 epilog="""Splits a bibtex file into multiple separate ones,
+                                 by TAG, YEAR or AUTHOR,
+                                 --output is a directory""")
 parser.add_argument('-t', '--target', default="~/Mega/library.bib")
 parser.add_argument('-o', '--output', default="tag_split")
+parser.add_argument('-T', '--TAGS', action='store_true')
+parser.add_argument('-Y', '--YEARS', action='store_true')
+parser.add_argument('-A', '--AUTHORS', action='store_true')
 args = parser.parse_args()
 
 args.target = abspath(expanduser(args.target))
@@ -54,7 +60,7 @@ def custom(record):
     # record = c.keyword(record)
     # record = c.link(record)
     # record = c.doi(record)
-    record['tags'] = [i.strip() for i in re.split(',|;', record["tags"].replace("\n",""))]
+    # record['tags'] = [i.strip() for i in re.split(',|;', record["tags"].replace("\n",""))]
     # record['p_authors'] = []
     # if 'author' in record:
     #     record['p_authors'] = [c.splitname(x, False) for x in record['author']]
@@ -70,14 +76,26 @@ with open(args.target, 'r') as f:
 #go through entries, creating a new db for each tag, and year, and author
 db_dict = {}
 for entry in db.entries:
-    for tag in entry['tags']:
-        if tag not in db_dict:
-            db_dict[tag] = BibDatabase()
-        db_dict[tag].entries.append(entry)
+    if args.TAGS:
+        tags = [i.strip() for i in re.split(',|;', entry["tags"].replace("\n",""))]
+        for tag in tags:
+            if tag not in db_dict:
+                db_dict[tag] = BibDatabase()
+            db_dict[tag].entries.append(entry)
+    if args.YEARS:
+        if 'year' not in entry:
+            raise Exception("Years specified, entry has no year: {}".format(entry['ID']))
+
+        if entry['year'] not in db_dict:
+            db_dict[entry['year']] = BibDatabase()
+        db_dict[entry['year']].entries.append(entry)
+    if args.AUTHORS:
+        raise Exception("not implemented AUTHORS yet")
 
 logging.info("Writing Bibtex")
 writer = BibTexWriter()
 
 for k,v in db_dict.items():
-    with open(join(args.output, "{}.bib".format(k)),'w') as f:
+    clean_name = k.replace("/","_")
+    with open(join(args.output, "{}.bib".format(clean_name)),'w') as f:
         f.write(writer.write(v))

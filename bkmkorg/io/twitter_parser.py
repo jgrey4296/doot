@@ -71,10 +71,11 @@ class TwitterParser:
         permalink = self.get_tweet_permalink(tweet)
         time = self.get_tweet_time(tweet)
         content = self.get_tweet_content(tweet)
-        media = self.get_tweet_media(tweet)
+        media, videos = self.get_tweet_media(tweet)
         links = self.get_tweet_links(tweet)
+        quoted = self.get_tweet_quote(tweet)
 
-        data = util.TweetData(username, content, media, links, permalink, time)
+        data = util.TweetData(username, content, media, links, permalink, time, videos, quoted)
         return data
 
     def get_tweet(self, container):
@@ -105,13 +106,37 @@ class TwitterParser:
     def get_tweet_content(self, tweet):
         return tweet.find("div", class_="js-tweet-text-container").get_text()
 
+    def get_tweet_quote(self, tweet):
+        quoted = tweet.find("div", class_="QuoteTweet-innerContainer")
+        if not quoted:
+            return None
+        logging.info("Getting a quoted tweet")
+        #else:
+        #TODO: get the quote tweet details
+        username = self.get_tweet_username(quoted)
+        content = quoted.find("div", class_="QuoteTweet-text").get_text()
+        permalink = quoted['href']
+        media = [x['src'] for x in quoted.find_all("img") if 'class' not in x.attrs or 'avatar' not in x.attrs['class']]
+        videos = [x['src'] for x in quoted.find_all('video') if 'class' not in x.attrs or 'avatar' not in x.attrs['class']]
+        data = util.TweetData(username
+                              ,content
+                              ,media
+                              ,None
+                              ,permalink
+                              ,None
+                              ,videos)
+
+        return data
+
     def get_tweet_media(self, tweet):
         media_container = tweet.find('div', class_='AdaptiveMedia-container')
         media = []
+        videos = []
         if media_container is not None:
             media = [x['src'] for x in media_container.find_all("img") if 'class' not in x.attrs or 'avatar' not in x.attrs['class']]
+            videos = [x['src'] for x in media_container.find_all('video') if 'class' not in x.attrs or 'avatar' not in x.attrs['class']]
         media = [split(x)[1] for x in media]
-        return media
+        return (media, videos)
 
     def get_tweet_links(self, tweet):
         timeline_link = tweet.find_all('a', class_="twitter-timeline-link")
@@ -180,13 +205,13 @@ if __name__ == "__main__":
         assert(isdir(args.source))
         targets = [x for x in listdir(args.source) if splitext(x)[1] == ".html"]
         for i, the_target in enumerate(targets):
-            try:
-                parser = TwitterParser(join(args.source, the_target))
-                output = parser.process()
-                output.save(args.output)
-            except Exception as e:
-                logging.warning("AN ERROR OCCURED FOR: {}".format(the_target))
-                with open(join(args.output, "errors.txt"), "a") as f:
-                    f.write("{}\n".format(the_target))
+            # try:
+            parser = TwitterParser(join(args.source, the_target))
+            output = parser.process()
+            output.save(args.output)
+            # except Exception as e:
+            #     logging.warning("AN ERROR OCCURED FOR: {}".format(the_target))
+            #     with open(join(args.output, "errors.txt"), "a") as f:
+            #         f.write("{}\n".format(the_target))
             if i % args.count == 0:
                 sleep(args.count)
