@@ -17,8 +17,8 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
-
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 epilog = "\n".join(["Go through all errors from a twitter parse, and mark them for deletion or keeping"]))
 parser.add_argument('-f', '--file')
 parser.add_argument('-t', '--target', default="~/Mega/savedTwitter")
 parser.add_argument('-o', '--output', default="./output/checked_errors.txt")

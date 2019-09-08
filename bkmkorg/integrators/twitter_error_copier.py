@@ -16,8 +16,8 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
-
-parser = argparse.ArgumentParser("")
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 epilog = "\n".join(["Copy files that failed to be parsed to a backup directory to be used later"]))
 parser.add_argument('-t', '--target', default="checked_errors.txt")
 parser.add_argument('-s', '--source', default="~/Mega/savedTwitter")
 parser.add_argument('-o', '--output', default="backup")

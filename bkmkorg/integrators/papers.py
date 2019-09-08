@@ -19,7 +19,10 @@ logging = root_logger.getLogger(__name__)
 ##############################
 
 #see https://docs.python.org/3/howto/argparse.html
-parser = argparse.ArgumentParser("")
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 epilog= "\n".join(["Copies pdfs found in source dirs",
+                                                    "that are not in the library dir",
+                                                    "into an output dir"]))
 parser.add_argument('-l', '--library', action='append')
 parser.add_argument('-o', '--output', default="/Users/jgrey/Desktop/sanity_check")
 parser.add_argument('-q', '--quit', action='store_true')
@@ -27,9 +30,9 @@ parser.add_argument('-s', '--source', action='append')
 
 args = parser.parse_args()
 
-logging.info("MD5 LIBRARY: {}".format(args.library))
-logging.info("MD5 SOURCE: {}".format(args.source))
-logging.info("MD5 OUTPUT: {}".format(args.output))
+logging.info(" LIBRARY: {}".format(args.library))
+logging.info(" SOURCE: {}".format(args.source))
+logging.info(" OUTPUT: {}".format(args.output))
 
 if args.quit:
     exit()
@@ -82,7 +85,7 @@ if len(inbox_hashmap) != len(inbox_pdfs):
     for x in inbox_pdfs:
         file_hash = fileToHash(x)
         if file_hash in inbox_hashmap:
-            logging.warning("Conflict: {} - {} - {}".format(file_hash, x, inbox_hashmap[file_hash]))
+            logging.warning("\n----- Conflict:\n{}\n{}\n{}".format(file_hash, x, inbox_hashmap[file_hash]))
         else:
             inbox_hashmap[file_hash] = x
 inbox_set = set(inbox_hashmap.keys())

@@ -19,8 +19,8 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
-
-parser = argparse.ArgumentParser("")
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 epilog = "\n".join(["Integrate newly parsed twitter orgs into the existing library"]))
 parser.add_argument('-s', '--source')
 parser.add_argument('-o', '--output')
 parser.add_argument('-n', '--newgroup', action='store_true')

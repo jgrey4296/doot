@@ -1,5 +1,6 @@
 """
 Stat generator for bookmarks
+Pairs with bkmkorg/filters/bookmark_tag_filter
 """
 
 from os.path import splitext, split, exists, expanduser, abspath
@@ -16,10 +17,13 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
-
-parser = argparse.ArgumentParser("")
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 epilog = "\n".join(["For a bookmark file, print out domain counts and tag counts",
+                                                     "Pairs with bkmkorg/filters/bookmark_tag_filter"]))
 parser.add_argument('-l', '--library')
 parser.add_argument('-o', '--output')
+parser.add_argument('-t', '--tag', action="store_true")
+parser.add_argument('-d', '--domain', action="store_true")
 
 args = parser.parse_args()
 args.library = abspath(expanduser(args.library))
@@ -49,12 +53,20 @@ for bkmk in library:
 
 
 # print statistics
-tag_str = "\n".join(["{} : {}".format(x, y) for x,y in tags.items()])
-domain_str = "\n".join(["{} : {}".format(x,y) for x,y in domains.items()])
-logging.info("Writing tag counts")
-with open('{}.tags'.format(args.output), 'w') as f:
-    f.write(tag_str)
+if args.tag:
+    tag_str = "\n".join(["{} : {}".format(x, y) for x,y in tags.items()])
+    logging.info("Writing tag counts")
+    with open('{}.tag_counts'.format(args.output), 'w') as f:
+        f.write(tag_str)
 
-logging.info("Domain Counts")
-with open('{}.domains'.format(args.output), 'w') as f:
-    f.write(domain_str)
+    with open('{}.tags'.format(args.output), 'w') as f:
+        f.write("\n".join([x for x in tags.keys()]))
+
+if args.domain:
+    domain_str = "\n".join(["{} : {}".format(x,y) for x,y in domains.items()])
+    logging.info("Domain Counts")
+    with open('{}.domain_counts'.format(args.output), 'w') as f:
+        f.write(domain_str)
+
+    with open('{}.domains'.format(args.output), 'w') as f:
+        f.write('\n'.join([x for x in domains.keys()]))

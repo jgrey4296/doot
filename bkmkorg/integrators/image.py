@@ -1,5 +1,5 @@
 #------------------------------
-# Simple program to integrate papers into a collection
+# Simple program to integrate images into a collection
 #------------------------------
 import argparse
 from os.path import join, isfile, exists, isdir, splitext, expanduser, split, abspath
@@ -18,10 +18,8 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
-import argparse
-
-#see https://docs.python.org/3/howto/argparse.html
-parser = argparse.ArgumentParser("")
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 epilog = "\n".join(["Find images in {source} dir that are not linked in {output}.org, and link them"]))
 parser.add_argument('-s', '--source')
 parser.add_argument('-o', '--output')
 

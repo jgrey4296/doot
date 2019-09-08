@@ -4,16 +4,15 @@ Giving stats, non-tagged entries,
 year distributions
 firstnames, surnames.
 """
-from bibtexparser import customization as c
-from bibtexparser.bparser import BibTexParser
+import logging as root_logger
+import argparse
 from math import ceil
 from os import listdir
 from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath, split
-import argparse
-import bibtexparser as b
 import regex as re
-# Setup root_logger:
-import logging as root_logger
+from bibtexparser import customization as c
+from bibtexparser.bparser import BibTexParser
+import bibtexparser as b
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
@@ -23,11 +22,17 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
-
 #see https://docs.python.org/3/howto/argparse.html
-parser = argparse.ArgumentParser("")
-parser.add_argument('-t', '--target', default="~/Mega/library.bib")
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 epilog="\n".join(["Describe a bibtex file's:",
+                                                   "Tags, year counts, authors,",
+                                                   "And entries lacking files or with multiple files"]))
+parser.add_argument('-t', '--target', default="~/github/writing/resources")
 parser.add_argument('-o', '--output', default="bibtex")
+parser.add_argument('-f', '--files', action="store_true")
+parser.add_argument('-a', '--authors', action="store_true")
+parser.add_argument('-y', '--years', action="store_true")
+
 args = parser.parse_args()
 
 args.target = abspath(expanduser(args.target))
@@ -37,15 +42,16 @@ assert(exists(args.target))
 logging.info("Targeting: {}".format(args.target))
 logging.info("Output to: {}".format(args.output))
 
+
 parser = BibTexParser(common_strings=False)
 parser.ignore_nonstandard_types = False
 parser.homogenise_fields = True
 
 def make_bar(k, v, left_pad_v, right_scale_v):
-        pad = ((10 + left_pad_v) - len(k))
-        bar = ceil(((100 - pad) / right_scale_v) * v)
-        full_str = "{}{}({}) : {}>\n".format(k, " " * pad, v, "=" *  bar)
-        return full_str
+    pad = ((10 + left_pad_v) - len(k))
+    bar_graph = ceil(((100 - pad) / right_scale_v) * v)
+    full_str = "{}{}({}) : {}>\n".format(k, " " * pad, v, "=" *  bar_graph)
+    return full_str
 
 def custom(record):
     record = c.type(record)
@@ -70,11 +76,20 @@ def custom(record):
         record['p_authors'] = [c.splitname(x, False) for x in record['author']]
     return record
 
+
 parser.customization = custom
 
-with open(args.target, 'r') as f:
-    logging.info("Loading bibtex")
-    db = b.load(f, parser)
+if isfile(args.target):
+    args.target = [args.target]
+elif isdir(args.target):
+    src_dir = args.target
+    args.target = [join(src_dir, x) for x in listdir(args.target) if splitext(x)[1] == ".bib"]
+
+db = b.bibdatabase.BibDatabase()
+for x in args.target:
+    with open(x, 'r') as f:
+        logging.info("Loading bibtex: {}".format(x))
+        db = b.load(f, parser)
 
 logging.info("Bibtex loaded")
 
@@ -98,15 +113,15 @@ for i, entry in enumerate(db.entries):
         count += 1
 
     #get tags
-    tags = entry['tags']
+    e_tags = entry['tags']
 
-    for x in tags:
+    for x in e_tags:
         if x not in all_tags:
             all_tags[x] = 0
         all_tags[x] += 1
 
     #get untagged
-    if not bool(tags):
+    if not bool(e_tags):
         non_tagged.append(entry)
 
     #count entries per year
@@ -154,62 +169,53 @@ for i, entry in enumerate(db.entries):
 #--------------------------------------------------
 logging.info("Processing complete")
 
-tag_str = ["{} : {}".format(k,v) for k,v in all_tags.items()]
-with open("{}_tags".format(args.output), 'w') as f:
-    logging.info("Writing Tags")
+tag_str = ["{} : {}".format(k, v) for k, v in all_tags.items()]
+with open("{}.tag_counts".format(args.output), 'w') as f:
+    logging.info("Writing Tag Counts")
     f.write("\n".join(tag_str))
 
-with open("{}_all_tags".format(args.output), 'w') as f:
+with open("{}.all_tags".format(args.output), 'w') as f:
     logging.info("Writing all Tags")
     f.write("\n".join([x for x in all_tags.keys()]))
 
-longest_tag = 10 + max([len(x) for x in all_tags.keys()])
-most_tags = max([x for x in all_tags.values()])
-tag_bar = []
-# with open("{}_tags_bar".format(args.output), 'w') as f:
-#     logging.info("Writing Tags Bar")
-#     for k,v in all_tags.items():
-#         f.write(make_bar(k, v, longest_tag, most_tags))
+# longest_tag = 10 + max([len(x) for x in all_tags.keys()])
+# most_tags = max([x for x in all_tags.values()])
+# tag_bar = []
 
-year_str = ["{} : {}".format(k,v) for k,v in all_years.items()]
-with open("{}_years".format(args.output), 'w') as f:
-    logging.info("Writing Years")
-    f.write("\n".join(year_str))
-
-longest_year = 10 + max([len(x) for x in all_years.keys()])
-most_year = max([x for x in all_years.values()])
-
-# with open("{}_years_bar".format(args.output), 'w') as f:
-#     logging.info("Writing Years")
-#     for k,v in all_years.items():
-#         f.write(make_bar(k, v, longest_year, most_year))
-
-# with open("{}_non_tagged".format(args.output), 'w') as f:
-#     logging.info("Writing non_tagged")
-#     f.write("\n".join(non_tagged))
-
-longest_author = 10 + max([len(x) for x in author_counts.keys()])
-most_author = max([y for x in author_counts.values() for y in x.values()])
-with open("{}_authors".format(args.output), 'w') as f:
-    with open("{}_authors_bar".format(args.output), 'w') as g:
-        logging.info("Writing authors")
-        for lastname, initials_dict in author_counts.items():
-            for initial, count in initials_dict.items():
-                f.write("{}, {} : {}\n".format(lastname, initial, count))
-                ln_i = "{} {}".format(lastname, initial)
-                g.write(make_bar(ln_i, count, longest_author, most_author))
+if args.years:
+    logging.info("Writing Year Descriptions")
+    year_str = ["{} : {}".format(k,v) for k,v in all_years.items()]
+    with open("{}.years".format(args.output), 'w') as f:
+        f.write("\n".join(year_str))
+    longest_year = 10 + max([len(x) for x in all_years.keys()])
+    most_year = max([x for x in all_years.values()])
 
 
-with open("{}_no_file".format(args.output), 'w') as f:
-    f.write("\n".join(no_file))
+if args.authors:
+    logging.info("Writing Author Descriptions")
+    longest_author = 10 + max([len(x) for x in author_counts.keys()])
+    most_author = max([y for x in author_counts.values() for y in x.values()])
+    with open("{}.authors".format(args.output), 'w') as f:
+        with open("{}.authors_bar".format(args.output), 'w') as g:
+            logging.info("Writing authors")
+            for lastname, initials_dict in author_counts.items():
+                for initial, count in initials_dict.items():
+                    f.write("{}, {} : {}\n".format(lastname, initial, count))
+                    ln_i = "{} {}".format(lastname, initial)
+                    g.write(make_bar(ln_i, count, longest_author, most_author))
 
-with open("{}_multi_files".format(args.output), 'w') as f:
-    f.write("\n".join(multi_files))
+if args.files:
+    logging.info("Writing Descriptions of Files")
+    with open("{}.no_file".format(args.output), 'w') as f:
+        f.write("\n".join(no_file))
 
-with open("{}_multi_files_duplicates".format(args.output), 'w') as f:
-    f.write("\n".join(multi_files_duplicates))
+    with open("{}.multi_files".format(args.output), 'w') as f:
+        f.write("\n".join(multi_files))
 
-with open("{}_missing_file".format(args.output), 'w') as f:
-    f.write("\n".join(missing_file))
+    with open("{}.multi_files_duplicates".format(args.output), 'w') as f:
+        f.write("\n".join(multi_files_duplicates))
+
+    with open("{}.missing_file".format(args.output), 'w') as f:
+        f.write("\n".join(missing_file))
 
 logging.info("Complete")

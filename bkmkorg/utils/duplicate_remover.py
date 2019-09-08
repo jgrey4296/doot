@@ -17,9 +17,8 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
-
-#see https://docs.python.org/3/howto/argparse.html
-parser = argparse.ArgumentParser("")
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 epilog = "\n".join(["Remove Duplicates (by full url) from a bookmark file, merging tags"]))
 parser.add_argument('-s', '--source')
 parser.add_argument('-o', '--output', default="~/Desktop/deduplicated_bookmarks.html")
 

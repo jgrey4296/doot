@@ -19,9 +19,9 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
-
 #see https://docs.python.org/3/howto/argparse.html
-parser = argparse.ArgumentParser("")
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 epilog = "\n".join(["Take a subdirectory of files, group into subdirectories of size g"]))
 parser.add_argument('-t', '--target', default="~/mega/savedThreads")
 # parser.add_argument('-t', '--target', default="~/github/bookmark_organiser/output")
 parser.add_argument('-g', '--groupnum',  default=5)

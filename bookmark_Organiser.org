@@ -1,21 +1,47 @@
-* Patterns
-** I/O
-*** Parse
-    Takes raw file and saves it to a data format
-*** Open
-    Takes a file and produces a usable representation
-*** Export
-    Outputs a representation into a file format
-** Filter
-   Processes a representation to remove Data
-*** Clean
-    Processes a representation to remove bad data
-** Integrate
-   Copies data from files into a master
-** Split
-   Splits a file into components
-** Describe
-   Produce states on a single file
-*** Compare
-    Compares files 
-** Utilities
+* Bookmark Organiser
+  A Suite of tools to manage collections of bibtex, org, and html bookmarks.
+
+** Matrix
+
+   | File     | IO | Description | Filter | Integration | Splitting |
+   | Type     |    |             |        |             |           |
+   |----------+----+-------------+--------+-------------+-----------|
+   | Bibtex   |    |             |        |             |           |
+   |          |    |             |        |             |           |
+   | Bookmark |    |             |        |             |           |
+   |          |    |             |        |             |           |
+   | Org      |    |             |        |             |           |
+   
+
+** Patterns
+*** IO
+**** Scrapers
+     Ways of scraping various websites
+
+**** Importers
+     Means to import filetypes into python data structures
+
+
+**** Exporters
+     Means to write to various file formats
+
+
+**** Parsers
+     Means to parse particular file formats
+
+*** Describers
+    Scripts that produce descriptive statistics, or compare two files
+
+*** Filters
+    Scripts that clean or filter files by some specified list
+
+*** Integrators
+    Scripts that combine multiple files without duplication
+
+*** Splitters
+    Scripts that split files into groups by tag, year, site etc
+
+*** utils
+    Miscellaneous scripts
+
+

@@ -1,5 +1,6 @@
 """
 A Simpler trie usage bookmark processor
+Pairs with bkmkorg/describers/bookmark_queries
 """
 from bkmkorg.utils.trie import Trie
 from bkmkorg.io.import_netscape import open_and_extract_bookmarks
@@ -15,8 +16,12 @@ import argparse
 import regex as re
 
 query_re = re.compile(r'\*+\s+\(\d+\) (.+)$')
-
-parser = argparse.ArgumentParser("")
+#see https://docs.python.org/3/howto/argparse.html
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 epilog = "\n".join(["Load bookmarks",
+                                                     "filtering a blacklist of URL parameters",
+                                                     "Pairs with bkmkorg/describers/bookmark_queries"])
+)
 parser.add_argument('-s', '--source', action="append")
 parser.add_argument('-q', '--query', default=None)
 parser.add_argument('-o', '--output')

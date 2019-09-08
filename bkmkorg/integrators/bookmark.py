@@ -17,13 +17,13 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
-
-parser = argparse.ArgumentParser("")
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 epilog = "\n".join(["Find all bookmarks in {source} files and create a master {output} html"]))
 parser.add_argument('-s', '--sources', action='append')
 parser.add_argument('-o', '--output')
 
 args = parser.parse_args()
-args.source = [abspath(expanduser(x)) for x in args.sources]
+args.sources = [abspath(expanduser(x)) for x in args.sources]
 
 assert(all([exists(x) for x in args.sources]))
 

@@ -6,13 +6,12 @@ import bibtexparser as b
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
 from bibtexparser import customization as c
-from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath
+from os.path import join, isfile, exists, isdir
+from os.path import split, splitext, expanduser, abspath
 from os import listdir, mkdir
 import regex as re
-from math import ceil
 import argparse
 # Setup root_logger:
-from os.path import splitext, split
 import logging as root_logger
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
@@ -25,20 +24,24 @@ logging = root_logger.getLogger(__name__)
 ##############################
 
 #see https://docs.python.org/3/howto/argparse.html
-parser = argparse.ArgumentParser("")
+
+#see https://docs.python.org/3/howto/argparse.html
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 epilog="\n".join(["Filter tags out of a bibtex file",
+                                                   "Then substitute tags for others",
+                                                   "-f {file} newline separated list",
+                                                   "-s {file} newline separated list of colon separated pairs"])
+                                 )
 parser.add_argument('-t', '--target', default="~/Mega/library.bib")
 parser.add_argument('-o', '--output', default="bibtex")
-parser.add_argument('-f', '--filter')
-parser.add_argument('-s', '--sub')
+parser.add_argument('-s', '--source', default=None)
 args = parser.parse_args()
 
 args.target = abspath(expanduser(args.target))
 args.output = abspath(expanduser(args.output))
-if args.filter:
-    args.filter = abspath(expanduser(args.filter))
-if args.sub:
-    args.sub = abspath(expanduser(args.sub))
-assert(exists(args.target))
+if args.source:
+    args.source = abspath(expanduser(args.filter))
+assert(exists(args.source))
 
 logging.info("Targeting: {}".format(args.target))
 logging.info("Output to: {}".format(args.output))
@@ -54,7 +57,7 @@ def custom(record):
     # record = c.journal(record)
     # record = c.link(record)
     # record = c.doi(record)
-    record['tags'] = set([i.strip() for i in re.split(',|;', record['tags'].replace('\n',''))])
+    record['tags'] = {i.strip() for i in re.split(', |;', record['tags'].replace('\n', ''))}
 
     # record['p_authors'] = []
     # if 'author' in record:
@@ -68,34 +71,36 @@ with open(args.target, 'r') as f:
     db = b.load(f, parser)
 
 # Get the filter terms
-filter = set()
-if args.filter and exists(args.filter):
-    logging.info("Loading filter")
-    with open(args.filter, 'r') as f:
-        lines = f.read().split('\n')
-    filter = set([x.strip() for x in lines])
+master_dict = {}
+filter_set = set()
+sub_set = set()
 
-# get the substitute tags
-sub = {}
-subset = set()
-if args.sub and exists(args.sub):
-    logging.info("Loading Sub")
-    with open(args.sub, 'r') as f:
-        lines = f.read().split('\n')
-    sub = { x.strip() : y.strip() for a in lines for x,y in a.split(':')}
-    subset = set(list(sub.keys()))
+if args.source and exists(args.source):
+    sources = [args.source]
+    if isdir(args.source):
+        sources = [x for x in listdir(args.source) if splitext(x)[1] == ".org"]
+    for source_file in sources:
+        logging.info("Loading Sources: {}".format(len(sources)))
+        with open(args.source, 'r') as f:
+            lines = f.read().split('\n')
+        applicable_lines = [x for x in lines if x[0] != "*"]
+        master_dict.update({x.strip() : y.strip() for a in applicable_lines for x, y in a.split(':')})
+
+    filter_set = {x for x, y in master_dict.items() if y == "__filter__"}
+    sub_set = {x for x, y in master_dict.items() if y not in ("__filter__", "__leave__")}
 
 # Perform the filtering and substituting
 logging.info("Performing filter and sub")
 for ent in db.entries:
-    ent['tags'].difference_update(filter)
-    inter = ent['tags'].intersection(subset)
+    ent['tags'].difference_update(filter_set)
+    inter = ent['tags'].intersection(sub_set)
     ent['tags'].difference_update(inter)
-    ent['tags'].update([subset[x] for x in inter])
-    ent['tags'] = ",".join(ent['tags'])
+    ent['tags'].update([master_dict[x] for x in inter])
+    #transform back to string type:
+    ent['tags'] = ", ".join(ent['tags'])
 
 
 logging.info("Writing")
 writer = BibTexWriter()
-with open("{}.bib".format(args.output),'w') as f:
-        f.write(writer.write(db))
+with open("{}.bib".format(args.output), 'w') as f:
+    f.write(writer.write(db))
