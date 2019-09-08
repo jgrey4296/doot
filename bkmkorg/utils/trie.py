@@ -90,6 +90,7 @@ class Trie:
                                                                                       url_pair[1]))
         return "\n".join(result)
 
+
 class Leaf:
 
     def __init__(self):

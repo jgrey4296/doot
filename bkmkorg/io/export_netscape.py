@@ -1,4 +1,3 @@
-#!/Users/jgrey/anaconda/bin/python
 """
 Exports a given trie to Netscape bookmark file format
 Main function: exportBookmarks
