@@ -29,7 +29,7 @@ class TwitterParser:
         self.data = {}
 
         if not exists(self.path):
-            raise Exception("File Does Not Exist")
+            raise Exception("File Does Not Exist: {}".format(self.path))
         self.setup()
 
     def setup(self):
@@ -45,11 +45,9 @@ class TwitterParser:
         tweet = self.get_tweet(container)
         ancestors = self.get_ancestors(container)
         descendants = self.get_descendants(container)
-
         tweet_data = self.process_tweet(tweet)
         ancestor_data = util.ThreadData("Ancestors", [self.process_tweet(x) for x in ancestors])
         descendant_data = []
-
         descendant_data.append(util.ThreadData("Main Thread", [self.process_tweet(x) for x in descendants['self_thread']]))
 
         for x in descendants['conversation']:
@@ -66,22 +64,24 @@ class TwitterParser:
     def get_container(self):
         return self.soup.find("div", class_="permalink-container")
 
+    def get_tweet(self, container):
+        logging.info("Getting Main Tweet")
+        return container.find("div", class_="permalink-tweet-container").find("div", class_="tweet")
+
     def process_tweet(self, tweet):
+        if 'withheld-tweet' in tweet['class']:
+            return None
+
         username = self.get_tweet_username(tweet)
         permalink = self.get_tweet_permalink(tweet)
-        time = self.get_tweet_time(tweet)
         content = self.get_tweet_content(tweet)
+        time = self.get_tweet_time(tweet)
         media, videos = self.get_tweet_media(tweet)
         links = self.get_tweet_links(tweet)
         quoted = self.get_tweet_quote(tweet)
 
         data = util.TweetData(username, content, media, links, permalink, time, videos, quoted)
         return data
-
-    def get_tweet(self, container):
-        logging.info("Getting Main Tweet")
-        return container.find("div", class_="permalink-tweet-container").find("div",
-                                                                              class_="tweet")
 
     def get_tweet_username(self, tweet):
         return tweet.find("span", class_="username").get_text()
@@ -94,9 +94,15 @@ class TwitterParser:
     def get_tweet_time(self, tweet):
         time = tweet.find('small', class_='time')
         if time is None:
+            time = tweet.find('span', class_='metadata')
+        if time is None:
+            IPython.embed(simple_prompt=True)
             raise Exception("Tweet has no time")
+
         a = time.find('a')
-        if 'data-original-title' in a.attrs:
+        if a is None:
+            return time.get_text()
+        elif 'data-original-title' in a.attrs:
             return a['data-original-title']
         elif 'title' in a.attrs:
             return a['title']
@@ -104,7 +110,10 @@ class TwitterParser:
             raise Exception('Tweet has No time')
 
     def get_tweet_content(self, tweet):
-        return tweet.find("div", class_="js-tweet-text-container").get_text()
+        content = tweet.find("div", class_="js-tweet-text-container")
+        if content is not None:
+            return content.get_text()
+        return ""
 
     def get_tweet_quote(self, tweet):
         quoted = tweet.find("div", class_="QuoteTweet-innerContainer")
