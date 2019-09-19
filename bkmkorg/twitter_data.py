@@ -91,7 +91,7 @@ class ThreadData:
 
     def __init__(self, name, tweets):
         #threads are lists of lists of tweets
-        self.tweets = tweets
+        self.tweets = [x for x in tweets if x is not None]
         self.name = name
 
     def usernames(self):
