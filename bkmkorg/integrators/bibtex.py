@@ -25,7 +25,7 @@ logging = root_logger.getLogger(__name__)
 ##############################
 
 #see https://docs.python.org/3/howto/argparse.html
-parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFromatter,
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog="""Integrates a collection of bibtex files into a single file. Targets can be flat directories""")
 parser.add_argument('-t', '--target', action="append")
 parser.add_argument('-o', '--output', default="./output/integrated.bib")
@@ -70,8 +70,8 @@ for x in args.target:
         bibtex_files = [x]
 
     for y in bibtex_files:
-        with open(x, 'r') as f:
-            logging.info("Loading bibtex: {}".format(x))
+        with open(join(x,y), 'r') as f:
+            logging.info("Loading bibtex: {}".format(y))
             db = b.load(f, parser)
             dbs.append(db)
 
@@ -85,7 +85,7 @@ if exists(args.output):
         logging.info("Loading output: {}".format(args.output))
         main_db = b.load(f, parser)
 else:
-    main_db = bp.BibDatabase()
+    main_db = b.bibdatabase.BibDatabase()
 
 main_set = set(main_db.get_entry_dict().keys())
 
