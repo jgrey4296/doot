@@ -30,12 +30,17 @@ parser = argparse.ArgumentParser("")
 parser.add_argument('-t', '--source', default='output.org')
 parser.add_argument('-b', '--backup', default='backup_')
 
+parser.add_argument('-c', '--credentials', default="my.credentials")
+parser.add_argument('-k', '--key', default="consumer.key")
+parser.add_argument('-s', '--secret', default="consumer.secret")
+
+
 
 ##############################
 #setup credentials
-MY_TWITTER_CREDS = "my.credentials"
-KEY_FILE = "consumer.key"
-SECRET_FILE = "consumer.secret"
+MY_TWITTER_CREDS = None
+KEY_FILE = None
+SECRET_FILE = None
 
 C_KEY = None
 C_SECRET = None
@@ -163,6 +168,10 @@ def add_members(t, list_name, list_id, members):
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    MY_TWITTER_CREDS = absfile(expanduser(args.credentials))
+    KEY_FILE = absfile(expanduser(args.key))
+    SECRET_FILE = absfile(expanduser(args.secret))
+
     t = load_credentials_and_setup()
     #Load the target
     the_dict = load_org(args.source)

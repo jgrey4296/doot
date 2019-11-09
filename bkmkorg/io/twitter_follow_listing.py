@@ -30,14 +30,18 @@ parser = argparse.ArgumentParser("")
 # todo: add output filename target
 parser.add_argument('-t', '--target', default='output.org')
 parser.add_argument('-b', '--backup', default='backup_')
+parser.add_argument('-c', '--credentials', default="my.credentials")
+parser.add_argument('-k', '--key', default="consumer.key")
+parser.add_argument('-s', '--secret', default="consumer.secret")
+
 # parser.add_argument('--aBool', action="store_true")
 
 
 ##############################
 #setup credentials
-MY_TWITTER_CREDS = "my.credentials"
-KEY_FILE = "consumer.key"
-SECRET_FILE = "consumer.secret"
+MY_TWITTER_CREDS = None
+KEY_FILE = None
+SECRET_FILE = None
 
 C_KEY = None
 C_SECRET = None
@@ -67,7 +71,6 @@ def load_credentials_and_setup():
     return t
 
 
-#download friend list
 def get_friends(t, id=None):
     """ Given a twitter client, get my friends (ie: people I follow)
     friends/ids returns up to 5000, 15 times in 15 minutes
@@ -152,6 +155,10 @@ def user_obj_to_tuple(user_obj):
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    MY_TWITTER_CREDS = absfile(expanduser(args.credentials))
+    KEY_FILE = absfile(expanduser(args.key))
+    SECRET_FILE = absfile(expanduser(args.secret))
+
     t = load_credentials_and_setup()
     friends = []
     #Get all friends if you haven't already
