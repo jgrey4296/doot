@@ -38,7 +38,7 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
 
 parser.add_argument('-t', '--target', default="~/Mega/library.bib")
 parser.add_argument('-o', '--output', default="bibtex")
-parser.add_argument('-l', '--library', default="~/MEGA/Mendeley")
+parser.add_argument('-l', '--library', default="~/MEGA/pdflibrary")
 args = parser.parse_args()
 
 args.target = realpath(abspath(expanduser(args.target)))
