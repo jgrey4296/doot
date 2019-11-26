@@ -6,6 +6,7 @@ import bibtexparser as b
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
 import re
+from unicodedata import normalize
 # Setup root_logger:
 import logging as root_logger
 LOGLEVEL = root_logger.DEBUG
@@ -33,7 +34,8 @@ args.output = abspath(expanduser(args.output))
 assert(isdir(args.target))
 assert(isdir(args.library))
 
-PATH_NORM = re.compile("^.+?Mendeley")
+PATH_NORM = re.compile("^.+?pdflibrary")
+FILE_RE = re.compile("^file(\d*)")
 all_bibs = [join(args.library, x) for x in listdir(args.library) if splitext(x)[1] == ".bib"]
 main_db = b.bibdatabase.BibDatabase()
 
@@ -53,9 +55,9 @@ for i, entry in enumerate(main_db.entries):
         count += 1
     unicode_entry = b.customization.convert_to_unicode(entry)
 
-    if 'file' in unicode_entry:
-        all_file_mentions.append(unicode_entry['file'])
-
+    entry_keys = [x for x in unicode_entry.keys() if FILE_RE.search(x)]
+    for k in entry_keys:
+        all_file_mentions.append(normalize('NFD', unicode_entry[k]))
 
 
 all_existing_files = []
@@ -68,7 +70,7 @@ while bool(queue):
     processed.add(current)
     if isdir(current):
         contents = [join(current, x) for x in listdir(current)]
-        pdfs = [x for x in contents if splitext(x)[1] == ".pdf"]
+        pdfs = [normalize('NFD', x) for x in contents if splitext(x)[1] == ".pdf"]
         dirs = [x for x in contents if isdir(x)]
         all_existing_files += pdfs
         queue += dirs
