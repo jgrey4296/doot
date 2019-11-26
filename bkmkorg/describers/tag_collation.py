@@ -23,7 +23,7 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 
-ORG_TAG_REGEX = regex.compile("^\*+.+?\s+(:\S+:)$")
+ORG_TAG_REGEX = regex.compile("^\*\*\s+.+?\s+(:\S+:)$")
 ##############################
 #see https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
