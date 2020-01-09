@@ -22,31 +22,33 @@ logging = root_logger.getLogger(__name__)
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog = "\n".join(["Integrate newly parsed twitter orgs into the existing library"]))
 parser.add_argument('-s', '--source')
-parser.add_argument('-o', '--output')
-parser.add_argument('-n', '--newgroup', action='store_true')
+parser.add_argument('-l', '--library')
 
 args = parser.parse_args()
 args.source = expanduser(args.source)
-args.output = expanduser(args.output)
+args.library= expanduser(args.library)
 
-if any([not exists(x) for x in [args.source, args.output]]):
+if any([not exists(x) for x in [args.source, args.library]]):
     raise Exception('Source and Output need to exist')
 
 #load the newly parsed org names
-newly_parsed = []
+newly_parsed = {}
 if isfile(args.source):
-    newly_parsed = [args.source]
+    newly_parsed[split(args.source)[1]] = args.source
 else:
-    newly_parsed = [x for x in listdir(args.source) if splitext(x)[1] == '.org']
+    newly_parsed = {x : args.source for x in listdir(args.source) if splitext(x)[1] == '.org'}
 
 logging.info("Newly parsed to transfer: {}".format(len(newly_parsed)))
 
 #get the existing org names, as a dict with its location
 existing_orgs = {}
-for x in [x for x in listdir(args.output) if isdir(join(args.output, x))]:
-    current = join(args.output, x)
-    orgs = {y: current for y in listdir(current) if splitext(y)[1] == '.org'}
-    existing_orgs.update(orgs)
+queue = [args.library]
+while queue:
+    current = queue.pop(0)
+    if isdir(current):
+        queue += [join(current,x) for x in listdir(current)]
+    elif splitext(current)[1] == ".org":
+        existing_orgs[split(current)[1]] = split(current)[0]
 
 logging.info("Existing orgs: {}".format(len(existing_orgs)))
 
@@ -58,12 +60,11 @@ for x in newly_parsed:
         totally_new.append(x)
         continue
 
-    logging.info("Dealing with: {}".format(x))
-    new_org = join(args.source, x)
-    new_files = join(args.source, "{}_files".format(splitext(x)[0]))
+    logging.info("Integrating: {}".format(x))
+    new_org = join(newly_parsed[x], x)
+    new_files = join(newly_parsed[x], "{}_files".format(splitext(x)[0]))
     existing_org = join(existing_orgs[x], x)
-    files_dir_name = "{}_files".format(splitext(x)[0])
-    existing_files = join(existing_orgs[x], files_dir_name)
+    existing_files = join(existing_orgs[x], "{}_files".format(splitext(x)[0]))
 
     with open(new_org, 'r') as f:
         discard = f.readline()
@@ -79,24 +80,17 @@ for x in newly_parsed:
         call(call_sig)
 
 logging.info("Completely new to transfer: {}".format(len(totally_new)))
-#then move completely new to a new directory
-target_for_new = None
-if bool(totally_new) and args.newgroup:
-    new_group_num = len([x for x in listdir(args.output) if isdir(join(args.output, x))])
-    target_for_new = join(args.output, "group_{}".format(new_group_num))
-    logging.info("Making new group: {}".format(target_for_new))
-    assert(not isdir(target_for_new))
-    mkdir(target_for_new)
-else:
-    potential_groups = [x for x in listdir(args.output) if isdir(join(args.output, x))]
-    #todo: change to selecting the smallest group
-    target_for_new = join(args.output, choice(potential_groups))
-    logging.info("Reusing group: {}".format(target_for_new))
 
 for x in totally_new:
-    logging.info("Dealing with: {}".format(x))
-    file_name = join(args.source, x)
-    file_dir = join(args.source, "{}_files".format(splitext(x)[0]))
+    logging.info("Adding to library with: {}".format(x))
+    file_name = join(newly_parsed[x], x)
+    file_dir = join(newly_parsed[x], "{}_files".format(splitext(x)[0]))
+
+    first_letter = x[0].lower()
+    if not ("a" <= first_letter <= "z"):
+        first_letter = "symbols"
+
+    target_for_new = join(args.library,"group_{}".format(first_letter))
 
     call(['cp', file_name, target_for_new])
     call(['cp' ,'-r' ,file_dir, target_for_new])
