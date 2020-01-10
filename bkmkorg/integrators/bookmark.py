@@ -27,6 +27,9 @@ args.sources = [abspath(expanduser(x)) for x in args.sources]
 
 assert(all([exists(x) for x in args.sources]))
 
+if splitext(args.output)[1] != ".html":
+    raise Exception("Html not specified for output")
+
 if exists(args.output):
     logging.warning("Ouput already exists: {}".format(args.output))
     response = input("Overwrite? Y/*: ")
@@ -50,4 +53,4 @@ for loc in args.sources:
 
 logging.info("Writing out: {}".format(len(bkmk_dict)))
 #write out
-html_export(list(bkmk_dict.values()), "{}.html".format(args.output))
+html_export(list(bkmk_dict.values()), args.output)
