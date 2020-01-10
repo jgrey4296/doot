@@ -17,12 +17,13 @@ def header():
     <HTML>
     <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
     <Title>Bookmarks</Title>
-    <H1>Bookmarks</H1>"""
+    <H1>Bookmarks</H1>
+    """
     return s
 
 def footer():
     """ Finishs the bookmark file """
-    return "</HTML>"
+    return "\n</HTML>"
 
 
 def bookmarkToItem(bkmkTuple):
