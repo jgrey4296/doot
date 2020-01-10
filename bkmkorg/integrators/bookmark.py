@@ -27,6 +27,13 @@ args.sources = [abspath(expanduser(x)) for x in args.sources]
 
 assert(all([exists(x) for x in args.sources]))
 
+if exists(args.output):
+    logging.warning("Ouput already exists: {}".format(args.output))
+    response = input("Overwrite? Y/*: ")
+    if response != "y":
+        logging.info("Cancelling")
+        exit()
+
 #load the sources
 bkmk_dict = {}
 
@@ -43,5 +50,4 @@ for loc in args.sources:
 
 logging.info("Writing out: {}".format(len(bkmk_dict)))
 #write out
-org_export(bkmk_dict, "{}.org".format(args.output))
 html_export(list(bkmk_dict.values()), "{}.html".format(args.output))
