@@ -73,7 +73,7 @@ def custom(record):
     record['tags'] = tags
     record['p_authors'] = []
     if 'author' in record:
-        record['p_authors'] = [c.splitname(x, False) for x in record['author']]
+        record['p_authors'] = [x.split(' and ') for x in record['author']]
     return record
 
 
@@ -128,22 +128,19 @@ for i, entry in enumerate(db.entries):
     if 'year' in entry:
         if entry['year'] not in all_years:
             all_years[entry['year']] = 0
-        all_years[entry['year']] += 1
+            all_years[entry['year']] += 1
 
     #get names
     for x in entry['p_authors']:
-        lastname = x['last'][0].lower()
-        initial = ""
-        if bool(x['first']):
-            initial = x['first'][0][0].lower()
+        for name in x:
+            try:
+                if name not in author_counts:
+                    author_counts[name] = 0
+            except:
+                breakpoint()
 
-        if lastname not in author_counts:
-            author_counts[lastname] = {}
 
-        if initial not in author_counts[lastname]:
-            author_counts[lastname][initial] = 0
-
-        author_counts[lastname][initial] += 1
+        author_counts[name] += 1
 
     if not 'file' in entry:
         no_file.append(entry['ID'])
@@ -156,7 +153,7 @@ for i, entry in enumerate(db.entries):
                 filenames.add([y for y in x.split(':') if bool(x)][0])
             if len(filenames) > 1:
                 multi_files_duplicates.append(entry['file'])
-            any_file_exists = any([exists(x) for x in filenames])
+                any_file_exists = any([exists(x) for x in filenames])
             if not any_file_exists:
                 missing_file.append(entry['ID'])
 
@@ -194,15 +191,13 @@ if args.years:
 if args.authors:
     logging.info("Writing Author Descriptions")
     longest_author = 10 + max([len(x) for x in author_counts.keys()])
-    most_author = max([y for x in author_counts.values() for y in x.values()])
+    most_author = max([x for x in author_counts.values()])
     with open("{}.authors".format(args.output), 'w') as f:
         with open("{}.authors_bar".format(args.output), 'w') as g:
             logging.info("Writing authors")
-            for lastname, initials_dict in author_counts.items():
-                for initial, count in initials_dict.items():
-                    f.write("{}, {} : {}\n".format(lastname, initial, count))
-                    ln_i = "{} {}".format(lastname, initial)
-                    g.write(make_bar(ln_i, count, longest_author, most_author))
+            for name, count in author_counts.items():
+                f.write("{} : {}\n".format(name, count))
+                g.write(make_bar(name, count, longest_author, most_author))
 
 if args.files:
     logging.info("Writing Descriptions of Files")
