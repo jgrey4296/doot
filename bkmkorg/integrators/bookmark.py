@@ -33,7 +33,7 @@ if splitext(args.output)[1] != ".html":
 if exists(args.output):
     logging.warning("Ouput already exists: {}".format(args.output))
     response = input("Overwrite? Y/*: ")
-    if response != "y":
+    if response != "Y":
         logging.info("Cancelling")
         exit()
 
