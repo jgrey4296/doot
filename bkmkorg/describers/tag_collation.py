@@ -23,7 +23,7 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 
-ORG_TAG_REGEX = regex.compile("^\*\*\s+.+?\s+(:\S+:)$")
+ORG_TAG_REGEX = regex.compile("^\*\*\s+.+?\s+:(\S+):$")
 ##############################
 #see https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -64,9 +64,9 @@ bparser.customization = custom
 def collect_files(targets):
     """ DFS targets, collecting files into their types """
     logging.info("Processing Files: {}".format(targets))
-    bib_files = []
-    html_files = []
-    org_files = []
+    bib_files = set()
+    html_files = set()
+    org_files = set()
 
     processed = set([])
     remaining_dirs = targets[:]
@@ -78,18 +78,15 @@ def collect_files(targets):
         if isfile(target):
             ext = splitext(target)[1]
             if ext == ".bib":
-                bib_files.append(target)
+                bib_files.add(target)
             elif ext == ".html":
-                html_files.append(target)
+                html_files.add(target)
             elif ext == ".org":
-                org_files.append(target)
+                org_files.add(target)
         else:
             assert(isdir(target))
-            subdirs = [join(target, x) for x in listdir(target) if isdir(join(target,x))]
+            subdirs = [join(target, x) for x in listdir(target)]
             remaining_dirs += subdirs
-            bib_files += [join(target,x) for x in listdir(target) if splitext(x)[1] == ".bib"]
-            html_files += [join(target,x) for x in listdir(target) if splitext(x)[1] == ".html"]
-            org_files += [join(target,x) for x in listdir(target) if splitext(x)[1] == ".org"]
 
     logging.info("Split into: {} bibtex files, {} html files and {} org files".format(len(bib_files),
                                                                                       len(html_files),
@@ -135,15 +132,17 @@ def extract_tags_from_org_files(org_files):
     for org in org_files:
         #read
         text = []
-        individual_tags = []
         with open(org,'r') as f:
-            text = f.read().split("\n")
+            text = f.readlines()
 
         #line by line
         for line in text:
             tags = ORG_TAG_REGEX.findall(line)
-            if bool(tags):
-                individual_tags = [x for x in tags[0].split(':') if x != '']
+            individual_tags = []
+            if not bool(tags):
+                continue
+
+            individual_tags = [x for x in tags[0].split(':') if x != '']
             #Add to dict:
             for tag in individual_tags:
                 if tag not in org_tags:
