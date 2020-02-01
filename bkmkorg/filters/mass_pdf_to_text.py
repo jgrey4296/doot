@@ -47,6 +47,16 @@ def convert_pdfs_to_text(files):
         logging.info("Converting: {}".format(" ".join(call_sig)))
         call(call_sig)
 
+def convert_alternative(source, output_dir, title):
+    target = "{}.txt".format(title)
+    logging.info("Converting {} from {}".format(target, source))
+    subprocess.run(['mutool',
+                    'convert',
+                    '-F', 'text',
+                    '-o', join(output_dir, target),
+                    source],
+                   stdout=subprocess.PIPE)
+
 
 if __name__ == "__main__":
     #see https://docs.python.org/3/howto/argparse.html
