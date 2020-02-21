@@ -18,7 +18,7 @@ logging = root_logger.getLogger(__name__)
 ##############################
 #see https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                 epilog = "\n".joing(["Load a bookmark library and a number of -s(ources)",
+                                 epilog = "\n".join(["Load a bookmark library and a number of -s(ources)",
                                                       "Output the bookmarks that are missing"]))
 parser.add_argument('-l', '--library', default="~/github/writing/other_files/main_bookmarks.html")
 parser.add_argument('-s', '--source', action='append')
@@ -42,8 +42,13 @@ lib_list = open_and_extract_bookmarks(args.library)
 
 #Load each specified file
 to_check = []
+to_check_raw = []
 for x in sources:
-    to_check += open_and_extract_bookmarks(x)
+    if splitext(x)[1] == ".html":
+        to_check += open_and_extract_bookmarks(x)
+    elif splitext(x)[1] == ".txt":
+        with open(x, 'r') as f:
+            to_check_raw += [l.strip() for l in f.readlines() if l.strip() != ""]
 
 logging.info("Total Links to Check: {}".format(len(to_check)))
 
@@ -55,6 +60,14 @@ for x in to_check:
     if x.url not in lookup:
         missing.append(x)
 
+missing_raw = []
+for x in to_check_raw:
+    if x not in lookup:
+        missing_raw.append(x)
 
 #write out to separate file
 exportBookmarks(missing, args.output)
+
+if bool(missing_raw):
+    with open("{}.txt".format(splitext(args.output)[0]), 'w') as f:
+        f.write("\n".join(missing_raw))
