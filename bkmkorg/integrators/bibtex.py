@@ -7,7 +7,6 @@ from bibtexparser.bwriter import BibTexWriter
 from math import ceil
 from os import listdir, mkdir
 from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath
-import IPython
 import argparse
 import bibtexparser as b
 import regex as re

@@ -2,7 +2,6 @@ import logging as root_logger
 logging = root_logger.getLogger(__name__)
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString
-import IPython
 
 def parseData(s):
     assert(isinstance(s, str))
@@ -16,14 +15,14 @@ def parseData(s):
         if isinstance(y, list) and len(y) == 1:
             y = y[0]
         data[x] = y
-    
+
     for x,y in get_main_data(soup):
         if '\n' in y:
             y = y.split('\n')
         if isinstance(y, list) and len(y) == 1:
             y = y[0]
         data[x] = y
-        
+
     return data
 
 
@@ -33,14 +32,14 @@ def get_darktable(soup):
         logging.warning("More than one dark table")
     elif len(tables) == 0:
         return []
-        
+
     pairings = []
-    
+
     table_data = tables[0]
     elements = table_data.find_all('tr')
     title = elements[0].find_all('span')[1].get_text()
     pairings.append(('title', title))
-    
+
     rest = elements[1:]
     for r in rest:
         pairs = r.find_all('td')
@@ -49,7 +48,7 @@ def get_darktable(soup):
         try:
             lcol = pairs[0].get_text().strip()
         except IndexError:
-            IPython.embed(simple_prompt=True)
+            breakpoint()
         #reputation special case
         if lcol == 'Reputation':
             rcol = parse_reputation(pairs[1])
@@ -57,7 +56,7 @@ def get_darktable(soup):
             try:
                 pairs[1]
             except IndexError:
-                IPython.embed(simple_prompt=True)
+                breakpoint()
             if len(list(pairs[1].children)) > 1:
                 rcol = []
                 for c in pairs[1].children:
@@ -68,9 +67,9 @@ def get_darktable(soup):
                 rcol = " ".join(rcol).split("\n")
             else:
                 rcol = pairs[1].get_text().strip().split("\n")
-                
+
         pairings.append((lcol, rcol))
-        
+
     return pairings
 
 def parse_reputation(soup):
@@ -86,7 +85,8 @@ def parse_reputation(soup):
         assert(len(indices) == 2)
     except AssertionError:
         logging.info("Parse reputation issue")
-        IPython.embed(simple_prompt=True)
+        breakpoint()
+
     output = { "alliance" : {"value": 0, "subgroups" : {} },
                "horde" : {"value": 0, "subgroups" : {} } }
     output['alliance']['value'] = paired[indices[0]][0]
@@ -94,7 +94,7 @@ def parse_reputation(soup):
     output['alliance']['subgroups'] = {x:y for x,y in paired[1:indices[1]]}
     output['horde']['subgroups'] = {x:y for x,y in paired[indices[1]+1:]}
     return output
-    
+
 
 
 def get_main_data(soup):
@@ -106,7 +106,7 @@ def get_main_data(soup):
         return []
     if headlines[-1][1] != 'External links':
         logging.warning('Last header is: {}'.format(headlines[-1][1]))
-        
+
     #lop off the last as its not usually important
     #headlines = headlines[:-1]
     assert(all(['h' in x[0].name for x in headlines]))
@@ -115,10 +115,11 @@ def get_main_data(soup):
     try:
         start = headlines[0]
     except IndexError:
-        IPython.embed(simple_prompt=True)
+        breakpoint()
+        
     if not start[1] == 'Objectives':
         logging.warning("Headlines don't start with objectives: {}".format(start[1]))
-        
+
     segments = []
     collected = []
 
@@ -137,7 +138,7 @@ def get_main_data(soup):
             segments.append(collected)
             collected = []
         elif (isinstance(current, NavigableString) and len(current.strip()) > 0):
-            IPython.embed(simple_prompt=True)
+            breakpoint()
             text = str(current).strip()
             if '\n' in text:
                 text = text.split('\n')
@@ -157,5 +158,3 @@ def get_main_data(soup):
         logging.warning("Headlines and segments don't match")
     headline_titles = [x[1] for x in headlines]
     return zip(headline_titles, segments)
-                         
-    

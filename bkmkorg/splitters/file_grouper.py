@@ -6,7 +6,6 @@ from os.path import join, isfile, exists, isdir, splitext, expanduser, split
 from os import listdir
 from math import floor
 from subprocess import call
-import IPython
 import argparse
 # Setup root_logger:
 import logging as root_logger

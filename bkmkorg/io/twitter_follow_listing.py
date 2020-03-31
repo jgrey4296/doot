@@ -8,7 +8,6 @@ import twitter as tw
 from os.path import join, isfile, exists, isdir, splitext, expanduser
 from os import listdir
 from time import sleep
-import IPython
 import pickle
 import textwrap
 from functools import partial

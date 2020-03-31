@@ -27,7 +27,7 @@ It also has bookmark_simplification to convert loaded bookmarks into a trie.
 
 ## Dependencies
 ** Python 3.5 ** (may work on any python3+, untested)
-IPython, BeautifulSoup, and other std library python (re, namedtuples...)
+BeautifulSoup, and other std library python (re, namedtuples...)
 
 
 ## TODO

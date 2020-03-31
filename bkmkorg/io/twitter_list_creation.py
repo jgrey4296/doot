@@ -7,7 +7,6 @@ from os import listdir
 import regex as re
 from time import sleep
 from collections import defaultdict
-import IPython
 import pickle
 import textwrap
 from functools import partial

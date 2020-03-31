@@ -2,7 +2,6 @@
 A Plain Text exporter for bookmarks
 """
 import logging as root_logger
-import IPython
 logging = root_logger.getLogger(__name__)
 
 TAG_COL = 80

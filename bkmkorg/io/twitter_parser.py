@@ -190,7 +190,7 @@ class TwitterParser:
 
 if __name__ == "__main__":
     import argparse
-    import IPython
+
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog = "\n".join(["Parse raw twitter htmls into org files",
                                                          "-s can be a file or directory"]))
@@ -203,7 +203,7 @@ if __name__ == "__main__":
 
     if args.quit:
         logging.info("Quitting")
-        IPython.embed(simple_prompt=True)
+        breakpoint()
         quit()
 
     if not isdir(args.output):

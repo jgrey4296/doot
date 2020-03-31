@@ -11,7 +11,6 @@ from os.path import isfile,join,exists, expanduser, abspath
 from os import listdir
 import opener
 import logging
-import IPython
 import argparse
 import regex as re
 

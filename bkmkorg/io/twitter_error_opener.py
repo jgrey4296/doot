@@ -1,7 +1,6 @@
 """
 An Automated opener for html files that triggered errors
 """
-import IPython
 from os import listdir
 from os.path import join, isfile, exists, isdir, splitext, expanduser
 from subprocess import call

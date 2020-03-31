@@ -5,7 +5,6 @@ from hashlib import sha256
 from os import listdir, mkdir
 from os.path import join, isfile, exists, isdir, splitext, expanduser, split
 from shutil import copyfile
-import IPython
 import argparse
 import logging as root_logger
 LOGLEVEL = root_logger.DEBUG
@@ -64,7 +63,7 @@ def fileToHash(filename):
     try:
         assert(isfile(filename))
     except:
-        IPython.embed(simple_prompt=True)
+        breakpoint()
     with open(filename, 'rb') as f:
         return sha256(f.read()).hexdigest()
 

@@ -1,7 +1,6 @@
 """
 Script to split a library into bib files based on tags
 """
-import IPython
 import bibtexparser as b
 from bibtexparser.bibdatabase import BibDatabase
 from bibtexparser.bparser import BibTexParser

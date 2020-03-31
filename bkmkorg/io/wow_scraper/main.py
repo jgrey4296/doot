@@ -8,7 +8,6 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
-import IPython
 from os.path import join, isfile, exists, isdir, splitext, expanduser
 from os import listdir
 import json

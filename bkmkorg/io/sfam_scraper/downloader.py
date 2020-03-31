@@ -7,7 +7,6 @@ A Simple File to scrape Scenes from a Multiverse by Jon Rosenberg
 # Setup root_logger:
 import logging as root_logger
 import re
-import IPython
 from urllib import parse, request
 from datetime import datetime
 from bs4 import BeautifulSoup
@@ -78,7 +77,7 @@ def download_and_save(target, filename, base=DATA_LOCATION):
                 f.write(r.read())
     except urllib.error.URLError as e:
         logging.exception(e)
-        IPython.embed(simple_prompt=True)
+        breakpoint()
 
 def convert_date(year, month_day):
     return datetime.strptime("{} {}".format(year, month_day), DATE_FORMAT).strftime(DATE_OUTPUT)
@@ -170,4 +169,5 @@ if __name__ == "__main__":
         image_name = split(link)[1]
         download_and_save(link, image_name, base=IMAGE_LOCATION)
 
-    IPython.embed(simple_prompt=True)
+    breakpoint()
+

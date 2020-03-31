@@ -3,7 +3,6 @@ Parse Scarfolk html files into org files
 """
 
 #imports
-import IPython
 from bs4 import BeautifulSoup
 from urllib.parse import unquote
 from os import listdir, mkdir

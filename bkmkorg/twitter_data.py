@@ -1,4 +1,3 @@
-import IPython
 from os.path import isfile, join, isdir, splitext, exists, abspath
 from os.path import split
 from os import mkdir, getcwd

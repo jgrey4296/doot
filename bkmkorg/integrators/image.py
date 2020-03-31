@@ -6,7 +6,6 @@ from os.path import join, isfile, exists, isdir, splitext, expanduser, split, ab
 from os import listdir, mkdir
 from hashlib import sha256
 from shutil import copyfile
-import IPython
 import regex as re
 import logging as root_logger
 LOGLEVEL = root_logger.DEBUG

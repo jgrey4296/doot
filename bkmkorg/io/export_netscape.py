@@ -3,7 +3,6 @@ Exports a given trie to Netscape bookmark file format
 Main function: exportBookmarks
 """
 import logging
-import IPython
 from bkmkorg.bookmark_data import bookmarkTuple
 
 groupCount = 0
@@ -41,7 +40,7 @@ def bookmarksToNetscapeString(data):
         wrapped = "\n".join(strings)
         return wrapped
     except AttributeError as e:
-        IPython.embed(simple_prompt=True)
+        breakpoint()
 
 
 def groupToNetscapeString(name, data):

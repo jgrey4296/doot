@@ -1,7 +1,6 @@
 """
 Script to parse SFAM html and create an org file of images with appropriate tags
 """
-import IPython
 from bs4 import BeautifulSoup
 from os.path import join, isfile, exists, isdir, splitext, expanduser, split, abspath
 from os import listdir

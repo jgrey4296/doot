@@ -1,7 +1,6 @@
 """
 Script to clean a bibtex file, converting everything to unicode
 """
-import IPython
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
@@ -10,7 +9,6 @@ from math import ceil
 from os import listdir, mkdir
 from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath, commonpath, realpath
 from shutil import copyfile, move
-import IPython
 import argparse
 import bibtexparser as b
 import regex as re

@@ -14,7 +14,6 @@ logging = root_logger.getLogger(__name__)
 ##############################
 # IMPORTS
 ####################
-import IPython
 import requests
 from time import sleep
 from os.path import isfile, exists, join
@@ -85,7 +84,7 @@ def perform_request_then_wait(session, request):
     sleep(WAIT_TIME)
     if response.status_code >= 400:
         logging.warning('Bad Response Code: {}'.format(response.status_code))
-        IPython.embed(simple_prompt=True)
+        breakpoint()
         exit()
     elif 200 <= response.status_code < 300:
         logging.info('Response Received')
@@ -168,7 +167,7 @@ def main_scrape():
                     sleep(10)
     except Exception as e:
         logging.critical(e)
-        IPython.embed(simple_prompt=True)
+        breakpoint()
         exit()
     finally:
         save_dates()
