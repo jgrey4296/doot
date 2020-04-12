@@ -9,7 +9,8 @@ import logging as root_logger
 from hashlib import sha256
 from os.path import join, isfile, exists, abspath
 from os.path import split, isdir, splitext, expanduser
-from os import listdir
+from os import listdir, mkdir
+from shutil import copy
 
 # Setup root_logger:
 LOGLEVEL = root_logger.DEBUG
@@ -23,7 +24,7 @@ logging = root_logger.getLogger(__name__)
 ##############################
 # CONSTANTS
 ####################
-FILE_TYPES = [".gif",".jpg",".jpeg",".png",".mp4",".bmp"]
+FILE_TYPES = [".gif",".jpg",".jpeg",".png",".mp4",".bmp", ".mov", ".avi", ".webp"]
 
 ##############################
 # VARIABLES
@@ -105,6 +106,7 @@ if __name__ == "__main__":
                                      epilog = "\n".join(["Find and Hash images, revealing duplicates"]))
     parser.add_argument('-l', '--library', action="append")
     parser.add_argument('-t', '--target', action="append")
+    parser.add_argument('-c', '--copy', action="store_true")
     parser.add_argument('-o', '--output')
     args = parser.parse_args()
     args.target = [expanduser(x) for x in args.target]
@@ -118,12 +120,31 @@ if __name__ == "__main__":
     logging.info("Found {} missing images".format(len(missing)))
 
     #write conflicts to an org file:
-    count = 0
-    grouping = int(len(missing) / 100)
-    with open(expanduser(args.output),'w') as f:
-        f.write("* Missing\n")
+    if not args.copy:
+        count = 0
+        grouping = int(len(missing) / 100)
+        with open(expanduser(args.output),'w') as f:
+            f.write("* Missing\n")
+            for i,x in enumerate(missing):
+                if (i % grouping) == 0:
+                    f.write("** Group {}\n".format(count))
+                    count += 1
+
+                f.write("   [[{}]]\n".format(x))
+
+    if args.copy:
+        # create a directory and copy files in
+        target_dir = splitext(expanduser(args.output))[0]
+        if not exists(target_dir):
+            mkdir(target_dir)
+
+        current_group = 0
+        grouping = int(len(missing) / 100)
         for i,x in enumerate(missing):
             if (i % grouping) == 0:
-                f.write("** Group {}\n".format(count))
-                count += 1
-            f.write("   [[{}]]\n".format(x))
+                current_group += 1
+                next_dir = join(target_dir, "group_{}".format(str(current_group)))
+                if not exists(next_dir):
+                    mkdir(next_dir)
+            copy(x, join(target_dir,
+                             "group_{}".format(str(current_group))))
