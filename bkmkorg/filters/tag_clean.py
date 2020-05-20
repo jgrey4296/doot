@@ -17,6 +17,7 @@ from bibtexparser.bwriter import BibTexWriter
 import bibtexparser as b
 import regex
 import IPython
+
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
@@ -158,7 +159,6 @@ def collect_files(targets):
 
     return (bib_files, html_files, org_files)
 
-
 def clean_bib_files(bib_files, sub):
     """ Parse all the bibtext files """
     for bib in bib_files:
@@ -188,7 +188,6 @@ def clean_bib_files(bib_files, sub):
         outstring = "".join(out_lines)
         with open(bib, 'w') as f:
             f.write(outstring)
-
 
 def clean_org_files(org_files, sub):
     logging.info("Cleaning orgs")
@@ -223,13 +222,12 @@ def clean_org_files(org_files, sub):
                     replacement_tags.add(tag)
 
             out_line = "** {}{}:{}:\n".format(title,
-                                                      spaces,
-                                                      ":".join(replacement_tags))
+                                              spaces,
+                                              ":".join(replacement_tags))
             out_text += out_line
         # write out
         with open(org, 'w') as f:
             f.write(out_text)
-
 
 def clean_html_files(html_files, sub):
     logging.info("Cleaning htmls")
