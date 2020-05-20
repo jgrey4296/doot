@@ -257,9 +257,9 @@ class TwitterData:
         #move a -> b
         for x,y in zip(old_paths, new_paths):
             if exists(y) and not self.check_hashes(x,y):
-                raise Exception("File already exists: {} {}".format(x, y))
+                logging.warning("File already exists: {} {}".format(x, y))
             if not exists(x):
-                logging.warning("File Doesn't Exist: {}".format(x))
+                raise Exception("File Doesn't Exist: {}".format(x))
                 continue
             copyfile(x, y)
 
