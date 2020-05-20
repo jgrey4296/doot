@@ -24,7 +24,7 @@ logging = root_logger.getLogger(__name__)
 ##############################
 # CONSTANTS
 ####################
-FILE_TYPES = [".gif",".jpg",".jpeg",".png",".mp4",".bmp", ".mov", ".avi", ".webp"]
+FILE_TYPES = [".gif",".jpg",".jpeg",".png",".mp4",".bmp", ".mov", ".avi", ".webp", ".tiff"]
 
 ##############################
 # VARIABLES
