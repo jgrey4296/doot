@@ -138,13 +138,11 @@ if __name__ == "__main__":
         if not exists(target_dir):
             mkdir(target_dir)
 
-        current_group = 0
-        grouping = int(len(missing) / 100)
-        for i,x in enumerate(missing):
-            if (i % grouping) == 0:
-                current_group += 1
-                next_dir = join(target_dir, "group_{}".format(str(current_group)))
-                if not exists(next_dir):
-                    mkdir(next_dir)
-            copy(x, join(target_dir,
-                             "group_{}".format(str(current_group))))
+
+        for x in missing:
+            path = split(x)
+            parent = split(path[0])[1]
+
+            if not exists(join(target_dir, parent)):
+                mkdir(join(target_dir, parent))
+            copy(x, join(target_dir, parent))
