@@ -27,15 +27,14 @@ def parse_date(a_str):
     return datetime.datetime(a_str, DATE_RE)
 
 
-def download_media(media_dir):
+def download_media(media_dir, media):
     """ Download all media mentioned in json files """
     logging.info("Downloading media")
     if not exists(media_dir):
         mkdir(media_dir)
 
     scaler = int(len(media) / 100)
-    count = 0
-    for i,x in enumerate(media):
+    for i, x in enumerate(media):
         if i % scaler == 0:
             logging.info("{}/100".format(int(i/scaler)))
         filename = split(x)[1]
@@ -86,7 +85,8 @@ def loop_on_queue(queue, twit, json_dir):
 
 def assemble_threads(json_dir):
     """ Create a graph of tweet replies and quotes """
-    json_files = [join(json_dir, x) for x in listdir(json_dir) if splitext(x)[1] == ".json" and split(x)[1] != "users.json"]
+    json_files = [join(json_dir, x) for x in listdir(json_dir)
+                  if splitext(x)[1] == ".json" and split(x)[1] != "users.json"]
     di_graph = nx.DiGraph()
     for jfile in json_files:
         # load in each json,
@@ -120,7 +120,7 @@ def construct_org_files(output_dir, json_dir, total_users):
     components = [join(comp_target, x) for x in listdir(comp_target)]
     for comp in components:
         # read comp
-        with open(comp,'r') as f:
+        with open(comp, 'r') as f:
             data = json.load(f)
 
         data.sort(key=lambda x: parse_date(x['created_at']))
@@ -165,7 +165,8 @@ def create_component_files(components, json_dir):
 
     # create separate component files
     logging.info("Copying to component files")
-    json_files = [join(json_dir, x) for x in listdir(json_dir) if splitext(x)[1] == ".json" and split(x)[1] != "users.json"]
+    json_files = [join(json_dir, x) for x in listdir(json_dir)
+                  if splitext(x)[1] == ".json" and split(x)[1] != "users.json"]
     for jfile in json_files:
         with open(jfile, 'r') as f:
             data = json.load(f)
@@ -252,7 +253,8 @@ def extract_media_and_users_from_json(the_file):
             media.update([m['media_url'] for m in x['media']])
 
             videos = [m['video_info'] for m in x['media'] if m['type'] == "video"]
-            urls = [n['url'] for m in videos for n in m['variants'] if n['content_type'] == "video/mp4"]
+            urls = [n['url'] for m in videos for n in m['variants']
+                    if n['content_type'] == "video/mp4"]
             media.update([x.split("?")[0] for x in urls])
 
         if 'in_reply_to_user_id' in x:
@@ -284,7 +286,7 @@ def get_all_tweet_ids(*the_dirs):
 
     return tweet_ids
 
-def get_user_identitites(json_dir, twit):
+def get_user_identities(json_dir, twit, users):
     """ Get all user identities from twitter """
     logging.info("Getting user identities")
     total_users = []
@@ -311,7 +313,8 @@ def get_user_identitites(json_dir, twit):
 def get_user_and_media_sets(json_dir):
     """ Get all user ids and media urls """
     logging.info("Getting media urls")
-    json_files = [join(json_dir, x) for x in listdir(json_dir) if splitext(x)[1] == ".json" and split(x)[1] != "users.json"]
+    json_files = [join(json_dir, x) for x in listdir(json_dir)
+                  if splitext(x)[1] == ".json" and split(x)[1] != "users.json"]
     users = set()
     media = set()
     for f in json_files:
@@ -371,9 +374,11 @@ def dfs_directory(*dirs, filetype=".org"):
     while bool(queue):
         current = queue.pop(0)
         # Add files
-        found += [join(current, x) for x in listdir(current) if isfile(join(current, x)) and splitext(x)[1] == filetype]
+        found += [join(current, x) for x in listdir(current)
+                  if isfile(join(current, x)) and splitext(x)[1] == filetype]
         # Continue for directories
-        queue += [join(current,x) for x in listdir(current) if isdir(join(current, x)) and x != ".git"]
+        queue += [join(current, x) for x in listdir(current)
+                  if isdir(join(current, x)) and x != ".git"]
 
     return found
 
@@ -393,7 +398,7 @@ if __name__ == "__main__":
     # Setup argparser
     #see https://docs.python.org/3/howto/argparse.html
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog = "\n".join([""]))
+                                     epilog="\n".join([""]))
     parser.add_argument('--config', default="secrets.config")
     parser.add_argument('--target')
     parser.add_argument('--library', action="append")
@@ -462,7 +467,8 @@ if __name__ == "__main__":
         mkdir(json_dir)
 
     logging.info("Reading existing tweet jsons")
-    json_files = [join(json_dir, x) for x in listdir(json_dir) if splitext(x)[1] == ".json" and split(x)[1] != "users.json"]
+    json_files = [join(json_dir, x) for x in listdir(json_dir)
+                  if splitext(x)[1] == ".json" and split(x)[1] != "users.json"]
     json_ids = set()
     for jfile in json_files:
         json_ids.update(extract_tweet_ids_from_json(jfile))
@@ -479,7 +485,7 @@ if __name__ == "__main__":
     # download media
     download_media(media_dir, media_set)
     # Get user identities
-    all_users = get_user_identities(json_dir, twit)
+    all_users = get_user_identities(json_dir, twit, user_set)
 
     # --------------------
     logging.info("Finished Retrieval")
@@ -492,4 +498,4 @@ if __name__ == "__main__":
     components = dfs_for_components(di_graph)
     create_component_files(components, json_dir)
 
-    construct_org_file(output_dir, json_dir, all_users)
+    construct_org_files(output_dir, json_dir, all_users)
