@@ -116,8 +116,7 @@ def construct_org_files(output_dir, json_dir, total_users):
     """ Create the final org output of tweet threads """
     user_lookup = {x['id_str'] : x['screen_name'] for x in total_users}
     # Create final orgs, grouped by head user
-    comp_target = join(json_dir, "json")
-    components = [join(comp_target, x) for x in listdir(comp_target)]
+    components = [join(json_dir, x) for x in listdir(json_dir) if "components" in x]
     for comp in components:
         # read comp
         with open(comp, 'r') as f:
@@ -422,11 +421,11 @@ if __name__ == "__main__":
     media_dir = join(target_dir, "media")
     library_ids = join(target_dir, "all_ids")
 
-
+    args.library.append(library_ids)
 
 
     logging.info("Target Dir: {}".format(target_dir))
-    logging.info("Library: {}".format(library_ids))
+    logging.info("Library: {}".format(args.library))
     logging.info("Config: {}".format(args.config))
     logging.info("Json Directory: {}".format(json_dir))
     logging.info("Media Directory: {}".format(media_dir))
@@ -478,8 +477,7 @@ if __name__ == "__main__":
     logging.info("Removing existing tweets from queue")
     remaining = (source_ids - library_tweet_ids) - json_ids
     logging.info("Remaining ids to process: {}".format(len(remaining)))
-    queue = list(remaining)
-    loop_on_queue(remaining, twit, json_dir)
+    loop_on_queue(list(remaining), twit, json_dir)
 
     user_set, media_set = get_user_and_media_sets(json_dir)
     # download media
@@ -498,4 +496,5 @@ if __name__ == "__main__":
     components = dfs_for_components(di_graph)
     create_component_files(components, json_dir)
 
+    sys.exit()
     construct_org_files(output_dir, json_dir, all_users)
