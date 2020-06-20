@@ -237,6 +237,7 @@ def construct_user_summaries(component_dir, combined_threads_dir, total_users):
                 # dfs to get longest chain
 
         chains = []
+
         if bool(roots):
             chains = dfs_chains(graph, roots)
 
@@ -245,11 +246,17 @@ def construct_user_summaries(component_dir, combined_threads_dir, total_users):
 
         # Assign main thread
         main_thread = max(chains, key=lambda x: len(x))
+        main_set = set(main_thread)
         main_index = chains.index(main_thread)
         # assign secondary conversations
         rest = chains[:main_index] + chains[main_index+1:]
 
         rest = [x for x in rest if bool(x)]
+        cleaned_rest = []
+        for thread in rest:
+            cleaned = [x for x in thread if x not in main_set]
+            cleaned_rest.append(cleaned)
+            main_set.update(cleaned)
 
         # create user file if not exist
         user_file = join(combined_threads_dir, USER_FILE_TEMPLATE.format(user_lookup[head_user]['screen_name']))
@@ -264,7 +271,7 @@ def construct_user_summaries(component_dir, combined_threads_dir, total_users):
             user_data['tweets'] = {}
 
         user_data['threads'].append({'main_thread' : main_thread,
-                                     'rest' : rest,
+                                     'rest' : cleaned_rest,
                                      'quotes' : quotes})
 
         user_data['tweets'].update(tweets)
@@ -292,7 +299,7 @@ def construct_org_files(combined_threads_dir, org_dir, all_users, media_dir):
 
         # Add initial line
         output.append("* {}'s Threads".format(data['user']['screen_name']))
-        output.append("\t:USER:")
+        output.append("\t:PROPERTIES:")
         if 'name' in data['user']:
             output.append("\t:NAME: {}".format(data['user']['name']))
         if 'followers_count' in data['user']:
@@ -302,7 +309,7 @@ def construct_org_files(combined_threads_dir, org_dir, all_users, media_dir):
         if 'location' in data['user']:
             output.append("\t:LOCATION: {}".format(data['user']['location']))
         if 'url' in data['user']:
-            output.append("\t:URL: {}".format(data['user']['url']))
+            output.append("\t:URL: [[{}]]".format(data['user']['url']))
         output.append("\t:END:")
 
         # add conversations
@@ -452,7 +459,7 @@ def tweet_to_string(tweet, all_users, url_prefix, level=4):
     # add tweet urls
     output.append("")
     links = [x['expanded_url'] for x in tweet['urls']]
-    output += links
+    output += ["[[{}]]".format(x) for x in links]
 
     # add tweet media
     media = []
@@ -670,11 +677,14 @@ def dfs_directory(*dirs, filetype=".org"):
 def dfs_chains(graph, roots):
     results = []
     queue = [[x] for x in roots]
+    discovered = set()
     while bool(queue):
         path = queue.pop()
+        discovered.update(path)
         if path[-1] not in graph:
+            results.append(path)
             continue
-        edges = graph[path[-1]].keys()
+        edges = [x for x in graph[path[-1]].keys() if x not in discovered]
         if not bool(edges):
             results.append(path)
         else:
