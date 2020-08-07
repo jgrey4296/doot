@@ -13,7 +13,6 @@ from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
 import bibtexparser as b
 import regex
-import IPython
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
@@ -193,6 +192,8 @@ if __name__ == "__main__":
     args.output = abspath(expanduser(args.output))
 
     logging.info("Targeting: {}".format(args.target))
+    if isdir(args.output):
+        args.output = join(args.output, "tags")
     logging.info("Output to: {}".format(args.output))
 
     bibs, htmls, orgs = collect_files(args.target)
