@@ -22,58 +22,57 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
 parser.add_argument('-s', '--source')
 parser.add_argument('-o', '--output')
 
-args = parser.parse_args()
-args.source = abspath(expanduser(args.source))
-args.output = abspath(expanduser(args.output))
 
-assert(splitext(args.output)[1] == '.org')
+text_template = "** [[file://{}][{}]]\n"
+path_re = re.compile(r'^\*\*+\s+(?:TODO|DONE)?\[\[file:([\w/\.~]+)\]')
+file_types = ['.png', '.gif', '.jpg', '.jpeg']
+
 
 def fileToHash(filename):
     logging.debug("Hashing: {}".format(filename))
     with open(filename, 'br') as f:
         return sha256(f.read()).hexdigest()
 
-#read the output file
-logging.info("Loading Existing")
-with open(args.output,'r') as f:
-    text = f.read().split('\n')
-
-#extract existing files
-path_re = re.compile(r'^\*\*+\s+(?:TODO|DONE)?\[\[file:([\w/\.~]+)\]')
-
-logging.info("Finding links")
-path_matches = [path_re.findall(x) for x in text]
-path_merge = [y for x in path_matches for y in x]
-expanded_files = [abspath(expanduser(x)) for x in path_merge]
-logging.info("Found: {}".format(len(expanded_files)))
-#hash them
-logging.info("Hashing")
-current_hashes = { fileToHash(x) for x in expanded_files }
 
 
-#read the source directory
-file_types = ['.png', '.gif', '.jpg', '.jpeg']
+if __name__ == "__main__":
+    args = parser.parse_args()
+    args.source = abspath(expanduser(args.source))
+    args.output = abspath(expanduser(args.output))
 
-logging.info("Scraping Source Directory")
-files_in_dir = listdir(args.source)
-imgs_in_dir = [x for x in files_in_dir if splitext(x)[1].lower() in file_types
-               and x[0] != '.']
-full_paths = [abspath(expanduser(join(args.source, x))) for x in imgs_in_dir]
-logging.info("Scraped: {}".format(len(full_paths)))
+    assert(splitext(args.output)[1] == '.org')
 
-logging.info("Hashing")
-total_hashes = { fileToHash(x) : x for x in full_paths }
+    logging.info("Loading Existing")
+    with open(args.output,'r') as f:
+        text = f.read().split('\n')
 
-#get the difference
-logging.info("Getting difference of hashes")
-to_add = set(total_hashes.keys()).difference(current_hashes)
+    logging.info("Finding links")
+    path_matches = [path_re.findall(x) for x in text]
+    path_merge = [y for x in path_matches for y in x]
+    expanded_files = [abspath(expanduser(x)) for x in path_merge]
+    logging.info("Found: {}".format(len(expanded_files)))
 
-text_template = "** [[file://{}][{}]]\n"
+    logging.info("Hashing")
+    current_hashes = { fileToHash(x) for x in expanded_files }
 
-#append unlinked files
-logging.info("Appending to output: {}".format(len(to_add)))
-with open(args.output, 'a') as f:
-    for h in to_add:
-        filename = total_hashes[h]
-        f.write(text_template.format(filename, split(filename)[1]))
 
+    logging.info("Scraping Source Directory")
+    files_in_dir = listdir(args.source)
+    imgs_in_dir = [x for x in files_in_dir if splitext(x)[1].lower() in file_types
+                   and x[0] != '.']
+    full_paths = [abspath(expanduser(join(args.source, x))) for x in imgs_in_dir]
+    logging.info("Scraped: {}".format(len(full_paths)))
+
+    logging.info("Hashing")
+    total_hashes = { fileToHash(x) : x for x in full_paths }
+
+    #get the difference
+    logging.info("Getting difference of hashes")
+    to_add = set(total_hashes.keys()).difference(current_hashes)
+
+    #append unlinked files
+    logging.info("Appending to output: {}".format(len(to_add)))
+    with open(args.output, 'a') as f:
+        for h in to_add:
+            filename = total_hashes[h]
+            f.write(text_template.format(filename, split(filename)[1]))
