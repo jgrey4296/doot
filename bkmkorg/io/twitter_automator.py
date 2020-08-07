@@ -405,7 +405,12 @@ def tweet_to_string(tweet, all_users, url_prefix, level=4):
     output = []
 
     indent = "*" * level
-    screen_name = all_users[tweet['user']['id_str']]['screen_name']
+    screen_name = "Unknown"
+    try:
+        screen_name = all_users[tweet['user']['id_str']]['screen_name']
+    except KeyError as e:
+        logging.warning("Unknown Screen name: {}".format(tweet['user']['id_str']))
+
     hashtags = [x['text'] for x in tweet['hashtags']]
     hash_str = ""
     if bool(hashtags):
@@ -726,7 +731,8 @@ def main():
     library_ids = join(target_dir, "all_ids")
     users_file = join(target_dir, "users.json")
 
-    args.library.append(library_ids)
+    if exists(library_ids):
+        args.library.append(library_ids)
 
     missing_dirs = [x for x in [tweet_dir,
                                 org_dir,
