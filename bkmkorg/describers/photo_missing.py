@@ -1,10 +1,8 @@
 """
-    Script to find missing photos
+Script to find missing photos
 
 """
-##############################
 # IMPORTS
-####################
 import logging as root_logger
 from hashlib import sha256
 from os.path import join, isfile, exists, abspath
@@ -21,25 +19,32 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
-##############################
-# CONSTANTS
-####################
-FILE_TYPES = [".gif",".jpg",".jpeg",".png",".mp4",".bmp", ".mov", ".avi", ".webp", ".tiff"]
 
-##############################
-# VARIABLES
-####################
+FILE_TYPES = [".gif",".jpg",".jpeg",".png",".mp4",".bmp", ".mov", ".avi", ".webp", ".tiff"]
 missing_types = set()
-##############################
-# Utilities
-####################
+
 def file_to_hash(filename):
     with open(filename, 'rb') as f:
         return sha256(f.read()).hexdigest()
 
-##############################
-# Core Functions
-####################
+def hash_all(images):
+    hash_dict = {}
+    conflicts = {}
+    update_num = int(len(images) / 100)
+    count = 0
+    for i,x in enumerate(images):
+        if i % update_num == 0:
+            logging.info("{} / 100".format(count))
+            count += 1
+        the_hash = file_to_hash(x)
+        if the_hash not in hash_dict:
+            hash_dict[the_hash] = []
+        hash_dict[the_hash].append(x)
+        if len(hash_dict[the_hash]) > 1:
+            conflicts[the_hash] = len(hash_dict[the_hash])
+
+    return (hash_dict, conflicts)
+
 def find_images(directories):
     found = []
     queue = directories[:]
@@ -63,26 +68,8 @@ def find_images(directories):
 
     return found
 
-
-def hash_all(images):
-    hash_dict = {}
-    conflicts = {}
-    update_num = int(len(images) / 100)
-    count = 0
-    for i,x in enumerate(images):
-        if i % update_num == 0:
-            logging.info("{} / 100".format(count))
-            count += 1
-        the_hash = file_to_hash(x)
-        if the_hash not in hash_dict:
-            hash_dict[the_hash] = []
-        hash_dict[the_hash].append(x)
-        if len(hash_dict[the_hash]) > 1:
-            conflicts[the_hash] = len(hash_dict[the_hash])
-
-    return (hash_dict, conflicts)
-
 def find_missing(library, others):
+    # TODO: handle library hashes that already have a conflict
     library_hash, conflicts = hash_all(library)
     missing = []
     update_num = int(len(others) / 100)
@@ -95,6 +82,7 @@ def find_missing(library, others):
         if the_hash not in library_hash:
             missing.append(x)
     return missing
+
 
 ########################################
 if __name__ == "__main__":
@@ -132,12 +120,12 @@ if __name__ == "__main__":
 
                 f.write("   [[{}]]\n".format(x))
 
+
+    # create a directory and copy files missing from the library in
     if args.copy:
-        # create a directory and copy files in
         target_dir = splitext(expanduser(args.output))[0]
         if not exists(target_dir):
             mkdir(target_dir)
-
 
         for x in missing:
             path = split(x)

@@ -81,6 +81,11 @@ class Trie:
             x.filter_queries(query_set)
 
     def org_format_queries(self):
+        """
+        Output a list of org links, with original URLs,
+        and URL's minus a query parameter.
+        Used to find out which parameters can be filtered from links
+        """
         result = []
         for key, url_pair in self.query_keys.items():
             count = self.query_key_counts[key]

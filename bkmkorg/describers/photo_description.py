@@ -1,6 +1,6 @@
 """
-    Photo Description Script
-
+Photo Description Script
+Writes an org file with images that have the same hash
 """
 ##############################
 # IMPORTS
@@ -26,10 +26,6 @@ logging = root_logger.getLogger(__name__)
 FILE_TYPES = [".gif",".jpg",".jpeg",".png",".mp4",".bmp"]
 
 ##############################
-# VARIABLES
-####################
-
-##############################
 # Utilities
 ####################
 def file_to_hash(filename):
@@ -40,6 +36,9 @@ def file_to_hash(filename):
 # Core Functions
 ####################
 def find_images(directories):
+    """
+    DFS on directories to find all images
+    """
     found = []
     queue = directories[:]
     processed = set()
@@ -63,6 +62,10 @@ def find_images(directories):
 
 
 def hash_all(images):
+    """
+    Map hashes to images,
+    plus hashes with more than one image
+    """
     hash_dict = {}
     conflicts = {}
     update_num = int(len(images) / 100)
@@ -84,7 +87,6 @@ def hash_all(images):
 if __name__ == "__main__":
     logging.info("Starting Photo Description")
     import argparse
-
     #see https://docs.python.org/3/howto/argparse.html
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog = "\n".join(["Find and Hash images, revealing duplicates"]))

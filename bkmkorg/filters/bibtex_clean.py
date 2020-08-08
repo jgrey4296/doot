@@ -12,6 +12,7 @@ from shutil import copyfile, move
 import argparse
 import bibtexparser as b
 import regex as re
+
 # Setup root_logger:
 from os.path import splitext, split
 import logging as root_logger
@@ -24,31 +25,6 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
-
-#see https://docs.python.org/3/howto/argparse.html
-parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                 epilog=
-                                 "\n".join(["Specify a Target bibtex file,",
-                                            "Output file,",
-                                            "And the Location of the pdf library.",
-                                            "Cleans names and moves all non-library pdfs into the library.",
-                                            "Records errors in an 'error' field for an entry."]))
-
-parser.add_argument('-t', '--target', default="~/Mega/library.bib")
-parser.add_argument('-o', '--output', default="bibtex")
-parser.add_argument('-l', '--library', default="~/MEGA/pdflibrary")
-args = parser.parse_args()
-
-args.target = realpath(abspath(expanduser(args.target)))
-args.library = realpath(abspath(expanduser(args.library)))
-assert(exists(args.target))
-
-logging.info("Targeting: {}".format(args.target))
-logging.info("Output to: {}".format(args.output))
-
-parser = BibTexParser(common_strings=False)
-parser.ignore_nonstandard_types = False
-parser.homogenise_fields = True
 
 def file_to_hash(filename):
     with open(filename, 'rb') as f:
@@ -71,7 +47,7 @@ def custom(record):
     except TypeError as e:
         logging.warning("Unicode Error on: {}".format(record['ID']))
         record['error'] = str(e)
-    file_set = None
+        file_set = None
     try:
         #add md5 of associated files
         files = [add_slash_if_necessary(y) for x in record['file'].split(';') for y in x.split(':') if bool(y.strip()) and y.strip().lower() != 'pdf']
@@ -129,9 +105,9 @@ def custom(record):
                         if not exists(full_new_path):
                             copyfile(current_path, full_new_path)
                             move(current_path, "{}__x".format(current_path))
-                        file_set.remove(x)
-                        file_set.add(full_new_path)
-                        record['file'] = ";".join(file_set)
+                            file_set.remove(x)
+                            file_set.add(full_new_path)
+                            record['file'] = ";".join(file_set)
             except Exception as e:
                 logging.info("Issue copying file for: {}".format(x))
                 logging.info(e)
@@ -165,19 +141,46 @@ def custom(record):
     #     record['p_authors'] = [c.splitname(x, False) for x in record['author']]
     return record
 
-parser.customization = custom
 
-with open(args.target, 'r') as f:
-    logging.info("Loading bibtex")
-    db = b.load(f, parser)
-logging.info("Bibtex loaded")
+if __name__ == "__main__":
+    # Setup
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                     epilog=
+                                     "\n".join(["Specify a Target bibtex file,",
+                                                "Output file,",
+                                                "And the Location of the pdf library.",
+                                                "Cleans names and moves all non-library pdfs into the library.",
+                                                "Records errors in an 'error' field for an entry."]))
 
-#Get errors and write them out:
-errored = [x for x in db.entries if 'error' in x]
+    parser.add_argument('-t', '--target', default="~/Mega/library.bib")
+    parser.add_argument('-o', '--output', default="bibtex")
+    parser.add_argument('-l', '--library', default="~/MEGA/pdflibrary")
+    args = parser.parse_args()
 
-with open('{}.errors'.format(args.output), 'a') as f:
-    f.write("\n".join(["{} : {}".format(x['ID'], x['error']) for x in errored]))
+    args.target = realpath(abspath(expanduser(args.target)))
+    args.library = realpath(abspath(expanduser(args.library)))
+    assert(exists(args.target))
 
-writer = BibTexWriter()
-with open(args.output,'w') as f:
+    parser = BibTexParser(common_strings=False)
+    parser.ignore_nonstandard_types = False
+    parser.homogenise_fields = True
+    parser.customization = custom
+
+    logging.info("Targeting: {}".format(args.target))
+    logging.info("Output to: {}".format(args.output))
+
+
+    with open(args.target, 'r') as f:
+        logging.info("Loading bibtex")
+        db = b.load(f, parser)
+        logging.info("Bibtex loaded")
+
+    #Get errors and write them out:
+    errored = [x for x in db.entries if 'error' in x]
+
+    with open('{}.errors'.format(args.output), 'a') as f:
+        f.write("\n".join(["{} : {}".format(x['ID'], x['error']) for x in errored]))
+
+    writer = BibTexWriterr()
+    with open(args.output,'w') as f:
         f.write(writer.write(db))

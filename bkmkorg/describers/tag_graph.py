@@ -14,7 +14,7 @@ from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
 import bibtexparser as b
 import regex
-import IPython
+
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
@@ -25,6 +25,7 @@ root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 
 ORG_TAG_REGEX = regex.compile("^\*\*\s+.+?\s+:(\S+):$")
+
 ##############################
 #see https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -108,6 +109,7 @@ def parse_bib_files(bib_files):
     logging.info("Bibtex loaded")
     return db
 
+
 def extract_tags_from_bibtex(db, the_graph):
     logging.info("Processing Bibtex: {}".format(len(db.entries)))
     proportion = int(len(db.entries) / 10)
@@ -127,7 +129,6 @@ def extract_tags_from_bibtex(db, the_graph):
                 if not the_graph.has_edge(u,v):
                     the_graph.add_edge(u,v, weight=0)
                 the_graph[u][v]['weight'] += 1
-
 
 def extract_tags_from_org_files(org_files, the_graph):
     logging.info("Extracting data from orgs")
@@ -157,7 +158,6 @@ def extract_tags_from_org_files(org_files, the_graph):
                         the_graph.add_edge(u,v, weight=0)
                     the_graph[u][v]['weight'] += 1
 
-
 def extract_tags_from_html_files(html_files, the_graph):
     logging.info("Extracting data from htmls")
     html_tags = {}
@@ -175,6 +175,7 @@ def extract_tags_from_html_files(html_files, the_graph):
                         the_graph[u][v]['weight'] += 1
 
     return html_tags
+
 
 def combine_all_tags(dict_array):
     logging.info("Combining tags")

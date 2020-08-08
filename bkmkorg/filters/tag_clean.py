@@ -16,7 +16,6 @@ from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
 import bibtexparser as b
 import regex
-import IPython
 
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
@@ -251,8 +250,6 @@ def clean_html_files(html_files, sub):
 
 
 #--------------------------------------------------
-
-
 if __name__ == "__main__":
     logging.info("Tag Cleaning start: --------------------")
     args = parser.parse_args()

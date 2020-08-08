@@ -1,3 +1,6 @@
+"""
+Cluster a mass of images together
+"""
 from PIL import Image
 from random import shuffle
 from os import mkdir
@@ -44,6 +47,7 @@ def norm_img(img):
 
 
 if __name__ == "__main__":
+    # Setup
     LOGLEVEL = root_logger.DEBUG
     LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
     root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
@@ -98,7 +102,7 @@ if __name__ == "__main__":
     logging.info("Normalized {} images".format(len(norms)))
     logging.info("Clustering")
 
-
+    # Use K-Means clustering on the histograms
     km = KMeans(n_clusters=args.groups)
     km.fit(norms)
     logging.info("Clustering")
@@ -109,6 +113,7 @@ if __name__ == "__main__":
     if not exists(args.output):
         mkdir(args.output)
 
+    # copy images into groups
     for img,group_num in paired:
         group_name = join(args.output, "group_{}".format(group_num))
         if not exists(group_name):

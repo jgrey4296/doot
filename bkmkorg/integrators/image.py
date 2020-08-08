@@ -1,6 +1,6 @@
-#------------------------------
-# Simple program to integrate images into a collection
-#------------------------------
+"""
+Simple program to integrate images into a collection
+"""
 import argparse
 from os.path import join, isfile, exists, isdir, splitext, expanduser, split, abspath
 from os import listdir, mkdir
@@ -17,11 +17,6 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
-parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                 epilog = "\n".join(["Find images in {source} dir that are not linked in {output}.org, and link them"]))
-parser.add_argument('-s', '--source')
-parser.add_argument('-o', '--output')
-
 
 text_template = "** [[file://{}][{}]]\n"
 path_re = re.compile(r'^\*\*+\s+(?:TODO|DONE)?\[\[file:([\w/\.~]+)\]')
@@ -36,6 +31,12 @@ def fileToHash(filename):
 
 
 if __name__ == "__main__":
+    # Setup
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                     epilog = "\n".join(["Find images in {source} dir that are not linked in {output}.org, and link them"]))
+    parser.add_argument('-s', '--source')
+    parser.add_argument('-o', '--output')
+
     args = parser.parse_args()
     args.source = abspath(expanduser(args.source))
     args.output = abspath(expanduser(args.output))
@@ -54,7 +55,6 @@ if __name__ == "__main__":
 
     logging.info("Hashing")
     current_hashes = { fileToHash(x) for x in expanded_files }
-
 
     logging.info("Scraping Source Directory")
     files_in_dir = listdir(args.source)

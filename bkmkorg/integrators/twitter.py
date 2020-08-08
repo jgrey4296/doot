@@ -2,95 +2,98 @@
 Integrates newly parsed twitter->org files
 into the existing set
 """
-
 from os.path import join, isfile, exists, isdir, splitext, expanduser, split
 from os import listdir, mkdir
 from subprocess import call
 from random import choice
 import argparse
-# Setup root_logger:
 import logging as root_logger
-LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
-root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
-console = root_logger.StreamHandler()
-console.setLevel(root_logger.INFO)
-root_logger.getLogger('').addHandler(console)
-logging = root_logger.getLogger(__name__)
-##############################
-parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                 epilog = "\n".join(["Integrate newly parsed twitter orgs into the existing library"]))
-parser.add_argument('-s', '--source')
-parser.add_argument('-l', '--library')
 
-args = parser.parse_args()
-args.source = expanduser(args.source)
-args.library= expanduser(args.library)
+if __name__ == "__main__":
+    # Setup
+    LOGLEVEL = root_logger.DEBUG
+    LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+    root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
-if any([not exists(x) for x in [args.source, args.library]]):
-    raise Exception('Source and Output need to exist')
+    console = root_logger.StreamHandler()
+    console.setLevel(root_logger.INFO)
+    root_logger.getLogger('').addHandler(console)
+    logging = root_logger.getLogger(__name__)
+    ##############################
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                     epilog = "\n".join(["Integrate newly parsed twitter orgs into the existing library"]))
+    parser.add_argument('-s', '--source')
+    parser.add_argument('-l', '--library')
 
-#load the newly parsed org names
-newly_parsed = {}
-if isfile(args.source):
-    newly_parsed[split(args.source)[1]] = args.source
-else:
-    newly_parsed = {x : args.source for x in listdir(args.source) if splitext(x)[1] == '.org'}
+    args = parser.parse_args()
+    args.source = expanduser(args.source)
+    args.library= expanduser(args.library)
 
-logging.info("Newly parsed to transfer: {}".format(len(newly_parsed)))
+    if any([not exists(x) for x in [args.source, args.library]]):
+        raise Exception('Source and Output need to exist')
 
-#get the existing org names, as a dict with its location
-existing_orgs = {}
-queue = [args.library]
-while queue:
-    current = queue.pop(0)
-    if isdir(current):
-        queue += [join(current,x) for x in listdir(current)]
-    elif splitext(current)[1] == ".org":
-        existing_orgs[split(current)[1]] = split(current)[0]
+    #load the newly parsed org names
+    newly_parsed = {}
+    if isfile(args.source):
+        newly_parsed[split(args.source)[1]] = args.source
+    else:
+        newly_parsed = {x : args.source for x in listdir(args.source) if splitext(x)[1] == '.org'}
 
-logging.info("Existing orgs: {}".format(len(existing_orgs)))
+    logging.info("Newly parsed to transfer: {}".format(len(newly_parsed)))
 
-#now update existing with the new
-totally_new = []
-for x in newly_parsed:
-    if x not in existing_orgs:
-        logging.info("Found a completely new user: {}".format(x))
-        totally_new.append(x)
-        continue
+    #get the existing org names, as a dict with its location
+    existing_orgs = {}
+    queue = [args.library]
+    while queue:
+        current = queue.pop(0)
+        if isdir(current):
+            queue += [join(current,x) for x in listdir(current)]
+        elif splitext(current)[1] == ".org":
+            existing_orgs[split(current)[1]] = split(current)[0]
 
-    logging.info("Integrating: {}".format(x))
-    new_org = join(newly_parsed[x], x)
-    new_files = join(newly_parsed[x], "{}_files".format(splitext(x)[0]))
-    existing_org = join(existing_orgs[x], x)
-    existing_files = join(existing_orgs[x], "{}_files".format(splitext(x)[0]))
+    logging.info("Existing orgs: {}".format(len(existing_orgs)))
 
-    with open(new_org, 'r') as f:
-        discard = f.readline()
-        lines = f.read()
-
-    with open(existing_org, 'a') as f:
-        f.write(lines)
-
-    for y in listdir(new_files):
-        if not isfile(join(new_files, y)):
+    totally_new = []
+    #now update existing with the new
+    for x in newly_parsed:
+        if x not in existing_orgs:
+            logging.info("Found a completely new user: {}".format(x))
+            totally_new.append(x)
             continue
-        call_sig = ['cp', join(new_files, y), existing_files]
-        call(call_sig)
 
-logging.info("Completely new to transfer: {}".format(len(totally_new)))
+        logging.info("Integrating: {}".format(x))
+        new_org = join(newly_parsed[x], x)
+        new_files = join(newly_parsed[x], "{}_files".format(splitext(x)[0]))
+        existing_org = join(existing_orgs[x], x)
+        existing_files = join(existing_orgs[x], "{}_files".format(splitext(x)[0]))
 
-for x in totally_new:
-    logging.info("Adding to library with: {}".format(x))
-    file_name = join(newly_parsed[x], x)
-    file_dir = join(newly_parsed[x], "{}_files".format(splitext(x)[0]))
+        with open(new_org, 'r') as f:
+            discard = f.readline()
+            lines = f.read()
 
-    first_letter = x[0].lower()
-    if not ("a" <= first_letter <= "z"):
-        first_letter = "symbols"
+        with open(existing_org, 'a') as f:
+            f.write(lines)
 
-    target_for_new = join(args.library,"group_{}".format(first_letter))
+        for y in listdir(new_files):
+            if not isfile(join(new_files, y)):
+                continue
+            call_sig = ['cp', join(new_files, y), existing_files]
+            call(call_sig)
 
-    call(['cp', file_name, target_for_new])
-    call(['cp' ,'-r' ,file_dir, target_for_new])
+    logging.info("Completely new to transfer: {}".format(len(totally_new)))
+
+    # Now copy completely new files
+    for x in totally_new:
+        logging.info("Adding to library with: {}".format(x))
+        file_name = join(newly_parsed[x], x)
+        file_dir = join(newly_parsed[x], "{}_files".format(splitext(x)[0]))
+
+        first_letter = x[0].lower()
+        if not ("a" <= first_letter <= "z"):
+            first_letter = "symbols"
+
+        target_for_new = join(args.library,"group_{}".format(first_letter))
+
+        call(['cp', file_name, target_for_new])
+        call(['cp' ,'-r' ,file_dir, target_for_new])

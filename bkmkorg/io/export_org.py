@@ -1,5 +1,5 @@
 """
-A Plain Text exporter for bookmarks
+A org exporter for bookmarks
 """
 import logging as root_logger
 logging = root_logger.getLogger(__name__)

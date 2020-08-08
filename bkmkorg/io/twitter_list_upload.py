@@ -11,6 +11,8 @@ import IPython
 import pickle
 import textwrap
 from functools import partial
+import argparse
+
 # Setup root_logger:
 import logging as root_logger
 LOGLEVEL = root_logger.DEBUG
@@ -21,17 +23,6 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
-
-import argparse
-
-#see https://docs.python.org/3/howto/argparse.html
-parser = argparse.ArgumentParser("")
-# todo: add output filename target
-parser.add_argument('-t', '--source', default='output.org')
-parser.add_argument('-b', '--backup', default='backup_')
-parser.add_argument('-c', '--credentials', default="my.credentials")
-parser.add_argument('-k', '--key', default='consumer.key')
-parser.add_argument('-s', '--secret', default='consumer.secret')
 
 ##############################
 #setup credentials
@@ -164,7 +155,17 @@ def add_members(t, list_name, list_id, members):
 
 
 if __name__ == "__main__":
+    # Setup
+    parser = argparse.ArgumentParser("")
+    # todo: add output filename target
+    parser.add_argument('-t', '--source', default='output.org')
+    parser.add_argument('-b', '--backup', default='backup_')
+    parser.add_argument('-c', '--credentials', default="my.credentials")
+    parser.add_argument('-k', '--key', default='consumer.key')
+    parser.add_argument('-s', '--secret', default='consumer.secret')
+
     args = parser.parse_args()
+
     MY_TWITTR_CREDS = args.credentials
     KEY_FILE = args.key
     SECRET_FLE = args.secret

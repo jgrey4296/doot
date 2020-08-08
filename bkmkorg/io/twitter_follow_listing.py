@@ -11,8 +11,9 @@ from time import sleep
 import pickle
 import textwrap
 from functools import partial
-# Setup root_logger:
+import argparse
 import logging as root_logger
+
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.user_listing"
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
@@ -22,18 +23,6 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 
-import argparse
-
-#see https://docs.python.org/3/howto/argparse.html
-parser = argparse.ArgumentParser("")
-# todo: add output filename target
-parser.add_argument('-t', '--target', default='output.org')
-parser.add_argument('-b', '--backup', default='backup_')
-parser.add_argument('-c', '--credentials', default="my.credentials")
-parser.add_argument('-k', '--key', default="consumer.key")
-parser.add_argument('-s', '--secret', default="consumer.secret")
-
-# parser.add_argument('--aBool', action="store_true")
 
 
 ##############################
@@ -153,7 +142,17 @@ def user_obj_to_tuple(user_obj):
 
 
 if __name__ == "__main__":
+    # Setup
+    parser = argparse.ArgumentParser("")
+    # todo: add output filename target
+    parser.add_argument('-t', '--target', default='output.org')
+    parser.add_argument('-b', '--backup', default='backup_')
+    parser.add_argument('-c', '--credentials', default="my.credentials")
+    parser.add_argument('-k', '--key', default="consumer.key")
+    parser.add_argument('-s', '--secret', default="consumer.secret")
+
     args = parser.parse_args()
+
     MY_TWITTER_CREDS = absfile(expanduser(args.credentials))
     KEY_FILE = absfile(expanduser(args.key))
     SECRET_FILE = absfile(expanduser(args.secret))

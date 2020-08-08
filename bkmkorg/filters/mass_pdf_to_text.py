@@ -21,6 +21,7 @@ logging = root_logger.getLogger(__name__)
 ##############################
 
 def find_files(start):
+    """ DFS for files """
     logging.info("Finding pdfs in {}".format(start))
     queue = [start]
     files = []
@@ -59,7 +60,6 @@ def convert_alternative(source, output_dir, title):
 
 
 if __name__ == "__main__":
-    #see https://docs.python.org/3/howto/argparse.html
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog = "\n".join([""]))
     parser.add_argument('-l', '--library')

@@ -1,27 +1,26 @@
+"""
+Find tweets missing from the main library
+"""
 # Setup root_logger:
 from os.path import join, isfile, exists, abspath
 from os.path import split, isdir, splitext, expanduser
 from os import listdir
-
 from os.path import splitext, split
 import logging as root_logger
-LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
-root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
-
-console = root_logger.StreamHandler()
-console.setLevel(root_logger.INFO)
-root_logger.getLogger('').addHandler(console)
-logging = root_logger.getLogger(__name__)
+import argparse
 ##############################
 
 
-
-
-
 if __name__ == "__main__":
-    import argparse
+    # Setup
+    LOGLEVEL = root_logger.DEBUG
+    LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+    root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
+    console = root_logger.StreamHandler()
+    console.setLevel(root_logger.INFO)
+    root_logger.getLogger('').addHandler(console)
+    logging = root_logger.getLogger(__name__)
     #see https://docs.python.org/3/howto/argparse.html
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog = "\n".join(["Compare two sets of twitter ids"]))
@@ -35,10 +34,12 @@ if __name__ == "__main__":
     args.source = abspath(expanduser(args.source))
     args.output = abspath(expanduser(args.output))
 
+    # Get the library ids
     library_set = set([])
     with open(args.library,'r') as f:
         library_set.update([x.strip() for x in f.readlines()])
 
+    # Get the ids to check
     source_set = set([])
     source_dict = {}
     with open(args.source,'r') as f:
