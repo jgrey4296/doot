@@ -2,17 +2,18 @@
 Script to Process Bibtex, bookmark, and org files for tags
 and to collect them
 """
-import logging as root_logger
-import argparse
-from math import ceil
-from os import listdir
-from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath, split
-from bkmkorg.io.import_netscape import open_and_extract_bookmarks
-import regex as re
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
+from bkmkorg.io.import_netscape import open_and_extract_bookmarks
+from bkmkorg.filters.tag_clean import collect_tags
+from math import ceil
+from os import listdir, mkdir
+from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath, split
+import argparse
 import bibtexparser as b
+import logging as root_logger
 import regex
+import regex as re
 
 # Setup logger
 LOGLEVEL = root_logger.DEBUG
@@ -187,25 +188,43 @@ if __name__ == "__main__":
                                  epilog="\n".join(["Extracts all tags in all bibtex, bookmark and org files in specified dirs"]))
     parser.add_argument('-t', '--target',action="append")
     parser.add_argument('-o', '--output', default="collected")
+    parser.add_argument('-c', '--cleaned', action="append")
 
     logging.info("Tag Collation start: --------------------")
-    args = parser.parse_args()
-    args.target = [abspath(expanduser(x)) for x in args.target]
-    args.output = abspath(expanduser(args.output))
+    cli_args = parser.parse_args()
+    cli_args.target = [abspath(expanduser(x)) for x in cli_args.target]
+    cli_args.output = abspath(expanduser(cli_args.output))
+    cli_args.cleaned = [abspath(expanduser(x)) for x in cli_args.cleaned]
 
-    logging.info("Targeting: {}".format(args.target))
-    if isdir(args.output):
-        args.output = join(args.output, "tags")
-    logging.info("Output to: {}".format(args.output))
+    logging.info("Targeting: {}".format(cli_args.target))
+    if isdir(cli_args.output):
+        cli_args.output = join(cli_args.output, "tags")
+    logging.info("Output to: {}".format(cli_args.output))
+    logging.info("Cleaned Tags locations: {}".format(cli_args.cleaned))
 
-    bibs, htmls, orgs = collect_files(args.target)
+    bibs, htmls, orgs = collect_files(cli_args.target)
     bib_db = parse_bib_files(bibs)
     bib_tags = extract_tags_from_bibtex(bib_db)
     org_tags = extract_tags_from_org_files(orgs)
     html_tags = extract_tags_from_html_files(htmls)
     all_tags = combine_all_tags([bib_tags, org_tags, html_tags])
-    write_tags(bib_tags, args.output + "_bib")
-    write_tags(org_tags, args.output + "_orgs")
-    write_tags(html_tags, args.output + "_htmls")
-    write_tags(all_tags, args.output)
+    write_tags(bib_tags, cli_args.output + "_bib")
+    write_tags(org_tags, cli_args.output + "_orgs")
+    write_tags(html_tags, cli_args.output + "_htmls")
+    write_tags(all_tags, cli_args.output)
     logging.info("Complete --------------------")
+
+    if not bool(cli_args.cleaned):
+        exit()
+
+    # load existing tag files
+    cleaned = collect_tags(cli_args.cleaned)
+
+    # get new tags
+    tags = set(all_tags.keys())
+    ctags = set(cleaned.keys())
+    new_tags = tags - ctags
+
+    new_tag_dict = {x : all_tags[x] for x in new_tags}
+    # group them separately, alphabeticaly
+    write_tags(new_tag_dict, cli_args.output + "_new_tags")
