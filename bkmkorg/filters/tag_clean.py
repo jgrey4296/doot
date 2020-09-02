@@ -2,28 +2,21 @@
 Script to Process Bibtex, bookmark, and org files for tags
 and to clean them
 """
-import logging as root_logger
-import argparse
-from math import ceil
-from os import listdir
-from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath, split
-from bkmkorg.io.import_netscape import open_and_extract_bookmarks
-from bkmkorg.io.export_netscape import exportBookmarks
-from bkmkorg.bookmark_data import bookmarkTuple
-import regex as re
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
+from bkmkorg.bookmark_data import bookmarkTuple
+from bkmkorg.io.export_netscape import exportBookmarks
+from bkmkorg.io.import_netscape import open_and_extract_bookmarks
+from math import ceil
+from os import listdir
+from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath, split
+import argparse
 import bibtexparser as b
+import logging as root_logger
 import regex
+import regex as re
 
-LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
-root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
-
-console = root_logger.StreamHandler()
-console.setLevel(root_logger.INFO)
-root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 
 ORG_TAG_REGEX = regex.compile("^\*\*\s+(.+?)(\s+):(\S+):$")
@@ -66,6 +59,7 @@ def custom(record):
 bparser.customization = custom
 
 def collect_tags(targets):
+    """ DFS targets, get tags, """
     logging.info("Collecting Tags")
     tag_substitutor = {}
     remaining = targets[:]
@@ -83,6 +77,7 @@ def collect_tags(targets):
                 #read_org file
                 tag_substitutor.update(read_org_tags(current))
 
+            processed.add(current)
         else:
             assert(isdir(current))
             subdirs = [join(current, x) for x in listdir(current)]
@@ -92,6 +87,10 @@ def collect_tags(targets):
     return tag_substitutor
 
 def read_raw_tags(target):
+    """ Read a text file of the form:
+    tag : num : sub : sub : sub....
+    returning a dict of {tag : [sub]}
+    """
     lines = []
     sub = {}
     with open(target,'r') as f:
@@ -100,12 +99,18 @@ def read_raw_tags(target):
     #split and process
     for line in lines:
         components = line.split(":")
+        assert(components[0].strip() not in sub)
+        sub[components[0].strip()] = []
         if len(components) > 2:
-            sub[components[0].strip()] = [x.strip() for x in components[2:]]
+            sub[components[0].strip()] += [x.strip() for x in components[2:]]
 
     return sub
 
 def read_org_tags(target):
+    """ Read an org file headings and lines of form:
+    tag : num : sub : sub : sub : sub...
+    returning a dict of {tag: [sub]}
+    """
     lines = []
     sub = {}
     with open(target,'r') as f:
@@ -116,8 +121,10 @@ def read_org_tags(target):
         if line[0] == "*":
             continue
         components = line.split(":")
+        assert(components[0].strip() not in sub)
+        sub[components[0].strip()] = []
         if len(components) > 2:
-            sub[components[0].strip()] = [x.strip() for x in components[2:]]
+            sub[components[0].strip()] += [x.strip() for x in components[2:]]
 
     return sub
 
@@ -176,7 +183,7 @@ def clean_bib_files(bib_files, sub):
             tags = [x.strip() for x in match[2].split(",")]
             replacement_tags = set([])
             for tag in tags:
-                if tag in sub:
+                if tag in sub and bool(sub[tag]):
                     [replacement_tags.add(new_tag) for new_tag in sub[tag]]
                 else:
                     replacement_tags.add(tag)
@@ -215,7 +222,7 @@ def clean_org_files(org_files, sub):
             replacement_tags = set([])
             #swap to dict:
             for tag in individual_tags:
-                if tag in sub:
+                if tag in sub and bool(sub[tag]):
                     [replacement_tags.add(new_tag) for new_tag in sub[tag]]
                 else:
                     replacement_tags.add(tag)
@@ -239,7 +246,7 @@ def clean_html_files(html_files, sub):
             replacement_tags = set([])
             for tag in bkmk.tags:
                 # clean
-                if tag in sub:
+                if tag in sub and bool(sub[tag]):
                     [replacement_tags.add(new_tag) for new_tag in sub[tag]]
                 else:
                     replacement_tags.add(tag)
@@ -252,6 +259,15 @@ def clean_html_files(html_files, sub):
 #--------------------------------------------------
 if __name__ == "__main__":
     logging.info("Tag Cleaning start: --------------------")
+    LOGLEVEL = root_logger.DEBUG
+    LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+    root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
+
+    console = root_logger.StreamHandler()
+    console.setLevel(root_logger.INFO)
+    root_logger.getLogger('').addHandler(console)
+    logging = root_logger.getLogger(__name__)
+
     args = parser.parse_args()
     args.target = [abspath(expanduser(x)) for x in args.target]
     args.cleaned = [abspath(expanduser(x)) for x in args.cleaned]
@@ -262,6 +278,7 @@ if __name__ == "__main__":
     #Load Cleaned Tags
     cleaned_tags = collect_tags(args.cleaned)
     logging.info("Loaded {} tag substitutions".format(len(cleaned_tags)))
+
     #Load Bibtexs, html, orgs and clean each
     bibs, htmls, orgs = collect_files(args.target)
     clean_bib_files(bibs, cleaned_tags)
