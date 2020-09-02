@@ -2,7 +2,8 @@
 Integrates newly parsed twitter->org files
 into the existing set
 """
-from os.path import join, isfile, exists, isdir, splitext, expanduser, split
+from os.path import join, isfile, exists, abspath
+from os.path import split, isdir, splitext, expanduser
 from os import listdir, mkdir
 from subprocess import call
 from random import choice
@@ -23,22 +24,28 @@ if __name__ == "__main__":
     ##############################
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog = "\n".join(["Integrate newly parsed twitter orgs into the existing library"]))
-    parser.add_argument('-s', '--source')
+    parser.add_argument('-s', '--source', action="append")
     parser.add_argument('-l', '--library')
+    parser.add_argument('-e', '--exclude', action="append")
 
     args = parser.parse_args()
-    args.source = expanduser(args.source)
-    args.library= expanduser(args.library)
+    args.source = [abspath(expanduser(x)) for x in args.source]
+    args.library= abspath(expanduser(args.library))
+    args.exclude = [abspath(expanduser(x)) for x in args.exclude]
 
     if any([not exists(x) for x in [args.source, args.library]]):
         raise Exception('Source and Output need to exist')
 
     #load the newly parsed org names
+    # { file_name : parent_path }
     newly_parsed = {}
-    if isfile(args.source):
-        newly_parsed[split(args.source)[1]] = args.source
-    else:
-        newly_parsed = {x : args.source for x in listdir(args.source) if splitext(x)[1] == '.org'}
+    for source in args.source:
+        if isfile(source):
+            newly_parsed[split(source)[1]] = source
+        else:
+            found = {x : source for x in listdir(source) if splitext(x)[1] == '.org'}
+            newly_parsed.update(found)
+
 
     logging.info("Newly parsed to transfer: {}".format(len(newly_parsed)))
 
@@ -47,6 +54,8 @@ if __name__ == "__main__":
     queue = [args.library]
     while queue:
         current = queue.pop(0)
+        if current in args.exclude:
+            continue
         if isdir(current):
             queue += [join(current,x) for x in listdir(current)]
         elif splitext(current)[1] == ".org":
