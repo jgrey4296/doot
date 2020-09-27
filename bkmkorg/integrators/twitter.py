@@ -27,13 +27,18 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--source', action="append")
     parser.add_argument('-l', '--library')
     parser.add_argument('-e', '--exclude', action="append")
+    parser.add_argument('-G', '--groupless', action="store_true")
+
 
     args = parser.parse_args()
     args.source = [abspath(expanduser(x)) for x in args.source]
     args.library= abspath(expanduser(args.library))
+    if args.exclude is None:
+        args.exclude = []
+
     args.exclude = [abspath(expanduser(x)) for x in args.exclude]
 
-    if any([not exists(x) for x in [args.source, args.library]]):
+    if any([not exists(x) for x in args.source + [args.library]]):
         raise Exception('Source and Output need to exist')
 
     #load the newly parsed org names
@@ -78,10 +83,10 @@ if __name__ == "__main__":
         existing_files = join(existing_orgs[x], "{}_files".format(splitext(x)[0]))
 
         with open(new_org, 'r') as f:
-            discard = f.readline()
             lines = f.read()
 
         with open(existing_org, 'a') as f:
+            f.write("\n")
             f.write(lines)
 
         for y in listdir(new_files):
@@ -103,6 +108,8 @@ if __name__ == "__main__":
             first_letter = "symbols"
 
         target_for_new = join(args.library,"group_{}".format(first_letter))
+        if args.groupless:
+            target_for_new = args.library
 
         call(['cp', file_name, target_for_new])
         call(['cp' ,'-r' ,file_dir, target_for_new])
