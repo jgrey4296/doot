@@ -99,10 +99,14 @@ def read_raw_tags(target):
     #split and process
     for line in lines:
         components = line.split(":")
-        assert(components[0].strip() not in sub)
-        sub[components[0].strip()] = []
+        component_zero = components[0].strip()
+        if component_zero == "":
+            continue
+
+        assert(component_zero not in sub)
+        sub[component_zero] = []
         if len(components) > 2:
-            sub[components[0].strip()] += [x.strip() for x in components[2:]]
+            sub[component_zero] += [x.strip() for x in components[2:]]
 
     return sub
 
