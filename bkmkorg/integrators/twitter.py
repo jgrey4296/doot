@@ -32,7 +32,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     args.source = [abspath(expanduser(x)) for x in args.source]
-    args.library= abspath(expanduser(args.library))
+    args.library = abspath(expanduser(args.library))
     if args.exclude is None:
         args.exclude = []
 
