@@ -7,6 +7,7 @@ Tagset Utilities
 import logging as root_logger
 logging = root_logger.getLogger(__name__)
 
+import networkx as nx
 import regex
 import regex as re
 
@@ -104,7 +105,7 @@ def extract_tags_from_html_files(html_files, the_graph=None):
                     the_graph[u][v]['weight'] += 1
 
     return the_graph
-def collect_tags(targets):
+def collect_tag_substitutions(targets):
     """ DFS targets, get tags, """
     logging.info("Collecting Tags")
     tag_substitutor = {}

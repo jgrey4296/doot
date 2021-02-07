@@ -7,6 +7,7 @@ Utilities to retrieve files of use
 import logging as root_logger
 from os import listdir, mkdir
 from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath, split
+from unicodedata import normalize as norm_unicode
 
 logging = root_logger.getLogger(__name__)
 img_exts = [".jpg",".jpeg",".png",".gif",".webp",".tiff"]
@@ -21,7 +22,7 @@ def collect_files(targets):
     org_files      = set()
 
     processed      = set([])
-    remaining_dirs = targets[:]
+    remaining_dirs = [abspath(expanduser(x)) for x in targets]
 
     while bool(remaining_dirs):
         target = remaining_dirs.pop(0)
@@ -50,11 +51,14 @@ def collect_files(targets):
 
     return (bib_files, html_files, org_files)
 
-def get_data_files(initial, ext):
+def get_data_files(initial, ext=None, normalize=False):
     """
     Getting all files of an extension
     """
     logging.info("Getting Data Files")
+    if ext is None:
+        ext = []
+
     if not isinstance(ext, list):
         ext = [ext]
     if not isinstance(initial, list):
@@ -62,13 +66,16 @@ def get_data_files(initial, ext):
 
     unreognized_types = set()
     files = []
-    queue = initial[:]
+    queue = [abspath(expanduser(x)) for x in initial]
     while bool(queue):
         current = queue.pop(0)
         ftype = splitext(current)[1].lower()
-        if isfile(current) and ftype in ext:
+        match_type = not bool(ext) or ftype in ext
+        missing_type = ftype not in unrecognised_types
+
+        if isfile(current) and match_type:
             files.append(current)
-        elif isfile(current) and ftype not in ext and ftype not in unrecognised_types:
+        elif isfile(current) and not match_type and missing_type:
             logging.warning("Unrecognized file type: {}".format(splitext(current)[1].lower()))
             unrecognised_types.add(ftype)
         elif isdir(current):
@@ -77,15 +84,19 @@ def get_data_files(initial, ext):
 
 
     logging.info("Found {} {} files".format(len(files), ext))
+    if normalize:
+        files = [norm_unicode("NFD", x) for x in files]
     return files
 
 
 
-def read_raw_tags(target, org=False):
+def read_raw_tags(target):
     """ Read a text file of the form:
     tag : num : sub : sub : sub....
     returning a dict of {tag : [sub]}
     """
+    assert(splitext(target)[1] in [".txt", ".org"])
+    org = splitext(target)[1] == ".org"
     lines = []
     sub = {}
     with open(target,'r') as f:

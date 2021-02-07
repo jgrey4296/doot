@@ -21,14 +21,23 @@ def get2(srcpages):
 
     return merged.render()
 
-def read_pdfs(paths, func=None, output="./pdf_summary.pdf"):
+def summarise_pdfs(paths, func=None, output="./pdf_summary", bound=200):
+    count = 0
+    if isdir(output):
+        output = join(output, "summary")
+
     writer = PdfWriter()
 
     for path in paths:
         pdf_ob = PdfReader(pdf)
         writer.addpages(func(pdf_obj))
 
-    writer.write(output)
+        if len(writer.pages) > bound:
+            # if pdf is too big, create another
+            writer.write("{}_{}.pdf".format(output, count))
+            count += 1
+
+    writer.write("{}_{}.pdf".format(output, count))
 
 def convert_pdfs_to_text(files):
     logging.info("Converting {} files".format(len(files)))

@@ -17,10 +17,12 @@ def make_parser(func):
     bparser.customization = func
     return bparser
 
-def parse_bib_files(bib_files, func=None):
+def parse_bib_files(bib_files, func=None, database=None):
     """ Parse all the bibtext files into a shared database """
-    db = b.bibdatabase.BibDatabase()
     bparser = make_parser(func)
+    db = database
+    if db is None:
+        db = b.bibdatabase.BibDatabase()
     for x in bib_files:
         with open(x, 'r') as f:
             logging.info("Loading bibtex: {}".format(x))

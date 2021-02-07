@@ -16,6 +16,9 @@ def hash_all(files):
     Map hashes to files,
     plus hashes with more than one image
     """
+    assert(isinstance(files, list))
+    assert(all([isfile(x) for x in files]))
+
     hash_dict = {}
     conflicts = {}
     update_num = int(len(files) / 100)
