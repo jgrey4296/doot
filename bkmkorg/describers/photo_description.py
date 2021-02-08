@@ -20,68 +20,15 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
+
+from bkmkorg.utils import retrieval
+from bkmkorg.utils import bibtex as BU
+from bkmkorg.utils import hash_check
+
 ##############################
 # CONSTANTS
 ####################
 FILE_TYPES = [".gif",".jpg",".jpeg",".png",".mp4",".bmp"]
-
-##############################
-# Utilities
-####################
-def file_to_hash(filename):
-    with open(filename, 'rb') as f:
-        return sha256(f.read()).hexdigest()
-
-##############################
-# Core Functions
-####################
-def find_images(directories):
-    """
-    DFS on directories to find all images
-    """
-    found = []
-    queue = directories[:]
-    processed = set()
-    while queue:
-        current = queue.pop(0)
-        if current in processed:
-            continue
-        else:
-            processed.add(current)
-
-        if isfile(current) and splitext(current)[1].lower() in FILE_TYPES:
-            found.append(current)
-
-        elif isfile(current) and splitext(current)[1].lower() not in FILE_TYPES:
-            logging.warning("Unrecognized file type: {}".format(splitext(current)[1].lower()))
-
-        elif isdir(current):
-            queue += [join(current,x) for x in listdir(current)]
-
-    return found
-
-
-def hash_all(images):
-    """
-    Map hashes to images,
-    plus hashes with more than one image
-    """
-    hash_dict = {}
-    conflicts = {}
-    update_num = int(len(images) / 100)
-    count = 0
-    for i,x in enumerate(images):
-        if i % update_num == 0:
-            logging.info("{} / 100".format(count))
-            count += 1
-        the_hash = file_to_hash(x)
-        if the_hash not in hash_dict:
-            hash_dict[the_hash] = []
-        hash_dict[the_hash].append(x)
-        if len(hash_dict[the_hash]) > 1:
-            conflicts[the_hash] = len(hash_dict[the_hash])
-
-    return (hash_dict, conflicts)
 
 ########################################
 if __name__ == "__main__":
@@ -93,11 +40,10 @@ if __name__ == "__main__":
     parser.add_argument('-t', '--target', action='append')
     parser.add_argument('-o', '--output')
     args = parser.parse_args()
-    args.target = [expanduser(x) for x in args.target]
     logging.info("Finding images")
-    images = find_images(args.target)
+    images = retrieval.get_data_files(args.target, FILE_TYPES)
     logging.info("Hashing {} images".format(len(images)))
-    hash_dict, conflicts = hash_all(images)
+    hash_dict, conflicts = hash_check.hash_all(images)
     logging.info("Hashed all images, {} conflicts".format(len(conflicts)))
 
     #write conflicts to an org file:

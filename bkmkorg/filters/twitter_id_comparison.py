@@ -8,6 +8,10 @@ from os import listdir
 from os.path import splitext, split
 import logging as root_logger
 import argparse
+
+from bkmkorg.utils import retrieval
+from bkmkorg.utils import bibtex as BU
+
 ##############################
 
 
@@ -34,6 +38,7 @@ if __name__ == "__main__":
     args.source = abspath(expanduser(args.source))
     args.output = abspath(expanduser(args.output))
 
+    assert(isfile(args.library) and isfile(args.source))
     # Get the library ids
     library_set = set([])
     with open(args.library,'r') as f:

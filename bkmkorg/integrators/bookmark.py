@@ -1,12 +1,15 @@
 """
 Integrate new bookmarks into the main bookmark file
 """
-import argparse
-from bkmkorg.io.import_netscape import open_and_extract_bookmarks
-from bkmkorg.io.export_org import exportBookmarks as org_export
 from bkmkorg.io.export_netscape import exportBookmarks as html_export
+from bkmkorg.io.export_org import exportBookmarks as org_export
+from bkmkorg.io.import_netscape import open_and_extract_bookmarks
 from os.path import splitext, split, exists, expanduser, abspath
+import argparse
 import logging as root_logger
+
+from bkmkorg.utils import retrieval
+from bkmkorg.utils import bibtex as BU
 
 
 
@@ -27,17 +30,17 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--output')
 
     args = parser.parse_args()
-    args.sources = [abspath(expanduser(x)) for x in args.sources]
 
-    assert(all([exists(x) for x in args.sources]))
+    source_files = retrieval.get_data_files(args.sources, ".html")
 
     # Exit if not targeting a bookmark file
     if splitext(args.output)[1] != ".html":
         raise Exception("Html not specified for output")
 
     # Ask to overwrite output file
-    if exists(args.output):
+    if exists(args.output) and args.output not in source_files:
         logging.warning("Ouput already exists: {}".format(args.output))
+        logging.warning("Output is not in source targets")
         response = input("Overwrite? Y/*: ")
         if response != "Y":
             logging.info("Cancelling")
@@ -46,7 +49,7 @@ if __name__ == "__main__":
     #load the sources
     bkmk_dict = {}
 
-    for loc in args.sources:
+    for loc in source_files:
         logging.info("Dict Length: {}".format(len(bkmk_dict)))
         logging.info("Opening: {}".format(loc))
         source_bkmks = open_and_extract_bookmarks(loc)

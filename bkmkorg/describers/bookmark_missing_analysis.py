@@ -11,7 +11,8 @@ from os import listdir
 from os.path import splitext, split
 import logging as root_logger
 
-
+from bkmkorg.utils import retrieval
+from bkmkorg.utils import bibtex as BU
 
 if __name__ == "__main__":
     # Setup root_logger:
@@ -40,15 +41,12 @@ if __name__ == "__main__":
     logging.info("Finding Links missing from: {}".format(args.library))
 
     # Get sources
-    sources = [x for x in args.source if isfile(x)]
-    for x in [x for x in args.source if isdir(x)]:
-        files = [join(x,y) for y in listdir(x) if splitext(y)[1] == '.html']
-        sources += files
-
+    sources = retrieval.get_data_files(args.source, [".html",".txt"])
     logging.info("Using Source: {}".format(sources))
 
     #Load Library
-    lib_list = open_and_extract_bookmarks(args.library)
+    library_files = retrieval.get_data_files(args.library, ".html")
+    lib_list = [y for x in library_files for y in open_and_extract_bookmarks(x)]
 
     to_check = []
     to_check_raw = []

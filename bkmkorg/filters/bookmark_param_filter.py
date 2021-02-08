@@ -14,6 +14,9 @@ import logging
 import argparse
 import regex as re
 
+from bkmkorg.utils import retrieval
+from bkmkorg.utils import bibtex as BU
+
 query_re = re.compile(r'\*+\s+\(\d+\) (.+)$')
 
 if __name__ == "__main__":
@@ -28,14 +31,14 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--output')
 
     args = parser.parse_args()
-    args.source = [abspath(expanduser(x)) for x in args.source]
     args.output = abspath(expanduser(args.output))
     if args.query is not None:
         args.query = abspath(expanduser(args.query))
 
     the_trie = Trie()
     #load any sources
-    bkmk_sources = [open_and_extract_bookmarks(f) for f in args.source]
+    source_files = retrieval.get_data_files(args.source, ".html")
+    bkmk_sources = [y for x in source_files for x in open_and_extract_bookmarks(x)]
 
     #insert into the trie
     for bkmk_group in bkmk_sources:

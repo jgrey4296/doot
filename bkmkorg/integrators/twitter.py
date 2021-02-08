@@ -10,6 +10,8 @@ from random import choice
 import argparse
 import logging as root_logger
 
+from bkmkorg.utils import retrieval
+from bkmkorg.utils import bibtex as BU
 
 if __name__ == "__main__":
     # Setup
@@ -56,7 +58,7 @@ if __name__ == "__main__":
 
     #get the existing org names, as a dict with its location
     existing_orgs = {}
-    queue = [args.library]
+    queue = args.library[:]
     while queue:
         current = queue.pop(0)
         if current in args.exclude:
@@ -70,6 +72,7 @@ if __name__ == "__main__":
 
     totally_new = []
     #now update existing with the new
+
     for x in newly_parsed:
         if x not in existing_orgs:
             logging.info("Found a completely new user: {}".format(x))

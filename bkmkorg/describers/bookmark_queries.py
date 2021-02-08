@@ -14,6 +14,8 @@ from urllib.parse import urlparse
 import argparse
 import logging as root_logger
 
+from bkmkorg.utils import retrieval
+from bkmkorg.utils import bibtex as BU
 
 
 if __name__ == "__main__":
@@ -44,7 +46,8 @@ if __name__ == "__main__":
 
     # Load the library
     logging.info("Loading Library")
-    library = open_and_extract_bookmarks(args.library)
+    lib_files = retrieval.get_data_files(args.library, ".html")
+    library = [y for x in lib_files for y in open_and_extract_bookmarks(x)]
 
     # Convert to a Trie
     logging.info("Processing Library")

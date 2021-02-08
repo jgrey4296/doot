@@ -3,17 +3,10 @@ Script to Process Bibtex, bookmark, and org files for tags
 and to collect them
 """
 from bibtexparser import customization as c
-from bibtexparser.bparser import BibTexParser
 from bkmkorg.io.import_netscape import open_and_extract_bookmarks
-from bkmkorg.filters.tag_clean import collect_tags
-from math import ceil
-from os import listdir, mkdir
-from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath, split
+from os.path import join, isdir, splitext, expanduser, abspath, split
 import argparse
-import bibtexparser as b
 import logging as root_logger
-import regex
-import regex as re
 
 # Setup logger
 LOGLEVEL = root_logger.DEBUG
@@ -25,7 +18,9 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 
-ORG_TAG_REGEX = regex.compile("^\*\*\s+.+?\s+:(\S+):$")
+from bkmkorg.utils import retrieval
+from bkmkorg.utils import bibtex as BU
+from bkmkorg.utils import tags as TU
 
 ##############################
 def custom(record):
@@ -52,134 +47,7 @@ def custom(record):
     return record
 
 
-bparser = BibTexParser(common_strings=False)
-bparser.ignore_nonstandard_types = False
-bparser.homogenise_fields = True
-bparser.customization = custom
 
-def collect_files(targets):
-    """ DFS targets, collecting files into their types """
-    logging.info("Processing Files: {}".format(targets))
-    bib_files = set()
-    html_files = set()
-    org_files = set()
-
-    processed = set([])
-    remaining_dirs = targets[:]
-    while bool(remaining_dirs):
-        target = remaining_dirs.pop(0)
-        if target in processed:
-            continue
-        processed.add(target)
-        if isfile(target):
-            ext = splitext(target)[1]
-            if ext == ".bib":
-                bib_files.add(target)
-            elif ext == ".html":
-                html_files.add(target)
-            elif ext == ".org":
-                org_files.add(target)
-        else:
-            assert(isdir(target))
-            subdirs = [join(target, x) for x in listdir(target)]
-            remaining_dirs += subdirs
-
-    logging.info("Split into: {} bibtex files, {} html files and {} org files".format(len(bib_files),
-                                                                                      len(html_files),
-                                                                                      len(org_files)))
-    logging.debug("Bibtex files: {}".format("\n".join(bib_files)))
-    logging.debug("Html Files: {}".format("\n".join(html_files)))
-    logging.debug("Org Files: {}".format("\n".join(org_files)))
-
-    return (bib_files, html_files, org_files)
-
-def parse_bib_files(bib_files):
-    """ Parse all the bibtext files into a shared database """
-    db = b.bibdatabase.BibDatabase()
-    for x in bib_files:
-        with open(x, 'r') as f:
-            logging.info("Loading bibtex: {}".format(x))
-            db = b.load(f, bparser)
-    logging.info("Bibtex loaded")
-    return db
-
-def extract_tags_from_bibtex(db):
-    logging.info("Processing Bibtex: {}".format(len(db.entries)))
-    proportion = int(len(db.entries) / 10)
-    count = 0
-    bib_tags = {}
-    for i, entry in enumerate(db.entries):
-        if i % proportion == 0:
-            logging.info("{}/10 Complete".format(count))
-            count += 1
-
-        #get tags
-        e_tags = entry['tags']
-        for x in e_tags:
-            if x not in bib_tags:
-                bib_tags[x] = 0
-            bib_tags[x] += 1
-    return bib_tags
-
-def extract_tags_from_org_files(org_files):
-    logging.info("Extracting data from orgs")
-    org_tags = {}
-
-    for org in org_files:
-        #read
-        text = []
-        with open(org,'r') as f:
-            text = f.readlines()
-
-        #line by line
-        for line in text:
-            tags = ORG_TAG_REGEX.findall(line)
-            individual_tags = []
-            if not bool(tags):
-                continue
-
-            individual_tags = [x for x in tags[0].split(':') if x != '']
-            #Add to dict:
-            for tag in individual_tags:
-                if tag not in org_tags:
-                    org_tags[tag] = 0
-                org_tags[tag] += 1
-
-    return org_tags
-
-def extract_tags_from_html_files(html_files):
-    logging.info("Extracting data from htmls")
-    html_tags = {}
-
-    for html in html_files:
-        bkmks = open_and_extract_bookmarks(html)
-        for bkmk in bkmks:
-            for tag in bkmk.tags:
-                if tag not in html_tags:
-                    html_tags[tag] = 0
-                html_tags[tag] += 1
-
-    return html_tags
-
-def combine_all_tags(dict_array):
-    logging.info("Combining tags")
-    all_tags = {}
-
-    for tag_dict in dict_array:
-        for tag,count in tag_dict.items():
-            if tag not in all_tags:
-                all_tags[tag] = 0
-            all_tags[tag] += count
-
-    return all_tags
-
-def write_tags(all_tags, output_target):
-    tag_str = ["{} : {}".format(k, v) for k, v in all_tags.items()]
-    with open("{}.tags".format(output_target), 'w') as f:
-        logging.info("Writing Tag Counts")
-        f.write("\n".join(tag_str))
-
-#--------------------------------------------------
 
 
 if __name__ == "__main__":
@@ -192,7 +60,6 @@ if __name__ == "__main__":
 
     logging.info("Tag Collation start: --------------------")
     cli_args = parser.parse_args()
-    cli_args.target = [abspath(expanduser(x)) for x in cli_args.target]
     cli_args.output = abspath(expanduser(cli_args.output))
     cli_args.cleaned = [abspath(expanduser(x)) for x in cli_args.cleaned]
 
@@ -202,23 +69,24 @@ if __name__ == "__main__":
     logging.info("Output to: {}".format(cli_args.output))
     logging.info("Cleaned Tags locations: {}".format(cli_args.cleaned))
 
-    bibs, htmls, orgs = collect_files(cli_args.target)
-    bib_db = parse_bib_files(bibs)
-    bib_tags = extract_tags_from_bibtex(bib_db)
-    org_tags = extract_tags_from_org_files(orgs)
-    html_tags = extract_tags_from_html_files(htmls)
-    all_tags = combine_all_tags([bib_tags, org_tags, html_tags])
-    write_tags(bib_tags, cli_args.output + "_bib")
-    write_tags(org_tags, cli_args.output + "_orgs")
-    write_tags(html_tags, cli_args.output + "_htmls")
-    write_tags(all_tags, cli_args.output)
+    bibs, htmls, orgs = retrieval.collect_files(cli_args.target)
+    bib_db    = BU.parse_bib_files(bibs)
+    bib_tags  = TU.extract_tags_from_bibtex(bib_db)
+    org_tags  = TU.extract_tags_from_org_files(orgs)
+    html_tags = TU.extract_tags_from_html_files(htmls)
+    all_tags  = TU.combine_all_tags([bib_tags, org_tags, html_tags])
+
+    TU.write_tags(bib_tags, cli_args.output + "_bib")
+    TU.write_tags(org_tags, cli_args.output + "_orgs")
+    TU.write_tags(html_tags, cli_args.output + "_htmls")
+    TU.write_tags(all_tags, cli_args.output)
     logging.info("Complete --------------------")
 
     if not bool(cli_args.cleaned):
         exit()
 
     # load existing tag files
-    cleaned = collect_tags(cli_args.cleaned)
+    cleaned = retrieval.read_raw_tags(cli_args.cleaned)
 
     # get new tags
     tags = set(all_tags.keys())
@@ -227,4 +95,4 @@ if __name__ == "__main__":
 
     new_tag_dict = {x : all_tags[x] for x in new_tags}
     # group them separately, alphabeticaly
-    write_tags(new_tag_dict, cli_args.output + "_new_tags")
+    TU.write_tags(new_tag_dict, cli_args.output + "_new_tags")

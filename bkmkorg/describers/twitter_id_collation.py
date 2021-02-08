@@ -14,6 +14,9 @@ from bibtexparser.bparser import BibTexParser
 import bibtexparser as b
 import regex
 
+from bkmkorg.utils import retrieval
+from bkmkorg.utils import bibtex as BU
+
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
@@ -22,66 +25,6 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
-
-ORG_ID_REGEX = regex.compile("^\s+:PERMALINK:\s+\[\[.+?/(\d+)\]")
-
-def collect_files(targets):
-    """ DFS targets, collecting files into their types """
-    logging.info("Processing Files: {}".format(targets))
-    bib_files = set()
-    html_files = set()
-    org_files = set()
-
-    processed = set([])
-    remaining_dirs = targets[:]
-    while bool(remaining_dirs):
-        target = remaining_dirs.pop(0)
-        if target in processed:
-            continue
-        processed.add(target)
-        if isfile(target):
-            ext = splitext(target)[1]
-            if ext == ".bib":
-                bib_files.add(target)
-            elif ext == ".html":
-                html_files.add(target)
-            elif ext == ".org":
-                org_files.add(target)
-        else:
-            assert(isdir(target))
-            subdirs = [join(target, x) for x in listdir(target)]
-            remaining_dirs += subdirs
-
-    logging.info("Split into: {} bibtex files, {} html files and {} org files".format(len(bib_files),
-                                                                                      len(html_files),
-                                                                                      len(org_files)))
-    logging.debug("Bibtex files: {}".format("\n".join(bib_files)))
-    logging.debug("Html Files: {}".format("\n".join(html_files)))
-    logging.debug("Org Files: {}".format("\n".join(org_files)))
-
-    return (bib_files, html_files, org_files)
-
-def extract_ids_from_orgs(org_files):
-    logging.info("Extracting data from orgs")
-    ids = set([])
-
-    for org in org_files:
-        #read
-        text = []
-        with open(org,'r') as f:
-            text = f.readlines()
-
-        #line by line
-        for line in text:
-            match = ORG_ID_REGEX.match(line)
-            individual_ids = []
-            if not bool(match):
-                continue
-
-            id_str = match[1]
-            ids.add(id_str)
-
-    return ids
 
 #--------------------------------------------------
 
@@ -94,14 +37,13 @@ if __name__ == "__main__":
 
     logging.info("Twitter ID Extractor start: --------------------")
     args = parser.parse_args()
-    args.target = [abspath(expanduser(x)) for x in args.target]
     args.output = abspath(expanduser(args.output))
 
     logging.info("Targeting: {}".format(args.target))
     logging.info("Output to: {}".format(args.output))
 
-    bibs, htmls, orgs = collect_files(args.target)
-    ids_set = extract_ids_from_orgs(orgs)
+    bibs, htmls, orgs = retrieval.collect_files(args.target)
+    ids_set = retrieval.extract_ids_from_orgs(orgs)
 
     logging.info("Found {} unique twitter ids".format(len(ids_set)))
     with open(args.output,'w') as f:

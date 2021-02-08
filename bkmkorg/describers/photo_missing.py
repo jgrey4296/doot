@@ -20,69 +20,9 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 
-FILE_TYPES = [".gif",".jpg",".jpeg",".png",".mp4",".bmp", ".mov", ".avi", ".webp", ".tiff"]
-missing_types = set()
-
-def file_to_hash(filename):
-    with open(filename, 'rb') as f:
-        return sha256(f.read()).hexdigest()
-
-def hash_all(images):
-    hash_dict = {}
-    conflicts = {}
-    update_num = int(len(images) / 100)
-    count = 0
-    for i,x in enumerate(images):
-        if i % update_num == 0:
-            logging.info("{} / 100".format(count))
-            count += 1
-        the_hash = file_to_hash(x)
-        if the_hash not in hash_dict:
-            hash_dict[the_hash] = []
-        hash_dict[the_hash].append(x)
-        if len(hash_dict[the_hash]) > 1:
-            conflicts[the_hash] = len(hash_dict[the_hash])
-
-    return (hash_dict, conflicts)
-
-def find_images(directories):
-    found = []
-    queue = directories[:]
-    processed = set()
-    while queue:
-        current = queue.pop(0)
-        if current in processed:
-            continue
-        else:
-            processed.add(current)
-        ftype = splitext(current)[1].lower()
-        if isfile(current) and ftype in FILE_TYPES:
-            found.append(current)
-
-        elif isfile(current) and ftype not in FILE_TYPES and ftype not in missing_types:
-            logging.warning("Unrecognized file type: {}".format(splitext(current)[1].lower()))
-            missing_types.add(ftype)
-
-        elif isdir(current):
-            queue += [join(current,x) for x in listdir(current)]
-
-    return found
-
-def find_missing(library, others):
-    # TODO: handle library hashes that already have a conflict
-    library_hash, conflicts = hash_all(library)
-    missing = []
-    update_num = int(len(others) / 100)
-    count = 0
-    for i,x in enumerate(others):
-        if i % update_num == 0:
-            logging.info("{} / 100".format(count))
-            count += 1
-        the_hash = file_to_hash(x)
-        if the_hash not in library_hash:
-            missing.append(x)
-    return missing
-
+from bkmkorg.utils import retrieval
+from bkmkorg.utils import bibtex as BU
+from bkmkorg.utils import hash_check
 
 ########################################
 if __name__ == "__main__":
@@ -97,14 +37,13 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--copy', action="store_true")
     parser.add_argument('-o', '--output')
     args = parser.parse_args()
-    args.target = [expanduser(x) for x in args.target]
 
     logging.info("Finding library images")
-    library_images = find_images(args.library)
+    library_images = retrieval.get_data_files(args.library, retrieval.img_and_video)
     logging.info("Finding target images")
-    target_images = find_images(args.target)
+    target_images = retrieval.get_data_files(args.target, retrieval.img_and_video)
     logging.info("Finding missing images")
-    missing = find_missing(library_images, target_images)
+    missing = hash_check.find_missing(library_images, target_images)
     logging.info("Found {} missing images".format(len(missing)))
 
     #write conflicts to an org file:

@@ -11,6 +11,10 @@ from os import listdir
 from os.path import splitext, split
 import logging as root_logger
 
+from bkmkorg.utils import retrieval
+from bkmkorg.utils import bibtex as BU
+
+
 if __name__ == "__main__":
     # Setup root_logger:
     LOGLEVEL = root_logger.DEBUG
@@ -28,11 +32,11 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--output', default="~/Desktop/deduplicated_bookmarks.html")
 
     args = parser.parse_args()
-    args.source = abspath(expanduser(args.source))
     args.output = abspath(expanduser(args.output))
 
     logging.info("Deduplicating {}".format(args.source))
-    to_check = open_and_extract_bookmarks(args.source)
+    source_files = retrieval.get_data_files(args.source, ".html")
+    to_check = [y for x in source_files for y in open_and_extract_bookmarks(x)]
 
     logging.info("Total Links to Check: {}".format(len(to_check)))
 

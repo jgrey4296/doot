@@ -17,6 +17,9 @@ LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
+from bkmkorg.utils import retrieval
+from bkmkorg.utils import bibtex as BU
+
 def make_bar(k, v, left_pad_v, right_scale_v):
     pad = ((10 + left_pad_v) - len(k))
     bar_graph = ceil(((100 - pad) / right_scale_v) * v)
@@ -72,12 +75,6 @@ if __name__ == "__main__":
     args.output = abspath(expanduser(args.output))
     assert(exists(args.target))
 
-    # Setup bibtex parser
-    parser = BibTexParser(common_strings=False)
-    parser.ignore_nonstandard_types = False
-    parser.homogenise_fields = True
-    parser.customization = custom
-
     logging.info("Targeting: {}".format(args.target))
     logging.info("Output to: {}".format(args.output))
 
@@ -89,12 +86,8 @@ if __name__ == "__main__":
         args.target = [join(src_dir, x) for x in listdir(args.target) if splitext(x)[1] == ".bib"]
 
     # Load targets
-    db = b.bibdatabase.BibDatabase()
-    for x in args.target:
-        with open(x, 'r') as f:
-            logging.info("Loading bibtex: {}".format(x))
-            db = b.load(f, parser)
-
+    bib_files = retrieval.get_data_files(args.target, ".bib")
+    db = BU.parse_bib_files(bib_files, func=custom)
     logging.info("Bibtex loaded")
 
     # Extracted data

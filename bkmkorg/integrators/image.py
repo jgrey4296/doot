@@ -1,13 +1,17 @@
 """
 Simple program to integrate images into a collection
 """
-import argparse
-from os.path import join, isfile, exists, isdir, splitext, expanduser, split, abspath
-from os import listdir, mkdir
 from hashlib import sha256
+from os import listdir, mkdir
+from os.path import join, isfile, exists, isdir, splitext, expanduser, split, abspath
 from shutil import copyfile
-import regex as re
+import argparse
 import logging as root_logger
+import regex as re
+
+from bkmkorg.utils import retrieval
+from bkmkorg.utils import bibtex as BU
+
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.md5PaperChecker"
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
@@ -21,12 +25,6 @@ logging = root_logger.getLogger(__name__)
 text_template = "** [[file://{}][{}]]\n"
 path_re = re.compile(r'^\*\*+\s+(?:TODO|DONE)?\[\[file:([\w/\.~]+)\]')
 file_types = ['.png', '.gif', '.jpg', '.jpeg']
-
-
-def fileToHash(filename):
-    logging.debug("Hashing: {}".format(filename))
-    with open(filename, 'br') as f:
-        return sha256(f.read()).hexdigest()
 
 
 

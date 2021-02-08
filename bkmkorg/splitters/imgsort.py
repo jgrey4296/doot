@@ -15,20 +15,8 @@ import PIL
 import logging as root_logger
 import numpy as np
 
-EXTS = [".jpg",".jpeg",".png",".gif",".webp",".tiff"]
 THUMB = (200,200)
 
-def get_imgs(path):
-    queue = [path]
-    found = []
-    while bool(queue):
-        current = queue.pop(0)
-        if isdir(current):
-            queue += [join(current,x) for x in listdir(current)]
-        elif splitext(current)[1].lower() in EXTS:
-            found.append(current)
-
-    return found
 
 def load_img(path):
     try:

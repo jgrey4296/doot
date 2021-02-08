@@ -18,11 +18,13 @@ from os.path import join, isfile, exists, abspath
 from os.path import split, isdir, splitext, expanduser
 from os import listdir
 
+from bkmkorg.utils import retrieval
+from bkmkorg.utils import bibtex as BU
+
 
 DEFAULT_PATTERN = re.compile("(.*?\[+)/Users/johngrey/Desktop/twitter/orgs/(.+?)(\]\[.+)$")
-
-PERMALINK = re.compile(r".*?:PERMALINK: *\[\[(.+?)\]\[")
-LINK = re.compile(r".*\[\[(.+?)\]\[")
+PERMALINK       = re.compile(r".*?:PERMALINK: *\[\[(.+?)\]\[")
+LINK            = re.compile(r".*\[\[(.+?)\]\[")
 
 
 def retarget_org_file_links(org_file, pattern):
@@ -96,12 +98,11 @@ if __name__ == "__main__":
     parser.add_argument('--pattern', default=DEFAULT_PATTERN)
 
     my_args = parser.parse_args()
-    my_args.target = [abspath(expanduser(x)) for x in my_args.target]
     my_args.media = abspath(expanduser(my_args.media))
     my_args.pattern = re.compile(my_args.pattern)
  
     # find all orgs
-    orgs = dfs_for_files(my_args.target, [".org"])
+    orgs = retrieval.get_data_files(my_args.target, ".org")
     found_media = {}
     logging.info("Found: {} orgs".format(len(orgs)))
     for org in orgs:

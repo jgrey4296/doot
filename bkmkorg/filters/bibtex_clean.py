@@ -13,6 +13,9 @@ import argparse
 import bibtexparser as b
 import regex as re
 
+from bkmkorg.utils import retrieval
+from bkmkorg.utils import bibtex as BU
+
 # Setup root_logger:
 from os.path import splitext, split
 import logging as root_logger
@@ -25,10 +28,6 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
-
-def file_to_hash(filename):
-    with open(filename, 'rb') as f:
-        return sha256(f.read()).hexdigest()
 
 def add_slash_if_necessary(x):
     if x[0] != '/' and x[0] != "~":
@@ -157,8 +156,6 @@ if __name__ == "__main__":
     parser.add_argument('-l', '--library', default="~/MEGA/pdflibrary")
     args = parser.parse_args()
 
-    args.target = realpath(abspath(expanduser(args.target)))
-    args.library = realpath(abspath(expanduser(args.library)))
     assert(exists(args.target))
 
     parser = BibTexParser(common_strings=False)
@@ -168,7 +165,6 @@ if __name__ == "__main__":
 
     logging.info("Targeting: {}".format(args.target))
     logging.info("Output to: {}".format(args.output))
-
 
     with open(args.target, 'r') as f:
         logging.info("Loading bibtex")

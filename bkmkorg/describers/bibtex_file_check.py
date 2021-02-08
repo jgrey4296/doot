@@ -14,6 +14,9 @@ import re
 from unicodedata import normalize
 import logging as root_logger
 
+from bkmkorg.utils import retrieval
+from bkmkorg.utils import bibtex as BU
+
 PATH_NORM = re.compile("^.+?pdflibrary")
 FILE_RE = re.compile("^file(\d*)")
 
@@ -48,19 +51,13 @@ if __name__ == "__main__":
     assert(isdir(args.library))
 
     # Get targets
-    all_bibs = [join(args.library, x) for x in listdir(args.library) if splitext(x)[1] == ".bib"]
-    main_db = b.bibdatabase.BibDatabase()
-    bibparser = BibTexParser(common_strings=False)
-
-    # Load targets into one database
-    for x in all_bibs:
-        with open(x, 'r') as f:
-            logging.info("Loading bibtex: {}".format(x))
-            main_db = b.load(f, bibparser)
+    all_bibs = retrieveal.get_data_files(args.library, ".bib")
+    main_db = BU.parse_bib_files(all_bibs)
 
     logging.info("Loaded Database: {} entries".format(len(main_db.entries)))
     count = 0
     all_file_mentions = []
+    all_existing_files = retrieval.get_data_files(args.taget, ".pdf", normalize=True)
 
     # Convert entries to unicode
     for i, entry in enumerate(main_db.entries):
@@ -73,22 +70,6 @@ if __name__ == "__main__":
         for k in entry_keys:
             all_file_mentions.append(normalize('NFD', unicode_entry[k]))
 
-    all_existing_files = []
-    queue = [args.target]
-    processed = set([])
-
-    # DFS for all pdf's in targets
-    while bool(queue):
-        current = queue.pop(0)
-        if current in processed:
-            continue
-        processed.add(current)
-        if isdir(current):
-            contents = [join(current, x) for x in listdir(current)]
-            pdfs = [normalize('NFD', x) for x in contents if splitext(x)[1] == ".pdf"]
-            dirs = [x for x in contents if isdir(x)]
-            all_existing_files += pdfs
-            queue += dirs
 
     logging.info("Found {} files mentioned in bibliography".format(len(all_file_mentions)))
     logging.info("Found {} files existing".format(len(all_existing_files)))

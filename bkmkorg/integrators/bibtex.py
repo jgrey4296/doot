@@ -6,12 +6,16 @@ from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
 from math import ceil
 from os import listdir, mkdir
-from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath
+from os.path import join, isfile, exists, isdir, expanduser, abspath
+from os.path import splitext, split
 import argparse
 import bibtexparser as b
-import regex as re
-from os.path import splitext, split
 import logging as root_logger
+import regex as re
+
+from bkmkorg.utils import retrieval
+from bkmkorg.utils import bibtex as BU
+
 
 def custom(record):
     # record = c.type(record)
@@ -51,47 +55,22 @@ if __name__ == "__main__":
     parser.add_argument('-t', '--target', action="append")
     parser.add_argument('-o', '--output', default="./output/integrated.bib")
     args = parser.parse_args()
-
-    args.target = [abspath(expanduser(x)) for x in args.target]
     args.output = abspath(expanduser(args.output))
-    assert(all([exists(x) for x in args.target]))
 
     logging.info("Targeting: {}".format(args.target))
     logging.info("Output to: {}".format(args.output))
 
     #load each of the specified files
-    dbs = []
-    for x in args.target:
-        parser = BibTexParser(common_strings=False)
-        parser.ignore_nonstandard_types = False
-        parser.homogenise_fields = True
-        parser.customization = custom
-        if isdir(x):
-            bibtex_files = [y for y in listdir(x) if splitext(y)[1] == ".bib"]
-        else:
-            bibtex_files = [x]
+    target_files = retrieval.get_data_files(args.target, ".bib")
+    dbs = [BU.parse_bib_files(x, custom) for x in target_files]
 
-        for y in bibtex_files:
-            with open(join(x,y), 'r') as f:
-                logging.info("Loading bibtex: {}".format(y))
-                db = b.load(f, parser)
-                dbs.append(db)
-
-    main_db = None
+    main_db = b.bibdatabase.BibDatabase()
     # Load the main database
     if exists(args.output):
-        parser = BibTexParser(common_strings=False)
-        parser.ignore_nonstandard_types = False
-        parser.homogenise_fields = True
-        parser.customization = custom
-        with open(args.output, 'r') as f:
-            logging.info("Loading output: {}".format(args.output))
-            main_db = b.load(f, parser)
-    else:
-        main_db = b.bibdatabase.BibDatabase()
+        BU.parse_bib_files(args.output, custom, databse=main_db)
 
     main_set = set(main_db.get_entry_dict().keys())
-    missing_entries = []
+    total_entries = main_db.entries[:]
     missing_keys_main = set()
 
     # Get entries missing from the main database
@@ -100,10 +79,10 @@ if __name__ == "__main__":
         db_set = set(db_dict.keys())
         missing_keys = db_set.difference(main_set)
         missing_keys_main.update(missing_keys)
-        missing_entries += [db_dict[x] for x in missing_keys]
+        total_entries += [db_dict[x] for x in missing_keys]
 
-    logging.info("{} missing entries".format(len(missing_entries)))
-    main_db.entries = missing_entries
+    logging.info("{} missing entries".format(len(total_entries)))
+    main_db.entries = total_entries
 
     # Write out the combined database
     logging.info("Bibtex loaded")

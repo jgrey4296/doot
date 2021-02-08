@@ -19,6 +19,8 @@ from os.path import join, isfile, exists, abspath
 from os.path import split, isdir, splitext, expanduser
 from os import listdir
 
+from bkmkorg.utils import retrieval
+from bkmkorg.utils import bibtex as BU
 
 def getFrequencyDictForText(lines):
     tmpDict = {}
@@ -65,18 +67,15 @@ if __name__ == "__main__":
     parser.add_argument('--output', default=None)
 
     args = parser.parse_args()
-    args.target = [abspath(expanduser(x)) for x in args.target]
     if args.output is not None:
         args.output = abspath(expanduser(args.output))
 
+    targets =
     text = []
-    target_queue = args.target
+    target_queue = retrieval.get_data_files(args.target, ".tags")
     while bool(target_queue):
         current = target_queue.pop(0)
-        if isfile(current):
-            with open(current,'r') as f:
-                text += [x for x in f.readlines() if x[0] != "*"]
-        else:
-            target_queue += [join(current, x) for x in listdir(current)]
+        with open(current,'r') as f:
+            text += [x for x in f.readlines() if x[0] != "*"]
 
     makeImage(getFrequencyDictForText(text))
