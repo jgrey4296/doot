@@ -4,6 +4,12 @@
 Utilities to retrieve files of use
 
 """
+# https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
+from typing import List, Set, Dict, Tuple, Optional, Any
+from typing import Callable, Iterator, Union, Match
+from typing import Mapping, MutableMapping, Sequence, Iterable
+from typing import cast, ClassVar, TypeVar, Generic
+
 import logging as root_logger
 from os import listdir, mkdir
 from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath, split
@@ -64,7 +70,7 @@ def get_data_files(initial, ext=None, normalize=False):
     if not isinstance(initial, list):
         initial = [initial]
 
-    unreognized_types = set()
+    unrecognised_types = set()
     files = []
     queue = [abspath(expanduser(x)) for x in initial]
     while bool(queue):
@@ -90,31 +96,37 @@ def get_data_files(initial, ext=None, normalize=False):
 
 
 
-def read_raw_tags(target):
+def read_raw_tags(target: Union[str, List[str]]) -> Dict[str, List[str]]:
     """ Read a text file of the form:
     tag : num : sub : sub : sub....
     returning a dict of {tag : [sub]}
     """
-    assert(splitext(target)[1] in [".txt", ".org"])
-    org = splitext(target)[1] == ".org"
-    lines = []
+    if isinstance(target, str):
+        target = [target]
+
+    assert(all([splitext(x)[1] in [".tags", ".txt", ".org"] for x in target]))
     sub = {}
-    with open(target,'r') as f:
-        lines = f.readlines()
 
-    #split and process
-    for line in lines:
-        if org and line[0] == "*":
-            continue
-        components = line.split(":")
-        component_zero = components[0].strip()
-        if component_zero == "":
-            continue
+    for path in target:
+        logging.info("Reading Raw Tag Subs: {}".format(path))
+        is_org = splitext(path)[1] == ".org"
+        lines = []
+        with open(path,'r') as f:
+            lines = f.readlines()
 
-        assert(component_zero not in sub)
-        sub[component_zero] = []
-        if len(components) > 2:
-            sub[component_zero] += [x.strip() for x in components[2:]]
+        #split and process
+        for line in lines:
+            if is_org and line[0] == "*":
+                continue
+            components = line.split(":")
+            component_zero = components[0].strip()
+            if component_zero == "":
+                continue
+
+            assert(component_zero not in sub)
+            sub[component_zero] = []
+            if len(components) > 2:
+                sub[component_zero] += [x.strip() for x in components[2:]]
 
     return sub
 
