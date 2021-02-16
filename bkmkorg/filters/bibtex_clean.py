@@ -151,25 +151,18 @@ if __name__ == "__main__":
                                                 "Cleans names and moves all non-library pdfs into the library.",
                                                 "Records errors in an 'error' field for an entry."]))
 
-    parser.add_argument('-t', '--target', default="~/Mega/library.bib")
+    parser.add_argument('-t', '--target', action='append')
     parser.add_argument('-o', '--output', default="bibtex")
     parser.add_argument('-l', '--library', default="~/MEGA/pdflibrary")
     args = parser.parse_args()
 
     assert(exists(args.target))
 
-    parser = BibTexParser(common_strings=False)
-    parser.ignore_nonstandard_types = False
-    parser.homogenise_fields = True
-    parser.customization = custom
-
     logging.info("Targeting: {}".format(args.target))
     logging.info("Output to: {}".format(args.output))
 
-    with open(args.target, 'r') as f:
-        logging.info("Loading bibtex")
-        db = b.load(f, parser)
-        logging.info("Bibtex loaded")
+    bib_files = retrieval.get_data_files(args.target, ".bib")
+    db = BU.parse_bib_files(bib_files, func=custom)
 
     #Get errors and write them out:
     errored = [x for x in db.entries if 'error' in x]
