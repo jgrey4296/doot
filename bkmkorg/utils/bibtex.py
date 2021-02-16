@@ -22,10 +22,13 @@ def parse_bib_files(bib_files, func=None, database=None):
     bparser = make_parser(func)
     db = database
     if db is None:
+        logging.info("Creating new database")
         db = b.bibdatabase.BibDatabase()
+
+    bparser.bib_database = db
     for x in bib_files:
         with open(x, 'r') as f:
             logging.info("Loading bibtex: {}".format(x))
-            db = b.load(f, bparser)
+            b.load(f, bparser)
     logging.info("Bibtex loaded")
     return db
