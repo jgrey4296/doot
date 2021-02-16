@@ -70,7 +70,6 @@ if __name__ == "__main__":
     if args.output is not None:
         args.output = abspath(expanduser(args.output))
 
-    targets =
     text = []
     target_queue = retrieval.get_data_files(args.target, ".tags")
     while bool(target_queue):

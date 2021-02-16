@@ -4,8 +4,6 @@
  @module totalLinkExtractor
 """
 
-from __future__ import print_function
-from __future__ import unicode_literals
 from cookielib import CookieJar
 import re
 import urllib2

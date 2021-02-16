@@ -71,19 +71,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    args.target = abspath(expanduser(args.target))
     args.output = abspath(expanduser(args.output))
     assert(exists(args.target))
 
     logging.info("Targeting: {}".format(args.target))
     logging.info("Output to: {}".format(args.output))
-
-    # Retrieve Targets
-    if isfile(args.target):
-        args.target = [args.target]
-    elif isdir(args.target):
-        src_dir = args.target
-        args.target = [join(src_dir, x) for x in listdir(args.target) if splitext(x)[1] == ".bib"]
 
     # Load targets
     bib_files = retrieval.get_data_files(args.target, ".bib")
