@@ -30,13 +30,13 @@ def copy_missing(the_cmp, exclude=None):
         current = queue.pop(0)
         # Copy left_only to right
         for missing in current.left_only:
-            logging.info("Missing: {} in {} from {}".format(missing, current.left, current.right))
             loc_l = join(current.left, missing)
             loc_r = join(current.right, missing)
-            if isfile(loc_l) and splitext(missing)[1] not in exclude:
+            if isfile(loc_l) and (splitext(missing)[1] not in exclude):
+                logging.info("Missing: {} in {} from {}".format(missing, current.left, current.right))
                 copy(loc_l, loc_r)
-            else:
-                assert(isdir(loc_l))
+            elif isdir(loc_l):
+                logging.info("Missing: {} from {}".format(missing, current.left, current.right))
                 copytree(loc_l, loc_r)
 
         queue += current.subdirs.values()
