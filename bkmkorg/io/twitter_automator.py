@@ -115,7 +115,7 @@ def assemble_threads(json_dir):
     for jfile in json_files:
         # load in each json,
         with open(jfile, 'r') as f:
-            data = json.load(f)
+            data = json.load(f, strict=False)
 
         # construct connection graph
         for entry in data:
@@ -156,7 +156,7 @@ def create_component_files(components, tweet_dir, component_dir, di_graph, twit=
     json_files = [join(tweet_dir, x) for x in listdir(tweet_dir) if splitext(x)[1] == ".json"]
     for jfile in json_files:
         with open(jfile, 'r') as f:
-            data = json.load(f)
+            data = json.load(f, strict=False)
 
         for tweet in data:
             # Add tweet to any of its components
@@ -215,7 +215,7 @@ def construct_user_summaries(component_dir, combined_threads_dir, total_users):
     for comp in components:
         # read comp
         with open(comp, 'r') as f:
-            data = json.load(f)
+            data = json.load(f, strict=False)
 
         if not bool(data):
             continue
@@ -228,6 +228,9 @@ def construct_user_summaries(component_dir, combined_threads_dir, total_users):
 
 
         head_user = max(user_counts.items(), key=lambda x: x[1])[0]
+        screen_name = str(head_user)
+        if head_user in user_lookup:
+            screen_name = user_lookup[head_user]['screen_name']
 
         graph = nx.DiGraph()
         [graph.add_edge(str(x['in_reply_to_status_id']), x['id_str']) for x in data if 'in_reply_to_status_id' in x]
@@ -259,14 +262,17 @@ def construct_user_summaries(component_dir, combined_threads_dir, total_users):
             main_set.update(cleaned)
 
         # create user file if not exist
-        user_file = join(combined_threads_dir, USER_FILE_TEMPLATE.format(user_lookup[head_user]['screen_name']))
+        user_file = join(combined_threads_dir, USER_FILE_TEMPLATE.format(screen_name))
         user_data = {}
         if exists(user_file):
             with open(user_file, 'r') as f:
-                user_data = json.load(f)
+                user_data = json.load(f, strict=False)
 
         if 'user' not in user_data:
-            user_data['user'] = user_lookup[head_user]
+            if head_user in user_lookup:
+                user_data['user'] = user_lookup[head_user]
+            else:
+                user_data['user'] = {'screen_name': screen_name}
             user_data['threads'] = []
             user_data['tweets'] = {}
 
@@ -288,7 +294,7 @@ def construct_org_files(combined_threads_dir, org_dir, all_users, media_dir):
 
     for summary in user_summaries:
         with open(summary, 'r') as f:
-            data = json.load(f)
+            data = json.load(f, strict=False)
 
         tweets = data['tweets']
         out_file  = join(org_dir, "{}.org".format(data['user']['screen_name']))
@@ -508,7 +514,7 @@ def extract_tweet_ids_from_json(the_file):
     """ Get all tweet ids from a json file """
     try:
         with open(the_file, 'r') as f:
-            data = json.load(f)
+            data = json.load(f, strict=False)
     except Exception as e:
         logging.info("File issue: {}".format(the_file))
         raise e
@@ -520,7 +526,7 @@ def extract_media_and_users_from_json(the_file):
     """ Get all media urls and user ids from json file """
     try:
         with open(the_file, 'r') as f:
-            data = json.load(f)
+            data = json.load(f, strict=False)
     except Exception as e:
         logging.info("File issue: {}".format(the_file))
         raise e
@@ -571,7 +577,7 @@ def get_user_identities(users_file, twit, users):
     total_users = {}
     if exists(users_file):
         with open(users_file,'r') as f:
-            total_users.update({x['id_str'] : x for x in  json.load(f)})
+            total_users.update({x['id_str'] : x for x in  json.load(f, strict=False)})
 
         users -= total_users.keys()
         logging.info("Already retrieved {}, {} remaining".format(len(total_users), len(users)))
