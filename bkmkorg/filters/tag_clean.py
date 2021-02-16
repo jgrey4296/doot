@@ -77,8 +77,8 @@ if __name__ == "__main__":
     logging.info("Cleaning based on: {}".format(args.cleaned))
 
     #Load Cleaned Tags
-    tag_sub_files = retrieval.get_data_files(args.cleaned, ".tags")
-    cleaned_tags = TU.collect_tag_substitutions(tag_sub_files)
+    tag_sub_files = retrieval.get_data_files(args.cleaned, [".org", ".txt", ".tags"])
+    cleaned_tags = retrieval.read_raw_tags(tag_sub_files)
     logging.info("Loaded {} tag substitutions".format(len(cleaned_tags)))
 
     #Load Bibtexs, html, orgs and clean each
