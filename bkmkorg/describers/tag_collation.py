@@ -5,6 +5,8 @@ and to collect them
 from bibtexparser import customization as c
 from bkmkorg.io.import_netscape import open_and_extract_bookmarks
 from os.path import join, isdir, splitext, expanduser, abspath, split
+from os import mkdir
+import re
 import argparse
 import logging as root_logger
 
@@ -61,16 +63,17 @@ if __name__ == "__main__":
     logging.info("Tag Collation start: --------------------")
     cli_args = parser.parse_args()
     cli_args.output = abspath(expanduser(cli_args.output))
-    cli_args.cleaned = [abspath(expanduser(x)) for x in cli_args.cleaned]
 
     logging.info("Targeting: {}".format(cli_args.target))
+    if isdir(cli_args.output) and not exists(cli_args.output):
+        mkdir(cli_args.output)
     if isdir(cli_args.output):
         cli_args.output = join(cli_args.output, "tags")
     logging.info("Output to: {}".format(cli_args.output))
     logging.info("Cleaned Tags locations: {}".format(cli_args.cleaned))
 
     bibs, htmls, orgs = retrieval.collect_files(cli_args.target)
-    bib_db    = BU.parse_bib_files(bibs)
+    bib_db    = BU.parse_bib_files(bibs, func=custom)
     bib_tags  = TU.extract_tags_from_bibtex(bib_db)
     org_tags  = TU.extract_tags_from_org_files(orgs)
     html_tags = TU.extract_tags_from_html_files(htmls)
@@ -86,7 +89,8 @@ if __name__ == "__main__":
         exit()
 
     # load existing tag files
-    cleaned = retrieval.read_raw_tags(cli_args.cleaned)
+    cleaned_files = retrieval.get_data_files(cli_args.cleaned, [".txt", ".tags", ".org"])
+    cleaned = retrieval.read_raw_tags(cleaned_files)
 
     # get new tags
     tags = set(all_tags.keys())
@@ -95,4 +99,5 @@ if __name__ == "__main__":
 
     new_tag_dict = {x : all_tags[x] for x in new_tags}
     # group them separately, alphabeticaly
+    # To be included in the separate tag files
     TU.write_tags(new_tag_dict, cli_args.output + "_new_tags")
