@@ -12,29 +12,41 @@ from subprocess import call
 from pdfrw import PdfReader, PdfWriter, PageMerge
 from pdfrw import IndirectPdfDict
 
-def get2(srcpages):
-    """ Get Two Pages of a PDF """
-    scale = 0.5
-    merged = PageMerge()
-    merged.addpage(srcpages.pages[0])
-    merged.addpage(srcpages.pages[1])
+import logging as root_logger
+logging = root_logger.getLogger(__name__)
 
-    return merged.render()
+def get2(srcpages):
+    scale = 0.5
+    srcpages = PageMerge() + srcpages.pages[:2]
+    x_increment, y_increment = (scale * i for i in srcpages.xobj_box[2:])
+    for i, page in enumerate(srcpages):
+        page.scale(scale)
+        page.x = 0 if i == 0 else x_increment
+        page.y = 0
+
+    return srcpages.render()
+
 
 def summarise_pdfs(paths, func=None, output="./pdf_summary", bound=200):
     count = 0
+    if func is None:
+        func = get2
     if isdir(output):
         output = join(output, "summary")
 
     writer = PdfWriter()
 
     for path in paths:
-        pdf_ob = PdfReader(pdf)
-        writer.addpages(func(pdf_obj))
+        try:
+            pdf_obj = PdfReader(path)
+            writer.addpage(func(pdf_obj))
+        except:
+            logging.warning("Error Encountered with {}".format(path))
 
-        if len(writer.pages) > bound:
+        if len(writer.pagearray) > bound:
             # if pdf is too big, create another
             writer.write("{}_{}.pdf".format(output, count))
+            writer = PdfWriter()
             count += 1
 
     writer.write("{}_{}.pdf".format(output, count))
