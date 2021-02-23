@@ -15,6 +15,10 @@ from os import listdir, mkdir
 from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath, split
 from unicodedata import normalize as norm_unicode
 
+from datetime import datetime
+
+import regex as re
+
 logging = root_logger.getLogger(__name__)
 img_exts = [".jpg",".jpeg",".png",".gif",".webp",".tiff"]
 img_exts2 = [".gif",".jpg",".jpeg",".png",".mp4",".bmp"]
@@ -96,9 +100,11 @@ def get_data_files(initial, ext=None, normalize=False):
 
 
 
-def read_raw_tags(target: Union[str, List[str]]) -> Dict[str, List[str]]:
-    """ Read a text file of the form:
+def read_substitutions(target: Union[str, List[str]], counts=True) -> Dict[str, List[str]]:
+    """ Read a text file of the form (with counts):
     tag : num : sub : sub : sub....
+    without counts:
+    tag : sub : sub : ...
     returning a dict of {tag : [sub]}
     """
     if isinstance(target, str):
@@ -116,17 +122,23 @@ def read_raw_tags(target: Union[str, List[str]]) -> Dict[str, List[str]]:
 
         #split and process
         for line in lines:
+            # Discard org headings:
             if is_org and line[0] == "*":
                 continue
             components = line.split(":")
+            # Get the pattern:
             component_zero = components[0].strip()
             if component_zero == "":
                 continue
 
             assert(component_zero not in sub)
             sub[component_zero] = []
-            if len(components) > 2:
-                sub[component_zero] += [x.strip() for x in components[2:]]
+            # Get the substitutions
+            sub_start = 1 if counts else 2
+            if len(components) > 1:
+                sub[component_zero] += [x.strip() for x in components[sub_start:]]
+            else:
+                logging.warning("No Substitutions found for: {}".format(component_zero))
 
     return sub
 
@@ -139,7 +151,7 @@ def clean_bib_files(bib_files, sub, tag_regex="^(\s*tags\s*=\s*{)(.+?)(\s*},?)$"
     Extract the tags, deduplicate and apply substitutions , write out again
 
     """
-    TAG_REGEX = regex.compile(tag_regex)
+    TAG_REGEX = re.compile(tag_regex)
 
     for bib in bib_files:
         lines = []
@@ -240,7 +252,7 @@ def clean_html_files(html_files, sub):
 
 def check_orgs(org_files, id_regex="^\s+:(PERMALINK|TIME):\s+$"):
     logging.info("Checking Orgs")
-    ORG_ID_REGEX = regex.compile(id_regex)
+    ORG_ID_REGEX = re.compile(id_regex)
     files = set([])
 
     for org in org_files:
@@ -262,24 +274,26 @@ def check_orgs(org_files, id_regex="^\s+:(PERMALINK|TIME):\s+$"):
 
 
 
-def extract_ids_from_orgs(org_files, id_regex="^\s+:PERMALINK:\s+\[\[.+?/(\d+)\]"):
-    logging.info("Extracting data from orgs")
-    ids = set([])
-    ORG_ID_REGEX = regex.compile(id_regex)
+
+def get_tweet_dates_and_ids(org_files, line_regex=None) -> List[Tuple[datetime, str]]:
+    """
+    Extract Tweet id strings and date strings from property drawers in org files
+    """
+    if line_regex is None:
+        line_regex = r"^\s+:PERMALINK:\s+\[.+\[(.+?)\]\]\n\s+:TIME:\s+(.+?)$"
+
+    EXTRACTOR = re.compile(line_regex, flags=re.MULTILINE)
+    tweets = []
+
     for org in org_files:
-        #read
-        text = []
-        with open(org,'r') as f:
-            text = f.readlines()
+        logging.debug("Opening {}".format(org))
+        # open org
+        with open(org, 'r') as f:
+            lines = "\n".join(f.readlines())
 
-        #line by line
-        for line in text:
-            match = ORG_ID_REGEX.match(line)
-            individual_ids = []
-            if not bool(match):
-                continue
+        # get all permalink+time pair lines
+        found_tweets = EXTRACTOR.findall(lines)
+        logging.debug("Found {}".format(len(found_tweets)))
+        tweets += found_tweets
 
-            id_str = match[1]
-            ids.add(id_str)
-
-    return ids
+    return tweets

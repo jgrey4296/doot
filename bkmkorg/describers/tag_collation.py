@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
     # load existing tag files
     cleaned_files = retrieval.get_data_files(cli_args.cleaned, [".txt", ".tags", ".org"])
-    cleaned = retrieval.read_raw_tags(cleaned_files)
+    cleaned = retrieval.read_substitutions(cleaned_files)
 
     # get new tags
     tags = set(all_tags.keys())
