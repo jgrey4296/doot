@@ -83,11 +83,12 @@ def download_tweets(twit, json_dir, target_ids, lib_ids=None):
         try:
             ## download tweets
             results = twit.GetStatuses(current, trim_user=True)
+
             # add results to results dir
             new_json_file = join(json_dir, "{}.json".format(uuid.uuid1()))
             assert(not exists(new_json_file))
             with open(new_json_file, 'w') as f:
-                as_json = "[{}]".format(",".join([x.AsJsonString() for x in results]))
+                as_json = "[{}]".format(",".join([json.dumps(x._json) for x in results]))
                 f.write(as_json)
 
             # update ids
@@ -95,10 +96,10 @@ def download_tweets(twit, json_dir, target_ids, lib_ids=None):
 
             # Add new referenced ids:
             for x in results:
-                if x.in_reply_to_status_id is not None:
-                    queue.append(str(x.in_reply_to_status_id))
-                if x.quoted_status_id_str is not None:
-                    queue.append(x.quoted_status_id_str)
+                if x._json['in_reply_to_status_id_str'] is not None:
+                    queue.append(str(x._json['in_reply_to_status_id_str']))
+                if x._json['quoted_status_id_str'] is not None:
+                    queue.append(x._json['quoted_status_id_str'])
 
         except Exception as e:
             # handle failure
@@ -123,15 +124,15 @@ def assemble_threads(json_dir):
             tweet_id = entry['id_str']
             di_graph.add_node(tweet_id, source_file=jfile)
 
-            if 'in_reply_to_status_id' in entry:
+            if 'in_reply_to_status_id_str' in entry:
                 # link tweets
                 di_graph.add_edge(tweet_id,
-                                  str(entry['in_reply_to_status_id']),
+                                  str(entry['in_reply_to_status_id_str']),
                                   type="reply")
 
             if 'quoted_status_id_str' in entry:
                 di_graph.add_edge(tweet_id,
-                                  entry['quoted_status_id_str'],
+                                  str(entry['quoted_status_id_str']),
                                   type="quote")
 
     return di_graph
@@ -233,10 +234,10 @@ def construct_user_summaries(component_dir, combined_threads_dir, total_users):
             screen_name = user_lookup[head_user]['screen_name']
 
         graph = nx.DiGraph()
-        [graph.add_edge(str(x['in_reply_to_status_id']), x['id_str']) for x in data if 'in_reply_to_status_id' in x]
+        [graph.add_edge(str(x['in_reply_to_status_id_str']), x['id_str']) for x in data if 'in_reply_to_status_id_str' in x]
 
         quotes = [x['quoted_status_id_str'] for x in data if 'quoted_status_id_str' in x]
-        roots = [x['id_str'] for x in data if not 'in_reply_to_status_id' in x and x['id_str'] not in quotes]
+        roots = [x['id_str'] for x in data if not 'in_reply_to_status_id_str' in x and x['id_str'] not in quotes]
                 # dfs to get longest chain
 
         chains = []
@@ -429,11 +430,11 @@ def tweet_to_string(tweet, all_users, url_prefix, level=4):
                                                                                       tweet['id_str'],
                                                                                       screen_name,
                                                                                       tweet['id_str']))
-    if "in_reply_to_status_id" in tweet:
+    if "in_reply_to_status_id_str" in tweet:
         output.append("\t:REPLY_TO: [[https://twitter.com/{}/status/{}][/{}/{}]]".format(tweet['in_reply_to_screen_name'],
-                                                                                         str(tweet['in_reply_to_status_id']),
+                                                                                         str(tweet['in_reply_to_status_id_str']),
                                                                                          tweet['in_reply_to_screen_name'],
-                                                                                         str(tweet['in_reply_to_status_id'])))
+                                                                                         str(tweet['in_reply_to_status_id_str'])))
 
     if "quoted_status_id_str" in tweet:
         quote_name = tweet['quoted_status_id_str']
@@ -542,8 +543,8 @@ def extract_media_and_users_from_json(the_file):
                     if n['content_type'] == "video/mp4"]
             media.update([x.split("?")[0] for x in urls])
 
-        if 'in_reply_to_user_id' in x:
-            ids.add(str(x['in_reply_to_user_id']))
+        if 'in_reply_to_user_id_str' in x:
+            ids.add(str(x['in_reply_to_user_id_str']))
 
         if "quoted_status" in x:
             ids.add(x['quoted_status']['user']['id_str'])
@@ -785,6 +786,7 @@ def main():
     source_ids = set(extract_tweet_ids_from_file(target_file, simple=True))
     logging.info("Found {} source ids".format(len(source_ids)))
 
+    # Download tweets
     download_tweets(twit, tweet_dir, source_ids, lib_ids=library_tweet_ids)
 
     user_set, media_set = get_user_and_media_sets(tweet_dir)
