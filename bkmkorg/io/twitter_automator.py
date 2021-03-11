@@ -124,13 +124,13 @@ def assemble_threads(json_dir):
             tweet_id = entry['id_str']
             di_graph.add_node(tweet_id, source_file=jfile)
 
-            if 'in_reply_to_status_id_str' in entry:
+            if 'in_reply_to_status_id_str' in entry and entry['in_reply_to_status_id_str']:
                 # link tweets
                 di_graph.add_edge(tweet_id,
                                   str(entry['in_reply_to_status_id_str']),
                                   type="reply")
 
-            if 'quoted_status_id_str' in entry:
+            if 'quoted_status_id_str' in entry and entry['quoted_status_id_str']:
                 di_graph.add_edge(tweet_id,
                                   str(entry['quoted_status_id_str']),
                                   type="quote")
@@ -632,8 +632,12 @@ def dfs_edge(graph, edge):
 
         found.add(l)
         found.add(r)
-        queue += [(l, x) for x in graph.adj[l] if graph.adj[l][x]['type'] == "reply"]
-        queue += [(r, x) for x in graph.adj[r] if graph.adj[r][x]['type'] == "reply"]
+        to_add = [(l, x) for x in graph.adj[l] if graph.adj[l][x]['type'] == "reply"]
+        to_add += [(r, x) for x in graph.adj[r] if graph.adj[r][x]['type'] == "reply"]
+
+        if len(to_add) > 100:
+            breakpoint()
+        queue += to_add
 
     return found
 
@@ -646,7 +650,11 @@ def dfs_for_components(di_graph):
     components = []
     edge_set = set(graph.edges)
     discovered = set()
+    logging.info("DFS on Components: {}".format(len(edge_set)))
+    count = 0
+    log_on_count = len(edge_set) * 0.1
     while bool(edge_set):
+        count += 1
         current = edge_set.pop()
         l, r = current
         if l in discovered and r in discovered:
@@ -663,6 +671,9 @@ def dfs_for_components(di_graph):
 
         components.append(connected_ids)
         discovered.update(connected_ids)
+        if count > log_on_count:
+            count = 0
+            logging.info("Edge Set Size: {}".format(len(edge_set)))
 
     logging.info("Found {} components".format(len(components)))
     return components
