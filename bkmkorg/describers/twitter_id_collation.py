@@ -2,6 +2,12 @@
 Extract Twitter ID's from org files
 
 """
+# https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
+from typing import List, Set, Dict, Tuple, Optional, Any
+from typing import Callable, Iterator, Union, Match
+from typing import Mapping, MutableMapping, Sequence, Iterable
+from typing import cast, ClassVar, TypeVar, Generic
+
 import logging as root_logger
 import argparse
 from math import ceil
@@ -43,7 +49,8 @@ if __name__ == "__main__":
     logging.info("Output to: {}".format(args.output))
 
     bibs, htmls, orgs = retrieval.collect_files(args.target)
-    ids_set = retrieval.extract_ids_from_orgs(orgs)
+    tweets : List[Tuple[str, str]] = retrieval.get_tweet_dates_and_ids(orgs)
+    ids_set = {x[0] for x in tweets}
 
     logging.info("Found {} unique twitter ids".format(len(ids_set)))
     with open(args.output,'w') as f:
