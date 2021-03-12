@@ -214,6 +214,7 @@ def construct_user_summaries(component_dir, combined_threads_dir, total_users):
     # Create final orgs, grouped by head user
     components = [join(component_dir, x) for x in listdir(component_dir) if splitext(x)[1] == ".json"]
     for comp in components:
+        logging.info("Constructing Summary for: {}".format(comp))
         # read comp
         with open(comp, 'r') as f:
             data = json.load(f, strict=False)
@@ -234,9 +235,10 @@ def construct_user_summaries(component_dir, combined_threads_dir, total_users):
             screen_name = user_lookup[head_user]['screen_name']
 
         graph = nx.DiGraph()
-        [graph.add_edge(str(x['in_reply_to_status_id_str']), x['id_str']) for x in data if 'in_reply_to_status_id_str' in x]
+        [graph.add_edge(str(x['in_reply_to_status_id_str']), x['id_str']) for x in data
+         if 'in_reply_to_status_id_str' in x and x['in_reply_to_status_id_str']]
 
-        quotes = [x['quoted_status_id_str'] for x in data if 'quoted_status_id_str' in x]
+        quotes = [x['quoted_status_id_str'] for x in data if 'quoted_status_id_str' in x and x['quoted_status_id_str']]
         roots = [x['id_str'] for x in data if not 'in_reply_to_status_id_str' in x and x['id_str'] not in quotes]
                 # dfs to get longest chain
 
@@ -418,7 +420,11 @@ def tweet_to_string(tweet, all_users, url_prefix, level=4):
     except KeyError as e:
         logging.warning("Unknown Screen name: {}".format(tweet['user']['id_str']))
 
-    hashtags = [x['text'] for x in tweet['hashtags']]
+    try:
+        hashtags = [x['text'] for x in tweet['entities']['hashtags']]
+    except KeyError as e:
+        breakpoint()
+
     hash_str = ""
     if bool(hashtags):
         hash_str = ":{}:".format(":".join(hashtags))
@@ -470,7 +476,7 @@ def tweet_to_string(tweet, all_users, url_prefix, level=4):
 
     # add tweet urls
     output.append("")
-    links = [x['expanded_url'] for x in tweet['urls']]
+    links = [x['expanded_url'] for x in tweet['entities']['urls']]
     output += ["[[{}]]".format(x) for x in links]
 
     # add tweet media
@@ -478,10 +484,10 @@ def tweet_to_string(tweet, all_users, url_prefix, level=4):
     if 'media' in tweet:
         output.append("")
 
-        media += ([m['media_url'] for m in tweet['media']])
-        videos = [m['video_info'] for m in tweet['media'] if m['type'] == "video"]
-        urls = [n['url'] for m in videos for n in m['variants']
-                if n['content_type'] == "video/mp4"]
+        media += ([m['media_url'] for m in tweet['entities']['media']])
+        videos = [m['video_info'] for m in tweet['entities']['media'] if m['type'] == "video"]
+
+        urls = [n['url'] for m in videos for n in m['variants'] if n['content_type'] == "video/mp4"]
         media += [x.split("?")[0] for x in urls]
 
         output += ["[[{}][{}]]".format(retarget_url(x, url_prefix), split(x)[1]) for x in media]
@@ -534,14 +540,29 @@ def extract_media_and_users_from_json(the_file):
 
     ids = set()
     media = set()
+    media_variants = []
     for x in data:
-        if 'media' in x:
-            media.update([m['media_url'] for m in x['media']])
+        if 'entities' in x and 'media' in x['entities']:
+            entities = x['entities']
+            media.update([m['media_url'] for m in entities['media']])
 
-            videos = [m['video_info'] for m in x['media'] if m['type'] == "video"]
-            urls = [n['url'] for m in videos for n in m['variants']
-                    if n['content_type'] == "video/mp4"]
-            media.update([x.split("?")[0] for x in urls])
+            videos = [m['video_info'] for m in entities['media'] if m['type'] == "video"]
+            for video in videos:
+                urls = [n['url'] for n in video['variants'] if n['content_type'] == "video/mp4"]
+                trimmed = [x.split("?")[0] for x in urls]
+                media.update(trimmed)
+                media_variants.append(trimmed)
+
+        if 'extended_entities' in x and 'media' in x['extended_entities']:
+            entities = x['extended_entities']
+            media.update([m['media_url'] for m in entities['media']])
+
+            videos = [m['video_info'] for m in entities['media'] if m['type'] == "video"]
+            for video in videos:
+                urls = [n['url'] for n in video['variants'] if n['content_type'] == "video/mp4"]
+                trimmed = [x.split("?")[0] for x in urls]
+                media.update(trimmed)
+                media_variants.append(trimmed)
 
         if 'in_reply_to_user_id_str' in x:
             ids.add(str(x['in_reply_to_user_id_str']))
@@ -552,7 +573,7 @@ def extract_media_and_users_from_json(the_file):
         ids.add(x['user']['id_str'])
 
 
-    return ids, media
+    return ids, media, media_variants
 
 
 def get_all_tweet_ids(*the_dirs):
@@ -609,14 +630,17 @@ def get_user_and_media_sets(json_dir):
     json_files = [join(json_dir, x) for x in listdir(json_dir) if splitext(x)[1] == ".json"]
     users = set()
     media = set()
+    variants = []
     for f in json_files:
-        tusers, tmedia = extract_media_and_users_from_json(f)
+        tusers, tmedia, tvariants = extract_media_and_users_from_json(f)
         users.update(tusers)
         media.update(tmedia)
+        variants += tvariants
 
     logging.info("Found {} unique media files".format(len(media)))
     logging.info("Found {} unique users".format(len(users)))
-    return users, media
+
+    return users, media, variants
 
 
 def dfs_edge(graph, edge):
@@ -800,7 +824,12 @@ def main():
     # Download tweets
     download_tweets(twit, tweet_dir, source_ids, lib_ids=library_tweet_ids)
 
-    user_set, media_set = get_user_and_media_sets(tweet_dir)
+    user_set, media_set, variant_list = get_user_and_media_sets(tweet_dir)
+
+    # write out video variant/duplicates
+    with open(join(target_dir, "video_variants.json"), "w") as f:
+        f.write(json.dumps(variant_list))
+
     # download media
     download_media(media_dir, media_set)
     # Get user identities
