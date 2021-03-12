@@ -45,9 +45,13 @@ def download_media(media_dir, media):
         if exists(join(media_dir, filename)):
             continue
 
-        request = requests.get(x)
-        with open(join(media_dir, filename), 'wb') as f:
-            f.write(request.content)
+        try:
+            request = requests.get(x)
+            with open(join(media_dir, filename), 'wb') as f:
+                f.write(request.content)
+        except Exception as e:
+            logging.warning("Error Downloading: {}".format(x))
+            logging.warning(str(e))
 
 
 def download_tweets(twit, json_dir, target_ids, lib_ids=None):
