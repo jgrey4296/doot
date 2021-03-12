@@ -63,11 +63,11 @@ if __name__ == "__main__":
                                      epilog="\n".join(["Describe a bibtex file's:",
                                                        "Tags, year counts, authors,",
                                                        "And entries lacking files or with multiple files"]))
-    parser.add_argument('-t', '--target', default="~/github/writing/resources")
-    parser.add_argument('-o', '--output', default="bibtex")
-    parser.add_argument('-f', '--files', action="store_true")
-    parser.add_argument('-a', '--authors', action="store_true")
-    parser.add_argument('-y', '--years', action="store_true")
+    parser.add_argument('-t', '--target', default="~/github/writing/resources", help="Input target")
+    parser.add_argument('-o', '--output', default="bibtex",                     help="Output Target")
+    parser.add_argument('-f', '--files', action="store_true",                   help="Write to files")
+    parser.add_argument('-a', '--authors', action="store_true",                 help="Describe authors")
+    parser.add_argument('-y', '--years', action="store_true",                   help="Describe Years")
 
     args = parser.parse_args()
 

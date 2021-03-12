@@ -35,19 +35,14 @@ if __name__ == "__main__":
     logging = root_logger.getLogger(__name__)
 
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog="\n".join(["Check All pdfs are accounted for in a bibliography",
-                                                       "-t : The target directory for files",
-                                                       "-l : The Target directory for bibtex library"
-                                     ]))
-    parser.add_argument('-t', '--target')
-    parser.add_argument('-l', '--library')
-    parser.add_argument('-o', '--output')
+                                     epilog="\n".join(["Check All pdfs are accounted for in a bibliography"])
+                                     )
+    parser.add_argument('-t', '--target',  help="Pdf Library directory to verify")
+    parser.add_argument('-l', '--library', help="Bibtex Library directory to verify")
+    parser.add_argument('-o', '--output',  help="Output location for reports")
     args = parser.parse_args()
 
-    args.target = abspath(expanduser(args.target))
-    args.library = abspath(expanduser(args.library))
     args.output = abspath(expanduser(args.output))
-    assert(isdir(args.target))
     assert(isdir(args.library))
 
     # Get targets
@@ -57,7 +52,7 @@ if __name__ == "__main__":
     logging.info("Loaded Database: {} entries".format(len(main_db.entries)))
     count = 0
     all_file_mentions = []
-    all_existing_files = retrieval.get_data_files(args.taget, ".pdf", normalize=True)
+    all_existing_files = retrieval.get_data_files(args.target, ".pdf", normalize=True)
 
     # Convert entries to unicode
     for i, entry in enumerate(main_db.entries):

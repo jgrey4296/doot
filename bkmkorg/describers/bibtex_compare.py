@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog="\n".join(["Compare bibtex files, print out the keys missing from the first"]))
-    parser.add_argument('-t', '--target', action='append')
+    parser.add_argument('-t', '--target', action='append', help="Target Bibtex (repeatable)")
     args = parser.parse_args()
 
     args.target = [abspath(expanduser(x)) for x in args.target]
