@@ -73,3 +73,17 @@ def convert_alternative(source, output_dir, title):
                     '-o', join(output_dir, target),
                     source],
                    stdout=subprocess.PIPE)
+
+
+def merge_pdfs(paths, output="./pdf_summary"):
+    writer = PdfWriter()
+
+    for path in paths:
+        try:
+            pdf_obj = PdfReader(path)
+            for x in pdf_obj.pages:
+                writer.addpage(x)
+        except:
+            logging.warning("Error Encountered with {}".format(path))
+
+    writer.write("{}.pdf".format(output))
