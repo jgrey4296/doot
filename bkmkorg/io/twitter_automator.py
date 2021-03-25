@@ -100,9 +100,9 @@ def download_tweets(twit, json_dir, target_ids, lib_ids=None):
 
             # Add new referenced ids:
             for x in results:
-                if x._json['in_reply_to_status_id_str'] is not None:
+                if 'in_reply_to_status_id_str' in x._json and x._json['in_reply_to_status_id_str'] is not None:
                     queue.append(str(x._json['in_reply_to_status_id_str']))
-                if x._json['quoted_status_id_str'] is not None:
+                if 'quoted_status_id_str' in x._json and x._json['quoted_status_id_str'] is not None:
                     queue.append(x._json['quoted_status_id_str'])
 
         except Exception as e:
