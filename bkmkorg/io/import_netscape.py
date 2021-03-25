@@ -29,8 +29,9 @@ def open_and_extract_bookmarks(filename):
     The Main Utility. Takes the path to a filename, returns a list of bookmark tuples
     """
     logging.info('Starting html opener for: {}'.format(filename))
-    with open(filename, 'r') as f:
-        rawHtml = f.read()
+    with open(filename, 'rb') as f:
+        rawHtml = f.read().decode("utf-8","ignore")
+
     soup = BeautifulSoup(rawHtml,'html.parser')
     tupleList = getLinks(soup)
     logging.info("Found {} links".format(len(tupleList)))
