@@ -2,6 +2,12 @@
 Automate twitter archiving
 
 """
+# https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
+from typing import List, Set, Dict, Tuple, Optional, Any
+from typing import Callable, Iterator, Union, Match
+from typing import Mapping, MutableMapping, Sequence, Iterable
+from typing import cast, ClassVar, TypeVar, Generic
+
 import sys
 import datetime
 from os import listdir, mkdir
@@ -23,6 +29,8 @@ USER_FILE_TEMPLATE = "user_{}.json"
 PERMALINK_RE = re.compile(r"\[.+?/status/(\d+)\]\]")
 DATE_RE = r"%a %b %d %H:%M:%S +0000 %Y"
 GROUP_AMNT = 100
+DEFAULT_CONFIG = "secrets.config"
+DEFAULT_TARGET = ".temp_download"
 
 def parse_date(a_str):
     """ Parse a twitter 'created_at' string to a date """
@@ -240,11 +248,11 @@ def construct_user_summaries(component_dir, combined_threads_dir, total_users):
 
         graph = nx.DiGraph()
         [graph.add_edge(str(x['in_reply_to_status_id_str']), x['id_str']) for x in data
-         if 'in_reply_to_status_id_str' in x and x['in_reply_to_status_id_str']]
+         if x['in_reply_to_status_id_str'] is not None]
 
         quotes = [x['quoted_status_id_str'] for x in data if 'quoted_status_id_str' in x and x['quoted_status_id_str']]
-        roots = [x['id_str'] for x in data if not 'in_reply_to_status_id_str' in x and x['id_str'] not in quotes]
-                # dfs to get longest chain
+        roots = [x['id_str'] for x in data if x['in_reply_to_status_id_str'] is None and x['id_str'] not in quotes]
+        # dfs to get longest chain
 
         chains = []
 
@@ -440,7 +448,7 @@ def tweet_to_string(tweet, all_users, url_prefix, level=4):
                                                                                       tweet['id_str'],
                                                                                       screen_name,
                                                                                       tweet['id_str']))
-    if "in_reply_to_status_id_str" in tweet:
+    if tweet["in_reply_to_status_id_str"] is not None:
         output.append("\t:REPLY_TO: [[https://twitter.com/{}/status/{}][/{}/{}]]".format(tweet['in_reply_to_screen_name'],
                                                                                          str(tweet['in_reply_to_status_id_str']),
                                                                                          tweet['in_reply_to_screen_name'],
@@ -580,7 +588,7 @@ def extract_media_and_users_from_json(the_file):
     return ids, media, media_variants
 
 
-def get_all_tweet_ids(*the_dirs):
+def get_all_tweet_ids(*the_dirs) -> Set[Any]:
     """ For a list of directories, dfs the directory to get all files,
     and get all mentioned tweets in those files """
     tweet_ids = set()
@@ -601,6 +609,7 @@ def get_user_identities(users_file, twit, users):
     """ Get all user identities from twitter """
     logging.info("Getting user identities")
     total_users = {}
+    user_queue  = list(users)
     if exists(users_file):
         with open(users_file,'r') as f:
             total_users.update({x['id_str'] : x for x in  json.load(f, strict=False)})
@@ -751,10 +760,11 @@ def main():
     #see https://docs.python.org/3/howto/argparse.html
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog="\n".join([""]))
-    parser.add_argument('--config', default="secrets.config")
-    parser.add_argument('--target')
-    parser.add_argument('--library', action="append")
-    parser.add_argument('--export')
+    parser.add_argument('--config', default=DEFAULT_CONFIG, help="The Secrets file to access twitter")
+    parser.add_argument('--target', default=DEFAULT_TARGET, help="The target dir to process/download to")
+    parser.add_argument('--library', action="append",       help="Location of already downloaded tweets")
+    parser.add_argument('--export',  help="File to export all library tweet ids to, optional")
+    parser.add_argument('--tweet', help="A Specific Tweet URL to handle, for CLI usage/ emacs use")
 
     args = parser.parse_args()
     args.config = abspath(expanduser(args.config))
@@ -780,7 +790,8 @@ def main():
     if exists(library_ids):
         args.library.append(library_ids)
 
-    missing_dirs = [x for x in [tweet_dir,
+    missing_dirs = [x for x in [target_dir,
+                                tweet_dir,
                                 org_dir,
                                 combined_threads_dir,
                                 component_dir,
@@ -810,11 +821,13 @@ def main():
                        tweet_mode='extended')
 
     # Extract all tweet id's from library
-    logging.info("---------- Getting Library Tweet Details")
-    library_tweet_ids = get_all_tweet_ids(*args.library)
-    logging.info("Found {} library tweets".format(len(library_tweet_ids)))
+    library_tweet_ids = set()
+    if args.tweet is None:
+        logging.info("---------- Getting Library Tweet Details")
+        library_tweet_ids = get_all_tweet_ids(*args.library)
+        logging.info("Found {} library tweets".format(len(library_tweet_ids)))
 
-    if args.export is not None:
+    if args.tweet is not None and args.export is not None:
         logging.info("---------- Exporting to: {}".format(args.export))
         with open(args.export, 'w') as f:
             f.write("\n".join(library_tweet_ids))
@@ -822,7 +835,11 @@ def main():
 
     # read file of tweet id's
     logging.info("---------- Getting Target Tweet ids")
-    source_ids = set(extract_tweet_ids_from_file(target_file, simple=True))
+    if args.tweet is None:
+        source_ids = set(extract_tweet_ids_from_file(target_file, simple=True))
+    else:
+        source_ids = set([split(args.tweet)[1]])
+        logging.info("Specific Tweet: {}".format(source_ids))
     logging.info("Found {} source ids".format(len(source_ids)))
 
     # Download tweets
