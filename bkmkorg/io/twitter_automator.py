@@ -13,7 +13,7 @@ import datetime
 from os import listdir, mkdir
 from os.path import join, isfile, exists, abspath
 from os.path import split, isdir, splitext, expanduser
-from shutil import copyfile
+from shutil import copyfile, rmtree
 import argparse
 import configparser
 import json
@@ -44,7 +44,7 @@ def download_media(media_dir, media):
     """ Download all media mentioned in json files """
     logging.info("Downloading media {} to: {}".format(len(media), media_dir))
 
-    scaler = int(len(media) / 100)
+    scaler = int(len(media) / 100) + 1
     for i, x in enumerate(media):
         if i % scaler == 0:
             logging.info("{}/100".format(int(i/scaler)))
@@ -789,6 +789,9 @@ def main():
 
     if exists(library_ids):
         args.library.append(library_ids)
+
+    if args.tweet is not None and args.target == DEFAULT_TARGET and exists(DEFAULT_TARGET):
+        rmtree(DEFAULT_TARGET)
 
     missing_dirs = [x for x in [target_dir,
                                 tweet_dir,
