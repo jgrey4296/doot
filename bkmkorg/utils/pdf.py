@@ -80,6 +80,7 @@ def merge_pdfs(paths, output="./pdf_summary"):
 
     for path in paths:
         try:
+            logging.info("File : {}".format(split(path)[1]))
             pdf_obj = PdfReader(path)
             for x in pdf_obj.pages:
                 writer.addpage(x)
