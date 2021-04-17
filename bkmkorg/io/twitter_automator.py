@@ -813,8 +813,9 @@ def main():
     config = configparser.ConfigParser()
     with open(args.config, 'r') as f:
         config.read_file(f)
-        ####################
-        # INIT twitter object
+
+    ####################
+    # INIT twitter object
     logging.info("---------- Initialising Twitter")
     twit = twitter.Api(consumer_key=config['DEFAULT']['consumerKey'],
                        consumer_secret=config['DEFAULT']['consumerSecret'],
