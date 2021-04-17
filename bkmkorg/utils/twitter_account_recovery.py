@@ -60,7 +60,7 @@ def get_user_identities(users_file, twit, users):
                 breakpoint()
 
             finally:
-                time.sleep(2)
+                time.sleep(30)
 
     finally:
         logging.info("Saving {}".format(len(total_users)))
