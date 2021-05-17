@@ -1,3 +1,4 @@
+#!~/anaconda/envs/bookmark/bin/python
 """
 Check Bibtex library against pdf library
 Output bibtex entries without matching files,
@@ -12,21 +13,19 @@ from unicodedata import normalize
 
 import bibtexparser as b
 from bibtexparser import customization as c
-from bibtexparser.bparser import BibTexParser
 
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.file import retrieval
 
 PATH_NORM = re.compile("^.+?pdflibrary")
-FILE_RE = re.compile("^file(\d*)")
+FILE_RE   = re.compile("^file(\d*)")
 
 
 if __name__ == "__main__":
     # Setup
-    LOGLEVEL = root_logger.DEBUG
+    LOGLEVEL      = root_logger.DEBUG
     LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
     root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
-
 
     console = root_logger.StreamHandler()
     console.setLevel(root_logger.INFO)
@@ -43,14 +42,16 @@ if __name__ == "__main__":
 
     args.output = abspath(expanduser(args.output))
     assert(isdir(args.library))
+    assert(isdir(args.output))
+    assert(isdir(args.target))
 
     # Get targets
-    all_bibs = retrieveal.get_data_files(args.library, ".bib")
+    all_bibs = retrieval.get_data_files(args.library, ".bib")
     main_db = BU.parse_bib_files(all_bibs)
 
     logging.info("Loaded Database: {} entries".format(len(main_db.entries)))
-    count = 0
-    all_file_mentions = []
+    count              = 0
+    all_file_mentions  = []
     all_existing_files = retrieval.get_data_files(args.target, ".pdf", normalize=True)
 
     # Convert entries to unicode
@@ -96,8 +97,9 @@ if __name__ == "__main__":
     logging.info("Existing but not mentioned: {}".format(len(existing_not_mentioned)))
 
     # Create output files
-    with open("{}.mne".format(args.output),'w') as f:
+
+    with open(join(args.output, "bibtex.not_existing"),'w') as f:
         f.write("\n".join(mentioned_non_existent))
 
-    with open("{}.enm".format(args.output), 'w') as f:
+    with open(join(args.output, "bibtex.not_mentioned"), 'w') as f:
         f.write("\n".join(existing_not_mentioned))
