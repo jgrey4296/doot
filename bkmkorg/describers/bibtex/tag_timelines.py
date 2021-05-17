@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!~/anaconda/envs/bookmark/bin/python
 
 import argparse
 import logging as root_logger

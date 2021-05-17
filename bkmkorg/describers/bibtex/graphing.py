@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!~/anaconda/envs/bookmark/bin/python
 
 # load bibtex, graph tags by year, all entries by year,
 

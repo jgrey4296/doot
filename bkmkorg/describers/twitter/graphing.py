@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!~/anaconda/envs/bookmark/bin/python
 # future: load tweet archive, graph tweets, authors etc
 import argparse
 import logging as root_logger

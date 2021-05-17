@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!~/anaconda/envs/bookmark/bin/python
 # https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
 from typing import List, Set, Dict, Tuple, Optional, Any
 from typing import Callable, Iterator, Union, Match

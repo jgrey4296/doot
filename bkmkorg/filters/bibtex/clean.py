@@ -6,7 +6,6 @@ import logging as root_logger
 from hashlib import sha256
 from math import ceil
 from os import listdir, mkdir
-# Setup root_logger:
 from os.path import (abspath, commonpath, exists, expanduser, isdir, isfile,
                      join, realpath, split, splitext)
 from shutil import copyfile, move
@@ -16,7 +15,6 @@ import regex as re
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
-
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.file import retrieval
 
