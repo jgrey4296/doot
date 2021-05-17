@@ -1,5 +1,4 @@
 #!~/anaconda/envs/bookmark/bin/python
-
 import argparse
 import logging as root_logger
 from collections import defaultdict
@@ -13,7 +12,6 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 
 import bibtexparser as b
 from bibtexparser import customization as c
-from bibtexparser.bparser import BibTexParser
 
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.file import retrieval
@@ -34,6 +32,7 @@ def custom_parse(record):
         year_temp = "2020"
     else:
         year_temp = record['year']
+
     if "/" in year_temp:
         year_temp = year_temp.split("/")[0]
 
@@ -53,16 +52,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog = "\n".join(["Create Timelines for Bibtex Files"]))
     parser.add_argument('--library', action="append")
-    parser.add_argument('--target')
+    parser.add_argument('--output')
 
     args = parser.parse_args()
     args.library = [abspath(expanduser(x)) for x in args.library]
-    args.target = abspath(expanduser(args.target))
-    if not exists(args.target):
-        logging.info("Making target: {}".format(args.target))
-        mkdir(args.target)
+    args.output= abspath(expanduser(args.output))
+    if not exists(args.output):
+        logging.info("Making output: {}".format(args.output))
+        mkdir(args.output)
 
-    assert(exists(args.target))
+    assert(exists(args.output))
 
     all_bibs = retrieval.get_data_files(args.library, ".bib")
 
@@ -83,7 +82,7 @@ if __name__ == "__main__":
 
     # Then sort by year and write out
     for tag, entries in tag_collection.items():
-        out_target = join(args.target, "{}.tag_timeline".format(tag))
+        out_target = join(args.output, "{}.tag_timeline".format(tag))
         sorted_entries = sorted(entries, key=lambda x: x['year'])
 
         with open(out_target, 'w') as f:
