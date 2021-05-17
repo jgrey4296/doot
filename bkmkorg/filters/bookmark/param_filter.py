@@ -9,10 +9,10 @@ from os.path import abspath, exists, expanduser, isfile, join
 
 import opener
 import regex as re
-from bkmkorg.io.export.export_netscape import exportBookmarks as html_exporter
-from bkmkorg.io.export.export_org import exportBookmarks as org_exporter
-from bkmkorg.io.export.export_plain import exportBookmarks as plain_exporter
-from bkmkorg.io.import.import_netscape import open_and_extract_bookmarks
+from bkmkorg.io.export.netscape import exportBookmarks as html_exporter
+from bkmkorg.io.export.org import exportBookmarks as org_exporter
+from bkmkorg.io.export.plain import exportBookmarks as plain_exporter
+from bkmkorg.io.import.netscape import open_and_extract_bookmarks
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.file import retrieval
 from bkmkorg.utils.trie import Trie

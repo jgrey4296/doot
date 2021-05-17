@@ -8,8 +8,8 @@ from os import listdir
 from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
                      splitext)
 
-from bkmkorg.io.export.export_netscape import exportBookmarks
-from bkmkorg.io.import.import_netscape import open_and_extract_bookmarks
+from bkmkorg.io.export.netscape import exportBookmarks
+from bkmkorg.io.import.netscape import open_and_extract_bookmarks
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.file import retrieval
 

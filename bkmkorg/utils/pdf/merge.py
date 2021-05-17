@@ -11,9 +11,9 @@ from os.path import split, isdir, splitext, expanduser
 import argparse
 import logging as root_logger
 
-from bkmkorg.utils import retrieval
-from bkmkorg.utils import bibtex as BU
-from bkmkorg.utils import pdf as PU
+from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.pdf import pdf as PU
 
 if __name__ == "__main__":
     # Setup root_logger:

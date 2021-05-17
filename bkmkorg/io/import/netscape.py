@@ -8,7 +8,7 @@ from collections import namedtuple
 from bs4 import BeautifulSoup
 
 
-from bkmkorg.utils.bookmark.bookmark_data import bookmarkTuple
+from bkmkorg.utils.bookmark.data import bookmarkTuple
 
 
 def getLinks(aSoup):

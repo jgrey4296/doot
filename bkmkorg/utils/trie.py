@@ -5,7 +5,7 @@ Trie Class for bookmarks
 import logging as root_logger
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
-from bkmkorg.utils.bookmark.bookmark_data import bookmarkTuple
+from bkmkorg.utils.bookmark.data import bookmarkTuple
 
 logging = root_logger.getLogger(__name__)
 
