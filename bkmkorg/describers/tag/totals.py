@@ -1,3 +1,4 @@
+#!/opt/anaconda3/envs/bookmark/bin/python
 """
 Script to Process Bibtex, bookmark, and org files for tags
 and to collect them
@@ -9,7 +10,6 @@ from os import mkdir
 from os.path import abspath, expanduser, isdir, join, split, splitext
 
 from bibtexparser import customization as c
-
 from bkmkorg.io.import.netscape import open_and_extract_bookmarks
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.file import retrieval
@@ -29,26 +29,20 @@ logging = root_logger.getLogger(__name__)
 
 ##############################
 def custom(record):
-    record = c.type(record)
     record = c.author(record)
     record = c.editor(record)
-    record = c.journal(record)
-    record = c.keyword(record)
-    record = c.link(record)
-    record = c.doi(record)
     tags = set()
 
     if 'tags' in record:
         tags.update([i.strip() for i in re.split(',|;', record["tags"].replace('\n', ''))])
-    if "keywords" in record:
-        tags.update([i.strip() for i in re.split(',|;', record["keywords"].replace('\n', ''))])
-    if "mendeley-tags" in record:
-        tags.update([i.strip() for i in re.split(',|;', record["mendeley-tags"].replace('\n', ''))])
 
     record['tags'] = tags
     record['p_authors'] = []
     if 'author' in record:
         record['p_authors'] = [c.splitname(x, False) for x in record['author']]
+    if 'editor' in record:
+        record['p_authors'] = [c.splitname(x, False) for x in record['editor']]
+
     return record
 
 
@@ -63,7 +57,7 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--output', default="collected")
     parser.add_argument('-c', '--cleaned', action="append")
 
-    logging.info("Tag Collation start: --------------------")
+    logging.info("Tag Totals start: --------------------")
     cli_args = parser.parse_args()
     cli_args.output = abspath(expanduser(cli_args.output))
 
@@ -93,11 +87,11 @@ if __name__ == "__main__":
 
     # load existing tag files
     cleaned_files = retrieval.get_data_files(cli_args.cleaned, [".txt", ".tags", ".org"])
-    cleaned = retrieval.read_substitutions(cleaned_files)
+    cleaned       = retrieval.read_substitutions(cleaned_files)
 
     # get new tags
-    tags = set(all_tags.keys())
-    ctags = set(cleaned.keys())
+    tags     = set(all_tags.keys())
+    ctags    = set(cleaned.keys())
     new_tags = tags - ctags
 
     new_tag_dict = {x : all_tags[x] for x in new_tags}
