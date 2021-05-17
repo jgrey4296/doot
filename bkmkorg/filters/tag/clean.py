@@ -1,3 +1,4 @@
+#!/opt/anaconda3/envs/bookmark/bin/python
 """
 Script to Process Bibtex, bookmark, and org files for tags
 and to clean them
@@ -22,6 +23,7 @@ from bkmkorg.io.import.netscape import open_and_extract_bookmarks
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.file import retrieval
 from bkmkorg.utils.tags import tags as TU
+from bkmkorg.utils.clean import cleaners
 
 logging = root_logger.getLogger(__name__)
 
@@ -80,12 +82,12 @@ if __name__ == "__main__":
 
     #Load Cleaned Tags
     tag_sub_files = retrieval.get_data_files(args.cleaned, [".org", ".txt", ".tags"])
-    cleaned_tags = retrieval.read_substitutions(tag_sub_files)
+    cleaned_tags = cleaners.read_substitutions(tag_sub_files)
     logging.info("Loaded {} tag substitutions".format(len(cleaned_tags)))
 
     #Load Bibtexs, html, orgs and clean each
     bibs, htmls, orgs = retrieval.collect_files(args.target)
-    retrieval.clean_bib_files(bibs   , cleaned_tags)
-    retrieval.clean_org_files(orgs   , cleaned_tags)
-    retrieval.clean_html_files(htmls , cleaned_tags)
+    cleaners.clean_bib_files(bibs   , cleaned_tags)
+    cleaners.clean_org_files(orgs   , cleaned_tags)
+    cleaners.clean_html_files(htmls , cleaned_tags)
     logging.info("Complete --------------------")
