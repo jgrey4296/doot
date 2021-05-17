@@ -2,20 +2,20 @@
 A simple trie usage bookmark processor
 Pairs with bkmkorg/describers/bookmark_queries
 """
-from bkmkorg.utils.trie import Trie
-from bkmkorg.io.import_netscape import open_and_extract_bookmarks
-from bkmkorg.io.export_netscape import exportBookmarks as html_exporter
-from bkmkorg.io.export_org import exportBookmarks as org_exporter
-from bkmkorg.io.export_plain import exportBookmarks as plain_exporter
-from os.path import isfile,join,exists, expanduser, abspath
-from os import listdir
-import opener
-import logging
 import argparse
-import regex as re
+import logging
+from os import listdir
+from os.path import abspath, exists, expanduser, isfile, join
 
-from bkmkorg.utils import retrieval
-from bkmkorg.utils import bibtex as BU
+import opener
+import regex as re
+from bkmkorg.io.export.export_netscape import exportBookmarks as html_exporter
+from bkmkorg.io.export.export_org import exportBookmarks as org_exporter
+from bkmkorg.io.export.export_plain import exportBookmarks as plain_exporter
+from bkmkorg.io.import.import_netscape import open_and_extract_bookmarks
+from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.trie import Trie
 
 query_re = re.compile(r'\*+\s+\(\d+\) (.+)$')
 

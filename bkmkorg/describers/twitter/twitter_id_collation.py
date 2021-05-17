@@ -2,26 +2,24 @@
 Extract Twitter ID's from org files
 
 """
-# https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
-from typing import List, Set, Dict, Tuple, Optional, Any
-from typing import Callable, Iterator, Union, Match
-from typing import Mapping, MutableMapping, Sequence, Iterable
-from typing import cast, ClassVar, TypeVar, Generic
-
-import logging as root_logger
 import argparse
+import logging as root_logger
 from math import ceil
 from os import listdir
-from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath, split
-from bkmkorg.io.import_netscape import open_and_extract_bookmarks
-import regex as re
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
+# https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
+from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
+                    List, Mapping, Match, MutableMapping, Optional, Sequence,
+                    Set, Tuple, TypeVar, Union, cast)
+
+import bibtexparser as b
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
-import bibtexparser as b
-import regex
 
-from bkmkorg.utils import retrieval
-from bkmkorg.utils import bibtex as BU
+from bkmkorg.io.import.import_netscape import open_and_extract_bookmarks
+from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.file import retrieval
 
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])

@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
 # https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
-from typing import List, Set, Dict, Tuple, Optional, Any
-from typing import Callable, Iterator, Union, Match
-from typing import Mapping, MutableMapping, Sequence, Iterable
-from typing import cast, ClassVar, TypeVar, Generic
-
-from os import listdir
-from os.path import join, isfile, exists, abspath
-from os.path import split, isdir, splitext, expanduser
 import argparse
 import logging as root_logger
+from os import listdir
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
+from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
+                    List, Mapping, Match, MutableMapping, Optional, Sequence,
+                    Set, Tuple, TypeVar, Union, cast)
 
+from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.pdf import pdf as PU
 from bkmkorg.utils import retrieval
-from bkmkorg.utils import bibtex as BU
-from bkmkorg.utils import pdf as PU
 
 if __name__ == "__main__":
     # Setup root_logger:

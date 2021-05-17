@@ -3,23 +3,22 @@ Check Bibtex library against pdf library
 Output bibtex entries without matching files,
 and files without matching entries
 """
-from bibtexparser.bparser import BibTexParser
-from os.path import splitext, expanduser, abspath, split, splitext, isdir, join
-from os import listdir
 import argparse
+import logging as root_logger
+import re
+from os import listdir
+from os.path import abspath, expanduser, isdir, join, split, splitext
+from unicodedata import normalize
+
 import bibtexparser as b
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
-import re
-from unicodedata import normalize
-import logging as root_logger
 
-from bkmkorg.utils import retrieval
-from bkmkorg.utils import bibtex as BU
+from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.file import retrieval
 
 PATH_NORM = re.compile("^.+?pdflibrary")
 FILE_RE = re.compile("^file(\d*)")
-
 
 
 if __name__ == "__main__":

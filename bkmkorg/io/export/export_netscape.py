@@ -3,7 +3,8 @@ Exports a given trie to Netscape bookmark file format
 Main function: exportBookmarks
 """
 import logging
-from bkmkorg.utils.bookmark_data import bookmarkTuple
+
+from bkmkorg.utils.bookmark.bookmark_data import bookmarkTuple
 
 groupCount = 0
 listCount = 0

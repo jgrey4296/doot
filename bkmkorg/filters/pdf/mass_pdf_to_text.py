@@ -1,18 +1,17 @@
 """
 Simple Utility to convert pdf library to text
 """
-from os.path import join, isfile, exists, abspath
-from os.path import split, isdir, splitext, expanduser
-from os import listdir
-from subprocess import call
 import argparse
-
-from bkmkorg.utils import retrieval
-from bkmkorg.utils import bibtex as BU
-from bkmkorg.utils import pdf as PU
-
 # Setup root_logger:
 import logging as root_logger
+from os import listdir
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
+from subprocess import call
+
+from bkmkorg.utils.bibtex import bibtex as BU
+from bkmkorg.utils.pdf import pdf as PU
+from bkmkorg.utils.file import retrieval
 
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])

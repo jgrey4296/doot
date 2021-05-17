@@ -1,5 +1,11 @@
 # Setup root_logger:
+import json
 import logging as root_logger
+from os import listdir
+from os.path import exists, expanduser, isdir, isfile, join, splitext
+
+import wow_scraper.wow_scraper as ws
+
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.wow_scraping"
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
@@ -7,23 +13,18 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
-##############################
-from os.path import join, isfile, exists, isdir, splitext, expanduser
-from os import listdir
-import json
-import wow_scraper.wow_scraper as ws
 
 #Globals and constants:
 target_file_type = ".html"
-data_location = "/Users/jgrey/assets/Assets/Datasets/Quests/QuestDownload"
-target_location = "data"
+data_location    = "/Users/jgrey/assets/Assets/Datasets/Quests/QuestDownload"
+target_location  = "data"
 #quest_htmls :: [(filename, fullpath)]
-quest_htmls = []
-parsed_data = []
+quest_htmls      = []
+parsed_data      = []
 
 #Get the files to process:
 listed_directories = [join(data_location, x) for x in listdir(data_location)]
-quest_directories = [x for x in listed_directories if isdir(x)]
+quest_directories  = [x for x in listed_directories if isdir(x)]
 
 
 for qDir in quest_directories:

@@ -4,15 +4,14 @@ All bookmarks where the top level domain occurs more than once
 All bookmarks where the top level domain occurs only once
 """
 
-from bkmkorg.io.import_netscape import open_and_extract_bookmarks
-from bkmkorg.io.export_netscape import exportBookmarks
-from os.path import splitext, split, abspath, exists, isdir, join, expanduser
-from os import mkdir
-from urllib.parse import urlparse
-import logging as root_logger
 import argparse
+import logging as root_logger
+from os import mkdir
+from os.path import abspath, exists, expanduser, isdir, join, split, splitext
+from urllib.parse import urlparse
 
-
+from bkmkorg.io.export.export_netscape import exportBookmarks
+from bkmkorg.io.import.import_netscape import open_and_extract_bookmarks
 
 if __name__ == "__main__":
     # Setup

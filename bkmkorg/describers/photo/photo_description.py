@@ -2,14 +2,14 @@
 Photo Description Script
 Writes an org file with images that have the same hash
 """
-##############################
-# IMPORTS
-####################
 import logging as root_logger
 from hashlib import sha256
-from os.path import join, isfile, exists, abspath
-from os.path import split, isdir, splitext, expanduser
 from os import listdir
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
+
+from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.file import hash_check, retrieval
 
 # Setup root_logger:
 LOGLEVEL = root_logger.DEBUG
@@ -21,19 +21,12 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 
-from bkmkorg.utils import retrieval
-from bkmkorg.utils import bibtex as BU
-from bkmkorg.utils import hash_check
-
-##############################
-# CONSTANTS
-####################
 FILE_TYPES = [".gif",".jpg",".jpeg",".png",".mp4",".bmp"]
 
-########################################
 if __name__ == "__main__":
     logging.info("Starting Photo Description")
     import argparse
+
     #see https://docs.python.org/3/howto/argparse.html
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog = "\n".join(["Find and Hash images, revealing duplicates"]))

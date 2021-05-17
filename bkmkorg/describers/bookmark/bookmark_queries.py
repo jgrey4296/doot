@@ -7,16 +7,15 @@ parameters can be filtered out
 Pairs with bkmkorg/filters/bookmark_param_filter
 """
 
-from bkmkorg.io.import_netscape import open_and_extract_bookmarks
-from bkmkorg.utils.trie import Trie
-from os.path import splitext, split, exists, expanduser, abspath
-from urllib.parse import urlparse
 import argparse
 import logging as root_logger
+from os.path import abspath, exists, expanduser, split, splitext
+from urllib.parse import urlparse
 
-from bkmkorg.utils import retrieval
-from bkmkorg.utils import bibtex as BU
-
+from bkmkorg.io.import_netscape import open_and_extract_bookmarks
+from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.trie import Trie
 
 if __name__ == "__main__":
     # Setup Logging

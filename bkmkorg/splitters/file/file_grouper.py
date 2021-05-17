@@ -2,12 +2,12 @@
 Grouper script to put a mass of files in subdirectories
 """
 
-from os.path import join, isfile, exists, isdir, splitext, expanduser, split
-from os import listdir
-from math import floor
-from subprocess import call
 import argparse
 import logging as root_logger
+from math import floor
+from os import listdir
+from os.path import exists, expanduser, isdir, isfile, join, split, splitext
+from subprocess import call
 
 if __name__ == "__main__":
     # Setup

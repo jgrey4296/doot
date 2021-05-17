@@ -1,21 +1,16 @@
 """
 A Simple File to scrape Scenes from a Multiverse by Jon Rosenberg
 """
-##############################
-# IMPORTS
-####################
-# Setup root_logger:
 import logging as root_logger
 import re
-from urllib import parse, request
 from datetime import datetime
-from bs4 import BeautifulSoup
-from os.path import join, isfile, split
-from os.path import exists, isdir, splitext, expanduser
-from os import listdir, mkdir
 from functools import partial
+from os import listdir, mkdir
+from os.path import exists, expanduser, isdir, isfile, join, split, splitext
 from time import sleep
+from urllib import parse, request
 
+from bs4 import BeautifulSoup
 
 #Log Setup
 LOGLEVEL = root_logger.DEBUG
@@ -26,29 +21,23 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
-##############################
-# CONSTANTS
 ####################
-STARTING_PAGE = "https://amultiverse.com/archive"
+STARTING_PAGE  = "https://amultiverse.com/archive"
 RETRIEVE_COUNT = 10
-WAIT_TIME = 5
-DATA_LOCATION = "data"
+WAIT_TIME      = 5
+DATA_LOCATION  = "data"
 IMAGE_LOCATION = "imgs"
-START_YEAR = "2010"
+START_YEAR     = "2010"
 COMIC_TEMPLATE = "comic_{}.html"
-COMIC_REGEX = re.compile(u'comic_([\\d_]+)')
-ROOT = "root.html"
-YEAR_TEMPLATE = "year_{}.html"
-YEAR_REGEX = re.compile(u'year_(\\d+)')
-DATE_FORMAT = "%Y %b %d"
-DATE_OUTPUT = "%Y_%m_%d"
-##############################
-# VARIABLES
+COMIC_REGEX    = re.compile(u'comic_([\\d_]+)')
+ROOT           = "root.html"
+YEAR_TEMPLATE  = "year_{}.html"
+YEAR_REGEX     = re.compile(u'year_(\\d+)')
+DATE_FORMAT    = "%Y %b %d"
+DATE_OUTPUT    = "%Y_%m_%d"
 ####################
 current_count = 0
 current_html_data = None
-##############################
-# Utilities
 ####################
 def is_class_x(x, tag):
     return tag.has_attr('class') and tag.get('class')[0] == x
@@ -82,9 +71,6 @@ def download_and_save(target, filename, base=DATA_LOCATION):
 def convert_date(year, month_day):
     return datetime.strptime("{} {}".format(year, month_day), DATE_FORMAT).strftime(DATE_OUTPUT)
 
-##############################
-# Core Functions
-####################
 
 ########################################
 if __name__ == "__main__":

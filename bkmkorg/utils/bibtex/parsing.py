@@ -4,11 +4,12 @@
 
 """
 import logging as root_logger
-logging = root_logger.getLogger(__name__)
 
 import bibtexparser as b
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
+
+logging = root_logger.getLogger(__name__)
 
 def make_parser(func):
     bparser = BibTexParser(common_strings=False)

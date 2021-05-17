@@ -3,18 +3,20 @@ Compare 2+ bibtex files, output number of entries missing from the largest bibte
 
 """
 
-from bibtexparser.bparser import BibTexParser
-from os.path import splitext, expanduser, abspath, split
 import argparse
-import bibtexparser as b
-# Setup root_logger:
 import logging as root_logger
+from os.path import abspath, expanduser, split, splitext
+
+import bibtexparser as b
+from bibtexparser.bparser import BibTexParser
+
+from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.file import retrieval
+
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
-from bkmkorg.utils import retrieval
-from bkmkorg.utils import bibtex as BU
 
 if __name__ == "__main__":
     console = root_logger.StreamHandler()

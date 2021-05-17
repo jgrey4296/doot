@@ -2,16 +2,16 @@
 Integrates newly parsed twitter->org files
 into the existing set
 """
-from os.path import join, isfile, exists, abspath
-from os.path import split, isdir, splitext, expanduser
-from os import listdir, mkdir
-from subprocess import call
-from random import choice
 import argparse
 import logging as root_logger
+from os import listdir, mkdir
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
+from random import choice
+from subprocess import call
 
-from bkmkorg.utils import retrieval
-from bkmkorg.utils import bibtex as BU
+from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.file import retrieval
 
 if __name__ == "__main__":
     # Setup

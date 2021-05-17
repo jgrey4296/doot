@@ -1,14 +1,14 @@
-from os.path import isfile, join, isdir, splitext, exists, abspath
-from os.path import split
-from os import mkdir, getcwd
-from shutil import copyfile
-from hashlib import sha256
 import logging
 from collections import namedtuple
+from hashlib import sha256
+from os import getcwd, mkdir
+from os.path import abspath, exists, isdir, isfile, join, split, splitext
+from shutil import copyfile
+
 import regex
 
 hashtag_re = regex.compile(r'#(\w+)')
-http_re= regex.compile(r'(http|pic\.twitter)')
+http_re    = regex.compile(r'(http|pic\.twitter)')
 
 
 def conversation_p(tag):

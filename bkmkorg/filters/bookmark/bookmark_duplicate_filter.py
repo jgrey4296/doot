@@ -1,19 +1,17 @@
 """
 Merge duplicate url'd bookmarks together
 """
-from bkmkorg.io.import_netscape import open_and_extract_bookmarks
-from bkmkorg.io.export_netscape import exportBookmarks
-from bkmkorg.bookmark_data import bookmarkTuple
 import argparse
-from os.path import join, isfile, exists, abspath
-from os.path import split, isdir, splitext, expanduser
-from os import listdir
-from os.path import splitext, split
 import logging as root_logger
+from os import listdir
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
 
-from bkmkorg.utils import retrieval
-from bkmkorg.utils import bibtex as BU
-
+from bkmkorg.utils.bookmark.bookmark_data import bookmarkTuple
+from bkmkorg.io.export.export_netscape import exportBookmarks
+from bkmkorg.io.import.import_netscape import open_and_extract_bookmarks
+from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.file import retrieval
 
 if __name__ == "__main__":
     # Setup root_logger:

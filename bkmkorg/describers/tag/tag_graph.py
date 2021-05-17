@@ -2,21 +2,23 @@
 Script to Process Bibtex, bookmark, and org files for tags
 and to collect them into a graph
 """
-import networkx as nx
-import logging as root_logger
 import argparse
+import logging as root_logger
 from math import ceil
 from os import listdir
-from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath, split
-from bkmkorg.io.import_netscape import open_and_extract_bookmarks
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
+
+import bibtexparser as b
+import networkx as nx
+import regex
 import regex as re
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
-import bibtexparser as b
-import regex
 
-from bkmkorg.utils import retrieval
-from bkmkorg.utils import bibtex as BU
+from bkmkorg.io.import.import_netscape import open_and_extract_bookmarks
+from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.file import retrieval
 
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])

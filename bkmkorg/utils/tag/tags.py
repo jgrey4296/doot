@@ -4,20 +4,16 @@
 Tagset Utilities
 
 """
-# https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
-from typing import List, Set, Dict, Tuple, Optional, Any
-from typing import Callable, Iterator, Union, Match
-from typing import Mapping, MutableMapping, Sequence, Iterable
-from typing import cast, ClassVar, TypeVar, Generic
-
 import logging as root_logger
-logging = root_logger.getLogger(__name__)
+from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
+                    List, Mapping, Match, MutableMapping, Optional, Sequence,
+                    Set, Tuple, TypeVar, Union, cast)
 
 import networkx as nx
 import regex
-import regex as re
+from bkmkorg.io.import.import_netscape import open_and_extract_bookmarks
 
-from bkmkorg.io.import_netscape import open_and_extract_bookmarks
+logging = root_logger.getLogger(__name__)
 
 def extract_tags_from_bibtex(db, the_graph=None):
     logging.info("Processing Bibtex: {}".format(len(db.entries)))

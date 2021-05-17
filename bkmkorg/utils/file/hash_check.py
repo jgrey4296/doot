@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 import logging as root_logger
-logging = root_logger.getLogger(__name__)
-
 from hashlib import sha256
-from os.path import join, isfile, exists, abspath
-from os.path import split, isdir, splitext, expanduser
 from os import listdir, mkdir
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
+
+logging = root_logger.getLogger(__name__)
 
 def file_to_hash(filename):
     with open(filename, 'rb') as f:

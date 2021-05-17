@@ -2,18 +2,16 @@
 Parse Scarfolk html files into org files
 """
 
-#imports
-from bs4 import BeautifulSoup
-from urllib.parse import unquote
-from os import listdir, mkdir
-from os.path import join, isfile, exists, abspath
-from os.path import split, isdir, splitext, expanduser
-from os.path import splitext, split
-from shutil import copyfile
-from hashlib import sha256
-from os.path import expanduser, abspath
 import argparse
 import logging as root_logger
+from hashlib import sha256
+from os import listdir, mkdir
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
+from shutil import copyfile
+from urllib.parse import unquote
+from bs4 import BeautifulSoup
+
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')

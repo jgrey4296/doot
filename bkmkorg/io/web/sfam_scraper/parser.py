@@ -1,12 +1,15 @@
 """
 Script to parse SFAM html and create an org file of images with appropriate tags
 """
-from bs4 import BeautifulSoup
-from os.path import join, isfile, exists, isdir, splitext, expanduser, split, abspath
-from os import listdir
-from functools import partial
 import argparse
 import logging as root_logger
+from functools import partial
+from os import listdir
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
+
+from bs4 import BeautifulSoup
+
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
@@ -17,7 +20,6 @@ root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
 
-#see https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser("")
 parser.add_argument('-s', '--source')
 parser.add_argument('-o', '--output')

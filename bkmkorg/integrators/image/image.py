@@ -1,16 +1,17 @@
 """
 Simple program to integrate images into a collection
 """
-from hashlib import sha256
-from os import listdir, mkdir
-from os.path import join, isfile, exists, isdir, splitext, expanduser, split, abspath
-from shutil import copyfile
 import argparse
 import logging as root_logger
-import regex as re
+from hashlib import sha256
+from os import listdir, mkdir
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
+from shutil import copyfile
 
-from bkmkorg.utils import retrieval
-from bkmkorg.utils import bibtex as BU
+import regex as re
+from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.file import retrieval
 
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.md5PaperChecker"

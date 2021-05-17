@@ -1,24 +1,25 @@
 """
 Script to clean a bibtex file, converting everything to unicode
 """
-from bibtexparser import customization as c
-from bibtexparser.bparser import BibTexParser
-from bibtexparser.bwriter import BibTexWriter
+import argparse
+import logging as root_logger
 from hashlib import sha256
 from math import ceil
 from os import listdir, mkdir
-from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath, commonpath, realpath
+# Setup root_logger:
+from os.path import (abspath, commonpath, exists, expanduser, isdir, isfile,
+                     join, realpath, split, splitext)
 from shutil import copyfile, move
-import argparse
+
 import bibtexparser as b
 import regex as re
+from bibtexparser import customization as c
+from bibtexparser.bparser import BibTexParser
+from bibtexparser.bwriter import BibTexWriter
 
-from bkmkorg.utils import retrieval
-from bkmkorg.utils import bibtex as BU
+from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.file import retrieval
 
-# Setup root_logger:
-from os.path import splitext, split
-import logging as root_logger
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')

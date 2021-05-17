@@ -2,13 +2,18 @@
 Script to Process Bibtex, bookmark, and org files for tags
 and to collect them
 """
-from bibtexparser import customization as c
-from bkmkorg.io.import_netscape import open_and_extract_bookmarks
-from os.path import join, isdir, splitext, expanduser, abspath, split
-from os import mkdir
-import re
 import argparse
 import logging as root_logger
+import re
+from os import mkdir
+from os.path import abspath, expanduser, isdir, join, split, splitext
+
+from bibtexparser import customization as c
+
+from bkmkorg.io.import.import_netscape import open_and_extract_bookmarks
+from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.tags import tags as TU
 
 # Setup logger
 LOGLEVEL = root_logger.DEBUG
@@ -20,9 +25,7 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 
-from bkmkorg.utils import retrieval
-from bkmkorg.utils import bibtex as BU
-from bkmkorg.utils import tags as TU
+
 
 ##############################
 def custom(record):

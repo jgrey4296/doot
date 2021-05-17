@@ -1,17 +1,15 @@
 """
 Integrate new bookmarks into the main bookmark file
 """
-from bkmkorg.io.export_netscape import exportBookmarks as html_export
-from bkmkorg.io.export_org import exportBookmarks as org_export
-from bkmkorg.io.import_netscape import open_and_extract_bookmarks
-from os.path import splitext, split, exists, expanduser, abspath
 import argparse
 import logging as root_logger
+from os.path import abspath, exists, expanduser, split, splitext
 
-from bkmkorg.utils import retrieval
-from bkmkorg.utils import bibtex as BU
-
-
+from bkmkorg.io.export.export_netscape import exportBookmarks as html_export
+from bkmkorg.io.export.export_org import exportBookmarks as org_export
+from bkmkorg.io.import.import_netscape import open_and_extract_bookmarks
+from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.file import retrieval
 
 if __name__ == "__main__":
     # Setup

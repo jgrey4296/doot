@@ -2,27 +2,25 @@
 Automate twitter archiving
 
 """
-# https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
-from typing import List, Set, Dict, Tuple, Optional, Any
-from typing import Callable, Iterator, Union, Match
-from typing import Mapping, MutableMapping, Sequence, Iterable
-from typing import cast, ClassVar, TypeVar, Generic
-
-import sys
-import datetime
-from os import listdir, mkdir
-from os.path import join, isfile, exists, abspath
-from os.path import split, isdir, splitext, expanduser
-from shutil import copyfile, rmtree
 import argparse
 import configparser
+import datetime
 import json
 import logging as root_logger
 import re
+import sys
 import uuid
+from os import listdir, mkdir
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
+from shutil import copyfile, rmtree
+from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
+                    List, Mapping, Match, MutableMapping, Optional, Sequence,
+                    Set, Tuple, TypeVar, Union, cast)
 
-import requests
 import networkx as nx
+import requests
+
 import twitter
 
 USER_FILE_TEMPLATE = "user_{}.json"

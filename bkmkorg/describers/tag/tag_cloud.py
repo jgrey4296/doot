@@ -8,19 +8,20 @@ Using a dictionary of word frequency.
 """
 
 import argparse
-import numpy as np
 import os
 import re
-from PIL import Image
-from os import path
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
-from os.path import join, isfile, exists, abspath
-from os.path import split, isdir, splitext, expanduser
-from os import listdir
+from os import listdir, path
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
 
-from bkmkorg.utils import retrieval
+import matplotlib.pyplot as plt
+import numpy as np
+from PIL import Image
+from wordcloud import WordCloud
+
+#--
 from bkmkorg.utils import bibtex as BU
+from bkmkorg.utils import retrieval
 
 def getFrequencyDictForText(lines):
     tmpDict = {}

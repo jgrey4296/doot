@@ -1,19 +1,18 @@
 """
 Cluster a mass of images together
 """
-from PIL import Image
-from random import shuffle
-from os import mkdir
-from shutil import copyfile
 import argparse
-from os import listdir
-from os.path import join, isfile, exists, abspath
-from os.path import split, isdir, splitext, expanduser
-from os.path import splitext, split
-from sklearn.cluster import KMeans
-import PIL
 import logging as root_logger
+from os import listdir, mkdir
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
+from random import shuffle
+from shutil import copyfile
+
 import numpy as np
+import PIL
+from PIL import Image
+from sklearn.cluster import KMeans
 
 THUMB = (200,200)
 

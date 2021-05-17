@@ -1,19 +1,20 @@
 """
 Script to split a library into bib files based on tags
 """
+import argparse
+import logging as root_logger
+from math import ceil
+from os import listdir, mkdir
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
+
 import bibtexparser as b
+import regex as re
+from bibtexparser import customization as c
 from bibtexparser.bibdatabase import BibDatabase
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
-from bibtexparser import customization as c
-from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath
-from os import listdir, mkdir
-import regex as re
-from math import ceil
-import argparse
-# Setup root_logger:
-from os.path import splitext, split
-import logging as root_logger
+
 
 def custom(record):
     # record = c.type(record)

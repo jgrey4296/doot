@@ -2,15 +2,14 @@
 Split the bookmark library by top level domain
 """
 
-# Setup root_logger:
-from bkmkorg.io.import_netscape import open_and_extract_bookmarks
-from bkmkorg.io.export_org import exportBookmarks as org_export
-from os.path import splitext, split, abspath, exists, isdir, join, expanduser
-from os import mkdir
-from urllib.parse import urlparse
-import logging as root_logger
 import argparse
+import logging as root_logger
+from os import mkdir
+from os.path import abspath, exists, expanduser, isdir, join, split, splitext
+from urllib.parse import urlparse
 
+from bkmkorg.io.export.export_org import exportBookmarks as org_export
+from bkmkorg.io.import.import_netscape import open_and_extract_bookmarks
 
 if __name__ == "__main__":
     # Setup

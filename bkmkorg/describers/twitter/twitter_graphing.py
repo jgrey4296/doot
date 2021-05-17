@@ -1,25 +1,21 @@
 #!/usr/bin/env python3
 # future: load tweet archive, graph tweets, authors etc
-from typing import List, Set, Dict, Tuple, Optional, Any
-from typing import Callable, Iterator, Union, Match
-from typing import Mapping, MutableMapping, Sequence, Iterable
-from typing import cast, ClassVar, TypeVar, Generic
-
-from os.path import join, isfile, exists, abspath
-from os.path import split, isdir, splitext, expanduser
-from os import listdir
-
 import argparse
 import logging as root_logger
-from datetime import datetime
 from collections import defaultdict
+from datetime import datetime
+from os import listdir
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
+from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
+                    List, Mapping, Match, MutableMapping, Optional, Sequence,
+                    Set, Tuple, TypeVar, Union, cast)
 
 from matplotlib import pyplot as plt
 
-from bkmkorg.utils import retrieval
-from bkmkorg.utils import bibtex as BU
 from bkmkorg.utils import diagram as DU
-
+from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.file import retrieval
 
 # Setup root_logger:
 LOGLEVEL = root_logger.DEBUG

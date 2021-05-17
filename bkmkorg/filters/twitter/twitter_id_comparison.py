@@ -1,16 +1,15 @@
 """
 Find tweets missing from the main library
 """
-# Setup root_logger:
-from os.path import join, isfile, exists, abspath
-from os.path import split, isdir, splitext, expanduser
-from os import listdir
-from os.path import splitext, split
-import logging as root_logger
 import argparse
+import logging as root_logger
+from os import listdir
+# Setup root_logger:
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
 
-from bkmkorg.utils import retrieval
-from bkmkorg.utils import bibtex as BU
+from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.file import retrieval
 
 ##############################
 

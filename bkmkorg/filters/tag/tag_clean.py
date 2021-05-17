@@ -2,24 +2,26 @@
 Script to Process Bibtex, bookmark, and org files for tags
 and to clean them
 """
+import argparse
+import logging as root_logger
+from math import ceil
+from os import listdir
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
+
+import bibtexparser as b
+import regex as re
+
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
-from bkmkorg.bookmark_data import bookmarkTuple
-from bkmkorg.io.export_netscape import exportBookmarks
-from bkmkorg.io.import_netscape import open_and_extract_bookmarks
-from math import ceil
-from os import listdir
-from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath, split
-import argparse
-import bibtexparser as b
-import logging as root_logger
-import regex
-import regex as re
 
-from bkmkorg.utils import retrieval
-from bkmkorg.utils import bibtex as BU
-from bkmkorg.utils import tags as TU
+from bkmkorg.bookmark.bookmark_data import bookmarkTuple
+from bkmkorg.io.export.export_netscape import exportBookmarks
+from bkmkorg.io.import.import_netscape import open_and_extract_bookmarks
+from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.tags import tags as TU
 
 logging = root_logger.getLogger(__name__)
 

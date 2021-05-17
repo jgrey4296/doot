@@ -1,20 +1,20 @@
 """
 script to create lists, and assign users to said lists
 """
-import twitter as tw
-from os.path import join, isfile, exists, isdir, splitext, expanduser
-from os import listdir
-import regex as re
-from time import sleep
-from collections import defaultdict
-import IPython
+import argparse
+import logging as root_logger
 import pickle
 import textwrap
+from collections import defaultdict
 from functools import partial
-import argparse
+from os import listdir
+from os.path import exists, expanduser, isdir, isfile, join, splitext
+from time import sleep
 
-# Setup root_logger:
-import logging as root_logger
+import regex as re
+
+import twitter as tw
+
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.list_uploading"
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')

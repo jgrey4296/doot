@@ -4,22 +4,20 @@
 Utilities to retrieve files of use
 
 """
-# https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
-from typing import List, Set, Dict, Tuple, Optional, Any
-from typing import Callable, Iterator, Union, Match
-from typing import Mapping, MutableMapping, Sequence, Iterable
-from typing import cast, ClassVar, TypeVar, Generic
-
 import logging as root_logger
-from os import listdir, mkdir
-from os.path import join, isfile, exists, isdir, splitext, expanduser, abspath, split
-from unicodedata import normalize as norm_unicode
-
 from datetime import datetime
+from os import listdir, mkdir
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
+from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
+                    List, Mapping, Match, MutableMapping, Optional, Sequence,
+                    Set, Tuple, TypeVar, Union, cast)
+from unicodedata import normalize as norm_unicode
 
 import regex as re
 
 logging = root_logger.getLogger(__name__)
+
 img_exts = [".jpg",".jpeg",".png",".gif",".webp",".tiff"]
 img_exts2 = [".gif",".jpg",".jpeg",".png",".mp4",".bmp"]
 img_and_video = [".gif",".jpg",".jpeg",".png",".mp4",".bmp", ".mov", ".avi", ".webp", ".tiff"]

@@ -3,15 +3,14 @@ Stat generator for bookmarks
 Pairs with bkmkorg/filters/bookmark_tag_filter
 """
 
-from os.path import splitext, split, exists, expanduser, abspath
-from bkmkorg.io.import_netscape import open_and_extract_bookmarks
-import logging as root_logger
-from urllib.parse import urlparse
 import argparse
+import logging as root_logger
+from os.path import abspath, exists, expanduser, split, splitext
+from urllib.parse import urlparse
 
+from bkmkorg.io.import.import_netscape import open_and_extract_bookmarks
 from bkmkorg.utils import retrieval
-from bkmkorg.utils import bibtex as BU
-
+from bkmkorg.utils.bibtex import parsing as BU
 
 if __name__ == "__main__":
     # Setup logging

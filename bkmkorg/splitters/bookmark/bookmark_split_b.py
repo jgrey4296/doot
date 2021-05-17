@@ -2,14 +2,14 @@
 Splits a bookmark file into subfiles by url
 """
 
-from os.path import splitext, split, exists, expanduser, abspath, isdir, join
-from os import mkdir
-from bkmkorg.io.import_netscape import open_and_extract_bookmarks
-from bkmkorg.io.export_netscape import exportBookmarks
-import logging as root_logger
-from urllib.parse import urlparse
 import argparse
+import logging as root_logger
+from os import mkdir
+from os.path import abspath, exists, expanduser, isdir, join, split, splitext
+from urllib.parse import urlparse
 
+from bkmkorg.io.export.export_netscape import exportBookmarks
+from bkmkorg.io.export.import_netscape import open_and_extract_bookmarks
 
 if __name__ == "__main__":
     # Setup

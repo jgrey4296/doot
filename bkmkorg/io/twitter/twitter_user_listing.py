@@ -3,18 +3,16 @@ script to get all users I follow, and create a file to annotate list membership
 with details including bio
 """
 
-#imports
-import twitter as tw
-from os.path import join, isfile, exists, isdir, splitext, expanduser
-from os import listdir
-from time import sleep
-import IPython
+import argparse
+import logging as root_logger
 import pickle
 import textwrap
 from functools import partial
-import argparse
-# Setup root_logger:
-import logging as root_logger
+from os import listdir
+from os.path import exists, expanduser, isdir, isfile, join, splitext
+from time import sleep
+
+import twitter as tw
 
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.user_listing"

@@ -1,7 +1,10 @@
 import logging as root_logger
-logging = root_logger.getLogger(__name__)
+
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString
+
+logging = root_logger.getLogger(__name__)
+
 
 def parseData(s):
     assert(isinstance(s, str))

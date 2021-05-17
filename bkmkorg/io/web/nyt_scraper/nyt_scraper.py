@@ -1,8 +1,13 @@
 """
     A NYTimes Archive Scraper
 """
-# Setup root_logger:
+import json
 import logging as root_logger
+from os.path import exists, isfile, join
+from time import sleep
+
+import requests
+
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "scraper_nytimes.log"
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
@@ -11,38 +16,22 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
-##############################
-# IMPORTS
-####################
-import requests
-from time import sleep
-from os.path import isfile, exists, join
-import json
 
-##############################
-# CONSTANTS
-####################
-api_key = None
-url = lambda d: "https://api.nytimes.com/svc/archive/v1/{}/{}.json".format(d['year'],d['month'])
-api_key_params = lambda k: {'api-key': k }
-header = { 'user-agent': 'jg-nyt-nlp-scraper/0.0.1' }
-WAIT_TIME = 1
-MAX_REQUESTS = 2000
-DATE_LOG = 'requested_dates.log'
-DATA_DIR = "data"
-TIMEOUT= 6.2
+api_key          = None
+url              = lambda d: "https://api.nytimes.com/svc/archive/v1/{}/{}.json".format(d['year'],d['month'])
+api_key_params   = lambda k: {'api-key': k }
+header           = { 'user-agent': 'jg-nyt-nlp-scraper/0.0.1' }
+WAIT_TIME        = 1
+MAX_REQUESTS     = 2000
+DATE_LOG         = 'requested_dates.log'
+DATA_DIR         = "data"
+TIMEOUT          = 6.2
 LOCAL_COUNT_WAIT = 5
 
-##############################
-# VARIABLES
-####################
-requested_dates = []
+requested_dates                     = []
 total_requests_performed_in_session = 0
-requests_remaining = 2000
+requests_remaining                  = 2000
 
-##############################
-# Utilities
-####################
 
 def retrieve_api_key():
     """ Get the api key from file, rather than hard code it """
@@ -97,9 +86,6 @@ def check_response_header(response):
     if int(response.headers['X-RateLimit-Remaining-day']) < 1:
         raise Exception('No More Requests Remaining Today')
 
-#--------------------
-# Date Utilities
-#--------------------
 def load_last_date():
     """ Get the last date requested from the record of all retrieved data  """
     global requested_dates
@@ -145,9 +131,7 @@ def save_response(response, date):
         f.write(response.text)
     logging.info('Wrote: {}'.format(filename))
 
-##############################
-# Core Functions
-####################
+
 def main_scrape():
     """ A Main function that retrieves nyt data appropriately """
     local_count = 0
