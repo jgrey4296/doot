@@ -1,6 +1,3 @@
-"""
-Script to split a library into bib files based on tags
-"""
 import argparse
 import logging as root_logger
 from math import ceil

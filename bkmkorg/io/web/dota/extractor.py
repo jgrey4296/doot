@@ -1,7 +1,7 @@
 import time
 
-from patchNoteExtractor import PatchNoteExtractor
-from totalLinkExtractor import DotaLinkExtractor
+from patch_note_extractor import PatchNoteExtractor
+from total_link_extractor import DotaLinkExtractor
 
 if __name__ == "__main__":
     totalLinks = []

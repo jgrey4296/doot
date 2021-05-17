@@ -4,7 +4,7 @@ import logging as root_logger
 from os import listdir
 from os.path import exists, expanduser, isdir, isfile, join, splitext
 
-import wow_scraper.wow_scraper as ws
+import scraper as ws
 
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.wow_scraping"
