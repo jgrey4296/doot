@@ -1,35 +1,33 @@
 """
 Trie Class for bookmarks
 """
-
 import logging as root_logger
+from dataclasses import InitVar, dataclass, field
+from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
+                    List, Mapping, Match, MutableMapping, Optional, Sequence,
+                    Set, Tuple, TypeVar, Union, cast)
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from bkmkorg.utils.bookmark.data import bookmarkTuple
 
 logging = root_logger.getLogger(__name__)
 
-
+@dataclass
 class Trie:
     """ Main Trie Access class """
+    data : InitVar[List[Any]] = field(default=None)
 
-    def __init__(self, data=None):
-        self.root = {}
-        self.leaves = []
-        self.query_keys = {}
-        self.query_key_counts = {}
+    root             : Dict[Any, Any] = field(init=False, default_factory=dict)
+    leaves           : List[Any]      = field(init=False, default_factory=list)
+    query_keys       : Dict[Any, Any] = field(init=False, default_factory=dict)
+    query_key_counts : Dict[Any, int] = field(init=False, default_factory=dict)
 
+    __repr__ = __str__
 
+    def __post_init__(self, data=None):
         if data is not None:
             for x in data:
                 self.insert(x)
-
-    def get_tuple_list(self):
-        results = []
-        for x in self.leaves:
-            results += x.get_tuple_list()
-
-        return results
 
     def __len__(self):
         return len(self.leaves)
@@ -37,7 +35,14 @@ class Trie:
     def __str__(self):
         return "Trie: {}, {}".format(len(self), len(self.query_keys))
 
-    __repr__ = __str__
+
+
+    def get_tuple_list(self):
+        results = []
+        for x in self.leaves:
+            results += x.get_tuple_list()
+
+        return results
 
 
     def insert(self, data):
@@ -98,10 +103,13 @@ class Trie:
         return "\n".join(result)
 
 
+
+@dataclass
 class Leaf:
 
-    def __init__(self):
-        self.data = []
+    data : List[Any] = field(default_factory=list)
+
+    __repr__ = __str__
 
     def __len__(self):
         return len(self.data)
@@ -109,13 +117,12 @@ class Leaf:
     def __str__(self):
         return "Leaf Group({})".format(len(self))
 
-    __repr__ = __str__
 
     def get_tuple_list(self):
         return [x.to_tuple() for x in self.data]
 
     def insert(self, name, url, tags, query_dict, full_path):
-        new_leaf = LeafComponent(name, url, tags, query_dict, full_path)
+        new_leaf = LeafComponent(name, url, tags, full_path, query_dict)
         if new_leaf in self.data:
             logging.info("Merging tags")
             existing = self.data.index(new_leaf)
@@ -130,21 +137,17 @@ class Leaf:
             x.filter_queries(query_set)
 
 
+@dataclass
 class LeafComponent:
 
-    def __init__(self, name, url, tags, query_dict, full_path):
-        if not isinstance(query_dict, dict):
-            query_dict = {}
-        self.name = name
-        self.url = url
-        self.tags = tags
-        self.query = query_dict
-        self.full_path = full_path
+    name      : str            = field()
+    url       : str            = field()
+    tags      : List[str]      = field()
+    full_path : str            = field()
+    query     : Dict[Any, Any] = field(default_factory=dict)
 
-    def filter_queries(self, query_set):
-        for k in list(self.query.keys()):
-            if k in query_set:
-                del self.query[k]
+    __repr__ = __str__
+
 
     def __eq__(self, other):
         if not isinstance(other, LeafComponent):
@@ -156,7 +159,11 @@ class LeafComponent:
     def __str__(self):
         return "Leaf({})".format(self.full_path)
 
-    __repr__ = __str__
+
+    def filter_queries(self, query_set):
+        for k in list(self.query.keys()):
+            if k in query_set:
+                del self.query[k]
 
     def reconstruct(self, key=None):
         copied = {}

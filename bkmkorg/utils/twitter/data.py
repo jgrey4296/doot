@@ -1,5 +1,6 @@
 import logging
 from collections import namedtuple
+from dataclasses import InitVar, dataclass, field
 from hashlib import sha256
 from os import getcwd, mkdir
 from os.path import abspath, exists, isdir, isfile, join, split, splitext
@@ -19,34 +20,18 @@ def conversation_p(tag):
     lt = "ThreadedConversation--loneTweet" in cls
     return tc and not (tcs or lt)
 
+@dataclass
 class TweetData:
     """ A Simple Class to hold tweet data """
 
-    def __init__(self, username,
-                 content,
-                 media,
-                 links,
-                 permalink,
-                 time,
-                 videos=None,
-                 quoted=None):
-        self.username = username
-        self.content = content
-        self.media = media
-        if not media:
-            self.media = []
-        self.links = links
-        if not links:
-            self.links = []
-        self.permalink = permalink
-        self.time = time
-        self.videos = videos
-        if not videos:
-            self.videos = []
-        if not videos:
-            self.videos = []
-        self.quoted = quoted
-
+    username  : str       = field()
+    content   : Any       = field()
+    media     : List[Any] = field(default_factory=list)
+    links     : List[Any] = field(default_factory=list)
+    permalink : Any       = field()
+    time      : Any       = field()
+    videos    : List[Any] = field(default=list)
+    quoted    : Any       = field(default=None)
 
     def to_org(self, media_dir, indent=3):
         tags = []
@@ -85,13 +70,16 @@ class TweetData:
 
         return "{}{}{}\n".format(header,props,total_content)
 
+@dataclass
 class ThreadData:
     """ A Simple class to hold twitter threads """
 
-    def __init__(self, name, tweets):
+    name : str = field()
+    tweets : List[Any] = field(default_factory=list)
+
+    def __post_init__(self):
         #threads are lists of lists of tweets
-        self.tweets = [x for x in tweets if x is not None]
-        self.name = name
+        self.tweets = [x for x in self.tweets if x is not None]
 
     def usernames(self):
         return set([x.username for x in self.tweets])
@@ -117,14 +105,14 @@ class ThreadData:
         return "{}\n{}".format(subthread,
                                tweets)
 
+@dataclass
 class TwitterData:
     """ A Simple Class to hold an entire saved twitter page """
 
-    def __init__(self, tweet, ancestors, descendants, file_path):
-        self.tweet = tweet
-        self.ancestors = ancestors
-        self.descendants = descendants
-        self.file_path = file_path
+    tweet       : Any = field()
+    ancestors   : Any = field()
+    descendants : Any = field()
+    file_path   : Any = field()
 
     def base_user_str(self):
         return self.tweet.username[1:]
@@ -198,13 +186,13 @@ class TwitterData:
         """ Print as an Org Document """
         header = "** Thread: {}\n".format(self.tweet.time)
 
-        #add ancestors if any
+        # add ancestors if any
         ancestors = self.ancestors.to_org(media_dir, 3)
 
-        #add tweet
+        # add tweet
         tweet = self.tweet.to_org(media_dir, 3)
 
-        #add descendants if any
+        # add descendants if any
         descendants = ""
         if len(self.descendants) > 0:
             desc_strs = "\n".join([x.to_org(media_dir, 4) for x in self.descendants])
