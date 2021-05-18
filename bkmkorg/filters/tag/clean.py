@@ -17,13 +17,13 @@ from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
 
-from bkmkorg.bookmark.data import bookmarkTuple
 from bkmkorg.io.writer.netscape import exportBookmarks
 from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
+from bkmkorg.utils.bookmark.data import bookmarkTuple
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.file import retrieval
-from bkmkorg.utils.tags import tags as TU
-from bkmkorg.utils.clean import cleaners
+from bkmkorg.utils.tag import extract as TU
+from bkmkorg.utils.tag import clean
 
 logging = root_logger.getLogger(__name__)
 
@@ -82,12 +82,12 @@ if __name__ == "__main__":
 
     #Load Cleaned Tags
     tag_sub_files = retrieval.get_data_files(args.cleaned, [".org", ".txt", ".tags"])
-    cleaned_tags = cleaners.read_substitutions(tag_sub_files)
+    cleaned_tags = clean.read_substitutions(tag_sub_files)
     logging.info("Loaded {} tag substitutions".format(len(cleaned_tags)))
 
     #Load Bibtexs, html, orgs and clean each
     bibs, htmls, orgs = retrieval.collect_files(args.target)
-    cleaners.clean_bib_files(bibs   , cleaned_tags)
-    cleaners.clean_org_files(orgs   , cleaned_tags)
-    cleaners.clean_html_files(htmls , cleaned_tags)
+    clean.clean_bib_files(bibs   , cleaned_tags)
+    clean.clean_org_files(orgs   , cleaned_tags)
+    clean.clean_html_files(htmls , cleaned_tags)
     logging.info("Complete --------------------")
