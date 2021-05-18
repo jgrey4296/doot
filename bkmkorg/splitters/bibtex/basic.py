@@ -95,6 +95,7 @@ if __name__ == "__main__":
     # Write out split bibtex files
     logging.info("Writing Bibtex")
     writer = BibTexWriter()
+    writer.align_values = True
 
     for k,v in db_dict.items():
         clean_name = k.replace("/","_")

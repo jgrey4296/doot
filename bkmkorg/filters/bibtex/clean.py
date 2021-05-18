@@ -18,6 +18,7 @@ from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.file.hash_check import file_to_hash
 
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
@@ -28,6 +29,8 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
+ERRORS = []
+
 def expander(path):
     return abspath(expanduser(path))
 
@@ -158,6 +161,12 @@ def custom_clean(record):
     file_set = hashcheck_files(record)
     # move_files_to_library(record, file_set)
     clean_tags(record)
+
+    if bool(record['error']):
+        ERRORS += [(record['ID'], record[y]) for y in x['error']]
+
+    del record['error']
+
     return record
 
 
@@ -176,8 +185,6 @@ if __name__ == "__main__":
     parser.add_argument('-l', '--library', default="~/MEGA/pdflibrary")
     args = parser.parse_args()
 
-    assert(exists(args.target))
-
     logging.info("Targeting: {}".format(args.target))
     logging.info("Output to: {}".format(args.output))
 
@@ -185,14 +192,14 @@ if __name__ == "__main__":
     db        = BU.parse_bib_files(bib_files, func=custom_clean)
 
     #Get errors and write them out:
-    errored   = [x for x in db.entries if 'error' in x and bool(x['error'])]
-    error_tuples = [(x['ID'], x[y]) for x in errored for y in x['error']]
-    formatted = "\n".join(["{} : {}".format(x, y) for x,y in error_tuples])
-
-    with open('{}.errors'.format(args.output), 'a') as f:
-        f.write(formatted)
+    error_tuples = ERRORS
+    if bool(error_tuples):
+        formatted = "\n".join(["{} : {}".format(x, y) for x,y in error_tuples])
+        with open('{}.errors'.format(args.output), 'a') as f:
+            f.write(formatted)
 
     # Write out the actual bibtex
     writer = BibTexWriter()
+    writer.align_values = True
     with open(args.output,'w') as f:
         f.write(writer.write(db))
