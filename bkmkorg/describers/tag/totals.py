@@ -13,7 +13,10 @@ from bibtexparser import customization as c
 from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.file import retrieval
-from bkmkorg.utils.tags import extract as TU
+from bkmkorg.io.reader import tags as TR
+from bkmkorg.utils.tag import clean
+from bkmkorg.utils.tag.combine import combine_all_tags
+from bkmkorg.io.writer.tags import write_tags
 
 # Setup logger
 LOGLEVEL = root_logger.DEBUG
@@ -71,15 +74,15 @@ if __name__ == "__main__":
 
     bibs, htmls, orgs = retrieval.collect_files(cli_args.target)
     bib_db    = BU.parse_bib_files(bibs, func=custom)
-    bib_tags  = TU.extract_tags_from_bibtex(bib_db)
-    org_tags  = TU.extract_tags_from_org_files(orgs)
-    html_tags = TU.extract_tags_from_html_files(htmls)
-    all_tags  = TU.combine_all_tags([bib_tags, org_tags, html_tags])
+    bib_tags  = TR.extract_tags_from_bibtex(bib_db)
+    org_tags  = TR.extract_tags_from_org_files(orgs)
+    html_tags = TR.extract_tags_from_html_files(htmls)
+    all_tags  = combine_all_tags([bib_tags, org_tags, html_tags])
 
-    TU.write_tags(bib_tags, cli_args.output + "_bib")
-    TU.write_tags(org_tags, cli_args.output + "_orgs")
-    TU.write_tags(html_tags, cli_args.output + "_htmls")
-    TU.write_tags(all_tags, cli_args.output)
+    write_tags(bib_tags, cli_args.output + "_bib")
+    write_tags(org_tags, cli_args.output + "_orgs")
+    write_tags(html_tags, cli_args.output + "_htmls")
+    write_tags(all_tags, cli_args.output)
     logging.info("Complete --------------------")
 
     if not bool(cli_args.cleaned):
@@ -87,7 +90,7 @@ if __name__ == "__main__":
 
     # load existing tag files
     cleaned_files = retrieval.get_data_files(cli_args.cleaned, [".txt", ".tags", ".org"])
-    cleaned       = retrieval.read_substitutions(cleaned_files)
+    cleaned       = TR.read_substitutions(cleaned_files)
 
     # get new tags
     tags     = set(all_tags.keys())
@@ -97,4 +100,4 @@ if __name__ == "__main__":
     new_tag_dict = {x : all_tags[x] for x in new_tags}
     # group them separately, alphabeticaly
     # To be included in the separate tag files
-    TU.write_tags(new_tag_dict, cli_args.output + "_new_tags")
+    write_tags(new_tag_dict, cli_args.output + "_new_tags")

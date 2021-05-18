@@ -12,18 +12,17 @@ from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
 
 import bibtexparser as b
 import regex as re
-
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
-
-from bkmkorg.io.writer.netscape import exportBookmarks
 from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
-from bkmkorg.utils.bookmark.data import bookmarkTuple
+from bkmkorg.io.reader.tags import read_substitutions
+from bkmkorg.io.writer.netscape import exportBookmarks
 from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.bookmark.data import bookmarkTuple
 from bkmkorg.utils.file import retrieval
-from bkmkorg.utils.tag import extract as TU
 from bkmkorg.utils.tag import clean
+from bkmkorg.utils.tag import extract as TU
 
 logging = root_logger.getLogger(__name__)
 
@@ -82,7 +81,7 @@ if __name__ == "__main__":
 
     #Load Cleaned Tags
     tag_sub_files = retrieval.get_data_files(args.cleaned, [".org", ".txt", ".tags"])
-    cleaned_tags = clean.read_substitutions(tag_sub_files)
+    cleaned_tags = read_substitutions(tag_sub_files)
     logging.info("Loaded {} tag substitutions".format(len(cleaned_tags)))
 
     #Load Bibtexs, html, orgs and clean each

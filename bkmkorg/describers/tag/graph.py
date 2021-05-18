@@ -17,7 +17,7 @@ from bibtexparser import customization as c
 from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.file import retrieval
-from bkmkorg.utils.tags import extract as TU
+from bkmkorg.io.reader import tags as TR
 
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
@@ -69,9 +69,9 @@ if __name__ == "__main__":
 
     main_graph = nx.Graph()
 
-    TU.extract_tags_from_bibtex(bib_db, main_graph)
-    TU.extract_tags_from_org_files(orgs, main_graph)
-    TU.extract_tags_from_html_files(htmls, main_graph)
+    TR.extract_tags_from_bibtex(bib_db, main_graph)
+    TR.extract_tags_from_org_files(orgs, main_graph)
+    TR.extract_tags_from_html_files(htmls, main_graph)
 
     nx.write_weighted_edgelist(main_graph, args.output)
 
