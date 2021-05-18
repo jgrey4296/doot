@@ -52,6 +52,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog = "\n".join(["Create Timelines for Bibtex Files"]))
     parser.add_argument('--library', action="append")
+    parser.add_argument('--min_entries', default=5, type=int)
     parser.add_argument('--output')
 
     args = parser.parse_args()
@@ -85,5 +86,6 @@ if __name__ == "__main__":
         out_target = join(args.output, "{}.tag_timeline".format(tag))
         sorted_entries = sorted(entries, key=lambda x: x['year'])
 
-        with open(out_target, 'w') as f:
-            f.write("\n".join(["{} {}".format(x['year'].strftime("%Y"), x['ID']) for x in sorted_entries]))
+        if len(sorted_entries) > args.min_entries:
+            with open(out_target, 'w') as f:
+                f.write("\n".join(["{} {}".format(x['year'].strftime("%Y"), x['ID']) for x in sorted_entries]))
