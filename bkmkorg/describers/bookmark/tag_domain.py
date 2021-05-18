@@ -8,7 +8,7 @@ import logging as root_logger
 from os.path import abspath, exists, expanduser, split, splitext
 from urllib.parse import urlparse
 
-from bkmkorg.io.import.netscape import open_and_extract_bookmarks
+from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 from bkmkorg.utils import retrieval
 from bkmkorg.utils.bibtex import parsing as BU
 

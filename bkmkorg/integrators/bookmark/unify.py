@@ -5,9 +5,9 @@ import argparse
 import logging as root_logger
 from os.path import abspath, exists, expanduser, split, splitext
 
-from bkmkorg.io.export.netscape import exportBookmarks as html_export
-from bkmkorg.io.export.org import exportBookmarks as org_export
-from bkmkorg.io.import.netscape import open_and_extract_bookmarks
+from bkmkorg.io.writer.netscape import exportBookmarks as html_export
+from bkmkorg.io.writer.org import exportBookmarks as org_export
+from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.file import retrieval
 

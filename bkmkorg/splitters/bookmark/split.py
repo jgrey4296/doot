@@ -8,8 +8,8 @@ from os import mkdir
 from os.path import abspath, exists, expanduser, isdir, join, split, splitext
 from urllib.parse import urlparse
 
-from bkmkorg.io.export.org import exportBookmarks as org_export
-from bkmkorg.io.import.netscape import open_and_extract_bookmarks
+from bkmkorg.io.writer.org import exportBookmarks as org_export
+from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 
 if __name__ == "__main__":
     # Setup

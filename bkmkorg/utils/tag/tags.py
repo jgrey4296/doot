@@ -11,7 +11,7 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 
 import networkx as nx
 import regex
-from bkmkorg.io.import.netscape import open_and_extract_bookmarks
+from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 
 logging = root_logger.getLogger(__name__)
 

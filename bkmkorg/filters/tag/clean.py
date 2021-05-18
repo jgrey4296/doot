@@ -18,8 +18,8 @@ from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
 
 from bkmkorg.bookmark.data import bookmarkTuple
-from bkmkorg.io.export.netscape import exportBookmarks
-from bkmkorg.io.import.netscape import open_and_extract_bookmarks
+from bkmkorg.io.writer.netscape import exportBookmarks
+from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.file import retrieval
 from bkmkorg.utils.tags import tags as TU
