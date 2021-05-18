@@ -46,9 +46,10 @@ def read_substitutions(target: Union[str, List[str]], counts=True) -> Dict[str, 
             assert(component_zero not in sub)
             sub[component_zero] = []
             # Get the substitutions
-            sub_start = 1 if counts else 2
+            sub_start = 2 if counts else 1
+
             if len(components) > 1:
-                sub[component_zero] += [x.strip() for x in components[sub_start:]]
+                sub[component_zero] += [x.strip() for x in components[sub_start:] if bool(x.strip())]
             else:
                 logging.warning("No Substitutions found for: {}".format(component_zero))
 
@@ -76,13 +77,14 @@ def clean_bib_files(bib_files, sub, tag_regex="^(\s*tags\s*=\s*{)(.+?)(\s*},?)$"
                 out_lines.append(line)
                 continue
 
-            tags = [x.strip() for x in match[2].split(",")]
-            replacement_tags = set([])
+            tags = [x.strip() for x in match[2].split(",") if bool(x.strip())]
+            replacement_tags = set()
             for tag in tags:
                 if tag in sub and bool(sub[tag]):
-                    [replacement_tags.add(new_tag) for new_tag in sub[tag]]
+                    replacement_tags.update(sub[tag])
                 else:
                     replacement_tags.add(tag)
+
             out_lines.append("{}{}{}\n".format(match[1],
                                                ",".join(replacement_tags),
                                                match[3]))
