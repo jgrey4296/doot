@@ -1,7 +1,6 @@
 #!~/anaconda/envs/bookmark/bin/python
-
 """
-Tagset Utilities
+Tagset Reading
 
 """
 import logging as root_logger
@@ -109,38 +108,46 @@ def extract_tags_from_html_files(html_files, the_graph=None):
                     the_graph[u][v]['weight'] += 1
 
     return the_graph
-def combine_all_tags(graph_list: List['Graph']) -> Dict[str, int]:
-    logging.info("Combining tags")
-    assert(isinstance(graph_list, list))
-    assert(all([isinstance(x, nx.Graph) for x in graph_list]))
-    all_tags = {}
 
-    for graph in graph_list:
-        for tag in graph.nodes:
-            if tag not in all_tags:
-                all_tags[tag] = 0
-            all_tags[tag] += graph.nodes[tag]['count']
+def read_substitutions(target: Union[str, List[str]], counts=True) -> Dict[str, List[str]]:
+    """ Read a text file of the form (with counts):
+    tag : num : sub : sub : sub....
+    without counts:
+    tag : sub : sub : ...
+    returning a dict of {tag : [sub]}
+    """
+    if isinstance(target, str):
+        target = [target]
 
-    return all_tags
+    assert(all([splitext(x)[1] in [".tags", ".txt", ".org"] for x in target]))
+    sub = {}
 
+    for path in target:
+        logging.info("Reading Raw Tag Subs: {}".format(path))
+        is_org = splitext(path)[1] == ".org"
+        lines = []
+        with open(path,'r') as f:
+            lines = f.readlines()
 
+        #split and process
+        for line in lines:
+            # Discard org headings:
+            if is_org and line[0] == "*":
+                continue
+            components = line.split(":")
+            # Get the pattern:
+            component_zero = components[0].strip()
+            if component_zero == "":
+                continue
 
+            assert(component_zero not in sub)
+            sub[component_zero] = []
+            # Get the substitutions
+            sub_start = 2 if counts else 1
 
-def write_tags(all_tags: Union['Graph', Dict[str, int]], output_target):
-    if isinstance(all_tags, nx.Graph):
-        tag_str = ["{} : {}".format(k, all_tags.nodes[k]['count']) for k in all_tags.nodes]
-    elif isinstance(all_tags, dict):
-        tag_str = ["{} : {}".format(k, v) for k, v in all_tags.items()]
-    else:
-        raise Exception("Unrecognised write tag object")
+            if len(components) > 1:
+                sub[component_zero] += [x.strip() for x in components[sub_start:] if bool(x.strip())]
+            else:
+                logging.warning("No Substitutions found for: {}".format(component_zero))
 
-    with open("{}.tags".format(output_target), 'w') as f:
-        logging.info("Writing Tag Counts")
-        f.write("\n".join(tag_str))
-
-
-
-
-
-
-
+    return sub

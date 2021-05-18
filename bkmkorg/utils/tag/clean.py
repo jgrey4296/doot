@@ -12,50 +12,6 @@ import regex as re
 
 logging = root_logger.getLogger(__name__)
 
-def read_substitutions(target: Union[str, List[str]], counts=True) -> Dict[str, List[str]]:
-    """ Read a text file of the form (with counts):
-    tag : num : sub : sub : sub....
-    without counts:
-    tag : sub : sub : ...
-    returning a dict of {tag : [sub]}
-    """
-    if isinstance(target, str):
-        target = [target]
-
-    assert(all([splitext(x)[1] in [".tags", ".txt", ".org"] for x in target]))
-    sub = {}
-
-    for path in target:
-        logging.info("Reading Raw Tag Subs: {}".format(path))
-        is_org = splitext(path)[1] == ".org"
-        lines = []
-        with open(path,'r') as f:
-            lines = f.readlines()
-
-        #split and process
-        for line in lines:
-            # Discard org headings:
-            if is_org and line[0] == "*":
-                continue
-            components = line.split(":")
-            # Get the pattern:
-            component_zero = components[0].strip()
-            if component_zero == "":
-                continue
-
-            assert(component_zero not in sub)
-            sub[component_zero] = []
-            # Get the substitutions
-            sub_start = 2 if counts else 1
-
-            if len(components) > 1:
-                sub[component_zero] += [x.strip() for x in components[sub_start:] if bool(x.strip())]
-            else:
-                logging.warning("No Substitutions found for: {}".format(component_zero))
-
-    return sub
-
-
 def clean_bib_files(bib_files, sub, tag_regex="^(\s*tags\s*=\s*{)(.+?)(\s*},?)$"):
     """ Parse all the bibtext files, naively
     Extract the tags, deduplicate and apply substitutions,
