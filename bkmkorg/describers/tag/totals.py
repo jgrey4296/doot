@@ -100,4 +100,4 @@ if __name__ == "__main__":
     new_tag_dict = {x : all_tags[x] for x in new_tags}
     # group them separately, alphabeticaly
     # To be included in the separate tag files
-    write_tags(new_tag_dict, cli_args.output + "_new_tags")
+    write_tags(new_tag_dict, cli_args.output + "_new")
