@@ -82,55 +82,6 @@ def hashcheck_files(record):
     return file_set
 
 
-def move_files_to_library(record, file_set):
-    #if file is not in the library common prefix, move it there
-    #look for year, then first surname, then copy in, making dir if necessary
-    if not bool(file_set):
-        return
-
-    for x in file_set:
-        try:
-            logging.info("Expanding: {}".format(x))
-            current_path = x
-            common = commonpath([current_path, args.library])
-            if common != args.library:
-                logging.info("Found file outside library: {}".format(current_path))
-                logging.info("Common: {}".format(common))
-                #get the author and year
-                year = record['year']
-                authors = c.getnames([i.strip() for i in record["author"].replace('\n', ' ').split(" and ")])
-                authors_split = [safe_splitname(a) for a in authors]
-                author_surnames = [a['last'][0] for a in authors_split]
-                year_path = join(args.library, year)
-                author_path = join(year_path, ", ".join(author_surnames))
-                logging.info("New Path: {}".format(author_path))
-                #create directory if necessary
-                #copy file
-                full_new_path = join(author_path, split(current_path)[1])
-                logging.info("Copying file")
-                logging.info("From: {}".format(current_path))
-                logging.info("To: {}".format(full_new_path))
-                response = input("Enter to confirm: ")
-                if response == "":
-                    logging.info("Proceeding")
-                    if not exists(year_path):
-                        mkdir(year_path)
-                    if not exists(author_path):
-                        mkdir(author_path)
-                    if not exists(full_new_path):
-                        copyfile(current_path, full_new_path)
-                    move(current_path, "{}__x".format(current_path))
-                    file_set.remove(x)
-                    file_set.add(full_new_path)
-                    record['file'] = ";".join(file_set)
-
-        except Exception as e:
-                logging.info("Issue copying file for: {}".format(x))
-                logging.info(e)
-                record['move_error'] = str(e)
-                record['error'].append('move_error')
-
-
 def clean_tags(record):
     try:
         tags = set()
@@ -159,7 +110,6 @@ def custom_clean(record):
     maybe_unicode(record)
     check_year(record)
     file_set = hashcheck_files(record)
-    # move_files_to_library(record, file_set)
     clean_tags(record)
 
     if bool(record['error']):
@@ -176,13 +126,11 @@ if __name__ == "__main__":
                                      epilog=
                                      "\n".join(["Specify a Target bibtex file,",
                                                 "Output file,",
-                                                "And the Location of the pdf library.",
-                                                "Cleans names and moves all non-library pdfs into the library.",
+                                                "Cleans entries,",
                                                 "Records errors in an 'error' field for an entry."]))
 
     parser.add_argument('-t', '--target', action='append')
     parser.add_argument('-o', '--output', default="bibtex")
-    parser.add_argument('-l', '--library', default="~/MEGA/pdflibrary")
     args = parser.parse_args()
 
     logging.info("Targeting: {}".format(args.target))
