@@ -89,5 +89,6 @@ if __name__ == "__main__":
     # Write out the combined database
     logging.info("Bibtex loaded")
     writer = BibTexWriter()
+    writer.align_values = True
     with open(join(args.output),'a') as f:
         f.write(writer.write(main_db))
