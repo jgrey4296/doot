@@ -114,7 +114,8 @@ def custom_clean(record):
     clean_tags(record)
 
     if bool(record['error']):
-        ERRORS += [(record['ID'], record[y]) for y in x['error']]
+        record_errors = [(record['ID'], record[y]) for y in record['error']]
+        ERRORS += record_errors
 
     del record['error']
 
@@ -122,7 +123,6 @@ def custom_clean(record):
 
 
 if __name__ == "__main__":
-    global ERRORS
     # Setup
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog=
@@ -132,7 +132,7 @@ if __name__ == "__main__":
                                                 "Records errors in an 'error' field for an entry."]))
 
     parser.add_argument('-t', '--target', action='append')
-    parser.add_argument('-o', '--output', default="bibtex")
+    parser.add_argument('-o', '--output', default=None)
     args = parser.parse_args()
 
     logging.info("Targeting: {}".format(args.target))
@@ -143,7 +143,8 @@ if __name__ == "__main__":
 
     #Get errors and write them out:
     error_tuples = ERRORS
-    if bool(error_tuples):
+
+    if bool(error_tuples) and args.output:
         formatted = "\n".join(["{} : {}".format(x, y) for x,y in error_tuples])
         with open('{}.errors'.format(args.output), 'a') as f:
             f.write(formatted)
@@ -151,5 +152,6 @@ if __name__ == "__main__":
     # Write out the actual bibtex
     writer = BibTexWriter()
     writer.align_values = True
-    with open(args.output,'w') as f:
-        f.write(writer.write(db))
+    if args.output:
+        with open(args.output,'w') as f:
+            f.write(writer.write(db))
