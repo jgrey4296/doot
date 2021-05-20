@@ -105,6 +105,7 @@ def clean_tags(record):
 
 
 def custom_clean(record):
+    global ERRORS
     record['error'] = []
 
     maybe_unicode(record)
@@ -121,6 +122,7 @@ def custom_clean(record):
 
 
 if __name__ == "__main__":
+    global ERRORS
     # Setup
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog=
