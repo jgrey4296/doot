@@ -22,7 +22,6 @@ from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.bookmark.data import bookmarkTuple
 from bkmkorg.utils.file import retrieval
 from bkmkorg.utils.tag import clean
-from bkmkorg.utils.tag import extract as TU
 
 logging = root_logger.getLogger(__name__)
 
