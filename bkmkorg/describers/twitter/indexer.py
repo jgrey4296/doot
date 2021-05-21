@@ -6,6 +6,7 @@ from os.path import split, isdir, splitext, expanduser
 from os import listdir
 import re
 from collections import defaultdict
+import argparse
 
 from bkmkorg.utils.file.retrieval import get_data_files
 
@@ -30,7 +31,7 @@ if __name__ == '__main__':
     for filename in targets:
         # read in
         lines = []
-        with file(filename, 'r') as f:
+        with open(filename, 'r') as f:
             lines = f.readlines()
 
         # PERMALINK

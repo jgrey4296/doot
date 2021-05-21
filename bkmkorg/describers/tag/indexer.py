@@ -3,9 +3,11 @@
 from os.path import join, isfile, exists, abspath
 from os.path import split, isdir, splitext, expanduser
 from os import listdir
+import argparse
 import re
+from collections import defaultdict
 
-from bkmkorg/utils.file.retrieval import get_data_files
+from bkmkorg.utils.file.retrieval import get_data_files
 
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog = "\n".join(["Index all tags found in orgs"]))
@@ -26,7 +28,7 @@ if __name__ == '__main__':
     for filename in targets:
         # read in
         lines = []
-        with file(filename, 'r') as f:
+        with open(filename, 'r') as f:
             lines = f.readlines()
 
         # headlines with tags
