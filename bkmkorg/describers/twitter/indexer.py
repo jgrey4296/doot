@@ -7,7 +7,7 @@ from os import listdir
 import re
 from collections import defaultdict
 
-from bkmkorg/utils.file.retrieval import get_data_files
+from bkmkorg.utils.file.retrieval import get_data_files
 
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog = "\n".join(["Index all users found in orgs"]))
