@@ -42,7 +42,9 @@ if __name__ == '__main__':
             total_index[user].add(filename)
 
     # Write out index
-    out_lines = ["@{} :{}".format(x, ":".join(y)) for x,y in total_index.items()]
+    items = list(total_index.items())
+    items.sort(key=lambda x: x[0])
+    out_lines = ["@{} :{}".format(x, ":".join(y)) for x,y in items]
     out_string = "\n".join(out_lines)
     with open(args.output, 'w') as f:
         f.write(out_string)

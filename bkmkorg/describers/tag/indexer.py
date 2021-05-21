@@ -33,13 +33,16 @@ if __name__ == '__main__':
 
         # headlines with tags
         matched = [TAG_LINE.match(x) for x in lines]
-        tags    = [y for x in matched for y in x[1].split(":") if bool(x)]
+        actual = [x for x in matched if bool(x)]
+        tags    = [y for x in actual for y in x[1].split(":") if bool(x)]
         # add to index
         for tag in tags:
             total_index[tag].add(filename)
 
     # Write out index
-    out_lines = ["{} :{}".format(x, ":".join(y)) for x,y in total_index.items()]
+    items = list(total_index.items())
+    items.sort(key=lambda x: x[0])
+    out_lines = ["{} :{}".format(x, ":".join(y)) for x,y in items]
     out_string = "\n".join(out_lines)
     with open(args.output, 'w') as f:
         f.write(out_string)
