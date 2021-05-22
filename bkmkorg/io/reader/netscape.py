@@ -1,5 +1,6 @@
 """
 Utility to open and parse a netscape bookmark file
+https://docs.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/platform-apis/aa753582(v=vs.85)
 """
 
 import logging
