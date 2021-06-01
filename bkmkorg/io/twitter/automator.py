@@ -764,6 +764,7 @@ def main():
     parser.add_argument('--library', action="append",       help="Location of already downloaded tweets")
     parser.add_argument('--export',  help="File to export all library tweet ids to, optional")
     parser.add_argument('--tweet', help="A Specific Tweet URL to handle, for CLI usage/ emacs use")
+    parser.add_argument('--skiptweets', action='store_true', help="for when tweets have been downloaded, or hung")
 
     args = parser.parse_args()
     args.config = abspath(expanduser(args.config))
@@ -846,7 +847,10 @@ def main():
     logging.info("Found {} source ids".format(len(source_ids)))
 
     # Download tweets
-    download_tweets(twit, tweet_dir, source_ids, lib_ids=library_tweet_ids)
+    if not args.skiptweets:
+        download_tweets(twit, tweet_dir, source_ids, lib_ids=library_tweet_ids)
+    else:
+        logging.info("Skipping tweet download")
 
     user_set, media_set, variant_list = get_user_and_media_sets(tweet_dir)
 

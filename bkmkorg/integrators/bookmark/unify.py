@@ -1,3 +1,4 @@
+#!/opt/anaconda3/envs/bookmark/bin/python
 """
 Integrate new bookmarks into the main bookmark file
 """
