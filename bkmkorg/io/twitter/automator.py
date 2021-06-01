@@ -776,15 +776,15 @@ def main():
         args.export = abspath(expanduser(args.export))
 
     # Auto setup
-    target_dir = abspath(expanduser(args.target))
-    target_file = join(target_dir, "bookmarks.txt")
-    org_dir = join(target_dir, "orgs")
-    tweet_dir = join(target_dir, "tweets")
+    target_dir           = abspath(expanduser(args.target))
+    target_file          = join(target_dir, "bookmarks.txt")
+    org_dir              = join(target_dir, "orgs")
+    tweet_dir            = join(target_dir, "tweets")
     combined_threads_dir = join(target_dir, "threads")
-    component_dir = join(target_dir, "components")
-    media_dir = join(target_dir, "media")
-    library_ids = join(target_dir, "all_ids")
-    users_file = join(target_dir, "users.json")
+    component_dir        = join(target_dir, "components")
+    media_dir            = join(target_dir, "media")
+    library_ids          = join(target_dir, "all_ids")
+    users_file           = join(target_dir, "users.json")
 
     if exists(library_ids):
         args.library.append(library_ids)
