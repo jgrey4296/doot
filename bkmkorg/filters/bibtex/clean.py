@@ -96,7 +96,7 @@ def clean_tags(record):
             tags.update([x.strip() for x in record['mendeley-tags'].split(',')])
             del record['mendeley-tags']
 
-        record['tags'] = ",".join(tags)
+        record['tags'] = ",".join(sorted(tags))
 
     except Error as e:
         logging.warning("Tag Error: {}".format(record['ID']))

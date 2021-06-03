@@ -42,7 +42,7 @@ def clean_bib_files(bib_files, sub, tag_regex="^(\s*tags\s*=\s*{)(.+?)(\s*},?)$"
                     replacement_tags.add(tag)
 
             out_lines.append("{}{}{}\n".format(match[1],
-                                               ",".join(replacement_tags),
+                                               ",".join(sorted(replacement_tags)),
                                                match[3]))
 
         outstring = "".join(out_lines)
@@ -87,7 +87,7 @@ def clean_org_files(org_files, sub, tag_regex="^\*\*\s+(.+?)(\s+):(\S+):$"):
 
             out_line = "** {}{}:{}:\n".format(title,
                                               spaces,
-                                              ":".join(replacement_tags))
+                                              ":".join(sorted(replacement_tags)))
             out_text += out_line
         # write out
         with open(org, 'w') as f:
