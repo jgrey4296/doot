@@ -135,6 +135,7 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--output', default=None)
     args = parser.parse_args()
 
+    logging.info("---------- STARTING Bibtex Clean")
     logging.info("Targeting: {}".format(args.target))
     logging.info("Output to: {}".format(args.output))
 

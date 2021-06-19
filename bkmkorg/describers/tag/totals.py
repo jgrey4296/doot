@@ -60,7 +60,7 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--output', default="collected")
     parser.add_argument('-c', '--cleaned', action="append")
 
-    logging.info("Tag Totals start: --------------------")
+    logging.info("---------- STARTING Tag Totals")
     cli_args = parser.parse_args()
     cli_args.output = abspath(expanduser(cli_args.output))
 

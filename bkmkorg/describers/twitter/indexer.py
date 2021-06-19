@@ -34,7 +34,7 @@ PERMALINK = re.compile(r':PERMALINK:\s+\[\[https?://twitter.com/(.+?)/status/[0-
 # TODO add @ recognition
 
 if __name__ == '__main__':
-    logging.info("Starting Twitter Indexer")
+    logging.info("---------- STARTING Twitter Indexer")
     args = parser.parse_args()
     args.target = [abspath(expanduser(x)) for x in args.target]
     args.output = abspath(expanduser(args.output))

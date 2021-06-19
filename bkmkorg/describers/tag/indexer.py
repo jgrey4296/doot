@@ -31,7 +31,7 @@ parser.add_argument('--output')
 TAG_LINE = re.compile(r'^\*\* Thread: .+?\s{5,}:(.+?):$')
 
 if __name__ == '__main__':
-    logging.info("Starting Tag Indexer")
+    logging.info("---------- STARTING Tag Indexer")
     args = parser.parse_args()
     args.target = [abspath(expanduser(x)) for x in args.target]
     args.output = abspath(expanduser(args.output))

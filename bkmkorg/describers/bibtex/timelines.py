@@ -58,6 +58,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     args.library = [abspath(expanduser(x)) for x in args.library]
     args.output= abspath(expanduser(args.output))
+    logging.info("---------- STARTING Bibtex Timelines")
     if not exists(args.output):
         logging.info("Making output: {}".format(args.output))
         mkdir(args.output)

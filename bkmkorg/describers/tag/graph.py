@@ -57,7 +57,7 @@ def custom(record):
 
 
 if __name__ == "__main__":
-    logging.info("Tag Graphing start: --------------------")
+    logging.info("---------- Tag Graphing")
     args = parser.parse_args()
     args.output = abspath(expanduser(args.output))
 
