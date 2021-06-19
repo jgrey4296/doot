@@ -17,6 +17,8 @@ from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 
 logging = root_logger.getLogger(__name__)
 
+IGNORE_REPLACEMENTS = ["TO_CHECK"]
+
 def extract_tags_from_bibtex(db, the_graph=None):
     logging.info("Processing Bibtex: {}".format(len(db.entries)))
     if the_graph is None:
@@ -149,7 +151,7 @@ def read_substitutions(target: Union[str, List[str]], counts=True) -> Dict[str, 
             sub_start = 2 if counts else 1
 
             if len(components) > 1:
-                sub[component_zero] += [x.strip() for x in components[sub_start:] if bool(x.strip())]
+                sub[component_zero] += [x.strip() for x in components[sub_start:] if bool(x.strip()) and x.strip() not in IGNORE_REPLACEMENTS]
             else:
                 logging.warning("No Substitutions found for: {}".format(component_zero))
 
