@@ -213,6 +213,7 @@ def construct_org_files(combined_threads_dir, org_dir, all_users, media_dir):
             output.append("\t:LOCATION: {}".format(data['user']['location']))
         if 'url' in data['user']:
             output.append("\t:URL: [[{}]]".format(data['user']['url']))
+        output.append("\t:TWITTER-BUFFER: t")
         output.append("\t:END:")
 
         # add conversations
