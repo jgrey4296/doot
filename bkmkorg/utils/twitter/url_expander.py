@@ -64,8 +64,8 @@ if __name__ == '__main__':
                 expanded[current] = response.url
             else:
                 expanded[current] = response.status_code
-        except requests.exceptions.ConnectionError:
-            expanded[current] = "400.1"
+        except Exception as err:
+            expanded[current] = f"400.1 : {err}"
 
         logging.info(f"Response for {current} : {expanded[current]}")
         count += 1
