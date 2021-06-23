@@ -140,7 +140,7 @@ def construct_user_summaries(component_dir, combined_threads_dir, total_users):
             chains = dfs_chains(graph, roots)
 
         if not bool(chains):
-            chains = [roots] + [quotes]
+            chains = [list(roots.union(quotes))]
 
         # Assign main thread
         main_thread = max(chains, key=lambda x: len(x))
@@ -227,11 +227,15 @@ def construct_org_files(combined_threads_dir, org_dir, all_users, media_dir):
             f.write("\n".join(output))
 
         # copy media to correct output files dir
-        if not exists(out_files_dir):
+        if not exists(out_files_dir) and bool(media):
             mkdir(out_files_dir)
 
         for x in media:
             retargetted = retarget_url(x, media_dir)
+            if not exists(retargetted):
+                logging.warning("File can not be copied, doesn't exist: {}".format(retargetted))
+                continue
+
             copy_to = retarget_url(x, out_files_dir)
             copyfile(retargetted, copy_to)
 
