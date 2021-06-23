@@ -59,19 +59,19 @@ if __name__ == '__main__':
 
         logging.info(f"Handling {count}/{args.count}")
         try:
-            response = requests.head(current, allow_redirects=True)
+            response = requests.head(current, allow_redirects=True, timeout=2)
             if response.ok:
                 expanded[current] = response.url
             else:
                 expanded[current] = response.status_code
         except Exception as err:
-            expanded[current] = f"400.1 : {err}"
+            expanded[current] = f"400.1 : {str(err)}"
 
         logging.info(f"Response for {current} : {expanded[current]}")
+        with open(args.output, 'a') as f:
+            f.write("{}{}{}\n".format(current, args.separator, expanded[current]))
+
         count += 1
         sleep(2)
 
-    to_string = "\n".join(["{}{}{}".format(x, args.separator, y) for x,y in expanded.items()])
-
-    with open(args.output, 'w') as f:
-        f.write(to_string)
+    logging.info("Finished")
