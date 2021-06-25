@@ -14,7 +14,7 @@ from shutil import copyfile, rmtree
 
 import networkx as nx
 from bkmkorg.io.twitter.dfs_utils import dfs_chains
-from bkmkorg.io.twitter.download_utils import download_tweets
+from bkmkorg.io.twitter.download_utils import download_tweets, download_media
 
 logging = root_logger.getLogger(__name__)
 
@@ -194,8 +194,14 @@ def construct_org_files(combined_threads_dir, org_dir, all_users, media_dir):
             data = json.load(f, strict=False)
 
         tweets = data['tweets']
+        if not bool(tweets):
+            logging.info(f"Skipping Empty User: {data['user']['screen_name']}")
+            continue
+
+
         out_file  = join(org_dir, "{}.org".format(data['user']['screen_name']))
-        out_files_dir = join(org_dir, "{}_files".format(data['user']['screen_name']))
+        out_files_dir_last = "{}_files".format(data['user']['screen_name'])
+        out_files_dir = join(org_dir, out_files_dir_last)
 
         media = set()
         output = []
@@ -218,7 +224,7 @@ def construct_org_files(combined_threads_dir, org_dir, all_users, media_dir):
 
         # add conversations
         for thread in data['threads']:
-            thread_out, thread_media = thread_to_strings(thread, out_files_dir, all_users, tweets)
+            thread_out, thread_media = thread_to_strings(thread, out_files_dir_last, all_users, tweets)
             output += thread_out
             media.update(thread_media)
 
@@ -230,14 +236,7 @@ def construct_org_files(combined_threads_dir, org_dir, all_users, media_dir):
         if not exists(out_files_dir) and bool(media):
             mkdir(out_files_dir)
 
-        for x in media:
-            retargetted = retarget_url(x, media_dir)
-            if not exists(retargetted):
-                logging.warning("File can not be copied, doesn't exist: {}".format(retargetted))
-                continue
-
-            copy_to = retarget_url(x, out_files_dir)
-            copyfile(retargetted, copy_to)
+        download_media(out_files_dir, media)
 
 def thread_to_strings(thread, redirect_url, all_users, tweets):
     logging.info("Creating thread")
@@ -304,7 +303,7 @@ def thread_to_strings(thread, redirect_url, all_users, tweets):
     output.append("")
 
     output.append("*** Media")
-    output += ["[[{}][{}]]".format(retarget_url(x, redirect_url), split(x)[1]) for x in media]
+    output += ["[[file:./{}][{}]]".format(retarget_url(x, redirect_url), split(x)[1]) for x in media]
 
     output.append("")
     return output, media
@@ -399,7 +398,7 @@ def tweet_to_string(tweet, all_users, url_prefix, level=4, is_quote=False):
 
     if bool(media):
         output += "\n"
-        output += ["[[{}][{}]]".format(retarget_url(x, url_prefix), split(x)[1]) for x in media]
+        output += ["[[file:./{}][{}]]".format(retarget_url(x, url_prefix), split(x)[1]) for x in media]
 
 
     output.append("")

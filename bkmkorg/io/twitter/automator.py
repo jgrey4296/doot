@@ -165,8 +165,9 @@ def main():
     with open(join(target_dir, "video_variants.json"), "w") as f:
         json.dump(variant_list, f, indent=4)
 
-    # download media
-    DU.download_media(media_dir, media_set)
+    # DEPRECATED, is downloaded when org is constructed now:
+    # DU.download_media(media_dir, media_set)
+
     # Get user identities
     all_users = DU.get_user_identities(users_file, twit, user_set)
 
