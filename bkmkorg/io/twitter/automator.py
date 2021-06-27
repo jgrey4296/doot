@@ -93,7 +93,6 @@ def main():
     tweet_dir            = join(target_dir, "tweets")
     combined_threads_dir = join(target_dir, "threads")
     component_dir        = join(target_dir, "components")
-    media_dir            = join(target_dir, "media")
     library_ids          = join(target_dir, "all_ids")
     users_file           = join(target_dir, "users.json")
     last_tweet_file      = join(target_dir, "last_tweet")
@@ -113,8 +112,7 @@ def main():
                                 tweet_dir,
                                 org_dir,
                                 combined_threads_dir,
-                                component_dir,
-                                media_dir] if not exists(x)]
+                                component_dir] if not exists(x)]
 
     for x in missing_dirs:
         logging.info("Creating {} Directory".format(x))
@@ -175,15 +173,19 @@ def main():
     logging.info("-------------------- Finished Retrieval")
     try:
         # Now create threads
-        logging.info("---------- Assembling Threads")
-        di_graph = FFU.assemble_threads(tweet_dir)
-        logging.info("---------- Creating Components")
-        components = DFSU.dfs_for_components(di_graph)
-        FFU.create_component_files(components, tweet_dir, component_dir, di_graph, twit=twit)
-        logging.info("---------- Creating user summaries")
-        FFU.construct_user_summaries(component_dir, combined_threads_dir, all_users)
+        if not bool([x for x in listdir(component_dir) if splitext(x)[1] == ".json"]):
+            logging.info("---------- Assembling Threads")
+            di_graph = FFU.assemble_threads(tweet_dir)
+            logging.info("---------- Creating Components")
+            components = DFSU.dfs_for_components(di_graph)
+            FFU.create_component_files(components, tweet_dir, component_dir, di_graph, twit=twit)
+
+        if not bool([x for x in listdir(combined_threads_dir) if splitext(x)[1] == ".json"]):
+            logging.info("---------- Creating user summaries")
+            FFU.construct_user_summaries(component_dir, combined_threads_dir, all_users)
+
         logging.info("---------- Constructing org files")
-        FFU.construct_org_files(combined_threads_dir, org_dir, all_users, media_dir)
+        FFU.construct_org_files(combined_threads_dir, org_dir, all_users)
     except Exception as err:
         logging.exception("Exception occurred: {}".format(err))
 

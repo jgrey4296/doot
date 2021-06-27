@@ -15,6 +15,7 @@ logging = root_logger.getLogger(__name__)
 from bkmkorg.io.twitter.extract_utils import extract_tweet_ids_from_json
 
 GROUP_AMNT = 100
+MISSING    = ".missing_tweets"
 
 def download_media(media_dir, media):
     """ Download all media mentioned in json files """
@@ -47,13 +48,21 @@ def download_tweets(twit, json_dir, target_ids, lib_ids=None):
     for jfile in json_files:
         json_ids.update(extract_tweet_ids_from_json(jfile))
 
+    known_missing_tweets = set()
+    if exists(join(json_dir, MISSING)):
+        with open(join(json_dir, MISSING), 'r') as f:
+            known_missing_tweets.update([x.strip() for x in f.readlines()])
+
     logging.info("Found {} existing tweet ids in jsons".format(len(json_ids)))
+    logging.info("Found {} known missing tweet ids".format(len(known_missing_tweets)))
     # remove tweet id's already in library
     logging.info("Removing existing tweets from queue")
     if lib_ids is None:
         lib_ids = set()
 
-    remaining = (target_ids - lib_ids) - json_ids
+    remaining = (target_ids - lib_ids)
+    remaining.difference_update(json_ids)
+    remaining.difference_update(known_missing_tweets)
     logging.info("Remaining ids to process: {}".format(len(remaining)))
 
     if not bool(remaining):
@@ -90,10 +99,17 @@ def download_tweets(twit, json_dir, target_ids, lib_ids=None):
                 if 'quoted_status_id_str' in x._json and x._json['quoted_status_id_str'] is not None:
                     queue.append(x._json['quoted_status_id_str'])
 
+            # Store missing ids
+            not_retrieved = set(current).difference([x['id_str'] for x in results])
+            known_missing_tweets.update(not_retrieved)
+
         except Exception as e:
             # handle failure
             breakpoint()
             logging.warning("Exception")
+
+        with open(join(json_dir, MISSING), 'a') as f:
+            f.write("\n".join(known_missing_tweets))
 
     return False
 

@@ -27,7 +27,7 @@ def dfs_edge(graph, edge):
         to_add = [(l, x) for x in graph.adj[l] if graph.adj[l][x]['type'] == "reply"]
         to_add += [(r, x) for x in graph.adj[r] if graph.adj[r][x]['type'] == "reply"]
 
-        if len(to_add) > 100:
+        if len(to_add) > 500:
             breakpoint()
         queue += to_add
 

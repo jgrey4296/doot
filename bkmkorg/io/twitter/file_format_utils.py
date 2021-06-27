@@ -159,7 +159,7 @@ def construct_user_summaries(component_dir, combined_threads_dir, total_users):
 
         # create user file if not exist
         user_file = join(combined_threads_dir, USER_FILE_TEMPLATE.format(screen_name))
-        user_data = {}
+        user_data = {'has_media' : False}
         if exists(user_file):
             with open(user_file, 'r') as f:
                 user_data = json.load(f, strict=False)
@@ -172,9 +172,14 @@ def construct_user_summaries(component_dir, combined_threads_dir, total_users):
             user_data['threads'] = []
             user_data['tweets'] = {}
 
+        quote_list = list(quotes)
+        has_media = any([bool(get_tweet_media(x)) for x in tweets.values()])
+        user_data['has_media'] = user_data['has_media'] or has_media
+
         user_data['threads'].append({'main_thread' : main_thread,
                                      'rest' : cleaned_rest,
                                      'quotes' : list(quotes)})
+
 
         user_data['tweets'].update(tweets)
 
@@ -184,7 +189,7 @@ def construct_user_summaries(component_dir, combined_threads_dir, total_users):
             json.dump(user_data, f, indent=4)
 
 
-def construct_org_files(combined_threads_dir, org_dir, all_users, media_dir):
+def construct_org_files(combined_threads_dir, org_dir, all_users):
     logging.info("Constructing org files from: {} \n\tto: {}".format(combined_threads_dir, org_dir))
     # get all user summary jsons
     user_summaries = [join(combined_threads_dir, x) for x in listdir(combined_threads_dir) if splitext(x)[1] == ".json"]
@@ -203,24 +208,32 @@ def construct_org_files(combined_threads_dir, org_dir, all_users, media_dir):
         out_files_dir_last = "{}_files".format(data['user']['screen_name'])
         out_files_dir = join(org_dir, out_files_dir_last)
 
+        if exists(join(out_files_dir, ".done")):
+            logging.info(f"Skipping user that has been marked done: {data['user']['screen_name']}")
+            continue
+
+        if exists(out_file) and 'has_media' in data and not data['has_media']:
+            logging.info(f"Skipping medialess user: {data['user']['screen_name']}")
+            continue
+
         media = set()
         output = []
 
         # Add initial line
         output.append("* {}'s Threads".format(data['user']['screen_name']))
-        output.append("\t:PROPERTIES:")
+        output.append(":PROPERTIES:")
         if 'name' in data['user']:
-            output.append("\t:NAME: {}".format(data['user']['name']))
+            output.append(":NAME: {}".format(data['user']['name']))
         if 'followers_count' in data['user']:
-            output.append("\t:FOLLOWERS: {}".format(data['user']['followers_count']))
+            output.append(":FOLLOWERS: {}".format(data['user']['followers_count']))
         if 'description' in data['user']:
-            output.append("\t:DESCRIPTION: {}".format(data['user']['description']))
+            output.append(":DESCRIPTION: {}".format(data['user']['description']))
         if 'location' in data['user']:
-            output.append("\t:LOCATION: {}".format(data['user']['location']))
+            output.append(":LOCATION: {}".format(data['user']['location']))
         if 'url' in data['user']:
-            output.append("\t:URL: [[{}]]".format(data['user']['url']))
-        output.append("\t:TWITTER-BUFFER: t")
-        output.append("\t:END:")
+            output.append(":URL: [[{}]]".format(data['user']['url']))
+        output.append(":TWITTER-BUFFER: t")
+        output.append(":END:")
 
         # add conversations
         for thread in data['threads']:
@@ -232,11 +245,18 @@ def construct_org_files(combined_threads_dir, org_dir, all_users, media_dir):
         with open(out_file, 'w') as f:
             f.write("\n".join(output))
 
+        if not bool(media):
+            continue
+
         # copy media to correct output files dir
         if not exists(out_files_dir) and bool(media):
             mkdir(out_files_dir)
 
-        download_media(out_files_dir, media)
+        if bool(media):
+            download_media(out_files_dir, media)
+            with open(join(out_files_dir, ".done"), "w") as f:
+                f.write("downloaded: {}".format(len(media)))
+
 
 def thread_to_strings(thread, redirect_url, all_users, tweets):
     logging.info("Creating thread")
@@ -329,13 +349,13 @@ def tweet_to_string(tweet, all_users, url_prefix, level=4, is_quote=False):
     output.append("{} @{}          {}".format(indent, screen_name, hash_str))
 
     # Add Details drawer
-    output.append("\t:PROPERTIES:")
-    output.append("\t:PERMALINK: [[https://twitter.com/{}/status/{}][/{}/{}]]".format(screen_name,
+    output.append(":PROPERTIES:")
+    output.append(":PERMALINK: [[https://twitter.com/{}/status/{}][/{}/{}]]".format(screen_name,
                                                                                       tweet['id_str'],
                                                                                       screen_name,
                                                                                       tweet['id_str']))
     if tweet["in_reply_to_status_id_str"] is not None:
-        output.append("\t:REPLY_TO: [[https://twitter.com/{}/status/{}][/{}/{}]]".format(tweet['in_reply_to_screen_name'],
+        output.append(":REPLY_TO: [[https://twitter.com/{}/status/{}][/{}/{}]]".format(tweet['in_reply_to_screen_name'],
                                                                                          str(tweet['in_reply_to_status_id_str']),
                                                                                          tweet['in_reply_to_screen_name'],
                                                                                          str(tweet['in_reply_to_status_id_str'])))
@@ -345,20 +365,20 @@ def tweet_to_string(tweet, all_users, url_prefix, level=4, is_quote=False):
         if quote_name in all_users:
             quote_name = all_users[tweet['quoted_status_id_str']]['screen_name']
 
-        output.append("\t:QUOTE: [[https://twitter.com/{}/status/{}][/{}/{}]]".format(quote_name,
+        output.append(":QUOTE: [[https://twitter.com/{}/status/{}][/{}/{}]]".format(quote_name,
                                                                                       tweet['quoted_status_id_str'],
                                                                                       quote_name,
                                                                                       tweet['quoted_status_id_str']))
     # in reply to
     if 'favorite_count' in tweet:
-        output.append("\t:FAVORITE_COUNT: {}".format(tweet['favorite_count']))
+        output.append(":FAVORITE_COUNT: {}".format(tweet['favorite_count']))
     if 'retweet_count' in tweet:
-        output.append("\t:RETWEET_COUNT: {}".format(tweet['retweet_count']))
+        output.append(":RETWEET_COUNT: {}".format(tweet['retweet_count']))
 
-    output.append("\t:DATE: {}".format(parse_date(tweet['created_at'])))
+    output.append(":DATE: {}".format(parse_date(tweet['created_at'])))
     if is_quote:
-        output.append("\t:IS_QUOTE: t")
-    output.append("\t:END:")
+        output.append(":IS_QUOTE: t")
+    output.append(":END:")
 
     # add tweet contents
     output.append(tweet['full_text'])
@@ -373,28 +393,12 @@ def tweet_to_string(tweet, all_users, url_prefix, level=4, is_quote=False):
         qresult, qmedia, qlinks = tweet_to_string(tweet['quoted_status'], all_users, url_prefix, level=quote_level)
         output.append(qresult)
 
+    media = get_tweet_media(tweet)
 
     # add tweet urls
     output.append("")
     links = set([x['expanded_url'] for x in tweet['entities']['urls']])
     output += ["[[{}]]".format(x) for x in links]
-
-    # add tweet media
-    media = set()
-
-    if 'media' in tweet['entities']:
-        media.update([m['media_url'] for m in tweet['entities']['media']])
-
-        videos = [m['video_info'] for m in tweet['entities']['media'] if m['type'] == "video"]
-        urls = [n['url'] for m in videos for n in m['variants'] if n['content_type'] == "video/mp4"]
-        media.update([x.split("?")[0] for x in urls])
-
-    if 'extended_entities' in tweet and 'media' in tweet['extended_entities']:
-        media.update([m['media_url'] for m in tweet['extended_entities']['media']])
-
-        videos = [m['video_info'] for m in tweet['extended_entities']['media'] if m['type'] == "video"]
-        urls = [n['url'] for m in videos for n in m['variants'] if n['content_type'] == "video/mp4"]
-        media.update([x.split("?")[0] for x in urls])
 
     if bool(media):
         output += "\n"
@@ -446,3 +450,26 @@ def assemble_threads(json_dir):
                                   type="quote")
 
     return di_graph
+
+def get_tweet_media(tweet):
+    # add tweet media
+    media = set()
+    if 'entities' not in tweet:
+        breakpoint()
+        return media
+
+    if 'media' in tweet['entities']:
+        media.update([m['media_url'] for m in tweet['entities']['media']])
+
+        videos = [m['video_info'] for m in tweet['entities']['media'] if m['type'] == "video"]
+        urls = [n['url'] for m in videos for n in m['variants'] if n['content_type'] == "video/mp4"]
+        media.update([x.split("?")[0] for x in urls])
+
+    if 'extended_entities' in tweet and 'media' in tweet['extended_entities']:
+        media.update([m['media_url'] for m in tweet['extended_entities']['media']])
+
+        videos = [m['video_info'] for m in tweet['extended_entities']['media'] if m['type'] == "video"]
+        urls = [n['url'] for m in videos for n in m['variants'] if n['content_type'] == "video/mp4"]
+        media.update([x.split("?")[0] for x in urls])
+
+    return media
