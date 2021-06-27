@@ -26,6 +26,7 @@ parser.add_argument('--count', type=int, default=10)
 parser.add_argument('--output')
 
 if __name__ == '__main__':
+    logging.info("---------- STARTING: Url Expander")
     args = parser.parse_args()
     args.target = abspath(expanduser(args.target))
     args.output = abspath(expanduser(args.output))
