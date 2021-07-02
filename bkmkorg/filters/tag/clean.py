@@ -63,7 +63,6 @@ def custom(record):
 
 #--------------------------------------------------
 if __name__ == "__main__":
-    logging.info("---------- STARTING Tag Clean")
     LOGLEVEL = root_logger.DEBUG
     LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
     root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
@@ -75,6 +74,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    logging.info("---------- STARTING Tag Clean")
     logging.info("Targeting: {}".format(args.target))
     logging.info("Cleaning based on: {}".format(args.cleaned))
 
