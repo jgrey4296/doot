@@ -178,7 +178,7 @@ def construct_user_summaries(component_dir, combined_threads_dir, total_users):
 
         user_data['threads'].append({'main_thread' : main_thread,
                                      'rest' : cleaned_rest,
-                                     'quotes' : list(quotes)})
+                                     'quotes' : quote_list})
 
 
         user_data['tweets'].update(tweets)
@@ -208,11 +208,7 @@ def construct_org_files(combined_threads_dir, org_dir, all_users):
         out_files_dir_last = "{}_files".format(data['user']['screen_name'])
         out_files_dir = join(org_dir, out_files_dir_last)
 
-        if exists(join(out_files_dir, ".done")):
-            logging.info(f"Skipping user that has been marked done: {data['user']['screen_name']}")
-            continue
-
-        if exists(out_file) and 'has_media' in data and not data['has_media']:
+        if exists(out_file):
             logging.info(f"Skipping medialess user: {data['user']['screen_name']}")
             continue
 
@@ -236,11 +232,17 @@ def construct_org_files(combined_threads_dir, org_dir, all_users):
         output.append(":END:")
 
         # add conversations
+        used_tweets = set()
         for thread in data['threads']:
-            thread_out, thread_media = thread_to_strings(thread, out_files_dir_last, all_users, tweets)
+            thread_out, thread_media, used = thread_to_strings(thread, out_files_dir_last, all_users, tweets)
             output += thread_out
+            used_tweets.update(used)
             media.update(thread_media)
 
+        unused_tweets = set(tweets.keys()).difference(used_tweets)
+        if bool(unused_tweets):
+            output.append("*** Unused Tweets")
+            output += [tweet_to_string(tweets[x], all_users, out_files_dir_last)[0] for x in unused_tweets]
 
         with open(out_file, 'w') as f:
             f.write("\n".join(output))
@@ -254,9 +256,6 @@ def construct_org_files(combined_threads_dir, org_dir, all_users):
 
         if bool(media):
             download_media(out_files_dir, media)
-            with open(join(out_files_dir, ".done"), "w") as f:
-                f.write("downloaded: {}".format(len(media)))
-
 
 def thread_to_strings(thread, redirect_url, all_users, tweets):
     logging.info("Creating thread")
@@ -268,7 +267,7 @@ def thread_to_strings(thread, redirect_url, all_users, tweets):
     output = []
     main_thread = [tweets[x] for x in thread['main_thread'] if x in tweets]
     if not bool(main_thread):
-        return output, media
+        return output, media, used_tweets
 
     quotes = thread['quotes']
     # Add user info
@@ -326,7 +325,7 @@ def thread_to_strings(thread, redirect_url, all_users, tweets):
     output += ["[[file:./{}][{}]]".format(retarget_url(x, redirect_url), split(x)[1]) for x in media]
 
     output.append("")
-    return output, media
+    return output, media, used_tweets
 
 def tweet_to_string(tweet, all_users, url_prefix, level=4, is_quote=False):
     output = []
