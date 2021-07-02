@@ -58,7 +58,7 @@ if __name__ == '__main__':
         if current in expanded:
             continue
 
-        logging.info(f"Handling {count}/{args.count}")
+        logging.debug(f"Handling {count}/{args.count}")
         try:
             response = requests.head(current, allow_redirects=True, timeout=2)
             if response.ok:
@@ -67,8 +67,9 @@ if __name__ == '__main__':
                 expanded[current] = response.status_code
         except Exception as err:
             expanded[current] = f"400.1 : {str(err)}"
+            logging.info(f"Error: {str(err)}")
 
-        logging.info(f"Response for {current} : {expanded[current]}")
+        logging.debug(f"Response for {current} : {expanded[current]}")
         with open(args.output, 'a') as f:
             f.write("{}{}{}\n".format(current, args.separator, expanded[current]))
 
