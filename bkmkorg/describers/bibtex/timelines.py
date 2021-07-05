@@ -26,6 +26,12 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog = "\n".join(["Create Timelines for Bibtex Files"]))
+parser.add_argument('--library', action="append")
+parser.add_argument('--min_entries', default=5, type=int)
+parser.add_argument('--output')
+
 
 def custom_parse(record):
     if 'year' not in record:
@@ -49,12 +55,6 @@ def custom_parse(record):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog = "\n".join(["Create Timelines for Bibtex Files"]))
-    parser.add_argument('--library', action="append")
-    parser.add_argument('--min_entries', default=5, type=int)
-    parser.add_argument('--output')
-
     args = parser.parse_args()
     args.library = [abspath(expanduser(x)) for x in args.library]
     args.output= abspath(expanduser(args.output))

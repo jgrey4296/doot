@@ -2,6 +2,7 @@
 Photo Description Script
 Writes an org file with images that have the same hash
 """
+import argparse
 import logging as root_logger
 from hashlib import sha256
 from os import listdir
@@ -23,15 +24,16 @@ logging = root_logger.getLogger(__name__)
 
 FILE_TYPES = [".gif",".jpg",".jpeg",".png",".mp4",".bmp"]
 
+
+#see https://docs.python.org/3/howto/argparse.html
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog = "\n".join(["Find and Hash images, revealing duplicates"]))
+parser.add_argument('-t', '--target', action='append')
+parser.add_argument('-o', '--output')
+
+
 if __name__ == "__main__":
     logging.info("Starting Photo Description")
-    import argparse
-
-    #see https://docs.python.org/3/howto/argparse.html
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog = "\n".join(["Find and Hash images, revealing duplicates"]))
-    parser.add_argument('-t', '--target', action='append')
-    parser.add_argument('-o', '--output')
     args = parser.parse_args()
     logging.info("Finding images")
     images = retrieval.get_data_files(args.target, FILE_TYPES)

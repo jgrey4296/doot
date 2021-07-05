@@ -20,6 +20,14 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
+#see https://docs.python.org/3/howto/argparse.html
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog = "\n".join([""]))
+parser.add_argument('--library')
+parser.add_argument('--target')
+parser.add_argument('-e', '--exclude', action="append")
+
+
 ##############################
 
 def copy_missing(the_cmp, exclude=None):
@@ -43,14 +51,6 @@ def copy_missing(the_cmp, exclude=None):
         queue += current.subdirs.values()
 
 if __name__ == "__main__":
-
-    #see https://docs.python.org/3/howto/argparse.html
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog = "\n".join([""]))
-    parser.add_argument('--library')
-    parser.add_argument('--target')
-    parser.add_argument('-e', '--exclude', action="append")
-
     args = parser.parse_args()
     args.library = abspath(expanduser(args.library))
     args.target = abspath(expanduser(args.target))

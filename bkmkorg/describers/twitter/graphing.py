@@ -27,6 +27,11 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog = "\n".join(["Create graphs of Bibtex Files"]))
+parser.add_argument('--library', action="append", help="The bibtex file collection directory")
+parser.add_argument('--target', default="./twitter_timeline.jpg", help="The output target directory")
+##############################
 
 def convert_tweet_date(datestring, fmt=None):
     if fmt is None:
@@ -74,11 +79,6 @@ def convert_to_day_counts(tweets):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog = "\n".join(["Create graphs of Bibtex Files"]))
-    parser.add_argument('--library', action="append", help="The bibtex file collection directory")
-    parser.add_argument('--target', default="./twitter_timeline.jpg", help="The output target directory")
-
     args = parser.parse_args()
     args.library = [abspath(expanduser(x)) for x in args.library]
     args.target = abspath(expanduser(args.target))

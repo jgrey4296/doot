@@ -3,33 +3,43 @@ A simple trie usage bookmark processor
 Pairs with bkmkorg/describers/bookmark_queries
 """
 import argparse
-import logging
+import logging as root_logger
 from os import listdir
-from os.path import abspath, exists, expanduser, isfile, join
+from os.path import abspath, exists, expanduser, isfile, join, split, splitext
 
 import opener
 import regex as re
+from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 from bkmkorg.io.writer.netscape import exportBookmarks as html_exporter
 from bkmkorg.io.writer.org import exportBookmarks as org_exporter
 from bkmkorg.io.writer.plain import exportBookmarks as plain_exporter
-from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.file import retrieval
 from bkmkorg.utils.trie import Trie
 
+LOGLEVEL = root_logger.DEBUG
+LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
+
+console = root_logger.StreamHandler()
+console.setLevel(root_logger.INFO)
+root_logger.getLogger('').addHandler(console)
+logging = root_logger.getLogger(__name__)
+##############################
+# Setup
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog = "\n".join(["Load bookmarks",
+                                                        "filtering a blacklist of URL parameters",
+                                                        "Pairs with bkmkorg/describers/bookmark_queries"])
+)
+parser.add_argument('-s', '--source', action="append")
+parser.add_argument('-q', '--query', default=None)
+parser.add_argument('-o', '--output')
+
+
 query_re = re.compile(r'\*+\s+\(\d+\) (.+)$')
 
 if __name__ == "__main__":
-    # Setup
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog = "\n".join(["Load bookmarks",
-                                                         "filtering a blacklist of URL parameters",
-                                                         "Pairs with bkmkorg/describers/bookmark_queries"])
-    )
-    parser.add_argument('-s', '--source', action="append")
-    parser.add_argument('-q', '--query', default=None)
-    parser.add_argument('-o', '--output')
-
     args = parser.parse_args()
     args.output = abspath(expanduser(args.output))
     if args.query is not None:

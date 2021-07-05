@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import argparse
 import json
 import logging as root_logger
 import re
@@ -17,6 +18,13 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
+#see https://docs.python.org/3/howto/argparse.html
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog = "\n".join([""]))
+parser.add_argument('--target', action="append")
+parser.add_argument('--media')
+parser.add_argument('--pattern', default=DEFAULT_PATTERN)
+
 
 DEFAULT_PATTERN = re.compile("(.*?\[+)/Users/johngrey/Desktop/twitter/orgs/(.+?)(\]\[.+)$")
 PERMALINK       = re.compile(r".*?:PERMALINK: *\[\[(.+?)\]\[")
@@ -84,16 +92,7 @@ def dfs_for_files(target, ext):
     return found
 
 if __name__ == "__main__":
-    import argparse
-
-    #see https://docs.python.org/3/howto/argparse.html
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog = "\n".join([""]))
-    parser.add_argument('--target', action="append")
-    parser.add_argument('--media')
-    parser.add_argument('--pattern', default=DEFAULT_PATTERN)
-
-    my_args = parser.parse_args()
+        my_args = parser.parse_args()
     my_args.media = abspath(expanduser(my_args.media))
     my_args.pattern = re.compile(my_args.pattern)
  

@@ -2,7 +2,7 @@
 Script to find missing photos
 
 """
-# IMPORTS
+import argparse
 import logging as root_logger
 from hashlib import sha256
 from os import listdir, mkdir
@@ -23,18 +23,17 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 
+#see https://docs.python.org/3/howto/argparse.html
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog = "\n".join(["Find and Hash images, revealing duplicates"]))
+parser.add_argument('-l', '--library', action="append")
+parser.add_argument('-t', '--target', action="append")
+parser.add_argument('-c', '--copy', action="store_true")
+parser.add_argument('-o', '--output')
 
 if __name__ == "__main__":
     logging.info("Starting Photo Description")
-    import argparse
 
-    #see https://docs.python.org/3/howto/argparse.html
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog = "\n".join(["Find and Hash images, revealing duplicates"]))
-    parser.add_argument('-l', '--library', action="append")
-    parser.add_argument('-t', '--target', action="append")
-    parser.add_argument('-c', '--copy', action="store_true")
-    parser.add_argument('-o', '--output')
     args = parser.parse_args()
 
     logging.info("Finding library images")

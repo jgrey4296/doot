@@ -1,4 +1,4 @@
-#!~/anaconda/envs/bookmark/bin/python
+#!/opt/anaconda3/envs/bookmark/bin/python
 """
 Check Bibtex library against pdf library
 Output bibtex entries without matching files,
@@ -20,24 +20,26 @@ from bkmkorg.utils.file import retrieval
 PATH_NORM = re.compile("^.+?pdflibrary")
 FILE_RE   = re.compile("^file(\d*)")
 
+# Setup
+LOGLEVEL      = root_logger.DEBUG
+LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
+
+console = root_logger.StreamHandler()
+console.setLevel(root_logger.INFO)
+root_logger.getLogger('').addHandler(console)
+logging = root_logger.getLogger(__name__)
+
+
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog="\n".join(["Check All pdfs are accounted for in a bibliography"])
+                                    )
+parser.add_argument('-t', '--target',  help="Pdf Library directory to verify")
+parser.add_argument('-l', '--library', help="Bibtex Library directory to verify")
+parser.add_argument('-o', '--output',  help="Output location for reports")
+
 
 if __name__ == "__main__":
-    # Setup
-    LOGLEVEL      = root_logger.DEBUG
-    LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
-    root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
-
-    console = root_logger.StreamHandler()
-    console.setLevel(root_logger.INFO)
-    root_logger.getLogger('').addHandler(console)
-    logging = root_logger.getLogger(__name__)
-
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog="\n".join(["Check All pdfs are accounted for in a bibliography"])
-                                     )
-    parser.add_argument('-t', '--target',  help="Pdf Library directory to verify")
-    parser.add_argument('-l', '--library', help="Bibtex Library directory to verify")
-    parser.add_argument('-o', '--output',  help="Output location for reports")
     args = parser.parse_args()
 
     args.output = abspath(expanduser(args.output))
@@ -52,7 +54,7 @@ if __name__ == "__main__":
     logging.info("Loaded Database: {} entries".format(len(main_db.entries)))
     count              = 0
     all_file_mentions  = []
-    all_existing_files = retrieval.get_data_files(args.target, ".pdf", normalize=True)
+    all_existing_files = retrieval.get_data_files(args.target, [".epub", ".pdf"], normalize=True)
 
     # Convert entries to unicode
     for i, entry in enumerate(main_db.entries):

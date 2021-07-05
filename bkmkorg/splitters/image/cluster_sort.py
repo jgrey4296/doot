@@ -14,6 +14,26 @@ import PIL
 from PIL import Image
 from sklearn.cluster import KMeans
 
+# Setup
+LOGLEVEL = root_logger.DEBUG
+LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
+
+console = root_logger.StreamHandler()
+console.setLevel(root_logger.INFO)
+root_logger.getLogger('').addHandler(console)
+logging = root_logger.getLogger(__name__)
+##############################
+#see https://docs.python.org/3/howto/argparse.html
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog = "\n".join([""]))
+parser.add_argument('--groups', default=3)
+parser.add_argument('--target', default="source")
+parser.add_argument('--output', default="output")
+parser.add_argument('--rand', default=-1)
+parser.add_argument('--slice', default=200)
+
+
 THUMB = (200,200)
 
 
@@ -34,25 +54,6 @@ def norm_img(img):
 
 
 if __name__ == "__main__":
-    # Setup
-    LOGLEVEL = root_logger.DEBUG
-    LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
-    root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
-
-    console = root_logger.StreamHandler()
-    console.setLevel(root_logger.INFO)
-    root_logger.getLogger('').addHandler(console)
-    logging = root_logger.getLogger(__name__)
-    ##############################
-    #see https://docs.python.org/3/howto/argparse.html
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog = "\n".join([""]))
-    parser.add_argument('--groups', default=3)
-    parser.add_argument('--target', default="source")
-    parser.add_argument('--output', default="output")
-    parser.add_argument('--rand', default=-1)
-    parser.add_argument('--slice', default=200)
-
     args = parser.parse_args()
     args.groups = int(args.groups)
     args.rand = int(args.rand)

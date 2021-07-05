@@ -12,26 +12,27 @@ from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 from bkmkorg.utils import retrieval
 from bkmkorg.utils.bibtex import parsing as BU
 
+# Setup logging
+LOGLEVEL = root_logger.DEBUG
+LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
+
+console = root_logger.StreamHandler()
+console.setLevel(root_logger.INFO)
+root_logger.getLogger('').addHandler(console)
+logging = root_logger.getLogger(__name__)
+
+# Setup
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                epilog = "\n".join(["For a bookmark file, print out domain counts and tag counts",
+                                                    "Pairs with bkmkorg/filters/bookmark_tag_filter"]))
+parser.add_argument('-l', '--library')
+parser.add_argument('-o', '--output')
+parser.add_argument('-t', '--tag', action="store_true")
+parser.add_argument('-d', '--domain', action="store_true")
+
+
 if __name__ == "__main__":
-    # Setup logging
-    LOGLEVEL = root_logger.DEBUG
-    LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
-    root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
-
-    console = root_logger.StreamHandler()
-    console.setLevel(root_logger.INFO)
-    root_logger.getLogger('').addHandler(console)
-    logging = root_logger.getLogger(__name__)
-
-    # Setup
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                 epilog = "\n".join(["For a bookmark file, print out domain counts and tag counts",
-                                                     "Pairs with bkmkorg/filters/bookmark_tag_filter"]))
-    parser.add_argument('-l', '--library')
-    parser.add_argument('-o', '--output')
-    parser.add_argument('-t', '--tag', action="store_true")
-    parser.add_argument('-d', '--domain', action="store_true")
-
     args = parser.parse_args()
     args.library = abspath(expanduser(args.library))
     args.output = abspath(expanduser(args.output))

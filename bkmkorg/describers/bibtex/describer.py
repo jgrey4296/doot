@@ -23,6 +23,23 @@ LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
+# Setup
+console = root_logger.StreamHandler()
+console.setLevel(root_logger.INFO)
+root_logger.getLogger('').addHandler(console)
+logging = root_logger.getLogger(__name__)
+##############################
+#see https://docs.python.org/3/howto/argparse.html
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog="\n".join(["Describe a bibtex file's:",
+                                                    "Tags, year counts, authors,",
+                                                    "And entries lacking files or with multiple files"]))
+parser.add_argument('-t', '--target', default="~/github/writing/resources", help="Input target")
+parser.add_argument('-o', '--output', default="bibtex",                     help="Output Target")
+parser.add_argument('-f', '--files', action="store_true",                   help="Write to files")
+parser.add_argument('-a', '--authors', action="store_true",                 help="Describe authors")
+parser.add_argument('-y', '--years', action="store_true",                   help="Describe Years")
+
 
 def make_bar(k, v, left_pad_v, right_scale_v):
     pad = ((10 + left_pad_v) - len(k))
@@ -56,23 +73,6 @@ def custom(record):
 
 
 if __name__ == "__main__":
-    # Setup
-    console = root_logger.StreamHandler()
-    console.setLevel(root_logger.INFO)
-    root_logger.getLogger('').addHandler(console)
-    logging = root_logger.getLogger(__name__)
-    ##############################
-    #see https://docs.python.org/3/howto/argparse.html
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog="\n".join(["Describe a bibtex file's:",
-                                                       "Tags, year counts, authors,",
-                                                       "And entries lacking files or with multiple files"]))
-    parser.add_argument('-t', '--target', default="~/github/writing/resources", help="Input target")
-    parser.add_argument('-o', '--output', default="bibtex",                     help="Output Target")
-    parser.add_argument('-f', '--files', action="store_true",                   help="Write to files")
-    parser.add_argument('-a', '--authors', action="store_true",                 help="Describe authors")
-    parser.add_argument('-y', '--years', action="store_true",                   help="Describe Years")
-
     args = parser.parse_args()
 
     args.output = abspath(expanduser(args.output))

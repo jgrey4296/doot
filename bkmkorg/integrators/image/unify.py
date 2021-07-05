@@ -21,6 +21,13 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
+# Setup
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog = "\n".join(["Find images in {source} dir that are not linked in {output}.org, and link them"]))
+parser.add_argument('-s', '--source')
+parser.add_argument('-o', '--output')
+
+
 ##############################
 
 text_template = "** [[file://{}][{}]]\n"
@@ -30,12 +37,6 @@ file_types = ['.png', '.gif', '.jpg', '.jpeg']
 
 
 if __name__ == "__main__":
-    # Setup
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog = "\n".join(["Find images in {source} dir that are not linked in {output}.org, and link them"]))
-    parser.add_argument('-s', '--source')
-    parser.add_argument('-o', '--output')
-
     args = parser.parse_args()
     args.source = abspath(expanduser(args.source))
     args.output = abspath(expanduser(args.output))

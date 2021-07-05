@@ -32,6 +32,11 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog = "\n".join(["Create graphs of Bibtex Files"]))
+parser.add_argument('--library', action="append", help="The bibtex file collection directory")
+parser.add_argument('--target', help="The output target directory")
+parser.add_argument('--tag', help="Optional Focus Tag")
 
 
 def custom_parse(record):
@@ -76,12 +81,6 @@ def get_entries_across_years(db) -> List[Tuple[datetime, int]]:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog = "\n".join(["Create graphs of Bibtex Files"]))
-    parser.add_argument('--library', action="append", help="The bibtex file collection directory")
-    parser.add_argument('--target', help="The output target directory")
-    parser.add_argument('--tag', help="Optional Focus Tag")
-
     args = parser.parse_args()
     args.library = [abspath(expanduser(x)) for x in args.library]
     args.target = abspath(expanduser(args.target))

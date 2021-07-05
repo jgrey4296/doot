@@ -21,6 +21,13 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
+
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog = "\n".join([""]))
+parser.add_argument('--target')
+parser.add_argument('--output')
+
+
 ##############################
 
 input_date_format = "%a %b %d %H:%M:%S %z %Y"
@@ -53,12 +60,6 @@ def clean_unicode(the_str):
     return clean.replace('\n', ' ').strip()
 
 if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog = "\n".join([""]))
-    parser.add_argument('--target')
-    parser.add_argument('--output')
-
     args = parser.parse_args()
     args.target = abspath(expanduser(args.target))
     args.output = abspath(expanduser(args.output))

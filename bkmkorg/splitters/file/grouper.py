@@ -9,25 +9,27 @@ from os import listdir
 from os.path import exists, expanduser, isdir, isfile, join, split, splitext
 from subprocess import call
 
-if __name__ == "__main__":
-    # Setup
-    LOGLEVEL = root_logger.DEBUG
-    LOG_FILE_NAME = "log.grouper"
-    root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
+# Setup
+LOGLEVEL = root_logger.DEBUG
+LOG_FILE_NAME = "log.grouper"
+root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
-    console = root_logger.StreamHandler()
-    console.setLevel(root_logger.INFO)
-    root_logger.getLogger('').addHandler(console)
-    logging = root_logger.getLogger(__name__)
-    ##############################
-    #see https://docs.python.org/3/howto/argparse.html
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog = "\n".join(["Take a subdirectory of files, group into subdirectories of size g"]))
-    parser.add_argument('-t', '--target', default="~/mega/twitterthreads")
-    # parser.add_argument('-t', '--target', default="~/github/bookmark_organiser/output")
-    parser.add_argument('-g', '--groupnum',  default=5)
-    parser.add_argument('-p', '--preface', default="grouped")
-    args = parser.parse_args()
+console = root_logger.StreamHandler()
+console.setLevel(root_logger.INFO)
+root_logger.getLogger('').addHandler(console)
+logging = root_logger.getLogger(__name__)
+##############################
+#see https://docs.python.org/3/howto/argparse.html
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog = "\n".join(["Take a subdirectory of files, group into subdirectories of size g"]))
+parser.add_argument('-t', '--target', default="~/mega/twitterthreads")
+# parser.add_argument('-t', '--target', default="~/github/bookmark_organiser/output")
+parser.add_argument('-g', '--groupnum',  default=5)
+parser.add_argument('-p', '--preface', default="grouped")
+
+
+if __name__ == "__main__":
+   args = parser.parse_args()
 
     all_files = listdir(expanduser(args.target))
     only_orgs = [x for x in all_files if splitext(x)[1] == '.org']

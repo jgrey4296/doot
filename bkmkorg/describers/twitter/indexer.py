@@ -22,8 +22,6 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
-
-
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog = "\n".join(["Index all users found in orgs"]))
 parser.add_argument('--target', action="append")

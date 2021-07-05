@@ -16,6 +16,25 @@ from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.file import retrieval
 from bkmkorg.utils.pdf import pdf as PU
 
+# Setup root_logger:
+LOGLEVEL = root_logger.DEBUG
+LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
+
+console = root_logger.StreamHandler()
+console.setLevel(root_logger.INFO)
+root_logger.getLogger('').addHandler(console)
+logging = root_logger.getLogger(__name__)
+##############################
+#see https://docs.python.org/3/howto/argparse.html
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog = "\n".join([""]))
+parser.add_argument('--tag')
+parser.add_argument('--target', action='append')
+parser.add_argument('--output')
+parser.add_argument('--bound', default=200)
+
+
 
 def custom_parse(record):
     if 'year' not in record:
@@ -36,24 +55,6 @@ def custom_parse(record):
     return record
 
 if __name__ == "__main__":
-    # Setup root_logger:
-    LOGLEVEL = root_logger.DEBUG
-    LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
-    root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
-
-    console = root_logger.StreamHandler()
-    console.setLevel(root_logger.INFO)
-    root_logger.getLogger('').addHandler(console)
-    logging = root_logger.getLogger(__name__)
-    ##############################
-    #see https://docs.python.org/3/howto/argparse.html
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog = "\n".join([""]))
-    parser.add_argument('--tag')
-    parser.add_argument('--target', action='append')
-    parser.add_argument('--output')
-    parser.add_argument('--bound', default=200)
-
     args = parser.parse_args()
     args.output = abspath(expanduser(args.output))
 

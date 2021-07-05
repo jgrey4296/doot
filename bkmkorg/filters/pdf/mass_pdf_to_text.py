@@ -22,12 +22,12 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 epilog = "\n".join([""]))
+parser.add_argument('-l', '--library')
+##############################
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog = "\n".join([""]))
-    parser.add_argument('-l', '--library')
-
     args = parser.parse_args()
     files = retrieval.get_data_files(args.library, ".pdf")
     PU.convert_pdfs_to_text(files)

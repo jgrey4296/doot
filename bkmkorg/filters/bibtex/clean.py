@@ -30,6 +30,16 @@ root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
 ERRORS = []
+# Setup
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog=
+                                    "\n".join(["Specify a Target bibtex file,",
+                                            "Output file,",
+                                            "Cleans entries,",
+                                            "Records errors in an 'error' field for an entry."]))
+
+parser.add_argument('-t', '--target', action='append')
+parser.add_argument('-o', '--output', default=None)
 
 def expander(path):
     return abspath(expanduser(path))
@@ -123,17 +133,7 @@ def custom_clean(record):
 
 
 if __name__ == "__main__":
-    # Setup
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog=
-                                     "\n".join(["Specify a Target bibtex file,",
-                                                "Output file,",
-                                                "Cleans entries,",
-                                                "Records errors in an 'error' field for an entry."]))
-
-    parser.add_argument('-t', '--target', action='append')
-    parser.add_argument('-o', '--output', default=None)
-    args = parser.parse_args()
+   args = parser.parse_args()
 
     logging.info("---------- STARTING Bibtex Clean")
     logging.info("Targeting: {}".format(args.target))

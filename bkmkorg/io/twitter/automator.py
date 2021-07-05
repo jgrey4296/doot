@@ -28,6 +28,27 @@ import requests
 
 import twitter
 
+# Setup root_logger:
+LOGLEVEL = root_logger.DEBUG
+LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
+
+console = root_logger.StreamHandler()
+console.setLevel(root_logger.INFO)
+root_logger.getLogger('').addHandler(console)
+logging = root_logger.getLogger(__name__)
+#see https://docs.python.org/3/howto/argparse.html
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog="\n".join([""]))
+parser.add_argument('--config', default=DEFAULT_CONFIG, help="The Secrets file to access twitter")
+parser.add_argument('--target', default=DEFAULT_TARGET, help="The target dir to process/download to")
+parser.add_argument('--library', action="append",       help="Location of already downloaded tweets")
+parser.add_argument('--export',  help="File to export all library tweet ids to, optional")
+parser.add_argument('--tweet', help="A Specific Tweet URL to handle, for CLI usage/ emacs use")
+parser.add_argument('--skiptweets', action='store_true', help="for when tweets have been downloaded, or hung")
+
+
+
 DEFAULT_CONFIG = "secrets.config"
 DEFAULT_TARGET = ".temp_download"
 
@@ -66,16 +87,6 @@ def main():
 
     ####################
     # Setup argparser
-    #see https://docs.python.org/3/howto/argparse.html
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog="\n".join([""]))
-    parser.add_argument('--config', default=DEFAULT_CONFIG, help="The Secrets file to access twitter")
-    parser.add_argument('--target', default=DEFAULT_TARGET, help="The target dir to process/download to")
-    parser.add_argument('--library', action="append",       help="Location of already downloaded tweets")
-    parser.add_argument('--export',  help="File to export all library tweet ids to, optional")
-    parser.add_argument('--tweet', help="A Specific Tweet URL to handle, for CLI usage/ emacs use")
-    parser.add_argument('--skiptweets', action='store_true', help="for when tweets have been downloaded, or hung")
-
     args = parser.parse_args()
     args.config = abspath(expanduser(args.config))
     if args.library is not None:
@@ -191,15 +202,6 @@ def main():
 
 
 if __name__ == "__main__":
-    # Setup root_logger:
-    LOGLEVEL = root_logger.DEBUG
-    LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
-    root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
-
-    console = root_logger.StreamHandler()
-    console.setLevel(root_logger.INFO)
-    root_logger.getLogger('').addHandler(console)
-    logging = root_logger.getLogger(__name__)
-    logging.info("Automated Twitter Archiver")
+   logging.info("Automated Twitter Archiver")
 
     main()

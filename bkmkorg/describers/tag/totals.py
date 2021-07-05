@@ -28,6 +28,13 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 
+# Setup
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                epilog="\n".join(["Extracts all tags in all bibtex, bookmark and org files in specified dirs"]))
+parser.add_argument('-t', '--target',action="append")
+parser.add_argument('-o', '--output', default="collected")
+parser.add_argument('-c', '--cleaned', action="append")
+
 
 
 ##############################
@@ -53,13 +60,6 @@ def custom(record):
 
 
 if __name__ == "__main__":
-    # Setup
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                 epilog="\n".join(["Extracts all tags in all bibtex, bookmark and org files in specified dirs"]))
-    parser.add_argument('-t', '--target',action="append")
-    parser.add_argument('-o', '--output', default="collected")
-    parser.add_argument('-c', '--cleaned', action="append")
-
     logging.info("---------- STARTING Tag Totals")
     cli_args = parser.parse_args()
     cli_args.output = abspath(expanduser(cli_args.output))

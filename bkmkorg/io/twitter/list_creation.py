@@ -24,6 +24,15 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 
+# Setup
+parser = argparse.ArgumentParser("")
+# todo: add output filename target
+parser.add_argument('-t', '--source', default='output.org')
+parser.add_argument('-b', '--backup', default='backup_')
+parser.add_argument('-c', '--credentials', default="my.credentials")
+parser.add_argument('-k', '--key', default="consumer.key")
+parser.add_argument('-s', '--secret', default="consumer.secret")
+
 ##############################
 #setup credentials
 MY_TWITTER_CREDS = None
@@ -155,15 +164,7 @@ def add_members(t, list_name, list_id, members):
 
 
 if __name__ == "__main__":
-    # Setup
-    parser = argparse.ArgumentParser("")
-    # todo: add output filename target
-    parser.add_argument('-t', '--source', default='output.org')
-    parser.add_argument('-b', '--backup', default='backup_')
-    parser.add_argument('-c', '--credentials', default="my.credentials")
-    parser.add_argument('-k', '--key', default="consumer.key")
-    parser.add_argument('-s', '--secret', default="consumer.secret")
-    args = parser.parse_args()
+   args = parser.parse_args()
 
     MY_TWITTER_CREDS = absfile(expanduser(args.credentials))
     KEY_FILE = absfile(expanduser(args.key))

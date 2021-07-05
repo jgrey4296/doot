@@ -20,6 +20,14 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
+#see https://docs.python.org/3/howto/argparse.html
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog = "\n".join([""]))
+parser.add_argument("--target", action="append")
+parser.add_argument("--sep", default=" _|_ ")
+parser.add_argument("--output")
+
+
 ##############################
 
 forbidden = ["Template:create", "index.php/Talk", "index.php?title=Talk"]
@@ -43,13 +51,6 @@ def extract(bs):
     return data
 
 if __name__ == '__main__':
-    #see https://docs.python.org/3/howto/argparse.html
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog = "\n".join([""]))
-    parser.add_argument("--target", action="append")
-    parser.add_argument("--sep", default=" _|_ ")
-    parser.add_argument("--output")
-
     args = parser.parse_args()
     args.target = [abspath(expanduser(x)) for x in args.target]
     args.output = abspath(expanduser(args.output))

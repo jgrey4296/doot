@@ -23,6 +23,25 @@ from wordcloud import WordCloud
 from bkmkorg.utils import bibtex as BU
 from bkmkorg.utils import retrieval
 
+# Setup root_logger:
+from os.path import splitext, split
+import logging as root_logger
+LOGLEVEL = root_logger.DEBUG
+LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
+
+console = root_logger.StreamHandler()
+console.setLevel(root_logger.INFO)
+root_logger.getLogger('').addHandler(console)
+logging = root_logger.getLogger(__name__)
+##############################
+#see https://docs.python.org/3/howto/argparse.html
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog = "\n".join(["Generate wordcloud from tag counts files"]))
+parser.add_argument('--target', action="append")
+parser.add_argument('--output', default=None)
+
+
 def getFrequencyDictForText(lines):
     tmpDict = {}
 
@@ -61,12 +80,6 @@ def makeImage(text, output=None):
 
 
 if __name__ == "__main__":
-    #see https://docs.python.org/3/howto/argparse.html
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog = "\n".join(["Generate wordcloud from tag counts files"]))
-    parser.add_argument('--target', action="append")
-    parser.add_argument('--output', default=None)
-
     args = parser.parse_args()
     if args.output is not None:
         args.output = abspath(expanduser(args.output))

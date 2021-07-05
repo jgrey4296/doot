@@ -24,6 +24,14 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
+#see https://docs.python.org/3/howto/argparse.html
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog="\n".join([""]))
+parser.add_argument('--config', default=DEFAULT_CONFIG, help="The Secrets file to access twitter")
+parser.add_argument('--target', help="the json file with account information")
+parser.add_argument('--output', help="the output file")
+
+
 ##############################
 DEFAULT_CONFIG = "secrets.config"
 
@@ -68,13 +76,6 @@ def get_user_identities(users_file, twit, users):
 
 
 if __name__ == "__main__":
-    #see https://docs.python.org/3/howto/argparse.html
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog="\n".join([""]))
-    parser.add_argument('--config', default=DEFAULT_CONFIG, help="The Secrets file to access twitter")
-    parser.add_argument('--target', help="the json file with account information")
-    parser.add_argument('--output', help="the output file")
-
     args = parser.parse_args()
     args.config = abspath(expanduser(args.config))
     args.target = abspath(expanduser(args.target))

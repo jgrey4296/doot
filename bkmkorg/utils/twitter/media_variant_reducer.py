@@ -17,6 +17,14 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                    epilog = "\n".join([""]))
+parser.add_argument('--library', action="append", help="where to look for files")
+parser.add_argument('--target',  help="json file of variants")
+parser.add_argument('--trash',   help="move no longer needed files here")
+parser.add_argument('--real',    action='store_true')
+
+
 ##############################
 
 def move_file(file_path, target, is_real):
@@ -28,13 +36,6 @@ def move_file(file_path, target, is_real):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog = "\n".join([""]))
-    parser.add_argument('--library', action="append", help="where to look for files")
-    parser.add_argument('--target',  help="json file of variants")
-    parser.add_argument('--trash',   help="move no longer needed files here")
-    parser.add_argument('--real',    action='store_true')
-
     args    = parser.parse_args()
     library = [abspath(expanduser(x)) for x in args.library]
     target  = abspath(expanduser(args.target))

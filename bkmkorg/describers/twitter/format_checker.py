@@ -26,17 +26,14 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
-
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                epilog="\n".join(["Report org files with incorrect meta data of tweets"]))
+parser.add_argument('-t', '--target',action="append")
+parser.add_argument('-o', '--output', default="collected")
 #--------------------------------------------------
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                 epilog="\n".join(["Report org files with incorrect meta data of tweets"]))
-    parser.add_argument('-t', '--target',action="append")
-    parser.add_argument('-o', '--output', default="collected")
-
-
     logging.info("Org Check start: --------------------")
     args = parser.parse_args()
     args.output = abspath(expanduser(args.output))
