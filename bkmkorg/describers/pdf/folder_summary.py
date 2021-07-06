@@ -1,4 +1,4 @@
-#!~/anaconda/envs/bookmark/bin/python
+#!/opt/anaconda3/envs/bookmark/bin/python
 # https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
 import argparse
 import logging as root_logger
@@ -11,7 +11,7 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.pdf import pdf as PU
-from bkmkorg.utils import retrieval
+from bkmkorg.utils.file import retrieval
 
 # Setup root_logger:
 LOGLEVEL = root_logger.DEBUG
