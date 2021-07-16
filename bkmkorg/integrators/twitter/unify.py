@@ -76,12 +76,12 @@ def integrate(source, lib_dict):
     if not exists(existing_files):
         mkdir(existing_files)
 
-    # with open(new_org, 'r') as f:
-    #     lines = f.read()
+    with open(new_org, 'r') as f:
+        lines = f.read()
 
-    # with open(existing_org, 'a') as f:
-    #     f.write("\n")
-    #     f.write(lines)
+    with open(existing_org, 'a') as f:
+        f.write("\n")
+        f.write(lines)
 
     if not exists(new_files):
         return
@@ -128,7 +128,7 @@ if __name__ == "__main__":
             totally_new.append(x)
             continue
 
-        # integrate(x, existing_orgs)
+        integrate(x, existing_orgs)
 
     logging.info("Completely new to transfer: {}".format(len(totally_new)))
 
