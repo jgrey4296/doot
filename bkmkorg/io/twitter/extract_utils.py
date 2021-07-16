@@ -4,7 +4,7 @@ from typing import Mapping, MutableMapping, Sequence, Iterable
 from typing import cast, ClassVar, TypeVar, Generic
 
 import re
-from os.path import exists, splitext, join
+from os.path import exists, splitext, join, isfile, isdir
 from os import listdir
 import json
 
