@@ -28,6 +28,10 @@ import requests
 
 import twitter
 
+DEFAULT_CONFIG = "secrets.config"
+DEFAULT_TARGET = ".temp_download"
+
+
 # Setup root_logger:
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
@@ -48,9 +52,6 @@ parser.add_argument('--tweet', help="A Specific Tweet URL to handle, for CLI usa
 parser.add_argument('--skiptweets', action='store_true', help="for when tweets have been downloaded, or hung")
 
 
-
-DEFAULT_CONFIG = "secrets.config"
-DEFAULT_TARGET = ".temp_download"
 
 
 def get_library_tweets(lib, tweet, export):
