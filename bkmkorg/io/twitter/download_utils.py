@@ -100,7 +100,7 @@ def download_tweets(twit, json_dir, target_ids, lib_ids=None):
                     queue.append(x._json['quoted_status_id_str'])
 
             # Store missing ids
-            not_retrieved = set(current).difference([x['id_str'] for x in results])
+            not_retrieved = set(current).difference([x._json['id_str'] for x in results])
             known_missing_tweets.update(not_retrieved)
 
         except Exception as e:
