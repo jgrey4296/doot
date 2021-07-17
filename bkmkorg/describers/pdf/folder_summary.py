@@ -36,6 +36,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     args.output = abspath(expanduser(args.output))
 
+    # TODO, get information from bibtex on each entry, including specific pages
+
     if args.grouped:
         groups = listdir(args.target)
         for group in groups:

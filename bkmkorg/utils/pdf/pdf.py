@@ -39,6 +39,7 @@ def summarise_pdfs(paths, func=None, output="./pdf_summary", bound=200):
             writer.addpage(func(pdf_obj))
         except:
             logging.warning("Error Encountered with {}".format(path))
+            # TODO for exceptions, create a stub pdf with the name and author
 
         if len(writer.pagearray) > bound:
             # if pdf is too big, create another
