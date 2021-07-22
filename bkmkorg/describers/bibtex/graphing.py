@@ -1,5 +1,4 @@
-#!~/anaconda/envs/bookmark/bin/python
-
+#!/opt/anaconda3/envs/bookmark/bin/python3
 # load bibtex, graph tags by year, all entries by year,
 
 import argparse

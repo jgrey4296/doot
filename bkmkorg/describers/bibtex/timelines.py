@@ -1,4 +1,4 @@
-#!/opt/anaconda3/envs/bookmark/bin/python
+#!/opt/anaconda3/envs/bookmark/bin/python3
 import argparse
 import logging as root_logger
 from collections import defaultdict
