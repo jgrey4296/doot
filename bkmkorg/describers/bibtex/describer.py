@@ -111,6 +111,10 @@ if __name__ == "__main__":
             logging.info("{}/10 Complete".format(count))
             count += 1
 
+        if entry['ID'] in all_keys:
+            logging.warning("Duplicate Key: {}".format(entry['ID']))
+
+        all_keys.append(entry['ID'])
         # get tags
         e_tags = entry['tags']
 
