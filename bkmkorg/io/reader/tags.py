@@ -124,7 +124,7 @@ def read_substitutions(target: Union[str, List[str]], counts=True) -> Dict[str, 
     if isinstance(target, str):
         target = [target]
 
-    assert(all([splitext(x)[1] in [".tags", ".txt", ".org"] for x in target]))
+    assert(all([splitext(x)[1] in [".sub"] for x in target]))
     sub = {}
 
     for path in target:

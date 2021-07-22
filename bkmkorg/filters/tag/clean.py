@@ -77,7 +77,7 @@ if __name__ == "__main__":
     logging.info("Cleaning based on: {}".format(args.cleaned))
 
     #Load Cleaned Tags
-    tag_sub_files = retrieval.get_data_files(args.cleaned, [".org", ".txt", ".tags"])
+    tag_sub_files = retrieval.get_data_files(args.cleaned, [".sub"])
     cleaned_tags = read_substitutions(tag_sub_files)
     logging.info("Loaded {} tag substitutions".format(len(cleaned_tags)))
 
