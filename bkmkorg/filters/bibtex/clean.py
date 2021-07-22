@@ -134,6 +134,8 @@ def custom_clean(record):
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    error_out = expander(join(split(args.output)[0], ".bib_errors"))
+
 
     logging.info("---------- STARTING Bibtex Clean")
     logging.info("Targeting: {}".format(args.target))
@@ -147,7 +149,7 @@ if __name__ == "__main__":
 
     if bool(error_tuples) and args.output:
         formatted = "\n".join(["{} : {}".format(x, y) for x,y in error_tuples])
-        with open('{}.errors'.format(args.output), 'a') as f:
+        with open(error_out, 'a') as f:
             f.write(formatted)
 
     # Write out the actual bibtex
