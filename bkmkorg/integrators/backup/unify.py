@@ -42,10 +42,12 @@ def copy_missing(the_cmp, exclude=None):
             loc_l = join(current.left, missing)
             loc_r = join(current.right, missing)
             if isfile(loc_l) and (splitext(missing)[1] not in exclude):
-                logging.info("Missing: {} in {} from {}".format(missing, current.left, current.right))
+                logging.info("Missing: library -> {} -> target : {} : {}".format(missing,
+                                                                                 current.left,
+                                                                                 current.right))
                 copy(loc_l, loc_r)
             elif isdir(loc_l):
-                logging.info("Missing: {} from {}".format(missing, current.left, current.right))
+                logging.info("Missing: library -> {} -> target : {}".format(missing, current.left, current.right))
                 copytree(loc_l, loc_r)
 
         queue += current.subdirs.values()
