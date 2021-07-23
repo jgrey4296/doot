@@ -145,8 +145,11 @@ def read_substitutions(target: Union[str, List[str]], counts=True) -> Dict[str, 
             if component_zero == "":
                 continue
 
-            assert(component_zero not in sub)
-            sub[component_zero] = []
+
+            if component_zero in sub:
+                logging.warning(f"Duplication: {component_zero}")
+            else:
+                sub[component_zero] = []
             # Get the substitutions
             sub_start = 2 if counts else 1
 
