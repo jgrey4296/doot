@@ -28,8 +28,11 @@ def parse_bib_files(bib_files, func=None, database=None):
 
     bparser.bib_database = db
     for x in bib_files:
-        with open(x, 'r') as f:
-            logging.info("Loading bibtex: {}".format(x))
-            b.load(f, bparser)
+        try:
+            with open(x, 'r') as f:
+                logging.info(f"Loading bibtex: {x}")
+                b.load(f, bparser)
+        except Exception as err:
+            logging.warning(f"Error for: {x}: {err}")
     logging.info("Bibtex loaded")
     return db
