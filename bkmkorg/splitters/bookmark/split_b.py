@@ -9,7 +9,7 @@ from os.path import abspath, exists, expanduser, isdir, join, split, splitext
 from urllib.parse import urlparse
 
 from bkmkorg.io.writer.netscape import exportBookmarks
-from bkmkorg.io.writer.netscape import open_and_extract_bookmarks
+from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 
 # Setup
 LOGLEVEL = root_logger.DEBUG
