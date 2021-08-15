@@ -1,6 +1,7 @@
 #!/opt/anaconda3/envs/bookmark/bin/python
 """
-Integrate new bookmarks into the main bookmark file
+Integrate new bookmarks into the main bookmark file,
+focusing on Netscape HTML format
 """
 import argparse
 import logging as root_logger

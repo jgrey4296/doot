@@ -4,7 +4,7 @@ Main function: exportBookmarks
 """
 import logging
 
-from bkmkorg.utils.bookmark.data import bookmarkTuple
+from bkmkorg.utils.bookmark.data import Bookmark
 
 groupCount = 0
 listCount  = 0
@@ -26,13 +26,13 @@ def footer():
     return "\n</HTML>"
 
 
-def bookmarkToItem(bkmkTuple):
+def bookmarkToItem(bkmk):
     """ Converts a single bookmark to html """
-    assert(isinstance(bkmkTuple, bookmarkTuple))
-    logging.debug("Exporting link: {}".format(bkmkTuple.url))
+    assert(isinstance(bkmk, Bookmark))
+    logging.debug("Exporting link: {}".format(bkmk.url))
     #add the link:
-    tags = 'TAGS="{}"'.format(",".join(sorted(bkmkTuple.tags)))
-    item = '<DT><A HREF="{}" {}>{}</A>'.format(bkmkTuple.url,tags, bkmkTuple.name.replace('\n',''))
+    tags = 'TAGS="{}"'.format(",".join(sorted(bkmk.tags)))
+    item = '<DT><A HREF="{}" {}>{}</A>'.format(bkmk.url,tags, bkmk.name.replace('\n',''))
     return item
 
 def bookmarksToNetscapeString(data):
@@ -54,7 +54,7 @@ def convertData(data):
         groupCount  += 1
         keys         = sorted([x for x in data.keys()])
         subGroups    = [groupToNetscapeString(x,data[x]) for x in keys if isinstance(data[x],dict) and x != '__path']
-        items        = [bookmarkToItem(data[x]) for x in keys if isinstance(data[x],bookmarkTuple) and x != '__path']
+        items        = [bookmarkToItem(data[x]) for x in keys if isinstance(data[x], Bookmark) and x != '__path']
         combined     = subGroups + items
         return '\n'.join(sorted(combined))
     elif isinstance(data,list):

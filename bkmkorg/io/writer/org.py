@@ -21,7 +21,7 @@ def tuple_to_str(bkmk_tuple):
 
 def exportBookmarks(data, filename):
     """ Main function. Takes a dict of data and outputs a string """
-    #print out the items that are bookmark tuples
+    #print out the items that are bookmarks
     logging.info("Converting data to text")
     target_data = None
     if isinstance(data, dict):

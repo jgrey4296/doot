@@ -13,12 +13,12 @@ from collections import namedtuple
 from bs4 import BeautifulSoup
 
 
-from bkmkorg.utils.bookmark.data import bookmarkTuple
+from bkmkorg.utils.bookmark.data import Bookmark
 
 
-def getLinks(aSoup) -> List[bookmarkTuple]:
+def getLinks(aSoup) -> List[Bookmark]:
     bkmks = aSoup.find_all('a')
-    tupleList = []
+    bkmkList = []
     for x in bkmks:
         tagString = x.get('tags')
         if tagString is not None:
@@ -26,22 +26,20 @@ def getLinks(aSoup) -> List[bookmarkTuple]:
         else:
             indTags = []
         tagSet = set(indTags)
-        newBkmk = bookmarkTuple(x.get_text(),x.get('href'),tagSet)
-        tupleList.append(newBkmk)
+        newBkmk = Bookmark(x.get('href'),tagSet, name=x.get_text())
+        bkmkList.append(newBkmk)
 
-    return tupleList
+    return bkmkList
 
-def open_and_extract_bookmarks(filename) -> List[bookmarkTuple]:
+def open_and_extract_bookmarks(filename) -> List[Bookmark]:
     """
-    The Main Utility. Takes the path to a filename, returns a list of bookmark tuples
+    The Main Utility. Takes the path to a filename, returns a list of bookmarks
     """
     logging.info('Starting html opener for: {}'.format(filename))
     with open(filename, 'rb') as f:
         rawHtml = f.read().decode("utf-8","ignore")
 
     soup = BeautifulSoup(rawHtml,'html.parser')
-    tupleList = getLinks(soup)
-    logging.info("Found {} links".format(len(tupleList)))
-    return tupleList
-
-
+    bkmkList = getLinks(soup)
+    logging.info("Found {} links".format(len(bkmkList)))
+    return bkmkList

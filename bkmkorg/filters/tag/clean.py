@@ -19,7 +19,6 @@ from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 from bkmkorg.io.reader.tags import read_substitutions
 from bkmkorg.io.writer.netscape import exportBookmarks
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.utils.bookmark.data import bookmarkTuple
 from bkmkorg.utils.file import retrieval
 from bkmkorg.utils.tag import clean
 

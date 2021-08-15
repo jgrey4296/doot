@@ -10,6 +10,8 @@ from unicodedata import normalize as norm_unicode
 
 import regex as re
 
+from bkmkmorg.utils.bookmark.data import Bookmark
+
 logging = root_logger.getLogger(__name__)
 
 def clean_bib_files(bib_files, sub, tag_regex="^(\s*tags\s*=\s*{)(.+?)(\s*},?)$"):
@@ -112,7 +114,7 @@ def clean_html_files(html_files, sub):
                     [replacement_tags.add(new_tag) for new_tag in sub[tag]]
                 else:
                     replacement_tags.add(tag)
-            new_bkmk = bookmarkTuple(bkmk.name, bkmk.url, replacement_tags)
+            new_bkmk = Bookmark(bkmk.url, replacement_tags, name=bkmk.name)
             cleaned_bkmks.append(new_bkmk)
         # write out
         exportBookmarks(cleaned_bkmks, html)

@@ -1,4 +1,4 @@
-#!/opts/anaconda3/envs/bookmark/python
+#!/opt/anaconda3/envs/bookmark/bin/python
 import argparse
 import logging as root_logger
 from os import listdir

@@ -7,7 +7,7 @@ from os import listdir
 from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
                      splitext)
 
-from bkmkorg.utils.bookmark.data import bookmarkTuple
+from bkmkorg.utils.bookmark.data import Bookmark
 from bkmkorg.io.writer.netscape import exportBookmarks
 from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 from bkmkorg.utils.bibtex import parsing as BU
@@ -49,7 +49,7 @@ if __name__ == "__main__":
             combined_tags = set()
             combined_tags.update(x.tags)
             combined_tags.update(deduplicated[x.url].tags)
-            deduplicated[x.url] = bookmarkTuple(x.name, x.url, combined_tags)
+            deduplicated[x.url] = Bookmark(x.url, combined_tags, name=x.name)
 
     logging.info("Final Number of Links: {}".format(len(deduplicated)))
     #write out to separate file

@@ -8,7 +8,7 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     Set, Tuple, TypeVar, Union, cast)
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
-from bkmkorg.utils.bookmark.data import bookmarkTuple
+from bkmkorg.utils.bookmark.data import Bookmark
 
 logging = root_logger.getLogger(__name__)
 
@@ -46,13 +46,9 @@ class Trie:
 
 
     def insert(self, data):
-        """ Insert a bookmark tuple into the trie,
+        """ Insert a bookmark into the trie,
         based on url components """
-        assert(isinstance(data, bookmarkTuple))
-
-        if data.name is None:
-            logging.debug("No Name: {}".format(data))
-            data = bookmarkTuple("Unknown Name", data.url, data.tags)
+        assert(isinstance(data, Bookmark))
 
         #Get components of the url
         p_url = urlparse(data.url)
@@ -180,6 +176,6 @@ class LeafComponent:
         return full_path
 
     def to_tuple(self):
-        return bookmarkTuple(self.name,
-                             self.reconstruct(),
-                             self.tags)
+        return Bookmark(self.reconstruct(),
+                        self.tags,
+                        name=self.name)
