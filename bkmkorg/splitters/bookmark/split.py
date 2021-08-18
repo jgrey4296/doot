@@ -8,9 +8,11 @@ import logging as root_logger
 from os import mkdir
 from os.path import abspath, exists, expanduser, isdir, join, split, splitext
 from urllib.parse import urlparse
+from collections import defaultdict
+import re
 
-from bkmkorg.io.writer.org import exportBookmarks as org_export
-from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
+from bkmkorg.utils.file.retrieval import get_data_files
+from bkmkorg.io.reader.plain_bookmarks import load_plain_file
 
 # Setup
 LOGLEVEL = root_logger.DEBUG
@@ -24,46 +26,61 @@ logging = root_logger.getLogger(__name__)
 ##############################
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Load a bookmark file, split into url netlocs"]))
-parser.add_argument('-l', '--library')
+parser.add_argument('-s', '--source', action="append")
 parser.add_argument('-o', '--output')
-parser.add_argument('-c', '--count', default=200)
+
+CLEAN = re.compile("^www\.")
 
 
-if __name__ == "__main__":
+def main():
     args = parser.parse_args()
-    args.library = abspath(expanduser(args.library))
     args.output = abspath(expanduser(args.output))
+
+    assert(isdir(args.output) or not exists(args.output))
+    if not exists(args.output):
+        mkdir(args.output)
 
     if not isdir(args.output):
         mkdir(args.output)
 
-    # load library
-    library = open_and_extract_bookmarks(args.library)
+    # load source
+    sources       = get_data_files(args.source, ext=".bookmarks")
+    all_bookmarks = []
 
-    domains = {}
+    logging.info(f"Found {len(sources)} source files")
+    for bfile in sources:
+        all_bookmarks += load_plain_file(bfile)
+
+    logging.info(f"Found {len(all_bookmarks)} bookmarks")
+
+    domains      = defaultdict(lambda: [])
 
     # Group urls into domains
-    for bkmk in library:
+    for bkmk in all_bookmarks:
         parsed = urlparse(bkmk.url)
-        if parsed.netloc not in domains:
-            domains[parsed.netloc] = []
-        domains[parsed.netloc].append(bkmk)
 
-    misc_count = 0
-    write_groups = {}
+        netloc = CLEAN.sub("", parsed.netloc)
 
-    # split and group
-    for domain, sites in domains.items():
-        misc = "misc_{}".format(misc_count)
-        if len(sites) > args.count:
-            write_groups[domain] = sites
-        elif len(write_groups[misc]) + len(sites) < args.count:
-            write_groups[misc] += sites
+        if "github" in netloc:
+            domains["github"].append(bkmk)
+        elif "itch.io" in netloc:
+            domains["itchio"].append(bkmk)
         else:
-            misc_count += 1
-            misc = "misc_{}".format(misc_count)
-            write_groups[misc] = sites
+            domains[netloc].append(bkmk)
 
+    logging.info(f"Grouped into {len(domains)} domains")
     #save
-    for group, sites in write_groups.items():
-        org_export(sites, join(args.output, "{}.org".format(group)))
+    groups = "\n".join(domains.keys())
+    with open(join(args.output, "netlocs.list"), 'w') as f:
+        f.write(groups)
+
+    for domain, bkmks in domains.items():
+        flattened = domain.replace(".", "_")
+        bkmks_s = "\n".join([x.to_string() for x in sorted(bkmks)])
+        with open(join(args.output, f"{flattened}.bookmarks"), 'w') as f:
+            f.write(bkmks_s)
+
+
+
+if __name__ == "__main__":
+    main()
