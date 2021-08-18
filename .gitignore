@@ -9,3 +9,4 @@ log.*
 output
 raw_bookmarks
 simplified_bookmarks.txt
+.temp_download
