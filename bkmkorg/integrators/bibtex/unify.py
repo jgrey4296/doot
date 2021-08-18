@@ -56,7 +56,8 @@ def custom(record):
 
 
 
-if __name__ == "__main__":
+
+def main():
    args = parser.parse_args()
     args.output = abspath(expanduser(args.output))
 
@@ -93,3 +94,6 @@ if __name__ == "__main__":
     writer.align_values = True
     with open(join(args.output),'a') as f:
         f.write(writer.write(main_db))
+
+if __name__ == "__main__":
+    main()

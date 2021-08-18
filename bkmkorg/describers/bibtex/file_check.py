@@ -39,7 +39,7 @@ parser.add_argument('-l', '--library', help="Bibtex Library directory to verify"
 parser.add_argument('-o', '--output',  help="Output location for reports")
 
 
-if __name__ == "__main__":
+def main():
     args = parser.parse_args()
 
     args.output = abspath(expanduser(args.output))
@@ -99,9 +99,12 @@ if __name__ == "__main__":
     logging.info("Existing but not mentioned: {}".format(len(existing_not_mentioned)))
 
     # Create output files
-
     with open(join(args.output, "bibtex.not_existing"),'w') as f:
         f.write("\n".join(mentioned_non_existent))
 
     with open(join(args.output, "bibtex.not_mentioned"), 'w') as f:
         f.write("\n".join(existing_not_mentioned))
+
+
+if __name__ == "__main__":
+    main()

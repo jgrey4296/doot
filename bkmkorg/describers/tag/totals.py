@@ -59,7 +59,7 @@ def custom(record):
 
 
 
-if __name__ == "__main__":
+def main():
     logging.info("---------- STARTING Tag Totals")
     cli_args = parser.parse_args()
     cli_args.output = abspath(expanduser(cli_args.output))
@@ -101,3 +101,7 @@ if __name__ == "__main__":
     # group them separately, alphabeticaly
     # To be included in the separate tag files
     write_tags(new_tag_dict, cli_args.output + "_new")
+
+
+if __name__ == "__main__":
+    main()

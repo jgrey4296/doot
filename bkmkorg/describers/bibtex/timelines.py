@@ -54,7 +54,7 @@ def custom_parse(record):
 
 
 
-if __name__ == "__main__":
+def main()
     args = parser.parse_args()
     args.library = [abspath(expanduser(x)) for x in args.library]
     args.output= abspath(expanduser(args.output))
@@ -90,3 +90,7 @@ if __name__ == "__main__":
         if len(sorted_entries) > args.min_entries:
             with open(out_target, 'w') as f:
                 f.write("\n".join(["{} {}".format(x['year'].strftime("%Y"), x['ID']) for x in sorted_entries]))
+
+
+if __name__ == "__main__":
+    main()

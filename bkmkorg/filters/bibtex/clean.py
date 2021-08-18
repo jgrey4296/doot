@@ -132,7 +132,7 @@ def custom_clean(record):
     return record
 
 
-if __name__ == "__main__":
+def main():
     args = parser.parse_args()
     error_out = expander(join(split(args.output)[0], ".bib_errors"))
 
@@ -158,3 +158,7 @@ if __name__ == "__main__":
     if args.output:
         with open(args.output,'w') as f:
             f.write(writer.write(db))
+
+
+if __name__ == "__main__":
+    main()

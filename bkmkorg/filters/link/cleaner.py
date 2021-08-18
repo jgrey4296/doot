@@ -92,7 +92,7 @@ def dfs_for_files(target, ext):
     return found
 
 if __name__ == "__main__":
-        my_args = parser.parse_args()
+    my_args = parser.parse_args()
     my_args.media = abspath(expanduser(my_args.media))
     my_args.pattern = re.compile(my_args.pattern)
  

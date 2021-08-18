@@ -79,7 +79,7 @@ def get_entries_across_years(db) -> List[Tuple[datetime, int]]:
     return sorted(results_dict.items(), key=lambda x: x[0])
 
 
-if __name__ == "__main__":
+def main()
     args = parser.parse_args()
     args.library = [abspath(expanduser(x)) for x in args.library]
     args.target = abspath(expanduser(args.target))
@@ -117,3 +117,7 @@ if __name__ == "__main__":
     logging.info("Finished, saving")
     plt.savefig(args.target)
     plt.show()
+
+
+if __name__ == "__main__":
+    main()

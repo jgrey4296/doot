@@ -28,7 +28,7 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
 parser.add_argument('-t', '--target', action='append', help="Target Bibtex (repeatable)")
 
 
-if __name__ == "__main__":
+def main()
    args = parser.parse_args()
 
     args.target = [abspath(expanduser(x)) for x in args.target]
@@ -68,3 +68,7 @@ if __name__ == "__main__":
         missing_keys.update(db_set.difference(head_set))
 
     logging.info("{} Keys missing from master: {}".format(len(missing_keys), "\n".join(missing_keys)))
+
+
+if __name__ == "__main__":
+    main()

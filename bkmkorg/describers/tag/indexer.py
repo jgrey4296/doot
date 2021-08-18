@@ -27,7 +27,7 @@ parser.add_argument('--output')
 
 TAG_LINE = re.compile(r'^\*\* Thread: .+?\s{5,}:(.+?):$')
 
-if __name__ == '__main__':
+def main():
     logging.info("---------- STARTING Tag Indexer")
     args = parser.parse_args()
     args.target = [abspath(expanduser(x)) for x in args.target]
@@ -58,3 +58,7 @@ if __name__ == '__main__':
     out_string = "\n".join(out_lines)
     with open(args.output, 'w') as f:
         f.write(out_string)
+
+
+if __name__ == '__main__':
+    main()

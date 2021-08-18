@@ -52,7 +52,7 @@ def copy_missing(the_cmp, exclude=None):
 
         queue += current.subdirs.values()
 
-if __name__ == "__main__":
+def main():
     args = parser.parse_args()
     args.library = abspath(expanduser(args.library))
     args.target = abspath(expanduser(args.target))
@@ -60,3 +60,7 @@ if __name__ == "__main__":
     the_cmp = dircmp(args.library, args.target)
 
     copy_missing(the_cmp, exclude=args.exclude)
+
+
+if __name__ == "__main__":
+    main()

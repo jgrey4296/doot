@@ -24,7 +24,7 @@ parser.add_argument('-o', '--output')
 
 from bkmkorg.io.reader.plain_bookmarks import load_plain_file
 
-if __name__ == '__main__':
+def main():
     args = parser.parse_args()
     args.output = abspath(expanduser(args.output))
     args.source = [abspath(expanduser(x)) for x in args.source]
@@ -45,3 +45,7 @@ if __name__ == '__main__':
     logging.info(f"Writing out: {len(sorted_keys)}")
     with open(args.output,'w') as f:
         f.write(key_str)
+
+
+if __name__ == '__main__':
+    main()

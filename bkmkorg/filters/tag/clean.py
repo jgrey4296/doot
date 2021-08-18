@@ -68,7 +68,7 @@ def custom(record):
 
 
 #--------------------------------------------------
-if __name__ == "__main__":
+def main():
     args = parser.parse_args()
 
     logging.info("---------- STARTING Tag Clean")
@@ -86,3 +86,7 @@ if __name__ == "__main__":
     clean.clean_org_files(orgs   , cleaned_tags)
     clean.clean_html_files(htmls , cleaned_tags)
     logging.info("Complete --------------------")
+
+
+if __name__ == "__main__":
+    main()

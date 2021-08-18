@@ -54,7 +54,7 @@ def custom_parse(record):
 
     return record
 
-if __name__ == "__main__":
+def main():
     args = parser.parse_args()
     args.output = abspath(expanduser(args.output))
 
@@ -70,3 +70,7 @@ if __name__ == "__main__":
     expanded_paths = [abspath(expanduser(x)) for x in pdfs_to_process]
     logging.info("Summarising {} pdfs".format(len(expanded_paths)))
     PU.summarise_pdfs(expanded_paths, output=output_path, bound=args.bound)
+
+
+if __name__ == "__main__":
+    main()
