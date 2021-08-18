@@ -1,3 +1,8 @@
+from typing import List, Set, Dict, Tuple, Optional, Any
+from typing import Callable, Iterator, Union, Match
+from typing import Mapping, MutableMapping, Sequence, Iterable
+from typing import cast, ClassVar, TypeVar, Generic
+
 from os.path import join, isfile, exists, abspath
 from os.path import split, isdir, splitext, expanduser
 from os import listdir
@@ -6,11 +11,11 @@ import re
 import logging as root_logger
 logging = root_logger.getLogger(__name__)
 
-from bkmkorg.utils.bookmark.data import Bookmark
+from bkmkorg.utils.bookmark.bookmark import Bookmark
 
 ext = ".bookmarks"
 
-def load_plain_file(path, ext=ext):
+def load_plain_file(path, ext=ext) -> List[Bookmark]:
     """ Load a plain bookmarks file where each line is:
     url : tag,tag,...
 

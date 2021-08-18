@@ -13,7 +13,7 @@ from collections import namedtuple
 from bs4 import BeautifulSoup
 
 
-from bkmkorg.utils.bookmark.data import Bookmark
+from bkmkorg.utils.bookmark.bookmark import Bookmark
 
 
 def getLinks(aSoup) -> List[Bookmark]:

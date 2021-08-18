@@ -5,7 +5,7 @@ import logging as root_logger
 
 logging = root_logger.getLogger(__name__)
 
-from bkmkorg.util.bookmark.data import Bookmark
+from bkmkorg.util.bookmark.bookmark import Bookmark
 
 def exportBookmarks(data, filename):
     """ Main function. Takes a trie of data and outputs a string """
