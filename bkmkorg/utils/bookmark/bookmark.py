@@ -17,9 +17,12 @@ class Bookmark:
     tag_sep : str      = field(default=":")
     url_sep : str      = field(default=" : ")
 
+    def __lt__(self, other):
+        return self.url < other.url
+
     def to_string(self):
         tags = self.url_sep.join(sorted(self.tags))
-        return f"{self.url}{self.url_sep}{tags}\n"
+        return f"{self.url}{self.url_sep}{tags}"
 
     @staticmethod
     def build(line, url_sep=None, tag_sep=None):
@@ -30,8 +33,10 @@ class Bookmark:
             tag_sep = Bookmark.tag_sep
 
         try:
-            url, tags = line.split(" :")
-            tag_set = set([x.strip() for x in tags.strip().split(":")])
+            line_split = line.split(" :")
+            url        = line_split[0]
+            tags       = line_split[1:]
+            tag_set    = set([x.strip() for x in tags])
             if not bool(tag_set):
                 logging.warning(f"No Tags for: {url}")
 
