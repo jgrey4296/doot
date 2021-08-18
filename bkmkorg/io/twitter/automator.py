@@ -28,8 +28,8 @@ import requests
 
 import twitter
 
-DEFAULT_CONFIG = "secrets.config"
-DEFAULT_TARGET = ".temp_download"
+DEFAULT_CONFIG = "/Volumes/documents/github/py_bookmark_organiser/secrets.config"
+DEFAULT_TARGET = "/Volumes/documents/github/py_bookmark_organiser/.temp_download"
 
 
 # Setup root_logger:

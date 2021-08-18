@@ -89,7 +89,8 @@ def integrate(source, lib_dict):
     copy_files(new_files, existing_files)
 
 
-if __name__ == "__main__":
+
+def main():
     # Setup
     args         = parser.parse_args()
     args.source  = [abspath(expanduser(x)) for x in args.source]
@@ -135,3 +136,6 @@ if __name__ == "__main__":
     # Now copy completely new files
     for x in totally_new:
         copy_new(x, args.library[0])
+
+if __name__ == "__main__":
+    main()
