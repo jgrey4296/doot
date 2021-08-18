@@ -1,5 +1,4 @@
-#!~/anaconda/envs/bookmark/bin/python
-
+#!/usr/bin/env python
 """
 Using frequency - from: https://github.com/amueller/word_cloud
 ===============

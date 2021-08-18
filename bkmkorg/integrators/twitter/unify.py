@@ -1,4 +1,4 @@
-#!/opt/anaconda3/envs/bookmark/bin/python
+#!/usr/bin/env python
 """
 Integrates newly parsed twitter->org files
 into the existing set

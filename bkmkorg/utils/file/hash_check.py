@@ -1,4 +1,4 @@
-#!~/anaconda/envs/bookmark/bin/python
+#!/usr/bin/env python
 import logging as root_logger
 from hashlib import sha256
 from os import listdir, mkdir

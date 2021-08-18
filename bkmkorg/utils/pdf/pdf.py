@@ -1,4 +1,4 @@
-#!~/anaconda/envs/bookmark/bin/python
+#!/usr/bin/env python
 import logging as root_logger
 from os import listdir
 from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,

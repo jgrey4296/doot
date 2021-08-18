@@ -1,4 +1,4 @@
-#!/opt/anaconda3/envs/bookmark/bin/python3
+#!/usr/bin/env python
 """
 Compare 2+ bibtex files, output number of entries missing from the largest bibtex
 

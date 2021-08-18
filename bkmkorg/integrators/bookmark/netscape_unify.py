@@ -1,4 +1,4 @@
-#!/opt/anaconda3/envs/bookmark/bin/python
+#!/usr/bin/env python
 """
 Integrate new bookmarks into the main bookmark file,
 focusing on Netscape HTML format

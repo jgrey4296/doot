@@ -1,4 +1,4 @@
-#!/opt/anaconda3/envs/bookmark/bin/python
+#!/usr/bin/env python
 """
 Check Bibtex library against pdf library
 Output bibtex entries without matching files,

@@ -1,5 +1,6 @@
+#!/usr/bin/env python3
 """
-Split the bookmark library by top level domain
+Split the bookmark source by top level domain
 """
 
 import argparse

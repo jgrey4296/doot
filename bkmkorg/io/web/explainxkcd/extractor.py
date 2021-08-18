@@ -1,4 +1,4 @@
-#!/opt/anaconda3/envs/bookmark/bin/python
+#!/usr/bin/env python
 #
 from typing import List, Set, Dict, Tuple, Optional, Any
 from typing import Callable, Iterator, Union, Match

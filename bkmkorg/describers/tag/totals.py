@@ -1,4 +1,4 @@
-#!/opt/anaconda3/envs/bookmark/bin/python
+#!/usr/bin/env python
 """
 Script to Process Bibtex, bookmark, and org files for tags
 and to collect them

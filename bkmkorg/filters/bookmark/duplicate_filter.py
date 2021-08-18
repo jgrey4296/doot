@@ -7,7 +7,7 @@ from os import listdir
 from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
                      splitext)
 
-from bkmkorg.utils.bookmark.data import Bookmark
+from bkmkorg.utils.bookmark.bookmark import Bookmark
 from bkmkorg.io.writer.netscape import exportBookmarks
 from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 from bkmkorg.utils.bibtex import parsing as BU

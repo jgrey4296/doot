@@ -1,4 +1,4 @@
-#!~/anaconda/envs/bookmark/bin/python
+#!/usr/bin/env python
 # https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
 import argparse
 import logging as root_logger

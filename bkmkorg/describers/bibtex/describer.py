@@ -1,4 +1,4 @@
-#!/opt/anaconda3/envs/bookmark/bin/python3
+#!/usr/bin/env python
 """
 Script to process bibtex file
 Giving stats, non-tagged entries,

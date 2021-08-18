@@ -1,4 +1,4 @@
-#!~/anaconda/envs/bookmark/bin/python
+#!/usr/bin/env python
 import argparse
 import datetime
 import json

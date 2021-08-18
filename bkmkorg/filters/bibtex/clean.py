@@ -1,4 +1,4 @@
-#!/opt/anaconda3/envs/bookmark/bin/python
+#!/usr/bin/env python
 """
 Script to clean a bibtex file, converting everything to unicode
 """

@@ -1,5 +1,4 @@
-#!~/anaconda/envs/bookmark/bin/python
-
+#!/usr/bin/env python
 """ Bibtex utilities
 
 """

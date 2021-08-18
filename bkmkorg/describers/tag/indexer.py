@@ -1,5 +1,4 @@
-#!/opt/anaconda3/envs/bookmark/bin/python
-
+#!/usr/bin/env python
 from os.path import join, isfile, exists, abspath
 from os.path import split, isdir, splitext, expanduser
 from os import listdir
