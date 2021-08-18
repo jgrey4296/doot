@@ -41,7 +41,7 @@ if __name__ == '__main__':
             deduplicated[bkmk.url].tags.update(bkmk.tags)
 
     sorted_keys = sorted(deduplicated.keys())
+    key_str     = "\n".join([deduplicated[x].to_string() for x in sorted_keys])
     logging.info(f"Writing out: {len(sorted_keys)}")
     with open(args.output,'w') as f:
-        for key in sorted_keys:
-            f.write(deduplicated[key].to_string())
+        f.write(key_str)
