@@ -4,14 +4,19 @@ Integrates newly parsed twitter->org files
 into the existing set
 """
 import argparse
+import datetime
 import logging as root_logger
 from os import listdir, mkdir
 from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
                      splitext)
 from random import choice
-from subprocess import call
+from subprocess import run
+from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
+                    List, Mapping, Match, MutableMapping, Optional, Sequence,
+                    Set, Tuple, TypeVar, Union, cast)
 
 from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.io.twitter.extract_utils import get_all_tweet_ids
 from bkmkorg.utils.file import retrieval
 
 LOGLEVEL = root_logger.DEBUG
@@ -28,12 +33,13 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
 parser.add_argument('-s', '--source', action="append")
 parser.add_argument('-l', '--library', action="append")
 parser.add_argument('-e', '--exclude', action="append")
+parser.add_argument('-r', '--record')
 
 def copy_files(source_dir, target_dir):
     logging.info(f"Copying from {source_dir} to {target_dir}")
     if exists(source_dir) and not exists(target_dir):
         logging.info("as group")
-        call(['cp' ,'-r' ,source_dir, target_dir])
+        result = run(['cp' ,'-r' ,source_dir, target_dir], capture_output=True, check=True, shell=True)
     elif exists(source_dir):
         logging.info("as individual")
         for y in listdir(source_dir):
@@ -41,7 +47,7 @@ def copy_files(source_dir, target_dir):
                 continue
 
             call_sig = ['cp', join(source_dir, y), join(target_dir, y)]
-            call(call_sig)
+            run(call_sig, capture_output=True, check=True, shell=True)
 
 
 def copy_new(source, lib_path):
@@ -57,7 +63,7 @@ def copy_new(source, lib_path):
     target_for_new = join(lib_path,f"group_{first_letter}")
 
     if not exists(join(target_for_new, file_name)):
-        call(['cp', source, target_for_new])
+        run(['cp', source, target_for_new], capture_output=True, check=True, shell=True)
 
     copy_files(file_dir, join(target_for_new, f"{no_ext}_files"))
 
@@ -90,6 +96,20 @@ def integrate(source, lib_dict):
 
 
 
+def update_record(path:str, sources:List[str]):
+    now : str = datetime.datetime.now().strftime("%Y-%m-%d")
+
+    all_ids = get_all_tweet_ids(*sources)
+
+    # add it to the library record
+    with open(path, 'a') as f:
+        # Insert date
+        f.write(f"{now}:\n")
+        f.write("\n\t".join(sorted(all_ids)))
+        f.write("----------------------------------------\n")
+
+
+
 def main():
     # Setup
     args         = parser.parse_args()
@@ -100,6 +120,10 @@ def main():
 
     args.exclude = [abspath(expanduser(x)) for x in args.exclude]
 
+    if not args.record:
+        args.record = join(args.library, "update_record")
+
+    assert(exists(args.record))
     if any([not exists(x) for x in args.source + args.library]):
         raise Exception('Source and Output need to exist')
 
@@ -136,6 +160,8 @@ def main():
     # Now copy completely new files
     for x in totally_new:
         copy_new(x, args.library[0])
+
+    update_record(args.record, args.source)
 
 if __name__ == "__main__":
     main()

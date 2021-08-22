@@ -62,10 +62,12 @@ def get_library_tweets(lib, tweet, export):
         logging.info("Found {} library tweets".format(len(library_tweet_ids)))
 
     if tweet is None and export is not None:
-        logging.info("---------- Exporting to: {}".format(export))
-        with open(export, 'w') as f:
-            f.write("\n".join(library_tweet_ids))
-            sys.exit()
+        logging.info("---------- Exporting lib tweets to: {}".format(export))
+        now : str = datetime.datetime.now().strftime("%Y-%m-%d")
+        with open(export, 'a') as f:
+            f.write(f"{now}:\n")
+            f.write("\n\t".join(sorted(library_tweet_ids)))
+            f.write("----------------------------------------\n")
 
     return library_tweet_ids
 
@@ -108,6 +110,8 @@ def main():
     library_ids          = join(target_dir, "all_ids")
     users_file           = join(target_dir, "users.json")
     last_tweet_file      = join(target_dir, "last_tweet")
+    download_record      = join(target_dir, "downloaded.record")
+    lib_tweet_record     = args.export or join(target_dir, "lib_tweets.record")
 
     if exists(library_ids):
         args.library.append(library_ids)
@@ -157,7 +161,7 @@ def main():
     # Extract all tweet id's from library
     library_tweet_ids = get_library_tweets(args.library,
                                            args.tweet,
-                                           args.export)
+                                           lib_tweet_record)
 
     # read file of tweet id's
     source_ids = read_target_ids(args.tweet, target_file)
@@ -198,8 +202,12 @@ def main():
 
         logging.info("---------- Constructing org files")
         FFU.construct_org_files(combined_threads_dir, org_dir, all_users)
+        downloaded_tweets = get_library_tweets(org_dir,
+                                               args.tweet,
+                                               download_record)
     except Exception as err:
         logging.exception("Exception occurred: {}".format(err))
+
 
 
 if __name__ == "__main__":
