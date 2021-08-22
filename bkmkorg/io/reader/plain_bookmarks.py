@@ -24,7 +24,7 @@ def load_plain_file(path, ext=ext) -> List[Bookmark]:
     """
     logging.info(f"Loading plain bookmarks: {path}")
     assert(exists(path))
-    assert(splitext(path)[1] == ext)
+    assert(splitext(path)[1] == ext), splitext(path)[1]
     bookmarks = []
     # open file
     lines = []

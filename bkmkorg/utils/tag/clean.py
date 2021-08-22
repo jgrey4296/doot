@@ -10,7 +10,7 @@ from unicodedata import normalize as norm_unicode
 
 import regex as re
 
-from bkmkmorg.utils.bookmark.bookmark import Bookmark
+from bkmkorg.utils.bookmark.bookmark import Bookmark
 
 logging = root_logger.getLogger(__name__)
 

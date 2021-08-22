@@ -28,9 +28,9 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
 parser.add_argument('-t', '--target', action='append', help="Target Bibtex (repeatable)")
 
 
-def main()
-   args = parser.parse_args()
-
+def main():
+    global parser
+    args = parser.parse_args()
     args.target = [abspath(expanduser(x)) for x in args.target]
 
     logging.info("Targeting: {}".format(args.target))

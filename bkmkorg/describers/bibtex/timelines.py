@@ -54,7 +54,7 @@ def custom_parse(record):
 
 
 
-def main()
+def main():
     args = parser.parse_args()
     args.library = [abspath(expanduser(x)) for x in args.library]
     args.output= abspath(expanduser(args.output))

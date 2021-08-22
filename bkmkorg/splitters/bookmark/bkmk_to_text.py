@@ -27,8 +27,7 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
 parser.add_argument('-s', '--source')
 parser.add_argument('-o', '--output')
 
-
-if __name__ == '__main__':
+def main():
     args = parser.parse_args()
     args.source = abspath(expanduser(args.source))
     args.output = abspath(expanduser(args.output))
@@ -46,3 +45,7 @@ if __name__ == '__main__':
 
     with open(args.output, 'w') as f:
         f.write("\n".join(output_lines))
+
+
+if __name__ == '__main__':
+    main()

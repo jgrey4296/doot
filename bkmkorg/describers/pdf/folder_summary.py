@@ -32,7 +32,7 @@ parser.add_argument('-g', '--grouped', action='store_true')
 parser.add_argument('--bound', default=200)
 
 
-def main()
+def main():
     args = parser.parse_args()
     args.output = abspath(expanduser(args.output))
 
