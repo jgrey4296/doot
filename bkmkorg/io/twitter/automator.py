@@ -54,7 +54,7 @@ parser.add_argument('--skiptweets', action='store_true', help="for when tweets h
 
 
 
-def get_library_tweets(lib, tweet, export):
+def get_library_tweets(lib:List[str], tweet, export):
     library_tweet_ids = set()
     if tweet is None:
         logging.info("---------- Getting Library Tweet Details")
@@ -65,9 +65,9 @@ def get_library_tweets(lib, tweet, export):
         logging.info("---------- Exporting lib tweets to: {}".format(export))
         now : str = datetime.datetime.now().strftime("%Y-%m-%d")
         with open(export, 'a') as f:
-            f.write(f"{now}:\n")
+            f.write(f"{now}:\n\t")
             f.write("\n\t".join(sorted(library_tweet_ids)))
-            f.write("----------------------------------------\n")
+            f.write("\n----------------------------------------\n")
 
     return library_tweet_ids
 
@@ -202,7 +202,7 @@ def main():
 
         logging.info("---------- Constructing org files")
         FFU.construct_org_files(combined_threads_dir, org_dir, all_users)
-        downloaded_tweets = get_library_tweets(org_dir,
+        downloaded_tweets = get_library_tweets([org_dir],
                                                args.tweet,
                                                download_record)
     except Exception as err:

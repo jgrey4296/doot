@@ -99,14 +99,14 @@ def integrate(source, lib_dict):
 def update_record(path:str, sources:List[str]):
     now : str = datetime.datetime.now().strftime("%Y-%m-%d")
 
-    all_ids = get_all_tweet_ids(*sources)
+    all_ids = get_all_tweet_ids(*sources, ext=".org_processed")
 
     # add it to the library record
     with open(path, 'a') as f:
         # Insert date
-        f.write(f"{now}:\n")
+        f.write(f"{now}:\n\t")
         f.write("\n\t".join(sorted(all_ids)))
-        f.write("----------------------------------------\n")
+        f.write("\n----------------------------------------\n")
 
 
 
@@ -121,8 +121,9 @@ def main():
     args.exclude = [abspath(expanduser(x)) for x in args.exclude]
 
     if not args.record:
-        args.record = join(args.library, "update_record")
+        args.record = join(args.library[0], "update_record")
 
+    logging.info(f"Update Record: {args.record}")
     assert(exists(args.record))
     if any([not exists(x) for x in args.source + args.library]):
         raise Exception('Source and Output need to exist')
