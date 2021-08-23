@@ -95,7 +95,7 @@ def extract_media_and_users_from_json(the_file):
 
     return ids, media, media_variants
 
-def get_all_tweet_ids(*the_dirs) -> Set[Any]:
+def get_all_tweet_ids(*the_dirs, ext=None) -> Set[Any]:
     """ For a list of directories, dfs the directory to get all files,
     and get all mentioned tweets in those files """
     tweet_ids = set()
@@ -106,7 +106,7 @@ def get_all_tweet_ids(*the_dirs) -> Set[Any]:
                 tweet_ids.update([x.strip() for x in f.readlines()])
 
         elif isdir(a_dir):
-            all_files = dfs_directory(*the_dirs)
+            all_files = dfs_directory(*the_dirs, ext=ext)
             for x in all_files:
                 tweet_ids.update(extract_tweet_ids_from_file(x))
 

@@ -70,7 +70,7 @@ def dfs_for_components(di_graph):
     logging.info("Found {} components".format(len(components)))
     return components
 
-def dfs_directory(*dirs, filetype=".org"):
+def dfs_directory(*dirs, ext=".org"):
     """ DFS a directory for a filetype """
     found = []
     queue = [] + list(dirs)
@@ -82,7 +82,7 @@ def dfs_directory(*dirs, filetype=".org"):
             found.append(current)
         else:
             found += [join(current, x) for x in listdir(current)
-                      if isfile(join(current, x)) and splitext(x)[1] == filetype]
+                      if isfile(join(current, x)) and splitext(x)[1] == ext]
             # Continue for directories
             queue += [join(current, x) for x in listdir(current)
                       if isdir(join(current, x)) and x != ".git"]
