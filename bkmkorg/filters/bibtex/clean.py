@@ -7,7 +7,7 @@ import logging as root_logger
 from hashlib import sha256
 from math import ceil
 from os import listdir, mkdir
-from os.path import (abspath, commonpath, exists, expanduser, isdir, isfile,
+from os.path import (abspath, exists, expanduser, isdir, isfile,
                      join, realpath, split, splitext)
 from shutil import copyfile, move
 
