@@ -35,11 +35,13 @@ parser.add_argument('-l', '--library', action="append")
 parser.add_argument('-e', '--exclude', action="append")
 parser.add_argument('-r', '--record')
 
+PROCESSED = "_processed"
+
 def copy_files(source_dir, target_dir):
     logging.info(f"Copying from {source_dir} to {target_dir}")
     if exists(source_dir) and not exists(target_dir):
         logging.info("as group")
-        result = run(['cp' ,'-r' ,source_dir, target_dir], capture_output=True, check=True, shell=True)
+        result = run(['cp' ,'-r' ,source_dir, target_dir], capture_output=True, check=True)
     elif exists(source_dir):
         logging.info("as individual")
         for y in listdir(source_dir):
@@ -47,7 +49,7 @@ def copy_files(source_dir, target_dir):
                 continue
 
             call_sig = ['cp', join(source_dir, y), join(target_dir, y)]
-            run(call_sig, capture_output=True, check=True, shell=True)
+            run(call_sig, capture_output=True, check=True)
 
 
 def copy_new(source, lib_path):
@@ -63,7 +65,12 @@ def copy_new(source, lib_path):
     target_for_new = join(lib_path,f"group_{first_letter}")
 
     if not exists(join(target_for_new, file_name)):
-        run(['cp', source, target_for_new], capture_output=True, check=True, shell=True)
+        run(['cp', source, target_for_new], capture_output=True, check=True)
+
+    run(["mv", source, join(split(source)[0],
+                            "{}{}".format(split(source)[1],
+                                          PROCESSED))],
+        capture_output=True, check=True)
 
     copy_files(file_dir, join(target_for_new, f"{no_ext}_files"))
 
@@ -91,6 +98,11 @@ def integrate(source, lib_dict):
 
     if not exists(new_files):
         return
+
+    run(["mv", source, join(split(source)[0],
+                            "{}{}".format(split(source)[1],
+                                          PROCESSED))],
+        capture_output=True, check=True)
 
     copy_files(new_files, existing_files)
 
