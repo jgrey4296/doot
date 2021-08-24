@@ -45,7 +45,7 @@ def main():
             logging.info("Summarising {}'s {} pdfs".format(group, len(pdfs_to_process)))
             PU.summarise_pdfs(pdfs_to_process,
                               output="{}_{}".format(args.output, group),
-                              bound=args.bound)
+                              bound=int(args.bound))
     else:
         # Find all pdfs in subdir
         pdfs_to_process = retrieval.get_data_files(args.target, ".pdf")
