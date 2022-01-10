@@ -5,9 +5,12 @@ from typing import cast, ClassVar, TypeVar, Generic
 
 #https://docs.python.org/3/library/dataclasses.html
 from dataclasses import dataclass, field, InitVar
-
+import regex
 import logging as root_logger
 logging = root_logger.getLogger(__name__)
+
+TAG_NORM = regex.compile(" +")
+file     = Any
 
 @dataclass
 class Bookmark:
@@ -16,6 +19,9 @@ class Bookmark:
     name    : str      = field(default="No Name")
     tag_sep : str      = field(default=":")
     url_sep : str      = field(default=" : ")
+
+    def __post_init__(self):
+        self.tags = [TAG_NORM.sub("_", x.strip()) for x in self.tags]
 
     def __lt__(self, other):
         return self.url < other.url
@@ -48,3 +54,25 @@ class Bookmark:
         except ValueError as err:
             logging.warning(err)
             logging.warning(line)
+
+
+
+@dataclass
+class BookmarkCollection:
+    entries : List[Bookmark] = field(default_factory=list)
+    ext     : str            = field(default=".bookmarks")
+
+    @staticmethod
+    def read(f:file) -> "BookmarkCollection":
+        bookmarks = BookmarkCollection()
+        for line in f.readlines():
+            bookmarks += Bookmark.build(line)
+
+        return bookmarks
+
+    def __iadd__(self, value):
+        assert(isinstance(value, (BookmarkCollection, Bookmark)))
+        if isinstance(value, Bookmark):
+            self.entries.append(value)
+        elif isinstance(value, BookmarkCollection):
+            self.entries += value.entries

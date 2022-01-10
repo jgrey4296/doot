@@ -20,7 +20,9 @@ todo_map = lambda: defaultdict(lambda: "")
 class TweetTodoFile:
     mapping   : Dict[ID, Tag] = field(default_factory=todo_map)
     sep       : str            = field(default="_:_")
+    ext       : str            = field(default=".tweets")
     remainder : List[str]      = field(default_factory=list)
+
 
     @staticmethod
     def read(f:file, id_regex="status/(\d+)\?"):
