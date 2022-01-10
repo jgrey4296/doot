@@ -121,41 +121,4 @@ def read_substitutions(target: Union[str, List[str]], counts=True) -> Dict[str, 
     tag : sub : sub : ...
     returning a dict of {tag : [sub]}
     """
-    if isinstance(target, str):
-        target = [target]
-
-    assert(all([splitext(x)[1] in [".sub"] for x in target]))
-    sub = {}
-
-    for path in target:
-        logging.info("Reading Raw Tag Subs: {}".format(path))
-        is_org = splitext(path)[1] == ".org"
-        lines = []
-        with open(path,'r') as f:
-            lines = f.readlines()
-
-        #split and process
-        for line in lines:
-            # Discard org headings:
-            if is_org and line[0] == "*":
-                continue
-            components = line.split(":")
-            # Get the pattern:
-            component_zero = components[0].strip()
-            if component_zero == "":
-                continue
-
-
-            if component_zero in sub:
-                logging.warning(f"Duplication: {component_zero}")
-            else:
-                sub[component_zero] = []
-            # Get the substitutions
-            sub_start = 2 if counts else 1
-
-            if len(components) > 1:
-                sub[component_zero] += [x.strip() for x in components[sub_start:] if bool(x.strip()) and x.strip() not in IGNORE_REPLACEMENTS]
-            else:
-                logging.warning("No Substitutions found for: {}".format(component_zero))
-
-    return sub
+    raise DeprecationWarning("use bkmkorg.utils.collections.tag_file")
