@@ -8,13 +8,9 @@ import configparser
 import datetime
 import json
 import logging as root_logger
-import re
-import sys
-import uuid
 from os import listdir, mkdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
-from shutil import copyfile, rmtree
+from os.path import abspath, exists, expanduser, join, split, splitext
+from shutil import rmtree
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
@@ -23,14 +19,15 @@ import bkmkorg.io.twitter.dfs_utils as DFSU
 import bkmkorg.io.twitter.download_utils as DU
 import bkmkorg.io.twitter.extract_utils as EU
 import bkmkorg.io.twitter.file_format_utils as FFU
+from bkmkorg.utils.tweet_todo_file import TweetTodoFile
 import networkx as nx
 import requests
 
 import twitter
 
-DEFAULT_CONFIG = "/Volumes/documents/github/py_bookmark_organiser/secrets.config"
-DEFAULT_TARGET = "/Volumes/documents/github/py_bookmark_organiser/.temp_download"
-
+DEFAULT_CONFIG  = "/Volumes/documents/github/py_bookmark_organiser/secrets.config"
+DEFAULT_TARGET  = "/Volumes/documents/github/py_bookmark_organiser/.temp_download"
+DEFAULT_LIBRARY = "/Volumes/documents/twitterthreads"
 
 # Setup root_logger:
 LOGLEVEL = root_logger.DEBUG
@@ -46,7 +43,7 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
                                     epilog="\n".join([""]))
 parser.add_argument('--config', default=DEFAULT_CONFIG, help="The Secrets file to access twitter")
 parser.add_argument('--target', default=DEFAULT_TARGET, help="The target dir to process/download to")
-parser.add_argument('--library', action="append",       help="Location of already downloaded tweets")
+parser.add_argument('--library',default=[DEFAULT_LIBRARY], action="append",       help="Location of already downloaded tweets")
 parser.add_argument('--export',  help="File to export all library tweet ids to, optional")
 parser.add_argument('--tweet', help="A Specific Tweet URL to handle, for CLI usage/ emacs use")
 parser.add_argument('--skiptweets', action='store_true', help="for when tweets have been downloaded, or hung")
@@ -54,11 +51,30 @@ parser.add_argument('--skiptweets', action='store_true', help="for when tweets h
 
 
 
+def setup_target_dict(target, export):
+    targets = {}
+    target_dir                      = abspath(expanduser(target))
+    targets['target_dir']           = target_dir
+    targets['target_file']          = join(target_dir, "current.tweets")
+    targets['org_dir']              = join(target_dir, "orgs")
+    targets['tweet_dir']            = join(target_dir, "tweets")
+    targets['combined_threads_dir'] = join(target_dir, "threads")
+    targets['component_dir']        = join(target_dir, "components")
+    targets['library_ids']          = join(target_dir, "all_ids")
+    targets['users_file']           = join(target_dir, "users.json")
+    targets['last_tweet_file']      = join(target_dir, "last_tweet")
+    targets['download_record']      = join(target_dir, "downloaded.record")
+    targets['lib_tweet_record']     = export or join(target_dir, "lib_tweets.record")
+    targets['excludes_file']        = join(target_dir, "excludes")
+
+    return targets
+
 def get_library_tweets(lib:List[str], tweet, export):
     library_tweet_ids = set()
     if tweet is None:
         logging.info("---------- Getting Library Tweet Details")
-        library_tweet_ids = EU.get_all_tweet_ids(*lib)
+        logging.info("Libraries to search: {}".format(lib))
+        library_tweet_ids = EU.get_all_tweet_ids(*lib, ".org")
         logging.info("Found {} library tweets".format(len(library_tweet_ids)))
 
     if tweet is None and export is not None:
@@ -73,13 +89,13 @@ def get_library_tweets(lib:List[str], tweet, export):
 
 
 
-def read_target_ids(tweet, target_file):
+def read_target_ids(tweet, target_file) -> TweetTodoFile:
     logging.info("---------- Getting Target Tweet ids")
     if tweet is None:
-        source_ids = set(EU.extract_tweet_ids_from_file(target_file,
-                                                        simple=True))
+        with open(target_file, 'r') as f:
+            source_ids = TweetTodoFile.read(f)
     else:
-        source_ids = set([split(tweet)[1]])
+        source_ids = TweetTodoFile(mapping={split(tweet)[1]:""})
         logging.info("Specific Tweet: {}".format(source_ids))
 
     logging.info("Found {} source ids".format(len(source_ids)))
@@ -101,44 +117,34 @@ def main():
         args.export = abspath(expanduser(args.export))
 
     # Auto setup
-    target_dir           = abspath(expanduser(args.target))
-    target_file          = join(target_dir, "bookmarks.txt")
-    org_dir              = join(target_dir, "orgs")
-    tweet_dir            = join(target_dir, "tweets")
-    combined_threads_dir = join(target_dir, "threads")
-    component_dir        = join(target_dir, "components")
-    library_ids          = join(target_dir, "all_ids")
-    users_file           = join(target_dir, "users.json")
-    last_tweet_file      = join(target_dir, "last_tweet")
-    download_record      = join(target_dir, "downloaded.record")
-    lib_tweet_record     = args.export or join(target_dir, "lib_tweets.record")
+    targets = setup_target_dict(args.target, args.export)
 
-    if exists(library_ids):
-        args.library.append(library_ids)
+    if exists(targets['library_ids']):
+        args.library.append(targets['library_ids'])
 
     last_tweet = False
-    if exists(last_tweet_file) and args.tweet:
-        with open(last_tweet_file, 'r') as f:
+    if exists(targets['last_tweet_file']) and args.tweet:
+        with open(targets['last_tweet_file'], 'r') as f:
             last_tweet = f.read().strip()
 
     if args.tweet != None and args.tweet != last_tweet and args.target == DEFAULT_TARGET and exists(DEFAULT_TARGET):
         rmtree(DEFAULT_TARGET)
 
-    missing_dirs = [x for x in [target_dir,
-                                tweet_dir,
-                                org_dir,
-                                combined_threads_dir,
-                                component_dir] if not exists(x)]
+    missing_dirs = [x for x in [targets['target_dir'],
+                                targets['tweet_dir'],
+                                targets['org_dir'],
+                                targets['combined_threads_dir'],
+                                targets['component_dir']] if not exists(x)]
 
     for x in missing_dirs:
         logging.info("Creating {} Directory".format(x))
         mkdir(x)
 
     if args.tweet != None:
-        with open(last_tweet_file, 'w') as f:
+        with open(targets['last_tweet_file'], 'w') as f:
             f.write(args.tweet)
 
-    logging.info("Target Dir: {}".format(target_dir))
+    logging.info("Target Dir: {}".format(targets['target_dir']))
     logging.info("Library: {}".format(args.library))
     logging.info("Config: {}".format(args.config))
     ####################
@@ -161,50 +167,57 @@ def main():
     # Extract all tweet id's from library
     library_tweet_ids = get_library_tweets(args.library,
                                            args.tweet,
-                                           lib_tweet_record)
+                                           targets['lib_tweet_record'])
 
     # read file of tweet id's
-    source_ids = read_target_ids(args.tweet, target_file)
+    # TODO associate tweet with tags here:
+    source_ids : TweetTodoFile = read_target_ids(args.tweet, targets['target_file'])
     logging.info("-------------------- Downloading data")
     # Download tweets
     if not args.skiptweets:
-        DU.download_tweets(twit, tweet_dir, source_ids, lib_ids=library_tweet_ids)
+        DU.download_tweets(twit, targets['tweet_dir'], source_ids.ids(), lib_ids=library_tweet_ids)
     else:
         logging.info("Skipping tweet download")
 
     # Extract details from the tweets
-    user_set, media_set, variant_list = EU.get_user_and_media_sets(tweet_dir)
+    user_set, media_set, variant_list = EU.get_user_and_media_sets(targets['tweet_dir'])
 
     # write out video variant/duplicates
-    with open(join(target_dir, "video_variants.json"), "w") as f:
+    with open(join(targets['target_dir'], "video_variants.json"), "w") as f:
         json.dump(variant_list, f, indent=4)
 
     # DEPRECATED, is downloaded when org is constructed now:
     # DU.download_media(media_dir, media_set)
 
     # Get user identities
-    all_users = DU.get_user_identities(users_file, twit, user_set)
+    all_users = DU.get_user_identities(targets['users_file'], twit, user_set)
 
     # --------------------
     logging.info("-------------------- Finished Retrieval")
     try:
         # Now create threads
-        if not bool([x for x in listdir(component_dir) if splitext(x)[1] == ".json"]):
+        if not bool([x for x in listdir(targets['component_dir']) if splitext(x)[1] == ".json"]):
             logging.info("---------- Assembling Threads")
-            di_graph = FFU.assemble_threads(tweet_dir)
+            di_graph = FFU.assemble_threads(targets['tweet_dir'])
             logging.info("---------- Creating Components")
             components = DFSU.dfs_for_components(di_graph)
-            FFU.create_component_files(components, tweet_dir, component_dir, di_graph, twit=twit)
+            # TODO Connect components with tags from earlier here:
+            FFU.create_component_files(components,
+                                       targets['tweet_dir'],
+                                       targets['component_dir'],
+                                       di_graph,
+                                       twit=twit)
 
-        if not bool([x for x in listdir(combined_threads_dir) if splitext(x)[1] == ".json"]):
+        if not bool([x for x in listdir(targets['combined_threads_dir']) if splitext(x)[1] == ".json"]):
             logging.info("---------- Creating user summaries")
-            FFU.construct_user_summaries(component_dir, combined_threads_dir, all_users)
+            FFU.construct_user_summaries(targets['component_dir'], targets['combined_threads_dir'], all_users)
 
         logging.info("---------- Constructing org files")
-        FFU.construct_org_files(combined_threads_dir, org_dir, all_users)
-        downloaded_tweets = get_library_tweets([org_dir],
+        # TODO Write out tags here:
+        FFU.construct_org_files(targets['combined_threads_dir'], targets['org_dir'], all_users, source_ids)
+        downloaded_tweets = get_library_tweets([targets['org_dir']],
                                                args.tweet,
-                                               download_record)
+                                               targets['download_record'])
     except Exception as err:
         logging.exception("Exception occurred: {}".format(err))
 

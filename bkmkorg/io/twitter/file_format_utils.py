@@ -15,11 +15,14 @@ from shutil import copyfile, rmtree
 import networkx as nx
 from bkmkorg.io.twitter.dfs_utils import dfs_chains
 from bkmkorg.io.twitter.download_utils import download_tweets, download_media
+from bkmkorg.utils.tweet_todo_file import TweetTodoFile
 
 logging = root_logger.getLogger(__name__)
 
 USER_FILE_TEMPLATE = "user_{}.json"
 DATE_RE = r"%a %b %d %H:%M:%S +0000 %Y"
+
+# TODO could refactor output into template files, ie: jinja.
 
 def create_component_files(components, tweet_dir, component_dir, di_graph, twit=None):
     """ Create intermediate component files of tweet threads """
@@ -189,7 +192,7 @@ def construct_user_summaries(component_dir, combined_threads_dir, total_users):
             json.dump(user_data, f, indent=4)
 
 
-def construct_org_files(combined_threads_dir, org_dir, all_users):
+def construct_org_files(combined_threads_dir, org_dir, all_users, source_ids:TweetTodoFile):
     logging.info("Constructing org files from: {} \n\tto: {}".format(combined_threads_dir, org_dir))
     # get all user summary jsons
     user_summaries = [join(combined_threads_dir, x) for x in listdir(combined_threads_dir) if splitext(x)[1] == ".json"]
@@ -234,7 +237,7 @@ def construct_org_files(combined_threads_dir, org_dir, all_users):
         # add conversations
         used_tweets = set()
         for thread in data['threads']:
-            thread_out, thread_media, used = thread_to_strings(thread, out_files_dir_last, all_users, tweets)
+            thread_out, thread_media, used = thread_to_strings(thread, out_files_dir_last, all_users, tweets, source_ids)
             output += thread_out
             used_tweets.update(used)
             media.update(thread_media)
@@ -257,25 +260,38 @@ def construct_org_files(combined_threads_dir, org_dir, all_users):
         if bool(media):
             download_media(out_files_dir, media)
 
-def thread_to_strings(thread, redirect_url, all_users, tweets):
+def thread_to_strings(thread, redirect_url, all_users, tweets, source_ids):
     logging.info("Creating thread")
     assert(isinstance(thread, dict))
     assert(isinstance(all_users, dict))
-    links = set()
-    media = set()
+    links       = set()
+    media       = set()
     used_tweets = set()
-    output = []
+    output      = []
     main_thread = [tweets[x] for x in thread['main_thread'] if x in tweets]
+    thread_tweet_ids = [x['id_str'] for x in main_thread]
+    for conv in thread['rest']:
+        thread_tweet_ids += [tweets[x]['id_str'] for x in conv if x in tweets]
+    quotes = thread['quotes']
+    thread_tweet_ids += quotes
+
     if not bool(main_thread):
         return output, media, used_tweets
 
-    quotes = thread['quotes']
+    tags = set([y for x in thread_tweet_ids for y in source_ids.mapping[x].split(",") if y != ""])
+
+    tags_str = ""
+    if bool(tags):
+        tags_str = "          :{}:".format(":".join(tags))
+
     # Add user info
     # append tweets in order as a thread
     date = parse_date(main_thread[0]['created_at'])
 
+
     # TODO: format this
-    output.append("** Thread: {}".format(date))
+
+    output.append("** Thread: {}{}".format(date, tags_str))
     output.append("*** Main Thread")
     # add tweets of main thread
     used_tweets.update([x['id_str'] for x in main_thread])
