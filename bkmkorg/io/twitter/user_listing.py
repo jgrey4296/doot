@@ -13,6 +13,7 @@ from os.path import exists, expanduser, isdir, isfile, join, splitext
 from time import sleep
 
 import twitter as tw
+from bkmkorg.utils.twitter.api_setup import load_credentials_and_setup
 
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.user_listing"
@@ -35,37 +36,8 @@ parser.add_argument('-s', '--secret', default='consumer.secret')
 
 ##############################
 #setup credentials
-MY_TWITTER_CREDS = None
-KEY_FILE = None
-SECRET_FILE = None
-
-C_KEY = None
-C_SECRET = None
-TOKEN = None
-TOKEN_SECRET = None
-
 FIFTEEN_MINUTES = 60 * 15
 CHARWIDTH = 80
-
-def load_credentials_and_setup():
-    """ Load the keys and tokens, and setup the twitter client """
-    #Get the Key and Secret from (gitignored) files
-    assert(exists(KEY_FILE))
-    assert(exists(SECRET_FILE))
-    logging.info("Setting up Twitter Client")
-    with open("consumer.key","r") as f:
-        C_KEY = f.read().strip()
-    with open("consumer.secret", "r") as f:
-        C_SECRET = f.read().strip()
-
-    if not exists(MY_TWITTER_CREDS):
-        tw.oauth_dance("jgNetworkAnalysis", C_KEY, C_SECRET, MY_TWITTER_CREDS)
-
-    TOKEN, TOKEN_SECRET = tw.read_token_file(MY_TWITTER_CREDS)
-    assert(all([x is not None for x in [C_KEY, C_SECRET, TOKEN, TOKEN_SECRET]]))
-    t = tw.Twitter(auth=tw.OAuth(TOKEN, TOKEN_SECRET, C_KEY, C_SECRET))
-    return t
-
 
 #download friend list
 def get_friends(t, id=None):
@@ -151,13 +123,12 @@ def user_obj_to_tuple(user_obj):
 
 
 if __name__ == "__main__":
-   args = parser.parse_args()
+    args = parser.parse_args()
 
-    MY_TWITTR_CREDS = args.credentials
-    KEY_FILE = args.key
-    SECRET_FLE = args.secret
+    t = load_credentials_and_setup(args.credentials,
+                                   args.key,
+                                   args.secret)
 
-    t = load_credentials_and_setup()
     friends = []
     #Get all friends if you haven't already
     if not exists("{}_ids".format(args.backup)):

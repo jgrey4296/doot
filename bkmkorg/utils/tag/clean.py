@@ -9,8 +9,9 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 from unicodedata import normalize as norm_unicode
 
 import regex as re
-
-from bkmkorg.utils.bookmark.bookmark import Bookmark
+from bkmkorg.utils.collection.bookmark import Bookmark
+from bkmkorg.io.reader.plain_bookmarks import load_plain_file
+from bkmkorg.io.writer.bookmarks import exportBookmarks
 
 logging = root_logger.getLogger(__name__)
 
@@ -101,7 +102,6 @@ def clean_html_files(html_files, sub):
     apply substitutions
     """
     logging.info("Cleaning htmls")
-    html_tags = {}
 
     for html in html_files:
         bkmks = open_and_extract_bookmarks(html)
@@ -118,3 +118,22 @@ def clean_html_files(html_files, sub):
             cleaned_bkmks.append(new_bkmk)
         # write out
         exportBookmarks(cleaned_bkmks, html)
+
+def clean_bkmk_files(bkmk_files, sub):
+    logging.info("Cleaning bookmarks")
+
+    for bkmk_path in bkmk_files:
+        cleaned   = []
+        bookmarks = load_plain_file(bkmk_path)
+        for bkmk in bkmks:
+            replacement_tags = set([])
+            for tag in bkmk.tags:
+                # clean
+                if tag in sub and bool(sub[tag]):
+                    [replacement_tags.add(new_tag) for new_tag in sub[tag]]
+                else:
+                    replacement_tags.add(tag)
+            new_bkmk = Bookmark(bkmk.url, replacement_tags, name=bkmk.name)
+            cleaned_bkmks.append(new_bkmk)
+
+        exportBookmarks(bookmarks, bkmk_path)

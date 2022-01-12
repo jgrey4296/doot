@@ -10,7 +10,7 @@ import json
 
 import logging as root_logger
 
-from bkmkorg.io.twitter.dfs_utils import dfs_directory
+from bkmkorg.utils.dfs.files import dfs_directory
 
 logging = root_logger.getLogger(__name__)
 
@@ -38,7 +38,7 @@ def extract_tweet_ids_from_file(the_file, simple=False):
     return results
 
 def extract_tweet_ids_from_json(the_file):
-    """ Get all tweet ids from a json file """
+    """ Get all tweet ids from a json file of tweets """
     try:
         with open(the_file, 'r') as f:
             data = json.load(f, strict=False)
@@ -50,7 +50,7 @@ def extract_tweet_ids_from_json(the_file):
     return ids
 
 def extract_media_and_users_from_json(the_file):
-    """ Get all media urls and user ids from json file """
+    """ Get all media urls and user ids from json file of tweets """
     try:
         with open(the_file, 'r') as f:
             data = json.load(f, strict=False)
@@ -95,7 +95,7 @@ def extract_media_and_users_from_json(the_file):
 
     return ids, media, media_variants
 
-def get_all_tweet_ids(*the_dirs, ext=None) -> Set[Any]:
+def get_all_tweet_ids(*the_dirs, ext=None) -> Set[str]:
     """ For a list of directories, dfs the directory to get all files,
     and get all mentioned tweets in those files """
     tweet_ids = set()
@@ -106,14 +106,15 @@ def get_all_tweet_ids(*the_dirs, ext=None) -> Set[Any]:
                 tweet_ids.update([x.strip() for x in f.readlines()])
 
         elif isdir(a_dir):
-            all_files = dfs_directory(*the_dirs, ext=ext)
+            all_files = dfs_directory(a_dir, ext=ext)
+            logging.info("Found {} files to extract from".format(len(all_files)))
             for x in all_files:
                 tweet_ids.update(extract_tweet_ids_from_file(x))
 
     return tweet_ids
 
-def get_user_and_media_sets(json_dir):
-    """ Get all user ids and media urls """
+def get_user_and_media_sets(json_dir) -> Tuple[Set[str], Set[str], List[Any]]:
+    """ Get all user ids and media urls from a directory of jsons of tweets """
     logging.info("Getting media urls")
     json_files = [join(json_dir, x) for x in listdir(json_dir) if splitext(x)[1] == ".json"]
     users = set()

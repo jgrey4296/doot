@@ -12,34 +12,10 @@ import os
 from collections import namedtuple
 from bs4 import BeautifulSoup
 
-
-from bkmkorg.utils.bookmark.bookmark import Bookmark
-
-
-def getLinks(aSoup) -> List[Bookmark]:
-    bkmks = aSoup.find_all('a')
-    bkmkList = []
-    for x in bkmks:
-        tagString = x.get('tags')
-        if tagString is not None:
-            indTags = tagString.split(',')
-        else:
-            indTags = []
-        tagSet = set(indTags)
-        newBkmk = Bookmark(x.get('href'),tagSet, name=x.get_text())
-        bkmkList.append(newBkmk)
-
-    return bkmkList
+from bkmkorg.utils.bookmark.collection import Bookmark
 
 def open_and_extract_bookmarks(filename) -> List[Bookmark]:
     """
     The Main Utility. Takes the path to a filename, returns a list of bookmarks
     """
-    logging.info('Starting html opener for: {}'.format(filename))
-    with open(filename, 'rb') as f:
-        rawHtml = f.read().decode("utf-8","ignore")
-
-    soup = BeautifulSoup(rawHtml,'html.parser')
-    bkmkList = getLinks(soup)
-    logging.info("Found {} links".format(len(bkmkList)))
-    return bkmkList
+    raise DeprecationWarning("Use bkmkorg.utils.bookmarks.collection.BookmarkCollection")

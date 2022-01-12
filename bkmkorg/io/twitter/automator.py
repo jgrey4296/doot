@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env pythmn
 """
 Automate twitter archiving
 
@@ -15,13 +15,13 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 
-import bkmkorg.io.twitter.dfs_utils as DFSU
-import bkmkorg.io.twitter.download_utils as DU
-import bkmkorg.io.twitter.extract_utils as EU
-import bkmkorg.io.twitter.file_format_utils as FFU
-from bkmkorg.utils.tweet_todo_file import TweetTodoFile
-import networkx as nx
+import bkmkorg.io.twitter.file_writing as FFU
+import bkmkorg.utils.dfs.twitter as DFSU
+import bkmkorg.utils.download.twitter as DU
+import bkmkorg.utils.twitter.extraction as EU
 import requests
+from bkmkorg.utils.twitter.graph import TwitterGraph
+from bkmkorg.utils.twitter.todo_list import TweetTodoFile
 
 import twitter
 
@@ -48,9 +48,6 @@ parser.add_argument('--export',  help="File to export all library tweet ids to, 
 parser.add_argument('--tweet', help="A Specific Tweet URL to handle, for CLI usage/ emacs use")
 parser.add_argument('--skiptweets', action='store_true', help="for when tweets have been downloaded, or hung")
 
-
-
-
 def setup_target_dict(target, export):
     targets = {}
     target_dir                      = abspath(expanduser(target))
@@ -69,7 +66,7 @@ def setup_target_dict(target, export):
 
     return targets
 
-def get_library_tweets(lib:List[str], tweet, export):
+def get_library_tweets(lib:List[str], tweet, export) -> Set[str]:
     library_tweet_ids = set()
     if tweet is None:
         logging.info("---------- Getting Library Tweet Details")
@@ -93,17 +90,15 @@ def read_target_ids(tweet, target_file) -> TweetTodoFile:
     logging.info("---------- Getting Target Tweet ids")
     if tweet is None:
         with open(target_file, 'r') as f:
-            source_ids = TweetTodoFile.read(f)
+            todo_ids = TweetTodoFile.read(f)
     else:
-        source_ids = TweetTodoFile(mapping={split(tweet)[1]:""})
-        logging.info("Specific Tweet: {}".format(source_ids))
+        todo_ids = TweetTodoFile(mapping={split(tweet)[1]:""})
+        logging.info("Specific Tweet: {}".format(todo_ids))
 
-    logging.info("Found {} source ids".format(len(source_ids)))
-
-    return source_ids
+    logging.info("Found {} source ids".format(len(todo_ids)))
+    return todo_ids
 
 def main():
-
     ####################
     # Setup argparser
     args = parser.parse_args()
@@ -145,8 +140,8 @@ def main():
             f.write(args.tweet)
 
     logging.info("Target Dir: {}".format(targets['target_dir']))
-    logging.info("Library: {}".format(args.library))
-    logging.info("Config: {}".format(args.config))
+    logging.info("Library:    {}".format(args.library))
+    logging.info("Config:     {}".format(args.config))
     ####################
     # Read Configs
     config = configparser.ConfigParser()
@@ -165,17 +160,16 @@ def main():
 
     logging.info("-------------------- Extracting Pre-Details")
     # Extract all tweet id's from library
-    library_tweet_ids = get_library_tweets(args.library,
-                                           args.tweet,
-                                           targets['lib_tweet_record'])
+    library_tweet_ids : Set[str] = get_library_tweets(args.library,
+                                                      args.tweet,
+                                                      targets['lib_tweet_record'])
 
-    # read file of tweet id's
-    # TODO associate tweet with tags here:
-    source_ids : TweetTodoFile = read_target_ids(args.tweet, targets['target_file'])
-    logging.info("-------------------- Downloading data")
+    # read file of tweet id's to handle
+    todo_ids : TweetTodoFile = read_target_ids(args.tweet, targets['target_file'])
+    logging.info("-------------------- Downloading Tweets")
     # Download tweets
     if not args.skiptweets:
-        DU.download_tweets(twit, targets['tweet_dir'], source_ids.ids(), lib_ids=library_tweet_ids)
+        DU.download_tweets(twit, targets['tweet_dir'], todo_ids.ids(), lib_ids=library_tweet_ids)
     else:
         logging.info("Skipping tweet download")
 
@@ -186,43 +180,37 @@ def main():
     with open(join(targets['target_dir'], "video_variants.json"), "w") as f:
         json.dump(variant_list, f, indent=4)
 
-    # DEPRECATED, is downloaded when org is constructed now:
-    # DU.download_media(media_dir, media_set)
-
     # Get user identities
-    all_users = DU.get_user_identities(targets['users_file'], twit, user_set)
+    all_users : Dict[str, Any] = DU.get_user_identities(targets['users_file'], twit, user_set)
 
     # --------------------
     logging.info("-------------------- Finished Retrieval")
-    try:
-        # Now create threads
-        if not bool([x for x in listdir(targets['component_dir']) if splitext(x)[1] == ".json"]):
-            logging.info("---------- Assembling Threads")
-            di_graph = FFU.assemble_threads(targets['tweet_dir'])
-            logging.info("---------- Creating Components")
-            components = DFSU.dfs_for_components(di_graph)
-            # TODO Connect components with tags from earlier here:
-            FFU.create_component_files(components,
-                                       targets['tweet_dir'],
-                                       targets['component_dir'],
-                                       di_graph,
-                                       twit=twit)
+    # Now create threads
+    if not bool([x for x in listdir(targets['component_dir']) if splitext(x)[1] == ".json"]):
+        logging.info("---------- Assembling Threads")
+        tweet_graph = TwitterGraph.build(target['tweet_dir'])
+        logging.info("---------- Creating Components")
+        components : List[Set[Any]] = DFSU.dfs_for_components(tweet_graph)
+        FFU.construct_component_files(components,
+                                      targets['tweet_dir'],
+                                      targets['component_dir'],
+                                      tweet_graph,
+                                      twit=twit)
 
-        if not bool([x for x in listdir(targets['combined_threads_dir']) if splitext(x)[1] == ".json"]):
-            logging.info("---------- Creating user summaries")
-            FFU.construct_user_summaries(targets['component_dir'], targets['combined_threads_dir'], all_users)
+    if not bool([x for x in listdir(targets['combined_threads_dir']) if splitext(x)[1] == ".json"]):
+        logging.info("---------- Creating user summaries")
+        FFU.construct_user_summaries(targets['component_dir'], targets['combined_threads_dir'], all_users)
 
-        logging.info("---------- Constructing org files")
-        # TODO Write out tags here:
-        FFU.construct_org_files(targets['combined_threads_dir'], targets['org_dir'], all_users, source_ids)
-        downloaded_tweets = get_library_tweets([targets['org_dir']],
-                                               args.tweet,
-                                               targets['download_record'])
-    except Exception as err:
-        logging.exception("Exception occurred: {}".format(err))
+    logging.info("---------- Constructing org files")
+    FFU.construct_org_files(targets['combined_threads_dir'], targets['org_dir'], all_users, todo_ids)
 
+    # Get all the downloaded tweets, and export
+    get_library_tweets([targets['org_dir']],
+                       args.tweet,
+                       targets['download_record'])
 
-
+    logging.info("----- Finished Twitter Automation")
+#  ############################################################################
 if __name__ == "__main__":
    logging.info("Automated Twitter Archiver")
    main()

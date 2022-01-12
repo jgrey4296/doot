@@ -1,8 +1,4 @@
-#!/usr/bin/env python
-"""
-Utilities to retrieve files of use
-
-"""
+#!/usr/bin/env python3
 import logging as root_logger
 from datetime import datetime
 from os import listdir, mkdir
@@ -17,15 +13,39 @@ import regex as re
 
 logging = root_logger.getLogger(__name__)
 
-img_exts = [".jpg",".jpeg",".png",".gif",".webp",".tiff"]
-img_exts2 = [".gif",".jpg",".jpeg",".png",".mp4",".bmp"]
+img_exts      = [".jpg",".jpeg",".png",".gif",".webp",".tiff"]
+img_exts2     = [".gif",".jpg",".jpeg",".png",".mp4",".bmp"]
 img_and_video = [".gif",".jpg",".jpeg",".png",".mp4",".bmp", ".mov", ".avi", ".webp", ".tiff"]
+
+def dfs_directory(*dirs, ext=None):
+    """ DFS a directory for a filetype """
+    logging.info("DFSing {}".format(dirs))
+    if ext is None:
+        ext = ".org"
+    found = []
+    queue = [] + list(dirs)
+
+    while bool(queue):
+        current = queue.pop(0)
+        # Add files
+        if isfile(current) and splitext(current)[1] == ext:
+            found.append(current)
+        else:
+            listed = listdir(current)
+            found += [join(current, x) for x in listed
+                      if isfile(join(current, x)) and splitext(x)[1] == ext]
+            # Continue for directories
+            queue += [join(current, x) for x in listed
+                      if isdir(join(current, x)) and x != ".git"]
+
+    return found
 
 def collect_files(targets):
     """ DFS targets, collecting files into their types """
     logging.info("Processing Files: {}".format(targets))
     bib_files      = set()
     html_files     = set()
+    bookmark_files = set()
     org_files      = set()
 
     processed      = set([])
@@ -44,8 +64,10 @@ def collect_files(targets):
                 html_files.add(target)
             elif ext == ".org":
                 org_files.add(target)
+            elif ext == ".bookmarks":
+                bookmark_files.add(target)
         else:
-            assert(isdir(target))
+            assert(isdir(target)), target
             subdirs = [join(target, x) for x in listdir(target)]
             remaining_dirs += subdirs
 
@@ -55,12 +77,13 @@ def collect_files(targets):
     logging.debug("Bibtex files: {}".format("\n".join(bib_files)))
     logging.debug("Html Files: {}".format("\n".join(html_files)))
     logging.debug("Org Files: {}".format("\n".join(org_files)))
+    logging.debug("Bookmark Files: {}".format("\n".join(bookmark_files)))
 
-    return (bib_files, html_files, org_files)
+    return (bib_files, html_files, org_files, bookmark_files)
 
 def get_data_files(initial, ext=None, normalize=False):
     """
-    Getting all files of an extension
+    DFS, Getting all files of an extension
     """
     logging.info("Getting Data Files")
     if ext is None:
@@ -94,54 +117,3 @@ def get_data_files(initial, ext=None, normalize=False):
     if normalize:
         files = [norm_unicode("NFD", x) for x in files]
     return files
-
-
-
-
-def check_orgs(org_files, id_regex="^\s+:(PERMALINK|TIME):\s+$"):
-    logging.info("Checking Orgs")
-    ORG_ID_REGEX = re.compile(id_regex)
-    files = set([])
-
-    for org in org_files:
-        #read
-        text = []
-        with open(org,'r') as f:
-            text = f.readlines()
-
-        #line by line
-        for line in text:
-            match = ORG_ID_REGEX.match(line)
-            if not bool(match):
-                continue
-
-            files.add(org)
-            break
-
-    return files
-
-
-
-
-def get_tweet_dates_and_ids(org_files, line_regex=None) -> List[Tuple[datetime, str]]:
-    """
-    Extract Tweet id strings and date strings from property drawers in org files
-    """
-    if line_regex is None:
-        line_regex = r"^\s+:PERMALINK:\s+\[.+\[(.+?)\]\]\n\s+:TIME:\s+(.+?)$"
-
-    EXTRACTOR = re.compile(line_regex, flags=re.MULTILINE)
-    tweets = []
-
-    for org in org_files:
-        logging.debug("Opening {}".format(org))
-        # open org
-        with open(org, 'r') as f:
-            lines = "\n".join(f.readlines())
-
-        # get all permalink+time pair lines
-        found_tweets = EXTRACTOR.findall(lines)
-        logging.debug("Found {}".format(len(found_tweets)))
-        tweets += found_tweets
-
-    return tweets

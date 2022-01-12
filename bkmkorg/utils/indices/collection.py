@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+"""
+A Utility class for working with index files,
+which map tags to sets of files
+"""
 import logging as root_logger
 from collections import defaultdict
 from dataclasses import InitVar, dataclass, field

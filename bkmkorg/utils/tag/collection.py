@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+"""
+Utility class for working with tag files
+"""
 from os.path import join, isfile, exists, abspath
 from os.path import split, isdir, splitext, expanduser
 from os import listdir
@@ -18,10 +21,9 @@ file = Any
 
 @dataclass
 class TagFile:
-    """ Utility class for `bkmkorg`-wide tag count specifications and a tag mapping
-    (typically tag -> files))"""
+    """ A Basic TagFile holds the counts for each tag use """
 
-    mapping : Dict[str, str] = field(default_factory=lambda: defaultdict(lambda: 0))
+    mapping : Dict[str, str] = field(default_factory=dict)
     count   : Dict[str, int] = field(default_factory=lambda: defaultdict(lambda: 0))
     sep     : str            = field(default=":")
     ext     : str            = field(default=".tags")
@@ -87,7 +89,7 @@ class TagFile:
         return len(self.count)
 @dataclass
 class SubstitutionFile(TagFile):
-    """ Specific implementation for a file to mark tag substitutions """
+    """ SubstitutionFiles add a replacement tag for some tags """
 
     ext : str = field(default=".sub")
 
@@ -118,3 +120,10 @@ class SubstitutionFile(TagFile):
                 self.mapping[key] = value.mapping[key]
             elif key in self.mapping and key in value.mapping:
                 raise Exception(f"Substitution Conflict for {key}")
+
+    def sub(self, value:str):
+        """ apply a substitution if it exists """
+        if value in self.mapping:
+            return self.mapping[value]
+
+        return value

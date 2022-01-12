@@ -11,7 +11,7 @@ import networkx as nx
 
 logging = root_logger.getLogger(__name__)
 
-def dfs_edge(graph, edge):
+def dfs_edge(graph, edge) -> Set[Tuple[str, str]]:
     """ Getting non-quote tweets """
     found = set()
     queue = [edge]
@@ -33,17 +33,17 @@ def dfs_edge(graph, edge):
 
     return found
 
-def dfs_for_components(di_graph):
+def dfs_for_components(tweet_graph:'TwitterGraph') -> List[Set[Tuple[str, str]]]:
     """ DFS a graph for all connected components """
     # Convert to undirected graph
-    graph = nx.Graph(di_graph)
+    graph : nx.Graph = tweet_graph.to_undirected()
 
     # DFS for components
-    components = []
-    edge_set = set(graph.edges)
-    discovered = set()
+    components   = []
+    edge_set     = set(graph.edges)
+    discovered   = set()
     logging.info("DFS on Components: {}".format(len(edge_set)))
-    count = 0
+    count        = 0
     log_on_count = len(edge_set) * 0.1
     while bool(edge_set):
         count += 1
@@ -69,25 +69,6 @@ def dfs_for_components(di_graph):
 
     logging.info("Found {} components".format(len(components)))
     return components
-
-def dfs_directory(*dirs, ext=".org"):
-    """ DFS a directory for a filetype """
-    found = []
-    queue = [] + list(dirs)
-
-    while bool(queue):
-        current = queue.pop(0)
-        # Add files
-        if isfile(current):
-            found.append(current)
-        else:
-            found += [join(current, x) for x in listdir(current)
-                      if isfile(join(current, x)) and splitext(x)[1] == ext]
-            # Continue for directories
-            queue += [join(current, x) for x in listdir(current)
-                      if isdir(join(current, x)) and x != ".git"]
-
-    return found
 
 def dfs_chains(graph, roots):
     results = []

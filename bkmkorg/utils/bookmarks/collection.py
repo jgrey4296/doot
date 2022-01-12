@@ -1,12 +1,15 @@
-from typing import List, Set, Dict, Tuple, Optional, Any
-from typing import Callable, Iterator, Union, Match
-from typing import Mapping, MutableMapping, Sequence, Iterable
-from typing import cast, ClassVar, TypeVar, Generic
-
-#https://docs.python.org/3/library/dataclasses.html
-from dataclasses import dataclass, field, InitVar
-import regex
+"""
+Provide Utility classes for working with bookmarks
+"""
 import logging as root_logger
+from dataclasses import InitVar, dataclass, field
+from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
+                    List, Mapping, Match, MutableMapping, Optional, Sequence,
+                    Set, Tuple, TypeVar, Union, cast)
+
+import regex
+from bs4 import BeautifulSoup
+
 logging = root_logger.getLogger(__name__)
 
 TAG_NORM = regex.compile(" +")
@@ -26,7 +29,7 @@ class Bookmark:
     def __lt__(self, other):
         return self.url < other.url
 
-    def to_string(self):
+    def __str__(self):
         tags = self.url_sep.join(sorted(self.tags))
         return f"{self.url}{self.url_sep}{tags}"
 
@@ -70,9 +73,45 @@ class BookmarkCollection:
 
         return bookmarks
 
+    @staticmethod
+    def read_netscape(path:str):
+        logging.info('Starting html opener for: {}'.format(filename))
+        with open(filename, 'rb') as f:
+            rawHtml = f.read().decode("utf-8","ignore")
+
+        soup     = BeautifulSoup(rawHtml,'html.parser')
+        bkmkList = __getLinks(soup)
+        logging.info("Found {} links".format(len(bkmkList)))
+        return BookmarkCollection(bkmkList)
+    
+    def __str__(self):
+        return "\n".join([str(x) for x in sorted(self.entries)])
+
     def __iadd__(self, value):
-        assert(isinstance(value, (BookmarkCollection, Bookmark)))
+        assert(isinstance(value, (BookmarkCollection, Bookmark, list)))
         if isinstance(value, Bookmark):
             self.entries.append(value)
         elif isinstance(value, BookmarkCollection):
             self.entries += value.entries
+        elif isinstance(value, list):
+            assert(all([isinstance(x, Bookmark) for x in value]))
+            self.entries += value
+        else:
+            raise TypeError(type(value))
+
+
+######################################################################
+def __getLinks(aSoup) -> List[Bookmark]:
+    bkmks = aSoup.find_all('a')
+    bkmkList = []
+    for x in bkmks:
+        tagString = x.get('tags')
+        if tagString is not None:
+            indTags = tagString.split(',')
+        else:
+            indTags = []
+        tagSet = set(indTags)
+        newBkmk = Bookmark(x.get('href'),tagSet, name=x.get_text())
+        bkmkList.append(newBkmk)
+
+    return bkmkList

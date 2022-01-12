@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from typing import List, Set, Dict, Tuple, Optional, Any
 from typing import Callable, Iterator, Union, Match
 from typing import Mapping, MutableMapping, Sequence, Iterable
@@ -12,39 +13,19 @@ import logging as root_logger
 import twitter
 logging = root_logger.getLogger(__name__)
 
-from bkmkorg.io.twitter.extract_utils import extract_tweet_ids_from_json
+from bkmkorg.utils.twitter.extraction import extract_tweet_ids_from_json
 
 GROUP_AMNT = 100
 MISSING    = ".missing_tweets"
 
-def download_media(media_dir, media):
-    """ Download all media mentioned in json files """
-    logging.info("Downloading media {} to: {}".format(len(media), media_dir))
-
-    scaler = int(len(media) / 100) + 1
-    for i, x in enumerate(media):
-        if i % scaler == 0:
-            logging.info("{}/100".format(int(i/scaler)))
-
-        filename = split(x)[1]
-        if exists(join(media_dir, filename)):
-            continue
-
-        try:
-            request = requests.get(x)
-            with open(join(media_dir, filename), 'wb') as f:
-                f.write(request.content)
-        except Exception as e:
-            logging.warning("Error Downloading: {}".format(x))
-            logging.warning(str(e))
-
-
 def download_tweets(twit, json_dir, target_ids, lib_ids=None):
-    """ Download all tweets and related tweets for a list """
+    """ Download all tweets and related tweets for a list,
+    writing
+    """
     logging.info("Downloading tweets to: {}".format(json_dir))
     logging.info("Reading existing tweet jsons")
     json_files = [join(json_dir, x) for x in listdir(json_dir) if splitext(x)[1] == ".json"]
-    json_ids = set()
+    json_ids   = set()
     for jfile in json_files:
         json_ids.update(extract_tweet_ids_from_json(jfile))
 
@@ -78,42 +59,36 @@ def download_tweets(twit, json_dir, target_ids, lib_ids=None):
         current = list(current)
         queue   = queue[GROUP_AMNT:]
 
-        try:
-            ## download tweets
-            results = twit.GetStatuses(current, trim_user=True)
+        ## download tweets
+        results = twit.GetStatuses(current, trim_user=True)
 
-            # add results to results dir
-            new_json_file = join(json_dir, "{}.json".format(uuid.uuid1()))
-            assert(not exists(new_json_file))
-            with open(new_json_file, 'w') as f:
-                as_json = "[{}]".format(",".join([json.dumps(x._json, indent=4) for x in results]))
-                f.write(as_json)
+        # add results to results dir
+        new_json_file = join(json_dir, "{}.json".format(uuid.uuid1()))
+        assert(not exists(new_json_file))
+        with open(new_json_file, 'w') as f:
+            as_json = "[{}]".format(",".join([json.dumps(x._json, indent=4) for x in results]))
+            f.write(as_json)
 
-            # update ids
-            json_ids.update([x.id_str for x in results])
+        # update ids
+        json_ids.update([x.id_str for x in results])
 
-            # Add new referenced ids:
-            for x in results:
-                if 'in_reply_to_status_id_str' in x._json and x._json['in_reply_to_status_id_str'] is not None:
-                    queue.append(str(x._json['in_reply_to_status_id_str']))
-                if 'quoted_status_id_str' in x._json and x._json['quoted_status_id_str'] is not None:
-                    queue.append(x._json['quoted_status_id_str'])
+        # Add new referenced ids:
+        for x in results:
+            if 'in_reply_to_status_id_str' in x._json and x._json['in_reply_to_status_id_str'] is not None:
+                queue.append(str(x._json['in_reply_to_status_id_str']))
+            if 'quoted_status_id_str' in x._json and x._json['quoted_status_id_str'] is not None:
+                queue.append(x._json['quoted_status_id_str'])
 
-            # Store missing ids
-            not_retrieved = set(current).difference([x._json['id_str'] for x in results])
-            known_missing_tweets.update(not_retrieved)
-
-        except Exception as e:
-            # handle failure
-            breakpoint()
-            logging.warning("Exception")
+        # Store missing ids
+        not_retrieved = set(current).difference([x._json['id_str'] for x in results])
+        known_missing_tweets.update(not_retrieved)
 
         with open(join(json_dir, MISSING), 'a') as f:
             f.write("\n".join(known_missing_tweets))
 
     return False
 
-def get_user_identities(users_file, twit, users):
+def get_user_identities(users_file, twit, users) -> Dict[str, Any]:
     """ Get all user identities from twitter """
     logging.info("Getting user identities")
     total_users = {}

@@ -11,7 +11,7 @@ from os.path import split, isdir, splitext, expanduser
 import argparse
 import logging as root_logger
 
-from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.dfs import files as retrieval
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.pdf import pdf as PU
 

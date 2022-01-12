@@ -8,7 +8,7 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     Set, Tuple, TypeVar, Union, cast)
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
-from bkmkorg.utils.bookmark.bookmark import Bookmark
+from bkmkorg.utils.bookmark.collection import Bookmark
 
 logging = root_logger.getLogger(__name__)
 

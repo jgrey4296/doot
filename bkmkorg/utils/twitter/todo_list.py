@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-#https://docs.python.org/3/library/dataclasses.html
+"""
+Utility class for Twitter Archive Automation,
+reads a todo file, ready for downloading, org translation and tagging
+"""
 from dataclasses import InitVar, dataclass, field
 from os.path import join, isfile, exists, abspath
 from os.path import split, isdir, splitext, expanduser
