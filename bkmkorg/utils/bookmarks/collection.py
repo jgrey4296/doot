@@ -6,6 +6,7 @@ from dataclasses import InitVar, dataclass, field
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
+import urllib.parse as url_parse
 
 import regex
 from bs4 import BeautifulSoup
@@ -26,6 +27,9 @@ class Bookmark:
     def __post_init__(self):
         self.tags = [TAG_NORM.sub("_", x.strip()) for x in self.tags]
 
+    def __eq__(self, other):
+        return self.url == other.url
+
     def __lt__(self, other):
         return self.url < other.url
 
@@ -41,24 +45,38 @@ class Bookmark:
         if tag_sep is None:
             tag_sep = Bookmark.tag_sep
 
-        try:
-            line_split = line.split(" :")
-            url        = line_split[0]
-            tags       = line_split[1:]
-            tag_set    = set([x.strip() for x in tags])
-            if not bool(tag_set):
-                logging.warning(f"No Tags for: {url}")
+        line_split = line.split(" :")
+        url        = line_split[0]
+        tags       = line_split[1:]
+        tag_set    = {x.strip() for x in tags}
+        if not bool(tag_set):
+            logging.warning(f"No Tags for: {url}")
 
-            return Bookmark(url,
-                            tag_set,
-                            tag_sep=tag_sep,
-                            url_sep=url_sep)
-
-        except ValueError as err:
-            logging.warning(err)
-            logging.warning(line)
+        return Bookmark(url,
+                        tag_set,
+                        tag_sep=tag_sep,
+                        url_sep=url_sep)
 
 
+    @property
+    def url_comps(self) -> url_parse.ParseResult:
+        return url_parse.urlparse(self.url)
+
+    def merge(self, other) -> 'Bookmark':
+        assert(self == other)
+        merged = Bookmark(self.url,
+                          self.tags.union(other.tags),
+                          self.name,
+                          self.tag_sep,
+                          self.url_sep)
+        return merged
+
+    def clean(self, subs):
+        cleaned_tags = set()
+        for tag in self.tags:
+            cleaned_tags.add(sub.get_sub(tag))
+
+        self.tags = cleaned_tags
 
 @dataclass
 class BookmarkCollection:
@@ -75,8 +93,8 @@ class BookmarkCollection:
 
     @staticmethod
     def read_netscape(path:str):
-        logging.info('Starting html opener for: {}'.format(filename))
-        with open(filename, 'rb') as f:
+        logging.info('Starting html opener for: {}'.format(path))
+        with open(path, 'rb') as f:
             rawHtml = f.read().decode("utf-8","ignore")
 
         soup     = BeautifulSoup(rawHtml,'html.parser')
@@ -84,6 +102,10 @@ class BookmarkCollection:
         logging.info("Found {} links".format(len(bkmkList)))
         return BookmarkCollection(bkmkList)
     
+    def add_file(self, f:file):
+        for line in f.readlines():
+            self += Bookmark.build(line)
+
     def __str__(self):
         return "\n".join([str(x) for x in sorted(self.entries)])
 
@@ -99,6 +121,30 @@ class BookmarkCollection:
         else:
             raise TypeError(type(value))
 
+
+    def __iter__(self):
+        return iter(self.entries)
+
+    def __contains__(self, value:Bookmark):
+        return value in self.entries
+
+    def difference(self, other:BookmarkCollection):
+        result = BookmarkCollection()
+        for bkmk in other:
+            if bkmk not in self:
+                result += bkmk
+
+        return result
+
+    def merge_duplicates(self):
+        deduplicated = {}
+        for x in self:
+            if x.url not in deduplicated:
+                deduplicated[x.url] = x
+            else:
+                deduplicated[x.url] = x.merge(deduplicated[x.url])
+
+        self.entries = list(deduplicated.values())
 
 ######################################################################
 def __getLinks(aSoup) -> List[Bookmark]:

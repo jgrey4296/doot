@@ -4,7 +4,7 @@ Main function: exportBookmarks
 """
 import logging
 
-from bkmkorg.utils.bookmark.bookmark import Bookmark
+from bkmkorg.utils.bookmark.collection import Bookmark
 
 groupCount = 0
 listCount  = 0
@@ -36,12 +36,9 @@ def bookmarkToItem(bkmk):
     return item
 
 def bookmarksToNetscapeString(data):
-    try:
-        strings = [convertData(x) for x in data]
-        wrapped = "\n".join(strings)
-        return wrapped
-    except AttributeError as e:
-        breakpoint()
+    strings = [convertData(x) for x in data]
+    wrapped = "\n".join(strings)
+    return wrapped
 
 
 def groupToNetscapeString(name, data):
