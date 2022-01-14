@@ -8,7 +8,8 @@ from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
                      splitext)
 
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.dfs import files as retrieval
+
 
 # Setup
 LOGLEVEL = root_logger.DEBUG

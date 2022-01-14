@@ -11,7 +11,9 @@ from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
 from shutil import copy
 
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.utils.file import hash_check, retrieval
+from bkmkorg.utils.file import hash_check
+from bkmkorg.utils.dfs import files as retrieval
+
 
 # Setup root_logger:
 LOGLEVEL = root_logger.DEBUG

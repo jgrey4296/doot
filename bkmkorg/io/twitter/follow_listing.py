@@ -40,20 +40,20 @@ parser.add_argument('-s', '--secret', default="consumer.secret")
 FIFTEEN_MINUTES  = 60 * 15
 CHARWIDTH        = 80
 
-def get_friends(t, id=None):
+def get_friends(twit, id_s=None):
     """ Given a twitter client, get my friends (ie: people I follow)
     friends/ids returns up to 5000, 15 times in 15 minutes
     """
-    logging.info("Getting friends for: {}, type: {}".format(id, type(id)))
+    logging.info("Getting friends for: {}, type: {}".format(id_s, type(id_s)))
     #Gives up to 5000
-    if id is not None:
-        response = t.friends.ids(user_id=id, stringify_ids="true")
+    if id_s is not None:
+        response = twit.friends.ids(user_id=id_s, stringify_ids="true")
     else:
-        response = t.friends.ids(stringify_ids="true")
+        response = twit.friends.ids(stringify_ids="true")
     logging.info("Response length: {}".format(len(response['ids'])))
     return response['ids']
 
-def get_users(t, ids=None, writer=None, backup=None):
+def get_users(twit, ids=None, writer=None, backup=None):
     """ Given a list of users, split into 100 user chunks,
     then GET users/lookup for them
     """
@@ -74,7 +74,7 @@ def get_users(t, ids=None, writer=None, backup=None):
     for i, chunk in enumerate(chunked):
         logging.info("Chunk {}".format(i))
         #request
-        returned_data = t.users.lookup(user_id=",".join(chunk))
+        returned_data = twit.users.lookup(user_id=",".join(chunk))
         #parse data
         parsed_data = [user_obj_to_tuple(x) for x in returned_data]
         #call writer

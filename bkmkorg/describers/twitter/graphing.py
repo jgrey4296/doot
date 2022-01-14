@@ -11,11 +11,11 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 
-from matplotlib import pyplot as plt
-
 from bkmkorg.utils import diagram as DU
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.dfs import files as retrieval
+from bkmkorg.utils.org.extraction import get_tweet_dates_and_ids
+from matplotlib import pyplot as plt
 
 # Setup root_logger:
 LOGLEVEL = root_logger.DEBUG
@@ -39,7 +39,7 @@ def convert_tweet_date(datestring, fmt=None):
     if datestring == "None":
         result = datetime.now()
     else:
-        result = datetime.strptime(datestring.strip(), fmt)
+        result = datetime.datetime.strptime(datestring.strip(), fmt)
 
     return result
 
@@ -88,10 +88,10 @@ if __name__ == "__main__":
     logging.info("Found {} org files".format(len(all_orgs)))
 
     # Process tweets
-    tweets : List[Tuple[datetime, str]] = retrieval.get_tweet_dates_and_ids(all_orgs)
-    logging.info("Found {} tweets".format(len(tweets)))
+    all_tweets : List[Tuple[datetime, str]] = get_tweet_dates_and_ids(all_orgs)
+    logging.info("Found {} tweets".format(len(all_tweets)))
     # remove duplicates and convert date strings
-    tweet_dict = {x[0] : convert_tweet_date(x[1]) for x in tweets}
+    tweet_dict = {x[0] : convert_tweet_date(x[1]) for x in all_tweets}
 
     logging.info("Sorting {} tweets".format(len(tweet_dict)))
     ordered = sorted([(x[1], x[0]) for x in tweet_dict.items()], key=lambda x: x[1])

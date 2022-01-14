@@ -95,7 +95,7 @@ class DotaLinkExtractor:
         for x in mainContent.find_all("a"):
             name = x['title']
             try:
-                date = datetime.strptime(name, "%B %d, %Y Patch")
+                date = datetime.datetime.strptime(name, "%B %d, %Y Patch")
                 allLinks.append(x['href'])
             except Exception as e:
                 1 + 1

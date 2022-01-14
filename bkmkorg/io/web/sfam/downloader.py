@@ -69,7 +69,7 @@ def download_and_save(target, filename, base=DATA_LOCATION):
         breakpoint()
 
 def convert_date(year, month_day):
-    return datetime.strptime("{} {}".format(year, month_day), DATE_FORMAT).strftime(DATE_OUTPUT)
+    return datetime.datetime.strptime("{} {}".format(year, month_day), DATE_FORMAT).strftime(DATE_OUTPUT)
 
 
 ########################################

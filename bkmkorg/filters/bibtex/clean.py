@@ -17,7 +17,7 @@ from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.dfs import files as retrieval
 from bkmkorg.utils.file.hash_check import file_to_hash
 
 LOGLEVEL = root_logger.DEBUG
@@ -65,20 +65,25 @@ def check_year(record):
         record['error'].append('year_error')
 
 def hashcheck_files(record):
-    file_set = set()
     try:
         # add md5 of associated files
         file_fields = [x for x in record.keys() if 'file' in x]
-        files = [expander(record[x]) for x in file_fields]
-        file_set = set(files)
-        if not 'hashes' in record:
-            hashes = [file_to_hash(x) for x in file_set]
-            record['hashes'] = ";".join(hashes)
-        else:
-            saved_hashes = set(record['hashes'].split(';'))
-            hashes = set([file_to_hash(x) for x in file_set])
-            if saved_hashes.symmetric_difference(hashes):
-                raise Exception("Hash Mismatches", saved_hashes.difference(hashes), hashes.difference(saved_hashes))
+        files       = [expander(record[x]) for x in file_fields]
+        file_set    = set(files)
+        if 'hashes' in record:
+            del record['hashes']
+        if 'hash_error' in record:
+            del record['hash_error']
+        if not bool(file_set):
+            return file_set
+        # if not 'hashes' in record:
+        #     hashes = [file_to_hash(x) for x in file_set]
+        #     record['hashes'] = ";".join(hashes)
+        # else:
+        # saved_hashes = set(record['hashes'].split(';'))
+        # hashes = set([file_to_hash(x) for x in file_set])
+        # if saved_hashes.symmetric_difference(hashes):
+            # raise Exception("Hash Mismatches", saved_hashes.difference(hashes), hashes.difference(saved_hashes))
 
     except FileNotFoundError as e:
         logging.warning("File Error: {} : {}".format(record['ID'], e.args[0]))
@@ -86,7 +91,7 @@ def hashcheck_files(record):
         record['error'].append('file_error')
     except Exception as e:
         logging.warning("Error: {}".format(e.args[0]))
-        record['hash_error'] = "{} : / :".format(e.args[0], e.args[1])
+        # record['hash_error'] = "{} : / :".format(e.args[0], e.args[1])
         record['error'].append('hash_error')
 
     return file_set
@@ -108,7 +113,7 @@ def clean_tags(record):
 
         record['tags'] = ",".join(sorted(tags))
 
-    except Error as e:
+    except Exception as e:
         logging.warning("Tag Error: {}".format(record['ID']))
         record['tag_error'] = str(e)
         record['error'].append('tag_error')
@@ -148,7 +153,7 @@ def main():
     error_tuples = ERRORS
 
     if bool(error_tuples) and args.output:
-        formatted = "\n".join(["{} : {}".format(x, y) for x,y in error_tuples])
+        formatted = "\n".join(["{} : {}".format(x, y) for x,y in error_tuples]) + "\n"
         with open(error_out, 'a') as f:
             f.write(formatted)
 

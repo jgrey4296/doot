@@ -15,10 +15,10 @@ import bibtexparser as b
 from bibtexparser import customization as c
 
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.dfs import files as retrieval
 
 PATH_NORM = re.compile("^.+?pdflibrary")
-FILE_RE   = re.compile("^file(\d*)")
+FILE_RE   = re.compile(r"^file(\d*)")
 
 # Setup
 LOGLEVEL      = root_logger.DEBUG

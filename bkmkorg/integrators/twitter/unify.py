@@ -16,8 +16,9 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     Set, Tuple, TypeVar, Union, cast)
 
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.io.twitter.extract_utils import get_all_tweet_ids
-from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.twitter.extraction import get_all_tweet_ids
+from bkmkorg.utils.dfs import files as retrieval
+
 
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])

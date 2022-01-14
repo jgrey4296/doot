@@ -12,10 +12,10 @@ import logging as root_logger
 from os.path import abspath, exists, expanduser, split, splitext
 from urllib.parse import urlparse
 
-from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.utils.file import retrieval
-from bkmkorg.utils.trie import Trie
+from bkmkorg.utils.dfs import files as retrieval
+from bkmkorg.utils.bookmarks.collection import BookmarkCollection
+
 # Setup Logging
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
@@ -46,13 +46,13 @@ if __name__ == "__main__":
     # Load the library
     logging.info("Loading Library")
     lib_files = retrieval.get_data_files(args.library, ".html")
-    library = [y for x in lib_files for y in open_and_extract_bookmarks(x)]
+    library = BookmarkCollection()
+    for bkmk_f in source_files:
+        with open(bkmk_f, 'r') as f:
+            library.add_file(f)
 
-    # Convert to a Trie
     logging.info("Processing Library")
-    the_trie = Trie(library)
-
-    # Generate org file
-    org_str = the_trie.org_format_queries()
-    with open("{}.org".format(args.output), 'w') as f:
-        f.write(org_str)
+    # TODO Generate org file
+    # org_str = the_trie.org_format_queries()
+    # with open("{}.org".format(args.output), 'w') as f:
+        # f.write(org_str)

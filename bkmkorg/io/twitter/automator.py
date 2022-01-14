@@ -101,8 +101,8 @@ def read_target_ids(tweet, target_file) -> TweetTodoFile:
 def main():
     ####################
     # Setup argparser
-    args = parser.parse_args()
-    args.config = abspath(expanduser(args.config))
+    args             = parser.parse_args()
+    args.config      = abspath(expanduser(args.config))
     if args.library is not None:
         args.library = [abspath(expanduser(x)) for x in args.library]
     else:
@@ -122,7 +122,7 @@ def main():
         with open(targets['last_tweet_file'], 'r') as f:
             last_tweet = f.read().strip()
 
-    if args.tweet != None and args.tweet != last_tweet and args.target == DEFAULT_TARGET and exists(DEFAULT_TARGET):
+    if args.tweet is not  None and args.tweet != last_tweet and args.target == DEFAULT_TARGET and exists(DEFAULT_TARGET):
         rmtree(DEFAULT_TARGET)
 
     missing_dirs = [x for x in [targets['target_dir'],
@@ -135,7 +135,7 @@ def main():
         logging.info("Creating {} Directory".format(x))
         mkdir(x)
 
-    if args.tweet != None:
+    if args.tweet is not None:
         with open(targets['last_tweet_file'], 'w') as f:
             f.write(args.tweet)
 
@@ -188,7 +188,7 @@ def main():
     # Now create threads
     if not bool([x for x in listdir(targets['component_dir']) if splitext(x)[1] == ".json"]):
         logging.info("---------- Assembling Threads")
-        tweet_graph = TwitterGraph.build(target['tweet_dir'])
+        tweet_graph = TwitterGraph.build(targets['tweet_dir'])
         logging.info("---------- Creating Components")
         components : List[Set[Any]] = DFSU.dfs_for_components(tweet_graph)
         FFU.construct_component_files(components,
@@ -212,5 +212,5 @@ def main():
     logging.info("----- Finished Twitter Automation")
 #  ############################################################################
 if __name__ == "__main__":
-   logging.info("Automated Twitter Archiver")
-   main()
+    logging.info("Automated Twitter Archiver")
+    main()

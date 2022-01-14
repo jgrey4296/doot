@@ -11,7 +11,9 @@ from shutil import copyfile
 
 import regex as re
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.dfs import files as retrieval
+from bkmkorg.utils.hash_check import file_to_hash
+
 
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.md5PaperChecker"
@@ -48,23 +50,23 @@ if __name__ == "__main__":
         text = f.read().split('\n')
 
     logging.info("Finding links")
-    path_matches = [path_re.findall(x) for x in text]
-    path_merge = [y for x in path_matches for y in x]
+    path_matches   = [path_re.findall(x) for x in text]
+    path_merge     = [y for x in path_matches for y in x]
     expanded_files = [abspath(expanduser(x)) for x in path_merge]
     logging.info("Found: {}".format(len(expanded_files)))
 
     logging.info("Hashing")
-    current_hashes = { fileToHash(x) for x in expanded_files }
+    current_hashes = { file_to_hash(x) for x in expanded_files }
 
     logging.info("Scraping Source Directory")
     files_in_dir = listdir(args.source)
-    imgs_in_dir = [x for x in files_in_dir if splitext(x)[1].lower() in file_types
-                   and x[0] != '.']
-    full_paths = [abspath(expanduser(join(args.source, x))) for x in imgs_in_dir]
+    imgs_in_dir  = [x for x in files_in_dir if splitext(x)[1].lower() in file_types
+                    and x[0] != '.']
+    full_paths   = [abspath(expanduser(join(args.source, x))) for x in imgs_in_dir]
     logging.info("Scraped: {}".format(len(full_paths)))
 
     logging.info("Hashing")
-    total_hashes = { fileToHash(x) : x for x in full_paths }
+    total_hashes = { file_to_hash(x) : x for x in full_paths }
 
     #get the difference
     logging.info("Getting difference of hashes")

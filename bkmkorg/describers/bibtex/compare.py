@@ -12,7 +12,7 @@ import bibtexparser as b
 from bibtexparser.bparser import BibTexParser
 
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.dfs import files as retrieval
 
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
@@ -29,7 +29,6 @@ parser.add_argument('-t', '--target', action='append', help="Target Bibtex (repe
 
 
 def main():
-    global parser
     args = parser.parse_args()
     args.target = [abspath(expanduser(x)) for x in args.target]
 
@@ -39,13 +38,13 @@ def main():
     all_bib_paths = retrieval.get_data_files(args.targeet, ".bib")
     all_dbs = []
     for t in all_bib_paths:
-        # Use a new parser for each so library isn't shared
-        parser = BibTexParser(common_strings=False)
-        parser.ignore_nonstandard_types = False
-        parser.homogenise_fields = True
+        # Use a new bib_parser for each so library isn't shared
+        bib_parser = BibTexParser(common_strings=False)
+        bib_parser.ignore_nonstandard_types = False
+        bib_parser.homogenise_fields = True
 
         with open(t, 'r') as f:
-            db = b.load(f, parser)
+            db = b.load(f, bib_parser)
             all_dbs.append(db)
 
     logging.info("DB Sizes: {}".format(", ".join([str(len(x.entries)) for x in all_dbs])))

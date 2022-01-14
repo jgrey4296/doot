@@ -5,11 +5,8 @@ Split the bookmark library by top level domain
 import argparse
 import logging as root_logger
 from os import mkdir
-from os.path import abspath, exists, isdir, join, split, splitext
+from os.path import abspath, exists, isdir, join, split, splitext, expanduser
 from urllib.parse import urlparse
-
-from bkmkorg.io.writer.org import exportBookmarks as org_export
-from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 
 # Setup
 LOGLEVEL = root_logger.DEBUG

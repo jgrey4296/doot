@@ -13,7 +13,8 @@ import regex as re
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.bibtex import entry_processors as bib_proc
+from bkmkorg.utils.dfs import files as retrieval
 
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
@@ -25,18 +26,11 @@ root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                    epilog="\n".join(["Describe a bibtex file's:",
-                                                    "Tags, year counts, authors,",
-                                                    "And entries lacking files or with multiple files"]))
+                                    epilog="\n".join(["Describe a bibtex database's authors"]))
+
 parser.add_argument('-t', '--target', default="~/github/writing/resources/bibliography", help="Input target")
 parser.add_argument('-o', '--output', default="authors.list",                            help="Output Target")
 parser.add_argument('-c', '--counts', action="store_true")
-
-def custom(record):
-    record = c.author(record)
-    record = c.editor(record)
-    return record
-
 
 def process_db(db) -> List[str]:
     """ Extract all authors mentioned """
@@ -69,7 +63,7 @@ def main():
 
     # Load targets
     bib_files = retrieval.get_data_files(args.target, ".bib")
-    db = BU.parse_bib_files(bib_files, func=custom)
+    db        = BU.parse_bib_files(bib_files, func=bib_proc.author_extract)
     logging.info("Bibtex loaded")
 
     logging.info(f"Processing Entries: {len(db.entries)}")

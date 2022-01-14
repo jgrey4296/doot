@@ -8,7 +8,7 @@ from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
                      splitext)
 
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.dfs import files as retrieval
 
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
@@ -18,17 +18,18 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
+
+DEFAULT_PATTERN = re.compile(r"(.*?\[+)/Users/johngrey/Desktop/twitter/orgs/(.+?)(\]\[.+)$")
+PERMALINK       = re.compile(r".*?:PERMALINK: *\[\[(.+?)\]\[")
+LINK            = re.compile(r".*\[\[(.+?)\]\[")
+
+
 #see https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join([""]))
 parser.add_argument('--target', action="append")
 parser.add_argument('--media')
 parser.add_argument('--pattern', default=DEFAULT_PATTERN)
-
-
-DEFAULT_PATTERN = re.compile("(.*?\[+)/Users/johngrey/Desktop/twitter/orgs/(.+?)(\]\[.+)$")
-PERMALINK       = re.compile(r".*?:PERMALINK: *\[\[(.+?)\]\[")
-LINK            = re.compile(r".*\[\[(.+?)\]\[")
 
 
 def retarget_org_file_links(org_file, pattern):
@@ -55,7 +56,7 @@ def retarget_org_file_links(org_file, pattern):
 
     # write file
     with open(org_file, 'w') as f:
-        [f.write(x) for x in retargeted]
+        f.write("\n".join(x for x in retargeted])
 
 def find_media(org_file):
     with open(org_file, 'r') as f:

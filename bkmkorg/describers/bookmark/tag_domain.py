@@ -7,10 +7,13 @@ import argparse
 import logging as root_logger
 from os.path import abspath, exists, expanduser, split, splitext
 from urllib.parse import urlparse
+from collections import defaultdict
 
 from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
-from bkmkorg.utils import retrieval
+from bkmkorg.utils.dfs import files as retrieval
 from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.bookmarks.collection import BookmarkCollection
+from bkmkorg.utils.tag.collection import TagFile
 
 # Setup logging
 LOGLEVEL = root_logger.DEBUG
@@ -28,54 +31,33 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
                                                     "Pairs with bkmkorg/filters/bookmark_tag_filter"]))
 parser.add_argument('-l', '--library')
 parser.add_argument('-o', '--output')
-parser.add_argument('-t', '--tag', action="store_true")
 parser.add_argument('-d', '--domain', action="store_true")
 
 
 if __name__ == "__main__":
-    args = parser.parse_args()
+    args         = parser.parse_args()
     args.library = abspath(expanduser(args.library))
-    args.output = abspath(expanduser(args.output))
+    args.output  = abspath(expanduser(args.output))
 
     assert(exists(args.library))
 
     # Load the library
     logging.info("Loading Library")
-    lib_files = retrival.get_data_files(args.library, ".html")
-    library = [y for x in lib_files for y in open_and_extract_bookmarks(x)]
+    library   = BookmarkCollection()
+    lib_files = retrieval.get_data_files(args.library, ".html")
+    for lib_f in lib_files:
+        with open(lib_f, 'r') as f:
+            library.add_file(f)
 
-    tags = {}
-    domains = {}
+    domains = TagFile()
 
     # Process library for tags and domains
     logging.info("Processing Library")
     for bkmk in library:
         # Count websites
-        parsed = urlparse(bkmk.url)
-        if parsed.netloc not in domains:
-            domains[parsed.netloc] = 0
-        domains[parsed.netloc] += 1
-        # count tags
-        for tag in bkmk.tags:
-            if tag not in tags:
-                tags[tag] = 0
-            tags[tag] += 1
+        parsed = bkmk.url_comps
+        domains.inc(parsed.netloc)
 
-    # print statistics
-    if args.tag:
-        tag_str = "\n".join(["{} : {}".format(x, y) for x,y in tags.items()])
-        logging.info("Writing tag counts")
-        with open('{}.tag_counts'.format(args.output), 'w') as f:
-            f.write(tag_str)
-
-        with open('{}.tags'.format(args.output), 'w') as f:
-            f.write("\n".join([x for x in tags.keys()]))
-
-    if args.domain:
-        domain_str = "\n".join(["{} : {}".format(x,y) for x,y in domains.items()])
-        logging.info("Domain Counts")
-        with open('{}.domain_counts'.format(args.output), 'w') as f:
-            f.write(domain_str)
-
-        with open('{}.domains'.format(args.output), 'w') as f:
-            f.write('\n'.join([x for x in domains.keys()]))
+    logging.info("Domain Counts")
+    with open('{}.domain_counts'.format(args.output), 'w') as f:
+        f.write(str(domains))

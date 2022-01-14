@@ -29,7 +29,7 @@ parser.add_argument('-p', '--preface', default="grouped")
 
 
 if __name__ == "__main__":
-   args = parser.parse_args()
+    args = parser.parse_args()
 
     all_files = listdir(expanduser(args.target))
     only_orgs = [x for x in all_files if splitext(x)[1] == '.org']

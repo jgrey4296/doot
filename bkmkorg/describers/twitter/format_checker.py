@@ -9,14 +9,12 @@ from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
                      splitext)
 
 import bibtexparser as b
-import regex
-import regex as re
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
-
 from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.dfs import files as retrieval
+from bkmkorg.utils.org.verify import check_orgs
 
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
@@ -41,8 +39,8 @@ if __name__ == "__main__":
     logging.info("Targeting: {}".format(args.target))
     logging.info("Output to: {}".format(args.output))
 
-    bibs, htmls, orgs = retrieval.collect_files(args.target)
-    suspect_files = retrieval.check_orgs(orgs)
+    bibs, htmls, orgs, bkmks = retrieval.collect_files(args.target)
+    suspect_files            = check_orgs(orgs)
 
     logging.info("Found {} suspect files".format(len(suspect_files)))
     with open(args.output,'w') as f:

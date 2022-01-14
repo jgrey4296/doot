@@ -11,9 +11,9 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     Set, Tuple, TypeVar, Union, cast)
 
 import bibtexparser as b
-
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.bibtex import entry_processors as bib_proc
+from bkmkorg.utils.dfs import files as retrieval
 from bkmkorg.utils.pdf import pdf as PU
 
 # Setup root_logger:
@@ -36,24 +36,6 @@ parser.add_argument('--bound', default=200)
 
 
 
-def custom_parse(record):
-    if 'year' not in record:
-        year_temp = "2020"
-    else:
-        year_temp = record['year']
-    if "/" in year_temp:
-        year_temp = year_temp.split("/")[0]
-
-    year = datetime.strptime(year_temp, "%Y")
-    tags = []
-    if 'tags' in record:
-        tags = [x.strip() for x in record['tags'].split(",")]
-
-    record['year'] = year
-    record['tags'] = tags
-
-    return record
-
 def main():
     args = parser.parse_args()
     args.output = abspath(expanduser(args.output))
@@ -62,12 +44,12 @@ def main():
 
     bibtex_files = retrieval.get_data_files(args.target, ".bib")
     db = b.bibdatabase.BibDatabase()
-    BU.parse_bib_files(bibtex_files, func=custom_parse, database=db)
+    BU.parse_bib_files(bibtex_files, func=bib_proc.tag_summary, database=db)
 
     entries_with_tag = [x for x in db.entries if args.tag in x['tags']]
-    entries_by_year = sorted(entries_with_tag, key=lambda x: x['year'])
-    pdfs_to_process = [x['file'] for x in entries_by_year]
-    expanded_paths = [abspath(expanduser(x)) for x in pdfs_to_process]
+    entries_by_year  = sorted(entries_with_tag, key=lambda x: x['year'])
+    pdfs_to_process  = [x['file'] for x in entries_by_year]
+    expanded_paths   = [abspath(expanduser(x)) for x in pdfs_to_process]
     logging.info("Summarising {} pdfs".format(len(expanded_paths)))
     PU.summarise_pdfs(expanded_paths, output=output_path, bound=args.bound)
 

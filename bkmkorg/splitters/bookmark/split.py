@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 from collections import defaultdict
 import re
 
-from bkmkorg.utils.file.retrieval import get_data_files
+from bkmkorg.utils.dfs.files import get_data_files
 from bkmkorg.io.reader.plain_bookmarks import load_plain_file
 
 # Setup
@@ -29,7 +29,7 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
 parser.add_argument('-s', '--source', action="append")
 parser.add_argument('-o', '--output')
 
-CLEAN = re.compile("^www\.")
+CLEAN = re.compile(r"^www\.")
 
 
 def main():
@@ -76,7 +76,7 @@ def main():
 
     for domain, bkmks in domains.items():
         flattened = domain.replace(".", "_")
-        bkmks_s = "\n".join([x.to_string() for x in sorted(bkmks)])
+        bkmks_s = "\n".join([str(x) for x in sorted(bkmks)])
         with open(join(args.output, f"{flattened}.bookmarks"), 'w') as f:
             f.write(bkmks_s)
 

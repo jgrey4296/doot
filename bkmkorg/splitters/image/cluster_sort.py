@@ -14,6 +14,7 @@ import PIL
 from PIL import Image
 from sklearn.cluster import KMeans
 
+from bkmkorg.utils.dfs.files import get_data_files, img_exts
 # Setup
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
@@ -62,7 +63,7 @@ if __name__ == "__main__":
     args.output = abspath(expanduser(args.output))
 
     logging.info("Starting")
-    img_paths = get_imgs(args.target)
+    img_paths = get_data_files(args.target, ext=img_exts)
     logging.info("Got {} images from {}".format(len(img_paths), args.target))
     if args.rand > 0:
         logging.info("Using {} for rand".format(args.rand))

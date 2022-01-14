@@ -11,9 +11,7 @@ import re
 import urllib
 from datetime import datetime
 
-import urllib2
 from bs4 import BeautifulSoup
-from cookielib import CookieJar
 
 
 class PatchNoteExtractor:

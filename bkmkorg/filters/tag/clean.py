@@ -15,12 +15,11 @@ import regex as re
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
-from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
-from bkmkorg.io.reader.tags import read_substitutions
-from bkmkorg.io.writer.netscape import exportBookmarks
+from bkmkorg.utils.bibtex import entry_processors as bib_proc
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.dfs import files as retrieval
 from bkmkorg.utils.tag import clean
+from bkmkorg.utils.tag.collection import SubstitutionFile
 
 logging = root_logger.getLogger(__name__)
 LOGLEVEL = root_logger.DEBUG
@@ -42,31 +41,6 @@ bparser = BibTexParser(common_strings=False)
 bparser.ignore_nonstandard_types = False
 bparser.homogenise_fields = True
 
-def custom(record):
-    # record = c.type(record)
-    # record = c.author(record)
-    # record = c.editor(record)
-    # record = c.journal(record)
-    # record = c.keyword(record)
-    # record = c.link(record)
-    # record = c.doi(record)
-    tags = set()
-
-    if 'tags' in record:
-        tags.update([i.strip() for i in re.split(',|;', record["tags"].replace('\n', ''))])
-    if "keywords" in record:
-        tags.update([i.strip() for i in re.split(',|;', record["keywords"].replace('\n', ''))])
-    if "mendeley-tags" in record:
-        tags.update([i.strip() for i in re.split(',|;', record["mendeley-tags"].replace('\n', ''))])
-
-    record['tags'] = tags
-    # record['p_authors'] = []
-    # if 'author' in record:
-    #     record['p_authors'] = [c.splitname(x, False) for x in record['author']]
-    return record
-
-
-
 #--------------------------------------------------
 def main():
     args = parser.parse_args()
@@ -76,15 +50,14 @@ def main():
     logging.info("Cleaning based on: {}".format(args.cleaned))
 
     #Load Cleaned Tags
-    tag_sub_files = retrieval.get_data_files(args.cleaned, [".sub"])
-    cleaned_tags = read_substitutions(tag_sub_files)
+    cleaned_tags  = SubstitutionFile.builder(args.cleaned)
     logging.info("Loaded {} tag substitutions".format(len(cleaned_tags)))
 
     #Load Bibtexs, html, orgs and clean each
-    bibs, htmls, orgs = retrieval.collect_files(args.target)
+    bibs, htmls, orgs, bkmks = retrieval.collect_files(args.target)
     clean.clean_bib_files(bibs   , cleaned_tags)
     clean.clean_org_files(orgs   , cleaned_tags)
-    clean.clean_html_files(htmls , cleaned_tags)
+    clean.clean_bkmk_files(bkmks , cleaned_tags)
     logging.info("Complete --------------------")
 
 

@@ -1,4 +1,5 @@
 import argparse
+from bkmkorg.utils.bibtex import entry_processors as bib_proc
 import logging as root_logger
 from math import ceil
 from os import listdir, mkdir
@@ -35,23 +36,8 @@ parser.add_argument('-Y', '--YEARS', action='store_true')
 parser.add_argument('-A', '--AUTHORS', action='store_true')
 
 
-def custom(record):
-    # record = c.type(record)
-    # record = c.author(record)
-    # record = c.editor(record)
-    # record = c.journal(record)
-    # record = c.keyword(record)
-    # record = c.link(record)
-    # record = c.doi(record)
-    # record['tags'] = [i.strip() for i in re.split(',|;', record["tags"].replace("\n",""))]
-    # record['p_authors'] = []
-    # if 'author' in record:
-    #     record['p_authors'] = [c.splitname(x, False) for x in record['author']]
-    return record
-
-
 if __name__ == "__main__":
-   args = parser.parse_args()
+    args = parser.parse_args()
 
     args.target = abspath(expanduser(args.target))
     args.output = abspath(expanduser(args.output))
@@ -66,7 +52,7 @@ if __name__ == "__main__":
     parser = BibTexParser(common_strings=False)
     parser.ignore_nonstandard_types = False
     parser.homogenise_fields = True
-    parser.customization = custom
+    parser.customization = bib_proc.nop
 
     # Load bibtex
     with open(args.target, 'r') as f:

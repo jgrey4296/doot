@@ -17,8 +17,8 @@ if __name__ == "__main__":
         print("Next Page")
         count += 1
         fileName = "../htmlData/dota" + str(count) + ".html"
-        dle = DotaLinkExtractor("http://dota2.gamepedia.com", 
-                                data['nextPage'], 
+        dle = DotaLinkExtractor("http://dota2.gamepedia.com",
+                                data['nextPage'],
                                 fileName)
         data = dle.scrape()
         totalLinks += data['allLinks']

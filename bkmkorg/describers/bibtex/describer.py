@@ -19,7 +19,10 @@ from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
 
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.bibtex import entry_processors as bib_proc
+from bkmkorg.utils.dfs import files as retrieval
+from bkmkorg.utils.diagram import make_bar
+from bkmkorg.utils.tag.collection import TagFile
 
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
@@ -43,38 +46,6 @@ parser.add_argument('-a', '--authors', action="store_true",                 help
 parser.add_argument('-y', '--years', action="store_true",                   help="Describe Years")
 
 
-def make_bar(k, v, left_pad_v, right_scale_v):
-    pad = ((10 + left_pad_v) - len(k))
-    bar_graph = ceil(((100 - pad) / right_scale_v) * v)
-    full_str = "{}{}({}) : {}>\n".format(k, " " * pad, v, "=" *  bar_graph)
-    return full_str
-
-def custom(record):
-    record = c.type(record)
-    record = c.author(record)
-    record = c.editor(record)
-    record = c.journal(record)
-    record = c.keyword(record)
-    record = c.link(record)
-    record = c.doi(record)
-    tags = set()
-
-    if 'tags' in record:
-        tags.update([i.strip() for i in re.split(',|;', record["tags"].replace('\n', ''))])
-    if "keywords" in record:
-        tags.update([i.strip() for i in re.split(',|;', record["keywords"].replace('\n', ''))])
-    if "mendeley-tags" in record:
-        tags.update([i.strip() for i in re.split(',|;', record["mendeley-tags"].replace('\n', ''))])
-
-    record['tags'] = tags
-    record['p_authors'] = []
-    if 'author' in record:
-        record['p_authors'] = [x.split(' and ') for x in record['author']]
-    return record
-
-
-
-
 def process_db(db):
 
     proportion = int(len(db.entries) / 10)
@@ -82,9 +53,8 @@ def process_db(db):
 
     # Extracted data
     all_keys               = []
-    all_tags               = defaultdict(lambda: 0)
-    all_years              = defaultdict(lambda: 0)
-    author_counts          = defaultdict(lambda: 0)
+    all_years              = TagFile()
+    author_counts          = TagFile()
     non_tagged             = []
     no_file                = []
     missing_files          = []
@@ -103,71 +73,33 @@ def process_db(db):
         # get tags
         e_tags = entry['tags']
 
-        for x in e_tags:
-            all_tags[x] += 1
-
         # get untagged
         if not bool(e_tags):
             non_tagged.append(entry)
 
         # count entries per year
         if 'year' in entry:
-            all_years[entry['year']] += 1
+            all_years.inc(entry['year'])
 
         # count names
         for x in entry['p_authors']:
             for name in x:
-                author_counts[name] += 1
+                author_counts.inc(name)
 
         # Retrieve file information
         if not any(['file' in x for x in entry.keys()]):
             no_file.append(entry['ID'])
 
         else:
-            filenames = [y for x,y in entry.items() if 'file' in x]
+            filenames      = [y for x,y in entry.items() if 'file' in x]
             missing_files += [y for y in filenames if not exists(y)]
 
     return (all_keys,
-            all_tags,
             all_years,
             author_counts,
             non_tagged,
             no_file,
             missing_files)
-
-def build_tag_files(all_tags, target):
-    # Build Tag count file
-    tag_str = ["{} : {}".format(k, v) for k, v in all_tags.items()]
-    with open("{}.tag_counts".format(target), 'w') as f:
-        logging.info("Writing Tag Counts")
-        f.write("\n".join(tag_str))
-
-    # Build All Tags set File
-    with open("{}.all_tags".format(target), 'w') as f:
-        logging.info("Writing all Tags")
-        f.write("\n".join([x for x in all_tags.keys()]))
-
-
-
-def build_year_counts(all_years, target):
-    # Build Year counts file
-    logging.info("Writing Year Descriptions")
-    year_str = ["{} : {}".format(k,v) for k,v in all_years.items()]
-    with open("{}.years".format(target), 'w') as f:
-        f.write("\n".join(year_str))
-        longest_year = 10 + max([len(x) for x in all_years.keys()])
-        most_year = max([x for x in all_years.values()])
-
-def build_author_counts(author_counts, target):
-    logging.info("Writing Author Descriptions")
-    longest_author = 10 + max([len(x) for x in author_counts.keys()])
-    most_author = max([x for x in author_counts.values()])
-    with open("{}.authors".format(target), 'w') as f:
-        with open("{}.authors_bar".format(target), 'w') as g:
-            logging.info("Writing authors")
-            for name, count in author_counts.items():
-                f.write("{} : {}\n".format(name, count))
-                g.write(make_bar(name, count, longest_author, most_author))
 
 
 def main():
@@ -181,29 +113,32 @@ def main():
 
     # Load targets
     bib_files = retrieval.get_data_files(args.target, ".bib")
-    db = BU.parse_bib_files(bib_files, func=custom)
+    db = BU.parse_bib_files(bib_files, func=bib_proc.clean_full)
     logging.info("Bibtex loaded")
 
     logging.info(f"Processing Entries: {len(db.entries)}")
     result = process_db(db)
     logging.info("Processing complete")
-    build_tag_files(result[1], args.output)
 
     if args.years:
-        build_year_counts(result[2], args.output)
+        with open("{}.years".format(args.output), 'w') as f:
+            f.write(str(result[1]))
+
 
     # Build Author counts files
     if args.authors:
-        build_author_counts(result[3], args.output)
+        with open("{}.authors".format(args.output), 'w') as f:
+            f.write(str(result[2]))
+
 
     # Build Default Files
     if args.files:
         logging.info("Writing Descriptions of Files")
         with open(f"{args.output}.no_file", 'w') as f:
-            f.write("\n".join(result[5]))
+            f.write("\n".join(result[4]))
 
         with open(f"{args.output}.missing_file", 'w') as f:
-            f.write("\n".join(result[6]))
+            f.write("\n".join(result[5]))
 
     logging.info("Complete")
 

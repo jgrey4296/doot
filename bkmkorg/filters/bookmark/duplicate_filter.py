@@ -7,11 +7,9 @@ from os import listdir
 from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
                      splitext)
 
-from bkmkorg.utils.bookmark.bookmark import Bookmark
-from bkmkorg.io.writer.netscape import exportBookmarks
-from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
+from bkmkorg.utils.bookmarks.collection import Bookmark, BookmarkCollection
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.dfs import files as retrieval
 
 # Setup root_logger:
 LOGLEVEL = root_logger.DEBUG
@@ -34,23 +32,17 @@ if __name__ == "__main__":
     args.output = abspath(expanduser(args.output))
 
     logging.info("Deduplicating {}".format(args.source))
-    source_files = retrieval.get_data_files(args.source, ".html")
-    to_check = [y for x in source_files for y in open_and_extract_bookmarks(x)]
+    source_files = retrieval.get_data_files(args.source, ".bookmarks")
+    total = BookmarkCollection()
+    for bkmk_f in source_files:
+        with open(bkmk_f, 'r') as f:
+            total.add_file(f)
 
-    logging.info("Total Links to Check: {}".format(len(to_check)))
+    logging.info("Total Links to Check: {}".format(len(total)))
 
-    #Get links that don't match *exactly*, use hash first,
-    #if hash exists, compare exactly
-    deduplicated = {}
-    for x in to_check:
-        if x.url not in deduplicated:
-            deduplicated[x.url] = x
-        else:
-            combined_tags = set()
-            combined_tags.update(x.tags)
-            combined_tags.update(deduplicated[x.url].tags)
-            deduplicated[x.url] = Bookmark(x.url, combined_tags, name=x.name)
+    total.merge_duplicates()
 
-    logging.info("Final Number of Links: {}".format(len(deduplicated)))
+    logging.info("Final Number of Links: {}".format(len(total)))
     #write out to separate file
-    exportBookmarks([x for x in deduplicated.values()], args.output)
+    with open(args.output, 'w') as f:
+        f.write(str(total))

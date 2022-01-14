@@ -18,7 +18,8 @@ from bibtexparser.bparser import BibTexParser
 from matplotlib import pyplot as plt
 
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.bibtex import entry_processors as bib_proc
+from bkmkorg.utils.dfs import files as retrieval
 from bkmkorg.utils import diagram as DU
 
 # Setup root_logger:
@@ -33,28 +34,11 @@ logging = root_logger.getLogger(__name__)
 ##############################
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Create graphs of Bibtex Files"]))
-parser.add_argument('--library', action="append", help="The bibtex file collection directory")
-parser.add_argument('--target', help="The output target directory")
-parser.add_argument('--tag', help="Optional Focus Tag")
+parser.add_argument('-l', '--library', action="append", help="The bibtex file collection directory")
+parser.add_argument('-o', '--output', help="The output target directory")
+parser.add_argument('-t', '--tag', help="Optional Focus Tag")
 
 
-def custom_parse(record):
-    if 'year' not in record:
-        year_temp = "2020"
-    else:
-        year_temp = record['year']
-    if "/" in year_temp:
-        year_temp = year_temp.split("/")[0]
-
-    year = datetime.strptime(year_temp, "%Y")
-    tags = []
-    if 'tags' in record:
-        tags = [x.strip() for x in record['tags'].split(",")]
-
-    record['year'] = year
-    record['tags'] = tags
-
-    return record
 
 def get_tag_across_years(db, tag) -> List[Tuple[datetime, int]]:
     """
@@ -82,12 +66,12 @@ def get_entries_across_years(db) -> List[Tuple[datetime, int]]:
 def main():
     args = parser.parse_args()
     args.library = [abspath(expanduser(x)) for x in args.library]
-    args.target = abspath(expanduser(args.target))
+    args.output= abspath(expanduser(args.output))
 
     all_bibs = retrieval.get_data_files(args.library, ".bib")
     logging.info("Found {} bib files".format(len(all_bibs)))
     db = b.bibdatabase.BibDatabase()
-    BU.parse_bib_files(all_bibs, func=custom_parse, database=db)
+    BU.parse_bib_files(all_bibs, func=bib_proc.year_parse, database=db)
     logging.info("Loaded bibtex entries: {}".format(len(db.entries)))
 
     # Graph tags over time
@@ -115,7 +99,7 @@ def main():
         plt.gcf().autofmt_xdate()
 
     logging.info("Finished, saving")
-    plt.savefig(args.target)
+    plt.savefig(args.output)
     plt.show()
 
 

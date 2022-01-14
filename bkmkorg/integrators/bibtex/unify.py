@@ -16,7 +16,9 @@ from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
 
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.bibtex import entry_processors as bib_proc
+from bkmkorg.utils.dfs import files as retrieval
+
 
 # Setup
 LOGLEVEL = root_logger.DEBUG
@@ -35,28 +37,6 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
 parser.add_argument('-t', '--target', action="append")
 parser.add_argument('-o', '--output', default="./output/integrated.bib")
 
-
-def custom(record):
-    # record = c.type(record)
-    # record = c.author(record)
-    # record = c.editor(record)
-    # record = c.journal(record)
-    # record = c.keyword(record)
-    # record = c.link(record)
-    # record = c.doi(record)
-    # if "keywords" in record:
-    #     record["keywords"] = [i.strip() for i in re.split(',|;', record["keywords"].replace('\n', ''))]
-    # if "mendeley-tags" in record:
-    #     record["mendeley-tags"] = [i.strip() for i in re.split(',|;', record["mendeley-tags"].replace('\n', ''))]
-
-    # record['p_authors'] = []
-    # if 'author' in record:
-    #     record['p_authors'] = [c.splitname(x, False) for x in record['author']]
-    return record
-
-
-
-
 def main():
     args = parser.parse_args()
     args.output = abspath(expanduser(args.output))
@@ -66,21 +46,21 @@ def main():
 
     #load each of the specified files
     target_files = retrieval.get_data_files(args.target, ".bib")
-    dbs = [BU.parse_bib_files(x, custom) for x in target_files]
+    dbs = [BU.parse_bib_files(x, bib_proc.nop) for x in target_files]
 
     main_db = b.bibdatabase.BibDatabase()
     # Load the main database
     if exists(args.output):
-        BU.parse_bib_files(args.output, custom, databse=main_db)
+        BU.parse_bib_files(args.output, bib_proc.nop, database=main_db)
 
-    main_set = set(main_db.get_entry_dict().keys())
-    total_entries = main_db.entries[:]
+    main_set          = set(main_db.get_entry_dict().keys())
+    total_entries     = main_db.entries[:]
     missing_keys_main = set()
 
     # Get entries missing from the main database
     for db in dbs:
-        db_dict = db.get_entry_dict()
-        db_set = set(db_dict.keys())
+        db_dict      = db.get_entry_dict()
+        db_set       = set(db_dict.keys())
         missing_keys = db_set.difference(main_set)
         missing_keys_main.update(missing_keys)
         total_entries += [db_dict[x] for x in missing_keys]

@@ -11,7 +11,8 @@ from subprocess import call
 
 from bkmkorg.utils.bibtex import bibtex as BU
 from bkmkorg.utils.pdf import pdf as PU
-from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.dfs import files as retrieval
+
 
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])

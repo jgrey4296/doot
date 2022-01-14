@@ -11,7 +11,7 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.pdf import pdf as PU
-from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.dfs import files as retrieval
 
 # Setup root_logger:
 LOGLEVEL = root_logger.DEBUG
@@ -33,11 +33,10 @@ parser.add_argument('--bound', default=200)
 
 
 def main():
-    args = parser.parse_args()
+    args        = parser.parse_args()
     args.output = abspath(expanduser(args.output))
 
     # TODO, get information from bibtex on each entry, including specific pages
-
     if args.grouped:
         groups = listdir(args.target)
         for group in groups:

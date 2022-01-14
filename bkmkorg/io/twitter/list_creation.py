@@ -42,7 +42,7 @@ CHARWIDTH        = 80
 ORG_SPLIT        = re.compile(r'\|')
 DIVIDER_SPLIT    = re.compile(r'\|[\-+]+\|')
 
-def get_existing_lists(t):
+def get_existing_lists(twit):
     logging.info("Getting Existing Lists")
     #use 1.1/lists/ownership.json
     #use cursoring
@@ -50,7 +50,7 @@ def get_existing_lists(t):
     next_cursor = "-1"
     while next_cursor != '0':
         logging.info("Cursor: {}".format(next_cursor))
-        response = t.lists.ownerships(cursor=next_cursor)
+        response = twit.lists.ownerships(cursor=next_cursor)
         next_cursor = response['next_cursor_str']
         lists = response['lists']
         parsed_lists = {x['name'] : x['id'] for x in lists if 'belial42' in x['full_name']}
@@ -77,20 +77,20 @@ def load_org(filename):
             if DIVIDER_SPLIT.match(line):
                 user_id = None
                 continue
-            else:
-                #otherwise, split by into columns,
-                maybe_id = line[columns[0][0]+1:columns[0][1]].strip()
-                if maybe_id != '':
-                    logging.debug("Setting to ID: {}".format(maybe_id))
-                    user_id = maybe_id
 
-                tags = [x.strip() for x in line[columns[2][0]+1:columns[2][1]].split(',') if x.strip() is not '']
-                for tag in tags:
-                    data[tag].add(user_id)
+            #otherwise, split by into columns,
+            maybe_id = line[columns[0][0]+1:columns[0][1]].strip()
+            if maybe_id != '':
+                logging.debug("Setting to ID: {}".format(maybe_id))
+                user_id = maybe_id
+
+            tags = [x.strip() for x in line[columns[2][0]+1:columns[2][1]].split(',') if bool(x.strip())]
+            for tag in tags:
+                data[tag].add(user_id)
 
     return dict(data)
 
-def create_lists(t, lists):
+def create_lists(twit, lists):
     logging.info("Creating Lists: {}".format(len(lists)))
     #use 1.1/lists/create.json
     to_create = lists[:]
@@ -99,7 +99,7 @@ def create_lists(t, lists):
     while to_create:
         current = to_create.pop(0)
         try:
-            response = t.lists.create(name=current, mode="private")
+            response = twit.lists.create(name=current, mode="private")
             created[response['name']] = response['id']
         except Exception as e:
             logging.warning("Creating list failed: {}".format(current))
@@ -117,7 +117,7 @@ def chunks(l, n):
     for i in range(0, len(l), n):
         yield l[i:i + n]
 
-def add_members(t, list_name, list_id, members):
+def add_members(twit, list_name, list_id, members):
     logging.info("Adding members to: {}".format(list_name))
     #use 1.1/lists/members/create_all.json
     #rate limited
@@ -126,7 +126,7 @@ def add_members(t, list_name, list_id, members):
     while chunked:
         chunk = chunked.pop(0)
         try:
-            t.lists.members.create_all(list_id=list_id, user_id=", ".join(chunk))
+            twit.lists.members.create_all(list_id=list_id, user_id=", ".join(chunk))
             sleep(30)
         except Exception as e:
             logging.warning("Member add failure for : list_name")

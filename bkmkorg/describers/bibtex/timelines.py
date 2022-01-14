@@ -14,7 +14,8 @@ import bibtexparser as b
 from bibtexparser import customization as c
 
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.utils.file import retrieval
+from bkmkorg.utils.bibtex import entry_processors as bib_proc
+from bkmkorg.utils.dfs import files as retrieval
 
 # Setup root_logger:
 LOGLEVEL = root_logger.DEBUG
@@ -32,28 +33,6 @@ parser.add_argument('--library', action="append")
 parser.add_argument('--min_entries', default=5, type=int)
 parser.add_argument('--output')
 
-
-def custom_parse(record):
-    if 'year' not in record:
-        year_temp = "2020"
-    else:
-        year_temp = record['year']
-
-    if "/" in year_temp:
-        year_temp = year_temp.split("/")[0]
-
-    year = datetime.strptime(year_temp, "%Y")
-    tags = []
-    if 'tags' in record:
-        tags = [x.strip() for x in record['tags'].split(",")]
-
-    record['year'] = year
-    record['tags'] = tags
-
-    return record
-
-
-
 def main():
     args = parser.parse_args()
     args.library = [abspath(expanduser(x)) for x in args.library]
@@ -70,12 +49,12 @@ def main():
     logging.info("Found {} bib files".format(len(all_bibs)))
 
     db = b.bibdatabase.BibDatabase()
-    BU.parse_bib_files(all_bibs, func=custom_parse, database=db)
+    BU.parse_bib_files(all_bibs, func=bib_proc.year_parse, database=db)
 
     logging.info("Loaded bibtex entries: {}".format(len(db.entries)))
 
     tag_collection = defaultdict(list)
-    for i, entry in enumerate(db.entries):
+    for entry in db.entries:
         tags = entry['tags']
         for tag in tags:
             tag_collection[tag].append(entry)
