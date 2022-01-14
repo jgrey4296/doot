@@ -1,6 +1,6 @@
+TOP     := ./bkmkorg
 
 all : clean
-
 # Building ####################################################################
 build:
 	python -m build
