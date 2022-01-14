@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-from typing import List, Set, Dict, Tuple, Optional, Any
-from typing import Callable, Iterator, Union, Match
-from typing import Mapping, MutableMapping, Sequence, Iterable
-from typing import cast, ClassVar, TypeVar, Generic
-from os.path import exists, expanduser, isdir, isfile, join, splitext
+import logging as root_logger
+from os import listdir
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
+from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
+                    List, Mapping, Match, MutableMapping, Optional, Sequence,
+                    Set, Tuple, TypeVar, Union, cast)
 
 import twitter as tw
+
+logging = root_logger.getLogger(__name__)
 
 Path = str
 
@@ -13,9 +17,9 @@ Path = str
 def load_credentials_and_setup(credentials:Path, key:Path, secret:Path):
     """ Load the keys and tokens, and setup the twitter client """
     #Get the Key and Secret from (gitignored) files
-    MY_TWITTER_CREDS = absfile(expanduser(credentials))
-    KEY_FILE         = absfile(expanduser(key))
-    SECRET_FILE      = absfile(expanduser(secret))
+    MY_TWITTER_CREDS = abspath(expanduser(credentials))
+    KEY_FILE         = abspath(expanduser(key))
+    SECRET_FILE      = abspath(expanduser(secret))
 
     assert(all([exists(x) for x in [MY_TWITTER_CREDS, KEY_FILE, SECRET_FILE]]))
 

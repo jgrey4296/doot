@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+import logging as root_logger
+from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
+                    List, Mapping, Match, MutableMapping, Optional, Sequence,
+                    Set, Tuple, TypeVar, Union, cast)
+
+logging = root_logger.getLogger(__name__)
+
 def get_tweet_dates_and_ids(org_files, line_regex=None) -> List[Tuple[datetime, str]]:
     """
     Extract Tweet id strings and date strings from property drawers in org files

@@ -9,13 +9,13 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 from unicodedata import normalize as norm_unicode
 
 import regex as re
-from bkmkorg.utils.collection.bookmark import Bookmark
-from bkmkorg.io.reader.plain_bookmarks import load_plain_file
-from bkmkorg.io.writer.bookmarks import exportBookmarks
+from bkmkorg.utils.bookmarks.collection import Bookmark
+
 
 logging = root_logger.getLogger(__name__)
 
-def clean_bib_files(bib_files, sub, tag_regex="^(\s*tags\s*=\s*{)(.+?)(\s*},?)$"):
+
+def clean_bib_files(bib_files, sub, tag_regex=r"^(\s*tags\s*=\s*{)(.+?)(\s*},?)$"):
     """ Parse all the bibtext files, naively
     Extract the tags, deduplicate and apply substitutions,
     write out again
@@ -39,10 +39,7 @@ def clean_bib_files(bib_files, sub, tag_regex="^(\s*tags\s*=\s*{)(.+?)(\s*},?)$"
             tags = [x.strip() for x in match[2].split(",") if bool(x.strip())]
             replacement_tags = set()
             for tag in tags:
-                if tag in sub and bool(sub[tag]):
-                    replacement_tags.update(sub[tag])
-                else:
-                    replacement_tags.add(tag)
+                replacement_tags.add(sub.get_sub(tag))
 
             out_lines.append("{}{}{}\n".format(match[1],
                                                ",".join(sorted(replacement_tags)),
@@ -52,13 +49,13 @@ def clean_bib_files(bib_files, sub, tag_regex="^(\s*tags\s*=\s*{)(.+?)(\s*},?)$"
         with open(bib, 'w') as f:
             f.write(outstring)
 
-def clean_org_files(org_files, sub, tag_regex="^\*\*\s+(.+?)(\s+):(\S+):$"):
+def clean_org_files(org_files, sub, tag_regex=r"^\*\*\s+(.+?)(\s+):(\S+):$"):
     """
     Read all org files, matching on headings,
     and deduplicate and substitute, write out again
     """
     logging.info("Cleaning orgs")
-    org_tags = {}
+    ORG_TAG_REGEX = re.compile(tag_regex)
 
     for org in org_files:
         #read
@@ -83,10 +80,7 @@ def clean_org_files(org_files, sub, tag_regex="^\*\*\s+(.+?)(\s+):(\S+):$"):
             replacement_tags = set([])
             #swap to dict:
             for tag in individual_tags:
-                if tag in sub and bool(sub[tag]):
-                    [replacement_tags.add(new_tag) for new_tag in sub[tag]]
-                else:
-                    replacement_tags.add(tag)
+                replacement_tags.add(sub.get_sub(tag))
 
             out_line = "** {}{}:{}:\n".format(title,
                                               spaces,
@@ -96,44 +90,16 @@ def clean_org_files(org_files, sub, tag_regex="^\*\*\s+(.+?)(\s+):(\S+):$"):
         with open(org, 'w') as f:
             f.write(out_text)
 
-def clean_html_files(html_files, sub):
-    """
-    Read all htmls,
-    apply substitutions
-    """
-    logging.info("Cleaning htmls")
-
-    for html in html_files:
-        bkmks = open_and_extract_bookmarks(html)
-        cleaned_bkmks = []
-        for bkmk in bkmks:
-            replacement_tags = set([])
-            for tag in bkmk.tags:
-                # clean
-                if tag in sub and bool(sub[tag]):
-                    [replacement_tags.add(new_tag) for new_tag in sub[tag]]
-                else:
-                    replacement_tags.add(tag)
-            new_bkmk = Bookmark(bkmk.url, replacement_tags, name=bkmk.name)
-            cleaned_bkmks.append(new_bkmk)
-        # write out
-        exportBookmarks(cleaned_bkmks, html)
-
 def clean_bkmk_files(bkmk_files, sub):
     logging.info("Cleaning bookmarks")
 
     for bkmk_path in bkmk_files:
         cleaned   = []
-        bookmarks = load_plain_file(bkmk_path)
-        for bkmk in bkmks:
-            replacement_tags = set([])
-            for tag in bkmk.tags:
-                # clean
-                if tag in sub and bool(sub[tag]):
-                    [replacement_tags.add(new_tag) for new_tag in sub[tag]]
-                else:
-                    replacement_tags.add(tag)
-            new_bkmk = Bookmark(bkmk.url, replacement_tags, name=bkmk.name)
-            cleaned_bkmks.append(new_bkmk)
+        with open(bkmk_path, 'r') as f:
+            bookmarks = BookmarkCollection.read(f)
 
-        exportBookmarks(bookmarks, bkmk_path)
+        for bkmk in bkmks:
+            bkmk.clean(sub)
+
+        with open(bkmk_path, 'w') as f:
+            f.write(str(bookmarks)

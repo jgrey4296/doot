@@ -50,5 +50,3 @@ def find_missing(library, others):
         if the_hash not in library_hash:
             missing.append(x)
     return missing
-
-

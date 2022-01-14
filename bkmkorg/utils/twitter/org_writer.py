@@ -106,10 +106,10 @@ class TwitterOrg:
             self._output.append(thread)
 
     def build_unused(self):
-        unused_tweets = set(self.tweet_lookup.keys()).difference(self._used)
+        unused_tweets = set(self.tweets.keys()).difference(self._used)
         if bool(unused_tweets):
             self._output.append("*** Unused Tweets")
-            self._output += [TwitterTweet.build(self.tweet_lookup[x],
+            self._output += [TwitterTweet.build(self.tweets[x],
                                                 self.user_lookup,
                                                 self.relative_files_path) for x in unused_tweets]
 
@@ -150,7 +150,7 @@ class TwitterThread:
             return None
 
         date = TwitterThread.parse_date(main_thread[0]['created_at'])
-        tags = set([y.strip() for x in thread_tweet_ids for y in source_ids.mapping[x].split(",") if y != ""])
+        tags = {y.strip() for x in thread_tweet_ids for y in source_ids.mapping[x].split(",") if y != ""}
 
         obj = TwitterThread(redirect_url, date, tags)
 
@@ -191,8 +191,8 @@ class TwitterThread:
         for conv in self.conversations:
             if not bool(conv):
                 continue
-            missing_tweets = [x for x in conv if x not in tweets]
-            conv_tweets    = [tweets[x] for x in conv if x in tweets]
+            missing_tweets = [x for x in conv if x not in self.tweets]
+            conv_tweets    = [self.tweets[x] for x in conv if x in self.tweets]
             if not bool(conv_tweets):
                 logging.info("Empty Conversation: {}".format(conv))
                 continue
@@ -390,5 +390,3 @@ class TwitterTweet:
             media.update([x.split("?")[0] for x in urls])
 
         return media, alt_texts
-
-

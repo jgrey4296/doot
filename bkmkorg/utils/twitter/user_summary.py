@@ -15,6 +15,8 @@ import logging as root_logger
 import networkx as nx
 logging = root_logger.getLogger(__name__)
 
+from bkmkorg.utils.twitter.org_writer import TwitterTweet
+
 @dataclass
 class TwitterUserSummary:
     """

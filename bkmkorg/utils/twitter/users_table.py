@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-from typing import List, Set, Dict, Tuple, Optional, Any
-from typing import Callable, Iterator, Union, Match
-from typing import Mapping, MutableMapping, Sequence, Iterable
-from typing import cast, ClassVar, TypeVar, Generic
-from dataclasses import dataclass, field, InitVar
-from os.path import join, isfile, exists, abspath
-from os.path import split, isdir, splitext, expanduser
+import textwrap
+from dataclasses import InitVar, dataclass, field
 from os import listdir
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
+from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
+                    List, Mapping, Match, MutableMapping, Optional, Sequence,
+                    Set, Tuple, TypeVar, Union, cast)
+
 
 @dataclass
 class TwitterUsersWriter:

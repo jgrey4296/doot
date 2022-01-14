@@ -3,7 +3,7 @@ import logging as root_logger
 from os import listdir
 from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
                      splitext)
-from subprocess import call
+from subprocess import call, run
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
@@ -66,12 +66,12 @@ def convert_pdfs_to_text(files):
 def convert_alternative(source, output_dir, title):
     target = "{}.txt".format(title)
     logging.info("Converting {} from {}".format(target, source))
-    subprocess.run(['mutool',
-                    'convert',
-                    '-F', 'text',
-                    '-o', join(output_dir, target),
-                    source],
-                   stdout=subprocess.PIPE)
+    run(['mutool',
+         'convert',
+         '-F', 'text',
+         '-o', join(output_dir, target),
+         source],
+        stdout=subprocess.PIPE)
 
 
 def merge_pdfs(paths, output="./pdf_summary"):

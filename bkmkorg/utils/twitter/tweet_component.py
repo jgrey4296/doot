@@ -93,5 +93,6 @@ class TweetComponent:
 
     def __enter__(self):
         pass
-    def __exit__(self, type, value, traceback):
+
+    def __exit__(self, atype, value, traceback):
         self.finish()

@@ -34,7 +34,7 @@ class IndexFile:
         Build an index file from a target directory or file
         """
         main = IndexFile()
-        for target in get_data_files(target, main.ext)
+        for target in get_data_files(target, main.ext):
             try:
                 with open(target, 'r') as f:
                     main += IndexFile.read(f, sep=sep)

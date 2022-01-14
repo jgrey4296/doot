@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import re
+import logging as root_logger
+logging = root_logger.getLogger(__name__)
 
-def check_orgs(org_files, id_regex="^\s+:(PERMALINK|TIME):\s+$"):
+def check_orgs(org_files, id_regex=r"^\s+:(PERMALINK|TIME):\s+$"):
     logging.info("Checking Orgs")
     ORG_ID_REGEX = re.compile(id_regex)
     files        = set([])

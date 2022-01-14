@@ -28,7 +28,7 @@ class TweetTodoFile:
 
 
     @staticmethod
-    def read(f:file, id_regex="status/(\d+)\?"):
+    def read(f:file, id_regex=r"status/(\d+)\?"):
         lines = f.readlines()
         obj   = TweetTodoFile()
         reg   = re.compile(id_regex)
