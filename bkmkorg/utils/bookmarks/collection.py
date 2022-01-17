@@ -10,6 +10,7 @@ import urllib.parse as url_parse
 
 import regex
 from bs4 import BeautifulSoup
+from bkmkorg.utils.collection.base_format import BaseFileFormat
 
 logging = root_logger.getLogger(__name__)
 
@@ -21,8 +22,7 @@ class Bookmark:
     url     : str      = field()
     tags    : Set[str] = field(default_factory=set)
     name    : str      = field(default="No Name")
-    tag_sep : str      = field(default=":")
-    url_sep : str      = field(default=" : ")
+    sep     : str      = field(default=" : ")
 
     def __post_init__(self):
         self.tags = [TAG_NORM.sub("_", x.strip()) for x in self.tags]
@@ -34,28 +34,24 @@ class Bookmark:
         return self.url < other.url
 
     def __str__(self):
-        tags = self.url_sep.join(sorted(self.tags))
-        return f"{self.url}{self.url_sep}{tags}"
+        tags = self.sep.join(sorted(self.tags))
+        return f"{self.url}{self.sep}{tags}"
 
     @staticmethod
-    def build(line, url_sep=None, tag_sep=None):
+    def build(line, sep=None):
         assert(isinstance(line, str))
-        if url_sep is None:
-            url_sep = Bookmark.url_sep
-        if tag_sep is None:
-            tag_sep = Bookmark.tag_sep
+        if sep is None:
+            sep = Bookmark.sep
 
-        line_split = line.split(" :")
+        line_split = line.split(sep)
         url        = line_split[0]
-        tags       = line_split[1:]
-        tag_set    = {x.strip() for x in tags}
+        tag_set    = {x.strip() for x in line_split[1:]}
         if not bool(tag_set):
             logging.warning(f"No Tags for: {url}")
 
         return Bookmark(url,
                         tag_set,
-                        tag_sep=tag_sep,
-                        url_sep=url_sep)
+                        sep=sep)
 
 
     @property
@@ -67,21 +63,22 @@ class Bookmark:
         merged = Bookmark(self.url,
                           self.tags.union(other.tags),
                           self.name,
-                          self.tag_sep,
-                          self.url_sep)
+                          sep=self.sep)
         return merged
 
     def clean(self, subs):
         cleaned_tags = set()
         for tag in self.tags:
-            cleaned_tags.add(sub.get_sub(tag))
+            cleaned_tags.add(subs.get_sub(tag))
 
         self.tags = cleaned_tags
 
 @dataclass
-class BookmarkCollection:
+class BookmarkCollection(BaseFileFormat):
+
     entries : List[Bookmark] = field(default_factory=list)
     ext     : str            = field(default=".bookmarks")
+
 
     @staticmethod
     def read(f:file) -> "BookmarkCollection":
@@ -101,14 +98,16 @@ class BookmarkCollection:
         bkmkList = __getLinks(soup)
         logging.info("Found {} links".format(len(bkmkList)))
         return BookmarkCollection(bkmkList)
-    
+
     def add_file(self, f:file):
         for line in f.readlines():
-            self += Bookmark.build(line)
+            self.entries.append(Bookmark.build(line))
 
     def __str__(self):
         return "\n".join([str(x) for x in sorted(self.entries)])
 
+    def __repr__(self):
+        return f"<{self.__class__.__name__}: {len(self)}>"
     def __iadd__(self, value):
         assert(isinstance(value, (BookmarkCollection, Bookmark, list)))
         if isinstance(value, Bookmark):
@@ -121,6 +120,7 @@ class BookmarkCollection:
         else:
             raise TypeError(type(value))
 
+        return self
 
     def __iter__(self):
         return iter(self.entries)
