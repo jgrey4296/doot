@@ -66,21 +66,13 @@ def setup_target_dict(target, export):
 
     return targets
 
-def get_library_tweets(lib:List[str], tweet, export) -> Set[str]:
+def get_library_tweets(lib:List[str], tweet) -> Set[str]:
     library_tweet_ids = set()
     if tweet is None:
         logging.info("---------- Getting Library Tweet Details")
         logging.info("Libraries to search: {}".format(lib))
         library_tweet_ids = EU.get_all_tweet_ids(*lib, ".org")
         logging.info("Found {} library tweets".format(len(library_tweet_ids)))
-
-    if tweet is None and export is not None:
-        logging.info("---------- Exporting lib tweets to: {}".format(export))
-        now : str = datetime.datetime.now().strftime("%Y-%m-%d")
-        with open(export, 'a') as f:
-            f.write(f"{now}:\n\t")
-            f.write("\n\t".join(sorted(library_tweet_ids)))
-            f.write("\n----------------------------------------\n")
 
     return library_tweet_ids
 
@@ -98,19 +90,7 @@ def read_target_ids(tweet, target_file) -> TweetTodoFile:
     logging.info("Found {} source ids".format(len(todo_ids)))
     return todo_ids
 
-def main():
-    ####################
-    # Setup argparser
-    args             = parser.parse_args()
-    args.config      = abspath(expanduser(args.config))
-    if args.library is not None:
-        args.library = [abspath(expanduser(x)) for x in args.library]
-    else:
-        args.library = []
-
-    if args.export is not None:
-        args.export = abspath(expanduser(args.export))
-
+def setup(args):
     # Auto setup
     targets = setup_target_dict(args.target, args.export)
 
@@ -142,14 +122,11 @@ def main():
     logging.info("Target Dir: {}".format(targets['target_dir']))
     logging.info("Library:    {}".format(args.library))
     logging.info("Config:     {}".format(args.config))
-    ####################
-    # Read Configs
-    config = configparser.ConfigParser()
-    with open(args.config, 'r') as f:
-        config.read_file(f)
 
-    ####################
-    # INIT twitter object
+    return targets
+
+
+def setup_twitter(config):
     logging.info("---------- Initialising Twitter")
     twit = twitter.Api(consumer_key=config['DEFAULT']['consumerKey'],
                        consumer_secret=config['DEFAULT']['consumerSecret'],
@@ -158,43 +135,13 @@ def main():
                        sleep_on_rate_limit=config['DEFAULT']['sleep'],
                        tweet_mode='extended')
 
-    logging.info("-------------------- Extracting Pre-Details")
-    # Extract all tweet id's from library
-    library_tweet_ids : Set[str] = get_library_tweets(args.library,
-                                                      args.tweet,
-                                                      targets['lib_tweet_record'])
+    return twit
 
-    # read file of tweet id's to handle
-    todo_ids : TweetTodoFile = read_target_ids(args.tweet, targets['target_file'])
-    logging.info("-------------------- Downloading Tweets")
-    # Download tweets
-    if not args.skiptweets:
-        DU.download_tweets(twit, targets['tweet_dir'], todo_ids.ids(), lib_ids=library_tweet_ids)
-    else:
-        logging.info("Skipping tweet download")
-
-    # Extract details from the tweets
-    user_set, media_set, variant_list = EU.get_user_and_media_sets(targets['tweet_dir'])
-
-    # write out video variant/duplicates
-    with open(join(targets['target_dir'], "video_variants.json"), "w") as f:
-        json.dump(variant_list, f, indent=4)
-
-    # Get user identities
-    all_users : Dict[str, Any] = DU.get_user_identities(targets['users_file'], twit, user_set)
-
-    # --------------------
-    logging.info("-------------------- Finished Retrieval")
-    # Now create threads
+def run_processor(targets, all_users, todo_ids, twit):
     if not bool([x for x in listdir(targets['component_dir']) if splitext(x)[1] == ".json"]):
-        logging.info("---------- Assembling Threads")
-        tweet_graph = TwitterGraph.build(targets['tweet_dir'])
         logging.info("---------- Creating Components")
-        components : List[Set[Any]] = DFSU.dfs_for_components(tweet_graph)
-        FFU.construct_component_files(components,
-                                      targets['tweet_dir'],
+        FFU.construct_component_files(targets['tweet_dir'],
                                       targets['component_dir'],
-                                      tweet_graph,
                                       twit=twit)
 
     if not bool([x for x in listdir(targets['combined_threads_dir']) if splitext(x)[1] == ".json"]):
@@ -204,10 +151,82 @@ def main():
     logging.info("---------- Constructing org files")
     FFU.construct_org_files(targets['combined_threads_dir'], targets['org_dir'], all_users, todo_ids)
 
-    # Get all the downloaded tweets, and export
-    get_library_tweets([targets['org_dir']],
-                       args.tweet,
-                       targets['download_record'])
+def main():
+    ####################
+    logging.info("---------- Setup")
+    args             = parser.parse_args()
+    args.config      = abspath(expanduser(args.config))
+    if args.library is not None:
+        args.library = [abspath(expanduser(x)) for x in args.library]
+    else:
+        args.library = []
+
+    if args.export is not None:
+        args.export  = abspath(expanduser(args.export))
+
+    targets          = setup(args)
+
+    config = configparser.ConfigParser()
+    with open(args.config, 'r') as f:
+        config.read_file(f)
+
+    twit = setup_twitter(config)
+
+    logging.info("---------- Setup Complete")
+    logging.info("-------------------- Extracting Library Details")
+    # Extract all tweet id's from library
+    library_tweet_ids : Set[str] = get_library_tweets(args.library,
+                                                      args.tweet)
+
+    if targets['lib_tweet_record'] is not None:
+        logging.info("---------- Exporting lib tweets to: {}".format(targets['lib_tweet_record']))
+        now : str = datetime.datetime.now().strftime("%Y-%m-%d")
+        with open(targets['lib_tweet_record'], 'a') as f:
+            f.write(f"{now}:\n\t")
+            f.write("\n\t".join(sorted(library_tweet_ids)))
+            f.write("\n----------------------------------------\n")
+
+
+
+    # read file of tweet id's to handle
+    todo_ids : TweetTodoFile = read_target_ids(args.tweet, targets['target_file'])
+
+    logging.info("-------------------- Downloading Todo Tweets")
+    # Download tweets
+    if not args.skiptweets:
+        DU.download_tweets(twit, targets['tweet_dir'], todo_ids.ids(), lib_ids=library_tweet_ids)
+    else:
+        logging.info("Skipping tweet download")
+
+    logging.info("-------------------- Extracting Details from Tweets")
+    # Extract details from the tweets
+    user_set, media_set, variant_list = EU.get_user_and_media_sets(targets['tweet_dir'])
+
+    # write out video variant/duplicates
+    with open(join(targets['target_dir'], "video_variants.json"), "w") as f:
+        json.dump(variant_list, f, indent=4)
+
+    logging.info("-------------------- Getting User Identities")
+    # Get user identities
+    all_users : Dict[str, Any] = DU.get_user_identities(targets['users_file'], twit, user_set)
+
+    # --------------------
+    logging.info("-------------------- Starting Assembly")
+    # Now create threads
+    run_processor(targets, all_users, todo_ids, twit)
+
+
+    logging.info("-------------------- Finished Assembly")
+    new_tweet_ids = get_library_tweets([targets['org_dir']],
+                                       args.tweet)
+
+    if targets['download_record'] is not None:
+        logging.info("---------- Exporting lib tweets to: {}".format(targets['download_record']))
+        now : str = datetime.datetime.now().strftime("%Y-%m-%d")
+        with open(targets['download_record'], 'a') as f:
+            f.write(f"{now}:\n\t")
+            f.write("\n\t".join(sorted(new_tweet_ids)))
+            f.write("\n----------------------------------------\n")
 
     logging.info("----- Finished Twitter Automation")
 #  ############################################################################

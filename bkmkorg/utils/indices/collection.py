@@ -13,7 +13,7 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 
-from bkmkorg.utils.file.retrieval import get_data_files
+from bkmkorg.utils.dfs.files import get_data_files
 
 logging = root_logger.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class IndexFile:
     """ Utility class for `bkmkorg`-wide index file specification and writing """
 
     mapping : Dict[str, Set[str]] = field(default_factory=lambda: defaultdict(lambda: set()))
-    sep     : str                 = field(default=":")
+    sep     : str                 = field(default=" : ")
     ext     : str                 = field(default=".index")
 
     @staticmethod
@@ -59,8 +59,13 @@ class IndexFile:
         for key,vals in value.mapping.items():
             self.add_files(key, vals)
 
+        return self
+
     def add_files(self, key, values):
         self.mapping[key].update(values)
+
+    def __len__(self):
+        return len(self.mapping)
 
     def __str__(self):
         """
@@ -68,4 +73,8 @@ class IndexFile:
         `key` : `len(values)` : ":".join(`values`)
         """
         key_sort = sorted(list(self.mapping.keys()))
-        return "\n".join(["{} : {} : {}".format(k, len(self.mapping[k]), ":".join(self.mapping[k])) for k in key_sort])
+        total = [self.sep.join([k, str(len(self.mapping[k]))] + list(self.mapping[k])) for k in key_sort]
+        return "\n".join(total)
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}: {len(self)}>"

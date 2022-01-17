@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pylint: disable=no-member
 import logging as root_logger
 from os import listdir
 from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,

@@ -1,26 +1,28 @@
 #!/usr/bin/env python3
+import datetime
 import json
+import logging as root_logger
+from collections import defaultdict
 from dataclasses import InitVar, dataclass, field
+from os import listdir, mkdir
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
-
-from os import listdir, mkdir
-from collections import defaultdict
 from uuid import uuid1
-import datetime
-import logging as root_logger
+
 import networkx as nx
+from bkmkorg.utils.twitter.org_writer import TwitterTweet
+
 logging = root_logger.getLogger(__name__)
 
-from bkmkorg.utils.twitter.org_writer import TwitterTweet
 
 @dataclass
 class TwitterUserSummary:
     """
-    Collects separate threads and tweets together by the originating user
+    Accessor to Collect separate threads and tweets together by the originating
+    user into a single file, located in dir_s
     """
     id_s         : str
     dir_s        : str
@@ -39,12 +41,23 @@ class TwitterUserSummary:
         quotes : List[str]       = field(default_factory=list)
         total  : List[str]       = field(default_factory=list)
 
+        @staticmethod
+        def build(data):
+            assert(all([x in data for x in ["main_thread",
+                                            "rest",
+                                            "quotes"]]))
+
+            return TwitterUserSummary.ThreadObj(data["main_thread"],
+                                                data["rest"],
+                                                data["quotes"])
+
+
         def __post_init__(self):
             # init total from main, rest, quotes
             totals = set(self.main)
             totals.update([y for x in self.rest for y in x])
             totals.update(self.quotes)
-            self.total.update(totals)
+            self.total += totals
 
         def dump(self):
             return {
@@ -83,13 +96,19 @@ class TwitterUserSummary:
             user_data = json.load(f, strict=False)
 
         # add to obj
-        raise NotImplementedError()
+        if self.user is None:
+            self.set_user(user_data['user'])
+        else:
+            assert(self.user == user_data['user'])
 
+        self.has_media(user_data['has_media'])
+        self.threads = [TwitterUserSummary.ThreadObj.build(x) for x in user_data['threads']]
+        self.tweets.update(user_data['tweets'])
 
     def write(self):
         # Build data into a basic dict
         user_data = {
-            'has_media' : self.has_media,
+            'has_media' : self.has_media(),
             'user'      : self.user,
             'threads'   : [x.dump() for x in self.threads],
             'tweets'    : self.tweets,

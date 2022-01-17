@@ -15,8 +15,6 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 
 import networkx as nx
 import regex
-from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
-from bkmkorg.io.reader.plain_bookmarks import load_plain_file
 from bkmkorg.utils.tag.collection import TagFile
 from bkmkorg.utils.bookmarks.collection import BookmarkCollection
 
@@ -127,7 +125,7 @@ class TagGraph:
     def tags(self) -> TagFile:
         result = TagFile()
         for tag in self.graph.nodes:
-            result.set(tag, self.graph.nodes[tag]['count'])
+            result.set_count(tag, self.graph.nodes[tag]['count'])
         return result
 
     def get_count(self, tag:Tag):

@@ -11,7 +11,7 @@ import networkx as nx
 
 logging = root_logger.getLogger(__name__)
 
-def dfs_edge(graph, edge) -> Set[Tuple[str, str]]:
+def dfs_edge(graph, edge) -> Set[str]:
     """ Getting non-quote tweets """
     found = set()
     queue = [edge]
@@ -33,7 +33,7 @@ def dfs_edge(graph, edge) -> Set[Tuple[str, str]]:
 
     return found
 
-def dfs_for_components(tweet_graph:'TwitterGraph') -> List[Set[Tuple[str, str]]]:
+def dfs_for_components(tweet_graph:'TwitterGraph') -> List[Set[str]]:
     """ DFS a graph for all connected components """
     # Convert to undirected graph
     graph : nx.Graph = tweet_graph.to_undirected()

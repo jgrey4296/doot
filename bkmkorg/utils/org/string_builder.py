@@ -16,18 +16,20 @@ import networkx as nx
 
 file = Any
 
+class OrgBuilderBase:
+
+    link_pattern        : str = "[[{}]]"
+    named_link_pattern  : str = "[[{}][{}]]"
+    named_file_pattern  : str = "[[file:{}][{}]]"
+
 @dataclass
-class OrgStrBuilder:
+class OrgStrBuilder(OrgBuilderBase):
     """
     Utility class for building Org files
     """
-    output : List[str]
+    output : List[Union[str, 'OrgBuilderBase']] = field(default_factory=list)
 
     prop_align_len      : int = 10
-    link_pattern        : str = "[[{}]]"
-    named_link_pattern  : str = "[[{}][{}]]"
-    drawer_prop_pattern : str = ":{}:"
-    drawer_prop_end     : str = ":END:"
     heading_char        : str = "*"
 
     def heading(self, level, *text):
@@ -36,6 +38,7 @@ class OrgStrBuilder:
 
     def link(self, text, uri):
         self.add(self.named_link_pattern.format(text, uri))
+        self.nl
 
     def links(self, links):
         converted = [self.link_pattern.format(x) for x in links]
@@ -44,22 +47,67 @@ class OrgStrBuilder:
     def add(self, *text):
         self.output += text
 
+    def drawer(self, name):
+        drawer = OrgDrawerBuilder(self, name)
+        self.add(drawer)
+        return drawer
+
     @property
     def nl(self):
         self.output.append("")
 
-    def drawer(self, name):
-        self.add(self.drawer_prop_pattern.format(name.upper()))
+    def __str__(self):
+        return "\n".join([str(x) for x in self.output])
 
-    def drawer_prop(self, x, y):
-        prop = self.drawer_prop_pattern.format(x.upper())
-        spaces = " " * max(2, (self.prop_align_len - len(prop)))
-        self.add(f"{prop}{spaces}{y}")
+@dataclass
+class OrgDrawerBuilder(OrgBuilderBase):
+    """
+    A lazily build org drawer container,
+    which aligns values in the block
+    """
 
-    def drawer_end(self):
-        # TODO store props, then align here
-        self.add(self.drawer_prop_end)
-        self.nl
+    owner               : OrgStrBuilder = field(default=None)
+    name                : str           = field(default="")
+
+    _contents     : List[Tuple[str, str]] = field(default_factory=list)
+    _prop_pattern : str                   = ":{}:"
+    _end          : str                   = ":END:"
+    _max_key      : int                   = 0
+
+    def add(self, *args):
+        for name, contents in zip(args[::2], args[1::2]):
+            self._contents.append((name, contents))
+            self._max_key = max(len(name), self._max_key)
+
+    def add_keyless(self, *args):
+        for arg in args:
+            self._contents.append(("", arg))
+
+    def add_file_links(self, *args):
+        as_links = [OrgDrawerBuilder.named_file_pattern.format(x, split(x)[1]) for x in args]
+        self.add_keyless(*as_links)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        return None
+
 
     def __str__(self):
-        return "\n".join(self.output)
+        """
+        Write the drawer, while padding appropriately
+        """
+        output = []
+        output.append(f":{self.name.upper()}:")
+        for key, val in self._contents:
+            if bool(key):
+                key_f   = self._prop_pattern.format(key)
+                pad_amt = 5 + max(0, (2 + self._max_key) - len(key_f))
+                output.append(f"{key_f}{pad_amt*' '}{val}")
+            else:
+                output.append(val)
+
+        output.append(self._end)
+        output.append("")
+        return "\n".join([str(x) for x in output])

@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 ## pylint: disable=protected-access
-from typing import List, Set, Dict, Tuple, Optional, Any
-from typing import Callable, Iterator, Union, Match
-from typing import Mapping, MutableMapping, Sequence, Iterable
-from typing import cast, ClassVar, TypeVar, Generic
-
-from os.path import exists, join, splitext, split
-from os import listdir
 import json
-import requests
-import uuid
 import logging as root_logger
+import uuid
+from os import listdir
+from os.path import exists, join, split, splitext
+from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
+                    List, Mapping, Match, MutableMapping, Optional, Sequence,
+                    Set, Tuple, TypeVar, Union, cast)
+
+import requests
+from bkmkorg.utils.twitter.extraction import extract_tweet_ids_from_json
+
 import twitter
+
 logging = root_logger.getLogger(__name__)
 
-from bkmkorg.utils.twitter.extraction import extract_tweet_ids_from_json
 
 GROUP_AMNT = 100
 MISSING    = ".missing_tweets"

@@ -1,27 +1,32 @@
 #!/usr/bin/env python3
-#!/usr/bin/env python3
+# pylint: disable=missing-function-docstring
+# pylint: disable=line-too-long
+# pylint: disable=missing-class-docstring
+# pylint: disable=too-many-arguments
 """
 A Collection of dataclasses which reduce to json
 """
+import datetime
 import json
+import logging as root_logger
+from collections import defaultdict
 from dataclasses import InitVar, dataclass, field
+from os import listdir, mkdir
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
-
-from os import listdir, mkdir
-from collections import defaultdict
 from uuid import uuid1
-import datetime
-import logging as root_logger
+from itertools import cycle
+
 import networkx as nx
+from bkmkorg.utils.download.media import download_media
+from bkmkorg.utils.download.twitter import download_tweets
+from bkmkorg.utils.org.string_builder import OrgStrBuilder
+
 logging = root_logger.getLogger(__name__)
 
-from bkmkorg.utils.download.twitter import download_tweets
-from bkmkorg.utils.download.media import download_media
-from bkmkorg.utils.org.string_builder import OrgStrBuilder
 
 @dataclass
 class TwitterOrg:
@@ -78,43 +83,37 @@ class TwitterOrg:
     def build_header(self):
         output = OrgStrBuilder()
         output.heading(1, "{}'s Threads".format(self._summary['user']['screen_name']))
-        output.drawer("PROPERTIES")
-        if 'name' in self._summary['user']:
-            output.drawer_prop("NAME", self._summary['user']['name'])
-        if 'followers_count' in self._summary['user']:
-            output.drawer_prop("FOLLOWERS", self._summary['user']['followers_count'])
-        if 'description' in self._summary['user']:
-            output.drawer_prop("DESCRIPTION", self._summary['user']['description'])
-        if 'location' in self._summary['user']:
-            output.drawer_prop("LOCATION", self._summary['user']['location'])
-        if 'url' in self._summary['user']:
-            output.drawer_prop("URL", "[[{}]]".format(self._summary['user']['url']))
-        output.drawer_prop("TWITTER-BUFFER", "t")
-        output.drawer_end()
+        with output.drawer("PROPERTIES") as dr:
+            if 'name' in self._summary['user']:
+                dr.add("NAME", self._summary['user']['name'])
+            if 'followers_count' in self._summary['user']:
+                dr.add("FOLLOWERS", self._summary['user']['followers_count'])
+            if 'description' in self._summary['user']:
+                dr.add("DESCRIPTION", self._summary['user']['description'].replace("\n", " "))
+            if 'location' in self._summary['user']:
+                dr.add("LOCATION", self._summary['user']['location'])
+            if 'url' in self._summary['user']:
+                dr.add("URL", "[[{}]]".format(self._summary['user']['url']))
+            dr.add("TWITTER-BUFFER", "t")
 
-        self._output += output
+
+        self._output.append(output)
 
 
     def build_threads(self):
         for thread in self._summary['threads']:
-            thread = TwitterThread.build(thread,
-                                         self.relative_files_path,
-                                         self.user_lookup,
-                                         self.tweets,
-                                         self.tag_lookup)
+            thread_obj = TwitterThread.build(thread,
+                                             self.relative_files_path,
+                                             self.user_lookup,
+                                             self.tweets,
+                                             self.tag_lookup)
 
-            self._output.append(thread)
-
-    def build_unused(self):
-        unused_tweets = set(self.tweets.keys()).difference(self._used)
-        if bool(unused_tweets):
-            self._output.append("*** Unused Tweets")
-            self._output += [TwitterTweet.build(self.tweets[x],
-                                                self.user_lookup,
-                                                self.relative_files_path) for x in unused_tweets]
+            if thread_obj is not None:
+                self._output.append(thread_obj)
+                self._media.update(thread_obj.media)
 
     def download_media(self):
-        # copy media to correct output files dir
+        """ copy media to correct output files dir """
         if not bool(self._media):
             return
 
@@ -126,16 +125,24 @@ class TwitterOrg:
 
 @dataclass
 class TwitterThread:
+    """ Given a thread object, build a string representation for it
+    redirecting absolute media paths to relative
+    """
 
     redirect_url  : str
     date          : datetime.datetime
     tags          : Set[str]
-    main          : List[TwitterTweet]
-    conversations : List[List[TwitterTweet]]
-    links         : List[str]
-    media         : List[str]
+    main          : List['TwitterTweet']       = field(default_factory=list)
+    conversations : List[List['TwitterTweet']] = field(default_factory=list)
+    remainder     : List['TwitterTweet']       = field(default_factory=list)
+    uses          : Set[str]                   = field(default_factory=set)
+    links         : Set[str]                   = field(default_factory=set)
+    media         : Set[str]                   = field(default_factory=set)
 
     date_re       : str = r"%a %b %d %H:%M:%S +0000 %Y"
+    tag_pattern   : str = ":{}:"
+    tag_sep       : str = ":"
+    tag_col       : int = 80
 
     @staticmethod
     def build(thread, redirect_url, all_users, tweets, source_ids) -> 'TwitterThread':
@@ -143,26 +150,55 @@ class TwitterThread:
         assert(isinstance(thread, dict))
         assert(isinstance(all_users, dict))
 
-        main_thread      = [tweets[x] for x in thread['main_thread'] if x in tweets]
         thread_tweet_ids = thread['total']
 
-        if not bool(main_thread):
+        if not bool(thread_tweet_ids):
             return None
 
-        date = TwitterThread.parse_date(main_thread[0]['created_at'])
-        tags = {y.strip() for x in thread_tweet_ids for y in source_ids.mapping[x].split(",") if y != ""}
+        thread_date = tweets[thread['main_thread'][0]]['created_at']
+        date = TwitterThread.parse_date(thread_date)
+        tags = {y.strip() for x in thread_tweet_ids for y in source_ids.mapping[x].split(",") if bool(y)}
 
         obj = TwitterThread(redirect_url, date, tags)
 
         # add tweets of main thread
-        used_tweets = [x['id_str'] for x in main_thread]
-        for x in main_thread:
-            tweet_obj = TwitterTweet.build(x, all_users, redirect_url)
+        for x in thread['main_thread']:
+            obj.add_use(x)
+            tweet_obj = TwitterTweet.build(tweets[x], all_users, redirect_url, tweets)
             obj.main.append(tweet_obj)
             obj.media.update(tweet_obj.media)
             obj.links.update(tweet_obj.links)
 
+        # Add sub conversations
+        for conv in thread['rest']:
+            conv_list = []
+            for x in conv:
+                obj.add_use(x)
+                tweet_obj = TwitterTweet.build(tweets[x], all_users, redirect_url, tweets, level=5)
+                conv_list.append(tweet_obj)
+                obj.media.update(tweet_obj.media)
+                obj.links.update(tweet_obj.links)
+
+            obj.conversations.append(conv_list)
+
+        # Then add unused tweets
+        unused_keys = obj.uses.difference(thread['total'])
+        for x in unused_keys:
+            obj.add_use(x)
+            tweet_obj = TwitterTweet.build(tweets[x], all_users, redirect_url, tweets)
+            obj.remainder.append(tweet_obj)
+            obj.media.update(tweet_obj.media)
+            obj.links.update(tweet_obj.links)
+
+        assert(not bool(obj.uses.difference(thread['total'])))
         return obj
+
+    def add_use(self, value):
+        """
+        Record a use of a tweet id
+        """
+        self.uses.add(value)
+
 
     @staticmethod
     def retarget_url(url, new_target_dir):
@@ -175,186 +211,170 @@ class TwitterThread:
         return datetime.datetime.strptime(a_str, TwitterThread.date_re)
 
 
-
     def __str__(self):
         output = OrgStrBuilder()
 
+        heading_str = f"Thread: {self.date}"
         tags_str = ""
         if bool(self.tags):
-            tags_str = "          :{}:".format(":".join(self.tags))
+            tags_str = self.tag_pattern.format(self.tag_sep.join(self.tags))
 
-        output.heading(2, "Thread:", self.date, tags_str)
+        tag_pad = max(0, self.tag_col - len(heading_str))
+        output.heading(2, f"{heading_str}{tag_pad*' '}{tags_str}")
         output.heading(3, "Main Thread")
-        # TODO main thread
+        output.add(*self.main)
 
-        output.heading(3, "Conversations")
+        output.heading(3, "Conversations: ", str(len(self.conversations)))
         for conv in self.conversations:
             if not bool(conv):
                 continue
-            missing_tweets = [x for x in conv if x not in self.tweets]
-            conv_tweets    = [self.tweets[x] for x in conv if x in self.tweets]
-            if not bool(conv_tweets):
-                logging.info("Empty Conversation: {}".format(conv))
-                continue
 
-            conv_links = []
-            conv_media = []
+            output.heading(4, conv[0].at)
+            output.add(*conv)
 
-            screen_name = conv_tweets[0]['user']['id_str']
-            if screen_name in all_users:
-                screen_name = all_users[screen_name]['screen_name']
+        output.heading(3, "Misc tweets: ", str(len(self.remainder)))
+        output.add(*self.remainder)
 
-            output.heading(4, "Conversation:", screen_name)
-
-
-            # Add tweets
-            new_tweets = [x['id_str'] for x in conv_tweets]
-            used_tweets.update(new_tweets)
-
-            output.add(*[TwitterTweet.build(x, all_users, self.redirect_url, level=5) for x in conv_tweets])
-
-            if bool(missing_tweets):
-                output.heading(5, "MISSING")
-                # TODO output.add(*[x for x in missing_tweets])
-
-        output.heading(3, "Links")
+        output.heading(3, "Links: ", str(len(self.links)))
         output.links(self.links)
         output.nl
 
-        output.heading(3, "Media")
-        output += ["[[file:./{}][{}]]".format(TwitterThread.retarget_url(x, self.redirect_url), split(x)[1]) for x in self.media]
+        output.heading(3, "Media: ", str(len(self.media)))
+        output.add(*["[[file:./{}][{}]]".format(TwitterThread.retarget_url(x, self.redirect_url), split(x)[1]) for x in self.media])
         output.nl
 
         return str(output)
 
+
 @dataclass
 class TwitterTweet:
-    level       : int
-    id_s        : str
-    name        : str = field(default="Unknown")
-    is_quote    : bool = field(default=False)
-    hash_tags   : List[str] = field(default_factory=list)
-    reply_to    : Tuple[str, str]
-    quote       : Tuple[str, str, 'TwitterTweet']
-    fav         : int
-    retweet     : int
-    date        : 'datetime'
-    text        : str
-    media       : List[Tuple[str, str]] = field(default_factory=list)
-    links       : List[str] = field(default_factory=list)
+    level        : int
+    id_s         : str
+    redirect_url : str
+    is_quote     : bool                            = field(default=False)
+    name         : str                             = field(init=False, default="Unknown")
+    hash_tags    : List[str]                       = field(init=False, default_factory=list)
+    quote        : Tuple[str, str, 'TwitterTweet'] = field(init=False, default=None)
+    reply_to     : Tuple[str, str]                 = field(init=False, default=None)
+    date         : 'datetime'                      = field(init=False, default_factory=datetime.datetime.now)
+    media        : List[str]                       = field(default_factory=list)
+    links        : List[str]                       = field(default_factory=list)
 
+    fav          : int = 0
+    retweet      : int = 0
+    text         : str = ""
 
-    permalink_f   : "[[https://twitter.com/{}/status/{}][/{}/{}]]"
+    permalink_f  : str =  "[[https://twitter.com/{}/status/{}][/{}/{}]]"
 
     @staticmethod
-    def build(tweet, all_users, url_prefix, level=4, is_quote=False) -> 'TwitterTweet':
-        obj = None
+    def build(tweet, all_users, url_prefix, all_tweets, level=4, is_quote=False) -> 'TwitterTweet':
+        obj                  = TwitterTweet(level, tweet['id_str'], is_quote=is_quote, redirect_url=url_prefix)
+
         try:
-            screen_name = all_users[tweet['user']['id_str']]['screen_name']
-            hashtags = [x['text'] for x in tweet['entities']['hashtags']]
-            obj = TwitterTweet(level, screen_name)
-        except KeyError as e:
-            logging.warning("Unknown Screen name: {}".format(tweet['user']['id_str']))
-            hashtags = [x['text'] for x in tweet['entities']['hashtags']]
-            obj = TwitterTweet(level, hash_tags=hashtags)
+            obj.name         = all_users[tweet['user']['id_str']]['screen_name']
+        except KeyError:
+            pass
+
+        try:
+            obj.hash_tags    = [x['text'] for x in tweet['entities']['hashtags']]
+        except KeyError:
+            pass
+
+        try:
+            obj.reply_to     = (tweet['in_reply_to_screen_name'], tweet['in_reply_to_status_id_str'])
+        except KeyError:
+            pass
+
+        try:
+            obj.fav          = str(tweet['favorite_count'])
+        except KeyError:
+            pass
+
+        try:
+            obj.retweet      = str(tweet['retweet_count'])
+        except KeyError:
+            pass
+
+        try:
+            obj.date         = TwitterThread.parse_date(tweet['created_at'])
+        except KeyError:
+            pass
+
+        try:
+            obj.text         = tweet['full_text']
+        except KeyError:
+            pass
+
+        try:
+            quote_id         = tweet['quoted_status_id_str']
+            quoted_tweet     = all_tweets[quote_id]
+            quoted_user_name = all_users[quoted_tweet['user']['id_str']]['screen_name']
+            quoted_tweet     = TwitterTweet.build(all_tweets[quote_id], all_users, url_prefix, all_tweets, level=level+1, is_quote=True)
+            obj.quote        = (quoted_user_name, quote_id, quoted_tweet)
+            obj.media += quoted_tweet.media
+            obj.links += quoted_tweet.links
+        except KeyError:
+            pass
+
+        try:
+            urls             = tweet['entities']['urls']
+            obj.links        = {x['expanded_url'] for x in urls}
+        except KeyError:
+            pass
 
 
-        # output.append(":PERMALINK: [[https://twitter.com/{}/status/{}][/{}/{}]]".format(screen_name,
-        #                                                                                 tweet['id_str'],
-        #                                                                                 screen_name,
-        #                                                                                 tweet['id_str']))
-        # if tweet["in_reply_to_status_id_str"] is not None:
-        #     output.append(":REPLY_TO: [[https://twitter.com/{}/status/{}][/{}/{}]]".format(tweet['in_reply_to_screen_name'],
-        #                                                                                     str(tweet['in_reply_to_status_id_str']),
-        #                                                                                     tweet['in_reply_to_screen_name'],
-        #                                                                                     str(tweet['in_reply_to_status_id_str'])))
-
-        # if "quoted_status_id_str" in tweet:
-        #     quote_name = tweet['quoted_status_id_str']
-        #     if quote_name in all_users:
-        #         quote_name = all_users[tweet['quoted_status_id_str']]['screen_name']
-
-        #     output.append(":QUOTE: [[https://twitter.com/{}/status/{}][/{}/{}]]".format(quote_name,
-        #                                                                                 tweet['quoted_status_id_str'],
-        #                                                                                 quote_name,
-        #                                                                                 tweet['quoted_status_id_str']))
-        # # in reply to
-        # if 'favorite_count' in tweet:
-        #     output.append(":FAVORITE_COUNT: {}".format(tweet['favorite_count']))
-        # if 'retweet_count' in tweet:
-        #     output.append(":RETWEET_COUNT: {}".format(tweet['retweet_count']))
-
-        # output.append(":DATE: {}".format(TwitterThread.parse_date(tweet['created_at'])))
-        # if is_quote:
-        #     output.append(":IS_QUOTE: t")
-        # output.append(":END:")
-
-        # # add tweet contents
-        # output.append(tweet['full_text'])
-
-
-        # quoted_status -> quote -> tweet
-        # qlinks = []
-        # qmedia = []
-        # if "quoted_status" in tweet:
-        #     output.append("")
-        #     quote_level = level + 1
-        #     qresult, qmedia, qlinks = TwitterTweet.build(tweet['quoted_status'], all_users, url_prefix, level=quote_level)
-        #     output.append(qresult)
-
-        # # TODO min urls in full_text, append full urls at end
-        # media, alt_texts = TwitterTweet.get_tweet_media(tweet)
-
-        # output.append("")
-        # output += alt_texts
-
-        # # add tweet urls
-        # output.append("")
-        # links = set([x['expanded_url'] for x in tweet['entities']['urls']])
-        # output += ["[[{}]]".format(x) for x in links]
-
-        # if bool(media):
-        #     output += "\n"
-        #     output += ["[[file:./{}][{}]]".format(TwitterThread.retarget_url(x, url_prefix), split(x)[1]) for x in media]
-
-
-        # output.append("")
-
-        # total_media = set(media)
-        # total_media.update(qmedia)
-        # total_links = set(links)
-        # total_links.update(qlinks)
+        # TODO min urls in full_text, append full urls at end
+        media, alt_texts = TwitterTweet.get_tweet_media(tweet)
+        if bool(media):
+            obj.media += media
 
         return obj
 
     def __str__(self):
-        output = OrgStrBuilder()
-        output.heading(self.level, self.at, ":{}:".format(":".join(self.hash_tags)))
+        output     = OrgStrBuilder()
+        tags       = ""
+        tag_offset = 0
+        if bool(self.hash_tags):
+            tags       =  ":{}:".format(":".join(self.hash_tags))
+            tag_offset =  max(0, 80-len(self.at))
+            tags       = (tag_offset * " ") + tags
 
-        output.drawer("PROPERTIES")
-        output.drawer_prop("PERMALINK", self.permalink(self.name, self.id_s))
-        if self.reply_to:
-            output.drawer_prop("REPLY_TO", self.permalink(*self.reply_to))
-        if self.quote:
-            output.drawer_prop("QUOTE", self.permalink(*self.quote[:2]))
-        output.drawer_prop("FAVOURITE_COUNT", self.fav)
-        output.drawer_prop("RETWEET_COUNT", self.retweet)
-        output.drawer_prop("DATE", TwitterThread.parse_date(self.date))
+        quote_header = ""
         if self.is_quote:
-            output.drawer_prop("IS_QUOTE", "t")
+            quote_header = "Quote: "
+        output.heading(self.level, quote_header, self.at, tags)
 
-        output.drawer_end()
+        with output.drawer("PROPERTIES") as dr:
+            dr.add("PERMALINK", self.permalink(self.name, self.id_s))
+            if self.reply_to is not None:
+                dr.add("REPLY_TO", self.permalink(*self.reply_to))
+            if self.quote is not None:
+                dr.add("QUOTE", self.permalink(*self.quote[:2]))
+            dr.add("FAVOURITE_COUNT", self.fav)
+            dr.add("RETWEET_COUNT", self.retweet)
+            dr.add("DATE", self.date.strftime(TwitterThread.date_re))
+            if self.is_quote:
+                dr.add("IS_QUOTE", "t")
 
         output.add(self.text)
+        output.nl
 
-        if self.quote:
-            # TODO do a drawer for quotes
-            pass
 
-        # TODO media + alt_texts
+        # TODO alt_texts
+        if bool(self.media) and not self.is_quote:
+            with output.drawer("MEDIA") as dr:
+                dr.add_file_links(*[TwitterThread.retarget_url(x, self.redirect_url) for x in self.media])
 
-        # TODO Links
+        # Links
+        if bool(self.links) and not self.is_quote:
+            with output.drawer("LINKS") as dr:
+                dr.add_keyless(*self.links)
 
+
+        if self.quote is not None:
+            output.add(self.quote[2])
+
+        output.nl
         return str(output)
 
     @property
@@ -367,26 +387,30 @@ class TwitterTweet:
 
     @staticmethod
     def get_tweet_media(tweet):
-        # add tweet media
-        media     = set()
-        alt_texts = []
+        media_urls = set()
+        alt_texts  = []
         if 'entities' not in tweet:
-            breakpoint()
-            return media
+            return media_urls, alt_texts
 
-        if 'media' in tweet['entities']:
-            alt_texts += [m['ext_alt_text'] for m in tweet['entities']['media'] if 'ext_alt_text' in m]
-            media.update([m['media_url'] for m in tweet['entities']['media']])
+        try:
+            media_entities = tweet['entities']['media']
+            alt_texts += [m['ext_alt_text'] for m in media_entities if 'ext_alt_text' in m]
+            media_urls.update([m['media_url_https'] for m in media_entities])
 
-            videos   = [m['video_info'] for m in tweet['entities']['media'] if m['type'] == "video"]
+            videos   = [m['video_info'] for m in media_entities if m['type'] == "video"]
             urls     = [n['url'] for m in videos for n in m['variants'] if n['content_type'] == "video/mp4"]
-            media.update([x.split("?")[0] for x in urls])
+            media_urls.update([x.split("?")[0] for x in urls])
+        except KeyError:
+            pass
 
-        if 'extended_entities' in tweet and 'media' in tweet['extended_entities']:
-            media.update([m['media_url'] for m in tweet['extended_entities']['media']])
+        try:
+            extended_entities = tweet['extended_entities']['media']
+            media_urls.update([m['media_url_https'] for m in extended_entities])
 
-            videos = [m['video_info'] for m in tweet['extended_entities']['media'] if m['type'] == "video"]
-            urls = [n['url'] for m in videos for n in m['variants'] if n['content_type'] == "video/mp4"]
-            media.update([x.split("?")[0] for x in urls])
+            videos = [m['video_info'] for m in extended_entities if m['type'] == "video"]
+            urls   = [n['url'] for m in videos for n in m['variants'] if n['content_type'] == "video/mp4"]
+            media_urls.update([x.split("?")[0] for x in urls])
+        except KeyError:
+            pass
 
-        return media, alt_texts
+        return media_urls, alt_texts

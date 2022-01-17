@@ -14,6 +14,7 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     Set, Tuple, TypeVar, Union, cast)
 
 from bkmkorg.utils.dfs.files import get_data_files
+from bkmkorg.utils.collections.base_format import BaseFileFormat
 
 logging = root_logger.getLogger(__name__)
 
@@ -21,36 +22,26 @@ TAG_NORM = re.compile(" +")
 file     = Any
 
 @dataclass
-class TagFile:
+class TagFile(BaseFileFormat):
     """ A Basic TagFile holds the counts for each tag use """
 
     count   : Dict[str, int] = field(default_factory=lambda: defaultdict(lambda: 0))
-    sep     : str            = field(default=":")
+    sep     : str            = field(default=" : ")
     ext     : str            = field(default=".tags")
 
     norm_regex : re.Pattern  = TAG_NORM
 
-    @classmethod
-    def builder(cls, target):
-        """
-        Build an tag file from a target directory or file
-        """
-        main = cls()
-        for t in get_data_files(target, main.ext):
-            try:
-                with open(t, 'r') as f:
-                    main += cls.read(f)
-            except Exception as err:
-                logging.warning(f"{cls.__name__} creation failure with {t}")
-
-        return main
 
     @staticmethod
     def read(f:file) -> 'TagFile':
         obj = TagFile()
         for line in f.readlines():
-            line_s = [obj.norm_regex.sub("_", x.strip()) for x in line.split(obj.sep)]
-            obj.set_count(line_s[0], int(line_s[1]))
+            try:
+                line_s = [obj.norm_regex.sub("_", x.strip()) for x in line.split(obj.sep)]
+                obj.set_count(line_s[0], int(line_s[1]))
+            except Exception as err:
+                logging.warning(f"Failure Tag Reading: {line}")
+
 
         return obj
 
@@ -91,13 +82,19 @@ class TagFile:
         `key` : `value`
         """
         key_sort = sorted(list(self.count.keys()))
-        return "\n".join(["{} : {}".format(k, self.count[k]) for k in key_sort])
+        total = [self.sep.join([k, self.count[k]]) for k in key_sort]
+        return "\n".join(totals)
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}: {len(self)}>"
 
     def __iadd__(self, values):
-        assert(isinstance(value, TagFile))
-        for key, value in values.count:
+        assert(isinstance(values, TagFile))
+        for key, value in values.count.items():
             norm_key = self.norm_regex.sub("_", key.strip())
             self.count[norm_key] += value
+
+        return self
 
     def __len__(self):
         return len(self.count)
@@ -134,10 +131,13 @@ class SubstitutionFile(TagFile):
     def read(f:file) -> 'SubstitutionFile':
         obj = SubstitutionFile()
         for line in f.readlines():
-            line_s = [obj.norm_regex.sub("_", x.strip()) for x in line.split(obj.sep)]
-            obj.set_count(line_s[0], line_s[1])
-            if len(line_s) > 2 and bool(line_s[2]):
-                obj.set_sub(line_s[0], line_s[2])
+            try:
+                line_s = [obj.norm_regex.sub("_", x.strip()) for x in line.split(obj.sep)]
+                obj.set_count(line_s[0], line_s[1])
+                if len(line_s) > 2 and bool(line_s[2]):
+                    obj.set_sub(line_s[0], line_s[2])
+            except:
+                logging.warning(f"Failure Sub Reading: {line}")
 
         return obj
 
@@ -147,9 +147,8 @@ class SubstitutionFile(TagFile):
         `key` : `count` : `substitution`
         """
         key_sort = sorted(list(self.count.keys()))
-        return "\n".join(["{} : {} : {} ".format(k,
-                                                 self.count[k],
-                                                 self.mapping[k]) for k in key_sort])
+        total    = [self.sep.join([k, self.count[k]] + self.mapping[k]) for k in key_sort]
+        return "\n".join(total)
 
     def __iadd__(self, value):
         assert(isinstance(value, SubstitutionFile))
@@ -159,6 +158,8 @@ class SubstitutionFile(TagFile):
                 self.mapping[key] = value.mapping[key]
             elif key in self.mapping and key in value.mapping:
                 raise Exception(f"Substitution Conflict for {key}")
+
+        return self
 
     def sub(self, value:str):
         """ apply a substitution if it exists """
