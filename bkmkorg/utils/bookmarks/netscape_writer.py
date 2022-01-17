@@ -4,7 +4,7 @@ Main function: exportBookmarks
 """
 import logging
 
-from bkmkorg.utils.bookmark.collection import Bookmark
+from bkmkorg.utils.bookmarks.collection import Bookmark
 
 groupCount = 0
 listCount  = 0

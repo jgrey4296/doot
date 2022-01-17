@@ -102,4 +102,4 @@ def clean_bkmk_files(bkmk_files, sub):
             bkmk.clean(sub)
 
         with open(bkmk_path, 'w') as f:
-            f.write(str(bookmarks)
+            f.write(str(bookmarks))
