@@ -9,7 +9,6 @@ from os.path import abspath, exists, expanduser, split, splitext
 from urllib.parse import urlparse
 from collections import defaultdict
 
-from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 from bkmkorg.utils.dfs import files as retrieval
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.bookmarks.collection import BookmarkCollection

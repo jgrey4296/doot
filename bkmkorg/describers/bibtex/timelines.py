@@ -16,6 +16,7 @@ from bibtexparser import customization as c
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.bibtex import entry_processors as bib_proc
 from bkmkorg.utils.dfs import files as retrieval
+from bkmkorg.utils.collecton.timeline import TimelineFile
 
 # Setup root_logger:
 LOGLEVEL = root_logger.DEBUG
@@ -52,6 +53,13 @@ def main():
     BU.parse_bib_files(all_bibs, func=bib_proc.year_parse, database=db)
 
     logging.info("Loaded bibtex entries: {}".format(len(db.entries)))
+
+    # Load totals_bib.tags
+    # Filter for min_entries
+
+    # Create a TimelineFile for each tag
+    # Add citations to each tag TimelineFile
+    # Write out timeline files
 
     tag_collection = defaultdict(list)
     for entry in db.entries:

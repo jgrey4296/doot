@@ -12,7 +12,7 @@ from shutil import copyfile
 import regex as re
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.dfs import files as retrieval
-from bkmkorg.utils.hash_check import file_to_hash
+from bkmkorg.utils.file.hash_check import file_to_hash
 
 
 LOGLEVEL = root_logger.DEBUG

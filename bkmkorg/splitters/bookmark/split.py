@@ -12,7 +12,6 @@ from collections import defaultdict
 import re
 
 from bkmkorg.utils.dfs.files import get_data_files
-from bkmkorg.io.reader.plain_bookmarks import load_plain_file
 
 # Setup
 LOGLEVEL = root_logger.DEBUG
@@ -44,19 +43,16 @@ def main():
         mkdir(args.output)
 
     # load source
-    sources       = get_data_files(args.source, ext=".bookmarks")
-    all_bookmarks = []
-
-    logging.info(f"Found {len(sources)} source files")
-    for bfile in sources:
-        all_bookmarks += load_plain_file(bfile)
-
-    logging.info(f"Found {len(all_bookmarks)} bookmarks")
+    lib_files = get_data_files(args.source, ext=".bookmarks")
+    library = BookmarkCollection()
+    for bkmk_f in lib_files:
+        with open(bkmk_f, 'r') as f:
+            library.add_file(f)
 
     domains      = defaultdict(lambda: [])
 
     # Group urls into domains
-    for bkmk in all_bookmarks:
+    for bkmk in library:
         parsed = urlparse(bkmk.url)
 
         netloc = CLEAN.sub("", parsed.netloc)

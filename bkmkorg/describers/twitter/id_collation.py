@@ -17,7 +17,6 @@ import bibtexparser as b
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
 
-from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.dfs import files as retrieval
 from bkmkorg.utils.org.extraction import get_tweet_dates_and_ids

@@ -14,6 +14,8 @@ from uuid import uuid1
 
 import networkx as nx
 
+from bkmkorg.utils.dfs.files import get_data_files
+
 logging = root_logger.getLogger(__name__)
 
 @dataclass
@@ -27,7 +29,7 @@ class TwitterGraph:
     def build(json_dir):
         """ Create a graph of tweet replies and quotes """
         logging.info("Assembling threads graph from: {}".format(json_dir))
-        json_files = [join(json_dir, x) for x in listdir(json_dir) if splitext(x)[1] == ".json"]
+        json_files = get_data_files(json_dir, ext=".json")
         di_graph = nx.DiGraph()
         for jfile in json_files:
             # load in each json,

@@ -7,6 +7,7 @@ import logging as root_logger
 from os import mkdir
 from os.path import abspath, exists, isdir, join, split, splitext, expanduser
 from urllib.parse import urlparse
+from bkmkorg.utils.bookmarks.collection import BookmarkCollection
 
 # Setup
 LOGLEVEL = root_logger.DEBUG
@@ -34,7 +35,11 @@ if __name__ == "__main__":
         mkdir(args.output)
 
     # load library
-    library = open_and_extract_bookmarks(args.library)
+    lib_files = retrieval.get_data_files(args.library, ".html")
+    library = BookmarkCollection()
+    for bkmk_f in lib_files:
+        with open(bkmk_f, 'r') as f:
+            library.add_file(f)
 
     tags = {}
 
@@ -49,4 +54,4 @@ if __name__ == "__main__":
     # save
     for tag, sites in tags.items():
         logging.info("Exporting: {}".format(tag))
-        org_export(sites, join(args.output, "{}.org".format(tag)))
+        # TODO org_export(sites, join(args.output, "{}.org".format(tag)))

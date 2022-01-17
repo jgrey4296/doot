@@ -91,7 +91,6 @@ def read_target_ids(tweet, target_file) -> TweetTodoFile:
     return todo_ids
 
 def setup(args):
-    # Auto setup
     targets = setup_target_dict(args.target, args.export)
 
     if exists(targets['library_ids']):

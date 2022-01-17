@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
     #Load Library
     library_files = retrieval.get_data_files(args.library, ".bookmarks")
-    library = BookmarkCollection()
+    library : BookmarkCollection = BookmarkCollection()
     for bkmk_f in library_files:
         with open(bkmk_f, 'r') as f:
             library.add_file(f)

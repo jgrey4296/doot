@@ -9,7 +9,6 @@ from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
                      splitext)
 from subprocess import call
 
-from bkmkorg.utils.bibtex import bibtex as BU
 from bkmkorg.utils.pdf import pdf as PU
 from bkmkorg.utils.dfs import files as retrieval
 

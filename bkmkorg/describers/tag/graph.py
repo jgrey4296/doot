@@ -14,7 +14,6 @@ import networkx as nx
 import regex as re
 from bibtexparser import customization as c
 
-from bkmkorg.io.reader.netscape import open_and_extract_bookmarks
 from bkmkorg.utils.bibtex import entry_processors as bib_proc
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.dfs import files as retrieval

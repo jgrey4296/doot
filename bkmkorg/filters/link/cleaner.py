@@ -56,7 +56,7 @@ def retarget_org_file_links(org_file, pattern):
 
     # write file
     with open(org_file, 'w') as f:
-        f.write("\n".join(x for x in retargeted])
+        f.write("\n".join([x for x in retargeted])
 
 def find_media(org_file):
     with open(org_file, 'r') as f:

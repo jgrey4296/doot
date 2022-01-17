@@ -23,6 +23,7 @@ from bkmkorg.utils.twitter.user_summary import TwitterUserSummary
 from bkmkorg.utils.twitter.org_writer import TwitterOrg
 from bkmkorg.utils.twitter.graph import TwitterGraph
 import bkmkorg.utils.dfs.twitter as DFSU
+from bkmkorg.utils.dfs.files import get_data_files
 
 logging = root_logger.getLogger(__name__)
 
@@ -71,7 +72,7 @@ def construct_user_summaries(component_dir, combined_threads_dir, total_users):
     logging.info("Constructing summaries\n\tfrom: {} \n\tto: {}".format(component_dir, combined_threads_dir))
     user_lookup = total_users
     # Create final orgs, grouped by head user
-    components = [join(component_dir, x) for x in listdir(component_dir) if splitext(x)[1] == ".json"]
+    components = get_data_files(component_dir, ext=".json")
     for comp in components:
         logging.info("Constructing Summary for: {}".format(comp))
         # read comp
@@ -156,7 +157,7 @@ def construct_user_summaries(component_dir, combined_threads_dir, total_users):
 def construct_org_files(combined_threads_dir, org_dir, all_users, todo_tag_bindings:TweetTodoFile):
     logging.info("Constructing org files from: {} \n\tto: {}".format(combined_threads_dir, org_dir))
     # get all user summary jsons
-    user_summaries = [join(combined_threads_dir, x) for x in listdir(combined_threads_dir) if splitext(x)[1] == ".json"]
+    user_summaries = get_data_files(combined_threads_dir, ext=".json")
 
     for summary in user_summaries:
         org_obj = TwitterOrg(summary,

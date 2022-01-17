@@ -346,7 +346,7 @@ class TwitterTweet:
 
         with output.drawer("PROPERTIES") as dr:
             dr.add("PERMALINK", self.permalink(self.name, self.id_s))
-            if self.reply_to is not None:
+            if self.reply_to is not None and self.reply_to[0] is not None:
                 dr.add("REPLY_TO", self.permalink(*self.reply_to))
             if self.quote is not None:
                 dr.add("QUOTE", self.permalink(*self.quote[:2]))
@@ -356,7 +356,7 @@ class TwitterTweet:
             if self.is_quote:
                 dr.add("IS_QUOTE", "t")
 
-        output.add(self.text)
+        output.add(self.text.strip())
         output.nl
 
 
@@ -374,7 +374,6 @@ class TwitterTweet:
         if self.quote is not None:
             output.add(self.quote[2])
 
-        output.nl
         return str(output)
 
     @property

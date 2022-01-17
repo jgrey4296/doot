@@ -45,9 +45,9 @@ if __name__ == "__main__":
 
     # Load the library
     logging.info("Loading Library")
-    lib_files = retrieval.get_data_files(args.library, ".html")
+    lib_files = retrieval.get_data_files(args.library, ".bookmarks")
     library = BookmarkCollection()
-    for bkmk_f in source_files:
+    for bkmk_f in lib_files:
         with open(bkmk_f, 'r') as f:
             library.add_file(f)
 

@@ -36,7 +36,7 @@ def main():
 
     bookmarks.merge_duplicates()
 
-    logging.info(f"Writing out: {len(sorted_keys)}")
+    logging.info(f"Writing out: {len(bookmarks)}")
     with open(args.output,'w') as f:
         f.write(str(bookmarks))
 
