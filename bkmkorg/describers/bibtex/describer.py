@@ -5,6 +5,11 @@ Giving stats, non-tagged entries,
 year distributions
 firstnames, surnames.
 """
+from typing import List, Set, Dict, Tuple, Optional, Any
+from typing import Callable, Iterator, Union, Match
+from typing import Mapping, MutableMapping, Sequence, Iterable
+from typing import cast, ClassVar, TypeVar, Generic
+
 import argparse
 import logging as root_logger
 from math import ceil
@@ -12,6 +17,7 @@ from os import listdir
 from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
                      splitext)
 from collections import defaultdict
+from dataclasses import dataclass, field, InitVar
 
 import bibtexparser as b
 import regex as re
@@ -41,10 +47,17 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
                                                     "And entries lacking files or with multiple files"]))
 parser.add_argument('-t', '--target', default="~/github/writing/resources", help="Input target")
 parser.add_argument('-o', '--output', default="bibtex",                     help="Output Target")
-parser.add_argument('-f', '--files', action="store_true",                   help="Write to files")
-parser.add_argument('-a', '--authors', action="store_true",                 help="Describe authors")
-parser.add_argument('-y', '--years', action="store_true",                   help="Describe Years")
 
+@dataclass
+class ProcessResults:
+
+    all_keys      : List[str] = field(default_factory=list)
+    all_years     : TagFile   = field(default_factory=TagFile)
+    author_counts : TagFile   = field(default_factory=TagFile)
+    non_tagged    : List[str] = field(default_factory=list)
+    no_file       : List[str] = field(default_factory=list)
+    missing_files : List[str] = field(default_factory=list)
+    duplicates    : Set[str]  = field(default_factory=set)
 
 def process_db(db):
 
@@ -52,12 +65,7 @@ def process_db(db):
     count = 0
 
     # Extracted data
-    all_keys               = []
-    all_years              = TagFile()
-    author_counts          = TagFile()
-    non_tagged             = []
-    no_file                = []
-    missing_files          = []
+    results = ProcessResults()
 
     # Enumerate over all entries, updated data
     for i, entry in enumerate(db.entries):
@@ -66,41 +74,37 @@ def process_db(db):
             logging.info(f"{count}/10 Complete")
             count += 1
 
-        if entry['ID'] in all_keys:
+        if entry['ID'] in results.all_keys:
             logging.warning("Duplicate Key: {}".format(entry['ID']))
+            results.duplicates.add(entry['ID'])
 
-        all_keys.append(entry['ID'])
+        results.all_keys.append(entry['ID'])
         # get tags
         e_tags = entry['tags']
 
         # get untagged
         if not bool(e_tags):
-            non_tagged.append(entry)
+            results.non_tagged.append(entry)
 
         # count entries per year
         if 'year' in entry:
-            all_years.inc(entry['year'])
+            results.all_years.inc(entry['year'])
 
         # count names
         for x in entry['p_authors']:
             for name in x:
-                author_counts.inc(name)
+                results.author_counts.inc(name, clean=False)
+
 
         # Retrieve file information
         if not any(['file' in x for x in entry.keys()]):
-            no_file.append(entry['ID'])
+            results.no_file.append(entry['ID'])
 
         else:
-            filenames      = [y for x,y in entry.items() if 'file' in x]
-            missing_files += [y for y in filenames if not exists(y)]
+            filenames              = [y for x,y in entry.items() if 'file' in x]
+            results.missing_files += [y for y in filenames if not exists(abspath(expanduser(y)))]
 
-    return (all_keys,
-            all_years,
-            author_counts,
-            non_tagged,
-            no_file,
-            missing_files)
-
+    return results
 
 def main():
     args = parser.parse_args()
@@ -120,25 +124,24 @@ def main():
     result = process_db(db)
     logging.info("Processing complete")
 
-    if args.years:
-        with open("{}.years".format(args.output), 'w') as f:
-            f.write(str(result[1]))
 
+    with open(join(args.output, "bibtex.years"), 'w') as f:
+        f.write(str(result.all_years))
 
-    # Build Author counts files
-    if args.authors:
-        with open("{}.authors".format(args.output), 'w') as f:
-            f.write(str(result[2]))
+    with open(join(args.output, "bibtex.authors"), 'w') as f:
+        f.write(str(result.author_counts))
 
+    with open(join(args.output, "bibtex.no_file"), 'w') as f:
+        f.write("\n".join(result.no_file))
 
-    # Build Default Files
-    if args.files:
-        logging.info("Writing Descriptions of Files")
-        with open(f"{args.output}.no_file", 'w') as f:
-            f.write("\n".join(result[4]))
+    with open(join(args.output, "bibtex.missing_file"), 'w') as f:
+        f.write("\n".join(result.missing_files))
 
-        with open(f"{args.output}.missing_file", 'w') as f:
-            f.write("\n".join(result[5]))
+    with open(join(args.output, "bibtex.duplicates"), 'w') as f:
+        f.write("\n".join(result.duplicates))
+
+    with open(join(args.output, "bibtex.untagged"), 'w') as f:
+        f.write("\n".join(result.non_tagged))
 
     logging.info("Complete")
 

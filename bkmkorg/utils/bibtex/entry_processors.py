@@ -42,10 +42,15 @@ def clean_full(record):
     if "mendeley-tags" in record:
         tags.update([i.strip() for i in re.split(',|;', record["mendeley-tags"].replace('\n', ''))])
 
-    record['tags'] = tags
+    record['tags']      = tags
     record['p_authors'] = []
+
     if 'author' in record:
-        record['p_authors'] = [x.split(' and ') for x in record['author']]
+        record['p_authors'] += [x.split(' and ') for x in record['author']]
+
+    if 'editor' in record:
+        record['p_authors'] += [c.splitname(x, False) for x in record['editor']]
+
     return record
 
 

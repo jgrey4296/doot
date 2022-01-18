@@ -36,12 +36,13 @@ class TagFile(BaseFileFormat):
     def read(f:file) -> 'TagFile':
         obj = TagFile()
         for line in f.readlines():
+            if not bool(line):
+                continue
             try:
                 line_s = [obj.norm_regex.sub("_", x.strip()) for x in line.split(obj.sep)]
                 obj.set_count(line_s[0], int(line_s[1]))
             except Exception as err:
-                logging.warning(f"Failure Tag Reading: {line}")
-
+                logging.warning(f"Failure Tag Reading: {line}, {err}")
 
         return obj
 
@@ -49,6 +50,7 @@ class TagFile(BaseFileFormat):
     @staticmethod
     def read_bib(f:file) -> 'TagFile':
         raise NotImplementedError()
+
     @staticmethod
     def read_org(f:file) -> 'TagFile':
         raise NotImplementedError()
@@ -61,18 +63,6 @@ class TagFile(BaseFileFormat):
     def read_bookmarks(f:file) -> 'TagFile':
         raise NotImplementedError()
 
-    def inc(self, key):
-        if not bool(key):
-            return
-        norm_key = self.norm_regex.sub("_", key.strip())
-        self.count[norm_key] += 1
-
-    def set_count(self, key:str, value:int):
-        if not bool(key):
-            return
-        norm_key = self.norm_regex.sub("_", key.strip())
-        self.count[norm_key] = value
-
     def __iter__(self):
         return iter(self.count)
 
@@ -82,8 +72,8 @@ class TagFile(BaseFileFormat):
         `key` : `value`
         """
         key_sort = sorted(list(self.count.keys()))
-        total = [self.sep.join([k, self.count[k]]) for k in key_sort]
-        return "\n".join(totals)
+        total = [self.sep.join([k, str(self.count[k])]) for k in key_sort]
+        return "\n".join(total)
 
     def __repr__(self):
         return f"<{self.__class__.__name__}: {len(self)}>"
@@ -98,6 +88,24 @@ class TagFile(BaseFileFormat):
 
     def __len__(self):
         return len(self.count)
+
+    def __contains__(self, value):
+        return value in self.count
+
+    def inc(self, key, clean=True):
+        if not bool(key):
+            return
+        if clean:
+            key = self.norm_regex.sub("_", key.strip())
+
+        self.count[key] += 1
+
+    def set_count(self, key:str, value:int):
+        if not bool(key):
+            return
+        norm_key = self.norm_regex.sub("_", key.strip())
+        self.count[norm_key] = value
+
     def update(self, values):
         for tag in values:
             self.inc(tag)
@@ -108,9 +116,6 @@ class TagFile(BaseFileFormat):
     def get_count(self, tag):
         norm_tag = self.norm_regex.sub("_", tag.strip())
         return self.count[norm_tag]
-
-    def __contains__(self, value):
-        return value in self.count
 
     def difference(self, other: 'TagFile') -> 'TagFile':
         result = TagFile()
