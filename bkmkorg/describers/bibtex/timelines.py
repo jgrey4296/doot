@@ -16,7 +16,7 @@ from bibtexparser import customization as c
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.bibtex import entry_processors as bib_proc
 from bkmkorg.utils.dfs import files as retrieval
-from bkmkorg.utils.collecton.timeline import TimelineFile
+from bkmkorg.utils.collections.timeline import TimelineFile
 
 # Setup root_logger:
 LOGLEVEL = root_logger.DEBUG

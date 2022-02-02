@@ -10,7 +10,7 @@ import urllib.parse as url_parse
 
 import regex
 from bs4 import BeautifulSoup
-from bkmkorg.utils.collection.base_format import BaseFileFormat
+from bkmkorg.utils.collections.base_format import BaseFileFormat
 
 logging = root_logger.getLogger(__name__)
 
@@ -128,7 +128,7 @@ class BookmarkCollection(BaseFileFormat):
     def __contains__(self, value:Bookmark):
         return value in self.entries
 
-    def difference(self, other:BookmarkCollection):
+    def difference(self, other:"BookmarkCollection"):
         result = BookmarkCollection()
         for bkmk in other:
             if bkmk not in self:
