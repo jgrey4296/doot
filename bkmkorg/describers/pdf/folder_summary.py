@@ -25,9 +25,10 @@ logging = root_logger.getLogger(__name__)
 ##############################
 #see https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                    epilog = "\n".join([""]))
+                                    epilog = "\n".join(["Create summary pdf of the first 2 pages of all pdfs in target",
+                                                        "If `grouped` then create multiple summaries, one for each immediate subdirectory of `target`"]))
 parser.add_argument('--target')
-parser.add_argument('--output')
+parser.add_argument('--output', help="Output Path and base file name. ie: a/path/blah -> blah_{}.pdf")
 parser.add_argument('-g', '--grouped', action='store_true')
 parser.add_argument('--bound', default=200)
 
@@ -40,7 +41,7 @@ def main():
     if args.grouped:
         groups = listdir(args.target)
         for group in groups:
-            pdfs_to_process = retrieval.get_data_files(join(args.target, group), ".pdf")
+            pdfs_to_process = retrieval.get_data_files(join(args.target, group), [".pdf", ".epub"])
             logging.info("Summarising {}'s {} pdfs".format(group, len(pdfs_to_process)))
             PU.summarise_pdfs(pdfs_to_process,
                               output="{}_{}".format(args.output, group),

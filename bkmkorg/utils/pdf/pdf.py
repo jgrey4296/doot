@@ -1,17 +1,21 @@
 #!/usr/bin/env python
 import logging as root_logger
+import subprocess
+import unicodedata
 from os import listdir
 from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
                      splitext)
 from subprocess import call, run
-import subprocess
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 
+import pypandoc as pandoc
+from bkmkorg.utils.file.temp_dir import mk_temp, temp_dir
 from pdfrw import IndirectPdfDict, PageMerge, PdfReader, PdfWriter
 
 logging = root_logger.getLogger(__name__)
+
 
 def get2(srcpages):
     scale = 0.5
@@ -26,6 +30,10 @@ def get2(srcpages):
 
 
 def summarise_pdfs(paths, func=None, output="./pdf_summary", bound=200):
+    """
+    For a list of pdfs, get the first two pages of each,
+    and make a pdf of those
+    """
     count = 0
     if func is None:
         func = get2
@@ -36,12 +44,22 @@ def summarise_pdfs(paths, func=None, output="./pdf_summary", bound=200):
 
     for path in paths:
         try:
-            pdf_obj = PdfReader(path)
-            writer.addpage(func(pdf_obj))
+            if splitext(path)[1] == ".pdf":
+                pdf_obj = PdfReader(path)
+                writer.addpage(func(pdf_obj))
+            else:
+                raise Exception()
         except:
             logging.warning("Error Encountered with {}".format(path))
-            # TODO for exceptions, create a stub pdf with the name and author
-            # use txt2pdf
+            mk_temp()
+            # from stackoverflow.com/questions/2365411
+            if not path.isascii():
+                path = unicodedata.normalize("NFKD", path).encode("ascii", "ignore")
+
+            pandoc.convert_text(f"File: {path}", "pdf", outputfile=join(temp_dir, "temp.pdf"), format="md")
+            pdf_obj = PdfReader(join(temp_dir, "temp.pdf"))
+            writer.addpage(func(pdf_obj))
+
 
         if len(writer.pagearray) > bound:
             # if pdf is too big, create another
