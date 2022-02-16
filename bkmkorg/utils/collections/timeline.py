@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass, field, InitVar
 
-from bkmkorg.utils.collection.base_format import BaseFileFormat
+from bkmkorg.utils.collections.base_format import BaseFileFormat
 
 @dataclass
 class TimelineFile(BaseFileFormat):

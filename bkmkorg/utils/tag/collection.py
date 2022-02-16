@@ -19,7 +19,7 @@ from bkmkorg.utils.collections.base_format import BaseFileFormat
 logging = root_logger.getLogger(__name__)
 
 TAG_NORM = re.compile(" +")
-file     = Any
+file_t     = Any
 
 @dataclass
 class TagFile(BaseFileFormat):
@@ -33,7 +33,7 @@ class TagFile(BaseFileFormat):
 
 
     @staticmethod
-    def read(f:file) -> 'TagFile':
+    def read(f:file_t) -> 'TagFile':
         obj = TagFile()
         for line in f.readlines():
             if not bool(line):
@@ -48,19 +48,19 @@ class TagFile(BaseFileFormat):
 
 
     @staticmethod
-    def read_bib(f:file) -> 'TagFile':
+    def read_bib(f:file_t) -> 'TagFile':
         raise NotImplementedError()
 
     @staticmethod
-    def read_org(f:file) -> 'TagFile':
+    def read_org(f:file_t) -> 'TagFile':
         raise NotImplementedError()
 
     @staticmethod
-    def read_html(f:file) -> 'TagFile':
+    def read_html(f:file_t) -> 'TagFile':
         raise NotImplementedError()
 
     @staticmethod
-    def read_bookmarks(f:file) -> 'TagFile':
+    def read_bookmarks(f:file_t) -> 'TagFile':
         raise NotImplementedError()
 
     def __iter__(self):
@@ -133,7 +133,7 @@ class SubstitutionFile(TagFile):
     mapping : Dict[str, str] = field(default_factory=lambda: defaultdict(lambda: ""))
 
     @staticmethod
-    def read(f:file) -> 'SubstitutionFile':
+    def read(f:file_t) -> 'SubstitutionFile':
         obj = SubstitutionFile()
         for line in f.readlines():
             try:

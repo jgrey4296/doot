@@ -49,7 +49,7 @@ def main():
         users   = ["@"+x[1] for x in matched if bool(x)]
         # add to index
         for user in users:
-            index[user] = filename
+            index.add_files(user, [filename])
 
     # Write out index
     out_string = str(index)

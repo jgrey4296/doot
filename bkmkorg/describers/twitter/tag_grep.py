@@ -85,7 +85,7 @@ def main():
 
         # add new tag->file mappings to the index
         if bool(index_additions):
-            logging.info("Writing to file")
+            logging.info(f"Writing to file: {len(index_additions)}")
             with open(args.output,'a') as f:
                 f.write("\n")
                 f.write(str(index_additions))

@@ -6,7 +6,7 @@ from bkmkorg.utils.dfs.files import get_data_files
 
 logging = root_logger.getLogger(__name__)
 
-file = str
+file_t = str
 
 class BaseFileFormat(metaclass=abc.ABCMeta):
 
@@ -27,7 +27,7 @@ class BaseFileFormat(metaclass=abc.ABCMeta):
         return main
 
     @staticmethod
-    def read(f:file) -> 'BaseFileFormat':
+    def read(f:file_t) -> 'BaseFileFormat':
         pass
 
     @abc.abstractmethod

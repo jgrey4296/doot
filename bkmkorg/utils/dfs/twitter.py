@@ -67,6 +67,13 @@ def dfs_for_components(tweet_graph:'TwitterGraph') -> List[Set[str]]:
             count = 0
             logging.info("Edge Set Size: {}".format(len(edge_set)))
 
+    # Now handle any remaining nodes which don't have edges
+    edgeless = set(graph.nodes).difference(discovered)
+    for node in edgeless:
+        components.append([node])
+        discovered.add(node)
+
+    assert(all([x in discovered for x in graph.nodes]))
     logging.info("Found {} components".format(len(components)))
     return components
 
