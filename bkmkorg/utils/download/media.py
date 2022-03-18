@@ -5,6 +5,7 @@ from typing import Callable, Iterator, Union, Match
 from typing import Mapping, MutableMapping, Sequence, Iterable
 from typing import cast, ClassVar, TypeVar, Generic
 
+from os import system
 from os.path import exists, join, splitext, split
 from os import listdir
 import requests
@@ -19,6 +20,7 @@ def download_media(media_dir, media):
     logging.info("Downloading media {} to: {}".format(len(media), media_dir))
     if len(media) > CHECK_AMNT:
         logging.warning(f"Downloading {len(media)} media files to {media_dir}")
+        system('say -v Moira -r "Found a Large Group of Files, waiting for confirmation"')
         result = input("Continue? [y/n] ")
         if result != "y":
             logging.warning("Skipping download")

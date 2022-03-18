@@ -14,7 +14,7 @@ from shutil import rmtree
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
-
+from os import system
 import bkmkorg.io.twitter.file_writing as FFU
 import bkmkorg.utils.dfs.twitter as DFSU
 import bkmkorg.utils.download.twitter as DU
@@ -81,8 +81,7 @@ def get_library_tweets(lib:List[str], tweet) -> Set[str]:
 def read_target_ids(tweet, target_file) -> TweetTodoFile:
     logging.info("---------- Getting Target Tweet ids")
     if tweet is None:
-        with open(target_file, 'r') as f:
-            todo_ids = TweetTodoFile.read(f)
+        todo_ids = TweetTodoFile.read(target_file)
     else:
         todo_ids = TweetTodoFile(mapping={split(tweet)[1]:""})
         logging.info("Specific Tweet: {}".format(todo_ids))
@@ -227,6 +226,8 @@ def main():
             f.write("\n\t".join(sorted(new_tweet_ids)))
             f.write("\n----------------------------------------\n")
 
+
+    system('say -v Moira -r "Finished Twitter Download"')
     logging.info("----- Finished Twitter Automation")
 #  ############################################################################
 if __name__ == "__main__":
