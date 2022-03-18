@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
-from dataclasses import dataclass, field, InitVar
+from dataclasses import InitVar, dataclass, field
+from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
+                    Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
+                    TypeVar, cast)
 
 from bkmkorg.utils.collections.base_format import BaseFileFormat
+
 
 @dataclass
 class TimelineFile(BaseFileFormat):
     """ File For creating timelines of [Year, Citation] """
 
-    entries : List[Tuple[int, str]] = field(default_factory=list)
+    entries : list[Tuple[int, str]] = field(default_factory=list)
 
     @staticmethod
-    def read(f:file) -> 'BaseFileFormat':
+    def read(f_name:str) -> 'BaseFileFormat':
         pass
 
     def __iter__(self):

@@ -19,7 +19,7 @@ from bkmkorg.utils.collections.base_format import BaseFileFormat
 logging = root_logger.getLogger(__name__)
 
 TAG_NORM = re.compile(" +")
-file_t     = Any
+path_t     = str
 
 @dataclass
 class TagFile(BaseFileFormat):
@@ -33,34 +33,35 @@ class TagFile(BaseFileFormat):
 
 
     @staticmethod
-    def read(f:file_t) -> 'TagFile':
+    def read(f_name:path_t) -> 'TagFile':
         obj = TagFile()
-        for line in f.readlines():
-            if not bool(line):
-                continue
-            try:
-                line_s = [obj.norm_regex.sub("_", x.strip()) for x in line.split(obj.sep)]
-                obj.set_count(line_s[0], int(line_s[1]))
-            except Exception as err:
-                logging.warning(f"Failure Tag Reading: {line}, {err}")
+        with open(f_name, 'r') as f:
+            for line in f.readlines():
+                if not bool(line):
+                    continue
+                try:
+                    line_s = [obj.norm_regex.sub("_", x.strip()) for x in line.split(obj.sep)]
+                    obj.set_count(line_s[0], int(line_s[1]))
+                except Exception as err:
+                    logging.warning(f"Failure Tag Reading: {line}, {err}")
 
         return obj
 
 
     @staticmethod
-    def read_bib(f:file_t) -> 'TagFile':
+    def read_bib(f:path_t) -> 'TagFile':
         raise NotImplementedError()
 
     @staticmethod
-    def read_org(f:file_t) -> 'TagFile':
+    def read_org(f:path_t) -> 'TagFile':
         raise NotImplementedError()
 
     @staticmethod
-    def read_html(f:file_t) -> 'TagFile':
+    def read_html(f:path_t) -> 'TagFile':
         raise NotImplementedError()
 
     @staticmethod
-    def read_bookmarks(f:file_t) -> 'TagFile':
+    def read_bookmarks(f:path_t) -> 'TagFile':
         raise NotImplementedError()
 
     def __iter__(self):
@@ -133,16 +134,17 @@ class SubstitutionFile(TagFile):
     mapping : Dict[str, str] = field(default_factory=lambda: defaultdict(lambda: ""))
 
     @staticmethod
-    def read(f:file_t) -> 'SubstitutionFile':
+    def read(f_path:path_t) -> 'SubstitutionFile':
         obj = SubstitutionFile()
-        for line in f.readlines():
-            try:
-                line_s = [obj.norm_regex.sub("_", x.strip()) for x in line.split(obj.sep)]
-                obj.set_count(line_s[0], line_s[1])
-                if len(line_s) > 2 and bool(line_s[2]):
-                    obj.set_sub(line_s[0], line_s[2])
-            except:
-                logging.warning(f"Failure Sub Reading: {line}")
+        with open(f_path, 'r') as f:
+            for line in f.readlines():
+                try:
+                    line_s = [obj.norm_regex.sub("_", x.strip()) for x in line.split(obj.sep)]
+                    obj.set_count(line_s[0], int(line_s[1]))
+                    if len(line_s) > 2 and bool(line_s[2]):
+                        obj.set_sub(line_s[0], line_s[2])
+                except:
+                    logging.warning(f"Failure Sub Reading: {line}")
 
         return obj
 

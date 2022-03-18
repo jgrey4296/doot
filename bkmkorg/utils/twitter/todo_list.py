@@ -28,10 +28,12 @@ class TweetTodoFile:
 
 
     @staticmethod
-    def read(f:file, id_regex=r"status/(\d+)\?"):
-        lines = f.readlines()
+    def read(p:str, id_regex=r"status/(\d+)\?"):
         obj   = TweetTodoFile()
         reg   = re.compile(id_regex)
+        with open(p, 'r') as f:
+            lines = f.readlines()
+
         for line in lines:
             try:
                 url, tags         = line.split(obj.sep)

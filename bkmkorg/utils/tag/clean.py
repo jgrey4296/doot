@@ -95,8 +95,7 @@ def clean_bkmk_files(bkmk_files, sub):
 
     for bkmk_path in bkmk_files:
         cleaned   = []
-        with open(bkmk_path, 'r') as f:
-            bookmarks = BookmarkCollection.read(f)
+        bookmarks = BookmarkCollection.read(bkmk_path)
 
         for bkmk in bkmks:
             bkmk.clean(sub)

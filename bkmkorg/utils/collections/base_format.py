@@ -6,7 +6,7 @@ from bkmkorg.utils.dfs.files import get_data_files
 
 logging = root_logger.getLogger(__name__)
 
-file_t = str
+path_t = str
 
 class BaseFileFormat(metaclass=abc.ABCMeta):
 
@@ -21,13 +21,12 @@ class BaseFileFormat(metaclass=abc.ABCMeta):
         main = cls()
         ext = ext or main.ext
         for t in get_data_files(target, ext):
-            with open(t, 'r') as f:
-                main += cls.read(f)
+            main += cls.read(t)
 
         return main
 
     @staticmethod
-    def read(f:file_t) -> 'BaseFileFormat':
+    def read(p:path_t) -> 'BaseFileFormat':
         pass
 
     @abc.abstractmethod

@@ -15,7 +15,7 @@ from bkmkorg.utils.collections.base_format import BaseFileFormat
 logging = root_logger.getLogger(__name__)
 
 TAG_NORM = regex.compile(" +")
-file     = Any
+path_t     = Any
 
 @dataclass
 class Bookmark:
@@ -81,10 +81,11 @@ class BookmarkCollection(BaseFileFormat):
 
 
     @staticmethod
-    def read(f:file) -> "BookmarkCollection":
+    def read(f_name:str) -> "BookmarkCollection":
         bookmarks = BookmarkCollection()
-        for line in f.readlines():
-            bookmarks += Bookmark.build(line)
+        with open(f_name, 'r') as f:
+            for line in f.readlines():
+                bookmarks += Bookmark.build(line)
 
         return bookmarks
 
@@ -99,9 +100,10 @@ class BookmarkCollection(BaseFileFormat):
         logging.info("Found {} links".format(len(bkmkList)))
         return BookmarkCollection(bkmkList)
 
-    def add_file(self, f:file):
-        for line in f.readlines():
-            self.entries.append(Bookmark.build(line))
+    def add_file(self, f_name:path_t):
+        with open(f_name, 'r') as f:
+            for line in f.readlines():
+                self.entries.append(Bookmark.build(line))
 
     def __str__(self):
         return "\n".join([str(x) for x in sorted(self.entries)])
@@ -127,6 +129,9 @@ class BookmarkCollection(BaseFileFormat):
 
     def __contains__(self, value:Bookmark):
         return value in self.entries
+
+    def __len__(self):
+        return len(self.entries)
 
     def difference(self, other:"BookmarkCollection"):
         result = BookmarkCollection()

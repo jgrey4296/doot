@@ -36,20 +36,20 @@ class IndexFile:
         main = IndexFile()
         for target in get_data_files(target, main.ext):
             try:
-                with open(target, 'r') as f:
-                    main += IndexFile.read(f, sep=sep)
+                main += IndexFile.read(target, sep=sep)
             except Exception as err:
                 logging.warning(f"IndexFile.builder failure for {target}")
 
         return main
 
     @staticmethod
-    def read(f:file, sep=None) -> IndexFile:
+    def read(p:str, sep=None) -> IndexFile:
         obj  = IndexFile(sep=sep)
-        # convert lines to mapping
-        for line in f.readlines():
-            line_s = [x.strip() for x in line.split(obj.sep)]
-            obj.add_files(line_s[0], line_s[2:])
+        with open(p, 'r') as f:
+            # convert lines to mapping
+            for line in f.readlines():
+                line_s = [x.strip() for x in line.split(obj.sep)]
+                obj.add_files(line_s[0], line_s[2:])
 
         return obj
 
