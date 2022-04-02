@@ -25,8 +25,8 @@ logging = root_logger.getLogger(__name__)
 ##############################
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Load a bookmark file, split into url netlocs"]))
-parser.add_argument('-s', '--source', action="append")
-parser.add_argument('-o', '--output')
+parser.add_argument('-s', '--source', action="append", required=True)
+parser.add_argument('-o', '--output', required=True)
 
 CLEAN = re.compile(r"^www\.")
 

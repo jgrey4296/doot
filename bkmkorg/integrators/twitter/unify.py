@@ -31,8 +31,8 @@ logging = root_logger.getLogger(__name__)
 ##############################
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Integrate newly parsed twitter orgs into the existing library"]))
-parser.add_argument('-s', '--source', action="append")
-parser.add_argument('-l', '--library', action="append")
+parser.add_argument('-s', '--source', action="append", required=True)
+parser.add_argument('-l', '--library', action="append", required=True)
 parser.add_argument('-e', '--exclude', action="append")
 parser.add_argument('-r', '--record')
 

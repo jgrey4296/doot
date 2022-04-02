@@ -21,8 +21,8 @@ logging = root_logger.getLogger(__name__)
 ##############################
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Read a bookmark file, split it into separate files by tag"]))
-parser.add_argument('-l', '--library')
-parser.add_argument('-o', '--output')
+parser.add_argument('-l', '--library', required=True)
+parser.add_argument('-o', '--output', required=True)
 
 
 if __name__ == "__main__":

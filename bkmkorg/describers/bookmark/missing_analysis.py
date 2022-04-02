@@ -28,7 +28,7 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
                                     epilog = "\n".join(["Load a bookmark library and a number of -s(ources)",
                                                         "Output the bookmarks that are missing"]))
 parser.add_argument('-l', '--library', default="~/github/writing/other_files/main_bookmarks.html")
-parser.add_argument('-s', '--source', action='append')
+parser.add_argument('-s', '--source', action='append', required=True)
 parser.add_argument('-o', '--output', default="~/Desktop/missing_bookmarks.html")
 
 

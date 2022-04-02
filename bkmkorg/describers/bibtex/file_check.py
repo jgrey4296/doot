@@ -34,9 +34,9 @@ logging = root_logger.getLogger(__name__)
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog="\n".join(["Check All pdfs are accounted for in a bibliography"])
                                     )
-parser.add_argument('-t', '--target',  help="Pdf Library directory to verify")
-parser.add_argument('-l', '--library', help="Bibtex Library directory to verify")
-parser.add_argument('-o', '--output',  help="Output location for reports")
+parser.add_argument('-t', '--target',  help="Pdf Library directory to verify", required=True)
+parser.add_argument('-l', '--library', help="Bibtex Library directory to verify", required=True)
+parser.add_argument('-o', '--output',  help="Output location for reports", required=True)
 
 
 def main():

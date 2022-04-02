@@ -26,9 +26,9 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join([""]))
     parser.add_argument('--aBool', action="store_true")
-    parser.add_argument('--target', append=True)
-    parser.add_argument('--tags')
-    parser.add_argument('--out')
+    parser.add_argument('--target', append=True, required=True)
+    parser.add_argument('--tags', required=True)
+    parser.add_argument('--out', required=True)
 
     args      = parser.parse_args()
     args.out  = abspath(expanduser(args.out))

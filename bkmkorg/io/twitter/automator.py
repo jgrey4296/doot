@@ -43,7 +43,7 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
                                     epilog="\n".join([""]))
 parser.add_argument('--config', default=DEFAULT_CONFIG, help="The Secrets file to access twitter")
 parser.add_argument('--target', default=DEFAULT_TARGET, help="The target dir to process/download to")
-parser.add_argument('--library',default=[DEFAULT_LIBRARY], action="append",       help="Location of already downloaded tweets")
+parser.add_argument('--library',default=[DEFAULT_LIBRARY], action="append", help="Location of already downloaded tweets")
 parser.add_argument('--export',  help="File to export all library tweet ids to, optional")
 parser.add_argument('--tweet', help="A Specific Tweet URL to handle, for CLI usage/ emacs use")
 parser.add_argument('--skiptweets', action='store_true', help="for when tweets have been downloaded, or hung")

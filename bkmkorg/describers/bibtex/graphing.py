@@ -34,8 +34,8 @@ logging = root_logger.getLogger(__name__)
 ##############################
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Create graphs of Bibtex Files"]))
-parser.add_argument('-l', '--library', action="append", help="The bibtex file collection directory")
-parser.add_argument('-o', '--output', help="The output target directory")
+parser.add_argument('-l', '--library', action="append", help="The bibtex file collection directory", required=True)
+parser.add_argument('-o', '--output', help="The output target directory", required=True)
 parser.add_argument('-t', '--tag', help="Optional Focus Tag")
 
 

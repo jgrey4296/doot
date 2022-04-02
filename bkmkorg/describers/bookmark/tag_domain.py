@@ -28,9 +28,9 @@ logging = root_logger.getLogger(__name__)
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                 epilog = "\n".join(["For a bookmark file, print out domain counts and tag counts",
                                                     "Pairs with bkmkorg/filters/bookmark_tag_filter"]))
-parser.add_argument('-l', '--library')
-parser.add_argument('-o', '--output')
-parser.add_argument('-d', '--domain', action="store_true")
+parser.add_argument('-l', '--library', required=True)
+parser.add_argument('-o', '--output', required=True)
+parser.add_argument('-d', '--domain', action="store_true"
 
 
 if __name__ == "__main__":

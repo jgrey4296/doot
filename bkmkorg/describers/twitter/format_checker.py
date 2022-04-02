@@ -25,7 +25,7 @@ root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                 epilog="\n".join(["Report org files with incorrect meta data of tweets"]))
-parser.add_argument('-t', '--target',action="append")
+parser.add_argument('-t', '--target', action="append", required=True)
 parser.add_argument('-o', '--output', default="collected")
 #--------------------------------------------------
 

@@ -24,7 +24,7 @@ logging = root_logger.getLogger(__name__)
 ##############################
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog = "\n".join([""]))
-parser.add_argument('-l', '--library')
+parser.add_argument('-l', '--library', required=True)
 ##############################
 
 if __name__ == "__main__":

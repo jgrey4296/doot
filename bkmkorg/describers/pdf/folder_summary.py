@@ -27,8 +27,8 @@ logging = root_logger.getLogger(__name__)
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Create summary pdf of the first 2 pages of all pdfs in target",
                                                         "If `grouped` then create multiple summaries, one for each immediate subdirectory of `target`"]))
-parser.add_argument('--target')
-parser.add_argument('--output', help="Output Path and base file name. ie: a/path/blah -> blah_{}.pdf")
+parser.add_argument('--target', required=True)
+parser.add_argument('--output', help="Output Path and base file name. ie: a/path/blah -> blah_{}.pdf", required=True)
 parser.add_argument('-g', '--grouped', action='store_true')
 parser.add_argument('--bound', default=200)
 

@@ -21,8 +21,8 @@ logging = root_logger.getLogger(__name__)
 ##############################
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog = "\n".join(["Index all users found in orgs"]))
-parser.add_argument('--target', action="append")
-parser.add_argument('--output')
+parser.add_argument('--target', action="append", required=True)
+parser.add_argument('--output', required=True)
 
 
 PERMALINK = re.compile(r':PERMALINK:\s+\[\[https?://twitter.com/(.+?)/status/[0-9]+\]')

@@ -18,8 +18,8 @@ logging = root_logger.getLogger(__name__)
 #see https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog = "\n".join([""]))
-parser.add_argument('-s', '--source', action="append")
-parser.add_argument('-o', '--output')
+parser.add_argument('-s', '--source', action="append", required=True)
+parser.add_argument('-o', '--output', required=True)
 
 from bkmkorg.utils.bookmarks.collection import BookmarkCollection
 

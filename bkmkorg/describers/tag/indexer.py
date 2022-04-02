@@ -21,8 +21,8 @@ logging = root_logger.getLogger(__name__)
 ##############################
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog = "\n".join(["Index all tags found in orgs"]))
-parser.add_argument('--target', action="append")
-parser.add_argument('--output')
+parser.add_argument('--target', action="append", required=True)
+parser.add_argument('--output', required=True)
 
 TAG_LINE = re.compile(r'^\*\* Thread: .+?\s{5,}:(.+?):$')
 

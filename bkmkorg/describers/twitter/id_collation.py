@@ -31,7 +31,7 @@ root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog="\n".join(["Extracts all tweet ids in all org files in specified dirs"]))
-parser.add_argument('-t', '--target',action="append")
+parser.add_argument('-t', '--target', action="append", required=True)
 parser.add_argument('-o', '--output', default="collected")
 #--------------------------------------------------
 
