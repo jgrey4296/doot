@@ -15,7 +15,8 @@ import bibtexparser as b
 import regex as re
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
-from bibtexparser.bwriter import BibTexWriter
+
+from bkmkorg.utils.bibtex.writer import JGBibTexWriter
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.dfs import files as retrieval
 from bkmkorg.utils.file.hash_check import file_to_hash
@@ -125,7 +126,7 @@ def custom_clean(record):
     global ERRORS
     record['error'] = []
 
-    maybe_unicode(record)
+    # maybe_unicode(record)
     check_year(record)
     file_set = hashcheck_files(record)
     clean_tags(record)
@@ -160,11 +161,12 @@ def main():
             f.write(formatted)
 
     # Write out the actual bibtex
-    writer = BibTexWriter()
-    writer.align_values = True
     if args.output:
+        logging.info("Writing out Cleaned Bibliography")
+        writer = JGBibTexWriter()
+        out_str = writer.write(db)
         with open(args.output,'w') as f:
-            f.write(writer.write(db))
+            f.write(out_str)
 
 
 if __name__ == "__main__":
