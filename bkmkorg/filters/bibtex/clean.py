@@ -42,7 +42,9 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
                                  exit_on_error=True)
 
 parser.add_argument('-t', '--target', action='append', required=True)
-parser.add_argument('-o', '--output', default=None, required=True)
+parser.add_argument('-o', '--output', default=None)
+
+NEWLINE_RE = re.compile(f"\n+\s*")
 
 def expander(path):
     return abspath(expanduser(path))
@@ -122,6 +124,12 @@ def clean_tags(record):
         record['error'].append('tag_error')
 
 
+
+def remove_newlines(record):
+    for key in record:
+        val = record[key]
+        record[key] = NEWLINE_RE.sub(" ", val)
+
 def custom_clean(record):
     global ERRORS
     record['error'] = []
@@ -137,12 +145,14 @@ def custom_clean(record):
 
     del record['error']
 
+    remove_newlines(record)
     return record
 
 
 def main():
     args = parser.parse_args()
-    error_out = expander(join(split(args.output)[0], ".bib_errors"))
+    if args.output:
+        error_out = expander(join(split(args.output)[0], ".bib_errors"))
 
 
     logging.info("---------- STARTING Bibtex Clean")
@@ -152,6 +162,7 @@ def main():
     bib_files = retrieval.get_data_files(args.target, ".bib")
     db        = BU.parse_bib_files(bib_files, func=custom_clean)
 
+    logging.info("Read %s entries", len(db.entries))
     #Get errors and write them out:
     error_tuples = ERRORS
 
