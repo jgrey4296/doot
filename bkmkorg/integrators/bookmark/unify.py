@@ -17,9 +17,10 @@ logging = root_logger.getLogger(__name__)
 
 #see https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                 epilog = "\n".join([""]))
-parser.add_argument('-s', '--source', action="append")
-parser.add_argument('-o', '--output')
+                                 epilog = "\n".join(["Merge source .bookmark files",
+                                                    "Into the output file"]))
+parser.add_argument('-s', '--source', action="append", required=True, help="Expects .bookmarks files")
+parser.add_argument('-o', '--output', required=True, help="Expects a .bookmarks file")
 
 from bkmkorg.utils.bookmarks.collection import BookmarkCollection
 
@@ -31,8 +32,7 @@ def main():
 
     bookmarks = BookmarkCollection()
     for path in args.source:
-        with open(path, 'r') as f:
-            bookmarks.add_file(f)
+        bookmarks.add_file(path)
 
     bookmarks.merge_duplicates()
 

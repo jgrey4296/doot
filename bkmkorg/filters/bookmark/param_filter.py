@@ -28,9 +28,9 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
                                                         "filtering a blacklist of URL parameters",
                                                         "Pairs with bkmkorg/describers/bookmark_queries"])
 )
-parser.add_argument('-s', '--source', action="append")
+parser.add_argument('-s', '--source', action="append", required=True)
 parser.add_argument('-q', '--query', default=None)
-parser.add_argument('-o', '--output')
+parser.add_argument('-o', '--output', required=True)
 
 
 query_re = re.compile(r'\*+\s+\(\d+\) (.+)$')

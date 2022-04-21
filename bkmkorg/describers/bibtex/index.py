@@ -33,7 +33,7 @@ def main():
     #see https://docs.python.org/3/howto/argparse.html
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                    epilog = "\n".join(["Bibtex Tag Indexer"]))
-    parser.add_argument('--target', action="append")
+    parser.add_argument('--target', action="append", required=True)
     parser.add_argument('--output', default="~/github/writing/resources/cron_reports/tag_bibtex.index")
 
     args = parser.parse_args()

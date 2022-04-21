@@ -25,7 +25,7 @@ logging = root_logger.getLogger(__name__)
 
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog="\n".join(["Compare bibtex files, print out the keys missing from the first"]))
-parser.add_argument('-t', '--target', action='append', help="Target Bibtex (repeatable)")
+parser.add_argument('-t', '--target', action='append', help="Target Bibtex (repeatable)", required=True)
 
 
 def main():

@@ -36,9 +36,9 @@ logging = root_logger.getLogger(__name__)
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog = "\n".join(["Tag Grep",
                                                      "Use existing tags to index potential org files"]))
-parser.add_argument('-l', '--library', action="append")
-parser.add_argument('-t', '--target', action="append")
-parser.add_argument('-o', '--output')
+parser.add_argument('-l', '--library', action="append", required=True)
+parser.add_argument('-t', '--target', action="append", required=True)
+parser.add_argument('-o', '--output', required=True)
 parser.add_argument('--file_batch', default=100, type=int)
 parser.add_argument('--tag_batch',  default=100, type=int)
 

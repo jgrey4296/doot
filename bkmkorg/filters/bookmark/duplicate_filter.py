@@ -23,7 +23,7 @@ logging = root_logger.getLogger(__name__)
 ##############################
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Remove Duplicates (by full url) from a bookmark file, merging tags"]))
-parser.add_argument('-s', '--source')
+parser.add_argument('-s', '--source', required=True)
 parser.add_argument('-o', '--output', default="~/Desktop/deduplicated_bookmarks.html")
 
 

@@ -31,7 +31,7 @@ logging = root_logger.getLogger(__name__)
 ##############################
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog="\n".join(["Extracts all tags in all bibtex, bookmark and org files in specified dirs"]))
-parser.add_argument('-t', '--target',action="append")
+parser.add_argument('-t', '--target', action="append", required=True)
 parser.add_argument('-o', '--output', default="collected")
 
 

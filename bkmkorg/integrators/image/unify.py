@@ -26,8 +26,8 @@ logging = root_logger.getLogger(__name__)
 # Setup
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Find images in {source} dir that are not linked in {output}.org, and link them"]))
-parser.add_argument('-s', '--source')
-parser.add_argument('-o', '--output')
+parser.add_argument('-s', '--source', required=True)
+parser.add_argument('-o', '--output', required=True)
 
 
 ##############################

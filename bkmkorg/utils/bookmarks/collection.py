@@ -6,6 +6,8 @@ from dataclasses import InitVar, dataclass, field
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
+from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
+                     splitext)
 import urllib.parse as url_parse
 
 import regex
@@ -25,7 +27,7 @@ class Bookmark:
     sep     : str      = field(default=" : ")
 
     def __post_init__(self):
-        self.tags = [TAG_NORM.sub("_", x.strip()) for x in self.tags]
+        self.tags = {TAG_NORM.sub("_", x.strip()) for x in self.tags}
 
     def __eq__(self, other):
         return self.url == other.url
@@ -83,7 +85,7 @@ class BookmarkCollection(BaseFileFormat):
     @staticmethod
     def read(f_name:str) -> "BookmarkCollection":
         bookmarks = BookmarkCollection()
-        with open(f_name, 'r') as f:
+        with open(abspath(expanduser(f_name)), 'r') as f:
             for line in f.readlines():
                 bookmarks += Bookmark.build(line)
 
@@ -92,16 +94,16 @@ class BookmarkCollection(BaseFileFormat):
     @staticmethod
     def read_netscape(path:str):
         logging.info('Starting html opener for: {}'.format(path))
-        with open(path, 'rb') as f:
+        with open(abspath(expanduser(path)), 'rb') as f:
             rawHtml = f.read().decode("utf-8","ignore")
 
         soup     = BeautifulSoup(rawHtml,'html.parser')
-        bkmkList = __getLinks(soup)
+        bkmkList = _getLinks(soup)
         logging.info("Found {} links".format(len(bkmkList)))
         return BookmarkCollection(bkmkList)
 
     def add_file(self, f_name:path_t):
-        with open(f_name, 'r') as f:
+        with open(abspath(expanduser(f_name)), 'r') as f:
             for line in f.readlines():
                 self.entries.append(Bookmark.build(line))
 
@@ -152,7 +154,7 @@ class BookmarkCollection(BaseFileFormat):
         self.entries = list(deduplicated.values())
 
 ######################################################################
-def __getLinks(aSoup) -> List[Bookmark]:
+def _getLinks(aSoup) -> List[Bookmark]:
     bkmks = aSoup.find_all('a')
     bkmkList = []
     for x in bkmks:

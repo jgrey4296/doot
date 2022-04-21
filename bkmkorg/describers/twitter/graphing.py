@@ -29,7 +29,7 @@ logging = root_logger.getLogger(__name__)
 ##############################
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Create graphs of Bibtex Files"]))
-parser.add_argument('--library', action="append", help="The bibtex file collection directory")
+parser.add_argument('--library', action="append", help="The bibtex file collection directory", required=True)
 parser.add_argument('--target', default="./twitter_timeline.jpg", help="The output target directory")
 ##############################
 

@@ -15,7 +15,8 @@ import bibtexparser as b
 import regex as re
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
-from bibtexparser.bwriter import BibTexWriter
+
+from bkmkorg.utils.bibtex.writer import JGBibTexWriter
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.dfs import files as retrieval
 from bkmkorg.utils.file.hash_check import file_to_hash
@@ -32,14 +33,18 @@ logging = root_logger.getLogger(__name__)
 ERRORS = []
 # Setup
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                    epilog=
-                                    "\n".join(["Specify a Target bibtex file,",
+                                 epilog=
+                                 "\n".join(["Specify a Target bibtex file,",
                                             "Output file,",
                                             "Cleans entries,",
-                                            "Records errors in an 'error' field for an entry."]))
+                                            "Records errors in an 'error' field for an entry."]),
 
-parser.add_argument('-t', '--target', action='append')
+                                 exit_on_error=True)
+
+parser.add_argument('-t', '--target', action='append', required=True)
 parser.add_argument('-o', '--output', default=None)
+
+NEWLINE_RE = re.compile(f"\n+\s*")
 
 def expander(path):
     return abspath(expanduser(path))
@@ -119,11 +124,17 @@ def clean_tags(record):
         record['error'].append('tag_error')
 
 
+
+def remove_newlines(record):
+    for key in record:
+        val = record[key]
+        record[key] = NEWLINE_RE.sub(" ", val)
+
 def custom_clean(record):
     global ERRORS
     record['error'] = []
 
-    maybe_unicode(record)
+    # maybe_unicode(record)
     check_year(record)
     file_set = hashcheck_files(record)
     clean_tags(record)
@@ -134,12 +145,14 @@ def custom_clean(record):
 
     del record['error']
 
+    remove_newlines(record)
     return record
 
 
 def main():
     args = parser.parse_args()
-    error_out = expander(join(split(args.output)[0], ".bib_errors"))
+    if args.output:
+        error_out = expander(join(split(args.output)[0], ".bib_errors"))
 
 
     logging.info("---------- STARTING Bibtex Clean")
@@ -149,6 +162,7 @@ def main():
     bib_files = retrieval.get_data_files(args.target, ".bib")
     db        = BU.parse_bib_files(bib_files, func=custom_clean)
 
+    logging.info("Read %s entries", len(db.entries))
     #Get errors and write them out:
     error_tuples = ERRORS
 
@@ -158,11 +172,12 @@ def main():
             f.write(formatted)
 
     # Write out the actual bibtex
-    writer = BibTexWriter()
-    writer.align_values = True
     if args.output:
+        logging.info("Writing out Cleaned Bibliography")
+        writer = JGBibTexWriter()
+        out_str = writer.write(db)
         with open(args.output,'w') as f:
-            f.write(writer.write(db))
+            f.write(out_str)
 
 
 if __name__ == "__main__":

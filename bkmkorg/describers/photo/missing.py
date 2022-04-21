@@ -28,10 +28,10 @@ logging = root_logger.getLogger(__name__)
 #see https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Find and Hash images, revealing duplicates"]))
-parser.add_argument('-l', '--library', action="append")
-parser.add_argument('-t', '--target', action="append")
+parser.add_argument('-l', '--library', action="append", required=True)
+parser.add_argument('-t', '--target', action="append", required=True)
 parser.add_argument('-c', '--copy', action="store_true")
-parser.add_argument('-o', '--output')
+parser.add_argument('-o', '--output', required=True)
 
 if __name__ == "__main__":
     logging.info("Starting Photo Description")

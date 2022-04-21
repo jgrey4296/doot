@@ -28,8 +28,8 @@ logging = root_logger.getLogger(__name__)
 #see https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join([""]))
-parser.add_argument('--target', action="append")
-parser.add_argument('--output')
+parser.add_argument('--target', action="append", required=True)
+parser.add_argument('--output', required=True)
 
 
 if __name__ == "__main__":

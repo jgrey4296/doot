@@ -1,10 +1,16 @@
-TOP     := ./bkmkorg
+TOP   := ./bkmkorg
+
+.PHONY: conda
 
 all : clean
 # Building ####################################################################
 build:
 	python -m build
 	pip install -U -e .
+
+freeze:
+	bash -ic "conda list --export > ./conda_env.txt"
+	pip list --format=freeze > ./requirements.txt
 
 # Linting #####################################################################
 pylint:

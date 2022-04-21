@@ -34,7 +34,7 @@ logging = root_logger.getLogger(__name__)
 #see https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog="""Integrates a collection of bibtex files into a single file. Targets can be flat directories""")
-parser.add_argument('-t', '--target', action="append")
+parser.add_argument('-t', '--target', action="append", required=True)
 parser.add_argument('-o', '--output', default="./output/integrated.bib")
 
 def main():

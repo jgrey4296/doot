@@ -30,9 +30,9 @@ logging = root_logger.getLogger(__name__)
 ##############################
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Create Timelines for Bibtex Files"]))
-parser.add_argument('--library', action="append")
+parser.add_argument('--library', action="append", required=True)
 parser.add_argument('--min_entries', default=5, type=int)
-parser.add_argument('--output')
+parser.add_argument('--output', required=True)
 
 def main():
     args = parser.parse_args()

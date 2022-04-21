@@ -32,8 +32,8 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
                                                         "Create an org file of paired links",
                                                         "which compare the original link",
                                                         "with the link minus an html parameter"]))
-parser.add_argument('-l', '--library')
-parser.add_argument('-o', '--output')
+parser.add_argument('-l', '--library', required=True)
+parser.add_argument('-o', '--output', required=True)
 
 
 if __name__ == "__main__":

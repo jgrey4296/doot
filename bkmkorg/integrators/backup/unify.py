@@ -22,8 +22,8 @@ logging = root_logger.getLogger(__name__)
 #see https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join([""]))
-parser.add_argument('--library')
-parser.add_argument('--target')
+parser.add_argument('--library', required=True)
+parser.add_argument('--target', required=True)
 parser.add_argument('-e', '--exclude', action="append")
 
 
