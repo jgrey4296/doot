@@ -71,7 +71,7 @@ class Bookmark:
     def clean(self, subs):
         cleaned_tags = set()
         for tag in self.tags:
-            cleaned_tags.add(subs.get_sub(tag))
+            cleaned_tags.add(subs.sub(tag))
 
         self.tags = cleaned_tags
 
