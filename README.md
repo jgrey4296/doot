@@ -32,3 +32,21 @@ BeautifulSoup, and other std library python (re, namedtuples...)
 
 ## TODO
 Add more comments and test
+
+## Reminder about pdf metadata
+pdftk ? attach_files
+pdftk ? dump_data_annots
+
+pdftk ? update_info ./info output out3.pdf
+
+InfoBegin
+InfoKey: JGData
+InfoValue: Blah,Blee
+
+## Reminder jpg metadata:
+import exif
+with open(file, 'rb') as f:
+data = exif.Image(f)
+
+then delete the user_comment, set it,
+and write to a file using data.get_file()

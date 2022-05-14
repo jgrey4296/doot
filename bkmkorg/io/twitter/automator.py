@@ -22,6 +22,7 @@ import bkmkorg.utils.twitter.extraction as EU
 import requests
 from bkmkorg.utils.twitter.graph import TwitterGraph
 from bkmkorg.utils.twitter.todo_list import TweetTodoFile
+from bkmkorg.utils.twitter.api_setup import setup_twitter
 
 import twitter
 
@@ -124,16 +125,6 @@ def setup(args):
     return targets
 
 
-def setup_twitter(config):
-    logging.info("---------- Initialising Twitter")
-    twit = twitter.Api(consumer_key=config['DEFAULT']['consumerKey'],
-                       consumer_secret=config['DEFAULT']['consumerSecret'],
-                       access_token_key=config['DEFAULT']['accessToken'],
-                       access_token_secret=config['DEFAULT']['accessSecret'],
-                       sleep_on_rate_limit=config['DEFAULT']['sleep'],
-                       tweet_mode='extended')
-
-    return twit
 
 def run_processor(targets, all_users, todo_ids, twit):
     if not bool([x for x in listdir(targets['component_dir']) if splitext(x)[1] == ".json"]):
@@ -164,7 +155,7 @@ def main():
 
     targets          = setup(args)
 
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(allow_no_value=True, delimiters='=')
     with open(args.config, 'r') as f:
         config.read_file(f)
 

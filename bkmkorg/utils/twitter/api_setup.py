@@ -14,6 +14,18 @@ logging = root_logger.getLogger(__name__)
 
 Path = str
 
+def setup_twitter(config):
+    logging.info("---------- Initialising Twitter")
+    should_sleep = config['DEFAULT']['SLEEP'] == "True"
+    twit = tw.Api(consumer_key=config['TWITTER']['consumerKey'],
+                  consumer_secret=config['TWITTER']['consumerSecret'],
+                  access_token_key=config['TWITTER']['accessToken'],
+                  access_token_secret=config['TWITTER']['accessSecret'],
+                  sleep_on_rate_limit=should_sleep,
+                  tweet_mode='extended')
+
+    return twit
+
 
 def load_credentials_and_setup(credentials:Path, key:Path, secret:Path):
     """ Load the keys and tokens, and setup the twitter client """
