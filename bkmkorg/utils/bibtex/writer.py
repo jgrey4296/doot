@@ -47,10 +47,15 @@ class JGBibTexWriter(bwriter.BibTexWriter):
         for field in [i for i in display_order if i not in ['ENTRYTYPE', 'ID']]:
             try:
                 buffer_val = " " * (self.equals_column - (len(self.indent) + len(field)))
+                field_val  = bwriter._str_or_expr_to_bibtex(entry[field])
+                # Remove unnecessary double wrapping
+                if field_val[:2] == "{{" and field_val[-2:] == "}}":
+                    field_val = field_val[1:-1]
+
                 formatted  = field_line.substitute(indent=self.indent,
                                                    field=field,
                                                    eq_buffer=buffer_val,
-                                                   value=bwriter._str_or_expr_to_bibtex(entry[field]))
+                                                   value=field_val)
                 bibtex.append(formatted)
             except TypeError:
                 raise TypeError(u"The field %s in entry %s must be a string" % (field, entry['ID']))

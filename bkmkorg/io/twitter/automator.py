@@ -218,7 +218,7 @@ def main():
             f.write("\n----------------------------------------\n")
 
 
-    system('say -v Moira -r "Finished Twitter Download"')
+    system('say -v Moira -r 50 "Finished Twitter Download"')
     logging.info("----- Finished Twitter Automation")
 #  ############################################################################
 if __name__ == "__main__":

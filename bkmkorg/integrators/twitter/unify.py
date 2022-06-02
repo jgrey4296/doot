@@ -4,6 +4,7 @@ Integrates newly parsed twitter->org files
 into the existing set
 """
 import argparse
+import system
 import datetime
 import logging as root_logger
 from os import listdir, mkdir
@@ -97,13 +98,13 @@ def integrate(source, lib_dict):
         f.write("\n")
         f.write(lines)
 
-    if not exists(new_files):
-        return
-
     run(["mv", source, join(split(source)[0],
                             "{}{}".format(split(source)[1],
                                           PROCESSED))],
         capture_output=True, check=True)
+
+    if not exists(new_files):
+        return
 
     copy_files(new_files, existing_files)
 
@@ -143,7 +144,7 @@ def main():
 
     #load the newly parsed org names
     # { file_name : full_path }
-    newly_parsed = retrieval.get_data_files(args.source, ext=".org")
+    newly_parsed = sorted(retrieval.get_data_files(args.source, ext=".org"))
 
     logging.info("Newly parsed to transfer: {}".format(len(newly_parsed)))
 
@@ -172,10 +173,11 @@ def main():
     logging.info("Completely new to transfer: {}".format(len(totally_new)))
 
     # Now copy completely new files
-    for x in totally_new:
+    for x in sorted(totally_new):
         copy_new(x, args.library[0])
 
     update_record(args.record, args.source)
+    system('say -v Moira -r 50 "Finished Integrating"')
 
 if __name__ == "__main__":
     main()

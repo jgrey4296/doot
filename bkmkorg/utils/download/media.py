@@ -18,9 +18,10 @@ CHECK_AMNT = 150
 def download_media(media_dir, media):
     """ Download all media mentioned in json files """
     logging.info("Downloading media {} to: {}".format(len(media), media_dir))
-    if len(media) > CHECK_AMNT:
-        logging.warning(f"Downloading {len(media)} media files to {media_dir}")
-        system('say -v Moira -r "Found a Large Group of Files, waiting for confirmation"')
+    remaining = [x for x in media if not exists(join(media_dir, split(x)[1]))]
+
+    if len(remaining) > CHECK_AMNT:
+        system('say -v Moira -r 50 "Found a Large Group of Files, waiting for confirmation"')
         result = input("Continue? [y/n] ")
         if result != "y":
             logging.warning("Skipping download")
