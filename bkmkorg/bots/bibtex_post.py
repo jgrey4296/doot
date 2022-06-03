@@ -45,20 +45,23 @@ MAX_ATTEMPTS = int(config['DEFAULT']['MAX_ATTEMPTS'])
 TWEET_LEN    = int(config['DEFAULT']['tweet_len'])
 TOOT_LEN     = int(config['DEFAULT']['toot_len'])
 
-BLACKLIST    = config['BIBTEX']['blacklist']
+BLACKLIST    = expander(config['BIBTEX']['blacklist'])
+BIBTEX_LIB   = expander(config['BIBTEX']['lib'])
+SUCCESS_LOG  = expander(config['BIBTEX']['success_log'])
+FAIL_LOG     = expander(config['BIBTEX']['fail_log'])
 
 def select_bibtex():
     # logging.info("Selecting bibtex")
     # load blacklist
-    with open(expander(config['BIBTEX']['blacklist']), 'r') as f:
+    with open(BLACKLIST, 'r') as f:
         blacklist = [x.strip() for x in f.readlines() if bool(x.strip())]
 
 
-    bibs = [x for x in listdir(expander(config['BIBTEX']['lib'])) if splitext(x)[1] == ".bib"]
+    bibs = [x for x in listdir(BIBTEX_LIB) if splitext(x)[1] == ".bib"]
     filtered = [x for x in bibs if x not in blacklist]
 
     assert(len(filtered) <= len(bibs))
-    selected = expander(join(config['BIBTEX']['lib'], choice(filtered)))
+    selected = join(BIBTEX_LIB, choice(filtered)))
 
     return selected
 
@@ -99,13 +102,13 @@ def maybe_blacklist_file(db, file_path, already_tweeted):
 
     sufficient_entry = lambda entry: has_fields(entry) and not_tweeted_yet(entry)
 
-    with open(expander(BLACKLIST), 'r') as f:
+    with open(BLACKLIST, 'r') as f:
         blacklisted = [x.strip() for x in f.readlines()]
 
     assert(file_path not in blacklisted)
     if not any([sufficient_entry(x) for x in db.entries]):
         logging.info(f"Bibtex failed check, blacklisting: {file_path}")
-        with open(expander(BLACKLIST), 'a') as f:
+        with open(BLACKLIST, 'a') as f:
             f.write(f"{split(file_path)[1]}\n")
 
     exit()
@@ -142,7 +145,7 @@ def format_tweet(entry):
 
 def main():
     # logging.info("Running Auto Bibtex Tweet")
-    with open(expander(config['BIBTEX']['success_log'])) as f:
+    with open(SUCCESS_LOG) as f:
         tweeted = [x.strip() for x in f.readlines()]
 
     bib        = select_bibtex()
@@ -177,13 +180,13 @@ def main():
         logging.warning(f"Mastodon Post Failure: {err}")
 
     if success:
-        with open(expander(config['BIBTEX']['success_log']), 'a') as f:
+        with open(SUCCESS_LOG, 'a') as f:
             f.write(f"{id_str}\n")
 
     else:
         single_line = tweet_text.replace("\n", "")
         # If the tweet is too long, log it as as single line
-        with open(expander(config['BIBTEX']['fail_log']), 'a') as f:
+        with open(FAIL_LOG, 'a') as f:
             f.write(f"({id_str}) : {single_line}\n")
 
 if __name__ == "__main__":

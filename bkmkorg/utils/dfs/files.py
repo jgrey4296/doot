@@ -86,8 +86,7 @@ def get_data_files(initial, ext=None, normalize=False):
     DFS, Getting all files of an extension
     """
     logging.info("Getting Data Files")
-    if ext is None:
-        ext = []
+    ext = ext or []
 
     if not isinstance(ext, list):
         ext = [ext]
@@ -106,7 +105,7 @@ def get_data_files(initial, ext=None, normalize=False):
         if isfile(current) and match_type:
             files.append(current)
         elif isfile(current) and not match_type and missing_type:
-            logging.warning("Unrecognized file type: {}".format(splitext(current)[1].lower()))
+            logging.warning("Unrecognized file type: {}".format(split(current)[1]))
             unrecognised_types.add(ftype)
         elif isdir(current):
             sub = [join(current,x) for x in listdir(current)]
