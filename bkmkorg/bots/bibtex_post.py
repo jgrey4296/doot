@@ -22,7 +22,7 @@ LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
-console.setLevel(root_logger.INFO)
+console.setLevel(root_logger.WARN)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##############################
@@ -61,7 +61,7 @@ def select_bibtex():
     filtered = [x for x in bibs if x not in blacklist]
 
     assert(len(filtered) <= len(bibs))
-    selected = join(BIBTEX_LIB, choice(filtered)))
+    selected = join(BIBTEX_LIB, choice(filtered))
 
     return selected
 

@@ -24,8 +24,8 @@ logging = root_logger.getLogger(__name__)
 
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Split bookmarks into a text file"]))
-parser.add_argument('-s', '--source', help="Expects a netscape html bookmark file")
-parser.add_argument('-o', '--output', help="Expects a .bookmarks filename")
+parser.add_argument('-s', '--source', help="Expects a netscape html bookmark file", required=True)
+parser.add_argument('-o', '--output', help="Expects a .bookmarks filename", required=True)
 
 def main():
     args = parser.parse_args()

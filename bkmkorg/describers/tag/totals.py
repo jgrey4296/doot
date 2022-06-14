@@ -79,8 +79,8 @@ def main():
     cleaned       = SubstitutionFile.builder(cli_args.cleaned)
 
     # get new tags
-    tags : TagFile      = tag_graph.tags
-    new_tags : TagFile  = cleaned.difference(tags)
+    tags     : TagFile = tag_graph.tags
+    new_tags : TagFile = cleaned.difference(tags)
 
     # group them separately, alphabeticaly
     # To be included in the separate tag files
