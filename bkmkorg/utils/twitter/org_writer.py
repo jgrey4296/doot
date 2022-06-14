@@ -155,7 +155,16 @@ class TwitterThread:
         if not bool(thread_tweet_ids):
             return None
 
-        thread_date = tweets[thread['main_thread'][0]]['created_at']
+        existing = [x for x in thread['main_thread'] if x in tweets]
+        if not bool(existing):
+            logging.warning("Invalid Thread provided")
+            obj = TwitterThread(redirect_url, "UNKNOWN", set())
+            for x in thread['main_thread']:
+                obj.append(x)
+            return obj
+
+
+        thread_date = tweets[existing[0]]['created_at']
         date = TwitterThread.parse_date(thread_date)
         tags = {y.strip() for x in thread_tweet_ids for y in source_ids.mapping[x].split(",") if bool(y)}
 
@@ -163,6 +172,8 @@ class TwitterThread:
 
         # add tweets of main thread
         for x in thread['main_thread']:
+            if x not in tweets:
+                continue
             obj.add_use(x)
             tweet_obj = TwitterTweet.build(tweets[x], all_users, redirect_url, tweets)
             obj.main.append(tweet_obj)

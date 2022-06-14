@@ -39,7 +39,7 @@ def clean_bib_files(bib_files, sub, tag_regex=r"^(\s*tags\s*=\s*{)(.+?)(\s*},?)$
             tags = [x.strip() for x in match[2].split(",") if bool(x.strip())]
             replacement_tags = set()
             for tag in tags:
-                replacement_tags.add(sub.get_sub(tag))
+                replacement_tags.add(sub.sub(tag))
 
             out_lines.append("{}{}{}\n".format(match[1],
                                                ",".join(sorted(replacement_tags)),
@@ -80,7 +80,7 @@ def clean_org_files(org_files, sub, tag_regex=r"^\*\*\s+(.+?)(\s+):(\S+):$"):
             replacement_tags = set([])
             #swap to dict:
             for tag in individual_tags:
-                replacement_tags.add(sub.get_sub(tag))
+                replacement_tags.add(sub.sub(tag))
 
             out_line = "** {}{}:{}:\n".format(title,
                                               spaces,
