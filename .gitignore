@@ -1,7 +1,7 @@
 *.html
 */data/
 */imgs/
-backup
+/backup
 checked_errors.txt
 data/*
 errors.txt
