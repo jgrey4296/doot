@@ -1,7 +1,133 @@
+[project]
+name            = "bkmkorg"
+version         = "0.0.1"
+description     = "Various bookmark, bibtex, and related utilities"
+readme          = "README.md"
+requires-python = ">=3.10"
+license         = {file = "LICENSE"}
+keywords        = ["bibtex", "twitter", "mastodon", "bookmarks"]
+authors         = [
+    {email = "jgrey4296@gmail.com"},
+    {name  = "J Grey"}
+]
+classifiers     = [
+    "Programming Language :: Python :: 3.10"
+]
+
+dependencies   = [
+    # "acab_config @ git+https://github.com/jgrey4296/acab_config.git@0.0.1",
+    "Mastodon.py >= 1.5.1",
+    "networkx >= 2.7.1",
+    "pdfrw >= 0.4",
+    "pypandoc > 1.6.3",
+    "python-twitter >= 3.5",
+
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest > 7.0.0",
+]
+
+[project.urls]
+homepage      = "https://github.com/jgrey4296/acab"
+documentation = "https://readthedocs.org/acab"
+repository    = "https://github.com/jgrey4296/acab"
+changelog     = "https://github.com/jgrey4296/acab/blob/master/CHANGELOG.md"
+
+[project.scripts]
+bkmk                   = "bkmkorg.utils.entry_points_list:main"
+# describers:
+bkmk-bib-cmp           = "bkmkorg.describers.bibtex.compare:main"
+bkmk-bib-desc          = "bkmkorg.describers.bibtex.describer:main"
+bkmk-bib-check         = "bkmkorg.describers.bibtex.file_check:main"
+bkmk-bib-graph         = "bkmkorg.describers.bibtex.graphing:main"
+bkmk-bib-timeline      = "bkmkorg.describers.bibtex.timelines:main"
+bkmk-bib-authors       = "bkmkorg.describers.bibtex.author_extract:main"
+bkmk-bib-index         = "bkmkorg.describers.bibtex.index:main"
+
+bkmk-pdf-summarise     = "bkmkorg.describers.pdf.folder_summary:main"
+bkmk-pdf-tag-summarise = "bkmkorg.describers.pdf.tag_summary:main"
+
+bkmk-tag-index         = "bkmkorg.describers.tag.indexer:main"
+bkmk-tag-totals        = "bkmkorg.describers.tag.totals:main"
+bkmk-tag-graph         = "bkmkorg.describers.tag.graph:main"
+
+bkmk-twit-index        = "bkmkorg.describers.twitter.indexer:main"
+bkmk-tag-grep          = "bkmkorg.describers.twitter.tag_grep:main"
+# filters:
+bkmk-bib-clean         = "bkmkorg.filters.bibtex.clean:main"
+bkmk-tag-clean         = "bkmkorg.filters.tag.clean:main"
+bkmk-tag-graph-query   = "bkmkorg.filters.tag.graph_query:main"
+# integrators:
+bkmk-twit-merge        = "bkmkorg.integrators.twitter.unify:main"
+bkmk-merge             = "bkmkorg.integrators.bookmark.unify:main"
+bkmk-bib-merge         = "bkmkorg.integrators.bibtex.unify:main"
+bkmk-backup            = "bkmkorg.integrators.backup.unify:main"
+bkmk-adb-backup        = "bkmkorg.integrators.backup.adb_unify:main"
+bkmk-noscript          = "bkmkorg.integrators.noscript.merge:main"
+# splitters:
+bkmk-split             = "bkmkorg.splitters.bookmark.split:main"
+bkmk-to-txt            = "bkmkorg.splitters.bookmark.bkmk_to_text:main"
+bkmk-split-authors     = "bkmkorg.utils.author_similarity:main"
+
+#download
+bkmk-twit              = "bkmkorg.io.twitter.automator:main"
+
+# bots
+bkmk-bot-time          = "bkmkorg.bots.time_announce:main"
+bkmk-bot-bibtex        = "bkmkorg.bots.bibtex_post:main"
+bkmk-bot-image         = "bkmkorg.bots.image_post:main"
+bkmk-bot-stub          = "bkmkorg.bots.bibtex_stubber:main"
+
+[project.gui-scripts]
+# spam-gui      = "spam:main_gui"
+
+[project.entry-points."nothing"]
+# tomatoes      = "spam:main_tomatoes"
+
+[tool.pytest.ini_options]
+log_cli       = false
+log_level     = "INFO"
+log_cli_level = "WARN"
+log_format    = "%(levelname)s %(name)s : %(message)s"
+
 [build-system]
 requires = [
-         "setuptools>=42",
-         "wheel"
+         "setuptools >= 63.1.0",
+         "wheel >= 0.37.1"
 ]
 
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+# packages = ['bkmkorg']
+include-package-data = true
+
+[tool.setuptools.packages.find]
+namespaces = true
+where = ["."]
+
+[tool.setuptools.package-data]
+bkmkorg = []
+
+[tool.setuptools.exclude-package-data]
+
+
+
+[tool.pyright]
+# strict = acab.*
+verboseOutput               = true
+typeCheckingMode            = "strict"
+pythonVersion               = "3.10"
+
+reportUnusedImport          = false
+reportAssertAlwaysTrue      = "information"
+reportMissingParameterType  = "warning"
+reportMissingTypeArgument   = "warning"
+reportMissingTypeStubs      = "warning"
+reportUnknownMemberType     = "warning"
+reportUnknownParameterType  = "information"
+reportUnknownVariableType   = "warning"
+reportUnnecessaryCast       = "information"
+reportUnnecessaryIsInstance = "warning"
