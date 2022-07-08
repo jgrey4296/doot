@@ -13,6 +13,11 @@ import twitter
 from configparser import ConfigParser
 from bkmkorg.utils.twitter.api_setup import setup_twitter
 from bkmkorg.utils.mastodon.api_setup import setup_mastodon
+from importlib.resources import files
+from bkmkorg import DEFAULT_CONFIG, DEFAULT_BOTS
+
+data_path = files(f"bkmkorg.DEFAULT_CONFIG}")
+data_bots = data_path.joinpath(DEFAULT_BOTS)
 
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
@@ -25,7 +30,7 @@ logging = root_logger.getLogger(__name__)
 ##############################
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog = "\n".join(["Auto Tweet/Toot a whitelisted image"]))
-parser.add_argument('-c', '--config', default='/Volumes/documents/github/py_bookmark_organiser/bots.config', help="The Config File to Use")
+parser.add_argument('-c', '--config', default=data_bots, help="The Config File to Use")
 
 args     = parser.parse_args()
 
@@ -35,12 +40,12 @@ config   = ConfigParser(allow_no_value=True, delimiters='=')
 # Read the main config
 config.read(expander(args.config))
 # Then read in secrets
-config.read(expander(config['DEFAULT']['secrets_loc']))
+config.read(data_path.joinpath(config['DEFAULT']['secrets_loc']))
 
 TEMP_LOC            = config['PHOTO']['TEMP_LOC']
-dcim_whitelist_path = config['PHOTO']['WHITE_LIST']
+dcim_whitelist_path = data_path.joinpath(config['PHOTO']['WHITE_LIST'])
 conversion_args     = config['PHOTO']['convert_args'].split(" ")
-convert_cmd     = "convert"
+convert_cmd         = "convert"
 
 
 expander = lambda x: abspath(expanduser(x))

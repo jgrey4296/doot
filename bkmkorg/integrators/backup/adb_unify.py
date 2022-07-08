@@ -9,6 +9,7 @@ from configparser import ConfigParser
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from functools import partial
+from importlib.resources import files
 from os import listdir
 from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
                      splitext)
@@ -22,15 +23,15 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
+from bkmkorg import DEFAULT_CONFIG, DEFAULT_SECRETS
 
-if TYPE_CHECKING:
-    # tc only imports
-    pass
+data_path    = files(DEFAULT_CONIFG)
+data_secrets = data_path.joinpath(DEFAULT_SECRETS)
 
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog = "\n".join(["Walk through a library directory, and either push to,",
                                                      "or pull from, a tablet to sync the directories"]))
-parser.add_argument('--config', default="/Volumes/documents/github/py_bookmark_organiser/secrets.config")
+parser.add_argument('--config', default=data_secrets)
 parser.add_argument('--library', required=True)
 parser.add_argument('--target',  required=True)
 parser.add_argument('--to-device',   action='store_true')

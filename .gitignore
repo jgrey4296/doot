@@ -10,4 +10,8 @@ output
 raw_bookmarks
 simplified_bookmarks.txt
 .temp_download
-secrets.config
+*secrets.config
+*bibtex_blacklist
+*bibtex_post.log
+*dcim_whitelist
+*rejected_tweets.log

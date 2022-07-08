@@ -4,9 +4,14 @@ from os.path import abspath, expanduser
 from configparser import ConfigParser
 from datetime import datetime
 import argparse
+from importlib.resources import files
+from bkmkorg import DEFAULT_CONFIG, DEFAULT_BOTS
+
+data_path = files(f"bkmkorg.{DEFAULT_CONFIG}")
+data_bots= data_path.joinpath(DEFAULT_BOTS)
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog = "\n".join(["Trigger Mac OS to speak the time"]))
-parser.add_argument('--config', default="/Volumes/documents/github/py_bookmark_organiser/bots.config")
+parser.add_argument('--config', default="data_bots")
 args = parser.parse_args()
 
 

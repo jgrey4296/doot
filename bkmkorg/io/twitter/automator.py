@@ -3,32 +3,32 @@
 Automate twitter archiving
 
 """
+from __future__ import annotations
+
 import argparse
 import configparser
 import datetime
 import json
 import logging as root_logger
-from os import listdir, mkdir
+from importlib.resources import files
+from os import listdir, mkdir, system
 from os.path import abspath, exists, expanduser, join, split, splitext
 from shutil import rmtree
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
-from os import system
+
 import bkmkorg.io.twitter.file_writing as FFU
 import bkmkorg.utils.dfs.twitter as DFSU
 import bkmkorg.utils.download.twitter as DU
 import bkmkorg.utils.twitter.extraction as EU
 import requests
+from bkmkorg import DEFAULT_CONFIG, DEFAULT_LIBRARY, DEFAULT_SECRETS, DEFAULT_TARGET
+from bkmkorg.utils.twitter.api_setup import setup_twitter
 from bkmkorg.utils.twitter.graph import TwitterGraph
 from bkmkorg.utils.twitter.todo_list import TweetTodoFile
-from bkmkorg.utils.twitter.api_setup import setup_twitter
 
 import twitter
-
-DEFAULT_CONFIG  = "/Volumes/documents/github/py_bookmark_organiser/secrets.config"
-DEFAULT_TARGET  = "/Volumes/documents/github/py_bookmark_organiser/.temp_download"
-DEFAULT_LIBRARY = "/Volumes/documents/twitterthreads"
 
 # Setup root_logger:
 LOGLEVEL = root_logger.DEBUG
@@ -39,11 +39,14 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
+
+data_secrets = files(f"bkmkorg.{DEFAULT_CONFIG}").joinpath(DEFAULT_SECRETS)
+data_target  = files(f"bkmkorg.{DEFAULT_CONFIG}").joinpath(DEFAULT_TARGET)
 #see https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog="\n".join([""]))
-parser.add_argument('--config', default=DEFAULT_CONFIG, help="The Secrets file to access twitter")
-parser.add_argument('--target', default=DEFAULT_TARGET, help="The target dir to process/download to")
+parser.add_argument('--config', default=data_secrets, help="The Secrets file to access twitter")
+parser.add_argument('--target', default=data_target, help="The target dir to process/download to")
 parser.add_argument('--library',default=[DEFAULT_LIBRARY], action="append", help="Location of already downloaded tweets")
 parser.add_argument('--export',  help="File to export all library tweet ids to, optional")
 parser.add_argument('--tweet', help="A Specific Tweet URL to handle, for CLI usage/ emacs use")
@@ -101,8 +104,8 @@ def setup(args):
         with open(targets['last_tweet_file'], 'r') as f:
             last_tweet = f.read().strip()
 
-    if args.tweet is not  None and args.tweet != last_tweet and args.target == DEFAULT_TARGET and exists(DEFAULT_TARGET):
-        rmtree(DEFAULT_TARGET)
+    if args.tweet is not  None and args.tweet != last_tweet and args.target == data_target and exists(data_target):
+        rmtree(data_target)
 
     missing_dirs = [x for x in [targets['target_dir'],
                                 targets['tweet_dir'],

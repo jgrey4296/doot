@@ -8,7 +8,7 @@ import toml
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog = "\n".join([""]))
 
-parser.add_argument('--config', default="/Volumes/documents/github/py_bookmark_organiser/pyproject.toml")
+parser.add_argument('--config', default="/Volumes/documents/github/python/bookmark_organiser/pyproject.toml")
 
 
 def main():

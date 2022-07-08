@@ -1,21 +1,28 @@
 #!/opt/anaconda3/envs/bookmark/bin/python
 # Setup root_logger:
+from __future__ import annotations
+
+import argparse
 import json
 import logging as root_logger
 import subprocess
 from configparser import ConfigParser
+from importlib.resources import files
 from os import listdir, system
 from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
                      splitext)
 from random import choice
 
-import argparse
 import bibtexparser as b
 import twitter
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
+from bkmkorg import DEFAULT_BOTS, DEFAULT_CONFIG
 from bkmkorg.utils.mastodon.api_setup import setup_mastodon
 from bkmkorg.utils.twitter.api_setup import setup_twitter
+
+data_path = files(f"bkmkorg.{DEFAULT_CONFIG}")
+data_bots= data_path.joinpath(DEFAULT_BOTS)
 
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
@@ -28,7 +35,7 @@ logging = root_logger.getLogger(__name__)
 ##############################
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog = "\n".join(["Auto Tweet/Toot a Bibtex entry"]))
-parser.add_argument('-c', '--config', default='/Volumes/documents/github/py_bookmark_organiser/bots.config',
+parser.add_argument('-c', '--config', default=data_bots,
                     help="The Config File to Use")
 
 args     = parser.parse_args()
@@ -39,16 +46,16 @@ config   = ConfigParser(allow_no_value=True, delimiters='=')
 # Read the main config
 config.read(expander(args.config))
 # Then read in secrets
-config.read(expander(config['DEFAULT']['secrets_loc']))
+config.read(data_path.joinpath(config['DEFAULT']['secrets_loc']))
 
 MAX_ATTEMPTS = int(config['DEFAULT']['MAX_ATTEMPTS'])
 TWEET_LEN    = int(config['DEFAULT']['tweet_len'])
 TOOT_LEN     = int(config['DEFAULT']['toot_len'])
 
-BLACKLIST    = expander(config['BIBTEX']['blacklist'])
 BIBTEX_LIB   = expander(config['BIBTEX']['lib'])
-SUCCESS_LOG  = expander(config['BIBTEX']['success_log'])
-FAIL_LOG     = expander(config['BIBTEX']['fail_log'])
+BLACKLIST    = data_path.joinpath(config['BIBTEX']['blacklist'])
+SUCCESS_LOG  = data_path.joinpath(config['BIBTEX']['success_log'])
+FAIL_LOG     = data_path.joinpath(config['BIBTEX']['fail_log'])
 
 def select_bibtex():
     # logging.info("Selecting bibtex")

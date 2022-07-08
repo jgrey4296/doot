@@ -4,14 +4,16 @@ from __future__ import annotations
 import abc
 import argparse
 import logging as logmod
-from datetime import datetime
 from configparser import ConfigParser
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
+from datetime import datetime
+from importlib.resources import files
 from os import listdir
 from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
                      splitext)
 from re import Pattern
+from string import Template
 from sys import stderr, stdout
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
@@ -19,17 +21,13 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     cast, final, overload, runtime_checkable)
 from uuid import UUID, uuid1
 from weakref import ref
-from string import Template
 
-
-logging = logmod.getLogger(__name__)
-
-if TYPE_CHECKING:
-    # tc only imports
-    pass
-
-from bkmkorg.utils.dfs.files import get_data_files
+from bkmkorg import DEFAULT_BOTS, DEFAULT_CONFIG
 from bkmkorg.utils.bibtex.writer import JGBibTexWriter
+from bkmkorg.utils.dfs.files import get_data_files
+
+data_path = files(f"bkmkorg.{DEFAULT_CONFIG}")
+data_bots = data_path.joinpath(DEFAULT_BOTS)
 
 DISPLAY_LEVEL = logmod.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
@@ -54,7 +52,7 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
                                  epilog = "\n".join(["Create Bibtex Stubs for pdfs and epubs"]))
 parser.add_argument('--source', default=None)
 parser.add_argument('--target', default=None)
-parser.add_argument('--config', default="/Volumes/documents/github/py_bookmark_organiser/bots.config")
+parser.add_argument('--config', default=data_bots)
 
 args = parser.parse_args()
 
