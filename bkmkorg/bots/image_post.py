@@ -16,7 +16,7 @@ from bkmkorg.utils.mastodon.api_setup import setup_mastodon
 from importlib.resources import files
 from bkmkorg import DEFAULT_CONFIG, DEFAULT_BOTS
 
-data_path = files(f"bkmkorg.DEFAULT_CONFIG}")
+data_path = files(f"bkmkorg.{DEFAULT_CONFIG}")
 data_bots = data_path.joinpath(DEFAULT_BOTS)
 
 LOGLEVEL = root_logger.DEBUG
