@@ -4,7 +4,7 @@ Integrates newly parsed twitter->org files
 into the existing set
 """
 import argparse
-import system
+from os import system
 import datetime
 import logging as root_logger
 from os import listdir, mkdir

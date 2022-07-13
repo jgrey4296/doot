@@ -40,8 +40,8 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 
-data_secrets = files(f"bkmkorg.{DEFAULT_CONFIG}").joinpath(DEFAULT_SECRETS)
-data_target  = files(f"bkmkorg.{DEFAULT_CONFIG}").joinpath(DEFAULT_TARGET)
+data_secrets  = files(f"bkmkorg.{DEFAULT_CONFIG}").joinpath(DEFAULT_SECRETS)
+data_target   = files(f"bkmkorg.{DEFAULT_CONFIG}").joinpath(DEFAULT_TARGET)
 #see https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog="\n".join([""]))
