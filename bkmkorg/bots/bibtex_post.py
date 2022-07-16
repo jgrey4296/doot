@@ -126,6 +126,10 @@ def format_tweet(entry):
     # logging.info("Formatting Entry")
 
     author = entry['author']
+    if author.count(" and ") > 2:
+        and_index = author.find(" and ")
+        author = author[:and_index] + " et al"
+
     if len(author) > 30:
         author = f"{author[:30]}..."
 
