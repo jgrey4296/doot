@@ -41,6 +41,8 @@ parser.add_argument('--from-device', action='store_true')
 parser.add_argument('--depthskip', default=1, type=int)
 parser.add_argument('--id')
 parser.add_argument('--wait', type=int, default=10)
+parser.add_argument('--skip-to')
+parser.add_argument('--max-depth', type=int)
 ##-- End argparse
 ##-- Logging
 DISPLAY_LEVEL = logmod.INFO
@@ -64,6 +66,8 @@ logging = logger
 logging.setLevel(logmod.DEBUG)
 ##-- End Logging
 
+def say(val:str):
+    system(f'say -v Moira -r 50 "{val}"')
 
 # TODO use asyncio for subprocess control
 def expander(path):
@@ -77,21 +81,27 @@ def skip_depth_under(path, curr, depth=1):
 
     return up_by_depth < path
 
-def dfs_dir(initial_path, sleep_time, func):
+def dfs_dir(initial_path, sleep_time, func, skip_to=None, max_depth=None):
     logging.info("Getting Data Files for: %s", initial_path)
     logging.info("--------------------")
     initial = initial_path if isinstance(initial_path, list) else [initial_path]
-    queue = [x for x in initial]
+    queue = [(x, 1) for x in initial]
     while bool(queue):
-        curr_path = queue.pop(0)
-        sub = [x for x in curr_path.iterdir() if x.is_dir()]
-        queue += sub
-        logging.info("Running on %s", curr_path.relative_to(initial_path))
-        logging.info("--------------------")
-        func(curr_path.relative_to(initial_path))
-        sleep(sleep_time)
+        curr_path, depth = queue.pop(0)
+        if not max_depth or (isinstance(max_depth, int) and depth+1 <= max_depth):
+            sub = [(x, depth+1) for x in curr_path.iterdir() if x.is_dir()]
+            queue += sub
 
-def push_sync(device_id, target, lib, current, depth=1):
+        if skip_to is not None and skip_to != curr_path.name:
+            logging.info("Skipping %s", curr_path.name)
+            continue
+        skip_to = None
+        logging.info("Running on %s", curr_path.name)
+        logging.info("--------------------")
+        if func(curr_path.relative_to(initial_path)):
+            sleep(sleep_time)
+
+def push_sync(device_id, target, lib, current, depth=1) -> bool:
     """
     Run an adb push command to sync libdir with the target
     `target` : base path on device
@@ -100,7 +110,7 @@ def push_sync(device_id, target, lib, current, depth=1):
     """
     if skip_depth_under(lib, current, depth):
         logging.info("Skipping %s", current)
-        return
+        return False
 
     logging.info("Pushing: %s\nto: %s\nBase: %s", lib, target, current)
     logging.info("--------------------")
@@ -112,15 +122,21 @@ def push_sync(device_id, target, lib, current, depth=1):
                              lib/current,
                              (target/current).parent],
                             capture_output=True)
-    assert(result.returncode == 0), result.stdout.decode()
+    if result.returncode != 0:
+        logging.warning("Push Failure")
+        logging.warning(result.stdout.decode())
+        raise Exception()
+    return True
 
-def pull_sync(device_id, target, lib, current, depth=1):
+
+def pull_sync(device_id, target, lib, current, depth=1) -> bool:
     """
     Run an adb pull command to sync device with library
     """
     if skip_depth_under(lib, current, 0):
         logging.info("Skipping %s", current)
-        return
+        return False
+
     logging.info("Pulling: %s\nto:\n %s\ncurrent: %s", target, lib, current)
     logging.info("--------------------")
     # Compare the target and lib using find
@@ -132,7 +148,11 @@ def pull_sync(device_id, target, lib, current, depth=1):
                                    target/current,
                                    "-type", "f"],
                                   capture_output=True)
-    assert(device_files.returncode == 0), device_files.stderr.decode()
+    if device_files.returncode != 0:
+        logging.warning("Push Failure")
+        logging.warning(result.stdout.decode())
+        raise Exception()
+
     device_set = { pathlib.Path(x).relative_to(target) for x in device_files.stdout.decode().split("\n") if x != "" }
 
 
@@ -140,7 +160,10 @@ def pull_sync(device_id, target, lib, current, depth=1):
                                   lib/current,
                                   "-type", "f"],
                                   capture_output=True)
-    assert(local_files.returncode == 0), local_files.stderr.decode()
+    if local_files.returncode != 0:
+        logging.warning("Push Failure")
+        logging.warning(result.stdout.decode())
+        raise Exception()
     local_set = {pathlib.Path(x).relative_to(lib) for x in local_files.stdout.decode().split("\n") if x != ""}
 
     missing = device_set - local_set
@@ -160,9 +183,12 @@ def pull_sync(device_id, target, lib, current, depth=1):
                                  (lib/path)],
                                 capture_output=True)
         assert((lib/path).exists()), lib/path
-        assert(result.returncode == 0), result.stderr.decode()
+        if result.returncode != 0:
+            logging.warning("Push Failure")
+            logging.warning(result.stdout.decode())
+            raise Exception()
 
-
+    return True
 
 def main():
     logging.info("Starting ADB Unifier")
@@ -196,10 +222,14 @@ def main():
 
     logging.info("DFS for: %s\nto: %s", lib_path, target_path)
     # Run the walk
-    dfs_dir(lib_path,
-            args.wait,
-            partial_func)
-
+    try:
+        dfs_dir(lib_path,
+                args.wait,
+                partial_func,
+                skip_to=args.skip_to,
+                max_depth=args.max_depth)
+    except Exception:
+        say("DFS Failure")
 
 if __name__ == '__main__':
     main()
