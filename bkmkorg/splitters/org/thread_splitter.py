@@ -161,7 +161,8 @@ def process_link(line):
         res = requests.head(link_matched[2])
         if res.is_redirect:
             url = res.headers['location']
-            line = f"{link_matched[1]}[[{url}]{link_matched[3]}]{link_matched[4]}\n"
+            link_name = link_matched[3] if link_matched[3] is not None else ""
+            line = f"{link_matched[1]}[[{url}]{link_name}]{link_matched[4]}\n"
 
     return line
 
