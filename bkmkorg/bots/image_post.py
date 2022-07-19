@@ -1,10 +1,9 @@
 #!/opt/anaconda3/envs/bookmark/bin/python
-# Setup root_logger:
+##-- imports
+from __future__ import annotations
 from os.path import splitext, split
+import pathlib
 import logging as root_logger
-from os.path import join, isfile, exists, abspath, getsize
-from os.path import split, isdir, splitext, expanduser
-from os import listdir, system
 import subprocess
 from random import choice
 import argparse
@@ -15,103 +14,118 @@ from bkmkorg.utils.twitter.api_setup import setup_twitter
 from bkmkorg.utils.mastodon.api_setup import setup_mastodon
 from importlib.resources import files
 from bkmkorg import DEFAULT_CONFIG, DEFAULT_BOTS
+from bkmkorg.utils.file.size import human
+##-- end imports
 
+##-- resources
 data_path = files(f"bkmkorg.{DEFAULT_CONFIG}")
 data_bots = data_path.joinpath(DEFAULT_BOTS)
+##-- end resources
 
+##-- logging
 LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pathlib.Path(__file__).stem)
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
-##############################
+##-- end logging
+
+##-- argparse
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog = "\n".join(["Auto Tweet/Toot a whitelisted image"]))
 parser.add_argument('-c', '--config', default=data_bots, help="The Config File to Use")
-
 args     = parser.parse_args()
+##-- end argparse
 
-expander = lambda x: abspath(expanduser(x))
-
+##-- config
 config   = ConfigParser(allow_no_value=True, delimiters='=')
 # Read the main config
-config.read(expander(args.config))
+config.read(pathlib.Path(args.config))
 # Then read in secrets
 config.read(data_path.joinpath(config['DEFAULT']['secrets_loc']))
 
-TEMP_LOC            = config['PHOTO']['TEMP_LOC']
+TEMP_LOC            = pathlib.Path(config['PHOTO']['TEMP_LOC'])
 dcim_whitelist_path = data_path.joinpath(config['PHOTO']['WHITE_LIST'])
 conversion_args     = config['PHOTO']['convert_args'].split(" ")
 convert_cmd         = "convert"
-
-
-expander = lambda x: abspath(expanduser(x))
+##-- end config
 
 def compress_file(filepath):
     #logging.info("Attempting compression of: {}".format(filepath))
-    ext = splitext(filepath)[1][1:]
+    assert(isinstance(filepath, pathlib.Path) and filepath.exists())
+    ext = filepath.suffix
 
-    retcode = subprocess.call([convert_cmd, filepath,
+    retcode = subprocess.call([convert_cmd, str(filepath),
                                *conversion_args,
-                               TEMP_LOC])
+                               str(TEMP_LOC)])
 
-    if retcode == 0 and getsize(TEMP_LOC) < 5000000:
+    if retcode == 0 and TEMP_LOC.stat().st_size < 5000000:
         return TEMP_LOC
     else:
         logging.warning("Failure converting: {}".format(filepath))
         exit(1)
 
 
+
+def post_to_twitter(selected, msg, twit):
+    try:
+        the_file = selected
+        if the_file.stat().st_size > 4_500_000:
+            the_file = compress_file(the_file)
+
+        assert(the_file.stat().st_size < 5_000_000)
+        assert(the_file.exists())
+        assert(the_file.suffix.lower() in [".jpg", ".png", ".gif"])
+        twit.PostUpdate(msg, media=the_file)
+    except Exception as err:
+        logging.warning("Twitter Post Failed: %s", str(err))
+
+def post_to_mastodon(selected, msg, mastodon):
+    # post to mastodon
+    try:
+        # 8MB
+        the_file = selected
+        if the_file.stat().st_size > 8_000_000:
+            the_file = compress_file(the_file)
+
+        assert(the_file.stat().st_size < 8_000_000)
+        assert(the_file.exists())
+        assert(the_file.suffix.lower() in [".jpg", ".png", ".gif"])
+        media_id = mastodon.media_post(the_file)
+        media_id = mastodon.media_update(media_id, description=f"My Cat {name}")
+        mastodon.status_post("Cat", media_ids=media_id)
+    except Exception as err:
+        logging.warning("Mastodon Post Failed: %s", str(err))
+
 def main():
     twit     = setup_twitter(config)
     mastodon = setup_mastodon(config)
 
-    with open(expander(dcim_whitelist_path), 'r') as f:
+    with open(dcim_whitelist_path, 'r') as f:
         whitelist = [x.strip() for x in f.readlines()]
 
     if not bool(whitelist):
         logging.warning("Nothing to tweet from whitelist")
         exit(1)
 
-    selected = choice(whitelist).split(":")
-    if not bool(selected) or not exists(selected[0]):
+    selected, msg = choice(whitelist).split(":")
+    selected = pathlib.Path(selected)
+    if not selected.exists():
         logging.warning("No Choice Exists")
         quit()
 
     logging.info("Selected: %s", selected)
-    name = "cora"
-    if "kira" in selected[0].lower():
-        name = "kira"
+    if not bool(msg):
+        msg = "cora"
+        if "kira" in selected.parent.name.lower():
+            msg = "kira"
 
-    #logging.info("Attempting: {}".format(selected))
-    msg = name
-    the_file = expander(selected[0])
-    if len(selected) > 1:
-        msg = selected[1].strip()
-
-    #logging.info(f"File size: {getsize(the_file)}")
-    if getsize(the_file) > 4500000:
-        the_file = compress_file(the_file)
-
-    assert(getsize(the_file) < 5000000)
-    assert(exists(the_file))
-    assert(splitext(the_file)[1].lower() in [".jpg", ".png", ".gif"])
-    try:
-        twit.PostUpdate(msg, media=the_file)
-    except Exception as err:
-        logging.warning("Twitter Post Failed: %s", str(err))
-
-    # post to mastodon
-    try:
-        media_id = mastodon.media_post(the_file)
-        media_id = mastodon.media_update(media_id, description=f"My Cat {name}, I love her so.")
-        mastodon.status_post("Cat", media_ids=media_id)
-    except Exception as err:
-        logging.warning("Mastodon Post Failed: %s", str(err))
-    #logging.info("Finished")
+    logging.info(f"File size: {human(selected.stat().st_size)}")
+    post_to_twitter(selected, msg, twit)
+    logging.info("Finished")
 
 
 if __name__ == "__main__":
