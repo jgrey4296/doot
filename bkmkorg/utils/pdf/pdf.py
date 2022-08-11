@@ -12,10 +12,10 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     Set, Tuple, TypeVar, Union, cast)
 
 import pypandoc as pandoc
-from bkmkorg.utils.file.temp_dir import mk_temp, temp_dir
+import tempfile
 from pdfrw import IndirectPdfDict, PageMerge, PdfReader, PdfWriter
+from uuid import uuid4
 ##-- end imports
-
 
 logging = root_logger.getLogger(__name__)
 
@@ -45,30 +45,31 @@ def summarise_pdfs(paths, func=None, output="./pdf_summary", bound=200):
 
     writer = PdfWriter()
 
-    for path in paths:
-        try:
-            if splitext(path)[1] == ".pdf":
-                pdf_obj = PdfReader(path)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        for path in paths:
+            try:
+                if splitext(path)[1] == ".pdf":
+                    pdf_obj = PdfReader(path)
+                    writer.addpage(func(pdf_obj))
+                else:
+                    continue
+            except:
+                logging.warning("Error Encountered with {}".format(path))
+                # from stackoverflow.com/questions/2365411
+                if not path.isascii():
+                    path = unicodedata.normalize("NFKD", path).encode("ascii", "ignore")
+
+                temp_file_name = join(temp_dir, f"{uuid4().hex}.pdf")
+                pandoc.convert_text(f"File: {path}", "pdf", outputfile=temp_file_name, format="md")
+                pdf_obj = PdfReader(temp_file_name)
                 writer.addpage(func(pdf_obj))
-            else:
-                raise Exception()
-        except:
-            logging.warning("Error Encountered with {}".format(path))
-            mk_temp()
-            # from stackoverflow.com/questions/2365411
-            if not path.isascii():
-                path = unicodedata.normalize("NFKD", path).encode("ascii", "ignore")
-
-            pandoc.convert_text(f"File: {path}", "pdf", outputfile=join(temp_dir, "temp.pdf"), format="md")
-            pdf_obj = PdfReader(join(temp_dir, "temp.pdf"))
-            writer.addpage(func(pdf_obj))
 
 
-        if len(writer.pagearray) > bound:
-            # if pdf is too big, create another
-            writer.write("{}_{}.pdf".format(output, count))
-            writer = PdfWriter()
-            count += 1
+            if len(writer.pagearray) > bound:
+                # if pdf is too big, create another
+                writer.write("{}_{}.pdf".format(output, count))
+                writer = PdfWriter()
+                count += 1
 
     writer.write("{}_{}.pdf".format(output, count))
 
