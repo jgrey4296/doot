@@ -21,7 +21,7 @@ dependencies   = [
     "pdfrw >= 0.4",
     "pypandoc > 1.6.3",
     "python-twitter >= 3.5",
-
+    "pony >= 0.7",
 ]
 
 [project.optional-dependencies]
@@ -62,6 +62,7 @@ bkmk-tag-graph-query   = "bkmkorg.filters.tag.graph_query:main"
 # integrators:
 bkmk-twit-merge        = "bkmkorg.integrators.twitter.unify:main"
 bkmk-merge             = "bkmkorg.integrators.bookmark.unify:main"
+bkmk-sql               = "bkmkorg.integrators.bookmark.sql_unify:main"
 bkmk-bib-merge         = "bkmkorg.integrators.bibtex.unify:main"
 bkmk-backup            = "bkmkorg.integrators.backup.unify:main"
 bkmk-adb-backup        = "bkmkorg.integrators.backup.adb_unify:main"

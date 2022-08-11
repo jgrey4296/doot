@@ -84,6 +84,7 @@ class BookmarkCollection(BaseFileFormat):
 
     @staticmethod
     def read(f_name:str) -> "BookmarkCollection":
+        """ Read a file to build a bookmark collection """
         bookmarks = BookmarkCollection()
         with open(abspath(expanduser(f_name)), 'r') as f:
             for line in f.readlines():
