@@ -42,7 +42,7 @@ def dfs_directory(*dirs, ext=None):
 
 def collect_files(targets):
     """ DFS targets, collecting files into their types """
-    logging.info("Processing Files: {}".format(targets))
+    logging.info("Processing Files: %s", targets)
     bib_files      = set()
     html_files     = set()
     bookmark_files = set()

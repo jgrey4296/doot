@@ -3,6 +3,7 @@
 Automate twitter archiving
 
 """
+##-- imports
 from __future__ import annotations
 
 import argparse
@@ -29,8 +30,10 @@ from bkmkorg.utils.twitter.graph import TwitterGraph
 from bkmkorg.utils.twitter.todo_list import TweetTodoFile
 
 import twitter
+##-- end imports
 
-# Setup root_logger:
+
+##-- logging
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
@@ -39,10 +42,14 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
+##-- end logging
 
+##-- data
 data_secrets  = files(f"bkmkorg.{DEFAULT_CONFIG}").joinpath(DEFAULT_SECRETS)
 data_target   = files(f"bkmkorg.{DEFAULT_CONFIG}").joinpath(DEFAULT_TARGET)
-#see https://docs.python.org/3/howto/argparse.html
+##-- end data
+
+##-- argparser
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog="\n".join([""]))
 parser.add_argument('--config', default=data_secrets, help="The Secrets file to access twitter")
@@ -51,6 +58,7 @@ parser.add_argument('--library',default=[DEFAULT_LIBRARY], action="append", help
 parser.add_argument('--export',  help="File to export all library tweet ids to, optional")
 parser.add_argument('--tweet', help="A Specific Tweet URL to handle, for CLI usage/ emacs use")
 parser.add_argument('--skiptweets', action='store_true', help="for when tweets have been downloaded, or hung")
+##-- end argparser
 
 def setup_target_dict(target, export):
     targets = {}
@@ -144,7 +152,6 @@ def run_processor(targets, all_users, todo_ids, twit):
     FFU.construct_org_files(targets['combined_threads_dir'], targets['org_dir'], all_users, todo_ids)
 
 def main():
-    ####################
     logging.info("---------- Setup")
     args             = parser.parse_args()
     args.config      = abspath(expanduser(args.config))

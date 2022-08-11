@@ -4,6 +4,7 @@ Check Bibtex library against pdf library
 Output bibtex entries without matching files,
 and files without matching entries
 """
+##-- imports
 import argparse
 import logging as root_logger
 import re
@@ -16,11 +17,14 @@ from bibtexparser import customization as c
 
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.dfs import files as retrieval
+##-- end imports
 
+##-- regexs
 PATH_NORM = re.compile("^.+?pdflibrary")
 FILE_RE   = re.compile(r"^file(\d*)")
+##-- end regexs
 
-# Setup
+##-- logging
 LOGLEVEL      = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
@@ -29,15 +33,16 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
+##-- end logging
 
-
+##-- argparse
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog="\n".join(["Check All pdfs are accounted for in a bibliography"])
                                     )
 parser.add_argument('-t', '--target',  help="Pdf Library directory to verify", required=True)
 parser.add_argument('-l', '--library', help="Bibtex Library directory to verify", required=True)
 parser.add_argument('-o', '--output',  help="Output location for reports", required=True)
-
+##-- end argparse
 
 def main():
     args = parser.parse_args()
