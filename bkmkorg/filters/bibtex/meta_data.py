@@ -9,7 +9,7 @@ from __future__ import annotations
 import abc
 import argparse
 import logging as logmod
-import pathlib
+import pathlib as pl
 import re
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 ##-- Logging
 DISPLAY_LEVEL = logmod.DEBUG
-LOG_FILE_NAME = "log.{}".format(pathlib.Path(__file__).stem)
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 LOG_FORMAT    = "%(asctime)s | %(levelname)8s | %(message)s"
 FILE_MODE     = "w"
 STREAM_TARGET = stdout
@@ -68,7 +68,7 @@ parser.add_argument('--library', required=True)
 FILE_RE   = re.compile(r"^file(\d*)")
 ##-- end regexs
 
-def add_metadata(path:pathlib.Path, bib_entry:dict, bib_str:str):
+def add_metadata(path:pl.Path, bib_entry:dict, bib_str:str):
     logging.info("Adding Metadata to %s", path)
     pdf = PdfReader(path)
     assert(PdfName('Info') in pdf.keys())
@@ -92,14 +92,14 @@ def add_metadata(path:pathlib.Path, bib_entry:dict, bib_str:str):
     author_head = "_".join(splitname(bib_entry['author'].split(' and ')[0])['last'])
     title = bib_entry['title'].replace(' ', '_')[:min(30, bib_entry['title'].index(':') if ':' in bib_entry['title'] else len(bib_entry['title']))]
     new_name = f"md_{bib_entry['year']}_{author_head}_{title}"
-    new_path = path.parent.joinpath(f'{new_name}{path.suffix}')
+    new_path = path.parent / f'{new_name}{path.suffix}'
     logging.info(f"Writing To: {new_path.name}")
     PdfWriter(new_path, trailer=pdf).write()
 
 ##-- main
 def main():
     args     = parser.parse_args()
-    library  = pathlib.Path(args.library)
+    library  = pl.Path(args.library)
 
     writer   = JGBibTexWriter()
     all_bibs = get_data_files(library, ".bib")
@@ -117,7 +117,7 @@ def main():
 
         file_keys = [x for x in unicode_entry.keys() if FILE_RE.search(x)]
         for fk in file_keys:
-            path = pathlib.Path(unicode_entry[fk])
+            path = pl.Path(unicode_entry[fk])
             if path.suffix == ".pdf" and path.exists():
                 entry_as_str : str = writer._entry_to_bibtex(entry)
                 add_metadata(path, unicode_entry, entry_as_str)

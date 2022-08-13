@@ -3,6 +3,9 @@
 A Utility class for working with index files,
 which map tags to sets of files
 """
+##-- imports
+from __future__ import annotations
+
 import logging as root_logger
 from collections import defaultdict
 from dataclasses import InitVar, dataclass, field
@@ -14,11 +17,10 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     Set, Tuple, TypeVar, Union, cast)
 
 from bkmkorg.utils.dfs.files import get_data_files
+##-- end imports
 
-logging = root_logger.getLogger(__name__)
-
+logging   = root_logger.getLogger(__name__)
 IndexFile = "IndexFile"
-file      = Any
 
 @dataclass
 class IndexFile:
@@ -43,7 +45,7 @@ class IndexFile:
         return main
 
     @staticmethod
-    def read(p:str, sep=None) -> IndexFile:
+    def read(p:pl.Path, sep=None) -> IndexFile:
         obj  = IndexFile(sep=sep)
         with open(p, 'r') as f:
             # convert lines to mapping

@@ -3,13 +3,13 @@
 Integrates newly parsed twitter->org files
 into the existing set
 """
+##-- imports
+from __future__ import annotations
+
+import pathlib as pl
 import argparse
-from os import system
 import datetime
 import logging as root_logger
-from os import listdir, mkdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 from random import choice
 from subprocess import run
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
@@ -17,91 +17,85 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     Set, Tuple, TypeVar, Union, cast)
 
 from bkmkorg.utils.bibtex import parsing as BU
-from bkmkorg.utils.twitter.extraction import get_all_tweet_ids
 from bkmkorg.utils.dfs import files as retrieval
+from bkmkorg.utils.twitter.extraction import get_all_tweet_ids
+##-- end imports
 
-
+##-- logging
 LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
-##############################
+##-- end logging
+
+##-- argparse
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Integrate newly parsed twitter orgs into the existing library"]))
 parser.add_argument('-s', '--source', action="append", required=True)
 parser.add_argument('-l', '--library', action="append", required=True)
 parser.add_argument('-e', '--exclude', action="append")
 parser.add_argument('-r', '--record')
+##-- end argparse
 
+##-- constants
 PROCESSED = "_processed"
+##-- end constants
 
-def copy_files(source_dir, target_dir):
+def copy_files(source_dir:pl.Path, target_dir:pl.Path):
     logging.info(f"Copying from {source_dir} to {target_dir}")
-    if exists(source_dir) and not exists(target_dir):
+    if source_dir.exists() and not target_dir.exists():
         logging.info("as group")
-        result = run(['cp' ,'-r' ,source_dir, target_dir], capture_output=True, check=True)
-    elif exists(source_dir):
+        result = run(['cp' ,'-r' ,str(source_dir), str(target_dir)], capture_output=True, check=True)
+    elif source_dir.exists():
         logging.info("as individual")
-        for y in listdir(source_dir):
-            if not isfile(join(source_dir, y)):
+        for y in source_dir.iterdir():
+            if not y.is_file()
                 continue
 
-            call_sig = ['cp', join(source_dir, y), join(target_dir, y)]
+            call_sig = ['cp', str(y), str(target_dir / y)]
             run(call_sig, capture_output=True, check=True)
 
 
-def copy_new(source, lib_path):
+def copy_new(source:pl.Path, lib_path:pl.Path):
     logging.info(f"Adding to library with: {source}")
-    file_name = split(source)[1]
-    no_ext = splitext(file_name)[0]
-    file_dir  = join(split(source)[0], f"{no_ext}_files")
+    file_dir  = source.parent / f"{source.stem}_files"
 
-    first_letter = file_name[0].lower()
+    first_letter = source.name[0].lower()
     if not ("a" <= first_letter <= "z"):
         first_letter = "symbols"
 
-    target_for_new = join(lib_path,f"group_{first_letter}")
+    target_for_new = lib_path / f"group_{first_letter}"
 
-    if not exists(join(target_for_new, file_name)):
-        run(['cp', source, target_for_new], capture_output=True, check=True)
+    if not (target_for_new / source.name).exists():
+        run(['cp', str(source), str(target_for_new)], capture_output=True, check=True)
 
-    run(["mv", source, join(split(source)[0],
-                            "{}{}".format(split(source)[1],
-                                          PROCESSED))],
-        capture_output=True, check=True)
+    run(["mv", str(source), str(source.parent / f"{source.name}{PROCESSED}")], capture_output=True, check=True)
 
-    copy_files(file_dir, join(target_for_new, f"{no_ext}_files"))
+    copy_files(str(file_dir), str(target_for_new / f"{source.stem}_files"))
 
 
-def integrate(source, lib_dict):
+def integrate(source:pl.Path, lib_dict:dict[str,Any]):
     logging.info(f"Integrating: {source}")
-    just_org = split(source)[1]
-    just_source_path = split(source)[0]
-    just_name = splitext(just_org)[0]
-    new_org        = source
-    new_files      = join(just_source_path, f"{just_name}_files")
-    existing_org   = join(lib_dict[just_org], just_org)
-    existing_files = join(lib_dict[just_org], f"{just_name}_files")
+    new_files      = source.parent / f"{source.stem}_files"
+    existing_org   = lib_dict[source.name] /  source.name
+    existing_files = lib_dict[source.name] / f"{source.stem}_files"
 
     assert(exists(existing_org))
     if not exists(existing_files):
         mkdir(existing_files)
 
-    with open(new_org, 'r') as f:
+    with open(source, 'r') as f:
         lines = f.read()
 
     with open(existing_org, 'a') as f:
         f.write("\n")
         f.write(lines)
 
-    run(["mv", source, join(split(source)[0],
-                            "{}{}".format(split(source)[1],
-                                          PROCESSED))],
-        capture_output=True, check=True)
+    run(["mv", str(source), str(source.parent / f"{source.name}{PROCESSED}")], capture_output=True, check=True)
 
     if not exists(new_files):
         return
@@ -110,7 +104,7 @@ def integrate(source, lib_dict):
 
 
 
-def update_record(path:str, sources:List[str]):
+def update_record(path:pl.Path, sources:List[pl.Path]):
     now : str = datetime.datetime.now().strftime("%Y-%m-%d")
 
     all_ids = get_all_tweet_ids(*sources, ext=".org_processed")
@@ -123,30 +117,29 @@ def update_record(path:str, sources:List[str]):
         f.write("\n----------------------------------------\n")
 
 
-
 def main():
     # Setup
     args         = parser.parse_args()
-    args.source  = [abspath(expanduser(x)) for x in args.source]
-    args.library = [abspath(expanduser(x)) for x in args.library]
+    args.source  = [pl.Path(x).expanduser().resolve() for x in args.source]
+    args.library = [pl.Path(x).expanduser().resolve() for x in args.library]
     if args.exclude is None:
         args.exclude = []
 
-    args.exclude = [abspath(expanduser(x)) for x in args.exclude]
+    args.exclude = [pl.Path(x).expanduser().resolve() for x in args.exclude]
 
     if not args.record:
         args.record = join(args.library[0], "update_record")
 
     logging.info(f"Update Record: {args.record}")
-    assert(exists(args.record))
-    if any([not exists(x) for x in args.source + args.library]):
+    assert(args.record.exists())
+    if any([not x.exists() for x in args.source + args.library]):
         raise Exception('Source and Output need to exist')
 
     #load the newly parsed org names
     # { file_name : full_path }
     newly_parsed = sorted(retrieval.get_data_files(args.source, ext=".org"))
 
-    logging.info("Newly parsed to transfer: {}".format(len(newly_parsed)))
+    logging.info("Newly parsed to transfer: %s", len(newly_parsed))
 
     #get the existing org names, as a dict with its location
     library_orgs = retrieval.get_data_files(args.library, ext=".org")
@@ -157,20 +150,20 @@ def main():
 
         existing_orgs[split(lib_org)[1]] = split(lib_org)[0]
 
-    logging.info("Existing orgs: {}".format(len(existing_orgs)))
+    logging.info("Existing orgs: %s", len(existing_orgs))
 
     totally_new = []
     #now update existing with the new
 
     for x in newly_parsed:
         if split(x)[1] not in existing_orgs:
-            logging.info("Found a completely new user: {}".format(x))
+            logging.info("Found a completely new user: %s", x)
             totally_new.append(x)
             continue
 
         integrate(x, existing_orgs)
 
-    logging.info("Completely new to transfer: {}".format(len(totally_new)))
+    logging.info("Completely new to transfer: %s", len(totally_new))
 
     # Now copy completely new files
     for x in sorted(totally_new):

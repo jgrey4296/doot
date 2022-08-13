@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
+##-- imports
 from __future__ import annotations
 
 import abc
 import argparse
 import logging as logmod
+import pathlib as pl
 import subprocess
-import pathlib
 from configparser import ConfigParser
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from functools import partial
 from importlib.resources import files
-from os import listdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 from re import Pattern
 from sys import stderr, stdout
 from time import sleep
@@ -25,11 +23,14 @@ from uuid import UUID, uuid1
 from weakref import ref
 
 from bkmkorg import DEFAULT_CONFIG, DEFAULT_SECRETS
+##-- end imports
+
+##-- data
+data_path    = files(f"bkmkorg.{DEFAULT_CONFIG}")
+data_secrets = data_path / DEFAULT_SECRETS
+##-- end data
 
 ##-- argparse
-data_path    = files(f"bkmkorg.{DEFAULT_CONFIG}")
-data_secrets = data_path.joinpath(DEFAULT_SECRETS)
-
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog = "\n".join(["Walk through a library directory, and either push to,",
                                                      "or pull from, a tablet to sync the directories"]))
@@ -44,9 +45,10 @@ parser.add_argument('--wait', type=int, default=10)
 parser.add_argument('--skip-to')
 parser.add_argument('--max-depth', type=int)
 ##-- End argparse
+
 ##-- Logging
 DISPLAY_LEVEL = logmod.INFO
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 LOG_FORMAT    = "%(asctime)s | %(levelname)8s | %(message)s"
 FILE_MODE     = "w"
 STREAM_TARGET = stderr # or stdout
@@ -70,9 +72,6 @@ def say(val:str):
     system(f'say -v Moira -r 50 "{val}"')
 
 # TODO use asyncio for subprocess control
-def expander(path):
-    return abspath(expanduser(path))
-
 
 def skip_depth_under(path, curr, depth=1):
     up_by_depth = path/curr
@@ -119,8 +118,8 @@ def push_sync(device_id, target, lib, current, depth=1) -> bool:
                              device_id,
                              "push",
                              "--sync",
-                             lib/current,
-                             (target/current).parent],
+                             str(lib / current),
+                             str((target / current).parent)],
                             capture_output=True)
     if result.returncode != 0:
         logging.warning("Push Failure")
@@ -145,7 +144,7 @@ def pull_sync(device_id, target, lib, current, depth=1) -> bool:
                                    device_id,
                                    "shell",
                                    "find",
-                                   target/current,
+                                   str(target/current),
                                    "-type", "f"],
                                   capture_output=True)
     if device_files.returncode != 0:
@@ -153,18 +152,18 @@ def pull_sync(device_id, target, lib, current, depth=1) -> bool:
         logging.warning(result.stdout.decode())
         raise Exception()
 
-    device_set = { pathlib.Path(x).relative_to(target) for x in device_files.stdout.decode().split("\n") if x != "" }
+    device_set = { pl.Path(x).relative_to(target) for x in device_files.stdout.decode().split("\n") if x != "" }
 
 
     local_files = subprocess.run(["find",
-                                  lib/current,
+                                  str(lib/current),
                                   "-type", "f"],
                                   capture_output=True)
     if local_files.returncode != 0:
         logging.warning("Push Failure")
         logging.warning(result.stdout.decode())
         raise Exception()
-    local_set = {pathlib.Path(x).relative_to(lib) for x in local_files.stdout.decode().split("\n") if x != ""}
+    local_set = {pl.Path(x).relative_to(lib) for x in local_files.stdout.decode().split("\n") if x != ""}
 
     missing = device_set - local_set
     logging.info("%s missing from %s", len(missing), lib/current)
@@ -179,8 +178,8 @@ def pull_sync(device_id, target, lib, current, depth=1) -> bool:
                                 "-t",
                                  device_id,
                                 "pull",
-                                 target/path,
-                                 (lib/path)],
+                                 str(target/path),
+                                 str(lib/path)],
                                 capture_output=True)
         assert((lib/path).exists()), lib/path
         if result.returncode != 0:
@@ -192,14 +191,15 @@ def pull_sync(device_id, target, lib, current, depth=1) -> bool:
 
 def main():
     logging.info("Starting ADB Unifier")
-    args = parser.parse_args()
+    args        = parser.parse_args()
+    args.config = pl.Path(args.config).expanduser().resolve()
+
     if not (args.to_device or args.from_device):
         logging.info("Option Missing: --to-device or --from-device")
         exit()
 
     config = ConfigParser(allow_no_value=True, delimiters='=')
-    config.read(abspath(expanduser(args.config)))
-
+    config.read(args.config)
     # device_id = "{}:{}".format(config['ADB']['ipaddr'], config['ADB']['PORT'])
     device_id = args.id
     # Walk the library directory
@@ -210,8 +210,8 @@ def main():
     else:
         raise Exception()
 
-    lib_path    = pathlib.Path(args.library).resolve()
-    target_path = pathlib.Path(config['ADB']['sdcard'], args.target)
+    lib_path    = pl.Path(args.library).expanduser().resolve()
+    target_path = pl.Path(config['ADB']['sdcard']) /  args.target
 
     # Curry the args which won't change
     partial_func = partial(func,
@@ -261,7 +261,7 @@ if __name__ == '__main__':
     #     logging.info("ppadb Connection Refused")
     #     exit()
 
-    logging.info("Connected")
+    # logging.info("Connected")
 
     # # Send a shell command
     # response1 = shell_device.shell(f"ls {config['ADB']['sdcard']}")

@@ -1,30 +1,32 @@
-from typing import List, Set, Dict, Tuple, Optional, Any
-from typing import Callable, Iterator, Union, Match
-from typing import Mapping, MutableMapping, Sequence, Iterable
-from typing import cast, ClassVar, TypeVar, Generic
 
-import re
-from os.path import exists, splitext, join, isfile, isdir
-from os import listdir
+##-- imports
+from __future__ import annotations
+
 import json
-
 import logging as root_logger
+import pathlib as pl
+import re
+from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
+                    List, Mapping, Match, MutableMapping, Optional, Sequence,
+                    Set, Tuple, TypeVar, Union, cast)
 
 from bkmkorg.utils.dfs.files import dfs_directory
+##-- end imports
+
+
 
 logging = root_logger.getLogger(__name__)
 
-
 PERMALINK_RE = re.compile(r"\[.+?/status/(\d+)\]\]")
 
-def extract_tweet_ids_from_file(the_file, simple=False):
+def extract_tweet_ids_from_file(the_file:pl.Path, simple=False):
     """ Get all mentioned tweets in a file.
     Can search for regexs, or treat file as a line list of urls """
     use_regex = PERMALINK_RE
     if simple:
         use_regex = re.compile(r"/status/(\d+)")
 
-    exists(the_file)
+    assert(the_file.exists())
     with open(the_file, 'r') as f:
         lines = f.readlines()
 
@@ -37,25 +39,25 @@ def extract_tweet_ids_from_file(the_file, simple=False):
 
     return results
 
-def extract_tweet_ids_from_json(the_file):
+def extract_tweet_ids_from_json(the_file:pl.Path):
     """ Get all tweet ids from a json file of tweets """
     try:
         with open(the_file, 'r') as f:
             data = json.load(f, strict=False)
     except Exception as e:
-        logging.info("File issue: {}".format(the_file))
+        logging.info("File issue: %s", the_file)
         raise e
 
     ids = [x['id_str'] for x in data]
     return ids
 
-def extract_media_and_users_from_json(the_file):
+def extract_media_and_users_from_json(the_file:pl.Path):
     """ Get all media urls and user ids from json file of tweets """
     try:
         with open(the_file, 'r') as f:
             data = json.load(f, strict=False)
     except Exception as e:
-        logging.info("File issue: {}".format(the_file))
+        logging.info("File issue: %s", the_file)
         raise e
 
     ids            = set()
@@ -95,28 +97,28 @@ def extract_media_and_users_from_json(the_file):
 
     return ids, media, media_variants
 
-def get_all_tweet_ids(*the_dirs, ext=None) -> Set[str]:
+def get_all_tweet_ids(*the_dirs:list[pl.Path], ext=None) -> Set[str]:
     """ For a list of directories, dfs the directory to get all files,
     and get all mentioned tweets in those files """
     tweet_ids = set()
 
     for a_dir in the_dirs:
-        if isfile(a_dir):
+        if a_dir.is_file():
             with open(a_dir, 'r') as f:
                 tweet_ids.update([x.strip() for x in f.readlines()])
 
-        elif isdir(a_dir):
+        elif a_dir.is_dir():
             all_files = dfs_directory(a_dir, ext=ext)
-            logging.info("Found {} files to extract from".format(len(all_files)))
+            logging.info("Found %s files to extract from", len(all_files))
             for x in all_files:
                 tweet_ids.update(extract_tweet_ids_from_file(x))
 
     return tweet_ids
 
-def get_user_and_media_sets(json_dir) -> Tuple[Set[str], Set[str], List[Any]]:
+def get_user_and_media_sets(json_dir:pl.Path) -> Tuple[Set[str], Set[str], List[Any]]:
     """ Get all user ids and media urls from a directory of jsons of tweets """
     logging.info("Getting media urls")
-    json_files = [join(json_dir, x) for x in listdir(json_dir) if splitext(x)[1] == ".json"]
+    json_files = [x for x in json_dir.iterdir() if x.suffix == ".json"]
     users = set()
     media = set()
     variants = []
@@ -126,7 +128,7 @@ def get_user_and_media_sets(json_dir) -> Tuple[Set[str], Set[str], List[Any]]:
         media.update(tmedia)
         variants += tvariants
 
-    logging.info("Found {} unique media files".format(len(media)))
-    logging.info("Found {} unique users".format(len(users)))
+    logging.info("Found %s unique media files", len(media))
+    logging.info("Found %s unique users", len(users))
 
     return users, media, variants

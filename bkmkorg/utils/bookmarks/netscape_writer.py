@@ -2,9 +2,13 @@
 Exports a given trie to Netscape bookmark file format
 Main function: exportBookmarks
 """
+##-- imports
+from __future__ import annotations
+
 import logging
 
 from bkmkorg.utils.bookmarks.collection import Bookmark
+##-- end imports
 
 groupCount = 0
 listCount  = 0

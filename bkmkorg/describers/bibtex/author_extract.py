@@ -1,13 +1,12 @@
 #!/opts/anaconda3/envs/ENV/python
+##-- imports
 import argparse
 import logging as root_logger
-from os import listdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 
+import pathlib as pl
 import bibtexparser as b
 import regex as re
 from bibtexparser import customization as c
@@ -16,8 +15,10 @@ from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.bibtex import entry_processors as bib_proc
 from bkmkorg.utils.dfs import files as retrieval
 
+##-- end imports
+
 LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
@@ -55,8 +56,8 @@ def process_db(db) -> List[str]:
 def main():
     args = parser.parse_args()
 
-    args.output = abspath(expanduser(args.output))
-    assert(exists(args.target))
+    args.output = pl.Path(args.output).expanduser().resolve()
+    assert(args.target.exists()
 
     logging.info("Targeting: {}".format(args.target))
     logging.info("Output to: {}".format(args.output))

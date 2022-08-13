@@ -3,12 +3,13 @@
 Script to Process Bibtex, bookmark, and org files for tags
 and to clean them
 """
+##-- imports
+from __future__ import annotations
+
 import argparse
 import logging as root_logger
+import pathlib as pl
 from math import ceil
-from os import listdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 
 import bibtexparser as b
 import regex as re
@@ -20,38 +21,44 @@ from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.dfs import files as retrieval
 from bkmkorg.utils.tag import clean
 from bkmkorg.utils.tag.collection import SubstitutionFile
+##-- end imports
 
+##-- logging
 logging = root_logger.getLogger(__name__)
 LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
-##############################
-#see https://docs.python.org/3/howto/argparse.html
+##-- end logging
+
+##-- argparse
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog="\n".join(["Extracts all tags in all bibtex, bookmark and org files in specified dirs"]))
 parser.add_argument('-t', '--target', action="append", required=True)
 parser.add_argument('-c', '--cleaned', action="append", required=True)
+##-- end argparse
 
+##-- bib parser
 bparser = BibTexParser(common_strings=False)
 bparser.ignore_nonstandard_types = False
 bparser.homogenise_fields = True
+##-- end bib parser
 
 #--------------------------------------------------
 def main():
     args = parser.parse_args()
 
     logging.info("---------- STARTING Tag Clean")
-    logging.info("Targeting: {}".format(args.target))
-    logging.info("Cleaning based on: {}".format(args.cleaned))
+    logging.info("Targeting: %s", args.target)
+    logging.info("Cleaning based on: %s", args.cleaned)
 
     #Load Cleaned Tags
     cleaned_tags  = SubstitutionFile.builder(args.cleaned)
-    logging.info("Loaded {} tag substitutions".format(len(cleaned_tags)))
+    logging.info("Loaded {} tag substitutions", len(cleaned_tags))
 
     #Load Bibtexs, html, orgs and clean each
     bibs, htmls, orgs, bkmks = retrieval.collect_files(args.target)

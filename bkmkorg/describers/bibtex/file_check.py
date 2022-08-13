@@ -8,10 +8,9 @@ and files without matching entries
 import argparse
 import logging as root_logger
 import re
-from os import listdir
-from os.path import abspath, expanduser, isdir, join, split, splitext
 from unicodedata import normalize
 
+import pathlib as pl
 import bibtexparser as b
 from bibtexparser import customization as c
 
@@ -26,7 +25,7 @@ FILE_RE   = re.compile(r"^file(\d*)")
 
 ##-- logging
 LOGLEVEL      = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
@@ -47,10 +46,13 @@ parser.add_argument('-o', '--output',  help="Output location for reports", requi
 def main():
     args = parser.parse_args()
 
-    args.output = abspath(expanduser(args.output))
-    assert(isdir(args.library))
-    assert(isdir(args.output))
-    assert(isdir(args.target))
+    args.output = pl.Path(args.output).expanduser().resolve()
+    args.library = pl.Path(args.library).expanduser().resolve()
+    args.target = pl.Path(args.target).expanduser().resolve()
+
+    assert(args.library.exists())
+    assert(args.output.exists())
+    assert(args.target.exists())
 
     # Get targets
     all_bibs = retrieval.get_data_files(args.library, ".bib")
@@ -104,10 +106,10 @@ def main():
     logging.info("Existing but not mentioned: {}".format(len(existing_not_mentioned)))
 
     # Create output files
-    with open(join(args.output, "bibtex.not_existing"),'w') as f:
+    with open(args.output / "bibtex.not_existing",'w') as f:
         f.write("\n".join(mentioned_non_existent))
 
-    with open(join(args.output, "bibtex.not_mentioned"), 'w') as f:
+    with open(args.output / "bibtex.not_mentioned", 'w') as f:
         f.write("\n".join(existing_not_mentioned))
 
 

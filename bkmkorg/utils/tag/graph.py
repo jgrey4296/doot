@@ -3,20 +3,21 @@
 Tagset Reading
 
 """
+##-- imports
+from __future__ import annotations
+
+import logging as root_logger
 import re
 from dataclasses import dataclass, field
-import logging as root_logger
-from os import listdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 
 import networkx as nx
 import regex
-from bkmkorg.utils.tag.collection import TagFile
 from bkmkorg.utils.bookmarks.collection import BookmarkCollection
+from bkmkorg.utils.tag.collection import TagFile
+##-- end imports
 
 logging = root_logger.getLogger(__name__)
 
@@ -24,7 +25,6 @@ IGNORE_REPLACEMENTS = ["TO_CHECK"]
 
 TAG_NORM = regex.compile(" +")
 
-Path = str
 Tag  = str
 
 @dataclass
@@ -52,7 +52,7 @@ class TagGraph:
 
         return total
 
-    def extract_org(self, org_files:List[Path], tag_regex=None) -> TagFile:
+    def extract_org(self, org_files:List[pl.Path], tag_regex=None) -> TagFile:
         logging.info("Extracting data from orgs")
         if tag_regex is None:
             tag_regex = self.org_pattern
@@ -78,7 +78,7 @@ class TagGraph:
 
         return total
 
-    def extract_bookmark(self, bkmk_files: List[Path]) -> TagFile:
+    def extract_bookmark(self, bkmk_files: List[pl.Path]) -> TagFile:
         total = TagFile()
         for bkmk_f in bkmk_files:
             bkmks = BookmarkCollection.read(bkmk_f)
@@ -112,8 +112,8 @@ class TagGraph:
 
 
 
-    def write(self, target):
-        nx.write_weighted_edgelist(self.graph, abspath(expanduser(target)))
+    def write(self, target:pl.Path):
+        nx.write_weighted_edgelist(self.graph, str(target))
 
     def __str__(self):
         keys    = self.tags
@@ -132,13 +132,3 @@ class TagGraph:
         if tag not in self.graph:
             return 0
         return self.graph[tag]['count']
-
-#  ############################################################################
-def read_substitutions(target: Union[str, List[str]], counts=True) -> Dict[str, List[str]]:
-    """ Read a text file of the form (with counts):
-    tag : num : sub : sub : sub....
-    without counts:
-    tag : sub : sub : ...
-    returning a dict of {tag : [sub]}
-    """
-    raise DeprecationWarning("use bkmkorg.utils.tag.collection.TagFile")

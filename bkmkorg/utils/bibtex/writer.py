@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
+##-- imports
 from __future__ import annotations
-from typing import Tuple, Any
-from typing import Callable, Iterator, Match
-from typing import Mapping, MutableMapping, Sequence, Iterable
-from typing import cast, ClassVar, TypeVar, Generic, TypeAlias
-from typing import TYPE_CHECKING, Protocol, TypeGuard
-from typing import Final, final, overload, runtime_checkable
+
 import abc
-from dataclasses import dataclass, field, InitVar
-from string import Template
 import logging as logmod
-logging = logmod.getLogger(__name__)
+from dataclasses import InitVar, dataclass, field
+from string import Template
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
+                    Iterable, Iterator, Mapping, Match, MutableMapping,
+                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
+                    cast, final, overload, runtime_checkable)
+
+from bibtexparser import bwriter
 
 if TYPE_CHECKING:
     # tc only imports
     pass
+##-- end imports
 
-from bibtexparser import bwriter
-
+logging    = logmod.getLogger(__name__)
 head_line  = Template("@$entry{$id,")
 field_line = Template("$indent$field$eq_buffer= $value,")
 close_line = "}"

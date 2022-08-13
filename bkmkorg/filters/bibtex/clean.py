@@ -5,27 +5,25 @@ Script to clean a bibtex file, converting everything to unicode
 ##-- imports
 import argparse
 import logging as root_logger
+import pathlib as pl
 from hashlib import sha256
 from math import ceil
-from os import listdir, mkdir
-from os.path import (abspath, exists, expanduser, isdir, isfile,
-                     join, realpath, split, splitext)
 from shutil import copyfile, move
 
 import bibtexparser as b
 import regex as re
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
-
-from bkmkorg.utils.bibtex.writer import JGBibTexWriter
 from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.bibtex.writer import JGBibTexWriter
 from bkmkorg.utils.dfs import files as retrieval
 from bkmkorg.utils.file.hash_check import file_to_hash
+
 ##-- end imports
 
 ##-- logging
 LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
@@ -52,9 +50,6 @@ parser.add_argument('-o', '--output', default=None)
 
 
 NEWLINE_RE = re.compile(f"\n+\s*")
-
-def expander(path):
-    return abspath(expanduser(path))
 
 def safe_splitname(s):
     s = s.strip()
@@ -158,13 +153,17 @@ def custom_clean(record):
 
 def main():
     args = parser.parse_args()
+    args.target = [pl.Path(x).expanduser().resolve() for x in args.target]
+
     if args.output:
-        error_out = expander(join(split(args.output)[0], ".bib_errors"))
+        args.output = pl.Path(args.output).expanduser().resolve()
+        assert(args.output.is_file())
+        error_out = args.output.with_suffix(".bib_errors")
 
 
     logging.info("---------- STARTING Bibtex Clean")
-    logging.info("Targeting: {}".format(args.target))
-    logging.info("Output to: {}".format(args.output))
+    logging.info("Targeting: %s", args.target)
+    logging.info("Output to: %s", args.output)
 
     bib_files = retrieval.get_data_files(args.target, ".bib")
     db        = BU.parse_bib_files(bib_files, func=custom_clean)

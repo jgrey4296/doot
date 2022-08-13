@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
+##-- imports
+from __future__ import annotations
+
+import datetime
 import logging as root_logger
 import re
-import datetime
-
-logging = root_logger.getLogger(__name__)
 
 import bibtexparser as b
 from bibtexparser import customization as c
+##-- end imports
 
+logging = root_logger.getLogger(__name__)
 
 def nop(record):
     # record = c.type(record)

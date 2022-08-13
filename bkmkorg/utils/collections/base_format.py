@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-from dataclasses import dataclass, field, InitVar
+##-- imports
+from __future__ import annotations
+
+import pathlib as pl
 import abc
 import logging as root_logger
+from dataclasses import InitVar, dataclass, field
+
 from bkmkorg.utils.dfs.files import get_data_files
+##-- end imports
 
 logging = root_logger.getLogger(__name__)
-
-path_t = str
 
 class BaseFileFormat(metaclass=abc.ABCMeta):
 
@@ -25,8 +29,9 @@ class BaseFileFormat(metaclass=abc.ABCMeta):
 
         return main
 
+
     @staticmethod
-    def read(p:path_t) -> 'BaseFileFormat':
+    def read(p:pl.Path) -> 'BaseFileFormat':
         pass
 
     @abc.abstractmethod

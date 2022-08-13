@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
+##-- imports
+from __future__ import annotations
+
 import datetime
 import json
 import logging as root_logger
+import pathlib as pl
 from collections import defaultdict
 from dataclasses import InitVar, dataclass, field
-from os import listdir, mkdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
@@ -14,6 +15,7 @@ from uuid import uuid1
 
 import networkx as nx
 from bkmkorg.utils.twitter.org_writer import TwitterTweet
+##-- end imports
 
 logging = root_logger.getLogger(__name__)
 
@@ -25,11 +27,12 @@ class TwitterUserSummary:
     user into a single file, located in dir_s
     """
     id_s         : str
-    dir_s        : str
-    name_pattern : str               = field(default="user_{}.json")
+    dir_s        : pl.Path
+    name_stem    : str               = field(default="user_{}")
     user         : Any               = field(default=None)
     threads      : List['ThreadObj'] = field(default_factory=list)
     tweets       : Dict[str, Any]    = field(default_factory=dict)
+    suffix       : str               = field(default=".json")
 
     _has_media   : bool              = field(default=False)
 
@@ -85,10 +88,10 @@ class TwitterUserSummary:
 
     @property
     def path(self):
-        return join(self.dir_s, self.name_pattern.format(self.id_s))
+        return (self.dir_s / self.name_stem.format(self.id_s)).with_suffix(self.suffix)
 
     def read(self):
-        if not exists(self.path):
+        if not self.path.exists():
             return
 
         # Get raw

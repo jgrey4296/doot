@@ -1,6 +1,9 @@
 """
 Trie Class for bookmarks
 """
+##-- imports
+from __future__ import annotations
+
 import logging as root_logger
 from dataclasses import InitVar, dataclass, field
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
@@ -9,6 +12,7 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from bkmkorg.utils.bookmarks.collection import Bookmark
+##-- end imports
 
 logging = root_logger.getLogger(__name__)
 

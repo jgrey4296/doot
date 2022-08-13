@@ -1,44 +1,45 @@
 """
 Find tweets missing from the main library
 """
+##-- imports
 import argparse
 import logging as root_logger
-from os import listdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 
+import pathlib as pl
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.dfs import files as retrieval
+##-- end imports
 
 
-# Setup
+
+##-- logging
 LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
-#see https://docs.python.org/3/howto/argparse.html
+##-- end logging
+
+##-- argparse
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Compare two sets of twitter ids"]))
 parser.add_argument('-l', '--library', required=True)
 parser.add_argument('-s', '--source', required=True)
 parser.add_argument('-o', '--output', required=True)
+##-- end argparse
 
-
-##############################
 
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    #args.aBool...
-    args.library = abspath(expanduser(args.library))
-    args.source = abspath(expanduser(args.source))
-    args.output = abspath(expanduser(args.output))
+    args.library = pl.Path(args.library).expanduser().resolve()
+    args.source  = pl.Path(args.source).expanduser().resolve()
+    args.output  = pl.Path(args.output).expanduser().resolve()
 
-    assert(isfile(args.library) and isfile(args.source))
+    assert(args.library.is_file() and args.source.is_file())
     # Get the library ids
     library_set = set([])
     with open(args.library,'r') as f:

@@ -1,13 +1,14 @@
-from typing import List, Set, Dict, Tuple, Optional, Any
-from typing import Callable, Iterator, Union, Match
-from typing import Mapping, MutableMapping, Sequence, Iterable
-from typing import cast, ClassVar, TypeVar, Generic
+
+##-- imports
+from __future__ import annotations
 
 import logging as root_logger
-from os import listdir
-from os.path import isdir, isfile, join, splitext
+from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
+                    List, Mapping, Match, MutableMapping, Optional, Sequence,
+                    Set, Tuple, TypeVar, Union, cast)
 
 import networkx as nx
+##-- end imports
 
 logging = root_logger.getLogger(__name__)
 

@@ -1,35 +1,36 @@
-from typing import List, Set, Dict, Tuple, Optional, Any
-from typing import Callable, Iterator, Union, Match
-from typing import Mapping, MutableMapping, Sequence, Iterable
-from typing import cast, ClassVar, TypeVar, Generic
 
+##-- imports
+from __future__ import annotations
+
+import pathlib as pl
 import datetime
-from collections import defaultdict
 import json
 import logging as root_logger
 import uuid
-from os import listdir, mkdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
+from collections import defaultdict
 from shutil import copyfile, rmtree
+from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
+                    List, Mapping, Match, MutableMapping, Optional, Sequence,
+                    Set, Tuple, TypeVar, Union, cast)
 
+import bkmkorg.utils.dfs.twitter as DFSU
 import networkx as nx
+from bkmkorg.utils.dfs.files import get_data_files
 from bkmkorg.utils.dfs.twitter import dfs_chains
-from bkmkorg.utils.download.twitter import download_tweets
 from bkmkorg.utils.download.media import download_media
+from bkmkorg.utils.download.twitter import download_tweets
+from bkmkorg.utils.twitter.graph import TwitterGraph
+from bkmkorg.utils.twitter.org_writer import TwitterOrg
 from bkmkorg.utils.twitter.todo_list import TweetTodoFile
 from bkmkorg.utils.twitter.tweet_component import TweetComponents
 from bkmkorg.utils.twitter.user_summary import TwitterUserSummary
-from bkmkorg.utils.twitter.org_writer import TwitterOrg
-from bkmkorg.utils.twitter.graph import TwitterGraph
-import bkmkorg.utils.dfs.twitter as DFSU
-from bkmkorg.utils.dfs.files import get_data_files
+##-- end imports
 
 logging = root_logger.getLogger(__name__)
 
 # TODO could refactor output into template files, ie: jinja.
 
-def construct_component_files(tweet_dir, component_dir, twit=None):
+def construct_component_files(tweet_dir:pl.Path, component_dir:pl.Path, twit=None):
     """ Create intermediate component files of tweet threads
     creates a graph of all tweets in tweet_dir,
     then writes individual connected components to component_dir
@@ -39,13 +40,13 @@ def construct_component_files(tweet_dir, component_dir, twit=None):
     tweet_graph : TwitterGraph   = TwitterGraph.build(tweet_dir)
     components  : List[Set[Any]] = DFSU.dfs_for_components(tweet_graph)
 
-    logging.info("Creating {} component files\n\tfrom: {}\n\tto: {}".format(len(components), tweet_dir, component_dir))
+    logging.info("Creating %s component files\n\tfrom: %s\n\tto: %s", len(components), tweet_dir, component_dir)
     with TweetComponents(component_dir, components) as id_map:
         # create separate component files
         logging.info("Copying to component files")
         # Load each collection of downloaded tweets
         # Note: these are *not* components
-        json_files = [join(tweet_dir, x) for x in listdir(tweet_dir) if splitext(x)[1] == ".json"]
+        json_files = [x for x in tweet_dir.iterdir() if x.suffix == ".json"]
         for jfile in json_files:
             with open(jfile, 'r') as f:
                 data = json.load(f, strict=False)
@@ -67,9 +68,9 @@ def construct_component_files(tweet_dir, component_dir, twit=None):
         if not download_tweets(twit, tweet_dir, id_map.missing):
             exit()
 
-def construct_user_summaries(component_dir, combined_threads_dir, total_users):
+def construct_user_summaries(component_dir:pl.Path, combined_threads_dir:pl.Path, total_users):
     """ collate threads together by originating user """
-    logging.info("Constructing summaries\n\tfrom: {} \n\tto: {}".format(component_dir, combined_threads_dir))
+    logging.info("Constructing summaries\n\tfrom: %s \n\tto: %s", component_dir, combined_threads_dir)
     user_lookup = total_users
     # Create final orgs, grouped by head user
     components = get_data_files(component_dir, ext=".json")
@@ -154,18 +155,15 @@ def construct_user_summaries(component_dir, combined_threads_dir, total_users):
 
 
 
-def construct_org_files(combined_threads_dir, org_dir, all_users, todo_tag_bindings:TweetTodoFile):
-    logging.info("Constructing org files from: {} \n\tto: {}".format(combined_threads_dir, org_dir))
+def construct_org_files(combined_threads_dir:pl.Path, org_dir:pl.Path, all_users, todo_tag_bindings:TweetTodoFile):
+    logging.info("Constructing org files from: %s \n\tto: %s", combined_threads_dir, org_dir)
     # get all user summary jsons
     user_summaries = get_data_files(combined_threads_dir, ext=".json")
 
     for summary in user_summaries:
-        org_obj = TwitterOrg(summary,
-                             org_dir,
-                             todo_tag_bindings,
-                             all_users)
+        org_obj = TwitterOrg(summary, org_dir, todo_tag_bindings, all_users)
         if not bool(org_obj):
-            logging.warning(f"User Summary Empty: {summary}")
+            logging.warning("User Summary Empty: %s", summary)
             continue
 
         org_obj.build_threads()

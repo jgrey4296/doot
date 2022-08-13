@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
+##-- imports
+from __future__ import annotations
+
 import datetime
 import json
 import logging as root_logger
 from collections import defaultdict
+from os.path import split
 from dataclasses import InitVar, dataclass, field
-from os import listdir, mkdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 from uuid import uuid1
 
 import networkx as nx
-
-file = Any
+##-- end imports
 
 class OrgBuilderBase:
 

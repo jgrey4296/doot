@@ -11,11 +11,10 @@ import argparse
 import configparser
 from collections import defaultdict
 import logging as logmod
-import pathlib
+import pathlib as pl
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from importlib.resources import files
-from os.path import split, splitext
 from re import Pattern
 from sys import stderr, stdout
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
@@ -33,7 +32,7 @@ import pony.orm as pony
 
 ##-- logging
 DISPLAY_LEVEL = logmod.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 LOG_FORMAT    = "%(asctime)s | %(levelname)8s | %(message)s"
 FILE_MODE     = "w"
 STREAM_TARGET = stderr # or stdout
@@ -64,7 +63,7 @@ parser.add_argument('-n', '--non-interactive', action="store_true")
 
 ##-- data
 data_path   = files("bkmkorg.__config")
-config_file = data_path.joinpath("bots.config")
+config_file = data_path / "bots.config"
 ##-- end data
 
 # Database is found at ~/Library/ApplicationSupport/Firefox/Profiles/?/places.sqlite
@@ -132,7 +131,7 @@ class URL(db.Entity):
 def main():
     args = parser.parse_args()
     if args.target:
-        args.target = pathlib.Path(args.target).expanduser()
+        args.target = pl.Path(args.target).expanduser().resolve()
         assert(args.target.exists())
 
     ##-- debugging
@@ -142,11 +141,11 @@ def main():
     config = configparser.ConfigParser()
     with open(config_file, 'r') as f:
               config.read_file(f)
-    firefox : Path = pathlib.Path(config['BOOKMARK']["firefox"]).expanduser()
+    firefox : Path = pl.Path(config['BOOKMARK']["firefox"]).expanduser().resolve()
     assert(firefox.exists()), str(firefox)
     dbs = []
-    for loc in firefox.joinpath("Profiles").iterdir():
-        maybe_db = loc.joinpath(config['BOOKMARK']['database'])
+    for loc in (firefox / "Profiles").iterdir():
+        maybe_db = loc / config['BOOKMARK']['database']
         if maybe_db.exists():
             dbs.append(maybe_db)
 

@@ -11,7 +11,6 @@ import re
 import subprocess
 from configparser import ConfigParser
 from importlib.resources import files
-from os.path import split, splitext
 from random import choice
 
 import twitter
@@ -25,7 +24,7 @@ from mastodon import MastodonAPIError
 
 ##-- resources
 data_path = files(f"bkmkorg.{DEFAULT_CONFIG}")
-data_bots = data_path.joinpath(DEFAULT_BOTS)
+data_bots = data_path / DEFAULT_BOTS
 ##-- end resources
 
 ##-- logging
@@ -51,14 +50,14 @@ config   = ConfigParser(allow_no_value=True, delimiters='=')
 # Read the main config
 config.read(pathlib.Path(args.config))
 # Then read in secrets
-config.read(data_path.joinpath(config['DEFAULT']['secrets_loc']))
+config.read(data_path / config['DEFAULT']['secrets_loc'])
 
 TEMP_LOC            = pathlib.Path(config['PHOTO']['TEMP_LOC'])
-dcim_whitelist_path = data_path.joinpath(config['PHOTO']['WHITE_LIST'])
+dcim_whitelist_path = data_path / config['PHOTO']['WHITE_LIST']
 conversion_args     = config['PHOTO']['convert_args'].split(" ")
 convert_cmd         = "convert"
 
-RESOLUTION_BLACKLIST = data_path.joinpath(config['PHOTO']['resolution_blacklist'])
+RESOLUTION_BLACKLIST = data_path / config['PHOTO']['resolution_blacklist']
 RESOLUTION_RE        = re.compile(r".*?([0-9]+x[0-9]+)")
 ##-- end config
 
@@ -162,7 +161,7 @@ def main():
     msg           = selection[1] if len(selection) > 1 else ""
 
     selected_file : Path = pathlib.Path(selected_file)
-    selected_file = selected_file.expanduser().absolute()
+    selected_file = selected_file.expanduser().resolve()
     if not selected_file.exists():
         logging.warning("No Choice Exists")
         quit()

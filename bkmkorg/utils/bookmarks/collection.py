@@ -1,23 +1,25 @@
 """
 Provide Utility classes for working with bookmarks
 """
+##-- imports
+from __future__ import annotations
+
 import logging as root_logger
+import pathlib as pl
+import urllib.parse as url_parse
 from dataclasses import InitVar, dataclass, field
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
-import urllib.parse as url_parse
 
 import regex
-from bs4 import BeautifulSoup
 from bkmkorg.utils.collections.base_format import BaseFileFormat
+from bs4 import BeautifulSoup
+##-- end imports
 
 logging = root_logger.getLogger(__name__)
 
 TAG_NORM = regex.compile(" +")
-path_t     = Any
 
 @dataclass
 class Bookmark:
@@ -83,28 +85,28 @@ class BookmarkCollection(BaseFileFormat):
 
 
     @staticmethod
-    def read(f_name:str) -> "BookmarkCollection":
+    def read(f_name:pl.Path) -> "BookmarkCollection":
         """ Read a file to build a bookmark collection """
         bookmarks = BookmarkCollection()
-        with open(abspath(expanduser(f_name)), 'r') as f:
+        with open(f_name), 'r') as f:
             for line in f.readlines():
                 bookmarks += Bookmark.build(line)
 
         return bookmarks
 
     @staticmethod
-    def read_netscape(path:str):
-        logging.info('Starting html opener for: {}'.format(path))
-        with open(abspath(expanduser(path)), 'rb') as f:
+    def read_netscape(path:pl.Path):
+        logging.info('Starting html opener for: %s', path)
+        with open(path, 'rb') as f:
             rawHtml = f.read().decode("utf-8","ignore")
 
         soup     = BeautifulSoup(rawHtml,'html.parser')
         bkmkList = _getLinks(soup)
-        logging.info("Found {} links".format(len(bkmkList)))
+        logging.info("Found %s links", len(bkmkList))
         return BookmarkCollection(bkmkList)
 
-    def add_file(self, f_name:path_t):
-        with open(abspath(expanduser(f_name)), 'r') as f:
+    def add_file(self, f_name:pl.Path):
+        with open(f_name), 'r') as f:
             for line in f.readlines():
                 self.entries.append(Bookmark.build(line))
 
@@ -113,6 +115,7 @@ class BookmarkCollection(BaseFileFormat):
 
     def __repr__(self):
         return f"<{self.__class__.__name__}: {len(self)}>"
+
     def __iadd__(self, value):
         assert(isinstance(value, (BookmarkCollection, Bookmark, list)))
         if isinstance(value, Bookmark):

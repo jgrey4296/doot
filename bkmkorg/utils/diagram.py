@@ -1,12 +1,15 @@
 #!/usr/bin/env python
+##-- imports
+from __future__ import annotations
 
-
+from math import ceil
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
-from math import ceil
+
 import matplotlib
 import matplotlib.pyplot as plt
+##-- end imports
 
 #plt.figure()
 #plt.style.use('classic')

@@ -1,37 +1,43 @@
 #!/usr/bin/env python
 # future: load tweet archive, graph tweets, authors etc
+
+##-- imports
+from __future__ import annotations
 import argparse
 import logging as root_logger
 from collections import defaultdict
 from datetime import datetime
-from os import listdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 
+import pathlib as pl
 from bkmkorg.utils import diagram as DU
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.dfs import files as retrieval
 from bkmkorg.utils.org.extraction import get_tweet_dates_and_ids
 from matplotlib import pyplot as plt
 
-# Setup root_logger:
+##-- end imports
+
+##-- logging
 LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
-##############################
+##-- end logging
+
+##-- argparse
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Create graphs of Bibtex Files"]))
 parser.add_argument('--library', action="append", help="The bibtex file collection directory", required=True)
 parser.add_argument('--target', default="./twitter_timeline.jpg", help="The output target directory")
-##############################
+##-- end argparse
+
 
 def convert_tweet_date(datestring, fmt=None):
     if fmt is None:
@@ -79,9 +85,9 @@ def convert_to_day_counts(tweets):
 
 
 if __name__ == "__main__":
-    args = parser.parse_args()
-    args.library = [abspath(expanduser(x)) for x in args.library]
-    args.target = abspath(expanduser(args.target))
+    args         = parser.parse_args()
+    args.library = [pl.Path(x).expanduser().resolve() for x in args.library]
+    args.target  = pl.Path(args.target).expanduser().resolve()
 
     all_orgs = retrieval.get_data_files(args.library, ".org")
 
@@ -106,9 +112,10 @@ if __name__ == "__main__":
 
     # chart the tweets
     to_draw = [("Month", month_counts),
-                                    ("Year", year_counts),
-                                    ("Day", day_counts),
-                                    ("Time", time_counts)]
+               ("Year", year_counts),
+               ("Day", day_counts),
+               ("Time", time_counts)]
+
     n_rows = int(len(to_draw) / 2)
     n_cols = int(len(to_draw) / 2)
     for count, paired in enumerate(to_draw):
@@ -122,5 +129,5 @@ if __name__ == "__main__":
         plt.gcf().autofmt_xdate()
 
     logging.info("Finished, saving")
-    plt.savefig(args.target)
+    plt.savefig(str(args.target))
     plt.show()

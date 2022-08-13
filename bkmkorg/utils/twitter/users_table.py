@@ -1,29 +1,30 @@
 #!/usr/bin/env python3
+##-- imports
+from __future__ import annotations
+
+import pathlib as pl
 import textwrap
 from dataclasses import InitVar, dataclass, field
-from os import listdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
-
+##-- end imports
 
 @dataclass
 class TwitterUsersWriter:
     """
     Utility class to write twitter users to a simple table file
     """
-    _path : str
+    _path : pl.Path
 
     CHARWIDTH        = 80
 
     @property
     def path(self):
-        return expanduser(self._path)
+        return self._path.expanduser().resolve()
 
     def start(self):
-        if exists(self.path):
+        if self.path.exists()
             return
 
         with open(self.path, 'a') as f:

@@ -1,37 +1,43 @@
 """
 Merge duplicate url'd bookmarks together
 """
+##-- imports
+from __future__ import annotations
+
 import argparse
 import logging as root_logger
-from os import listdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
+import pathlib as pl
 
-from bkmkorg.utils.bookmarks.collection import Bookmark, BookmarkCollection
 from bkmkorg.utils.bibtex import parsing as BU
+from bkmkorg.utils.bookmarks.collection import Bookmark, BookmarkCollection
 from bkmkorg.utils.dfs import files as retrieval
 
-# Setup root_logger:
+##-- end imports
+
+##-- logging
 LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
-##############################
+##-- end logging
+
+##-- argparse
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Remove Duplicates (by full url) from a bookmark file, merging tags"]))
 parser.add_argument('-s', '--source', required=True)
 parser.add_argument('-o', '--output', default="~/Desktop/deduplicated_bookmarks.html")
+##-- end argparse
 
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    args.output = abspath(expanduser(args.output))
+    args.output = pl.Path(args.output).expanduser().resolve()
 
-    logging.info("Deduplicating {}".format(args.source))
+    logging.info("Deduplicating %s", args.source)
     source_files = retrieval.get_data_files(args.source, ".bookmarks")
     total = BookmarkCollection()
     for bkmk_f in source_files:

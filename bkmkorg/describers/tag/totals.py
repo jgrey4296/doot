@@ -3,13 +3,14 @@
 Script to Process Bibtex, bookmark, and org files for tags
 and to collect them
 """
+##-- imports
+from __future__ import annotations
 import argparse
 import logging as root_logger
 import re
-from os import mkdir
-from os.path import abspath, expanduser, isdir, join, split, splitext, exists
 import sys
 
+import pathlib as pl
 from bibtexparser import customization as c
 from bkmkorg.utils.bibtex import entry_processors as bib_proc
 from bkmkorg.utils.bibtex import parsing as BU
@@ -17,16 +18,19 @@ from bkmkorg.utils.dfs import files as retrieval
 from bkmkorg.utils.tag import clean
 from bkmkorg.utils.tag.collection import SubstitutionFile, TagFile
 from bkmkorg.utils.tag.graph import TagGraph
+##-- end imports
 
-# Setup logger
+##-- logging
 LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pl.Pathlib(__file__).stem)
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
+
+##-- end logging
 
 # Setup
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -40,13 +44,15 @@ parser.add_argument('-c', '--cleaned', action="append", required=True)
 def main():
     logging.info("---------- STARTING Tag Totals")
     cli_args = parser.parse_args()
-    cli_args.output = abspath(expanduser(cli_args.output))
+    cli_args.output = pl.Path(cli_args.output).expanduser().resolve()
 
     logging.info("Targeting: {}".format(cli_args.target))
-    if isdir(cli_args.output) and not exists(cli_args.output):
-        mkdir(cli_args.output)
-    if isdir(cli_args.output):
-        cli_args.output = join(cli_args.output, "tags")
+    if cli_args.output.is_dir() and not cli_args.output.exists():
+        cli_args.output.mkdir()
+
+    if cli_args.output.is_dir():
+        cli_args.output = cli_args.output / "output.tags"
+
     logging.info("Output to: {}".format(cli_args.output))
     logging.info("Cleaned Tags locations: {}".format(cli_args.cleaned))
 
@@ -58,17 +64,11 @@ def main():
     org_tags  = tag_graph.extract_org(orgs)
     bkmk_tags = tag_graph.extract_bookmark(bkmks)
 
-    with open(cli_args.output + "_bib.tags", 'w') as f:
-        f.write(str(bib_tags))
+    for data, stem_name in zip((bib_tags, org_tags, bkmk_tags, tag_graph),
+                               ("bib", "org", "bkmk", "graph")):
 
-    with open(cli_args.output + "_org.tags", 'w') as f:
-        f.write(str(org_tags))
-
-    with open(cli_args.output + "_bkmk.tags", 'w') as f:
-        f.write(str(bkmk_tags))
-
-    with open(cli_args.output + "_total.tags", 'w') as f:
-        f.write(str(tag_graph))
+        with open(cli_args.output.with_stem(stem_name), 'w') as f:
+            f.write(str(data))
 
     logging.info("Completed Total Count --------------------")
 
@@ -84,7 +84,7 @@ def main():
 
     # group them separately, alphabeticaly
     # To be included in the separate tag files
-    with open(cli_args.output + "_new.tags", 'w') as f:
+    with open(cli_args.output.with_stem("new"), 'w') as f:
         f.write(str(new_tags))
 
     logging.info("Completed Uncleaned Count --------------------")

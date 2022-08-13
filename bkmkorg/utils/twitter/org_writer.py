@@ -6,40 +6,42 @@
 """
 A Collection of dataclasses which reduce to json
 """
+##-- imports
+from __future__ import annotations
+
 import datetime
 import json
 import logging as root_logger
+import pathlib as pl
 from collections import defaultdict
+from os.path import split
 from dataclasses import InitVar, dataclass, field
-from os import listdir, mkdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
+from itertools import cycle
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 from uuid import uuid1
-from itertools import cycle
 
 import networkx as nx
 from bkmkorg.utils.download.media import download_media
 from bkmkorg.utils.download.twitter import download_tweets
 from bkmkorg.utils.org.string_builder import OrgStrBuilder
+##-- end imports
 
 logging = root_logger.getLogger(__name__)
-
 
 @dataclass
 class TwitterOrg:
     """ Create an Org File from twitter user summary """
 
-    summary_path : str
-    dir_s        : str
+    summary_path : pl.Path
+    dir_s        : pl.Path
 
     tag_lookup   : 'TweetTodoFile'
     user_lookup  : Dict[str, Any]
 
 
-    org_pattern   : str = field(default="{}.org")
+    org_suffix    : str = field(default=".org")
     files_pattern : str = field(default="{}_files")
 
 
@@ -59,7 +61,7 @@ class TwitterOrg:
 
     @property
     def path(self):
-        return join(self.dir_s, self.org_pattern.format(self._id_s))
+        return (self.dir_s / self.id_s).with_suffix(self.org_suffix)
 
     @property
     def relative_files_path(self):
@@ -67,7 +69,7 @@ class TwitterOrg:
 
     @property
     def absolute_files_path(self):
-        return join(self.dir_s, self.relative_files_path)
+        return self.dir_s / self.relative_files_path
 
     @property
     def tweets(self):
@@ -117,7 +119,7 @@ class TwitterOrg:
         if not bool(self._media):
             return
 
-        if not exists(self.absolute_files_path) and bool(self._media):
+        if not self.absolute_files_path.exists() and bool(self._media):
             mkdir(self.absolute_files_path)
 
         if bool(self._media):
@@ -214,7 +216,7 @@ class TwitterThread:
     @staticmethod
     def retarget_url(url, new_target_dir):
         logging.debug("Retargeting URL: {} to {}".format(split(url)[1], new_target_dir))
-        return join(new_target_dir, split(url)[1])
+        return new_target_dir / split(url)[1]
 
     @staticmethod
     def parse_date( a_str) -> 'datetime':

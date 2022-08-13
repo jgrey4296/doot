@@ -1,38 +1,42 @@
 #!/usr/bin/env python3
+##-- imports
+from __future__ import annotations
+
 import argparse
 import logging as root_logger
-from os import listdir
-# Setup root_logger:
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
+import pathlib as pl
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 
-from bkmkorg.utils.indices.collection import IndexFile
 from bkmkorg.utils.dfs.files import get_data_files
+from bkmkorg.utils.indices.collection import IndexFile
+##-- end imports
 
+##-- logging
 LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
+##-- end logging
 
+##-- argparse
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                epilog = "\n".join([""]))
+parser.add_argument('--aBool', action="store_true")
+parser.add_argument('--target', append=True, required=True)
+parser.add_argument('--tags', required=True)
+parser.add_argument('--out', required=True)
+##-- end argparse
 
 def main():
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                    epilog = "\n".join([""]))
-    parser.add_argument('--aBool', action="store_true")
-    parser.add_argument('--target', append=True, required=True)
-    parser.add_argument('--tags', required=True)
-    parser.add_argument('--out', required=True)
-
     args      = parser.parse_args()
-    args.out  = abspath(expanduser(args.out))
-    args.tags = abspath(expanduser(args.tags))
+    args.out  = pl.Path(args.out).expanduser().resolve()
+    args.tags = pl.Path(args.tags).expanduser().resolve()
 
     found     = set(get_data_files(args.target, ".org"))
     tag_index = IndexFile.builder(args.tags)
