@@ -2,6 +2,8 @@
 ##-- imports
 from __future__ import annotations
 
+from os import system
+from shlex import quote
 import abc
 import argparse
 import logging as logmod
@@ -73,6 +75,17 @@ def say(val:str):
 
 # TODO use asyncio for subprocess control
 
+def esc(path):
+    """
+    Escape a path for use in adb
+    """
+    unescaped : str = str(path)
+    # escaped   : str = (unescaped
+    #                    .replace(" ", "\\ ")
+    #                    .replace("(", "\\(")
+    #                    .replace(")", "\\)"))
+    return quote(unescaped)
+
 def dfs_dir(initial_path, sleep_time, func, skip_to=None, max_depth=None, min_depth=None):
     logging.info("Getting Data Files for: %s", initial_path)
     logging.info("--------------------")
@@ -118,10 +131,12 @@ def push_sync(device_id, target, lib, current) -> bool:
                              "--sync",
                              str(lib / current),
                              str((target / current).parent)],
-                            capture_output=True)
+                            capture_output=True,
+                            shell=False)
     if result.returncode != 0:
         logging.warning("Push Failure")
         logging.warning(result.stdout.decode())
+        logging.warning(result.stderr.decode())
         raise Exception()
     return True
 
@@ -138,30 +153,38 @@ def pull_sync(device_id, target, lib, current) -> bool:
                                    device_id,
                                    "shell",
                                    "find",
-                                   str(target/current),
+                                   esc(target/current),
                                    "-type", "f"],
                                   capture_output=True)
     if device_files.returncode != 0:
-        logging.warning("Push Failure")
-        logging.warning(result.stdout.decode())
-        raise Exception()
+        logging.warning("Pull Failure: Initial Device Find")
+        logging.warning(device_files.stdout.decode())
+        logging.warning(device_files.stderr.decode())
+        return False
 
     device_set = { pl.Path(x).relative_to(target) for x in device_files.stdout.decode().split("\n") if x != "" }
 
+    if not (lib/current).exists():
+        (lib/current).mkdir()
 
     local_files = subprocess.run(["find",
                                   str(lib/current),
                                   "-type", "f"],
                                   capture_output=True)
     if local_files.returncode != 0:
-        logging.warning("Push Failure")
-        logging.warning(result.stdout.decode())
+        logging.warning("Pull Failure: Library Find")
+        logging.warning(local_files.stdout.decode())
+        logging.warning(local_files.stderr.decode())
         raise Exception()
+
     local_set = {pl.Path(x).relative_to(lib) for x in local_files.stdout.decode().split("\n") if x != ""}
 
     missing = device_set - local_set
     logging.info("%s missing from %s", len(missing), lib/current)
     # Then copy missing over
+    if not bool(missing):
+        return False
+
     for path in missing:
         assert(not (lib/path).exists())
         if not (lib/path).parent.exists():
@@ -174,11 +197,14 @@ def pull_sync(device_id, target, lib, current) -> bool:
                                 "pull",
                                  str(target/path),
                                  str(lib/path)],
-                                capture_output=True)
-        assert((lib/path).exists()), lib/path
-        if result.returncode != 0:
-            logging.warning("Push Failure")
+                                capture_output=True,
+                                shell=False)
+
+
+        if result.returncode != 0 or not (lib/path).exists():
+            logging.warning("Pull Failure: Copy")
             logging.warning(result.stdout.decode())
+            logging.warning(result.stderr.decode())
             raise Exception()
 
     return True
@@ -223,8 +249,10 @@ def main():
                 skip_to=args.skip_to,
                 min_depth=args.min_depth,
                 max_depth=args.max_depth)
-    except Exception:
+        say("Finished ADB Backup")
+    except Exception as err:
         say("DFS Failure")
+        logging.warning(err)
 
 if __name__ == '__main__':
     main()
