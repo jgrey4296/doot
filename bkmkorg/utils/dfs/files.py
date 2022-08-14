@@ -73,10 +73,10 @@ def collect_files(targets:list[str|pl.Path]):
     logging.info("Split into: {} bibtex files, {} html files and {} org files".format(len(bib_files),
                                                                                       len(html_files),
                                                                                       len(org_files)))
-    logging.debug("Bibtex files: %s"   , "\n".join(bib_files))
-    logging.debug("Html Files: %s"     , "\n".join(html_files))
-    logging.debug("Org Files: %s"      , "\n".join(org_files))
-    logging.debug("Bookmark Files: %s" , "\n".join(bookmark_files))
+    logging.debug("Bibtex files: %s"   , "\n".join(str(x) for x in bib_files))
+    logging.debug("Html Files: %s"     , "\n".join(str(x) for x in html_files))
+    logging.debug("Org Files: %s"      , "\n".join(str(x) for x in org_files))
+    logging.debug("Bookmark Files: %s" , "\n".join(str(x) for x in bookmark_files))
 
     return (bib_files, html_files, org_files, bookmark_files)
 

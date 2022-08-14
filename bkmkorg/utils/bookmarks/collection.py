@@ -88,7 +88,7 @@ class BookmarkCollection(BaseFileFormat):
     def read(f_name:pl.Path) -> "BookmarkCollection":
         """ Read a file to build a bookmark collection """
         bookmarks = BookmarkCollection()
-        with open(f_name), 'r') as f:
+        with open(f_name, 'r') as f:
             for line in f.readlines():
                 bookmarks += Bookmark.build(line)
 
@@ -106,7 +106,7 @@ class BookmarkCollection(BaseFileFormat):
         return BookmarkCollection(bkmkList)
 
     def add_file(self, f_name:pl.Path):
-        with open(f_name), 'r') as f:
+        with open(f_name, 'r') as f:
             for line in f.readlines():
                 self.entries.append(Bookmark.build(line))
 

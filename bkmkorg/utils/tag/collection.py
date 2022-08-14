@@ -139,6 +139,8 @@ class SubstitutionFile(TagFile):
         obj = SubstitutionFile()
         with open(f_path, 'r') as f:
             for line in f.readlines():
+                if not bool(line.strip()):
+                    continue
                 try:
                     line_s = [obj.norm_regex.sub("_", x.strip()) for x in line.split(obj.sep)]
                     obj.set_count(line_s[0], int(line_s[1]))

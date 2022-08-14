@@ -22,7 +22,7 @@ from bkmkorg.utils.tag.graph import TagGraph
 
 ##-- logging
 LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(pl.Pathlib(__file__).stem)
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
@@ -64,11 +64,13 @@ def main():
     org_tags  = tag_graph.extract_org(orgs)
     bkmk_tags = tag_graph.extract_bookmark(bkmks)
 
-    for data, stem_name in zip((bib_tags, org_tags, bkmk_tags, tag_graph),
-                               ("bib", "org", "bkmk", "graph")):
+    for data, stem_name in zip((bib_tags, org_tags, bkmk_tags),
+                               ("bib", "org", "bkmk")):
 
         with open(cli_args.output.with_stem(stem_name), 'w') as f:
             f.write(str(data))
+
+    tag_graph.write(cli_args.output.with_name("tags.edgelist"))
 
     logging.info("Completed Total Count --------------------")
 
@@ -86,6 +88,9 @@ def main():
     # To be included in the separate tag files
     with open(cli_args.output.with_stem("new"), 'w') as f:
         f.write(str(new_tags))
+
+    with open(cli_args.output.with_stem("totals"), "w") as f:
+        f.write(str(tags))
 
     logging.info("Completed Uncleaned Count --------------------")
 

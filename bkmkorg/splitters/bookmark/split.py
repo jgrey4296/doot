@@ -10,8 +10,6 @@ import argparse
 import logging as root_logger
 import re
 from collections import defaultdict
-from os import mkdir
-from os.path import abspath, exists, expanduser, isdir, join, split, splitext
 from urllib.parse import urlparse
 
 from bkmkorg.utils.dfs.files import get_data_files
@@ -72,13 +70,13 @@ def main():
     logging.info(f"Grouped into %s domains", len(domains))
     #save
     groups = "\n".join(domains.keys())
-    with open(join(args.output, "netlocs.list"), 'w') as f:
+    with open(args.output / "netlocs.list", 'w') as f:
         f.write(groups)
 
     for domain, bkmks in domains.items():
         flattened = domain.replace(".", "_")
         bkmks_s = "\n".join([str(x) for x in sorted(bkmks)])
-        with open(join(args.output, f"{flattened}.bookmarks"), 'w') as f:
+        with open(args.output / f"{flattened}.bookmarks", 'w') as f:
             f.write(bkmks_s)
 
 

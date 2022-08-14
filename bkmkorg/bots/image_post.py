@@ -6,7 +6,7 @@ from math import inf
 import argparse
 import json
 import logging as root_logger
-import pathlib
+import pathlib as pl
 import re
 import subprocess
 from configparser import ConfigParser
@@ -29,7 +29,7 @@ data_bots = data_path / DEFAULT_BOTS
 
 ##-- logging
 LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(pathlib.Path(__file__).stem)
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
@@ -48,11 +48,11 @@ args     = parser.parse_args()
 ##-- config
 config   = ConfigParser(allow_no_value=True, delimiters='=')
 # Read the main config
-config.read(pathlib.Path(args.config))
+config.read(pl.Path(args.config))
 # Then read in secrets
 config.read(data_path / config['DEFAULT']['secrets_loc'])
 
-TEMP_LOC            = pathlib.Path(config['PHOTO']['TEMP_LOC'])
+TEMP_LOC            = pl.Path(config['PHOTO']['TEMP_LOC'])
 dcim_whitelist_path = data_path / config['PHOTO']['WHITE_LIST']
 conversion_args     = config['PHOTO']['convert_args'].split(" ")
 convert_cmd         = "convert"
@@ -72,7 +72,7 @@ def get_resolution(filepath:Path) -> str:
 
 def compress_file(filepath:Path):
     #logging.info("Attempting compression of: {}".format(filepath))
-    assert(isinstance(filepath, pathlib.Path) and filepath.exists())
+    assert(isinstance(filepath, pl.Path) and filepath.exists())
     ext = filepath.suffix
 
     result = subprocess.run([convert_cmd, str(filepath),
@@ -163,7 +163,7 @@ def main():
     selected_file : str = selection[0]
     msg           = selection[1] if len(selection) > 1 else ""
 
-    selected_file : Path = pathlib.Path(selected_file)
+    selected_file : Path = pl.Path(selected_file)
     selected_file = selected_file.expanduser().resolve()
     if not selected_file.exists():
         logging.warning("No Choice Exists")

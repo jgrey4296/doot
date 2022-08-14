@@ -50,7 +50,9 @@ def main():
     args.library   = [pl.Path(x).expanduser().resolve() for x in args.library]
     args.target    = [pl.Path(x).expanduser().resolve() for x in args.target]
 
-    lock_file = args.output / ".lock"
+    assert(args.output.is_file())
+
+    lock_file = args.output.parent / ".lock"
     # Collect files to process
     lib            = retrieval.get_data_files(args.library, ext=".org")
     # Get tag set

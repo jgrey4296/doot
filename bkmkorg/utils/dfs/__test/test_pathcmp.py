@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import logging as logmod
-import pathlib
 import pathlib as pl
 import unittest
 import warnings
@@ -35,7 +34,7 @@ class TestPathCmp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         LOGLEVEL      = logmod.DEBUG
-        LOG_FILE_NAME = "log.{}".format(pathlib.Path(__file__).stem)
+        LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 
         cls.file_h        = logmod.FileHandler(LOG_FILE_NAME, mode="w")
         cls.file_h.setLevel(LOGLEVEL)
