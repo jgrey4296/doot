@@ -62,12 +62,12 @@ RESOLUTION_RE        = re.compile(r".*?([0-9]+x[0-9]+)")
 ##-- end config
 
 def get_resolution(filepath:Path) -> str:
-    retcode = subprocess.run(["file", str(filepath)], capture_output=True)
-    result = RESOLUTION_RE.match(retcode.stdout.decode())
-    if result:
-        return result[1]
+    result = subprocess.run(["file", str(filepath)], capture_output=True)
+    if result.returncode == 0:
+        res = RESOLUTION_RE.match(result.stdout.decode())
+        return res[1]
 
-    raise Exception("Couldn't get image resolution", retcode, filepath, result.stdout, result.stderr)
+    raise Exception("Couldn't get image resolution", filepath, result.stdout.decode(), result.stderr.decode())
 
 
 def compress_file(filepath:Path):
@@ -75,14 +75,17 @@ def compress_file(filepath:Path):
     assert(isinstance(filepath, pathlib.Path) and filepath.exists())
     ext = filepath.suffix
 
-    retcode = subprocess.run([convert_cmd, str(filepath),
+    result = subprocess.run([convert_cmd, str(filepath),
                                *conversion_args,
-                               str(TEMP_LOC)])
+                               str(TEMP_LOC)],
+                             capture_output=True)
 
-    if retcode == 0 and TEMP_LOC.stat().st_size < 5000000:
+    if result.returncode == 0 and TEMP_LOC.stat().st_size < 5000000:
         return TEMP_LOC
     else:
-        raise Exception("Failed to convert: {}".format(filepath))
+        stdout = result.stdout.decode()
+        stderr = result.stderr.decode()
+        raise Exception("Failed to convert: {} : {} : {}".format(filepath, stdout, stderr))
 
 
 
@@ -97,7 +100,7 @@ def post_to_twitter(selected_file, msg, twit):
         assert(the_file.suffix.lower() in [".jpg", ".png", ".gif"])
         twit.PostUpdate(msg, media=str(the_file))
     except Exception as err:
-        logging.warning("Twitter Post Failed: %s", str(err))
+        logging.warning("Twitter Post Failed: %s", err)
 
 def post_to_mastodon(selected_file, msg, mastodon):
     # post to mastodon

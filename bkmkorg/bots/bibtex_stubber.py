@@ -34,7 +34,7 @@ data_bots = data_path.joinpath(DEFAULT_BOTS)
 
 ##-- logging
 DISPLAY_LEVEL = logmod.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 LOG_FORMAT    = "%(asctime)s | %(levelname)8s | %(message)s"
 FILE_MODE     = "w"
 STREAM_TARGET = stderr # or stdout
@@ -85,7 +85,7 @@ def main():
     with open(stub_file, 'r') as f:
         stub_str = f.read()
 
-    to_stub_filtered = [x for x in to_stub if x not in stub_str]
+    to_stub_filtered = [x for x in to_stub if x.name not in stub_str]
     print(f"Adding {len(to_stub_filtered)} stubs")
     if not bool(to_stub_filtered):
         exit()

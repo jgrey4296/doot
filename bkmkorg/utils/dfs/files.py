@@ -15,7 +15,7 @@ import regex as re
 logging = root_logger.getLogger(__name__)
 
 img_exts      = {".jpg",".jpeg",".png",".gif",".webp",".tiff"}
-img_exts2     = image_exts | {".mp4",".bmp"}
+img_exts2     = img_exts | {".mp4",".bmp"}
 img_and_video = img_exts2  | {".mov", ".avi", ".webp"}
 
 def dfs_directory(*dirs:str|pl.Path, ext:None|str|set[str]=None):

@@ -39,11 +39,11 @@ parser.add_argument('--library', required=True, help="The local directory to use
 parser.add_argument('--target',  required=True, help="The remote directory to use")
 parser.add_argument('--to-device',   action='store_true')
 parser.add_argument('--from-device', action='store_true')
-parser.add_argument('--depthskip', default=1, type=int)
 parser.add_argument('--id')
 parser.add_argument('--wait', type=int, default=10)
 parser.add_argument('--skip-to')
 parser.add_argument('--max-depth', type=int)
+parser.add_argument('--min-depth', default=1, type=int)
 ##-- End argparse
 
 ##-- Logging
@@ -73,45 +73,43 @@ def say(val:str):
 
 # TODO use asyncio for subprocess control
 
-def skip_depth_under(path, curr, depth=1):
-    up_by_depth = path/curr
-    for x in range(depth):
-        up_by_depth = up_by_depth.parent
-
-    return up_by_depth < path
-
-def dfs_dir(initial_path, sleep_time, func, skip_to=None, max_depth=None):
+def dfs_dir(initial_path, sleep_time, func, skip_to=None, max_depth=None, min_depth=None):
     logging.info("Getting Data Files for: %s", initial_path)
     logging.info("--------------------")
     initial = initial_path if isinstance(initial_path, list) else [initial_path]
     queue = [(x, 1) for x in initial]
     while bool(queue):
         curr_path, depth = queue.pop(0)
-        if not max_depth or (isinstance(max_depth, int) and depth+1 <= max_depth):
-            sub = [(x, depth+1) for x in curr_path.iterdir() if x.is_dir()]
-            queue += sub
+        if max_depth and depth >= max_depth:
+            continue
 
-        if skip_to is not None and skip_to != curr_path.name:
+        if depth > 1 and skip_to is not None and skip_to != curr_path.name:
             logging.info("Skipping %s", curr_path.name)
             continue
-        skip_to = None
+        elif skip_to == curr_path.name:
+            skip_to = None
+
+        sub = [(x, depth+1) for x in curr_path.iterdir() if x.is_dir()]
+        queue += sub
+
+
+        if min_depth and depth <= min_depth:
+            logging.info("Skipping %s", curr_path.name)
+            continue
+
         logging.info("Running on %s", curr_path.name)
         logging.info("--------------------")
         if func(curr_path.relative_to(initial_path)):
             sleep(sleep_time)
 
-def push_sync(device_id, target, lib, current, depth=1) -> bool:
+def push_sync(device_id, target, lib, current) -> bool:
     """
     Run an adb push command to sync libdir with the target
     `target` : base path on device
     `lib`    : base path on source
     `current`: current pos relative to `lib`
     """
-    if skip_depth_under(lib, current, depth):
-        logging.info("Skipping %s", current)
-        return False
-
-    logging.info("Pushing: %s\nto: %s\nBase: %s", lib, target, current)
+    logging.info("Pushing: %s\nto     : %s\nBase   : %s", lib, target, current)
     logging.info("--------------------")
     result = subprocess.run(["adb",
                              "-t",
@@ -128,15 +126,11 @@ def push_sync(device_id, target, lib, current, depth=1) -> bool:
     return True
 
 
-def pull_sync(device_id, target, lib, current, depth=1) -> bool:
+def pull_sync(device_id, target, lib, current) -> bool:
     """
     Run an adb pull command to sync device with library
     """
-    if skip_depth_under(lib, current, 0):
-        logging.info("Skipping %s", current)
-        return False
-
-    logging.info("Pulling: %s\nto:\n %s\ncurrent: %s", target, lib, current)
+    logging.info("Pulling: %s\nto     : %s\ncurrent: %s", target, lib, current)
     logging.info("--------------------")
     # Compare the target and lib using find
     device_files = subprocess.run(["adb",
@@ -173,7 +167,7 @@ def pull_sync(device_id, target, lib, current, depth=1) -> bool:
         if not (lib/path).parent.exists():
             (lib/path).parent.mkdir()
 
-        logging.info("Copying: %s\nTo: %s", target/path, lib/path)
+        logging.info("Copying: %s\nTo     : %s", target/path, lib/path)
         result = subprocess.run(["adb",
                                 "-t",
                                  device_id,
@@ -217,16 +211,17 @@ def main():
     partial_func = partial(func,
                            device_id,
                            target_path,
-                           lib_path,
-                           depth=args.depthskip)
+                           lib_path)
 
-    logging.info("DFS for: %s\nto: %s", lib_path, target_path)
+
+    logging.info("DFS for: %s\nto: %s\non depth: %s < n < %s", lib_path, target_path, args.min_depth, args.max_depth)
     # Run the walk
     try:
         dfs_dir(lib_path,
                 args.wait,
                 partial_func,
                 skip_to=args.skip_to,
+                min_depth=args.min_depth,
                 max_depth=args.max_depth)
     except Exception:
         say("DFS Failure")
