@@ -12,6 +12,8 @@ import pathlib as pl
 from filecmp import dircmp
 from shutil import copy, copytree
 import warnings
+
+from bkmkorg.utils.dfs.pathcmp import PathCmp
 ##-- end imports
 
 ##-- logging
@@ -45,17 +47,13 @@ def copy_missing(the_cmp, exclude=None):
         current = queue.pop(0)
         # Copy left_only to right
         for missing in current.left_only:
-            loc_l = current.left / missing
-            loc_r = current.right / missing
+            loc_l =  missing
+            loc_r = current.right / missing.name
             if loc_l.is_file() and missing.suffix not in exclude):
-                logging.info("Missing: library -> {} -> target : {} : {}".format(missing,
-                                                                                 current.left,
-                                                                                 current.right))
+                logging.info("Missing: library -> %s -> target : %s : %s", missing, loc_l, loc_r)
                 copy(str(loc_l), str(loc_r))
             elif isdir(loc_l):
-                logging.info("Missing: library -> {} -> target : {} : {}".format(missing,
-                                                                                 current.left,
-                                                                                 current.right))
+                logging.info("Missing: library -> %s -> target : %s : %s", missing, loc_l, loc_r)
                 copytree(str(loc_l), str(loc_r))
 
         queue += current.subdirs.values()
@@ -65,7 +63,7 @@ def main():
     args.library = pl.Path(args.library).expanduser().resolve()
     args.target  = pl.Path(args.target).expanduser().resolve()
 
-    the_cmp = dircmp(args.library, args.target)
+    the_cmp = PathCmp(args.library, args.target)
 
     copy_missing(the_cmp, exclude=args.exclude)
 
