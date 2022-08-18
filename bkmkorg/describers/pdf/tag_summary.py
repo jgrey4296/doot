@@ -51,7 +51,7 @@ def main():
     entries_by_year  = sorted(entries_with_tag, key=lambda x: x['year'])
     pdfs_to_process  = [x['file'] for x in entries_by_year]
     expanded_paths   = [pl.Path(x).expanduser().resolve() for x in pdfs_to_process]
-    logging.info("Summarising {} pdfs".format(len(expanded_paths)))
+    logging.info("Summarising %s pdfs", len(expanded_paths))
     PU.summarise_pdfs(expanded_paths, output=output_path, bound=args.bound)
 
 

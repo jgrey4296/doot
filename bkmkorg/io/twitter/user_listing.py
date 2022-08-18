@@ -75,7 +75,7 @@ def get_users(twit, ids=None, writer=None, backup=None|pl.Path):
             already_done = set(f.read().split('\n'))
     ids_set = list(set(ids).difference(already_done))
     chunked = [ids_set[x:x+batch_size] for x in range(0, len(ids_set), batch_size)]
-    logging.info("After filtering, chunking {} into {}".format(len(ids), len(chunked)))
+    logging.info("After filtering, chunking %s into %s", len(ids), len(chunked))
 
     loop_count = 0
     for i, chunk in enumerate(chunked):

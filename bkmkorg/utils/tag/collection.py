@@ -44,7 +44,7 @@ class TagFile(BaseFileFormat):
                     line_s = [obj.norm_regex.sub("_", x.strip()) for x in line.split(obj.sep)]
                     obj.set_count(line_s[0], int(line_s[1]))
                 except Exception as err:
-                    logging.warning(f"Failure Tag Reading: {line}, {err}")
+                    logging.warning("Failure Tag Reading: %s, %s", line, err)
 
         return obj
 
@@ -147,7 +147,7 @@ class SubstitutionFile(TagFile):
                     if len(line_s) > 2 and bool(line_s[2]):
                         obj.set_sub(line_s[0], line_s[2])
                 except:
-                    logging.warning(f"Failure Sub Reading: {line}")
+                    logging.warning("Failure Sub Reading: %s", line)
 
         return obj
 

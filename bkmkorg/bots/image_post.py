@@ -71,7 +71,7 @@ def get_resolution(filepath:Path) -> str:
 
 
 def compress_file(filepath:Path):
-    #logging.info("Attempting compression of: {}".format(filepath))
+    #logging.info("Attempting compression of: %s", filepath)
     assert(isinstance(filepath, pl.Path) and filepath.exists())
     ext = filepath.suffix
 
@@ -175,7 +175,7 @@ def main():
         if "kira" in selected_file.parent.name.lower():
             msg = "kira"
 
-    logging.info(f"File size: {human(selected_file.stat().st_size)}")
+    logging.info("File size: %s", human(selected_file.stat().st_size))
     post_to_twitter(selected_file, msg, twit)
     post_to_mastodon(selected_file, msg, mastodon)
     logging.info("Finished")

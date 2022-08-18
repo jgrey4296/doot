@@ -91,7 +91,7 @@ def tags(record):
 
     record['tags'] = tags
     record['p_authors'] = []
-    logging.debug(f"Handling: {record['ID']}")
+    logging.debug("Handling: %s", record['ID'])
     if 'author' in record:
         try:
             record['p_authors'] = [c.splitname(x, False) for x in record['author']]

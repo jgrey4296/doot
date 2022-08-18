@@ -35,12 +35,12 @@ if __name__ == '__main__':
     expanded   = {}
 
     # load the targets
-    logging.info(f"Loading {args.target}")
+    logging.info("Loading %", args.target)
     with open(args.target, 'r') as f:
         unexpanded = [x.strip() for x in f.readlines()]
 
     # load the output
-    logging.info(f"Loading {args.output}")
+    logging.info("Loading %s", args.output)
     temp_lines = []
     if exists(args.output):
         with open(args.output, 'r') as f:
@@ -50,7 +50,7 @@ if __name__ == '__main__':
         parts = line.split(args.separator)
         expanded[parts[0].strip()] = parts[1].strip()
 
-    logging.info(f"Found {len(unexpanded)} : {len(expanded)}")
+    logging.info("Found %s : %s", len(unexpanded), len(expanded))
 
     count = 0
     while count < args.count and bool(unexpanded):
@@ -58,7 +58,7 @@ if __name__ == '__main__':
         if current in expanded:
             continue
 
-        logging.debug(f"Handling {count}/{args.count}")
+        logging.debug("Handling %s/%s", count, args.count)
         try:
             response = requests.head(current, allow_redirects=True, timeout=2)
             if response.ok:
@@ -67,9 +67,9 @@ if __name__ == '__main__':
                 expanded[current] = response.status_code
         except Exception as err:
             expanded[current] = f"400.1 : {str(err)}"
-            logging.info(f"Error: {str(err)}")
+            logging.info("Error: %s", str(err))
 
-        logging.debug(f"Response for {current} : {expanded[current]}")
+        logging.debug("Response for %s : %s", current, expanded[current])
         with open(args.output, 'a') as f:
             f.write("{}{}{}\n".format(current, args.separator, expanded[current]))
 

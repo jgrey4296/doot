@@ -60,7 +60,7 @@ if __name__ == "__main__":
     path_matches   = [path_re.findall(x) for x in text]
     path_merge     = [y for x in path_matches for y in x]
     expanded_files = [pl.Path(x).expanduser().resolve() for x in path_merge]
-    logging.info("Found: {}".format(len(expanded_files)))
+    logging.info("Found: %s", len(expanded_files))
 
     logging.info("Hashing")
     current_hashes = { file_to_hash(x) for x in expanded_files }
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     logging.info("Scraping Source Directory")
     imgs_in_dir  = [x for x in args.source.iterdir() if x.suffix.lower() in file_types
                     and x.name[0] != '.']
-    logging.info("Scraped: {}".format(len(imgs_in_dir)))
+    logging.info("Scraped: %s", len(imgs_in_dir))
 
     logging.info("Hashing")
     total_hashes = { file_to_hash(x) : x for x in imgs_in_dir }
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     to_add = set(total_hashes.keys()).difference(current_hashes)
 
     #append unlinked files
-    logging.info("Appending to output: {}".format(len(to_add)))
+    logging.info("Appending to output: %s", len(to_add))
     with open(args.output, 'a') as f:
         for h in to_add:
             filename = total_hashes[h]

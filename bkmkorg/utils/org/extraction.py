@@ -24,14 +24,14 @@ def get_tweet_dates_and_ids(org_files:list[pl.Path], line_regex=None) -> List[Tu
     tweets = []
 
     for org in org_files:
-        logging.debug("Opening {}".format(org))
+        logging.debug("Opening %s", org)
         # open org
         with open(org, 'r') as f:
             lines = "\n".join(f.readlines())
 
         # get all permalink+time pair lines
         found_tweets = EXTRACTOR.findall(lines)
-        logging.debug("Found {}".format(len(found_tweets)))
+        logging.debug("Found %s", len(found_tweets))
         tweets += found_tweets
 
     return tweets

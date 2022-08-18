@@ -93,7 +93,7 @@ def add_metadata(path:pl.Path, bib_entry:dict, bib_str:str):
     title = bib_entry['title'].replace(' ', '_')[:min(30, bib_entry['title'].index(':') if ':' in bib_entry['title'] else len(bib_entry['title']))]
     new_name = f"md_{bib_entry['year']}_{author_head}_{title}"
     new_path = path.parent / f'{new_name}{path.suffix}'
-    logging.info(f"Writing To: {new_path.name}")
+    logging.info("Writing To: %s", new_path.name)
     PdfWriter(new_path, trailer=pdf).write()
 
 ##-- main
@@ -106,12 +106,12 @@ def main():
     main_db  = BU.parse_bib_files(all_bibs)
 
 
-    logging.info("Loaded Database: {} entries".format(len(main_db.entries)))
+    logging.info("Loaded Database: %s entries", len(main_db.entries))
 
     count = 0
     for i, entry in enumerate(main_db.entries):
         if i % 10 == 0:
-            logging.info("{}/10 Complete".format(count))
+            logging.info("%s/10 Complete", count)
             count += 1
         unicode_entry = b.customization.convert_to_unicode(entry)
 

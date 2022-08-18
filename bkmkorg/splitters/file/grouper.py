@@ -75,7 +75,7 @@ if __name__ == "__main__":
                   str(original),
                   str(group_dir)])
             logging.info("Moving: %s", ofile)
-            logging.info("Moving: {}".format(file_dir))
+            logging.info("Moving: %s", file_dir)
             call(['mv',
                   str(file_dir)),
                   str(group_dir)])

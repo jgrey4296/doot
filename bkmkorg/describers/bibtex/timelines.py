@@ -46,19 +46,19 @@ def main():
     assert(args.output.is_dir())
     logging.info("---------- STARTING Bibtex Timelines")
     if not args.output.exists():
-        logging.info("Making output: {}".format(args.output))
+        logging.info("Making output: %s", args.output)
         args.output.mkdir()
 
     assert(args.output.exists())
 
     all_bibs = retrieval.get_data_files(args.library, ".bib")
 
-    logging.info("Found {} bib files".format(len(all_bibs)))
+    logging.info("Found %s bib files", len(all_bibs))
 
     db = b.bibdatabase.BibDatabase()
     BU.parse_bib_files(all_bibs, func=bib_proc.year_parse, database=db)
 
-    logging.info("Loaded bibtex entries: {}".format(len(db.entries)))
+    logging.info("Loaded bibtex entries: %s", len(db.entries))
 
     # Load totals_bib.tags
     # Filter for min_entries
@@ -73,7 +73,7 @@ def main():
         for tag in tags:
             tag_collection[tag].append(entry)
 
-    logging.info("Collected Tags: {}".format(len(tag_collection)))
+    logging.info("Collected Tags: %s", len(tag_collection))
 
     # Then sort by year and write out
     for tag, entries in tag_collection.items():

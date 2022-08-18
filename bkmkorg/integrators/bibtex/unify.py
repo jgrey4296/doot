@@ -64,7 +64,7 @@ def main():
         missing_keys_main.update(missing_keys)
         total_entries += [db_dict[x] for x in missing_keys]
 
-    logging.info("{} missing entries".format(len(total_entries)))
+    logging.info("%s missing entries", len(total_entries))
     main_db.entries = total_entries
 
     # Write out the combined database

@@ -44,11 +44,11 @@ if __name__ == "__main__":
         with open(bkmk_f, 'r') as f:
             total.add_file(f)
 
-    logging.info("Total Links to Check: {}".format(len(total)))
+    logging.info("Total Links to Check: %s", len(total))
 
     total.merge_duplicates()
 
-    logging.info("Final Number of Links: {}".format(len(total)))
+    logging.info("Final Number of Links: %s", len(total))
     #write out to separate file
     with open(args.output, 'w') as f:
         f.write(str(total))

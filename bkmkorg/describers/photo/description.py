@@ -45,9 +45,9 @@ if __name__ == "__main__":
     args.output = pl.Path(args.output).expanduser().resolve()
     logging.info("Finding images")
     images = retrieval.get_data_files(args.target, FILE_TYPES)
-    logging.info("Hashing {} images".format(len(images)))
+    logging.info("Hashing %s images", len(images))
     hash_dict, conflicts = hash_check.hash_all(images)
-    logging.info("Hashed all images, {} conflicts".format(len(conflicts)))
+    logging.info("Hashed all images, %s conflicts", len(conflicts))
 
     #write conflicts to an org file:
     with open(args.output,'w') as f:

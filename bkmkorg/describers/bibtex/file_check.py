@@ -58,7 +58,7 @@ def main():
     all_bibs = retrieval.get_data_files(args.library, ".bib")
     main_db = BU.parse_bib_files(all_bibs)
 
-    logging.info("Loaded Database: {} entries".format(len(main_db.entries)))
+    logging.info("Loaded Database: %s entries", len(main_db.entries))
     count              = 0
     all_file_mentions  = []
     all_existing_files = retrieval.get_data_files(args.target, [".epub", ".pdf"], normalize=True)
@@ -66,7 +66,7 @@ def main():
     # Convert entries to unicode
     for i, entry in enumerate(main_db.entries):
         if i % 10 == 0:
-            logging.info("{}/10 Complete".format(count))
+            logging.info("%s/10 Complete", count)
             count += 1
         unicode_entry = b.customization.convert_to_unicode(entry)
 
@@ -75,8 +75,8 @@ def main():
             all_file_mentions.append(normalize('NFD', unicode_entry[k]))
 
 
-    logging.info("Found {} files mentioned in bibliography".format(len(all_file_mentions)))
-    logging.info("Found {} files existing".format(len(all_existing_files)))
+    logging.info("Found %s files mentioned in bibliography", len(all_file_mentions))
+    logging.info("Found %s files existing", len(all_existing_files))
 
     logging.info("Normalizing paths")
     norm_mentions = set([])
@@ -84,7 +84,7 @@ def main():
     for x in all_file_mentions:
         path = PATH_NORM.sub("", x)
         if path in norm_mentions:
-            logging.info("Duplicate file mention: {}".format(path))
+            logging.info("Duplicate file mention: %s", path)
         else:
             norm_mentions.add(path)
 
@@ -93,7 +93,7 @@ def main():
     for x in all_existing_files:
         path = PATH_NORM.sub("", x)
         if path in norm_existing:
-            logging.info("Duplicate file existence: {}".format(path))
+            logging.info("Duplicate file existence: %s", path)
         else:
             norm_existing.add(path)
 
@@ -102,8 +102,8 @@ def main():
     mentioned_non_existent = norm_mentions - norm_existing
     existing_not_mentioned = norm_existing - norm_mentions
 
-    logging.info("Mentioned but not existing: {}".format(len(mentioned_non_existent)))
-    logging.info("Existing but not mentioned: {}".format(len(existing_not_mentioned)))
+    logging.info("Mentioned but not existing: %s", len(mentioned_non_existent))
+    logging.info("Existing but not mentioned: %s", len(existing_not_mentioned))
 
     # Create output files
     with open(args.output / "bibtex.not_existing",'w') as f:

@@ -64,7 +64,7 @@ def construct_component_files(tweet_dir:pl.Path, component_dir:pl.Path, twit=Non
 
 
     if bool(id_map.missing):
-        logging.info("Missing: {}".format(id_map.missing))
+        logging.info("Missing: %s", id_map.missing)
         if not download_tweets(twit, tweet_dir, id_map.missing):
             exit()
 
@@ -75,13 +75,13 @@ def construct_user_summaries(component_dir:pl.Path, combined_threads_dir:pl.Path
     # Create final orgs, grouped by head user
     components = get_data_files(component_dir, ext=".json")
     for comp in components:
-        logging.info("Constructing Summary for: {}".format(comp))
+        logging.info("Constructing Summary for: %s", comp)
         # read comp
         with open(comp, 'r') as f:
             data = json.load(f, strict=False)
 
         if not bool(data):
-            logging.warning("No Data found in {comp}")
+            logging.warning("No Data found in %s", comp)
             continue
 
         # Get leaves

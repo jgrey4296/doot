@@ -91,15 +91,15 @@ if __name__ == "__main__":
 
     all_orgs = retrieval.get_data_files(args.library, ".org")
 
-    logging.info("Found {} org files".format(len(all_orgs)))
+    logging.info("Found %s org files", len(all_orgs))
 
     # Process tweets
     all_tweets : List[Tuple[datetime, str]] = get_tweet_dates_and_ids(all_orgs)
-    logging.info("Found {} tweets".format(len(all_tweets)))
+    logging.info("Found %s tweets", len(all_tweets))
     # remove duplicates and convert date strings
     tweet_dict = {x[0] : convert_tweet_date(x[1]) for x in all_tweets}
 
-    logging.info("Sorting {} tweets".format(len(tweet_dict)))
+    logging.info("Sorting %s tweets", len(tweet_dict))
     ordered = sorted([(x[1], x[0]) for x in tweet_dict.items()], key=lambda x: x[1])
 
     id_convertor = {x : i for i,x in enumerate(tweet_dict.keys())}
@@ -120,7 +120,7 @@ if __name__ == "__main__":
     n_cols = int(len(to_draw) / 2)
     for count, paired in enumerate(to_draw):
         name, data = paired
-        logging.info("Drawing {}".format(name))
+        logging.info("Drawing %s", name)
         x = [x[0] for x in data]
         y = [x[1] for x in data]
         plt.subplot(n_rows, n_cols, count + 1)

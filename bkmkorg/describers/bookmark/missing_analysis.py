@@ -40,11 +40,11 @@ if __name__ == "__main__":
     args.library = pl.Path(args.library).expanduser().resolve()
     args.source  = [pl.Path(x).expanduser().resolve() for x in args.source]
     args.output  = pl.Path(args.output).expanduser().resolve()
-    logging.info("Finding Links missing from: {}".format(args.library))
+    logging.info("Finding Links missing from: %s", args.library)
 
     # Get sources
     sources = retrieval.get_data_files(args.source, [".bookmarks"])
-    logging.info("Using Source: {}".format(sources))
+    logging.info("Using Source: %s", sources)
 
     #Load Library
     library_files = retrieval.get_data_files(args.library, ".bookmarks")
@@ -59,7 +59,7 @@ if __name__ == "__main__":
         with open(x, 'r') as f:
             to_check.add_file(f)
 
-    logging.info("Total Links to Check: {}".format(len(to_check)))
+    logging.info("Total Links to Check: %s", len(to_check))
 
     missing : BookmarkCollection = library.difference(to_check)
 

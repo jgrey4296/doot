@@ -30,7 +30,7 @@ parser.add_argument('--real',    action='store_true')
 def move_file(file_path, target, is_real):
     assert(isdir(target))
     assert(isfile(file_path))
-    logging.info("Moving to {} from {}".format(target, file_path))
+    logging.info("Moving to %s from %s", target, file_path)
     if is_real:
         call(["mv", file_path, target])
 
@@ -41,14 +41,14 @@ if __name__ == '__main__':
     target  = abspath(expanduser(args.target))
     trash   = abspath(expanduser(args.trash))
 
-    logging.info("IS REAL: {}".format(args.real))
+    logging.info("IS REAL: %s", args.real))
 
     if not exists(trash):
-        logging.info("Making Trash Directory: {}".format(trash))
+        logging.info("Making Trash Directory: %s", trash))
         mkdir(trash)
 
     # Collect the media files
-    logging.info("Collecting media from: {}".format(",".join(library)))
+    logging.info("Collecting media from: %s", ",".join(library))
     queue = library[:]
     media = defaultdict(lambda: [])
     while bool(queue):
@@ -58,10 +58,10 @@ if __name__ == '__main__':
         elif isdir(current):
             queue += [join(current, x) for x in listdir(current) if x != ".git"]
 
-    logging.info("Found {} media".format(len(media)))
+    logging.info("Found %s  media", len(media))
 
     # Get variants:
-    logging.info("Reading variant lists from: {}".format(target))
+    logging.info("Reading variant lists from: %s ", target)
     with open(target, 'r') as f:
         var_text = f.read()
     variants_list = json.loads(var_text)
@@ -75,7 +75,7 @@ if __name__ == '__main__':
         if bool(existing):
             equivalent_files.append(existing)
 
-    logging.info("Found {} equivalents".format(len(equivalent_files)))
+    logging.info("Found %s equivalents", len(equivalent_files))
 
     logging.info("Keeping Not-smallest files")
     for equiv_list in equivalent_files:
@@ -90,14 +90,14 @@ if __name__ == '__main__':
                 prefix = split(a_path)[0]
                 grouped_by_prefix[prefix].append(a_path)
 
-        logging.info("Working with {} prefix groups".format(len(grouped_by_prefix)))
+        logging.info("Working with %s prefix groups", len(grouped_by_prefix))
         for prefix_group in grouped_by_prefix.values():
             logging.info("--------------------")
             sized = sorted([(getsize(x), x) for x in prefix_group if exists(x)])
             # keep the largest, to downsize later
             largest = sized.pop()
-            logging.info("Keeping: {}".format(str(largest)))
+            logging.info("Keeping: %s", str(largest))
             # Move the rest
             for s, x in sized:
-                logging.info("Trashing: {}".format(s))
+                logging.info("Trashing: %s", s)
                 move_file(x, trash, args.real)

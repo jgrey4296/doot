@@ -66,7 +66,7 @@ def build_threader(output, base_name, pattern):
     count = 1
     def next_thread_context():
         nonlocal count
-        logging.info(f"Found Thread: {count}")
+        logging.info("Found Thread: %s", count)
         new_thread_name = output / pattern.format(base_name, count)
         count += 1
         return new_thread_name
@@ -84,8 +84,8 @@ def process_directory(path):
     assert(path.is_dir)
     all_orgs = path.glob("*.org")
     filtered = {fname_extract_re.match(x.name)[1] for x in all_orgs}
-    logging.info(f"Processing Directory: {path}")
-    logging.info(f"Found {len(filtered)} name patterns")
+    logging.info("Processing Directory: %s", path)
+    logging.info("Found %s name patterns", len(filtered))
     for fname in filtered:
         process_pattern(path / fname)
 
@@ -154,7 +154,7 @@ def process_pattern(target):
             with open(curr_thread_file, 'a') as f:
                 f.write(line)
 
-    logging.info(f"Completed, built {count} thread files")
+    logging.info("Completed, built %s thread files", count)
 
 def process_link(line):
     link_matched = link_re.match(line)

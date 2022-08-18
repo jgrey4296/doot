@@ -45,7 +45,7 @@ def retrieve_api_key():
 
 def create_session(params={}, headers={}):
     """ For use as the ctor of a 'with' context """
-    logging.info('Creating Session with: {}  --- {}'.format(params,headers))
+    logging.info("Creating Session with: %s  --- %s", params,headers)
     session = requests.Session()
     session.params.update(params)
     session.headers.update(headers)
@@ -54,7 +54,7 @@ def create_session(params={}, headers={}):
 
 def prep_request(session, url, params={}, headers={}, data={}):
     """ Packs information together to send a single request for information  """
-    logging.info('Prepping Request for: {}'.format(url))
+    logging.info("Prepping Request for: %s", url)
     req = requests.Request('GET', url, params=params, headers=headers, data=data)
     prepped = session.prepare_request(req)
     print('Prepared Request: {}'.format(prepped))
@@ -72,7 +72,7 @@ def perform_request_then_wait(session, request):
     logging.info('Sleeping')
     sleep(WAIT_TIME)
     if response.status_code >= 400:
-        logging.warning('Bad Response Code: {}'.format(response.status_code))
+        logging.warning("Bad Response Code: %s", response.status_code)
         breakpoint()
         exit()
     elif 200 <= response.status_code < 300:
@@ -82,7 +82,7 @@ def perform_request_then_wait(session, request):
 
 def check_response_header(response):
     """ Check for X-RateLimit fields """
-    logging.info('Checking Response Header: Remaining: {}'.format(response.headers['X-RateLimit-Remaining-day']))
+    logging.info("Checking Response Header: Remaining: %s", response.headers['X-RateLimit-Remaining-day'])
     if int(response.headers['X-RateLimit-Remaining-day']) < 1:
         raise Exception('No More Requests Remaining Today')
 
@@ -107,7 +107,7 @@ def save_dates():
 def increment_date(date):
     """ Increments a date appropriately, giving correct months and folding over to the correct year  """
     global requested_dates
-    logging.info('Incrementing Date: {}'.format(date))
+    logging.info("Incrementing Date: %s", date)
     if date != requested_dates[-1]:
         requested_dates.append(date)
     month = date['month'] + 1
@@ -116,7 +116,7 @@ def increment_date(date):
         month = 1
         year += 1
     new_date ={ 'month': month, 'year': year}
-    logging.info("New Date: {}".format(new_date))
+    logging.info("New Date: %s", new_date)
     return new_date
 
 
@@ -129,7 +129,7 @@ def save_response(response, date):
         raise Exception('File already exists: {}'.format(filepath))
     with open(filepath, 'w') as f:
         f.write(response.text)
-    logging.info('Wrote: {}'.format(filename))
+    logging.info("Wrote: %s", filename)
 
 
 def main_scrape():

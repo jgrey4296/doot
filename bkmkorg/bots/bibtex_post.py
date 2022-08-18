@@ -96,7 +96,7 @@ def select_entry(db, already_tweeted, filename):
             entry = poss_entry
 
     if entry is None:
-        logging.warning(f"No Appropriate Entry Found for db: {filename}")
+        logging.warning("No Appropriate Entry Found for db: %s", filename)
 
     return entry
 
@@ -112,7 +112,7 @@ def maybe_blacklist_file(db, file_path:pl.Path, already_tweeted):
 
     assert(file_path not in blacklisted)
     if not any([sufficient_entry(x) for x in db.entries]):
-        logging.info(f"Bibtex failed check, blacklisting: {file_path}")
+        logging.info("Bibtex failed check, blacklisting: %s", file_path)
         with open(BLACKLIST, 'a') as f:
             f.write(f"{file_path.name}\n")
 
@@ -140,7 +140,7 @@ def format_tweet(entry):
     elif "isbn" in entry:
         result += f"isbn: {entry['isbn']}\n"
     else:
-        logging.warning(f"Bad Entry: {entry['ID']}")
+        logging.warning("Bad Entry: %s", entry['ID'])
         exit()
 
     tags = " ".join(["#{}".format(x.strip()) for x in entry['tags'].split(',')])
@@ -172,21 +172,21 @@ def main():
     success = False
     try:
         if len(tweet_text) >= TWEET_LEN:
-            logging.warning(f"Resulting Tweet too long for twitter: {len(tweet_text)}\n{tweet_text}")
+            logging.warning("Resulting Tweet too long for twitter: %s\n%s", len(tweet_text), tweet_text)
         else:
             result = twit.PostUpdate(tweet_text)
             success |= True
     except Exception as err:
-        logging.warning(f"Twitter Post Failure: {err}")
+        logging.warning("Twitter Post Failure: %s", err)
 
     try:
         if len(tweet_text) >= TOOT_LEN:
-            logging.warning(f"Resulting Tweet too long for mastodon: {len(tweet_text)}\n{tweet_text}")
+            logging.warning("Resulting Tweet too long for mastodon: %s\n%s", len(tweet_text), tweet_text)
         else:
             result = mastodon.status_post(tweet_text)
             success |= True
     except Exception as err:
-        logging.warning(f"Mastodon Post Failure: {err}")
+        logging.warning("Mastodon Post Failure: %s", err)
 
     if success:
         with open(SUCCESS_LOG, 'a') as f:

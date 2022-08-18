@@ -71,10 +71,10 @@ def main():
     args.output  = pl.Path(args.output).expanduser().resolve()
 
     all_bibs = retrieval.get_data_files(args.library, ".bib")
-    logging.info("Found {} bib files".format(len(all_bibs)))
+    logging.info("Found %s bib files", len(all_bibs))
     db = b.bibdatabase.BibDatabase()
     BU.parse_bib_files(all_bibs, func=bib_proc.year_parse, database=db)
-    logging.info("Loaded bibtex entries: {}".format(len(db.entries)))
+    logging.info("Loaded bibtex entries: %s", len(db.entries))
 
     # Graph tags over time
     year_counts = []
@@ -92,7 +92,7 @@ def main():
     n_cols = 1
     for count, paired in enumerate(to_draw):
         name, data = paired
-        logging.info("Drawing {}".format(name))
+        logging.info("Drawing %s", name)
         x = [x[0] for x in data]
         y = [x[1] for x in data]
         plt.subplot(n_rows, n_cols, count + 1)

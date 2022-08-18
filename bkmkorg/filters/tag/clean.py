@@ -58,7 +58,7 @@ def main():
 
     #Load Cleaned Tags
     cleaned_tags  = SubstitutionFile.builder(args.cleaned)
-    logging.info("Loaded {} tag substitutions", len(cleaned_tags))
+    logging.info("Loaded %s tag substitutions", len(cleaned_tags))
 
     #Load Bibtexs, html, orgs and clean each
     bibs, htmls, orgs, bkmks = retrieval.collect_files(args.target)

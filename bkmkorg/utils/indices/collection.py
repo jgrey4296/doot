@@ -40,7 +40,7 @@ class IndexFile:
             try:
                 main += IndexFile.read(target, sep=sep)
             except Exception as err:
-                logging.warning(f"IndexFile.builder failure for {target}")
+                logging.warning("IndexFile.builder failure for %s", target)
 
         return main
 

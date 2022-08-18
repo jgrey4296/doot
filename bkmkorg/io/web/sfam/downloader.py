@@ -57,7 +57,7 @@ def check_count():
 
 def download_and_save(target, filename, base=DATA_LOCATION):
     if exists(join(base, filename)):
-        logging.info("Skipping: {}".format(filename))
+        logging.info("Skipping: %s", filename)
         return
     check_count()
     try:
@@ -105,18 +105,17 @@ if __name__ == "__main__":
 
     #get The Individual years
     for (year, link) in link_texts:
-        logging.info("Retrieving information for Year: {}".format(year))
+        logging.info("Retrieving information for Year: %s", year)
         download_and_save(parse.urljoin(STARTING_PAGE, link), YEAR_TEMPLATE.format(year))
 
     for x in listdir(DATA_LOCATION):
         name, ftype = splitext(x)
         if ftype != '.html' or not bool(YEAR_REGEX.match(name)):
-            logging.info("Skipping: {} - {}".format(x,
-                                                    bool(YEAR_REGEX.match(name))))
+            logging.info("Skipping: %s - %s", x, bool(YEAR_REGEX.match(name)))
             continue
         #Get the file
         year = YEAR_REGEX.match(name).group(1)
-        logging.info("Loading info for year: {}".format(year))
+        logging.info("Loading info for year: %s", year)
 
         #extract the links
         with open(join(DATA_LOCATION, x), 'rb') as f:
@@ -132,17 +131,17 @@ if __name__ == "__main__":
 
         for d, l in date_links:
             #if they don't exist, retrieve them, save them
-            logging.info("Retrieving information for comic: {}".format(d))
+            logging.info("Retrieving information for comic: %s", d)
             download_and_save(l, COMIC_TEMPLATE.format(d))
 
 
     for x in listdir(DATA_LOCATION):
         name, ftype = splitext(x)
         if ftype != '.html' or not bool(COMIC_REGEX.match(name)):
-            logging.info("Skipping: {}".format(name))
+            logging.info("Skipping: %s", name)
             continue
         #find the image name
-        logging.info("Loading info for: {}".format(name))
+        logging.info("Loading info for: %s", name)
         #check it doesn't already exist
         with open(join(DATA_LOCATION, x), 'rb') as f:
             current_html_data = BeautifulSoup(f.read(), 'html.parser')

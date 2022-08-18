@@ -64,13 +64,13 @@ if __name__ == "__main__":
     args.target = abspath(expanduser(args.target))
     args.output = abspath(expanduser(args.output))
 
-    logging.info(f'Loading {args.target}')
+    logging.info('Loading %s', args.target)
     with open(args.target, 'r') as f:
         data = json.load(f)
 
     assert(data is not None)
 
-    logging.info(f'Loaded {len(data)}')
+    logging.info('Loaded %s', len(data))
     lines = []
     for entry in data:
         # reformat each entry
@@ -87,7 +87,7 @@ if __name__ == "__main__":
         if 'http' in raw[-2]:
             processed += [full_url(raw[-2])]
         else:
-            logging.info(f'--- Bad url: {raw[-2]}')
+            logging.info('--- Bad url: %s', raw[-2])
             processed += [raw[-2]]
         if 'created_at' in raw[-1]:
             processed += [process_date(raw[-1]['created_at'])]
@@ -95,7 +95,7 @@ if __name__ == "__main__":
         assert(not any(["_!_" in x for x in processed])), breakpoint()
 
         formatted_line = " _!_ ".join([x for x in processed])
-        logging.info(f'Adding: {formatted_line}')
+        logging.info('Adding: %s', formatted_line)
         lines.append(formatted_line)
 
 

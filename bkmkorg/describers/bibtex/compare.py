@@ -37,7 +37,7 @@ def main():
     args        = parser.parse_args()
     args.target = [pl.Path(x).expanduser().resolve() for x in args.target]
 
-    logging.info("Targeting: {}".format(args.target))
+    logging.info("Targeting: %s", args.target)
 
     # Get Bibtex files
     all_bib_paths = retrieval.get_data_files(args.targeet, ".bib")
@@ -52,7 +52,7 @@ def main():
             db = b.load(f, bib_parser)
             all_dbs.append(db)
 
-    logging.info("DB Sizes: {}".format(", ".join([str(len(x.entries)) for x in all_dbs])))
+    logging.info("DB Sizes: %s", ", ".join([str(len(x.entries) for x in all_dbs])))
 
     # Sort the bibtex's by their size
     sorted_dbs = sorted([(len(x.entries), x) for x in all_dbs], reverse=True)

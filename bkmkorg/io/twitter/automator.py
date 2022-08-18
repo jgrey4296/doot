@@ -80,9 +80,9 @@ def get_library_tweets(lib:List[pl.Path], tweet) -> Set[str]:
     library_tweet_ids = set()
     if tweet is None:
         logging.info("---------- Getting Library Tweet Details")
-        logging.info("Libraries to search: {}".format(lib))
+        logging.info("Libraries to search: %s", lib)
         library_tweet_ids = EU.get_all_tweet_ids(*lib, ".org")
-        logging.info("Found {} library tweets".format(len(library_tweet_ids)))
+        logging.info("Found %s library tweets", len(library_tweet_ids))
 
     return library_tweet_ids
 
@@ -94,9 +94,9 @@ def read_target_ids(tweet, target_file:pl.Path) -> TweetTodoFile:
         todo_ids = TweetTodoFile.read(target_file)
     else:
         todo_ids = TweetTodoFile(mapping={tweet.name : ""})
-        logging.info("Specific Tweet: {}".format(todo_ids))
+        logging.info("Specific Tweet: %s", todo_ids)
 
-    logging.info("Found {} source ids".format(len(todo_ids)))
+    logging.info("Found %s source ids", len(todo_ids))
     return todo_ids
 
 def setup(args):
@@ -176,7 +176,7 @@ def main():
     library_tweet_ids : Set[str] = get_library_tweets(args.library, args.tweet)
 
     if targets['lib_tweet_record'] is not None:
-        logging.info("---------- Exporting lib tweets to: {}".format(targets['lib_tweet_record']))
+        logging.info("---------- Exporting lib tweets to: %s", targets['lib_tweet_record'])
         now : str = datetime.datetime.now().strftime("%Y-%m-%d")
         with open(targets['lib_tweet_record'], 'a') as f:
             f.write(f"{now}:\n\t")
@@ -218,7 +218,7 @@ def main():
                                        args.tweet)
 
     if targets['download_record'] is not None:
-        logging.info("---------- Exporting lib tweets to: {}".format(targets['download_record']))
+        logging.info("---------- Exporting lib tweets to: %s", targets['download_record'])
         now : str = datetime.datetime.now().strftime("%Y-%m-%d")
         with open(targets['download_record'], 'a') as f:
             f.write(f"{now}:\n\t")

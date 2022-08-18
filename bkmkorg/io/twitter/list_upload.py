@@ -57,7 +57,7 @@ def get_existing_lists(twit):
     all_lists = {}
     next_cursor = "-1"
     while next_cursor != '0':
-        logging.info("Cursor: {}".format(next_cursor))
+        logging.info("Cursor: %s", next_cursor)
         response = twit.lists.ownerships(cursor=next_cursor)
         next_cursor = response['next_cursor_str']
         lists = response['lists']

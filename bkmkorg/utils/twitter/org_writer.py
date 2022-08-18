@@ -215,7 +215,7 @@ class TwitterThread:
 
     @staticmethod
     def retarget_url(url, new_target_dir):
-        logging.debug("Retargeting URL: {} to {}".format(split(url)[1], new_target_dir))
+        logging.debug("Retargeting URL: %s to %s", split(url)[1], new_target_dir)
         return new_target_dir / split(url)[1]
 
     @staticmethod

@@ -28,7 +28,7 @@ def hash_all(files:list[pl.Path]):
     count = 0
     for i,x in enumerate(files):
         if i % update_num == 0:
-            logging.info("{} / 100".format(count))
+            logging.info("%s / 100", count)
             count += 1
         the_hash = file_to_hash(x)
         if the_hash not in hash_dict:
@@ -47,7 +47,7 @@ def find_missing(library:list[pl.Path], others:list[pl.Path]):
     count = 0
     for i,x in enumerate(others):
         if i % update_num == 0:
-            logging.info("{} / 100".format(count))
+            logging.info("%s / 100", count)
             count += 1
         the_hash = file_to_hash(x)
         if the_hash not in library_hash:

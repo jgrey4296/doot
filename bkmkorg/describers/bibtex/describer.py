@@ -76,11 +76,11 @@ def process_db(db):
     for i, entry in enumerate(db.entries):
         # Log progress
         if i % proportion == 0:
-            logging.info(f"{count}/10 Complete")
+            logging.info(f"%s/10 Complete", count)
             count += 1
 
         if entry['ID'] in results.all_keys:
-            logging.warning("Duplicate Key: {}".format(entry['ID']))
+            logging.warning("Duplicate Key: %s", entry['ID'])
             results.duplicates.add(entry['ID'])
 
         results.all_keys.append(entry['ID'])
@@ -117,15 +117,15 @@ def main():
     args.output = pl.Path(args.output).expanduser().resolve()
     assert(args.target.exists())
 
-    logging.info("Targeting: {}".format(args.target))
-    logging.info("Output to: {}".format(args.output))
+    logging.info("Targeting: %s", args.target)
+    logging.info("Output to: %s", args.output)
 
     # Load targets
     bib_files = retrieval.get_data_files(args.target, ".bib")
     db        = BU.parse_bib_files(bib_files, func=bib_proc.clean_full)
     logging.info("Bibtex loaded")
 
-    logging.info(f"Processing Entries: {len(db.entries)}")
+    logging.info(f"Processing Entries: %s", len(db.entries))
     result = process_db(db)
     logging.info("Processing complete")
 

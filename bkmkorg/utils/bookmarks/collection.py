@@ -51,7 +51,7 @@ class Bookmark:
         url        = line_split[0]
         tag_set    = {x.strip() for x in line_split[1:]}
         if not bool(tag_set):
-            logging.warning(f"No Tags for: {url}")
+            logging.warning("No Tags for: %s", url)
 
         return Bookmark(url,
                         tag_set,

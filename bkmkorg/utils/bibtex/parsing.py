@@ -48,9 +48,9 @@ def parse_bib_files(bib_files:list[pl.Path], func=None, database=None):
     for x in bib_files:
         try:
             with open(x, 'r') as f:
-                logging.info(f"Loading bibtex: {x}")
+                logging.info("Loading bibtex: %s", x)
                 bparser.parse_file(f, partial=True)
         except Exception as err:
-            logging.warning(f"Error for: {x}: {err}")
+            logging.warning("Error for: %s : %s", x, err)
     logging.info("Bibtex loaded")
     return db

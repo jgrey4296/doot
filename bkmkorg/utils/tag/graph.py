@@ -36,7 +36,7 @@ class TagGraph:
     norm_regex   : re.Pattern = TAG_NORM
 
     def extract_bibtex(self, db:'bibtexparser.BibtexDatabase') -> TagFile:
-        logging.info("Processing Bibtex: {}".format(len(db.entries)))
+        logging.info("Processing Bibtex: %s"len(db.entries))
 
         proportion = int(len(db.entries) / 10)
         count = 0
@@ -44,7 +44,7 @@ class TagGraph:
 
         for i, entry in enumerate(db.entries):
             if i % proportion == 0:
-                logging.info("{}/10 Complete".format(count))
+                logging.info("%s/10 Complete", count)
                 count += 1
 
             #get tags

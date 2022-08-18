@@ -47,14 +47,14 @@ def main():
         assert(args.target.isdir())
         for group in args.target.iterdir():
             pdfs_to_process = retrieval.get_data_files(group, [".pdf", ".epub"])
-            logging.info("Summarising {}'s {} pdfs".format(group, len(pdfs_to_process)))
+            logging.info("Summarising %s's %s pdfs", group, len(pdfs_to_process))
             PU.summarise_pdfs(pdfs_to_process,
                               output="{}_{}".format(args.output, group),
                               bound=int(args.bound))
     else:
         # Find all pdfs in subdir
         pdfs_to_process = retrieval.get_data_files(args.target, ".pdf")
-        logging.info("Summarising {} pdfs".format(len(pdfs_to_process)))
+        logging.info("Summarising %s pdfs", len(pdfs_to_process))
         PU.summarise_pdfs(pdfs_to_process, output=args.output, bound=args.bound)
 
     # writer.trailer.Info = IndirectPdfDict(

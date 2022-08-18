@@ -46,7 +46,7 @@ PROCESSED = "_processed"
 ##-- end constants
 
 def copy_files(source_dir:pl.Path, target_dir:pl.Path):
-    logging.info(f"Copying from {source_dir} to {target_dir}")
+    logging.info("Copying from %s to %s", source_dir, target_dir)
     if source_dir.exists() and not target_dir.exists():
         logging.info("as group")
         result = run(['cp' ,'-r' ,str(source_dir), str(target_dir)], capture_output=True, check=True)
@@ -61,7 +61,7 @@ def copy_files(source_dir:pl.Path, target_dir:pl.Path):
 
 
 def copy_new(source:pl.Path, lib_path:pl.Path):
-    logging.info(f"Adding to library with: {source}")
+    logging.info("Adding to library with: %s", source)
     file_dir  = source.parent / f"{source.stem}_files"
 
     first_letter = source.name[0].lower()
@@ -79,7 +79,7 @@ def copy_new(source:pl.Path, lib_path:pl.Path):
 
 
 def integrate(source:pl.Path, lib_dict:dict[str,Any]):
-    logging.info(f"Integrating: {source}")
+    logging.info("Integrating: %s", source)
     new_files      = source.parent / f"{source.stem}_files"
     existing_org   = lib_dict[source.name] /  source.name
     existing_files = lib_dict[source.name] / f"{source.stem}_files"
@@ -130,7 +130,7 @@ def main():
     if not args.record:
         args.record = join(args.library[0], "update_record")
 
-    logging.info(f"Update Record: {args.record}")
+    logging.info("Update Record: %s", args.record)
     assert(args.record.exists())
     if any([not x.exists() for x in args.source + args.library]):
         raise Exception('Source and Output need to exist')

@@ -39,7 +39,7 @@ parser.add_argument('--pattern', default=DEFAULT_PATTERN)
 
 def retarget_org_file_links(org_file, pattern):
     # read file
-    logging.debug("Org file: {} \n {}".format(org_file, org_file + "_backup"))
+    logging.debug("Org file: %s \n %s", org_file, org_file + "_backup")
     with open(org_file, 'r') as f:
         lines = f.readlines()
     # duplicate file

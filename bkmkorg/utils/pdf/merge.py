@@ -38,7 +38,7 @@ if __name__ == "__main__":
 
     # Find all pdfs in subdir
     pdfs_to_process = retrieval.get_data_files(args.target, ".pdf")
-    logging.info("Merging {} pdfs".format(len(pdfs_to_process)))
+    logging.info("Merging %s pdfs", len(pdfs_to_process))
     PU.merge_pdfs(pdfs_to_process, output=args.output)
 
     # writer.trailer.Info = IndirectPdfDict(

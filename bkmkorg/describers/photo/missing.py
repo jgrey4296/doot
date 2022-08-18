@@ -50,7 +50,7 @@ if __name__ == "__main__":
     target_images = retrieval.get_data_files(args.target, retrieval.img_and_video)
     logging.info("Finding missing images")
     missing = hash_check.find_missing(library_images, target_images)
-    logging.info("Found {} missing images".format(len(missing)))
+    logging.info("Found %s missing images", len(missing))
 
     #write conflicts to an org file:
     if not args.copy:

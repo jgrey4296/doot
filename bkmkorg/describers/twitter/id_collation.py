@@ -56,7 +56,7 @@ if __name__ == "__main__":
     tweets : List[Tuple[str, str]] = get_tweet_dates_and_ids(orgs)
     ids_set = {x[0] for x in tweets}
 
-    logging.info("Found {} unique twitter ids".format(len(ids_set)))
+    logging.info("Found %s unique twitter ids", len(ids_set))
     with open(args.output,'w') as f:
         for id_str in ids_set:
             f.write("{}\n".format(id_str))

@@ -46,15 +46,15 @@ def main():
     cli_args = parser.parse_args()
     cli_args.output = pl.Path(cli_args.output).expanduser().resolve()
 
-    logging.info("Targeting: {}".format(cli_args.target))
+    logging.info("Targeting: %s", cli_args.target)
     if cli_args.output.is_dir() and not cli_args.output.exists():
         cli_args.output.mkdir()
 
     if cli_args.output.is_dir():
         cli_args.output = cli_args.output / "output.tags"
 
-    logging.info("Output to: {}".format(cli_args.output))
-    logging.info("Cleaned Tags locations: {}".format(cli_args.cleaned))
+    logging.info("Output to: %s", cli_args.output)
+    logging.info("Cleaned Tags locations: %s", cli_args.cleaned)
 
     bibs, htmls, orgs, bkmks = retrieval.collect_files(cli_args.target)
     bib_db    = BU.parse_bib_files(bibs, func=bib_proc.tags)

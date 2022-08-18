@@ -61,7 +61,7 @@ def maybe_unicode(record):
     try:
         record = c.convert_to_unicode(record)
     except TypeError as e:
-        logging.warning("Unicode Error on: {}".format(record['ID']))
+        logging.warning("Unicode Error on: %s", record['ID'])
         record['unicode_error'] = str(e)
         record['error'].append("unicode_error")
 
@@ -75,7 +75,7 @@ def hashcheck_files(record):
     try:
         # add md5 of associated files
         file_fields = [x for x in record.keys() if 'file' in x]
-        files       = [expander(record[x]) for x in file_fields]
+        files       = [pl.Path(record[x]).expanduser().resolve() for x in file_fields]
         file_set    = set(files)
         if 'hashes' in record:
             del record['hashes']
@@ -93,11 +93,11 @@ def hashcheck_files(record):
             # raise Exception("Hash Mismatches", saved_hashes.difference(hashes), hashes.difference(saved_hashes))
 
     except FileNotFoundError as e:
-        logging.warning("File Error: {} : {}".format(record['ID'], e.args[0]))
+        logging.warning("File Error: %s : %s", record['ID'], e.args[0])
         record['file_error'] = "File Error: {}".format(e.args[0])
         record['error'].append('file_error')
     except Exception as e:
-        logging.warning("Error: {}".format(e.args[0]))
+        logging.warning("Error: %s", e.args[0])
         # record['hash_error'] = "{} : / :".format(e.args[0], e.args[1])
         record['error'].append('hash_error')
 
@@ -121,7 +121,7 @@ def clean_tags(record):
         record['tags'] = ",".join(sorted(tags))
 
     except Exception as e:
-        logging.warning("Tag Error: {}".format(record['ID']))
+        logging.warning("Tag Error: %s", record['ID'])
         record['tag_error'] = str(e)
         record['error'].append('tag_error')
 

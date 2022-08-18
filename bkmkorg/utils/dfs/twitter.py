@@ -43,7 +43,7 @@ def dfs_for_components(tweet_graph:'TwitterGraph') -> List[Set[str]]:
     components   = []
     edge_set     = set(graph.edges)
     discovered   = set()
-    logging.info("DFS on Components: {}".format(len(edge_set)))
+    logging.info("DFS on Components: %s", len(edge_set))
     count        = 0
     log_on_count = len(edge_set) * 0.1
     while bool(edge_set):
@@ -66,7 +66,7 @@ def dfs_for_components(tweet_graph:'TwitterGraph') -> List[Set[str]]:
         discovered.update(connected_ids)
         if count > log_on_count:
             count = 0
-            logging.info("Edge Set Size: {}".format(len(edge_set)))
+            logging.info("Edge Set Size: %s", len(edge_set))
 
     # Now handle any remaining nodes which don't have edges
     edgeless = set(graph.nodes).difference(discovered)
@@ -75,7 +75,7 @@ def dfs_for_components(tweet_graph:'TwitterGraph') -> List[Set[str]]:
         discovered.add(node)
 
     assert(all([x in discovered for x in graph.nodes]))
-    logging.info("Found {} components".format(len(components)))
+    logging.info("Found %s components", len(components))
     return components
 
 def dfs_chains(graph, roots):

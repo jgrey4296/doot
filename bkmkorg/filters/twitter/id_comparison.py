@@ -55,9 +55,9 @@ if __name__ == "__main__":
 
     missing_set = source_set - library_set
 
-    logging.info("Library Size: {}".format(len(library_set)))
-    logging.info("Source Size : {}".format(len(source_set)))
-    logging.info("Missing Size: {}".format(len(missing_set)))
+    logging.info("Library Size: %s", len(library_set))
+    logging.info("Source Size : %s", len(source_set))
+    logging.info("Missing Size: %s", len(missing_set))
 
     with open(args.output, 'w') as f:
         for x in missing_set:

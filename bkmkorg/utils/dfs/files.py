@@ -20,7 +20,7 @@ img_and_video = img_exts2  | {".mov", ".avi", ".webp"}
 
 def dfs_directory(*dirs:str|pl.Path, ext:None|str|set[str]=None):
     """ DFS a directory for a filetype """
-    logging.info("DFSing {}".format(dirs))
+    logging.info("DFSing %s", dirs)
     if ext is None:
         ext = ".org"
     found = []
@@ -70,9 +70,7 @@ def collect_files(targets:list[str|pl.Path]):
             assert(target.is_dir()), target
             remaining_dirs += [x for x in target.iterdir()]
 
-    logging.info("Split into: {} bibtex files, {} html files and {} org files".format(len(bib_files),
-                                                                                      len(html_files),
-                                                                                      len(org_files)))
+    logging.info("Split into: %s bibtex files, %s html files and %s org files", len(bib_files), len(html_files), len(org_files))
     logging.debug("Bibtex files: %s"   , "\n".join(str(x) for x in bib_files))
     logging.debug("Html Files: %s"     , "\n".join(str(x) for x in html_files))
     logging.debug("Org Files: %s"      , "\n".join(str(x) for x in org_files))
