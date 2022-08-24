@@ -6,9 +6,6 @@ from __future__ import annotations
 import argparse
 import logging as root_logger
 from math import ceil
-from os import listdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 
 import pathlib as pl
 import bibtexparser as b

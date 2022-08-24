@@ -41,28 +41,29 @@ parser.add_argument('--bound', default=200)
 def main():
     args        = parser.parse_args()
     args.output = pl.Path(args.output).expanduser().resolve()
+    args.target = pl.Path(args.target)
 
     # TODO, get information from bibtex on each entry, including specific pages
     if args.grouped:
-        assert(args.target.isdir())
+        assert(args.target.is_dir())
         for group in args.target.iterdir():
+            if bool(list(args.output.glob(f"{group.stem}*.pdf"))):
+                continue
             pdfs_to_process = retrieval.get_data_files(group, [".pdf", ".epub"])
             logging.info("Summarising %s's %s pdfs", group, len(pdfs_to_process))
             PU.summarise_pdfs(pdfs_to_process,
-                              output="{}_{}".format(args.output, group),
+                              output=args.output,
+                              base_name=group.stem,
                               bound=int(args.bound))
     else:
         # Find all pdfs in subdir
         pdfs_to_process = retrieval.get_data_files(args.target, ".pdf")
         logging.info("Summarising %s pdfs", len(pdfs_to_process))
-        PU.summarise_pdfs(pdfs_to_process, output=args.output, bound=args.bound)
+        PU.summarise_pdfs(pdfs_to_process,
+                          output=args.output,
+                          base_name=args.target.stem,
+                          bound=args.bound)
 
-    # writer.trailer.Info = IndirectPdfDict(
-    #     Title='your title goes here',
-    #     Author='your name goes here',
-    #     Subject='what is it all about?',
-    #     Creator='some script goes here',
-    # )
 
 
 if __name__ == "__main__":

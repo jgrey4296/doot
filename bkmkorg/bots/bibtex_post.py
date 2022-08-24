@@ -62,7 +62,7 @@ BLACKLIST    = data_path / config['BIBTEX']['blacklist']
 SUCCESS_LOG  = data_path / config['BIBTEX']['success_log']
 FAIL_LOG     = data_path / config['BIBTEX']['fail_log']
 
-def select_bibtex() -> list[pl.Path]:
+def select_bibtex() -> pl.Path:
     # logging.info("Selecting bibtex")
     # load blacklist
     with open(BLACKLIST, 'r') as f:
@@ -70,10 +70,10 @@ def select_bibtex() -> list[pl.Path]:
 
 
     bibs     = [x for x in BIBTEX_LIB.iterdir() if x.suffix == ".bib"]
-    filtered = [x for x in bibs if x not in blacklist]
+    filtered = [x for x in bibs if str(x) not in blacklist]
 
-    assert(len(filtered) <= len(bibs))
-    selected = filtered
+    assert(len(filtered) <= len(bibs) and bool(filtered))
+    selected = choice(filtered)
 
     return selected
 
@@ -158,7 +158,7 @@ def main():
         tweeted = [x.strip() for x in f.readlines()]
 
     bib        = select_bibtex()
-    db         = BU.parse_bib_files(bib)
+    db         = BU.parse_bib_files([bib])
     entry      = select_entry(db, tweeted, bib)
 
     if entry is None:

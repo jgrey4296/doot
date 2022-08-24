@@ -40,7 +40,6 @@ parser.add_argument('-o', '--output', default="collected")
 parser.add_argument('-c', '--cleaned', action="append", required=True)
 
 
-
 def main():
     logging.info("---------- STARTING Tag Totals")
     cli_args = parser.parse_args()

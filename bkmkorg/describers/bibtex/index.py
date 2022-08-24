@@ -7,9 +7,6 @@ Indexer for bibtex tags -> files
 from __future__ import annotations
 import argparse
 import logging as root_logger
-from os import listdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 
 import pathlib as pl
 import bibtexparser as bib

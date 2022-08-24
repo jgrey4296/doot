@@ -31,19 +31,18 @@ def get2(srcpages):
     return srcpages.render()
 
 
-def summarise_pdfs(paths:list[pl.Path], func=None, output="./pdf_summary", bound=200):
+def summarise_pdfs(paths:list[pl.Path], func=None, output="./pdf_summary", base_name="summary", bound=200):
     """
     For a list of pdfs, get the first two pages of each,
     and make a pdf of those
     """
     output = pl.Path(output).expanduser().resolve()
     count = 0
-    if func is None:
-        func = get2
+    func = func or get2
     if output.is_dir() and not output.exists():
         output.mkdir()
     if output.is_dir():
-        output = output / "summary"
+        output = output / base_name
 
     output = output.with_suffix(".pdf")
 
@@ -60,21 +59,33 @@ def summarise_pdfs(paths:list[pl.Path], func=None, output="./pdf_summary", bound
             except:
                 logging.warning("Error Encountered with %s", path)
                 # from stackoverflow.com/questions/2365411
-                if not path.isascii():
-                    path = unicodedata.normalize("NFKD", path).encode("ascii", "ignore")
+                # if not path.isascii():
+                #     path = unicodedata.normalize("NFKD", path).encode("ascii", "ignore")
 
-                temp_file_name = temp_dir / f"{uuid4().hex}.pdf"
-                pandoc.convert_text(f"File: {path}", "pdf", outputfile=temp_file_name, format="md")
+                temp_file_name = pl.Path(temp_dir) / f"{uuid4().hex}.pdf"
+                pandoc.convert_text(f"File: {path}", "pdf", outputfile=str(temp_file_name), format="md")
                 pdf_obj = PdfReader(temp_file_name)
                 writer.addpage(func(pdf_obj))
 
 
             if len(writer.pagearray) > bound:
                 # if pdf is too big, create another
+                writer.trailer.Info = IndirectPdfDict(
+                    Title=f'Pdf Summary of {base_name} : Number: {count}',
+                    Author='JG',
+                    Subject='pdf summary',
+                    Creator='bkmkorg.utils.pdf.pdf.summarise_pdfs',
+                )
                 writer.write(output.with_stem(f"{output.stem}_{count}"))
                 writer = PdfWriter()
                 count += 1
 
+    writer.trailer.Info = IndirectPdfDict(
+        Title=f'Pdf Summary of {base_name} : Number : {count}',
+        Author='JG',
+        Subject='pdf summary',
+        Creator='bkmkorg.utils.pdf.pdf.summarise_pdfs',
+    )
     writer.write(output.with_stem(f"{output.stem}_{count}"))
 
 def convert_pdfs_to_text(files:list[pl.Path]):
@@ -92,7 +103,7 @@ def convert_pdfs_to_text(files:list[pl.Path]):
 def convert_alternative(source, output_dir, title):
     target = output_dir / f".{title}.txt"
     logging.info("Converting %s from %s", target, source)
-    run(['mutool', 'convert', '-F', 'text', '-o', str(target) str(source)], stdout=subprocess.PIPE)
+    run(['mutool', 'convert', '-F', 'text', '-o', str(target), str(source)], stdout=subprocess.PIPE)
 
 
 def merge_pdfs(paths, output="./pdf_summary"):

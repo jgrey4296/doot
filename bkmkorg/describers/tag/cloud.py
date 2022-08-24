@@ -11,9 +11,6 @@ import argparse
 import logging as root_logger
 import os
 import re
-from os import listdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 
 import pathlib as pl
 import matplotlib.pyplot as plt

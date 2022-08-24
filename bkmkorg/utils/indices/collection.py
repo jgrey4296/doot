@@ -9,9 +9,6 @@ from __future__ import annotations
 import logging as root_logger
 from collections import defaultdict
 from dataclasses import InitVar, dataclass, field
-from os import listdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
@@ -64,7 +61,7 @@ class IndexFile:
         return self
 
     def add_files(self, key, values):
-        self.mapping[key].update(values)
+        self.mapping[key].update([str(x) for x in values])
 
     def __len__(self):
         return len(self.mapping)
