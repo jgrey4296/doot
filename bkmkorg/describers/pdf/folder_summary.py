@@ -13,7 +13,6 @@ from bkmkorg.utils.pdf import pdf as PU
 from bkmkorg.utils.dfs import files as retrieval
 ##-- end imports
 
-
 ##-- logging
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
@@ -24,7 +23,6 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##-- end logging
-
 
 ##-- argparse
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -51,7 +49,7 @@ def main():
                 continue
             pdfs_to_process = retrieval.get_data_files(group, [".pdf", ".epub"])
             logging.info("Summarising %s's %s pdfs", group, len(pdfs_to_process))
-            PU.summarise_pdfs(pdfs_to_process,
+            PU.summarise_to_pdfs(pdfs_to_process,
                               output=args.output,
                               base_name=group.stem,
                               bound=int(args.bound))
@@ -59,7 +57,7 @@ def main():
         # Find all pdfs in subdir
         pdfs_to_process = retrieval.get_data_files(args.target, ".pdf")
         logging.info("Summarising %s pdfs", len(pdfs_to_process))
-        PU.summarise_pdfs(pdfs_to_process,
+        PU.summarise_to_pdfs(pdfs_to_process,
                           output=args.output,
                           base_name=args.target.stem,
                           bound=args.bound)

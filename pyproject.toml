@@ -48,6 +48,7 @@ bkmk-bib-index         = "bkmkorg.describers.bibtex.index:main"
 
 bkmk-pdf-summarise     = "bkmkorg.describers.pdf.folder_summary:main"
 bkmk-pdf-tag-summarise = "bkmkorg.describers.pdf.tag_summary:main"
+bkmk-pdf-metadata      = "bkmkorg.describers.pdf.meta_data_summary:main"
 
 bkmk-tag-index         = "bkmkorg.describers.tag.indexer:main"
 bkmk-tag-totals        = "bkmkorg.describers.tag.totals:main"

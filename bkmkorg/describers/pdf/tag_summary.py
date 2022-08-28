@@ -52,7 +52,7 @@ def main():
     pdfs_to_process  = [x['file'] for x in entries_by_year]
     expanded_paths   = [pl.Path(x).expanduser().resolve() for x in pdfs_to_process]
     logging.info("Summarising %s pdfs", len(expanded_paths))
-    PU.summarise_pdfs(expanded_paths, output=output_path, bound=args.bound)
+    PU.summarise_to_pdfs(expanded_paths, output=output_path, bound=args.bound)
 
 
 if __name__ == "__main__":
