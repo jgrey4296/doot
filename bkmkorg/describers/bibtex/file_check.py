@@ -43,12 +43,29 @@ parser.add_argument('-l', '--library', help="Bibtex Library directory to verify"
 parser.add_argument('-o', '--output',  help="Output location for reports", required=True)
 ##-- end argparse
 
+LIB_ROOT = pl.Path("~/mega/pdflibrary").expanduser().resolve()
+
+def get_mentions(entries) -> set[pl.Path]:
+    mentions = set()
+    # Convert entries to unicode
+    for i, entry in enumerate(entries):
+        entry_keys = [x for x in entry.keys() if FILE_RE.search(x)]
+        for k in entry_keys:
+            if entry[k][0] not in  "~/":
+                fp = LIB_ROOT / entry[k]
+            else:
+                fp = pl.Path(entry[k])
+
+            mentions.add(fp.expanduser().resolve())
+
+    return mentions
+
 def main():
     args = parser.parse_args()
 
-    args.output = pl.Path(args.output).expanduser().resolve()
+    args.output  = pl.Path(args.output).expanduser().resolve()
     args.library = pl.Path(args.library).expanduser().resolve()
-    args.target = pl.Path(args.target).expanduser().resolve()
+    args.target  = pl.Path(args.target).expanduser().resolve()
 
     assert(args.library.exists())
     assert(args.output.exists())
@@ -59,58 +76,26 @@ def main():
     main_db = BU.parse_bib_files(all_bibs)
 
     logging.info("Loaded Database: %s entries", len(main_db.entries))
-    count              = 0
-    all_file_mentions  = []
-    all_existing_files = retrieval.get_data_files(args.target, [".epub", ".pdf"], normalize=True)
+    existing : set[pl.Path] = {x for x in retrieval.get_data_files(args.target, [".epub", ".pdf"])}
+    mentions : set[pl.Path] = get_mentions(main_db.entries)
 
-    # Convert entries to unicode
-    for i, entry in enumerate(main_db.entries):
-        if i % 10 == 0:
-            logging.info("%s/10 Complete", count)
-            count += 1
-        unicode_entry = b.customization.convert_to_unicode(entry)
+    logging.info("Found %s files mentioned in bibliography", len(mentions))
+    logging.info("Found %s files existing", len(existing))
 
-        entry_keys = [x for x in unicode_entry.keys() if FILE_RE.search(x)]
-        for k in entry_keys:
-            all_file_mentions.append(normalize('NFD', unicode_entry[k]))
-
-
-    logging.info("Found %s files mentioned in bibliography", len(all_file_mentions))
-    logging.info("Found %s files existing", len(all_existing_files))
-
-    logging.info("Normalizing paths")
-    norm_mentions = set([])
-    # Normalise all paths in bibtex entries
-    for x in all_file_mentions:
-        path = PATH_NORM.sub("", x)
-        if path in norm_mentions:
-            logging.info("Duplicate file mention: %s", path)
-        else:
-            norm_mentions.add(path)
-
-    norm_existing = set([])
-    # Remove duplicates mentions
-    for x in all_existing_files:
-        path = PATH_NORM.sub("", x)
-        if path in norm_existing:
-            logging.info("Duplicate file existence: %s", path)
-        else:
-            norm_existing.add(path)
-
-    logging.info("Normalized paths")
-
-    mentioned_non_existent = norm_mentions - norm_existing
-    existing_not_mentioned = norm_existing - norm_mentions
+    mentioned_non_existent = mentions - existing
+    existing_not_mentioned = existing - mentions
 
     logging.info("Mentioned but not existing: %s", len(mentioned_non_existent))
     logging.info("Existing but not mentioned: %s", len(existing_not_mentioned))
 
+    relative_non_existent  : set[str] = set(str(x.relative_to(LIB_ROOT)) for x in mentioned_non_existent if x.is_relative_to(LIB_ROOT))
+    relative_not_mentioned : set[str] = set(str(x.relative_to(LIB_ROOT)) for x in existing_not_mentioned if x.is_relative_to(LIB_ROOT))
     # Create output files
     with open(args.output / "bibtex.not_existing",'w') as f:
-        f.write("\n".join(mentioned_non_existent))
+        f.write("\n".join(sorted(relative_non_existent)))
 
     with open(args.output / "bibtex.not_mentioned", 'w') as f:
-        f.write("\n".join(existing_not_mentioned))
+        f.write("\n".join(sorted(relative_not_mentioned)))
 
 
 if __name__ == "__main__":

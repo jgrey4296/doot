@@ -30,8 +30,8 @@ class OverrideDict(dict):
 def make_parser(func):
     bparser = BibTexParser(common_strings=False)
     bparser.ignore_nonstandard_types = False
-    bparser.homogenise_fields = True
-    bparser.customization = func
+    bparser.homogenise_fields        = True
+    bparser.customization            = func
     return bparser
 
 def parse_bib_files(bib_files:list[pl.Path], func=None, database=None):
