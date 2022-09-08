@@ -9,13 +9,15 @@ from __future__ import annotations
 import abc
 import argparse
 import configparser
-from collections import defaultdict
 import logging as logmod
 import pathlib as pl
+import tempfile
+from collections import defaultdict
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from importlib.resources import files
 from re import Pattern
+from shutil import copy
 from sys import stderr, stdout
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
@@ -24,10 +26,9 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
+import pony.orm as pony
 from bkmkorg.utils.bookmarks import collection as BC
 
-
-import pony.orm as pony
 ##-- end imports
 
 ##-- logging
@@ -57,7 +58,7 @@ logging = logger
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog = "\n".join([""]))
 parser.add_argument('-t', '--target')#, required=True)
-parser.add_argument('-v', '--verbose', action="store_true")#, required=True)
+parser.add_argument('-v', '--verbose', action="store_true")
 parser.add_argument('-n', '--non-interactive', action="store_true")
 ##-- end argparse
 
@@ -153,31 +154,38 @@ def main():
     logging.info("Found %s databases", len(dbs))
     logging.info("Using database: %s", str(dbs[0]))
 
-    ##-- bind database and mappings
-    db.bind(provider='sqlite', filename=str(dbs[0]), create_db=False)
-    db.generate_mapping(create_tables=False)
-    ##-- end bind database and mappings
-
-    ##-- session use
-    logging.info("Extracting bookmarks")
     tag_names = {}
     bookmark_tags = defaultdict(lambda: set())
     collection : BC.BookmarkCollection = BC.BookmarkCollection()
-    with pony.db_session:
-        tag_names = {b.id : b.title for b in pony.select(b for b in Bookmark if b.title is not None and b.fk is None and b.parent == 4)}
-        for b in pony.select(b for b in Bookmark if b.title is None and b.fk is not None):
-            if b.parent not in tag_names:
-                continue
-            bookmark_tags[b.fk].add(tag_names[b.parent])
 
-        query  = pony.select(b for b in Bookmark if b.title is not None and b.fk is not None)
-        result = query[:]
-        for x in result:
-            bkmk : BC.Bookmark = BC.Bookmark(URL[x.fk].url,
-                                             bookmark_tags[x.fk],
-                                             x.title)
-            collection += bkmk
-    ##-- end session use
+    with tempfile.TemporaryDirectory() as temp_dir:
+        ##-- copy database so its not locked
+        copy_target = pl.Path(temp_dir) / dbs[0].name
+        copy(str(dbs[0]), str(copy_target))
+        ##-- end copy database so its not locked
+
+        ##-- bind database and mappings
+        db.bind(provider='sqlite', filename=str(copy_target), create_db=False)
+        db.generate_mapping(create_tables=False)
+        ##-- end bind database and mappings
+
+        ##-- session use
+        logging.info("Extracting bookmarks")
+        with pony.db_session:
+            tag_names = {b.id : b.title for b in pony.select(b for b in Bookmark if b.title is not None and b.fk is None and b.parent == 4)}
+            for b in pony.select(b for b in Bookmark if b.title is None and b.fk is not None):
+                if b.parent not in tag_names:
+                    continue
+                bookmark_tags[b.fk].add(tag_names[b.parent])
+
+            query  = pony.select(b for b in Bookmark if b.title is not None and b.fk is not None)
+            result = query[:]
+            for x in result:
+                bkmk : BC.Bookmark = BC.Bookmark(URL[x.fk].url,
+                                                bookmark_tags[x.fk],
+                                                x.title)
+                collection += bkmk
+        ##-- end session use
 
     logging.info("Extracted %s bookmarks from firefox", len(collection))
 
