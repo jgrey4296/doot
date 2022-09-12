@@ -209,10 +209,12 @@ def clean_stems(record):
         logging.debug("Cleaning stem")
         ideal_stem = idealize_stem(record)
         ideal_fp   = fp.with_stem(ideal_stem)
-
         match fp.exists(), ideal_fp.exists():
             case False, True:
                 fp = ideal_fp
+            case True, True if not fp.samefile(ideal_fp) and fp.stem[:-6] == ideal_fp.stem:
+                # fp is already a stem+uuid, so do nothing
+                pass
             case True, True if not fp.samefile(ideal_fp):
                 logging.warning("Ideal Stem Already Exists: %s", ideal_fp)
                 hex_val    = str(uuid4().hex)[:5]
