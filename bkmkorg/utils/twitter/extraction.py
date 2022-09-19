@@ -27,8 +27,12 @@ def extract_tweet_ids_from_file(the_file:pl.Path, simple=False):
         use_regex = re.compile(r"/status/(\d+)")
 
     assert(the_file.exists())
-    with open(the_file, 'r') as f:
-        lines = f.readlines()
+    try:
+        with open(the_file, 'r') as f:
+            lines = f.readlines()
+    except UnicodeDecodeError as err:
+        logging.warning("File Error: %s", the_file)
+        raise err
 
     # grep file lines for permalinks
     results = set()

@@ -21,8 +21,9 @@ img_and_video = img_exts2  | {".mov", ".avi", ".webp"}
 def dfs_directory(*dirs:str|pl.Path, ext:None|str|set[str]=None):
     """ DFS a directory for a filetype """
     logging.info("DFSing %s", dirs)
-    if ext is None:
-        ext = ".org"
+    ext = ext or ".org"
+    ext = set([ext]) if not isinstance(ext, set) else ext
+
     found = []
     queue = [pl.Path(x).expanduser().resolve() for x in dirs]
 
@@ -32,7 +33,7 @@ def dfs_directory(*dirs:str|pl.Path, ext:None|str|set[str]=None):
         # Add files
         if current.is_file() and current.suffix in ext:
             found.append(current)
-        else:
+        elif current.is_dir():
             queue += [x for x in current.iterdir() if x != ".git"]
 
     return found

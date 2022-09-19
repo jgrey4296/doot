@@ -76,6 +76,7 @@ def construct_user_summaries(component_dir:pl.Path, combined_threads_dir:pl.Path
     components = get_data_files(component_dir, ext=".json")
     for comp in components:
         logging.info("Constructing Summary for: %s", comp)
+
         # read comp
         with open(comp, 'r') as f:
             data = json.load(f, strict=False)
@@ -90,6 +91,8 @@ def construct_user_summaries(component_dir:pl.Path, combined_threads_dir:pl.Path
         for x in data:
             user_counts[x['user']['id_str']] += 1
 
+
+
         head_user   = max(user_counts.items(), key=lambda x: x[1])[0]
         screen_name = str(head_user)
         if head_user in user_lookup:
@@ -100,13 +103,19 @@ def construct_user_summaries(component_dir:pl.Path, combined_threads_dir:pl.Path
         quotes    = set()
         roots     = set()
         for tweet in data:
-            if tweet['in_reply_to_status_id_str'] is not None:
-                graph.add_edge(tweet['in_reply_to_status_id_str'], tweet['id_str'])
-            else:
-                graph.add_node(tweet['id_str'])
-                roots.add(tweet['id_str'])
+            is_reply      = tweet['in_reply_to_status_id_str'] is not None
+            parent_exists = is_reply and tweet['in_reply_to_status_id_str'] not in tweets
+            is_quote      = ('quoted_status_id_str' in tweet
+                             and tweet['quoted_status_id_str'] is not None)
 
-            if 'quoted_status_id_str' in tweet and tweet['quoted_status_id_str'] is not None:
+            match is_reply, parent_exists:
+                case True, True:
+                    graph.add_edge(tweet['in_reply_to_status_id_str'], tweet['id_str'])
+                case _, _:
+                    graph.add_node(tweet['id_str'])
+                    roots.add(tweet['id_str'])
+
+            if is_quote:
                 quotes.add(tweet['quoted_status_id_str'])
 
         # dfs to get longest chain
@@ -114,6 +123,8 @@ def construct_user_summaries(component_dir:pl.Path, combined_threads_dir:pl.Path
 
         if bool(roots):
             chains = dfs_chains(graph, roots)
+        else:
+            logging.warning("No Roots were found for component: %s", comp.stem)
 
         if not bool(chains):
             chains = [list(roots.union(quotes))]

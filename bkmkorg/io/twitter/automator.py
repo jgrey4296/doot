@@ -6,13 +6,14 @@ Automate twitter archiving
 ##-- imports
 from __future__ import annotations
 
-import pathlib as pl
 import argparse
 import configparser
 import datetime
 import json
 import logging as root_logger
+import pathlib as pl
 from importlib.resources import files
+from os import system
 from shutil import rmtree
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
@@ -23,12 +24,14 @@ import bkmkorg.utils.dfs.twitter as DFSU
 import bkmkorg.utils.download.twitter as DU
 import bkmkorg.utils.twitter.extraction as EU
 import requests
-from bkmkorg import DEFAULT_CONFIG, DEFAULT_LIBRARY, DEFAULT_SECRETS, DEFAULT_TARGET
+from bkmkorg import (DEFAULT_CONFIG, DEFAULT_LIBRARY, DEFAULT_SECRETS,
+                     DEFAULT_TARGET)
 from bkmkorg.utils.twitter.api_setup import setup_twitter
 from bkmkorg.utils.twitter.graph import TwitterGraph
 from bkmkorg.utils.twitter.todo_list import TweetTodoFile
 
 import twitter
+
 ##-- end imports
 
 
@@ -72,7 +75,7 @@ def setup_target_dict(target_dir:pl.Path, export:None|pl.Path):
     targets['last_tweet_file']      = target_dir / "last_tweet"
     targets['download_record']      = target_dir / "downloaded.record"
     targets['lib_tweet_record']     = export or (target_dir / "lib_tweets.record")
-    targets['excludes_file']        = target_dir / "excludes")
+    targets['excludes_file']        = target_dir / "excludes"
 
     return targets
 
@@ -81,7 +84,7 @@ def get_library_tweets(lib:List[pl.Path], tweet) -> Set[str]:
     if tweet is None:
         logging.info("---------- Getting Library Tweet Details")
         logging.info("Libraries to search: %s", lib)
-        library_tweet_ids = EU.get_all_tweet_ids(*lib, ".org")
+        library_tweet_ids = EU.get_all_tweet_ids(*lib, ext=".org")
         logging.info("Found %s library tweets", len(library_tweet_ids))
 
     return library_tweet_ids

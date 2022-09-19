@@ -6,6 +6,7 @@ into the existing set
 ##-- imports
 from __future__ import annotations
 
+from os import system
 import pathlib as pl
 import argparse
 import datetime
@@ -49,14 +50,14 @@ def copy_files(source_dir:pl.Path, target_dir:pl.Path):
     logging.info("Copying from %s to %s", source_dir, target_dir)
     if source_dir.exists() and not target_dir.exists():
         logging.info("as group")
-        result = run(['cp' ,'-r' ,str(source_dir), str(target_dir)], capture_output=True, check=True)
-    elif source_dir.exists():
+        result = run(['cp' ,'-r', str(source_dir), str(target_dir)], capture_output=True, check=True)
+    elif target_dir.exists():
         logging.info("as individual")
         for y in source_dir.iterdir():
-            if not y.is_file()
+            if not y.is_file():
                 continue
 
-            call_sig = ['cp', str(y), str(target_dir / y)]
+            call_sig = ['cp', str(y), str(target_dir / y.name)]
             run(call_sig, capture_output=True, check=True)
 
 
@@ -75,7 +76,7 @@ def copy_new(source:pl.Path, lib_path:pl.Path):
 
     run(["mv", str(source), str(source.parent / f"{source.name}{PROCESSED}")], capture_output=True, check=True)
 
-    copy_files(str(file_dir), str(target_for_new / f"{source.stem}_files"))
+    copy_files(file_dir, target_for_new / f"{source.stem}_files")
 
 
 def integrate(source:pl.Path, lib_dict:dict[str,Any]):
@@ -84,9 +85,9 @@ def integrate(source:pl.Path, lib_dict:dict[str,Any]):
     existing_org   = lib_dict[source.name] /  source.name
     existing_files = lib_dict[source.name] / f"{source.stem}_files"
 
-    assert(exists(existing_org))
-    if not exists(existing_files):
-        mkdir(existing_files)
+    assert(existing_org.exists())
+    if not existing_files.exists():
+        existing_files.mkdir()
 
     with open(source, 'r') as f:
         lines = f.read()
@@ -97,7 +98,7 @@ def integrate(source:pl.Path, lib_dict:dict[str,Any]):
 
     run(["mv", str(source), str(source.parent / f"{source.name}{PROCESSED}")], capture_output=True, check=True)
 
-    if not exists(new_files):
+    if not new_files.exists():
         return
 
     copy_files(new_files, existing_files)
@@ -128,7 +129,7 @@ def main():
     args.exclude = [pl.Path(x).expanduser().resolve() for x in args.exclude]
 
     if not args.record:
-        args.record = join(args.library[0], "update_record")
+        args.record = args.library[0] / "update_record"
 
     logging.info("Update Record: %s", args.record)
     assert(args.record.exists())
@@ -148,7 +149,7 @@ def main():
         if lib_org in args.exclude:
             continue
 
-        existing_orgs[split(lib_org)[1]] = split(lib_org)[0]
+        existing_orgs[lib_org.name] = lib_org.parent
 
     logging.info("Existing orgs: %s", len(existing_orgs))
 
@@ -156,7 +157,7 @@ def main():
     #now update existing with the new
 
     for x in newly_parsed:
-        if split(x)[1] not in existing_orgs:
+        if x.name not in existing_orgs:
             logging.info("Found a completely new user: %s", x)
             totally_new.append(x)
             continue

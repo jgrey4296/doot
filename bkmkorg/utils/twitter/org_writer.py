@@ -61,7 +61,7 @@ class TwitterOrg:
 
     @property
     def path(self):
-        return (self.dir_s / self.id_s).with_suffix(self.org_suffix)
+        return (self.dir_s / self._id_s).with_suffix(self.org_suffix)
 
     @property
     def relative_files_path(self):
@@ -120,7 +120,7 @@ class TwitterOrg:
             return
 
         if not self.absolute_files_path.exists() and bool(self._media):
-            mkdir(self.absolute_files_path)
+            self.absolute_files_path.mkdir()
 
         if bool(self._media):
             download_media(self.absolute_files_path, self._media)
@@ -216,7 +216,7 @@ class TwitterThread:
     @staticmethod
     def retarget_url(url, new_target_dir):
         logging.debug("Retargeting URL: %s to %s", split(url)[1], new_target_dir)
-        return new_target_dir / split(url)[1]
+        return f"{new_target_dir}/{split(url)[1]}"
 
     @staticmethod
     def parse_date( a_str) -> 'datetime':
