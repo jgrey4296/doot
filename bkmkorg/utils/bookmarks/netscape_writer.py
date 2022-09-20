@@ -2,9 +2,13 @@
 Exports a given trie to Netscape bookmark file format
 Main function: exportBookmarks
 """
+##-- imports
+from __future__ import annotations
+
 import logging
 
 from bkmkorg.utils.bookmarks.collection import Bookmark
+##-- end imports
 
 groupCount = 0
 listCount  = 0
@@ -29,7 +33,7 @@ def footer():
 def bookmarkToItem(bkmk):
     """ Converts a single bookmark to html """
     assert(isinstance(bkmk, Bookmark))
-    logging.debug("Exporting link: {}".format(bkmk.url))
+    logging.debug("Exporting link: %s", bkmk.url)
     #add the link:
     tags = 'TAGS="{}"'.format(",".join(sorted(bkmk.tags)))
     item = '<DT><A HREF="{}" {}>{}</A>'.format(bkmk.url,tags, bkmk.name.replace('\n',''))
@@ -65,7 +69,7 @@ def exportBookmarks(data, target):
     formattedString = "{} {} {}".format(header(),
                                         convertData(data),
                                         footer())
-    logging.info("Finished converted bookmarks: {} groups | {} lists | {} entries".format(groupCount,listCount,entryCount))
+    logging.info("Finished converted bookmarks: %s groups | %s lists | %s entries", groupCount,listCount,entryCount)
 
     with open(target, 'w') as f:
         f.write(formattedString)

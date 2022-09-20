@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 # load bibtex, graph tags by year, all entries by year,
 
+##-- imports
 import argparse
 import logging as root_logger
 from collections import defaultdict
 from datetime import datetime
-from os import listdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 
+import pathlib as pl
 import bibtexparser as b
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
@@ -21,17 +20,20 @@ from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.bibtex import entry_processors as bib_proc
 from bkmkorg.utils.dfs import files as retrieval
 from bkmkorg.utils import diagram as DU
+##-- end imports
 
-# Setup root_logger:
+
+##-- logging
 LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
-##############################
+##-- end logging
+
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Create graphs of Bibtex Files"]))
 parser.add_argument('-l', '--library', action="append", help="The bibtex file collection directory", required=True)
@@ -64,15 +66,15 @@ def get_entries_across_years(db) -> List[Tuple[datetime, int]]:
 
 
 def main():
-    args = parser.parse_args()
-    args.library = [abspath(expanduser(x)) for x in args.library]
-    args.output= abspath(expanduser(args.output))
+    args         = parser.parse_args()
+    args.library = [pl.Path(x).expanduser().resolve() for x in args.library]
+    args.output  = pl.Path(args.output).expanduser().resolve()
 
     all_bibs = retrieval.get_data_files(args.library, ".bib")
-    logging.info("Found {} bib files".format(len(all_bibs)))
+    logging.info("Found %s bib files", len(all_bibs))
     db = b.bibdatabase.BibDatabase()
     BU.parse_bib_files(all_bibs, func=bib_proc.year_parse, database=db)
-    logging.info("Loaded bibtex entries: {}".format(len(db.entries)))
+    logging.info("Loaded bibtex entries: %s", len(db.entries))
 
     # Graph tags over time
     year_counts = []
@@ -90,7 +92,7 @@ def main():
     n_cols = 1
     for count, paired in enumerate(to_draw):
         name, data = paired
-        logging.info("Drawing {}".format(name))
+        logging.info("Drawing %s", name)
         x = [x[0] for x in data]
         y = [x[1] for x in data]
         plt.subplot(n_rows, n_cols, count + 1)

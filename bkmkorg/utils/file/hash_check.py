@@ -1,23 +1,26 @@
 #!/usr/bin/env python
+##-- imports
+from __future__ import annotations
+
 import logging as root_logger
+import pathlib as pl
 from hashlib import sha256
-from os import listdir, mkdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
+##-- end imports
 
 logging = root_logger.getLogger(__name__)
 
-def file_to_hash(filename):
+def file_to_hash(filename:pl.Path):
     with open(filename, 'rb') as f:
         return sha256(f.read()).hexdigest()
 
-def hash_all(files):
+def hash_all(files:list[pl.Path]):
     """
     Map hashes to files,
     plus hashes with more than one image
     """
     assert(isinstance(files, list))
-    assert(all([isfile(x) for x in files]))
+    assert(all([isinstance(x, pl.Path) for x in files]))
+    assert(all([x.is_file() for x in files]))
 
     hash_dict = {}
     conflicts = {}
@@ -25,7 +28,7 @@ def hash_all(files):
     count = 0
     for i,x in enumerate(files):
         if i % update_num == 0:
-            logging.info("{} / 100".format(count))
+            logging.info("%s / 100", count)
             count += 1
         the_hash = file_to_hash(x)
         if the_hash not in hash_dict:
@@ -36,7 +39,7 @@ def hash_all(files):
 
     return (hash_dict, conflicts)
 
-def find_missing(library, others):
+def find_missing(library:list[pl.Path], others:list[pl.Path]):
     # TODO: handle library hashes that already have a conflict
     library_hash, conflicts = hash_all(library)
     missing = []
@@ -44,7 +47,7 @@ def find_missing(library, others):
     count = 0
     for i,x in enumerate(others):
         if i % update_num == 0:
-            logging.info("{} / 100".format(count))
+            logging.info("%s / 100", count)
             count += 1
         the_hash = file_to_hash(x)
         if the_hash not in library_hash:

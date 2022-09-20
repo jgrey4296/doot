@@ -3,40 +3,42 @@
 """
 Indexer for bibtex tags -> files
 """
+##-- imports
+from __future__ import annotations
 import argparse
-##############################
-# IMPORTS
-####################
 import logging as root_logger
-from os import listdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 
+import pathlib as pl
 import bibtexparser as bib
 import bkmkorg.utils.bibtex.parsing as bib_parse
 import bkmkorg.utils.dfs.files as RET
 from bkmkorg.utils.bibtex import entry_processors as bib_proc
 from bkmkorg.utils.indices.collection import IndexFile
+##-- end imports
 
-# Setup root_logger:
+##-- logging
 LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
-##############################
+##-- end logging
+
+##-- argparse
+#see https://docs.python.org/3/howto/argparse.html
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                epilog = "\n".join(["Bibtex Tag Indexer"]))
+parser.add_argument('--target', action="append", required=True)
+parser.add_argument('--output', default="~/github/writing/resources/cron_reports/tag_bibtex.index")
+##-- end argparse
 
 def main():
-    #see https://docs.python.org/3/howto/argparse.html
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                   epilog = "\n".join(["Bibtex Tag Indexer"]))
-    parser.add_argument('--target', action="append", required=True)
-    parser.add_argument('--output', default="~/github/writing/resources/cron_reports/tag_bibtex.index")
-
     args = parser.parse_args()
+    args.output = pl.Path(args.output).expanduser().resolve()
+
     if not bool(args.target):
         args.target = ["/Volumes/documents/github/writing/resources/bibliography"]
 
@@ -56,7 +58,7 @@ def main():
 
     # Write out index
     out_string = str(index)
-    with open(abspath(expanduser(args.output)), 'w') as f:
+    with open(args.output, 'w') as f:
         f.write(out_string)
 
 ########################################

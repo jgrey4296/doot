@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
+##-- imports
+from __future__ import annotations
+
+import pathlib as pl
 import datetime
 import json
 import logging as root_logger
 from collections import defaultdict
 from dataclasses import InitVar, dataclass, field
-from os import listdir, mkdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 from uuid import uuid1
 
 import networkx as nx
-
 from bkmkorg.utils.dfs.files import get_data_files
+##-- end imports
 
 logging = root_logger.getLogger(__name__)
 
@@ -26,9 +27,9 @@ class TwitterGraph:
     graph : nx.DiGraph
 
     @staticmethod
-    def build(json_dir):
+    def build(json_dir:pl.Path):
         """ Create a graph of tweet replies and quotes """
-        logging.info("Assembling threads graph from: {}".format(json_dir))
+        logging.info("Assembling threads graph from: %s", json_dir)
         json_files = get_data_files(json_dir, ext=".json")
         di_graph = nx.DiGraph()
         for jfile in json_files:

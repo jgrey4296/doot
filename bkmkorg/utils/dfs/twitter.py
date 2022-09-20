@@ -1,13 +1,14 @@
-from typing import List, Set, Dict, Tuple, Optional, Any
-from typing import Callable, Iterator, Union, Match
-from typing import Mapping, MutableMapping, Sequence, Iterable
-from typing import cast, ClassVar, TypeVar, Generic
+
+##-- imports
+from __future__ import annotations
 
 import logging as root_logger
-from os import listdir
-from os.path import isdir, isfile, join, splitext
+from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
+                    List, Mapping, Match, MutableMapping, Optional, Sequence,
+                    Set, Tuple, TypeVar, Union, cast)
 
 import networkx as nx
+##-- end imports
 
 logging = root_logger.getLogger(__name__)
 
@@ -42,7 +43,7 @@ def dfs_for_components(tweet_graph:'TwitterGraph') -> List[Set[str]]:
     components   = []
     edge_set     = set(graph.edges)
     discovered   = set()
-    logging.info("DFS on Components: {}".format(len(edge_set)))
+    logging.info("DFS on Components: %s", len(edge_set))
     count        = 0
     log_on_count = len(edge_set) * 0.1
     while bool(edge_set):
@@ -65,7 +66,7 @@ def dfs_for_components(tweet_graph:'TwitterGraph') -> List[Set[str]]:
         discovered.update(connected_ids)
         if count > log_on_count:
             count = 0
-            logging.info("Edge Set Size: {}".format(len(edge_set)))
+            logging.info("Edge Set Size: %s", len(edge_set))
 
     # Now handle any remaining nodes which don't have edges
     edgeless = set(graph.nodes).difference(discovered)
@@ -74,7 +75,7 @@ def dfs_for_components(tweet_graph:'TwitterGraph') -> List[Set[str]]:
         discovered.add(node)
 
     assert(all([x in discovered for x in graph.nodes]))
-    logging.info("Found {} components".format(len(components)))
+    logging.info("Found %s components", len(components))
     return components
 
 def dfs_chains(graph, roots):

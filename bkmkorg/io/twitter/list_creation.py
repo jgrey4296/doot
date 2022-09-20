@@ -1,22 +1,24 @@
 """
 script to create lists, and assign users to said lists
 """
+##-- imports
 import argparse
 import logging as root_logger
+import pathlib as pl
 import pickle
 import textwrap
 from collections import defaultdict
 from functools import partial
-from os import listdir
-from os.path import exists, expanduser, isdir, isfile, join, splitext
 from time import sleep
 
+import pathlib as pl
 import regex as re
-
 import twitter as tw
 from bkmkorg.utils.twitter.api_setup import load_credentials_and_setup
+##-- end imports
 
 
+##-- logging
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.list_uploading"
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
@@ -25,22 +27,27 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
+##-- end logging
 
-# Setup
+
+##-- argparse
 parser = argparse.ArgumentParser("")
 # todo: add output filename target
 parser.add_argument('-t', '--source', default='output.org')
-parser.add_argument('-b', '--backup', default='backup_')
+parser.add_argument('-b', '--backup', default='backup')
 parser.add_argument('-c', '--credentials', default="my.credentials")
 parser.add_argument('-k', '--key', default="consumer.key")
 parser.add_argument('-s', '--secret', default="consumer.secret")
+##-- end argparse
 
-##############################
+
+##-- consts
 FIFTEEN_MINUTES  = 60 * 15
 CHARWIDTH        = 80
 
 ORG_SPLIT        = re.compile(r'\|')
 DIVIDER_SPLIT    = re.compile(r'\|[\-+]+\|')
+##-- end consts
 
 def get_existing_lists(twit):
     logging.info("Getting Existing Lists")
@@ -49,7 +56,7 @@ def get_existing_lists(twit):
     all_lists = {}
     next_cursor = "-1"
     while next_cursor != '0':
-        logging.info("Cursor: {}".format(next_cursor))
+        logging.info("Cursor: %s", next_cursor)
         response = twit.lists.ownerships(cursor=next_cursor)
         next_cursor = response['next_cursor_str']
         lists = response['lists']
@@ -61,8 +68,8 @@ def get_existing_lists(twit):
 
 def load_org(filename):
     logging.info("Loading Org")
-    data = defaultdict(lambda: set([]))
-    first = True
+    data    = defaultdict(lambda: set([]))
+    first   = True
     columns = []
     user_id = None
     with open(filename, 'r') as f:
@@ -81,7 +88,7 @@ def load_org(filename):
             #otherwise, split by into columns,
             maybe_id = line[columns[0][0]+1:columns[0][1]].strip()
             if maybe_id != '':
-                logging.debug("Setting to ID: {}".format(maybe_id))
+                logging.debug("Setting to ID: %s", maybe_id)
                 user_id = maybe_id
 
             tags = [x.strip() for x in line[columns[2][0]+1:columns[2][1]].split(',') if bool(x.strip())]
@@ -91,7 +98,7 @@ def load_org(filename):
     return dict(data)
 
 def create_lists(twit, lists):
-    logging.info("Creating Lists: {}".format(len(lists)))
+    logging.info("Creating Lists: %s", len(lists))
     #use 1.1/lists/create.json
     to_create = lists[:]
 
@@ -102,8 +109,8 @@ def create_lists(twit, lists):
             response = twit.lists.create(name=current, mode="private")
             created[response['name']] = response['id']
         except Exception as e:
-            logging.warning("Creating list failed: {}".format(current))
-            logging.warning("Remaining: {} / {}".format(len(to_create), len(lists)))
+            logging.warning("Creating list failed: %s", current)
+            logging.warning("Remaining: %s / %s", len(to_create), len(lists))
             logging.warning(e)
             to_create.append(current)
             sleep(30)
@@ -118,7 +125,7 @@ def chunks(l, n):
         yield l[i:i + n]
 
 def add_members(twit, list_name, list_id, members):
-    logging.info("Adding members to: {}".format(list_name))
+    logging.info("Adding members to: %s", list_name)
     #use 1.1/lists/members/create_all.json
     #rate limited
     #100 members at a time
@@ -131,17 +138,23 @@ def add_members(twit, list_name, list_id, members):
         except Exception as e:
             logging.warning("Member add failure for : list_name")
             chunked.append(chunk)
-            logging.warning("Remaining: {} / {}".format(len(chunked) * 100, len(members)))
+            logging.warning("Remaining: %s / %s", len(chunked) * 100, len(members))
             logging.warning(e)
             sleep(60)
 
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    args.source      = pl.Path(args.source).expanduser().resolve()
+    args.backup      = pl.Path(args.backup).expanduser().resolve()
+    args.credentials = pl.Path(args.credentials).expanduser().resolve()
+    args.key         = pl.Path(args.key).expanduser().resolve()
+    args.secret      = pl.Path(args.secret).expanduser().resolve()
 
-    t                = load_credentials_and_setup(args.credentials,
-                                                  args.key,
-                                                  args.secret)
+
+    t                = load_credentials_and_setup(str(args.credentials),
+                                                  str(args.key),
+                                                  str(args.secret))
     #Load the target
     the_dict         = load_org(args.source)
     #get all existing lists

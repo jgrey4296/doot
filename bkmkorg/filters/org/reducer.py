@@ -1,31 +1,34 @@
 #!/usr/bin/env python
+##-- imports
+from __future__ import annotations
 import argparse
 import logging as root_logger
-from os import listdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 
+import pathlib as pl
 import twitter
+##-- end imports
 
+##-- logging
 LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
-##############################
+##-- end logging
 
-#see https://docs.python.org/3/howto/argparse.html
+##-- argparse
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["MP4 duplicate remover"]))
 parser.add_argument('--target', action="append", required=True)
 parser.add_argument('--tweets', default="~/Desktop/twitter/tweets")
 parser.add_argument('--archive')
+##-- end argparse
 
 
 # TODO see /Volumes/documents/github/py_bookmark_organiser/bkmkorg/io/twitter_automator.py

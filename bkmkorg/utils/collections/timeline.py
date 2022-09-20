@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
+##-- imports
+from __future__ import annotations
+
+import pathlib as pl
 from dataclasses import InitVar, dataclass, field
 from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
                     Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
                     TypeVar, cast)
 
 from bkmkorg.utils.collections.base_format import BaseFileFormat
-
+##-- end imports
 
 @dataclass
 class TimelineFile(BaseFileFormat):
@@ -14,7 +18,7 @@ class TimelineFile(BaseFileFormat):
     entries : list[Tuple[int, str]] = field(default_factory=list)
 
     @staticmethod
-    def read(f_name:str) -> 'BaseFileFormat':
+    def read(f_name:pl.Path) -> 'BaseFileFormat':
         pass
 
     def __iter__(self):

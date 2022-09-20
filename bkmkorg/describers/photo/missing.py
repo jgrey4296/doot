@@ -2,41 +2,47 @@
 Script to find missing photos
 
 """
+##-- imports
+from __future__ import annotations
 import argparse
 import logging as root_logger
 from hashlib import sha256
-from os import listdir, mkdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 from shutil import copy
 
+import pathlib as pl
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.file import hash_check
 from bkmkorg.utils.dfs import files as retrieval
+##-- end imports
 
 
-# Setup root_logger:
+
+##-- logging
 LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
+##-- end logging
 
-#see https://docs.python.org/3/howto/argparse.html
+##-- argparse
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Find and Hash images, revealing duplicates"]))
 parser.add_argument('-l', '--library', action="append", required=True)
 parser.add_argument('-t', '--target', action="append", required=True)
 parser.add_argument('-c', '--copy', action="store_true")
 parser.add_argument('-o', '--output', required=True)
+##-- end argparse
 
 if __name__ == "__main__":
     logging.info("Starting Photo Description")
 
     args = parser.parse_args()
+    args.output = pl.Path(args.output).expanduser().resolve()
+    args.target = pl.Path(args.target).expanduser().resolve()
 
     logging.info("Finding library images")
     library_images = retrieval.get_data_files(args.library, retrieval.img_and_video)
@@ -44,13 +50,15 @@ if __name__ == "__main__":
     target_images = retrieval.get_data_files(args.target, retrieval.img_and_video)
     logging.info("Finding missing images")
     missing = hash_check.find_missing(library_images, target_images)
-    logging.info("Found {} missing images".format(len(missing)))
+    logging.info("Found %s missing images", len(missing))
 
     #write conflicts to an org file:
     if not args.copy:
+        assert(args.output.is_file())
+        assert(args.output.suffix == ".org")
         count = 0
         grouping = int(len(missing) / 100)
-        with open(expanduser(args.output),'w') as f:
+        with open(args.output, 'w') as f:
             f.write("* Missing\n")
             for i,x in enumerate(missing):
                 if (i % grouping) == 0:
@@ -61,15 +69,15 @@ if __name__ == "__main__":
 
 
     # create a directory and copy files missing from the library in
-    if args.copy:
-        target_dir = splitext(expanduser(args.output))[0]
-        if not exists(target_dir):
-            mkdir(target_dir)
+    elif args.copy:
+        assert(args.target.is_dir())
+        if not args.target.exists():
+            args.target.mkdir()
 
         for x in missing:
-            path = split(x)
-            parent = split(path[0])[1]
+            path   = x.name
+            copy_dir = args.target / x.parts[-2]
 
-            if not exists(join(target_dir, parent)):
-                mkdir(join(target_dir, parent))
-            copy(x, join(target_dir, parent))
+            if not copy_dir.exists():
+                copy_dir.mkdir()
+            copy(x, copy_dir)

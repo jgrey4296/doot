@@ -37,15 +37,15 @@ for qDir in quest_directories:
 #Process the files:
 for filename, full_path in quest_htmls:
     logging.info("--------------------")
-    logging.info("Processing: {}".format(filename))
-    logging.info("Path: {}".format(full_path))
+    logging.info("Processing: %s", filename)
+    logging.info("Path: %s", full_path)
     if exists(join(target_location, splitext(filename)[0]) + '.json'):
-        logging.warning("Json for file already exists: {}".format(filename)) 
+        logging.warning("Json for file already exists: %s", filename)
         continue
     
     with open(full_path, 'r') as f:
         data = f.read()
-    logging.info("Data read: {}".format(len(data)))
+    logging.info("Data read: %s", len(data))
     #parsep
     parsedData = ws.parseData(data)
 

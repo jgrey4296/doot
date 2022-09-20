@@ -108,7 +108,7 @@ def get_main_data(soup):
     if len(headlines) == 0:
         return []
     if headlines[-1][1] != 'External links':
-        logging.warning('Last header is: {}'.format(headlines[-1][1]))
+        logging.warning('Last header is: %s', headlines[-1][1])
 
     #lop off the last as its not usually important
     #headlines = headlines[:-1]
@@ -121,7 +121,7 @@ def get_main_data(soup):
         breakpoint()
         
     if not start[1] == 'Objectives':
-        logging.warning("Headlines don't start with objectives: {}".format(start[1]))
+        logging.warning("Headlines don't start with objectives: %s", start[1])
 
     segments = []
     collected = []

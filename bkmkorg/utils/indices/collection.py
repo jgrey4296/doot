@@ -3,22 +3,21 @@
 A Utility class for working with index files,
 which map tags to sets of files
 """
+##-- imports
+from __future__ import annotations
+
 import logging as root_logger
 from collections import defaultdict
 from dataclasses import InitVar, dataclass, field
-from os import listdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 
 from bkmkorg.utils.dfs.files import get_data_files
+##-- end imports
 
-logging = root_logger.getLogger(__name__)
-
+logging   = root_logger.getLogger(__name__)
 IndexFile = "IndexFile"
-file      = Any
 
 @dataclass
 class IndexFile:
@@ -38,12 +37,12 @@ class IndexFile:
             try:
                 main += IndexFile.read(target, sep=sep)
             except Exception as err:
-                logging.warning(f"IndexFile.builder failure for {target}")
+                logging.warning("IndexFile.builder failure for %s", target)
 
         return main
 
     @staticmethod
-    def read(p:str, sep=None) -> IndexFile:
+    def read(p:pl.Path, sep=None) -> IndexFile:
         obj  = IndexFile(sep=sep)
         with open(p, 'r') as f:
             # convert lines to mapping
@@ -62,7 +61,7 @@ class IndexFile:
         return self
 
     def add_files(self, key, values):
-        self.mapping[key].update(values)
+        self.mapping[key].update([str(x) for x in values])
 
     def __len__(self):
         return len(self.mapping)

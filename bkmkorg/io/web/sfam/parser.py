@@ -40,7 +40,7 @@ htmls = [x for x in listdir(join(args.source, 'html')) if splitext(x)[1] == '.ht
 img_types = ['.png', '.jpg', '.gif']
 images = [x for x in listdir(join(args.source, 'images')) if splitext(x)[1] in img_types]
 
-logging.info("Got {} HTMLs and {} IMAGEs".format(len(htmls), len(images)))
+logging.info("Got %s HTMLs and %s IMAGEs", len(htmls), len(images))
 
 def is_class_x(x, tag):
     return tag.has_attr('class') and tag.get('class')[0] == x
@@ -57,17 +57,17 @@ for page in htmls:
 
     comic = html.find(partial(is_id_x, 'comic'))
     if comic is None:
-        logging.info("No Comic in {}".format(page))
+        logging.info("No Comic in %s", page)
         continue
     img = comic.find('img')
     if img is None:
-        logging.info("No Comic in {}".format(page))
+        logging.info("No Comic in %s", page)
         continue
     link = img.get('src')
     alt_text = img['alt']
     image_name = split(link)[1]
     if image_name not in images:
-        logging.warning("Image missing: {}".format(image_name))
+        logging.warning("Image missing: %s", image_name)
         continue
 
     tags_div = html.find(class_="tags")
@@ -76,7 +76,7 @@ for page in htmls:
     tag_set.update(tag_texts)
 
     title_list = list(html.find(class_="move-up heading").find('a', class_="title").strings)
-    logging.info("Title list: {}".format(" | ".join(title_list)))
+    logging.info("Title list: %s", " | ".join(title_list))
     title = title_list[0]
     date = html.find(class_="date").get_text(strip=True)
 

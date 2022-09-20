@@ -2,24 +2,25 @@
 """
 Utility class for working with tag files
 """
+##-- imports
+from __future__ import annotations
+
+import pathlib as pl
 import logging as root_logger
 import re
 from collections import defaultdict
 from dataclasses import InitVar, dataclass, field
-from os import listdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 
-from bkmkorg.utils.dfs.files import get_data_files
 from bkmkorg.utils.collections.base_format import BaseFileFormat
+from bkmkorg.utils.dfs.files import get_data_files
+##-- end imports
 
 logging = root_logger.getLogger(__name__)
 
 TAG_NORM = re.compile(" +")
-path_t     = str
 
 @dataclass
 class TagFile(BaseFileFormat):
@@ -33,7 +34,7 @@ class TagFile(BaseFileFormat):
 
 
     @staticmethod
-    def read(f_name:path_t) -> 'TagFile':
+    def read(f_name:pl.Path) -> 'TagFile':
         obj = TagFile()
         with open(f_name, 'r') as f:
             for line in f.readlines():
@@ -43,25 +44,25 @@ class TagFile(BaseFileFormat):
                     line_s = [obj.norm_regex.sub("_", x.strip()) for x in line.split(obj.sep)]
                     obj.set_count(line_s[0], int(line_s[1]))
                 except Exception as err:
-                    logging.warning(f"Failure Tag Reading: {line}, {err}")
+                    logging.warning("Failure Tag Reading: %s, %s", line, err)
 
         return obj
 
 
     @staticmethod
-    def read_bib(f:path_t) -> 'TagFile':
+    def read_bib(f:pl.Path) -> 'TagFile':
         raise NotImplementedError()
 
     @staticmethod
-    def read_org(f:path_t) -> 'TagFile':
+    def read_org(f:pl.Path) -> 'TagFile':
         raise NotImplementedError()
 
     @staticmethod
-    def read_html(f:path_t) -> 'TagFile':
+    def read_html(f:pl.Path) -> 'TagFile':
         raise NotImplementedError()
 
     @staticmethod
-    def read_bookmarks(f:path_t) -> 'TagFile':
+    def read_bookmarks(f:pl.Path) -> 'TagFile':
         raise NotImplementedError()
 
     def __iter__(self):
@@ -134,17 +135,19 @@ class SubstitutionFile(TagFile):
     mapping : Dict[str, str] = field(default_factory=lambda: defaultdict(lambda: ""))
 
     @staticmethod
-    def read(f_path:path_t) -> 'SubstitutionFile':
+    def read(f_path:pl.Path) -> 'SubstitutionFile':
         obj = SubstitutionFile()
         with open(f_path, 'r') as f:
             for line in f.readlines():
+                if not bool(line.strip()):
+                    continue
                 try:
                     line_s = [obj.norm_regex.sub("_", x.strip()) for x in line.split(obj.sep)]
                     obj.set_count(line_s[0], int(line_s[1]))
                     if len(line_s) > 2 and bool(line_s[2]):
                         obj.set_sub(line_s[0], line_s[2])
                 except:
-                    logging.warning(f"Failure Sub Reading: {line}")
+                    logging.warning("Failure Sub Reading: %s", line)
 
         return obj
 

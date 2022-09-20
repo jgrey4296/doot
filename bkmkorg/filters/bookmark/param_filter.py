@@ -2,27 +2,32 @@
 A simple trie usage bookmark processor
 Pairs with bkmkorg/describers/bookmark_queries
 """
+##-- imports
+from __future__ import annotations
 import argparse
 import logging as root_logger
-from os import listdir
-from os.path import abspath, exists, expanduser, isfile, join, split, splitext
 
+import pathlib as pl
 import regex as re
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.dfs import files as retrieval
 from bkmkorg.utils.collections.trie import Trie
 from bkmkorg.utils.bookmarks.collection import BookmarkCollection
+##-- end imports
 
+##-- logging
 LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
-##############################
-# Setup
+##-- end logging
+
+
+##-- argparse
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Load bookmarks",
                                                         "filtering a blacklist of URL parameters",
@@ -31,15 +36,17 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
 parser.add_argument('-s', '--source', action="append", required=True)
 parser.add_argument('-q', '--query', default=None)
 parser.add_argument('-o', '--output', required=True)
+##-- end argparse
 
-
+##-- consts
 query_re = re.compile(r'\*+\s+\(\d+\) (.+)$')
+##-- end consts
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    args.output = abspath(expanduser(args.output))
+    args.output = pl.Path(args.output).expanduser().resolve()
     if args.query is not None:
-        args.query = abspath(expanduser(args.query))
+        args.query = pl.Path(args.query).expanduser().resolve()
 
     #load any sources
     source_files = retrieval.get_data_files(args.source, ".bookmarks")

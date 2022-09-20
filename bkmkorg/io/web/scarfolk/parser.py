@@ -47,7 +47,7 @@ tag_set = set()
 post_groups  = []
 #for each:
 for page in htmls:
-    logging.info("Loading: {}".format(page))
+    logging.info("Loading: %s", page)
     extracted_data = []
     with open(join(args.source, page), 'r') as f:
         html = BeautifulSoup(f.read(), 'html.parser')
@@ -62,9 +62,9 @@ for page in htmls:
         if date_group is None:
             split_date = date.split(" ")
             date_group = " ".join(split_date[-2:])
-            logging.info("Determined as: {}".format(date_group))
+            logging.info("Determined as: %s", date_group)
         title = post.find("h3", class_="post-title").get_text(strip=True)
-        logging.debug("Dealing with {}".format(title))
+        logging.debug("Dealing with %s", title)
         post_body = post.find("div", class_="post-body")
         body_text = post_body.get_text(strip=True)
         imgs = [unquote(x['src']) for x in post_body.find_all("img")]

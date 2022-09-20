@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
+##-- imports
+from __future__ import annotations
+
+import pathlib as pl
 import datetime
 import json
 import logging as root_logger
 from collections import defaultdict
 from dataclasses import InitVar, dataclass, field
-from os import listdir, mkdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
@@ -16,6 +17,7 @@ import networkx as nx
 from bkmkorg.utils.download.media import download_media
 from bkmkorg.utils.download.twitter import download_tweets
 from bkmkorg.utils.org.string_builder import OrgStrBuilder
+##-- end imports
 
 logging = root_logger.getLogger(__name__)
 
@@ -27,7 +29,7 @@ class TweetComponents:
     comp_dir is the directory to write to
     components is the sets of tweet id's forming components
     """
-    comp_dir   : str
+    comp_dir   : pl.Path
     components : List[Set[str]]
 
     mapping    : Dict[str, List['ComponentWriter']] = field(default_factory=lambda: defaultdict(lambda: []))
@@ -40,18 +42,19 @@ class TweetComponents:
         """
         Simple interface to buffer writing tweets to a json file
         """
-        dir_s        : str
-        name_pattern : str  = field(default="component_{}.json")
+        dir_s        : pl.Path
+        name_stem    : str  = field(default="component_{}")
         started      : bool = field(default=False)
         finished     : bool = field(default=False)
         id_s         : str  = field(default_factory=lambda: str(uuid1()))
+        suffix       : str  = field(default=".json")
 
         stored       : List[Any] = field(default_factory=list)
         write_count  : int  = field(default=20)
 
         @property
         def path(self):
-            return join(self.dir_s, self.name_pattern.format(self.id_s))
+            return (self.dir_s / self.name_stem.format(self.id_s)).with_suffix(self.suffix)
 
         def finish(self):
             """ Add the final ] to the file """
@@ -94,7 +97,7 @@ class TweetComponents:
         for comp_set in self.components:
             # Create a writer
             comp_obj = TweetComponents.ComponentWriter(self.comp_dir)
-            assert(not exists(comp_obj.path))
+            assert(not comp_obj.path.exists())
             # And pair each tweet id with that writer
             self.writers.append(comp_obj)
             for x in comp_set:

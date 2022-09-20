@@ -1,8 +1,10 @@
+
+##-- imports
+from __future__ import annotations
+
+import pathlib as pl
 import logging as root_logger
 from datetime import datetime
-from os import listdir, mkdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
@@ -10,12 +12,12 @@ from unicodedata import normalize as norm_unicode
 
 import regex as re
 from bkmkorg.utils.bookmarks.collection import Bookmark
-
+##-- end imports
 
 logging = root_logger.getLogger(__name__)
 
 
-def clean_bib_files(bib_files, sub, tag_regex=r"^(\s*tags\s*=\s*{)(.+?)(\s*},?)$"):
+def clean_bib_files(bib_files:list[pl.Path], sub, tag_regex=r"^(\s*tags\s*=\s*{)(.+?)(\s*},?)$"):
     """ Parse all the bibtext files, naively
     Extract the tags, deduplicate and apply substitutions,
     write out again
@@ -41,15 +43,13 @@ def clean_bib_files(bib_files, sub, tag_regex=r"^(\s*tags\s*=\s*{)(.+?)(\s*},?)$
             for tag in tags:
                 replacement_tags.add(sub.sub(tag))
 
-            out_lines.append("{}{}{}\n".format(match[1],
-                                               ",".join(sorted(replacement_tags)),
-                                               match[3]))
+            out_lines.append("{}{}{}\n".format(match[1], ",".join(sorted(replacement_tags)), match[3]))
 
         outstring = "".join(out_lines)
         with open(bib, 'w') as f:
             f.write(outstring)
 
-def clean_org_files(org_files, sub, tag_regex=r"^\*\*\s+(.+?)(\s+):(\S+):$"):
+def clean_org_files(org_files:list[pl.Path], sub, tag_regex=r"^\*\*\s+(.+?)(\s+):(\S+):$"):
     """
     Read all org files, matching on headings,
     and deduplicate and substitute, write out again
@@ -72,9 +72,9 @@ def clean_org_files(org_files, sub, tag_regex=r"^\*\*\s+(.+?)(\s+):(\S+):$"):
                 out_text += line
                 continue
 
-            title = matches[1]
+            title  = matches[1]
             spaces = matches[2]
-            tags = matches[3]
+            tags   = matches[3]
 
             individual_tags = [x for x in tags.split(':') if x != '']
             replacement_tags = set([])
@@ -90,7 +90,7 @@ def clean_org_files(org_files, sub, tag_regex=r"^\*\*\s+(.+?)(\s+):(\S+):$"):
         with open(org, 'w') as f:
             f.write(out_text)
 
-def clean_bkmk_files(bkmk_files, sub):
+def clean_bkmk_files(bkmk_files:list[pl.Path], sub):
     logging.info("Cleaning bookmarks")
 
     for bkmk_path in bkmk_files:

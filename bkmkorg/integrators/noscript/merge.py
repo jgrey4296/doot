@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
+##-- imports
 from __future__ import annotations
 
+import pathlib as pl
 import abc
 import argparse
 import json
 import logging as logmod
 from dataclasses import InitVar, dataclass, field
-from os.path import abspath, expanduser, split, splitext, exists, isdir, join
-from os import listdir
 from sys import stderr, stdout
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
@@ -18,9 +18,11 @@ from collections import defaultdict
 if TYPE_CHECKING:
     # tc only imports
     pass
+##-- end imports
 
+##-- logging
 DISPLAY_LEVEL = logmod.DEBUG
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 LOG_FORMAT    = "%(asctime)s | %(levelname)8s | %(message)s"
 FILE_MODE     = "w"
 STREAM_TARGET = stderr # or stdout
@@ -37,17 +39,15 @@ file_handler.setLevel(logmod.DEBUG)
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
 logging = logger
-##############################
+##-- end logging
 
+##-- argparse
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog = "\n".join([""]))
 parser.add_argument('-t', '--target', action="append", required=True)
 parser.add_argument('-o', '--output', default="~/Desktop/noscript.json")
 parser.add_argument('--override', action="store_true")
-
-
-def expander(path):
-    return abspath(expanduser(path))
+##-- end argparse
 
 def merge_json(target, source, key):
 
@@ -87,23 +87,23 @@ def merge_json(target, source, key):
 
 def main():
     args = parser.parse_args()
-    args.output = expander(args.output)
-    args.target = [expander(x) for x in args.target]
+    args.output = pl.Path(args.output).expanduser().resolve()
+    args.target = [pl.Path(x).expanduser().resolve() for x in args.target]
 
     full_targets = []
     for target in args.target:
-        if not isdir(target):
-            assert(splitext(target)[1] == ".json")
+        if not target.is_dir():
+            assert(target.suffix == ".json")
             full_targets.append(target)
             continue
 
-        assert(isdir(target))
-        full_targets += [join(target, x) for x in listdir(target) if splitext(x)[1] == ".json"]
+        assert(target.is_dir())
+        full_targets += [x for x in target.iterdir() if x.suffix == ".json"]
 
     args.target = full_targets
 
-    assert(splitext(args.output)[1] == ".json")
-    assert(args.override or not exists(args.output)), "--override or specify a non-existing output"
+    assert(args.output.suffix == ".json")
+    assert(args.override or not args.output.exists()), "--override or specify a non-existing output"
 
     final = defaultdict(lambda: {})
 

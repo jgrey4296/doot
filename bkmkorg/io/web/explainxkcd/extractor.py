@@ -47,7 +47,7 @@ def extract(bs):
             pass
         data.append((links, date))
 
-    logging.info(f"Extracted {len(data)}")
+    logging.info("Extracted %s", len(data))
     return data
 
 if __name__ == '__main__':
@@ -58,7 +58,7 @@ if __name__ == '__main__':
     extracted_data = []
 
     for x in args.target:
-        logging.info(f"Reading: {x}")
+        logging.info("Reading: %s", x)
         with open(x,'r') as f:
             data = BeautifulSoup(f.read(), features="lxml")
 

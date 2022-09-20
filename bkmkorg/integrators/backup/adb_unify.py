@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
+##-- imports
 from __future__ import annotations
 
+from os import system
+from shlex import quote
 import abc
 import argparse
 import logging as logmod
+import pathlib as pl
 import subprocess
 from configparser import ConfigParser
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from functools import partial
-from os import listdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
+from importlib.resources import files
 from re import Pattern
 from sys import stderr, stdout
 from time import sleep
@@ -22,24 +24,33 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
+from bkmkorg import DEFAULT_CONFIG, DEFAULT_SECRETS
+##-- end imports
 
-if TYPE_CHECKING:
-    # tc only imports
-    pass
+##-- data
+data_path    = files(f"bkmkorg.{DEFAULT_CONFIG}")
+data_secrets = data_path / DEFAULT_SECRETS
+##-- end data
 
+##-- argparse
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog = "\n".join(["Walk through a library directory, and either push to,",
                                                      "or pull from, a tablet to sync the directories"]))
-parser.add_argument('--config', default="/Volumes/documents/github/py_bookmark_organiser/secrets.config")
-parser.add_argument('--library', required=True)
-parser.add_argument('--target',  required=True)
+parser.add_argument('--config', default=data_secrets, help="Has a default")
+parser.add_argument('--library', required=True, help="The local directory to use")
+parser.add_argument('--target',  required=True, help="The remote directory to use")
 parser.add_argument('--to-device',   action='store_true')
 parser.add_argument('--from-device', action='store_true')
+parser.add_argument('--id')
 parser.add_argument('--wait', type=int, default=10)
+parser.add_argument('--skip-to')
+parser.add_argument('--max-depth', type=int)
+parser.add_argument('--min-depth', default=1, type=int)
+##-- End argparse
 
-
+##-- Logging
 DISPLAY_LEVEL = logmod.INFO
-LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 LOG_FORMAT    = "%(asctime)s | %(levelname)8s | %(message)s"
 FILE_MODE     = "w"
 STREAM_TARGET = stderr # or stdout
@@ -57,118 +68,196 @@ logger.addHandler(console_handler)
 logger.addHandler(file_handler)
 logging = logger
 logging.setLevel(logmod.DEBUG)
-##############################
+##-- End Logging
 
+def say(val:str):
+    system(f'say -v Moira -r 50 "{val}"')
 
-def expander(path):
-    return abspath(expanduser(path))
+# TODO use asyncio for subprocess control
 
+def esc(path):
+    """
+    Escape a path for use in adb
+    """
+    unescaped : str = str(path)
+    # escaped   : str = (unescaped
+    #                    .replace(" ", "\\ ")
+    #                    .replace("(", "\\(")
+    #                    .replace(")", "\\)"))
+    return quote(unescaped)
 
-def dfs_dir(initial, sleep_time, func):
-    logging.info("Getting Data Files")
-    initial = initial if isinstance(initial, list) else [initial]
-    queue = [(x, x) for x in initial]
+def dfs_dir(initial_path, sleep_time, func, skip_to=None, max_depth=None, min_depth=None):
+    logging.info("Getting Data Files for: %s", initial_path)
+    logging.info("--------------------")
+    initial = initial_path if isinstance(initial_path, list) else [initial_path]
+    queue = [(x, 1) for x in initial]
     while bool(queue):
-        rel_path, abs_path = queue.pop(0)
-        if isdir(abs_path):
-            sub = [(join(rel_path, x), join(abs_path,x)) for x in listdir(abs_path)]
-            queue += sub
-            logging.info("Running on %s", abs_path)
-            func(rel_path)
+        curr_path, depth = queue.pop(0)
+        if max_depth and depth >= max_depth:
+            continue
+
+        if depth > 1 and skip_to is not None and skip_to != curr_path.name:
+            logging.info("Skipping %s", curr_path.name)
+            continue
+        elif skip_to == curr_path.name:
+            skip_to = None
+
+        sub = [(x, depth+1) for x in curr_path.iterdir() if x.is_dir()]
+        queue += sub
+
+
+        if min_depth and depth <= min_depth:
+            logging.info("Skipping %s", curr_path.name)
+            continue
+
+        logging.info("Running on %s", curr_path.name)
+        logging.info("--------------------")
+        if func(curr_path.relative_to(initial_path)):
             sleep(sleep_time)
 
-def push_sync(target, lib, current):
+def push_sync(device_id, target, lib, current) -> bool:
     """
     Run an adb push command to sync libdir with the target
     `target` : base path on device
     `lib`    : base path on source
     `current`: current pos relative to `lib`
     """
-    logging.info("Pushing: %s : %s : %s", join(target, current), join(lib, current), current)
+    logging.info("Pushing: %s\nto     : %s\nBase   : %s", lib, target, current)
+    logging.info("--------------------")
     result = subprocess.run(["adb",
-                             "-s",
-                             "192.168.1.22:5555",
+                             "-t",
+                             device_id,
                              "push",
                              "--sync",
-                             join(lib, current),
-                             join(lib, target)],
-                            capture_output=True)
-    assert(result.returncode == 0), result.stdout.decode()
+                             str(lib / current),
+                             str((target / current).parent)],
+                            capture_output=True,
+                            shell=False)
+    if result.returncode != 0:
+        logging.warning("Push Failure")
+        logging.warning(result.stdout.decode())
+        logging.warning(result.stderr.decode())
+        raise Exception()
+    return True
 
-def pull_sync(target, lib, current):
+
+def pull_sync(device_id, target, lib, current) -> bool:
     """
     Run an adb pull command to sync device with library
     """
-    logging.info("Pulling: %s : %s : %s", join(target, current), join(lib, current), current)
+    logging.info("Pulling: %s\nto     : %s\ncurrent: %s", target, lib, current)
+    logging.info("--------------------")
     # Compare the target and lib using find
     device_files = subprocess.run(["adb",
-                                   "-s",
-                                   "192.168.1.22:5555",
+                                   "-t",
+                                   device_id,
                                    "shell",
                                    "find",
-                                   join(target, current),
+                                   esc(target/current),
                                    "-type", "f"],
                                   capture_output=True)
-    assert(device_files.returncode == 0), device_files.stdout.decode()
-    device_set = { x[len(target):] for x in device_files.stdout.decode().split("\n") }
+    if device_files.returncode != 0:
+        logging.warning("Pull Failure: Initial Device Find")
+        logging.warning(device_files.stdout.decode())
+        logging.warning(device_files.stderr.decode())
+        return False
 
+    device_set = { pl.Path(x).relative_to(target) for x in device_files.stdout.decode().split("\n") if x != "" }
+
+    if not (lib/current).exists():
+        (lib/current).mkdir()
 
     local_files = subprocess.run(["find",
-                                  join(lib, current),
+                                  str(lib/current),
                                   "-type", "f"],
                                   capture_output=True)
-    assert(local_files.returncode == 0), local_files.stdout.decode()
-    local_set = {x[len(lib):] for x in device_files.stdout.decode().split("\n")}
+    if local_files.returncode != 0:
+        logging.warning("Pull Failure: Library Find")
+        logging.warning(local_files.stdout.decode())
+        logging.warning(local_files.stderr.decode())
+        raise Exception()
+
+    local_set = {pl.Path(x).relative_to(lib) for x in local_files.stdout.decode().split("\n") if x != ""}
 
     missing = device_set - local_set
-    logging.info("%s missing from %s", len(missing), join(lib, current))
+    logging.info("%s missing from %s", len(missing), lib/current)
     # Then copy missing over
+    if not bool(missing):
+        return False
+
     for path in missing:
-        if path[0] == "/":
-            path = path[1:]
-        assert(not exists(join(lib, path)))
+        assert(not (lib/path).exists())
+        if not (lib/path).parent.exists():
+            (lib/path).parent.mkdir()
+
+        logging.info("Copying: %s\nTo     : %s", target/path, lib/path)
         result = subprocess.run(["adb",
-                                "-s",
-                                "192.168.1.22:5555",
+                                "-t",
+                                 device_id,
                                 "pull",
-                                 join(target, path),
-                                 join(lib, path)],
-                                capture_output=True)
-        assert(exists(join(lib, path)))
-        assert(result.returncode == 0), result.stdout.decode()
+                                 str(target/path),
+                                 str(lib/path)],
+                                capture_output=True,
+                                shell=False)
 
 
+        if result.returncode != 0 or not (lib/path).exists():
+            logging.warning("Pull Failure: Copy")
+            logging.warning(result.stdout.decode())
+            logging.warning(result.stderr.decode())
+            raise Exception()
+
+    return True
 
 def main():
     logging.info("Starting ADB Unifier")
-    args = parser.parse_args()
+    args        = parser.parse_args()
+    args.config = pl.Path(args.config).expanduser().resolve()
+
     if not (args.to_device or args.from_device):
         logging.info("Option Missing: --to-device or --from-device")
         exit()
 
     config = ConfigParser(allow_no_value=True, delimiters='=')
-    config.read(abspath(expanduser(args.config)))
-
+    config.read(args.config)
+    # device_id = "{}:{}".format(config['ADB']['ipaddr'], config['ADB']['PORT'])
+    device_id = args.id
     # Walk the library directory
     if args.to_device:
         func = push_sync
     elif args.from_device:
         func = pull_sync
+    else:
+        raise Exception()
 
+    lib_path    = pl.Path(args.library).expanduser().resolve()
+    target_path = pl.Path(config['ADB']['sdcard']) /  args.target
+
+    # Curry the args which won't change
     partial_func = partial(func,
-                           shell_device,
-                           adb_device,
-                           join(config['ADB']['sdcard'], args.target),
-                           args.library)
+                           device_id,
+                           target_path,
+                           lib_path)
 
-    dfs_dir(args.library,
-            args.wait,
-            partial_func)
 
+    logging.info("DFS for: %s\nto: %s\non depth: %s < n < %s", lib_path, target_path, args.min_depth, args.max_depth)
+    # Run the walk
+    try:
+        dfs_dir(lib_path,
+                args.wait,
+                partial_func,
+                skip_to=args.skip_to,
+                min_depth=args.min_depth,
+                max_depth=args.max_depth)
+        say("Finished ADB Backup")
+    except Exception as err:
+        say("DFS Failure")
+        logging.warning(err)
 
 if __name__ == '__main__':
     main()
 
+##-- adb_shell_example
     # from adb_shell.adb_device import AdbDeviceTcp
     # from adb_shell.auth.sign_pythonrsa import PythonRSASigner
     # from ppadb.client import Client
@@ -195,7 +284,7 @@ if __name__ == '__main__':
     #     logging.info("ppadb Connection Refused")
     #     exit()
 
-    logging.info("Connected")
+    # logging.info("Connected")
 
     # # Send a shell command
     # response1 = shell_device.shell(f"ls {config['ADB']['sdcard']}")
@@ -207,3 +296,4 @@ if __name__ == '__main__':
     # all_files = [x for x in shell_device.shell(instruction).split("\n") if x != ""]
     # logging.info("Found %s files in %s", len(all_files), args.target)
     # print(all_files)
+##-- End adb_shell_example

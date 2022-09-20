@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
+##-- imports
+from __future__ import annotations
 
-from typing import List, Set, Dict, Tuple, Optional, Any
-from typing import Callable, Iterator, Union, Match
-from typing import Mapping, MutableMapping, Sequence, Iterable
-from typing import cast, ClassVar, TypeVar, Generic
-
-from os import system
-from os.path import exists, join, splitext, split
-from os import listdir
-import requests
+from os.path import split
 import logging as root_logger
+from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
+                    List, Mapping, Match, MutableMapping, Optional, Sequence,
+                    Set, Tuple, TypeVar, Union, cast)
+
+import requests
+##-- end imports
 
 logging = root_logger.getLogger(__name__)
 
 CHECK_AMNT = 150
 
-def download_media(media_dir, media):
+def download_media(media_dir:pl.Path, media):
     """ Download all media mentioned in json files """
-    logging.info("Downloading media {} to: {}".format(len(media), media_dir))
-    remaining = [x for x in media if not exists(join(media_dir, split(x)[1]))]
+    logging.info("Downloading media %s to: %s", len(media), media_dir)
+    remaining = [x for x in media if not (media_dir / split(x)[1]).exists()]
 
     if len(remaining) > CHECK_AMNT:
         system('say -v Moira -r 50 "Found a Large Group of Files, waiting for confirmation"')
@@ -27,20 +27,19 @@ def download_media(media_dir, media):
             logging.warning("Skipping download")
             return
 
-
     scaler = int(len(media) / 100) + 1
     for i, x in enumerate(media):
         if i % scaler == 0:
-            logging.info("{}/100".format(int(i/scaler)))
+            logging.info("%s/100", int(i/scaler))
 
-        filename = split(x)[1]
-        if exists(join(media_dir, filename)):
+        filename = media_dir / split(x)[1]
+        if filename.exists():
             continue
 
         try:
             request = requests.get(x)
-            with open(join(media_dir, filename), 'wb') as f:
+            with open(filename, 'wb') as f:
                 f.write(request.content)
         except Exception as e:
-            logging.warning("Error Downloading: {}".format(x))
+            logging.warning("Error Downloading: %s", x)
             logging.warning(str(e))

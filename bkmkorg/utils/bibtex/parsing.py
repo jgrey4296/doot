@@ -2,11 +2,16 @@
 """ Bibtex utilities
 
 """
+##-- imports
+from __future__ import annotations
+
 import logging as root_logger
+import pathlib as pl
 
 import bibtexparser as b
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
+##-- end imports
 
 logging = root_logger.getLogger(__name__)
 
@@ -25,14 +30,14 @@ class OverrideDict(dict):
 def make_parser(func):
     bparser = BibTexParser(common_strings=False)
     bparser.ignore_nonstandard_types = False
-    bparser.homogenise_fields = True
-    bparser.customization = func
+    bparser.homogenise_fields        = True
+    bparser.customization            = func
     return bparser
 
-def parse_bib_files(bib_files, func=None, database=None):
+def parse_bib_files(bib_files:list[pl.Path], func=None, database=None):
     """ Parse all the bibtext files into a shared database """
     bparser = make_parser(func)
-    db = database
+    db      = database
     if db is None:
         logging.info("Creating new database")
         db = b.bibdatabase.BibDatabase()
@@ -41,11 +46,8 @@ def parse_bib_files(bib_files, func=None, database=None):
 
     bparser.bib_database = db
     for x in bib_files:
-        try:
-            with open(x, 'r') as f:
-                logging.info(f"Loading bibtex: {x}")
-                bparser.parse_file(f, partial=True)
-        except Exception as err:
-            logging.warning(f"Error for: {x}: {err}")
+        with open(x, 'r') as f:
+            logging.info("Loading bibtex: %s", x)
+            bparser.parse_file(f, partial=True)
     logging.info("Bibtex loaded")
     return db

@@ -1,20 +1,21 @@
 """
 Simple program to integrate images into a collection
 """
+##-- imports
+from __future__ import annotations
+
 import argparse
 import logging as root_logger
 from hashlib import sha256
-from os import listdir, mkdir
-from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
-                     splitext)
 from shutil import copyfile
 
 import regex as re
 from bkmkorg.utils.bibtex import parsing as BU
 from bkmkorg.utils.dfs import files as retrieval
 from bkmkorg.utils.file.hash_check import file_to_hash
+##-- end imports
 
-
+##-- logging
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.md5PaperChecker"
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
@@ -23,27 +24,33 @@ console = root_logger.StreamHandler()
 console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
-# Setup
+
+##-- end logging
+
+##-- argparse
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Find images in {source} dir that are not linked in {output}.org, and link them"]))
 parser.add_argument('-s', '--source', required=True)
 parser.add_argument('-o', '--output', required=True)
+##-- end argparse
 
 
 ##############################
 
+##-- consts
 text_template = "** [[file://{}][{}]]\n"
-path_re = re.compile(r'^\*\*+\s+(?:TODO|DONE)?\[\[file:([\w/\.~]+)\]')
-file_types = ['.png', '.gif', '.jpg', '.jpeg']
+path_re       = re.compile(r'^\*\*+\s+(?:TODO|DONE)?\[\[file:([\w/\.~]+)\]')
+file_types    = ['.png', '.gif', '.jpg', '.jpeg']
+##-- end consts
 
 
 
 if __name__ == "__main__":
-    args = parser.parse_args()
-    args.source = abspath(expanduser(args.source))
-    args.output = abspath(expanduser(args.output))
+    args        = parser.parse_args()
+    args.source = pl.Path(args.source).expanduser().resolve()
+    args.output = pl.Path(args.output).expanduser().resolve()
 
-    assert(splitext(args.output)[1] == '.org')
+    assert(args.output.suffix == '.org')
 
     logging.info("Loading Existing")
     with open(args.output,'r') as f:
@@ -52,28 +59,26 @@ if __name__ == "__main__":
     logging.info("Finding links")
     path_matches   = [path_re.findall(x) for x in text]
     path_merge     = [y for x in path_matches for y in x]
-    expanded_files = [abspath(expanduser(x)) for x in path_merge]
-    logging.info("Found: {}".format(len(expanded_files)))
+    expanded_files = [pl.Path(x).expanduser().resolve() for x in path_merge]
+    logging.info("Found: %s", len(expanded_files))
 
     logging.info("Hashing")
     current_hashes = { file_to_hash(x) for x in expanded_files }
 
     logging.info("Scraping Source Directory")
-    files_in_dir = listdir(args.source)
-    imgs_in_dir  = [x for x in files_in_dir if splitext(x)[1].lower() in file_types
-                    and x[0] != '.']
-    full_paths   = [abspath(expanduser(join(args.source, x))) for x in imgs_in_dir]
-    logging.info("Scraped: {}".format(len(full_paths)))
+    imgs_in_dir  = [x for x in args.source.iterdir() if x.suffix.lower() in file_types
+                    and x.name[0] != '.']
+    logging.info("Scraped: %s", len(imgs_in_dir))
 
     logging.info("Hashing")
-    total_hashes = { file_to_hash(x) : x for x in full_paths }
+    total_hashes = { file_to_hash(x) : x for x in imgs_in_dir }
 
     #get the difference
     logging.info("Getting difference of hashes")
     to_add = set(total_hashes.keys()).difference(current_hashes)
 
     #append unlinked files
-    logging.info("Appending to output: {}".format(len(to_add)))
+    logging.info("Appending to output: %s", len(to_add))
     with open(args.output, 'a') as f:
         for h in to_add:
             filename = total_hashes[h]

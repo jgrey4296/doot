@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
-import re
+##-- imports
+from __future__ import annotations
+
 import logging as root_logger
+import pathlib as pl
+import re
+##-- end imports
+
 logging = root_logger.getLogger(__name__)
 
-def check_orgs(org_files, id_regex=r"^\s+:(PERMALINK|TIME):\s+$"):
+def check_orgs(org_files:list[pl.Path], id_regex=r"^\s+:(PERMALINK|TIME):\s+$"):
     logging.info("Checking Orgs")
     ORG_ID_REGEX = re.compile(id_regex)
     files        = set([])
