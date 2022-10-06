@@ -34,7 +34,7 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
                                     epilog="""Splits a bibtex file into multiple separate ones,
                                     by TAG, YEAR or AUTHOR,
                                     --output is a directory""")
-parser.add_argument('-t', '--target', default="~/Mega/library.bib")
+parser.add_argument('-t', '--target', default="~/mega_library/library.bib")
 parser.add_argument('-o', '--output', default="tag_split")
 parser.add_argument('-T', '--TAGS', action='store_true')
 parser.add_argument('-Y', '--YEARS', action='store_true')

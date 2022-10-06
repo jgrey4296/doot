@@ -20,7 +20,7 @@ def map_files_to_hash(files:list[pl.Path]) -> dict[str, int]:
         rel      = fl.relative_to(fl.parent.parent.parent)
         hash_val = file_to_hash(fl)
 
-        hash_dict[str(rel)] = hash_val
+        hash_dict[str(rel)] = str(hash_val)
 
     return hash_dict
 

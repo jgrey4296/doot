@@ -25,7 +25,7 @@ logging = root_logger.getLogger(__name__)
 ##-- argparse
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join(["Take a subdirectory of files, group into subdirectories of size g"]))
-parser.add_argument('-t', '--target', default="~/mega/twitterthreads")
+parser.add_argument('-t', '--target', default="~/twitterthreads")
 parser.add_argument('-g', '--groupnum',  default=5)
 parser.add_argument('-p', '--preface', default="grouped")
 ##-- end argparse

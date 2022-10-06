@@ -43,7 +43,7 @@ parser.add_argument('-l', '--library', help="Bibtex Library directory to verify"
 parser.add_argument('-o', '--output',  help="Output location for reports", required=True)
 ##-- end argparse
 
-LIB_ROOT = pl.Path("~/mega/pdflibrary").expanduser().resolve()
+LIB_ROOT = pl.Path("~/pdflibrary").expanduser().resolve()
 
 def get_mentions(entries) -> set[pl.Path]:
     mentions = set()

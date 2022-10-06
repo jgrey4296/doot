@@ -369,7 +369,7 @@ class TwitterTweet:
             if self.is_quote:
                 dr.add("IS_QUOTE", "t")
 
-        output.add(self.text.strip())
+        output.add(self.text)
         output.nl
 
 
