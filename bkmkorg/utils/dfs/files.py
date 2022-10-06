@@ -104,11 +104,11 @@ def get_data_files(initial:str|pl.Path, ext=None) -> list[str]:
         if current.is_file() and match_type:
             files.append(current)
         elif current.is_file() and not match_type and missing_type:
-            logging.warning("Unrecognized file type: %s", current.name)
             unrecognised_types.add(ftype)
         elif current.is_dir():
             queue += [x for x in current.iterdir()]
 
 
     logging.info("Found %s %s files", len(files), ext)
+    logging.warning("Unrecognized file types: %s", unrecognised_types)
     return files

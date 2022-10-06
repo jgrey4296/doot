@@ -33,7 +33,7 @@ LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
-console.setLevel(root_logger.INFO)
+console.setLevel(root_logger.WARN)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 ##-- end logging
@@ -118,7 +118,8 @@ def post_to_mastodon(selected_file, msg, mastodon):
         res_x, res_y = res.split("x")
         res_x, res_y = int(res_x), int(res_y)
         if res in res_blacklist or (min_x <= res_x and min_y <= res_y):
-            raise Exception("Image is too big", selected_file, res)
+            logging.info("Image is too big %s: %s", selected_file, res)
+            return
 
         # 8MB
         the_file = selected_file
