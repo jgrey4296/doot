@@ -53,6 +53,9 @@ def merge_pdfs(paths, output="./pdf_summary"):
     output = pl.Path(output).expanduser().resolve().with_suffix(".pdf")
     writer = PdfWriter()
 
+    if output.exists():
+        logging.info("Overwriting existing summary")
+
     for path in paths:
         try:
             logging.info("File : %s", path.name)
@@ -66,7 +69,7 @@ def merge_pdfs(paths, output="./pdf_summary"):
 
 
 
-# pdf summary #################################################################
+##-- pdf summary
 def summarise_to_pdfs(paths:list[pl.Path], func=None, output="./pdf_summary", base_name="summary", bound=200):
     """
     For a list of pdfs, get the first two pages of each,
@@ -153,6 +156,8 @@ def add_simple_text_to_writer(path, writer, func, temp):
     return True
 
 def finalise_writer(output, writer, base_name, count, bound, force=False) -> tuple[int, PdfWriter]:
+
+
     if force or len(writer.pagearray) > bound:
         logging.warning("Writing and incrementing")
         writer.trailer.Info = IndirectPdfDict(
@@ -161,8 +166,12 @@ def finalise_writer(output, writer, base_name, count, bound, force=False) -> tup
             Subject='pdf summary',
             Creator='bkmkorg.utils.pdf.pdf.summarise_to_pdfs',
         )
+        if output.with_stem(f"{output.stem}_{count}").exists():
+            logging.info("Overwriting existing summary")
         writer.write(output.with_stem(f"{output.stem}_{count}"))
         writer = PdfWriter()
         count += 1
 
     return count, writer
+
+##-- end pdf summary

@@ -3,6 +3,7 @@
 from __future__ import annotations
 import argparse
 import logging as root_logger
+from random import choice
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
@@ -32,17 +33,32 @@ parser.add_argument('--target', required=True)
 parser.add_argument('--output', help="Output Path and base file name. ie: a/path/blah -> blah_{}.pdf", required=True)
 parser.add_argument('-g', '--grouped', action='store_true')
 parser.add_argument('--bound', default=200)
-
+parser.add_argument('-r', '--random', action='store_true')
 ##-- end argparse
 
 
+# TODO, get information from bibtex on each entry, including specific pages
 def main():
     args        = parser.parse_args()
     args.output = pl.Path(args.output).expanduser().resolve()
-    args.target = pl.Path(args.target)
+    args.target = pl.Path(args.target).expanduser().resolve()
 
-    # TODO, get information from bibtex on each entry, including specific pages
-    if args.grouped:
+    logging.info("Summarising Target: %s", args.target)
+    logging.info("Summarising to output: %s", args.output)
+
+    if args.random:
+        assert(args.target.is_dir()), args.target
+        available = list(args.target.iterdir())
+        chosen    = choice(available)
+        pdfs_to_process = retrieval.get_data_files(chosen, [".pdf", ".epub"])
+        logging.info("Summarising %s's %s pdfs", chosen, len(pdfs_to_process))
+        PU.summarise_to_pdfs(pdfs_to_process,
+                             output=args.output,
+                             base_name=chosen.stem,
+                             bound=int(args.bound))
+
+
+    elif args.grouped:
         assert(args.target.is_dir())
         for group in args.target.iterdir():
             if bool(list(args.output.glob(f"{group.stem}*.pdf"))):

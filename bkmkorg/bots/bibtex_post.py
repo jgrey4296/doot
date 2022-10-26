@@ -96,7 +96,7 @@ def select_entry(db, already_tweeted, filename):
             entry = poss_entry
 
     if entry is None:
-        logging.warning("No Appropriate Entry Found for db: %s", filename)
+        logging.debug("No Appropriate Entry Found for db: %s", filename)
 
     return entry
 

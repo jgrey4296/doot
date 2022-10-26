@@ -13,7 +13,20 @@ def file_to_hash(filename:pl.Path):
     with open(filename, 'rb') as f:
         return sha256(f.read()).hexdigest()
 
-def hash_all(files:list[pl.Path]):
+def map_files_to_hash(files:list[pl.Path]) -> dict[str, int]:
+    hash_dict = {}
+
+    for fl in files:
+        rel      = fl.relative_to(fl.parent.parent.parent)
+        hash_val = file_to_hash(fl)
+
+        hash_dict[str(rel)] = str(hash_val)
+
+    return hash_dict
+
+
+
+def hash_all(files:list[pl.Path]) -> tuple[dict, list]:
     """
     Map hashes to files,
     plus hashes with more than one image

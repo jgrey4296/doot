@@ -32,6 +32,7 @@ def make_parser(func):
     bparser.ignore_nonstandard_types = False
     bparser.homogenise_fields        = True
     bparser.customization            = func
+    bparser.expect_multiple_parse     = True
     return bparser
 
 def parse_bib_files(bib_files:list[pl.Path], func=None, database=None):

@@ -36,7 +36,8 @@ logmod.getLogger('').addHandler(console)
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-LIB_ROOT = pl.Path("~/mega/pdflibrary").expanduser().resolve()
+# TODO switch this to a config var
+LIB_ROOT = pl.Path("~/pdflibrary").expanduser().resolve()
 
 ##-- argparse
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
