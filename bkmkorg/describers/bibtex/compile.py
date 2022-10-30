@@ -52,10 +52,16 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
                                  epilog = "\n".join(["Bibtex compilation"]))
 parser.add_argument('--target', required=True)
 parser.add_argument('--output', required=True)
+parser.add_argument('--timeout', default=3, help="timeout in minutes")
 parser.add_argument('--all', action="store_true")
+parser.add_argument("-v", "--verbose",     action='count', help="increase verbosity of logging (repeatable)")
+parser.add_argument('--logfilter')
 ##-- end argparse
 
-def process_bib(bib_target, output):
+
+def process_bib(bib_target, output, *, timeout=3):
+    timeout *= 60 # convert minutes to seconds
+
     with tempfile.TemporaryDirectory() as temp_dir:
         logging.info("Temp Dir: %s", temp_dir)
         temp_dir_p = pl.Path(temp_dir)
@@ -68,26 +74,30 @@ def process_bib(bib_target, output):
                                                 bibstyle=style_path,
                                                 target=str(bib_target)))
 
-        logging.info("First Pass")
-        result = subprocess.run(["pdflatex", str(temp_tex.stem)],
+        logging.info("First Pass: %s", temp_tex.stem)
+        result = subprocess.run(["pdflatex", temp_tex.stem],
                                 capture_output=True,
-                                cwd=str(temp_dir_p))
+                                cwd=str(temp_dir_p),
+                                timeout=timeout)
+        handle_process_result("first", temp_tex.stem, result)
         logging.info("Bibtex Pass")
-        handle_process_result(result)
-        result = subprocess.run(["bibtex", str(temp_tex.stem)],
+        result = subprocess.run(["bibtex", temp_tex.stem],
                                 capture_output=True,
-                                cwd=str(temp_dir_p))
+                                cwd=str(temp_dir_p),
+                                timeout=timeout)
+        handle_process_result("bib", temp_tex.stem, result)
         logging.info("Second Pass")
-        handle_process_result(result)
-        result = subprocess.run(["pdflatex", str(temp_tex.stem)],
+        result = subprocess.run(["pdflatex", temp_tex.stem],
                                 capture_output=True,
-                                cwd=str(temp_dir_p))
+                                cwd=str(temp_dir_p),
+                                timeout=timeout)
+        handle_process_result("second", temp_tex.stem, result)
         logging.info("Third Pass")
-        handle_process_result(result)
-        result = subprocess.run(["pdflatex", str(temp_tex.stem)],
+        result = subprocess.run(["pdflatex", temp_tex.stem],
                                 capture_output=True,
-                                cwd=str(temp_dir_p))
-        handle_process_result(result)
+                                cwd=str(temp_dir_p),
+                                timeout=timeout)
+        handle_process_result("third", temp_tex.stem, result)
 
         # move to output
         assert(temp_pdf.exists())
@@ -95,14 +105,14 @@ def process_bib(bib_target, output):
             logging.info("Replacing Existing pdf")
         copy(temp_pdf, output)
 
-def handle_process_result(result):
+def handle_process_result(pass_str, name, result):
     if result.returncode == 0:
         return
 
-    logging.error("Compilation Failed: %s", result.returncode)
-    logging.error("Stdout: %s", result.stdout.decode())
-    logging.error("Stderror: %s", result.stderr.decode())
-    raise Exception()
+    raise Exception(f"{pass_str} : {name}",
+                    result.returncode,
+                    result.stdout.decode(),
+                    result.stderr.decode())
 
 def main():
     args = parser.parse_args()
@@ -111,7 +121,7 @@ def main():
 
 
     ##-- Logging
-    DISPLAY_LEVEL = logmod.DEBUG
+    DISPLAY_LEVEL = logmod.WARNING
     LOG_FILE_NAME = "log.{}".format(pathlib.Path(__file__).stem)
     LOG_FORMAT    = "%(asctime)s | %(levelname)8s | %(message)s"
     FILE_MODE     = "w"
@@ -122,10 +132,12 @@ def main():
     console_handler = logmod.StreamHandler(STREAM_TARGET)
     file_handler    = logmod.FileHandler(LOG_FILE_NAME, mode=FILE_MODE)
 
-    console_handler.setLevel(DISPLAY_LEVEL)
-    # console_handler.setFormatter(logmod.Formatter(LOG_FORMAT))
+    verbosity = max(logmod.DEBUG, logmod.WARNING - (10 * (args.verbose or 0)))
+    console_handler.setLevel(verbosity)
+    if args.logfilter:
+        console_handler.addFilter(logmod.Filter(args.logfilter))
+
     file_handler.setLevel(logmod.DEBUG)
-    # file_handler.setFormatter(logmod.Formatter(LOG_FORMAT))
 
     logging.addHandler(console_handler)
     logging.addHandler(file_handler)
@@ -137,16 +149,20 @@ def main():
         # Collect bibs
         chosen = choice(bib_files)
         logging.info("Chosen: %s", chosen)
-        process_bib(chosen, args.output)
+        process_bib(chosen, args.output, timeout=args.timeout)
 
     else:
         logging.info("Processing all bibtex files")
         for bib in bib_files:
             try:
-                process_bib(bib, args.output)
+                process_bib(bib, args.output, timeout=args.timeout)
                 logging.info("--------------------")
+            except subprocess.TimeoutExpired as err:
+                logging.error("---- Process Timed out: %s", bib)
+
             except Exception as err:
-                pass
+                logging.error("---- Exception Occurred for: %s : %s", bib, err.args[0])
+                logging.error(err)
 
 
 

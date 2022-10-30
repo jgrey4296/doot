@@ -100,9 +100,9 @@ def get_data_files(initial:str|pl.Path, ext=None) -> list[str]:
     while bool(queue):
         current : pl.Path = queue.pop(0)
         assert(current.exists())
-        ftype             = current.suffix
+        ftype             = current.suffix.lower()
         match_type        = not bool(ext) or ftype in ext
-        missing_type      = ftype not in unrecognised
+        missing_type      = ftype not in unrecognised and ftype != ""
 
         if current.is_file() and match_type:
             files.append(current)

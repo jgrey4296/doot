@@ -34,7 +34,6 @@ import twitter
 
 ##-- end imports
 
-
 ##-- logging
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)

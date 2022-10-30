@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+##-- imports
 import argparse
 import datetime
 import json
@@ -13,6 +14,9 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 
 import requests
 
+##-- end imports
+
+##-- logging
 LOGLEVEL = root_logger.DEBUG
 LOG_FILE_NAME = "log.{}".format(splitext(split(__file__)[1])[0])
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
@@ -22,10 +26,15 @@ console.setLevel(root_logger.INFO)
 root_logger.getLogger('').addHandler(console)
 logging = root_logger.getLogger(__name__)
 
+##-- end logging
+
+##-- argparser
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                     epilog = "\n".join([""]))
 parser.add_argument('--target')
 parser.add_argument('--output')
+
+##-- end argparser
 
 
 ##############################
@@ -59,7 +68,7 @@ def clean_unicode(the_str):
     clean = str(the_str).encode('ascii', 'ignore').decode()
     return clean.replace('\n', ' ').strip()
 
-if __name__ == "__main__":
+def main():
     args = parser.parse_args()
     args.target = abspath(expanduser(args.target))
     args.output = abspath(expanduser(args.output))
@@ -102,3 +111,9 @@ if __name__ == "__main__":
     assert(bool(lines))
     with open(args.output, 'w') as f:
         f.write("\n".join(lines))
+
+
+##-- ifmain
+if __name__ == "__main__":
+    main()
+##-- end ifmain

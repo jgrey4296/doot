@@ -2,6 +2,7 @@
 ##-- imports
 from __future__ import annotations
 
+from os import system
 from os.path import split
 import logging as root_logger
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,

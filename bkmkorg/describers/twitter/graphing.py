@@ -84,7 +84,7 @@ def convert_to_day_counts(tweets):
 
 
 
-if __name__ == "__main__":
+def main():
     args         = parser.parse_args()
     args.library = [pl.Path(x).expanduser().resolve() for x in args.library]
     args.target  = pl.Path(args.target).expanduser().resolve()
@@ -131,3 +131,7 @@ if __name__ == "__main__":
     logging.info("Finished, saving")
     plt.savefig(str(args.target))
     plt.show()
+
+
+if __name__ == "__main__":
+    main()

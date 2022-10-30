@@ -10,6 +10,10 @@ import re
 logging = root_logger.getLogger(__name__)
 
 def check_orgs(org_files:list[pl.Path], id_regex=r"^\s+:(PERMALINK|TIME):\s+$"):
+    """
+    given paths to org files,
+    extract permalinks
+    """
     logging.info("Checking Orgs")
     ORG_ID_REGEX = re.compile(id_regex)
     files        = set([])
