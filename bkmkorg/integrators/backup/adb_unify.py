@@ -70,20 +70,18 @@ logging = logger
 logging.setLevel(logmod.DEBUG)
 ##-- End Logging
 
+
+# reduce priority of processes:
+NICE = ["nice", "-n", "10"]
+
 def say(val:str):
     system(f'say -v Moira -r 50 "{val}"')
-
-# TODO use asyncio for subprocess control
 
 def esc(path):
     """
     Escape a path for use in adb
     """
     unescaped : str = str(path)
-    # escaped   : str = (unescaped
-    #                    .replace(" ", "\\ ")
-    #                    .replace("(", "\\(")
-    #                    .replace(")", "\\)"))
     return quote(unescaped)
 
 def dfs_dir(initial_path, sleep_time, func, skip_to=None, max_depth=None, min_depth=None):
@@ -124,7 +122,7 @@ def push_sync(device_id, target, lib, current) -> bool:
     """
     logging.info("Pushing: %s\nto     : %s\nBase   : %s", lib, target, current)
     logging.info("--------------------")
-    result = subprocess.run(["adb",
+    result = subprocess.run(NICE + ["adb",
                              "-t",
                              device_id,
                              "push",
@@ -148,7 +146,7 @@ def pull_sync(device_id, target, lib, current) -> bool:
     logging.info("Pulling: %s\nto     : %s\ncurrent: %s", target, lib, current)
     logging.info("--------------------")
     # Compare the target and lib using find
-    device_files = subprocess.run(["adb",
+    device_files = subprocess.run(NICE + ["adb",
                                    "-t",
                                    device_id,
                                    "shell",
@@ -167,10 +165,10 @@ def pull_sync(device_id, target, lib, current) -> bool:
     if not (lib/current).exists():
         (lib/current).mkdir()
 
-    local_files = subprocess.run(["find",
+    local_files = subprocess.run(NICE + ["find",
                                   str(lib/current),
                                   "-type", "f"],
-                                  capture_output=True)
+                                 capture_output=True)
     if local_files.returncode != 0:
         logging.warning("Pull Failure: Library Find")
         logging.warning(local_files.stdout.decode())
@@ -191,7 +189,7 @@ def pull_sync(device_id, target, lib, current) -> bool:
             (lib/path).parent.mkdir()
 
         logging.info("Copying: %s\nTo     : %s", target/path, lib/path)
-        result = subprocess.run(["adb",
+        result = subprocess.run(NICE + ["adb",
                                 "-t",
                                  device_id,
                                 "pull",
