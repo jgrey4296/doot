@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 ##-- imports
 
+from os import system
 import argparse
 import pathlib as pl
 import logging as root_logger
@@ -29,6 +30,7 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
 parser.add_argument('--target')
 parser.add_argument('--separator', default=" |%| ")
 parser.add_argument('--count', type=int, default=10)
+parser.add_argument('--wait', type=float, default=2)
 parser.add_argument('--agent')
 parser.add_argument('--output')
 
@@ -48,12 +50,11 @@ if __name__ == '__main__':
     expanded   = {}
 
     ##-- load target
-    logging.info("Loading %", args.target)
+    logging.info("Loading %s", args.target)
     with open(args.target, 'r') as f:
         unexpanded = [x.strip() for x in f.readlines()]
 
     ##-- end load target
-
 
     ##-- load already expanded
     logging.info("Loading %s", args.output)
@@ -83,14 +84,19 @@ if __name__ == '__main__':
             else:
                 expanded[current] = response.status_code
         except Exception as err:
+            cmd    = 'say -v Moira -r 50 "Error"'
+            system(cmd)
             expanded[current] = f"400.1 : {str(err)}"
             logging.info("Error: %s", str(err))
+
 
         logging.debug("Response for %s : %s", current, expanded[current])
         with open(args.output, 'a') as f:
             f.write("{}{}{}\n".format(current, args.separator, expanded[current]))
 
         count += 1
-        sleep(2)
+        sleep(args.wait)
 
     logging.info("Finished")
+    cmd    = 'say -v Moira -r 50 "Finished"'
+    system(cmd)

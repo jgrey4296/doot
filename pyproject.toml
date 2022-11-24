@@ -25,9 +25,7 @@ dependencies   = [
 ]
 
 [project.optional-dependencies]
-test = [
-    "pytest > 7.0.0",
-]
+test = ["pytest > 7.0.0"]
 
 [project.urls]
 homepage      = "https://github.com/jgrey4296/acab"
@@ -35,6 +33,7 @@ documentation = "https://readthedocs.org/acab"
 repository    = "https://github.com/jgrey4296/acab"
 changelog     = "https://github.com/jgrey4296/acab/blob/master/CHANGELOG.md"
 
+##-- scripts
 [project.scripts]
 bkmk                   = "bkmkorg.utils.entry_points_list:main"
 # describers:
@@ -90,12 +89,18 @@ bkmk-bot-stub          = "bkmkorg.bots.bibtex_stubber:main"
 [project.entry-points."nothing"]
 # tomatoes      = "spam:main_tomatoes"
 
+##-- end scripts
+
+##-- pytest
 [tool.pytest.ini_options]
 log_cli       = false
 log_level     = "INFO"
 log_cli_level = "WARN"
 log_format    = "%(levelname)s %(name)s : %(message)s"
 
+##-- end pytest
+
+##-- build system
 [build-system]
 requires = [
          "setuptools >= 63.1.0",
@@ -117,8 +122,9 @@ bkmkorg = []
 
 [tool.setuptools.exclude-package-data]
 
+##-- end build system
 
-
+##-- pyright
 [tool.pyright]
 # strict = acab.*
 verboseOutput               = true
@@ -136,6 +142,9 @@ reportUnknownVariableType   = "warning"
 reportUnnecessaryCast       = "information"
 reportUnnecessaryIsInstance = "warning"
 
+##-- end pyright
+
+##-- pylint
 [tool.pylint.main]
 # Analyse import fallback blocks. This can be used to support both Python 2 and 3
 # compatible code, which means that the block might have code that exists only in
@@ -657,3 +666,5 @@ ignored-argument-names = "_.*"
 # List of qualified module names which can have objects that can redefine
 # builtins.
 redefining-builtins-modules = ["six.moves", "past.builtins", "future.builtins", "builtins", "io"]
+
+##-- end pylint

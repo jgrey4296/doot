@@ -37,7 +37,7 @@ def process_db(db) -> List[str]:
     """ Extract all authors mentioned """
     result     = set()
     count      = 0
-    proportion = int(len(db.entries) / 10)
+    proportion = int(len(db.entries) / 10) + 1
 
     for i, entry in enumerate(db.entries):
         # Log progress
@@ -57,7 +57,8 @@ def main():
     args = parser.parse_args()
 
     args.output = pl.Path(args.output).expanduser().resolve()
-    assert(args.target.exists()
+    args.target = pl.Path(args.target).expanduser().resolve()
+    assert(args.target.exists())
 
     logging.info("Targeting: %s", args.target)
     logging.info("Output to: %s", args.output)

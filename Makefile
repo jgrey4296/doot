@@ -1,3 +1,4 @@
+##-- vars
 SHELL		:= /usr/local/bin/bash
 LOGLEVEL	:= WARNING
 
@@ -31,10 +32,12 @@ ifneq (${fpat}, )
 	TEST_FILE_PAT := ${fpat}
 endif
 
+##-- end vars
 
 .PHONY: help Makefile all pylint clean browse long test dtest faily repl vrepl repld check
 
-# Documentation ###############################################################
+##-- documentation
+
 # Put it first so that "make" without argument is like "make help".
 help:
 	@$(SPHINXBUILD) -M help "$(DOCSOURCEDIR)" "$(DOCBUILDDIR)" $(SPHINXOPTS) $(O)
@@ -49,11 +52,11 @@ browse:
 
 docs: sphinx browse
 
+##-- end documentation
 
-# Rest ########################################################################
 all: verbose long
 
-# Building ####################################################################
+##-- building
 nodep:
 	pip install --no-deps -e .
 
@@ -79,7 +82,9 @@ freeze:
 	bash -ic "conda list --export > ./conda_env.txt"
 	pip list --format=freeze > ./requirements.txt
 
-# Testing #####################################################################
+##-- end building
+
+##-- testing
 long:
 	python -m unittest discover -s ${TEST_TARGET} -p "*_tests.py"
 
@@ -101,9 +106,9 @@ faily:
 	python -m unittest discover -v -f -s ${TEST_TARGET} ${TEST_PAT} -t ${PY_TOP} -p ${TEST_FILE_PAT}
 
 
+##-- end testing
 
-
-# Reports #####################################################################
+##-- reports
 check:
 	@echo "Shell	= " ${SHELL}
 	@echo "Top		= " ${PY_TOP}
@@ -123,7 +128,10 @@ class_report:
 export_env:
 	conda env export --from-history > acab.yaml
 
-# Linting #####################################################################
+
+##-- end reports
+
+##-- linting
 pylint:
 	@echo "Linting"
 	pylint --rcfile=./.pylintrc ${PY_TOP} --ignore=${ig} --ignore-patterns=${igpat}
@@ -132,11 +140,13 @@ elint:
 	@echo "Linting -E"
 	pylint --rcfile=./.pylintrc ${PY_TOP} --ignore=${ig} --ignore-patterns=${igpat} -E
 
-# Cleaning ####################################################################
 init:
 	@echo "Auto-creating empty __init__.py's"
 	find ${PY_TOP} -type d -print0 | xargs -0 -I {} touch "{}/__init__.py"
 
+##-- end linting
+
+##-- cleaning
 clean:
 	@echo "Cleaning"
 	@$(SPHINXBUILD) -M clean "$(DOCSOURCEDIR)" "$(DOCBUILDDIR)" $(SPHINXOPTS) $(O)
@@ -151,3 +161,5 @@ else
 	-rm -r ${CACHES}
 endif
 	-rm -rf ${BUILD}
+
+##-- end cleaning
