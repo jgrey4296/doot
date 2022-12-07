@@ -14,6 +14,7 @@ classifiers     = [
     "Programming Language :: Python :: 3.10"
 ]
 
+
 dependencies   = [
     # "acab_config @ git+https://github.com/jgrey4296/acab_config.git@0.0.1",
     "Mastodon.py >= 1.5.1",
@@ -35,53 +36,55 @@ changelog     = "https://github.com/jgrey4296/acab/blob/master/CHANGELOG.md"
 
 ##-- scripts
 [project.scripts]
-bkmk                   = "bkmkorg.utils.entry_points_list:main"
+bkmk                   = "bkmkorg.__main__:main"
 # describers:
-bkmk-bib-cmp           = "bkmkorg.describers.bibtex.compare:main"
-bkmk-bib-desc          = "bkmkorg.describers.bibtex.describer:main"
-bkmk-bib-check         = "bkmkorg.describers.bibtex.file_check:main"
-bkmk-bib-graph         = "bkmkorg.describers.bibtex.graphing:main"
-bkmk-bib-timeline      = "bkmkorg.describers.bibtex.timelines:main"
-bkmk-bib-authors       = "bkmkorg.describers.bibtex.author_extract:main"
-bkmk-bib-index         = "bkmkorg.describers.bibtex.index:main"
-bkmk-bib-compile       = "bkmkorg.describers.bibtex.compile:main"
+bkmk-bib-cmp           = "bkmkorg.cli.bibtex.compare:main"
+bkmk-bib-desc          = "bkmkorg.cli.bibtex.describer:main"
+bkmk-bib-check         = "bkmkorg.cli.bibtex.file_check:main"
+bkmk-bib-graph         = "bkmkorg.cli.bibtex.graphing:main"
+bkmk-bib-timeline      = "bkmkorg.cli.bibtex.timelines:main"
+bkmk-bib-authors       = "bkmkorg.cli.bibtex.author_extract:main"
+bkmk-bib-index         = "bkmkorg.cli.bibtex.index:main"
+bkmk-bib-compile       = "bkmkorg.cli.bibtex.compile:main"
 
-bkmk-pdf-summarise     = "bkmkorg.describers.pdf.folder_summary:main"
-bkmk-pdf-tag-summarise = "bkmkorg.describers.pdf.tag_summary:main"
-bkmk-pdf-metadata      = "bkmkorg.describers.pdf.meta_data_summary:main"
-bkmk-pdf-validity      = "bkmkorg.describers.pdf.validity_check:main"
+bkmk-pdf-summarise     = "bkmkorg.cli.pdf.folder_summary:main"
+bkmk-pdf-tag-summarise = "bkmkorg.cli.pdf.tag_summary:main"
+bkmk-pdf-metadata      = "bkmkorg.cli.pdf.meta_data_summary:main"
+bkmk-pdf-validity      = "bkmkorg.cli.pdf.validity_check:main"
 
-bkmk-tag-index         = "bkmkorg.describers.tag.indexer:main"
-bkmk-tag-totals        = "bkmkorg.describers.tag.totals:main"
-bkmk-tag-graph         = "bkmkorg.describers.tag.graph:main"
+bkmk-tag-index         = "bkmkorg.cli.tag.indexer:main"
+bkmk-tag-totals        = "bkmkorg.cli.tag.totals:main"
+bkmk-tag-graph         = "bkmkorg.cli.tag.graph:main"
 
-bkmk-twit-index        = "bkmkorg.describers.twitter.indexer:main"
-bkmk-tag-grep          = "bkmkorg.describers.twitter.tag_grep:main"
+bkmk-twit-index        = "bkmkorg.cli.twitter.indexer:main"
+bkmk-tag-grep          = "bkmkorg.cli.twitter.tag_grep:main"
+
 # filters:
-bkmk-bib-clean         = "bkmkorg.filters.bibtex.clean:main"
-bkmk-tag-clean         = "bkmkorg.filters.tag.clean:main"
-bkmk-tag-graph-query   = "bkmkorg.filters.tag.graph_query:main"
+bkmk-bib-clean         = "bkmkorg.cli.bibtex.clean:main"
+bkmk-tag-clean         = "bkmkorg.cli.tag.clean:main"
+bkmk-tag-graph-query   = "bkmkorg.cli.tag.graph_query:main"
+
 # integrators:
-bkmk-twit-merge        = "bkmkorg.integrators.twitter.unify:main"
-bkmk-merge             = "bkmkorg.integrators.bookmark.unify:main"
-bkmk-sql               = "bkmkorg.integrators.bookmark.sql_unify:main"
-bkmk-bib-merge         = "bkmkorg.integrators.bibtex.unify:main"
-bkmk-backup            = "bkmkorg.integrators.backup.unify:main"
-bkmk-adb-backup        = "bkmkorg.integrators.backup.adb_unify:main"
-bkmk-noscript          = "bkmkorg.integrators.noscript.merge:main"
+bkmk-twit-merge        = "bkmkorg.cli.twitter.unify:main"
+bkmk-merge             = "bkmkorg.cli.bookmark.unify:main"
+bkmk-sql               = "bkmkorg.cli.bookmark.sql_unify:main"
+bkmk-bib-merge         = "bkmkorg.cli.bibtex.unify:main"
+bkmk-backup            = "bkmkorg.cli.backup.unify:main"
+bkmk-adb-backup        = "bkmkorg.cli.backup.adb_unify:main"
+bkmk-noscript          = "bkmkorg.cli.noscript.merge:main"
+
 # splitters:
-bkmk-split             = "bkmkorg.splitters.bookmark.split:main"
-bkmk-to-txt            = "bkmkorg.splitters.bookmark.bkmk_to_text:main"
-bkmk-split-authors     = "bkmkorg.utils.author_similarity:main"
+bkmk-split             = "bkmkorg.cli.bookmark.split:main"
+bkmk-to-txt            = "bkmkorg.cli.bookmark.bkmk_to_text:main"
 
 #download
-bkmk-twit              = "bkmkorg.io.twitter.automator:main"
+bkmk-twit              = "bkmkorg.cli.twitter.automator:main"
 
 # bots
-bkmk-bot-time          = "bkmkorg.bots.time_announce:main"
-bkmk-bot-bibtex        = "bkmkorg.bots.bibtex_post:main"
-bkmk-bot-image         = "bkmkorg.bots.image_post:main"
-bkmk-bot-stub          = "bkmkorg.bots.bibtex_stubber:main"
+bkmk-bot-time          = "bkmkorg.cli.time_announce:main"
+bkmk-bot-bibtex        = "bkmkorg.cli.bibtex_post:main"
+bkmk-bot-image         = "bkmkorg.cli.image_post:main"
+bkmk-bot-stub          = "bkmkorg.cli.bibtex_stubber:main"
 
 [project.gui-scripts]
 # spam-gui      = "spam:main_gui"
