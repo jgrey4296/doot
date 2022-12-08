@@ -2,12 +2,17 @@
 ##-- imports
 from os import system
 import pathlib as pl
-from configparser import ConfigParser
 from datetime import datetime
 import argparse
 from importlib.resources import files
 from bkmkorg import DEFAULT_CONFIG, DEFAULT_BOTS
 
+try:
+    # For py 3.11 onwards:
+    import tomllib as toml
+except ImportError:
+    # Fallback to external package
+    import toml
 ##-- end imports
 
 ##-- data
@@ -23,8 +28,7 @@ args = parser.parse_args()
 ##-- end argparse
 
 def main():
-    config = ConfigParser(allow_no_value=True, delimiters='=')
-    config.read(pl.Path(args.config).expanduser().resolve())
+    config = toml.load(args.config)
 
     now               = datetime.now()
     now_str           = now.strftime(config['TIME']['format'])

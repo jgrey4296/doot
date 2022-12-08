@@ -9,9 +9,14 @@ import logging as root_logger
 import pathlib as pl
 import re
 import subprocess
-from configparser import ConfigParser
 from importlib.resources import files
 from random import choice
+try:
+    # For py 3.11 onwards:
+    import tomllib as toml
+except ImportError:
+    # Fallback to external package
+    import toml
 
 import twitter
 from bkmkorg import DEFAULT_BOTS, DEFAULT_CONFIG
@@ -46,15 +51,13 @@ args     = parser.parse_args()
 ##-- end argparse
 
 ##-- config
-config   = ConfigParser(allow_no_value=True, delimiters='=')
-# Read the main config
-config.read(pl.Path(args.config))
+config   = toml.load(pl.Path(args.config))
 # Then read in secrets
-config.read(data_path / config['DEFAULT']['secrets_loc'])
+secrets = toml.load(data_path / config['DEFAULT']['secrets_loc'])
 
 TEMP_LOC            = pl.Path(config['PHOTO']['TEMP_LOC'])
 dcim_whitelist_path = data_path / config['PHOTO']['WHITE_LIST']
-conversion_args     = config['PHOTO']['convert_args'].split(" ")
+conversion_args     = config['PHOTO']['convert_args']
 convert_cmd         = "convert"
 
 RESOLUTION_BLACKLIST = data_path / config['PHOTO']['resolution_blacklist']
@@ -150,8 +153,8 @@ def post_to_mastodon(selected_file, msg, mastodon):
         logging.warning("Mastodon Post Failed: %s", str(err))
 
 def main():
-    twit     = setup_twitter(config)
-    mastodon = setup_mastodon(config)
+    twit     = setup_twitter(secrets)
+    mastodon = setup_mastodon(secrets)
 
     with open(dcim_whitelist_path, 'r') as f:
         whitelist = [x.strip() for x in f.readlines()]

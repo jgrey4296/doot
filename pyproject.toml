@@ -69,8 +69,8 @@ bkmk-twit-merge        = "bkmkorg.cli.twitter.unify:main"
 bkmk-merge             = "bkmkorg.cli.bookmark.unify:main"
 bkmk-sql               = "bkmkorg.cli.bookmark.sql_unify:main"
 bkmk-bib-merge         = "bkmkorg.cli.bibtex.unify:main"
-bkmk-backup            = "bkmkorg.cli.backup.unify:main"
-bkmk-adb-backup        = "bkmkorg.cli.backup.adb_unify:main"
+bkmk-backup            = "bkmkorg.cli.files.unify:main"
+bkmk-adb-backup        = "bkmkorg.cli.android.adb_unify:main"
 bkmk-noscript          = "bkmkorg.cli.noscript.merge:main"
 
 # splitters:
@@ -81,10 +81,10 @@ bkmk-to-txt            = "bkmkorg.cli.bookmark.bkmk_to_text:main"
 bkmk-twit              = "bkmkorg.cli.twitter.automator:main"
 
 # bots
-bkmk-bot-time          = "bkmkorg.cli.time_announce:main"
-bkmk-bot-bibtex        = "bkmkorg.cli.bibtex_post:main"
-bkmk-bot-image         = "bkmkorg.cli.image_post:main"
-bkmk-bot-stub          = "bkmkorg.cli.bibtex_stubber:main"
+bkmk-bot-time          = "bkmkorg.cli.bots.time_announce:main"
+bkmk-bot-bibtex        = "bkmkorg.cli.bibtex.post:main"
+bkmk-bot-image         = "bkmkorg.cli.photo.image_post:main"
+bkmk-bot-stub          = "bkmkorg.cli.bibtex.stubber:main"
 
 [project.gui-scripts]
 # spam-gui      = "spam:main_gui"
@@ -671,3 +671,31 @@ ignored-argument-names = "_.*"
 redefining-builtins-modules = ["six.moves", "past.builtins", "future.builtins", "builtins", "io"]
 
 ##-- end pylint
+
+##-- doit
+[tool.doit]
+verbosity = 2
+build_dir = "build"
+
+[tool.doit.commands.test]
+pattern  = "*_tests.py"
+verbose  = false
+failfast = false
+
+[tool.doit.commands.lint]
+executable = "pylint"
+errors     = false
+outfile    = "package.lint"
+outfmt     = ""
+
+# [tool.doit.tasks.{task}]
+
+##-- end doit
+
+##-- sphinx
+[tool.sphinx]
+builder   = "html"
+docs_dir  = "docs"
+verbosity = 0
+
+##-- end sphinx

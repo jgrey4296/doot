@@ -6,7 +6,6 @@ import abc
 import argparse
 import pathlib as pl
 import logging as logmod
-from configparser import ConfigParser
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from datetime import datetime
@@ -25,6 +24,12 @@ from bkmkorg import DEFAULT_BOTS, DEFAULT_CONFIG
 from bkmkorg.bibtex.writer import JGBibTexWriter
 from bkmkorg.files.collect import get_data_files
 
+try:
+    # For py 3.11 onwards:
+    import tomllib as toml
+except ImportError:
+    # Fallback to external package
+    import toml
 ##-- end imports
 
 ##-- data
@@ -63,12 +68,11 @@ parser.add_argument('--config', default=data_bots)
 
 args = parser.parse_args()
 
-config   = ConfigParser(allow_no_value=True, delimiters='=')
-config.read(pl.Path(args.config).expanduser().resolve())
+config   = toml.load(pl.Path(args.config).expanduser().resolve())
 
 target_dir = pl.Path(args.source or config['BIBTEX']['stub_source']).expanduser().resolve()
 stub_file  = pl.Path(args.target or config['BIBTEX']['stub_target']).expanduser().resolve()
-exts       = config['BIBTEX']['stub_exts'].split(" ")
+exts       = config['BIBTEX']['stub_exts']
 
 stub_t     = Template("@misc{stub_$id,\n  author = {},\n  title = {$title},\n  year = {$year},\n  file = {$file}\n}")
 

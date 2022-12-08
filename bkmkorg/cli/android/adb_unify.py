@@ -9,7 +9,6 @@ import argparse
 import logging as logmod
 import pathlib as pl
 import subprocess
-from configparser import ConfigParser
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from functools import partial
@@ -25,6 +24,13 @@ from uuid import UUID, uuid1
 from weakref import ref
 
 from bkmkorg import DEFAULT_CONFIG, DEFAULT_SECRETS
+
+try:
+    # For py 3.11 onwards:
+    import tomllib as toml
+except ImportError:
+    # Fallback to external package
+    import toml
 ##-- end imports
 
 ##-- data
@@ -216,8 +222,7 @@ def main():
         logging.info("Option Missing: --to-device or --from-device")
         exit()
 
-    config = ConfigParser(allow_no_value=True, delimiters='=')
-    config.read(args.config)
+    config = toml.load(args.config)
     # device_id = "{}:{}".format(config['ADB']['ipaddr'], config['ADB']['PORT'])
     device_id = args.id
     # Walk the library directory

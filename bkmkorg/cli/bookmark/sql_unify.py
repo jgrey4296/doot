@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import abc
 import argparse
-import configparser
 import logging as logmod
 import pathlib as pl
 import tempfile
@@ -29,6 +28,12 @@ from weakref import ref
 import pony.orm as pony
 from bkmkorg.bookmarks import collection as BC
 
+try:
+    # For py 3.11 onwards:
+    import tomllib as toml
+except ImportError:
+    # Fallback to external package
+    import toml
 ##-- end imports
 
 ##-- logging
@@ -139,9 +144,7 @@ def main():
     pony.set_sql_debug(args.verbose)
     ##-- end debugging
 
-    config = configparser.ConfigParser()
-    with open(config_file, 'r') as f:
-              config.read_file(f)
+    config         = toml.load(config_file)
     firefox : Path = pl.Path(config['BOOKMARK']["firefox"]).expanduser().resolve()
     assert(firefox.exists()), str(firefox)
     dbs = []

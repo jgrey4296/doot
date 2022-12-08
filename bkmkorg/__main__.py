@@ -141,8 +141,9 @@ class BkmkCommand(cmd.Cmd):
 
 
 def main():
-    repl = BkmkCommand()
-    repl.cmdloop()
+    print('TODO')
+    # repl = BkmkCommand()
+    # repl.cmdloop()
 
 
 

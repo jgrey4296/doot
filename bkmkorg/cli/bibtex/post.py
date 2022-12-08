@@ -8,7 +8,6 @@ import json
 import pathlib as pl
 import logging as root_logger
 import subprocess
-from configparser import ConfigParser
 from importlib.resources import files
 from random import choice
 
@@ -20,6 +19,13 @@ from bkmkorg import DEFAULT_BOTS, DEFAULT_CONFIG
 from bkmkorg.mastodon.api_setup import setup_mastodon
 from bkmkorg.twitter.api_setup import setup_twitter
 from bkmkorg.bibtex import parsing as BU
+
+try:
+    # For py 3.11 onwards:
+    import tomllib as toml
+except ImportError:
+    # Fallback to external package
+    import toml
 ##-- end imports
 
 ##-- data
@@ -48,11 +54,9 @@ parser.add_argument('-c', '--config', default=data_bots,
 args     = parser.parse_args()
 
 ##-- config
-config   = ConfigParser(allow_no_value=True, delimiters='=')
-# Read the main config
-config.read(pl.Path(args.config).expanduser().resolve())
+config   = toml.load(args.config)
 # Then read in secrets
-config.read(data_path / config['DEFAULT']['secrets_loc'])
+secrets = toml.load(data_path / config['DEFAULT']['secrets_loc'])
 
 MAX_ATTEMPTS = int(config['DEFAULT']['MAX_ATTEMPTS'])
 TWEET_LEN    = int(config['DEFAULT']['tweet_len'])
@@ -84,8 +88,8 @@ def select_entry(db, already_tweeted, filename):
     # logging.info("Selecting Entry")
     entry = None
     tried_alts = 0
-    required_keys = config['BIBTEX_KEYS']['required'].split(" ")
-    one_of_keys   = config['BIBTEX_KEYS']['one_of'].split(" ")
+    required_keys = config['BIBTEX_KEYS']['required']
+    one_of_keys   = config['BIBTEX_KEYS']['one_of']
 
     while entry is None and tried_alts < len(db.entries) and tried_alts < MAX_ATTEMPTS:
         poss_entry = choice(db.entries)
@@ -169,8 +173,8 @@ def main():
 
     id_str, tweet_text = format_tweet(entry)
 
-    twit     = setup_twitter(config)
-    mastodon = setup_mastodon(config)
+    twit     = setup_twitter(secrets)
+    mastodon = setup_mastodon(secrets)
 
     success = False
     try:

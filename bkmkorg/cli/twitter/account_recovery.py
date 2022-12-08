@@ -5,11 +5,11 @@
 """
 ##-- imports
 import argparse
-import configparser
 import json
 import logging as root_logger
 import time
 from importlib.resources import files
+import pathlib as pl
 from os import listdir
 from os.path import (abspath, exists, expanduser, isdir, isfile, join, split,
                      splitext)
@@ -19,13 +19,20 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 
 import requests
 import twitter
-from bkmkorg import DEFAULT_BOTS, DEFAULT_CONFIG
+from bkmkorg import DEFAULT_BOTS, DEFAULT_CONFIG, DEFAULT_SECRETS
 from bkmkorg.twitter.user_ids import get_user_identities
 
+try:
+    # For py 3.11 onwards:
+    import tomllib as toml
+except ImportError:
+    # Fallback to external package
+    import toml
 ##-- end imports
 
-data_path = files(f"bkmkorg.{DEFAULT_CONFIG}")
-data_bots = data_path.joinpath(DEFAULT_BOTS)
+data_path    = files(f"bkmkorg.{DEFAULT_CONFIG}")
+data_bots    = data_path / DEFAULT_BOTS
+data_secrest = data_path / DEFAULT_SECRETS
 
 ##-- logging
 LOGLEVEL = root_logger.DEBUG
@@ -46,20 +53,13 @@ parser.add_argument('--target', help="the json file with account information")
 parser.add_argument('--output', help="the output file")
 ##-- end argparser
 
-
-##############################
-DEFAULT_CONFIG = "secrets.config"
-
-
 def main():
     args = parser.parse_args()
-    args.config = abspath(expanduser(args.config))
-    args.target = abspath(expanduser(args.target))
-    args.output = abspath(expanduser(args.output))
+    args.config = pl.Path(args.config).expanduser().resolve()
+    args.target = pl.Path(args.target).expanduser().resolve()
+    args.output = pl.Path(args.output).expanduser().resolve()
 
-    config = configparser.ConfigParser()
-    with open(args.config, 'r') as f:
-        config.read_file(f)
+    config = toml.read(args.config)
     ####################
     # INIT twitter object
     logging.info("---------- Initialising Twitter")

@@ -7,7 +7,6 @@ Automate twitter archiving
 from __future__ import annotations
 
 import argparse
-import configparser
 import datetime
 import json
 import logging as root_logger
@@ -32,6 +31,12 @@ from bkmkorg.twitter.data.todo_list import TweetTodoFile
 
 import twitter
 
+try:
+    # For py 3.11 onwards:
+    import tomllib as toml
+except ImportError:
+    # Fallback to external package
+    import toml
 ##-- end imports
 
 ##-- logging
@@ -166,11 +171,8 @@ def main():
 
     targets          = setup(args)
 
-    config = configparser.ConfigParser(allow_no_value=True, delimiters='=')
-    with open(args.config, 'r') as f:
-        config.read_file(f)
-
-    twit = setup_twitter(config)
+    config = toml.load(args.config)
+    twit   = setup_twitter(config)
 
     logging.info("---------- Setup Complete")
     logging.info("-------------------- Extracting Library Details")
