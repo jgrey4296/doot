@@ -3,7 +3,7 @@ MAX_ATTEMPTS  = 20
 tweet_len     = 280
 toot_len      = 480
 twitter_sleep = true
-secrets_loc   = "secrets.config"
+secrets_loc   = "secrets.toml"
 
 [PHOTO]
 WHITE_LIST           = "dcim_whitelist"
@@ -12,7 +12,7 @@ convert_args         = ["-define", "jpeg:extent=4800KB"]
 resolution_blacklist = "resolution_blacklist"
 
 [BIBTEX]
-lib         = ~"/github/writing/resources/bibliography"
+lib         = "~/github/writing/resources/bibliography"
 success_log = "bibtex_post.log"
 fail_log    = "rejected_tweets.log"
 blacklist   = "bibtex_blacklist"
@@ -26,7 +26,7 @@ one_of   = ["doi", "url", "isbn"]
 
 [TIME]
 # Double % to handle interpolation
-format = "%%I:%%M %%p"
+format = "%I:%M %p"
 cmd    = "say -v Moira -r 50 \"The Time is {}\""
 
 

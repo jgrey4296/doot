@@ -16,7 +16,7 @@ logging = root_logger.getLogger(__name__)
 
 def setup_twitter(config):
     logging.info("---------- Initialising Twitter")
-    should_sleep = config['DEFAULT']['SLEEP'] == "True"
+    should_sleep = config['DEFAULT']['sleep'] == "True"
     twit = tw.Api(consumer_key=config['TWITTER']['consumerKey'],
                   consumer_secret=config['TWITTER']['consumerSecret'],
                   access_token_key=config['TWITTER']['accessToken'],

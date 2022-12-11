@@ -30,7 +30,7 @@ except ImportError:
 
 ##-- data
 data_path = files(f"bkmkorg.{DEFAULT_CONFIG}")
-data_bots= data_path / DEFAULT_BOTS
+data_bots = data_path / DEFAULT_BOTS
 ##-- end data
 
 ##-- logging
@@ -108,7 +108,7 @@ def select_entry(db, already_tweeted, filename):
     return entry
 
 def maybe_blacklist_file(db, file_path:pl.Path, already_tweeted):
-    one_of_keys     = config['BIBTEX_KEYS']['one_of'].split(" ")
+    one_of_keys     = config['BIBTEX_KEYS']['one_of']
     has_fields      = lambda poss_entry: any([x in poss_entry for x in one_of_keys])
     not_tweeted_yet = lambda poss_entry: poss_entry['ID'] not in already_tweeted
 
