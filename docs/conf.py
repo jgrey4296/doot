@@ -12,18 +12,18 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../doit_utils'))
+sys.path.insert(0, os.path.abspath('../doot'))
 
 import warnings
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    import doit_utils
+    import doot
     acab.setup()
 
 # -- Project information -----------------------------------------------------
 
-project   = 'doit_utils'
+project   = 'doot'
 copyright = "2022-12-09"
 author    = 'John Grey'
 

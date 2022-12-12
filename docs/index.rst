@@ -1,4 +1,4 @@
-Welcome to doit_utils's documentation!
+Welcome to doot's documentation!
 ================================
 
 .. toctree::
@@ -7,7 +7,7 @@ Welcome to doit_utils's documentation!
 
 .. autosummary::
    :recursive:
-   :toctree: _generated_doit_utils
+   :toctree: _generated_doot
 
    acab
 
