@@ -24,3 +24,4 @@ def task_jekyll_serve():
 
 def task_jekyll_build():
     pass
+

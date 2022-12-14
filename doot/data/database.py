@@ -11,6 +11,13 @@ from doot.utils.general import build_cmd
 
 ##-- end imports
 
-def task_json_report():
-    # generate json schema
+def task_mysql2sqlite():
+    """ file conversion from mysql to sqlite """
+    pass
+
+
+def task_database_report():
+    # report database tables
+    # .schema .fullschema
+    # .table
     pass

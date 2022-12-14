@@ -8,8 +8,10 @@ from doot import build_dir, datatoml
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
+from doot.utils.task_group import TaskGroup
 
 ##-- end imports
+
 
 def task_cargo_check():
     return {
@@ -83,3 +85,5 @@ def task_cargo_version():
         "actions" : [],
         "file_dep" : "Cargo.toml",
     }
+
+

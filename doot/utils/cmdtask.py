@@ -3,6 +3,7 @@ from __future__ import annotations
 import pathlib as pl
 import shutil
 
+from doot.utils.general import build_cmd
 ##-- end imports
 
 class CmdTask:

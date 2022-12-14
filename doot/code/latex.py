@@ -10,7 +10,7 @@ from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
 
 ##-- end imports
-
+# pdflatex -draftmode
 
 def task_latex_check():
     pass

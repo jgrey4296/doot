@@ -88,30 +88,30 @@ reportUnnecessaryIsInstance = "warning"
 
 ##-- end pyright
 
-##-- doit
-[tool.doit]
+##-- doot
+[tool.doot]
 verbosity = 2
 build_dir = "build"
 
-[tool.doit.commands]
+[tool.doot.commands]
 
-[tool.doit.commands.test]
+[tool.doot.commands.test]
 pattern  = "*_tests.py"
 verbose  = false
 failfast = false
 
-[tool.doit.commands.lint]
+[tool.doot.commands.lint]
 executable = "pylint"
 errors     = false
 outfile    = "package.lint"
 outfmt     = ""
 
-# [tool.doit.tasks.{task}]
+# [tool.doot.tasks.{task}]
 
-##-- end doit
+##-- end doot
 
 ##-- sphinx
-[tool.sphinx]
+[tool.doot.sphinx]
 builder   = "html"
 docs_dir  = "docs"
 verbosity = 0

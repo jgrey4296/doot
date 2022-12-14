@@ -14,7 +14,7 @@ def setup_py(path="pyproject.toml"):
     datatoml    = TomlAccessor.load(path)
     src_dir     = pl.Path(datatoml.project.name)
     build_dir   = pl.Path(datatoml.tool.doit.build_dir)
-    check_build = CheckDir(build_dir, basename="checkdir::build")
+    check_build = CheckDir(paths=[build_dir], name="build")
     return datatoml
 
 def setup_rust(path="Cargo.toml"):
@@ -22,7 +22,7 @@ def setup_rust(path="Cargo.toml"):
     datatoml    = TomlAccessor.load(path)
     src_dir     = pl.Path(datatoml.package.name)
     build_dir   = pl.Path(datatoml.tool.doit.build_dir)
-    check_build = CheckDir(build_dir, basename="checkdir::build")
+    check_build = CheckDir(paths=[build_dir], name="build")
     return datatoml
 
 def setup_agnostic(path="doot.toml"):
