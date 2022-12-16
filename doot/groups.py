@@ -33,7 +33,7 @@ logging = logmod.getLogger(__name__)
 
 __all__ = [
     "pip_group", "jekyll_group", "sphinx_group",
-    "latex_group", "gtags_group",
+    "latex_group", "gtags_group", "git_group",
 ]
 
 ##-- defaults
@@ -105,5 +105,6 @@ gtags_group = TaskGroup("gtags_group",
 from doot.vcs import git_tasks
 git_group = TaskGroup("git group",
                       git_tasks.GitLogTask(),
+                      git_tasks.check_reports,
                       )
 ##-- end git

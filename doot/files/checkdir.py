@@ -18,7 +18,7 @@ class CheckDir:
         self.default_spec      = { "basename" : f"_checkdir::{name}" }
 
     def uptodate(self):
-        return all([x.exists() for x in self.args])
+        return all([x.exists() for x in self.paths])
 
     def mkdir(self):
         for x in self.paths:

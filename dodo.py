@@ -20,6 +20,7 @@ check_build = doot.check_build
 
 DOIT_CONFIG = {
     "default_tasks" : [],
+    "action_string_formatting" : "new",
     }
 
 ##-- end config
