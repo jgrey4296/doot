@@ -3,7 +3,7 @@ from __future__ import annotations
 import pathlib as pl
 import shutil
 
-from doot.files.force_clean import force_clean_targets
+from doot.files.clean_dirs import clean_target_dirs
 ##-- end imports
 
 class CheckDir:
@@ -15,7 +15,7 @@ class CheckDir:
         self.create_doit_tasks = self.build
         self.paths             = [pl.Path(x) for x in paths or [] ]
         self.kwargs            = kwargs
-        self.default_spec      = { "basename" : f"checkdir::{name}" }
+        self.default_spec      = { "basename" : f"_checkdir::{name}" }
 
     def uptodate(self):
         return all([x.exists() for x in self.args])
@@ -35,7 +35,7 @@ class CheckDir:
             "actions"  : [ self.mkdir ],
             "targets"  : self.paths,
             "uptodate" : [ self.uptodate ],
-            "clean"    : [ force_clean_targets],
+            "clean"    : [ clean_target_dirs ],
         })
         return task_desc
 

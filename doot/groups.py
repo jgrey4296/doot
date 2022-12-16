@@ -1,6 +1,6 @@
 #/usr/bin/env python3
 """
-
+Parameterless task groups
 """
 ##-- imports
 from __future__ import annotations
@@ -32,7 +32,8 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 __all__ = [
-    "pip_group"
+    "pip_group", "jekyll_group", "sphinx_group",
+    "latex_group", "gtags_group",
 ]
 
 ##-- defaults
@@ -40,58 +41,6 @@ defaults_group = TaskGroup("defaults",
 
                            )
 ##-- end defaults
-
-##-- jekyll
-from doot.builders import jekyll
-jekyll_group = TaskGroup("jekyll_group",
-                         jekyll.task_jekyll_serve,
-                         jekyll.task_jekyll_build)
-
-
-
-##-- end jekyll
-
-##-- latex
-from doot.builders import latex
-latex_group = TaskGroup("latex_group",
-                        latex.task_latex_build,
-                        latex.task_bibtex_build,
-                        latex.task_latex_docs,
-                        latex.task_latex_install_dependencies,
-                        )
-
-##-- end latex
-
-##-- pdf
-pdf_group = TaskGroup("pdf_group",
-
-                      )
-
-
-##-- end pdf
-
-##-- sphinx
-from doot.builders import sphinx
-sphinx_group = TaskGroup("sphinx_group",
-                         sphinx.task_sphinx, sphinx.task_browse)
-
-##-- end sphinx
-
-##-- python
-python_group = TaskGroup("python",
-
-                         )
-
-##-- end python
-
-##-- poetry
-from doot.builders import poetry_install as poetry
-poetry_group = TaskGroup("poetry_group",
-                         poetry.install,
-                         poetry.wheel,
-                         poetry.requirements)
-
-##-- end poetry
 
 ##-- pip
 from doot.builders import pip_install as pip
@@ -106,94 +55,55 @@ pip_group = TaskGroup("pip_group",
 
 ##-- end pip
 
-##-- conda
-conda_group = TaskGroup("conda_group",
-
-                        )
-##-- end conda
-
-##-- cargo
-from doot.builders import cargo
-cargo_group = TaskGroup("cargo_group",
-                        cargo.task_cargo_check,
-                        cargo.task_cargo_init,
-                        cargo.task_rustup,
-                        cargo.task_cargo_docs,
-                        cargo.task_cargo_help,
-                        cargo.task_cargo_debug,
-                        cargo.task_cargo_release,
-                        cargo.task_cargo_test,
-                        cargo.task_cargo_version)
-##-- end cargo
-
-##-- erlang
-erlang_group = TaskGroup("erlang_group",
-
-                        )
-##-- end erlang
-
-##-- ruby
-ruby_group = TaskGroup("ruby_group",
-
-                       )
-##-- end ruby
-
-##-- godot
-godot_group = TaskGroup("godot_group",
-
-                        )
-##-- end godot
-
-##-- gradle
-gradle_group = TaskGroup("gradle_group",
-
+##-- jekyll
+from doot.builders import jekyll as j_build
+from doot.docs import jekyll as j_doc
+jekyll_group = TaskGroup("jekyll_group",
+                         j_build.task_jekyll_serve,
+                         j_build.task_jekyll_build,
+                         j_build.task_jekyll_install,
+                         j_build.task_init_jekyll,
+                         j_build.jekyll_check_build,
+                         j_build.jekyll_check_src,
+                         j_doc.jekyll_check_posts,
+                         j_doc.jekyll_check_tags,
+                         j_doc.GenPostTask(),
+                         j_doc.GenTagsTask(),
                          )
-##-- end gradle
 
-##-- grunt
-grunt_group = TaskGroup("grunt group",
+##-- end jekyll
 
+##-- latex
+from doot.builders import latex
+latex_group = TaskGroup("latex_group",
+                        latex.task_latex_docs,
+                        latex.task_latex_install,
+                        latex.task_latex_requirements,
+                        latex.task_latex_rebuild,
                         )
-##-- end grunt
 
-##-- homebrew
-brew_group = TaskGroup("brew group",
+##-- end latex
 
-                       )
-##-- end homebrew
+##-- sphinx
+from doot.builders import sphinx
+sphinx_group = TaskGroup("sphinx_group",
+                         sphinx.SphinxDocTask(),
+                         sphinx.task_browse,
+                         sphinx.check_dir)
 
-##-- epub
-epub_group = TaskGroup("epub group",
-
-                       )
-##-- end epub
-
-##-- xml
-xml_group = TaskGroup("xml_group",
-
-                      )
-##-- end xml
-
-##-- json
-json_group = TaskGroup("json group",
-
-                       )
-##-- end json
+##-- end sphinx
 
 ##-- gtags
+from doot.data import gtags
 gtags_group = TaskGroup("gtags_group",
-
+                        gtags.task_tags_init,
+                        gtags.task_tags
                         )
 ##-- end gtags
 
-##-- plantuml
-plantuml_group = TaskGroup("plantuml_group",
-
-                           )
-##-- end plantuml
-
 ##-- git
+from doot.vcs import git_tasks
 git_group = TaskGroup("git group",
-
+                      git_tasks.GitLogTask(),
                       )
 ##-- end git

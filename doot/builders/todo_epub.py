@@ -12,7 +12,7 @@ from doot.files.ziptask import ZipTask
 
 ##-- end imports
 
-
+# TODO target into build_dir
 class EbookSplitTask:
 
     def __init__(self, ebook, target):
@@ -45,7 +45,7 @@ class EbookMakeTask:
             "actions"  : [ f"ebook-convert {self.zip} {self.target}" ],
             "targets"  : [ self.target ],
             "file_dep" : [ self.zip ],
-            "task_dep" : ["checkdir::zips", "checkdir::epub"],
+            "task_dep" : ["_checkdir::zips", "_checkdir::epub"],
         }
 
 
@@ -56,5 +56,5 @@ def task_epub_generate_manifest():
     pass
 
 ##-- dir check
-check_epub = CheckDir(paths=[build_dir / EbookMakeTask.epub_dir], name="epub", task_dep=["checkdir::build"],)
+check_epub = CheckDir(paths=[build_dir / EbookMakeTask.epub_dir], name="epub", task_dep=["_checkdir::build"],)
 ##-- end dir check

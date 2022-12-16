@@ -1,12 +1,16 @@
+#!/usr/bin/env python3
+"""
+
+"""
 ##-- imports
 from __future__ import annotations
+
 import pathlib as pl
 import shutil
-
 ##-- end imports
 
 
-def force_clean_targets(task, dryrun):
+def clean_target_dirs(task, dryrun):
     """ Clean targets, including non-empty directories
     Add to a tasks 'clean' dict value
     """

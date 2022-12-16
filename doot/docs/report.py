@@ -27,7 +27,7 @@ def task_line_report():
         "basename"  : "line-report",
         "actions"   : [ f"{find_cmd} | {line_cmd} | {sort_cmd} > {target}" ],
         "targets"   : [ target ],
-        "task_dep"  : ["_base-dircheck"],
+        "task_dep"  : ["_checkdir::build"],
         "clean"     : True,
         "verbosity" : 2,
     }

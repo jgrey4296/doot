@@ -1,0 +1,7 @@
+---
+layout: tag
+title:  {tag}
+tag:    {tag}
+permalink: /tags/{tag}/
+sitemap: false
+---

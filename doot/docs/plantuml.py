@@ -11,6 +11,7 @@ from doot.utils.general import build_cmd
 
 ##-- end imports
 
+# TODO target into build_dir
 def task_plantuml_json():
     """
     Generate uml diagrams from json

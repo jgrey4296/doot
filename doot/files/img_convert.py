@@ -94,5 +94,5 @@ class ImgConvertTask:
 
 
 ##-- dir check
-check_pdfs = CheckDir(paths=[build_dir / ImgConvertTask.pdf_dir], name="pdfs", task_dep=["checkdir::build"],)
+check_pdfs = CheckDir(paths=[build_dir / ImgConvertTask.pdf_dir], name="pdfs", task_dep=["_checkdir::build"],)
 ##-- end dir check

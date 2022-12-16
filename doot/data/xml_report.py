@@ -18,6 +18,8 @@ from doot.utils.general import build_cmd
 # https://github.com/tefra/xsdata-plantuml
 # https://python-jsonschema.readthedocs.io/en/stable/
 
+# TODO target into build_dir
+
 def task_xml_install():
     pass
 

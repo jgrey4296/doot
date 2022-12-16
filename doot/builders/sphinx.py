@@ -9,30 +9,40 @@ from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
 from doot.utils.task_group import TaskGroup
+from doot.files.clean_dirs import clean_target_dirs
 
 ##-- end imports
+sphinx_dir = build_dir / "sphinx"
+
+__all__ = [
+        "check_dir", "SphinxDocTask", "task_browse",
+
+]
+
+##-- dir check
+check_dir = CheckDir(paths=[sphinx_dir ], name="sphinx", task_dep=["_checkdir::build"])
+##-- end dir check
 
 class SphinxDocTask:
 
-    sphinx_dir = "sphinx"
 
-    def __init__(self, name="default", **kwargs):
+
+    def __init__(self):
         self.create_doit_tasks = self.build
-        pass
 
     def build(self) -> dict:
-        """:: Task definition """
-        sphinx         = datatoml['tool']['sphinx']
-        docs_dir       = sphinx['docs_dir']
+        """:: Build sphinx documentation """
+        sphinx         = datatoml.tool.doot.sphinx
+        docs_dir       = pl.Path(sphinx.docs_dir)
         docs_build_dir = build_dir / docs_dir
 
         cmd  = "sphinx"
-        args = ['-b', sphinx['builder'],
+        args = ['-b', sphinx.builder,
                 docs_dir,
                 docs_build_dir,
                 ]
 
-        match sphinx['verbosity']:
+        match sphinx.verbosity:
             case x if x > 0:
                 args += ["-v" for i in range(x)]
             case x if x == -1:
@@ -41,9 +51,12 @@ class SphinxDocTask:
                 args.append("-Q")
 
         return {
+            "basename" : "sphinx::build",
             "actions"  : [ build_cmd(cmd, args) ],
-            "task_dep" : ["dircheck::sphinx"]
+            "task_dep" : ["_checkdir::sphinx"],
             "file_dep" : [ docs_dir / "conf.py" ],
+            "targets"  : [ docs_build_dir ],
+            "clean"    : [ clean_target_dirs ],
         }
 
 
@@ -53,10 +66,8 @@ def task_browse() -> dict:
     args = [ build_dir / "html" / "index.html" ]
 
     return {
+        "basename"    : "sphinx::browse",
         "actions"     : [build_cmd(cmd, args)],
-        "task_dep"    : ["sphinx::default"],
+        "task_dep"    : ["sphinx::build"],
     }
 
-##-- dir check
-check_docs = CheckDir(paths=[build_dir / SphinxDocTask.sphinx_dir ], name="sphinx", task_dep=["checkdir::sphinx"],)
-##-- end dir check

@@ -88,27 +88,27 @@ reportUnnecessaryIsInstance = "warning"
 
 ##-- end pyright
 
-##-- doot
-[tool.doot]
+##-- doit
+[tool.doit]
 verbosity = 2
 build_dir = "build"
 
-[tool.doot.commands]
+[tool.doit.commands]
 
-[tool.doot.commands.test]
+[tool.doit.commands.test]
 pattern  = "*_tests.py"
 verbose  = false
 failfast = false
 
-[tool.doot.commands.lint]
+[tool.doit.commands.lint]
 executable = "pylint"
 errors     = false
 outfile    = "package.lint"
 outfmt     = ""
 
-# [tool.doot.tasks.{task}]
+# [tool.doit.tasks.{task}]
 
-##-- end doot
+##-- end doit
 
 ##-- sphinx
 [tool.doot.sphinx]
@@ -117,3 +117,16 @@ docs_dir  = "docs"
 verbosity = 0
 
 ##-- end sphinx
+
+##-- doot.jekyll
+[tool.doot.jekyll.genpost]
+ext = "md"
+# used in datetime.strftime
+date_format = "%Y-%m-%d"
+# title_format.format_map({date, title, ext })
+title_format = "{date}{title}.{ext}"
+# 'default' for doot.__template.jekyll_post, else a path:
+# can be overriden on cli
+default_template = "default"
+
+##-- end doot.jekyll

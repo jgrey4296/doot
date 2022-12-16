@@ -4,7 +4,7 @@ from __future__ import annotations
 import pathlib as pl
 import shutil
 
-from doot import build_dir, datatoml
+from doot import build_dir, datatoml, src_dir
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
@@ -15,18 +15,20 @@ from doot.utils.general import build_cmd
 def task_tags_init():
     """:: initalise gtags """
     return {
+        "basename" : "gtags::init",
         "actions" : [ f"gtags -C {src_dir} ." ],
         "targets" : [ src_dir / "GPATH",
                       src_dir / "GRTAGS",
                       src_dir / "GTAGS" ],
-        "basename" : "_tags_init",
+        "clean"   : True,
     }
 
 
 def task_tags():
     """:: update tag files """
     return {
-        "actions"  : [],
+        "basename" : "gtags::update",
+        "actions"  : [ f"global -C {src_dir} -u" ],
         "file_dep" : [ src_dir / "GPATH",
                        src_dir / "GRTAGS",
                        src_dir / "GTAGS" ],

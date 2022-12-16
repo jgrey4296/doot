@@ -14,18 +14,21 @@ from doot.utils.task_group import TaskGroup
 # https://pip.pypa.io/en/stable/cli/
 # TODO add increment version tasks, plus update __init__.py
 # TODO install dependencies
+temp_dir  = build_dir / "temp"
+pip_dir   = build_dir / "pip"
+wheel_dir = build_dir / "wheel"
 
 
+editlib   = CmdTask("pip", "install", "--no-input", "--editable", ".", task_dep=[ "_checkdir::build"  ], basename="pip::local")
+install   = CmdTask("pip", "install", "--no-input", "--src", temp_dir, task_dep=[ "_checkdir::build" ], basename="pip::install")
+srcbuild  = CmdTask("pip", "install", "--no-input", "--upgrade", "--target", pip_dir, "--src",  temp_dir, ".",
+                    task_dep=[ "_checkdir::build" ], basename="pip::build.src")
 
-editlib   = CmdTask("pip", "install", "-e", ".", task_dep=[ "checkdir::build"  ], basename="pip.local")
-install   = CmdTask("pip", "install", "--use-feature=in-tree-build", "--src", build_dir / "pip_temp", task_dep=[ "checkdir::build" ], basename="pip.install")
-wheel     = CmdTask("pip", "wheel", "--use-feature=in-tree-build", "-w", build_dir / "wheel", "--use-pep517", "--src", build_dir / "pip_temp", ".",
-                    task_dep=[ "checkdir::build" ], basename="pip.build wheel")
-srcbuild  = CmdTask("pip", "install", "--use-feature=in-tree-build", "-t", build_dir / "pip_src", "--src",  build_dir / "pip_temp", "-U",  ".",
-                    task_dep=[ "checkdir::build" ], basename="pip.build.src")
-uninstall = CmdTask("pip", "uninstall", "-y", datatoml.project.name, basename="pip.uninstall")
+wheel     = CmdTask("pip", "wheel", "--no-input", "--wheel-dir", wheel_dir, "--use-pep517", "--src", temp_dir, ".",
+                    task_dep=[ "_checkdir::build" ], basename="pip::build wheel")
+uninstall = CmdTask("pip", "uninstall", "-y", datatoml.project.name, basename="pip::uninstall")
 
-version   = CmdTask("pip", "--version", verbosity=2, basename="pip.version")
+version   = CmdTask("pip", "--version", verbosity=2, basename="pip::version")
 
 def pip_requirements() -> dict:
     """:: generate requirements.txt """
@@ -36,7 +39,7 @@ def pip_requirements() -> dict:
     args2 = ["list", "--format=freeze", ">", target]
 
     return {
-        'basename': "requirements.txt",
+        'basename': "pip::requirements",
         "actions" : [
             build_cmd(cmd, args1),
             build_cmd(cmd, args2),

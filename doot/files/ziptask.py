@@ -81,11 +81,11 @@ class ZipTask:
             "targets"  : [ self.target ],
             "uptodate" : [False],
             "clean"    : [self.clean_zips],
-            "task_dep" : ["checkdir::zips"],
+            "task_dep" : ["_checkdir::zips"],
         })
         return task_desc
 
 
 ##-- dir check
-check_zips = CheckDir(paths=[build_dir / ZipTask.zip_dir], name="zips", task_dep=["checkdir::build"],)
+check_zips = CheckDir(paths=[build_dir / ZipTask.zip_dir], name="zips", task_dep=["_checkdir::build"],)
 ##-- end dir check

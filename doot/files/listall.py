@@ -25,5 +25,6 @@ def task_listall():
     return {
         "actions" : [ action ],
         "targets" : [ build_dir / "allfiles.report" ],
-        "task_dep" : ["checkdir::build"],
+        "task_dep" : ["_checkdir::build"],
+        "basename" : "files::listall",
     }
