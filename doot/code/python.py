@@ -4,7 +4,7 @@ from __future__ import annotations
 import pathlib as pl
 import shutil
 
-from doot import build_dir, datatoml
+from doot import build_dir, data_toml
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd, src_dir
@@ -26,13 +26,13 @@ def task_lint() -> dict:
     """:: lint the package """
     # TODO add ignore / ignore-patterns / --ignore-paths
 
-    data = datatoml['tool']['doit']['commands']['lint']
+    data = data_toml['tool']['doit']['commands']['lint']
     cmd  = data['executable']
     args = [
         "--output-format", data['outfmt'],
         "--output", data['outfile'],
         "-E" if data['errors'] else "",
-        datatoml['project']['name']
+        data_toml['project']['name']
     ]
 
 
@@ -47,12 +47,12 @@ def task_lint() -> dict:
 ## TODO run in -X dev mode, add warnings
 def task_test() -> dict:
     """:: Task definition """
-    data = datatoml['tool']['doit']['commands']['test']
+    data = data_toml['tool']['doit']['commands']['test']
     cmd  = "python"
     args = ["-m", "unittest", "discover",
-            datatoml['project']['name'],
-            "-p", datatoml['tool']['doit']['commands']['test']['pattern'],
-            "-t", datatoml['project']['name'],
+            data_toml['project']['name'],
+            "-p", data_toml['tool']['doit']['commands']['test']['pattern'],
+            "-t", data_toml['project']['name'],
             "-s", "{start}"
             ]
 
@@ -67,7 +67,7 @@ def task_test() -> dict:
         "actions"     : [ build_cmd(cmd, args) ],
         "params"      : [ {"name"    : "start",
                            "start"   : "-s",
-                           "default" : datatoml['project']['name']
+                           "default" : data_toml['project']['name']
                            },
                           ]
     }

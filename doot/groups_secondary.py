@@ -32,91 +32,76 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 __all__ = [
-    "pip_group"
 ]
 
 
-##-- pdf
-from doot.builders import pdf
-pdf_group = TaskGroup("pdf_group",
-
-                      )
-##-- end pdf
-
-##-- python
-python_group = TaskGroup("python",
-
-                         )
-
-##-- end python
-
-##-- poetry
-from doot.builders import poetry_install as poetry
-poetry_group = TaskGroup("poetry_group",
-                         poetry.install,
-                         poetry.wheel,
-                         poetry.requirements)
-
-##-- end poetry
-
-##-- conda
-from doot.builders import conda
-conda_group = TaskGroup("conda_group",
-
-                        )
-##-- end conda
-
-##-- erlang
-from doot.builders import erlang
-erlang_group = TaskGroup("erlang_group",
-
-                        )
-##-- end erlang
-
-##-- ruby
-from doot.builders import gems
-ruby_group = TaskGroup("ruby_group",
-
-                       )
-##-- end ruby
-
 ##-- godot
-from doot.builders import godot
-godot_group = TaskGroup("godot_group",
-
-                        )
+godot_group = None
+if pl.path("project.godot").exists():
+    from doot.builders import godot
+    godot_group = TaskGroup("godot_group",
+                            godot.task_godot_check,
+                            godot.task_godot_build,
+                            godot.task_godot_debug,
+                            godot.task_godot_run,
+                            godot.task_godot_script,
+                            godot.task_godot_version,
+                            godot.task_godot_test,
+                            )
 ##-- end godot
 
-##-- grunt
-from doot.builders import grunt
-grunt_group = TaskGroup("grunt group",
-
-                        )
-##-- end grunt
-
-##-- homebrew
-from doot.builders import homebrew
-brew_group = TaskGroup("brew group",
-
-                       )
-##-- end homebrew
-
-
 ##-- xml
-xml_group = TaskGroup("xml_group",
-
-                      )
+xml_group = None
+if bool(list(pl.Path(".").glob("**/*.xml"))):
+    from doot.data import xml as xml_reports
+    xml_group = TaskGroup("xml_group",
+                          xml_reports.XmlSchemaTask(),
+                          xml_reports.XmlSchemaVisualiseTask(),
+                          xml_reports.XmlValidateTask(),
+                          xml_reports.XmlElementsTask(),
+                          xml_reports.XmlFormatTask(),
+                          xml_reports.XmlPythonSchema(),
+                          )
 ##-- end xml
 
-##-- json
-json_group = TaskGroup("json group",
+##-- sqlite
+sqlite_group = None
+if bool(list(pl.Path(".").glob("**/*.sqlite"))):
+    from doot.data import database
+    sqlite_group = TaskGroup("sqlite_group",
+                             database.SqliteReportTask(),
+                             databse.SqlitePrepTask()
+                             )
 
-                       )
+##-- end sqlite
+
+##-- json
+json_group = None
+if bool(list(pl.Path(".").glob("**/*.sqlite"))):
+    from doot.data import json as json_reports
+    from doot.docs.plantuml import task_plantuml_json
+    json_group = TaskGroup("json group",
+                           task_plantuml_json,
+                           json_reports.JsonSchemaTask(),
+                           )
 ##-- end json
 
 ##-- plantuml
-from doot.docs import plantuml
-plantuml_group = TaskGroup("plantuml_group",
-
-                           )
+plantuml_group = None
+if bool(list(pl.Path(".").glob("**/*.pu"))):
+    from doot.docs import plantuml
+    plantuml_group = TaskGroup("plantuml_group",
+                               plantuml.task_plantuml,
+                               plantuml.task_plantuml_text
+                               )
 ##-- end plantuml
+
+##-- csv
+csv_group = None
+if bool(list(pl.Path(".").glob("**/*.sqlite"))):
+    from doot.data import csv_reports
+    csv_group = TaskGroup("csv group",
+                           csv_reports.CsvVisualiseTask(),
+                           csv_reports.CsvSchemaTask(),
+                           )
+##-- end csv

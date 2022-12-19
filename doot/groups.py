@@ -45,53 +45,68 @@ defaults_group = TaskGroup("defaults",
 ##-- end defaults
 
 ##-- pip
-from doot.builders import pip_install as pip
-pip_group = TaskGroup("pip_group",
-                      pip.editlib,
-                      pip.install,
-                      pip.wheel,
-                      pip.srcbuild,
-                      pip.uninstall,
-                      pip.pip_requirements,
-                      pip.version)
+pip_group = None
+has_py_package = False
+try:
+    data_toml.project
+    has_py_package = True
+except Exception:
+    pass
+
+if pl.Path("pyproject.toml").exists() and has_py_package:
+    from doot.builders import pip_install as pip
+    pip_group = TaskGroup("pip_group",
+                          pip.editlib,
+                          pip.install,
+                          pip.wheel,
+                          pip.srcbuild,
+                          pip.uninstall,
+                          pip.pip_requirements,
+                          pip.version)
 
 ##-- end pip
 
 ##-- jekyll
-from doot.builders import jekyll as j_build
-from doot.docs import jekyll as j_doc
-jekyll_group = TaskGroup("jekyll_group",
-                         j_build.task_jekyll_serve,
-                         j_build.task_jekyll_build,
-                         j_build.task_jekyll_install,
-                         j_build.task_init_jekyll,
-                         j_build.jekyll_check_build,
-                         j_build.jekyll_check_src,
-                         j_doc.jekyll_check_posts,
-                         j_doc.jekyll_check_tags,
-                         j_doc.GenPostTask(),
-                         j_doc.GenTagsTask(),
-                         )
+jekyll_group = None
+if pl.Path("jekyll.toml").exists():
+    from doot.builders import jekyll as j_build
+    from doot.docs import jekyll as j_doc
+    jekyll_group = TaskGroup("jekyll_group",
+                             j_build.task_jekyll_serve,
+                             j_build.task_jekyll_build,
+                             j_build.task_jekyll_install,
+                             j_build.task_init_jekyll,
+                             j_build.jekyll_check_build,
+                             j_build.jekyll_check_src,
+                             j_doc.jekyll_check_posts,
+                             j_doc.jekyll_check_tags,
+                             j_doc.GenPostTask(),
+                             j_doc.GenTagsTask(),
+                             )
 
 ##-- end jekyll
 
 ##-- latex
-from doot.builders import latex
-latex_group = TaskGroup("latex_group",
-                        latex.task_latex_docs,
-                        latex.task_latex_install,
-                        latex.task_latex_requirements,
-                        latex.task_latex_rebuild,
-                        )
+latex_group = None
+if bool(list(pl.Path(".").glob("**/*.tex"))):
+    from doot.builders import latex
+    latex_group = TaskGroup("latex_group",
+                            latex.task_latex_docs,
+                            latex.task_latex_install,
+                            latex.task_latex_requirements,
+                            latex.task_latex_rebuild,
+                            )
 
 ##-- end latex
 
 ##-- sphinx
-from doot.builders import sphinx
-sphinx_group = TaskGroup("sphinx_group",
-                         sphinx.SphinxDocTask(),
-                         sphinx.task_browse,
-                         sphinx.check_dir)
+sphinx_group = None
+if pl.Path("docs").exists() and (pl.Path("docs") / "conf.py").exists():
+    from doot.builders import sphinx
+    sphinx_group = TaskGroup("sphinx_group",
+                             sphinx.SphinxDocTask(),
+                             sphinx.task_browse,
+                             sphinx.check_dir)
 
 ##-- end sphinx
 
@@ -104,11 +119,13 @@ gtags_group = TaskGroup("gtags_group",
 ##-- end gtags
 
 ##-- git
-from doot.vcs import git_tasks
-git_group = TaskGroup("git group",
-                      git_tasks.GitLogTask(),
-                      git_tasks.check_reports,
-                      )
+git_group = None
+if pl.Path(".git").exists():
+    from doot.vcs import git_tasks
+    git_group = TaskGroup("git group",
+                          git_tasks.GitLogTask(),
+                          git_tasks.check_reports,
+                          )
 ##-- end git
 
 ##-- cargo

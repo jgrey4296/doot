@@ -44,12 +44,18 @@ class TaskGroup:
 
     def build(self):
         for task in self.tasks:
+            result = task
             match task:
                 case dict():
-                    yield task
+                    pass
                 case x if hasattr(x, "build"):
-                    yield task.build()
+                    result = task.build()
                 case x if hasattr(x, "create_doit_tasks"):
-                    yield task.create_doit_tasks()
+                    result = task.create_doit_tasks()
                 case x if callable(x):
-                    yield task()
+                    result = task()
+
+            if result is not None:
+                yield result
+
+        yield { "basename" : "_" + self.name, "actions": [] }

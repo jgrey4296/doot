@@ -8,7 +8,7 @@ from importlib.resources import files
 from time import strftime
 
 import yaml
-from doot import build_dir, datatoml
+from doot import build_dir, data_toml
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
@@ -32,10 +32,10 @@ tag_template   = data_path / "jekyll_tagfile"
 ##-- end data
 
 ##-- toml data
-default_template = datatoml.tool.doot.jekyll.genpost.default_template
-date_format      = datatoml.tool.doot.jekyll.genpost.date_format.strip()
-title_format     = datatoml.tool.doot.jekyll.genpost.title_format.strip()
-ext_format       = datatoml.tool.doot.jekyll.genpost.ext.strip()
+default_template = data_toml.tool.doot.jekyll.genpost.default_template
+date_format      = data_toml.tool.doot.jekyll.genpost.date_format.strip()
+title_format     = data_toml.tool.doot.jekyll.genpost.title_format.strip()
+ext_format       = data_toml.tool.doot.jekyll.genpost.ext.strip()
 
 ##-- end toml data
 
@@ -73,7 +73,7 @@ def load_yaml_data(filename):
 
 ##-- end yaml util
 
-##-- tasks
+
 class GenPostTask:
     """ create a new post,
     using a template or the default in doot.__templates.jekyll_post
@@ -187,5 +187,3 @@ class GenTagsTask:
             "targets"  : [ tag_index ],
             "clean"    : [ clean_target_dirs ],
         }
-
-##-- end tasks

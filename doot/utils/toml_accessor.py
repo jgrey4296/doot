@@ -51,14 +51,20 @@ class TomlAccessor:
         object.__setattr__(self, "__path", [attr])
 
     def keys(self):
-        return self.__table.keys()
+        table  = object.__getattribute__(self, "__table")
+        return table.keys()
 
     def __setattr__(self, attr, value):
         raise TomlAccessError(attr)
 
     def __getattr__(self, attr):
-        result = object.__getattribute__(self, "__table").get(attr)
         path   = object.__getattribute__(self, "__path")
+        table  = object.__getattribute__(self, "__table")
+
+        result = table.get(attr)
+        if result is None and "_" in attr :
+            result = object.__getattribute__(self, "__table").get(attr.replace("_", "-"))
+
         if result is None:
             raise TomlAccessError(f"{path}.{attr}")
 

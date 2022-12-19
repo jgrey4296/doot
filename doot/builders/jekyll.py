@@ -8,7 +8,7 @@ from importlib.resources import files
 
 from doit.tools import LongRunning
 from doit.action import CmdAction
-from doot import build_dir, datatoml
+from doot import build_dir, data_toml
 from doot.files.checkdir import CheckDir
 from doot.files.clean_dirs import clean_target_dirs
 from doot.utils.cmdtask import CmdTask

@@ -15,7 +15,7 @@ import doot
 ##-- end imports
 
 ##-- config
-datatoml    = doot.setup_py()
+data_toml    = doot.setup_py()
 check_build = doot.check_build
 
 DOIT_CONFIG = {
@@ -26,7 +26,7 @@ DOIT_CONFIG = {
 ##-- end config
 
 ##-- post-config doot imports
-from doot.files.clean import CleanCacheAction, py_cache_globs
+from doot.files.clean_cache import CleanCacheAction, py_cache_globs
 from doot.files.listall import task_listall
 
 from doot.groups import *

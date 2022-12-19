@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+"""
+
+"""
 ##-- imports
 from __future__ import annotations
 
@@ -11,19 +15,11 @@ from doot.utils.general import build_cmd
 
 ##-- end imports
 
+json_dir = build_dir / "json"
 
-class SqlitePrepTask():
-    """ file conversion from mysql to sqlite """
-    def __init__(self):
-        self.create_doit_tasks = self.build
 
-    def build(self):
-        pass
 
-class SqliteReportTask:
-    # report database tables
-    # .schema .fullschema
-    # .table
+class JsonSchemaTask:
 
     def __init__(self):
         self.create_doit_tasks = self.build

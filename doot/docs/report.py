@@ -4,7 +4,7 @@ from __future__ import annotations
 import pathlib as pl
 import shutil
 
-from doot import build_dir, datatoml
+from doot import build_dir, data_toml
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
@@ -13,6 +13,9 @@ from doot.utils.general import build_cmd
 
 
 def task_line_report():
+    """
+    Generate a report of all files and their line count
+    """
     find_cmd = build_cmd("find",
                          [src_dir, "-name", '"*.py"',
                           "-not", "-name", '"test_*.py"',

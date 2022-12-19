@@ -33,11 +33,16 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
+pdf_dir = build_dir / "pdfs"
 
+##-- dir check
+check_pdfs = CheckDir(paths=[pdf_dir], name="pdfs", task_dep=["_checkdir::build"],)
+##-- end dir check
 
 class ImgConvertTask:
-
-    pdf_dir = "pdfs"
+    """
+    Combine globbed images into a single pdf file
+    """
 
     def __init__(self, target, **, paths=None, globs=None, name="default", date=False, **kwargs):
         self.create_doit_tasks = self.build
@@ -49,15 +54,15 @@ class ImgConvertTask:
         self.target_stem       = pl.Path(target).stem
         match date:
             case False:
-                self.target : pl.Path = build_dir / ImgConvertTask.pdf_dir / target
+                self.target : pl.Path = pdf_dir / target
             case True:
                 now                   = datetime.datetime.strftime(datetime.datetime.now(), "%Y:%m:%d::%H:%M:%S")
                 dated_target          = f"{self.target_stem}-{now}.pdf"
-                self.target : pl.Path = build_dir / ImgConvertTask.pdf_dir / dated_target
+                self.target : pl.Path = pdf_dir / dated_target
             case str():
                 now                   = datetime.datetime.strftime(datetime.datetime.now(), date)
                 dated_target          = f"{self._target_stem}-{now}.pdf"
-                self.target : pl.Path = build_dir / ImgConvertTask.pdf_dir / dated_target
+                self.target : pl.Path = pdf_dir / dated_target
 
 
     def get_images(self):
@@ -74,7 +79,7 @@ class ImgConvertTask:
         pass
 
     def clean_pdfs(self):
-        pdf_base = build_dir / ImgConvertTask.pdf_dir
+        pdf_base = pdf_dir
         print(f"Cleaning {pdf_base}/{self.target_stem}*.pdf")
         for zipf in pdf_base.glob(f"{self.target_stem}*.pdf"):
             zipf.unlink()
@@ -93,6 +98,3 @@ class ImgConvertTask:
         return task_desc
 
 
-##-- dir check
-check_pdfs = CheckDir(paths=[build_dir / ImgConvertTask.pdf_dir], name="pdfs", task_dep=["_checkdir::build"],)
-##-- end dir check

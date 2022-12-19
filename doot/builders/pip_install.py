@@ -4,7 +4,7 @@ from __future__ import annotations
 import pathlib as pl
 import shutil
 
-from doot import build_dir, datatoml
+from doot import build_dir, data_toml
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
@@ -26,7 +26,7 @@ srcbuild  = CmdTask("pip", "install", "--no-input", "--upgrade", "--target", pip
 
 wheel     = CmdTask("pip", "wheel", "--no-input", "--wheel-dir", wheel_dir, "--use-pep517", "--src", temp_dir, ".",
                     task_dep=[ "_checkdir::build" ], basename="pip::build wheel")
-uninstall = CmdTask("pip", "uninstall", "-y", datatoml.project.name, basename="pip::uninstall")
+uninstall = CmdTask("pip", "uninstall", "-y", data_toml.project.name, basename="pip::uninstall")
 
 version   = CmdTask("pip", "--version", verbosity=2, basename="pip::version")
 

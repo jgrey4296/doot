@@ -8,22 +8,21 @@ from doot import build_dir, data_toml
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
+from doot.utils.task_group import TaskGroup
 
 ##-- end imports
 
 
-class SqlitePrepTask():
-    """ file conversion from mysql to sqlite """
+class SplitPDFTask:
+
     def __init__(self):
         self.create_doit_tasks = self.build
 
     def build(self):
         pass
 
-class SqliteReportTask:
-    # report database tables
-    # .schema .fullschema
-    # .table
+
+class CombinePDFTask:
 
     def __init__(self):
         self.create_doit_tasks = self.build

@@ -4,27 +4,27 @@ from __future__ import annotations
 import pathlib as pl
 import shutil
 
-from doot import build_dir, datatoml
+from doot import build_dir, data_toml
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
 
 ##-- end imports
 
-# TODO target into build_dir
+plant_dir = build_dir / "plantuml"
+
 def task_plantuml_json():
     """
     Generate uml diagrams from json
     """
-    cmd1 = "cat ?"
+    cmd1 = "cat {file_dep}"
     cmd2 = "awk 'BEGIN {print \"@startjson\"} END {print \"@endjson\"} {print $0}'"
     cmd3 = "plantuml -p"
-    output =
 
-    full = f"{cmd1} | {cmd2} | {cmd3} > {output}"
+    full_cmd = f"{cmd1} | {cmd2} | {cmd3} > {targets}"
     return {
-        "actions"  : [full],
-        "targets"  : ["json_vis.png"],
+        "actions"  : [full_cmd],
+        "targets"  : [plant_dir / "json_vis.png"],
         "file_dep" : ["something.json"],
     }
 
@@ -36,8 +36,8 @@ def task_plantuml():
     args = ["-filename", "{targets}", "{file_dep}"]
     return {
         "actions"  : [build_cmd(cmd, args)],
-        "targets"  : ["schema_uml.png"],
-        "file_dep" : ["schema.pu"],
+        "targets"  : [plant_dir / "schema_uml.png"],
+        "file_dep" : [plant_dir / "schema.pu"],
     }
 
 def task_plantuml_text():
@@ -48,6 +48,6 @@ def task_plantuml_text():
     args = ["-ttxt", "-filename", "{targets}", "{file_dep}"],
     return {
         "actions"  : [build_cmd(cmd, args)],
-        "targets"  : ["schema_uml.txt"],
-        "file_dep" : ["schema.pu"],
+        "targets"  : [plant_dir / "schema_uml.txt"],
+        "file_dep" : [plant_dir / "schema.pu"],
     }
