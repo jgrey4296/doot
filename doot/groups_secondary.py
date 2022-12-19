@@ -87,13 +87,6 @@ godot_group = TaskGroup("godot_group",
                         )
 ##-- end godot
 
-##-- gradle
-from doot.builders import gradle
-gradle_group = TaskGroup("gradle_group",
-
-                         )
-##-- end gradle
-
 ##-- grunt
 from doot.builders import grunt
 grunt_group = TaskGroup("grunt group",

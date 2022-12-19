@@ -137,6 +137,24 @@ if pl.Path("Cargo.toml").exists() and has_cargo_package:
                             cargo.task_cargo_debug,
                             cargo.task_cargo_version)
 ##-- end cargo
+
+##-- gradle
+gradle_group = None
+if pl.Path("gradle.build.kts").exists():
+    from doot.builders import gradle
+    gradle_group = TaskGroup("gradle_group",
+                             gradle.task_gradle_run,
+                             gradle.task_gradle_build,
+                             gradle.task_gradle.assemble,
+                             gradle.task_gradle.check,
+                             gradle.task_gradle_clean,
+                             gradle.task_gradle_doc,
+                             gradle.task_gradle_logging,
+                             gradle.task_gradle_version,
+                             gradle.task_gradle_test
+                             )
+##-- end gradle
+
 ##-- epub
 epub_group = None
 if bool(list(pl.Path(".").glob("**/*.epub"))):
