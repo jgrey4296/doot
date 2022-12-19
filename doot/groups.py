@@ -137,3 +137,15 @@ if pl.Path("Cargo.toml").exists() and has_cargo_package:
                             cargo.task_cargo_debug,
                             cargo.task_cargo_version)
 ##-- end cargo
+##-- epub
+epub_group = None
+if bool(list(pl.Path(".").glob("**/*.epub"))):
+    from doot.builders import epub
+    epub_group = TaskGroup("epub group",
+                           epub.EbookCompileTask(),
+                           epub.EbookConvertTask(),
+                           epub.EbookZipTask(),
+                           epub.EbookManifestTask(),
+                           epub.EbookSplitTask(),
+                           )
+##-- end epub

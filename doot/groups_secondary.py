@@ -108,12 +108,6 @@ brew_group = TaskGroup("brew group",
                        )
 ##-- end homebrew
 
-##-- epub
-from doot.builders import epub
-epub_group = TaskGroup("epub group",
-
-                       )
-##-- end epub
 
 ##-- xml
 xml_group = TaskGroup("xml_group",
