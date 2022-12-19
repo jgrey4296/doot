@@ -18,6 +18,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 from doot.utils.task_group import TaskGroup
+from doot import data_toml
 
 if TYPE_CHECKING:
     # tc only imports
@@ -34,6 +35,7 @@ logging = logmod.getLogger(__name__)
 __all__ = [
     "pip_group", "jekyll_group", "sphinx_group",
     "latex_group", "gtags_group", "git_group",
+    "cargo_group", "epub_group",
 ]
 
 ##-- defaults
@@ -108,3 +110,30 @@ git_group = TaskGroup("git group",
                       git_tasks.check_reports,
                       )
 ##-- end git
+
+##-- cargo
+cargo_group = None
+has_cargo_package = False
+try:
+    data_toml.package
+    has_cargo_package = True
+except Exception:
+    pass
+
+if pl.Path("Cargo.toml").exists() and has_cargo_package:
+    from doot.builders import cargo
+    cargo_group = TaskGroup("cargo_group",
+                            cargo.task_cargo_build,
+                            cargo.task_cargo_install,
+                            cargo.task_cargo_test,
+                            cargo.task_cargo_run,
+                            cargo.task_cargo_doc,
+                            cargo.task_cargo_clean,
+                            cargo.task_cargo_check,
+                            cargo.task_cargo_update,
+                            cargo.task_rustup_show,
+                            cargo.task_cargo_rename_binary,
+                            cargo.task_cargo_help,
+                            cargo.task_cargo_debug,
+                            cargo.task_cargo_version)
+##-- end cargo

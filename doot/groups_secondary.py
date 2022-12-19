@@ -66,20 +66,6 @@ conda_group = TaskGroup("conda_group",
                         )
 ##-- end conda
 
-##-- cargo
-from doot.builders import cargo
-cargo_group = TaskGroup("cargo_group",
-                        cargo.task_cargo_check,
-                        cargo.task_cargo_init,
-                        cargo.task_rustup,
-                        cargo.task_cargo_docs,
-                        cargo.task_cargo_help,
-                        cargo.task_cargo_debug,
-                        cargo.task_cargo_release,
-                        cargo.task_cargo_test,
-                        cargo.task_cargo_version)
-##-- end cargo
-
 ##-- erlang
 from doot.builders import erlang
 erlang_group = TaskGroup("erlang_group",
