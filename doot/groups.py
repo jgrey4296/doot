@@ -76,10 +76,6 @@ if pl.Path("jekyll.toml").exists():
                              j_build.task_jekyll_build,
                              j_build.task_jekyll_install,
                              j_build.task_init_jekyll,
-                             j_build.jekyll_check_build,
-                             j_build.jekyll_check_src,
-                             j_doc.jekyll_check_posts,
-                             j_doc.jekyll_check_tags,
                              j_doc.GenPostTask(),
                              j_doc.GenTagsTask(),
                              )
@@ -106,7 +102,7 @@ if pl.Path("docs").exists() and (pl.Path("docs") / "conf.py").exists():
     sphinx_group = TaskGroup("sphinx_group",
                              sphinx.SphinxDocTask(),
                              sphinx.task_browse,
-                             sphinx.check_dir)
+                             )
 
 ##-- end sphinx
 
@@ -124,7 +120,6 @@ if pl.Path(".git").exists():
     from doot.vcs import git_tasks
     git_group = TaskGroup("git group",
                           git_tasks.GitLogTask(),
-                          git_tasks.check_reports,
                           )
 ##-- end git
 
@@ -174,13 +169,15 @@ if pl.Path("gradle.build.kts").exists():
 
 ##-- epub
 epub_group = None
-if bool(list(pl.Path(".").glob("**/*.epub"))):
-    from doot.builders import epub
+from doot.builders import epub
+if epub.working_dir.exists() or epub.orig_dir.exists():
     epub_group = TaskGroup("epub group",
+                           epub.EbookNewTask(),
                            epub.EbookCompileTask(),
                            epub.EbookConvertTask(),
                            epub.EbookZipTask(),
                            epub.EbookManifestTask(),
                            epub.EbookSplitTask(),
+                           epub.EbookRestructureTask(),
                            )
 ##-- end epub

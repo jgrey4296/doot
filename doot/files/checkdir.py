@@ -2,20 +2,29 @@
 from __future__ import annotations
 import pathlib as pl
 import shutil
+from typing import ClassVar
 
 from doot.files.clean_dirs import clean_target_dirs
+from doot.utils.task_group import TaskGroup
 ##-- end imports
 
 class CheckDir:
     """ Task for checking directories exist,
     making them if they don't
     """
+    all_checks : ClassVar[list[CheckDir]] = []
+
+    @staticmethod
+    def checkdir_group():
+        return TaskGroup("checkdir group",
+                         *CheckDir.all_checks)
 
     def __init__(self, *, paths=None, data=None, name="default", **kwargs):
         self.create_doit_tasks = self.build
         self.paths             = [pl.Path(x) for x in paths or [] ]
         self.kwargs            = kwargs
         self.default_spec      = { "basename" : f"_checkdir::{name}" }
+        CheckDir.all_checks.append(self)
 
     def uptodate(self):
         return all([x.exists() for x in self.paths])

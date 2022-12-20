@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uuid_id">
+  <metadata xmlns:opf="http://www.idpf.org/2007/opf" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:calibre="http://calibre.kovidgoyal.net/2009/metadata">
+    <dc:language>en-US</dc:language>
+    <dc:title>$title</dc:title>
+    <dc:creator opf:role="aut">$author</dc:creator>
+    <dc:identifier id="uuid_id" opf:scheme="uuid">$uuid</dc:identifier>
+    <dc:date>$date</dc:date>
+    <meta name="cover" content="cover"/>
+  </metadata>
+  <manifest>
+      $manifest
+  </manifest>
+  <spine toc="ncx">
+      $spine
+  </spine>
+</package>

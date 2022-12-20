@@ -32,12 +32,15 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 __all__ = [
+    "godot_group", "xml_group",
+    "sqlite_group", "json_group",
+    "plantuml_group", "csv_group",
 ]
 
 
 ##-- godot
 godot_group = None
-if pl.path("project.godot").exists():
+if pl.Path("project.godot").exists():
     from doot.builders import godot
     godot_group = TaskGroup("godot_group",
                             godot.task_godot_check,
@@ -52,15 +55,15 @@ if pl.path("project.godot").exists():
 
 ##-- xml
 xml_group = None
-if bool(list(pl.Path(".").glob("**/*.xml"))):
-    from doot.data import xml as xml_reports
+from doot.data import xml as xml_reports
+if bool(xml_reports.data_dirs):
     xml_group = TaskGroup("xml_group",
-                          xml_reports.XmlSchemaTask(),
-                          xml_reports.XmlSchemaVisualiseTask(),
-                          xml_reports.XmlValidateTask(),
                           xml_reports.XmlElementsTask(),
-                          xml_reports.XmlFormatTask(),
-                          xml_reports.XmlPythonSchema(),
+                          xml_reports.XmlSchemaTask(),
+                          xml_reports.XmlPythonSchemaRaw(),
+                          # xml_reports.XmlSchemaVisualiseTask(),
+                          # xml_reports.XmlValidateTask(),
+                          # xml_reports.XmlFormatTask(),
                           )
 ##-- end xml
 

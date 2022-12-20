@@ -37,10 +37,10 @@ __all__ = [
 ]
 
 ##-- checkdir
-jekyll_config      = pl.Path("jekyll.toml")
-jekyll_toml         = None
-jekyll_src         = pl.Path("docs/site")
-jekyll_dest        = build_dir / "jekyll"
+jekyll_config = pl.Path("jekyll.toml")
+jekyll_toml   = None
+jekyll_src    = pl.Path("docs/site")
+jekyll_dest   = build_dir / "jekyll"
 
 if jekyll_config.exists():
     jekyll_toml  = toml.load("jekyll.toml")
@@ -48,8 +48,11 @@ if jekyll_config.exists():
     jekyll_dest = pl.Path(jekyll_toml['destination'])
 
 
-jekyll_check_build = CheckDir(paths=[jekyll_dest], name="jekyll", task_dep=["_checkdir::build"])
-jekyll_check_src   = CheckDir(paths=[jekyll_src], name="jekyll.src")
+jekyll_check_build = CheckDir(paths=[jekyll_dest,
+                                     jekyll_src,
+                                     ],
+                              name="jekyll",
+                              task_dep=["_checkdir::build"])
 
 ##-- end checkdir
 

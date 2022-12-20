@@ -17,7 +17,7 @@ def task_plantuml_json():
     """
     Generate uml diagrams from json
     """
-    cmd1 = "cat {file_dep}"
+    cmd1 = "cat {dependencies}"
     cmd2 = "awk 'BEGIN {print \"@startjson\"} END {print \"@endjson\"} {print $0}'"
     cmd3 = "plantuml -p"
 
@@ -33,7 +33,7 @@ def task_plantuml():
     run plantuml on a specification
     """
     cmd = "plantuml"
-    args = ["-filename", "{targets}", "{file_dep}"]
+    args = ["-filename", "{targets}", "{dependencies}"]
     return {
         "actions"  : [build_cmd(cmd, args)],
         "targets"  : [plant_dir / "schema_uml.png"],
@@ -45,7 +45,7 @@ def task_plantuml_text():
     run plantuml on a spec for text output
     """
     cmd = "plantuml"
-    args = ["-ttxt", "-filename", "{targets}", "{file_dep}"],
+    args = ["-ttxt", "-filename", "{targets}", "{dependencies}"],
     return {
         "actions"  : [build_cmd(cmd, args)],
         "targets"  : [plant_dir / "schema_uml.txt"],

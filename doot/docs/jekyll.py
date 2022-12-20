@@ -39,9 +39,7 @@ ext_format       = data_toml.tool.doot.jekyll.genpost.ext.strip()
 
 ##-- end toml data
 
-__all__ = ["jekyll_check_src", "jekyll_check_posts", "jekyll_check_tags",
-           "GenPostTask", "GenTagsTask"
-        ]
+__all__ = ["GenPostTask", "GenTagsTask"]
 
 
 ##-- directories
@@ -49,8 +47,11 @@ posts_dir = jekyll_src / "_posts"
 tags_dir  = jekyll_src / "_generated" / "tags"
 tag_index = jekyll_src / "tags" / "index.md"
 
-jekyll_check_posts = CheckDir(paths=[posts_dir], name="jekyll.posts", task_dep=["_checkdir::jekyll.src"])
-jekyll_check_tags  = CheckDir(paths=[tags_dir], name="jekyll.tags", task_dep=["_checkdir::jekyll.src"])
+jekyll_check_posts = CheckDir(paths=[posts_dir,
+                                     tags_dir
+                                     ],
+                              name="jekyll.posts",
+                              task_dep=["_checkdir::jekyll"])
 ##-- end directories
 
 ##-- yaml util
@@ -183,7 +184,7 @@ class GenTagsTask:
         return {
             "basename" : "jekyll::tag",
             "actions"  : [self.get_tags, self.make_tag_pages, self.make_tag_index ],
-            "task_dep" : [ "_checkdir::jekyll.tags" ],
+            "task_dep" : [ "_checkdir::jekyll.posts" ],
             "targets"  : [ tag_index ],
             "clean"    : [ clean_target_dirs ],
         }

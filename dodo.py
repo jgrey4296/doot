@@ -1,9 +1,8 @@
 # -*- mode:doit; -*-
 """
 Template dodo when using doot
-
-"""
 # https://pydoit.org/
+"""
 ##-- imports
 import pathlib as pl
 from doit.action import CmdAction
@@ -33,21 +32,9 @@ from doot.groups import *
 from doot.files.ziptask import *
 ##-- end post-config doot imports
 
-##-- actions
-## Can have auto filled parameters of:
-## targets, dependencies, changed
-## and 'task' gives access to all metadata
-
-##-- end actions
-
-##-- tasks
 zipper = ZipTask("mytest.zip",
                  paths=["setup.py", "sphinx.toml"],
                  globs=["doot/**/*.py"],
                  verbosity=2,
                  date=True,
                  )
-
-##-- end tasks
-
-
