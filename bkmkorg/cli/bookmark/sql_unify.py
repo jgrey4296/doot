@@ -27,6 +27,7 @@ from weakref import ref
 
 import pony.orm as pony
 from bkmkorg.bookmarks import collection as BC
+from bkmkorg import DEFAULT_BOTS, DEFAULT_CONFIG
 
 try:
     # For py 3.11 onwards:
@@ -68,8 +69,8 @@ parser.add_argument('-n', '--non-interactive', action="store_true")
 ##-- end argparse
 
 ##-- data
-data_path   = files("bkmkorg.__config")
-config_file = data_path / "bots.config"
+data_path   = files(DEFAULT_CONFIG)
+config_file = data_path / DEFAULT_BOTS
 ##-- end data
 
 # Database is found at ~/Library/ApplicationSupport/Firefox/Profiles/?/places.sqlite

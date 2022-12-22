@@ -16,7 +16,7 @@ except ImportError:
 ##-- end imports
 
 ##-- data
-data_path = files(f"bkmkorg.{DEFAULT_CONFIG}")
+data_path = files(DEFAULT_CONFIG)
 data_bots= data_path / DEFAULT_BOTS
 ##-- end data
 

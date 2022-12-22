@@ -51,8 +51,8 @@ logging = root_logger.getLogger(__name__)
 ##-- end logging
 
 ##-- data
-data_secrets  = files(f"bkmkorg.{DEFAULT_CONFIG}") / DEFAULT_SECRETS
-data_target   = files(f"bkmkorg.{DEFAULT_CONFIG}") / DEFAULT_TARGET
+data_secrets  = files(DEFAULT_CONFIG) / DEFAULT_SECRETS
+data_target   = files(DEFAULT_CONFIG) / DEFAULT_TARGET
 ##-- end data
 
 ##-- argparser
@@ -82,16 +82,6 @@ def setup_target_dict(target_dir:pl.Path, export:None|pl.Path):
     targets['excludes_file']        = target_dir / "excludes"
 
     return targets
-
-def get_library_tweets(lib:List[pl.Path], tweet) -> Set[str]:
-    library_tweet_ids = set()
-    if tweet is None:
-        logging.info("---------- Getting Library Tweet Details")
-        logging.info("Libraries to search: %s", lib)
-        library_tweet_ids = EU.get_all_tweet_ids(*lib, ext=".org")
-        logging.info("Found %s library tweets", len(library_tweet_ids))
-
-    return library_tweet_ids
 
 
 
@@ -177,7 +167,7 @@ def main():
     logging.info("---------- Setup Complete")
     logging.info("-------------------- Extracting Library Details")
     # Extract all tweet id's from library
-    library_tweet_ids : Set[str] = get_library_tweets(args.library, args.tweet)
+    library_tweet_ids : Set[str] = EU.get_library_tweets(args.library, args.tweet)
 
     if targets['lib_tweet_record'] is not None:
         logging.info("---------- Exporting lib tweets to: %s", targets['lib_tweet_record'])
@@ -218,7 +208,7 @@ def main():
 
 
     logging.info("-------------------- Finished Assembly")
-    new_tweet_ids = get_library_tweets([targets['org_dir']],
+    new_tweet_ids = EU.get_library_tweets([targets['org_dir']],
                                        args.tweet)
 
     if targets['download_record'] is not None:

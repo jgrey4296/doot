@@ -52,17 +52,17 @@ bkmk-pdf-tag-summarise = "bkmkorg.cli.pdf.tag_summary:main"
 bkmk-pdf-metadata      = "bkmkorg.cli.pdf.meta_data_summary:main"
 bkmk-pdf-validity      = "bkmkorg.cli.pdf.validity_check:main"
 
-bkmk-tag-index         = "bkmkorg.cli.tag.indexer:main"
-bkmk-tag-totals        = "bkmkorg.cli.tag.totals:main"
-bkmk-tag-graph         = "bkmkorg.cli.tag.graph:main"
+bkmk-tag-index         = "bkmkorg.cli.tags.indexer:main"
+bkmk-tag-totals        = "bkmkorg.cli.tags.totals:main"
+bkmk-tag-graph         = "bkmkorg.cli.tags.graph:main"
 
 bkmk-twit-index        = "bkmkorg.cli.twitter.indexer:main"
 bkmk-tag-grep          = "bkmkorg.cli.twitter.tag_grep:main"
 
 # filters:
 bkmk-bib-clean         = "bkmkorg.cli.bibtex.clean:main"
-bkmk-tag-clean         = "bkmkorg.cli.tag.clean:main"
-bkmk-tag-graph-query   = "bkmkorg.cli.tag.graph_query:main"
+bkmk-tag-clean         = "bkmkorg.cli.tags.clean:main"
+bkmk-tag-graph-query   = "bkmkorg.cli.tags.graph_query:main"
 
 # integrators:
 bkmk-twit-merge        = "bkmkorg.cli.twitter.unify:main"
@@ -676,19 +676,6 @@ redefining-builtins-modules = ["six.moves", "past.builtins", "future.builtins", 
 [tool.doit]
 verbosity = 2
 build_dir = "build"
-
-[tool.doit.commands.test]
-pattern  = "*_tests.py"
-verbose  = false
-failfast = false
-
-[tool.doit.commands.lint]
-executable = "pylint"
-errors     = false
-outfile    = "package.lint"
-outfmt     = ""
-
-# [tool.doit.tasks.{task}]
 
 ##-- end doit
 

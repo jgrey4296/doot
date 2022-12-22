@@ -13,7 +13,7 @@ from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
 from bkmkorg.bibtex import parsing as BU
 from bkmkorg.files as collect
-from bkmkorg.org.verify import check_orgs
+from bkmkorg.org.extraction import get_permalinks
 ##-- end imports
 
 ##-- logging
@@ -34,10 +34,7 @@ parser.add_argument('-t', '--target', action="append", required=True)
 parser.add_argument('-o', '--output', default="collected")
 ##-- end argparse
 
-
-
-##-- ifmain
-if __name__ == "__main__":
+def main():
     logging.info("Org Check start: --------------------")
     args = parser.parse_args()
     args.output = pl.Path(args.output).expanduser().resolve()
@@ -47,7 +44,7 @@ if __name__ == "__main__":
     logging.info("Output to: %s", args.output)
 
     bibs, htmls, orgs, bkmks = collect.collect_files(args.target)
-    suspect_files            = check_orgs(orgs)
+    suspect_files            = get_permalinks(orgs)
 
     logging.info("Found %s suspect files", len(suspect_files))
     with open(args.output,'w') as f:
@@ -56,4 +53,8 @@ if __name__ == "__main__":
 
     logging.info("Complete --------------------")
 
+
+##-- ifmain
+if __name__ == "__main__":
+    main()
 ##-- end ifmain

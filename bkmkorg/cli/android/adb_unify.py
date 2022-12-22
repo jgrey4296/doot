@@ -34,7 +34,7 @@ except ImportError:
 ##-- end imports
 
 ##-- data
-data_path    = files(f"bkmkorg.{DEFAULT_CONFIG}")
+data_path    = files(DEFAULT_CONFIG)
 data_secrets = data_path / DEFAULT_SECRETS
 ##-- end data
 

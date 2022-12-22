@@ -30,7 +30,7 @@ except ImportError:
     import toml
 ##-- end imports
 
-data_path    = files(f"bkmkorg.{DEFAULT_CONFIG}")
+data_path    = files(DEFAULT_CONFIG)
 data_bots    = data_path / DEFAULT_BOTS
 data_secrest = data_path / DEFAULT_SECRETS
 

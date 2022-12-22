@@ -1,19 +1,17 @@
-#/usr/bin/env python3
+#!/usr/bin/env python3
 """
-Script to combine similar org twitter files,
-then split them into separate threads in a new directory
+
 """
 ##-- imports
 from __future__ import annotations
 
 import abc
-import argparse
 import logging as logmod
 import pathlib as pl
+from re import Pattern, compile
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
-from re import Pattern, compile
-from sys import stderr, stdout
+from re import Pattern
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
@@ -21,48 +19,23 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-import requests
+if TYPE_CHECKING:
+    # tc only imports
+    pass
 ##-- end imports
 
 ##-- logging
-DISPLAY_LEVEL = logmod.DEBUG
-LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
-LOG_FORMAT    = "%(asctime)s | %(levelname)8s | %(message)s"
-FILE_MODE     = "w"
-STREAM_TARGET = stdout
-
-logger          = logmod.getLogger(__name__)
-console_handler = logmod.StreamHandler(STREAM_TARGET)
-file_handler    = logmod.FileHandler(LOG_FILE_NAME, mode=FILE_MODE)
-
-console_handler.setLevel(DISPLAY_LEVEL)
-# console_handler.setFormatter(logmod.Formatter(LOG_FORMAT))
-file_handler.setLevel(logmod.DEBUG)
-# file_handler.setFormatter(logmod.Formatter(LOG_FORMAT))
-
-logger.addHandler(console_handler)
-logger.addHandler(file_handler)
-logger.setLevel(logmod.DEBUG)
-logging = logger
+logging = logmod.getLogger(__name__)
+# If CLI:
+# logging = logmod.root
+# logging.setLevel(logmod.NOTSET)
 ##-- end logging
-
-##-- argparser
-#see https://docs.python.org/3/howto/argparse.html
-parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                 epilog = "\n".join([""]))
-parser.add_argument('--target', required=True)
-
-##-- end argparser
-
-args = parser.parse_args()
-#args.aBool...
 
 user_head_str   : str     = r"^\* {}'s Threads"
 thread_start_re : Pattern = compile(r"^\*\* Thread:")
 short_url_re    : Pattern = compile(r"^([^\[]*)(https?://t\.co/.+)$")
 file_uri_re     : Pattern = compile(r"(.*?)(file:\./)(.+)$")
 link_re         : Pattern = compile(r"(.*?)\[\[(https://t\.co/.+?)\](\[.+?\])?\](.*)$")
-
 fname_extract_re: Pattern = compile(r"(.+)(_\d+)?.org")
 
 def build_threader(output, base_name, pattern):
@@ -75,22 +48,6 @@ def build_threader(output, base_name, pattern):
         return new_thread_name
 
     return next_thread_context
-
-def process_directory(path):
-    """
-    Given a directory /path/to/library
-    Process each org file into separate threads,
-    in their own subdirs.
-
-    Group files that match the pattern .+_\d+.org
-    """
-    assert(path.is_dir)
-    all_orgs = path.glob("*.org")
-    filtered = {fname_extract_re.match(x.name)[1] for x in all_orgs}
-    logging.info("Processing Directory: %s", path)
-    logging.info("Found %s name patterns", len(filtered))
-    for fname in filtered:
-        process_pattern(path / fname)
 
 def process_file(path):
     """
@@ -189,21 +146,3 @@ def process_file_uri(line):
         line = f"{file_matched[1]}file:../{file_matched[3]}\n"
 
     return line
-
-def main():
-    target    = pl.Path(args.target).resolve()
-    if target.exists() and target.is_dir():
-        process_directory(target)
-    elif not target.exists():
-        process_pattern(target)
-    elif target.exists() and target.is_file():
-        process_file(target)
-
-
-
-
-##-- ifmain
-if __name__ == '__main__':
-    main()
-
-##-- end ifmain

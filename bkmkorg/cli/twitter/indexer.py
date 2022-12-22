@@ -9,7 +9,7 @@ import re
 from collections import defaultdict
 
 from bkmkorg.files.collect import get_data_files
-from bkmkorg.collections import IndexFile
+from bkmkorg.collections.indexfile import IndexFile
 
 ##-- end imports
 

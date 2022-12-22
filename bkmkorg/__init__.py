@@ -1,5 +1,5 @@
 
-DEFAULT_CONFIG  = "__config"
+DEFAULT_CONFIG  = "bkmkorg.__config"
 DEFAULT_TARGET  = "__temp_download"
 DEFAULT_LIBRARY = "/Volumes/documents/twitterthreads"
 

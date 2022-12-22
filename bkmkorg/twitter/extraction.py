@@ -136,3 +136,15 @@ def get_user_and_media_sets(json_dir:pl.Path) -> Tuple[Set[str], Set[str], List[
     logging.info("Found %s unique users", len(users))
 
     return users, media, variants
+
+
+
+def get_library_tweets(lib:List[pl.Path], tweet) -> Set[str]:
+    library_tweet_ids = set()
+    if tweet is None:
+        logging.info("---------- Getting Library Tweet Details")
+        logging.info("Libraries to search: %s", lib)
+        library_tweet_ids = get_all_tweet_ids(*lib, ext=".org")
+        logging.info("Found %s library tweets", len(library_tweet_ids))
+
+    return library_tweet_ids
