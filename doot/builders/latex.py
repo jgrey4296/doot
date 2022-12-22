@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import pathlib as pl
 import shutil
+from doit.action import CmdAction
 
 from doot import build_dir, data_toml
 from doot.files.checkdir import CheckDir, DestroyDir
@@ -12,84 +13,180 @@ from doot.utils.task_group import TaskGroup
 
 ##-- end imports
 
+src_dir   = pl.Path("docs") / "tex"
 latex_dir = build_dir / "latex"
-temp_dir  = build_dir / "temp"
-##-- directory setup/teardown
-check_build       = CheckDir(paths=[latex_dir], name="latex", task_dep=["_checkdir::build"])
-check_temp        = CheckDir(paths=[ temp_dir ], name="latex.setup", task_dep=["_checkdir::build"])
-teardown_teardown = DestroyDir(paths=[ temp_dir ], name="latex.teardown")
+temp_dir  = latex_dir / "temp"
 
-##-- end directory setup/teardown
+##-- directory check
+latex_check = CheckDir(paths=[latex_dir,
+                              temp_dir ],
+                       name="latex", task_dep=["_checkdir::build"])
 
-class LatexBuildTask:
+##-- end directory check
+
+class LatexMultiPass:
     """
-    Compile a latex file,
+    Trigger both latex passes and the bibtex pass
     """
 
-
-    def __init__(self, tex=None):
+    def __init__(self):
         self.create_doit_tasks = self.build
-        self.src      = pl.Path(tex).stem
-        self.target   = temp_dir / self.src.with_suffix(".pdf").name
 
     def build(self):
-        return {
-            "basename" : "latex::build",
-            "actions"  : [
-	            f"pdflatex -output-directory={temp_dir} {self.src}",
-            ],
-            "task_dep" : ["_checkdir::latex", "_checkdir::latex.setup"],
-            "file_dep" : [ self.src.with_suffix(".tex") ],
-            "targets"  : [ self.target ],
-            "clean"    : True,
-        }
+        for path in src_dir.rglob("*.tex"):
+            yield {
+                "basename" : "latex::build",
+                "name"     : path.stem,
+                "actions"  : [],
+                "file_dep" : [ latex_dir / path.with_suffix(".pdf").name ],
+            }
 
+class LatexFirstPass:
+    """
+    First pass of running latex,
+    pre-bibliography resolution
+    """
+
+    def __init__(self):
+        self.create_doit_tasks = self.build
+
+    def build(self):
+        for path in src_dir.rglob("*.tex"):
+            no_suffix = path.with_suffix("")
+            first_pass_pdf = latex_dir / ("1st_pass_" + path.with_suffix(".pdf").name)
+            yield {
+                "basename" : "latex::pass:one",
+                "name"     : path.stem,
+                "actions"  : [
+	                "pdflatex -interaction={interaction}" + f" -output-directory={temp_dir} {no_suffix}",
+                    f"cp {temp_dir}/{path.stem}.pdf {first_pass_pdf}",
+                ],
+                "task_dep" : ["_checkdir::latex"],
+                "file_dep" : [ path ],
+                "targets"  : [
+                    temp_dir / path.with_suffix(".aux").name,
+                    first_pass_pdf,
+                ],
+                "clean"    : True,
+                "params" : [
+                    { "name"   : "interaction",
+                     "short"  : "i",
+                     "type"    : str,
+                     "choices" : [ ("batchmode", ""), ("nonstopmode", ""), ("scrollmode", ""), ("errorstopmode", ""),],
+                     "default" : "nonstopmode",
+                    },
+                   ]
+            }
+class LatexSecondPass:
+    """
+    Second pass of latex compiling,
+    post-bibliography resolution
+    """
+
+    def __init__(self):
+        self.create_doit_tasks = self.build
+
+    def build(self):
+        for path in src_dir.rglob("*.tex"):
+            no_suffix = path.with_suffix("")
+            yield {
+                "basename" : "latex::pass:two",
+                "name"     : path.stem,
+                "actions"  : [
+	                "pdflatex -interaction={interaction}" + f" -output-directory={temp_dir} {no_suffix}",
+                    f"cp {temp_dir}/{path.stem}.pdf " + "{targets}",
+                ],
+                "task_dep" : [f"latex::pass:bibtex:{path.stem}"],
+                "file_dep" : [ temp_dir / path.with_suffix(".aux").name,
+                               temp_dir / path.with_suffix(".bbl").name,
+                              ],
+                "targets"  : [
+                    latex_dir / path.with_suffix(".pdf").name
+                ],
+                "clean"    : True,
+                "params" : [
+                    { "name"   : "interaction",
+                     "short"  : "i",
+                     "type"    : str,
+                     "choices" : [ ("batchmode", ""), ("nonstopmode", ""), ("scrollmode", ""), ("errorstopmode", ""),],
+                     "default" : "nonstopmode",
+                    },
+                   ]
+            }
+
+
+class LatexCheck:
+    """
+    Run a latex pass, but don't produce anything,
+    just check the syntax
+    """
+
+    def __init__(self):
+        self.create_doit_tasks = self.build
+
+    def build(self):
+        for path in src_dir.rglob("*.tex"):
+            no_suffix = path.with_suffix("")
+            yield {
+                "basename" : "latex::check",
+                "name"     : path.stem,
+                "actions"  : [
+                    "pdflatex -draftmode -interaction={interaction}" + f" -output-directory={temp_dir} {no_suffix}",
+                ],
+                "file_dep" : [ path ],
+                "task_dep" : [ "_checkdir::latex" ],
+                "uptodate" : [False],
+                "params" : [
+                    { "name"   : "interaction",
+                     "short"  : "i",
+                     "type"    : str,
+                     "choices" : [ ("batchmode", ""), ("nonstopmode", ""), ("scrollmode", ""), ("errorstopmode", ""),],
+                     "default" : "nonstopmode",
+                    },
+                   ]
+
+            }
 class BibtexBuildTask:
-    """ run bibtex on a compiled latex file to insert references """
+    """
+    Bibliography resolution pass
+    """
 
-    def __init__(self, tex=None, bib=None, **kwargs):
+    def __init__(self):
         self.create_doit_tasks = self.build
-        self.tex      = pl.Path(tex)
-        self.bib      = pl.Path(bib)
-        self.src      = temp_dir / self.tex.with_suffix(".aux").name
-        self.target   = self.src.with_suffix(".bbl").name
+
+    def texs_with_bibs(self):
+        return f"find {src_dir} -name '*.tex' -print0 | xargs -0 grep -l -E -e '\\\bibliography' > {temp_dir}/todos"
 
 
     def build(self):
-        return {
-            "basename" : "bibtex::build",
-            "actions"  : [ f"bibtex {self.src}" ],
-            "task_dep" : ["_checkdir::latex.setup"],
-            "file_dep" : [ self.tex, self.bib ],
-            "targets"  : [ self.target ],
-            "clean"    : True,
-        }
+        for path in src_dir.rglob("*.tex"):
+            yield {
+                "basename" : "latex::pass:bibtex",
+                "name"     : path.stem,
+                "actions"  : [ f"bibtex {temp_dir}/{path.stem}.aux" ],
+                "task_dep" : [f"latex::pass:one:{path.stem}"],
+                "file_dep" : [ latex_dir / "combined.bib",
+                               temp_dir / path.with_suffix(".aux").name ],
+                "targets"  : [ temp_dir / path.with_suffix(".bbl").name ],
+                "clean"    : True,
+            }
 
 class BibtexConcatenateTask:
-    """ concatenate all found bibtex files to produce a master file for building with  """
+    """
+    concatenate all found bibtex files
+    to produce a master file for latex's use
+    """
     def __init__(self, globs=None, target=None):
         self.create_doit_tasks = self.build
-        self.globs    = globs or []
-        self.target   = (temp_dir / target).with_suffix(".bib")
-
-    def glob_bibs(self):
-        found = {}
-        for glob in self.globs:
-            found += pl.Path(".").glob(glob)
-
-        return found
 
     def build(self):
-        all_bibs = self.glob_bibs()
-
         return {
             "basename" : "bibtex::concat",
             "actions"  : [
-	            f"cat {all_bibs} > {self.target} ",
-                ],
-            "task_dep" : ["_checkdir::latex", "_checkdir::latex.setup"],
-            "file_dep" : [  ],
-            "targets"  : [ self.target ],
+	            CmdAction(f"find {src_dir} -name '*.bib' -print0 | xargs -0 cat " + " > {targets}")
+            ],
+            "task_dep" : ["_checkdir::latex"],
+            "targets"  : [ latex_dir / "combined.bib" ],
             "clean"    : True,
         }
 
