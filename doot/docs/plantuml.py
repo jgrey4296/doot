@@ -13,41 +13,72 @@ from doot.utils.general import build_cmd
 
 plant_dir = build_dir / "plantuml"
 
-def task_plantuml_json():
-    """
-    Generate uml diagrams from json
-    """
-    cmd1 = "cat {dependencies}"
-    cmd2 = "awk 'BEGIN {print \"@startjson\"} END {print \"@endjson\"} {print $0}'"
-    cmd3 = "plantuml -p"
+##-- dir check
+plant_check = CheckDir(paths=[plant_dir], name="plantuml", task_dep=["_checkdir::build"])
 
-    full_cmd = f"{cmd1} | {cmd2} | {cmd3} > {targets}"
-    return {
-        "actions"  : [full_cmd],
-        "targets"  : [plant_dir / "json_vis.png"],
-        "file_dep" : ["something.json"],
-    }
+##-- end dir check
 
 def task_plantuml():
     """
-    run plantuml on a specification
+    run plantuml on a specification, generating target.'ext's
     """
-    cmd = "plantuml"
-    args = ["-filename", "{targets}", "{dependencies}"]
-    return {
-        "actions"  : [build_cmd(cmd, args)],
-        "targets"  : [plant_dir / "schema_uml.png"],
-        "file_dep" : [plant_dir / "schema.pu"],
-    }
+    for path in build_dir.glob("**/*.plantuml"):
+        cmd        = "plantuml"
+        args       = ["-tpng",
+                      "-output", plant_dir.resolve(),
+                      "-filename", "{targets}",
+                      "{dependencies}"
+                      ]
+        targ_fname = path.with_suffix(".png")
+        yield {
+            "basename" : "plantuml::png",
+            "name"     : targ_fname.stem,
+            "actions"  : [ build_cmd(cmd, args)],
+            "targets"  : [ plant_dir / targ_fname.name],
+            "file_dep" : [ path ],
+            "task_dep" : [ f"plantuml::check:{targ_fname.stem}" ],
+            "params"   : [ { "name"    : "ext",
+                             "short"   : "e",
+                             "type"    : str,
+                             "default" : "png" },
+                          ],
+            "clean"     : True,
+        }
 
 def task_plantuml_text():
     """
     run plantuml on a spec for text output
     """
-    cmd = "plantuml"
-    args = ["-ttxt", "-filename", "{targets}", "{dependencies}"],
-    return {
-        "actions"  : [build_cmd(cmd, args)],
-        "targets"  : [plant_dir / "schema_uml.txt"],
-        "file_dep" : [plant_dir / "schema.pu"],
-    }
+    for path in build_dir.glob("**/*.plantuml"):
+        cmd  = "plantuml"
+        args = ["-ttxt",
+                "-output", plant_dir.resolve(),
+                "-filename", "{targets}",
+                "{dependencies}"
+                ]
+        targ_fname = path.with_suffix(".atxt")
+        yield {
+            "basename" : "plantuml::txt",
+            "name"     : targ_fname.stem,
+            "actions"  : [ build_cmd(cmd, args)],
+            "targets"  : [ plant_dir / targ_fname.name],
+            "file_dep" : [ path ],
+            "task_dep" : [ f"plantuml::check:{targ_fname.stem}" ],
+            "clean"    : True,
+        }
+
+def task_plantuml_check():
+    """
+    check syntax of plantuml files
+    """
+    for path in build_dir.glob("**/*.plantuml"):
+        cmd        = "plantuml"
+        args       = [ "-checkonly", "{dependencies}"]
+        yield {
+            "basename" : "plantuml::check",
+            "name"     : path.stem,
+            "actions"  : [ build_cmd(cmd, args)],
+            "file_dep" : [ path ],
+            "uptodate" : [False],
+        }
+

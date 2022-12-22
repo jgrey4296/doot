@@ -5,27 +5,31 @@ from doot.utils.toml_accessor import TomlAccessor
 from doot.files.checkdir import CheckDir
 ##-- end imports
 
-data_toml          = None
-config_toml        = None
-src_dir, build_dir = None, None
-check_build        = None
+data_toml   = None
+config_toml = None
+src_dir     = None
+gen_dir     = None
+build_dir   = None
+check_build = None
 
 def setup_py(path="pyproject.toml"):
-    global data_toml, src_dir, build_dir, check_build, config_toml
+    global data_toml, src_dir, gen_dir, build_dir, check_build, config_toml
     data_toml   = TomlAccessor.load(path)
     config_toml = data_toml
     src_dir     = pl.Path(data_toml.project.name)
+    gen_dir     = src_dir / "_generated"
     build_dir   = pl.Path(data_toml.tool.doit.build_dir)
-    check_build = CheckDir(paths=[build_dir], name="build")
+    check_build = CheckDir(paths=[build_dir, gen_dir], name="build")
     return data_toml
 
 def setup_rust(path="Cargo.toml", config="./.cargo/config/toml"):
-    global data_toml, src_dir, build_dir, check_build, config_toml
+    global data_toml, src_dir, gen_dir, build_dir, check_build, config_toml
     data_toml   = TomlAccessor.load(path)
     config_toml = TomlAccessor.load(config)
     src_dir     = pl.Path(data_toml.package.name)
+    gen_dir     = src_dir / "_generated"
     build_dir   = pl.Path(config_toml.build.target_dir)
-    check_build = CheckDir(paths=[build_dir], name="build")
+    check_build = CheckDir(paths=[build_dir, gen_dir], name="build")
     return data_toml
 
 def setup_agnostic(path="doot.toml"):
@@ -73,4 +77,28 @@ def task_gradle_init():
         "actions" : [],
         "targets" : ["build.gradle.kts",
                      "logging.properties"],
+    }
+
+def task_sphinx_init():
+    return {
+        "actions" : [],
+        "targets" : [],
+    }
+
+def task_jekyll_init():
+    return {
+        "actions" : [],
+        "targets" : [],
+    }
+
+def task_godot_init():
+    return {
+        "actions" : [],
+        "targets" : [],
+    }
+
+def task_latex_init():
+    return {
+        "actions" : [],
+        "targets" : [],
     }

@@ -15,7 +15,6 @@ import doot
 
 ##-- config
 data_toml    = doot.setup_py()
-check_build = doot.check_build
 
 DOIT_CONFIG = {
     "default_tasks" : [],
@@ -27,10 +26,13 @@ DOIT_CONFIG = {
 ##-- post-config doot imports
 from doot.files.clean_cache import CleanCacheAction, py_cache_globs
 from doot.files.listall import task_listall
+from doot.files.checkdir import CheckDir
 
 from doot.groups import *
 from doot.files.ziptask import *
 ##-- end post-config doot imports
+
+all_checks = CheckDir.checkdir_group()
 
 zipper = ZipTask("mytest.zip",
                  paths=["setup.py", "sphinx.toml"],

@@ -46,9 +46,11 @@ class TomlAccessor:
     def load(path) -> self:
         return TomlAccessor("root", toml.load(path))
 
-    def __init__(self, attr, table):
+    def __init__(self, path, table):
+        if not isinstance(path, list):
+            path = [path]
         object.__setattr__(self, "__table", table)
-        object.__setattr__(self, "__path", [attr])
+        object.__setattr__(self, "__path", path)
 
     def keys(self):
         table  = object.__getattribute__(self, "__table")
@@ -58,7 +60,7 @@ class TomlAccessor:
         raise TomlAccessError(attr)
 
     def __getattr__(self, attr):
-        path   = object.__getattribute__(self, "__path")
+        new_path   = object.__getattribute__(self, "__path")[:]
         table  = object.__getattribute__(self, "__table")
 
         result = table.get(attr)
@@ -66,9 +68,12 @@ class TomlAccessor:
             result = object.__getattribute__(self, "__table").get(attr.replace("_", "-"))
 
         if result is None:
-            raise TomlAccessError(f"{path}.{attr}")
+            path_s = ".".join(new_path)
+            available = "/".join(self.keys())
+            raise TomlAccessError(f"{path_s}.[{attr}] not found, available: {available}")
 
         if isinstance(result, dict):
-            return TomlAccessor(f"{path}.{attr}", result)
+            new_path.append(attr)
+            return TomlAccessor(new_path, result)
 
         return result

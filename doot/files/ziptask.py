@@ -18,6 +18,10 @@ zip_dir = build_dir / "zips"
 check_zips = CheckDir(paths=[zip_dir], name="zips", task_dep=["_checkdir::build"],)
 ##-- end dir check
 
+__all__ = [
+        "ZipTask"
+]
+
 class ZipTask:
     """
     Automate creation of archive zipfiles

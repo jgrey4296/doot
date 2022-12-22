@@ -4,8 +4,9 @@ from __future__ import annotations
 import pathlib as pl
 import shutil
 
+from itertools import cycle, chain
 from doit.action import CmdAction
-from doot import build_dir, data_toml, src_dir
+from doot import build_dir, data_toml, src_dir, gen_dir
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
@@ -20,9 +21,9 @@ from doot.utils.general import build_cmd
 # https://python-jsonschema.readthedocs.io/en/stable/
 
 data_dirs = [pl.Path(x) for x in data_toml.tool.doot.xml.data_dirs if pl.Path(x).exists()]
-rec_dirs = [pl.Path(x) for x in data_toml.tool.doot.xml.recursive_dirs if pl.Path(x).exists()]
+rec_dirs  = [pl.Path(x) for x in data_toml.tool.doot.xml.recursive_dirs if pl.Path(x).exists()]
 
-xml_gen_dir   = src_dir / "_generated"
+xml_gen_dir   = gen_dir
 xml_build_dir = build_dir / "xml"
 schema_dir    = xml_build_dir   / "schema"
 elements_dir  = xml_build_dir   / "elements"
@@ -33,168 +34,224 @@ xml_dir_check = CheckDir(paths=[xml_build_dir,
                                 schema_dir,
                                 elements_dir,
                                 visual_dir,
-                                xml_gen_dir,
                                 ], name="xml", task_dep=["_checkdir::build"])
 
 ##-- end dir checks
+
+def gen_toml():
+    return """"
+##-- doot.xml
+[tool.doot.xml]
+data_dirs      = ["pack/__data/core/xml"]
+recursive_dirs = ["pack/__data/core/xml"]
+##-- end doot.xml
+"""
+
 
 
 class XmlElementsTask:
     def __init__(self):
         self.create_doit_tasks = self.build
+        self.cmd = "xml el -u"
 
-    def glob_target(self, targets, task):
-        xmls = " ".join(f"'{x}'" for x in pl.Path(task.meta['focus']).glob("*.xml") if x.is_file())
-        return f"xml el -u {xmls}" + " > {targets}"
+    def generate_on_target(self, targets, task):
+        if task.meta['recursive']:
+            globbed = pl.Path(task.meta['focus']).glob("*.xml")
+        elif task.meta['focus'].is_dir():
+            globbed = pl.Path(task.meta['focus']).rglob("*.xml")
+        else:
+            globbed = [task.meta['focus']]
 
-    def glob_rec_target(self, targets, task):
-        xmls = " ".join(f"'{x}'" for x in pl.Path(task.meta['focus']).rglob("*.xml") if x.is_file())
-        return f"xml el -u {xmls}" + " > {targets}"
+        xmls = " ".join(f"'{x}'" for x in globbed)
+        return f"{self.cmd} {xmls}" + " > {targets}"
+
 
     def build(self):
-        for targ in data_dirs:
-            targ_fname = "_".join(targ.with_suffix(".elements").parts[-2:])
+        for targ, rec in chain(zip(data_dirs, cycle([False])),
+                               zip(rec_dirs,  cycle([True]))):
+            targ_fname = ("rec_" if rec else "") + "_".join(targ.with_suffix(".elements").parts[-2:])
             yield {
                 "basename" : "xml::elements",
-                "name"     : targ.name,
-                "actions"  : [ CmdAction(self.glob_target)],
+                "name"     : pl.Path(targ_fname).stem,
+                "actions"  : [ CmdAction(self.generate_on_target)],
                 "targets"  : [ elements_dir / targ_fname ],
                 "task_dep" : ["_checkdir::xml"],
-                "meta"     : { "focus" : targ },
+                "meta"     : { "focus" : targ,
+                               "recursive" : rec,
+                              },
                 "clean"    : True
             }
 
-        for targ in rec_dirs:
-            targ_fname = "_".join(targ.with_suffix(".rec_elements").parts[-2:])
-            yield {
-                "basename" : "xml::elements.rec",
-                "name"     : targ.name,
-                "actions"  : [ CmdAction(self.glob_rec_target)],
-                "targets"  : [ elements_dir / targ_fname ],
-                "task_dep" : ["_checkdir::xml"],
-                "meta"     : { "focus" : targ },
-                "clean"    : True
-            }
+    def gen_toml(self):
+        return """
+##-- doot.xml
+[tool.doot.xml]
+data_dirs      = ["pack/__data/core/xml"]
+recursive_dirs = ["pack/__data/core/xml"]
+##-- end doot.xml
+"""
 
 
 class XmlSchemaTask:
     """
-    Generate xml schema for directories of xml files
+    Generate .xsd's from directories of xml files
     """
     def __init__(self):
         self.create_doit_tasks = self.build
         self.cmd               = "trang"
 
-    def glob_target(self, targets, task):
-        xmls = " ".join(f"'{x}'" for x in pl.Path(task.meta['focus']).glob("*.xml") if x.is_file())
+    def generate_on_target(self, targets, task):
+        if task.meta['recursive']:
+            globbed = pl.Path(task.meta['focus']).glob("*.xml")
+        elif task.meta['focus'].is_dir():
+            globbed = pl.Path(task.meta['focus']).rglob("*.xml")
+        else:
+            globbed = [task.meta['focus']]
+
+        xmls = " ".join(f"'{x}'" for x in globbed)
         return f"{self.cmd} {xmls}" + " {targets}"
 
-    def glob_rec_target(self, targets, task):
-        xmls = " ".join(f"'{x}'" for x in pl.Path(task.meta['focus']).rglob("*.xml") if x.is_file())
-        return f"{self.cmd} {xmls}" + " {targets}"
 
     def build(self):
-        for targ in data_dirs:
-            targ_fname = "_".join((targ / "trang").with_suffix(".xsd").parts[-3:])
+        for targ, rec in chain(zip(data_dirs, cycle([False])),
+                               zip(rec_dirs, cycle([True]))):
+            targ_fname = ("rec_" if rec else "") + "_".join((targ / "trang").with_suffix(".xsd").parts[-3:])
             yield {
                 "basename" : "xml::schema",
-                "name"     : targ.name,
-                "actions"  : [ CmdAction(self.glob_target)],
+                "name"     : pl.Path(targ_fname).stem,
+                "actions"  : [ CmdAction(self.generate_on_target)],
                 "targets"  : [ schema_dir / targ_fname ],
                 "task_dep" : ["_checkdir::xml"],
-                "meta"     : { "focus" : targ },
-                "clean"    : True
-            }
-
-        for targ in rec_dirs:
-            targ_fname = "_".join((targ / "trang_rec").with_suffix(".xsd").parts[-3:])
-            yield {
-                "basename" : "xml::schema.rec",
-                "name"     : targ.name,
-                "actions"  : [ CmdAction(self.glob_rec_target)],
-                "targets"  : [ schema_dir / targ_fname ],
-                "task_dep" : ["_checkdir::xml"],
-                "meta"     : { "focus" : targ },
-                "clean"    : True
+                "meta"     : { "focus" : targ, "recursive" : rec },
+                "clean"    : True,
+                "uptodate" : [True],
             }
 
 
 
 class XmlPythonSchemaRaw:
+    """ Generate Python Dataclass bindings based on draw XML data  """
     def __init__(self):
         self.create_doit_tasks = self.build
         self.cmd = "xsdata"
 
-    def glob_target(self, targets, task):
+    def get_args(self, task):
         args = ["generate",
+                ("--recursive" if task.meta['recursive'] else ""),
                 "-p", task.meta['package'], # generate package name
                 "--relative-imports", "--postponed-annotations",
                 "--kw-only",
                 "--frozen",
                 "--no-unnest-classes",
                 str(task.meta['focus']) ]
-        return f"{self.cmd} " + " ".join(args)
 
-    def glob_rec_target(self, targets, task):
-        args = ["generate",
-                "-r", # recursive
-                "-p", task.meta['package'], # generate package name
-                "--relative-imports", "--postponed-annotations",
-                "--kw-only",
-                "--frozen",
-                "--no-unnest-classes",
-                str(task.meta['focus']) ]
-        return f"{self.cmd} " + " ".join(args)
+        return args
+
+    def generate_on_target(self, task):
+        return f"{self.cmd} " + " ".join(self.get_args(task))
 
     def move_package(self, task):
         package = pl.Path(task.meta['package'])
         package.rename(xml_gen_dir / package)
     
     def build(self):
-        for targ in data_dirs:
-            targ_fname = "_".join(targ.parts[-2:])
+        for targ, rec in chain(zip(data_dirs, cycle([False])),
+                               zip(rec_dirs, cycle([True]))):
+            targ_fname = ("rec_raw_" if rec else "raw_") + "_".join(targ.parts[-2:])
             yield {
-                "basename" : "xml::schema.python",
+                "basename" : "xml::schema.python.raw",
                 "name"     : targ_fname,
-                "actions"  : [ CmdAction(self.glob_target), self.move_package ],
+                "actions"  : [ CmdAction(self.generate_on_target), self.move_package ],
                 "targets"  : [ xml_gen_dir / targ_fname ],
-                "task_dep" : [ "_checkdir::xml" ],
-                "meta"     : { "package" : targ_fname,
-                               "focus" : targ }
+                "task_dep" : [ "_xsdata::config", "_checkdir::xml" ],
+                "meta"     : { "package"   : targ_fname,
+                               "focus"     : targ,
+                               "recursive" : rec,
+                              }
+                # TODO clean gen dir
             }
 
-        for targ in rec_dirs:
-            targ_fname = "rec_" + "_".join(targ.parts[-2:])
-            yield {
-                "basename" : "xml::schema.python.rec",
-                "name"     : targ_fname,
-                "actions"  : [ CmdAction(self.glob_rec_target), self.move_package ],
-                "targets"  : [ xml_gen_dir / targ_fname ],
-                "task_dep" : [ "_checkdir::xml" ],
-                "meta"     : { "package" : targ_fname,
-                               "focus" : targ }
-            }
 
-class XmlPythonSchema:
+
+
+class XmlPythonSchemaXSD:
+    """ Generate python dataclass bindings from XSD's  """
 
     def __init__(self):
         self.create_doit_tasks = self.build
+        self.cmd = "xsdata"
+
+    def get_args(self, task):
+        args = ["generate",
+                ("--recursive" if task.meta['recursive'] else ""),
+                "-p", task.meta['package'], # generate package name
+                "--relative-imports", "--postponed-annotations",
+                "--kw-only",
+                "--frozen",
+                "--no-unnest-classes",
+                str(task.meta['focus']) ]
+
+        return args
+
+    def generate_on_target(self, task):
+        return f"{self.cmd} " + " ".join(self.get_args(task))
+
+    def move_package(self, task):
+        package = pl.Path(task.meta['package'])
+        package.rename(xml_gen_dir / package)
+
+    def build(self):
+        for targ, rec in chain(zip(data_dirs, cycle([False])),
+                               zip(rec_dirs,  cycle([True]))):
+            xsd_fname = ("rec_" if rec else "") + "_".join((targ / "trang").with_suffix(".xsd").parts[-3:])
+            targ_fname = ("rec_xsd_" if rec else "xsd_") + "_".join(targ.parts[-2:])
+            yield {
+                "basename" : "xml::schema.python.xsd",
+                "name"     : targ_fname,
+                "actions"  : [ CmdAction(self.generate_on_target), self.move_package ],
+                "targets"  : [ xml_gen_dir / targ_fname ],
+                "file_dep" : [ schema_dir / xsd_fname ],
+                "task_dep" : [ "_xsdata::config", "_checkdir::xml" ],
+                "meta"     : { "package"   : targ_fname,
+                               "focus"     : targ,
+                               "recursive" : rec,
+                              }
+                # TODO clean gen dir
+            }
 
 class XmlSchemaVisualiseTask:
 
     def __init__(self):
         self.create_doit_tasks = self.build
+        self.cmd = "xsdata"
+
+    def get_args(self, task):
+        args = ["generate",
+                "-o", "plantuml", # output as plantuml
+                "-pp",            # to stdout instead of make a file
+                "{dependencies}", ">", "{targets}"]
+        return args
+
+    def generate_on_target(self, task):
+        return f"{self.cmd} " + " ".join(self.get_args(task))
+
 
     def build(self):
-        cmd = "xsdata"
-        args = ["generate", "-o", "plantuml", "-pp", "{dependencies}", ">", "{targets}"]
-
-        return {
-            "basename" : "xml::schema.visual",
-            "actions"  : [build_cmd(cmd, args)],
-            "targets"  : ["schema.pu"],
-            "file_dep" : ["schema.xsd"],
-        }
+        for targ, rec in chain(zip(data_dirs, cycle([False])),
+                               zip(rec_dirs,  cycle([True]))):
+            xsd_fname  = ("rec_" if rec else "") + "_".join((targ / "trang").with_suffix(".xsd").parts[-3:])
+            targ_fname = ("rec_" if rec else "") + "_".join(targ.with_suffix(".plantuml").parts[-2:])
+            pre_task   = "xml::schema:" + pl.Path(xsd_fname).stem
+            yield {
+                "basename" : "xml::schema.plantuml",
+                "name"     : pl.Path(targ_fname).stem,
+                "actions"  : [ CmdAction(self.generate_on_target) ],
+                "targets"  : [ visual_dir / targ_fname ],
+                "file_dep" : [ schema_dir / xsd_fname ],
+                "task_dep" : [ "_xsdata::config",  "_checkdir::xml"],
+                "meta"     : {},
+                "clean"    : True,
+            }
 
 
 class XmlValidateTask:
@@ -212,7 +269,7 @@ class XmlValidateTask:
         return build_cmd(self.cmd, self.args)
 
     def build(self):
-        return {
+        yield {
             "basename" : "xml::validate",
             "actions" : [self.validate],
             "targets" : self.targets,
@@ -241,7 +298,7 @@ class XmlFormatTask:
 
         # "--html"
 
-        return {
+        yield {
             "basename" : "xml::format",
             "actions" : [],
             "targets" : []

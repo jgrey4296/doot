@@ -95,17 +95,6 @@ build_dir = "build"
 
 [tool.doit.commands]
 
-[tool.doit.commands.test]
-pattern  = "*_tests.py"
-verbose  = false
-failfast = false
-
-[tool.doit.commands.lint]
-executable = "pylint"
-errors     = false
-outfile    = "package.lint"
-outfmt     = ""
-
 # [tool.doit.tasks.{task}]
 
 ##-- end doit
@@ -130,3 +119,19 @@ title_format = "{date}{title}.{ext}"
 default_template = "default"
 
 ##-- end doot.jekyll
+
+##-- doot.clingo
+[tool.doot.clingo]
+src_ext = ".lp"
+out_ext = ".asp_result"
+options = []
+
+##-- end doot.clingo
+
+##-- doot.images
+[tool.doot.images]
+data_dirs      = []
+recursive_dirs = []
+exts           = [".jpg", ".jpeg", ".png", ".mp4"]
+
+##-- end doot.images

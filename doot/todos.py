@@ -115,3 +115,31 @@ class UTF8EncodeTask:
 ##-- file moving
 
 ##-- end file moving
+
+##-- clips
+
+##-- end clips
+
+##-- coq
+
+##-- end coq
+
+##-- prolog
+
+##-- end prolog
+
+##-- soar
+
+##-- end soar
+
+##-- z3
+
+##-- end z3
+
+##-- haskell
+
+##-- end haskell
+
+##-- csharp
+
+##-- end csharp

@@ -19,6 +19,7 @@ from uuid import UUID, uuid1
 from weakref import ref
 from doot.utils.task_group import TaskGroup
 from doot import data_toml
+from doot.utils.toml_accessor import TomlAccessError
 
 if TYPE_CHECKING:
     # tc only imports
@@ -38,6 +39,7 @@ __all__ = [
     "cargo_group", "epub_group",
 ]
 
+
 ##-- defaults
 defaults_group = TaskGroup("defaults",
 
@@ -45,15 +47,8 @@ defaults_group = TaskGroup("defaults",
 ##-- end defaults
 
 ##-- pip
-pip_group = None
-has_py_package = False
 try:
     data_toml.project
-    has_py_package = True
-except Exception:
-    pass
-
-if pl.Path("pyproject.toml").exists() and has_py_package:
     from doot.builders import pip_install as pip
     pip_group = TaskGroup("pip_group",
                           pip.editlib,
@@ -63,12 +58,12 @@ if pl.Path("pyproject.toml").exists() and has_py_package:
                           pip.uninstall,
                           pip.pip_requirements,
                           pip.version)
-
+except TomlAccessError:
+    pip_group = None
 ##-- end pip
 
 ##-- jekyll
-jekyll_group = None
-if pl.Path("jekyll.toml").exists():
+try:
     from doot.builders import jekyll as j_build
     from doot.docs import jekyll as j_doc
     jekyll_group = TaskGroup("jekyll_group",
@@ -79,60 +74,65 @@ if pl.Path("jekyll.toml").exists():
                              j_doc.GenPostTask(),
                              j_doc.GenTagsTask(),
                              )
+except TomlAccessError:
+    jekyll_group = None
 
 ##-- end jekyll
 
 ##-- latex
-latex_group = None
-if bool(list(pl.Path(".").glob("**/*.tex"))):
+try:
     from doot.builders import latex
     latex_group = TaskGroup("latex_group",
+                            latex.LatexMultiPass(),
+                            latex.LatexFirstPass(),
+                            latex.LatexSecondPass(),
+                            latex.BibtexBuildTask(),
+                            latex.BibtexConcatenateTask(),
+                            latex.LatexCheck(),
                             latex.task_latex_docs,
                             latex.task_latex_install,
                             latex.task_latex_requirements,
                             latex.task_latex_rebuild,
                             )
-
+except TomlAccessError:
+    latex_group = None
 ##-- end latex
 
 ##-- sphinx
-sphinx_group = None
-if pl.Path("docs").exists() and (pl.Path("docs") / "conf.py").exists():
+try:
     from doot.builders import sphinx
     sphinx_group = TaskGroup("sphinx_group",
                              sphinx.SphinxDocTask(),
                              sphinx.task_browse,
                              )
-
+except TomlAccessError:
+    sphinx_group = None
 ##-- end sphinx
 
 ##-- gtags
-from doot.data import gtags
-gtags_group = TaskGroup("gtags_group",
-                        gtags.task_tags_init,
-                        gtags.task_tags
-                        )
+try:
+    from doot.data import gtags
+    gtags_group = TaskGroup("gtags_group",
+                            gtags.task_tags_init,
+                            gtags.task_tags
+                            )
+except TomlAccessError:
+    gtags_group = None
 ##-- end gtags
 
 ##-- git
-git_group = None
-if pl.Path(".git").exists():
+try:
     from doot.vcs import git_tasks
     git_group = TaskGroup("git group",
                           git_tasks.GitLogTask(),
                           )
+except TomlAccessError:
+    git_group = None
 ##-- end git
 
 ##-- cargo
-cargo_group = None
-has_cargo_package = False
 try:
     data_toml.package
-    has_cargo_package = True
-except Exception:
-    pass
-
-if pl.Path("Cargo.toml").exists() and has_cargo_package:
     from doot.builders import cargo
     cargo_group = TaskGroup("cargo_group",
                             cargo.task_cargo_build,
@@ -148,11 +148,12 @@ if pl.Path("Cargo.toml").exists() and has_cargo_package:
                             cargo.task_cargo_help,
                             cargo.task_cargo_debug,
                             cargo.task_cargo_version)
+except TomlAccessError:
+    cargo_group = None
 ##-- end cargo
 
 ##-- gradle
-gradle_group = None
-if pl.Path("gradle.build.kts").exists():
+except TomlAccessError:
     from doot.builders import gradle
     gradle_group = TaskGroup("gradle_group",
                              gradle.task_gradle_run,
@@ -165,12 +166,13 @@ if pl.Path("gradle.build.kts").exists():
                              gradle.task_gradle_version,
                              gradle.task_gradle_test
                              )
+except TomlAccessError:
+    gradle_group = None
 ##-- end gradle
 
 ##-- epub
-epub_group = None
-from doot.builders import epub
-if epub.working_dir.exists() or epub.orig_dir.exists():
+try:
+    from doot.builders import epub
     epub_group = TaskGroup("epub group",
                            epub.EbookNewTask(),
                            epub.EbookCompileTask(),
@@ -180,4 +182,6 @@ if epub.working_dir.exists() or epub.orig_dir.exists():
                            epub.EbookSplitTask(),
                            epub.EbookRestructureTask(),
                            )
+except TomlAccessError:
+    epub_group = None
 ##-- end epub

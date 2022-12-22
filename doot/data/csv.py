@@ -17,8 +17,16 @@ from doot.utils.general import build_cmd
 
 csv_dir = build_dir / "csv"
 
+##-- check dir
+csv_check = CheckDir(paths=[csv_dir], name="csv", task_dep=["_checkdir::build"])
 
-class CsvVisualiseTask:
+##-- end check dir
+
+class CSVSummaryTask:
+    """ Summarise all found csv files,
+    grouping those with the same headers,
+    and listing number of rows
+    """
 
     def __init__(self):
         self.create_doit_tasks = self.build
@@ -26,11 +34,5 @@ class CsvVisualiseTask:
     def build(self):
         pass
 
-
-class CsvSchemaTask:
-
-    def __init__(self):
-        self.create_doit_tasks = self.build
-
-    def build(self):
+    def gen_toml(self):
         pass

@@ -13,7 +13,7 @@ from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
 from doot.files.clean_dirs import clean_target_dirs
-from doot.builders.jekyll import jekyll_check_build, jekyll_check_src, jekyll_src
+from doot.builders.jekyll import jekyll_src
 
 try:
     # For py 3.11 onwards:
@@ -133,18 +133,18 @@ class GenPostTask:
         Generate a stub toml section used to customize this task
         """
         return """
-        ##-- doot.jekyll
-        [tool.doot.jekyll.genpost]
-        ext = "md"
-        # used in datetime.strftime
-        date_format = "%Y-%m-%d"
-        # title_format.format_map({date, title, ext })
-        title_format = "{date}{title}.{ext}"
-        # 'default' for doot.__template.jekyll_post, else a path:
-        # can be overriden on cli
-        default_template = "default"
+##-- doot.jekyll
+[tool.doot.jekyll.genpost]
+ext = "md"
+# used in datetime.strftime
+date_format = "%Y-%m-%d"
+# title_format.format_map({date, title, ext })
+title_format = "{date}{title}.{ext}"
+# 'default' for doot.__template.jekyll_post, else a path:
+# can be overriden on cli
+default_template = "default"
 
-        ##-- end doot.jekyll
+##-- end doot.jekyll
         """
 
 class GenTagsTask:

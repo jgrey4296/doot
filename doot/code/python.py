@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import pathlib as pl
 import shutil
+from doit.action import CmdAction
 
 from doot import build_dir, data_toml
 from doot.files.checkdir import CheckDir
@@ -13,63 +14,112 @@ from doot.utils.general import build_cmd, src_dir
 
 def task_initpy() -> dict:
     """:: touch all __init__.py files """
-	# TODO find ${PY_TOP} -type d -print0 | xargs -0 -I {} touch "{}/__init__.py"
+    def touch_initpys():
+        for path in src_dir.rglob("*"):
+            if path.is_file():
+                continue
+            parts = path.parts
+            if any(x in parts for x in ["__pycache__", ".git", "__mypy_cache__"]):
+                continue
 
-    cmd  = ""
-    args = []
+            inpy = path / "__init__.py"
+            if not inpy.exists():
+                inpy.touch()
+
+
+    
     return {
-        ## Required (callable | tuple(callable, *args, **kwargs))
-        "actions"     : [ build_cmd(cmd, args) ],
+        "basename"    : "python::initpys",
+        "actions"     : [ touch_initpys ],
     }
 
 def task_lint() -> dict:
     """:: lint the package """
     # TODO add ignore / ignore-patterns / --ignore-paths
+    proj_name = data_toml['project']['name']
+    def run_lint(fmt, executable, error):
+        args = ["--output-format", fmt,
+                "--output", "package.lint"
+                ]
+        if error:
+            args.append("-E")
 
-    data = data_toml['tool']['doit']['commands']['lint']
-    cmd  = data['executable']
-    args = [
-        "--output-format", data['outfmt'],
-        "--output", data['outfile'],
-        "-E" if data['errors'] else "",
-        data_toml['project']['name']
-    ]
+        args.append(proj_name)
+
+        return f"{executable} " + " ".join(args)
+
 
 
     return {
-        "actions"   : [ build_cmd(cmd, args) ],
+        "actions"   : [ CmdAction(run_lint) ],
         "verbosity" : 2,
         "targets"   : [ "package.lint" ],
         "clean"     : True,
+        "params"    : [
+            { "name" : "fmt",
+              "short" : "f",
+              "type" : str,
+              "default" : "",
+             },
+            { "name"    : "executable",
+              "short"   : "e",
+              "type"    : str,
+              "default" : "pylint",
+             },
+            { "name"    : "error",
+              "short"   : "x",
+              "type"    : bool,
+              "default" : False,
+             },
+
+
+            ],
     }
 
 
 ## TODO run in -X dev mode, add warnings
 def task_test() -> dict:
-    """:: Task definition """
-    data = data_toml['tool']['doit']['commands']['test']
-    cmd  = "python"
-    args = ["-m", "unittest", "discover",
-            data_toml['project']['name'],
-            "-p", data_toml['tool']['doit']['commands']['test']['pattern'],
-            "-t", data_toml['project']['name'],
-            "-s", "{start}"
-            ]
+    """
+    Run all project unit tests
+    """
+    proj_name = data_toml['project']['name'],
 
-    if data['verbose']:
-        args.append("-v")
+    def run_tests(verbose, start, failfast, pattern, start):
+        args = ["-m", "unittest", "discover",
+                proj_name,
+                "-p", pattern,
+                "-t", proj_name,
+                "-s", start,
+                ]
 
-    if data['failfast']:
-        args.append('-f')
+        if verbose:
+            args.append("-v")
+
+        if failfast:
+            args.append('-f')
+
+        return f"python " + " ".join(args)
 
     return {
-        ## Required (callable | tuple(callable, *args, **kwargs))
-        "actions"     : [ build_cmd(cmd, args) ],
-        "params"      : [ {"name"    : "start",
-                           "start"   : "-s",
-                           "default" : data_toml['project']['name']
-                           },
-                          ]
+        "basename"    : "python::test",
+        "actions"     : [ CmdAction(run_tests) ],
+        "params"      : [
+            {"name"    : "start",
+             "short"   : "s",
+             "type"    : str,
+             "default" : data_toml['project']['name']
+             },
+            { "name"    : "verbose",
+              "short"   : "v",
+              "type"    : bool,
+              "default" : False,
+             },
+            { "name"    : "pattern",
+              "short"   : "p",
+              "type"    : str,
+              "default" : "*_tests.py"
+              }
+        ]
     }
 
 
