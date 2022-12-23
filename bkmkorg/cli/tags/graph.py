@@ -46,13 +46,13 @@ def main():
     logging.info("Targeting: %s", args.target)
     logging.info("Output to: %s", args.output)
 
-    bibs, htmls, orgs, bkmks = collect.collect_files(args.target)
-    bib_db                   = BU.parse_bib_files(bibs, func=bib_proc.tags)
-    main_graph               = TR.TagGraph()
+    found      = collect.collect_files(args.target)
+    bib_db     = BU.parse_bib_files(found['.bib'], func=bib_proc.tags)
+    main_graph = TR.TagGraph()
 
     main_graph.extract_bibtex(bib_db)
-    main_graph.extract_org(orgs)
-    main_graph.extract_bookmark(bkmks)
+    main_graph.extract_org(found['.org'])
+    main_graph.extract_bookmark(found['.bookmarks'])
 
     main_graph.write(args.output)
 

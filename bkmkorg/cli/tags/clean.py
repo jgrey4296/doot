@@ -61,10 +61,10 @@ def main():
     logging.info("Loaded %s tag substitutions", len(cleaned_tags))
 
     #Load Bibtexs, html, orgs and clean each
-    bibs, htmls, orgs, bkmks = collect.collect_files(args.target)
-    clean.clean_bib_files(bibs   , cleaned_tags)
-    clean.clean_org_files(orgs   , cleaned_tags)
-    clean.clean_bkmk_files(bkmks , cleaned_tags)
+    found = collect.collect_files(args.target)
+    clean.clean_bib_files(found['.bib']   , cleaned_tags)
+    clean.clean_org_files(found['.org']   , cleaned_tags)
+    clean.clean_bkmk_files(found['.bookmarks'], cleaned_tags)
     logging.info("Complete --------------------")
 
 

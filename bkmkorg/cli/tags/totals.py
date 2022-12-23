@@ -57,13 +57,13 @@ def main():
     logging.info("Output to: %s", cli_args.output)
     logging.info("Cleaned Tags locations: %s", cli_args.cleaned)
 
-    bibs, htmls, orgs, bkmks = collect.collect_files(cli_args.target)
-    bib_db    = BU.parse_bib_files(bibs, func=bib_proc.tags)
+    found = collect.collect_files(cli_args.target)
+    bib_db    = BU.parse_bib_files(found['.bib'], func=bib_proc.tags)
     tag_graph = TagGraph()
 
     bib_tags  = tag_graph.extract_bibtex(bib_db)
-    org_tags  = tag_graph.extract_org(orgs)
-    bkmk_tags = tag_graph.extract_bookmark(bkmks)
+    org_tags  = tag_graph.extract_org(found['.org'])
+    bkmk_tags = tag_graph.extract_bookmark(found['.bookmarks'])
 
     for data, stem_name in zip((bib_tags, org_tags, bkmk_tags),
                                ("bib", "org", "bkmk")):

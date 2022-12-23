@@ -679,10 +679,3 @@ build_dir = "build"
 
 ##-- end doit
 
-##-- sphinx
-[tool.sphinx]
-builder   = "html"
-docs_dir  = "docs"
-verbosity = 0
-
-##-- end sphinx

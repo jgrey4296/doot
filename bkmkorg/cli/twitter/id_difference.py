@@ -49,8 +49,8 @@ def main():
     logging.info("Library  : %s", args.library)
     logging.info("Output to: %s", args.output)
 
-    bibs, htmls, orgs, bkmks = collect.collect_files(args.library)
-    tweet_details            = get_tweet_dates_and_ids(orgs)
+    found = collect.collect_files(args.library)
+    tweet_details            = get_tweet_dates_and_ids(found['.org'])
     ids_set                  = {x[0] for x in tweet_details}
 
     # TODO Get ids from target text file

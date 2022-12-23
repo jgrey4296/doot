@@ -43,8 +43,8 @@ def main():
     logging.info("Targeting: %s", args.target)
     logging.info("Output to: %s", args.output)
 
-    bibs, htmls, orgs, bkmks = collect.collect_files(args.target)
-    suspect_files            = get_permalinks(orgs)
+    found         = collect.collect_files(args.target)
+    suspect_files = get_permalinks(found['.org'])
 
     logging.info("Found %s suspect files", len(suspect_files))
     with open(args.output,'w') as f:

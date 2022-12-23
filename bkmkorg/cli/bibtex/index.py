@@ -42,10 +42,10 @@ def main():
     if not bool(args.target):
         args.target = ["/Volumes/documents/github/writing/resources/bibliography"]
 
-    bibs = RET.collect_files(args.target)[0]
+    found = RET.collect_files(args.target)
 
     # Load bibs
-    db = bib_parse.parse_bib_files(bibs, func=bib_proc.tags)
+    db = bib_parse.parse_bib_files(found['.bib'], func=bib_proc.tags)
 
     # map to tags
     index = IndexFile()
