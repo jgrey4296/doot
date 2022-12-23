@@ -18,7 +18,8 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 from doot.utils.task_group import TaskGroup
-from doot.utils.toml_accessor import TomlAccessError
+from doot.utils.toml_access import TomlAccessError
+from doot import data_toml
 
 if TYPE_CHECKING:
     # tc only imports
@@ -42,6 +43,7 @@ __all__ = [
 
 ##-- godot
 try:
+    data_toml.tool.doot.godot
     from doot.builders import godot
     godot_group = TaskGroup("godot_group",
                             godot.task_godot_check,
@@ -56,6 +58,7 @@ except TomlAccessError:
 
 ##-- xml
 try:
+    data_toml.tool.doot.xml
     from doot.data import xml as xml_reports
     xml_group = TaskGroup("xml_group",
                           xml_reports.XmlElementsTask(),
@@ -72,6 +75,7 @@ except TomlAccessError:
 
 ##-- sqlite
 try:
+    data_toml.tool.doot.databse
     from doot.data import database
     sqlite_group = TaskGroup("sqlite_group",
                              database.SqliteReportTask(),
@@ -83,6 +87,7 @@ except TomlAccessError:
 
 ##-- json
 try:
+    data_toml.tool.doot.json
     from doot.data import json as json_reports
     # from doot.docs.plantuml import task_plantuml_json
     json_group = TaskGroup("json group",
@@ -96,6 +101,7 @@ except TomlAccessError:
 
 ##-- plantuml
 try:
+    data_toml.tool.doot.plantuml
     from doot.docs import plantuml
     plantuml_group = TaskGroup("plantuml_group",
                                plantuml.task_plantuml,
@@ -108,6 +114,7 @@ except TomlAccessError:
 
 ##-- csv
 try:
+    data_toml.tool.doot.csv
     from doot.data import csv as csv_reports
     csv_group = TaskGroup("csv group",
                            csv_reports.CSVSummaryTask(),
@@ -118,6 +125,7 @@ except TomlAccessError:
 
 ##-- dot
 try:
+    data_toml.tool.doot.dot
     from doot.docs import dot
     dot_group = TaskGroup("dot group",
                           dot.DotVisualise(),
@@ -130,6 +138,7 @@ except TomlAccessError:
 
 ##-- images
 try:
+    data_toml.tool.doot.images
     from doot.data import images
     images_group = TaskGroup("images group",
                              images.ImagesListingTask(),

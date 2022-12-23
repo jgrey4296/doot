@@ -11,19 +11,20 @@ from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
 from doot.utils.task_group import TaskGroup
-from doot.utils.toml_accessor import TomlAccessError
+from doot.utils.toml_access import TomlAccessError
 
 ##-- end imports
 # https://doc.rust-lang.org/cargo/index.html
+
+try:
+    bin_file = data_toml.bin[0].name
+except TomlAccessError:
+    bin_file = data_toml.package.name
 
 def task_cargo_build(profile="debug"):
     """
     Build rust binary
     """
-    try:
-        bin_file = data_toml.bin[0].name
-    except TomlAccessError:
-        bin_file = data_toml.package.name
 
     return {
         "basename" : f"cargo::build.{profile}",

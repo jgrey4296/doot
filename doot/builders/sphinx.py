@@ -4,7 +4,7 @@ from __future__ import annotations
 import pathlib as pl
 import shutil
 
-from doot import build_dir, data_toml
+from doot import build_dir, data_toml, doc_dir
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
@@ -12,18 +12,19 @@ from doot.utils.task_group import TaskGroup
 from doot.files.clean_dirs import clean_target_dirs
 
 ##-- end imports
-sphinx_dir = build_dir / "sphinx"
 
 __all__ = [
-        "check_dir", "SphinxDocTask", "task_browse",
+        "SphinxDocTask", "task_browse",
 
 ]
 
+sphinx_build_dir = build_dir / "sphinx"
+
 ##-- dir check
-check_dir = CheckDir(paths=[sphinx_dir ], name="sphinx", task_dep=["_checkdir::build"])
+check_dir = CheckDir(paths=[sphinx_build_dir ], name="sphinx", task_dep=["_checkdir::build"])
 ##-- end dir check
 
-sphinx         = data_toml.tool.doot.sphinx
+builder    = data_toml.or_get("html").tool.doot.sphinx
 
 class SphinxDocTask:
 
@@ -32,13 +33,11 @@ class SphinxDocTask:
 
     def build(self) -> dict:
         """:: Build sphinx documentation """
-        docs_dir       = pl.Path(sphinx.docs_dir)
-        docs_build_dir = build_dir / docs_dir
 
         cmd  = "sphinx-build"
-        args = ['-b', sphinx.builder,
+        args = ['-b', builder,
                 docs_dir,
-                docs_build_dir,
+                sphinx_build_dir,
                 ]
 
         match sphinx.verbosity:
@@ -58,6 +57,16 @@ class SphinxDocTask:
             "clean"    : [ clean_target_dirs ],
         }
 
+
+
+    def gen_toml(self):
+        return """
+##-- sphinx
+[tool.doot.sphinx]
+builder   = "html"
+verbosity = 0
+##-- end sphinx
+"""
 
 def task_browse() -> dict:
     """:: Task definition """

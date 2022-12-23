@@ -40,17 +40,29 @@ class TomlAccessError(AttributeError):
     pass
 
 
-class TomlAccessor:
+class TomlAccess:
 
     @staticmethod
     def load(path) -> self:
-        return TomlAccessor("root", toml.load(path))
+        return TomlAccess("root", toml.load(path))
 
-    def __init__(self, path, table):
+    def __init__(self, path, table, fallback=None):
         if not isinstance(path, list):
             path = [path]
         object.__setattr__(self, "__table", table)
         object.__setattr__(self, "__path", path)
+        object.__setattr__(self, "__fallback", fallback)
+
+    def or_get(self, val):
+        """
+        use a fallback value in an access chain,
+        eg: data_toml.or_get("blah").this.doesnt.exist -> "blah"
+
+        *without* throwing a TomlAccessError
+        """
+        path  = object.__getattribute__(self, "__path")[:]
+        table = object.__getattribute__(self, "__table")
+        return TomlAccess(path, table, fallback=val)
 
     def keys(self):
         table  = object.__getattribute__(self, "__table")
@@ -60,20 +72,24 @@ class TomlAccessor:
         raise TomlAccessError(attr)
 
     def __getattr__(self, attr):
-        new_path   = object.__getattribute__(self, "__path")[:]
-        table  = object.__getattribute__(self, "__table")
+        new_path = object.__getattribute__(self, "__path")[:]
+        table    = object.__getattribute__(self, "__table")
+        fallback = object.__getattribute__(self, "__fallback")
 
         result = table.get(attr)
         if result is None and "_" in attr :
             result = object.__getattribute__(self, "__table").get(attr.replace("_", "-"))
 
+        if result is None and fallback is not None:
+            return fallback
+
         if result is None:
-            path_s = ".".join(new_path)
+            path_s    = ".".join(new_path)
             available = "/".join(self.keys())
             raise TomlAccessError(f"{path_s}.[{attr}] not found, available: {available}")
 
         if isinstance(result, dict):
             new_path.append(attr)
-            return TomlAccessor(new_path, result)
+            return TomlAccess(new_path, result, fallback=fallback)
 
         return result

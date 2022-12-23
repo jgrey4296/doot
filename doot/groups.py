@@ -19,7 +19,7 @@ from uuid import UUID, uuid1
 from weakref import ref
 from doot.utils.task_group import TaskGroup
 from doot import data_toml
-from doot.utils.toml_accessor import TomlAccessError
+from doot.utils.toml_access import TomlAccessError
 
 if TYPE_CHECKING:
     # tc only imports
@@ -49,6 +49,7 @@ defaults_group = TaskGroup("defaults",
 ##-- pip
 try:
     data_toml.project
+    data_toml.tool.doot.pip
     from doot.builders import pip_install as pip
     pip_group = TaskGroup("pip_group",
                           pip.editlib,
@@ -64,6 +65,7 @@ except TomlAccessError:
 
 ##-- jekyll
 try:
+    data_toml.tool.doot.jekyll
     from doot.builders import jekyll as j_build
     from doot.docs import jekyll as j_doc
     jekyll_group = TaskGroup("jekyll_group",
@@ -81,6 +83,7 @@ except TomlAccessError:
 
 ##-- latex
 try:
+    data_toml.tool.doot.tex
     from doot.builders import latex
     latex_group = TaskGroup("latex_group",
                             latex.LatexMultiPass(),
@@ -100,6 +103,7 @@ except TomlAccessError:
 
 ##-- sphinx
 try:
+    data_toml.tool.doot.sphinx
     from doot.builders import sphinx
     sphinx_group = TaskGroup("sphinx_group",
                              sphinx.SphinxDocTask(),
@@ -111,6 +115,7 @@ except TomlAccessError:
 
 ##-- gtags
 try:
+    data_toml.tool.doot.gtags
     from doot.data import gtags
     gtags_group = TaskGroup("gtags_group",
                             gtags.task_tags_init,
@@ -122,6 +127,7 @@ except TomlAccessError:
 
 ##-- git
 try:
+    data_toml.tool.doot.git
     from doot.vcs import git_tasks
     git_group = TaskGroup("git group",
                           git_tasks.GitLogTask(),
@@ -132,6 +138,7 @@ except TomlAccessError:
 
 ##-- cargo
 try:
+    data_toml.tool.doot.cargo
     data_toml.package
     from doot.builders import cargo
     cargo_group = TaskGroup("cargo_group",
@@ -154,6 +161,7 @@ except TomlAccessError:
 
 ##-- gradle
 except TomlAccessError:
+    data_toml.tool.doot.gradle
     from doot.builders import gradle
     gradle_group = TaskGroup("gradle_group",
                              gradle.task_gradle_run,
@@ -172,6 +180,7 @@ except TomlAccessError:
 
 ##-- epub
 try:
+    data_toml.tool.doot.epub
     from doot.builders import epub
     epub_group = TaskGroup("epub group",
                            epub.EbookNewTask(),
