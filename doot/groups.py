@@ -51,6 +51,7 @@ try:
     data_toml.project
     data_toml.tool.doot.pip
     from doot.builders import pip_install as pip
+    from doot.code import python as py_tasks
     pip_group = TaskGroup("pip_group",
                           pip.editlib,
                           pip.install,
@@ -58,7 +59,10 @@ try:
                           pip.srcbuild,
                           pip.uninstall,
                           pip.pip_requirements,
-                          pip.version)
+                          pip.version,
+                          py_tasks.task_initpy,
+                          py_tasks.task_lint,
+                          py_tasks.task_test)
 except TomlAccessError:
     pip_group = None
 ##-- end pip

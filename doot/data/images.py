@@ -22,7 +22,7 @@ from doot.utils.general import build_cmd
 data_dirs = [pl.Path(x) for x in data_toml.tool.doot.images.data_dirs if pl.Path(x).exists()]
 rec_dirs  = [pl.Path(x) for x in data_toml.tool.doot.images.recursive_dirs if pl.Path(x).exists()]
 
-exts            = data_toml.tool.doot.images.exts
+exts : list[str] = data_toml.or_get([".jpg"]).tool.doot.images.exts
 
 images_build_dir = build_dir / "images"
 
@@ -33,7 +33,7 @@ images_dir_check = CheckDir(paths=[images_build_dir,],
 
 ##-- end dir checks
 
-
+# TODO make globber
 class ImagesListingTask:
     """
     Create a listing of all files needed to hash

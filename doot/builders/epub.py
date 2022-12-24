@@ -15,7 +15,7 @@ from doit.tools import Interactive
 
 from bs4 import BeautifulSoup
 from doit.action import CmdAction
-from doot import build_dir, data_toml
+from doot import build_dir, data_toml, doc_dir, temp_dir
 from doot.files.checkdir import CheckDir
 from doot.files.ziptask import ZipTask, zip_dir
 from doot.utils.cmdtask import CmdTask
@@ -30,17 +30,19 @@ logging = logmod.getLogger(__name__)
 # https://www.w3.org/publishing/epub3/epub-spec.html#sec-cmt-supported
 
 epub_build_dir = build_dir / "epub"
-working_dir    = pl.Path("docs") / "epub"
-orig_dir       = pl.Path("orig") / "epub"
+working_dir    = doc_dir / "epub"
+orig_dir       = doc_dir / "orig" / "epub"
+epub_zip_dir   = temp_dir / "epub"
 
 working_dirs = list(working_dir.iterdir()) if working_dir.exists() else []
 epubs        = list(orig_dir.glob("**/*.epub")) if orig_dir.exists() else []
-zips         = list(zip_dir.glob("*.zip")) if zip_dir.exists() else []
+zips         = list(epub_zip_dir.glob("*.zip")) if epub_zip_dir.exists() else []
 
 ##-- dir check
 check_working_epub = CheckDir(paths=[working_dir,
                                      epub_build_dir,
                                      orig_dir,
+                                     epub_zip_dir,
                                      ],
                               name="epub",
                               task_dep=["_checkdir::build"])
@@ -99,7 +101,7 @@ class EbookConvertTask:
                 "basename" : "_epub::convert.zip",
                 "name"     : path.stem,
                 "targets"  : [ epub_build_dir / path.with_suffix(".epub").name ],
-                "file_dep" : [ zip_dir / path.with_suffix(".zip").name ],
+                "file_dep" : [ epub_zip_dir / path.with_suffix(".zip").name ],
                 "actions"  : [ "ebook-convert {dependencies} {targets}" ],
                 "task_dep" : ["_checkdir::epub",
                               f"_zip::epub:{path.stem}"
@@ -122,7 +124,7 @@ class EbookZipTask:
             target = path.with_suffix(".zip").name
             glob = str(path) + "/**/*"
             task = ZipTask(target,
-                           target_dir=zip_dir,
+                           target_dir=epub_zip_dir,
                            globs=[glob],
                            base="_zip::epub",
                            name=path.name,

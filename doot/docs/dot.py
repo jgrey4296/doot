@@ -30,6 +30,7 @@ dot_dir_check = CheckDir(paths=[dot_build_dir,
 
 ##-- end dir checks
 
+# TODO make globber
 class DotVisualise:
     """
     make images from any dot files

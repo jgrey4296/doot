@@ -12,6 +12,7 @@ from doot import build_dir, data_toml
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
+from doot.utils.globber import EarlyGlobber
 
 ##-- end imports
 
@@ -22,17 +23,16 @@ csv_check = CheckDir(paths=[csv_dir], name="csv", task_dep=["_checkdir::build"])
 
 ##-- end check dir
 
-class CSVSummaryTask:
+class CSVSummaryTask(EarlyGlobber):
     """ Summarise all found csv files,
     grouping those with the same headers,
     and listing number of rows
     """
 
     def __init__(self):
-        self.create_doit_tasks = self.build
+        super(CSVSummaryTask, self).__init__("csv::summary",
+                                             [".csv"],
+                                             [pl.Path("data")])
 
-    def build(self):
-        pass
-
-    def gen_toml(self):
-        pass
+    def get_actions(self, fname):
+        return [f"head --lines=1 {fname}"]

@@ -63,15 +63,6 @@ def task_start_repl():
     pass
 ##-- end repl
 
-##-- latex
-def task_latex_check():
-    # pdflatex -draftmode
-    pass
-
-def task_bibtex_check():
-    pass
-##-- end latex
-
 ##-- rust
 
 ##-- end rust

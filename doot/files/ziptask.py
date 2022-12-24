@@ -22,6 +22,7 @@ __all__ = [
         "ZipTask"
 ]
 
+# TODO make globber
 class ZipTask:
     """
     Automate creation of archive zipfiles

@@ -18,6 +18,7 @@ plant_check = CheckDir(paths=[plant_dir], name="plantuml", task_dep=["_checkdir:
 
 ##-- end dir check
 
+# TODO make globber
 def task_plantuml():
     """
     run plantuml on a specification, generating target.'ext's

@@ -147,11 +147,12 @@ default_template = "default"
 ##-- end doot.jekyll
         """
 
+
 class GenTagsTask:
     """
     Generate summary files for all tags used in md files in the jekyll src dir
     """
-
+    # TODO make globber
     def __init__(self, template=None, index=None):
         self.create_doit_tasks = self.build
         self.tagset            = set()

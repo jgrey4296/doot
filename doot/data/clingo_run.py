@@ -18,12 +18,9 @@ from doot.utils.general import build_cmd
 
 ##-- end imports
 
-input_ext  = data_toml.tool.doot.clingo.src_ext
-output_ext = data_toml.tool.doot.clingo.out_ext
-clingo_opts = data.toml.tool.doot.clingo.options
-
-data_dirs = [pl.Path(x) for x in data_toml.tool.doot.json.data_dirs if pl.Path(x).exists()]
-rec_dirs  = [pl.Path(x) for x in data_toml.tool.doot.json.recursive_dirs if pl.Path(x).exists()]
+input_ext  = data_toml.or_get(".lp").tool.doot.clingo.src_ext
+output_ext = data_toml.or_get(".asp_result").tool.doot.clingo.out_ext
+clingo_opts = data.toml.or_get([]).tool.doot.clingo.options
 
 clingo_gen_dir   = gen_dir
 clingo_build_dir = build_dir / "clingo"
@@ -38,6 +35,7 @@ clingo_dir_check = CheckDir(paths=[clingo_build_dir,
 
 ##-- end dir checks
 
+# TODO make globber
 class ClingoRun:
     """
     Run clingo on ansprolog sources

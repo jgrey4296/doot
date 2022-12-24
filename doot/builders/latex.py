@@ -156,6 +156,10 @@ class LatexCheck:
                    ]
 
             }
+class BibtexCheck:
+    # TODO
+    pass
+
 class BibtexBuildTask:
     """
     Bibliography resolution pass
