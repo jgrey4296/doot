@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import pathlib as pl
 import shutil
+import shlex
 
 from functools import partial
 from itertools import cycle, chain
@@ -15,11 +16,11 @@ from doot import build_dir, data_toml, src_dir, gen_dir
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
+from doot.utils import globber
 
 ##-- end imports
 
 data_dirs = [pl.Path(x) for x in data_toml.tool.doot.json.data_dirs if pl.Path(x).exists()]
-rec_dirs  = [pl.Path(x) for x in data_toml.tool.doot.json.recursive_dirs if pl.Path(x).exists()]
 
 json_gen_dir   = gen_dir
 json_build_dir = build_dir / "json"
@@ -34,13 +35,52 @@ json_dir_check = CheckDir(paths=[json_build_dir,
 
 ##-- end dir checks
 
-class JsonSchemaTask:
+class JsonFormatTask(globber.DirGlobber):
+    """
+    Lint Json files with jq
+    """
 
-    def __init__(self):
-        self.create_doit_tasks = self.build
+    def __init__(self, targets=data_dirs, rec=True):
+        super().__init__("json::format", [".json"], data_dirs, rec=rec)
 
-    def build(self):
-        pass
+    def format_jsons(self, task):
+        ext_strs    = [f"*{ext}" for ext in self.exts]
+        globbed     = {x for ext in ext_strs for x in task.meta['focus'].rglob(ext)}
+        format_cmds = []
+
+        for target in globbed:
+            target_q   = shlex.quote(str(target))
+            new_fmt    = shlex.quote(str(target.with_name(f"{target.name}.format")))
+            fmt_backup = shlex.quote(str(target.with_name(f"{target.name}.backup")))
+
+            fmt_cmd = ["jq",
+                       "-M", "-S"
+                       , "."
+                       , target_q , ">" , new_fmt , ";"
+                       , "mv" , "--verbose", "--update",  new_fmt, target_q
+                       ]
+            format_cmds.append(" ".join(fmt_cmd))
+
+        return "; ".join(format_cmds)
+
+    def get_actions(self, fpath):
+        ext_strs = [f"*{ext}" for ext in self.exts]
+
+        find_names  = " -o ".join(f"-name \"{ext}\"" for ext in ext_strs)
+        depth = ""
+        if self.rec:
+            depth = "-maxdepth 1"
+
+        backup_cmd = f"find {fpath} {depth} {find_names} | xargs -I %s cp --verbose --no-clobber %s %s.backup"
+        total_cmds = [ CmdAction(backup_cmd), CmdAction(self.format_jsons) ]
+        return total_cmds
+
+    def task_detail(self, fpath, task):
+        task.update({
+            "uptodate" : [False],
+            "meta" : { "focus" : fpath }
+            })
+        return task
 
 class JsonPythonSchema:
     def __init__(self):
@@ -67,8 +107,7 @@ class JsonPythonSchema:
         package.rename(json_gen_dir / package)
 
     def build(self):
-        for targ, rec in chain(zip(data_dirs, cycle([False])),
-                               zip(rec_dirs, cycle([True]))):
+        for targ, rec in chain(zip(data_dirs, cycle([False]))):
             targ_fname = ("rec_" if rec else "") + "_".join(targ.parts[-2:])
             yield {
                 "basename" : "json::schema.python",
@@ -113,8 +152,7 @@ class JsonVisualise:
         return f"{header}; {cmd}; {footer}"
 
     def build(self):
-        for targ, rec in chain(zip(data_dirs, cycle([False])),
-                               zip(rec_dirs, cycle([True]))):
+        for targ, rec in chain(zip(data_dirs, cycle([False]))):
             targ_fname = ("rec_" if rec else "") + "_".join(targ.with_suffix(".plantuml").parts[-2:])
             yield {
                 "basename" : "json::schema.visual",

@@ -5,33 +5,43 @@ import pathlib as pl
 import shutil
 from doit.action import CmdAction
 
-from doot import build_dir, data_toml
+from doot import build_dir, data_toml, src_dir
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
-from doot.utils.general import build_cmd, src_dir
+from doot.utils.general import build_cmd
+from doot.utils import globber
 
 ##-- end imports
 
-def task_initpy() -> dict:
-    """:: touch all __init__.py files """
-    def touch_initpys():
-        for path in src_dir.rglob("*"):
-            if path.is_file():
+class InitPyGlobber(globber.DirGlobber):
+
+    def __init__(self, targets=data_dirs, rec=False):
+        super().__init__("py::initpy", [], [src_dir], rec=rec)
+        self.ignores = ["__pycache__", ".git", "__mypy_cache__"]
+
+    def touch_initpys(self, task):
+        queue = [ task.meta['focus'] ]
+        while bool(queue):
+            current = queue.pop()
+            if current.is_file():
                 continue
-            parts = path.parts
-            if any(x in parts for x in ["__pycache__", ".git", "__mypy_cache__"]):
+            if current.name in self.ignores:
                 continue
 
-            inpy = path / "__init__.py"
-            if not inpy.exists():
-                inpy.touch()
+            queue += list(current.iterdir())
 
+            inpy = current / "__init__.py"
+            inpy.touch()
 
-    
-    return {
-        "basename"    : "python::initpys",
-        "actions"     : [ touch_initpys ],
-    }
+    def get_actions(self, fpath):
+        return [ self.touch_initpys ]
+
+    def task_details(self, fpath, task):
+        task.update({
+            "meta" : { "focus" : fpath }
+        })
+        return task
+
 
 def task_lint() -> dict:
     """:: lint the package """
@@ -47,7 +57,6 @@ def task_lint() -> dict:
         args.append(proj_name)
 
         return f"{executable} " + " ".join(args)
-
 
 
     return {

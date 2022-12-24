@@ -66,8 +66,7 @@ try:
                           xml_reports.XmlPythonSchemaRaw(),
                           xml_reports.XmlPythonSchemaXSD(),
                           xml_reports.XmlSchemaVisualiseTask(),
-                          # xml_reports.XmlValidateTask(),
-                          # xml_reports.XmlFormatTask(),
+                          xml_reports.XmlFormatTask(),
                         )
 except TomlAccessError:
     xml_group = None
@@ -92,6 +91,7 @@ try:
     # from doot.docs.plantuml import task_plantuml_json
     json_group = TaskGroup("json group",
                            json_reports.JsonPythonSchema(),
+                           json_reports.JsonFormatTask(),
                            # task_plantuml_json,
                            # json_reports.JsonSchemaTask(),
                            )
