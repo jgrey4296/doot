@@ -60,9 +60,11 @@ try:
                           pip.uninstall,
                           pip.pip_requirements,
                           pip.version,
-                          py_tasks.task_initpy,
-                          py_tasks.task_lint,
-                          py_tasks.task_test)
+                          pip.upgrade,
+                          py_tasks.InitPyGlobber(),
+                          py_tasks.PyLintTask(),
+                          py_tasks.PyTestGlob(),
+                          )
 except TomlAccessError:
     pip_group = None
 ##-- end pip

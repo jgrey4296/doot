@@ -117,7 +117,8 @@ try:
     data_toml.tool.doot.csv
     from doot.data import csv as csv_reports
     csv_group = TaskGroup("csv group",
-                           csv_reports.CSVSummaryTask(),
+                          csv_reports.CSVSummaryTask(),
+                          csv_reports.CSVSummaryXMLTask(),
                            )
 except TomlAccessError:
     csv_group = None

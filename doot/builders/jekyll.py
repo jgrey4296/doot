@@ -31,7 +31,6 @@ config_text = config_file.read_text()
 ##-- end data
 
 __all__ = [
-    "jekyll_check_build", "jekyll_check_src",
     "task_jekyll_serve", "task_jekyll_build",
     "task_init_jekyll", "task_jekyll_install"
 ]

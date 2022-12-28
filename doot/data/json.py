@@ -53,9 +53,7 @@ class JsonFormatTask(globber.DirGlobber):
             new_fmt    = shlex.quote(str(target.with_name(f"{target.name}.format")))
             fmt_backup = shlex.quote(str(target.with_name(f"{target.name}.backup")))
 
-            fmt_cmd = ["jq",
-                       "-M", "-S"
-                       , "."
+            fmt_cmd = ["jq", "-M", "-S" , "."
                        , target_q , ">" , new_fmt , ";"
                        , "mv" , "--verbose", "--update",  new_fmt, target_q
                        ]
@@ -63,7 +61,7 @@ class JsonFormatTask(globber.DirGlobber):
 
         return "; ".join(format_cmds)
 
-    def get_actions(self, fpath):
+    def subtask_actions(self, fpath):
         ext_strs = [f"*{ext}" for ext in self.exts]
 
         find_names  = " -o ".join(f"-name \"{ext}\"" for ext in ext_strs)
@@ -75,7 +73,7 @@ class JsonFormatTask(globber.DirGlobber):
         total_cmds = [ CmdAction(backup_cmd), CmdAction(self.format_jsons) ]
         return total_cmds
 
-    def task_detail(self, fpath, task):
+    def subtask_detail(self, fpath, task):
         task.update({
             "uptodate" : [False],
             "meta" : { "focus" : fpath }

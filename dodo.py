@@ -33,10 +33,3 @@ from doot.files.ziptask import *
 ##-- end post-config doot imports
 
 all_checks = CheckDir.checkdir_group()
-
-zipper = ZipTask("mytest.zip",
-                 paths=["setup.py", "sphinx.toml"],
-                 globs=["doot/**/*.py"],
-                 verbosity=2,
-                 date=True,
-                 )

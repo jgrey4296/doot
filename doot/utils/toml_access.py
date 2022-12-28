@@ -40,6 +40,17 @@ class TomlAccessError(AttributeError):
     pass
 
 
+class TomlAccessValue:
+
+    def __init__(self, value):
+        self.value = value
+
+    def __call__(self):
+        return self.value
+
+    def __getattr__(self, attr):
+        return self
+
 class TomlAccess:
 
     @staticmethod
@@ -53,10 +64,10 @@ class TomlAccess:
         object.__setattr__(self, "__path", path)
         object.__setattr__(self, "__fallback", fallback)
 
-    def or_get(self, val):
+    def or_get(self, val) -> TomlAccessValue:
         """
         use a fallback value in an access chain,
-        eg: data_toml.or_get("blah").this.doesnt.exist -> "blah"
+        eg: data_toml.or_get("blah").this.doesnt.exist() -> "blah"
 
         *without* throwing a TomlAccessError
         """
@@ -71,7 +82,7 @@ class TomlAccess:
     def __setattr__(self, attr, value):
         raise TomlAccessError(attr)
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr) -> TomlAccessValue | str | list | int | float:
         new_path = object.__getattribute__(self, "__path")[:]
         table    = object.__getattribute__(self, "__table")
         fallback = object.__getattribute__(self, "__fallback")
@@ -81,7 +92,7 @@ class TomlAccess:
             result = object.__getattribute__(self, "__table").get(attr.replace("_", "-"))
 
         if result is None and fallback is not None:
-            return fallback
+            return TomlAccessValue(fallback)
 
         if result is None:
             path_s    = ".".join(new_path)
@@ -91,5 +102,8 @@ class TomlAccess:
         if isinstance(result, dict):
             new_path.append(attr)
             return TomlAccess(new_path, result, fallback=fallback)
+
+        if fallback is not None:
+            return TomlAccessValue(result)
 
         return result

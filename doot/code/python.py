@@ -13,6 +13,15 @@ from doot.utils import globber
 
 ##-- end imports
 
+lint_exec    = data_toml.or_get("pylint").tool.doot.python.lint.exec()
+lint_fmt     = data_toml.or_get("text").tool.doot.python.lint.output_format()
+lint_out     = data_toml.or_get("lint.result").tool.doot.python.lint.output_name()
+lint_error   = data_toml.or_get(False).tool.doot.python.lint.error()
+py_build_dir = build_dir / "python"
+
+py_test_dir_fmt = data_toml.or_get("__test").tool.doot.python.test.dir_fmt()
+py_test_args = data_toml.or_get([]).tool.doot.python.test.args()
+
 class InitPyGlobber(globber.DirGlobber):
 
     def __init__(self, targets=data_dirs, rec=False):
@@ -33,102 +42,81 @@ class InitPyGlobber(globber.DirGlobber):
             inpy = current / "__init__.py"
             inpy.touch()
 
-    def get_actions(self, fpath):
+    def subtask_actions(self, fpath):
         return [ self.touch_initpys ]
 
-    def task_details(self, fpath, task):
-        task.update({
-            "meta" : { "focus" : fpath }
-        })
+    def subtask_detail(self, fpath, task):
+        task['meta'].update({"focus" : fpath})
         return task
 
 
-def task_lint() -> dict:
+class PyLintTask(globber.DirGlobber):
     """:: lint the package """
-    # TODO add ignore / ignore-patterns / --ignore-paths
-    proj_name = data_toml['project']['name']
-    def run_lint(fmt, executable, error):
-        args = ["--output-format", fmt,
-                "--output", "package.lint"
+
+    def __init__(self):
+        super().__init__("python::lint", [], [src_dir], rec=False)
+
+    def run_lint(self, task):
+        args = ["--output-format", task.meta['format'],
+                "--output", py_build_dir / task.meta["output"],
                 ]
-        if error:
+        if task.meta['error']:
             args.append("-E")
 
         args.append(proj_name)
+        exec_cmd = task.meta['exec']
+        cmd_args = " ".join(str(x) for x in args)
+        return f"{exec_cmd} {cmd_args}"
 
-        return f"{executable} " + " ".join(args)
+    def subtask_actions(self, fpath):
+        return [self.run_lint]
 
+    def subtask_detail(self, fpath, task):
+        task.update({})
+        task['meta'].update({
+            "format" : lint_fmt,
+            "output" : lint_out,
+            "exec"   : lint_exec,
+            "error"  : lint_error,
+            })
+        return task
 
-    return {
-        "actions"   : [ CmdAction(run_lint) ],
-        "verbosity" : 2,
-        "targets"   : [ "package.lint" ],
-        "clean"     : True,
-        "params"    : [
-            { "name" : "fmt",
-              "short" : "f",
-              "type" : str,
-              "default" : "",
-             },
-            { "name"    : "executable",
-              "short"   : "e",
-              "type"    : str,
-              "default" : "pylint",
-             },
-            { "name"    : "error",
-              "short"   : "x",
-              "type"    : bool,
-              "default" : False,
-             },
+    def gen_toml(self):
+        return "\n".join([
+            "[tool.doot.python.lint]",
+            "exec = \"pylint\"",
+            "output-format = \"text\"",
+            "output-name = \"lint.results\"",
+            "error = false",
+            ])
 
-
-            ],
-    }
-
-
-## TODO run in -X dev mode, add warnings
-def task_test() -> dict:
+class PyTestGlob(globber.DirGlobber):
     """
     Run all project unit tests
     """
-    proj_name = data_toml['project']['name'],
 
-    def run_tests(verbose, start, failfast, pattern, start):
-        args = ["-m", "unittest", "discover",
-                proj_name,
-                "-p", pattern,
-                "-t", proj_name,
-                "-s", start,
-                ]
+    def __init__(self):
+        super().__init__("python::test", [".py"], [src_dir], rec=True, filter_fn=self.is_test_dir)
 
-        if verbose:
-            args.append("-v")
+    def is_test_dir(self, fpath):
+        return py_test_dir_fmt in fpath.name:
 
-        if failfast:
-            args.append('-f')
+    def run_tests(self, task):
+        args = ["-X", "dev", "-t", pl.Path()] + py_test_args
+        arg_str = " ".join(args)
+        return f"python -m unittest discover {arg_str} {task.meta['dir']}"
 
-        return f"python " + " ".join(args)
+    def subtask_actions(self, fpath):
+        return [self.run_tests]
+    
+    def subtask_detail(self, fpath, task):
+        task.update({})
+        task['meta'].update({"dir" : fpath})
+        return task
 
-    return {
-        "basename"    : "python::test",
-        "actions"     : [ CmdAction(run_tests) ],
-        "params"      : [
-            {"name"    : "start",
-             "short"   : "s",
-             "type"    : str,
-             "default" : data_toml['project']['name']
-             },
-            { "name"    : "verbose",
-              "short"   : "v",
-              "type"    : bool,
-              "default" : False,
-             },
-            { "name"    : "pattern",
-              "short"   : "p",
-              "type"    : str,
-              "default" : "*_tests.py"
-              }
-        ]
-    }
-
-
+    def gen_toml(self):
+        return "\n".join([
+            "[tool.doot.python.test]",
+            "dir-fmt = \"__test\"",
+            "args    = []",
+            ])

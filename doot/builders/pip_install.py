@@ -30,6 +30,8 @@ uninstall = CmdTask("pip", "uninstall", "-y", data_toml.project.name, basename="
 
 version   = CmdTask("pip", "--version", verbosity=2, basename="pip::version")
 
+upgrade   = CmdTask("pip", "install", "--upgrade", basename="pip::upgrade")
+
 def pip_requirements() -> dict:
     """:: generate requirements.txt """
     target = "requirements.txt"

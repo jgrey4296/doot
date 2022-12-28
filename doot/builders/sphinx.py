@@ -24,7 +24,7 @@ sphinx_build_dir = build_dir / "sphinx"
 check_dir = CheckDir(paths=[sphinx_build_dir ], name="sphinx", task_dep=["_checkdir::build"])
 ##-- end dir check
 
-builder    = data_toml.or_get("html").tool.doot.sphinx
+builder    = data_toml.or_get("html").tool.doot.sphinx()
 
 class SphinxDocTask:
 
