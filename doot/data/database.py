@@ -8,6 +8,7 @@ from doot import build_dir, data_toml
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
+from doot.utils import globber
 
 ##-- end imports
 
@@ -18,26 +19,23 @@ sqlite_dir_check = CheckDir(paths=[sqlite_build_dir,], name="sqlite", task_dep=[
 
 ##-- end dir checks
 
-class SqlitePrepTask():
+class SqlitePrepTask(globber.FileGlobberMulti):
     """ file conversion from mysql to sqlite
     using https://github.com/dumblob/mysql2sqlite
     """
     def __init__(self):
-        self.create_doit_tasks = self.build
+        super().__init__("sqlite::prep", [".sql"], [src_dir], rec=True)
 
-    def build(self):
-        pass
+    def subtask_detail(self, fpath, task):
+        return task
 
-class SqliteReportTask:
+class SqliteReportTask(globber.FileGlobberMulti):
     # report database tables
     # .schema .fullschema
     # .table
 
     def __init__(self):
-        self.create_doit_tasks = self.build
+        super().__init__("sqlite::report", [".db"], [src_dir], rec=True)
 
-    def build(self):
-        pass
-
-    def gen_toml(self):
-        return ""
+    def subtask_detail(self, fpath, task):
+        return task

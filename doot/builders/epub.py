@@ -20,6 +20,7 @@ from doot.files.checkdir import CheckDir
 from doot.files.ziptask import ZipTask, zip_dir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
+from doot.utils import globber
 ##-- end imports
 
 ##-- logging
@@ -34,9 +35,6 @@ working_dir    = doc_dir / "epub"
 orig_dir       = doc_dir / "orig" / "epub"
 epub_zip_dir   = temp_dir / "epub"
 
-working_dirs = list(working_dir.iterdir()) if working_dir.exists() else []
-epubs        = list(orig_dir.glob("**/*.epub")) if orig_dir.exists() else []
-zips         = list(epub_zip_dir.glob("*.zip")) if epub_zip_dir.exists() else []
 
 ##-- dir check
 check_working_epub = CheckDir(paths=[working_dir,
@@ -59,89 +57,84 @@ NAV_ENT_T      = Template(data_path.joinpath("epub_nav_entry").read_text())
 
 ws = re.compile("\s+")
 
-class EbookCompileTask:
+class EbookCompileTask(globber.DirGlobber):
     """
     convert directories to zips,
     then those zips to epubs
     """
 
     def __init__(self):
-        self.create_doit_tasks = self.build
+        super().__init__("epub::compile", [], [working_dir], filter_fn=self.not_source)
 
-    def build(self):
-        for path in working_dirs:
-            yield {
-                "basename" : "epub::compile",
-                "name"     : path.stem,
-                "actions"  : [],
-                "targets"  : [ ],
-                "task_dep" : [ f"epub::manifest:{path.stem}",
-                               f"_zip::epub:{path.stem}",
-                               f"_epub::convert.zip:{path.stem}",
-                              ],
-            }
+    def not_source(self, fpath):
+        return fpath != working_dir
+
+    def subtask_detail(self, fpath, task):
+        task.update({"task_dep" : [ f"epub::manifest:{task['name']}",
+                                    f"_zip::epub:{task['name']}",
+                                    f"_epub::convert.zip:{task['name']}",
+                                   ],
+                     })
+        return task
 
 
 
-class EbookConvertTask:
+class EbookConvertTask(globber.DirGlobber):
     """
     *.zip -> *.epub
     """
 
     def __init__(self):
-        self.create_doit_tasks = self.build
+        super().__init__("_epub::convert.zip", [], [working_dir])
 
-    def build_epub(self, file_dep, targets):
-        return
-
-    def build(self):
+    def subtask_detail(self, fpath, task):
         # TODO possibly only zips with the right contents
-        for path in working_dirs:
-            yield {
-                "basename" : "_epub::convert.zip",
-                "name"     : path.stem,
-                "targets"  : [ epub_build_dir / path.with_suffix(".epub").name ],
-                "file_dep" : [ epub_zip_dir / path.with_suffix(".zip").name ],
-                "actions"  : [ "ebook-convert {dependencies} {targets}" ],
-                "task_dep" : ["_checkdir::epub",
-                              f"_zip::epub:{path.stem}"
-                              ],
-                "clean"    : True,
-            }
+        task.update({
+            "targets"  : [ epub_build_dir / fpath.with_suffix(".epub").name ],
+            "file_dep" : [ epub_zip_dir / fpath.with_suffix(".zip").name ],
+            "actions"  : [ "ebook-convert {dependencies} {targets}" ],
+            "task_dep" : [ "_checkdir::epub",
+                           f"_zip::epub:{task['name']}"
+                          ],
+            "clean"    : True,
+        })
+        return task
 
 
 
-class EbookZipTask:
+class EbookZipTask(globber.DirGlobber):
     """
     Zip working epub directories together
     """
 
     def __init__(self):
-        self.create_doit_tasks = self.build
+        super().__init__("_zip::epub", [], [working_dir])
 
-    def build(self):
-        for path in working_dirs:
-            target = path.with_suffix(".zip").name
-            glob = str(path) + "/**/*"
-            task = ZipTask(target,
-                           target_dir=epub_zip_dir,
-                           globs=[glob],
-                           base="_zip::epub",
-                           name=path.name,
-                           )
+    def subtask_detail(self, fpath, task):
+        target = fpath.with_suffix(".zip").name
+        glob   = str(fpath) + "/**/*"
+        ztask  = ZipTask(target=target,
+                         target_dir=epub_zip_dir,
+                         globs=[glob],
+                         base=task['basename'],
+                         name=task['name'],
+                         )
 
-            yield task.build()
+        return ztask.build()
 
 
-class EbookManifestTask:
+class EbookManifestTask(globber.DirGlobber):
     """
     Generate the manifest for an epub directory
     """
 
     def __init__(self):
-        self.create_doit_tasks = self.build
+        super().__init__("epub::manifest", [], [working_dir], filter_fn=self.not_source)
         # Map path -> uuid
         self.uuids = {}
+
+    def not_source(self, fpath):
+        return fpath != working_dir
 
     def init_uuids(self):
         self.uuids.clear()
@@ -265,40 +258,36 @@ class EbookManifestTask:
 
 
 
-    def build(self):
-        for path in working_dirs:
-            yield {
-                "basename" : "epub::manifest",
-                "name"     : path.stem,
-                "actions"  : [ self.init_uuids, self.backup, self.generate_nav, self.generate_manifest ],
-                "targets"  : [ path / "content.opf", path / "content" / "nav.xhtml" ],
-                "task_dep" : [ f"_epub::restruct:{path.stem}" ]
-            }
+    def subtask_detail(self, fpath, task):
+        task.update({
+            "actions"  : [ self.init_uuids, self.backup, self.generate_nav, self.generate_manifest ],
+            "targets"  : [ fpath / "content.opf", fpath / "content" / "nav.xhtml" ],
+            "task_dep" : [ f"_epub::restruct:{task['name']}" ]
+        })
+        return task
 
 
-class EbookSplitTask:
+class EbookSplitTask(globber.FileGlobberMulti):
     """
     split any epubs found in the project
     """
 
     def __init__(self):
-        self.create_doit_tasks = self.build
+        super().__init__("epub::split", [".epub"], [orig_dir], rec=True)
 
-    def build(self):
-        for path in epubs:
-            yield {
-                "basename" : "epub::split",
-                "name"     : path.stem,
-                "targets"  : [ working_dir / path.stem],
-                "file_dep" : [ path ],
-                "actions"  : [ "echo {dependencies}",
-                                "echo {targets}",
-                                "ebook-convert {dependencies} {targets}" ],
-                "task_dep" : [ "_checkdir::epub" ],
-            }
+    def subtask_detail(self, fpath, task):
+        task.update({
+            "targets"  : [ working_dir / fpath.stem],
+            "file_dep" : [ fpath ],
+            "actions"  : [ "echo {dependencies}",
+                           "echo {targets}",
+                           "ebook-convert {dependencies} {targets}" ],
+            "task_dep" : [ "_checkdir::epub" ],
+        })
+        return task
 
 
-class EbookRestructureTask:
+class EbookRestructureTask(globber.DirGlobber):
     """
     Reformat working epub dirs to the same structure
     *.x?htm?              -> content/
@@ -308,11 +297,14 @@ class EbookRestructureTask:
     """
 
     def __init__(self):
-        self.create_doit_tasks = self.build
+        super().__init__("_epub::restruct", [], [working_dir], filter_fn=self.not_source)
         self.content_reg = re.compile(".+(x?html?|js)")
         self.style_reg   = re.compile(".+(css|xpgt)")
         self.img_reg     = re.compile(".+(jpg|gif|png|svg)")
         self.font_reg    = re.compile(".+(ttf|oft|woff2?)")
+
+    def not_source(self, fpath):
+        return fpath != working_dir
 
     def move_files(self, targets):
         root = pl.Path(targets[0]).parent
@@ -335,20 +327,18 @@ class EbookRestructureTask:
                 case x if self.font_reg.match(x):
                     poss.rename(root / "font" / poss.name)
 
-    def build(self):
+    def subtask_detail(self, fpath, task):
         # TODO retarget links
-        for path in working_dirs:
-            yield {
-                "basename" : "_epub::restruct",
-                "name" : path.stem,
-                "actions" : [ "mkdir -p {targets}",
-                              self.move_files,
-                            ],
-                "targets" : [ path / "content",
-                              path / "style",
-                              path / "image",
-                              path / "font" ],
-            }
+        task.update({
+            "actions" : [ "mkdir -p {targets}",
+                          self.move_files,
+                         ],
+            "targets" : [ fpath / "content",
+                          fpath / "style",
+                          fpath / "image",
+                          fpath / "font" ],
+        })
+        return task
 
 class EbookNewTask:
     """
@@ -361,10 +351,12 @@ class EbookNewTask:
         return {
             "basename" : "epub::new",
             "actions" : [ "echo TODO {name}",
-                f"mkdir -p {working_dir}/" + "{name}" ],
+                          f"mkdir -p {working_dir}/" + "{name}"
+                         ],
             "targets" : [],
-            "params" : [ { "name" : "name",
-                           "short" : "n",
-                           "type" : str,
-                           "default" : "default" } ],
+            "params"  : [ { "name" : "name",
+                            "short" : "n",
+                            "type" : str,
+                            "default" : "default" }
+                         ],
         }

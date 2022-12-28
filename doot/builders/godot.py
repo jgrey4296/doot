@@ -4,24 +4,27 @@ from __future__ import annotations
 import pathlib as pl
 import shutil
 
-from doot import build_dir, data_toml
+from doot import build_dir, data_toml, src_dir
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
+from doot.utils import globber
 
 ##-- end imports
 # https://docs.godotengine.org/en/stable/tutorials/editor/command_line_tutorial.html
 
-
-def task_godot_check():
+class GodotCheckTask(globber.FileGlobberMulti):
     """
     Lint all gd scripts in the project
     """
-    for script in pl.Path().rglob("*.gd"):
-        return { "basename": "godot::check",
-                 "actions": [ "godot --no-window --check-only --script {dependencies}"],
-                 "file_dep" : [ script ],
-                }
+    def __init__(self):
+        super().__init__("godo::check", [".gd"], [src_dir], rec=True)
+
+    def subtask_detail(self, fpath, task):
+        task.update({"actions": [ "godot --no-window --check-only --script {dependencies}"],
+                     "file_dep" : [ fpath ],
+                    })
+        return task
 
 def task_godot_version():
     return { "basename": "godot::version",

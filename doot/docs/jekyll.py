@@ -14,6 +14,7 @@ from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
 from doot.files.clean_dirs import clean_target_dirs
 from doot.builders.jekyll import jekyll_src
+from doot.utils import globber
 
 try:
     # For py 3.11 onwards:
@@ -40,7 +41,6 @@ ext_format       = data_toml.tool.doot.jekyll.genpost.ext.strip()
 ##-- end toml data
 
 __all__ = ["GenPostTask", "GenTagsTask"]
-
 
 ##-- directories
 posts_dir = jekyll_src / "_posts"
@@ -152,20 +152,18 @@ class GenTagsTask:
     """
     Generate summary files for all tags used in md files in the jekyll src dir
     """
-    # TODO make globber
+    # TODO make globber?
     def __init__(self, template=None, index=None):
         self.create_doit_tasks = self.build
         self.tagset            = set()
         self.template          = pl.Path(template or tag_template)
         self.index             = pl.Path(index or index_template)
 
-
     def get_tags(self):
         for path in jekyll_src.glob("**/*.md"):
             data = load_yaml_data(path)
             if 'tags' in data and data['tags'] is not None:
                 self.tagset.update([x.strip() for x in data['tags'].split(" ")])
-
 
     def make_tag_pages(self):
         tag_text = self.template.read_text()
@@ -179,7 +177,6 @@ class GenTagsTask:
             return
 
         tag_index.write_text(self.index.read_text())
-
 
     def build(self):
         return {

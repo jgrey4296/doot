@@ -8,7 +8,7 @@ from doot import build_dir, data_toml
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
-
+from doot.utils import globber
 ##-- end imports
 
 plant_dir = build_dir / "plantuml"
@@ -18,68 +18,73 @@ plant_check = CheckDir(paths=[plant_dir], name="plantuml", task_dep=["_checkdir:
 
 ##-- end dir check
 
-# TODO make globber
-def task_plantuml():
+class PlantUMLGlobberTask(globber.FileGlobberMulti):
     """
     run plantuml on a specification, generating target.'ext's
     """
-    for path in build_dir.glob("**/*.plantuml"):
+
+    def __init__(self):
+        super().__init__("plantuml::png", [".plantuml"], [build_dir], rec=True)
+
+    def build_action(self, fpath):
         cmd        = "plantuml"
         args       = ["-tpng",
                       "-output", plant_dir.resolve(),
                       "-filename", "{targets}",
                       "{dependencies}"
                       ]
-        targ_fname = path.with_suffix(".png")
-        yield {
-            "basename" : "plantuml::png",
-            "name"     : targ_fname.stem,
-            "actions"  : [ build_cmd(cmd, args)],
-            "targets"  : [ plant_dir / targ_fname.name],
-            "file_dep" : [ path ],
-            "task_dep" : [ f"plantuml::check:{targ_fname.stem}" ],
-            "params"   : [ { "name"    : "ext",
-                             "short"   : "e",
-                             "type"    : str,
-                             "default" : "png" },
-                          ],
-            "clean"     : True,
-        }
+        return [build_cmd(cmd, args)]
 
-def task_plantuml_text():
+    def subtask_detail(self, fpath, task):
+        targ_fname = fpath.with_suffix(".png")
+        task.update({"actions"  : [ build_cmd(cmd, args)],
+                     "targets"  : [ plant_dir / targ_fname.name],
+                     "file_dep" : [ fpath ],
+                     "task_dep" : [ f"plantuml::check:{task['name']}" ],
+                     "params"   : [ { "name"    : "ext", "short"   : "e", "type"    : str, "default" : "png" },],
+                     "clean"     : True,
+                     })
+        return task
+
+class PlantUMLGlobberText(globber.FileGlobberMulti):
     """
     run plantuml on a spec for text output
     """
-    for path in build_dir.glob("**/*.plantuml"):
+
+    def __init__(self):
+        super().__init__("plantuml::txt", [".plantuml"], [build_dir], rec=True)
+
+    def subtask_detail(self, fpath, task):
         cmd  = "plantuml"
         args = ["-ttxt",
                 "-output", plant_dir.resolve(),
                 "-filename", "{targets}",
                 "{dependencies}"
                 ]
-        targ_fname = path.with_suffix(".atxt")
-        yield {
-            "basename" : "plantuml::txt",
-            "name"     : targ_fname.stem,
+        targ_fname = fpath.with_suffix(".atxt")
+        task.update({
             "actions"  : [ build_cmd(cmd, args)],
             "targets"  : [ plant_dir / targ_fname.name],
-            "file_dep" : [ path ],
-            "task_dep" : [ f"plantuml::check:{targ_fname.stem}" ],
+            "file_dep" : [ fpath ],
+            "task_dep" : [ f"plantuml::check:{task['name']}" ],
             "clean"    : True,
-        }
+        })
+        return task
 
-def task_plantuml_check():
+class PlantUMLGlobberCheck(globber.FileGlobberMulti):
     """
     check syntax of plantuml files
     """
-    for path in build_dir.glob("**/*.plantuml"):
+
+    def __init__(self):
+        super().__init__("plantuml::check", [".plantuml"], [build_dir], rec=True)
+
+    def subtask_detail(self, fpath, task):
         cmd        = "plantuml"
         args       = [ "-checkonly", "{dependencies}"]
-        yield {
-            "basename" : "plantuml::check",
-            "name"     : path.stem,
+        task.update({
             "actions"  : [ build_cmd(cmd, args)],
-            "file_dep" : [ path ],
+            "file_dep" : [ fpath ],
             "uptodate" : [False],
-        }
-
+        })
+        return task

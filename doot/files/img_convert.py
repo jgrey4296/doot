@@ -20,6 +20,7 @@ from weakref import ref
 import datetime
 
 from doit.action import CmdAction
+from doot.utils import globber
 
 if TYPE_CHECKING:
     # tc only imports
@@ -39,7 +40,6 @@ pdf_dir = build_dir / "pdfs"
 check_pdfs = CheckDir(paths=[pdf_dir], name="pdfs", task_dep=["_checkdir::build"],)
 ##-- end dir check
 
-# TODO make globber
 class ImgConvertTask:
     """
     Combine globbed images into a single pdf file

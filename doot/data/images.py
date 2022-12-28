@@ -15,15 +15,12 @@ from doot import build_dir, data_toml, src_dir, gen_dir
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
+from doot.utils import globber
 
 ##-- end imports
 
-
-data_dirs = [pl.Path(x) for x in data_toml.tool.doot.images.data_dirs if pl.Path(x).exists()]
-rec_dirs  = [pl.Path(x) for x in data_toml.tool.doot.images.recursive_dirs if pl.Path(x).exists()]
-
-exts : list[str] = data_toml.or_get([".jpg"]).tool.doot.images.exts
-
+data_dirs        = [pl.Path(x) for x in data_toml.or_get([]).tool.doot.images.data_dirs() if pl.Path(x).exists()]
+exts : list[str] = data_toml.or_get([".jpg"]).tool.doot.images.exts()
 images_build_dir = build_dir / "images"
 
 ##-- dir checks
@@ -33,7 +30,6 @@ images_dir_check = CheckDir(paths=[images_build_dir,],
 
 ##-- end dir checks
 
-# TODO make globber
 class ImagesListingTask:
     """
     Create a listing of all files needed to hash
@@ -66,8 +62,7 @@ class ImagesListingTask:
 
 
     def build(self):
-        foci = [x for x in data_dirs + rec_dirs]
-
+        foci = data_dirs
         return {
             "basename" : "_images::listing",
             "actions"  : [ CmdAction(self.list_files), CmdAction(self.clean_listing)],
