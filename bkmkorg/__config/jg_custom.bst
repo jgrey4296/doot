@@ -67,6 +67,8 @@ ENTRY
     eprint
     tags
     doi
+    bookauthor
+    bookpublisher
     % thesis type: (phd, masters)
     type
     % for software, the system it runs on:
@@ -80,10 +82,12 @@ ENTRY
     counsel
     dissent
     concur
+    country
     % casenumber, statutory instrument, HR..., etc:
     identifier
     % for music scores:
     arrangement
+    part
     % for both music and judicial, legislation etc
     section
   }
@@ -571,6 +575,15 @@ FUNCTION {get.bbl.editor}
 %%-- end localization
 
 %%-- format
+FUNCTION {format.url}
+{
+  url
+  duplicate$ empty$
+    { pop$ "" }
+    { "\urlprefix\url{" swap$ * "}" * }
+  if$
+}
+
 FUNCTION {fin.entry}
 { add.period$
   format.url output
@@ -579,7 +592,7 @@ FUNCTION {fin.entry}
   tags empty$
     { skip$ }
     { "\begin{lstlisting}" write$ newline$
-      "Tags: "             write$ newline$
+      "Tags: "             write$
       format.tags          write$ newline$
       "\end{lstlisting}"   write$ newline$}
   if$
@@ -598,14 +611,6 @@ FUNCTION {format.eprint}
   if$
 }
 
-FUNCTION {format.url}
-{
-  url
-  duplicate$ empty$
-    { pop$ "" }
-    { "\urlprefix\url{" swap$ * "}" * }
-  if$
-}
 
 FUNCTION {format.isbn}
 { isbn "isbn" bibinfo.check
@@ -1048,34 +1053,64 @@ FUNCTION {format.lab.names}
 
 FUNCTION {format.platform}
 {
-  platform
+  platform empty$
+    { "" }
+    { new.block
+      platform }
+  if$
 }
 
 
 FUNCTION {format.country}
 {
-  country
+  country empty$
+    { "" }
+    { new.block
+      country }
+  if$
 }
 
 FUNCTION {format.status}
 {
-  status
+  status empty$
+    { "" }
+    { new.block
+      "Status: " status * }
+  if$
 }
 
 FUNCTION {format.arrangement}
 {
-  arrangement
+  arrangement empty$
+    { "" }
+    { new.block
+      arrangement }
+  if$
 }
 
 FUNCTION {format.section}
 {
-  section
+  section empty$
+    { "" }
+    { new.block
+      section }
+  if$
 }
 
 FUNCTION {format.parties}
 {
   short_parties empty$
-  { plaintiff " v " * defendants * }
+    { plaintiff empty$
+      defendant empty$
+      or
+        {
+          "Entry needs short_parties or plaintiff and defendant: " cite$ * warning$
+        }
+        {
+          plaintiff " v " * defendant *
+        }
+        if$
+    }
   { short_parties }
   if$
 }
@@ -1090,8 +1125,36 @@ FUNCTION {format.counsel}
 
 FUNCTION {format.dissent}
 {
-  dissent output
-  concur  output
+  dissent empty$
+    { "" }
+    { new.block
+      "Dissent: " dissent * }
+  if$
+
+  concur empty$
+  { "" }
+  { new.block
+    "Concurrence: " concur *}
+  if$
+  *
+}
+
+FUNCTION {format.identifier}
+{
+  identifier empty$
+    { "" }
+    { new.block
+      identifier }
+  if$
+}
+
+FUNCTION {format.part}
+{
+  part empty$
+    { "" }
+    { new.block
+      part }
+  if$
 }
 
 %%-- end format
@@ -1104,6 +1167,39 @@ FUNCTION {article}
   author format.key output
   new.block
   format.title "title" output.check
+  new.block
+  crossref missing$
+    {
+      journal
+      "journal" bibinfo.check
+      emphasize
+      "journal" output.check
+      format.vol.num.pages output
+      format.date "year" output.check
+    }
+    { format.article.crossref output.nonnull
+      format.pages output
+    }
+  if$
+  format.issn output
+  format.doi output
+  new.block
+  format.note output
+  format.eprint output
+  fin.entry
+}
+
+% TODO
+FUNCTION {review}
+{ output.bibitem
+  format.authors "author" output.check
+  author format.key output
+  new.block
+  "Review of: " output
+  format.title "title" output.check
+  new.block
+  "By: " output
+  bookauthor "bookauthor" output.check
   new.block
   crossref missing$
     {
@@ -1291,14 +1387,13 @@ FUNCTION {manual}
   format.authors output
   author format.key output
   new.block
-  format.btitle "title" output.check
-  institution bibinfo.check output
-  format.edition output
-  format.date "year" output.check
+  format.btitle  "title" output.check
+  institution    "institution" output.check
+  format.edition "edition" output.check
+  format.date    "year" output.check
   format.doi output
   new.block
   format.note output
-  format.eprint output
   fin.entry
 }
 
@@ -1472,14 +1567,14 @@ FUNCTION {case}
 {
   output.bibitem
   format.parties output
-  parties format.key output
+  format.parties format.key output
   new.block
   format.title output
   new.block
   format.counsel output.check
-  format.date "year" output.check
-  institution "institution" bibinfo.warn output
-  format.country "country" output.check
+  format.date       "year" output.check
+  institution       "institution" bibinfo.warn output
+  format.country    "country" output.check
   format.identifier "identifier" output.check
   new.block
   fin.entry
@@ -1494,13 +1589,13 @@ FUNCTION {judicial}
   format.authors output
   author format.key output
   new.block
-  new.block
-  format.section "section" output.check
+  format.section output
   format.date "year" output.check
   format.doi output
-  institution "institution" bibinfo.warn output
-  format.status "status" output.check
-  format.dissent "dissent" output.check
+  institution "institution" output.check
+  format.country "country" output.check
+  format.status output
+  format.dissent output
   format.identifier "identifier" output.check
   new.block
   fin.entry
@@ -1516,10 +1611,10 @@ FUNCTION {law}
   new.block
   format.title output
   new.block
-  format.section "section" output.check
+  format.section output
   format.date "year" output.check
   format.bvolume "volume" output.check
-  format.status "status" output.check
+  format.status output.nonnull
   format.identifier "identifier" output.check
   new.block
   fin.entry
@@ -1533,7 +1628,7 @@ FUNCTION {standard}
   new.block
   format.title output
   new.block
-  format.section "section" output.check
+  format.section output
   format.date "year" output.check
   institution "institution" bibinfo.warn output
   format.identifier "identifier" output.check
@@ -1774,6 +1869,10 @@ FUNCTION {presort}
   *
   type$ "book" =
   type$ "inbook" =
+  or
+  type$ "booklet" =
+  type$ "report" =
+  or
   or
     'author.editor.sort
     { type$ "proceedings" =
