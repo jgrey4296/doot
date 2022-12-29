@@ -39,6 +39,7 @@ class FileGlobberMulti:
         self.rec                  = rec
         self.filter_fn            = filter_fn
         self.defaults             = defaults or {}
+        self.total_subtasks       = 0
 
         try:
             split_doc = [x for x in self.__class__.__doc__.split("\n") if bool(x)]
@@ -115,18 +116,20 @@ class FileGlobberMulti:
         task_spec = self.setup_detail(task_spec)
         return task_spec
 
-    def _build_subtask(self, uname, fpath):
+    def _build_subtask(self, n, uname, fpath):
         spec_doc  = self.doc.strip() + f" : {fpath}"
         task_spec = self.default_task()
-        task_spec['meta'] = {}
+        task_spec['meta'] = { "n" : n }
         task_spec["task_dep"] = [f"_{self.base}:pretask"]
 
         task_spec.update({"basename" : self.base,
                           "name"     : uname,
-                          "actions"  : self.subtask_actions(fpath),
+                          "actions"  : [],
                           "doc"      : spec_doc,
                           })
         task = self.subtask_detail(fpath, task_spec)
+        task['actions'] += self.subtask_actions(fpath)
+
         return task
     def _build_teardown(self, subnames:list[str]) -> dict:
         task_spec = {
@@ -146,8 +149,9 @@ class FileGlobberMulti:
         then customizing the subtasks
         """
         subtasks = []
-        for uname, fpath in self.glob_all():
-            subtask = self._build_subtask(uname, fpath)
+        globbed = self.glob_all()
+        for i, (uname, fpath) in enumerate(self.glob_all()):
+            subtask = self._build_subtask(i, uname, fpath)
             if subtask is not None:
                 subtasks.append(subtask)
 
@@ -160,6 +164,8 @@ class FileGlobberMulti:
             "task_dep" : [f"_{self.base}:post"],
             "doc"      : self.doc,
         })
+        self.total_subtasks = len(subtasks)
+
         for sub in subtasks:
             yield sub
 
@@ -189,7 +195,7 @@ class DirGlobber(FileGlobberMulti):
                     # no contents, ignore
                     continue
 
-                globbed.add(current)
+                results.append(current)
                 queue += [x for x in contents if x.is_dir()]
         else:
             results += [x for x in target.iterdir() if x.is_dir()]
@@ -213,8 +219,8 @@ class FileGlobberLate(FileGlobberMulti):
         then customizing the subtasks
         """
         subtasks = []
-        for fpath in self.starts:
-            subtask = self._build_subtask(str(fpath), fpath)
+        for n, fpath in enumerate(self.starts):
+            subtask = self._build_subtask(n, str(fpath), fpath)
             if subtask is not None:
                 subtasks.append(subtask)
 
@@ -227,5 +233,6 @@ class FileGlobberLate(FileGlobberMulti):
             "task_dep" : [f"_{self.base}:post"],
             "doc"      : self.doc,
         })
+        self.total_subtasks = len(subtasks)
         for sub in subtasks:
             yield sub
