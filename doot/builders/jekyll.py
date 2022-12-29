@@ -121,12 +121,13 @@ def task_jekyll_install():
     """
     install the dependencies of jekyll,
     and create an initial config file
+
+    # TODO add uptodate for if jekyll is installed
     """
     def create_jekyll_config(targets):
         with open(targets[0], 'w') as f:
             f.write(config_text)
 
-    # TODO add uptodate for if jekyll is installed
     return {
         "basename" : "jekyll::install",
         "actions" : ["brew install chruby ruby-install xz",

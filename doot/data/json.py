@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import pathlib as pl
 import shutil
+from functools import partial
 import shlex
 
 from functools import partial
@@ -43,35 +44,12 @@ class JsonFormatTask(globber.DirGlobber):
     def __init__(self, targets=data_dirs, rec=True):
         super().__init__("json::format", [".json"], data_dirs, rec=rec)
 
-    def format_jsons(self, task):
-        ext_strs    = [f"*{ext}" for ext in self.exts]
-        globbed     = {x for ext in ext_strs for x in task.meta['focus'].rglob(ext)}
-        format_cmds = []
-
-        for target in globbed:
-            target_q   = shlex.quote(str(target))
-            new_fmt    = shlex.quote(str(target.with_name(f"{target.name}.format")))
-            fmt_backup = shlex.quote(str(target.with_name(f"{target.name}.backup")))
-
-            fmt_cmd = ["jq", "-M", "-S" , "."
-                       , target_q , ">" , new_fmt , ";"
-                       , "mv" , "--verbose", "--update",  new_fmt, target_q
-                       ]
-            format_cmds.append(" ".join(fmt_cmd))
-
-        return "; ".join(format_cmds)
-
-    def subtask_actions(self, fpath):
-        ext_strs = [f"*{ext}" for ext in self.exts]
-
-        find_names  = " -o ".join(f"-name \"{ext}\"" for ext in ext_strs)
-        depth = ""
-        if self.rec:
-            depth = "-maxdepth 1"
-
-        backup_cmd = f"find {fpath} {depth} {find_names} | xargs -I %s cp --verbose --no-clobber %s %s.backup"
-        total_cmds = [ CmdAction(backup_cmd), CmdAction(self.format_jsons) ]
-        return total_cmds
+    def setup_detail(self, task):
+        """
+        Add the backup action to setup
+        """
+        task['actions' ] = [self.backup_jsons]
+        return task
 
     def subtask_detail(self, fpath, task):
         task.update({
@@ -80,44 +58,69 @@ class JsonFormatTask(globber.DirGlobber):
             })
         return task
 
-class JsonPythonSchema:
-    def __init__(self):
-        self.create_doit_tasks = self.build
-        self.cmd = "xsdata"
+    def subtask_actions(self, fpath):
+        ext_strs = [f"*{ext}" for ext in self.exts]
+        globbed  = {x for ext in ext_strs for x in fpath.rglob(ext)}
+        actions  = []
 
-    def get_args(self, task):
-        args = ["generate",
+        for target in globbed:
+            args = ["jq", "-M", "-S" , ".", target ]
+
+            # Format and save result:
+            actions.append(CmdAction(args, shell=False, save_out=str(target)))
+            # Write result to the file:
+            actions.append(partial(self.write_formatting, target))
+
+        return actions
+
+    def write_formatting(self, target, task):
+        formatted_text = task.values[str(target)]
+        target.write_text(formatted_text)
+
+    def backup_jsons(self):
+        """
+        Find all applicable files, and copy them
+        """
+        ext_strs = [f"*{ext}" for ext in self.exts]
+        globbed  = {x for ext in ext_strs for start in self.starts for x in start.rglob(ext)}
+
+        for btarget in backup_targets:
+            backup = btarget.with_suffix(f"{btarget.suffix}.backup")
+            if backup.exists():
+                continue
+            backup.write_text(btarget.read_text())
+
+class JsonPythonSchema(globber.DirGlobber):
+    """
+    Use XSData to generate python bindings for a directory of json's
+    """
+    def __init__(self, targets=data_dirs, rec=True):
+        super().__init__("json::schema.python", [".json"], targets, rec=rec)
+
+    def subtask_detail(self, fpath, task):
+        gen_package = str(json_gen_dir / task['name'])
+        task.update({
+            "targets"  : [ gen_package ],
+            "task_dep" : [ "_xsdata::config", "_checkdir::json" ],
+        })
+        task["meta"].update({"package" : gen_package})
+        return task
+
+    def subtask_actions(self, fpath):
+        return [ CmdAction(partial(self.generate_on_target, fpath), shell=False) ]
+
+    def generate_on_target(self, fpath, task):
+        args = ["xsdata", "generate",
                 ("--recursive" if task.meta['recursive'] else ""),
                 "-p", task.meta['package'], # generate package name
                 "--relative-imports", "--postponed-annotations",
                 "--kw-only",
                 "--frozen",
                 "--no-unnest-classes",
-                str(task.meta['focus']) ]
+                fpath
+                ]
 
         return args
-
-    def generate_on_target(self, task):
-        return f"{self.cmd} " + " ".join(self.get_args(task))
-
-    def move_package(self, task):
-        package = pl.Path(task.meta['package'])
-        package.rename(json_gen_dir / package)
-
-    def build(self):
-        for targ, rec in chain(zip(data_dirs, cycle([False]))):
-            targ_fname = ("rec_" if rec else "") + "_".join(targ.parts[-2:])
-            yield {
-                "basename" : "json::schema.python",
-                "name"     : targ_fname,
-                "actions"  : [ CmdAction(self.generate_on_target), self.move_package ],
-                "targets"  : [ json_gen_dir / targ_fname ],
-                "task_dep" : [ "_xsdata::config", "_checkdir::xml" ],
-                "meta"     : { "package"   : targ_fname,
-                               "focus"     : targ,
-                               "recursive" : rec,
-                            }
-            }
 
     def gen_toml(self):
         return """
@@ -129,37 +132,31 @@ recursive_dirs = ["pack/__data/core/json"]
 """
 
 
-class JsonVisualise:
+class JsonVisualise(globber.FileGlobberMulti):
+    """
+    Wrap json files with plantuml header and footer,
+    ready for plantuml to visualise structure
+    """
 
-    def __init__(self):
-        self.create_doit_tasks = self.build
+    def __init__(self, targets=data_dirs):
+        super().__init__("json::schema.visual", [".json"], targets, rec=True)
 
-    def generate_on_target(self, task):
-        if task.meta['recursive']:
-            globbed = pl.Path(task.meta['focus']).glob("*.xml")
-        elif task.meta['focus'].is_dir():
-            globbed = pl.Path(task.meta['focus']).rglob("*.xml")
-        else:
-            globbed = [task.meta['focus']]
+    def subtask_detail(self, fpath, task):
+        task.update({
+            "targets"  : [ visual_dir / task['name'] ],
+            "task_dep" : [ "_checkdir::json" ],
+        })
+        return task
 
-        header = f'echo -e "@startjson\n" > {task.targets}'
-        footer = f'echo -e "@endjson\n" >> {task.targets}'
-        cmd    = f"cat {globbed} >> {task.targets}"
-        # cmd2 = "awk 'BEGIN {print \"@startjson\"} END {print \"@endjson\"} {print $0}'"
+    def subtask_actions(self, fpath):
+        return [ partial(self.write_plantuml, fpath) ]
 
-        return f"{header}; {cmd}; {footer}"
+    def write_plantuml(self, fpath, targets):
+        header   = "@startjson\n"
+        footer   = "\n@endjson\n"
+        contents = fpath.read_text()
 
-    def build(self):
-        for targ, rec in chain(zip(data_dirs, cycle([False]))):
-            targ_fname = ("rec_" if rec else "") + "_".join(targ.with_suffix(".plantuml").parts[-2:])
-            yield {
-                "basename" : "json::schema.visual",
-                "name"     : pl.Path(targ_fname).stem,
-                "actions"  : [ CmdAction(self.generate_on_target) ],
-                "targets"  : [ visual_dir / targ_fname ],
-                "task_dep" : [ "_checkdir::json" ],
-                "meta"     : { "package"   : targ_fname,
-                               "focus"     : targ,
-                               "recursive" : rec,
-                            }
-            }
+        with open(pl.Path(targets[0]), 'w') as f:
+            f.write(header)
+            f.write(contents)
+            f.write(footer)

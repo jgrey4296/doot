@@ -38,6 +38,21 @@ class ImagesListingTask:
     def __init__(self):
         self.create_doit_tasks = self.build
 
+    def build(self):
+        foci = data_dirs
+        return {
+            "basename" : "_images::listing",
+            "actions"  : [ CmdAction(self.list_files), CmdAction(self.clean_listing)],
+            "targets"  : [ images_build_dir / "1_images.listing",
+                           images_build_dir / "2_unique.listing"],
+            "task_dep" : [ "_checkdir::images" ],
+            "meta"     : { "exts"      : exts,
+                           "foci"      : foci,
+                          },
+            "uptodate" : [False],
+            "clean"    : True
+        }
+
     def list_files(self, task, targets):
         output    = pl.Path(targets[0])
         focus     = task.meta['foci']
@@ -61,21 +76,6 @@ class ImagesListingTask:
         return f"echo [Removing Duplicate Paths]; " + res
 
 
-    def build(self):
-        foci = data_dirs
-        return {
-            "basename" : "_images::listing",
-            "actions"  : [ CmdAction(self.list_files), CmdAction(self.clean_listing)],
-            "targets"  : [ images_build_dir / "1_images.listing",
-                           images_build_dir / "2_unique.listing"],
-            "task_dep" : [ "_checkdir::images" ],
-            "meta"     : { "exts"      : exts,
-                           "foci"      : foci,
-                          },
-            "uptodate" : [False],
-            "clean"    : True
-        }
-
     def gen_toml(self):
         return """
 ##-- doot.images
@@ -96,6 +96,24 @@ class ImagesHashTask:
 
     def __init__(self):
         self.create_doit_tasks = self.build
+
+    def build(self):
+        yield {
+            "basename" : "images::md5",
+            "actions"  : [ CmdAction(self.ignore_already_processed),
+                           CmdAction(self.hash_all),
+                           CmdAction(self.extract_duplicates)],
+            "targets"  : [images_build_dir / "5_images.md5",
+                          images_build_dir / "6_duplicates.md5"],
+            "file_dep" : [ images_build_dir / "2_unique.listing" ],
+            "meta"     : {
+                "done" : images_build_dir / "3_processed.listing",
+                "todo" : images_build_dir / "4_todo_hash.listing",
+                },
+            "clean"    : [self.clean_intermediates],
+            "uptodate" : [False],
+        }
+
 
     def ignore_already_processed(self, targets, task):
         if not pl.Path(targets[0]).exists():
@@ -127,20 +145,3 @@ class ImagesHashTask:
         pl.Path(targets[1]).unlink(missing_ok=True)
         task.meta['todo'].unlink(missing_ok=True)
         task.meta['done'].unlink(missing_ok=True)
-
-    def build(self):
-        yield {
-            "basename" : "images::md5",
-            "actions"  : [ CmdAction(self.ignore_already_processed),
-                           CmdAction(self.hash_all),
-                           CmdAction(self.extract_duplicates)],
-            "targets"  : [images_build_dir / "5_images.md5",
-                          images_build_dir / "6_duplicates.md5"],
-            "file_dep" : [ images_build_dir / "2_unique.listing" ],
-            "meta"     : {
-                "done" : images_build_dir / "3_processed.listing",
-                "todo" : images_build_dir / "4_todo_hash.listing",
-                },
-            "clean"    : [self.clean_intermediates],
-            "uptodate" : [False],
-        }

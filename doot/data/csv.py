@@ -47,25 +47,27 @@ class CSVSummaryTask(globber.FileGlobberMulti):
         task['actions'] = [f"cat {report_name}", "echo Finished CSV"]
         return task
 
-    def write_path(self, task):
-        report_name = csv_dir / "csv.report"
-        with open(report_name, 'a') as f:
-            f.write(f"{task.meta['focus']}: ")
-
-    def subtask_actions(self, fpath):
-        report_name = csv_dir / "csv.report"
-        return [
-            self.write_path,
-            f"cat {fpath} | wc -l | sed -e 's/$/ Columns: /' -e 's/^/Lines: /' | tr -d \"\n\" >> {report_name}",
-            f"head --lines=1 {fpath} | sed -e 's/\r//g' >> {report_name}",
-        ]
-
     def subtask_detail(self, fpath, task):
         task.update({
             "clean"    : True,
         })
         task['meta'].update({ "focus" : fpath })
         return task
+
+
+    def subtask_actions(self, fpath):
+        report_name = csv_dir / "csv.report"
+        return [
+            self.write_path,
+            CmdAction(f"cat {fpath} | wc -l | sed -e 's/$/ Columns: /' -e 's/^/Lines: /' | tr -d \"\n\" >> {report_name}"),
+            CmdAction(f"head --lines=1 {fpath} | sed -e 's/\r//g' >> {report_name}"),
+        ]
+
+    def write_path(self, task):
+        report_name = csv_dir / "csv.report"
+        with open(report_name, 'a') as f:
+            f.write(f"{task.meta['focus']}: ")
+
 
 
 class CSVSummaryXMLTask(globber.FileGlobberMulti):
@@ -90,6 +92,21 @@ class CSVSummaryXMLTask(globber.FileGlobberMulti):
         return task
 
 
+    def subtask_detail(self, fpath, task):
+        task.update({
+            "clean"    : True,
+        })
+        task['meta'].update({ "focus" : fpath })
+        return task
+
+    def subtask_actions(self, fpath):
+        return [
+            self.create_entry(fpath),
+            self.write_lines(fpath),
+            CmdAction(f"head --lines=1 {fpath} | sed -e 's/\r//g'", save_out="head"),
+            CmdAction(partial(self.head_line, fpath)),
+        ]
+
     def create_entry(self, fpath):
         cmds = [ genx.sub_xml("/data", "csv_file")  #
                  ,genx.attr_xml("/data/csv_file[count\(/data/csv_file\)]", "file", fpath)
@@ -109,17 +126,4 @@ class CSVSummaryXMLTask(globber.FileGlobberMulti):
         total_cmd      = f"xml ed -L {cmd} {self.report_name}"
         return total_cmd
 
-    def subtask_actions(self, fpath):
-        return [
-            self.create_entry(fpath),
-            self.write_lines(fpath),
-            CmdAction(f"head --lines=1 {fpath} | sed -e 's/\r//g'", save_out="head"),
-            CmdAction(partial(self.head_line, fpath)),
-        ]
 
-    def subtask_detail(self, fpath, task):
-        task.update({
-            "clean"    : True,
-        })
-        task['meta'].update({ "focus" : fpath })
-        return task

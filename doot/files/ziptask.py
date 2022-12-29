@@ -36,6 +36,7 @@ class ZipTask:
     (time is based on task creation time, not task execution time)
 
     TODO timeout={int} for rebuilding if target zip is hours? days? too old?
+    TODO add filter_fn
     """
 
     def __init__(self, *, target=None, target_dir=zip_dir, paths=None, globs=None, base="zip::default", date=False, **kwargs):

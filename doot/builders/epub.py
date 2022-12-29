@@ -64,10 +64,10 @@ class EbookCompileTask(globber.DirGlobber):
     """
 
     def __init__(self):
-        super().__init__("epub::compile", [], [working_dir], filter_fn=self.not_source)
+        super().__init__("epub::compile", [], [working_dir], filter_fn=self.is_epub_dir)
 
-    def not_source(self, fpath):
-        return fpath != working_dir
+    def is_epub_dir(self, fpath):
+        return (fpath / ".epub").exists()
 
     def subtask_detail(self, fpath, task):
         task.update({"task_dep" : [ f"epub::manifest:{task['name']}",
@@ -82,13 +82,17 @@ class EbookCompileTask(globber.DirGlobber):
 class EbookConvertTask(globber.DirGlobber):
     """
     *.zip -> *.epub
+
+    TODO possibly only zips with the right contents
     """
 
     def __init__(self):
-        super().__init__("_epub::convert.zip", [], [working_dir])
+        super().__init__("_epub::convert.zip", [], [working_dir], filter_fn=self.is_epub_dir)
+
+    def is_epub_dir(self, fpath):
+        return (fpath / ".epub").exists()
 
     def subtask_detail(self, fpath, task):
-        # TODO possibly only zips with the right contents
         task.update({
             "targets"  : [ epub_build_dir / fpath.with_suffix(".epub").name ],
             "file_dep" : [ epub_zip_dir / fpath.with_suffix(".zip").name ],
@@ -104,15 +108,19 @@ class EbookConvertTask(globber.DirGlobber):
 
 class EbookZipTask(globber.DirGlobber):
     """
-    Zip working epub directories together
+    wrapper around ZipTask to build zips of epub directories
     """
 
     def __init__(self):
-        super().__init__("_zip::epub", [], [working_dir])
+        super().__init__("_zip::epub", [], [working_dir], filter_fn=self.is_epub_dir)
+
+    def is_epub_dir(self, fpath):
+        return (fpath / ".epub").exists()
 
     def subtask_detail(self, fpath, task):
         target = fpath.with_suffix(".zip").name
         glob   = str(fpath) + "/**/*"
+        # TODO could process the globs here, and exclude stuff
         ztask  = ZipTask(target=target,
                          target_dir=epub_zip_dir,
                          globs=[glob],
@@ -129,12 +137,21 @@ class EbookManifestTask(globber.DirGlobber):
     """
 
     def __init__(self):
-        super().__init__("epub::manifest", [], [working_dir], filter_fn=self.not_source)
+        super().__init__("epub::manifest", [], [working_dir], filter_fn=self.is_epub_dir)
         # Map path -> uuid
         self.uuids = {}
 
-    def not_source(self, fpath):
-        return fpath != working_dir
+    def is_epub_dir(self, fpath):
+        return (fpath / ".epub").exists()
+
+    def subtask_detail(self, fpath, task):
+        task.update({
+            "targets"  : [ fpath / "content.opf", fpath / "content" / "nav.xhtml" ],
+            "task_dep" : [ f"_epub::restruct:{task['name']}" ]
+        })
+        return task
+    def subtask_actions(self, fpath):
+        return [ self.init_uuids, self.backup, self.generate_nav, self.generate_manifest ]
 
     def init_uuids(self):
         self.uuids.clear()
@@ -153,6 +170,9 @@ class EbookManifestTask(globber.DirGlobber):
                 targ.rename(targ.with_suffix(".backup"))
 
     def get_type_string(self, path):
+        """
+        from the epub3 spec
+        """
         match path.suffix:
             case ".html" | ".xhtml" | ".htm":
                 type_s = "application/xhtml+xml"
@@ -183,6 +203,9 @@ class EbookManifestTask(globber.DirGlobber):
         return type_s
 
     def get_title(self, path):
+        """
+        Get the h1 or  meta.title, of a file
+        """
         soup = BeautifulSoup(path.read_text(), "html.parser")
         title = soup.h1
         if title is None:
@@ -193,13 +216,16 @@ class EbookManifestTask(globber.DirGlobber):
         return ws.sub(" ", title.text)
 
     def generate_nav(self, targets):
+        """
+        Generate nav content for nav.xhtml
+        """
         nav     = pl.Path(targets[1])
         content = nav.parent
         entries = []
         for cont in content.glob("*"):
             if cont.suffix == ".backup":
                 continue
-            if cont.name == ".DS_Store":
+            if cont.name[0] in ".":
                 continue
             uuid  = self.get_uuid(cont)
             title = self.get_title(cont)
@@ -225,7 +251,7 @@ class EbookManifestTask(globber.DirGlobber):
         for path in working_dir.glob("**/*"):
             if path.suffix in  [".backup", ".opf"]:
                 continue
-            if path.name == ".DS_Store":
+            if path.name[0] in ".":
                 continue
             if path.is_dir():
                 continue
@@ -241,7 +267,7 @@ class EbookManifestTask(globber.DirGlobber):
                                                               path=path.relative_to(working_dir),
                                                               type=type_s).strip())
 
-            # TODO ensure title -> nav -> rest
+            # TODO sort title -> nav -> rest
             if type_s == "application/xhtml+xml":
                 spine_entries.append(SPINE_ENT_T.substitute(uuid=p_uuid).strip())
 
@@ -258,13 +284,6 @@ class EbookManifestTask(globber.DirGlobber):
 
 
 
-    def subtask_detail(self, fpath, task):
-        task.update({
-            "actions"  : [ self.init_uuids, self.backup, self.generate_nav, self.generate_manifest ],
-            "targets"  : [ fpath / "content.opf", fpath / "content" / "nav.xhtml" ],
-            "task_dep" : [ f"_epub::restruct:{task['name']}" ]
-        })
-        return task
 
 
 class EbookSplitTask(globber.FileGlobberMulti):
@@ -297,24 +316,48 @@ class EbookRestructureTask(globber.DirGlobber):
     """
 
     def __init__(self):
-        super().__init__("_epub::restruct", [], [working_dir], filter_fn=self.not_source)
+        super().__init__("_epub::restruct", [], [working_dir], filter_fn=self.epub_source_dir)
         self.content_reg = re.compile(".+(x?html?|js)")
         self.style_reg   = re.compile(".+(css|xpgt)")
         self.img_reg     = re.compile(".+(jpg|gif|png|svg)")
         self.font_reg    = re.compile(".+(ttf|oft|woff2?)")
 
-    def not_source(self, fpath):
-        return fpath != working_dir
+    def epub_source_dir(self, fpath):
+        """
+        check for .epub file
+        """
+        return (fpath / ".epub").exists()
+
+    def subtask_detail(self, fpath, task):
+        task.update({
+            "targets" : [ fpath / "content",
+                          fpath / "style",
+                          fpath / "image",
+                          fpath / "font",
+                          fpath / "other"],
+        })
+        return task
+
+    def subtask_actions(self, fpath):
+        actions = [ "mkdir -p {targets}",
+                    self.move_files,
+                   ]
+        return actions
 
     def move_files(self, targets):
+        """
+        Move all files into designated directories
+        """
         root = pl.Path(targets[0]).parent
         for poss in root.glob("**/*"):
             if poss.is_dir():
                 continue
-            if poss.parent.name in ["content", "style", "image", "font"]:
+            if poss.parent.name in ["content", "style", "image", "font", "other"]:
                 continue
             if poss.name == "titlepage.xhtml":
                 poss.rename(root / poss.name)
+                continue
+            if poss.name == ".epub":
                 continue
 
             match poss.suffix:
@@ -326,23 +369,13 @@ class EbookRestructureTask(globber.DirGlobber):
                     poss.rename(root / "image" / poss.name)
                 case x if self.font_reg.match(x):
                     poss.rename(root / "font" / poss.name)
-
-    def subtask_detail(self, fpath, task):
-        # TODO retarget links
-        task.update({
-            "actions" : [ "mkdir -p {targets}",
-                          self.move_files,
-                         ],
-            "targets" : [ fpath / "content",
-                          fpath / "style",
-                          fpath / "image",
-                          fpath / "font" ],
-        })
-        return task
+                case _:
+                    poss.rename(root / "other" / poss.name)
 
 class EbookNewTask:
     """
-    Create a new stub structure for an ebook
+    TODO Create a new stub structure for an ebook
+
     """
     def __init__(self):
         self.create_doit_tasks = self.build
@@ -351,7 +384,8 @@ class EbookNewTask:
         return {
             "basename" : "epub::new",
             "actions" : [ "echo TODO {name}",
-                          f"mkdir -p {working_dir}/" + "{name}"
+                          f"mkdir -p {working_dir}/" + "{name}",
+                          CmdAction(["touch", working_dir / "{name}" / ".epub"], shell=False),
                          ],
             "targets" : [],
             "params"  : [ { "name" : "name",

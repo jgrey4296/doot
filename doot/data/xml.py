@@ -4,6 +4,8 @@ from __future__ import annotations
 import pathlib as pl
 import shutil
 import shlex
+from functools import partial
+from itertools import cycle
 
 from itertools import cycle, chain
 from doit.action import CmdAction
@@ -48,32 +50,38 @@ class XmlElementsTask(globber.DirGlobber):
     """
     def __init__(self, targets=data_dirs):
         super(XmlElementsTask, self).__init__("xml::elements", [".xml"], targets, rec=True)
-        self.cmd = "xml el -u"
 
-    def subtask_detail(self, fname, task:dict) -> dict:
+    def subtask_detail(self, fpath, task:dict) -> dict:
         task.update({"targets" : [elements_dir / (task['name'] + ".elements")],
                      "task_dep": ["_checkdir::xml"],
                      "clean"   : True})
-        task['meta'].update({"focus" : fname })
         return task
 
-    def generate_on_target(self, targets, task):
-        focus_is_dir = task.meta['focus'].is_dir()
+    def subtask_actions(self, fpath):
+        return [ CmdAction(partial(self.generate_on_target, fpath), shell=False, save_out=str(fpath))
+                 partial(self.write_elements, fpath),
+                ]
+
+    def generate_on_target(self, fpath ,targets, task):
+        """
+        build an `xml el` command of all available xmls
+        """
+        focus_is_dir = fpath.is_dir()
         if not self.rec and focus_is_dir:
             # dir glob wasn't recursive, so the task is
-            globbed = pl.Path(task.meta['focus']).rglob("*.xml")
+            globbed = fpath.rglob("*.xml")
         elif focus_is_dir:
             # dir glob was recursive, so task isn't
-            globbed = pl.Path(task.meta['focus']).glob("*.xml")
+            globbed = fpath.glob("*.xml")
         else:
             # not a dir
-            globbed = [task.meta['focus']]
+            globbed = [fpath]
 
-        xmls = " ".join(shlex.quote(str(x)) for x in globbed)
-        return f"{self.cmd} {xmls}" + " > {targets}"
+        return ["xml", "el", "-u", *globbed]
 
-    def subtask_actions(self, fname):
-        return [CmdAction(self.generate_on_target)]
+    def write_elements(self, fpath, targets, task):
+        result = task.values[str(fpath)]
+        pl.Path(targets[0]).write_text(result)
 
 
     def gen_toml(self):
@@ -92,23 +100,7 @@ class XmlSchemaTask(globber.DirGlobber):
     https://relaxng.org/jclark/
     """
     def __init__(self, targets=data_dirs):
-        super().__init__("xml::schema", [], targets)
-        self.cmd = "trang"
-
-    def generate_on_target(self, targets, task):
-        focus_is_dir = task.meta['focus'].is_dir()
-        if self.rec and focus_is_dir:
-            globbed = task.meta['focus'].glob(f"*.xml")
-        elif focus_is_dir:
-            globbed = task.meta['focus'].rglob(f"*.xml")
-        else:
-            globbed = [task.meta['focus']]
-
-        xmls = " ".join(shlex.quote(str(x)) for x in globbed)
-        return f"{self.cmd} {xmls}" + " {targets}"
-
-    def subtask_actions(self, fpath):
-        return [CmdAction(self.generate_on_target)]
+        super().__init__("xml::schema", [".xml"], targets)
 
     def subtask_detail(self, fpath, task):
         task.update({
@@ -116,8 +108,22 @@ class XmlSchemaTask(globber.DirGlobber):
             "task_dep" : ["_checkdir::xml"],
             "clean"    : True,
             "uptodate" : [True]})
-        task['meta'].update({"focus" : fpath })
         return task
+
+    def subtask_actions(self, fpath):
+        return [CmdAction(partial(self.generate_on_target, fpath), shell=False)]
+
+    def generate_on_target(self, fpath, targets, task):
+        focus_is_dir = fpath.is_dir()
+        if self.rec and focus_is_dir:
+            globbed = fpath.glob(f"*.xml")
+        elif focus_is_dir:
+            globbed = fpath.rglob(f"*.xml")
+        else:
+            globbed = [fpath]
+
+        return ["trang", *globbed, *targets]
+
 
 class XmlPythonSchemaRaw(globber.DirGlobber):
     """
@@ -127,33 +133,29 @@ class XmlPythonSchemaRaw(globber.DirGlobber):
     def __init__(self, targets=data_dirs, rec=True):
         super().__init__("xml::schema.python.raw", [".xml"], targets, rec=rec)
 
-    def generate_on_target(self, task):
-        args = ["generate",
-                ("--recursive" if not self.rec else ""),
-                "-p", task.meta['package'] , # generate package name
-                "--relative-imports", "--postponed-annotations",
-                "--kw-only",
-                "--frozen",
-                "--no-unnest-classes",
-                shlex.quote(str(task.meta['focus'])),
-                ]
-        return f"xsdata " + " ".join(args)
-
-    def subtask_actions(self, fpath):
-        return [ CmdAction(self.generate_on_target) ]
-
     def subtask_detail(self, fpath, task):
         gen_package = str(xml_gen_dir / task['name'])
         task.update({
             "targets"  : [ gen_package ],
             "task_dep" : [ "_xsdata::config", "_checkdir::xml" ],
             })
-        task["meta"].update({"focus" : fpath,
-                             "package" : gen_package,
-                             })
+        task["meta"].update({"package" : gen_package})
         return task
 
+    def subtask_actions(self, fpath):
+        return [ CmdAction(partial(self.generate_on_target, fpath), shell=False) ]
 
+    def generate_on_target(self, fpath, task):
+        args = ["xsdata", "generate",
+                ("--recursive" if not self.rec else ""),
+                "-p", task.meta['package'] , # generate package name
+                "--relative-imports", "--postponed-annotations",
+                "--kw-only",
+                "--frozen",
+                "--no-unnest-classes",
+                fpath,
+                ]
+        return args
 
 
 class XmlPythonSchemaXSD(globber.FileGlobberMulti):
@@ -165,23 +167,6 @@ class XmlPythonSchemaXSD(globber.FileGlobberMulti):
         targets = data_dirs[:] + [ schema_dir ]
         super().__init__("xml::schema.python.xsd", [".xsd"], targets, rec=rec)
 
-
-    def generate_on_target(self, task):
-        args = ["generate",
-                ("--recursive" if not self.rec else ""),
-                "-p", task.meta['package'] , # generate package name
-                "--relative-imports", "--postponed-annotations",
-                "--kw-only",
-                "--frozen",
-                "--no-unnest-classes",
-                shlex.quote(str(task.meta['focus'])),
-                ]
-
-        return f"xsdata " + " ".join(args)
-
-    def subtask_actions(self, fpath):
-        return [ CmdAction(self.generate_on_target)  ]
-
     def subtask_detail(self, fpath, task):
         gen_package = str(xml_gen_dir / task['name'])
         task.update({
@@ -189,10 +174,24 @@ class XmlPythonSchemaXSD(globber.FileGlobberMulti):
                 "file_dep" : [ fpath ],
                 "task_dep" : [ "_xsdata::config", "_checkdir::xml" ],
             })
-        task['meta'].update({ "focus"     : fpath,
-                              "package" : gen_package
-                             })
+        task['meta'].update({"package" : gen_package})
         return task
+
+    def subtask_actions(self, fpath):
+        return [CmdAction(partial(self.gen_target, fpath), shell=False)]
+
+    def gen_target(self, fpath, task):
+        args = ["xsdata", "generate",
+                ("--recursive" if not self.rec else ""),
+                "-p", task.meta['package'] , # generate package name
+                "--relative-imports", "--postponed-annotations",
+                "--kw-only",
+                "--frozen",
+                "--no-unnest-classes",
+                fpath,
+                ]
+
+        return args
 
 class XmlSchemaVisualiseTask(globber.FileGlobberMulti):
     """
@@ -204,21 +203,8 @@ class XmlSchemaVisualiseTask(globber.FileGlobberMulti):
         super().__init__("xml::schema.plantuml", [".xsd"], targets_plus, rec=rec)
 
 
-    def generate_on_target(self, task):
-        cmd = [ "xsdata",
-                 "generate",
-                "-o", "plantuml", # output as plantuml
-                "-pp",            # to stdout instead of make a file
-                "{dependencies}", ">", "{targets}"]
-
-        return " ".join(cmd)
-
-    def subtask_actions(self, fpath):
-        return [ CmdAction(self.generate_on_target) ]
-
     def subtask_detail(self, fpath, task):
         task.update({
-            "actions"  : [ CmdAction(self.generate_on_target) ],
             "targets"  : [ visual_dir / (task['name'] + ".plantuml") ],
             "file_dep" : [ fpath ],
             "task_dep" : [ "_xsdata::config",  "_checkdir::xml"],
@@ -227,6 +213,20 @@ class XmlSchemaVisualiseTask(globber.FileGlobberMulti):
         return task
 
 
+    def subtask_actions(self, fpath):
+        gen_act = CmdAction([ "xsdata", "generate",
+                              "-o", "plantuml", # output as plantuml
+                              "-pp",            # to stdout instead of make a file
+                              fpath
+                             ],
+                            shell=False, save_out=str(fpath))
+
+        return [ gen_act, partial(self.save_uml, fpath) ]
+
+    def save_uml(self, fpath, targets, task):
+        result = task.values[str(fpath)]
+        pl.Path(targets[0]).write_text(result)
+
 class XmlValidateTask(globber.DirGlobber):
     """
     Validate xml's by schemas
@@ -234,12 +234,19 @@ class XmlValidateTask(globber.DirGlobber):
 
     def __init__(self, targets=data_dirs, rec=False, xsd=None):
         super().__init__("xml::validate", [], targets, rec=rec)
-        self.args              = ["-e",    # verbose errors
-                                  "--net", # net access
-                                  "--xsd"] # xsd schema
+        self.args              = [
+            "xml", "val",
+            "-e",    # verbose errors
+            "--net", # net access
+            "--xsd"  # xsd schema
+            ]
         self.xsd = xsd
         if self.xsd is None:
             raise Exception("For Xml Validation you need to specify an xsd to validate against")
+
+    def subtask_detail(self, fpath, task):
+        task.update({})
+        return task
 
     def subtask_actions(self, fpath):
         if self.rec:
@@ -247,14 +254,9 @@ class XmlValidateTask(globber.DirGlobber):
         else:
             xmls = fpath.rglob("*.xml")
 
-        args = self.args + [ self.xsd ] + list(shlex.quote(str(xmls)))
-        return [ CmdAction(f"xml val " + " ".join(args)) ]
+        args = self.args + [ self.xsd ] + list(xmls)
+        return [ CmdAction(args, shell=False) ],
 
-    def subtask_detail(self, fpath, task):
-        task.update({
-
-        })
-        return task
 
 
 
@@ -265,44 +267,13 @@ class XmlFormatTask(globber.DirGlobber):
 
     def __init__(self, targets=data_dirs, rec=True):
         super().__init__("xml::format", [".xml", ".xhtml", ".html"], data_dirs, rec=rec)
-        self.args = ["-s", "4", # indent 4 spaces
-                     "-R", # Recover
-                     "-N", # remove redundant declarations
-                     "-e", "utf-8", # encode in utf-8
-                     ]
-        # "--html"
 
-    def format_xmls(self, task):
-        ext_strs    = [f"*{ext}" for ext in self.exts]
-        globbed     = {x for ext in ext_strs for x in task.meta['focus'].rglob(ext)}
-        format_cmds = []
-
-        for target in globbed:
-            target_q   = shlex.quote(str(target))
-            new_fmt    = shlex.quote(str(target.with_name(f"{target.name}.format")))
-            fmt_backup = shlex.quote(str(target.with_name(f"{target.name}.backup")))
-
-            fmt_cmd = ["xml", "fo"
-                       , *self.args
-                       , ("--html" if target.suffix in [".html", ".xhtml"] else "")
-                       , target_q , ">" , new_fmt , ";"
-                       , "mv" , "--verbose", "--update",  new_fmt, target_q
-                       ]
-            format_cmds.append(" ".join(fmt_cmd))
-
-        return "; ".join(format_cmds)
-
-    def subtask_actions(self, fpath):
-        ext_strs = [f"*{ext}" for ext in self.exts]
-
-        find_names  = " -o ".join(f"-name \"{ext}\"" for ext in ext_strs)
-        depth = ""
-        if self.rec:
-            depth = "-maxdepth 1"
-
-        backup_cmd = f"find {fpath} {depth} {find_names} | xargs -I %s cp --verbose --no-clobber %s %s.backup"
-        total_cmds = [ CmdAction(backup_cmd), CmdAction(self.format_xmls) ]
-        return total_cmds
+    def setup_detail(self, task):
+        """
+        Add the backup action to setup
+        """
+        task['actions' ] = [self.backup_xmls]
+        return task
 
     def subtask_detail(self, fpath, task):
         task.update({
@@ -310,3 +281,43 @@ class XmlFormatTask(globber.DirGlobber):
             })
         task['meta'].update({ "focus" : fpath })
         return task
+
+    def subtask_actions(self, fpath):
+        ext_strs = [f"*{ext}" for ext in self.exts]
+        globbed  = {x for ext in ext_strs for x in fpath.rglob(ext)}
+        actions  = []
+
+        for target in globbed:
+            args = ["xml" , "fo",
+                    "-s", "4",     # indent 4 spaces
+                    "-R",          # Recover
+                    "-N",          # remove redundant declarations
+                    "-e", "utf-8", # encode in utf-8
+                    ]
+            if target.suffix in [".html", ".xhtml"]:
+                args.append("--html")
+
+            args.append(target)
+            # Format and save result:
+            actions.append(CmdAction(args, shell=False, save_out=str(target)))
+            # Write result to the file:
+            actions.append(partial(self.write_formatting, target))
+
+        return actions
+
+    def backup_xmls(self):
+        """
+        Find all applicable files, and copy them
+        """
+        ext_strs = [f"*{ext}" for ext in self.exts]
+        globbed  = {x for ext in ext_strs for start in self.starts for x in start.rglob(ext)}
+
+        for btarget in backup_targets:
+            backup = btarget.with_suffix(f"{btarget.suffix}.backup")
+            if backup.exists():
+                continue
+            backup.write_text(btarget.read_text())
+
+    def write_formatting(self, target, task):
+        formatted_text = task.values[str(target)]
+        target.write_text(formatted_text)

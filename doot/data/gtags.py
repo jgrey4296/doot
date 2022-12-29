@@ -16,7 +16,7 @@ def task_tags_init():
     """:: initalise gtags """
     return {
         "basename" : "gtags::init",
-        "actions" : [ f"gtags -C {src_dir} ." ],
+        "actions" : [ CmdAction(["gtags", "-C", src_dir, "."], shell=False)],
         "targets" : [ src_dir / "GPATH",
                       src_dir / "GRTAGS",
                       src_dir / "GTAGS" ],
@@ -28,7 +28,7 @@ def task_tags():
     """:: update tag files """
     return {
         "basename" : "gtags::update",
-        "actions"  : [ f"global -C {src_dir} -u" ],
+        "actions"  : [ CmdAction(["global", "-C", src_dir, "-u" ], shell=False)],
         "file_dep" : [ src_dir / "GPATH",
                        src_dir / "GRTAGS",
                        src_dir / "GTAGS" ],

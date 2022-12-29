@@ -28,6 +28,14 @@ class InitPyGlobber(globber.DirGlobber):
         super().__init__("py::initpy", [], [src_dir], rec=rec)
         self.ignores = ["__pycache__", ".git", "__mypy_cache__"]
 
+    def subtask_detail(self, fpath, task):
+        task['meta'].update({"focus" : fpath})
+        return task
+
+
+    def subtask_actions(self, fpath):
+        return [ self.touch_initpys ]
+
     def touch_initpys(self, task):
         queue = [ task.meta['focus'] ]
         while bool(queue):
@@ -42,34 +50,11 @@ class InitPyGlobber(globber.DirGlobber):
             inpy = current / "__init__.py"
             inpy.touch()
 
-    def subtask_actions(self, fpath):
-        return [ self.touch_initpys ]
-
-    def subtask_detail(self, fpath, task):
-        task['meta'].update({"focus" : fpath})
-        return task
-
-
 class PyLintTask(globber.DirGlobber):
     """:: lint the package """
 
     def __init__(self):
         super().__init__("python::lint", [], [src_dir], rec=False)
-
-    def run_lint(self, task):
-        args = ["--output-format", task.meta['format'],
-                "--output", py_build_dir / task.meta["output"],
-                ]
-        if task.meta['error']:
-            args.append("-E")
-
-        args.append(proj_name)
-        exec_cmd = task.meta['exec']
-        cmd_args = " ".join(str(x) for x in args)
-        return f"{exec_cmd} {cmd_args}"
-
-    def subtask_actions(self, fpath):
-        return [self.run_lint]
 
     def subtask_detail(self, fpath, task):
         task.update({})
@@ -80,6 +65,19 @@ class PyLintTask(globber.DirGlobber):
             "error"  : lint_error,
             })
         return task
+
+    def subtask_actions(self, fpath):
+        return [CmdAction(self.run_lint, shell=False)]
+    def run_lint(self, task):
+        args = [task.meta['exec'],
+                "--output-format", task.meta['format'],
+                "--output", py_build_dir / task.meta["output"],
+                "-E" if task.meta['error'] else "",
+                proj_name
+                ]
+
+        return args
+
 
     def gen_toml(self):
         return "\n".join([
@@ -99,20 +97,21 @@ class PyTestGlob(globber.DirGlobber):
         super().__init__("python::test", [".py"], [src_dir], rec=True, filter_fn=self.is_test_dir)
 
     def is_test_dir(self, fpath):
-        return py_test_dir_fmt in fpath.name:
+        return py_test_dir_fmt in fpath.name
 
-    def run_tests(self, task):
-        args = ["-X", "dev", "-t", pl.Path()] + py_test_args
-        arg_str = " ".join(args)
-        return f"python -m unittest discover {arg_str} {task.meta['dir']}"
-
-    def subtask_actions(self, fpath):
-        return [self.run_tests]
-    
     def subtask_detail(self, fpath, task):
         task.update({})
         task['meta'].update({"dir" : fpath})
         return task
+
+    def subtask_actions(self, fpath):
+        return [ CmdAction(self.run_tests) ]
+
+    def run_tests(self, task):
+        args = ["python", "-m", "unttest", "discover" "-X", "dev", "-t", pl.Path()]
+        args += py_test_args
+        args.append(task.meta['dir'])
+        return args
 
     def gen_toml(self):
         return "\n".join([

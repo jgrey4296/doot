@@ -51,21 +51,13 @@ class LatexFirstPass(globber.FileGlobberMulti):
     def __init__(self):
         super().__init__("tex::pass:one", [".tex"], [tex_src_dir], rec=True)
 
-    def compile_tex(self, interaction, dependencies):
-        target = pl.Path(dependencies[0]).with_suffix("")
-        core_cmd = f"pdflatex -interaction={interaction} -output-directory={tex_temp_dir} {target}"
-        return core_cmd
-
     def subtask_detail(self, fpath, task):
-        first_pass_pdf = tex_dir / ("1st_pass_" + fpath.with_suffix(".pdf").name)
+        first_pass_pdf = self.pdf_name(fpath)
         task.update({
-                "actions"  : [CmdAction(self.compile_tex),
-                              f"cp {tex_temp_dir}/{fpath.stem}.pdf {first_pass_pdf}",
-                              ],
                 "task_dep" : ["_checkdir::tex"],
                 "file_dep" : [ fpath ],
-                "targets"  : [tex_temp_dir / fpath.with_suffix(".aux").name,
-                              first_pass_pdf,
+                "targets"  : [ tex_temp_dir / fpath.with_suffix(".aux").name,
+                               first_pass_pdf,
                               ],
                 "clean"    : True,
                 "params" : [
@@ -79,6 +71,23 @@ class LatexFirstPass(globber.FileGlobberMulti):
         })
         return task
 
+    def subtask_actions(self, fpath):
+        return [CmdAction(self.compile_tex, shell=False),
+                CmdAction(["cp",
+                           tex_temp_dir / fpath.with_suffix(".pdf").name,
+                           self.pdf_name(fpath) ],
+                          shell=False),
+                ]
+
+    def pdf_name(self, fpath):
+        first_pass_pdf = tex_dir / ("1st_pass_" + fpath.with_suffix(".pdf").name)
+        return first_pass_pdf
+
+    def compile_tex(self, interaction, dependencies):
+        target = pl.Path(dependencies[0]).with_suffix("")
+        core_cmd = ["pdflatex", "-interaction={interaction}", "-output-directory={tex_temp_dir}", target]
+        return core_cmd
+
 class LatexSecondPass(globber.FileGlobberMulti):
     """
     Second pass of latex compiling,
@@ -90,17 +99,11 @@ class LatexSecondPass(globber.FileGlobberMulti):
 
     def subtask_detail(self, fpath, task):
         no_suffix = fpath.with_suffix("")
-        task.update({"actions"  : ["pdflatex -interaction={interaction}" + f" -output-directory={tex_temp_dir} {no_suffix}",
-	                               "pdflatex -interaction={interaction}" + f" -output-directory={tex_temp_dir} {no_suffix}",
-                                   f"cp {tex_temp_dir}/{fpath.stem}.pdf " + "{targets}",
-                                   ],
-                     "task_dep" : [f"_tex::pass:bibtex:{task['name']}"],
+        task.update({"task_dep" : [f"_tex::pass:bibtex:{task['name']}"],
                      "file_dep" : [ tex_temp_dir / fpath.with_suffix(".aux").name,
                                     tex_temp_dir / fpath.with_suffix(".bbl").name,
                                    ],
-                     "targets"  : [
-                         tex_dir / fpath.with_suffix(".pdf").name
-                     ],
+                     "targets"  : [tex_dir / fpath.with_suffix(".pdf").name],
                      "clean"    : True,
                      "params" : [
                          { "name"   : "interaction",
@@ -114,6 +117,13 @@ class LatexSecondPass(globber.FileGlobberMulti):
                      })
         return task
 
+    def subtask_actions(self, fpath):
+        no_suffix = fpath.with_suffix("")
+        return [CmdAction(["pdflatex", "-interaction={interaction}", f"-output-directory={tex_temp_dir}", no_suffix], shell=False),
+	            CmdAction(["pdflatex", "-interaction={interaction}", f"-output-directory={tex_temp_dir}", no_suffix], shell=False)
+                CmdAction(["cp", tex_temp_dir / fpath.with_suffix(".pdf").name, "{targets}"], shell=False),
+                ],
+
 
 class LatexCheck(globber.FileGlobberMulti):
     """
@@ -125,9 +135,7 @@ class LatexCheck(globber.FileGlobberMulti):
         super().__init__("tex::check", ['.tex'], [tex_src_dir], rec=True)
 
     def subtask_detail(self, fpath, task):
-        no_suffix = fpath.with_suffix("")
         task.update({"file_dep" : [ path ],
-                     "actions"  : ["pdflatex -draftmode -interaction={interaction}" + f" -output-directory={tex_temp_dir} {no_suffix}",],
                      "task_dep" : [ "_checkdir::tex" ],
                      "uptodate" : [False],
                      "params" : [
@@ -140,6 +148,11 @@ class LatexCheck(globber.FileGlobberMulti):
                      ]
                      })
         return task
+
+    def subtask_actions(self, fpath):
+        no_suffix = fpath.with_suffix("")
+        return [CmdAction(["pdflatex", "-draftmode", "-interaction={interaction}", f"-output-directory={tex_temp_dir}", no_suffix], shell=False)],
+
 class BibtexCheck(globber.FileGlobberMulti):
 
     def __init__(self):
@@ -157,14 +170,31 @@ class BibtexBuildTask(globber.FileGlobberMulti):
     def __init__(self):
         super().__init__("_tex::pass:bibtex", [".tex"], [tex_src_dir], rec=True)
 
-    def texs_with_bibs(self):
-        return f"find {tex_src_dir} -name '*.tex' -print0 | xargs -0 grep -l -E -e '\\\bibliography' > {tex_temp_dir}/todos"
+    def subtask_detail(self, fpath, task):
+        aux_file = tex_temp_dir / fpath.with_suffix(".aux").name
+        bbl_file = tex_temp_dir / fpath.with_suffix(".bbl").name
+        task.update({"task_dep" : [f"tex::pass:one:{task['name']}"],
+                     "file_dep" : [ tex_temp_dir / "combined.bib",
+                                    aux_file ],
+                     "targets"  : [ bbl_file ],
+                     "clean"    : True,
+                     })
+        return task
+
+    def subtask_actions(self, fpath):
+        aux_file = tex_temp_dir / fpath.with_suffix(".aux").name
+        bbl_file = tex_temp_dir / fpath.with_suffix(".bbl").name
+
+        return [ CmdAction(["ggrep", "{dependencies}", "-e", "\\bibdata", ";",  ":"], shell=False, save_out="has_bib"),
+                 CmdAction(self.amend_bib_paths(aux_file), shell=False),
+                 CmdAction(self.maybe_run, shell=False),
+                 ]
 
     def amend_bib_paths(self, aux):
         # reminder: {{ }} for escaping {'s in string.format,
         # \\{ for escaping {'s in sed
         bib_loc =  str(tex_temp_dir / "combined.bib").replace("/", "\/")
-        cmd = "gsed -i.backup -E 's/\\\\bibdata\\{{.+?\\}}/\\\\bibdata\\{{" + str(bib_loc) + "\\}}/' " + str(aux)
+        cmd = ["gsed", "-i.backup", "-E", "s/\\\\bibdata\\{{.+?\\}}/\\\\bibdata\\{{" + str(bib_loc) + "\\}}/' ", str(aux)]
         return cmd
 
     def maybe_run(self, task, dependencies):
@@ -173,21 +203,8 @@ class BibtexBuildTask(globber.FileGlobberMulti):
         if not bool(task.values['has_bib']):
             return "touch {targets}"
 
-        return f"bibtex {deps['.aux']}"
+        return ["bibtex",  deps['.aux']]
 
-    def subtask_detail(self, fpath, task):
-        aux_file = tex_temp_dir / fpath.with_suffix(".aux").name
-        bbl_file = tex_temp_dir / fpath.with_suffix(".bbl").name
-        task.update({"actions"  : [ CmdAction("ggrep {dependencies} -e \\bibdata ; :", save_out="has_bib"),
-                                    CmdAction(self.amend_bib_paths(aux_file)),
-                                    CmdAction(self.maybe_run) ],
-                     "task_dep" : [f"tex::pass:one:{task['name']}"],
-                     "file_dep" : [ tex_temp_dir / "combined.bib",
-                                    aux_file ],
-                     "targets"  : [ bbl_file ],
-                     "clean"    : True,
-                     })
-        return task
 
 class BibtexConcatenateTask:
     """
@@ -202,6 +219,7 @@ class BibtexConcatenateTask:
             "basename" : "_tex::bib",
             "actions"  : [
                 # Concatenate the bibliography
+                # TODO could save out, then cat in separate action
 	            CmdAction(f"find {tex_src_dir} -name '*.bib' -print0 | xargs -0 cat " + " > {targets}"),
             ],
             "task_dep" : ["_checkdir::tex"],

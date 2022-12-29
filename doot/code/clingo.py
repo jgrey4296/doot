@@ -49,8 +49,6 @@ class ClingoRunner(globber.FileGlobberMulti):
     def __init__(self):
         super().__init__("clingo::run", [src_ext], [src_dir], rec=True)
 
-    def subtask_actions(self, fpath):
-        return [CmdAction(f"clingo {clingo_options} " + "{dependencies} > {targets}")]
 
     def subtask_detail(self, fpath, task):
         target = clingo_build_dir / path.with_suffix(out_ext).name
@@ -60,6 +58,9 @@ class ClingoRunner(globber.FileGlobberMulti):
             "task_dep" : ["_checkdir::clingo"],
         })
         return task
+
+    def subtask_actions(self, fpath):
+        return [CmdAction(f"clingo {clingo_options} " + "{dependencies} > {targets}")]
 
     def gen_toml(self):
         return "\n".join(["##-- clingo",
@@ -77,9 +78,6 @@ class ClingoDotter(globber.FileGlobberMulti):
     def __init__(self):
         super().__init__("clingo::dotter", [vis_src_ext], [src_dir], rec=True)
 
-    def subtask_actions(self, fpath):
-        return [CmdAction(f"clingo --outf=2 {clingo_options} " + "{dependencies} > {targets}")]
-
     def subtask_detail(self, fpath, task):
         target = clingo_build_dir / path.with_suffix(vis_in_ext).name
         task.update({
@@ -90,6 +88,10 @@ class ClingoDotter(globber.FileGlobberMulti):
 
         })
         return task
+
+
+    def subtask_actions(self, fpath):
+        return [CmdAction(f"clingo --outf=2 {clingo_options} " + "{dependencies} > {targets}")]
 
     def gen_toml(self):
         return "\n".join(["##-- clingo",
@@ -109,10 +111,6 @@ class ClingoVisualise(globber.FileGlobberMulti):
     def __init__(self):
         super().__init__("clingo::visual", [vis_in_ext], [clingo_build_dir])
 
-    def subtask_actions(self, fpath):
-        # TODO convert json out from clingo to dot
-        return []
-
     def subtask_detail(self, fpath, task):
         target = visual_dir / targ_fname
         task.update({
@@ -123,6 +121,11 @@ class ClingoVisualise(globber.FileGlobberMulti):
 
         })
         return task
+
+
+    def subtask_actions(self, fpath):
+        # TODO convert json out from clingo to dot
+        return []
 
     def gen_toml(self):
         return "\n".join(["##-- clingo",
