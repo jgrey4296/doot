@@ -87,14 +87,25 @@ def task_cargo_init():
     create a cargo package, and set then customise it with building to 'build',
     and setting to use nightly features
     """
-    mk_config_dir = "mkdir ./.cargo"
-    set_build_dir = """echo "[build]\ntarget-dir = "build"\n" >> ./.cargo/config.toml"""
-    add_features  = """echo -e "cargo-features = [{features}]\n\n" | cat - Cargo.toml > cargo_amended"""
-    replace_cargo = "mv cargo_amended Cargo.toml"
+    def make_config():
+        pl.Path("./.cargo").mkdir()
+
+    def set_build_dir():
+        pl.Path("./.cargo/config.toml").write_text("\n".join(["[build]",
+                                                              "target-dir = \"build\"",
+                                                              ]))
+
+    def add_features(features):
+        cargo_file = pl.Path("Cargo.toml")
+        header     = f"cargo-features = [{features}]\n"
+        cargo_text = cargo_file.read_text()
+        cargo_file.write_text("\n".join([header, cargo_text]))
+    #------
     return {
         "basename" : "cargo::init",
-        "actions"  : ["cargo init", mk_config_dir, set_build_dir, add_features, replace_cargo],
-        "targets"  : ["Cargo.toml"],
+        "actions"  : [CmdAction(["cargo", "init"], shell=False),
+                      make_config, set_build_dir, add_features],
+        "targets"  : ["Cargo.toml", ".cargo/config.toml"],
         "params" : [ { "name" : "features",
                        "type" : str,
                        "default" : '"profile-rustflags"',
