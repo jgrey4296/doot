@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import pathlib as pl
 import shutil
+from sys import platform
 
 from doit.tools import Interactive
 
-from doot import build_dir, data_toml
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
@@ -16,178 +16,156 @@ from doot.utils.toml_access import TomlAccessError
 ##-- end imports
 # https://doc.rust-lang.org/cargo/index.html
 
-try:
-    bin_file = data_toml.bin[0].name
-except TomlAccessError:
-    bin_file = data_toml.package.name
+def task_cargo_build(build_dir:pl.Path, target:tuple[str, str], profile="debug", data:pl.Path|str="Cargo.toml"):
+    """
+    Build rust binary target, using a tuple (type, name)
+    eg: (bin, main) or (lib, mylib)
+    """
+    base_name = f"cargo::build.{profile}.{target[1]}"
 
-def task_cargo_build(profile="debug"):
-    """
-    Build rust binary
-    """
+    def cmd_builder(selection, task):
+        return ["cargo", "build", f"--{target[0]}", target[1], "--profile", profile]
 
     return {
-        "basename" : f"cargo::build.{profile}",
-        "actions" : ["cargo build --{selection}"],
-        "targets" : [ f"{build_dir}/{profile}/{bin_file}" ],
-        "file_dep" : ["Cargo.toml"],
-        "params" : [
-            { "name"    : "selection",
-              "short"   : "s",
-              "type"    : str,
-              "default" : "bins",
-            },
-            { "name"    : "profile",
-              "short"   : "p",
-              "type"    : str,
-              "choice"  : [("debug", ""),
-                          ("release", "") ],
-              "default" : f"{profile}",
-            }
+        "basename" : base_name,
+        "actions"  : [ CmdAction(cmd_builder, shell=False) ],
+        "targets"  : [ build_dir / profile / target[1] ],
+        "file_dep" : [ data ],
         ]
     }
 
-def task_cargo_build_release():
-    return task_cargo_build(profile="release")
-
-def task_cargo_install():
+def task_cargo_install(profile="debug", data:pl.Path|str="Cargo.toml"):
     """
     install a rust binary
     """
     return {
-        "basename" : "cargo::install",
-        "actions"  : ["cargo install"],
-        "file_dep" : ["Cargo.toml"],
+        "basename" : f"cargo::install.{profile}.{target[1]}",
+        "actions"  : [ CmdAction(["cargo", "install", "--profile", profile ], shell=False) ],
+        "file_dep" : [ data ],
     }
 
-def task_cargo_test():
+def task_cargo_test(profile="debug", data:pl.Path|str="Cargo.toml"):
     """
     run rust tests
     """
     return {
-        "basename" : "cargo::test",
-        "actions"  : ["cargo test"],
-        "file_dep" : ["Cargo.toml"],
+        "basename" : f"cargo::test.{profile}",
+        "actions"  : [CmdAction(["cargo", "test", "--profile", profile, "--workspace"], shell=False) ],
+        "file_dep" : [ data ],
     }
 
-def task_cargo_run():
+def task_cargo_run(target:tuple[str, str], profile="debug", data:pl.Path|str="Cargo.toml"):
     """
     run a rust binary
     """
     return {
-        "basename" : "cargo::run",
-        "actions" : ["cargo run"],
-        "file_dep" : ["Cargo.toml"],
+        "basename" : "cargo::run.{profile}",
+        "actions"  : [CmdAction(["cargo", "run", f"--{target[0]}", target[1]], shell=False)],
+        "file_dep" : [data],
         "task_dep" : ["_checkdir::build" ],
     }
 
-def task_cargo_doc():
+def task_cargo_doc(data:pl.Path|str="Cargo.toml"):
     """
     build rust docs
     """
     return {
         "basename" : "cargo::doc",
-        "actions" : ["cargo doc"],
-        "file_dep" : ["Cargo.toml"],
+        "actions"  : [CmdAction(["cargo", "doc"], shell=False) ],
+        "file_dep" : [data],
     }
 
-def task_cargo_clean():
+def task_cargo_clean(data:pl.Path|str="Cargo.toml"):
     """
     clean the rust project
     """
     return {
         "basename" : "cargo::clean",
-        "actions"  : ["cargo clean"],
-        "file_dep" : ["Cargo.toml"],
+        "actions"  : [CmdAction(["cargo", "clean"], shell=False) ],
+        "file_dep" : [ data ],
     }
 
 
-def task_cargo_check():
+def task_cargo_check(data:pl.Path|str="Cargo.toml"):
     """
     lint the rust project
     """
     return {
         "basename" : "cargo::check",
-        "actions"  : ["cargo check"],
-        "file_dep" : "Cargo.toml",
+        "actions"  : [ CmdAction(["cargo", "check", "--workspace"], shell=False) ],
+        "file_dep" : [data],
     }
 
-def task_cargo_update():
+def task_cargo_update(data:pl.Path|str="Cargo.toml"):
     """
     update rust and dependencies
     """
     return {
         "basename" : "cargo::update",
-        "actions"  : ["rustup update", "cargo update"],
-        "file_dep" : ["Cargo.toml"],
+        "actions"  : [CmdAction(["rustup", "update"], shell=False),
+                      CmdAction(["cargo", "update"], shell=False),
+                      ],
+        "file_dep" : [data],
     }
 
-def task_rustup_show():
-    """
-    show available toolchains
-    """
-    return {
-        "basename" : "cargo::toolchain",
-        "actions"  : ["rustup show"],
-        "file_dep" : "Cargo.toml",
-    }
-
-
-def task_cargo_rename_binary(profile="release"):
+def task_cargo_mac_lib(build_dir, package:str, profile="debug", data:pl.Path|str="Cargo.toml"):
     """
     rename the produced rust binary on mac os,
     for rust-py interaction
     """
+    if platform != "darwin":
+        return None
 
-    lib_file = f"{build_dir}/{profile}/lib{data_toml.package.name}.dylib"
-    shared_file = f"{build_dir}/{profile}/{data_toml.package.name}.so"
+    lib_file    = build_dir / profile / f"lib{package}.dylib"
+    shared_file = build_dir / profile / f"{package}.so"
+
+    def rename_target(task):
+        lib_file.rename(shared_file)
+
     cmd = f"cp {lib_file} {shared_file}"
 
-    return {
-        "basename" : f"cargo::rename.{profile}",
-        "actions"  : [cmd],
-        "file_dep" : ["Cargo.toml", lib_file],
-        "task_dep" : ["_checkdir::build" ],
+    yield {
+        "basename" : f"cargo::mac.{profile}.lib",
+        "actions"  : [ rename_target ],
+        "target"   : [ shared_file ],
+        "file_dep" : [ data, , lib_file],
+        "task_dep" : [ f"_cargo::build.{profile}.lib" ],
     }
 
-def task_cargo_rename_debug_binary():
-    return task_cargo_rename_binary(profile="debug")
+    build_lib = task_cargo_build(build_dir, target=("lib", fname), profile=profile, data=data)
+    build_lib['basename'] = f"_cargo::build.{profile}.lib"
+    yield build_lib
 
 
-def task_cargo_help():
-    """ Open a browse to the rust book """
-    return {
-        "basename" : "cargo::rust.help",
-        "actions" : ["browse {url}"],
-        "file_dep" : ["Cargo.toml"],
-        "params" : [ {"name" : "url",
-                      "type" : str,
-                      "default" : "https://doc.rust-lang.org/book/title-page.html"
-                      }
-                    ],
-    }
 
-
-def task_cargo_debug():
+def task_cargo_debug(build_dir, target:tuple[str, str], data:pl.Path|str="Cargo.toml"):
     """
     Start lldb on the debug build of the rust binary
     """
-    try:
-        bin_file = data_toml.bin[0].name
-    except TomlAccessError:
-        bin_file = data_toml.package.name
-    
+    assert(target[0] == "bin")
     return {
-        "actions"  : [Interactive(f"lldb {build_dir}/debug/{bin_file}")],
-        "file_dep" : ["Cargo.toml", f"{build_dir}/debug/{bin_file}"],
-        "task_dep" : [ "_checkdir::build" ],
+        "basename" : f"cargo::debug.{target[1]}"
+        "actions"  : [Interactive(["lldb", build_dir / "debug" / target[1] ], shell=False)],
+        "file_dep" : [ data, build_dir / "debug" / target[1] ],
+        "task_dep" : [f"cargo::build.debug.{target[1]}"],
     }
 
-def task_cargo_version():
+def task_cargo_version(data:pl.Path|str="Cargo.toml"):
     return {
-        "actions" : ["cargo --version", "rustup --version"],
-        "file_dep" : ["Cargo.toml"],
+        "basename" : "cargo::version",
+        "actions" : [CmdAction(["cargo", "--version"], shell=False),
+                     CmdAction(["rustup", "--version"], shell=False),
+                     CmdAction(["rustup", "show"], shell=False),
+                     ],
+        "file_dep" : [data],
         "verbosity" : 2,
     }
 
 
+def task_cargo_report(data:pl.Path|str="Cargo.toml"):
+    return {
+        "basename"  : "cargo::report",
+        "actions"   : [CmdAction(["cargo", "report", "future-incompat"], shell=False) ],
+        "file_dep"  : [data],
+        "verbosity" : 2,
+    }

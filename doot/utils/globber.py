@@ -102,6 +102,8 @@ class FileGlobberMulti:
     def teardown_detail(self, task:dict) -> dict:
         return task
 
+    def top_detail(self, task:dict) -> dict:
+        return task
     def default_task(self) -> dict:
         return self.defaults.copy()
 
@@ -158,16 +160,19 @@ class FileGlobberMulti:
         subtasks.append(self._build_teardown([f"{self.base}:{x['name']}" for x in subtasks]))
         subtasks.append(self._build_setup())
 
-        subtasks.append({
+        top_task = {
             "basename" : f"{self.base}",
             "name"     : None,
             "task_dep" : [f"_{self.base}:post"],
             "doc"      : self.doc,
-        })
+        }
+        subtasks.append(self.top_detail(top_task))
+
         self.total_subtasks = len(subtasks)
 
         for sub in subtasks:
-            yield sub
+            if sub is not None:
+                yield sub
 
 
 
@@ -227,12 +232,49 @@ class FileGlobberLate(FileGlobberMulti):
         subtasks.append(self._build_teardown([f"{self.base}:{x['name']}" for x in subtasks]))
         subtasks.append(self._build_setup())
 
-        subtasks.append({
-            "basename" : f"{self.base}",
-            "name"     : None,
-            "task_dep" : [f"_{self.base}:post"],
-            "doc"      : self.doc,
-        })
+        top_task = { "basename" : f"{self.base}",
+                     "name"     : None,
+                     "task_dep" : [f"_{self.base}:post"],
+                     "doc"      : self.doc,
+                    }
+        subtasks.append(self.top_detail(top_task))
+
         self.total_subtasks = len(subtasks)
         for sub in subtasks:
-            yield sub
+            if sub is not None:
+                yield sub
+
+
+class FileGlobberSingle(FileGlobberMulti):
+    """
+    Glob for files, but don't provide a top level task to
+    run all of them together
+    """
+
+    def build(self):
+        """
+        Generalized task builder for globbing on files
+        then customizing the subtasks
+        """
+        subtasks = []
+        globbed = self.glob_all()
+        for i, (uname, fpath) in enumerate(self.glob_all()):
+            subtask = self._build_subtask(i, uname, fpath)
+            if subtask is not None:
+                subtasks.append(subtask)
+
+        subtasks.append(self._build_teardown([f"{self.base}:{x['name']}" for x in subtasks]))
+        subtasks.append(self._build_setup())
+
+        top_task = {
+            "basename" : f"{self.base}",
+            "name"     : None,
+            "doc"      : self.doc,
+        }
+        subtasks.append(self.top_detail(top_task))
+
+        self.total_subtasks = len(subtasks)
+
+        for sub in subtasks:
+            if sub is not None:
+                yield sub

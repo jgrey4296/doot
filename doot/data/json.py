@@ -21,27 +21,19 @@ from doot.utils import globber
 
 ##-- end imports
 
-data_dirs = [pl.Path(x) for x in data_toml.tool.doot.json.data_dirs if pl.Path(x).exists()]
 
-json_gen_dir   = gen_dir
-json_build_dir = build_dir / "json"
-visual_dir     = json_build_dir   / "visual"
+def build_json_checks(build_dir, visual_dir):
+    json_dir_check = CheckDir(paths=[build_dir, visual_dir,],
+                            name="json",
+                            task_dep=["_checkdir::build"])
 
-##-- dir checks
-json_dir_check = CheckDir(paths=[json_build_dir,
-                                 visual_dir,
-                                 ],
-                          name="json",
-                          task_dep=["_checkdir::build"])
-
-##-- end dir checks
 
 class JsonFormatTask(globber.DirGlobber):
     """
     Lint Json files with jq
     """
 
-    def __init__(self, targets=data_dirs, rec=True):
+    def __init__(self, targets:list[pl.Path], rec=True):
         super().__init__("json::format", [".json"], data_dirs, rec=rec)
 
     def setup_detail(self, task):
@@ -94,11 +86,12 @@ class JsonPythonSchema(globber.DirGlobber):
     """
     Use XSData to generate python bindings for a directory of json's
     """
-    def __init__(self, targets=data_dirs, rec=True):
+    def __init__(self, targets:list[pl.Path], build_dir, rec=True):
         super().__init__("json::schema.python", [".json"], targets, rec=rec)
+        self.build_dir = build_dir
 
     def subtask_detail(self, fpath, task):
-        gen_package = str(json_gen_dir / task['name'])
+        gen_package = str(self.build_dir / task['name'])
         task.update({
             "targets"  : [ gen_package ],
             "task_dep" : [ "_xsdata::config", "_checkdir::json" ],
@@ -138,12 +131,13 @@ class JsonVisualise(globber.FileGlobberMulti):
     ready for plantuml to visualise structure
     """
 
-    def __init__(self, targets=data_dirs):
+    def __init__(self, targets:list[pl.Path], build_dir):
         super().__init__("json::schema.visual", [".json"], targets, rec=True)
+        self.build_dir = build_dir
 
     def subtask_detail(self, fpath, task):
         task.update({
-            "targets"  : [ visual_dir / task['name'] ],
+            "targets"  : [ self.build_dir / task['name'] ],
             "task_dep" : [ "_checkdir::json" ],
         })
         return task
@@ -153,8 +147,8 @@ class JsonVisualise(globber.FileGlobberMulti):
 
     def write_plantuml(self, fpath, targets):
         header   = "@startjson\n"
-        footer   = "\n@endjson\n"
         contents = fpath.read_text()
+        footer   = "\n@endjson\n"
 
         with open(pl.Path(targets[0]), 'w') as f:
             f.write(header)

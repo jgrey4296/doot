@@ -19,44 +19,47 @@ from doot.utils import globber
 
 ##-- end imports
 
-dot_build_dir = build_dir / "dot"
-visual_dir    = dot_build_dir   / "visual"
 
-##-- dir checks
-dot_dir_check = CheckDir(paths=[dot_build_dir,
-                                visual_dir,
-                                ],
-                         name="dot",
-                         task_dep=["_checkdir::build"])
+def build_dot_checks(build, visual):
+    dot_dir_check = CheckDir(paths=[build, visual,],
+                             name="dot",
+                             task_dep=["_checkdir::build"])
 
-##-- end dir checks
 
 class DotVisualise(globber.FileGlobberMulti):
     """
     make images from any dot files
     """
 
-    def __init__(self):
-        super().__init__("dot::visual", [".dot"], [dot_build_dir])
+    def __init__(self, targets, build_dir, ext="png", layout="neato", scale:float=72.0):
+        super().__init__("dot::visual", [".dot"], targets)
+        self.build_dir = build_dir
+        self.ext       = ext
+        self.layout    = layout
+        self.scale     = scale
 
-    def generate_on_target(self):
-        cmd     = "dot -T{ext} -K{layout} -s{scale} {dependencies} -o {targets}.{ext}"
-        return cmd
 
     def subtask_detail(self, fpath, task):
-        task.update({"actions"  : [ CmdAction(self.generate_on_target) ],
+        task.update({
                      "file_dep" : [ fpath ],
-                     "targets"  : [ visual_dir / fpath.with_suffix(".png").name ],
+                     "targets"  : [ self.build_dir / fpath.with_suffix(f".{self.ext}").name ],
                      "task_dep" : [ "_checkdir::dot" ],
                      "clean"    : True,
-                     "params"   : [{"name"    : "ext", "short"   : "e", "type"    : str, "default" : "png",},
-                                   {"name"    : "layout", "short"   : "l", "type"    : str, "default" : "neato",},
-                                   {"name"    : "scale", "short"   : "s", "type"    : float, "default" : 72.0,},
-                                   ],
-                     })
+        })
         return task
 
+    def subtask_actions(self, fpath):
+        return [ CmdAction(self.run_on_target, shell=False) ]
 
+    def run_on_target(self, dependencies, targets):
+        cmd = ["dot"]
+        # Options:
+        cmd +=[f"-T{self.ext}", f"-K{self.layout}", f"-s{self.scale}"]
+        # file to process:
+        cmd.append(dependencies[0])
+        # output to:
+        cmd += ["-o", targets[0]]
+        return cmd
 
 class MakeGraph:
     """ use graphviz's gvgen to generate graphs """

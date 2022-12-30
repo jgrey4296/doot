@@ -11,7 +11,6 @@ import shutil
 from functools import partial
 from itertools import cycle, chain
 from doit.action import CmdAction
-from doot import build_dir, data_toml, src_dir, gen_dir
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
@@ -19,44 +18,40 @@ from doot.utils import globber
 
 ##-- end imports
 
-data_dirs        = [pl.Path(x) for x in data_toml.or_get([]).tool.doot.images.data_dirs() if pl.Path(x).exists()]
-exts : list[str] = data_toml.or_get([".jpg"]).tool.doot.images.exts()
-images_build_dir = build_dir / "images"
+def build_images_check(build_dir):
+    images_dir_check = CheckDir(paths=[build_dir,],
+                                name="images",
+                                task_dep=["_checkdir::build"])
 
-##-- dir checks
-images_dir_check = CheckDir(paths=[images_build_dir,],
-                          name="images",
-                          task_dep=["_checkdir::build"])
-
-##-- end dir checks
 
 class ImagesListingTask:
     """
     Create a listing of all files needed to hash
     """
 
-    def __init__(self):
+    def __init__(self, srcs, build_dir, exts:list[str]):
         self.create_doit_tasks = self.build
+        self.srcs = srcs
+        self.build_dir = build_dir
+        self.exts = exts
 
     def build(self):
         foci = data_dirs
         return {
             "basename" : "_images::listing",
             "actions"  : [ CmdAction(self.list_files), CmdAction(self.clean_listing)],
-            "targets"  : [ images_build_dir / "1_images.listing",
-                           images_build_dir / "2_unique.listing"],
+            "targets"  : [ self.build_dir / "1_images.listing",
+                           self.build_dir / "2_unique.listing"],
             "task_dep" : [ "_checkdir::images" ],
-            "meta"     : { "exts"      : exts,
-                           "foci"      : foci,
-                          },
             "uptodate" : [False],
             "clean"    : True
         }
 
+
     def list_files(self, task, targets):
         output    = pl.Path(targets[0])
-        focus     = task.meta['foci']
-        exts_args = " -o ".join(f"-name '*{x}'" for x in task.meta['exts'])
+        focus     = self.srcs
+        exts_args = " -o ".join(f"-name '*{x}'" for x in self.exts)
         cmds = ["echo [Listing Images]"]
         if output.exists():
             output.unlink()
@@ -94,21 +89,23 @@ class ImagesHashTask:
     # TODO sort duplicates by .stat().st_mtime
     """
 
-    def __init__(self):
+    def __init__(self, srcs, build_dir):
         self.create_doit_tasks = self.build
+        self.srcs = srcs
+        self.build_dir = build_dir
 
     def build(self):
-        yield {
+        return {
             "basename" : "images::md5",
             "actions"  : [ CmdAction(self.ignore_already_processed),
                            CmdAction(self.hash_all),
                            CmdAction(self.extract_duplicates)],
-            "targets"  : [images_build_dir / "5_images.md5",
-                          images_build_dir / "6_duplicates.md5"],
-            "file_dep" : [ images_build_dir / "2_unique.listing" ],
+            "targets"  : [self.build_dir / "5_images.md5",
+                          self.build_dir / "6_duplicates.md5"],
+            "file_dep" : [ self.build_dir / "2_unique.listing" ],
             "meta"     : {
-                "done" : images_build_dir / "3_processed.listing",
-                "todo" : images_build_dir / "4_todo_hash.listing",
+                "done" : self.build_dir / "3_processed.listing",
+                "todo" : self.build_dir / "4_todo_hash.listing",
                 },
             "clean"    : [self.clean_intermediates],
             "uptodate" : [False],

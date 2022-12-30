@@ -10,7 +10,6 @@ from itertools import cycle
 from itertools import cycle, chain
 from doit.action import CmdAction
 from doit.tools import Interactive
-from doot import build_dir, data_toml, src_dir, gen_dir
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import build_cmd
@@ -25,22 +24,11 @@ from doot.utils import globber
 # https://github.com/tefra/xsdata-plantuml
 # https://python-jsonschema.readthedocs.io/en/stable/
 
-data_dirs = [pl.Path(x) for x in data_toml.tool.doot.xml.data_dirs if pl.Path(x).exists()]
 
-xml_gen_dir   = gen_dir
-xml_build_dir = build_dir     / "xml"
-schema_dir    = xml_build_dir / "schema"
-elements_dir  = xml_build_dir / "elements"
-visual_dir    = xml_build_dir / "visual"
+def build_xml_checks(build, schema, elements, visual):
+    xml_dir_check = CheckDir(paths=[build, schema, elements, visual],
+                             name="xml", task_dep=["_checkdir::build"])
 
-##-- dir checks
-xml_dir_check = CheckDir(paths=[xml_build_dir,
-                                schema_dir,
-                                elements_dir,
-                                visual_dir,
-                                ], name="xml", task_dep=["_checkdir::build"])
-
-##-- end dir checks
 
 
 class XmlElementsTask(globber.DirGlobber):
@@ -48,11 +36,12 @@ class XmlElementsTask(globber.DirGlobber):
     xml element retrieval using xml starlet toolkit
     http://xmlstar.sourceforge.net/
     """
-    def __init__(self, targets=data_dirs):
+    def __init__(self, targets:list[pl.Path], build_dir:pl.Path):
         super(XmlElementsTask, self).__init__("xml::elements", [".xml"], targets, rec=True)
+        self.build_dir = build_dir
 
     def subtask_detail(self, fpath, task:dict) -> dict:
-        task.update({"targets" : [elements_dir / (task['name'] + ".elements")],
+        task.update({"targets" : [ self.build_dir / (task['name'] + ".elements")],
                      "task_dep": ["_checkdir::xml"],
                      "clean"   : True})
         return task
@@ -99,12 +88,13 @@ class XmlSchemaTask(globber.DirGlobber):
     Generate .xsd's from directories of xml files using trang
     https://relaxng.org/jclark/
     """
-    def __init__(self, targets=data_dirs):
+    def __init__(self, targets:list[pl.Path], build_dir:pl.Path):
         super().__init__("xml::schema", [".xml"], targets)
+        self.build_dir = build_dir
 
     def subtask_detail(self, fpath, task):
         task.update({
-            "targets"  : [ schema_dir / (task['name'] + ".xsd") ],
+            "targets"  : [ self.build_dir / (task['name'] + ".xsd") ],
             "task_dep" : ["_checkdir::xml"],
             "clean"    : True,
             "uptodate" : [True]})
@@ -130,11 +120,12 @@ class XmlPythonSchemaRaw(globber.DirGlobber):
     Generate Python Dataclass bindings based on raw XML data
     """
 
-    def __init__(self, targets=data_dirs, rec=True):
+    def __init__(self, targets:list[pl.Path], build_dir:pl.Path, rec=True):
         super().__init__("xml::schema.python.raw", [".xml"], targets, rec=rec)
+        self.build_dir = build_dir
 
     def subtask_detail(self, fpath, task):
-        gen_package = str(xml_gen_dir / task['name'])
+        gen_package = str(self.build_dir / task['name'])
         task.update({
             "targets"  : [ gen_package ],
             "task_dep" : [ "_xsdata::config", "_checkdir::xml" ],
@@ -163,12 +154,12 @@ class XmlPythonSchemaXSD(globber.FileGlobberMulti):
     Generate python dataclass bindings from XSD's
     """
 
-    def __init__(self, targets=data_dirs, rec=False):
-        targets = data_dirs[:] + [ schema_dir ]
+    def __init__(self, targets:list[pl.Path], build_dir:pl.path, rec=False):
         super().__init__("xml::schema.python.xsd", [".xsd"], targets, rec=rec)
+        self.build_dir = build_dir
 
     def subtask_detail(self, fpath, task):
-        gen_package = str(xml_gen_dir / task['name'])
+        gen_package = str(self.build_dir / task['name'])
         task.update({
                 "targets"  : [ gen_package ],
                 "file_dep" : [ fpath ],
@@ -198,14 +189,14 @@ class XmlSchemaVisualiseTask(globber.FileGlobberMulti):
     Generate Plantuml files ready for plantuml to generate images
     """
 
-    def __init__(self, targets=data_dirs, rec=True):
-        targets_plus = targets[:] + [ schema_dir ]
-        super().__init__("xml::schema.plantuml", [".xsd"], targets_plus, rec=rec)
+    def __init__(self, targets:list[pl.Path], build_dir:pl.Path, rec=True):
+        super().__init__("xml::schema.plantuml", [".xsd"], targets, rec=rec)
+        self.build_dir = build_dir
 
 
     def subtask_detail(self, fpath, task):
         task.update({
-            "targets"  : [ visual_dir / (task['name'] + ".plantuml") ],
+            "targets"  : [ self.build_dir / (task['name'] + ".plantuml") ],
             "file_dep" : [ fpath ],
             "task_dep" : [ "_xsdata::config",  "_checkdir::xml"],
             "clean"    : True,
@@ -232,14 +223,8 @@ class XmlValidateTask(globber.DirGlobber):
     Validate xml's by schemas
     """
 
-    def __init__(self, targets=data_dirs, rec=False, xsd=None):
+    def __init__(self, targets:list[pl.Path], rec=False, xsd=None):
         super().__init__("xml::validate", [], targets, rec=rec)
-        self.args              = [
-            "xml", "val",
-            "-e",    # verbose errors
-            "--net", # net access
-            "--xsd"  # xsd schema
-            ]
         self.xsd = xsd
         if self.xsd is None:
             raise Exception("For Xml Validation you need to specify an xsd to validate against")
@@ -249,13 +234,19 @@ class XmlValidateTask(globber.DirGlobber):
         return task
 
     def subtask_actions(self, fpath):
-        if self.rec:
-            xmls = fpath.glob("*.xml")
-        else:
-            xmls = fpath.rglob("*.xml")
+        args = ["xml", "val",
+                "-e",    # verbose errors
+                "--net", # net access
+                "--xsd"  # xsd schema
+                ]
+        args.append(self.xsd)
 
-        args = self.args + [ self.xsd ] + list(xmls)
-        return [ CmdAction(args, shell=False) ],
+        if self.rec:
+            args += list(fpath.glob("*.xml"))
+        else:
+            args += list(fpath.rglob("*.xml"))
+
+        return [ CmdAction(args, shell=False) ]
 
 
 
@@ -263,10 +254,11 @@ class XmlValidateTask(globber.DirGlobber):
 class XmlFormatTask(globber.DirGlobber):
     """
     Basic Formatting with backup
+    TODO cleanup backups
     """
 
-    def __init__(self, targets=data_dirs, rec=True):
-        super().__init__("xml::format", [".xml", ".xhtml", ".html"], data_dirs, rec=rec)
+    def __init__(self, targets:list[pl.Path], rec=True):
+        super().__init__("xml::format", [".xml", ".xhtml", ".html"], target, rec=rec)
 
     def setup_detail(self, task):
         """

@@ -17,13 +17,11 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     cast, final, overload, runtime_checkable)
 from uuid import UUID, uuid1
 from weakref import ref
-from doot.utils.task_group import TaskGroup
-from doot import data_toml
-from doot.utils.toml_access import TomlAccessError
 
-if TYPE_CHECKING:
-    # tc only imports
-    pass
+from doot.utils.task_group import TaskGroup
+from doot.utils.toml_access import TomlAccessError, TomlAccess
+from doot import build_dir, data_toml, temp_dir, doc_dir, src_dir
+
 ##-- end imports
 
 ##-- logging
@@ -74,15 +72,23 @@ try:
     data_toml.tool.doot.jekyll
     from doot.builders import jekyll as j_build
     from doot.docs import jekyll as j_doc
+    jekyll_config = pl.Path("jekyll.toml")
+    jekyll_toml   = TomlAccess.load("jekyll.toml")
+    jekyll_src    = pl.Path(jekyll_toml.or_get("docs/site").source())
+    jekyll_dest   = pl.Path(jekyll_toml.or_get(build_dir/"jekyll").destination())
+
+    j_build.build_jekyll_checks(jekyll_dest, jeykll_src)
     jekyll_group = TaskGroup("jekyll_group",
                              j_build.task_jekyll_serve,
-                             j_build.task_jekyll_build,
-                             j_build.task_jekyll_install,
-                             j_build.task_init_jekyll,
+                             j_build.task_jekyll_build(jekyll_config),
+                             j_build.task_jekyll_install(jekyll_config),
+                             j_build.task_init_jekyll(jekyll_config, jekyll_src),
                              j_doc.GenPostTask(),
                              j_doc.GenTagsTask(),
                              )
 except TomlAccessError:
+    jekyll_group = None
+except FileNotFoundError:
     jekyll_group = None
 
 ##-- end jekyll
@@ -91,16 +97,21 @@ except TomlAccessError:
 try:
     data_toml.tool.doot.tex
     from doot.builders import latex
+    tex_src_dir  = doc_dir   / "tex"
+    tex_dir      = build_dir / "tex"
+    tex_temp_dir = temp_dir  / "tex"
+    interaction_mode = data_toml.or_get("nonstopmode").tool.doot.tex.interaction()
+    latex.build_latex_check(tex_dir, tex_temp_dir)
     latex_group = TaskGroup("latex_group",
-                            latex.LatexMultiPass(),
-                            latex.LatexFirstPass(),
-                            latex.LatexSecondPass(),
-                            latex.BibtexBuildTask(),
-                            latex.BibtexConcatenateTask(),
-                            latex.LatexCheck(),
+                            latex.LatexMultiPass([tex_src_dir], tex_dir),
+                            latex.LatexFirstPass([tex_src_dir], tex_temp_dir, tex_dir, interaction_mode),
+                            latex.LatexSecondPass([tex_src_dir], tex_temp_dir, tex_dir),
+                            latex.BibtexBuildTask([tex_src_dir], tex_temp_dir, tex_dir),
+                            latex.BibtexConcatenateTask([tex_src_dir], tex_temp_dir),
+                            latex.LatexCheck([tex_src_dir], tex_temp_dir),
                             latex.task_latex_docs,
-                            latex.task_latex_install,
-                            latex.task_latex_requirements,
+                            latex.task_latex_install(),
+                            latex.task_latex_requirements(),
                             latex.task_latex_rebuild,
                             )
 except TomlAccessError:
@@ -146,20 +157,27 @@ except TomlAccessError:
 try:
     data_toml.tool.doot.cargo
     data_toml.package
+    bin_file = data_toml.package.name
+    try:
+        bin_file = data_toml.bin[0].name
+    except TomlAccessError:
+        pass
+
     from doot.builders import cargo
     cargo_group = TaskGroup("cargo_group",
-                            cargo.task_cargo_build,
+                            cargo.task_cargo_build(build_dir, ("bin", bin_file)),
+                            cargo.task_cargo_build(build_dir, ("bin", bin_file), profile="release"),
+                            cargo.task_cargo_mac_lib(build_dir, package=data_toml.package.name),
                             cargo.task_cargo_install,
-                            cargo.task_cargo_test,
+                            cargo.task_cargo_test(("bin", "bin_file")),
                             cargo.task_cargo_run,
                             cargo.task_cargo_doc,
                             cargo.task_cargo_clean,
                             cargo.task_cargo_check,
                             cargo.task_cargo_update,
                             cargo.task_rustup_show,
-                            cargo.task_cargo_rename_binary,
                             cargo.task_cargo_help,
-                            cargo.task_cargo_debug,
+                            cargo.task_cargo_debug(build_dir, target=("bin", bin_file)),
                             cargo.task_cargo_version)
 except TomlAccessError:
     cargo_group = None
@@ -187,15 +205,21 @@ except TomlAccessError:
 ##-- epub
 try:
     data_toml.tool.doot.epub
+    epub_build_dir   = build_dir / "epub"
+    epub_working_dir = doc_dir / "epub"
+    epub_orig_dir    = doc_dir / "orig" / "epub"
+    epub_zip_dir     = temp_dir / "epub"
     from doot.builders import epub
+    epub.build_epub_check(epub_working_dir, epub_build_dir, epub_orig_dir, epub_zip_dir)
     epub_group = TaskGroup("epub group",
                            epub.EbookNewTask(),
-                           epub.EbookCompileTask(),
-                           epub.EbookConvertTask(),
-                           epub.EbookZipTask(),
-                           epub.EbookManifestTask(),
-                           epub.EbookSplitTask(),
-                           epub.EbookRestructureTask(),
+                           epub.EbookCompileTask([epub_working_dir]),
+                           epub.EbookConvertTask([epub_working_dir]),
+                           epub.EbookZipTask([epub_working_dir], epub_zip_dir),
+                           epub.EbookManifestTask([epub_working_dir]),
+                           epub.EbookSplitTask([epub_orig_dir]),
+                           epub.EbookRestructureTask([epub_working_dir]),
+                           epub.EbookNewTask([epub_working_dir])
                            )
 except TomlAccessError:
     epub_group = None

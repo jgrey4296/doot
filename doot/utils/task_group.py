@@ -33,7 +33,6 @@ logging = logmod.getLogger(__name__)
 
 clean_re = re.compile("\s+")
 
-
 class TaskGroup:
     """ A Group of task specs, none of which require params
     Can contain: dicts, objects with a `build` method,

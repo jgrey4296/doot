@@ -35,62 +35,50 @@ __all__ = [
     "task_init_jekyll", "task_jekyll_install"
 ]
 
-##-- checkdir
-jekyll_config = pl.Path("jekyll.toml")
-jekyll_toml   = None
-jekyll_src    = pl.Path("docs/site")
-jekyll_dest   = build_dir / "jekyll"
 
-if jekyll_config.exists():
-    jekyll_toml  = toml.load("jekyll.toml")
-    jekyll_src  = pl.Path(jekyll_toml['source'])
-    jekyll_dest = pl.Path(jekyll_toml['destination'])
+def build_jekyll_checks(dest, src):
+    """ register jekyll directory checks """
+    CheckDir(paths=[dest, src,],
+             name="jekyll",
+             task_dep=["_checkdir::build"])
 
-
-jekyll_check_build = CheckDir(paths=[jekyll_dest,
-                                     jekyll_src,
-                                     ],
-                              name="jekyll",
-                              task_dep=["_checkdir::build"])
-
-##-- end checkdir
 
 
 def task_jekyll_serve():
     def serve():
-        cmd = "bundle exec jekyll serve"
+        cmd = ["bundle", "exec", "jekyll", "serve"]
         return cmd
 
     # jekyll serve
     return {
-        "actions" : [LongRunning(serve)],
+        "actions" : [LongRunning(serve, shell=False)],
         "file_dep" : ["jekyll.toml" , "Gemfile"],
         "task_dep" : ["jekyll::build"],
         "basename" : "jekyll::serve"
     }
 
 
-def task_jekyll_build():
+def task_jekyll_build(jekyll_config:pl.Path):
     """
     Build the jekyll site, from the source destination,
     into the build destination
     using jekyll.toml
     """
     def builder(drafts):
-        cmd = "bundle exec jekyll build --config jekyl.toml"
+        cmd = ["bundle", "exec", "jekyll", "build", "--config", jekyll_config)
         if drafts:
-            cmd += " --drafts"
+            cmd.append(" --drafts")
 
         return cmd
 
     return {
-        "basename"    : "jekyll::build",
-        "actions" : [ "bundle update", CmdAction(builder) ],
-        "file_dep" : ["jekyll.toml"],
+        "basename" : "jekyll::build",
+        "actions"  : [ CmdAction(["bundle", "update"], shell=False), CmdAction(builder, shell=False) ],
+        "file_dep" : [ jekyll_config ],
         "task_dep" : ["_checkdir::jekyll", "jekyll::install"],
         "targets"  : [ ".jekyll-cache"],
         "clean"    : [ clean_target_dirs ],
-        "params" : [
+        "params"   : [
             { "name" : "drafts",
               "long" : "drafts",
               "type" : bool,
@@ -100,24 +88,24 @@ def task_jekyll_build():
     }
 
 
-def task_init_jekyll():
+def task_init_jekyll(jekyll_config:pl.Path, jekyll_src:pl.Path):
     """
     init a new jekyll project if it doesnt exist,
     in the config's src path
     """
-    duplicate_config = jekyll_src / "_config.yml"
+    duplicate_config : pl.Path = jekyll_src / "_config.yml"
 
     return {
         "basename" : "jekyll::init",
-        "actions" : [f"jekyll new {jekyll_src}",
-                     f"rm {duplicate_config}",
+        "actions" : [CmdAction(["jekyll", "new", jekyll_src], shell=False),
+                     lambda: duplicate_config.unlink(missing_ok=True),
                      ],
-        "file_dep" : ["jekyll.toml"],
+        "file_dep" : [jekyll_config],
     }
 
 
 
-def task_jekyll_install():
+def task_jekyll_install(jekyll_config:pl.Path):
     """
     install the dependencies of jekyll,
     and create an initial config file
@@ -125,21 +113,20 @@ def task_jekyll_install():
     # TODO add uptodate for if jekyll is installed
     """
     def create_jekyll_config(targets):
-        with open(targets[0], 'w') as f:
-            f.write(config_text)
+        pl.Path(targets[0]).write_text(config_text)
 
     return {
         "basename" : "jekyll::install",
-        "actions" : ["brew install chruby ruby-install xz",
-                     "ruby-install ruby",
-                     "chruby ruby-3.1.2",
-                     "gem install jekyll tomlrb",
-                     "bundle init",
-                     "bundle add jekyll",
-                     "bundle add jekyll-sitemap",
+        "actions" : [CmdAction(["brew", "install", "chruby", "ruby-install", "xz"], shell=False),
+                     CmdAction(["ruby-install", "ruby"], shell=False),
+                     CmdAction(["chruby", "ruby-3.1.2"], shell=False),
+                     CmdAction(["gem", "install", "jekyll", "tomlrb"], shell=False),
+                     CmdAction(["bundle", "init"], shell=False),
+                     CmdAction(["bundle", "add", "jekyll"], shell=False),
+                     CmdAction(["bundle", "add", "jekyll-sitemap"], shell=False),
                      create_jekyll_config,
                      ],
-        "targets" : ["jekyll.toml"],
+        "targets" : [ jekyll_config ],
         "clean"   : True,
     }
 
