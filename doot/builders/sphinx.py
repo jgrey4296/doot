@@ -5,6 +5,7 @@ import pathlib as pl
 import shutil
 from doit.action import CmdAction
 
+import doot
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.task_group import TaskGroup
@@ -18,13 +19,13 @@ __all__ = [
 ]
 
 
-conf_builder    = data_toml.or_get("html").tool.doot.sphinx.builder()
-conf_verbosity  = int(data_toml.or_get("0").tool.door.sphinx.verbosity())
+conf_builder    = doot.config.or_get("html").tool.doot.sphinx.builder()
+conf_verbosity  = int(doot.config.or_get("0").tool.door.sphinx.verbosity())
 
 class SphinxDocTask(DootTasker):
     """:: Build sphinx documentation """
 
-    def __init__(self, dirs:DootDirs, builder=None, verbosity:int=None):
+    def __init__(self, dirs:DootLocData, builder=None, verbosity:int=None):
         super().__init__("sphinx::doc", dirs)
         self.builder = builder or conf_builder
         self.verbosity = verbosity or conf_verbosity
@@ -60,7 +61,7 @@ verbosity = 0
 ##-- end sphinx
 """
 
-def task_browse(dirs:DootDirs) -> dict:
+def task_browse(dirs:DootLocData) -> dict:
     """:: Task definition """
     assert("html" in dirs.extra)
     return {

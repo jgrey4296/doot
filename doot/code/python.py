@@ -5,23 +5,23 @@ import pathlib as pl
 from functools import partial
 from doit.action import CmdAction
 
-from doot import data_toml
+import doot
 from doot.utils import globber
-from doot.utils.dir_data import DootDirs
-
+from doot.utils.locdata import DootLocData
+from doot.utils.tasker import DootTasker
 ##-- end imports
 
-prefix = data_toml.or_get("python").tool.doot.python.prefix()
+prefix = doot.config.or_get("python").tool.doot.python.prefix()
 
-lint_exec       = data_toml.or_get("pylint").tool.doot.python.lint.exec()
-lint_fmt        = data_toml.or_get("text").tool.doot.python.lint.output_format()
-lint_out        = pl.Path(data_toml.or_get(f"{data_toml.project.name}.lint").tool.doot.python.lint.output_name())
-lint_grouped    = data_toml.or_get(True).tool.doot.python.lint.grouped()
-lint_error      = data_toml.or_get(False).tool.doot.python.lint.error()
+lint_exec       = doot.config.or_get("pylint").tool.doot.python.lint.exec()
+lint_fmt        = doot.config.or_get("text").tool.doot.python.lint.output_format()
+lint_out        = pl.Path(doot.config.or_get(f"report.lint").tool.doot.python.lint.output_name())
+lint_grouped    = doot.config.or_get(True).tool.doot.python.lint.grouped()
+lint_error      = doot.config.or_get(False).tool.doot.python.lint.error()
 
-py_test_dir_fmt = data_toml.or_get("__test").tool.doot.python.test.dir_fmt()
-py_test_args    = data_toml.or_get([]).tool.doot.python.test.args()
-py_test_out     = pl.Path(data_toml.or_get("result.test").tool.doot.python.test())
+py_test_dir_fmt = doot.config.or_get("__test").tool.doot.python.test.dir_fmt()
+py_test_args    = doot.config.or_get([]).tool.doot.python.test.args()
+py_test_out     = pl.Path(doot.config.or_get("result.test").tool.doot.python.test())
 
 def task_buildvenv():
     return {
@@ -31,7 +31,7 @@ def task_buildvenv():
 
 class InitPyGlobber(globber.DirGlobber):
 
-    def __init__(self, dirs:DootDirs, rec=False):
+    def __init__(self, dirs:DootLocData, rec=False):
         super().__init__(f"{prefix}::initpy", dirs, [dirs.src], rec=rec)
         self.ignores = ["__pycache__", ".git", "__mypy_cache__"]
 
@@ -60,7 +60,7 @@ class InitPyGlobber(globber.DirGlobber):
 class PyLintTask(globber.DirGlobber):
     """ lint the package """
 
-    def __init__(self, dirs:DootDirs):
+    def __init__(self, dirs:DootLocData):
         super().__init__(f"{prefix}::lint", dirs, [dirs.root], rec=not lint_grouped)
 
     def filter(self, fpath):
@@ -124,7 +124,7 @@ class PyUnitTestGlob(globber.DirGlobber):
     Run all project unit tests
     """
 
-    def __init__(self, dirs:DootDirs):
+    def __init__(self, dirs:DootLocData):
         super().__init__(f"{prefix}::test", dirs, [dirs.root], exts=[".py"], rec=True)
 
     def filter(self, fpath):
@@ -164,7 +164,7 @@ class PyTestGlob(globber.DirGlobber):
     Run all project unit tests
     """
 
-    def __init__(self, dirs:DootDirs):
+    def __init__(self, dirs:DootLocData):
         super().__init__(f"{prefix}::test", dirs, [dirs.src], exts=[".py"], rec=True)
 
     def filter(self, fpath):
@@ -192,3 +192,10 @@ class PyTestGlob(globber.DirGlobber):
             "dir-fmt = \"__test\"",
             "args    = []",
             ])
+
+
+class PyParseRailroad(DootTasker):
+    """
+    python "$(PY_TOP)/util/build_railroad.py" --parser instal.parser.v1 --out "$(DOCBUILDDIR)"
+    """
+    pass

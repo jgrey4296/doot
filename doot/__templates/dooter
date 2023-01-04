@@ -29,3 +29,4 @@ from doot.groups_secondary import *
 
 if __name__ == "dooter":
     # the equivalent of main
+    pass

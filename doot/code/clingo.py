@@ -9,21 +9,21 @@ import pathlib as pl
 import shutil
 from functools import partial
 from itertools import cycle, chain
-
 from doit.action import CmdAction
-from doot import data_toml
+
+improt doot
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils import globber
 
 ##-- end imports
 
-src_ext     = data_toml.or_get(".lp").tool.doot.clingo.src_ext()
-out_ext     = data_toml.or_get(".lp_result").tool.doot.clingo.out_ext()
+src_ext     = doot.config.or_get(".lp").tool.doot.clingo.src_ext()
+out_ext     = doot.config.or_get(".lp_result").tool.doot.clingo.out_ext()
 
-vis_src_ext = data_toml.or_get(".lp_vis").tool.doot.clingo.vis_src_ext()
-vis_in_ext  = data_toml.or_get(".json").tool.doot.clingo.vis_in_ext()
-vis_out_ext = data_toml.or_get(".dot").tool.doot.clingo.vis_out_ext()
+vis_src_ext = doot.config.or_get(".lp_vis").tool.doot.clingo.vis_src_ext()
+vis_in_ext  = doot.config.or_get(".json").tool.doot.clingo.vis_in_ext()
+vis_out_ext = doot.config.or_get(".dot").tool.doot.clingo.vis_out_ext()
 
 clingo_call = ["clingo"] + data.toml.or_get([]).tool.doot.clingo.options()
 
@@ -32,7 +32,7 @@ class ClingoRunner(globber.FileGlobberMulti):
     Run clingo on ansprolog sources
     """
 
-    def __init__(self, dirs:DootDirs):
+    def __init__(self, dirs:DootLocData):
         super().__init__("clingo::run", dirs, [dirs.src], exts=[src_ext], rec=True)
 
     def subtask_detail(self, fpath, task):
@@ -67,7 +67,7 @@ class ClingoDotter(globber.FileGlobberMulti):
     Run specified clingo files to output json able to be visualised
     """
 
-    def __init__(self, dirs:DootDirs):
+    def __init__(self, dirs:DootLocData):
         super().__init__("clingo::dotter", dirs, [dirs.src], exts=[vis_src_ext], rec=True)
 
     def subtask_detail(self, fpath, task):
@@ -107,7 +107,7 @@ class ClingoVisualise(globber.FileGlobberMulti):
     and convert to dot format
     """
 
-    def __init__(self, dirs:DootDirs):
+    def __init__(self, dirs:DootLocData):
         super().__init__("clingo::visual", dirs, [dirs.src], exts=[vis_in_ext])
         assert('visual' in dirs.extra)
 

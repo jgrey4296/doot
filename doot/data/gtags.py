@@ -4,7 +4,7 @@ from __future__ import annotations
 import pathlib as pl
 import shutil
 
-from doot import data_toml
+import doot
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 

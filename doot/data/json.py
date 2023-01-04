@@ -13,7 +13,8 @@ import shlex
 from functools import partial
 from itertools import cycle, chain
 from doit.action import CmdAction
-from doot import data_toml
+
+import doot
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils import globber
@@ -25,7 +26,7 @@ class JsonFormatTask(globber.DirGlobber):
     Lint Json files with jq
     """
 
-    def __init__(self, dirs:DootDirs, targets:list[pl.Path], rec=True):
+    def __init__(self, dirs:DootLocData, targets:list[pl.Path], rec=True):
         super().__init__("json::format", dirs, targets, exts=[".json"], rec=rec)
 
     def setup_detail(self, task):
@@ -77,7 +78,7 @@ class JsonPythonSchema(globber.DirGlobber):
     """
     Use XSData to generate python bindings for a directory of json's
     """
-    def __init__(self, dirs:DootDirs, targets:list[pl.Path], rec=True):
+    def __init__(self, dirs:DootLocData, targets:list[pl.Path], rec=True):
         super().__init__("json::schema.python", dirs, targets, exts=[".json"], rec=rec)
 
     def subtask_detail(self, fpath, task):
@@ -121,7 +122,7 @@ class JsonVisualise(globber.FileGlobberMulti):
     ready for plantuml to visualise structure
     """
 
-    def __init__(self, dirs:DootDirs, targets:list[pl.Path]):
+    def __init__(self, dirs:DootLocData, targets:list[pl.Path]):
         super().__init__("json::schema.visual", dirs, targets, exts=[".json"], rec=True)
 
     def subtask_detail(self, fpath, task):

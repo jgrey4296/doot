@@ -8,7 +8,7 @@ import fileinput
 from functools import partial
 from doit.action import CmdAction
 
-from doot import data_toml
+import doot
 from doot.files.checkdir import CheckDir, DestroyDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.task_group import TaskGroup
@@ -19,14 +19,14 @@ from doot.utils.general import ForceCmd
 
 ##-- end imports
 
-interaction_mode = data_toml.or_get("nonstopmode").tool.doot.tex.interaction()
+interaction_mode = doot.config.or_get("nonstopmode").tool.doot.tex.interaction()
 
 class LatexMultiPass(globber.FileGlobberMulti):
     """
     Trigger both latex passes and the bibtex pass
     """
 
-    def __init__(self, dirs:DootDirs, roots):
+    def __init__(self, dirs:DootLocData, roots):
         super().__init__("tex::build", dirs, roots, exts=['.tex'], rec=True)
 
 
@@ -43,7 +43,7 @@ class LatexFirstPass(globber.FileGlobberMulti):
     pre-bibliography resolution
     """
 
-    def __init__(self, dirs:DootDirs, roots:list[pl.Path], interaction=interaction_mode):
+    def __init__(self, dirs:DootLocData, roots:list[pl.Path], interaction=interaction_mode):
         super().__init__("tex::pass:one", dirs, roots, exts=[".tex"], rec=True)
         self.interaction = interaction
 
@@ -92,7 +92,7 @@ class LatexSecondPass(globber.FileGlobberMulti):
     post-bibliography resolution
     """
 
-    def __init__(self, dirs:DootDirs, roots:list[pl.Path]):
+    def __init__(self, dirs:DootLocData, roots:list[pl.Path]):
         super().__init__("_tex::pass:two", dirs, roots, exts=[".tex"], rec=True)
 
     def subtask_detail(self, fpath, task):
@@ -139,7 +139,7 @@ class LatexCheck(globber.FileGlobberMulti):
     just check the syntax
     """
 
-    def __init__(self, dirs:DootDirs, roots:list[pl.Path]):
+    def __init__(self, dirs:DootLocData, roots:list[pl.Path]):
         super().__init__("tex::check", dirs, roots, exts=['.tex'], rec=True)
 
     def subtask_detail(self, fpath, task):
@@ -179,7 +179,7 @@ class BibtexBuildTask(globber.FileGlobberMulti):
     Bibliography resolution pass
     """
 
-    def __init__(self, dirs:DootDirs, roots):
+    def __init__(self, dirs:DootLocData, roots):
         super().__init__("_tex::pass:bibtex", dirs, roots, exts=[".tex"], rec=True)
 
     def subtask_detail(self, fpath, task):
@@ -233,7 +233,7 @@ class BibtexConcatenateTask(DootTasker):
     concatenate all found bibtex files
     to produce a master file for latex's use
     """
-    def __init__(self, dirs:DootDirs):
+    def __init__(self, dirs:DootLocData):
         super().__init__("_tex::bib", dirs)
 
     def task_detail(self, task):

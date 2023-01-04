@@ -6,21 +6,15 @@ import pathlib as pl
 import shutil
 from importlib.resources import files
 from time import strftime
-
 import yaml
+
+import doot
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.files.clean_dirs import clean_target_dirs
 from doot.builders.jekyll import jekyll_src
 from doot.utils import globber
 from doot.utils.tasker import DootTasker
-
-try:
-    # For py 3.11 onwards:
-    import tomllib as toml
-except ImportError:
-    # Fallback to external package
-    import toml
 
 ##-- end imports
 
@@ -32,10 +26,10 @@ tag_template   = data_path / "jekyll_tagfile"
 ##-- end data
 
 ##-- toml data
-default_template = data_toml.tool.doot.jekyll.genpost.default_template
-date_format      = data_toml.tool.doot.jekyll.genpost.date_format.strip()
-title_format     = data_toml.tool.doot.jekyll.genpost.title_format.strip()
-ext_format       = data_toml.tool.doot.jekyll.genpost.ext.strip()
+default_template = doot.config.tool.doot.jekyll.genpost.default_template
+date_format      = doot.config.tool.doot.jekyll.genpost.date_format.strip()
+title_format     = doot.config.tool.doot.jekyll.genpost.title_format.strip()
+ext_format       = doot.config.tool.doot.jekyll.genpost.ext.strip()
 
 ##-- end toml data
 

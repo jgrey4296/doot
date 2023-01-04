@@ -6,7 +6,7 @@ import pathlib as pl
 import shutil
 from importlib.resources import files
 
-from doot import data_toml
+import doot
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 ##-- end imports

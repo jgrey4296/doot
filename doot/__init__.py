@@ -34,7 +34,7 @@ def setup():
     if not default_dooter.exists():
         raise FileNotFoundError("No Dooter found")
     elif default_agnostic.exists():
-        return setup_agnostic()
+        setup_agnostic()
     else:
         raise FileNotFoundError("No Config File was found")
 
@@ -57,8 +57,10 @@ def setup_agnostic(path=default_agnostic):
                        )
 
 def setup_py(path=default_py):
+    print("Setting up python")
     pyproject = TomlAccess.load(path)
     locs._src = pyproject.project.name
+    pass
 
 def setup_rust(path=default_rust, config_path=default_rust_config):
     cargo        = TomlAccess.load(path)

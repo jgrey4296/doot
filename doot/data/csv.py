@@ -11,7 +11,7 @@ from functools import partial
 
 from doit.action import CmdAction
 
-from doot import data_toml
+import doot
 from doot.files.checkdir import CheckDir
 from doot.utils import genx, globber
 from doot.utils.cmdtask import CmdTask
@@ -24,7 +24,7 @@ class CSVSummaryTask(globber.FileGlobberMulti):
     and listing number of rows
     """
 
-k   def __init__(self, dirs:DootDirs, roots):
+k   def __init__(self, dirs:DootLocData, roots):
         super().__init__("csv::summary", dirs, roots, exts=[".csv"], rec=True)
         report_name = self.dirs.build / "csv.report"
 
@@ -67,7 +67,7 @@ class CSVSummaryXMLTask(globber.FileGlobberMulti):
     and listing number of rows
     """
 
-    def __init__(self, dirs:DootDirs, roots):
+    def __init__(self, dirs:DootLocData, roots):
         super().__init__("csv::summary.xml", dirs, roots, exts=[".csv"], rec=True)
         self.report_name = self.dirs.build / "csv.xml"
 

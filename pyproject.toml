@@ -91,25 +91,3 @@ reportUnnecessaryCast       = "information"
 reportUnnecessaryIsInstance = "warning"
 
 ##-- end pyright
-
-##-- doit
-[tool.doit]
-# verbosity = 2
-build_dir = "build"
-
-##-- end doit
-
-##-- doot
-[tool.doot]
-
-[tool.doot.git]
-[tool.doot.pip]
-prefix = "py"
-
-[tool.doot.python]
-prefix = "py"
-
-[tool.doot.python.lint]
-grouped = false
-
-##-- end doot

@@ -4,7 +4,6 @@
 """
 ##-- imports
 from __future__ import annotations
-from doit.tools import PythonInteractiveAction, Interactive
 
 import abc
 import logging as logmod
@@ -19,8 +18,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-import doot
-from doot.utils import globber
+from doot.utils.tasker import DootTasker
 
 if TYPE_CHECKING:
     # tc only imports
@@ -34,27 +32,9 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-prolog_ext = doot.config.or_get(".pl").doot.tool.repls.prolog.ext
+class Stubber(DootTasker):
+    """
+    Interactive task to stub a new task in the dooter
 
-def task_pyrepl():
-    return {
-        "basename" : "repl::py",
-        "actions"  : [ PythonInteractiveAction(lambda: breakpoint()) ],
-    }
-
-def task_prolog_repl():
-    # TODO make a globber for files
-    return {
-        "basename" : "repl::pl",
-        "actions"  : [ Interactive(["swipl"], shell=False)],
-    }
-
-
-class PrologRunner(globber.FileGlobberMulti):
-
-    def __init__(self, dirs, roots):
-        super().__init__("prolog::query", dirs, roots, exts=[prolog_ext])
-
-    def filter(self, fpath):
-        # test for it being a main file
-        return True
+    """
+    pass

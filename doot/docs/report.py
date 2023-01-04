@@ -4,7 +4,7 @@ from __future__ import annotations
 import pathlib as pl
 import shutil
 
-from doot import data_toml
+import doot
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils import globber
@@ -12,7 +12,7 @@ from doot.utils import globber
 ##-- end imports
 
 
-def task_line_report(dirs:DootDirs):
+def task_line_report(dirs:DootLocData):
     """
     Generate a report of all files and their line count
     TODO update without pipes

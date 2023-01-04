@@ -18,11 +18,11 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
+import doot
 from doot.utils.task_group import TaskGroup
 from doot.utils.toml_access import TomlAccessError, TomlAccess
-from doot import data_toml, doot_dirs
-from doot.utils.dir_data import DootDirs
 
+from doot.errors import DootDirAbsent
 ##-- end imports
 
 ##-- logging
@@ -38,32 +38,33 @@ __all__ = [ "defaults_group",
     "cargo_group", "epub_group",
 ]
 
-
+announce_group_fails = doot.config.or_get(False).tool.doot.announce_groups()
 ##-- defaults
 try:
     from doot.files import listall
-    doot_dirs.add_extra({ "visual" : doot_dirs.docs / "visual" })
+    doot.locs.add_extra({ "visual" : doot.locs.docs / "visual" })
 
-    defaults_group = TaskGroup("defaults",
-                               listall.task_list_target("src",     doot_dirs.src,      doot_dirs),
-                               listall.task_list_target("data",    doot_dirs.data,     doot_dirs),
-                               listall.task_list_target("docs",    doot_dirs.docs,     doot_dirs),
-                               listall.task_list_target("build",   doot_dirs.build,    doot_dirs),
-                               listall.task_list_target("temp",    doot_dirs.temp,     doot_dirs),
-                               listall.task_list_target("codegen", doot_dirs.codegen,  doot_dirs),
-                               )
+    defaults_group = TaskGroup("defaults")
+    for x in ["src", "data", "docs", "build", "temp", "codegen"]:
+        try:
+            defaults_group += listall.task_list_target(x,     getattr(doot.locs, x),      doot.locs)
+        except DootDirAbsent:
+            pass
 
-except TomlAccessError:
+except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     defaults_group = None
+    if announce_group_fails:
+        print("To activate group, defaults needs: ", err)
 ##-- end defaults
 
 ##-- pip/py
 try:
-    data_toml.project
-    data_toml.tool.doot.pip
+    if not doot.default_py.exists():
+        raise FileNotFoundError(doot.default_py)
+    doot.config.tool.doot.pip
     from doot.builders import pip_install as pip
     from doot.code import python as py_tasks
-    pip_dirs = doot_dirs.extend(prefix="pip")
+    pip_dirs = doot.locs.extend(prefix="pip")
     pip_dirs.add_extra({"wheel" : pip_dirs.build / "wheel",
                         "sdist" : pip_dirs.build / "sdist"})
 
@@ -74,13 +75,16 @@ try:
                           py_tasks.PyLintTask(pip_dirs),
                           py_tasks.PyUnitTestGlob(pip_dirs),
                           )
-except TomlAccessError:
+except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     pip_group = None
+    if announce_group_fails:
+        print("To activate group pip needs: ", err)
+
 ##-- end pip/py
 
 ##-- jekyll
 try:
-    data_toml.tool.doot.jekyll
+    doot.config.tool.doot.jekyll
     from doot.builders import jekyll as j_build
     from doot.docs import jekyll as j_doc
     jekyll_config = pl.Path("jekyll.toml")
@@ -88,7 +92,7 @@ try:
     jekyll_src    = pl.Path(jekyll_toml.or_get("docs/site").source())
     jekyll_dest   = pl.Path(jekyll_toml.or_get("build/jekyll").destination())
 
-    jekyll_dirs = doot_dirs.extend(prefix="jekyll", _src=jekyll_src, _build=jekyll_dest)
+    jekyll_dirs = doot.locs.extend(prefix="jekyll", _src=jekyll_src, _build=jekyll_dest)
     jekyll_dirs.add_extra({
         "posts"     : jekyll_dirs.src / "posts" ,
         "tags"      : jekyll_dirs.codegen / "tags",
@@ -102,18 +106,18 @@ try:
                              j_doc.GenPostTask(jekyll_dirs),
                              j_doc.GenTagsTask(jeykll_dirs),
                              )
-except TomlAccessError:
+except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     jekyll_group = None
-except FileNotFoundError:
-    jekyll_group = None
+    if announce_group_fails:
+        print("To activate group, jekyll needs: ", err)
 
 ##-- end jekyll
 
 ##-- latex
 try:
-    data_toml.tool.doot.tex
+    doot.config.tool.doot.tex
     from doot.builders import latex
-    tex_dirs = doot_dirs(prefix="tex", _src="docs")
+    tex_dirs = doot.locs(prefix="tex", _src="docs")
     latex_group = TaskGroup("latex_group",
                             latex.LatexMultiPass(tex_dirs,  [tex_dirs.src]),
                             latex.LatexFirstPass(tex_dirs,  [tex_dirs.src]),
@@ -126,58 +130,68 @@ try:
                             latex.task_latex_requirements(),
                             latex.task_latex_rebuild,
                             )
-except TomlAccessError:
+except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     latex_group = None
+    if announce_group_fails:
+        print("To activate group, latex needs: ", err)
 ##-- end latex
 
 ##-- sphinx
 try:
-    data_toml.tool.doot.sphinx
+    doot.config.tool.doot.sphinx
     from doot.builders import sphinx
-    sphinx_dirs  = doot_dirs.extend(prefix="sphinx")
+    sphinx_dirs  = doot.locs.extend(prefix="sphinx")
     sphinx_dirs.add_extra({"html" : sphinx_dirs.build / "html" / "index.html"})
     sphinx_group = TaskGroup("sphinx_group",
                              sphinx.SphinxDocTask(sphinx_dirs),
                              sphinx.task_browse(sphinx_dirs),
                              )
-except TomlAccessError:
+except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     sphinx_group = None
+    if announce_group_fails:
+        print("To activate group, sphinx needs: ", err)
 ##-- end sphinx
 
 ##-- gtags
 try:
-    data_toml.tool.doot.gtags
+    doot.config.tool.doot.gtags
     from doot.data import gtags
-    gtags_dirs = doot_dirs.extend(prefix="gtags")
+    gtags_dirs = doot.locs.extend(prefix="gtags")
     gtags_group = TaskGroup("gtags_group",
                             gtags.task_tags_init(gtags_dirs),
                             gtags.task_tags(gtags_dirs),
                             )
-except TomlAccessError:
+except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     gtags_group = None
+    if announce_group_fails:
+        print("To activate group, gtags needs: ", err)
 ##-- end gtags
 
 ##-- git
 try:
-    data_toml.tool.doot.git
+    doot.config.tool.doot.git
     from doot.vcs import git_tasks
-    vcs_dirs = doot_dirs.extend(prefix="vcs", _src=None)
-    vcs_dirs.add_extra({ "visual" : doot_dirs.docs / "visual" })
+    vcs_dirs = doot.locs.extend(prefix="vcs", _src=None)
+    vcs_dirs.add_extra({ "visual" : doot.locs.docs / "visual" })
     git_group = TaskGroup("git group",
                           git_tasks.GitLogTask(vcs_dirs),
                           git_tasks.GitLogAnalyseTask(vcs_dirs),
                           )
-except TomlAccessError:
+except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     git_group = None
+    if announce_group_fails:
+        print("To activate group, git needs: ", err)
+
 ##-- end git
 
 ##-- cargo
 try:
-    data_toml.tool.doot.cargo
-    data_toml.package
-    bin_file = data_toml.package.name
+    doot.config.tool.doot.cargo
+    doot.config.package
+    # TODO swap this with a load of cargo file
+    bin_file = doot.config.package.name
     try:
-        bin_file = data_toml.bin[0].name
+        bin_file = doot.config.bin[0].name
     except TomlAccessError:
         pass
 
@@ -186,7 +200,7 @@ try:
     cargo_group = TaskGroup("cargo_group",
                             cargo.task_cargo_build(cargo_dirs, ("bin", bin_file)),
                             cargo.task_cargo_build(cargo_dirs, ("bin", bin_file), profile="release"),
-                            cargo.task_cargo_mac_lib(cargo_dirs, package=data_toml.package.name),
+                            cargo.task_cargo_mac_lib(cargo_dirs, package=doot.config.package.name),
                             cargo.task_cargo_install,
                             cargo.task_cargo_test(("bin", "bin_file")),
                             cargo.task_cargo_run,
@@ -199,13 +213,16 @@ try:
                             cargo.task_cargo_debug(cargo_dirs, target=("bin", bin_file)),
                             cargo.task_cargo_version,
                             )
-except TomlAccessError:
+except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     cargo_group = None
+    if announce_group_fails:
+        print("To activate group, cargo needs: ", err)
+
 ##-- end cargo
 
 ##-- gradle
 except TomlAccessError:
-    data_toml.tool.doot.gradle
+    doot.config.tool.doot.gradle
     from doot.builders import gradle
     gradle_group = TaskGroup("gradle_group",
                              gradle.task_gradle_run,
@@ -220,14 +237,17 @@ except TomlAccessError:
                              gradle.task_gradle_list,
                              gradle.task_gradle_projects,
                              )
-except TomlAccessError:
+except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     gradle_group = None
+    if announce_group_fails:
+        print("To activate group, gradle needs: ", err)
+
 ##-- end gradle
 
 ##-- epub
 try:
-    data_toml.tool.doot.epub
-    epub_dirs = doot_dirs.extend(prefix="epub", _src="docs/epub")
+    doot.config.tool.doot.epub
+    epub_dirs = doot.locs.extend(prefix="epub", _src="docs/epub")
     from doot.builders import epub
     epub_group = TaskGroup("epub group",
                            epub.EbookNewTask(epub_dirs),
@@ -238,6 +258,9 @@ try:
                            epub.EbookSplitTask(epub_dirs),
                            epub.EbookRestructureTask(epub_dirs),
                            )
-except TomlAccessError:
+except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     epub_group = None
+    if announce_group_fails:
+        print("To activate group, epub needs: ", err)
+
 ##-- end epub

@@ -11,7 +11,8 @@ import shutil
 from functools import partial
 from itertools import cycle, chain
 from doit.action import CmdAction
-from doot import data_toml
+
+import doot
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils import globber
@@ -25,7 +26,7 @@ class DotVisualise(globber.FileGlobberMulti):
     make images from any dot files
     """
 
-    def __init__(self, dirs:DootDirs, targets, ext="png", layout="neato", scale:float=72.0):
+    def __init__(self, dirs:DootLocData, targets, ext="png", layout="neato", scale:float=72.0):
         super().__init__("dot::visual", dirs, targets, [".dot"])
         self.ext       = ext
         self.layout    = layout

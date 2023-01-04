@@ -5,7 +5,7 @@ import pathlib as pl
 import shutil
 from doit.action import CmdAction
 
-from doot import data_toml
+import doot
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.tasker import DootTasker
@@ -18,7 +18,7 @@ class GitLogTask(DootTasker):
     see: https://git-scm.com/docs/git-log
     """
 
-    def __init__(self, dirs:DootDirs, fmt="%ai :: %h :: %al :: %s"):
+    def __init__(self, dirs:DootLocData, fmt="%ai :: %h :: %al :: %s"):
         super().__init__("git::logs", dirs)
         self.format = fmt
 
@@ -32,16 +32,18 @@ class GitLogTask(DootTasker):
         })
         return task
 
+
     def get_log(self):
         return ["git", "log", f"--pretty=format:{self.format}"]
 
     def save_log(self, task, targets):
         result = task.values['result']
         pl.Path(targets[0]).write_text(result)
+        print("\n")
 
 class GitLogAnalyseTask(DootTasker):
     """
-    TODO
+    TODO separate the printed log
     """
 
     def __init__(self, dirs):

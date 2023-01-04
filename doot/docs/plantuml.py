@@ -5,7 +5,7 @@ import pathlib as pl
 import shutil
 from functools import partial
 
-from doot import data_toml
+import doot
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils import globber
@@ -17,7 +17,7 @@ class PlantUMLGlobberTask(globber.FileGlobberMulti):
     run plantuml on a specification, generating target.'ext's
     """
 
-    def __init__(self, dirs:DootDirs, targets:list[pl.Path], fmt="png"):
+    def __init__(self, dirs:DootLocData, targets:list[pl.Path], fmt="png"):
         super().__init__(f"plantuml::{ext}", dirs, targets, exts=[".plantuml"], rec=True)
         self.fmt       = fmt
 

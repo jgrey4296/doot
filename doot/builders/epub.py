@@ -18,12 +18,12 @@ from doit.action import CmdAction
 from doit.tools import Interactive
 from doit.task import Task as DoitTask
 
-from doot import data_toml
+import doot
 from doot.files.checkdir import CheckDir
 from doot.files.ziptask import ZipTask
 from doot.utils import globber
 from doot.utils.cmdtask import CmdTask
-from doot.utils.dir_data import DootDirs
+from doot.utils.locdata import DootLocData
 from doot.utils.tasker import DootTasker
 from doot.files.clean_dirs import clean_target_dirs
 ##-- end imports
@@ -42,8 +42,6 @@ page_style_template = data_path / "epub_page_styles"
 
 # https://www.w3.org/publishing/epub3/epub-packages.html
 # https://www.w3.org/publishing/epub3/epub-spec.html#sec-cmt-supported
-
-
 
 ##-- epub templates
 data_path      = files("doot.__templates")
@@ -71,7 +69,7 @@ class EbookCompileTask(EbookGlobberBase):
     then those zips to epubs
     """
 
-    def __init__(self, dirs:DootDirs):
+    def __init__(self, dirs:DootLocData):
         super().__init__("epub::compile", dirs, [dirs.src])
 
 
@@ -93,7 +91,7 @@ class EbookConvertTask(EbookGlobberBase):
     TODO possibly only zips with the right contents
     """
 
-    def __init__(self, dirs:DootDirs):
+    def __init__(self, dirs:DootLocData):
         super().__init__("_epub::convert.zip", dirs, [dirs.src])
 
     def subtask_detail(self, fpath, task):
@@ -115,7 +113,7 @@ class EbookZipTask(EbookGlobberBase):
     wrapper around ZipTask to build zips of epub directories
     """
 
-    def __init__(self, dirs:DootDirs):
+    def __init__(self, dirs:DootLocData):
         super().__init__("_zip::epub", dirs, [dirs.src])
 
 
@@ -141,12 +139,11 @@ class EbookManifestTask(EbookGlobberBase):
     Generate the manifest for an epub directory
     """
 
-    def __init__(self, dirs:DootDirs, author=None):
+    def __init__(self, dirs:DootLocData, author=None):
         super().__init__("epub::manifest", dirs, [dirs.src], rec=False)
         # Map path -> uuid
         self.uuids  = {}
         self.author = author or environ['USER']
-
 
     def subtask_detail(self, fpath, task):
         task.update({
@@ -303,7 +300,7 @@ class EbookRestructureTask(EbookGlobberBase):
     *.ttf|otf|woff|woff2  -> font/
     """
 
-    def __init__(self, dirs:DootDirs):
+    def __init__(self, dirs:DootLocData):
         super().__init__("epub::restruct", dirs, [dirs.src], rec=False)
         self.content_mapping : OrderedDict[str, re.Pattern] = OrderedDict((
             ("content", re.compile(".+(x?html?|js)")),
@@ -312,8 +309,6 @@ class EbookRestructureTask(EbookGlobberBase):
             ("font", re.compile(".+(ttf|oft|woff2?)")),
             ("other", re.compile(".")),
         ))
-
-
 
     def subtask_detail(self, fpath, task):
         task.update({
@@ -359,7 +354,7 @@ class EbookSplitTask(globber.FileGlobberMulti):
     split any epubs found in the project data
     """
 
-    def __init__(self, dirs:DootDirs):
+    def __init__(self, dirs:DootLocData):
         super().__init__("epub::split", dirs, [ dirs.data ] , exts=[".epub"], rec=True)
 
     def subtask_detail(self, fpath, task):
@@ -381,7 +376,7 @@ class EbookNewTask(DootTasker):
     Create a new stub structure for an ebook
 
     """
-    def __init__(self, dirs:DootDirs, base="epub::new"):
+    def __init__(self, dirs:DootLocData, base="epub::new"):
         super().__init__(base, dirs)
         self.marker_file = ".epub"
         self.paths : list[pl.Path|str] = [

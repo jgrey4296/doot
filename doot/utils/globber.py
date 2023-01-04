@@ -9,12 +9,14 @@ from __future__ import annotations
 import logging as logmod
 import pathlib as pl
 import shutil
+import warnings
 
 from doit.action import CmdAction
-from doot import data_toml
+import doot
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.tasker import DootSubtasker
+from doot.errors import DootDirAbsent
 ##-- end imports
 
 ##-- logging
@@ -43,6 +45,11 @@ class FileGlobberMulti(DootSubtasker):
         self.roots            = roots[:]
         self.rec               = rec
         self.total_subtasks    = 0
+        for x in roots:
+            if not pl.Path(x).exists():
+                warnings.warn(f"Globber Missing Root: {x}")
+                raise DootDirAbsent(x)
+
 
     def filter(self, target:pl.Path):
         """ filter function called on each prospective glob result

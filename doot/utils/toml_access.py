@@ -25,6 +25,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
+
 try:
     # For py 3.11 onwards:
     import tomllib as toml
@@ -53,6 +54,9 @@ class TomlAccessValue:
         self.value = value
 
     def __call__(self):
+        if isinstance(self.value, tuple) and len(self.value) == 1:
+            return self.value[0]
+
         return self.value
 
     def __getattr__(self, attr):
@@ -74,13 +78,13 @@ class TomlAccess:
     def or_get(self, val) -> TomlAccessValue:
         """
         use a fallback value in an access chain,
-        eg: data_toml.or_get("blah").this.doesnt.exist() -> "blah"
+        eg: doot.config.or_get("blah").this.doesnt.exist() -> "blah"
 
         *without* throwing a TomlAccessError
         """
         path  = object.__getattribute__(self, "__path")[:]
         table = object.__getattribute__(self, "__table")
-        return TomlAccess(path, table, fallback=val)
+        return TomlAccess(path, table, fallback=(val,))
 
     def keys(self):
         table  = object.__getattribute__(self, "__table")

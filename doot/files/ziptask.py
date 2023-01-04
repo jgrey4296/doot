@@ -8,10 +8,10 @@ import pathlib as pl
 import zipfile
 from doit.task import Task as DoitTask
 
-from doot import data_toml
+import doot
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
-from doot.utils.dir_data import DootDirs
+from doot.utils.locdata import DootLocData
 from doot.utils.tasker import DootTasker
 ##-- end imports
 
@@ -36,7 +36,7 @@ class ZipTask(DootTasker):
     TODO add filter_fn
     """
 
-    def __init__(self, base:str, dirs:DootDirs, *, target:str, root:pl.Path, paths:list[pl.Path]=None, globs:list[str]=None,  date:bool|str=False, to_build_dir=False):
+    def __init__(self, base:str, dirs:DootLocData, *, target:str, root:pl.Path, paths:list[pl.Path]=None, globs:list[str]=None,  date:bool|str=False, to_build_dir=False):
         super().__init__(base, dirs)
         self.date     : bool | str = date
         self.target : str          = pl.Path(target)

@@ -11,21 +11,22 @@ import shutil
 from functools import partial
 from itertools import cycle, chain
 from doit.action import CmdAction
+
+import doot
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils import globber
-from doot import data_toml
 
 ##-- end imports
 
-exts : list[str] = data_toml.or_get([".jpg"]).tool.doot.images.exts()
+exts : list[str] = doot.config.or_get([".jpg"]).tool.doot.images.exts()
 
 class HashImages(globber.DirGlobber):
     """
     For each subdir, hash all the files in it
     info
     """
-    def __init__(self, dirs:DootDirs, roots=None, exts=exts):
+    def __init__(self, dirs:DootLocData, roots=None, exts=exts):
         roots = roots or [pl.Path()]
         super().__init__("images::hash", dirs, roots, exts=exts)
         self.current_hashed = {}
@@ -37,7 +38,7 @@ class HashImages(globber.DirGlobber):
     def setup_detail(self, task):
         """ create a .hashes file to record hashes in each directory """
         actions = []
-        for root in self.starts:
+        for root in self.roots:
             actions += [CmdAction(["touch", fpath / self.hash_record], shell=False) for fpath in root.iterdir() if fpath.is_dir()]
         task.update({"actions" : actions})
         return task
@@ -85,7 +86,7 @@ class TesseractGlobber(globber.DirGlobber):
     """
     file_types : ClassVar[list] = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif",]
 
-    def __init__(self, dirs:DootDirs, roots=None):
+    def __init__(self, dirs:DootLocData, roots=None):
         roots = roots or [pl.Path()]
         super().__init__("tesseract::go", dirs, roots, exts=TesseractGlobber.file_types)
         self.processed = dict()

@@ -15,7 +15,7 @@ from doot.utils.toml_access import TomlAccessError
 ##-- end imports
 # https://doc.rust-lang.org/cargo/index.html
 
-def task_cargo_build(dirs:DootDirs, target:tuple[str, str], profile="debug", data:pl.Path|str="Cargo.toml"):
+def task_cargo_build(dirs:DootLocData, target:tuple[str, str], profile="debug", data:pl.Path|str="Cargo.toml"):
     """
     Build rust binary target, using a tuple (type, name)
     eg: (bin, main) or (lib, mylib)
@@ -107,7 +107,7 @@ def task_cargo_update(data:pl.Path|str="Cargo.toml"):
         "file_dep" : [data],
     }
 
-def task_cargo_mac_lib(dirs:DootDirs, package:str, profile="debug", data:pl.Path|str="Cargo.toml"):
+def task_cargo_mac_lib(dirs:DootLocData, package:str, profile="debug", data:pl.Path|str="Cargo.toml"):
     """
     rename the produced rust binary on mac os,
     for rust-py interaction
@@ -137,7 +137,7 @@ def task_cargo_mac_lib(dirs:DootDirs, package:str, profile="debug", data:pl.Path
 
 
 
-def task_cargo_debug(dirs:DootDirs, target:tuple[str, str], data:pl.Path|str="Cargo.toml"):
+def task_cargo_debug(dirs:DootLocData, target:tuple[str, str], data:pl.Path|str="Cargo.toml"):
     """
     Start lldb on the debug build of the rust binary
     """

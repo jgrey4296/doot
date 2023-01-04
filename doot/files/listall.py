@@ -4,13 +4,13 @@ from __future__ import annotations
 import pathlib as pl
 import shutil
 
-from doot import data_toml
+import doot
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 
 ##-- end imports
 
-def task_list_target(targ:str, target:pl.Path, dirs:DootDirs):
+def task_list_target(targ:str, target:pl.Path, dirs:DootLocData):
     """  list all files in the src directory,
     to the build_dir/allfiles.report
     """

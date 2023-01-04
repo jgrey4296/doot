@@ -9,17 +9,10 @@ from importlib.resources import files
 from doit.tools import LongRunning
 from doit.action import CmdAction
 
-from doot import data_toml
+import doot
 from doot.files.checkdir import CheckDir
 from doot.files.clean_dirs import clean_target_dirs
 from doot.utils.cmdtask import CmdTask
-
-try:
-    # For py 3.11 onwards:
-    import tomllib as toml
-except ImportError:
-    # Fallback to external package
-    import toml
 
 ##-- end imports
 
@@ -80,7 +73,7 @@ def task_jekyll_build(jekyll_config:pl.Path):
     }
 
 
-def task_init_jekyll(jekyll_config:pl.Path, dirs:DootDirs):
+def task_init_jekyll(jekyll_config:pl.Path, dirs:DootLocData):
     """
     init a new jekyll project if it doesnt exist,
     in the config's src path

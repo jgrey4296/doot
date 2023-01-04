@@ -43,11 +43,11 @@ class TaskGroup:
 
 
     def __init__(self, name, *args):
-        self.create_doit_tasks = self._build_task
+        self.create_doit_tasks = self._build_tasks
         self.name              = clean_re.sub("_", name)
         self.tasks             = list(args)
 
-    def _build_task(self):
+    def _build_tasks(self):
         for task in self.tasks:
             try:
                 result = task
@@ -63,23 +63,24 @@ class TaskGroup:
 
                 if isinstance(result, list):
                     for x in result:
+                        if any(hasattr(x, 'gen_toml') for x in self.tasks):
+                            GenToml.add_generator(self.name, self.gen_toml)
                         yield x
                 elif result is not None:
+                    if any(hasattr(x, 'gen_toml') for x in self.tasks):
+                        GenToml.add_generator(self.name, self.gen_toml)
                     yield result
             except DootDirAbsent:
                 continue
-
-        if any(hasattr(x, 'gen_toml') for x in self.tasks):
-            GenToml.add_generator(self.name, self.gen_toml)
-
 
         return { "basename" : "_" + self.name,
                  "actions" : [],
                 }
 
 
-    def __add__(self, other):
+    def __iadd__(self, other):
         self.tasks.append(other)
+        return self
 
     def gen_toml(self, dependencies):
         """

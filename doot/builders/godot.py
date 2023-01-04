@@ -20,7 +20,7 @@ class GodotCheckTask(globber.FileGlobberMulti):
     """
     Lint all gd scripts in the project
     """
-    def __init__(self, dirs:DootDirs, roots):
+    def __init__(self, dirs:DootLocData, roots):
         super().__init__("godot::check", dirs, roots, exts=[".gd"], rec=True)
         self.failures = set()
 
@@ -73,7 +73,7 @@ class GodotRunScene(globber.RootlessFileGlobber):
     Globber to allow easy running of scenes
     """
 
-    def __init__(self, dirs:DootDirs, roots:list[pl.Path]):
+    def __init__(self, dirs:DootLocData, roots:list[pl.Path]):
         super().__init__("godot::run:scene", dirs, roots, exts=[".tscn"], rec=True)
 
     def top_detail(self, task:dict):
@@ -126,7 +126,7 @@ class GodotRunScript(globber.FileGlobberMulti):
     Run a godot script, with debugging or without
     """
 
-    def __init__(self, dirs:DootDirs, roots):
+    def __init__(self, dirs:DootLocData, roots):
         super().__init__("godot::run", dirs, roots, exts=[".gd"])
 
     def filter(self, fpath):
@@ -174,7 +174,7 @@ class GodotBuild(DootTasker):
     build a godot project
     """
 
-    def __init__(self, dirs:DootDirs):
+    def __init__(self, dirs:DootLocData):
         super().__init__("godot::build", dirs)
 
     def params(self):
@@ -225,7 +225,7 @@ def task_godot_test():
             }
 
 
-def task_newscene(dirs:DootDirs):
+def task_newscene(dirs:DootLocData):
     assert("scenes" in dirs.extra)
 
     def mkscene(task, name):

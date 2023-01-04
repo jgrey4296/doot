@@ -5,8 +5,7 @@ import pathlib as pl
 import shutil
 from doit.action import CmdAction
 
-from doot import data_toml
-from doot.files.checkdir import CheckDir
+import doot
 from doot.utils.cmdtask import CmdTask
 
 from doot.utils.task_group import TaskGroup
@@ -15,16 +14,16 @@ from doot.utils.task_group import TaskGroup
 # TODO add increment version tasks, plus update __init__.py
 # TODO install dependencies
 
-prefix = data_toml.or_get("pip").tool.doot.pip.prefix()
+prefix = doot.config.or_get("pip").tool.doot.pip.prefix()
 
-def build_tasks(dirs:DootDirs):
+def build_tasks(dirs:DootLocData):
     assert("wheel" in dirs.extra)
     assert("sdist" in dirs.extra)
     # Installs:
     editlib   = CmdTask("pip", "install", "--no-input", "--editable", pl.Path(), basename=f"{prefix}::local")
     reglib    = CmdTask("pip", "install", "--no-input", pl.Path(), basename=f"{prefix}::install.regular")
     install   = CmdTask("pip", "install", "--no-input", "--src", dirs.temp, basename=f"{prefix}::install")
-    uninstall = CmdTask("pip", "uninstall", "-y", data_toml.project.name, basename=f"{prefix}::uninstall")
+    uninstall = CmdTask("pip", "uninstall", "-y", pl.Path(), basename=f"{prefix}::uninstall")
 
     # Builds: TODO add clean
     srcbuild  = CmdTask("pip", "install", "--no-input", "--upgrade", "--target", dirs.extra['sdist'], "--src",  dirs.temp, ".", basename=f"{prefix}::build.src")

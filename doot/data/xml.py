@@ -28,7 +28,7 @@ class XmlElementsTask(globber.DirGlobber):
     xml element retrieval using xml starlet toolkit
     http://xmlstar.sourceforge.net/
     """
-    def __init__(self, dirs:DootDirs, targets:list[pl.Path]):
+    def __init__(self, dirs:DootLocData, targets:list[pl.Path]):
         super().__init__("xml::elements", dirs, targets, exts=[".xml"], rec=True)
         assert("elements" in self.dirs.extra)
 
@@ -78,7 +78,7 @@ class XmlSchemaTask(globber.DirGlobber):
     Generate .xsd's from directories of xml files using trang
     https://relaxng.org/jclark/
     """
-    def __init__(self, dirs:DootDirs, targets:list[pl.Path]):
+    def __init__(self, dirs:DootLocData, targets:list[pl.Path]):
         super().__init__("xml::schema", dirs, targets, exts=[".xml"])
         assert("schema" in self.dirs.extra)
 
@@ -109,7 +109,7 @@ class XmlPythonSchemaRaw(globber.DirGlobber):
     Generate Python Dataclass bindings based on raw XML data
     """
 
-    def __init__(self, dirs:DootDirs, targets:list[pl.Path]):
+    def __init__(self, dirs:DootLocData, targets:list[pl.Path]):
         super().__init__("xml::schema.python.raw", dirs, targest, exts=[".xml"], rec=rec)
 
     def subtask_detail(self, fpath, task):
@@ -142,7 +142,7 @@ class XmlPythonSchemaXSD(globber.FileGlobberMulti):
     Generate python dataclass bindings from XSD's
     """
 
-    def __init__(self, dirs:DootDirs, targets:list[pl.Path]):
+    def __init__(self, dirs:DootLocData, targets:list[pl.Path]):
         super().__init__("xml::schema.python.xsd", [".xsd"], targets, rec=rec)
         self.dirs.build = dirs.build
 
@@ -177,7 +177,7 @@ class XmlSchemaVisualiseTask(globber.FileGlobberMulti):
     Generate Plantuml files ready for plantuml to generate images
     """
 
-    def __init__(self, dirs:DootDirs, targets:list[pl.Path]):
+    def __init__(self, dirs:DootLocData, targets:list[pl.Path]):
         super().__init__("xml::schema.plantuml", dirs, targets, exts=[".xsd"], rec=rec)
         assert("visual" in dirs.extra)
 
@@ -211,7 +211,7 @@ class XmlValidateTask(globber.DirGlobber):
     Validate xml's by schemas
     """
 
-    def __init__(self, dirs:DootDirs, targets:list[pl.Path], rec=False, xsd=None):
+    def __init__(self, dirs:DootLocData, targets:list[pl.Path], rec=False, xsd=None):
         super().__init__("xml::validate", dirs, targets, rec=rec)
         self.xsd = xsd
         if self.xsd is None:
@@ -245,7 +245,7 @@ class XmlFormatTask(globber.DirGlobber):
     TODO cleanup backups
     """
 
-    def __init__(self, dirs:DootDirs, targets:list[pl.Path], rec=True):
+    def __init__(self, dirs:DootLocData, targets:list[pl.Path], rec=True):
         super().__init__("xml::format", dirs, targets, exts=[".xml", ".xhtml", ".html"], rec=rec)
 
     def setup_detail(self, task):
