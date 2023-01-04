@@ -14,7 +14,7 @@ import doot
 ##-- end imports
 
 ##-- config
-data_toml    = doot.setup_py()
+doot.setup()
 
 DOIT_CONFIG = {
     "default_tasks" : [],
@@ -25,11 +25,11 @@ DOIT_CONFIG = {
 
 ##-- post-config doot imports
 from doot.files.clean_cache import CleanCacheAction, py_cache_globs
-from doot.files.listall import task_listall
 from doot.files.checkdir import CheckDir
+from doot.utils.dir_data import DootDirs
 
 from doot.groups import *
-from doot.files.ziptask import *
 ##-- end post-config doot imports
 
 all_checks = CheckDir.checkdir_group()
+all_dirs   = DootDirs.dir_group()
