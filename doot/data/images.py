@@ -13,132 +13,114 @@ from itertools import cycle, chain
 from doit.action import CmdAction
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
-from doot.utils.general import build_cmd
 from doot.utils import globber
+from doot import data_toml
 
 ##-- end imports
 
-def build_images_check(build_dir):
-    images_dir_check = CheckDir(paths=[build_dir,],
-                                name="images",
-                                task_dep=["_checkdir::build"])
+exts : list[str] = data_toml.or_get([".jpg"]).tool.doot.images.exts()
 
-
-class ImagesListingTask:
+class HashImages(globber.DirGlobber):
     """
-    Create a listing of all files needed to hash
+    For each subdir, hash all the files in it
+    info
     """
+    def __init__(self, dirs:DootDirs, roots=None, exts=exts):
+        roots = roots or [pl.Path()]
+        super().__init__("images::hash", dirs, roots, exts=exts)
+        self.current_hashed = {}
+        self.hash_record    = ".hashes"
 
-    def __init__(self, srcs, build_dir, exts:list[str]):
-        self.create_doit_tasks = self.build
-        self.srcs = srcs
-        self.build_dir = build_dir
-        self.exts = exts
+    def filter(self, fpath):
+        return fpath != pl.Path() and fpath.name[0] not in "._"
 
-    def build(self):
-        foci = data_dirs
-        return {
-            "basename" : "_images::listing",
-            "actions"  : [ CmdAction(self.list_files), CmdAction(self.clean_listing)],
-            "targets"  : [ self.build_dir / "1_images.listing",
-                           self.build_dir / "2_unique.listing"],
-            "task_dep" : [ "_checkdir::images" ],
-            "uptodate" : [False],
-            "clean"    : True
-        }
+    def setup_detail(self, task):
+        """ create a .hashes file to record hashes in each directory """
+        actions = []
+        for root in self.starts:
+            actions += [CmdAction(["touch", fpath / self.hash_record], shell=False) for fpath in root.iterdir() if fpath.is_dir()]
+        task.update({"actions" : actions})
+        return task
+
+    def subtask_detail(self, fpath, task):
+        return task
+
+    def subtask_actions(self, fpath):
+        return [partial(self.hash_remaining, fpath)]
+
+    def load_hashed(self, fpath):
+        hash_file = fpath / self.hash_record
+        hashes = [x.split(" ") for x in hash_file.read_text().split("\n") if bool(x)]
+        self.current_hashed = {" ".join(xs[1:]).strip():xs[0] for xs in hashes}
+        return hash_file
+
+    def hash_remaining(self, fpath):
+        print("Hashing: ", fpath)
+        hash_file = self.load_hashed(fpath)
+        dir_contents = [x for x in fpath.iterdir() if x.stem[0] != "."]
+        batch_count = 0
+
+        while bool(dir_contents):
+            batch = [x for x in dir_contents[:10] if str(x) not in self.current_hashed]
+            print(f"Batch Count: {batch_count} (size: {len(batch)})")
+            dir_contents = dir_contents[10:]
+            if not bool(batch):
+                continue
+
+            act = CmdAction(["md5", "-r", *batch], shell=False, save_out=True)
+            act.execute()
+            with open(hash_file, 'a') as f:
+                f.write("\n")
+                f.write(act.out)
+
+            batch_count += 1
 
 
-    def list_files(self, task, targets):
-        output    = pl.Path(targets[0])
-        focus     = self.srcs
-        exts_args = " -o ".join(f"-name '*{x}'" for x in self.exts)
-        cmds = ["echo [Listing Images]"]
-        if output.exists():
-            output.unlink()
-
-        for focus in task.meta['foci']:
-            cmd = f"find {focus} -type f " + exts_args
-            cmd += f" >> {output}"
-            cmds.append(cmd)
 
 
-        return "; ".join(cmds)
-
-    def clean_listing(self, targets):
-        in_f  = targets[0]
-        out_f = targets[1]
-        res = f"sort {in_f} | uniq > {out_f}"
-        return f"echo [Removing Duplicate Paths]; " + res
-
-
-    def gen_toml(self):
-        return """
-##-- doot.images
-[tool.doot.images]
-data_dirs      = [""]
-recursive_dirs = [""]
-exts           = [".jpg", ".jpeg", ".png", ".mp4"]
-
-##-- end doot.images
-"""
-class ImagesHashTask:
+class TesseractGlobber(globber.DirGlobber):
     """
-    Find all images, hash them,
-    and identify duplicates
-
-    # TODO sort duplicates by .stat().st_mtime
+    Run tesseract on applicable files in each found directory
+    to make dot txt files of ocr'd text from the image
     """
+    file_types : ClassVar[list] = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif",]
 
-    def __init__(self, srcs, build_dir):
-        self.create_doit_tasks = self.build
-        self.srcs = srcs
-        self.build_dir = build_dir
+    def __init__(self, dirs:DootDirs, roots=None):
+        roots = roots or [pl.Path()]
+        super().__init__("tesseract::go", dirs, roots, exts=TesseractGlobber.file_types)
+        self.processed = dict()
 
-    def build(self):
-        return {
-            "basename" : "images::md5",
-            "actions"  : [ CmdAction(self.ignore_already_processed),
-                           CmdAction(self.hash_all),
-                           CmdAction(self.extract_duplicates)],
-            "targets"  : [self.build_dir / "5_images.md5",
-                          self.build_dir / "6_duplicates.md5"],
-            "file_dep" : [ self.build_dir / "2_unique.listing" ],
-            "meta"     : {
-                "done" : self.build_dir / "3_processed.listing",
-                "todo" : self.build_dir / "4_todo_hash.listing",
-                },
-            "clean"    : [self.clean_intermediates],
-            "uptodate" : [False],
-        }
+    def filter(self, fpath):
+        exts = {x.suffix for x in fpath.iterdir()}
+        not_cache = fpath != pl.Path() and fpath.name[0] not in "._"
+        return any(x in self.exts for x in exts) and not_cache
 
+    def load_processed(self):
+        self.processed = {x[1]:x[0] for ln in pl.Path("all_checksums").read_text().split("\n") for xs in ln.split(" ") }
 
-    def ignore_already_processed(self, targets, task):
-        if not pl.Path(targets[0]).exists():
-            # if nothing has been done, everything is a todo
-            return "cat {dependencies} > " + str(task.meta['todo'])
+    def setup_detail(self, task):
+        task.update({
+            # "actions" : [ self.load_processed ]
+        })
+        return task
 
-        # Get all files with a hash already
-        prep_cmd   = f"cat {targets[0]} | gsed -E 's/^.+? //'"
-        save_done  =  " > " + str(task.meta['done']) + ";"
-        # Get all files *without* a hash already
-        cat_listings = "cat {dependencies} " + str(task.meta['done'])
-        filter_cmd   = " | sort | uniq -u"
-        save_todo    = " > " + str(task.meta['todo'])
-        return " ".join([prep_cmd, save_done,
-                         cat_listings, filter_cmd, save_todo])
+    def subtask_actions(self, fpath):
+        dir_contents = [x for x in fpath.iterdir() if x.suffix in self.exts]
+        cmds = []
 
-    def hash_all(self, targets, task):
-        return " ".join(["cat", str(task.meta['todo']),
-                         "| xargs md5 -r", f">> {targets[0]}"])
+        for img in dir_contents:
+            text_path = img.parent / f".{img.stem}.txt"
+            if text_path.exists():
+                continue
 
-    def extract_duplicates(self, targets, task):
-        sort_md5s = f"sort {targets[0]}"
-        only_uniq = "| uniq --check-chars=32 --all-repeated=separate"
-        save_to   = f"> {targets[1]}"
-        return " ".join([sort_md5s, only_uniq, save_to])
+            text_cmd   = ["tesseract", img, text_path.stem, "-l", "eng"]
+            mv_txt_cmd = ["mv", text_path.name, text_path]
+            # pdf_cmd    = f"tesseract {pq(img)} {pq(text_path.stem)} -l eng pdf"
+            cmds.append(CmdAction(text_cmd, shell=False))
+            cmds.append(CmdAction(mv_txt_cmd, shell=False))
 
+        return cmds
 
-    def clean_intermediates(self, task, targets):
-        pl.Path(targets[1]).unlink(missing_ok=True)
-        task.meta['todo'].unlink(missing_ok=True)
-        task.meta['done'].unlink(missing_ok=True)
+    def subtask_detail(self, fpath, task):
+        task.update({})
+        return task

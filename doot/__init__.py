@@ -3,148 +3,70 @@
 import pathlib as pl
 from doot.utils.toml_access import TomlAccess, TomlAccessError
 from doot.files.checkdir import CheckDir
+from doot.utils.dir_data import DootDirs
 ##-- end imports
 
-data_toml   = None
-config_toml = None
-src_dir     = None
-doc_dir     = None
-temp_dir    = None
-gen_dir     = None
-build_dir   = None
+data_toml   : TomlAccess = None
+config_toml : TomlAccess = None
+doot_dirs   : DootDirs   = None
+
+default_py       = pl.Path("pyproject.toml")
+default_rust     = pl.Path("Cargo.toml")
+default_agnostic = pl.Path("doot.toml")
+
+def setup():
+    if default_py.exists():
+        return setup_py()
+    elif default_rust.exists():
+        return setup_rust()
+    elif default_agnostic.exists():
+        return setup_agnostic()
+    else:
+        raise Exception("Not Config Data Found")
+
 
 def setup_py(path="pyproject.toml"):
-    global data_toml, src_dir, gen_dir, build_dir, check_build, config_toml, temp_dir, doc_dir
+    global data_toml, config_toml, doot_dirs
     data_toml   = TomlAccess.load(path)
     config_toml = data_toml
-    src_dir     = pl.Path(data_toml.project.name)
-    doc_dir     = pl.Path(data_toml.or_get("docs").tool.doot.doc_dir())
-    temp_dir    = pl.Path(data_toml.or_get(".temp").tool.doot.temp_dir())
-    gen_dir     = src_dir / "_codegen"
-    build_dir   = pl.Path(data_toml.or_get("build").tool.doit.build_dir())
-    CheckDir(paths=[temp_dir], name="temp", meta={"force_clean":True})
-    CheckDir(paths=[build_dir, gen_dir, doc_dir], name="build", task_dep=["_checkdir::temp"])
-    return data_toml
+
+    doot_dirs = DootDirs(None,
+                         _build=data_toml.or_get("build").tool.doit.directories.build(),
+                         _src=data_toml.project.name,
+                         _codegen=data_toml.or_get("_codegen").tool.doot.directories.codegen(),
+                         _temp=data_toml.or_get(".temp").tool.doot.directories.temp(),
+                         _docs=data_toml.or_get("docs").tool.doot.directories.docs(),
+                         _data=data_toml.or_get("data").tool.doot.directories.data(),
+                         )
+    return data_toml, doot_dirs
 
 def setup_rust(path="Cargo.toml", config="./.cargo/config/toml"):
-    global data_toml, src_dir, gen_dir, build_dir, check_build, config_toml, temp_dir, doc_dir
+    global data_toml, config_toml, doot_dirs
     data_toml   = TomlAccess.load(path)
     config_toml = TomlAccess.load(config)
-    src_dir     = pl.Path(data_toml.package.name)
-    doc_dir     = pl.Path(data_toml.or_get("docs").tool.doot.doc_dir())
-    temp_dir    = pl.Path(data_toml.or_get(".temp").tool.doot.temp_dir())
-    gen_dir     = src_dir / "_codegen"
-    build_dir   = pl.Path(config_toml.build.target_dir)
-    CheckDir(paths=[temp_dir], name="temp", meta={"force_clean":True})
-    CheckDir(paths=[build_dir, gen_dir, doc_dir], name="build", task_dep=["_checkdir::temp"])
-    return data_toml
+
+
+    doot_dirs = DootDirs("",
+                         _src=data_toml.package.name,
+                         _build=config_toml.or_get("build").build.target_dir(),
+                         _codegen=data_toml.or_get("_codegen").tool.doot.directories.codegen(),
+                         _temp=data_toml.or_get(".temp").tool.doot.directories.temp(),
+                         _docs=data_toml.or_get("docs").tool.doot.directories.docs(),
+                         _data=data_toml.or_get("data").tool.doot.directories.data(),
+                         )
+    return data_toml, doot_dirs
 
 def setup_agnostic(path="doot.toml"):
-    global data_toml, src_dir, gen_dir, build_dir, check_build, config_toml, temp_dir, doc_dir
+    global data_toml, config_toml, doot_dirs
     data_toml   = TomlAccess.load(path)
     config_toml = data_toml
-    src_dir     = pl.Path(data_toml.project.name)
-    try:
-        data_toml.tool.doot.codegen
-        gen_dir     = src_dir / "_codegen"
-        CheckDir(paths=[gen_dir], name="codegen", task_dep=[])
-    except TomlAccessError:
-        pass
 
-    try:
-        doc_dir     = pl.Path(data_toml.tool.doot.doc_dir)
-        CheckDir(paths=[doc_dir], name="doc", task_dep=[])
-    except TomlAccessError:
-        pass
-
-    try:
-        temp_dir    = pl.Path(data_toml.tool.doot.temp_dir)
-        CheckDir(paths=[temp_dir], name="temp", meta={"force_clean":True})
-    except TomlAccessError:
-        pass
-
-    try:
-        build_dir   = pl.Path(data_toml.tool.doit.build_dir)
-        CheckDir(paths=[build_dir], name="build", task_dep=[])
-    except TomlAccessError:
-        pass
-    return data_toml
-
-
-def task_py_init():
-    """
-    :: configure a python project
-    """
-
-    return {
-        "actions"     : [],
-    }
-
-
-
-def task_cargo_init():
-    """
-    create a cargo package, and set then customise it with building to 'build',
-    and setting to use nightly features
-    """
-    def make_config():
-        pl.Path("./.cargo").mkdir()
-
-    def set_build_dir():
-        pl.Path("./.cargo/config.toml").write_text("\n".join(["[build]",
-                                                              "target-dir = \"build\"",
-                                                              ]))
-
-    def add_features(features):
-        cargo_file = pl.Path("Cargo.toml")
-        header     = f"cargo-features = [{features}]\n"
-        cargo_text = cargo_file.read_text()
-        cargo_file.write_text("\n".join([header, cargo_text]))
-    #------
-    return {
-        "basename" : "cargo::init",
-        "actions"  : [CmdAction(["cargo", "init"], shell=False),
-                      make_config, set_build_dir, add_features],
-        "targets"  : ["Cargo.toml", ".cargo/config.toml"],
-        "params" : [ { "name" : "features",
-                       "type" : str,
-                       "default" : '"profile-rustflags"',
-                      },
-                    ]
-    }
-
-
-def task_gradle_init():
-    """
-    :: configure a gradle project
-    """
-
-    return {
-        "actions" : [],
-        "targets" : ["build.gradle.kts",
-                     "logging.properties"],
-    }
-
-def task_sphinx_init():
-    return {
-        "actions" : [],
-        "targets" : [],
-    }
-
-def task_jekyll_init():
-    return {
-        "actions" : [],
-        "targets" : [],
-    }
-
-def task_godot_init():
-    return {
-        "actions" : [],
-        "targets" : [],
-    }
-
-def task_latex_init():
-    return {
-        "actions" : [],
-        "targets" : [],
-    }
+    doot_dirs = DootDirs("",
+                         _build=data_toml.or_get("build").tool.doit.directories.build(),
+                         _src=data_toml.project.name,
+                         _codegen=data_toml.or_get("_codegen").tool.doot.directories.codegen(),
+                         _temp=data_toml.or_get(".temp").tool.doot.directories.temp(),
+                         _docs=data_toml.or_get("docs").tool.doot.directories.docs(),
+                         _data=data_toml.or_get("data").tool.doot.directories.data(),
+                         )
+    return data_toml, doot_dirs

@@ -20,7 +20,7 @@ from weakref import ref
 
 from doot.utils.task_group import TaskGroup
 from doot.utils.toml_access import TomlAccessError, TomlAccess
-from doot import build_dir, data_toml, temp_dir, doc_dir, src_dir, gen_dir
+from doot import data_toml, doot_dirs
 
 if TYPE_CHECKING:
     # tc only imports
@@ -46,13 +46,17 @@ __all__ = [
 try:
     data_toml.tool.doot.godot
     from doot.builders import godot
+    godot_dirs = doot_dirs.extend(prefix="godot", _src="")
+    godot_dirs.add_extra({ "scenes" : godot_dirs.src / "scenes",
+                         })
     godot_group = TaskGroup("godot_group",
-                            godot.GodotCheckTask([pl.Path()]),
-                            godot.GodotBuild(build_dir),
-                            godot.GodotRun(build_dir, ""),
-                            godot.GodotRunScene([pl.Path()]),
+                            godot.GodotCheckTask(godot_dirs, [godot_dirs.src]),
+                            godot.GodotBuild(godot_dirs),
+                            godot.GodotRunScene(godot_dirs, [godot_dirs.src]),
+                            godot.GodotRunScript(godot_dirs, [godot_dirs.src]),
                             godot.task_godot_version,
                             godot.task_godot_test,
+                            godot.task_newscene(godot_dirs),
                             )
 except TomlAccessError:
     godot_group = None
@@ -61,21 +65,21 @@ except TomlAccessError:
 ##-- xml
 try:
     data_toml.tool.doot.xml
-    xml_data_dirs = [pl.Path(x) for x in data_toml.or_get([]).tool.doot.xml.data_dirs() if pl.Path(x).exists()]
-    xml_gen_dir   = gen_dir
-    xml_build_dir = build_dir     / "xml"
-    schema_dir    = xml_build_dir / "schema"
-    elements_dir  = xml_build_dir / "elements"
-    visual_dir    = xml_build_dir / "visual"
+    xml_dirs = doot_dirs.extend(prefix="xml")
+    xml_dirs.add_extra({"visual": xml_dirs.docs / "visual",
+                        "elements" : xml_dirs.build / "elements",
+                        "schema"    : xml_dirs.build / "schema",
+
+                        })
+    xml_data_dirs = [xml_dirs.data] + [pl.Path(x) for x in data_toml.or_get([]).tool.doot.xml.data_dirs() if pl.Path(x).exists()]
     from doot.data import xml as xml_reports
-    xml_reports.build_xml_checks()
     xml_group = TaskGroup("xml_group",
-                          xml_reports.XmlElementsTask(xml_data_dirs], elements_dir),
-                          xml_reports.XmlSchemaTask(xml_data_dirs, schema_dir),
-                          xml_reports.XmlPythonSchemaRaw(xml_data_dirs, xml_gen_dir]),
-                          xml_reports.XmlPythonSchemaXSD(xml_data_dirs + [schema_dir], xml_gen_dir),
-                          xml_reports.XmlSchemaVisualiseTask(xml_data_dirs + [schema_dir], visual_dir),
-                          xml_reports.XmlFormatTask(xml_data_dirs),
+                          xml_reports.XmlElementsTask(xml_dirs, xml_data_dirs),
+                          xml_reports.XmlSchemaTask(xml_dirs, xml_data_dirs),
+                          xml_reports.XmlPythonSchemaRaw(xml_dirs, xml_data_dirs),
+                          xml_reports.XmlPythonSchemaXSD(xml_dirs, xml_data_dirs),
+                          xml_reports.XmlSchemaVisualiseTask(xml_dirs, xml_data_dirs),
+                          xml_reports.XmlFormatTask(xml_dirs, xml_data_dirs),
                         )
 except TomlAccessError:
     xml_group = None
@@ -85,11 +89,10 @@ except TomlAccessError:
 try:
     data_toml.tool.doot.databse
     from doot.data import database
-    sqlite_dir = build_dir / "sqlite"
-    database.build_sqlite_check(sqlite_dir)
+    sqlite_dirs  = doot_dirs.extend(prefix="sqlite")
     sqlite_group = TaskGroup("sqlite_group",
-                             database.SqliteReportTask([src_dir]),
-                             database.SqlitePrepTask([src_dir], sqlite_dir)
+                             database.SqliteReportTask(sqlite_dirs),
+                             database.SqlitePrepTask(sqlite_dirs),
                              )
 except TomlAccessError:
     sqlite_group = None
@@ -100,14 +103,12 @@ try:
     data_toml.tool.doot.json
     from doot.data import json as json_reports
     data_dirs = [pl.Path(x) for x in data_toml.or_get([]).tool.doot.json.data_dirs() if pl.Path(x).exists()]
-    json_gen_dir   = gen_dir
-    json_build_dir = build_dir / "json"
-    visual_dir     = json_build_dir   / "visual"
+    json_dirs = doot_dirs.extend(prefix="json")
     # from doot.docs.plantuml import task_plantuml_json
     json_group = TaskGroup("json group",
-                           json_reports.JsonPythonSchema(data_dirs]),
+                           json_reports.JsonPythonSchema(data_dirs),
                            json_reports.JsonFormatTask(data_dirs, json_gen_dir),
-                           json_reports.JsonVisualise(data_dirs, visual_dir)
+                           json_reports.JsonVisualise(data_dirs, visual_dir),
                            # task_plantuml_json,
                            # json_reports.JsonSchemaTask(),
                            )
@@ -118,13 +119,12 @@ except TomlAccessError:
 ##-- plantuml
 try:
     data_toml.tool.doot.plantuml
-    plant_dir = build_dir / "plantuml"
     from doot.docs import plantuml
-    plantuml.build_plantuml_checks(plant_dir)
+    plant_dirs = doot_dirs.extend(prefix="plantuml", _src="docs/visual")
     plantuml_group = TaskGroup("plantuml_group",
-                               plantuml.PlantUMLGlobberTask([build_dir], plant_dir),
-                               plantuml.PlantUMLGlobberTask([build_dir], plant_dir, fmt="txt"),
-                               plantuml.PlantUMLGlobberCheck([build_dir]),
+                               plantuml.PlantUMLGlobberTask(dirs, [plant_dirs.src], plant_dir),
+                               plantuml.PlantUMLGlobberTask(dirs, [plant_dirs.src], plant_dir, fmt="txt"),
+                               plantuml.PlantUMLGlobberCheck(dirs, [plant_dirs.src]),
                                )
 except TomlAccessError:
     plantuml_group = None
@@ -133,11 +133,11 @@ except TomlAccessError:
 ##-- csv
 try:
     data_toml.tool.doot.csv
-    csv_dir = build_dir / "csv"
+    csv_dirs = doot_dirs.extend(prefix="csv")
     from doot.data import csv as csv_reports
     csv_group = TaskGroup("csv group",
-                          csv_reports.CSVSummaryTask([src_dir], csv_dir),
-                          csv_reports.CSVSummaryXMLTask([src_dir], csv_dir),
+                          csv_reports.CSVSummaryTask(csv_dirs, [csv_dirs.data]),
+                          csv_reports.CSVSummaryXMLTask(csv_dirs, [csv_dirs.data], csv_dir),
                            )
 except TomlAccessError:
     csv_group = None
@@ -146,13 +146,10 @@ except TomlAccessError:
 ##-- dot
 try:
     data_toml.tool.doot.dot
-    dot_build_dir = build_dir / "dot"
-    visual_dir    = dot_build_dir   / "visual"
+    dot_dirs = doot_dirs.extend(prefix="dot", _src="docs/visual")
     from doot.docs import dot
-    dot.build_dot_checks(dot_build_dir, visual_dir)
     dot_group = TaskGroup("dot group",
-                          dot.DotVisualise([dot_build_dir], visual_dir, ext="png"),
-
+                          dot.DotVisualise(dot_dirs, [dot_dirs.src]),
                           )
 except TomlAccessError:
     dot_group = None
@@ -162,15 +159,12 @@ except TomlAccessError:
 ##-- images
 try:
     data_toml.tool.doot.images
-    data_dirs        = [pl.Path(x) for x in data_toml.or_get([]).tool.doot.images.data_dirs() if pl.Path(x).exists()]
-    exts : list[str] = data_toml.or_get([".jpg"]).tool.doot.images.exts()
-    images_build_dir = build_dir / "images"
+    image_dirs  = doot_dirs.extend(prefix="images")
+    image_roots = [pl.Path(x) for x in data_toml.or_get([]).tool.doot.images.data_dirs() if pl.Path(x).exists()]
     from doot.data import images
-    images.build_images_dir(images_build_dir)
     images_group = TaskGroup("images group",
-                             images.ImagesListingTask(data_dirs, images_build_dir),
-                             images.ImagesHashTask(data_dirs, images_build_dir),
-
+                             images.HashImages(image_dirs, image_roots),
+                             images.TesseractGlobber(image_dirs, image_roots),
                              )
 except TomlAccessError:
     images_group = None

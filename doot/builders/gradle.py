@@ -4,22 +4,28 @@ from __future__ import annotations
 
 import pathlib as pl
 import shutil
+from importlib.resources import files
 
-from doot import build_dir, data_toml
+from doot import data_toml
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
-from doot.utils.general import build_cmd
-
 ##-- end imports
+
 # https://docs.gradle.org/current/userguide/command_line_interface.html
 ## create build.grade, run tasks, create logging.properties
+
+##-- data
+data_path               = files("doot.__templates")
+log_properties_template = data_path.joinpath("gradle_logging")
+##-- end data
+
 
 def task_gradle_run():
     """:: run a program """
 
     return {
         "basename" : "gradle::run",
-        "actions"  : ["./gradlew run"],
+        "actions"  : [CmdAction(["./gradlew", "run"], shell=False)],
         "file_dep" : ["build.gradle.kts"],
         "verbosity": 2,
     }
@@ -29,7 +35,7 @@ def task_gradle_build():
 
     return {
         "basename" : "gradle::build",
-        "actions"  : ["./gradlew build"],
+        "actions"  : [CmdAction(["./gradlew", "build"], shell=False)],
         "file_dep" : ["build.gradle.kts"],
     }
 
@@ -38,7 +44,7 @@ def task_gradle_assemble():
 
     return {
         "basename" : "gradle::assemble",
-        "actions"  : ["./gradlew assemble"],
+        "actions"  : [CmdAction(["./gradlew", "assemble"], shell=False)],
         "file_dep" : ["build.gradle.kts"],
     }
 
@@ -47,7 +53,7 @@ def task_gradle_check():
 
     return {
         "basename" : "gradle::check",
-        "actions"  : ["./gradlew check"],
+        "actions"  : [CmdAction(["./gradlew", "check"], shell=False)],
         "file_dep" : ["build.gradle.kts"],
     }
 
@@ -56,7 +62,7 @@ def task_gradle_clean():
 
     return {
         "basename" : "gradle::clean",
-        "actions"  : ["./gradlew clean"],
+        "actions"  : [CmdAction(["./gradlew", "clean"], shell=False)],
         "file_dep" : ["build.gradle.kts"],
     }
 
@@ -65,16 +71,19 @@ def task_gradle_doc():
 
     return {
         "basename" : "gradle::doc",
-        "actions"  : ["gradle javadoc"],
+        "actions"  : [CmdAction(["./gradlew", "javadoc"], shell=False)],
         "file_dep" : ["build.gradle.kts"],
     }
 
 def task_gradle_logging():
     """:: generate a logging.properties file """
+    def make_logging_properties(targets):
+        pl.Path(targets[0]).write_text(log_properties_template.read_text())
 
+    
     return {
         "basename" : "gradle::log",
-        "actions"  : [],
+        "actions"  : [ make_logging_properties ],
         "targets"  : [ "logging.properties" ],
         "file_dep" : ["build.gradle.kts"],
     }
@@ -84,14 +93,38 @@ def task_gradle_version():
 
     return {
         "basename" : "gradle::version",
-        "actions"  : ["./gradlew --version"],
+        "actions"  : [ CmdAction(["./gradlew", " --version"], shell=False) ],
         "file_dep" : ["build.gradle.kts"],
         "verbosity" : 2,
     }
+
 def task_gradle_test() -> dict:
     """:: run the project tests """
     return {
         "basename" : "gradle::test",
-        "actions"  : ["./gradlew test"],
+        "actions"  : [ CmdAction(["./gradlew", " test"], shell=False) ],
         "file_dep" : ["build.gradle.kts"],
+    }
+
+def task_gradle_list():
+    """
+    list all gradle tasks that can be run
+    """
+    def cache_gradle_tasks(task):
+        pass
+
+    return {
+        "basename" : "gradle::list",
+        "actions"  : [ CmdAction(["./gradlew", ":tasks"], shell=False, save_out="result") ],
+        "file_dep" : [ "build.gradle.kts" ],
+
+    }
+
+def task_gradle_projects():
+
+    return {
+        "basename" : "gradle::list",
+        "actions"  : [ CmdAction(["./gradlew", ":projects"], shell=False, save_out="result") ],
+        "file_dep" : [ "build.gradle.kts" ],
+
     }

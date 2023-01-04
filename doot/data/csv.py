@@ -10,18 +10,12 @@ import shutil
 from functools import partial
 
 from doit.action import CmdAction
-from doot import build_dir, data_toml
+
+from doot import data_toml
 from doot.files.checkdir import CheckDir
 from doot.utils import genx, globber
 from doot.utils.cmdtask import CmdTask
-from doot.utils.general import build_cmd
 ##-- end imports
-
-
-def build_csv_checks(csv_dir):
-    csv_check = CheckDir(paths=[csv_dir],
-                         name="csv",
-                         task_dep=["_checkdir::build"])
 
 
 class CSVSummaryTask(globber.FileGlobberMulti):
@@ -30,31 +24,26 @@ class CSVSummaryTask(globber.FileGlobberMulti):
     and listing number of rows
     """
 
-    def __init__(self, srcs, build_dir):
-        super().__init__("csv::summary", [".csv"], src, rec=True)
-        self.build_dir = build_dir
+k   def __init__(self, dirs:DootDirs, roots):
+        super().__init__("csv::summary", dirs, roots, exts=[".csv"], rec=True)
+        report_name = self.dirs.build / "csv.report"
 
     def setup_detail(self, task):
-        report_name = self.build_dir / "csv.report"
         task['actions']  = [lambda: report_name.unlink(missing_ok=True) ],
-        task["task_dep"] = ["_checkdir::csv"]
         return task
 
     def teardown_detail(self, task):
-        report_name = self.build_dir / "csv.report"
-        task['actions'] = [CmdAction(["cat", report_name], shell=False) ],
+        task['actions'] = [CmdAction(["cat", self.report_name], shell=False) ],
         return task
 
     def subtask_detail(self, fpath, task):
         task.update({
             "clean"    : True,
         })
-        task['meta'].update({ "focus" : fpath })
         return task
 
 
     def subtask_actions(self, fpath):
-        report_name = self.build_dir / "csv.report"
         return [
             partial(self.write_path, fpath),
             # CmdAction(f"cat {fpath} | wc -l | sed -e 's/$/ Columns: /' -e 's/^/Lines: /' | tr -d \"\n\" >> {report_name}"),
@@ -62,10 +51,9 @@ class CSVSummaryTask(globber.FileGlobberMulti):
         ]
 
     def write_data(self, fpath, task):
-        report_name = self.build_dir / "csv.report"
-        text = fpath.read_text().split("\n")
-        columns = len(text[0].split(","))
-        with open(report_name, 'a') as f:
+        text        = fpath.read_text().split("\n")
+        columns     = len(text[0].split(","))
+        with open(self.report_name, 'a') as f:
             f.write(str(fpath), ": ")
             f.write("Rows: ", len(text), " ")
             f.write("Columns: ", columns, " ")
@@ -79,24 +67,20 @@ class CSVSummaryXMLTask(globber.FileGlobberMulti):
     and listing number of rows
     """
 
-    def __init__(self, targets, build_dir):
-        super().__init__("csv::summary.xml", [".csv"], targets, rec=True)
-        self.build_dir = build_dir
-        self.report_name = self.build_dir / "csv.xml"
+    def __init__(self, dirs:DootDirs, roots):
+        super().__init__("csv::summary.xml", dirs, roots, exts=[".csv"], rec=True)
+        self.report_name = self.dirs.build / "csv.xml"
 
     def setup_detail(self, task):
         task['actions']  = [lambda: genx.create_xml(self.report_name)]
-        task["task_dep"] = ["_checkdir::csv"]
         return task
 
     def teardown_detail(self, task):
         task['actions'] = [f"cat {self.report_name}"]
         return task
 
-
     def subtask_detail(self, fpath, task):
         task.update({"clean" : True,})
-        task['meta'].update({ "focus" : fpath })
         return task
 
     def subtask_actions(self, fpath):

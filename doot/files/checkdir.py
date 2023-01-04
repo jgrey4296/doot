@@ -12,19 +12,23 @@ class CheckDir:
     """ Task for checking directories exist,
     making them if they don't
     """
-    all_checks : ClassVar[list[CheckDir]] = []
+    all_checks : ClassVar[dict[str:CheckDir]] = {}
 
     @staticmethod
     def checkdir_group():
         return TaskGroup("checkdir group",
-                         *CheckDir.all_checks)
+                         *CheckDir.all_checks.values())
 
-    def __init__(self, *, paths=None, data=None, name="default", **kwargs):
-        self.create_doit_tasks = self.build
+    @staticmethod
+    def register(name:str, paths:list[pl.Path], dirs:DootDirs=None):
+        checker = CheckDir(name, paths[:] + list(dirs or []))
+        CheckDir.all_checks[checker.name] = checker
+
+    def __init__(self, name, paths):
+        self.create_doit_tasks = self._build_task
         self.paths             = [pl.Path(x) for x in paths or [] ]
-        self.kwargs            = kwargs
+        self.name              = name
         self.default_spec      = { "basename" : f"_checkdir::{name}" }
-        CheckDir.all_checks.append(self)
 
     def uptodate(self):
         return all([x.exists() for x in self.paths])
@@ -37,12 +41,10 @@ class CheckDir:
                 print(f"{x} already exists")
                 pass
 
-    def build(self) -> dict:
+    def _build_task(self) -> dict:
         task_desc = self.default_spec.copy()
-        task_desc.update(self.kwargs)
         task_desc.update({
             "actions"  : [ self.mkdir ],
-            "targets"  : self.paths,
             "uptodate" : [ self.uptodate ],
             "clean"    : [ clean_target_dirs ],
         })

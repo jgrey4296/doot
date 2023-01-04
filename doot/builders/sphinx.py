@@ -5,12 +5,11 @@ import pathlib as pl
 import shutil
 from doit.action import CmdAction
 
-from doot import build_dir, data_toml, doc_dir
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
-from doot.utils.general import build_cmd
 from doot.utils.task_group import TaskGroup
 from doot.files.clean_dirs import clean_target_dirs
+from doot.utils.tasker import DootTasker
 
 ##-- end imports
 
@@ -18,45 +17,38 @@ __all__ = [
         "SphinxDocTask", "task_browse",
 ]
 
-sphinx_build_dir = build_dir / "sphinx"
 
-##-- dir check
-check_dir = CheckDir(paths=[sphinx_build_dir ], name="sphinx", task_dep=["_checkdir::build"])
-##-- end dir check
+conf_builder    = data_toml.or_get("html").tool.doot.sphinx.builder()
+conf_verbosity  = int(data_toml.or_get("0").tool.door.sphinx.verbosity())
 
-builder    = data_toml.or_get("html").tool.doot.sphinx.builder()
-verbosity  = int(data_toml.or_get("0").tool.door.sphinx.verbosity())
+class SphinxDocTask(DootTasker):
+    """:: Build sphinx documentation """
 
-class SphinxDocTask:
+    def __init__(self, dirs:DootDirs, builder=None, verbosity:int=None):
+        super().__init__("sphinx::doc", dirs)
+        self.builder = builder or conf_builder
+        self.verbosity = verbosity or conf_verbosity
 
-    def __init__(self):
-        self.create_doit_tasks = self.build
-
-    def build(self) -> dict:
-        """:: Build sphinx documentation """
-
+    def task_detail(self, task:dict) -> dict:
         return {
-            "basename" : "sphinx::build",
-            "actions"  : [ self.sphinx_command() ],
-            "task_dep" : ["_checkdir::sphinx"],
-            "file_dep" : [ doc_dir / "conf.py" ],
-            "targets"  : [ sphinx_build_dir ],
+            "actions"  : [ CmdAction(self.sphinx_command, shell=False) ],
+            "file_dep" : [ self.dirs.docs / "conf.py" ],
+            "targets"  : [ self.dirs.build / "index.html" ],
             "clean"    : [ clean_target_dirs ],
         }
 
 
     def sphinx_command(self):
-        verbose = []
-        match verbosity:
+        args = ["sphinx-build", '-b', self.builder, self.dirs.docs, self.dirs.build]
+        match self.verbosity:
             case x if x > 0:
-                verbose += ["-v" for i in range(x)]
+                args += ["-v" for i in range(x)]
             case x if x == -1:
-                verbose.append("-q")
+                args.append("-q")
             case x if x == -2:
-                verbose.append("-Q")
+                args.append("-Q")
 
-        return CmdAction(["sphinx-build", '-b', builder, doc_dir, sphinx_build_dir] + verbose,
-                         shell=False)
+        return args
 
 
     def gen_toml(self):
@@ -68,11 +60,12 @@ verbosity = 0
 ##-- end sphinx
 """
 
-def task_browse() -> dict:
+def task_browse(dirs:DootDirs) -> dict:
     """:: Task definition """
+    assert("html" in dirs.extra)
     return {
         "basename"    : "sphinx::browse",
-        "actions"     : [ CmdAction([ "open",  build_dir / "html" / "index.html" ], shell=False) ],
+        "actions"     : [ CmdAction([ "open",  dirs.extra['html'] ], shell=False) ],
         "task_dep"    : ["sphinx::build"],
     }
 

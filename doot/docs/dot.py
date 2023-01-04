@@ -11,19 +11,13 @@ import shutil
 from functools import partial
 from itertools import cycle, chain
 from doit.action import CmdAction
-from doot import build_dir, data_toml, src_dir
+from doot import data_toml
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
-from doot.utils.general import build_cmd
 from doot.utils import globber
 
 ##-- end imports
 
-
-def build_dot_checks(build, visual):
-    dot_dir_check = CheckDir(paths=[build, visual,],
-                             name="dot",
-                             task_dep=["_checkdir::build"])
 
 
 class DotVisualise(globber.FileGlobberMulti):
@@ -31,9 +25,8 @@ class DotVisualise(globber.FileGlobberMulti):
     make images from any dot files
     """
 
-    def __init__(self, targets, build_dir, ext="png", layout="neato", scale:float=72.0):
-        super().__init__("dot::visual", [".dot"], targets)
-        self.build_dir = build_dir
+    def __init__(self, dirs:DootDirs, targets, ext="png", layout="neato", scale:float=72.0):
+        super().__init__("dot::visual", dirs, targets, [".dot"])
         self.ext       = ext
         self.layout    = layout
         self.scale     = scale
@@ -42,8 +35,7 @@ class DotVisualise(globber.FileGlobberMulti):
     def subtask_detail(self, fpath, task):
         task.update({
                      "file_dep" : [ fpath ],
-                     "targets"  : [ self.build_dir / fpath.with_suffix(f".{self.ext}").name ],
-                     "task_dep" : [ "_checkdir::dot" ],
+                     "targets"  : [ self.dirs.build / fpath.with_suffix(f".{self.ext}").name ],
                      "clean"    : True,
         })
         return task

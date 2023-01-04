@@ -6,28 +6,25 @@ import datetime
 import logging as logmod
 import pathlib as pl
 import zipfile
+from doit.task import Task as DoitTask
 
-from doot import build_dir, data_toml
+from doot import data_toml
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
-from doot.utils.general import build_cmd
+from doot.utils.dir_data import DootDirs
+from doot.utils.tasker import DootTasker
 ##-- end imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-zip_dir = build_dir / "zips"
-
-##-- dir check
-check_zips = CheckDir(paths=[zip_dir], name="zips", task_dep=["_checkdir::build"],)
-##-- end dir check
 
 __all__ = [
         "ZipTask"
 ]
 
-class ZipTask:
+class ZipTask(DootTasker):
     """
     Automate creation of archive zipfiles
     will be named `zip::{name/default}`
@@ -39,24 +36,39 @@ class ZipTask:
     TODO add filter_fn
     """
 
-    def __init__(self, *, target=None, target_dir=zip_dir, paths=None, globs=None, base="zip::default", date=False, **kwargs):
-        self.create_doit_tasks        = self.build
-        self.date     : bool | str    = date
-        self.target_dir               = target_dir
-        self.file_dep : list[pl.Path] = [pl.Path(x) for x in paths or []]
-        self.globs    : list[str]     = globs or []
-        self.kwargs                   = kwargs
-        self.default_spec             = {"basename" : base,
-                                         "uptodate" : [False],
-                                         }
+    def __init__(self, base:str, dirs:DootDirs, *, target:str, root:pl.Path, paths:list[pl.Path]=None, globs:list[str]=None,  date:bool|str=False, to_build_dir=False):
+        super().__init__(base, dirs)
+        self.date     : bool | str = date
+        self.target : str          = pl.Path(target)
+        self.root                  = root
+        self.paths                 = paths or []
+        self.globs    : list[str]  = globs or []
+        self.to_build_dir : bool   = to_build_dir
 
-        if target is not None:
-            self.target = pl.Path(target)
-            assert(self.target.suffix == ".zip")
+    def clean(self, task):
+        target = pl.Path(task.targets[0])
+        zip_base = target.parent
+        zip_stem = target.stem
 
-    def formatted_target(self, target):
-        target      = pl.Path(target)
-        target_stem = target.stem
+        print(f"Cleaning {zip_base}/{zip_stem}*.zip")
+        for zipf in zip_base.glob(f"{zip_stem}*.zip"):
+            zipf.unlink()
+
+        target.unlink(missing_ok=True)
+
+    def task_detail(self, task) -> dict:
+        task.update({
+            "actions"  : [ self.action_zip_create, self.action_zip_add_paths, self.action_zip_globs, self.action_move_zip],
+            "targets"  : [ self.dirs.temp / self.dated_target().name ],
+            "file_dep" : self.paths,
+            "task_dep" : [ self.dirs.checker ],
+            })
+        task['meta'].update({"globs" : self.globs,})
+        return task
+
+
+    def dated_target(self):
+        target_stem = self.target.stem
         match self.date:
             case False:
                 pass
@@ -67,68 +79,46 @@ class ZipTask:
                 now         = datetime.datetime.strftime(datetime.datetime.now(), date)
                 target_stem = f"{target.stem}-{now}"
 
-        return target.with_stem(target_stem)
+        return self.target.with_stem(target_stem)
 
 
-    def action_zip_create(self, task):
-        if task.meta['zip'].exists():
-            return
+    def action_zip_create(self, task:DoitTask):
+        target = pl.Path(task.targets[0])
+        if target.exists():
+            target.unlink()
 
         now = datetime.datetime.strftime(datetime.datetime.now(), "%Y:%m:%d::%H:%M:%S")
         record_str = f"Zip File created at {now} for doot task: {task.name}"
 
-        with zipfile.ZipFile(task.meta['zip'], 'w') as targ:
+        with zipfile.ZipFile(target, 'w') as targ:
             targ.writestr(".taskrecord", record_str)
 
-    def action_zip_add_paths(self, task, dependencies):
+    def action_zip_add_paths(self, task:DoitTask, dependencies):
         assert(all(pl.Path(x).exists() for x in dependencies))
-        with zipfile.ZipFile(task.meta['zip'], 'a') as targ:
+        target = pl.Path(task.targets[0])
+        with zipfile.ZipFile(target, 'a') as targ:
             for dep in dependencies:
-                targ.write(str(dep))
+                if pl.Path(dep).name[0] == ".":
+                    continue
+                targ.write(str(dep), pl.Path(dep).relative_to(self.root))
 
     def action_zip_globs(self, task):
         logging.debug(f"Globbing: {task.meta['globs']}")
-        cwd = pl.Path(".")
-        with zipfile.ZipFile(task.meta['zip'], 'a') as targ:
+        cwd = pl.Path()
+        target = pl.Path(task.targets[0])
+        with zipfile.ZipFile(target, 'a') as targ:
             for glob in task.meta['globs']:
                 result = list(cwd.glob(glob))
                 print(f"Globbed: {cwd}[{glob}] : {len(result)}")
                 for dep in result:
-                    targ.write(dep)
+                    # if pl.Path(dep).name[0] == ".":
+                    #     continue
+                    targ.write(str(dep), pl.Path(dep).relative_to(self.root))
 
+    def action_move_zip(self, task):
+        if not self.to_build_dir:
+            return
 
-    def clean_zips(self, task):
-        zip_base = task.meta['zip'].parent
-        print(f"Cleaning {zip_base}/{task.meta['stem']}*.zip")
-        for zipf in zip_base.glob(f"{task.meta['stem']}*.zip"):
-            zipf.unlink()
-        task.meta['zip'].unlink(missing_ok=True)
-
-    
-    def build(self, *, name=None, target=None, file_dep=None, globs=None) -> dict:
-        target      = self.target_dir / (target or self.target)
-        target_stem = target.stem
-        task_desc   = self.default_spec.copy()
-        formatted   = self.formatted_target(target)
-
-        file_dep = file_dep or self.file_dep
-        globs    = globs or self.globs
-
-        task_desc.update(self.kwargs)
-        task_desc.update({
-            "actions"  : [ self.action_zip_create, self.action_zip_add_paths, self.action_zip_globs],
-            "clean"    : [self.clean_zips],
-            "file_dep" : file_dep,
-            "task_dep" : ["_checkdir::zips"],
-            "meta"     : { "stem"  : target_stem,
-                           "globs" : globs,
-                           "zip"   : target,
-                           },
-        })
-        if name is not None:
-            task_desc.update({
-                "name" : name
-                })
-        return task_desc
-
-
+        target = pl.Path(task.targets[0])
+        assert(not (self.dirs.build / target.name).exists())
+        target.rename(self.dirs.build / target.name)

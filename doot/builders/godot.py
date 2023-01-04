@@ -8,8 +8,9 @@ from doit.action import CmdAction
 
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
-from doot.utils.general import build_cmd, regain_focus, ForceCmd
+from doot.utils.general import regain_focus, ForceCmd
 from doot.utils import globber
+from doot.utils.tasker import DootTasker
 
 ##-- end imports
 # https://docs.godotengine.org/en/stable/tutorials/editor/command_line_tutorial.html
@@ -19,8 +20,8 @@ class GodotCheckTask(globber.FileGlobberMulti):
     """
     Lint all gd scripts in the project
     """
-    def __init__(self, srcs:list[pl.Path]):
-        super().__init__("godot::check", [".gd"], srcs, rec=True)
+    def __init__(self, dirs:DootDirs, roots):
+        super().__init__("godot::check", dirs, roots, exts=[".gd"], rec=True)
         self.failures = set()
 
     def setup_detail(self, task):
@@ -33,7 +34,7 @@ class GodotCheckTask(globber.FileGlobberMulti):
         task.update({
             "actions" : [self.report_failures],
             "verbosity" : 2,
-                    })
+        })
         return task
 
     def subtask_detail(self, fpath, task):
@@ -67,13 +68,13 @@ class GodotCheckTask(globber.FileGlobberMulti):
     def reset_failures(self):
         self.failures = set()
 
-class GodotRunScene(globber.FileGlobberSingle):
+class GodotRunScene(globber.RootlessFileGlobber):
     """
     Globber to allow easy running of scenes
     """
 
-    def __init__(self, srcs:list[pl.Path]):
-        super().__init__("godot::run:scene", [".tscn"], srcs, rec=True)
+    def __init__(self, dirs:DootDirs, roots:list[pl.Path]):
+        super().__init__("godot::run:scene", dirs, roots, exts=[".tscn"], rec=True)
 
     def top_detail(self, task:dict):
         task.update({
@@ -120,15 +121,17 @@ class GodotRunScene(globber.FileGlobberSingle):
         return args
 
 
-class GodotRun:
+class GodotRunScript(globber.FileGlobberMulti):
     """
     Run a godot script, with debugging or without
     """
 
-    def __init__(self, build_dir, target):
-        self.create_doit_tasks = self.build
-        self.build_dir         = build_dir
-        self.target            = target
+    def __init__(self, dirs:DootDirs, roots):
+        super().__init__("godot::run", dirs, roots, exts=[".gd"])
+
+    def filter(self, fpath):
+        # TODO test script for implementing runnable interface
+        return True
 
     def params(self):
         return [
@@ -144,14 +147,12 @@ class GodotRun:
              },
         ]
 
-    def build(self):
-        return { "basename" : "godot::run",
-                 "actions"  : [ CmdAction(self.run_cmd, shell=False),
-                                regain_focus(),
-                               ],
-                 "params"   : self.params(),
-                 "verbosity" : 2,
-                }
+    def subtask_detail(self, fpath, task):
+        task.update({ "verbosity" : 2,})
+        return task
+
+    def subtask_actions(self, fpath):
+        return [ CmdAction(partial(self.run_cmd, fpath), shell=False), regain_focus() ]
 
     def run_cmd(self, target, debug):
         if not bool(target):
@@ -168,37 +169,39 @@ class GodotRun:
 
         return args
 
-class GodotBuild:
+class GodotBuild(DootTasker):
     """
     build a godot project
     """
 
-    def __init__(self, build_dir):
-        self.create_doit_tasks = self.build
-        self.build_dir         = build_dir
+    def __init__(self, dirs:DootDirs):
+        super().__init__("godot::build", dirs)
 
-    def build(self):
+    def params(self):
+        return [ { "name"    : "build_target",
+                   "short"   : "t",
+                   "type"    : str,
+                   "default" : "osx",
+                   "choices" : [("Mac OSX", ""),
+                                ("Android", ""),
+                                ],
+                  },
+                 { "name"    : "build_type",
+                   "long"    : "type",
+                   "type"    : str,
+                   "default" : "export",
+                   "choices" : [ ("export", ""),
+                                 ("export-debug", "")
+                                ]
+                  },
+                ]
+
+    def task_detail(self, task):
         return { "basename" : "godot::build",
-                 "actions"  : [CmdAction(self.cmd_builder, shell=False) ],
+                 "actions"  : [ CmdAction(self.cmd_builder, shell=False) ],
                  "targets"  : [ self.build_dir / "build.dmg" ],
-                 "file_dep" : ["export_presets.cfg"],
-                 "params"   : [
-                     { "name"    : "build_target",
-                       "short"   : "t",
-                       "type"    : str,
-                       "default" : "osx",
-                       "choices" : [("Mac OSX", ""),
-                                    ("Android", ""),
-                                    ],
-                      },
-                     { "name"    : "build_type",
-                       "long"    : "type",
-                       "type"    : str,
-                       "default" : "export",
-                       "choices" : [ ("export", ""),
-                                     ("export-debug", "")
-                                    ]
-                      },
+                 "file_dep" : [ "export_presets.cfg" ],
+                 "clean"    : True,
                  ]
                 }
 
@@ -216,15 +219,21 @@ def task_godot_version():
 
 
 def task_godot_test():
+    """ TODO """
     return { "basename": "godot::test",
              "actions": []
             }
 
 
-def task_newscene():
+def task_newscene(dirs:DootDirs):
+    assert("scenes" in dirs.extra)
+
+    def mkscene(task, name):
+        return ["touch", (dirs.extra['scenes'] / name).with_suffix(".tscn") ]
+
     return {
         "basename" : "godot::new:scene",
-        "actions" : [],
+        "actions" : [ CmdAction(mkscene, shell=False) ],
         "params" : [
             { "name"    : "name",
               "short"   : "n",

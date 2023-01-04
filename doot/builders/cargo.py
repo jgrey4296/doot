@@ -9,14 +9,13 @@ from doit.tools import Interactive
 
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
-from doot.utils.general import build_cmd
 from doot.utils.task_group import TaskGroup
 from doot.utils.toml_access import TomlAccessError
 
 ##-- end imports
 # https://doc.rust-lang.org/cargo/index.html
 
-def task_cargo_build(build_dir:pl.Path, target:tuple[str, str], profile="debug", data:pl.Path|str="Cargo.toml"):
+def task_cargo_build(dirs:DootDirs, target:tuple[str, str], profile="debug", data:pl.Path|str="Cargo.toml"):
     """
     Build rust binary target, using a tuple (type, name)
     eg: (bin, main) or (lib, mylib)
@@ -29,7 +28,7 @@ def task_cargo_build(build_dir:pl.Path, target:tuple[str, str], profile="debug",
     return {
         "basename" : base_name,
         "actions"  : [ CmdAction(cmd_builder, shell=False) ],
-        "targets"  : [ build_dir / profile / target[1] ],
+        "targets"  : [ dirs.build  / profile / target[1] ],
         "file_dep" : [ data ],
         ]
     }
@@ -108,7 +107,7 @@ def task_cargo_update(data:pl.Path|str="Cargo.toml"):
         "file_dep" : [data],
     }
 
-def task_cargo_mac_lib(build_dir, package:str, profile="debug", data:pl.Path|str="Cargo.toml"):
+def task_cargo_mac_lib(dirs:DootDirs, package:str, profile="debug", data:pl.Path|str="Cargo.toml"):
     """
     rename the produced rust binary on mac os,
     for rust-py interaction
@@ -116,8 +115,8 @@ def task_cargo_mac_lib(build_dir, package:str, profile="debug", data:pl.Path|str
     if platform != "darwin":
         return None
 
-    lib_file    = build_dir / profile / f"lib{package}.dylib"
-    shared_file = build_dir / profile / f"{package}.so"
+    lib_file    = dirs.build  / profile / f"lib{package}.dylib"
+    shared_file = dirs.build / profile / f"{package}.so"
 
     def rename_target(task):
         lib_file.rename(shared_file)
@@ -132,21 +131,21 @@ def task_cargo_mac_lib(build_dir, package:str, profile="debug", data:pl.Path|str
         "task_dep" : [ f"_cargo::build.{profile}.lib" ],
     }
 
-    build_lib = task_cargo_build(build_dir, target=("lib", fname), profile=profile, data=data)
+    build_lib = task_cargo_build(dirs.build, target=("lib", fname), profile=profile, data=data)
     build_lib['basename'] = f"_cargo::build.{profile}.lib"
     yield build_lib
 
 
 
-def task_cargo_debug(build_dir, target:tuple[str, str], data:pl.Path|str="Cargo.toml"):
+def task_cargo_debug(dirs:DootDirs, target:tuple[str, str], data:pl.Path|str="Cargo.toml"):
     """
     Start lldb on the debug build of the rust binary
     """
     assert(target[0] == "bin")
     return {
         "basename" : f"cargo::debug.{target[1]}"
-        "actions"  : [Interactive(["lldb", build_dir / "debug" / target[1] ], shell=False)],
-        "file_dep" : [ data, build_dir / "debug" / target[1] ],
+        "actions"  : [Interactive(["lldb", dirs.build / "debug" / target[1] ], shell=False)],
+        "file_dep" : [ data, dirs.build / "debug" / target[1] ],
         "task_dep" : [f"cargo::build.debug.{target[1]}"],
     }
 

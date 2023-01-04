@@ -2,36 +2,42 @@
 from __future__ import annotations
 
 import pathlib as pl
-import shutil
+from functools import partial
 from doit.action import CmdAction
 
-from doot import build_dir, data_toml, src_dir
-from doot.files.checkdir import CheckDir
-from doot.utils.cmdtask import CmdTask
-from doot.utils.general import build_cmd
+from doot import data_toml
 from doot.utils import globber
+from doot.utils.dir_data import DootDirs
 
 ##-- end imports
 
-lint_exec    = data_toml.or_get("pylint").tool.doot.python.lint.exec()
-lint_fmt     = data_toml.or_get("text").tool.doot.python.lint.output_format()
-lint_out     = data_toml.or_get("lint.result").tool.doot.python.lint.output_name()
-lint_error   = data_toml.or_get(False).tool.doot.python.lint.error()
-py_build_dir = build_dir / "python"
+prefix = data_toml.or_get("python").tool.doot.python.prefix()
+
+lint_exec       = data_toml.or_get("pylint").tool.doot.python.lint.exec()
+lint_fmt        = data_toml.or_get("text").tool.doot.python.lint.output_format()
+lint_out        = pl.Path(data_toml.or_get(f"{data_toml.project.name}.lint").tool.doot.python.lint.output_name())
+lint_grouped    = data_toml.or_get(True).tool.doot.python.lint.grouped()
+lint_error      = data_toml.or_get(False).tool.doot.python.lint.error()
 
 py_test_dir_fmt = data_toml.or_get("__test").tool.doot.python.test.dir_fmt()
-py_test_args = data_toml.or_get([]).tool.doot.python.test.args()
+py_test_args    = data_toml.or_get([]).tool.doot.python.test.args()
+py_test_out     = pl.Path(data_toml.or_get("result.test").tool.doot.python.test())
+
+def task_buildvenv():
+    return {
+        "basename" : f"{prefix}::venv",
+        "actions" : [],
+        }
 
 class InitPyGlobber(globber.DirGlobber):
 
-    def __init__(self, targets=data_dirs, rec=False):
-        super().__init__("py::initpy", [], [src_dir], rec=rec)
+    def __init__(self, dirs:DootDirs, rec=False):
+        super().__init__(f"{prefix}::initpy", dirs, [dirs.src], rec=rec)
         self.ignores = ["__pycache__", ".git", "__mypy_cache__"]
 
     def subtask_detail(self, fpath, task):
         task['meta'].update({"focus" : fpath})
         return task
-
 
     def subtask_actions(self, fpath):
         return [ self.touch_initpys ]
@@ -50,33 +56,56 @@ class InitPyGlobber(globber.DirGlobber):
             inpy = current / "__init__.py"
             inpy.touch()
 
-class PyLintTask(globber.DirGlobber):
-    """:: lint the package """
 
-    def __init__(self):
-        super().__init__("python::lint", [], [src_dir], rec=False)
+class PyLintTask(globber.DirGlobber):
+    """ lint the package """
+
+    def __init__(self, dirs:DootDirs):
+        super().__init__(f"{prefix}::lint", dirs, [dirs.root], rec=not lint_grouped)
+
+    def filter(self, fpath):
+        return (fpath / "__init__.py").exists()
+
+    def setup_detail(self, task):
+        task.update({ "verbosity" : 0,
+                      "targets"   : [ "pylint.toml" ],
+                      "uptodate"  : [False],
+                     })
+
+        if not pl.Path("pylint.toml").exists():
+            task['actions'] += [ CmdAction([lint_exec, "--generate-toml-config"], shell=False, save_out="config"),
+                                 lambda task: pl.Path("pylint.toml").write_text(task.values['config']) ]
+
+        return task
 
     def subtask_detail(self, fpath, task):
-        task.update({})
+        target = lint_out if lint_grouped else lint_out.with_stem(task['name'])
+        task.update({
+            "targets" : [ self.dirs.build / target ],
+            "clean"   : True,
+        })
         task['meta'].update({
             "format" : lint_fmt,
-            "output" : lint_out,
             "exec"   : lint_exec,
             "error"  : lint_error,
-            })
+        })
         return task
 
     def subtask_actions(self, fpath):
-        return [CmdAction(self.run_lint, shell=False)]
-    def run_lint(self, task):
+        return [ CmdAction(self.run_lint, shell=False) ]
+
+    def run_lint(self, task, targets):
         args = [task.meta['exec'],
+                "--rcfile", "pylint.toml",
                 "--output-format", task.meta['format'],
-                "--output", py_build_dir / task.meta["output"],
-                "-E" if task.meta['error'] else "",
-                proj_name
+                "--output", targets[0],
+                "-E" if task.meta['error'] else None,
+                "--exit-zero",
+                "-v",
+                self.dirs.src
                 ]
 
-        return args
+        return [x for x in args if x is not None]
 
 
     def gen_toml(self):
@@ -86,21 +115,65 @@ class PyLintTask(globber.DirGlobber):
             "output-format = \"text\"",
             "output-name = \"lint.results\"",
             "error = false",
+            "grouped = false",
             ])
+
+
+class PyUnitTestGlob(globber.DirGlobber):
+    """
+    Run all project unit tests
+    """
+
+    def __init__(self, dirs:DootDirs):
+        super().__init__(f"{prefix}::test", dirs, [dirs.root], exts=[".py"], rec=True)
+
+    def filter(self, fpath):
+        return py_test_dir_fmt in fpath.name
+
+    def subtask_detail(self, fpath, task):
+        target = py_test_out if lint_grouped else py_test_out.with_stem(task['name'])
+        task.update({"targets" : [ self.dirs.build / target ],
+                     })
+        task['meta'].update({"dir" : fpath})
+        return task
+
+    def subtask_actions(self, fpath):
+        return [ CmdAction(self.run_tests, shell=False, save_out="results"),
+                 self.write_results,
+                ]
+
+    def write_results(self, task, targets):
+        pl.Path(targets[0]).write_text(task.values['results'])
+
+    def run_tests(self, task):
+        args = ["python", "-X", "dev", "-m", "unittest", "discover", "-t", pl.Path()]
+        args += py_test_args
+        args.append(task.meta['dir'])
+        return args
+
+    def gen_toml(self):
+        return "\n".join([
+            "[tool.doot.python.test]",
+            "dir-fmt = \"__test\"",
+            "args    = []",
+            ])
+
 
 class PyTestGlob(globber.DirGlobber):
     """
     Run all project unit tests
     """
 
-    def __init__(self):
-        super().__init__("python::test", [".py"], [src_dir], rec=True, filter_fn=self.is_test_dir)
+    def __init__(self, dirs:DootDirs):
+        super().__init__(f"{prefix}::test", dirs, [dirs.src], exts=[".py"], rec=True)
 
-    def is_test_dir(self, fpath):
+    def filter(self, fpath):
         return py_test_dir_fmt in fpath.name
 
     def subtask_detail(self, fpath, task):
-        task.update({})
+        target = py_test_out if lint_grouped else py_test_out.with_stem(task['name'])
+        task.update({"targets" : [ target ],
+                     })
         task['meta'].update({"dir" : fpath})
         return task
 
@@ -108,7 +181,7 @@ class PyTestGlob(globber.DirGlobber):
         return [ CmdAction(self.run_tests) ]
 
     def run_tests(self, task):
-        args = ["python", "-m", "unttest", "discover" "-X", "dev", "-t", pl.Path()]
+        args = ["pytest", "-X", "dev"]
         args += py_test_args
         args.append(task.meta['dir'])
         return args

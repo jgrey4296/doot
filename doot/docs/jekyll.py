@@ -10,10 +10,10 @@ from time import strftime
 import yaml
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
-from doot.utils.general import build_cmd
 from doot.files.clean_dirs import clean_target_dirs
 from doot.builders.jekyll import jekyll_src
 from doot.utils import globber
+from doot.utils.tasker import DootTasker
 
 try:
     # For py 3.11 onwards:
@@ -41,17 +41,6 @@ ext_format       = data_toml.tool.doot.jekyll.genpost.ext.strip()
 
 __all__ = ["GenPostTask", "GenTagsTask"]
 
-##-- directories
-posts_dir = jekyll_src / "_posts"
-tags_dir  = jekyll_src / "_generated" / "tags"
-tag_index = jekyll_src / "tags" / "index.md"
-
-jekyll_check_posts = CheckDir(paths=[posts_dir,
-                                     tags_dir
-                                     ],
-                              name="jekyll.posts",
-                              task_dep=["_checkdir::jekyll"])
-##-- end directories
 
 ##-- yaml util
 def load_yaml_data(filename):
@@ -74,16 +63,38 @@ def load_yaml_data(filename):
 ##-- end yaml util
 
 
-class GenPostTask:
+class GenPostTask(DootTasker):
     """ create a new post,
     using a template or the default in doot.__templates.jekyll_post
 
     has cli params of title and template
 
     """
-    def __init__(self, template=None):
-        self.create_doit_tasks = self.build
-        self.template = pl.Path(template or post_template)
+    def __init__(self, dirs, template=None):
+        super().__init__("jekyll::post", dirs)
+        self.template  = pl.Path(template or post_template)
+        assert('posts' in self.dirs.extra)
+
+    def params(self):
+        return [
+            { "name"   : "title",
+              "long"    : "title",
+              "short"   : "t",
+              "type"    : str,
+              "default" : "unnamed"
+             },
+            { "name"   : "template",
+              "long"   : "template",
+              "type"    : str,
+              "default" : default_template,
+             }
+        ]
+
+    def task_detail(self, task) -> dict:
+        task.update({
+            "actions"  : [ self.make_post ],
+        })
+        return task_desc
 
     def make_post(self, title, template):
         if template != "default":
@@ -91,10 +102,10 @@ class GenPostTask:
         else:
             template = self.template
 
-        post_path = posts_dir / (title_format
-                                 .format_map({ "date"  : strftime(date_format),
-                                              "title" : title.strip().replace(" ","_"),
-                                              "ext"   : ext_format}))
+        post_path = self.dirs.extra['posts'] / (title_format
+                                                .format_map({ "date"  : strftime(date_format),
+                                                              "title" : title.strip().replace(" ","_"),
+                                                              "ext"   : ext_format}))
 
         post_text = (template
                      .read_text()
@@ -104,28 +115,6 @@ class GenPostTask:
 
         post_path.write_text(post_text)
 
-
-    def build(self) -> dict:
-        task_desc = {
-            "basename" : "jekyll::post",
-            "actions"  : [ self.make_post ],
-            "targets"  : [ ],
-            "task_dep" : ["_checkdir::jekyll.posts"],
-            "params" : [
-                { "name" : "title",
-                 "long" : "title",
-                 "short" : "t",
-                 "type" : str,
-                 "default" : "unnamed"
-                },
-                { "name"    : "template",
-                  "long"    : "template",
-                 "type"    : str,
-                 "default" : default_template,
-                }
-            ]
-        }
-        return task_desc
 
     def gen_toml(self):
         """
@@ -147,19 +136,20 @@ default_template = "default"
         """
 
 
-class GenTagsTask:
+class GenTagsTask(DootTasker):
     """
     Generate summary files for all tags used in md files in the jekyll src dir
     """
-    # TODO make globber?
-    def __init__(self, template=None, index=None):
-        self.create_doit_tasks = self.build
+    def __init__(self, dirs, template=None, index=None):
+        super().__init__("jekyll::tag", dirs)
         self.tagset            = set()
         self.template          = pl.Path(template or tag_template)
         self.index             = pl.Path(index or index_template)
+        assert("tags"       in self.dirs.extra)
+        assert("tagsIndex"  in self.dirs.extra)
 
     def get_tags(self):
-        for path in jekyll_src.glob("**/*.md"):
+        for path in self.dirs.src.glob("**/*.md"):
             data = load_yaml_data(path)
             if 'tags' in data and data['tags'] is not None:
                 self.tagset.update([x.strip() for x in data['tags'].split(" ")])
@@ -167,21 +157,19 @@ class GenTagsTask:
     def make_tag_pages(self):
         tag_text = self.template.read_text()
         for tag in self.tagSet:
-            tag_file = tags_dir / f"{tag}.md"
+            tag_file = self.dirs.extra['tags'] / f"{tag}.md"
             formatted = tag_text.format_map({"tag" : tag})
             tag_file.write_text(formatted)
 
     def make_tag_index(self):
-        if tag_index.exists():
+        if self.dirs.extra['tagsIndex'].exists():
             return
 
         tag_index.write_text(self.index.read_text())
 
-    def build(self):
+    def task_detail(self):
         return {
-            "basename" : "jekyll::tag",
             "actions"  : [self.get_tags, self.make_tag_pages, self.make_tag_index ],
-            "task_dep" : [ "_checkdir::jekyll.posts" ],
-            "targets"  : [ tag_index ],
+            "targets"  : [ self.tag_index ],
             "clean"    : [ clean_target_dirs ],
         }

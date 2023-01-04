@@ -8,11 +8,11 @@ from importlib.resources import files
 
 from doit.tools import LongRunning
 from doit.action import CmdAction
-from doot import build_dir, data_toml
+
+from doot import data_toml
 from doot.files.checkdir import CheckDir
 from doot.files.clean_dirs import clean_target_dirs
 from doot.utils.cmdtask import CmdTask
-from doot.utils.general import build_cmd
 
 try:
     # For py 3.11 onwards:
@@ -34,14 +34,6 @@ __all__ = [
     "task_jekyll_serve", "task_jekyll_build",
     "task_init_jekyll", "task_jekyll_install"
 ]
-
-
-def build_jekyll_checks(dest, src):
-    """ register jekyll directory checks """
-    CheckDir(paths=[dest, src,],
-             name="jekyll",
-             task_dep=["_checkdir::build"])
-
 
 
 def task_jekyll_serve():
@@ -88,12 +80,12 @@ def task_jekyll_build(jekyll_config:pl.Path):
     }
 
 
-def task_init_jekyll(jekyll_config:pl.Path, jekyll_src:pl.Path):
+def task_init_jekyll(jekyll_config:pl.Path, dirs:DootDirs):
     """
     init a new jekyll project if it doesnt exist,
     in the config's src path
     """
-    duplicate_config : pl.Path = jekyll_src / "_config.yml"
+    duplicate_config : pl.Path = dirs.src / "_config.yml"
 
     return {
         "basename" : "jekyll::init",

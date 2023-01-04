@@ -4,35 +4,38 @@ from __future__ import annotations
 import pathlib as pl
 import shutil
 import re
+import fileinput
 from functools import partial
 from doit.action import CmdAction
 
-from doot import build_dir, data_toml, temp_dir, doc_dir
+from doot import data_toml
 from doot.files.checkdir import CheckDir, DestroyDir
 from doot.utils.cmdtask import CmdTask
-from doot.utils.general import build_cmd
 from doot.utils.task_group import TaskGroup
 from doot.utils.toml_access import TomlAccessError
 from doot.utils import globber
+from doot.utils.tasker import DootTasker
+from doot.utils.general import ForceCmd
 
 ##-- end imports
 
+interaction_mode = data_toml.or_get("nonstopmode").tool.doot.tex.interaction()
 
 class LatexMultiPass(globber.FileGlobberMulti):
     """
     Trigger both latex passes and the bibtex pass
     """
 
-    def __init__(self, srcs:list[pl.Path], build:pl.Path):
-        super().__init__("tex::build", ['.tex'], srcs, rec=True)
-        self.build_dir = build
+    def __init__(self, dirs:DootDirs, roots):
+        super().__init__("tex::build", dirs, roots, exts=['.tex'], rec=True)
 
 
     def subtask_detail(self, fpath, task):
         task.update({
             "actions"  : [],
-            "file_dep" : [ self.build / fpath.with_suffix(".pdf").name ],
+            "file_dep" : [ self.dirs.build / fpath.with_suffix(".pdf").name],
         })
+        return task
 
 class LatexFirstPass(globber.FileGlobberMulti):
     """
@@ -40,10 +43,8 @@ class LatexFirstPass(globber.FileGlobberMulti):
     pre-bibliography resolution
     """
 
-    def __init__(self, srcs:list[pl.Path], temp:pl.Path, build:pl.Path, interaction="nonstopmode"):
-        super().__init__("tex::pass:one", [".tex"], srcs, rec=True)
-        self.temp        = temp
-        self.build       = build
+    def __init__(self, dirs:DootDirs, roots:list[pl.Path], interaction=interaction_mode):
+        super().__init__("tex::pass:one", dirs, roots, exts=[".tex"], rec=True)
         self.interaction = interaction
 
     def subtask_detail(self, fpath, task):
@@ -51,7 +52,7 @@ class LatexFirstPass(globber.FileGlobberMulti):
         task.update({
                 "task_dep" : ["_checkdir::tex"],
                 "file_dep" : [ fpath ],
-                "targets"  : [ self.temp / fpath.with_suffix(".aux").name,
+                "targets"  : [ self.dirs.temp / fpath.with_suffix(".aux").name,
                                first_pass_pdf,
                               ],
                 "clean"    : True,
@@ -73,16 +74,16 @@ class LatexFirstPass(globber.FileGlobberMulti):
 
     def compile_tex(self, interaction, dependencies):
         target = pl.Path(dependencies[0]).with_suffix("")
-        return ["pdflatex", f"-interaction={interaction}", f"-output-directory={self.temp}", target]
+        return ["pdflatex", f"-interaction={interaction}", f"-output-directory={self.dirs.temp}", target]
 
     def move_pdf(self, fpath, task):
-        temp_pdf = self.temp / fpath.with_suffix(".pdf").name,
+        temp_pdf = self.dirs.temp / fpath.with_suffix(".pdf").name
         assert(temp_pdf.exists())
         target_pdf = self.pdf_name(fpath)
         temp_pdf.replace(target_pdf)
 
     def pdf_name(self, fpath):
-        first_pass_pdf = self.build / ("1st_pass_" + fpath.with_suffix(".pdf").name)
+        first_pass_pdf = self.dirs.build / ("1st_pass_" + fpath.with_suffix(".pdf").name)
         return first_pass_pdf
 
 class LatexSecondPass(globber.FileGlobberMulti):
@@ -91,18 +92,16 @@ class LatexSecondPass(globber.FileGlobberMulti):
     post-bibliography resolution
     """
 
-    def __init__(self, srcs:list[pl.Path], temp:pl.Path, build:pl.Path):
-        super().__init__("_tex::pass:two", [".tex"], srcs, rec=True)
-        self.temp  = temp
-        self.build = build
+    def __init__(self, dirs:DootDirs, roots:list[pl.Path]):
+        super().__init__("_tex::pass:two", dirs, roots, exts=[".tex"], rec=True)
 
     def subtask_detail(self, fpath, task):
         no_suffix = fpath.with_suffix("")
         task.update({"task_dep" : [f"_tex::pass:bibtex:{task['name']}"],
-                     "file_dep" : [ self.temp / fpath.with_suffix(".aux").name,
-                                    self.temp / fpath.with_suffix(".bbl").name,
+                     "file_dep" : [ self.dirs.temp / fpath.with_suffix(".aux").name,
+                                    self.dirs.temp / fpath.with_suffix(".bbl").name,
                                    ],
-                     "targets"  : [ self.build/ fpath.with_suffix(".pdf").name],
+                     "targets"  : [ self.dirs.build / fpath.with_suffix(".pdf").name],
                      "clean"    : True,
                      "params" : [
                          { "name"   : "interaction",
@@ -112,23 +111,22 @@ class LatexSecondPass(globber.FileGlobberMulti):
                            "default" : "nonstopmode",
                           },
                      ],
-                     "uptodate": [False],
                      })
         return task
 
     def subtask_actions(self, fpath):
         build_cmd = partial(self.tex_cmd, fpath)
         return [CmdAction(build_cmd, shell=False),
-	            CmdAction(build_cmd, shell=False)
-                partial(self.copy_pdf, fpath)
-                ],
+	            CmdAction(build_cmd, shell=False),
+                partial(self.move_pdf, fpath),
+                ]
 
     def tex_cmd(self, fpath, interaction, task):
         no_suffix = fpath.with_suffix("")
-        return ["pdflatex", f"-interaction={interaction}", f"-output-directory={self.temp}", no_suffix]
+        return ["pdflatex", f"-interaction={interaction}", f"-output-directory={self.dirs.temp}", no_suffix]
 
     def move_pdf(self, fpath, targets):
-        temp_pdf   = self.temp  / fpath.with_suffix(".pdf").name
+        temp_pdf   = self.dirs.temp  / fpath.with_suffix(".pdf").name
         assert(temp_pdf.exists())
         target_pdf = pl.Path(targets[0])
         temp_pdf.replace(target_pdf)
@@ -141,14 +139,11 @@ class LatexCheck(globber.FileGlobberMulti):
     just check the syntax
     """
 
-    def __init__(self, srcs:list[pl.Path], temp:pl.Path):
-        super().__init__("tex::check", ['.tex'], srcs, rec=True)
-        self.temp = temp
+    def __init__(self, dirs:DootDirs, roots:list[pl.Path]):
+        super().__init__("tex::check", dirs, roots, exts=['.tex'], rec=True)
 
     def subtask_detail(self, fpath, task):
-        task.update({"file_dep" : [ path ],
-                     "task_dep" : [ "_checkdir::tex" ],
-                     "uptodate" : [False],
+        task.update({"file_dep" : [ fpath ],
                      "params" : [
                          { "name"   : "interaction",
                            "short"  : "i",
@@ -165,15 +160,15 @@ class LatexCheck(globber.FileGlobberMulti):
 
     def build_draft_cmd(self, fpath, interaction):
         no_suffix = fpath.with_suffix("")
-        return ["pdflatex", "-draftmode", f"-interaction={interaction}", f"-output-directory={self.temp}", no_suffix]
+        return ["pdflatex", "-draftmode", f"-interaction={interaction}", f"-output-directory={self.dirs.temp}", no_suffix]
 
 class BibtexCheck(globber.FileGlobberMulti):
     """
     TODO
     """
 
-    def __init__(self):
-        super().__init__("bibtex::check", ['.bib'], [tex_src_dir], rec=True)
+    def __init__(self, dirs):
+        super().__init__("bibtex::check", dirs, exts=['.bib'], rec=True)
 
     def subtask_detail(self, fpath, task):
         task.update({})
@@ -184,16 +179,15 @@ class BibtexBuildTask(globber.FileGlobberMulti):
     Bibliography resolution pass
     """
 
-    def __init__(self, srcs:list[pl.Path], temp:pl.Path, build:pl.Path):
-        super().__init__("_tex::pass:bibtex", [".tex"], [tex_src_dir], rec=True)
-        self.temp = temp
-        self.build = build
+    def __init__(self, dirs:DootDirs, roots):
+        super().__init__("_tex::pass:bibtex", dirs, roots, exts=[".tex"], rec=True)
 
     def subtask_detail(self, fpath, task):
-        aux_file = self.temp / fpath.with_suffix(".aux").name
-        bbl_file = self.temp / fpath.with_suffix(".bbl").name
+        aux_file = self.dirs.temp / fpath.with_suffix(".aux").name
+        bbl_file = self.dirs.temp / fpath.with_suffix(".bbl").name
+
         task.update({"task_dep" : [f"tex::pass:one:{task['name']}"],
-                     "file_dep" : [ self.temp / "combined.bib",
+                     "file_dep" : [ self.dirs.temp / "combined.bib",
                                     aux_file ],
                      "targets"  : [ bbl_file ],
                      "clean"    : True,
@@ -201,24 +195,31 @@ class BibtexBuildTask(globber.FileGlobberMulti):
         return task
 
     def subtask_actions(self, fpath):
-        aux_file = self.temp  / fpath.with_suffix(".aux").name
-        bbl_file = self.temp / fpath.with_suffix(".bbl").name
-
-        return [ CmdAction(self.grep_dependencies, shell=False, save_out="has_bib"),
-                 CmdAction(self.amend_bib_paths(aux_file), shell=False),
+        aux_file = self.dirs.temp  / fpath.with_suffix(".aux").name
+        return [ partial(self.retarget_paths, aux_file),
                  CmdAction(self.maybe_run, shell=False),
-                 ]
+                ]
 
-    def grep_dependencies(self, dependencies):
-        return ["ggrep", "-e", "\\bibdata", *dependencies]
+    def retarget_paths(self, aux):
+        """ Check if the aux file has bibdata, if it does mod it to use the concatenated bib data """
+        reg     = re.compile(r"\\bibdata{(.+?)}")
+        bib_loc =  str(self.dirs.temp / "combined.bib")
+        has_bib = False
+        print("Retargeting: ", aux)
+        for line in fileinput.input(files=[aux], inplace=True):
+            line_match = reg.match(line)
+            if line_match is None:
+                print(line.strip())
+            else:
+                has_bib = True
+                print(r"\bibdata{" + bib_loc + "}")
 
-    def amend_bib_paths(self, aux):
-        # reminder: {{ }} for escaping {'s in string.format,
-        # \\{ for escaping {'s in sed
-        bib_loc =  str(self.temp / "combined.bib").replace("/", "\/")
-        return ["gsed", "-i.backup", "-E", "s/\\\\bibdata\\{{.+?\\}}/\\\\bibdata\\{{" + bib_loc + "\\}}/' ", aux]
+        return { "has_bib" : has_bib }
 
     def maybe_run(self, task, dependencies, targets):
+        """
+        If bibdata has been found, run bibtex, otherwise do nothing
+        """
         deps = { pl.Path(x).suffix : x for x in dependencies }
 
         if not bool(task.values['has_bib']):
@@ -227,37 +228,38 @@ class BibtexBuildTask(globber.FileGlobberMulti):
         return ["bibtex",  deps['.aux']]
 
 
-class BibtexConcatenateTask:
+class BibtexConcatenateTask(DootTasker):
     """
     concatenate all found bibtex files
     to produce a master file for latex's use
     """
-    def __init__(self, srcs:list[pl.Path], temp:pl.Path):
-        self.create_doit_tasks = self.build
-        self.srcs = srcs
-        self.temp = temp
+    def __init__(self, dirs:DootDirs):
+        super().__init__("_tex::bib", dirs)
 
-    def build(self):
-        # Find all bibs in each src dir
-        find_actions = [ CmdAction(["find", x, "-name", "*.bib"], shell=False, save_out=str(x)) for x in self.srcs ]
+    def task_detail(self, task):
+        task.update({
+            "actions"  : [ self.glob_bibs, self.concat_bibs ],
+            "targets"  : [ self.dirs.temp / "combined.bib" ],
+            "clean"    : True,
+        })
+        return task
+
+    def glob_bibs(self, task):
+        all_bibs : set[pl.Path] = set()
+        for root in [self.dirs.data, self.dirs.src, self.dirs.docs]:
+            all_bibs.update(list(root.rglob("**/*.bib")))
 
         return {
-            "basename" : "_tex::bib",
-            "actions"  : [ *find_actions, self.concat_bibs ],
-            "task_dep" : [ "_checkdir::tex" ],
-            "targets"  : [ tex_temp_dir / "combined.bib" ],
-            "clean"    : True,
+            "bibs" : list(str(x) for x in all_bibs),
         }
 
     def concat_bibs(self, targets, task):
-        src_bibs : set[pl.Path] = set()
-        for src in self.srcs:
-            src_bibs.update(pl.Path(x) for x in task.values[str(src)].split("\n") if bool(x))
+        src_bibs : set[pl.Path] = task.values['bibs']
 
         with open(targets[0], 'w') as f:
             for bib in src_bibs:
-                assert(bib.exists())
-                f.write(bib.read_text() + "\n")
+                assert(pl.Path(bib).exists())
+                f.write(pl.Path(bib).read_text() + "\n")
 
 def task_latex_install(dep="tex.dependencies"):
     """
@@ -292,6 +294,7 @@ def task_latex_requirements(reqf="tex.requirements"):
                       write_reqs,
                      ],
         "targets" : [ reqf ],
+        "clean" : True
     }
 
 def task_latex_docs():
@@ -326,7 +329,3 @@ def task_latex_rebuild():
     }
 
 
-def build_latex_check(tex_build:pl.Path, tex_temp:pl.path):
-    CheckDir(paths=[tex_build,
-                    tex_temp],
-             name="tex", task_dep=["_checkdir::build"])

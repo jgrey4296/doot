@@ -11,10 +11,9 @@ from functools import partial
 from itertools import cycle, chain
 
 from doit.action import CmdAction
-from doot import build_dir, data_toml, src_dir, gen_dir
+from doot import data_toml
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
-from doot.utils.general import build_cmd
 from doot.utils import globber
 
 ##-- end imports
@@ -26,41 +25,34 @@ vis_src_ext = data_toml.or_get(".lp_vis").tool.doot.clingo.vis_src_ext()
 vis_in_ext  = data_toml.or_get(".json").tool.doot.clingo.vis_in_ext()
 vis_out_ext = data_toml.or_get(".dot").tool.doot.clingo.vis_out_ext()
 
-clingo_opts = " ".join(data.toml.or_get([]).tool.doot.clingo.options())
-
-clingo_gen_dir   = gen_dir
-clingo_build_dir = build_dir / "clingo"
-visual_dir       = clingo_build_dir   / "visual"
-
-##-- dir checks
-clingo_dir_check = CheckDir(paths=[clingo_build_dir,
-                                   visual_dir,
-                                   ],
-                            name="clingo",
-                            task_dep=["_checkdir::build"])
-
-##-- end dir checks
+clingo_call = ["clingo"] + data.toml.or_get([]).tool.doot.clingo.options()
 
 class ClingoRunner(globber.FileGlobberMulti):
     """
     Run clingo on ansprolog sources
     """
 
-    def __init__(self):
-        super().__init__("clingo::run", [src_ext], [src_dir], rec=True)
-
+    def __init__(self, dirs:DootDirs):
+        super().__init__("clingo::run", dirs, [dirs.src], exts=[src_ext], rec=True)
 
     def subtask_detail(self, fpath, task):
-        target = clingo_build_dir / path.with_suffix(out_ext).name
+        target = self.dirs.build / path.with_suffix(out_ext).name
         task.update({
-            "file_dep" : [fpath],
+            "file_dep" : [ fpath ],
             "targets"  : [ target ],
-            "task_dep" : ["_checkdir::clingo"],
         })
         return task
 
     def subtask_actions(self, fpath):
-        return [CmdAction(f"clingo {clingo_options} " + "{dependencies} > {targets}")]
+        return [CmdAction(self.clingo_call, shell=False, save_out="result"),
+                self.save_result ]
+
+    def clingo_call(self, task, dependencies):
+        return clingo_call + dependencies
+
+    def save_result(self, task, targets):
+        result = task.values['result']
+        pl.Path(targets[0]).write_text(result)
 
     def gen_toml(self):
         return "\n".join(["##-- clingo",
@@ -75,23 +67,30 @@ class ClingoDotter(globber.FileGlobberMulti):
     Run specified clingo files to output json able to be visualised
     """
 
-    def __init__(self):
-        super().__init__("clingo::dotter", [vis_src_ext], [src_dir], rec=True)
+    def __init__(self, dirs:DootDirs):
+        super().__init__("clingo::dotter", dirs, [dirs.src], exts=[vis_src_ext], rec=True)
 
     def subtask_detail(self, fpath, task):
-        target = clingo_build_dir / path.with_suffix(vis_in_ext).name
+        target = self.dirs.build / path.with_suffix(vis_in_ext).name
         task.update({
-            "targets" : [target],
-            "file_dep" : [fpath],
-        })
-        task['meta'].update({
-
+            "targets"  : [ target ],
+            "file_dep" : [ fpath ],
         })
         return task
 
 
     def subtask_actions(self, fpath):
-        return [CmdAction(f"clingo --outf=2 {clingo_options} " + "{dependencies} > {targets}")]
+        return [CmdAction(self.json_call, shell=False, save_out="result"),
+                self.save_result ]
+
+    def json_call(self, task, dependencies):
+        return ["clingo", "--outf2"] + dependencies
+
+    def save_result(self, task, targets):
+        result = task.values['result']
+        pl.Path(targets[0]).write_text(result)
+
+
 
     def gen_toml(self):
         return "\n".join(["##-- clingo",
@@ -108,17 +107,15 @@ class ClingoVisualise(globber.FileGlobberMulti):
     and convert to dot format
     """
 
-    def __init__(self):
-        super().__init__("clingo::visual", [vis_in_ext], [clingo_build_dir])
+    def __init__(self, dirs:DootDirs):
+        super().__init__("clingo::visual", dirs, [dirs.src], exts=[vis_in_ext])
+        assert('visual' in dirs.extra)
 
     def subtask_detail(self, fpath, task):
-        target = visual_dir / targ_fname
+        target = self.dirs.extra['visual'] / targ_fname
         task.update({
-            "targets"  : [target],
+            "targets"  : [ target ],
             "task_dep" : [ "_checkdir::clingo" ],
-        })
-        task['meta'].update({
-
         })
         return task
 
