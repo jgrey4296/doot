@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-
+Base classes for making tasks which glob over files / directories and make a subtask for each
+matching thing
 """
 ##-- imports
 from __future__ import annotations
@@ -10,10 +11,10 @@ import pathlib as pl
 import shutil
 
 from doit.action import CmdAction
-from doot import build_dir, data_toml
+from doot import data_toml
 from doot.files.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
-from doot.utils.general import build_cmd
+from doot.utils.tasker import DootSubtasker
 ##-- end imports
 
 ##-- logging
@@ -21,31 +22,33 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 
-class FileGlobberMulti:
+class FileGlobberMulti(DootSubtasker):
     """
     Base task for file based *on load* globbing.
     Generates a new subtask for each file found.
 
     Each File found is a separate subtask
 
+    Override as necessary:
+    .filter : for controlling glob results
+    .glob_target : for what is globbed
+    .{top/subtask/setup/teardown}_detail : for controlling task definition
+    .{top/subtask/setup/teardown}_actions : for controlling task actions
+    .default_task : the basic task definition that everything customises
     """
 
-    def __init__(self, base:str, exts:list[str], starts:list[pl.Path], rec=False,
-                 defaults:None|dict=None, filter_fn:callable=None):
-        self.create_doit_tasks    = self.build
-        self.base                 = base
-        self.exts                 = exts[:]
-        self.starts               = starts[:]
-        self.rec                  = rec
-        self.filter_fn            = filter_fn
-        self.defaults             = defaults or {}
-        self.total_subtasks       = 0
+    def __init__(self, base:str, dirs:DirData, roots:list[pl.Path], *, exts:list[str]=None,  rec=False):
+        super().__init__(base, dirs)
+        self.exts              = (exts or [])[:]
+        self.roots            = roots[:]
+        self.rec               = rec
+        self.total_subtasks    = 0
 
-        try:
-            split_doc = [x for x in self.__class__.__doc__.split("\n") if bool(x)]
-            self.doc               = split_doc[0] if bool(split_doc) else ""
-        except AttributeError:
-            self.doc = ":: default"
+    def filter(self, target:pl.Path):
+        """ filter function called on each prospective glob result
+        override in subclasses as necessary
+        """
+        return True
 
     def glob_target(self, target, rec=False):
         results = []
@@ -56,8 +59,7 @@ class FileGlobberMulti:
             for ext in self.exts:
                 results += list(target.glob("*"+ext))
 
-        if self.filter_fn is not None:
-            results = [x for x in results if self.filter_fn(x)]
+        results = [x for x in results if self.filter(x)]
 
         return results
 
@@ -67,8 +69,8 @@ class FileGlobberMulti:
         and generate unique names for them
         """
         globbed = set()
-        for start in self.starts:
-            globbed.update(self.glob_target(start, rec=rec))
+        for root in self.roots:
+            globbed.update(self.glob_target(root, rec=rec))
 
         results = {}
         # then create unique names based on path:
@@ -91,81 +93,38 @@ class FileGlobberMulti:
     def subtask_actions(self, fpath) -> list[str|CmdAction|Callable]:
         return [f"echo {fpath}"]
 
-    def subtask_detail(self, fpath:pl.Path, task:dict) -> dict:
+    def subtask_detail(self, fpath:pl.Path, task:dict) -> None|dict:
         """
         override to add any additional task details
         """
         return task
 
-    def setup_detail(self, task:dict) -> dict:
+    def setup_detail(self, task:dict) -> None|dict:
         return task
-    def teardown_detail(self, task:dict) -> dict:
-        return task
-
-    def top_detail(self, task:dict) -> dict:
-        return task
-    def default_task(self) -> dict:
-        return self.defaults.copy()
-
-
-    def _build_setup(self) -> dict:
-        """
-        Build a pre-task that every subtask depends on
-        """
-        task_spec = {"basename" : f"_{self.base}:pretask",
-                     "actions"  : [],
-                     }
-        task_spec = self.setup_detail(task_spec)
-        return task_spec
-
-    def _build_subtask(self, n, uname, fpath):
-        spec_doc  = self.doc.strip() + f" : {fpath}"
-        task_spec = self.default_task()
-        task_spec['meta'] = { "n" : n }
-        task_spec["task_dep"] = [f"_{self.base}:pretask"]
-
-        task_spec.update({"basename" : self.base,
-                          "name"     : uname,
-                          "actions"  : [],
-                          "doc"      : spec_doc,
-                          })
-        task = self.subtask_detail(fpath, task_spec)
-        task['actions'] += self.subtask_actions(fpath)
-
-        return task
-    def _build_teardown(self, subnames:list[str]) -> dict:
-        task_spec = {
-            "basename" : f"_{self.base}",
-            "name"     : "post",
-            "task_dep" : subnames,
-            "actions"  : [],
-            "doc"      : "Post Action",
-        }
-        task = self.teardown_detail(task_spec)
+    def teardown_detail(self, task:dict) -> None|dict:
         return task
 
-
-    def build(self):
+    def top_detail(self, task:dict) -> None|dict:
+        return task
+    def _build_tasks(self):
         """
         Generalized task builder for globbing on files
         then customizing the subtasks
         """
         subtasks = []
-        globbed = self.glob_all()
+        globbed  = self.glob_all()
         for i, (uname, fpath) in enumerate(self.glob_all()):
             subtask = self._build_subtask(i, uname, fpath)
             if subtask is not None:
                 subtasks.append(subtask)
 
-        subtasks.append(self._build_teardown([f"{self.base}:{x['name']}" for x in subtasks]))
+        subtasks.append(self._build_teardown([f"{x['basename']}:{x['name']}" for x in subtasks]))
         subtasks.append(self._build_setup())
 
-        top_task = {
-            "basename" : f"{self.base}",
-            "name"     : None,
+        top_task = self.default_task()
+        top_task.update({
             "task_dep" : [f"_{self.base}:post"],
-            "doc"      : self.doc,
-        }
+        })
         subtasks.append(self.top_detail(top_task))
 
         self.total_subtasks = len(subtasks)
@@ -205,38 +164,32 @@ class DirGlobber(FileGlobberMulti):
         else:
             results += [x for x in target.iterdir() if x.is_dir()]
 
-        if self.filter_fn is not None:
-            return [x for x in results if self.filter_fn(x)]
-        else:
-            return results
+        return [x for x in results if self.filter(x)]
 
 
 
 
-class FileGlobberLate(FileGlobberMulti):
+class FileGlobberSingle(FileGlobberMulti):
     """
-    Late globber, generates one subtask per start point,
+    Late globber, generates one subtask per root point,
     use self.glob_target to run the glob
     """
-    def build(self):
+    def _build_tasks(self):
         """
         Generalized task builder for globbing on files
         then customizing the subtasks
         """
         subtasks = []
-        for n, fpath in enumerate(self.starts):
+        for n, fpath in enumerate(self.roots):
             subtask = self._build_subtask(n, str(fpath), fpath)
             if subtask is not None:
                 subtasks.append(subtask)
 
-        subtasks.append(self._build_teardown([f"{self.base}:{x['name']}" for x in subtasks]))
         subtasks.append(self._build_setup())
+        subtasks.append(self._build_teardown([f"{x['basename']}:{x['name']}" for x in subtasks]))
 
-        top_task = { "basename" : f"{self.base}",
-                     "name"     : None,
-                     "task_dep" : [f"_{self.base}:post"],
-                     "doc"      : self.doc,
-                    }
+        top_task = self.default_task()
+        top_task.update({"task_dep" : [f"_{self.base}:post"]})
         subtasks.append(self.top_detail(top_task))
 
         self.total_subtasks = len(subtasks)
@@ -245,13 +198,13 @@ class FileGlobberLate(FileGlobberMulti):
                 yield sub
 
 
-class FileGlobberSingle(FileGlobberMulti):
+class RootlessFileGlobber(FileGlobberMulti):
     """
     Glob for files, but don't provide a top level task to
     run all of them together
     """
 
-    def build(self):
+    def _build_tasks(self):
         """
         Generalized task builder for globbing on files
         then customizing the subtasks
@@ -263,14 +216,10 @@ class FileGlobberSingle(FileGlobberMulti):
             if subtask is not None:
                 subtasks.append(subtask)
 
-        subtasks.append(self._build_teardown([f"{self.base}:{x['name']}" for x in subtasks]))
+        subtasks.append(self._build_teardown([f"{x['basename']}:{x['name']}" for x in subtasks]))
         subtasks.append(self._build_setup())
 
-        top_task = {
-            "basename" : f"{self.base}",
-            "name"     : None,
-            "doc"      : self.doc,
-        }
+        top_task = self.default_task()
         subtasks.append(self.top_detail(top_task))
 
         self.total_subtasks = len(subtasks)

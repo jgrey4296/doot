@@ -9,9 +9,6 @@ def make_task(func):
     func.create_doit_tasks = func
     return func
 
-def build_cmd(cmd, args, **kwargs):
-    return CmdAction(" ".join([cmd] + [str(x) for x in args]), **kwargs)
-
 def regain_focus(prog="iTerm"):
     """
     Applescript command to regain focus for if you lose it

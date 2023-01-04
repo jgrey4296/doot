@@ -1,5 +1,12 @@
 #/usr/bin/env python3
 """
+Utility classes for attribute based access to loaded toml data,
+simplifying data['blah']['awe']['awg']
+to data.blah.awe.awg
+
+Also allows guarded access:
+result = data.or_get('fallback').somewhere.along.this.doesnt.exist()
+restul equals "fallback" or whatever `exist` is.
 
 """
 ##-- imports

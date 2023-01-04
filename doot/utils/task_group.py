@@ -1,5 +1,6 @@
 #/usr/bin/env python3
 """
+A Task which groups other tasks then yields them
 
 """
 ##-- imports
@@ -18,6 +19,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     cast, final, overload, runtime_checkable)
 from uuid import UUID, uuid1
 from weakref import ref
+from doot.errors import DootDirAbsent
 
 if TYPE_CHECKING:
     # tc only imports
@@ -35,32 +37,37 @@ clean_re = re.compile("\s+")
 
 class TaskGroup:
     """ A Group of task specs, none of which require params
-    Can contain: dicts, objects with a `build` method,
+    Can contain: dicts, objects with a `_build_task` method,
     objects with `create_doit_tasks`, and callables
     """
 
 
     def __init__(self, name, *args):
-        self.create_doit_tasks = self.build
+        self.create_doit_tasks = self._build_task
         self.name              = clean_re.sub("_", name)
-        self.tasks             = args
+        self.tasks             = list(args)
 
-    def build(self):
+    def _build_task(self):
         for task in self.tasks:
-            result = task
-            match task:
-                case dict():
-                    pass
-                case x if hasattr(x, "build"):
-                    result = task.build()
-                case x if hasattr(x, "create_doit_tasks"):
-                    result = task.create_doit_tasks()
-                case x if callable(x):
-                    result = task()
+            try:
+                result = task
+                match task:
+                    case dict():
+                        pass
+                    case x if hasattr(x, "create_doit_tasks"):
+                        result = task.create_doit_tasks()
+                    case x if hasattr(x, "build") and callable(x.build):
+                        result = task.build()
+                    case x if callable(x):
+                        result = task()
 
-
-            if result is not None:
-                yield result
+                if isinstance(result, list):
+                    for x in result:
+                        yield x
+                elif result is not None:
+                    yield result
+            except DootDirAbsent:
+                continue
 
         if any(hasattr(x, 'gen_toml') for x in self.tasks):
             GenToml.add_generator(self.name, self.gen_toml)
@@ -70,6 +77,9 @@ class TaskGroup:
                  "actions" : [],
                 }
 
+
+    def __add__(self, other):
+        self.tasks.append(other)
 
     def gen_toml(self, dependencies):
         """
@@ -95,11 +105,11 @@ class GenToml:
         GenToml.generators[name] = gen
 
     def __init__(self):
-        self.create_doit_tasks = self.build
+        self.create_doit_tasks = self._build_task
         self.name = "gen-toml"
         self.gen_file = pl.Path("gen_toml.toml")
 
-    def build(self):
+    def _build_task(self):
         yield {
             "basename" : "gen-toml",
             "name"     : "prep",
