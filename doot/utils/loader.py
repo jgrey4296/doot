@@ -31,12 +31,49 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-from doit.cmd_base import DodoTaskLoader
+import inspect
+from doit.cmd_base import NamespaceTaskLoader, opt_cwd, opt_seek_file
+from doit.exceptions import InvalidDodoFile
 from doit import loader as doit_loader
+from doot.files.checkdir import CheckDir
+from doot.utils.locdata import DootLocData
+from doot import default_dooter
 
-class DootLoader(DodoTaskLoader):
+
+#### options related to dooter.py
+# select dodo file containing tasks
+opt_doot = {
+    'section': 'task loader',
+    'name': 'dooter',
+    'short': 'f',
+    'long': 'file',
+    'type': str,
+    'default': str(default_dooter),
+    'env_var': 'DOOT_FILE',
+    'help': "load task from doot FILE [default: %(default)s]"
+}
+
+
+class DootLoader(NamespaceTaskLoader):
+    """
+    Customized Task loader that automatically
+    retrieves directory checks, and stores all created tasks
+    for later retrieval
+    """
 
     tasks : ClassVar[dict[str,dict]] = []
+    cmd_options : ClassVar[tuple]    = (opt_doot, opt_cwd, opt_seek_file)
+
+    def setup(self, opt_values):
+        # lazily load namespace from dodo file per config parameters:
+        self.namespace = dict(inspect.getmembers(doit_loader.get_module(
+            opt_values['dooter'],
+            opt_values['cwdPath'],
+            opt_values['seek_file'],
+        )))
+
+        self.namespace['__doot_all_dirs']   = DootLocData.gen_loc_tasks()
+        self.namespace['__doot_all_checks'] = CheckDir.gen_check_tasks()
 
     def load_tasks(self, cmd, pos_args):
         tasks = doit_loader.load_tasks(
@@ -57,6 +94,8 @@ class DootLoader(DodoTaskLoader):
                     task.cfg_values = self.task_opts[task.name]
                     if task.pos_arg and task.pos_arg in task.cfg_values:
                         task.pos_arg_val = task.cfg_values[task.pos_arg]
+
+
 
         DootLoader.tasks = tasks
         return tasks

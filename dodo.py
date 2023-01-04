@@ -4,6 +4,7 @@ Template dodo when using doot
 # https://pydoit.org/
 """
 ##-- imports
+from __future__ import annotations
 import pathlib as pl
 from doit.action import CmdAction
 from doit import create_after
@@ -14,7 +15,7 @@ import doot
 ##-- end imports
 
 ##-- config
-doot.setup()
+data_toml = doot.setup()
 
 DOIT_CONFIG = {
     "default_tasks" : [],
@@ -25,11 +26,7 @@ DOIT_CONFIG = {
 
 ##-- post-config doot imports
 from doot.files.clean_cache import CleanCacheAction, py_cache_globs
-from doot.files.checkdir import CheckDir
-from doot.utils.dir_data import DootDirs
 
 from doot.groups import *
+from doot.groups_secondary import *
 ##-- end post-config doot imports
-
-all_checks = CheckDir.checkdir_group()
-all_dirs   = DootDirs.dir_group()

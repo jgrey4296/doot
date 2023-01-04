@@ -38,7 +38,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 @dataclass
-class DootDirs:
+class DootLocData:
     """
 
     """
@@ -55,17 +55,17 @@ class DootDirs:
     _root    : pl.Path()            = field(init=False, default_factory=pl.Path)
     extra    : dict["str", pl.Path] = field(init=False, default_factory=dict)
 
-    all_dir_obs : ClassVar[list[DootDirs]] = []
+    all_loc_groups : ClassVar[list[DootLocData]] = []
 
     @staticmethod
-    def dir_group():
-        return TaskGroup("dir report group",
-                         *DootDirs.all_dir_obs)
+    def gen_loc_tasks():
+        tasks = [x._build_task() for x in DootLocData.all_loc_groups]
+        return TaskGroup("dir report group", *tasks)
 
     def __post_init__(self):
-        self.create_doit_tasks = self._build_task
+        # self.create_doit_tasks = self._build_task
         self.build_checks()
-        DootDirs.all_dir_obs.append(self)
+        DootLocData.all_loc_groups.append(self)
 
     def add_extra(self, extra:dict[str,str|pl.Path]):
         self.extra.update((x, pl.Path(y)) for x,y in extra.items())
@@ -155,12 +155,13 @@ class DootDirs:
 
 
     def _build_task(self):
-        return {
+        task = {
             "basename" : "doot::dirs",
             "name"     : self.prefix or "base",
             "actions"  : [lambda: print(str(self))],
             "verbosity" : 2,
         }
+        return task
 
     def extend(self, **kwargs):
         return replace(self, **kwargs)

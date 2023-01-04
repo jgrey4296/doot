@@ -12,20 +12,20 @@ class CheckDir:
     """ Task for checking directories exist,
     making them if they don't
     """
-    all_checks : ClassVar[dict[str:CheckDir]] = {}
+    all_check_groups : ClassVar[dict[str:CheckDir]] = {}
 
     @staticmethod
-    def checkdir_group():
+    def gen_check_tasks():
+        tasks = [x._build_task() for x in CheckDir.all_check_groups.values()]
         return TaskGroup("checkdir group",
-                         *CheckDir.all_checks.values())
+                         *tasks)
 
     @staticmethod
-    def register(name:str, paths:list[pl.Path], dirs:DootDirs=None):
+    def register(name:str, paths:list[pl.Path], dirs:DootLocData=None):
         checker = CheckDir(name, paths[:] + list(dirs or []))
-        CheckDir.all_checks[checker.name] = checker
+        CheckDir.all_check_groups[checker.name] = checker
 
     def __init__(self, name, paths):
-        self.create_doit_tasks = self._build_task
         self.paths             = [pl.Path(x) for x in paths or [] ]
         self.name              = name
         self.default_spec      = { "basename" : f"_checkdir::{name}" }
@@ -37,16 +37,17 @@ class CheckDir:
         for x in self.paths:
             try:
                 x.mkdir(parents=True)
+                print("Built Missing Location: ", x)
             except FileExistsError:
-                print(f"{x} already exists")
                 pass
 
     def _build_task(self) -> dict:
         task_desc = self.default_spec.copy()
         task_desc.update({
-            "actions"  : [ self.mkdir ],
-            "uptodate" : [ self.uptodate ],
-            "clean"    : [ clean_target_dirs ],
+            "actions"   : [ self.mkdir ],
+            "uptodate"  : [ self.uptodate ],
+            "clean"     : [ clean_target_dirs ],
+            "verbosity" : 2,
         })
         return task_desc
 
