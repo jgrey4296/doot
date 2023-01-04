@@ -1,10 +1,5 @@
-[project]
-name = "YourPackage"
-
 ##-- doit
-[tool.doit]
 verbosity               = 2
-build_dir               = "build"
 
 # [tool.doit.commands.{command}]
 # [tool.doit.tasks.{task}]
@@ -13,8 +8,18 @@ build_dir               = "build"
 
 ##-- doot
 [tool.doot]
-temp_dir = ".temp"
 
+[tool.doot.directories]
+src     = "src"
+codegen = "_codegen"
+temp    = ".temp"
+build   = "build"
+docs    = "docs"
+data    = "data"
+
+##-- end doot
+
+##-- default task group activation
 # Uncomment to activate a group
 # when you import doot.groups.*
 # and doot.groups_secondary.*
@@ -36,5 +41,4 @@ temp_dir = ".temp"
 # [tool.doot.csv]
 # [tool.doot.dot]
 # [tool.doot.images]
-
-##-- end doot
+##-- end default task group activation
