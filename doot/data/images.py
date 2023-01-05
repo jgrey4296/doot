@@ -23,12 +23,11 @@ exts : list[str] = doot.config.or_get([".jpg"]).tool.doot.images.exts()
 
 class HashImages(globber.DirGlobber):
     """
-    For each subdir, hash all the files in it
+    ([data] -> data) For each subdir, hash all the files in it
     info
     """
     def __init__(self, dirs:DootLocData, roots=None, exts=exts):
-        roots = roots or [pl.Path()]
-        super().__init__("images::hash", dirs, roots, exts=exts)
+        super().__init__("images::hash", dirs, roots or [dirs.data], exts=exts)
         self.current_hashed = {}
         self.hash_record    = ".hashes"
 
@@ -81,14 +80,13 @@ class HashImages(globber.DirGlobber):
 
 class TesseractGlobber(globber.DirGlobber):
     """
-    Run tesseract on applicable files in each found directory
+    ([data] -> data) Run tesseract on applicable files in each found directory
     to make dot txt files of ocr'd text from the image
     """
     file_types : ClassVar[list] = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif",]
 
     def __init__(self, dirs:DootLocData, roots=None):
-        roots = roots or [pl.Path()]
-        super().__init__("tesseract::go", dirs, roots, exts=TesseractGlobber.file_types)
+        super().__init__("tesseract::go", dirs, roots or [dirs.data], exts=TesseractGlobber.file_types)
         self.processed = dict()
 
     def filter(self, fpath):

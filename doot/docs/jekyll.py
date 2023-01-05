@@ -58,7 +58,8 @@ def load_yaml_data(filename):
 
 
 class GenPostTask(DootTasker):
-    """ create a new post,
+    """
+    (-> posts) create a new post,
     using a template or the default in doot.__templates.jekyll_post
 
     has cli params of title and template
@@ -132,21 +133,23 @@ default_template = "default"
 
 class GenTagsTask(DootTasker):
     """
-    Generate summary files for all tags used in md files in the jekyll src dir
+    ([src] -> [tags, tagsIndex]) Generate summary files for all tags used in md files in the jekyll src dir
     """
-    def __init__(self, dirs, template=None, index=None):
+    def __init__(self, dirs, roots=None, template=None, index=None):
         super().__init__("jekyll::tag", dirs)
-        self.tagset            = set()
-        self.template          = pl.Path(template or tag_template)
-        self.index             = pl.Path(index or index_template)
+        self.tagset   = set()
+        self.template = pl.Path(template or tag_template)
+        self.index    = pl.Path(index or index_template)
+        self.roots    = roots or [dirs.src]
         assert("tags"       in self.dirs.extra)
         assert("tagsIndex"  in self.dirs.extra)
 
     def get_tags(self):
-        for path in self.dirs.src.glob("**/*.md"):
-            data = load_yaml_data(path)
-            if 'tags' in data and data['tags'] is not None:
-                self.tagset.update([x.strip() for x in data['tags'].split(" ")])
+        for root in self.roots:
+            for path in root.glob("**/*.md"):
+                data = load_yaml_data(path)
+                if 'tags' in data and data['tags'] is not None:
+                    self.tagset.update([x.strip() for x in data['tags'].split(" ")])
 
     def make_tag_pages(self):
         tag_text = self.template.read_text()

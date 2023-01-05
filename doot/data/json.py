@@ -23,11 +23,11 @@ from doot.utils import globber
 
 class JsonFormatTask(globber.DirGlobber):
     """
-    Lint Json files with jq
+    ([data] -> data)Lint Json files with jq
     """
 
-    def __init__(self, dirs:DootLocData, targets:list[pl.Path], rec=True):
-        super().__init__("json::format", dirs, targets, exts=[".json"], rec=rec)
+    def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None, rec=True):
+        super().__init__("json::format", dirs, roots or [dirs.data], exts=[".json"], rec=rec)
 
     def setup_detail(self, task):
         """
@@ -76,10 +76,10 @@ class JsonFormatTask(globber.DirGlobber):
 
 class JsonPythonSchema(globber.DirGlobber):
     """
-    Use XSData to generate python bindings for a directory of json's
+    ([data] -> codegen) Use XSData to generate python bindings for a directory of json's
     """
-    def __init__(self, dirs:DootLocData, targets:list[pl.Path], rec=True):
-        super().__init__("json::schema.python", dirs, targets, exts=[".json"], rec=rec)
+    def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None, rec=True):
+        super().__init__("json::schema.python", dirs, roots or [dirs.data], exts=[".json"], rec=rec)
 
     def subtask_detail(self, fpath, task):
         gen_package = str(self.dirs.codegen / task['name'])
@@ -118,16 +118,17 @@ recursive_dirs = ["pack/__data/core/json"]
 
 class JsonVisualise(globber.FileGlobberMulti):
     """
-    Wrap json files with plantuml header and footer,
+    ([data] -> visual) Wrap json files with plantuml header and footer,
     ready for plantuml to visualise structure
     """
 
-    def __init__(self, dirs:DootLocData, targets:list[pl.Path]):
-        super().__init__("json::schema.visual", dirs, targets, exts=[".json"], rec=True)
+    def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None):
+        super().__init__("json::schema.visual", dirs, roots, exts=[".json"], rec=True)
+        assert('visual' in dirs.extra)
 
     def subtask_detail(self, fpath, task):
         task.update({
-            "targets"  : [ self.dirs.visual / fpath.with_stem(task['name']).name ],
+            "targets"  : [ self.dirs.extra['visual'] / fpath.with_stem(task['name']).name ],
         })
         return task
 

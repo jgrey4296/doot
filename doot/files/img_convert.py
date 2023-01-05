@@ -42,7 +42,7 @@ check_pdfs = CheckDir(paths=[pdf_dir], name="pdfs", task_dep=["_checkdir::build"
 
 class ImgConvertTask:
     """
-    Combine globbed images into a single pdf file
+    TODO Combine globbed images into a single pdf file
     """
 
     def __init__(self, target, **, paths=None, globs=None, name="default", date=False, **kwargs):

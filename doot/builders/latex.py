@@ -23,11 +23,11 @@ interaction_mode = doot.config.or_get("nonstopmode").tool.doot.tex.interaction()
 
 class LatexMultiPass(globber.FileGlobberMulti):
     """
-    Trigger both latex passes and the bibtex pass
+    ([src] -> build) Trigger both latex passes and the bibtex pass
     """
 
-    def __init__(self, dirs:DootLocData, roots):
-        super().__init__("tex::build", dirs, roots, exts=['.tex'], rec=True)
+    def __init__(self, dirs:DootLocData, roots=None):
+        super().__init__("tex::build", dirs, roots or [dirs.src], exts=['.tex'], rec=True)
 
 
     def subtask_detail(self, fpath, task):
@@ -39,12 +39,12 @@ class LatexMultiPass(globber.FileGlobberMulti):
 
 class LatexFirstPass(globber.FileGlobberMulti):
     """
-    First pass of running latex,
+    ([src] -> [temp, build]) First pass of running latex,
     pre-bibliography resolution
     """
 
-    def __init__(self, dirs:DootLocData, roots:list[pl.Path], interaction=interaction_mode):
-        super().__init__("tex::pass:one", dirs, roots, exts=[".tex"], rec=True)
+    def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None, interaction=interaction_mode):
+        super().__init__("tex::pass:one", dirs, roots or [dirs.src], exts=[".tex"], rec=True)
         self.interaction = interaction
 
     def subtask_detail(self, fpath, task):
@@ -88,12 +88,12 @@ class LatexFirstPass(globber.FileGlobberMulti):
 
 class LatexSecondPass(globber.FileGlobberMulti):
     """
-    Second pass of latex compiling,
+    ([src, temp] -> build) Second pass of latex compiling,
     post-bibliography resolution
     """
 
-    def __init__(self, dirs:DootLocData, roots:list[pl.Path]):
-        super().__init__("_tex::pass:two", dirs, roots, exts=[".tex"], rec=True)
+    def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None):
+        super().__init__("_tex::pass:two", dirs, roots or [dirs.src], exts=[".tex"], rec=True)
 
     def subtask_detail(self, fpath, task):
         no_suffix = fpath.with_suffix("")
@@ -135,12 +135,12 @@ class LatexSecondPass(globber.FileGlobberMulti):
 
 class LatexCheck(globber.FileGlobberMulti):
     """
-    Run a latex pass, but don't produce anything,
+    ([src] -> temp) Run a latex pass, but don't produce anything,
     just check the syntax
     """
 
-    def __init__(self, dirs:DootLocData, roots:list[pl.Path]):
-        super().__init__("tex::check", dirs, roots, exts=['.tex'], rec=True)
+    def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None):
+        super().__init__("tex::check", dirs, roots or [dirs.src], exts=['.tex'], rec=True)
 
     def subtask_detail(self, fpath, task):
         task.update({"file_dep" : [ fpath ],
@@ -164,11 +164,11 @@ class LatexCheck(globber.FileGlobberMulti):
 
 class BibtexCheck(globber.FileGlobberMulti):
     """
-    TODO
+    TODO ([src])
     """
 
-    def __init__(self, dirs):
-        super().__init__("bibtex::check", dirs, exts=['.bib'], rec=True)
+    def __init__(self, dirs, roots=None):
+        super().__init__("bibtex::check", dirs, roots or [dirs.src], exts=['.bib'], rec=True)
 
     def subtask_detail(self, fpath, task):
         task.update({})
@@ -176,11 +176,11 @@ class BibtexCheck(globber.FileGlobberMulti):
 
 class BibtexBuildTask(globber.FileGlobberMulti):
     """
-    Bibliography resolution pass
+    ([src] -> temp) Bibliography resolution pass
     """
 
-    def __init__(self, dirs:DootLocData, roots):
-        super().__init__("_tex::pass:bibtex", dirs, roots, exts=[".tex"], rec=True)
+    def __init__(self, dirs:DootLocData, roots=None):
+        super().__init__("_tex::pass:bibtex", dirs, roots or [dirs.src], exts=[".tex"], rec=True)
 
     def subtask_detail(self, fpath, task):
         aux_file = self.dirs.temp / fpath.with_suffix(".aux").name
@@ -230,11 +230,12 @@ class BibtexBuildTask(globber.FileGlobberMulti):
 
 class BibtexConcatenateTask(DootTasker):
     """
-    concatenate all found bibtex files
+    ([src, data, docs] -> temp) concatenate all found bibtex files
     to produce a master file for latex's use
     """
-    def __init__(self, dirs:DootLocData):
+    def __init__(self, dirs:DootLocData, targets=None):
         super().__init__("_tex::bib", dirs)
+        self.glob_targets = targets or [dirs.data, dirs.src, dirs.data]
 
     def task_detail(self, task):
         task.update({
@@ -246,7 +247,7 @@ class BibtexConcatenateTask(DootTasker):
 
     def glob_bibs(self, task):
         all_bibs : set[pl.Path] = set()
-        for root in [self.dirs.data, self.dirs.src, self.dirs.docs]:
+        for root in self.glob_targets:
             all_bibs.update(list(root.rglob("**/*.bib")))
 
         return {

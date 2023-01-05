@@ -30,9 +30,10 @@ def task_buildvenv():
         }
 
 class InitPyGlobber(globber.DirGlobber):
+    """ ([src] -> src) """
 
-    def __init__(self, dirs:DootLocData, rec=False):
-        super().__init__(f"{prefix}::initpy", dirs, [dirs.src], rec=rec)
+    def __init__(self, dirs:DootLocData, roots=None, rec=False):
+        super().__init__(f"{prefix}::initpy", dirs, roots or [dirs.src], rec=rec)
         self.ignores = ["__pycache__", ".git", "__mypy_cache__"]
 
     def subtask_detail(self, fpath, task):
@@ -58,7 +59,7 @@ class InitPyGlobber(globber.DirGlobber):
 
 
 class PyLintTask(globber.DirGlobber):
-    """ lint the package """
+    """ ([root]) lint the package """
 
     def __init__(self, dirs:DootLocData):
         super().__init__(f"{prefix}::lint", dirs, [dirs.root], rec=not lint_grouped)
@@ -121,11 +122,11 @@ class PyLintTask(globber.DirGlobber):
 
 class PyUnitTestGlob(globber.DirGlobber):
     """
-    Run all project unit tests
+    ([root]) Run all project unit tests
     """
 
-    def __init__(self, dirs:DootLocData):
-        super().__init__(f"{prefix}::test", dirs, [dirs.root], exts=[".py"], rec=True)
+    def __init__(self, dirs:DootLocData, roots=None):
+        super().__init__(f"{prefix}::test", dirs, roots or [dirs.root], exts=[".py"], rec=True)
 
     def filter(self, fpath):
         return py_test_dir_fmt in fpath.name
@@ -161,11 +162,11 @@ class PyUnitTestGlob(globber.DirGlobber):
 
 class PyTestGlob(globber.DirGlobber):
     """
-    Run all project unit tests
+    ([src]) Run all project unit tests
     """
 
-    def __init__(self, dirs:DootLocData):
-        super().__init__(f"{prefix}::test", dirs, [dirs.src], exts=[".py"], rec=True)
+    def __init__(self, dirs:DootLocData, roots=None):
+        super().__init__(f"{prefix}::test", dirs, roots or [dirs.src], exts=[".py"], rec=True)
 
     def filter(self, fpath):
         return py_test_dir_fmt in fpath.name

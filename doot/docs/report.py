@@ -14,7 +14,7 @@ from doot.utils import globber
 
 def task_line_report(dirs:DootLocData):
     """
-    Generate a report of all files and their line count
+    ([src] -> build) Generate a report of all files and their line count
     TODO update without pipes
     """
     find_cmd = ["find", dirs.src, "-name", '"*.py"',

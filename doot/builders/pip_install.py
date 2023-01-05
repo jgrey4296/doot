@@ -17,6 +17,7 @@ from doot.utils.task_group import TaskGroup
 prefix = doot.config.or_get("pip").tool.doot.pip.prefix()
 
 def build_tasks(dirs:DootLocData):
+    """ [src] -> build  """
     assert("wheel" in dirs.extra)
     assert("sdist" in dirs.extra)
     # Installs:

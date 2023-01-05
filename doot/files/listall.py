@@ -11,7 +11,8 @@ from doot.utils.cmdtask import CmdTask
 ##-- end imports
 
 def task_list_target(targ:str, target:pl.Path, dirs:DootLocData):
-    """  list all files in the src directory,
+    """
+    (-> build )list all files in the targ directory,
     to the build_dir/allfiles.report
     """
     def action(targets):

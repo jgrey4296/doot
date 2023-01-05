@@ -12,7 +12,7 @@ from doot.utils.cmdtask import CmdTask
 
 
 def task_tags_init(dirs):
-    """:: initalise gtags """
+    """([src]) initalise gtags """
     return {
         "basename" : "gtags::init",
         "actions" : [ CmdAction(["gtags", "-C", dirs.src, "."], shell=False)],
@@ -22,7 +22,7 @@ def task_tags_init(dirs):
 
 
 def task_tags(dirs):
-    """:: update tag files """
+    """([src]) update tag files """
     return {
         "basename"  : "gtags::update",
         "actions"   : [ CmdAction(["global", "-C", dirs.src, "-u" ], shell=False)],

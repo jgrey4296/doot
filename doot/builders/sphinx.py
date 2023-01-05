@@ -23,7 +23,7 @@ conf_builder    = doot.config.or_get("html").tool.doot.sphinx.builder()
 conf_verbosity  = int(doot.config.or_get("0").tool.door.sphinx.verbosity())
 
 class SphinxDocTask(DootTasker):
-    """:: Build sphinx documentation """
+    """([docs] -> build) Build sphinx documentation """
 
     def __init__(self, dirs:DootLocData, builder=None, verbosity:int=None):
         super().__init__("sphinx::doc", dirs)
@@ -62,7 +62,7 @@ verbosity = 0
 """
 
 def task_browse(dirs:DootLocData) -> dict:
-    """:: Task definition """
+    """[build] Task definition """
     assert("html" in dirs.extra)
     return {
         "basename"    : "sphinx::browse",

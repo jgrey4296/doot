@@ -19,13 +19,14 @@ from doot.utils.cmdtask import CmdTask
 
 
 class CSVSummaryTask(globber.FileGlobberMulti):
-    """ Summarise all found csv files,
+    """
+    ([data] -> build) Summarise all found csv files,
     grouping those with the same headers,
     and listing number of rows
     """
 
-k   def __init__(self, dirs:DootLocData, roots):
-        super().__init__("csv::summary", dirs, roots, exts=[".csv"], rec=True)
+k   def __init__(self, dirs:DootLocData, roots=None):
+        super().__init__("csv::summary", dirs, roots or [dirs.data], exts=[".csv"], rec=True)
         report_name = self.dirs.build / "csv.report"
 
     def setup_detail(self, task):
@@ -62,13 +63,14 @@ k   def __init__(self, dirs:DootLocData, roots):
 
 
 class CSVSummaryXMLTask(globber.FileGlobberMulti):
-    """ Summarise all found csv files,
+    """
+    ([data] -> build) Summarise all found csv files,
     grouping those with the same headers,
     and listing number of rows
     """
 
-    def __init__(self, dirs:DootLocData, roots):
-        super().__init__("csv::summary.xml", dirs, roots, exts=[".csv"], rec=True)
+    def __init__(self, dirs:DootLocData, roots=None):
+        super().__init__("csv::summary.xml", dirs, roots or [dirs.data], exts=[".csv"], rec=True)
         self.report_name = self.dirs.build / "csv.xml"
 
     def setup_detail(self, task):

@@ -18,10 +18,10 @@ from doot.utils.tasker import DootTasker
 
 class GodotCheckTask(globber.FileGlobberMulti):
     """
-    Lint all gd scripts in the project
+    ([root]) Lint all gd scripts in the project
     """
-    def __init__(self, dirs:DootLocData, roots):
-        super().__init__("godot::check", dirs, roots, exts=[".gd"], rec=True)
+    def __init__(self, dirs:DootLocData, roots=None):
+        super().__init__("godot::check", dirs, roots or [dirs.root], exts=[".gd"], rec=True)
         self.failures = set()
 
     def setup_detail(self, task):
@@ -70,11 +70,11 @@ class GodotCheckTask(globber.FileGlobberMulti):
 
 class GodotRunScene(globber.RootlessFileGlobber):
     """
-    Globber to allow easy running of scenes
+    ([root]) Globber to allow easy running of scenes
     """
 
-    def __init__(self, dirs:DootLocData, roots:list[pl.Path]):
-        super().__init__("godot::run:scene", dirs, roots, exts=[".tscn"], rec=True)
+    def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None):
+        super().__init__("godot::run:scene", dirs, roots or [dir.root], exts=[".tscn"], rec=True)
 
     def top_detail(self, task:dict):
         task.update({
@@ -123,11 +123,11 @@ class GodotRunScene(globber.RootlessFileGlobber):
 
 class GodotRunScript(globber.FileGlobberMulti):
     """
-    Run a godot script, with debugging or without
+    ([root]) Run a godot script, with debugging or without
     """
 
-    def __init__(self, dirs:DootLocData, roots):
-        super().__init__("godot::run", dirs, roots, exts=[".gd"])
+    def __init__(self, dirs:DootLocData, roots=None):
+        super().__init__("godot::run", dirs, roots or [dirs.root], exts=[".gd"])
 
     def filter(self, fpath):
         # TODO test script for implementing runnable interface
@@ -171,7 +171,7 @@ class GodotRunScript(globber.FileGlobberMulti):
 
 class GodotBuild(DootTasker):
     """
-    build a godot project
+    (-> [build]) build a godot project
     """
 
     def __init__(self, dirs:DootLocData):
@@ -226,6 +226,9 @@ def task_godot_test():
 
 
 def task_newscene(dirs:DootLocData):
+    """
+    (-> [scenes])
+    """
     assert("scenes" in dirs.extra)
 
     def mkscene(task, name):

@@ -14,7 +14,7 @@ from doot.utils.tasker import DootTasker
 
 class GitLogTask(DootTasker):
     """
-    Output a summary of the git repo, with a specific format
+    ([root] -> build) Output a summary of the git repo, with a specific format
     see: https://git-scm.com/docs/git-log
     """
 
@@ -43,7 +43,7 @@ class GitLogTask(DootTasker):
 
 class GitLogAnalyseTask(DootTasker):
     """
-    TODO separate the printed log
+    TODO (build -> build) separate the printed log
     """
 
     def __init__(self, dirs):

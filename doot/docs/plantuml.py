@@ -14,11 +14,12 @@ from doot.utils import globber
 
 class PlantUMLGlobberTask(globber.FileGlobberMulti):
     """
-    run plantuml on a specification, generating target.'ext's
+    ([visual] -> build) run plantuml on a specification, generating target.'ext's
     """
 
-    def __init__(self, dirs:DootLocData, targets:list[pl.Path], fmt="png"):
-        super().__init__(f"plantuml::{ext}", dirs, targets, exts=[".plantuml"], rec=True)
+    def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None, fmt="png"):
+        assert(roots or 'visual' in dirs.extra)
+        super().__init__(f"plantuml::{ext}", dirs, roots or [dirs.extra['visual']], exts=[".plantuml"], rec=True)
         self.fmt       = fmt
 
     def subtask_detail(self, fpath, task):
@@ -43,12 +44,13 @@ class PlantUMLGlobberTask(globber.FileGlobberMulti):
 
 class PlantUMLGlobberCheck(globber.FileGlobberMulti):
     """
-    check syntax of plantuml files
+    ([visual]) check syntax of plantuml files
     TODO Adapt godot::check pattern
     """
 
-    def __init__(self, dirs, targets:list[pl.Path]):
-        super().__init__("plantuml::check", dirs, targets, exts=[".plantuml"], rec=True)
+    def __init__(self, dirs, roots:list[pl.Path]):
+        assert(roots or 'visual' in dirs.extra)
+        super().__init__("plantuml::check", dirs, roots or [dirs.extra['visual']], exts=[".plantuml"], rec=True)
 
     def subtask_detail(self, fpath, task):
         task.update({

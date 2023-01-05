@@ -23,11 +23,11 @@ from doot.utils import globber
 
 class DotVisualise(globber.FileGlobberMulti):
     """
-    make images from any dot files
+    ([visual] -> build) make images from any dot files
     """
 
-    def __init__(self, dirs:DootLocData, targets, ext="png", layout="neato", scale:float=72.0):
-        super().__init__("dot::visual", dirs, targets, [".dot"])
+    def __init__(self, dirs:DootLocData, roots=None, ext="png", layout="neato", scale:float=72.0):
+        super().__init__("dot::visual", dirs, roots or [dirs.visual], [".dot"])
         self.ext       = ext
         self.layout    = layout
         self.scale     = scale

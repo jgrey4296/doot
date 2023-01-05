@@ -29,11 +29,11 @@ clingo_call = ["clingo"] + data.toml.or_get([]).tool.doot.clingo.options()
 
 class ClingoRunner(globber.FileGlobberMulti):
     """
-    Run clingo on ansprolog sources
+    ([src] -> build) Run clingo on ansprolog sources
     """
 
-    def __init__(self, dirs:DootLocData):
-        super().__init__("clingo::run", dirs, [dirs.src], exts=[src_ext], rec=True)
+    def __init__(self, dirs:DootLocData, roots=None):
+        super().__init__("clingo::run", dirs, roots or [dirs.src], exts=[src_ext], rec=True)
 
     def subtask_detail(self, fpath, task):
         target = self.dirs.build / path.with_suffix(out_ext).name
@@ -64,11 +64,11 @@ class ClingoRunner(globber.FileGlobberMulti):
 
 class ClingoDotter(globber.FileGlobberMulti):
     """
-    Run specified clingo files to output json able to be visualised
+    ([src] -> build) Run specified clingo files to output json able to be visualised
     """
 
-    def __init__(self, dirs:DootLocData):
-        super().__init__("clingo::dotter", dirs, [dirs.src], exts=[vis_src_ext], rec=True)
+    def __init__(self, dirs:DootLocData, roots=None):
+        super().__init__("clingo::dotter", dirs, roots or [dirs.src], exts=[vis_src_ext], rec=True)
 
     def subtask_detail(self, fpath, task):
         target = self.dirs.build / path.with_suffix(vis_in_ext).name
@@ -103,12 +103,12 @@ class ClingoDotter(globber.FileGlobberMulti):
 
 class ClingoVisualise(globber.FileGlobberMulti):
     """
-    Take clingo output with nodes,
+    ([src] -> visual) Take clingo output with nodes,
     and convert to dot format
     """
 
-    def __init__(self, dirs:DootLocData):
-        super().__init__("clingo::visual", dirs, [dirs.src], exts=[vis_in_ext])
+    def __init__(self, dirs:DootLocData, roots=None):
+        super().__init__("clingo::visual", dirs, roots or [dirs.src], exts=[vis_in_ext])
         assert('visual' in dirs.extra)
 
     def subtask_detail(self, fpath, task):

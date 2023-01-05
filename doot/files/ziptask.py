@@ -26,7 +26,7 @@ __all__ = [
 
 class ZipTask(DootTasker):
     """
-    Automate creation of archive zipfiles
+    (-> temp) Automate creation of archive zipfiles
     will be named `zip::{name/default}`
     specify `paths` and/or `globs`,
     set `data` to True or a datetime.strftime format to customize naming

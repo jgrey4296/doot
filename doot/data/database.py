@@ -11,25 +11,26 @@ from doot.utils import globber
 ##-- end imports
 
 class SqlitePrepTask(globber.FileGlobberMulti):
-    """ file conversion from mysql to sqlite
+    """
+    ([data] -> data) file conversion from mysql to sqlite
     using https://github.com/dumblob/mysql2sqlite
     # TODO
     """
-    def __init__(self, dirs:DootLocData):
-        super().__init__("sqlite::prep", dirs, [dirs.data], exts=[".sql"], rec=True)
+    def __init__(self, dirs:DootLocData, roots=None):
+        super().__init__("sqlite::prep", dirs, roots or [dirs.data], exts=[".sql"], rec=True)
 
     def subtask_detail(self, fpath, task):
         return task
 
 class SqliteReportTask(globber.FileGlobberMulti):
     """
-    TODO report database tables
+    TODO ([data] -> build) report database tables
      .schema .fullschema
      .table
     """
 
-    def __init__(self, dirs:DootLocData):
-        super().__init__("sqlite::report", dirs, [dirs.data], [".db"], rec=True)
+    def __init__(self, dirs:DootLocData, roots=None):
+        super().__init__("sqlite::report", dirs, roots or [dirs.data], exts=[".db"], rec=True)
 
     def subtask_detail(self, fpath, task):
         return task

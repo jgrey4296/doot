@@ -75,7 +75,7 @@ def task_jekyll_build(jekyll_config:pl.Path):
 
 def task_init_jekyll(jekyll_config:pl.Path, dirs:DootLocData):
     """
-    init a new jekyll project if it doesnt exist,
+    ([src]) init a new jekyll project if it doesnt exist,
     in the config's src path
     """
     duplicate_config : pl.Path = dirs.src / "_config.yml"
