@@ -6,7 +6,7 @@ import pathlib as pl
 import shutil
 from doit.action import CmdAction
 
-from doot.files.checkdir import CheckDir
+from doot.utils.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.general import regain_focus, ForceCmd
 from doot.utils import globber
@@ -16,7 +16,7 @@ from doot.utils.tasker import DootTasker
 # https://docs.godotengine.org/en/stable/tutorials/editor/command_line_tutorial.html
 
 
-class GodotCheckTask(globber.FileGlobberMulti):
+class GodotCheckTask(globber.EagerFileGlobber):
     """
     ([root]) Lint all gd scripts in the project
     """
@@ -26,16 +26,11 @@ class GodotCheckTask(globber.FileGlobberMulti):
 
     def setup_detail(self, task):
         task.update({
-            "actions" : [self.reset_failures],
+            "actions"  : [self.reset_failures],
+            "teardown" : [self.report_failures]
         })
         return task
 
-    def teardown_detail(self, task):
-        task.update({
-            "actions" : [self.report_failures],
-            "verbosity" : 2,
-        })
-        return task
 
     def subtask_detail(self, fpath, task):
         task.update({"actions"   : [
@@ -68,7 +63,7 @@ class GodotCheckTask(globber.FileGlobberMulti):
     def reset_failures(self):
         self.failures = set()
 
-class GodotRunScene(globber.RootlessFileGlobber):
+class GodotRunScene(globber.HeadlessFileGlobber):
     """
     ([root]) Globber to allow easy running of scenes
     """
@@ -76,33 +71,29 @@ class GodotRunScene(globber.RootlessFileGlobber):
     def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None):
         super().__init__("godot::run:scene", dirs, roots or [dir.root], exts=[".tscn"], rec=True)
 
-    def top_detail(self, task:dict):
+    def params(self):
+        return [{ "name"    : "target",
+                  "short"   : "t",
+                  "type"    : str,
+                  "default" : "",
+                 },
+                { "name"    : "debug",
+                  "short"   : "d",
+                  "type"    : bool,
+                  "default" : False,
+                 },
+                ]
+
+    def task_detail(self, task:dict):
         task.update({
             "actions" : [CmdAction(self.run_scene_with_arg, shell=False) ],
-            "params" : [{ "name"    : "target",
-                          "short"   : "t",
-                          "type"    : str,
-                          "default" : "",
-                         },
-                        { "name"    : "debug",
-                          "short"   : "d",
-                          "type"    : bool,
-                          "default" : False,
-                         },
-                        ],
+            "actions" : self.params(),
         })
         return task
 
     def subtask_detail(self, fpath, task):
         task.update({
             "file_dep" : [fpath],
-            "params"   : [{ "name"    : "debug",
-                            "short"   : "d",
-                            "type"    : bool,
-                            "default" : False,
-                           },
-                          ],
-            "uptodate" : [False],
         })
         return task
 
@@ -121,7 +112,7 @@ class GodotRunScene(globber.RootlessFileGlobber):
         return args
 
 
-class GodotRunScript(globber.FileGlobberMulti):
+class GodotRunScript(globber.EagerFileGlobber):
     """
     ([root]) Run a godot script, with debugging or without
     """
@@ -195,6 +186,13 @@ class GodotBuild(DootTasker):
                                 ]
                   },
                 ]
+
+    def setup_detail(self, task):
+        task.update({
+            "actions" : [ "echo TODO build template export_presets.cfg"],
+            "targets" : ["export_presets.cfg"],
+        })
+        return task
 
     def task_detail(self, task):
         return { "basename" : "godot::build",

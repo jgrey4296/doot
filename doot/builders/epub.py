@@ -19,13 +19,13 @@ from doit.tools import Interactive
 from doit.task import Task as DoitTask
 
 import doot
-from doot.files.checkdir import CheckDir
-from doot.files.ziptask import ZipTask
+from doot.utils.checkdir import CheckDir
+from doot.utils.ziptask import ZipTask
 from doot.utils import globber
 from doot.utils.cmdtask import CmdTask
 from doot.utils.locdata import DootLocData
 from doot.utils.tasker import DootTasker
-from doot.files.clean_dirs import clean_target_dirs
+from doot.utils.clean_dirs import clean_target_dirs
 ##-- end imports
 
 ##-- logging
@@ -73,11 +73,11 @@ class EbookCompileTask(EbookGlobberBase):
 
 
     def subtask_detail(self, fpath, task):
-        task.update({"task_dep" : [ f"epub::manifest:{task['name']}",
-                                    f"_zip::epub:{task['name']}",
-                                    f"_epub::convert.zip:{task['name']}",
+        task.update({"task_dep" : [ # f"epub::manifest:{task['name']}",
+                                    # f"_zip::epub:{task['name']}",
+                                    # f"_epub::convert.zip:{task['name']}",
                                    ],
-                     "clean"   : [ clean_target_dirs ]
+                     "file_dep" : [ self.dirs.build / fpath.with_suffix(".epub").name ]
                      })
         return task
 
@@ -98,7 +98,6 @@ class EbookConvertTask(EbookGlobberBase):
             "targets"  : [ self.dirs.build / fpath.with_suffix(".epub").name ],
             "file_dep" : [ self.dirs.temp / fpath.with_suffix(".zip").name ],
             "actions"  : [ CmdAction(self.action_convert, shell=False), ],
-            "task_dep" : [ "_checkdir::epub", f"_zip::epub:{task['name']}"],
             "clean"    : True,
         })
         return task
@@ -348,7 +347,7 @@ class EbookRestructureTask(EbookGlobberBase):
                     break
 
 
-class EbookSplitTask(globber.FileGlobberMulti):
+class EbookSplitTask(globber.EagerFileGlobber):
     """
     (GlobDirs: [data] -> build) split any epubs found in the project data
     """

@@ -6,7 +6,7 @@ import shutil
 from doit.action import CmdAction
 
 import doot
-from doot.files.checkdir import CheckDir
+from doot.utils.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.tasker import DootTasker
 

@@ -6,13 +6,13 @@ import shutil
 from functools import partial
 
 import doot
-from doot.files.checkdir import CheckDir
+from doot.utils.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils import globber
 ##-- end imports
 
 
-class PlantUMLGlobberTask(globber.FileGlobberMulti):
+class PlantUMLGlobberTask(globber.EagerFileGlobber):
     """
     ([visual] -> build) run plantuml on a specification, generating target.'ext's
     """
@@ -42,7 +42,7 @@ class PlantUMLGlobberTask(globber.FileGlobberMulti):
                 ]
 
 
-class PlantUMLGlobberCheck(globber.FileGlobberMulti):
+class PlantUMLGlobberCheck(globber.EagerFileGlobber):
     """
     ([visual]) check syntax of plantuml files
     TODO Adapt godot::check pattern

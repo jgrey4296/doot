@@ -4,7 +4,7 @@ from __future__ import annotations
 import pathlib as pl
 import shutil
 
-from doot.files.checkdir import CheckDir
+from doot.utils.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.task_group import TaskGroup
 from doot.utils import globber
@@ -37,13 +37,13 @@ class SamplePDFTask(globber.DirGlobber):
     """
     pass
 
-class PDFMetaData(globber.FileGlobberMulti):
+class PDFMetaData(globber.EagerFileGlobber):
     """
     build metadata summaries of found pdfs
     """
     pass
 
-class PDFBibtexMetaData(globber.FileGlobberMulti):
+class PDFBibtexMetaData(globber.EagerFileGlobber):
     """
     For found pdf's get bibtex data and add it into metadata
     """

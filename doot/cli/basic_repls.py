@@ -50,7 +50,7 @@ def task_prolog_repl():
     }
 
 
-class PrologRunner(globber.FileGlobberMulti):
+class PrologRunner(globber.EagerFileGlobber):
 
     def __init__(self, dirs, roots):
         super().__init__("prolog::query", dirs, roots, exts=[prolog_ext])

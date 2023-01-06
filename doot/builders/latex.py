@@ -9,7 +9,6 @@ from functools import partial
 from doit.action import CmdAction
 
 import doot
-from doot.files.checkdir import CheckDir, DestroyDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.task_group import TaskGroup
 from doot.utils.toml_access import TomlAccessError
@@ -21,7 +20,7 @@ from doot.utils.general import ForceCmd
 
 interaction_mode = doot.config.or_get("nonstopmode").tool.doot.tex.interaction()
 
-class LatexMultiPass(globber.FileGlobberMulti):
+class LatexMultiPass(globber.EagerFileGlobber):
     """
     ([src] -> build) Trigger both latex passes and the bibtex pass
     """
@@ -32,12 +31,11 @@ class LatexMultiPass(globber.FileGlobberMulti):
 
     def subtask_detail(self, fpath, task):
         task.update({
-            "actions"  : [],
-            "file_dep" : [ self.dirs.build / fpath.with_suffix(".pdf").name],
+            "file_dep" : [ self.dirs.build / fpath.with_suffix(".pdf").name ],
         })
         return task
 
-class LatexFirstPass(globber.FileGlobberMulti):
+class LatexFirstPass(globber.EagerFileGlobber):
     """
     ([src] -> [temp, build]) First pass of running latex,
     pre-bibliography resolution
@@ -47,29 +45,30 @@ class LatexFirstPass(globber.FileGlobberMulti):
         super().__init__("tex::pass:one", dirs, roots or [dirs.src], exts=[".tex"], rec=True)
         self.interaction = interaction
 
+    def params(self):
+        return [
+            { "name"   : "interaction",
+              "short"  : "i",
+              "type"    : str,
+              "choices" : [ ("batchmode", ""), ("nonstopmode", ""), ("scrollmode", ""), ("errorstopmode", ""),],
+              "default" : self.interaction,
+             },
+        ]
+
     def subtask_detail(self, fpath, task):
         first_pass_pdf = self.pdf_name(fpath)
         task.update({
-                "task_dep" : ["_checkdir::tex"],
                 "file_dep" : [ fpath ],
                 "targets"  : [ self.dirs.temp / fpath.with_suffix(".aux").name,
                                first_pass_pdf,
                               ],
                 "clean"    : True,
-                "params" : [
-                    { "name"   : "interaction",
-                      "short"  : "i",
-                      "type"    : str,
-                      "choices" : [ ("batchmode", ""), ("nonstopmode", ""), ("scrollmode", ""), ("errorstopmode", ""),],
-                      "default" : self.interaction,
-                     },
-                ]
         })
         return task
 
     def subtask_actions(self, fpath):
         return [CmdAction(self.compile_tex, shell=False),
-                partial(self.move_pdf, fpath),
+                (self.move_pdf, [fpath]),
                 ]
 
     def compile_tex(self, interaction, dependencies):
@@ -86,7 +85,7 @@ class LatexFirstPass(globber.FileGlobberMulti):
         first_pass_pdf = self.dirs.build / ("1st_pass_" + fpath.with_suffix(".pdf").name)
         return first_pass_pdf
 
-class LatexSecondPass(globber.FileGlobberMulti):
+class LatexSecondPass(globber.EagerFileGlobber):
     """
     ([src, temp] -> build) Second pass of latex compiling,
     post-bibliography resolution
@@ -95,22 +94,24 @@ class LatexSecondPass(globber.FileGlobberMulti):
     def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None):
         super().__init__("_tex::pass:two", dirs, roots or [dirs.src], exts=[".tex"], rec=True)
 
+    def params(self):
+        return [
+            { "name"   : "interaction",
+              "short"  : "i",
+              "type"    : str,
+              "choices" : [ ("batchmode", ""), ("nonstopmode", ""), ("scrollmode", ""), ("errorstopmode", ""),],
+              "default" : "nonstopmode",
+             },
+        ]
+
     def subtask_detail(self, fpath, task):
         no_suffix = fpath.with_suffix("")
-        task.update({"task_dep" : [f"_tex::pass:bibtex:{task['name']}"],
+        task.update({ # "task_dep" : [f"_tex::pass:bibtex:{task['name']}"],
                      "file_dep" : [ self.dirs.temp / fpath.with_suffix(".aux").name,
                                     self.dirs.temp / fpath.with_suffix(".bbl").name,
                                    ],
                      "targets"  : [ self.dirs.build / fpath.with_suffix(".pdf").name],
                      "clean"    : True,
-                     "params" : [
-                         { "name"   : "interaction",
-                           "short"  : "i",
-                           "type"    : str,
-                           "choices" : [ ("batchmode", ""), ("nonstopmode", ""), ("scrollmode", ""), ("errorstopmode", ""),],
-                           "default" : "nonstopmode",
-                          },
-                     ],
                      })
         return task
 
@@ -118,7 +119,7 @@ class LatexSecondPass(globber.FileGlobberMulti):
         build_cmd = partial(self.tex_cmd, fpath)
         return [CmdAction(build_cmd, shell=False),
 	            CmdAction(build_cmd, shell=False),
-                partial(self.move_pdf, fpath),
+                (self.move_pdf, [fpath]),
                 ]
 
     def tex_cmd(self, fpath, interaction, task):
@@ -133,7 +134,7 @@ class LatexSecondPass(globber.FileGlobberMulti):
 
     
 
-class LatexCheck(globber.FileGlobberMulti):
+class LatexCheckSweep(globber.EagerFileGlobber):
     """
     ([src] -> temp) Run a latex pass, but don't produce anything,
     just check the syntax
@@ -142,27 +143,29 @@ class LatexCheck(globber.FileGlobberMulti):
     def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None):
         super().__init__("tex::check", dirs, roots or [dirs.src], exts=['.tex'], rec=True)
 
+    def params(self):
+        return [
+            { "name"   : "interaction",
+              "short"  : "i",
+              "type"    : str,
+              "choices" : [ ("batchmode", ""), ("nonstopmode", ""), ("scrollmode", ""), ("errorstopmode", ""),],
+              "default" : "nonstopmode",
+             },
+        ]
+
     def subtask_detail(self, fpath, task):
         task.update({"file_dep" : [ fpath ],
-                     "params" : [
-                         { "name"   : "interaction",
-                           "short"  : "i",
-                           "type"    : str,
-                           "choices" : [ ("batchmode", ""), ("nonstopmode", ""), ("scrollmode", ""), ("errorstopmode", ""),],
-                           "default" : "nonstopmode",
-                          },
-                     ]
                      })
         return task
 
     def subtask_actions(self, fpath):
-        return [ CmdAction(partial(self.build_draft_cmd, fpath), shell=False) ]
+        return [ CmdAction((self.build_draft_cmd, [fpath], {}), shell=False) ]
 
     def build_draft_cmd(self, fpath, interaction):
         no_suffix = fpath.with_suffix("")
         return ["pdflatex", "-draftmode", f"-interaction={interaction}", f"-output-directory={self.dirs.temp}", no_suffix]
 
-class BibtexCheck(globber.FileGlobberMulti):
+class BibtexCheckSweep(globber.EagerFileGlobber):
     """
     TODO ([src])
     """
@@ -174,7 +177,7 @@ class BibtexCheck(globber.FileGlobberMulti):
         task.update({})
         return task
 
-class BibtexBuildTask(globber.FileGlobberMulti):
+class BibtexBuildPass(globber.EagerFileGlobber):
     """
     ([src] -> temp) Bibliography resolution pass
     """
@@ -186,7 +189,7 @@ class BibtexBuildTask(globber.FileGlobberMulti):
         aux_file = self.dirs.temp / fpath.with_suffix(".aux").name
         bbl_file = self.dirs.temp / fpath.with_suffix(".bbl").name
 
-        task.update({"task_dep" : [f"tex::pass:one:{task['name']}"],
+        task.update({ # "task_dep" : [f"tex::pass:one:{task['name']}"],
                      "file_dep" : [ self.dirs.temp / "combined.bib",
                                     aux_file ],
                      "targets"  : [ bbl_file ],
@@ -196,7 +199,7 @@ class BibtexBuildTask(globber.FileGlobberMulti):
 
     def subtask_actions(self, fpath):
         aux_file = self.dirs.temp  / fpath.with_suffix(".aux").name
-        return [ partial(self.retarget_paths, aux_file),
+        return [ (self.retarget_paths, [aux_file]),
                  CmdAction(self.maybe_run, shell=False),
                 ]
 
@@ -228,39 +231,32 @@ class BibtexBuildTask(globber.FileGlobberMulti):
         return ["bibtex",  deps['.aux']]
 
 
-class BibtexConcatenateTask(DootTasker):
+class BibtexConcatenateSweep(globber.LazyFileGlobber):
     """
     ([src, data, docs] -> temp) concatenate all found bibtex files
     to produce a master file for latex's use
     """
-    def __init__(self, dirs:DootLocData, targets=None):
-        super().__init__("_tex::bib", dirs)
-        self.glob_targets = targets or [dirs.data, dirs.src, dirs.data]
+    def __init__(self, dirs:DootLocData, roots=None):
+        super().__init__("_tex::bib", dirs, roots or [dirs.src, dirs.data, dirs.docs], exts=[".bib"], rec=True)
+        self.target = dirs.temp / "combined.bib"
 
     def task_detail(self, task):
         task.update({
-            "actions"  : [ self.glob_bibs, self.concat_bibs ],
-            "targets"  : [ self.dirs.temp / "combined.bib" ],
+            "targets"  : [ self.target ],
             "clean"    : True,
         })
         return task
 
-    def glob_bibs(self, task):
-        all_bibs : set[pl.Path] = set()
-        for root in self.glob_targets:
-            all_bibs.update(list(root.rglob("**/*.bib")))
+    def subtask_detail(self, fpath, task):
+        task.update({
+            "actions" : [(self.glob_and_add, [fpath])]
+        })
+        return task
 
-        return {
-            "bibs" : list(str(x) for x in all_bibs),
-        }
-
-    def concat_bibs(self, targets, task):
-        src_bibs : set[pl.Path] = task.values['bibs']
-
-        with open(targets[0], 'w') as f:
-            for bib in src_bibs:
-                assert(pl.Path(bib).exists())
-                f.write(pl.Path(bib).read_text() + "\n")
+    def glob_and_add(self, fpath, task):
+        with open(self.target, 'w') as mainBib:
+            for line in fileinput.input(files=self.glob_target(fpath)):
+                print(line.strip(), file=mainBib)
 
 def task_latex_install(dep="tex.dependencies"):
     """

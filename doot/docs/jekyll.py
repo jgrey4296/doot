@@ -9,9 +9,9 @@ from time import strftime
 import yaml
 
 import doot
-from doot.files.checkdir import CheckDir
+from doot.utils.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
-from doot.files.clean_dirs import clean_target_dirs
+from doot.utils.clean_dirs import clean_target_dirs
 from doot.builders.jekyll import jekyll_src
 from doot.utils import globber
 from doot.utils.tasker import DootTasker
@@ -55,6 +55,21 @@ def load_yaml_data(filename):
     return yaml.safe_load(total)
 
 ##-- end yaml util
+def gen_toml(self):
+    """
+    Generate a stub toml section used to customize this task
+    """
+    return "\n".join(["##-- doot.jekyll",
+                        "[tool.doot.jekyll.genpost]",
+                        "ext = \"md\"",
+                        "# used in datetime.strftime",
+                        "date_format = \"%Y-%m-%d\"",
+                        "# title_format.format_map({date, title, ext })",
+                        "title_format = \"{date}{title}.{ext}\"",
+                        "# 'default' for doot.__template.jekyll_post, else a path:",
+                        "# can be overriden on cli",
+                        "default_template = \"default\"",
+                        ])
 
 
 class GenPostTask(DootTasker):
@@ -65,6 +80,9 @@ class GenPostTask(DootTasker):
     has cli params of title and template
 
     """
+    gen_toml = gen_toml
+
+
     def __init__(self, dirs, template=None):
         super().__init__("jekyll::post", dirs)
         self.template  = pl.Path(template or post_template)
@@ -111,30 +129,14 @@ class GenPostTask(DootTasker):
         post_path.write_text(post_text)
 
 
-    def gen_toml(self):
-        """
-        Generate a stub toml section used to customize this task
-        """
-        return """
-##-- doot.jekyll
-[tool.doot.jekyll.genpost]
-ext = "md"
-# used in datetime.strftime
-date_format = "%Y-%m-%d"
-# title_format.format_map({date, title, ext })
-title_format = "{date}{title}.{ext}"
-# 'default' for doot.__template.jekyll_post, else a path:
-# can be overriden on cli
-default_template = "default"
-
-##-- end doot.jekyll
-        """
 
 
 class GenTagsTask(DootTasker):
     """
     ([src] -> [tags, tagsIndex]) Generate summary files for all tags used in md files in the jekyll src dir
     """
+    gen_toml = gen_toml
+
     def __init__(self, dirs, roots=None, template=None, index=None):
         super().__init__("jekyll::tag", dirs)
         self.tagset   = set()
@@ -143,6 +145,14 @@ class GenTagsTask(DootTasker):
         self.roots    = roots or [dirs.src]
         assert("tags"       in self.dirs.extra)
         assert("tagsIndex"  in self.dirs.extra)
+
+    def task_detail(self):
+        return {
+            "actions"  : [self.get_tags, self.make_tag_pages ],
+            "targets"  : [ self.tag_index ],
+            "teardown" : [self.make_tag_index]
+            "clean"    : [ clean_target_dirs ],
+        }
 
     def get_tags(self):
         for root in self.roots:
@@ -164,9 +174,3 @@ class GenTagsTask(DootTasker):
 
         tag_index.write_text(self.index.read_text())
 
-    def task_detail(self):
-        return {
-            "actions"  : [self.get_tags, self.make_tag_pages, self.make_tag_index ],
-            "targets"  : [ self.tag_index ],
-            "clean"    : [ clean_target_dirs ],
-        }

@@ -6,10 +6,10 @@ import shutil
 from doit.action import CmdAction
 
 import doot
-from doot.files.checkdir import CheckDir
+from doot.utils.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.task_group import TaskGroup
-from doot.files.clean_dirs import clean_target_dirs
+from doot.utils.clean_dirs import clean_target_dirs
 from doot.utils.tasker import DootTasker
 
 ##-- end imports
@@ -18,12 +18,18 @@ __all__ = [
         "SphinxDocTask", "task_browse",
 ]
 
-
 conf_builder    = doot.config.or_get("html").tool.doot.sphinx.builder()
-conf_verbosity  = int(doot.config.or_get("0").tool.door.sphinx.verbosity())
+conf_verbosity  = int(doot.config.or_get(0).tool.door.sphinx.verbosity())
+
+def gen_toml(self):
+    return "\n".join(["[tool.doot.sphinx]",
+                      "builder   = \"html\"",
+                      "verbosity = 0",
+                      ])
 
 class SphinxDocTask(DootTasker):
     """([docs] -> build) Build sphinx documentation """
+    gen_toml = gen_toml
 
     def __init__(self, dirs:DootLocData, builder=None, verbosity:int=None):
         super().__init__("sphinx::doc", dirs)
@@ -31,12 +37,13 @@ class SphinxDocTask(DootTasker):
         self.verbosity = verbosity or conf_verbosity
 
     def task_detail(self, task:dict) -> dict:
-        return {
+        task.update({
             "actions"  : [ CmdAction(self.sphinx_command, shell=False) ],
             "file_dep" : [ self.dirs.docs / "conf.py" ],
-            "targets"  : [ self.dirs.build / "index.html" ],
+            "targets"  : [ self.dirs.extra['html'], self.dirs.build ],
             "clean"    : [ clean_target_dirs ],
-        }
+        })
+        return task
 
 
     def sphinx_command(self):
@@ -52,14 +59,6 @@ class SphinxDocTask(DootTasker):
         return args
 
 
-    def gen_toml(self):
-        return """
-##-- sphinx
-[tool.doot.sphinx]
-builder   = "html"
-verbosity = 0
-##-- end sphinx
-"""
 
 def task_browse(dirs:DootLocData) -> dict:
     """[build] Task definition """
@@ -67,6 +66,6 @@ def task_browse(dirs:DootLocData) -> dict:
     return {
         "basename"    : "sphinx::browse",
         "actions"     : [ CmdAction([ "open",  dirs.extra['html'] ], shell=False) ],
-        "task_dep"    : ["sphinx::build"],
+        "task_dep"    : ["sphinx::doc"],
     }
 

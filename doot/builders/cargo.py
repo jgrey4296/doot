@@ -7,7 +7,7 @@ from sys import platform
 
 from doit.tools import Interactive
 
-from doot.files.checkdir import CheckDir
+from doot.utils.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.task_group import TaskGroup
 from doot.utils.toml_access import TomlAccessError

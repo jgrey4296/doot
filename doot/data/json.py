@@ -15,9 +15,10 @@ from itertools import cycle, chain
 from doit.action import CmdAction
 
 import doot
-from doot.files.checkdir import CheckDir
+from doot.utils.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils import globber
+from doot.utils.clean_dirs import clean_target_dirs
 
 ##-- end imports
 
@@ -29,13 +30,6 @@ class JsonFormatTask(globber.DirGlobber):
     def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None, rec=True):
         super().__init__("json::format", dirs, roots or [dirs.data], exts=[".json"], rec=rec)
 
-    def setup_detail(self, task):
-        """
-        Add the backup action to setup
-        """
-        task['actions' ] = [self.backup_jsons]
-        return task
-
     def subtask_detail(self, fpath, task):
         task.update({
             "uptodate" : [False],
@@ -43,32 +37,22 @@ class JsonFormatTask(globber.DirGlobber):
         return task
 
     def subtask_actions(self, fpath):
-        globbed  = {x for ext in self.exts for x in fpath.rglob(f"*{ext}")}
-        actions  = []
+        return [ (self.glob_jsons, [fpath]) ]
 
+    def glob_jsons(self, fpath):
+        globbed  = list(super(globber.EagerFileGlobber, self).glob_target(fpath))
+        self.backup_jsons(globbed)
         for target in globbed:
-            args = ["jq", "-M", "-S" , ".", target ]
+            # Format
+            cmd = CmdAction(["jq", "-M", "-S" , ".", target ], shell=False)
+            # and save
+            target.write_text(cmd.out)
 
-            # Format and save result:
-            actions.append(CmdAction(args, shell=False, save_out=str(target)))
-            # Write result to the file:
-            actions.append(partial(self.write_formatting, target))
-
-        return actions
-
-
-    def write_formatting(self, target, task):
-        formatted_text = task.values[str(target)]
-        target.write_text(formatted_text)
-
-    def backup_jsons(self):
+    def backup_jsons(self, fpaths:list[pl.Path]):
         """
         Find all applicable files, and copy them
         """
-        ext_strs = [f"*{ext}" for ext in self.exts]
-        globbed  = {x for ext in ext_strs for root in self.roots for x in root.rglob(ext)}
-
-        for btarget in backup_targets:
+        for btarget in fpaths:
             backup = btarget.with_suffix(f"{btarget.suffix}.backup")
             if backup.exists():
                 continue
@@ -78,6 +62,7 @@ class JsonPythonSchema(globber.DirGlobber):
     """
     ([data] -> codegen) Use XSData to generate python bindings for a directory of json's
     """
+
     def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None, rec=True):
         super().__init__("json::schema.python", dirs, roots or [dirs.data], exts=[".json"], rec=rec)
 
@@ -85,13 +70,14 @@ class JsonPythonSchema(globber.DirGlobber):
         gen_package = str(self.dirs.codegen / task['name'])
         task.update({
             "targets"  : [ gen_package ],
-            "task_dep" : [ "_xsdata::config"],
+            "task_dep" : [ "_xsdata::config" ],
+            "clean"    : [ clean_target_dirs ],
         })
         task["meta"].update({"package" : gen_package})
         return task
 
     def subtask_actions(self, fpath):
-        return [ CmdAction(partial(self.generate_on_target, fpath), shell=False) ]
+        return [ CmdAction((self.generate_on_target, [fpath], {}), shell=False) ]
 
     def generate_on_target(self, fpath, task):
         args = ["xsdata", "generate",
@@ -106,24 +92,16 @@ class JsonPythonSchema(globber.DirGlobber):
 
         return args
 
-    def gen_toml(self):
-        return """
-##-- doot.json
-[tool.doot.json]
-data_dirs      = []
-recursive_dirs = ["pack/__data/core/json"]
-##-- end doot.json
-"""
 
 
-class JsonVisualise(globber.FileGlobberMulti):
+class JsonVisualise(globber.EagerFileGlobber):
     """
     ([data] -> visual) Wrap json files with plantuml header and footer,
     ready for plantuml to visualise structure
     """
 
     def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None):
-        super().__init__("json::schema.visual", dirs, roots, exts=[".json"], rec=True)
+        super().__init__("json::schema.visual", dirs, roots or [dirs.data], exts=[".json"], rec=True)
         assert('visual' in dirs.extra)
 
     def subtask_detail(self, fpath, task):
@@ -133,7 +111,7 @@ class JsonVisualise(globber.FileGlobberMulti):
         return task
 
     def subtask_actions(self, fpath):
-        return [ partial(self.write_plantuml, fpath) ]
+        return [ (self.write_plantuml, [fpath]) ]
 
     def write_plantuml(self, fpath, targets):
         header   = "@startjson\n"

@@ -10,7 +10,7 @@ from itertools import cycle
 from itertools import cycle, chain
 from doit.action import CmdAction
 from doit.tools import Interactive
-from doot.files.checkdir import CheckDir
+from doot.utils.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils import globber
 
@@ -23,11 +23,15 @@ from doot.utils import globber
 # https://github.com/tefra/xsdata-plantuml
 # https://python-jsonschema.readthedocs.io/en/stable/
 
+def gen_toml(self):
+    return "\n".join([])
+
 class XmlElementsTask(globber.DirGlobber):
     """
     ([data] -> elements) xml element retrieval using xml starlet toolkit
     http://xmlstar.sourceforge.net/
     """
+
     def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None):
         super().__init__("xml::elements", dirs, roots or [dirs.data], exts=[".xml"], rec=True)
         assert("elements" in self.dirs.extra)
@@ -38,39 +42,21 @@ class XmlElementsTask(globber.DirGlobber):
         return task
 
     def subtask_actions(self, fpath):
-        return [ CmdAction(partial(self.generate_on_target, fpath), shell=False, save_out=str(fpath))
-                 partial(self.write_elements, fpath),
+        return [ CmdAction((self.generate_on_target, [fpath], {}), shell=False, save_out=str(fpath))
+                 (self.write_elements, [fpath]),
                 ]
 
     def generate_on_target(self, fpath ,targets, task):
         """
         build an `xml el` command of all available xmls
         """
-        focus_is_dir = fpath.is_dir()
-        if not self.rec and focus_is_dir:
-            # dir glob wasn't recursive, so the task is
-            globbed = fpath.rglob("*.xml")
-        elif focus_is_dir:
-            # dir glob was recursive, so task isn't
-            globbed = fpath.glob("*.xml")
-        else:
-            # not a dir
-            globbed = [fpath]
-
+        globbed = super(globber.EagerFileGlobber, self).glob_target(fpath)
         return ["xml", "el", "-u", *globbed]
 
     def write_elements(self, fpath, targets, task):
         result = task.values[str(fpath)]
         pl.Path(targets[0]).write_text(result)
 
-    def gen_toml(self):
-        return """
-##-- doot.xml
-[tool.doot.xml]
-data_dirs      = ["pack/__data/core/xml"]
-recursive_dirs = ["pack/__data/core/xml"]
-##-- end doot.xml
-"""
 
 
 class XmlSchemaTask(globber.DirGlobber):
@@ -90,17 +76,10 @@ class XmlSchemaTask(globber.DirGlobber):
         return task
 
     def subtask_actions(self, fpath):
-        return [CmdAction(partial(self.generate_on_target, fpath), shell=False)]
+        return [CmdAction((self.generate_on_target, [fpath], {}), shell=False)]
 
     def generate_on_target(self, fpath, targets, task):
-        focus_is_dir = fpath.is_dir()
-        if self.rec and focus_is_dir:
-            globbed = fpath.glob(f"*.xml")
-        elif focus_is_dir:
-            globbed = fpath.rglob(f"*.xml")
-        else:
-            globbed = [fpath]
-
+        globbed = super(globber.EagerFileGlobber, self).glob_target(fpath)
         return ["trang", *globbed, *targets]
 
 
@@ -122,7 +101,7 @@ class XmlPythonSchemaRaw(globber.DirGlobber):
         return task
 
     def subtask_actions(self, fpath):
-        return [ CmdAction(partial(self.generate_on_target, fpath), shell=False) ]
+        return [ CmdAction((self.generate_on_target, [fpath], {}), shell=False) ]
 
     def generate_on_target(self, fpath, task):
         args = ["xsdata", "generate",
@@ -137,7 +116,7 @@ class XmlPythonSchemaRaw(globber.DirGlobber):
         return args
 
 
-class XmlPythonSchemaXSD(globber.FileGlobberMulti):
+class XmlPythonSchemaXSD(globber.EagerFileGlobber):
     """
     ([data] -> codegen) Generate python dataclass bindings from XSD's
     """
@@ -157,7 +136,7 @@ class XmlPythonSchemaXSD(globber.FileGlobberMulti):
         return task
 
     def subtask_actions(self, fpath):
-        return [CmdAction(partial(self.gen_target, fpath), shell=False)]
+        return [CmdAction((self.gen_target, [fpath], {}), shell=False)]
 
     def gen_target(self, fpath, task):
         args = ["xsdata", "generate",
@@ -172,7 +151,7 @@ class XmlPythonSchemaXSD(globber.FileGlobberMulti):
 
         return args
 
-class XmlSchemaVisualiseTask(globber.FileGlobberMulti):
+class XmlSchemaVisualiseTask(globber.EagerFileGlobber):
     """
     ([data] -> visual) Generate Plantuml files ready for plantuml to generate images
     """
@@ -200,7 +179,7 @@ class XmlSchemaVisualiseTask(globber.FileGlobberMulti):
                              ],
                             shell=False, save_out=str(fpath))
 
-        return [ gen_act, partial(self.save_uml, fpath) ]
+        return [ gen_act, (self.save_uml, [fpath]) ]
 
     def save_uml(self, fpath, targets, task):
         result = task.values[str(fpath)]
@@ -228,11 +207,7 @@ class XmlValidateTask(globber.DirGlobber):
                 "--xsd"  # xsd schema
                 ]
         args.append(self.xsd)
-
-        if self.rec:
-            args += list(fpath.glob("*.xml"))
-        else:
-            args += list(fpath.rglob("*.xml"))
+        args += list(super(globber.EagerFileGlobber, self).glob_target(fpath))
 
         return [ CmdAction(args, shell=False) ]
 
@@ -248,21 +223,17 @@ class XmlFormatTask(globber.DirGlobber):
     def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None, rec=True):
         super().__init__("xml::format", dirs, roots or [dirs.data], exts=[".xml", ".xhtml", ".html"], rec=rec)
 
-    def setup_detail(self, task):
-        """
-        Add the backup action to setup
-        """
-        task['actions' ] = [self.backup_xmls]
-        return task
-
     def subtask_detail(self, fpath, task):
         task['meta'].update({ "focus" : fpath })
         return task
 
     def subtask_actions(self, fpath):
-        globbed  = {x for ext in self.exts for x in fpath.rglob(f"*{ext}")}
-        actions  = []
+        return [ (self.format_xmls, [fpath] )]
 
+    def format_xmls(self, fpath):
+        globbed  = list(super(globber.EagerFileGlobber, self).glob_target(fpath))
+
+        self.backup_xmls(globbed)
         for target in globbed:
             args = ["xml" , "fo",
                     "-s", "4",     # indent 4 spaces
@@ -275,24 +246,17 @@ class XmlFormatTask(globber.DirGlobber):
 
             args.append(target)
             # Format and save result:
-            actions.append(CmdAction(args, shell=False, save_out=str(target)))
-            # Write result to the file:
-            actions.append(partial(self.write_formatting, target))
+            cmd = CmdAction(args, shell=False)
+            cmd.execute()
+            target.write_text(cmd.out)
 
-        return actions
-
-    def backup_xmls(self):
+    def backup_xmls(self, globbed):
         """
         Find all applicable files, and copy them
         """
-        globbed  = {x for ext in ext_strs for root in self.roots for x in root.rglob(f"*{ext}")}
-
-        for btarget in backup_targets:
+        for btarget in globbed:
             backup = btarget.with_suffix(f"{btarget.suffix}.backup")
             if backup.exists():
                 continue
             backup.write_text(btarget.read_text())
 
-    def write_formatting(self, target, task):
-        formatted_text = task.values[str(target)]
-        target.write_text(formatted_text)

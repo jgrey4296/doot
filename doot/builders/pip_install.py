@@ -21,7 +21,7 @@ def build_tasks(dirs:DootLocData):
     assert("wheel" in dirs.extra)
     assert("sdist" in dirs.extra)
     # Installs:
-    editlib   = CmdTask("pip", "install", "--no-input", "--editable", pl.Path(), basename=f"{prefix}::local")
+    editlib   = CmdTask("pip", "install", "--no-input", "--editable", pl.Path(), basename=f"{prefix}::install.local")
     reglib    = CmdTask("pip", "install", "--no-input", pl.Path(), basename=f"{prefix}::install.regular")
     install   = CmdTask("pip", "install", "--no-input", "--src", dirs.temp, basename=f"{prefix}::install")
     uninstall = CmdTask("pip", "uninstall", "-y", pl.Path(), basename=f"{prefix}::uninstall")

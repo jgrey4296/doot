@@ -12,13 +12,13 @@ from functools import partial
 from doit.action import CmdAction
 
 import doot
-from doot.files.checkdir import CheckDir
+from doot.utils.checkdir import CheckDir
 from doot.utils import genx, globber
 from doot.utils.cmdtask import CmdTask
 ##-- end imports
 
 
-class CSVSummaryTask(globber.FileGlobberMulti):
+class CSVSummaryTask(globber.EagerFileGlobber):
     """
     ([data] -> build) Summarise all found csv files,
     grouping those with the same headers,
@@ -33,8 +33,8 @@ k   def __init__(self, dirs:DootLocData, roots=None):
         task['actions']  = [lambda: report_name.unlink(missing_ok=True) ],
         return task
 
-    def teardown_detail(self, task):
-        task['actions'] = [CmdAction(["cat", self.report_name], shell=False) ],
+    def task_detail(self, task):
+        task['teardown'] = [CmdAction(["cat", self.report_name], shell=False) ]
         return task
 
     def subtask_detail(self, fpath, task):
@@ -46,7 +46,7 @@ k   def __init__(self, dirs:DootLocData, roots=None):
 
     def subtask_actions(self, fpath):
         return [
-            partial(self.write_path, fpath),
+            (self.write_path, [fpath]),
             # CmdAction(f"cat {fpath} | wc -l | sed -e 's/$/ Columns: /' -e 's/^/Lines: /' | tr -d \"\n\" >> {report_name}"),
             # CmdAction(f"head --lines=1 {fpath} | sed -e 's/\r//g' >> {report_name}"),
         ]
@@ -62,7 +62,7 @@ k   def __init__(self, dirs:DootLocData, roots=None):
 
 
 
-class CSVSummaryXMLTask(globber.FileGlobberMulti):
+class CSVSummaryXMLTask(globber.EagerFileGlobber):
     """
     ([data] -> build) Summarise all found csv files,
     grouping those with the same headers,
@@ -77,8 +77,8 @@ class CSVSummaryXMLTask(globber.FileGlobberMulti):
         task['actions']  = [lambda: genx.create_xml(self.report_name)]
         return task
 
-    def teardown_detail(self, task):
-        task['actions'] = [f"cat {self.report_name}"]
+    def task_detail(self, task):
+        task['teardown'] = [f"cat {self.report_name}"]
         return task
 
     def subtask_detail(self, fpath, task):

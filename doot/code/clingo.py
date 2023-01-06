@@ -12,7 +12,7 @@ from itertools import cycle, chain
 from doit.action import CmdAction
 
 improt doot
-from doot.files.checkdir import CheckDir
+from doot.utils.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils import globber
 
@@ -27,10 +27,23 @@ vis_out_ext = doot.config.or_get(".dot").tool.doot.clingo.vis_out_ext()
 
 clingo_call = ["clingo"] + data.toml.or_get([]).tool.doot.clingo.options()
 
-class ClingoRunner(globber.FileGlobberMulti):
+def gen_toml(self):
+    return "\n".join(["[tool.doot.clingo]",
+                      "# For running default clingo files:",
+                      "src_ext     = \".lp\"",
+                      "out_ext     = \".asp_result\"",
+                      "options     = []",
+                      "# For producing visualisable output:",
+                      "vis_src_ext = \".lp_vis\"",
+                      "vis_in_ext  = \".json\"",
+                      "vis_out_ext = \".dot\"",
+                      ])
+
+class ClingoRunner(globber.EagerFileGlobber):
     """
     ([src] -> build) Run clingo on ansprolog sources
     """
+    gen_toml = gen_toml
 
     def __init__(self, dirs:DootLocData, roots=None):
         super().__init__("clingo::run", dirs, roots or [dirs.src], exts=[src_ext], rec=True)
@@ -54,18 +67,12 @@ class ClingoRunner(globber.FileGlobberMulti):
         result = task.values['result']
         pl.Path(targets[0]).write_text(result)
 
-    def gen_toml(self):
-        return "\n".join(["##-- clingo",
-                          "[tool.doot.clingo]",
-                          "src_ext = \".lp\"",
-                          "out_ext = \".asp_result\"",
-                          "options = []",
-                          "##-- end clingo"])
 
-class ClingoDotter(globber.FileGlobberMulti):
+class ClingoDotter(globber.EagerFileGlobber):
     """
     ([src] -> build) Run specified clingo files to output json able to be visualised
     """
+    gen_toml = gen_toml
 
     def __init__(self, dirs:DootLocData, roots=None):
         super().__init__("clingo::dotter", dirs, roots or [dirs.src], exts=[vis_src_ext], rec=True)
@@ -92,20 +99,13 @@ class ClingoDotter(globber.FileGlobberMulti):
 
 
 
-    def gen_toml(self):
-        return "\n".join(["##-- clingo",
-                          "[tool.doot.clingo]",
-                          "vis_src_ext = \".lp_vis\"",
-                          "vis_in_ext = \".json\"",
-                          "vis_out_ext = \".dot\"",
-                          "options = []",
-                          "##-- end clingo"])
 
-class ClingoVisualise(globber.FileGlobberMulti):
+class ClingoVisualise(globber.EagerFileGlobber):
     """
     ([src] -> visual) Take clingo output with nodes,
     and convert to dot format
     """
+    gen_toml = gen_toml
 
     def __init__(self, dirs:DootLocData, roots=None):
         super().__init__("clingo::visual", dirs, roots or [dirs.src], exts=[vis_in_ext])
@@ -124,9 +124,3 @@ class ClingoVisualise(globber.FileGlobberMulti):
         # TODO convert json out from clingo to dot
         return []
 
-    def gen_toml(self):
-        return "\n".join(["##-- clingo",
-                          "[tool.doot.clingo]",
-                          "vis_src_ext = \".json\"",
-                          "vis_out_ext = \".dot\"",
-                          "##-- end clingo"])

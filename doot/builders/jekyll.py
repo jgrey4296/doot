@@ -10,8 +10,8 @@ from doit.tools import LongRunning
 from doit.action import CmdAction
 
 import doot
-from doot.files.checkdir import CheckDir
-from doot.files.clean_dirs import clean_target_dirs
+from doot.utils.checkdir import CheckDir
+from doot.utils.clean_dirs import clean_target_dirs
 from doot.utils.cmdtask import CmdTask
 
 ##-- end imports

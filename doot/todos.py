@@ -9,7 +9,7 @@ import pathlib as pl
 import shutil
 
 import doot
-from doot.files.checkdir import CheckDir
+from doot.utils.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 
 ##-- end imports

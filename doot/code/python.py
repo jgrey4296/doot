@@ -23,6 +23,18 @@ py_test_dir_fmt = doot.config.or_get("__test").tool.doot.python.test.dir_fmt()
 py_test_args    = doot.config.or_get([]).tool.doot.python.test.args()
 py_test_out     = pl.Path(doot.config.or_get("result.test").tool.doot.python.test())
 
+def gen_toml(self):
+    return "\n".join(["[tool.doot.python.lint]",
+                      "exec = \"pylint\"",
+                      "output-format = \"text\"",
+                      "output-name = \"lint.results\"",
+                      "error = false",
+                      "grouped = false",
+                      "[tool.doot.python.test]",
+                      "dir-fmt = \"__test\"",
+                      "args    = []",
+                      ])
+
 def task_buildvenv():
     return {
         "basename" : f"{prefix}::venv",
@@ -31,6 +43,7 @@ def task_buildvenv():
 
 class InitPyGlobber(globber.DirGlobber):
     """ ([src] -> src) """
+    gen_toml = gen_toml
 
     def __init__(self, dirs:DootLocData, roots=None, rec=False):
         super().__init__(f"{prefix}::initpy", dirs, roots or [dirs.src], rec=rec)
@@ -60,6 +73,8 @@ class InitPyGlobber(globber.DirGlobber):
 
 class PyLintTask(globber.DirGlobber):
     """ ([root]) lint the package """
+
+    gen_toml = gen_toml
 
     def __init__(self, dirs:DootLocData):
         super().__init__(f"{prefix}::lint", dirs, [dirs.root], rec=not lint_grouped)
@@ -109,21 +124,14 @@ class PyLintTask(globber.DirGlobber):
         return [x for x in args if x is not None]
 
 
-    def gen_toml(self):
-        return "\n".join([
-            "[tool.doot.python.lint]",
-            "exec = \"pylint\"",
-            "output-format = \"text\"",
-            "output-name = \"lint.results\"",
-            "error = false",
-            "grouped = false",
-            ])
 
 
 class PyUnitTestGlob(globber.DirGlobber):
     """
     ([root]) Run all project unit tests
     """
+
+    gen_toml = gen_toml
 
     def __init__(self, dirs:DootLocData, roots=None):
         super().__init__(f"{prefix}::test", dirs, roots or [dirs.root], exts=[".py"], rec=True)
@@ -152,18 +160,14 @@ class PyUnitTestGlob(globber.DirGlobber):
         args.append(task.meta['dir'])
         return args
 
-    def gen_toml(self):
-        return "\n".join([
-            "[tool.doot.python.test]",
-            "dir-fmt = \"__test\"",
-            "args    = []",
-            ])
 
 
 class PyTestGlob(globber.DirGlobber):
     """
     ([src]) Run all project unit tests
     """
+
+    gen_toml = gen_toml
 
     def __init__(self, dirs:DootLocData, roots=None):
         super().__init__(f"{prefix}::test", dirs, roots or [dirs.src], exts=[".py"], rec=True)
@@ -187,16 +191,12 @@ class PyTestGlob(globber.DirGlobber):
         args.append(task.meta['dir'])
         return args
 
-    def gen_toml(self):
-        return "\n".join([
-            "[tool.doot.python.test]",
-            "dir-fmt = \"__test\"",
-            "args    = []",
-            ])
-
 
 class PyParseRailroad(DootTasker):
     """
     python "$(PY_TOP)/util/build_railroad.py" --parser instal.parser.v1 --out "$(DOCBUILDDIR)"
     """
+
+    gen_toml = gen_toml
+
     pass

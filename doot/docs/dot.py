@@ -13,7 +13,7 @@ from itertools import cycle, chain
 from doit.action import CmdAction
 
 import doot
-from doot.files.checkdir import CheckDir
+from doot.utils.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils import globber
 
@@ -21,7 +21,7 @@ from doot.utils import globber
 
 
 
-class DotVisualise(globber.FileGlobberMulti):
+class DotVisualise(globber.EagerFileGlobber):
     """
     ([visual] -> build) make images from any dot files
     """

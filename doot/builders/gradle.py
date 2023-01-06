@@ -7,7 +7,7 @@ import shutil
 from importlib.resources import files
 
 import doot
-from doot.files.checkdir import CheckDir
+from doot.utils.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 ##-- end imports
 
@@ -110,21 +110,25 @@ def task_gradle_list():
     """
     list all gradle tasks that can be run
     """
-    def cache_gradle_tasks(task):
-        pass
+    def cache_gradle_tasks(task, targets):
+        pl.Path(targets[0]).write_text(task.values['result'])
+
 
     return {
         "basename" : "gradle::list",
-        "actions"  : [ CmdAction(["./gradlew", ":tasks"], shell=False, save_out="result") ],
+        "actions"  : [ CmdAction(["./gradlew", ":tasks"], shell=False, save_out="result"),
+                       cache_gradle_tasks,
+                      ],
         "file_dep" : [ "build.gradle.kts" ],
-
+        "targets"  : [ ".task_cache"  ],
+        "verbosity" : 2,
     }
 
 def task_gradle_projects():
 
     return {
         "basename" : "gradle::list",
-        "actions"  : [ CmdAction(["./gradlew", ":projects"], shell=False, save_out="result") ],
+        "actions"  : [ CmdAction(["./gradlew", ":projects"], shell=False) ],
         "file_dep" : [ "build.gradle.kts" ],
-
+        "verbosity" : 2,
     }
