@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 ##-- imports
 import pathlib as pl
-from doot.utils.toml_access import TomlAccess, TomlAccessError
-from doot.files.checkdir import CheckDir
-from doot.utils.locdata import DootLocData
-##-- end imports
+from importlib import resources
 
-##-- imports
-from importlib.resources import files
+from doot.utils.locdata import DootLocData
+from doot.utils.toml_access import TomlAccess, TomlAccessError
 ##-- end imports
 
 ##-- data
-data_path = files("doot.__templates")
+data_path = resources.files("doot.__templates")
 toml_template = data_path / "basic_toml"
 dooter_template = data_path / "dooter"
 ##-- end data
@@ -53,11 +50,11 @@ def setup_agnostic(path=default_agnostic):
                        _codegen=config.or_get(None).tool.doot.directories.codegen(),
                        _temp=config.or_get(None).tool.doot.directories.temp(),
                        _docs=config.or_get(None).tool.doot.directories.docs(),
-                       _data=config.or_get(None).tool.doot.directories.config(),
+                       _data=config.or_get(None).tool.doot.directories.data(),
                        )
 
 def setup_py(path=default_py):
-    print("Setting up python")
+    # print("Setting up python")
     pyproject = TomlAccess.load(path)
     locs._src = pyproject.project.name
     pass

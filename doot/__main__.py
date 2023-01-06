@@ -41,9 +41,9 @@ def main():
     try:
         if doot.config is None:
             doot.setup()
-        loader = DootLoader()
+        loader    = DootLoader()
         doit_main = DoitMain(task_loader=loader, config_filenames=[doot.default_agnostic])
-        result = doit_main.run(sys.argv[1:])
+        result    = doit_main.run(sys.argv[1:])
     except FileNotFoundError:
         if not doot.default_agnostic.exists():
             print("No toml config data found, creating stub doot.toml")
