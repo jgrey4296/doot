@@ -35,9 +35,10 @@ import inspect
 from doit.cmd_base import NamespaceTaskLoader, opt_cwd, opt_seek_file
 from doit.exceptions import InvalidDodoFile
 from doit import loader as doit_loader
-from doot.files.checkdir import CheckDir
+from doot.utils.checkdir import CheckDir
 from doot.utils.locdata import DootLocData
 from doot import default_dooter
+from doot.utils.gen_toml import GenToml
 
 
 #### options related to dooter.py
@@ -71,9 +72,10 @@ class DootLoader(NamespaceTaskLoader):
             opt_values['cwdPath'],
             opt_values['seek_file'],
         )))
-
         self.namespace['__doot_all_dirs']   = DootLocData.gen_loc_tasks()
         self.namespace['__doot_all_checks'] = CheckDir.gen_check_tasks()
+        self.namespace['__doot_all_tomls']  = GenToml.gen_toml_tasks()
+
 
     def load_tasks(self, cmd, pos_args):
         tasks = doit_loader.load_tasks(

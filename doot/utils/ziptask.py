@@ -9,7 +9,7 @@ import zipfile
 from doit.task import Task as DoitTask
 
 import doot
-from doot.files.checkdir import CheckDir
+from doot.utils.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.locdata import DootLocData
 from doot.utils.tasker import DootTasker
@@ -46,6 +46,9 @@ class ZipTask(DootTasker):
         self.to_build_dir : bool   = to_build_dir
 
     def clean(self, task):
+        """
+        delete all zip files matching the stem, regardless of additional date
+        """
         target = pl.Path(task.targets[0])
         zip_base = target.parent
         zip_stem = target.stem
@@ -58,7 +61,8 @@ class ZipTask(DootTasker):
 
     def task_detail(self, task) -> dict:
         task.update({
-            "actions"  : [ self.action_zip_create, self.action_zip_add_paths, self.action_zip_globs, self.action_move_zip],
+            "actions"  : [ self.action_zip_create, self.action_zip_add_paths, self.action_zip_globs],
+            "teardown" : [self.action_move_zip],
             "targets"  : [ self.dirs.temp / self.dated_target().name ],
             "file_dep" : self.paths,
             "task_dep" : [ self.dirs.checker ],

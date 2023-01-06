@@ -4,7 +4,7 @@ import pathlib as pl
 import shutil
 from typing import ClassVar
 
-from doot.files.clean_dirs import clean_target_dirs
+from doot.utils.clean_dirs import clean_target_dirs
 from doot.utils.task_group import TaskGroup
 ##-- end imports
 
