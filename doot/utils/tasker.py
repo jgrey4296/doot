@@ -173,10 +173,6 @@ class DootSubtasker(DootTasker):
         """
         handles batch bookkeeping
         """
-        if not bool(batch_data):
-            return False
-        print(f"Batch Count: {self.batch_count} (size: {len(batch_data)})")
-
         for data in batch_data:
             self.batch(data)
 
@@ -193,3 +189,4 @@ class DootSubtasker(DootTasker):
 
     def batch(self, data):
         """ Override to implement what a batch does """
+        pass

@@ -16,6 +16,7 @@ import doot
 from doot.utils.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils import globber
+from doot.files import hash_all
 
 ##-- end imports
 default_ocr_exts = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif"]
@@ -28,69 +29,7 @@ def gen_toml(self):
                       f"ocr-exts = {default_ocr_exts}"
                       ])
 
-class HashImages(globber.DirGlobber):
-    """
-    ([data] -> data) For each subdir, hash all the files in it
-    info
-    """
-    gen_toml = gen_toml
-
-    def __init__(self, dirs:DootLocData, roots=None, exts=None):
-        super().__init__("images::hash", dirs, roots or [dirs.data], exts=exts)
-        self.current_hashed = {}
-        self.hash_record    = ".hashes"
-        self.ext_check_fn = lambda x: x.is_file() and x.suffix in self.exts
-        if not bool(self.exts):
-            self.ext_check_fn = lambda x: x.is_file()
-
-    def filter(self, fpath):
-        is_cache = fpath != pl.Path() and fpath.name[0] in "._"
-        if is_cache:
-            return False
-
-        for x in fpath.iterdir():
-            if self.ext_check_fn(x):
-                return True
-
-        return False
-
-    def subtask_detail(self, fpath, task):
-        task.update({
-            "targets" : [ fpath / self.hash_record ],
-            "actions" : [ CmdAction(["touch", fpath / self.hash_record], shell=False),
-                          (self.hash_remaining, [fpath]),
-                         ],
-            "clean"   : True,
-        })
-        return task
-
-    def load_hashed(self, fpath):
-        hash_file = fpath / self.hash_record
-        hashes = [x.split(" ") for x in hash_file.read_text().split("\n") if bool(x)]
-        self.current_hashed = {" ".join(xs[1:]).strip():xs[0] for xs in hashes}
-        return hash_file
-
-    def hash_remaining(self, fpath):
-        print("Hashing: ", fpath)
-        self.reset_batch_count()
-
-        hash_file = self.load_hashed(fpath)
-        dir_contents = [x for x in fpath.iterdir() if x.stem[0] != "."]
-
-        while bool(dir_contents):
-            batch        = [x for x in dir_contents[:batch_size] if str(x) not in self.current_hashed]
-            dir_contents = dir_contents[batch_size:]
-
-            if self.run_batch([batch, hash_file]):
-                return
-
-
-    def batch(self, data):
-        act = CmdAction(["md5", "-r", *data[0]], shell=False)
-        act.execute()
-        with open(data[1], 'a') as f:
-            f.write("\n" + act.out)
-
+HashImages = hash_all.HashAllFiles
 
 class OCRGlobber(globber.DirGlobber):
     """
@@ -134,17 +73,19 @@ class OCRGlobber(globber.DirGlobber):
         while bool(dir_contents):
             batch          = [ x for x in dir_contents[:batch_size] ]
             dir_contents   = dir_contents[batch_size:]
+            print(f"Remaining: {len(dir_contents)}")
             txt_names      = [ fpath / f".{x.stem}.txt" for x in batch]
             filtered_batch = [ (x, y) for x,y in zip(batch, txt_names) if not y.exists() ]
+            if not bool(filtered_batch):
+                continue
 
+            print(f"Batch Count: {self.batch_count} (size: {len(filtered_batch)})")
             if self.run_batch(filtered_batch):
                 return
 
     def batch(self, data):
-        src, dst = data
-        ocr_cmd    = CmdAction(["tesseract", src, dst.stem, "-l", "eng"], shell=False)
-        mv_txt_cmd = CmdAction(["mv", dst.name, dst], shell=False)
-        ocr_cmd.execute()
-        mv_txt_cmd.execute()
-
-
+        for src,dst in data:
+            ocr_cmd    = CmdAction(["tesseract", src, dst.stem, "-l", "eng"], shell=False)
+            mv_txt_cmd = CmdAction(["mv", dst.name, dst], shell=False)
+            ocr_cmd.execute()
+            mv_txt_cmd.execute()
