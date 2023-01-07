@@ -133,50 +133,6 @@ class LatexSecondPass(globber.EagerFileGlobber):
         temp_pdf.replace(target_pdf)
 
     
-
-class LatexCheckSweep(globber.EagerFileGlobber):
-    """
-    ([src] -> temp) Run a latex pass, but don't produce anything,
-    just check the syntax
-    """
-
-    def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None):
-        super().__init__("tex::check", dirs, roots or [dirs.src], exts=['.tex'], rec=True)
-
-    def params(self):
-        return [
-            { "name"   : "interaction",
-              "short"  : "i",
-              "type"    : str,
-              "choices" : [ ("batchmode", ""), ("nonstopmode", ""), ("scrollmode", ""), ("errorstopmode", ""),],
-              "default" : "nonstopmode",
-             },
-        ]
-
-    def subtask_detail(self, fpath, task):
-        task.update({"file_dep" : [ fpath ],
-                     })
-        return task
-
-    def subtask_actions(self, fpath):
-        return [ CmdAction((self.build_draft_cmd, [fpath], {}), shell=False) ]
-
-    def build_draft_cmd(self, fpath, interaction):
-        no_suffix = fpath.with_suffix("")
-        return ["pdflatex", "-draftmode", f"-interaction={interaction}", f"-output-directory={self.dirs.temp}", no_suffix]
-
-class BibtexCheckSweep(globber.EagerFileGlobber):
-    """
-    TODO ([src])
-    """
-
-    def __init__(self, dirs, roots=None):
-        super().__init__("bibtex::check", dirs, roots or [dirs.src], exts=['.bib'], rec=True)
-
-    def subtask_detail(self, fpath, task):
-        task.update({})
-        return task
-
 class BibtexBuildPass(globber.EagerFileGlobber):
     """
     ([src] -> temp) Bibliography resolution pass
@@ -294,19 +250,6 @@ def task_latex_requirements(reqf="tex.requirements"):
         "clean" : True
     }
 
-def task_latex_docs():
-    """ run texdoc  """
-    return {
-        "basename" : "tex::docs",
-        "actions" : ["texdoc {package}"],
-        "params" : [ { "name" : "package",
-                       "long" : "package",
-                       "short" : "p",
-                       "type" : str,
-                       "default" : "--help",
-                       }
-                    ],
-    }
 
 
 def task_latex_rebuild():

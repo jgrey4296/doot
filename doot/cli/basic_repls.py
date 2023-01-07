@@ -51,10 +51,18 @@ def task_prolog_repl():
 
 
 class PrologRunner(globber.EagerFileGlobber):
+    """
+    reminder, to run a goal without printing anything:
+    return status is success or fail
+    swipl -g "paired(bob,london)" -t halt ./simple.pl
+    """
 
     def __init__(self, dirs, roots):
-        super().__init__("prolog::query", dirs, roots, exts=[prolog_ext])
+        super().__init__("prolog::query", dirs, roots or [dirs.src], exts=[prolog_ext])
 
     def filter(self, fpath):
         # test for it being a main file
         return True
+
+    def subtask_detail(self, fpath, task):
+        return task

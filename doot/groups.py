@@ -33,20 +33,20 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 __all__ = [ "defaults_group",
-    "pip_group", "jekyll_group", "sphinx_group",
-    "latex_group", "gtags_group", "git_group",
-    "cargo_group", "epub_group",
-]
+            "pip_group", "jekyll_group", "sphinx_group",
+            "latex_group", "gtags_group", "git_group",
+            "cargo_group", "epub_group",
+           ]
 
 announce_group_fails = doot.config.or_get(False).tool.doot.announce_groups()
+
 ##-- defaults
 defaults_group = TaskGroup("defaults")
 try:
-    from doot.files import listall
-    doot.locs.add_extra({ "visual" : doot.locs.docs / "visual" })
+    from doot.files import list_all
     for x in ["src", "data", "docs", "build", "temp", "codegen"]:
         try:
-            defaults_group += listall.task_list_target(x, getattr(doot.locs, x), doot.locs)
+            defaults_group += list_all.task_list_target(x, getattr(doot.locs, x), doot.locs)
         except DootDirAbsent:
             pass
 
@@ -123,9 +123,6 @@ try:
     latex_group += latex.LatexSecondPass(tex_dirs, [tex_dirs.src])
     latex_group += latex.BibtexBuildPass(tex_dirs, [tex_dirs.src])
     latex_group += latex.BibtexConcatenateSweep(tex_dirs, [tex_dirs.src])
-    latex_group += latex.LatexCheckSweep(tex_dirs, [tex_dirs.src])
-    # latex_group += latex.BibtexCheckSweep(tex_dirs, [tex_dirs.src])
-    latex_group += latex.task_latex_docs
     latex_group += latex.task_latex_install()
     latex_group += latex.task_latex_requirements()
     latex_group += latex.task_latex_rebuild

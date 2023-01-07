@@ -23,6 +23,7 @@ from doot.errors import DootDirAbsent
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+glob_ignores = doot.config.or_get(['.git', '.DS_Store', "__pycache__"]).tool.doot.glob_ignores()
 
 class EagerFileGlobber(DootSubtasker):
     """
@@ -141,6 +142,8 @@ class DirGlobber(EagerFileGlobber):
             queue = list(target.iterdir())
             while bool(queue):
                 current = queue.pop()
+                if current.name in glob_ignores:
+                    continue
                 if current.is_file():
                     continue
 

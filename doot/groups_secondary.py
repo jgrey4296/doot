@@ -54,7 +54,6 @@ try:
     godot_dirs.add_extra({ "scenes" : godot_dirs.src / "scenes",
                          })
 
-    godot_group += godot.GodotCheckTask(godot_dirs, [godot_dirs.src])
     godot_group += godot.GodotBuild(godot_dirs)
     godot_group += godot.GodotRunScene(godot_dirs, [godot_dirs.src])
     godot_group += godot.GodotRunScript(godot_dirs, [godot_dirs.src])

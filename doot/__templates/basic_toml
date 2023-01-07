@@ -9,6 +9,7 @@ verbosity               = 2
 ##-- doot
 [tool.doot]
 say-on-exit = false
+glob_ignores = ['.git', '.DS_Store', "__pycache__"]
 
 [tool.doot.directories]
 src     = "src"

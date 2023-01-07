@@ -15,54 +15,6 @@ from doot.utils.tasker import DootTasker
 ##-- end imports
 # https://docs.godotengine.org/en/stable/tutorials/editor/command_line_tutorial.html
 
-
-class GodotCheckTask(globber.EagerFileGlobber):
-    """
-    ([root]) Lint all gd scripts in the project
-    """
-    def __init__(self, dirs:DootLocData, roots=None):
-        super().__init__("godot::check", dirs, roots or [dirs.root], exts=[".gd"], rec=True)
-        self.failures = set()
-
-    def setup_detail(self, task):
-        task.update({
-            "actions"  : [self.reset_failures],
-            "teardown" : [self.report_failures]
-        })
-        return task
-
-
-    def subtask_detail(self, fpath, task):
-        task.update({"actions"   : [
-            ForceCmd(self.build_check, shell=False, handler=partial(self.handle_failure, fpath)),
-        ],
-                     "file_dep"  : [ fpath ],
-                     "uptodate" : [False],
-                     })
-        return task
-
-    def build_check(self, dependencies):
-        return ["godot", "--no-window", "--check-only", "--script", *dependencies]
-
-    def handle_failure(self, fpath, result):
-        print("Errors Found in: ", fpath)
-        self.failures.add(fpath)
-        return None
-
-    def report_failures(self):
-        if not bool(self.failures):
-            return
-
-        print("==========")
-        print("Failures Reported In:")
-        for fail in self.failures:
-            print("- ", fail)
-        print("==========")
-        return False
-
-    def reset_failures(self):
-        self.failures = set()
-
 class GodotRunScene(globber.HeadlessFileGlobber):
     """
     ([root]) Globber to allow easy running of scenes
