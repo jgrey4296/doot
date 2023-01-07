@@ -35,6 +35,7 @@ logging = logmod.getLogger(__name__)
 import doot
 from doit.doit_cmd import DoitMain
 from doot.utils.loader import DootLoader
+from doit.action import CmdAction
 
 def main():
     result = 1
@@ -44,6 +45,11 @@ def main():
         loader    = DootLoader()
         doit_main = DoitMain(task_loader=loader, config_filenames=[doot.default_agnostic])
         result    = doit_main.run(sys.argv[1:])
+
+        say_text = doot.config.or_get(False).tool.doot.say_on_exit()
+        if bool(say_text):
+            CmdAction(["say", say_text], shell=False).execute()
+
     except FileNotFoundError:
         if not doot.default_agnostic.exists():
             print("No toml config data found, creating stub doot.toml")
@@ -51,6 +57,7 @@ def main():
         if not doot.default_dooter.exists():
             print("No Dooter file found, creating a stub")
             doot.default_dooter.write_text(doot.dooter_template.read_text())
+
 
     sys.exit(result)
 

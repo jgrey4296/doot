@@ -8,6 +8,7 @@ verbosity               = 2
 
 ##-- doot
 [tool.doot]
+say-on-exit = false
 
 [tool.doot.directories]
 src     = "src"
