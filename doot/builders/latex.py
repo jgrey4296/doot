@@ -9,12 +9,7 @@ from functools import partial
 from doit.action import CmdAction
 
 import doot
-from doot.utils.cmdtask import CmdTask
-from doot.utils.task_group import TaskGroup
-from doot.utils.toml_access import TomlAccessError
 from doot.utils import globber
-from doot.utils.tasker import DootTasker
-from doot.utils.general import ForceCmd
 
 ##-- end imports
 
@@ -25,8 +20,8 @@ class LatexMultiPass(globber.EagerFileGlobber):
     ([src] -> build) Trigger both latex passes and the bibtex pass
     """
 
-    def __init__(self, dirs:DootLocData, roots=None):
-        super().__init__("tex::build", dirs, roots or [dirs.src], exts=['.tex'], rec=True)
+    def __init__(self, name="tex::build", dirs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.src], exts=['.tex'], rec=rec)
 
 
     def subtask_detail(self, fpath, task):
@@ -41,8 +36,8 @@ class LatexFirstPass(globber.EagerFileGlobber):
     pre-bibliography resolution
     """
 
-    def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None, interaction=interaction_mode):
-        super().__init__("tex::pass:one", dirs, roots or [dirs.src], exts=[".tex"], rec=True)
+    def __init__(self, name="text::pass:one", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True, interaction=interaction_mode):
+        super().__init__(name, dirs, roots or [dirs.src], exts=[".tex"], rec=rec)
         self.interaction = interaction
 
     def params(self):
@@ -91,8 +86,8 @@ class LatexSecondPass(globber.EagerFileGlobber):
     post-bibliography resolution
     """
 
-    def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None):
-        super().__init__("_tex::pass:two", dirs, roots or [dirs.src], exts=[".tex"], rec=True)
+    def __init__(self, name="_tex::pass:two", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.src], exts=[".tex"], rec=rec)
 
     def params(self):
         return [
@@ -138,8 +133,8 @@ class BibtexBuildPass(globber.EagerFileGlobber):
     ([src] -> temp) Bibliography resolution pass
     """
 
-    def __init__(self, dirs:DootLocData, roots=None):
-        super().__init__("_tex::pass:bibtex", dirs, roots or [dirs.src], exts=[".tex"], rec=True)
+    def __init__(self, name="_tex::pass:bibtex", dirs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.src], exts=[".tex"], rec=rec)
 
     def subtask_detail(self, fpath, task):
         aux_file = self.dirs.temp / fpath.with_suffix(".aux").name
@@ -192,8 +187,8 @@ class BibtexConcatenateSweep(globber.LazyFileGlobber):
     ([src, data, docs] -> temp) concatenate all found bibtex files
     to produce a master file for latex's use
     """
-    def __init__(self, dirs:DootLocData, roots=None):
-        super().__init__("_tex::bib", dirs, roots or [dirs.src, dirs.data, dirs.docs], exts=[".bib"], rec=True)
+    def __init__(self, name="_tex::bib", dirs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.src, dirs.data, dirs.docs], exts=[".bib"], rec=rec)
         self.target = dirs.temp / "combined.bib"
 
     def task_detail(self, task):

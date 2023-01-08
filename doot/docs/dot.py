@@ -26,8 +26,9 @@ class DotVisualise(globber.EagerFileGlobber):
     ([visual] -> build) make images from any dot files
     """
 
-    def __init__(self, dirs:DootLocData, roots=None, ext="png", layout="neato", scale:float=72.0):
-        super().__init__("dot::visual", dirs, roots or [dirs.visual], [".dot"])
+    def __init__(self, name=None, dirs:DootLocData, roots=None, ext="png", layout="neato", scale:float=72.0, rec=True):
+        name = name or f"dot::{ext}"
+        super().__init__(name, dirs, roots or [dirs.visual], exts=[".dot"], rec=rec)
         self.ext       = ext
         self.layout    = layout
         self.scale     = scale

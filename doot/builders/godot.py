@@ -6,8 +6,6 @@ import pathlib as pl
 import shutil
 from doit.action import CmdAction
 
-from doot.utils.checkdir import CheckDir
-from doot.utils.cmdtask import CmdTask
 from doot.utils.general import regain_focus, ForceCmd
 from doot.utils import globber
 from doot.utils.tasker import DootTasker
@@ -20,8 +18,8 @@ class GodotRunScene(globber.HeadlessFileGlobber):
     ([root]) Globber to allow easy running of scenes
     """
 
-    def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None):
-        super().__init__("godot::run:scene", dirs, roots or [dir.root], exts=[".tscn"], rec=True)
+    def __init__(self, name="godot::run:scene", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+        super().__init__(name, dirs, roots or [dir.root], exts=[".tscn"], rec=rec)
 
     def params(self):
         return [{ "name"    : "target",
@@ -69,8 +67,8 @@ class GodotRunScript(globber.EagerFileGlobber):
     ([root]) Run a godot script, with debugging or without
     """
 
-    def __init__(self, dirs:DootLocData, roots=None):
-        super().__init__("godot::run", dirs, roots or [dirs.root], exts=[".gd"])
+    def __init__(self, name="godot::run", dirs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.root], exts=[".gd"], rec=rec)
 
     def filter(self, fpath):
         # TODO test script for implementing runnable interface
@@ -117,8 +115,8 @@ class GodotBuild(DootTasker):
     (-> [build]) build a godot project
     """
 
-    def __init__(self, dirs:DootLocData):
-        super().__init__("godot::build", dirs)
+    def __init__(self, name="godot::build", dirs:DootLocData=None):
+        super().__init__(name, dirs)
 
     def params(self):
         return [ { "name"    : "build_target",

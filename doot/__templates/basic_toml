@@ -1,12 +1,5 @@
-##-- doit
 verbosity               = 2
 
-# [tool.doit.commands.{command}]
-# [tool.doit.tasks.{task}]
-
-##-- end doit
-
-##-- doot
 [tool.doot]
 say-on-exit = false
 glob_ignores = ['.git', '.DS_Store', "__pycache__"]
@@ -18,6 +11,3 @@ temp    = ".temp"
 build   = "build"
 docs    = "docs"
 data    = "data"
-
-##-- end doot
-

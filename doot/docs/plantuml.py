@@ -17,9 +17,10 @@ class PlantUMLGlobberTask(globber.EagerFileGlobber):
     ([visual] -> build) run plantuml on a specification, generating target.'ext's
     """
 
-    def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None, fmt="png"):
+    def __init__(self, name=None, dirs:DootLocData=None, roots:list[pl.Path]=None, fmt="png", rec=True):
         assert(roots or 'visual' in dirs.extra)
-        super().__init__(f"plantuml::{ext}", dirs, roots or [dirs.extra['visual']], exts=[".plantuml"], rec=True)
+        name = name or f"plantuml::{fmt}"
+        super().__init__(name, dirs, roots or [dirs.extra['visual']], exts=[".plantuml"], rec=True)
         self.fmt       = fmt
 
     def subtask_detail(self, fpath, task):
@@ -48,9 +49,9 @@ class PlantUMLGlobberCheck(globber.EagerFileGlobber):
     TODO Adapt godot::check pattern
     """
 
-    def __init__(self, dirs, roots:list[pl.Path]):
+    def __init__(self, name="plantuml::check", dirs=None, roots:list[pl.Path]=None, rec=True):
         assert(roots or 'visual' in dirs.extra)
-        super().__init__("plantuml::check", dirs, roots or [dirs.extra['visual']], exts=[".plantuml"], rec=True)
+        super().__init__(name, dirs, roots or [dirs.extra['visual']], exts=[".plantuml"], rec=rec)
 
     def subtask_detail(self, fpath, task):
         task.update({

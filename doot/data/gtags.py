@@ -11,6 +11,7 @@ from doot.utils.cmdtask import CmdTask
 
 ##-- end imports
 
+# TODO handle bib/bkmk/twit tags here too
 
 def task_tags_init(dirs):
     """([src]) initalise gtags """

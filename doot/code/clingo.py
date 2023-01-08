@@ -11,9 +11,8 @@ from functools import partial
 from itertools import cycle, chain
 from doit.action import CmdAction
 
-improt doot
-from doot.utils.checkdir import CheckDir
-from doot.utils.cmdtask import CmdTask
+import doot
+from doot.utils.general import ForceCmd
 from doot.utils import globber
 
 ##-- end imports
@@ -45,8 +44,8 @@ class ClingoRunner(globber.EagerFileGlobber):
     """
     gen_toml = gen_toml
 
-    def __init__(self, dirs:DootLocData, roots=None):
-        super().__init__("clingo::run", dirs, roots or [dirs.src], exts=[src_ext], rec=True)
+    def __init__(self, name="clingo::run", dirs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.src], exts=[src_ext], rec=rec)
 
     def subtask_detail(self, fpath, task):
         target = self.dirs.build / path.with_suffix(out_ext).name
@@ -74,8 +73,8 @@ class ClingoDotter(globber.EagerFileGlobber):
     """
     gen_toml = gen_toml
 
-    def __init__(self, dirs:DootLocData, roots=None):
-        super().__init__("clingo::dotter", dirs, roots or [dirs.src], exts=[vis_src_ext], rec=True)
+    def __init__(self, name="clingo::dotter", dirs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.src], exts=[vis_src_ext], rec=rec)
 
     def subtask_detail(self, fpath, task):
         target = self.dirs.build / path.with_suffix(vis_in_ext).name
@@ -107,8 +106,8 @@ class ClingoVisualise(globber.EagerFileGlobber):
     """
     gen_toml = gen_toml
 
-    def __init__(self, dirs:DootLocData, roots=None):
-        super().__init__("clingo::visual", dirs, roots or [dirs.src], exts=[vis_in_ext])
+    def __init__(self, name="clingo::visual", dirs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.src], exts=[vis_in_ext], rec=rec)
         assert('visual' in dirs.extra)
 
     def subtask_detail(self, fpath, task):

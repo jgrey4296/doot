@@ -19,12 +19,8 @@ from uuid import UUID, uuid1
 from weakref import ref
 
 import doot
-from doot.utils.cmdtask import CmdTask
-from doot.utils.task_group import TaskGroup
-from doot.utils.toml_access import TomlAccessError
 from doot.utils import globber
 from doot.utils.tasker import DootTasker
-from doot.utils.general import ForceCmd
 
 if TYPE_CHECKING:
     # tc only imports
@@ -38,6 +34,26 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
+# TODO bibtex - reports
+# TODO bibtex - clean
+# TODO bibtex - file check
+# TODO bibtex - indexer
+# TODO bibtex - timelines
+# TODO bibtex - split
+
+def task_latex_docs():
+    """ run texdoc  """
+    return {
+        "basename" : "tex::docs",
+        "actions" : ["texdoc {package}"],
+        "params" : [ { "name" : "package",
+                       "long" : "package",
+                       "short" : "p",
+                       "type" : str,
+                       "default" : "--help",
+                       }
+                    ],
+    }
 
 class LatexCheckSweep(globber.EagerFileGlobber):
     """
@@ -45,8 +61,8 @@ class LatexCheckSweep(globber.EagerFileGlobber):
     just check the syntax
     """
 
-    def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None):
-        super().__init__("tex::check", dirs, roots or [dirs.src], exts=['.tex'], rec=True)
+    def __init__(self, name="tex::check", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.src], exts=['.tex'], rec=rec)
 
     def params(self):
         return [
@@ -75,24 +91,11 @@ class BibtexCheckSweep(globber.EagerFileGlobber):
     TODO ([src])
     """
 
-    def __init__(self, dirs, roots=None):
-        super().__init__("bibtex::check", dirs, roots or [dirs.src], exts=['.bib'], rec=True)
+    def __init__(self, name="bibtex::check", dirs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.src], exts=['.bib'], rec=rec)
 
     def subtask_detail(self, fpath, task):
         task.update({})
         return task
 
 
-def task_latex_docs():
-    """ run texdoc  """
-    return {
-        "basename" : "tex::docs",
-        "actions" : ["texdoc {package}"],
-        "params" : [ { "name" : "package",
-                       "long" : "package",
-                       "short" : "p",
-                       "type" : str,
-                       "default" : "--help",
-                       }
-                    ],
-    }

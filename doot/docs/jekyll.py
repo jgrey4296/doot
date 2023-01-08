@@ -83,8 +83,8 @@ class GenPostTask(DootTasker):
     gen_toml = gen_toml
 
 
-    def __init__(self, dirs, template=None):
-        super().__init__("jekyll::post", dirs)
+    def __init__(self, name="jekyll::post", dirs=None, template=None):
+        super().__init__(name, dirs)
         self.template  = pl.Path(template or post_template)
         assert('posts' in self.dirs.extra)
 
@@ -137,8 +137,8 @@ class GenTagsTask(DootTasker):
     """
     gen_toml = gen_toml
 
-    def __init__(self, dirs, roots=None, template=None, index=None):
-        super().__init__("jekyll::tag", dirs)
+    def __init__(self, name="jekyll::tag", dirs=None, roots=None, template=None, index=None):
+        super().__init__(name, dirs)
         self.tagset   = set()
         self.template = pl.Path(template or tag_template)
         self.index    = pl.Path(index or index_template)

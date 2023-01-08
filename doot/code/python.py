@@ -45,8 +45,8 @@ class InitPyGlobber(globber.DirGlobber):
     """ ([src] -> src) """
     gen_toml = gen_toml
 
-    def __init__(self, dirs:DootLocData, roots=None, rec=False):
-        super().__init__(f"{prefix}::initpy", dirs, roots or [dirs.src], rec=rec)
+    def __init__(self, name=f"{prefix}::initpy", dirs:DootLocData=None, roots=None, rec=False):
+        super().__init__(name, dirs, roots or [dirs.src], rec=rec)
         self.ignores = ["__pycache__", ".git", "__mypy_cache__"]
 
     def subtask_detail(self, fpath, task):
@@ -76,8 +76,8 @@ class PyLintTask(globber.DirGlobber):
 
     gen_toml = gen_toml
 
-    def __init__(self, dirs:DootLocData):
-        super().__init__(f"{prefix}::lint", dirs, [dirs.root], rec=not lint_grouped)
+    def __init__(self, name=f"{prefix}::lint", dirs:DootLocData=None, rec=None):
+        super().__init__(name, dirs, [dirs.root], rec=rec or not lint_grouped)
 
     def filter(self, fpath):
         return (fpath / "__init__.py").exists()
@@ -133,11 +133,12 @@ class PyUnitTestGlob(globber.DirGlobber):
 
     gen_toml = gen_toml
 
-    def __init__(self, dirs:DootLocData, roots=None):
-        super().__init__(f"{prefix}::test", dirs, roots or [dirs.root], exts=[".py"], rec=True)
+    def __init__(self, name=f"{prefix}::test", dirs:DootLocData, roots=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.root], exts=[".py"], rec=rec)
 
     def filter(self, fpath):
-        return py_test_dir_fmt in fpath.name
+        if py_test_dir_fmt in fpath.name:
+            return self.control.keep
 
     def subtask_detail(self, fpath, task):
         target = py_test_out if lint_grouped else py_test_out.with_stem(task['name'])
@@ -169,11 +170,12 @@ class PyTestGlob(globber.DirGlobber):
 
     gen_toml = gen_toml
 
-    def __init__(self, dirs:DootLocData, roots=None):
-        super().__init__(f"{prefix}::test", dirs, roots or [dirs.src], exts=[".py"], rec=True)
+    def __init__(self, name=f"{prefix}::test", dirs:DootLocData, roots=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.src], exts=[".py"], rec=rec)
 
     def filter(self, fpath):
-        return py_test_dir_fmt in fpath.name
+        if py_test_dir_fmt in fpath.name:
+            return self.control.keep
 
     def subtask_detail(self, fpath, task):
         target = py_test_out if lint_grouped else py_test_out.with_stem(task['name'])

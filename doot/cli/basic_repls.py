@@ -57,8 +57,8 @@ class PrologRunner(globber.EagerFileGlobber):
     swipl -g "paired(bob,london)" -t halt ./simple.pl
     """
 
-    def __init__(self, dirs, roots):
-        super().__init__("prolog::query", dirs, roots or [dirs.src], exts=[prolog_ext])
+    def __init__(self, name="prolog::query", dirs=None, roots=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.src], exts=[prolog_ext], rec=rect)
 
     def filter(self, fpath):
         # test for it being a main file

@@ -27,12 +27,22 @@ def gen_toml(self):
                       "verbosity = 0",
                       ])
 
+def task_browse(dirs:DootLocData) -> dict:
+    """[build] Task definition """
+    assert("html" in dirs.extra)
+    return {
+        "basename"    : "sphinx::browse",
+        "actions"     : [ CmdAction([ "open",  dirs.extra['html'] ], shell=False) ],
+        "task_dep"    : ["sphinx::doc"],
+    }
+
+
 class SphinxDocTask(DootTasker):
     """([docs] -> build) Build sphinx documentation """
     gen_toml = gen_toml
 
-    def __init__(self, dirs:DootLocData, builder=None, verbosity:int=None):
-        super().__init__("sphinx::doc", dirs)
+    def __init__(self, name="sphinx::doc", dirs:DootLocData=None, builder=None, verbosity:int=None):
+        super().__init__(name, dirs)
         self.builder = builder or conf_builder
         self.verbosity = verbosity or conf_verbosity
 
@@ -59,13 +69,4 @@ class SphinxDocTask(DootTasker):
         return args
 
 
-
-def task_browse(dirs:DootLocData) -> dict:
-    """[build] Task definition """
-    assert("html" in dirs.extra)
-    return {
-        "basename"    : "sphinx::browse",
-        "actions"     : [ CmdAction([ "open",  dirs.extra['html'] ], shell=False) ],
-        "task_dep"    : ["sphinx::doc"],
-    }
 

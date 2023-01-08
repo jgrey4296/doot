@@ -27,8 +27,14 @@ class JsonFormatTask(globber.DirGlobber):
     ([data] -> data)Lint Json files with jq
     """
 
-    def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None, rec=True):
-        super().__init__("json::format", dirs, roots or [dirs.data], exts=[".json"], rec=rec)
+    def __init__(self, name="json::format", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.data], exts=[".json"], rec=rec)
+
+    def filter(self, fpath):
+        if any(x.suffix in self.exts for fpath.iterdir()):
+            return self.accept
+        return self.discard
+
 
     def subtask_detail(self, fpath, task):
         task.update({
@@ -40,7 +46,7 @@ class JsonFormatTask(globber.DirGlobber):
         return [ (self.glob_jsons, [fpath]) ]
 
     def glob_jsons(self, fpath):
-        globbed  = list(super(globber.EagerFileGlobber, self).glob_target(fpath))
+        globbed  = super(globber.DirGlobber, self).glob_target(fpath, fn=lambda x: True)
         self.backup_jsons(globbed)
         for target in globbed:
             # Format
@@ -63,8 +69,13 @@ class JsonPythonSchema(globber.DirGlobber):
     ([data] -> codegen) Use XSData to generate python bindings for a directory of json's
     """
 
-    def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None, rec=True):
-        super().__init__("json::schema.python", dirs, roots or [dirs.data], exts=[".json"], rec=rec)
+    def __init__(self, name="json::schema.python", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.data], exts=[".json"], rec=rec)
+
+    def filter(self, fpath):
+        if any(x.suffix in self.exts for fpath.iterdir()):
+            return self.accept
+        return self.discard
 
     def subtask_detail(self, fpath, task):
         gen_package = str(self.dirs.codegen / task['name'])
@@ -100,9 +111,10 @@ class JsonVisualise(globber.EagerFileGlobber):
     ready for plantuml to visualise structure
     """
 
-    def __init__(self, dirs:DootLocData, roots:list[pl.Path]=None):
-        super().__init__("json::schema.visual", dirs, roots or [dirs.data], exts=[".json"], rec=True)
+    def __init__(self, name="json::schema.visual", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.data], exts=[".json"], rec=rec)
         assert('visual' in dirs.extra)
+
 
     def subtask_detail(self, fpath, task):
         task.update({

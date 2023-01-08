@@ -25,8 +25,8 @@ class CSVSummaryTask(globber.EagerFileGlobber):
     and listing number of rows
     """
 
-k   def __init__(self, dirs:DootLocData, roots=None):
-        super().__init__("csv::summary", dirs, roots or [dirs.data], exts=[".csv"], rec=True)
+k   def __init__(self, name="csv::summary", dirs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.data], exts=[".csv"], rec=rec)
         report_name = self.dirs.build / "csv.report"
 
     def setup_detail(self, task):
@@ -69,8 +69,8 @@ class CSVSummaryXMLTask(globber.EagerFileGlobber):
     and listing number of rows
     """
 
-    def __init__(self, dirs:DootLocData, roots=None):
-        super().__init__("csv::summary.xml", dirs, roots or [dirs.data], exts=[".csv"], rec=True)
+    def __init__(self, name="csv::summary.xml", dirs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.data], exts=[".csv"], rec=rec)
         self.report_name = self.dirs.build / "csv.xml"
 
     def setup_detail(self, task):

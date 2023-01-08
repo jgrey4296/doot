@@ -32,11 +32,18 @@ class ZipTask(DootTasker):
     set `data` to True or a datetime.strftime format to customize naming
     (time is based on task creation time, not task execution time)
 
+    target : zipfile name to put into temp
+    root   : the root filesystem path to relativize every zip content against
+    paths  : explicit file adds
+    globs  : general adds
+    date   : format of adding a date to target name
+    to_build_dir : if true, moves the zipfile to build when complete
+
     TODO timeout={int} for rebuilding if target zip is hours? days? too old?
     TODO add filter_fn
     """
 
-    def __init__(self, base:str, dirs:DootLocData, *, target:str, root:pl.Path, paths:list[pl.Path]=None, globs:list[str]=None,  date:bool|str=False, to_build_dir=False):
+    def __init__(self, base:str="ziptask::default", dirs:DootLocData=None, target:str, root:pl.Path, paths:list[pl.Path]=None, globs:list[str]=None,  date:bool|str=False, to_build_dir=False):
         super().__init__(base, dirs)
         self.date     : bool | str = date
         self.target : str          = pl.Path(target)

@@ -18,12 +18,9 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-from doit.action import CmdAction
-
-from doot.utils.checkdir import CheckDir
-from doot.utils.cmdtask import CmdTask
-from doot.utils.general import regain_focus, ForceCmd
+import doot
 from doot.utils import globber
+from doot.utils.general import ForceCmd, regain_focus
 from doot.utils.tasker import DootTasker
 
 if TYPE_CHECKING:
@@ -43,8 +40,8 @@ class GodotCheckTask(globber.EagerFileGlobber):
     """
     ([root]) Lint all gd scripts in the project
     """
-    def __init__(self, dirs:DootLocData, roots=None):
-        super().__init__("godot::check", dirs, roots or [dirs.root], exts=[".gd"], rec=True)
+    def __init__(self, name="godot::check", dirs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.root], exts=[".gd"], rec=rec)
         self.failures = set()
 
     def setup_detail(self, task):
