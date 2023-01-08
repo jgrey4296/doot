@@ -46,7 +46,7 @@ class JsonFormatTask(globber.DirGlobber):
         return [ (self.glob_jsons, [fpath]) ]
 
     def glob_jsons(self, fpath):
-        globbed  = super(globber.DirGlobber, self).glob_target(fpath, fn=lambda x: True)
+        globbed  = self.glob_files(fpath)
         self.backup_jsons(globbed)
         for target in globbed:
             # Format

@@ -55,7 +55,7 @@ class XmlElementsTask(globber.DirGlobber):
         """
         build an `xml el` command of all available xmls
         """
-        globbed = super(globber.DirGlobber, self).glob_target(fpath, fn=lambda x: True)
+        globbed = self.glob_files(fapth)
         return ["xml", "el", "-u", *globbed]
 
     def write_elements(self, fpath, targets, task):
@@ -90,7 +90,7 @@ class XmlSchemaTask(globber.DirGlobber):
         return [CmdAction((self.generate_on_target, [fpath], {}), shell=False)]
 
     def generate_on_target(self, fpath, targets, task):
-        globbed = super(globber.DirGlobber, self).glob_target(fpath, fn=lambda x: True)
+        globbed = self.glob_files(fpath)
         return ["trang", *globbed, *targets]
 
 
@@ -238,7 +238,7 @@ class XmlValidateTask(globber.DirGlobber):
                 "--xsd"  # xsd schema
                 ]
         args.append(self.xsd)
-        args += super(globber.DirGlobber, self).glob_target(fpath, fn=lambda x: True)
+        args += self.glob_files(fpath)
 
         return [ CmdAction(args, shell=False) ]
 
@@ -267,7 +267,7 @@ class XmlFormatTask(globber.DirGlobber):
         return [ (self.format_xmls, [fpath] )]
 
     def format_xmls(self, fpath):
-        globbed  = list(super(globber.DirGlobber, self).glob_target(fpath, fn=lambda x: True))
+        globbed  = self.glob_files(fpath)
 
         self.backup_xmls(globbed)
         for target in globbed:

@@ -88,7 +88,7 @@ class HashAllFiles(globber.DirGlobber):
     def hash_remaining(self, fpath):
         print("Hashing: ", fpath)
         hash_file    = self.load_hashed(fpath)
-        dir_contents = super(globber.DirGlobber, self).glob_target(fpath, fn=lambda x: True, rec=False)
+        dir_contents = self.glob_files(fpath)
 
         chunks = self.chunk((x for x in dir_contents if str(x) not in self.current_hashed),
                             batch_size)

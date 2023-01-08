@@ -88,7 +88,6 @@ class OCRGlobber(globber.DirGlobber):
             mv_txt_cmd.execute()
 
 
-
 class ImagesPDF(globber.LazyFileGlobber):
     """
     Combine globbed images into a single pdf file using imagemagick and img2pdf

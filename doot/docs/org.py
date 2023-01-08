@@ -92,7 +92,7 @@ class TweetExtract(globber.DirGlobber):
     
     def extract_tweet_ids(self, fpath):
         # fileinput over all orgs, get the permalinks
-        globbed     = super(globber.DirGlobber, self).glob_target(fpath, fn=lambda x: True)
+        globbed     = self.glob_files(fpath)
         tweet_index = fpath / tweet_index_file
         permalinks  = []
 
@@ -131,7 +131,7 @@ class OrgThreadCount(globber.DirGlobber):
         target  = fpath / thread_file
         counts  = defaultdict(lambda: [0, 0])
         total   = 0
-        globbed = super(globber.DirGlobber, self).glob_target(fpath, fn=lambda x: True)
+        globbed = self.glob_fils(fpath)
 
         for line in fileinput.input(files=globbed):
             if not self.heading_re.match(line):

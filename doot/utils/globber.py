@@ -153,6 +153,10 @@ class DirGlobber(EagerFileGlobber):
     Non-Recursive: immediate subdirectories roots
     Always provides the root directories
     """
+    def glob_files(self, target, rec=False, fn=None):
+        if fn is None:
+            fn = lambda x: True
+        return super().glob_target(target, rec=rec, fn=fn)
 
 
     def glob_target(self, target, rec=False, fn=None):
