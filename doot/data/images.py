@@ -20,9 +20,11 @@ from doot.files import hash_all
 
 ##-- end imports
 default_ocr_exts = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif"]
+default_pdf_exts = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif"]
 
 ocr_exts    : list[str] = doot.config.or_get(default_ocr_exts).tool.doot.images.ocr_exts()
 batch_size  : int       = doot.config.or_get(20).tool.doot.batch_size()
+ocr_out_ext : str = doot.config.or_get(".ocr").tool.doot.images.ocr_out()
 
 def gen_toml(self):
     return "\n".join(["[tool.doot.images]",
@@ -38,8 +40,8 @@ class OCRGlobber(globber.DirGlobber):
     """
     gen_toml = gen_toml
 
-    def __init__(self, dirs:DootLocData, roots=None, exts=ocr_exts):
-        super().__init__("images::ocr", dirs, roots or [dirs.data], exts=exts)
+    def __init__(self, name="images::ocr", dirs:DootLocData=None, roots=None, exts=ocr_exts, rec=True):
+        super().__init__(name, dirs, roots or [dirs.data], exts=exts, rec=rec)
         assert(bool(self.exts))
         self.processed = dict()
         self.ext_check_fn = lambda x: x.is_file() and x.suffix in self.exts
@@ -49,103 +51,90 @@ class OCRGlobber(globber.DirGlobber):
     def filter(self, fpath):
         is_cache = fpath != pl.Path() and fpath.name[0] in "._"
         if is_cache:
-            return False
+            return self.control.reject
 
         for x in fpath.iterdir():
-            if not self.ext_check_fn(x):
-                continue
-            ocr_file = (fpath / f".{x.stem}.txt")
-            if not ocr_file.exists():
-                return True
+            if self.ext_check_fn(x):
+                return self.control.accept
 
-        return False
+        return self.control.discard
 
     def subtask_detail(self, fpath, task):
         task.update({
-            "actions" : [(self.ocr_remaining, [fpath])]
+            "actions" : [(self.ocr_remaining, [fpath])],
+            "clean"   : [(self.clean_ocr_files, [fpath])],
         })
         return task
 
+    def ocr_file_name(self, fpath):
+        return fpath.parent / f".{fpath.stem}{ocr_out_ext}"
+
+    def clean_ocr_files(self, fpath):
+        for f in fpath.glob(f".*{ocr_out_ext}"):
+            f.unlink()
+
     def ocr_remaining(self, fpath):
-        self.reset_batch_count()
-        dir_contents = [x for x in fpath.iterdir() if x.suffix in self.exts]
+        chunks = self.chunk((x for x in fpath.iterdir() if x.suffix in self.exts and not self.ocr_file_name(x).exists()),
+                            batch_size)
 
-        while bool(dir_contents):
-            batch          = [ x for x in dir_contents[:batch_size] ]
-            dir_contents   = dir_contents[batch_size:]
-            print(f"Remaining: {len(dir_contents)}")
-            txt_names      = [ fpath / f".{x.stem}.txt" for x in batch]
-            filtered_batch = [ (x, y) for x,y in zip(batch, txt_names) if not y.exists() ]
-            if not bool(filtered_batch):
-                continue
-
-            print(f"Batch Count: {self.batch_count} (size: {len(filtered_batch)})")
-            if self.run_batch(filtered_batch):
-                return
+        self.run_batch(*chunks)
 
     def batch(self, data):
-        for src,dst in data:
+        for src in data:
+            dst = self.ocr_file_name(src)
             ocr_cmd    = CmdAction(["tesseract", src, dst.stem, "-l", "eng"], shell=False)
-            mv_txt_cmd = CmdAction(["mv", dst.name, dst], shell=False)
+            mv_txt_cmd = CmdAction(["mv", dst.with_suffix(".txt").name, dst], shell=False)
             ocr_cmd.execute()
             mv_txt_cmd.execute()
 
 
 
-class ImgConvertTask:
+class ImagesPDF(globber.LazyFileGlobber):
     """
-    TODO Combine globbed images into a single pdf file
+    Combine globbed images into a single pdf file using imagemagick and img2pdf
     """
 
-    def __init__(self, target, **, paths=None, globs=None, name="default", date=False, **kwargs):
-        self.create_doit_tasks = self.build
-        self.paths             = [pl.Path(x) for x in paths]
-        self.globs             = globs or []
-        self.kwargs            = kwargs
-        self.default_spec      = { "basename" : f"img.convert::{name}" }
-        self.date              = date
-        self.target_stem       = pl.Path(target).stem
-        match date:
-            case False:
-                self.target : pl.Path = pdf_dir / target
-            case True:
-                now                   = datetime.datetime.strftime(datetime.datetime.now(), "%Y:%m:%d::%H:%M:%S")
-                dated_target          = f"{self.target_stem}-{now}.pdf"
-                self.target : pl.Path = pdf_dir / dated_target
-            case str():
-                now                   = datetime.datetime.strftime(datetime.datetime.now(), date)
-                dated_target          = f"{self._target_stem}-{now}.pdf"
-                self.target : pl.Path = pdf_dir / dated_target
+    def __init__(self, name="images::pdf", dirs=None, roots=None, exts=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.data], exts=exts or default_pdf_exts, rec=rec)
 
-
-    def get_images(self):
-        pass
-
-    def convert_images(self):
-        # convert ? -alpha off ./temp/`?`
-        # mogrify -orient bottom-left ?
-        # img2pdf --output `?`.pdf --pagesize A4 --auto-orient ?
-        pass
-
-    def combine_images(self):
-        # pdftk * cat output diagrams.pdf
-        pass
-
-    def clean_pdfs(self):
-        pdf_base = pdf_dir
-        print(f"Cleaning {pdf_base}/{self.target_stem}*.pdf")
-        for zipf in pdf_base.glob(f"{self.target_stem}*.pdf"):
-            zipf.unlink()
-
-
-    def build(self) -> dict:
-        task_desc = self.default_spec.copy()
-        task_desc.update(self.kwargs)
-        task_desc.update({
-            "actions"  : [ self.get_images, self.convert_images, self.combine_images ],
-            "targets"  : [ self.target ],
-            "file_dep" :  self.paths,
-            "uptodate" : [ False ],
-            "clean"    : [ self.clean_pdfs ],
+    def task_detail(self, task):
+        task.update({
+            "actions" : [CmdAction(self.combine_images, shell=False)],
+            "targets" : [ self.dirs.build / f"{task['name']}.pdf" ],
+            "clean"   : [self.clean_temp_and_targets],
         })
-        return task_desc
+        return task
+
+    def clean_temp_and_targets(self, targets):
+        pl.Path(targets[0]).unlink()
+        for x in self.dirs.temp.iter():
+            if x.is_file() and x.suffix() == ".pdf":
+                x.unlink()
+
+    
+    def subtask_detail(self, fpath, task):
+        task.update({
+            "actions" : [(self.images_to_pages, [fpath])],
+        })
+        return task
+
+    def images_to_pages(self, fpath):
+        globbed = self.glob_target(fpath)
+
+        while bool(globbed):
+            batch   = globbed[:batch_size]
+            globbed = globbed[batch_size:]
+            print("Remaining: {len(globbed)}")
+            filtered_batch = [x for x in batch if not (self.dirs.temp / x.with_suffix(".pdf").name).exists() ]
+            self.run_batch([filtered_batch, fpath])
+
+    def batch(self, data):
+        imgs, root = data
+        batch_name = f"{root.stem}_{self.batch_count}.pdf"
+        print("Batch {self.batch_count}: {batch_name}")
+        conversion = CmdAction(["magick", "convert", *imgs, "-alpha", "off", self.dirs.temp / batch_name], shell=False)
+        conversion.execute()
+
+    def combine_pages(self, targets):
+        pages = [x for x in self.dirs.temp.iterdir() if x.suffix == ".pdf"]
+        return ["pdftk", *pages, "cat", "output", targets[0]]

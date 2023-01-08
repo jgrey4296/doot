@@ -8,6 +8,7 @@ from __future__ import annotations
 import abc
 import logging as logmod
 import pathlib as pl
+import itertools
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from re import Pattern
@@ -49,8 +50,8 @@ class HashAllFiles(globber.DirGlobber):
     info
     """
 
-    def __init__(self, dirs:DootLocData, roots=None, exts=None):
-        super().__init__("files::hash", dirs, roots or [dirs.data], exts=exts)
+    def __init__(self, name="files::hash", dirs:DootLocData=None, roots=None, exts=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.data], exts=exts, rec=rec)
         self.current_hashed = {}
         self.hash_record    = hash_record
         self.ext_check_fn = lambda x: x.is_file() and x.suffix in self.exts
@@ -60,13 +61,13 @@ class HashAllFiles(globber.DirGlobber):
     def filter(self, fpath):
         is_cache = fpath != pl.Path() and fpath.name[0] in "._"
         if is_cache:
-            return False
+            return self.control.reject
 
         for x in fpath.iterdir():
             if self.ext_check_fn(x):
-                return True
+                return self.control.accept
 
-        return False
+        return self.control.discard
 
     def subtask_detail(self, fpath, task):
         task.update({
@@ -86,40 +87,38 @@ class HashAllFiles(globber.DirGlobber):
 
     def hash_remaining(self, fpath):
         print("Hashing: ", fpath)
-        self.reset_batch_count()
+        hash_file    = self.load_hashed(fpath)
+        dir_contents = super(globber.DirGlobber, self).glob_target(fpath, fn=lambda x: True, rec=False)
 
-        hash_file = self.load_hashed(fpath)
-        dir_contents = [x for x in fpath.iterdir() if x.stem[0] != "."]
+        chunks = self.chunk((x for x in dir_contents if str(x) not in self.current_hashed),
+                            batch_size)
 
-        while bool(dir_contents):
-            batch        = [x for x in dir_contents[:batch_size] if str(x) not in self.current_hashed]
-            dir_contents = dir_contents[batch_size:]
-            print(f"Remaining: {len(dir_contents)}")
-            if not bool(batch):
-                continue
+        self.run_batch(*chunks, target=hash_file)
 
-            if self.run_batch([batch, hash_file]):
-                return
-
-
-    def batch(self, data):
-        print(f"Batch Count: {self.batch_count} (size: {len(data[0])})")
+    def batch(self, data, target=None):
+        assert(target is not None)
+        print(f"Batch Count: {self.batch_count} (size: {len(files)})")
         # -r puts the hash first, making it easier to run uniq
-        act = CmdAction(["md5", "-r", *data[0]], shell=False)
-        act.execute()
-        with open(data[1], 'a') as f:
+        act = CmdAction(["md5", "-r"] + data, shell=False)
+        try:
+            act.execute()
+        except TypeError as err:
+            breakpoint(); pass
+        with open(target, 'a') as f:
             f.write("\n" + act.out)
 
 
 class GroupHashes(globber.DirGlobber):
 
-    def __init__(self, dirs:DootLocData, roots=None, exts=None):
-        super().__init__("files::hash.group", dirs, roots or [dirs.data], exts=exts)
+    def __init__(self, name="files::hash.group", dirs:DootLocData=None, roots=None, exts=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.data], exts=exts, rec=rec)
         self.hash_record    = hash_record
         self.hash_concat    = hash_concat
 
     def filter(self, fpath):
-        return (fpath / self.hash_record).exists()
+        if (fpath / self.hash_record).exists():
+            return self.control.accept
+        return self.control.discard
 
     def setup_detail(self, task):
         task.update({
@@ -144,8 +143,8 @@ class DuplicateHashes(tasker.DootTasker):
     """
     sort all_hashes, and run uniq of the first n chars
     """
-    def __init__(self, dirs):
-        super().__init__("files::hash.duplicates", dirs)
+    def __init__(self, name="files::hash.duplicates", dirs=None):
+        super().__init__(name, dirs)
         self.hash_concat = hash_concat
 
     def task_detail(self, task):

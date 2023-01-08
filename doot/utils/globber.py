@@ -6,6 +6,7 @@ matching thing
 ##-- imports
 from __future__ import annotations
 
+import enum
 import logging as logmod
 import pathlib as pl
 import shutil
@@ -25,6 +26,21 @@ logging = logmod.getLogger(__name__)
 
 glob_ignores = doot.config.or_get(['.git', '.DS_Store', "__pycache__"]).tool.doot.glob_ignores()
 
+class GlobControl(enum.Enum):
+    """
+    accept  : is a result, and descend if recursive
+    keep    : is a result, don't descend
+    discard : not a result, descend
+    reject  : not a result, don't descend
+    """
+    accept  = enum.auto()
+    keep    = enum.auto()
+    discard = enum.auto()
+    reject  = enum.auto()
+
+
+
+
 class EagerFileGlobber(DootSubtasker):
     """
     Base task for file based *on load* globbing.
@@ -39,6 +55,7 @@ class EagerFileGlobber(DootSubtasker):
     .{top/subtask/setup/teardown}_actions : for controlling task actions
     .default_task : the basic task definition that everything customises
     """
+    control = GlobControl
 
     def __init__(self, base:str, dirs:DootLocData, roots:list[pl.Path], *, exts:list[str]=None,  rec=False):
         super().__init__(base, dirs)
@@ -52,21 +69,22 @@ class EagerFileGlobber(DootSubtasker):
                 raise DootDirAbsent(x)
 
 
-    def filter(self, target:pl.Path):
+    def filter(self, target:pl.Path) -> bool | GlobControl:
         """ filter function called on each prospective glob result
         override in subclasses as necessary
         """
         return True
 
-    def glob_target(self, target, rec=False):
+    def glob_target(self, target, rec=False, fn=None) -> list[pl.Path]:
         results = []
         exts    = self.exts or [".*"]
+        filter_fn = fn or self.filter
         glob_fn = target.rglob if (rec or self.rec) else target.glob
 
         for ext in exts:
             results += list(glob_fn("*"+ext))
 
-        results = [x for x in results if self.filter(x)]
+        results = [x for x in results if filter_fn(x) not in [False, GlobControl.reject, GlobControl.discard]]
 
         return results
 
@@ -136,8 +154,10 @@ class DirGlobber(EagerFileGlobber):
     Always provides the root directories
     """
 
-    def glob_target(self, target, rec=False):
+
+    def glob_target(self, target, rec=False, fn=None):
         results = [target]
+        filter_fn = fn or self.filter
         if rec or self.rec:
             queue = list(target.iterdir())
             while bool(queue):
@@ -146,18 +166,23 @@ class DirGlobber(EagerFileGlobber):
                     continue
                 if current.is_file():
                     continue
+                match filter_fn(current):
+                    case GlobControl.keep:
+                        results.append(current)
+                    case GlobControl.discard:
+                        queue += [x for x in current.iterdir() if x.is_dir()]
+                    case True | GlobControl.accept:
+                        results.append(current)
+                        queue += [x for x in current.iterdir() if x.is_dir()]
+                    case None | False | GlobControl.reject:
+                        continue
+                    case _:
+                        pass
 
-                contents = list(current.iterdir())
-                if not bool(contents):
-                    # no contents, ignore
-                    continue
-
-                results.append(current)
-                queue += [x for x in contents if x.is_dir()]
         else:
-            results += [x for x in target.iterdir() if x.is_dir()]
+            results += [x for x in target.iterdir() if x.is_dir() and filter_fn(x) not in [False, GlobControl.reject, GlobControl.discard]]
 
-        return [x for x in results if self.filter(x)]
+        return results
 
 
 
