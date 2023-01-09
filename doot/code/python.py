@@ -49,6 +49,12 @@ class InitPyGlobber(globber.DirGlobber):
         super().__init__(name, dirs, roots or [dirs.src], rec=rec)
         self.ignores = ["__pycache__", ".git", "__mypy_cache__"]
 
+
+    def filter(self, fpath):
+        if fpath[0] in "_.":
+            return self.control.reject
+        return self.accept
+
     def subtask_detail(self, fpath, task):
         task['meta'].update({"focus" : fpath})
         return task

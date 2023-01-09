@@ -1,7 +1,7 @@
-name        = "Author"
+name        = "$author"
 markdown    = "kramdown"
 permalink   = "/posts/:year/:month/:day/:title"
-source      = "docs/site"
-destination = "build/jekyll"
+source      = "$src"
+destination = "$dst"
 
-include     = [ "_generated" ]
+include     = $includes

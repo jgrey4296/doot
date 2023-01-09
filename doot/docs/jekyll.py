@@ -12,7 +12,6 @@ import doot
 from doot.utils.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.clean_dirs import clean_target_dirs
-from doot.builders.jekyll import jekyll_src
 from doot.utils import globber
 from doot.utils.tasker import DootTasker
 
@@ -107,7 +106,7 @@ class GenPostTask(DootTasker):
         task.update({
             "actions"  : [ self.make_post ],
         })
-        return task_desc
+        return task
 
     def make_post(self, title, template):
         if template != "default":
@@ -146,13 +145,13 @@ class GenTagsTask(DootTasker):
         assert("tags"       in self.dirs.extra)
         assert("tagsIndex"  in self.dirs.extra)
 
-    def task_detail(self):
-        return {
+    def task_detail(self, task):
+        task.update({
             "actions"  : [self.get_tags, self.make_tag_pages ],
-            "targets"  : [ self.tag_index ],
-            "teardown" : [self.make_tag_index]
+            "teardown" : [self.make_tag_index],
             "clean"    : [ clean_target_dirs ],
-        }
+        })
+        return task
 
     def get_tags(self):
         for root in self.roots:

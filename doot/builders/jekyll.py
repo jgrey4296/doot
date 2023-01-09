@@ -13,15 +13,10 @@ import doot
 from doot.utils.checkdir import CheckDir
 from doot.utils.clean_dirs import clean_target_dirs
 from doot.utils.cmdtask import CmdTask
+from doot.utils.tasker import DootTasker
 
 ##-- end imports
 
-##-- data
-
-data_path = files("doot.__templates")
-config_file = data_path.joinpath("jekyll_config")
-config_text = config_file.read_text()
-##-- end data
 
 __all__ = [
     "task_jekyll_serve", "task_jekyll_build",
@@ -43,63 +38,61 @@ def task_jekyll_serve():
     }
 
 
-def task_jekyll_build(jekyll_config:pl.Path):
+
+class JekyllBuild(DootTasker):
     """
     Build the jekyll site, from the source destination,
     into the build destination
     using jekyll.toml
     """
-    def builder(drafts):
-        cmd = ["bundle", "exec", "jekyll", "build", "--config", jekyll_config)
-        if drafts:
-            cmd.append(" --drafts")
 
-        return cmd
+    def __init__(self, name="jekyll::build", dirs=None):
+        super().__init__(name, dirs)
+        self.jekyll_config = self.dirs.root / "jekyll.toml"
 
-    return {
-        "basename" : "jekyll::build",
-        "actions"  : [ CmdAction(["bundle", "update"], shell=False), CmdAction(builder, shell=False) ],
-        "file_dep" : [ jekyll_config ],
-        "task_dep" : ["_checkdir::jekyll", "jekyll::install"],
-        "targets"  : [ ".jekyll-cache"],
-        "clean"    : [ clean_target_dirs ],
-        "params"   : [
+    def params(self):
+        return [
             { "name" : "drafts",
               "long" : "drafts",
               "type" : bool,
               "default" : False,
-            }
-        ],
-    }
+             }
+        ]
+
+    def task_detail(self, task):
+        task.update({
+            "actions"  : [
+                self.copy_data,
+                self.copy_src,
+                CmdAction(self.cmd_builder, shell=False)
+            ],
+            "file_dep" : [ self.jekyll_config ],
+            "uptodate" : [False],
+        })
+        return task
+
+    def copy_data(self):
+        shutil.copytree(str(self.dirs.data), str(self.dirs.temp), dirs_exist_ok=True)
+
+    def copy_src(self):
+        shutil.copytree(str(self.dirs.src), str(self.dirs.temp), dirs_exist_ok=True)
+
+    def cmd_builder(self, drafts):
+        cmd = [ "jekyll", "build", "--config", self.jekyll_config ]
+        if drafts:
+            cmd.append("--drafts")
+
+        return cmd
 
 
-def task_init_jekyll(jekyll_config:pl.Path, dirs:DootLocData):
-    """
-    ([src]) init a new jekyll project if it doesnt exist,
-    in the config's src path
-    """
-    duplicate_config : pl.Path = dirs.src / "_config.yml"
 
-    return {
-        "basename" : "jekyll::init",
-        "actions" : [CmdAction(["jekyll", "new", jekyll_src], shell=False),
-                     lambda: duplicate_config.unlink(missing_ok=True),
-                     ],
-        "file_dep" : [jekyll_config],
-    }
-
-
-
-def task_jekyll_install(jekyll_config:pl.Path):
+def task_jekyll_install():
     """
     install the dependencies of jekyll,
     and create an initial config file
 
     # TODO add uptodate for if jekyll is installed
     """
-    def create_jekyll_config(targets):
-        pl.Path(targets[0]).write_text(config_text)
-
     return {
         "basename" : "jekyll::install",
         "actions" : [CmdAction(["brew", "install", "chruby", "ruby-install", "xz"], shell=False),
@@ -109,9 +102,7 @@ def task_jekyll_install(jekyll_config:pl.Path):
                      CmdAction(["bundle", "init"], shell=False),
                      CmdAction(["bundle", "add", "jekyll"], shell=False),
                      CmdAction(["bundle", "add", "jekyll-sitemap"], shell=False),
-                     create_jekyll_config,
                      ],
-        "targets" : [ jekyll_config ],
         "clean"   : True,
     }
 

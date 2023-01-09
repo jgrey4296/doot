@@ -62,7 +62,7 @@ try:
     godot_group += godot.task_newscene(godot_dirs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.or_get(False).tool.doot.announce_groups():
+    if doot.config.or_get(False).tool.doot.group.godot.debug():
         print("To activate group godot needs: ", err)
 ##-- end godot
 
@@ -87,14 +87,14 @@ try:
     xml_group += xml_reports.XmlFormatTask(xml_dirs, xml_data_dirs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.or_get(False).tool.doot.announce_groups():
+    if doot.config.or_get(False).tool.doot.group.xml.debug():
         print("To activate group, xml needs: ", err)
 ##-- end xml
 
 ##-- sqlite
 sqlite_group = TaskGroup("sqlite_group")
 try:
-    doot.config.tool.doot.group.databse
+    doot.config.tool.doot.group.database
     from doot.data import database
     sqlite_dirs  = doot.locs.extend(prefix="sqlite")
 
@@ -102,7 +102,7 @@ try:
     sqlite_group += database.SqlitePrepTask(sqlite_dirs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.or_get(False).tool.doot.announce_groups():
+    if doot.config.or_get(False).tool.doot.group.database.debug():
         print("To activate group, sqlite needs: ", err)
 
 ##-- end sqlite
@@ -122,7 +122,7 @@ try:
     # json_group += json_reports.JsonSchemaTask()
     #
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.or_get(False).tool.doot.announce_groups():
+    if doot.config.or_get(False).tool.doot.group.json.debug():
         print("To activate group, json needs: ", err)
 ##-- end json
 
@@ -138,7 +138,7 @@ try:
     plantuml_group += plantuml.PlantUMLGlobberCheck(dirs, [plant_dirs.src])
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.or_get(False).tool.doot.announce_groups():
+    if doot.config.or_get(False).tool.doot.group.plantuml.debug():
         print("To activate group, plantuml needs: ", err)
 
 
@@ -154,7 +154,7 @@ try:
     csv_group += csv_reports.CSVSummaryXMLTask(csv_dirs, [csv_dirs.data], csv_dir)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.or_get(False).tool.doot.announce_groups():
+    if doot.config.or_get(False).tool.doot.group.csv.debug():
         print("To activate group, csv needs: ", err)
 
 ##-- end csv
@@ -168,7 +168,7 @@ try:
     dot_group += dot.DotVisualise(dot_dirs, [dot_dirs.src])
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.or_get(False).tool.doot.announce_groups():
+    if doot.config.or_get(False).tool.doot.group.dot.debug():
         print("To activate group, dot needs: ", err)
 
 ##-- end dot
@@ -184,7 +184,7 @@ try:
     images_group += images.OCRGlobber(image_dirs, image_roots)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.or_get(False).tool.doot.announce_groups():
+    if doot.config.or_get(False).tool.doot.group.images.debug():
         print("To activate group, images needs: ", err)
 
 ##-- end images
@@ -198,7 +198,7 @@ try:
     repls_group += basic_repls.task_pyrepl
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.or_get(False).tool.doot.announce_groups():
+    if doot.config.or_get(False).tool.doot.group.repls.debug():
         print("To activate python repl, needs: ", err)
 
 try:
@@ -207,7 +207,7 @@ try:
     repls_group += basic_repls.task_prolog_repl
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.or_get(False).tool.doot.announce_groups():
+    if doot.config.or_get(False).tool.doot.group.repls.debug():
         print("To activate prolog repl, needs: ", err)
 
 ##-- end repls
