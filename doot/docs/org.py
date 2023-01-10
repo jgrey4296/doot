@@ -67,13 +67,44 @@ class LinkCleanExtract(globber.DirGlobber):
     def subtask_detail(self, fpath, task):
         task.update({
             "actions" : [
-                # read files
                 # extract links to .links file
-                # clean the link targets
-                # Insert extracted text
+                (self.extract_links, [fpath]),
+                (self.expand_and_clean_links, [fpath]),
+                (self.retrieve_ocr_text, [fpath]),
             ],
-                    })
+            "targets" : [ fpath / link_index_file ],
+        })
         return task
+
+    def extract_links(self, fpath):
+        globbed = self.glob_files(fpath)
+        link_reg = re.compile(r"\[\[(.+?)\]")
+        link_index = (fpath / link_index_file).open('w')
+        try:
+            for line in fileinput.input(files=globbed):
+                result = link_reg.search(line)
+                if result is None:
+                    continue
+
+                print(result[1], file=link_index)
+
+        finally:
+            link_index.close()
+
+
+
+    def expand_and_clean_links(self, fpath):
+        link_index  = fpath / link_index_file
+        links       = set(link_index.read_text().split("\n"))
+        clean_links = set()
+
+        # process
+
+        link_index.write("\n".join(clean_links))
+
+
+    def retrieve_ocr_text(self, fpath):
+        pass
 
 class TweetExtract(globber.DirGlobber):
 
@@ -195,11 +226,8 @@ class ThreadOrganise(globber.DirGlobber):
     def subtask_detail(self, fpath, task):
         task.update({
             "actions" : [
-                # read threadfile to get targets and current count
                 (self.read_threadcount, [fpath]),
                 (self.process_threads, [fpath]),
-                # process targets into new files
-                # move all headers into a header file
                      ],
             "file_dep" : [fpath / thread_file],
         })
