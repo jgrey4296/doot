@@ -48,13 +48,32 @@ file_index_file  = doot.config.or_get(".files").tool.doot.twitter.file_index()
 link_index_file  = doot.config.or_get(".links").tool.doot.twitter.link_index()
 thread_file      = doot.config.or_get(".threads").tool.doot.twitter.thread_index()
 
-# TODO ThreadMover - move threads in multi thread files to their own separate count
-# TODO header remover
-# TODO link extractor
-# TODO link cleaner
-# TODO extracted text insertion
-# TODO Quote expander
 # TODO thread crosslinking
+
+class LinkCleanExtract(globber.DirGlobber):
+    """
+
+    """
+
+    def __init__(self, name="thread::links.clean", dirs=None, roots=None, rec=True):
+        super().__init__(name, dirs, roots, rec=True)
+
+    def filter(self, fpath):
+        if any(x.suffix == ".org" for x in fpath.iterdir()):
+            return self.control.keep
+        else:
+            return self.control.discard
+
+    def subtask_detail(self, fpath, task):
+        task.update({
+            "actions" : [
+                # read files
+                # extract links to .links file
+                # clean the link targets
+                # Insert extracted text
+            ],
+                    })
+        return task
 
 class TweetExtract(globber.DirGlobber):
 
@@ -66,7 +85,7 @@ class TweetExtract(globber.DirGlobber):
         if any(x.suffix == ".org" for x in fpath.iterdir()):
             return self.control.keep
         else:
-            return self.discard
+            return self.control.discard
 
     def subtask_detail(self, fpath, task):
         task.update({
@@ -75,7 +94,7 @@ class TweetExtract(globber.DirGlobber):
                           ],
             "targets" : [fpath / tweet_index_file,
                          fpath / file_index_file,
-                         fpath / link_index_file,
+                         # fpath / link_index_file,
                          ],
             "clean"   : True,
                     })
@@ -84,6 +103,10 @@ class TweetExtract(globber.DirGlobber):
     def get_files(self, fpath):
         file_dir = fpath / f"{fpath.name}_files"
         if not file_dir.exists():
+            return
+        if file_dir.is_file():
+            with open(pl.Path() / "file_dirs.errors", 'a') as f:
+                f.write("\n" + str(fpath))
             return
 
         file_listing = [str(x.relative_to(fpath)) for x in file_dir.iterdir()]
@@ -117,7 +140,7 @@ class OrgThreadCount(globber.DirGlobber):
         if any(x.suffix == ".org" for x in fpath.iterdir()):
             return self.control.keep
         else:
-            return self.discard
+            return self.control.discard
 
     def subtask_detail(self, fpath, task):
         task.update({
@@ -128,10 +151,11 @@ class OrgThreadCount(globber.DirGlobber):
         return task
 
     def check_thread_counts(self, fpath):
-        target  = fpath / thread_file
-        counts  = defaultdict(lambda: [0, 0])
-        total   = 0
-        globbed = self.glob_fils(fpath)
+        target        = fpath / thread_file
+        counts        = defaultdict(lambda: [0, 0])
+        globbed       = [x for x in self.glob_files(fpath) if "thread" in x.stem]
+        total_files   = len(globbed)
+        total_threads = 0
 
         for line in fileinput.input(files=globbed):
             if not self.heading_re.match(line):
@@ -145,18 +169,126 @@ class OrgThreadCount(globber.DirGlobber):
                 case 2:
                     # thread header
                     counts[current][1] += 1
-                    total += 1
+                    total_threads += 1
                 case _:
                     pass
 
         summary = [f"L1: {y[0]} {x}\nL2: {y[1]} {x}" for x,y in counts.items()]
-        target.write_text(f"Total: {total}\n" + "\n".join(summary))
+        target.write_text(f"Total Files: {total_files}\nTotal Threads: {total_threads}\n" + "\n".join(summary))
+
+class ThreadOrganise(globber.DirGlobber):
+    """
+    move threads in multi thread files to their own separate count
+    """
+
+    def __init__(self, name="thread::organise", dirs=None, roots=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.data], exts=[".org"], rec=rec)
+        self.total_threads = 0
+        self.multi_threads = set()
+
+    def filter(self, fpath):
+        if any(x.suffix == ".org" for x in fpath.iterdir()):
+            return self.control.keep
+        else:
+            return self.control.discard
+
+    def subtask_detail(self, fpath, task):
+        task.update({
+            "actions" : [
+                # read threadfile to get targets and current count
+                (self.read_threadcount, [fpath]),
+                (self.process_threads, [fpath]),
+                # process targets into new files
+                # move all headers into a header file
+                     ],
+            "file_dep" : [fpath / thread_file],
+        })
+        return task
+
+    def process_threads(self, fpath):
+        print(f"Processing: {fpath} : Total: {self.total_threads}, {self.multi_threads}")
+        if not bool(self.multi_threads):
+            return
+
+        targets = list(self.multi_threads)
+        self.multi_threads.clear()
+        header_file  = fpath / "headers.org"
+        current_file = None
+        state        = 'header'
+        header_lines = []
+        new_thread   = None
+        try:
+            for line in fileinput.input(files=targets, inplace=True):
+                if fileinput.filename() != current_file:
+                    current_file = fileinput.filename()
+                    try:
+                        new_thread.close()
+                    except AttributeError:
+                        pass
+                    new_thread = None
+                    state = 'header'
+
+
+                # Determine state
+                match line.strip()[:3]:
+                    case "" if state == 'header':
+                        pass
+                    case x if re.match(r"^\* ", x): # header
+                        state = 'header'
+                    case "** " if state == 'header' and new_thread is None: # first thread
+                        state = 'first_thread'
+                        new_thread = True
+                    case "** ": # new thread
+                        try:
+                            new_thread.close()
+                        except AttributeError:
+                            pass
+                        self.total_threads += 1
+                        new_thread = (fpath / f"thread_{self.total_threads}.org").open('a')
+                        state = 'new_thread'
+                    case _:
+                        pass
+
+                match state:
+                    case 'header':
+                        header_lines.append(line)
+                    case 'first_thread':
+                        print(line, end="")
+                    case 'new_thread':
+                        print(line, end="", file=new_thread)
+
+
+        finally:
+            try:
+                new_thread.close()
+            except AttributeError:
+                pass
+
+        # After everything, write to the headers file
+        with open(header_file, 'a') as f:
+            f.write("\n" + "".join(header_lines))
+
+    def read_threadcount(self, fpath):
+        self.multi_threads.clear()
+        threadp = fpath / thread_file
+        for line in threadp.read_text().split("\n"):
+            result = re.match(r"Total Files: (\d+)", line)
+            if result:
+                self.total_threads = int(result[1])
+                continue
+
+            result = re.match("L(\d): (\d+) (.+?)$", line)
+            if not result:
+                continue
+
+            if int(result[1]) == 1 and int(result[2]) > 0:
+                self.multi_threads.add(fpath / result[3].strip())
+            elif int(result[2]) > 1:
+                self.multi_threads.add(fpath / result[3].strip())
 
 
 
-
-
-
+##-- todo
 class OrgExport(globber.DirGlobber):
     """
     Convert each thread to html
@@ -175,3 +307,5 @@ class ZipUser(globber.DirGlobber):
     """
     pass
 
+
+##-- end todo
