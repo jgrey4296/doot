@@ -53,7 +53,7 @@ class InitPyGlobber(globber.DirGlobber):
     def filter(self, fpath):
         if fpath[0] in "_.":
             return self.control.reject
-        return self.accept
+        return self.control.accept
 
     def subtask_detail(self, fpath, task):
         task['meta'].update({"focus" : fpath})

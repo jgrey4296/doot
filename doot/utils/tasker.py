@@ -38,8 +38,8 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-subtask_sleep : int = doot.config.or_get(2).tool.doot.subtask_sleep()
-batch_sleep   : int = doot.config.or_get(2).tool.doot.batch_sleep()
+subtask_sleep : float = doot.config.or_get(2.0).tool.doot.subtask_sleep()
+batch_sleep   : float = doot.config.or_get(2.0).tool.doot.batch_sleep()
 max_batches   : int = doot.config.or_get(-1).tool.doot.max_batches()
 
 class DootTasker:

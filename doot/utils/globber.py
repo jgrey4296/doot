@@ -160,10 +160,10 @@ class DirGlobber(EagerFileGlobber):
 
 
     def glob_target(self, target, rec=False, fn=None):
-        results = [target]
+        results = []
         filter_fn = fn or self.filter
         if rec or self.rec:
-            queue = list(target.iterdir())
+            queue = [target]
             while bool(queue):
                 current = queue.pop()
                 if current.name in glob_ignores:
@@ -180,8 +180,8 @@ class DirGlobber(EagerFileGlobber):
                         queue += [x for x in current.iterdir() if x.is_dir()]
                     case None | False | GlobControl.reject:
                         continue
-                    case _:
-                        pass
+                    case _ as x:
+                        raise TypeException("Unexpected glob filter value", x)
 
         else:
             results += [x for x in target.iterdir() if x.is_dir() and filter_fn(x) not in [False, GlobControl.reject, GlobControl.discard]]

@@ -48,6 +48,14 @@ class GitLogAnalyseTask(DootTasker):
 
     def __init__(self, dirs):
         super().__init__("git::analysis", dirs)
+        self.times  = {}
+        self.days   = {}
+        self.months = {}
+        # streaks / breaks
+        # weekends / weekdays
+        # day / night
+        # tags
+        # files touched
 
     def task_detail(self, task):
         task.update({
@@ -56,21 +64,16 @@ class GitLogAnalyseTask(DootTasker):
                            self.dirs.build / "month.distribution",
                            ],
             "file_dep" : [ self.dirs.build / "full_git.log" ],
-            "actions"  : [ self.get_time_dist,
-                           self.get_day_dist,
-                           self.get_month_dist ],
+            "actions"  : [ self.process_log,
+                           self.write_distributions,
+                           ],
         })
         return task
 
-    def get_time_dist(self, task):
-        # read log
-        # group into bins
-        # print out
-        pass
+    def process_log(self, targets):
+        for line in (self.dirs.build / "full_git.log").read_text().split("\n"):
+            #
+            pass
 
-    def get_day_dist(self, task):
-        pass
-
-
-    def get_month_dist(self, task):
+    def write_distributions(self):
         pass

@@ -38,8 +38,8 @@ class XmlElementsTask(globber.DirGlobber):
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for fpath.iterdir()):
-            return self.accept
-        return self.discard
+            return self.control.accept
+        return self.control.discard
 
     def subtask_detail(self, fpath, task:dict) -> dict:
         task.update({"targets" : [ self.dirs.extra['elements'] / (task['name'] + ".elements")],
@@ -75,8 +75,8 @@ class XmlSchemaTask(globber.DirGlobber):
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for fpath.iterdir()):
-            return self.accept
-        return self.discard
+            return self.control.accept
+        return self.control.discard
 
 
     def subtask_detail(self, fpath, task):
@@ -104,8 +104,8 @@ class XmlPythonSchemaRaw(globber.DirGlobber):
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for fpath.iterdir()):
-            return self.accept
-        return self.discard
+            return self.control.accept
+        return self.control.discard
 
     def subtask_detail(self, fpath, task):
         gen_package = str(self.dirs.codegen / task['name'])
@@ -143,8 +143,8 @@ class XmlPythonSchemaXSD(globber.EagerFileGlobber):
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for fpath.iterdir()):
-            return self.accept
-        return self.discard
+            return self.control.accept
+        return self.control.discard
 
     def subtask_detail(self, fpath, task):
         gen_package = str(self.dirs.codegen / task['name'])
@@ -183,8 +183,8 @@ class XmlSchemaVisualiseTask(globber.EagerFileGlobber):
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for fpath.iterdir()):
-            return self.accept
-        return self.discard
+            return self.control.accept
+        return self.control.discard
 
 
     def subtask_detail(self, fpath, task):
@@ -224,8 +224,8 @@ class XmlValidateTask(globber.DirGlobber):
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for fpath.iterdir()):
-            return self.accept
-        return self.discard
+            return self.control.accept
+        return self.control.discard
 
     def subtask_detail(self, fpath, task):
         task.update({})
@@ -256,8 +256,8 @@ class XmlFormatTask(globber.DirGlobber):
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for fpath.iterdir()):
-            return self.accept
-        return self.discard
+            return self.control.accept
+        return self.control.discard
 
     def subtask_detail(self, fpath, task):
         task['meta'].update({ "focus" : fpath })

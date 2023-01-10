@@ -32,8 +32,8 @@ class JsonFormatTask(globber.DirGlobber):
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for fpath.iterdir()):
-            return self.accept
-        return self.discard
+            return self.control.accept
+        return self.control.discard
 
 
     def subtask_detail(self, fpath, task):
@@ -74,8 +74,8 @@ class JsonPythonSchema(globber.DirGlobber):
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for fpath.iterdir()):
-            return self.accept
-        return self.discard
+            return self.control.accept
+        return self.control.discard
 
     def subtask_detail(self, fpath, task):
         gen_package = str(self.dirs.codegen / task['name'])
