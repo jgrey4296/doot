@@ -38,6 +38,7 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
+
 subtask_sleep : float = doot.config.or_get(2.0).tool.doot.subtask_sleep()
 batch_sleep   : float = doot.config.or_get(2.0).tool.doot.batch_sleep()
 max_batches   : int = doot.config.or_get(-1).tool.doot.max_batches()
@@ -54,10 +55,15 @@ class DootTasker:
         assert(dirs is not None)
         assert(base is not None)
         self.create_doit_tasks = self._build_task
+        params = self.params()
+        if bool(params):
+            self._build_task.__dict__['_task_creator_params'] = params
+
         self.base              = base
         self.dirs              = dirs
         self.setup_name        = "setup"
         self.batch_count       = 0
+        self._params           = {}
 
         if hasattr(self, 'gen_toml') and callable(self.gen_toml):
             GenToml.add_generator(self.base, self.gen_toml)
@@ -73,7 +79,6 @@ class DootTasker:
                      ("doc"      , self.doc),
                      ("uptodate" , [self.is_current]),
                      ("clean"    , [self.clean]),
-                     ("params"   , self.params() ),
                      ])
 
     def default_meta(self) -> dict:
@@ -125,8 +130,9 @@ class DootTasker:
         except DootDirAbsent:
             return None
 
-    def _build_task(self):
+    def _build_task(self, **kwargs):
         try:
+            self._params.update(kwargs)
             task          = self.default_task()
             task['setup'] = [self._setup_names['full']]
             maybe_task : None | dict = self.task_detail(task)
@@ -224,7 +230,7 @@ class DootSubtasker(DootTasker):
         except DootDirAbsent:
             return None
 
-    def _build_task(self):
+    def _build_task(self, **kwargs):
         raise NotImplementedError()
 
 

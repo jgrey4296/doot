@@ -115,11 +115,12 @@ class EagerFileGlobber(DootSubtasker):
 
         return results.items()
 
-    def _build_task(self):
+    def _build_task(self, **kwargs):
         """
         Generalized task builder for globbing on files
         then customizing the subtasks
         """
+        self._params.update(kwargs)
         subtasks = []
         globbed  = self.glob_all()
         for i, (uname, fpath) in enumerate(self.glob_all()):
@@ -206,11 +207,12 @@ class HeadlessFileGlobber(EagerFileGlobber):
     run all of them together
     """
 
-    def _build_task(self):
+    def _build_task(self, **kwargs):
         """
         Generalized task builder for globbing on files
         then customizing the subtasks
         """
+        self._params.update(kwargs)
         subtasks = []
         globbed = self.glob_all()
         for i, (uname, fpath) in enumerate(self.glob_all()):
