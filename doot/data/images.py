@@ -24,7 +24,9 @@ default_pdf_exts = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".p
 
 ocr_exts    : list[str] = doot.config.or_get(default_ocr_exts).tool.doot.images.ocr_exts()
 batch_size  : int       = doot.config.or_get(20).tool.doot.batch_size()
-ocr_out_ext : str = doot.config.or_get(".ocr").tool.doot.images.ocr_out()
+ocr_out_ext : str       = doot.config.or_get(".ocr").tool.doot.images.ocr_out()
+
+framerate   : int       = doot.config.or_get(10).tool.doot.images.framerate()
 
 def gen_toml(self):
     return "\n".join(["[tool.doot.images]",
@@ -88,9 +90,9 @@ class OCRGlobber(globber.DirGlobber):
             mv_txt_cmd.execute()
 
 
-class ImagesPDF(globber.LazyFileGlobber):
+class Images2PDF(globber.LazyFileGlobber):
     """
-    Combine globbed images into a single pdf file using imagemagick and img2pdf
+    Combine globbed images into a single pdf file using imagemagick
     """
 
     def __init__(self, name="images::pdf", dirs=None, roots=None, exts=None, rec=True):
@@ -137,3 +139,32 @@ class ImagesPDF(globber.LazyFileGlobber):
     def combine_pages(self, targets):
         pages = [x for x in self.dirs.temp.iterdir() if x.suffix == ".pdf"]
         return ["pdftk", *pages, "cat", "output", targets[0]]
+
+class Images2Video(globber.LazyFileGlobber):
+    """
+    https://stackoverflow.com/questions/24961127/
+    """
+
+    def __init__(self, name="images::to.video", dirs=None, roots=None, rec=True):
+        super().__init__(name, dirs, roots or [dirs.data], exts=default_ocr_exts, rec=rec)
+
+
+    def subtask_detail(self, fpath, task):
+        task.update({
+            "actions" : [CmdAction((self.make_gif, [fpath], {}), shell=False)],
+            "targets" : [self.dirs.temp / f"{task['name']}.gif"]
+        })
+        return task
+
+    def make_gif(self, fpath, targets):
+        globbed = self.glob_target(fpath)
+        args = ["ffmpeg",
+            "-f", "image2",
+            "-framerate", framerate,
+            "-loop",
+            ]
+        # ffmpeg -framerate 10 -pattern_type glob -i '*.jpeg' -c:v libx264 -pix_fmt yuv420p out.mp4
+        args += reverse(list(z for xs in zip(globbed, cycle(["-i"])) for z in xs))
+
+        args.append(targets[0])
+        raise NotImplementedError
