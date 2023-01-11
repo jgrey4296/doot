@@ -5,6 +5,7 @@
 ##-- imports
 from __future__ import annotations
 
+import sys
 import abc
 import fileinput
 import logging as logmod
@@ -47,6 +48,8 @@ tweet_index_file = doot.config.or_get(".tweets").tool.doot.twitter.index()
 file_index_file  = doot.config.or_get(".files").tool.doot.twitter.file_index()
 link_index_file  = doot.config.or_get(".links").tool.doot.twitter.link_index()
 thread_file      = doot.config.or_get(".threads").tool.doot.twitter.thread_index()
+
+empty_match = re.match("","")
 
 # TODO thread crosslinking
 
@@ -148,12 +151,12 @@ class TweetExtract(globber.DirGlobber):
         # fileinput over all orgs, get the permalinks
         globbed     = self.glob_files(fpath)
         tweet_index = fpath / tweet_index_file
-        permalinks  = []
+        permalinks  = set()
 
         for line in fileinput.input(files=globbed):
             result = self.permalink_re.search(line)
             if result:
-                permalinks.append(result[1])
+                permalinks.add(result[1])
 
         tweet_index.write_text("\n".join(permalinks))
 
@@ -181,6 +184,9 @@ class OrgThreadCount(globber.DirGlobber):
         })
         return task
 
+    def is_current(self, task):
+        return pl.Path(task.targets[0]).exists()
+    
     def check_thread_counts(self, fpath):
         target        = fpath / thread_file
         counts        = defaultdict(lambda: [0, 0])
@@ -214,8 +220,10 @@ class ThreadOrganise(globber.DirGlobber):
 
     def __init__(self, name="thread::organise", dirs=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=[".org"], rec=rec)
-        self.total_threads = 0
-        self.multi_threads = set()
+        self.total_threads   = 0
+        self.multi_threads   = set()
+        self.total_files_reg = re.compile(r"^Total Files: (\d+)$")
+        self.header_reg      = re.compile(r"^(\**) ")
 
     def filter(self, fpath):
         if any(x.suffix == ".org" for x in fpath.iterdir()):
@@ -234,10 +242,11 @@ class ThreadOrganise(globber.DirGlobber):
         return task
 
     def process_threads(self, fpath):
-        print(f"Processing: {fpath} : Total: {self.total_threads}, {self.multi_threads}")
         if not bool(self.multi_threads):
             return
 
+        print(f"Processing: {fpath} : Total: {self.total_threads}, {self.multi_threads}",
+              file=sys.stderr)
         targets = list(self.multi_threads)
         self.multi_threads.clear()
         header_file  = fpath / "headers.org"
@@ -258,25 +267,28 @@ class ThreadOrganise(globber.DirGlobber):
 
 
                 # Determine state
-                match line.strip()[:3]:
-                    case "" if state == 'header':
+                match (self.header_reg.match(line) or empty_match).groups():
+                    case ():
                         pass
-                    case x if re.match(r"^\* ", x): # header
+                    case ("*",):
                         state = 'header'
-                    case "** " if state == 'header' and new_thread is None: # first thread
+                    case ("**",) if state == 'header' and new_thread is None: # first thread
                         state = 'first_thread'
                         new_thread = True
-                    case "** ": # new thread
+                    case ("**",): # new thread
                         try:
                             new_thread.close()
                         except AttributeError:
                             pass
                         self.total_threads += 1
-                        new_thread = (fpath / f"thread_{self.total_threads}.org").open('a')
+                        new_thread_name = fpath / f"thread_{self.total_threads}.org"
+                        assert(not new_thread_name.exists())
+                        new_thread = new_thread_name.open('a')
                         state = 'new_thread'
-                    case _:
+                    case _: # sub levels, ignore
                         pass
 
+                # Act on state
                 match state:
                     case 'header':
                         header_lines.append(line)
@@ -284,6 +296,8 @@ class ThreadOrganise(globber.DirGlobber):
                         print(line, end="")
                     case 'new_thread':
                         print(line, end="", file=new_thread)
+                    case _:
+                        raise Exception("This shouldn't be possible")
 
 
         finally:
@@ -300,7 +314,7 @@ class ThreadOrganise(globber.DirGlobber):
         self.multi_threads.clear()
         threadp = fpath / thread_file
         for line in threadp.read_text().split("\n"):
-            result = re.match(r"Total Files: (\d+)", line)
+            result = self.total_files_reg.match(line)
             if result:
                 self.total_threads = int(result[1])
                 continue
