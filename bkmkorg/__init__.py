@@ -1,6 +1,7 @@
 
-DEFAULT_CONFIG  = "__config"
-DEFAULT_SECRETS = "secrets.config"
+DEFAULT_CONFIG  = "bkmkorg.__config"
 DEFAULT_TARGET  = "__temp_download"
 DEFAULT_LIBRARY = "/Volumes/documents/twitterthreads"
-DEFAULT_BOTS    = "bots.config"
+
+DEFAULT_SECRETS = "secrets.toml"
+DEFAULT_BOTS    = "bots.toml"
