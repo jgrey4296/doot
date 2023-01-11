@@ -170,7 +170,7 @@ def main():
     selected_file : Path = pl.Path(selected_file)
     selected_file = selected_file.expanduser().resolve()
     if not selected_file.exists():
-        logging.warning("No Choice Exists")
+        logging.warning("Selected File Doesn't Exist: %s", selected_file)
         quit()
 
     logging.info("Selected: %s", selected_file)

@@ -18,7 +18,7 @@ from bkmkorg.files.pathcmp import PathCmp
 
 ##-- logging
 LOGLEVEL = root_logger.DEBUG
-LOG_FILE_NAME = "log.{}".format(pl.Pathb(__file__).stem)
+LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
 root_logger.basicConfig(filename=LOG_FILE_NAME, level=LOGLEVEL, filemode='w')
 
 console = root_logger.StreamHandler()
@@ -33,39 +33,38 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
                                     epilog = "\n".join([""]))
 parser.add_argument('--library', required=True)
 parser.add_argument('--target', required=True)
-parser.add_argument('-e', '--exclude', action="append")
 ##-- end argparse
 
-warnings.warn("This is broken till i factor out dircmp")
-
-def copy_missing(the_cmp, exclude=None):
-    if exclude is None:
-        exclude = []
-    queue = [the_cmp]
-
+def dfs_and_copy(lib_root, target_root):
+    queue = list(lib_root.iterdir())
     while bool(queue):
-        current = queue.pop(0)
-        # Copy left_only to right
-        for missing in current.left_only:
-            loc_l =  missing
-            loc_r = current.right / missing.name
-            if loc_l.is_file() and missing.suffix not in exclude):
-                logging.info("Missing: library -> %s -> target : %s : %s", missing, loc_l, loc_r)
-                copy(str(loc_l), str(loc_r))
-            elif isdir(loc_l):
-                logging.info("Missing: library -> %s -> target : %s : %s", missing, loc_l, loc_r)
-                copytree(str(loc_l), str(loc_r))
+        current     = queue.pop()
+        rel_current = current.relative_to(lib_root)
+        target      = target_root / rel_current
+        # logging.info("Checking: %s", rel_current)
 
-        queue += current.subdirs.values()
+        if target.exists() and current.is_dir():
+            queue += list(current.iterdir())
+            continue
+        elif target.exists():
+            continue
+
+        assert(not target.exists())
+        # TODO check hashes
+        if current.is_file():
+            logging.info("Missing: library -> target : %s", rel_current)
+            copy(str(current), str(target))
+        else:
+            assert(current.is_dir())
+            logging.info("Missing Dir: library -> target : %s %s %s", rel_current, current, target)
+            copytree(str(current), str(target))
 
 def main():
     args         = parser.parse_args()
     args.library = pl.Path(args.library).expanduser().resolve()
     args.target  = pl.Path(args.target).expanduser().resolve()
 
-    the_cmp = PathCmp(args.library, args.target)
-
-    copy_missing(the_cmp, exclude=args.exclude)
+    dfs_and_copy(args.library, args.target)
 
 
 ##-- ifmain

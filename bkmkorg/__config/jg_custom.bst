@@ -580,7 +580,8 @@ FUNCTION {format.url}
   url
   duplicate$ empty$
     { pop$ "" }
-    { "\urlprefix\url{" swap$ * "}" * }
+    % { "\urlprefix\url{" swap$ * "}" * }
+    { "\href{" swap$ * "}{Url}" * }
   if$
 }
 

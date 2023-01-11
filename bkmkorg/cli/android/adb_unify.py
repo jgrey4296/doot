@@ -97,7 +97,16 @@ def dfs_dir(initial_path, sleep_time, func, skip_to=None, max_depth=None, min_de
     queue = [(x, 1) for x in initial]
     while bool(queue):
         curr_path, depth = queue.pop(0)
+
+        ##-- skips
         if max_depth and depth >= max_depth:
+            # Skip if too deep
+            continue
+
+        if curr_path.is_dir() and curr_path.name[0] in ".":
+            # skip if a dot directory
+            continue
+        if curr_path.is_dir() and curr_path.name == "__pycache__":
             continue
 
         if depth > 1 and skip_to is not None and skip_to != curr_path.name:
@@ -106,9 +115,10 @@ def dfs_dir(initial_path, sleep_time, func, skip_to=None, max_depth=None, min_de
         elif skip_to == curr_path.name:
             skip_to = None
 
+        ##-- end skips
+
         sub = [(x, depth+1) for x in curr_path.iterdir() if x.is_dir()]
         queue += sub
-
 
         if min_depth and depth <= min_depth:
             logging.info("Skipping %s", curr_path.name)
@@ -151,7 +161,8 @@ def pull_sync(device_id, target, lib, current) -> bool:
     """
     logging.info("Pulling: %s\nto     : %s\ncurrent: %s", target, lib, current)
     logging.info("--------------------")
-    # Compare the target and lib using find
+
+    ##-- get device files
     device_files = subprocess.run(NICE + ["adb",
                                    "-t",
                                    device_id,
@@ -159,7 +170,8 @@ def pull_sync(device_id, target, lib, current) -> bool:
                                    "find",
                                    esc(target/current),
                                    "-type", "f"],
-                                  capture_output=True)
+                                  capture_output=True,
+                                  shell=False)
     if device_files.returncode != 0:
         logging.warning("Pull Failure: Initial Device Find")
         logging.warning(device_files.stdout.decode())
@@ -168,13 +180,17 @@ def pull_sync(device_id, target, lib, current) -> bool:
 
     device_set = { pl.Path(x).relative_to(target) for x in device_files.stdout.decode().split("\n") if x != "" }
 
+    ##-- end get device files
+
+    ##-- get local files
     if not (lib/current).exists():
         (lib/current).mkdir()
 
     local_files = subprocess.run(NICE + ["find",
-                                  str(lib/current),
-                                  "-type", "f"],
-                                 capture_output=True)
+                                         str(lib/current),
+                                         "-type", "f"],
+                                 capture_output=True,
+                                 shell=False)
     if local_files.returncode != 0:
         logging.warning("Pull Failure: Library Find")
         logging.warning(local_files.stdout.decode())
@@ -183,16 +199,22 @@ def pull_sync(device_id, target, lib, current) -> bool:
 
     local_set = {pl.Path(x).relative_to(lib) for x in local_files.stdout.decode().split("\n") if x != ""}
 
+    ##-- end get local files
+
     missing = device_set - local_set
     logging.info("%s missing from %s", len(missing), lib/current)
-    # Then copy missing over
+
+    ##-- pull missing from device
     if not bool(missing):
         return False
 
     for path in missing:
         assert(not (lib/path).exists())
         if not (lib/path).parent.exists():
-            (lib/path).parent.mkdir()
+            (lib/path).parent.mkdir(parents=True)
+
+        if path.name == ".DS_Store":
+            continue
 
         logging.info("Copying: %s\nTo     : %s", target/path, lib/path)
         result = subprocess.run(NICE + ["adb",
@@ -210,6 +232,8 @@ def pull_sync(device_id, target, lib, current) -> bool:
             logging.warning(result.stdout.decode())
             logging.warning(result.stderr.decode())
             raise Exception()
+
+    ##-- end pull missing from device
 
     return True
 

@@ -42,8 +42,6 @@ parser.add_argument('-t', '--tag', help="Optional Focus Tag")
 
 ##-- end argparse
 
-
-
 def get_tag_across_years(db, tag) -> List[Tuple[datetime, int]]:
     """
     Find the earliest instance of the tag,

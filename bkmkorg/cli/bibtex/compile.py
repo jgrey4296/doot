@@ -58,6 +58,7 @@ parser.add_argument("-v", "--verbose",     action='count', help="increase verbos
 parser.add_argument('--logfilter')
 ##-- end argparse
 
+tex_cmd = ["pdflatex", "-halt-on-error"]
 
 def process_bib(bib_target, output, *, timeout=3):
     timeout *= 60 # convert minutes to seconds
@@ -75,26 +76,30 @@ def process_bib(bib_target, output, *, timeout=3):
                                                 target=str(bib_target)))
 
         logging.info("First Pass: %s", temp_tex.stem)
-        result = subprocess.run(["pdflatex", temp_tex.stem],
+        result = subprocess.run([*tex_cmd, temp_tex.stem],
                                 capture_output=True,
+                                shell=False,
                                 cwd=str(temp_dir_p),
                                 timeout=timeout)
         handle_process_result("first", temp_tex.stem, result)
         logging.info("Bibtex Pass")
         result = subprocess.run(["bibtex", temp_tex.stem],
                                 capture_output=True,
+                                shell=False,
                                 cwd=str(temp_dir_p),
                                 timeout=timeout)
         handle_process_result("bib", temp_tex.stem, result)
         logging.info("Second Pass")
-        result = subprocess.run(["pdflatex", temp_tex.stem],
+        result = subprocess.run([*tex_cmd, temp_tex.stem],
                                 capture_output=True,
+                                shell=False,
                                 cwd=str(temp_dir_p),
                                 timeout=timeout)
         handle_process_result("second", temp_tex.stem, result)
         logging.info("Third Pass")
-        result = subprocess.run(["pdflatex", temp_tex.stem],
+        result = subprocess.run([*tex_cmd, temp_tex.stem],
                                 capture_output=True,
+                                shell=False,
                                 cwd=str(temp_dir_p),
                                 timeout=timeout)
         handle_process_result("third", temp_tex.stem, result)
@@ -109,10 +114,8 @@ def handle_process_result(pass_str, name, result):
     if result.returncode == 0:
         return
 
-    raise Exception(f"{pass_str} : {name}",
-                    result.returncode,
-                    result.stdout.decode(),
-                    result.stderr.decode())
+    logging.error(result.stdout.decode())
+    raise Exception(f"{pass_str} : {name}", result.returncode)
 
 def main():
     args = parser.parse_args()
