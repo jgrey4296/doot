@@ -98,42 +98,44 @@ class Images2PDF(globber.LazyFileGlobber):
     def __init__(self, name="images::pdf", dirs=None, roots=None, exts=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=exts or default_pdf_exts, rec=rec)
 
+
+    def params(self):
+        return [
+            { "name": "name", "short": "n", "type": str, "default": "collected"}
+        ]
+
     def task_detail(self, task):
         task.update({
-            "actions" : [CmdAction(self.combine_images, shell=False)],
-            "targets" : [ self.dirs.build / f"{task['name']}.pdf" ],
+            "name"    : "build_single",
+            "actions" : [CmdAction(self.combine_pages, shell=False)],
+            "targets" : [ self.dirs.build / f"{self._params['name']}.pdf" ],
             "clean"   : [self.clean_temp_and_targets],
         })
         return task
 
-    def clean_temp_and_targets(self, targets):
-        pl.Path(targets[0]).unlink()
-        for x in self.dirs.temp.iter():
-            if x.is_file() and x.suffix() == ".pdf":
-                x.unlink()
-
-    
     def subtask_detail(self, fpath, task):
         task.update({
             "actions" : [(self.images_to_pages, [fpath])],
         })
         return task
 
+    def clean_temp_and_targets(self, targets):
+        pl.Path(targets[0]).unlink(missing_ok=True)
+        for x in self.dirs.temp.iterdir():
+            if x.is_file() and x.suffix == ".pdf":
+                x.unlink(missing_ok=True)
+
     def images_to_pages(self, fpath):
         globbed = self.glob_target(fpath)
+        chunks = self.chunk(globbed, batch_size)
+        self.run_batch(*chunks, root=fpath)
 
-        while bool(globbed):
-            batch   = globbed[:batch_size]
-            globbed = globbed[batch_size:]
-            print("Remaining: {len(globbed)}")
-            filtered_batch = [x for x in batch if not (self.dirs.temp / x.with_suffix(".pdf").name).exists() ]
-            self.run_batch([filtered_batch, fpath])
-
-    def batch(self, data):
-        imgs, root = data
+    def batch(self, data, root=None):
         batch_name = f"{root.stem}_{self.batch_count}.pdf"
-        print("Batch {self.batch_count}: {batch_name}")
-        conversion = CmdAction(["magick", "convert", *imgs, "-alpha", "off", self.dirs.temp / batch_name], shell=False)
+        print(f"Batch {self.batch_count}: {batch_name}")
+        args = ["magick", "convert"] + data + ["-alpha", "off", self.dirs.temp / batch_name]
+        print(f"Batch Args: {args}")
+        conversion = CmdAction(args, shell=False)
         conversion.execute()
 
     def combine_pages(self, targets):
