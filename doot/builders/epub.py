@@ -53,6 +53,7 @@ NAV_ENT_T      = Template(data_path.joinpath("epub_nav_entry").read_text())
 ##-- end epub templates
 
 ws = re.compile("\s+")
+# TODO pandoc based epub
 
 class EbookGlobberBase(globber.DirGlobber):
 
