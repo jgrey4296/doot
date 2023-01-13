@@ -22,9 +22,7 @@ from weakref import ref
 
 from doit.task import Task as DoitTask
 
-import doot
 from doot.errors import DootDirAbsent
-from doot.utils.gen_toml import GenToml
 
 if TYPE_CHECKING:
     # tc only imports
@@ -38,10 +36,9 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
+from doit import task_params
+from doit.task import dict_to_task
 
-subtask_sleep : float = doot.config.or_get(2.0).tool.doot.subtask_sleep()
-batch_sleep   : float = doot.config.or_get(2.0).tool.doot.batch_sleep()
-max_batches   : int = doot.config.or_get(-1).tool.doot.max_batches()
 
 class DootTasker:
     """ Util Class for building single tasks
@@ -50,32 +47,45 @@ class DootTasker:
     'run_batch' controls batching bookkeeping,
     'batch' is the actual action
     """
+    subtask_sleep : ClassVar[float]
+    batch_sleep   : ClassVar[float]
+    max_batches   : ClassVar[int]
+
+    @staticmethod
+    def set_defaults(config:TomlAccess):
+        DootTasker.subtask_sleep = config.or_get(2.0).tool.doot.subtask_sleep()
+        DootTasker.batch_sleep   = config.or_get(2.0).tool.doot.batch_sleep()
+        DootTasker.max_batches   = config.or_get(-1).tool.doot.max_batches()
 
     def __init__(self, base:str, dirs:DirData=None):
-        assert(dirs is not None)
         assert(base is not None)
-        self.create_doit_tasks = self._build_task
-        params = self.params()
+        assert(dirs is not None or dirs is False), dirs
+
+        self.create_doit_tasks = lambda *a, **kw: self._build_task(*a, **kw)
+        self.create_doit_tasks.__dict__['basename'] = base
+        params = self.set_params()
         if bool(params):
-            self._build_task.__dict__['_task_creator_params'] = params
+            self.create_doit_tasks.__dict__['_task_creator_params'] = params
 
         self.base              = base
         self.dirs              = dirs
         self.setup_name        = "setup"
         self.batch_count       = 0
-        self._params           = {}
+        self.params            = {}
 
         if hasattr(self, 'gen_toml') and callable(self.gen_toml):
+            from doot.utils.gen_toml import GenToml
             GenToml.add_generator(self.base, self.gen_toml)
 
-    def params(self) -> list:
+    def set_params(self) -> list:
         return []
 
     def default_task(self) -> dict:
-        return dict([("basename" , self.base),
+        return dict([("name"     , self.base),
                      ("meta"     , self.default_meta()),
                      ("actions"  , list()),
                      ("task_dep" , list()),
+                     ("setup"    , list()),
                      ("doc"      , self.doc),
                      ("uptodate" , [self.is_current]),
                      ("clean"    , [self.clean]),
@@ -101,10 +111,11 @@ class DootTasker:
 
     @property
     def _setup_names(self):
-        names = { "base" : f"_{self.base}",
-                  "name" : f"{self.setup_name}"
+        private = "_" if self.base[0] != "_" else ""
+        names = { "base" : f"{private}{self.base}",
+                  "name" : f"{self.setup_name}",
+                  "full" : f"{private}{self.base}:{self.setup_name}"
                  }
-        names['full'] = f"{names['base']}:{names['name']}"
         return names
 
     def setup_detail(self, task:dict) -> None|dict:
@@ -118,36 +129,40 @@ class DootTasker:
         Build a pre-task that every subtask depends on
         """
         try:
-            snames = self._setup_names
-            task_spec = self.default_task()
-            task_spec['basename'] = snames['base']
-            task_spec['name'] = snames['name']
-            if self.dirs is not None:
+            snames                = self._setup_names
+            task_spec             = self.default_task()
+            task_spec['name']     = snames['full']
+            if self.dirs is not None and self.dirs is not False:
                 task_spec['setup'] = [ self.dirs.checker ]
 
             val = self.setup_detail(task_spec)
-            return val
+            if val is not None:
+                return dict_to_task(val)
         except DootDirAbsent:
             return None
 
     def _build_task(self, **kwargs):
         try:
-            self._params.update(kwargs)
-            task          = self.default_task()
-            task['setup'] = [self._setup_names['full']]
+            self.params.update(kwargs)
+            task                     = self.default_task()
             maybe_task : None | dict = self.task_detail(task)
             if maybe_task is None:
                 return None
-            yield maybe_task
-            yield self._build_setup()
+            setup_task = self._build_setup()
+            if setup_task is not None:
+                yield setup_task
+                maybe_task['setup'].append(self._setup_names['full'])
+
+            full_task = dict_to_task(maybe_task)
+            yield full_task
         except DootDirAbsent:
-            yield None
+            return None
 
 
 
     def _sleep_subtask(self):
         print("Sleep Subtask")
-        sleep(subtask_sleep)
+        sleep(self.subtask_sleep)
 
     def _reset_batch_count(self):
         self.batch_count = 0
@@ -167,11 +182,11 @@ class DootTasker:
             self.batch(batch_list, **kwargs)
 
             self.batch_count += 1
-            if -1 < max_batches < self.batch_count:
+            if -1 < self.max_batches < self.batch_count:
                 print("Max Batch Hit")
                 return
             print("Sleep Batch")
-            sleep(batch_sleep)
+            sleep(self.batch_sleep)
 
     def batch(self, data, **kwargs):
         """ Override to implement what a batch does """
@@ -207,25 +222,24 @@ class DootSubtasker(DootTasker):
         super().__init__(base, dirs)
 
 
-    def subtask_detail(self, fpath, task) -> None|dict:
+    def subtask_detail(self, task, **kwargs) -> None|dict:
         return task
 
-    def subtask_actions(self, fpath) -> list[str|CmdAction|Callable]:
-        return [f"echo {fpath}"]
-
-    def _build_subtask(self, n:int, uname, fpath):
+    def _build_subtask(self, n:int, uname, **kwargs):
         try:
-            spec_doc  = self.doc + f" : {fpath}"
+            spec_doc  = self.doc + f" : {kwargs}"
             task_spec = self.default_task()
-            task_spec.update({"name"     : uname,
+            task_spec.update({"name"     : f"{uname}",
                               "doc"      : spec_doc,
-                              "setup"    : [self._setup_names['full']]
                               })
             task_spec['meta'].update({ "n" : n })
-            task = self.subtask_detail(fpath, task_spec)
-            task['actions'] += self.subtask_actions(fpath)
-            if bool(subtask_sleep):
+            task = self.subtask_detail(task_spec, **kwargs)
+            if task is None:
+                return
+
+            if bool(self.subtask_sleep):
                 task['actions'].append(self._sleep_subtask)
+
             return task
         except DootDirAbsent:
             return None

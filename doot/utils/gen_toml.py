@@ -18,7 +18,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-from doot.utils.task_group import TaskGroup
 
 if TYPE_CHECKING:
     # tc only imports
@@ -40,38 +39,36 @@ class GenToml:
 
     @staticmethod
     def add_generator(name : str, generate : Callable):
-        GenToml.generators[name] = generate
+        # GenToml.generators[name] = generate
+        task = {
+            "basename" : "generate::toml",
+            "name"     : name,
+            "actions"  : [ (GenToml.add_text, [name, generate]) ],
+            "file_dep" : [ GenToml.gen_file],
+            "setup"    : ["generate::toml:setup"],
+            }
+        GenToml.generators[name] = task
+
 
     @staticmethod
     def gen_toml_tasks():
-        group = TaskGroup("generate::toml")
-        # Subtasks
-        for name, generate in GenToml.generators.items():
-            group += {
-                "basename" : "generate::toml",
-                "name"     : name,
-                "actions"  : [ (GenToml.add_text, [name, generate]) ],
-                "file_dep" : [ GenToml.gen_file],
-                "setup"    : ["generate::toml:setup"],
-            }
+        for task in GenToml.generators.values():
+            yield task
 
         # Setup
-        group += {
+        yield {
             "basename" : "generate::toml",
             "name"     : "setup",
             "actions"  : [ GenToml.prep_gen_toml ],
             "targets"  : [ GenToml.gen_file ],
             "clean"    : True,
         }
-
         # Top
-        group += {
+        yield {
             "basename" : "generate::toml",
             "name"  : None,
             "task_dep" : [f"generate::toml:{name}" for name in GenToml.generators.keys()],
         }
-
-        return group
 
     @staticmethod
     def prep_gen_toml():

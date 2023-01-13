@@ -36,9 +36,10 @@ from doit.cmd_base import NamespaceTaskLoader, opt_cwd, opt_seek_file
 from doit.exceptions import InvalidDodoFile
 from doit import loader as doit_loader
 from doot.utils.checkdir import CheckDir
-from doot.utils.locdata import DootLocData
+from doot.utils.loc_data import DootLocData
 from doot import default_dooter
 from doot.utils.gen_toml import GenToml
+from doot.utils.task_group import TaskGroup
 
 
 #### options related to dooter.py
@@ -72,15 +73,23 @@ class DootLoader(NamespaceTaskLoader):
             opt_values['cwdPath'],
             opt_values['seek_file'],
         )))
+
         self.namespace['__doot_all_dirs']   = DootLocData.gen_loc_tasks()
         self.namespace['__doot_all_checks'] = CheckDir.gen_check_tasks()
         self.namespace['__doot_all_tomls']  = GenToml.gen_toml_tasks()
 
-
     def load_tasks(self, cmd, pos_args):
+        # expand out task groups
+        group_tasks = {}
+        for x in self.namespace.values():
+            if isinstance(x, TaskGroup) and not x.as_creator:
+                group_tasks.update(x.to_dict())
+
+        self.namespace.update(group_tasks)
         tasks = doit_loader.load_tasks(
             self.namespace, self.cmd_names, allow_delayed=cmd.execute_tasks,
             args=pos_args, config=self.config, task_opts=self.task_opts)
+
 
         # Add task options from config, if present
         if self.config is not None:
@@ -96,7 +105,6 @@ class DootLoader(NamespaceTaskLoader):
                     task.cfg_values = self.task_opts[task.name]
                     if task.pos_arg and task.pos_arg in task.cfg_values:
                         task.pos_arg_val = task.cfg_values[task.pos_arg]
-
 
 
         DootLoader.tasks = tasks

@@ -8,60 +8,72 @@ from doot.utils.clean_dirs import clean_target_dirs
 from doot.utils.task_group import TaskGroup
 ##-- end imports
 
+from doot.utils.tasker import DootTasker
+
 class CheckDir:
     """ Task for checking directories exist,
     making them if they don't
     """
-    all_check_groups : ClassVar[dict[str:CheckDir]] = {}
+    _all_check_groups : ClassVar[dict[str:CheckDir]] = {}
 
+    _checker_name = "_locs::check"
     @staticmethod
     def gen_check_tasks():
-        tasks = [x._build_task() for x in CheckDir.all_check_groups.values()]
-        return TaskGroup("checkdir group",
-                         *tasks)
+        return TaskGroup(CheckDir._checker_name,
+                         *CheckDir._all_check_groups.values(),
+                         as_creator=True)
+
 
     @staticmethod
-    def register(name:str, paths:list[pl.Path], dirs:DootLocData=None):
-        checker = CheckDir(name, paths[:] + list(dirs or []))
-        CheckDir.all_check_groups[checker.name] = checker
+    def register(dirs:DootLocData=None):
+        checker = CheckDir(dirs._postfix, dirs)
+        CheckDir._all_check_groups[checker.base] = checker
+        return f"{CheckDir._checker_name}:{checker.base}"
 
-    def __init__(self, name, paths):
-        self.paths             = [pl.Path(x) for x in paths or [] ]
-        self.name              = name
-        self.default_spec      = { "basename" : f"_checkdir::{name}" }
+    def __init__(self, name="default", dirs=None, private=True):
+        self.base = name
+        self.dirs = dirs
 
-    def uptodate(self):
-        return all([x.exists() for x in self.paths])
+    def is_current(self):
+        return all([y.exists() for x,y in self.dirs])
+
+    def _build_task(self) -> dict:
+        task = {
+            "name"      : self.base,
+            "actions"   : [ self.mkdir ],
+            "clean"     : [ clean_target_dirs ],
+            "uptodate"  : [self.is_current],
+            "verbosity" : 2,
+        }
+        return task
 
     def mkdir(self):
-        for x in self.paths:
+        for _,x in self.dirs:
             try:
                 x.mkdir(parents=True)
                 print("Built Missing Location: ", x)
             except FileExistsError:
                 pass
 
-    def _build_task(self) -> dict:
-        task_desc = self.default_spec.copy()
-        task_desc.update({
-            "actions"   : [ self.mkdir ],
-            "uptodate"  : [ self.uptodate ],
-            "clean"     : [ clean_target_dirs ],
-            "verbosity" : 2,
-        })
-        return task_desc
 
-class DestroyDir:
+class DestroyDir(DootTasker):
     """ Task that destroys a directory. ie: working directories """
 
-    def __init__(self, *, paths=None, data=None, name="default", **kwargs):
-        self.create_doit_tasks = self.build
-        self.paths             = [pl.Path(x) for x in paths or [] ]
-        self.kwargs            = kwargs
-        self.default_spec      = { "basename" : f"destroydir::{name}" }
+    def __init__(self, name="default", dirs=None, targets=None, prefix="locs::destroy", private=True):
+        full_name = f"{'__' if private else ''}{base}.{name}"
+        super().__init__(name, dirs)
+        self.targets      = [pl.Path(x) for x in targets or [] ]
 
-    def uptodate(self):
+    def is_current(self):
         return all([x.exists() for x in self.args])
+
+    def _build_task(self, task):
+        task.update({
+            "actions"  : [ self.destroy_deps ],
+            "file_dep" : self.paths,
+            "uptodate" : [ self.uptodate ],
+        })
+        return task
 
     def destroy_deps(task, dryrun):
         """ Clean targets, including non-empty directories
@@ -81,13 +93,3 @@ class DestroyDir:
                     shutil.rmtree(str(target))
             except OSError as err:
                 print(err)
-
-    def build(self):
-        task_desc = self.default_spec.copy()
-        task_desc.update(self.kwargs)
-        task_desc.update({
-            "actions"  : [ self.destroy_deps ],
-            "file_dep" : self.paths,
-            "uptodate" : [ self.uptodate ],
-        })
-        return task_desc

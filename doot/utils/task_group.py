@@ -41,37 +41,16 @@ class TaskGroup:
     objects with `create_doit_tasks`, and callables
     """
 
-    def __init__(self, name, *args):
-        self.create_doit_tasks = self._build_task
-        self.name              = name.replace(" ", "_")
-        self.tasks             = list(args)
+    def __init__(self, name, *args, as_creator=False):
+        self.name       = name.replace(" ", "_")
+        self.tasks      = list(args)
+        self.as_creator = as_creator
+        if as_creator:
+            self.create_doit_tasks = lambda *a, **kw: self._build_task(*a, **kw)
+            self.create_doit_tasks.__dict__['basename'] = name
 
-    def _build_task(self):
-        for task in self.tasks:
-            try:
-                result = task
-                match task:
-                    case dict():
-                        pass
-                    case x if hasattr(x, "create_doit_tasks"):
-                        result = task.create_doit_tasks()
-                    case x if hasattr(x, "build") and callable(x.build):
-                        result = task.build()
-                    case x if callable(x):
-                        result = task()
-
-                if isinstance(result, list):
-                    for x in result:
-                        yield x
-                elif result is not None:
-                    yield result
-            except DootDirAbsent:
-                continue
-
-        yield { "basename" : "_groups::" + self.name,
-                "actions" : [],
-                }
-
+    def to_dict(self):
+        return {f"__doot_{self.name}_{id(x)}": x for x in self.tasks}
 
     def __iadd__(self, other):
         self.tasks.append(other)
@@ -80,3 +59,15 @@ class TaskGroup:
     def add_tasks(self, *other):
         for x in other:
             self.tasks.append(other)
+
+    def _build_task(self):
+        yield {
+            "basename" : self.name,
+            "name"     : None,
+            "uptodate" : [False],
+            "actions"  : [],
+        }
+
+        for task in self.tasks:
+            yield task._build_task()
+
