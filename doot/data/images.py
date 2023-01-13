@@ -61,7 +61,7 @@ class OCRGlobber(globber.DirGlobber):
 
         return self.control.discard
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
             "actions" : [(self.ocr_remaining, [fpath])],
             "clean"   : [(self.clean_ocr_files, [fpath])],
@@ -99,7 +99,7 @@ class Images2PDF(globber.LazyFileGlobber):
         super().__init__(name, dirs, roots or [dirs.data], exts=exts or default_pdf_exts, rec=rec)
 
 
-    def params(self):
+    def set_params(self):
         return [
             { "name": "name", "short": "n", "type": str, "default": "collected"}
         ]
@@ -113,7 +113,7 @@ class Images2PDF(globber.LazyFileGlobber):
         })
         return task
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath):
         task.update({
             "actions" : [(self.images_to_pages, [fpath])],
         })
@@ -151,7 +151,7 @@ class Images2Video(globber.LazyFileGlobber):
         super().__init__(name, dirs, roots or [dirs.data], exts=default_ocr_exts, rec=rec)
 
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath):
         task.update({
             "actions" : [CmdAction((self.make_gif, [fpath], {}), shell=False)],
             "targets" : [self.dirs.temp / f"{task['name']}.gif"]

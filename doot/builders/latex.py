@@ -24,7 +24,7 @@ class LatexMultiPass(globber.EagerFileGlobber):
         super().__init__(name, dirs, roots or [dirs.src], exts=['.tex'], rec=rec)
 
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
             "file_dep" : [ self.dirs.build / fpath.with_suffix(".pdf").name ],
         })
@@ -40,7 +40,7 @@ class LatexFirstPass(globber.EagerFileGlobber):
         super().__init__(name, dirs, roots or [dirs.src], exts=[".tex"], rec=rec)
         self.interaction = interaction
 
-    def params(self):
+    def set_params(self):
         return [
             { "name"   : "interaction",
               "short"  : "i",
@@ -50,7 +50,7 @@ class LatexFirstPass(globber.EagerFileGlobber):
              },
         ]
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         first_pass_pdf = self.pdf_name(fpath)
         task.update({
                 "file_dep" : [ fpath ],
@@ -59,6 +59,7 @@ class LatexFirstPass(globber.EagerFileGlobber):
                               ],
                 "clean"    : True,
         })
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):
@@ -89,7 +90,7 @@ class LatexSecondPass(globber.EagerFileGlobber):
     def __init__(self, name="_tex::pass:two", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], exts=[".tex"], rec=rec)
 
-    def params(self):
+    def set_params(self):
         return [
             { "name"   : "interaction",
               "short"  : "i",
@@ -99,7 +100,7 @@ class LatexSecondPass(globber.EagerFileGlobber):
              },
         ]
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         no_suffix = fpath.with_suffix("")
         task.update({ # "task_dep" : [f"_tex::pass:bibtex:{task['name']}"],
                      "file_dep" : [ self.dirs.temp / fpath.with_suffix(".aux").name,
@@ -108,6 +109,7 @@ class LatexSecondPass(globber.EagerFileGlobber):
                      "targets"  : [ self.dirs.build / fpath.with_suffix(".pdf").name],
                      "clean"    : True,
                      })
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):
@@ -136,7 +138,7 @@ class BibtexBuildPass(globber.EagerFileGlobber):
     def __init__(self, name="_tex::pass:bibtex", dirs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], exts=[".tex"], rec=rec)
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         aux_file = self.dirs.temp / fpath.with_suffix(".aux").name
         bbl_file = self.dirs.temp / fpath.with_suffix(".bbl").name
 
@@ -146,6 +148,7 @@ class BibtexBuildPass(globber.EagerFileGlobber):
                      "targets"  : [ bbl_file ],
                      "clean"    : True,
                      })
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):
@@ -198,7 +201,7 @@ class BibtexConcatenateSweep(globber.LazyFileGlobber):
         })
         return task
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
             "actions" : [(self.glob_and_add, [fpath])]
         })

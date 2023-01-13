@@ -23,23 +23,24 @@ from doot.utils import globber
 
 class DotVisualise(globber.EagerFileGlobber):
     """
-    ([visual] -> build) make images from any dot files
+    ([src] -> build) make images from any dot files
     """
 
-    def __init__(self, name=None, dirs:DootLocData, roots=None, ext="png", layout="neato", scale:float=72.0, rec=True):
+    def __init__(self, name=None, dirs:DootLocData=None, roots=None, ext="png", layout="neato", scale:float=72.0, rec=True):
         name = name or f"dot::{ext}"
-        super().__init__(name, dirs, roots or [dirs.visual], exts=[".dot"], rec=rec)
+        super().__init__(name, dirs, roots or [dirs.src], exts=[".dot"], rec=rec)
         self.ext       = ext
         self.layout    = layout
         self.scale     = scale
 
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
                      "file_dep" : [ fpath ],
                      "targets"  : [ self.dirs.build / fpath.with_suffix(f".{self.ext}").name ],
                      "clean"    : True,
         })
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):

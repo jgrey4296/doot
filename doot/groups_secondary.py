@@ -51,12 +51,12 @@ try:
     doot.config.tool.doot.group.godot
     from doot.builders import godot
     godot_dirs = doot.locs.extend(prefix="godot", _src="")
-    godot_dirs.add_extra({ "scenes" : godot_dirs.src / "scenes",
-                         })
+    godot_dirs.update({ "scenes" : godot_dirs.src / "scenes",
+                      })
 
-    godot_group += godot.GodotBuild(godot_dirs)
-    godot_group += godot.GodotRunScene(godot_dirs, [godot_dirs.src])
-    godot_group += godot.GodotRunScript(godot_dirs, [godot_dirs.src])
+    godot_group += godot.GodotBuild(dirs=godot_dirs)
+    godot_group += godot.GodotRunScene(dirs=godot_dirs, roots=[godot_dirs.src])
+    godot_group += godot.GodotRunScript(dirs=godot_dirs, roots=[godot_dirs.src])
     godot_group += godot.task_godot_version
     godot_group += godot.task_godot_test
     godot_group += godot.task_newscene(godot_dirs)
@@ -71,20 +71,19 @@ xml_group = TaskGroup("xml_group")
 try:
     doot.config.tool.doot.group.xml
     xml_dirs = doot.locs.extend(prefix="xml")
-    xml_dirs.add_extra({"visual": xml_dirs.docs / "visual",
+    xml_dirs.update({"visual": xml_dirs.docs / "visual",
                         "elements" : xml_dirs.build / "elements",
                         "schema"    : xml_dirs.build / "schema",
 
                         })
-    xml_data_dirs = [xml_dirs.data] + [pl.Path(x) for x in doot.config.or_get([]).tool.doot.xml.data_dirs() if pl.Path(x).exists()]
     from doot.data import xml as xml_reports
 
-    xml_group += xml_reports.XmlElementsTask(xml_dirs, xml_data_dirs)
-    xml_group += xml_reports.XmlSchemaTask(xml_dirs, xml_data_dirs)
-    xml_group += xml_reports.XmlPythonSchemaRaw(xml_dirs, xml_data_dirs)
-    xml_group += xml_reports.XmlPythonSchemaXSD(xml_dirs, xml_data_dirs)
-    xml_group += xml_reports.XmlSchemaVisualiseTask(xml_dirs, xml_data_dirs)
-    xml_group += xml_reports.XmlFormatTask(xml_dirs, xml_data_dirs)
+    xml_group += xml_reports.XmlElementsTask(dirs=xml_dirs)
+    xml_group += xml_reports.XmlSchemaTask(dirs=xml_dirs)
+    xml_group += xml_reports.XmlPythonSchemaRaw(dirs=xml_dirs)
+    xml_group += xml_reports.XmlPythonSchemaXSD(dirs=xml_dirs)
+    xml_group += xml_reports.XmlSchemaVisualiseTask(dirs=xml_dirs)
+    xml_group += xml_reports.XmlFormatTask(dirs=xml_dirs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     if doot.config.or_get(False).tool.doot.group.xml.debug():
@@ -98,8 +97,8 @@ try:
     from doot.data import database
     sqlite_dirs  = doot.locs.extend(prefix="sqlite")
 
-    sqlite_group += database.SqliteReportTask(sqlite_dirs)
-    sqlite_group += database.SqlitePrepTask(sqlite_dirs)
+    sqlite_group += database.SqliteReportTask(dirs=sqlite_dirs)
+    sqlite_group += database.SqlitePrepTask(dirs=sqlite_dirs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     if doot.config.or_get(False).tool.doot.group.database.debug():
@@ -112,13 +111,15 @@ json_group = TaskGroup("json group")
 try:
     doot.config.tool.doot.group.json
     from doot.data import json as json_reports
-    data_dirs = [pl.Path(x) for x in doot.config.or_get([]).tool.doot.json.data_dirs() if pl.Path(x).exists()]
     json_dirs = doot.locs.extend(prefix="json")
+    json_dirs.update({
+        "visual" : json_dirs.build / "visual"
+    })
     # from doot.docs.plantuml import task_plantuml_json
 
-    json_group += json_reports.JsonPythonSchema(data_dirs)
-    json_group += json_reports.JsonFormatTask(data_dirs, json_gen_dir)
-    json_group += json_reports.JsonVisualise(data_dirs, visual_dir)
+    json_group += json_reports.JsonPythonSchema(dirs=json_dirs)
+    json_group += json_reports.JsonFormatTask(dirs=json_dirs)
+    json_group += json_reports.JsonVisualise(dirs=json_dirs)
     # json_group += json_reports.JsonSchemaTask()
     #
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
@@ -132,10 +133,13 @@ try:
     doot.config.tool.doot.group.plantuml
     from doot.docs import plantuml
     plant_dirs = doot.locs.extend(prefix="plantuml", _src="docs/visual")
+    plant_dirs.update({
+        "visual" : plant_dirs.build / "visual"
+    })
 
-    plantuml_group += plantuml.PlantUMLGlobberTask(dirs, [plant_dirs.src], plant_dir)
-    plantuml_group += plantuml.PlantUMLGlobberTask(dirs, [plant_dirs.src], plant_dir, fmt="txt")
-    plantuml_group += plantuml.PlantUMLGlobberCheck(dirs, [plant_dirs.src])
+    plantuml_group += plantuml.PlantUMLGlobberTask(dirs=plant_dirs)
+    plantuml_group += plantuml.PlantUMLGlobberTask(dirs=plant_dirs)
+    plantuml_group += plantuml.PlantUMLGlobberCheck(dirs=plant_dirs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     if doot.config.or_get(False).tool.doot.group.plantuml.debug():
@@ -150,8 +154,9 @@ try:
     doot.config.tool.doot.group.csv
     csv_dirs = doot.locs.extend(prefix="csv")
     from doot.data import csv as csv_reports
-    csv_group += csv_reports.CSVSummaryTask(csv_dirs, [csv_dirs.data])
-    csv_group += csv_reports.CSVSummaryXMLTask(csv_dirs, [csv_dirs.data], csv_dir)
+
+    csv_group += csv_reports.CSVSummaryTask(dirs=csv_dirs)
+    csv_group += csv_reports.CSVSummaryXMLTask(dirs=csv_dirs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     if doot.config.or_get(False).tool.doot.group.csv.debug():
@@ -165,7 +170,7 @@ try:
     doot.config.tool.doot.group.dot
     dot_dirs = doot.locs.extend(prefix="dot", _src="docs/visual")
     from doot.docs import dot
-    dot_group += dot.DotVisualise(dot_dirs, [dot_dirs.src])
+    dot_group += dot.DotVisualise(dirs=dot_dirs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     if doot.config.or_get(False).tool.doot.group.dot.debug():
@@ -178,10 +183,9 @@ images_group = TaskGroup("images group")
 try:
     doot.config.tool.doot.group.images
     image_dirs  = doot.locs.extend(prefix="images")
-    image_roots = [pl.Path(x) for x in doot.config.or_get([]).tool.doot.images.data_dirs() if pl.Path(x).exists()]
     from doot.data import images
-    images_group += images.HashImages(image_dirs, image_roots)
-    images_group += images.OCRGlobber(image_dirs, image_roots)
+    images_group += images.HashImages(dirs=image_dirs)
+    images_group += images.OCRGlobber(dirs=image_dirs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     if doot.config.or_get(False).tool.doot.group.images.debug():

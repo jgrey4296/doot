@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 ##-- imports
+from __future__ import annotations
 import pathlib as pl
 from importlib import resources
 
-from doot.utils.locdata import DootLocData
+from doot.utils.loc_data import DootLocData
+from doot.utils.tasker import DootTasker
 from doot.utils.toml_access import TomlAccess, TomlAccessError
 ##-- end imports
 
@@ -44,14 +46,17 @@ def setup_agnostic(path=default_agnostic):
     global config, locs
     config     = TomlAccess.load(path)
 
-    locs = DootLocData(None,
-                       _src=config.or_get(None).tool.doot.directories.src(),
-                       _build=config.or_get(None).tool.doot.directories.build(),
-                       _codegen=config.or_get(None).tool.doot.directories.codegen(),
-                       _temp=config.or_get(None).tool.doot.directories.temp(),
-                       _docs=config.or_get(None).tool.doot.directories.docs(),
-                       _data=config.or_get(None).tool.doot.directories.data(),
+    locs = DootLocData(src=config.or_get(None).tool.doot.directories.src(),
+                       build=config.or_get(None).tool.doot.directories.build(),
+                       codegen=config.or_get(None).tool.doot.directories.codegen(),
+                       temp=config.or_get(None).tool.doot.directories.temp(),
+                       docs=config.or_get(None).tool.doot.directories.docs(),
+                       data=config.or_get(None).tool.doot.directories.data(),
                        )
+
+    # Done like this to avoid recursive imports
+    DootTasker.set_defaults(config)
+    DootLocData.set_defaults(config)
 
 def setup_py(path=default_py):
     # print("Setting up python")

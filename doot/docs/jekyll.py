@@ -87,7 +87,7 @@ class GenPostTask(DootTasker):
         self.template  = pl.Path(template or post_template)
         assert('posts' in self.dirs.extra)
 
-    def params(self):
+    def set_params(self):
         return [
             { "name"   : "title",
               "long"    : "title",

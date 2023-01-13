@@ -7,7 +7,7 @@ from doit.action import CmdAction
 
 import doot
 from doot.utils import globber
-from doot.utils.locdata import DootLocData
+from doot.utils.loc_data import DootLocData
 from doot.utils.tasker import DootTasker
 ##-- end imports
 
@@ -42,7 +42,7 @@ def task_buildvenv():
         }
 
 class InitPyGlobber(globber.DirGlobber):
-    """ ([src] -> src) """
+    """ ([src] -> src) add missing __init__.py's """
     gen_toml = gen_toml
 
     def __init__(self, name=f"{prefix}::initpy", dirs:DootLocData=None, roots=None, rec=False):
@@ -55,8 +55,9 @@ class InitPyGlobber(globber.DirGlobber):
             return self.control.reject
         return self.control.accept
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task['meta'].update({"focus" : fpath})
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):
@@ -100,7 +101,7 @@ class PyLintTask(globber.DirGlobber):
 
         return task
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         target = lint_out if lint_grouped else lint_out.with_stem(task['name'])
         task.update({
             "targets" : [ self.dirs.build / target ],
@@ -111,6 +112,7 @@ class PyLintTask(globber.DirGlobber):
             "exec"   : lint_exec,
             "error"  : lint_error,
         })
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):
@@ -139,14 +141,14 @@ class PyUnitTestGlob(globber.DirGlobber):
 
     gen_toml = gen_toml
 
-    def __init__(self, name=f"{prefix}::test", dirs:DootLocData, roots=None, rec=True):
+    def __init__(self, name=f"{prefix}::test", dirs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.root], exts=[".py"], rec=rec)
 
     def filter(self, fpath):
         if py_test_dir_fmt in fpath.name:
             return self.control.keep
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         target = py_test_out if lint_grouped else py_test_out.with_stem(task['name'])
         task.update({"targets" : [ self.dirs.build / target ],
                      })
@@ -176,14 +178,14 @@ class PyTestGlob(globber.DirGlobber):
 
     gen_toml = gen_toml
 
-    def __init__(self, name=f"{prefix}::test", dirs:DootLocData, roots=None, rec=True):
+    def __init__(self, name=f"{prefix}::test", dirs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], exts=[".py"], rec=rec)
 
     def filter(self, fpath):
         if py_test_dir_fmt in fpath.name:
             return self.control.keep
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         target = py_test_out if lint_grouped else py_test_out.with_stem(task['name'])
         task.update({"targets" : [ target ],
                      })

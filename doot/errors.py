@@ -30,5 +30,5 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-class DootDirAbsent(Exception):
+class DootDirAbsent(AttributeError):
     pass

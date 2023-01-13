@@ -47,7 +47,7 @@ class PythonCompile(DootTasker):
     def __init__(self, name="python::compile", dirs=None):
         super().__init__(name, dirs)
 
-    def params(self):
+    def set_params(self):
         return [
             { "name" : "output",
                 "short" : "o",

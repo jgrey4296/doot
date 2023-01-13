@@ -52,7 +52,7 @@ class GodotCheckTask(globber.EagerFileGlobber):
         return task
 
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({"actions"   : [
             ForceCmd(self.build_check, shell=False, handler=partial(self.handle_failure, fpath)),
         ],

@@ -64,7 +64,7 @@ class LatexCheckSweep(globber.EagerFileGlobber):
     def __init__(self, name="tex::check", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], exts=['.tex'], rec=rec)
 
-    def params(self):
+    def set_params(self):
         return [
             { "name"   : "interaction",
               "short"  : "i",
@@ -74,9 +74,11 @@ class LatexCheckSweep(globber.EagerFileGlobber):
              },
         ]
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({"file_dep" : [ fpath ],
                      })
+        task['actions'] += self.subtask_actions(fpath)
+
         return task
 
     def subtask_actions(self, fpath):
@@ -94,7 +96,7 @@ class BibtexCheckSweep(globber.EagerFileGlobber):
     def __init__(self, name="bibtex::check", dirs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], exts=['.bib'], rec=rec)
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({})
         return task
 

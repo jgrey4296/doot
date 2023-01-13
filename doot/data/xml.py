@@ -23,6 +23,8 @@ from doot.utils import globber
 # https://github.com/tefra/xsdata-plantuml
 # https://python-jsonschema.readthedocs.io/en/stable/
 
+# TODO config get data dirs
+
 def gen_toml(self):
     return "\n".join([])
 
@@ -41,9 +43,10 @@ class XmlElementsTask(globber.DirGlobber):
             return self.control.accept
         return self.control.discard
 
-    def subtask_detail(self, fpath, task:dict) -> dict:
+    def subtask_detail(self, task, fpath=None:dict) -> dict:
         task.update({"targets" : [ self.dirs.extra['elements'] / (task['name'] + ".elements")],
                      "clean"   : True})
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):
@@ -79,11 +82,12 @@ class XmlSchemaTask(globber.DirGlobber):
         return self.control.discard
 
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
             "targets"  : [ self.dirs.extra['schema'] / (task['name'] + ".xsd") ],
             "clean"    : True,
             "uptodate" : [True]})
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):
@@ -107,13 +111,14 @@ class XmlPythonSchemaRaw(globber.DirGlobber):
             return self.control.accept
         return self.control.discard
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         gen_package = str(self.dirs.codegen / task['name'])
         task.update({
             "targets"  : [ gen_package ],
             "task_dep" : [ "_xsdata::config"],
             })
         task["meta"].update({"package" : gen_package})
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):
@@ -146,7 +151,7 @@ class XmlPythonSchemaXSD(globber.EagerFileGlobber):
             return self.control.accept
         return self.control.discard
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         gen_package = str(self.dirs.codegen / task['name'])
         task.update({
                 "targets"  : [ gen_package ],
@@ -154,6 +159,7 @@ class XmlPythonSchemaXSD(globber.EagerFileGlobber):
                 "task_dep" : [ "_xsdata::config"],
             })
         task['meta'].update({"package" : gen_package})
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):
@@ -187,13 +193,14 @@ class XmlSchemaVisualiseTask(globber.EagerFileGlobber):
         return self.control.discard
 
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
             "targets"  : [ self.dirs.extra['visual'] / (task['name'] + ".plantuml") ],
             "file_dep" : [ fpath ],
             "task_dep" : [ "_xsdata::config" ],
             "clean"    : True,
         })
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
 
@@ -227,8 +234,9 @@ class XmlValidateTask(globber.DirGlobber):
             return self.control.accept
         return self.control.discard
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({})
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):
@@ -259,8 +267,9 @@ class XmlFormatTask(globber.DirGlobber):
             return self.control.accept
         return self.control.discard
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task['meta'].update({ "focus" : fpath })
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):

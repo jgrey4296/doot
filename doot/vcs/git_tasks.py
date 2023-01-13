@@ -40,8 +40,8 @@ class GitLogTask(DootTasker):
     see: https://git-scm.com/docs/git-log
     """
 
-    def __init__(self, dirs:DootLocData, fmt:list[str]=None, sep:str=default_sep):
-        super().__init__("git::logs", dirs)
+    def __init__(self, name="git::logs", dirs:DootLocData=None, fmt:list[str]=None, sep:str=default_sep):
+        super().__init__(name, dirs)
         self.format = fmt or log_fmt
         self.sep    = sep
 

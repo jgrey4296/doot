@@ -19,7 +19,7 @@ class SqlitePrepTask(globber.EagerFileGlobber):
     def __init__(self, name="sqlite::prep", dirs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=[".sql"], rec=rec)
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         return task
 
 class SqliteReportTask(globber.EagerFileGlobber):
@@ -29,10 +29,11 @@ class SqliteReportTask(globber.EagerFileGlobber):
      .table
     """
 
-    def __init__(self, name="sqlite::report", dirs:DootLocData, roots=None, rec=True):
+    def __init__(self, name="sqlite::report", dirs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=[".db"], rec=rec)
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fapth):

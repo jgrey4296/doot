@@ -25,7 +25,7 @@ class CSVSummaryTask(globber.EagerFileGlobber):
     and listing number of rows
     """
 
-k   def __init__(self, name="csv::summary", dirs:DootLocData=None, roots=None, rec=True):
+    def __init__(self, name="csv::summary", dirs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=[".csv"], rec=rec)
         report_name = self.dirs.build / "csv.report"
 
@@ -37,10 +37,11 @@ k   def __init__(self, name="csv::summary", dirs:DootLocData=None, roots=None, r
         task['teardown'] = [CmdAction(["cat", self.report_name], shell=False) ]
         return task
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
             "clean"    : True,
         })
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
 
@@ -81,8 +82,9 @@ class CSVSummaryXMLTask(globber.EagerFileGlobber):
         task['teardown'] = [f"cat {self.report_name}"]
         return task
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({"clean" : True,})
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):

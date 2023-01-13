@@ -50,7 +50,7 @@ class JekyllBuild(DootTasker):
         super().__init__(name, dirs)
         self.jekyll_config = self.dirs.root / "jekyll.toml"
 
-    def params(self):
+    def set_params(self):
         return [
             { "name" : "drafts",
               "long" : "drafts",

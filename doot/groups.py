@@ -62,19 +62,20 @@ try:
     if not doot.default_py.exists():
         raise FileNotFoundError(doot.default_py)
     doot.config.tool.doot.group.pip
-    from doot.builders import pip_install as pip
+    from doot.builders import pip_tasks as pip
     from doot.code import python as py_tasks
 
     pip_dirs = doot.locs.extend(prefix="pip", _docs=None)
     pip_dirs.add_extra({"wheel" : pip_dirs.build / "wheel",
                         "sdist" : pip_dirs.build / "sdist"})
 
-    for task in pip.build_tasks(pip_dirs):
-        pip_group += task
+
+    # for task in pip.build_tasks(pip_dirs):
+    #     pip_group += task
     pip_group += pip.pip_requirements
-    pip_group += py_tasks.InitPyGlobber(pip_dirs)
-    pip_group += py_tasks.PyLintTask(pip_dirs)
-    pip_group += py_tasks.PyUnitTestGlob(pip_dirs)
+    pip_group += py_tasks.InitPyGlobber(dirs=pip_dirs)
+    pip_group += py_tasks.PyLintTask(dirs=pip_dirs)
+    pip_group += py_tasks.PyUnitTestGlob(dirs=pip_dirs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     if doot.config.or_get(False).tool.doot.group.pip.debug():
@@ -120,11 +121,11 @@ try:
     doot.config.tool.doot.group.latex
     from doot.builders import latex
     tex_dirs = doot.locs.extend(prefix="latex", _src=doot.locs._docs, _docs=(doot.locs._docs,), _build=(doot.locs._build,))
-    latex_group += latex.LatexMultiPass(tex_dirs,  [tex_dirs.src])
-    latex_group += latex.LatexFirstPass(tex_dirs,  [tex_dirs.src])
-    latex_group += latex.LatexSecondPass(tex_dirs, [tex_dirs.src])
-    latex_group += latex.BibtexBuildPass(tex_dirs, [tex_dirs.src])
-    latex_group += latex.BibtexConcatenateSweep(tex_dirs, [tex_dirs.src])
+    latex_group += latex.LatexMultiPass(dirs=tex_dirs,  roots=[tex_dirs.src])
+    latex_group += latex.LatexFirstPass(dirs=tex_dirs,  roots=[tex_dirs.src])
+    latex_group += latex.LatexSecondPass(dirs=tex_dirs, roots=[tex_dirs.src])
+    latex_group += latex.BibtexBuildPass(dirs=tex_dirs, roots=[tex_dirs.src])
+    latex_group += latex.BibtexConcatenateSweep(dirs=tex_dirs, roots=[tex_dirs.src])
     latex_group += latex.task_latex_install()
     latex_group += latex.task_latex_requirements()
     latex_group += latex.task_latex_rebuild
@@ -144,7 +145,7 @@ try:
                                     _docs=(doot.locs.docs,))
     sphinx_dirs.add_extra({"html" : sphinx_dirs.build / "html" / "index.html"})
 
-    sphinx_group += sphinx.SphinxDocTask(sphinx_dirs)
+    sphinx_group += sphinx.SphinxDocTask(dirs=sphinx_dirs)
     sphinx_group += sphinx.task_browse(sphinx_dirs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
@@ -168,7 +169,7 @@ try:
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     if doot.config.or_get(False).tool.doot.group.tags.debug():
         print("To activate group, tags needs: ", err)
-##-- end gtags
+##-- end tags
 
 ##-- git
 git_group = TaskGroup("git group")
@@ -178,8 +179,8 @@ try:
     vcs_dirs = doot.locs.extend(prefix="vcs", _src=None, _docs=None, _temp=None)
     vcs_dirs.add_extra({ "visual" : doot.locs.docs / "visual" })
 
-    git_group += git_tasks.GitLogTask(vcs_dirs)
-    git_group += git_tasks.GitLogAnalyseTask(vcs_dirs)
+    git_group += git_tasks.GitLogTask(dirs=vcs_dirs)
+    git_group += git_tasks.GitLogAnalyseTask(dirs=vcs_dirs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     if doot.config.or_get(False).tool.doot.group.git.debug():
@@ -253,13 +254,13 @@ try:
     doot.config.tool.doot.group.epub
     epub_dirs = doot.locs.extend(prefix="epub", _src="docs/epub")
     from doot.builders import epub
-    epub_group += epub.EbookNewTask(epub_dirs)
-    epub_group += epub.EbookCompileTask(epub_dirs)
-    epub_group += epub.EbookConvertTask(epub_dirs)
-    epub_group += epub.EbookZipTask(epub_dirs)
-    epub_group += epub.EbookManifestTask(epub_dirs)
-    epub_group += epub.EbookSplitTask(epub_dirs)
-    epub_group += epub.EbookRestructureTask(epub_dirs)
+    epub_group += epub.EbookNewTask(dirs=epub_dirs)
+    epub_group += epub.EbookCompileTask(dirs=epub_dirs)
+    epub_group += epub.EbookConvertTask(dirs=epub_dirs)
+    epub_group += epub.EbookZipTask(dirs=epub_dirs)
+    epub_group += epub.EbookManifestTask(dirs=epub_dirs)
+    epub_group += epub.EbookSplitTask(dirs=epub_dirs)
+    epub_group += epub.EbookRestructureTask(dirs=epub_dirs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     if doot.config.or_get(False).tool.doot.group.epub.debug():

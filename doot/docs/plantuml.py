@@ -20,16 +20,17 @@ class PlantUMLGlobberTask(globber.EagerFileGlobber):
     def __init__(self, name=None, dirs:DootLocData=None, roots:list[pl.Path]=None, fmt="png", rec=True):
         assert(roots or 'visual' in dirs.extra)
         name = name or f"plantuml::{fmt}"
-        super().__init__(name, dirs, roots or [dirs.extra['visual']], exts=[".plantuml"], rec=True)
+        super().__init__(name, dirs, roots or [dirs.src], exts=[".plantuml"], rec=True)
         self.fmt       = fmt
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         targ_fname = fpath.with_suffix(f".{self.fmt}")
         task.update({"targets"  : [ self.dirs.build / targ_fname.name],
                      "file_dep" : [ fpath ],
                      "task_dep" : [ f"plantuml::check:{task['name']}" ],
                      "clean"     : True,
                      })
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):
@@ -53,11 +54,13 @@ class PlantUMLGlobberCheck(globber.EagerFileGlobber):
         assert(roots or 'visual' in dirs.extra)
         super().__init__(name, dirs, roots or [dirs.extra['visual']], exts=[".plantuml"], rec=rec)
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
             "file_dep" : [ fpath ],
             "uptodate" : [ False ],
         })
+        task['actions'] += self.subtask_actions(fpath)
+
         return task
 
     def subtask_actions(self, fpath):

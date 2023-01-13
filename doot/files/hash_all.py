@@ -69,7 +69,7 @@ class HashAllFiles(globber.DirGlobber):
 
         return self.control.discard
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
             "targets" : [ fpath / self.hash_record ],
             "actions" : [ CmdAction(["touch", fpath / self.hash_record], shell=False),
@@ -128,7 +128,7 @@ class GroupHashes(globber.DirGlobber):
         })
         return task
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
             "actions" : [ (self.add_to_master, [fpath / self.hash_record])],
         })

@@ -36,10 +36,11 @@ class JsonFormatTask(globber.DirGlobber):
         return self.control.discard
 
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
             "uptodate" : [False],
             })
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):
@@ -77,7 +78,7 @@ class JsonPythonSchema(globber.DirGlobber):
             return self.control.accept
         return self.control.discard
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         gen_package = str(self.dirs.codegen / task['name'])
         task.update({
             "targets"  : [ gen_package ],
@@ -85,6 +86,7 @@ class JsonPythonSchema(globber.DirGlobber):
             "clean"    : [ clean_target_dirs ],
         })
         task["meta"].update({"package" : gen_package})
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):
@@ -116,10 +118,11 @@ class JsonVisualise(globber.EagerFileGlobber):
         assert('visual' in dirs.extra)
 
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
             "targets"  : [ self.dirs.extra['visual'] / fpath.with_stem(task['name']).name ],
         })
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):

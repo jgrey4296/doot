@@ -93,6 +93,7 @@ class TomlAccess:
     def __setattr__(self, attr, value):
         raise TomlAccessError(attr)
 
+    # TODO -> getattribute
     def __getattr__(self, attr) -> TomlAccessValue | str | list | int | float:
         new_path = object.__getattribute__(self, "__path")[:]
         table    = object.__getattribute__(self, "__table")

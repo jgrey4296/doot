@@ -67,7 +67,7 @@ class LinkCleanExtract(globber.DirGlobber):
         else:
             return self.control.discard
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
             "actions" : [
                 # extract links to .links file
@@ -121,7 +121,7 @@ class TweetExtract(globber.DirGlobber):
         else:
             return self.control.discard
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
             "actions" : [ (self.extract_tweet_ids, [fpath]),
                           (self.get_files, [fpath]),
@@ -176,7 +176,7 @@ class OrgThreadCount(globber.DirGlobber):
         else:
             return self.control.discard
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
             "actions" : [ (self.check_thread_counts, [fpath]) ],
             "targets" : [fpath / thread_file],
@@ -231,7 +231,7 @@ class ThreadOrganise(globber.DirGlobber):
         else:
             return self.control.discard
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
             "actions" : [
                 (self.read_threadcount, [fpath]),

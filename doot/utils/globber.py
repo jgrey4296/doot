@@ -13,6 +13,7 @@ import shutil
 import warnings
 
 from doit.action import CmdAction
+from doit.task import dict_to_task
 import doot
 from doot.utils.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
@@ -66,7 +67,6 @@ class EagerFileGlobber(DootSubtasker):
         for x in roots:
             if not pl.Path(x).exists():
                 warnings.warn(f"Globber Missing Root: {x}")
-                raise DootDirAbsent(x)
 
 
     def filter(self, target:pl.Path) -> bool | GlobControl:
@@ -120,23 +120,25 @@ class EagerFileGlobber(DootSubtasker):
         Generalized task builder for globbing on files
         then customizing the subtasks
         """
-        self._params.update(kwargs)
+        self.params.update(kwargs)
         subtasks = []
         globbed  = self.glob_all()
+        subtasks_names = []
         for i, (uname, fpath) in enumerate(self.glob_all()):
-            subtask = self._build_subtask(i, uname, fpath)
+            subtask = self._build_subtask(i, uname, fpath=fpath)
             if subtask is not None:
+                subtasks_names.append(subtask['name'])
                 subtasks.append(subtask)
 
-        all_subtasks = [f"{x['basename']}:{x['name']}" for x in subtasks]
         subtasks.append(self._build_setup())
 
         top_task = self.default_task()
         top_task.update({
-            "name"     : None,
-            "task_dep" : all_subtasks,
+            "task_dep" : subtasks_names,
         })
-        subtasks.append(self.task_detail(top_task))
+        detailed = self.task_detail(top_task)
+        if detailed is not None:
+            subtasks.append(dict_to_task(detailed))
         self.total_subtasks = len(subtasks)
 
         for sub in subtasks:
@@ -212,11 +214,11 @@ class HeadlessFileGlobber(EagerFileGlobber):
         Generalized task builder for globbing on files
         then customizing the subtasks
         """
-        self._params.update(kwargs)
+        self.params.update(kwargs)
         subtasks = []
         globbed = self.glob_all()
         for i, (uname, fpath) in enumerate(self.glob_all()):
-            subtask = self._build_subtask(i, uname, fpath)
+            subtask = self._build_subtask(i, uname, fpath=fpath)
             if subtask is not None:
                 subtasks.append(subtask)
 

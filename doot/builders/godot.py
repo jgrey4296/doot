@@ -21,7 +21,7 @@ class GodotRunScene(globber.HeadlessFileGlobber):
     def __init__(self, name="godot::run:scene", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, dirs, roots or [dir.root], exts=[".tscn"], rec=rec)
 
-    def params(self):
+    def set_params(self):
         return [{ "name"    : "target",
                   "short"   : "t",
                   "type"    : str,
@@ -37,14 +37,15 @@ class GodotRunScene(globber.HeadlessFileGlobber):
     def task_detail(self, task:dict):
         task.update({
             "actions" : [CmdAction(self.run_scene_with_arg, shell=False) ],
-            "actions" : self.params(),
+            "actions" : self.set_params(),
         })
         return task
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
             "file_dep" : [fpath],
         })
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):
@@ -74,7 +75,7 @@ class GodotRunScript(globber.EagerFileGlobber):
         # TODO test script for implementing runnable interface
         return True
 
-    def params(self):
+    def set_params(self):
         return [
             { "name"    : "target",
               "short"   : "t",
@@ -88,8 +89,9 @@ class GodotRunScript(globber.EagerFileGlobber):
              },
         ]
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({ "verbosity" : 2,})
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):
@@ -118,7 +120,7 @@ class GodotBuild(DootTasker):
     def __init__(self, name="godot::build", dirs:DootLocData=None):
         super().__init__(name, dirs)
 
-    def params(self):
+    def set_params(self):
         return [ { "name"    : "build_target",
                    "short"   : "t",
                    "type"    : str,
@@ -167,7 +169,9 @@ def task_godot_version():
 
 
 def task_godot_test():
-    """ TODO """
+    """
+    TODO run godot tests
+    """
     return { "basename": "godot::test",
              "actions": []
             }
@@ -185,7 +189,7 @@ def task_newscene(dirs:DootLocData):
     return {
         "basename" : "godot::new:scene",
         "actions" : [ CmdAction(mkscene, shell=False) ],
-        "params" : [
+        "set_params" : [
             { "name"    : "name",
               "short"   : "n",
               "type"    : str,

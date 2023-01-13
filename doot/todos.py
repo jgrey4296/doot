@@ -72,7 +72,7 @@ def task_start_repl():
 class UTF8EncodeTask:
 
     def __init__(self, globs, encoding="utf8", name="default", **kwargs):
-        self.create_doit_tasks = self.build
+        self.create_doit_tasks = lambda: self.build()
         self.globs             = globs
         self.kwargs            = kwargs
         self.default_spec      = { "basename" : f"utf8::{name}" }

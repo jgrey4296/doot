@@ -47,12 +47,13 @@ class ClingoRunner(globber.EagerFileGlobber):
     def __init__(self, name="clingo::run", dirs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], exts=[src_ext], rec=rec)
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         target = self.dirs.build / path.with_suffix(out_ext).name
         task.update({
             "file_dep" : [ fpath ],
             "targets"  : [ target ],
         })
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):
@@ -76,12 +77,13 @@ class ClingoDotter(globber.EagerFileGlobber):
     def __init__(self, name="clingo::dotter", dirs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], exts=[vis_src_ext], rec=rec)
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         target = self.dirs.build / path.with_suffix(vis_in_ext).name
         task.update({
             "targets"  : [ target ],
             "file_dep" : [ fpath ],
         })
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
 
@@ -110,12 +112,13 @@ class ClingoVisualise(globber.EagerFileGlobber):
         super().__init__(name, dirs, roots or [dirs.src], exts=[vis_in_ext], rec=rec)
         assert('visual' in dirs.extra)
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         target = self.dirs.extra['visual'] / targ_fname
         task.update({
             "targets"  : [ target ],
             "task_dep" : [ "_checkdir::clingo" ],
         })
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
 

@@ -64,5 +64,5 @@ class PrologRunner(globber.EagerFileGlobber):
         # test for it being a main file
         return True
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         return task

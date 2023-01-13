@@ -23,7 +23,7 @@ from doot.utils.checkdir import CheckDir
 from doot.utils.ziptask import ZipTask
 from doot.utils import globber
 from doot.utils.cmdtask import CmdTask
-from doot.utils.locdata import DootLocData
+from doot.utils.loc_data import DootLocData
 from doot.utils.tasker import DootTasker
 from doot.utils.clean_dirs import clean_target_dirs
 ##-- end imports
@@ -75,7 +75,7 @@ class EbookCompileTask(EbookGlobberBase):
         super().__init__(name, dirs, roots or [dirs.src], rec=rec)
 
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({"task_dep" : [ # f"epub::manifest:{task['name']}",
                                     # f"_zip::epub:{task['name']}",
                                     # f"_epub::convert.zip:{task['name']}",
@@ -96,7 +96,7 @@ class EbookConvertTask(EbookGlobberBase):
     def __init__(self, name="_epub::convert.zip", dirs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], rec=rec)
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
             "targets"  : [ self.dirs.build / fpath.with_suffix(".epub").name ],
             "file_dep" : [ self.dirs.temp / fpath.with_suffix(".zip").name ],
@@ -118,7 +118,7 @@ class EbookZipTask(EbookGlobberBase):
         super().__init__(name, dirs, roots or [dirs.src], rec=rec)
 
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         target = fpath.with_suffix(".zip").name
         glob   = str(fpath) + "/**/*"
         # TODO could process the globs here, and exclude stuff
@@ -146,12 +146,13 @@ class EbookManifestTask(EbookGlobberBase):
         self.uuids  = {}
         self.author = author or environ['USER']
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
             "targets"  : [ fpath / "content.opf",
                            fpath / "content" / "nav.xhtml" ],
             "task_dep" : [ f"epub::restruct:{task['name']}" ]
         })
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):
@@ -311,10 +312,11 @@ class EbookRestructureTask(EbookGlobberBase):
             ("other", re.compile(".")),
         ))
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
             "targets" : [ (fpath / x) for x in self.content_mapping.keys() ],
         })
+        task['actions'] += self.subtask_actions(fpath)
         return task
 
     def subtask_actions(self, fpath):
@@ -358,7 +360,7 @@ class EbookSplitTask(globber.EagerFileGlobber):
     def __init__(self, name="epub::split", dirs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data] , exts=[".epub"], rec=rec)
 
-    def subtask_detail(self, fpath, task):
+    def subtask_detail(self, task, fpath=None):
         task.update({
             "targets"  : [ self.dirs.build / fpath.stem],
             "file_dep" : [ fpath ],
@@ -391,7 +393,7 @@ class EbookNewTask(DootTasker):
         name = task.options['name']
         return (self.dirs.src / name / self.marker_file).exists()
 
-    def params(self):
+    def set_params(self):
         return [ { "name"    : "name",
                    "short"   : "n",
                    "type"    : str,
