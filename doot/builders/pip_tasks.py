@@ -29,54 +29,74 @@ class IncrementVersion(DootTasker):
 
     def __init__(self, name="py::semver", dirs=None):
         super().__init__(name, dirs)
-        self.ver_regex = re.compile(r"^\s*__version__\s+=\s\"(\d+)\.(\d+)\.(\d+)\"")
-        self.ver_format = "__version__ = \"{}.{}.{}\""
+        self.initpy_ver_regex     = re.compile(r"^\s*__version__\s+=\s\"(\d+)\.(\d+)\.(\d+)\"")
+        self.initpy_ver_format    = "__version__ = \"{}.{}.{}\""
+        self.pyproject_ver_regex  = re.compile("^version\s+=\s+\"(\d+)\.(\d+)\.(\d+)\"")
+        self.pyproject_ver_format = "version = \"{}.{}.{}\""
+
 
     def set_params(self):
         return [
             {"name" : "major", "long": "major", "type" : bool, "default" : False },
             {"name": "minor", "short": "m", "type": bool, "default": False},
+            {"name": "force", "long": "force", "type": str, "default": None},
         ]
 
 
     def task_detail(self, task):
         task.update({
-            "actions" : [self.inc_ver],
-            "file_dep": [self.dirs.src / "__init__.py"],
+            "actions" : [self.increment_pyproject, self.set_initpy],
+            "file_dep": [
+                self.dirs.root / "pyproject.toml",
+                self.dirs.src / "__init__.py"
+            ],
             "verbosity" : 2,
         })
         return task
 
-    def inc_ver(self, dependencies):
+    def increment_pyproject(self):
         assert(not (self.params['major'] and self.params['minor']))
         new_ver = None
-        for line in fileinput.input(files=dependencies, inplace=True, backup=".backup"):
-            matched = self.ver_regex.match(line)
-            if not matched:
+        for line in fileinput.input(files=[self.dirs.root / "pyproject.toml"], inplace=True, backup=".backup"):
+            matched = self.pyproject_ver_regex.match(line)
+            if not matched or new_ver is not None:
                 print(line, end="")
                 continue
 
-            if new_ver is not None:
-                raise Exception("this should't happen")
-
             new_ver = self.bump_version(*(int(x) for x in matched.groups()))
-            print(self.ver_format.format(*new_ver))
-
+            print(self.pyproject_ver_format.format(*new_ver))
 
         if new_ver is None:
-            print("Didnt increment, adding")
-            with open(dependencies[0], 'a') as f:
-                print(self.ver_format.format(0,0,1), file=f)
+            raise Exception("Didn't find version in pyproject.toml")
         else:
+            (self.dirs.root / "pyproject.toml.backup").unlink()
             print(f"Bumped Version to: {new_ver}")
 
+        return {"new_version" : new_ver}
+
+    def set_initpy(self, dependencies, task):
+        new_ver = task.values['new_version']
+        for line in fileinput.input(files=[self.dirs.src / "__init__.py"], inplace=True, backup=".backup"):
+            matched = self.initpy_ver_regex.match(line)
+            # Note the inverted condition compared to inc pyproject above:
+            if not matched or new_ver is None:
+                print(line, end="")
+                continue
+
+            print(self.initpy_ver_format.format(*new_ver))
+            new_ver = None
+
+        (self.dirs.src/ "__init__.py.backup").unlink()
+
     def bump_version(self, major, minor, patch):
-        match (self.params['major'], self.params['minor']):
-            case (True, False):
+        match (self.params['major'], self.params['minor'], self.params['force']):
+            case (_, _, str()):
+                return tuple(int(x) for x in self.params['force'].split("."))
+            case (True, False, _):
                 return (major + 1, 0, 0)
-            case (False, True):
+            case (False, True, _):
                 return (major, minor + 1, 0)
-            case (False, False):
+            case (False, False, _):
                 return (major, minor, patch + 1)
             case _:
                 raise Exception("this shouldn't happen")
