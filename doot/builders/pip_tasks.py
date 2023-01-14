@@ -1,6 +1,7 @@
 ##-- imports
 from __future__ import annotations
 
+import sys
 import pathlib as pl
 import shutil
 from doit.action import CmdAction
@@ -26,7 +27,7 @@ class IncrementVersion(DootTasker):
     Defaults to inc patch version
     """
 
-    def __init__(self, name="py::version.up", dirs=None):
+    def __init__(self, name="py::semver", dirs=None):
         super().__init__(name, dirs)
         self.ver_regex = re.compile(r"^\s*__version__\s+=\s\"(\d+)\.(\d+)\.(\d+)\"")
         self.ver_format = "__version__ = \"{}.{}.{}\""
@@ -37,31 +38,37 @@ class IncrementVersion(DootTasker):
             {"name": "minor", "short": "m", "type": bool, "default": False},
         ]
 
+
     def task_detail(self, task):
         task.update({
             "actions" : [self.inc_ver],
             "file_dep": [self.dirs.src / "__init__.py"],
+            "verbosity" : 2,
         })
         return task
 
     def inc_ver(self, dependencies):
         assert(not (self.params['major'] and self.params['minor']))
-        incremented = False
-        for line in fileinput.input(files=dependencies, inplace=True):
+        new_ver = None
+        for line in fileinput.input(files=dependencies, inplace=True, backup=".backup"):
             matched = self.ver_regex.match(line)
-            if incremented:
-                raise Exception("this should't happen")
             if not matched:
                 print(line, end="")
                 continue
 
+            if new_ver is not None:
+                raise Exception("this should't happen")
+
             new_ver = self.bump_version(*(int(x) for x in matched.groups()))
             print(self.ver_format.format(*new_ver))
-            incremented = True
 
-        if not incremented:
+
+        if new_ver is None:
+            print("Didnt increment, adding")
             with open(dependencies[0], 'a') as f:
-                print(self.ver_format.format(0,0,1))
+                print(self.ver_format.format(0,0,1), file=f)
+        else:
+            print(f"Bumped Version to: {new_ver}")
 
     def bump_version(self, major, minor, patch):
         match (self.params['major'], self.params['minor']):
@@ -101,7 +108,7 @@ class PyInstall(DootTasker):
     def set_params(self):
         return [
             {"name": "regular", "type": bool, "short": "r", "default": False},
-            {"name": "nodep",   "type": bool, "short": "D", "default": False},
+            {"name": "deps",   "type": bool, "short": "D", "default": False},
             {"name" : "dryrun", "type": bool, "long":"dry-run", "default": False},
             {"name" : "uninstall", "type": bool, "long":"uninstall", "default": False},
             {"name": "upgrade", "type" : bool, "short" : "U", "default": False},
@@ -115,7 +122,7 @@ class PyInstall(DootTasker):
             task['actions'].append(CmdAction(["pip", "uninstall", "-y", self.dirs.root], shell=False))
             return task
 
-        if not self.params['nodep']:
+        if self.params['deps']:
             task['actions'].append(CmdAction(self.install_requirements, shell=False))
 
         task['actions'].append(CmdAction(self.install_package, shell=False))
@@ -144,37 +151,61 @@ class PyInstall(DootTasker):
 
 class PipReqs(DootTasker):
     """
-    write out pip requirements
+    write out pip requirements to requirements.txt
     """
 
     def __init__(self, name="pip::req", dirs=None):
         super().__init__(name, dirs)
 
+    def is_current(self, fpath):
+        return True
+
     def task_detail(self, task) -> dict:
-        args1 = ["pip", "freeze", "--all", "--exclude-editable",
-                "-r", "requirements.txt"]
-        args2 = ["pip", "list", "--format=freeze"]
+        pip_args = ["pip", "list", "--format=freeze"]
 
         task.update({
-            'basename': f"{prefix}::requirements",
-            "actions" : [ CmdAction(args1, shell=False, save_out="first"),
-                          CmdAction(args2, shell=False, save_out="second"),
+            "actions" : [ CmdAction(pip_args, shell=False, save_out="frozen"),
                           self.write_out,
                         ],
             "targets" : [ self.dirs.root / "requirements.txt" ],
             "clean"   : True,
-            "doc" : ":: generate requirements.txt ",
+            "verbosity" : 1,
         })
         return task
 
     def write_out(self, task, targets):
         with open(targets[0], 'w') as f:
-            print(task.values['first'], file=f)
-            print(task.values['second'], file=f)
+            print(task.values['frozen'], file=f)
 
 
 class VenvNew(DootTasker):
     """
-    create a new venv
+    (-> temp ) create a new venv
     """
-    pass
+    def __init__(self, name="py::venv", dirs=None):
+        super().__init__(name, dirs)
+
+    def set_params(self):
+        return [
+            { "name" : "name", "type": str, "short": "n", "default": "default"},
+            { "name" : "delete", "type": bool, "long": "delete", "default": False},
+        ]
+
+    def task_detail(self, task):
+        venv_path = self.dirs.temp / self.params['name']
+        build_venv = [ CmdAction(["python", "-m", "venv", venv_path ], shell=False),
+                       CmdAction([ venv_path / "bin" / "pip", "install", "-r", self.dirs.root / "requirements.txt" ], shell=False)
+                      ]
+        def delete_venv():
+            shutil.rmtree(venv_path)
+
+        is_delete = all([self.params['delete'],
+                         venv_path.exists(),
+                         (venv_path / "pyvenv.cfg").exists()])
+
+        task.update({
+            "actions" : [delete_venv] if is_delete else build_venv,
+            "clean"   : [delete_venv],
+            "verbosity" : 1,
+        })
+        return task

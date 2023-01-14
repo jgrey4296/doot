@@ -69,7 +69,7 @@ class DootLocData:
             self._dir_names       = {x:y for x,y in kwargs.items() if y is not None}
         else:
             self._dir_names       = {x.replace("_",""):x for x in DootLocData._default_locs}
-        assert(self.name not in DootLocData._all_loc_groups)
+        assert(self.name not in DootLocData._all_loc_groups), self.name
         DootLocData._all_loc_groups[self.name] = self
         self.checker
 

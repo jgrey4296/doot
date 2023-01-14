@@ -255,7 +255,7 @@ class ThreadOrganise(globber.DirGlobber):
         header_lines = []
         new_thread   = None
         try:
-            for line in fileinput.input(files=targets, inplace=True):
+            for line in fileinput.input(files=targets, inplace=True, backup=".backup"):
                 if fileinput.filename() != current_file:
                     current_file = fileinput.filename()
                     try:

@@ -134,11 +134,12 @@ class EagerFileGlobber(DootSubtasker):
 
         top_task = self.default_task()
         top_task.update({
-            "task_dep" : subtasks_names,
+            "task_dep" : [f"{self.base}:{x}" for x in subtasks_names],
         })
         detailed = self.task_detail(top_task)
         if detailed is not None:
-            subtasks.append(dict_to_task(detailed))
+            yield detailed
+
         self.total_subtasks = len(subtasks)
 
         for sub in subtasks:

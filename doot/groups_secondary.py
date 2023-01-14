@@ -50,7 +50,7 @@ godot_group = TaskGroup("godot_group")
 try:
     doot.config.tool.doot.group.godot
     from doot.builders import godot
-    godot_dirs = doot.locs.extend(prefix="godot", _src="")
+    godot_dirs = doot.locs.extend(name="godot", _src="")
     godot_dirs.update({ "scenes" : godot_dirs.src / "scenes",
                       })
 
@@ -70,7 +70,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 xml_group = TaskGroup("xml_group")
 try:
     doot.config.tool.doot.group.xml
-    xml_dirs = doot.locs.extend(prefix="xml")
+    xml_dirs = doot.locs.extend(name="xml")
     xml_dirs.update({"visual": xml_dirs.docs / "visual",
                         "elements" : xml_dirs.build / "elements",
                         "schema"    : xml_dirs.build / "schema",
@@ -95,7 +95,7 @@ sqlite_group = TaskGroup("sqlite_group")
 try:
     doot.config.tool.doot.group.database
     from doot.data import database
-    sqlite_dirs  = doot.locs.extend(prefix="sqlite")
+    sqlite_dirs  = doot.locs.extend(name="sqlite")
 
     sqlite_group += database.SqliteReportTask(dirs=sqlite_dirs)
     sqlite_group += database.SqlitePrepTask(dirs=sqlite_dirs)
@@ -111,7 +111,7 @@ json_group = TaskGroup("json group")
 try:
     doot.config.tool.doot.group.json
     from doot.data import json as json_reports
-    json_dirs = doot.locs.extend(prefix="json")
+    json_dirs = doot.locs.extend(name="json")
     json_dirs.update({
         "visual" : json_dirs.build / "visual"
     })
@@ -132,7 +132,7 @@ plantuml_group = TaskGroup("plantuml_group")
 try:
     doot.config.tool.doot.group.plantuml
     from doot.docs import plantuml
-    plant_dirs = doot.locs.extend(prefix="plantuml", _src="docs/visual")
+    plant_dirs = doot.locs.extend(name="plantuml", _src="docs/visual")
     plant_dirs.update({
         "visual" : plant_dirs.build / "visual"
     })
@@ -152,7 +152,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 csv_group = TaskGroup("csv group")
 try:
     doot.config.tool.doot.group.csv
-    csv_dirs = doot.locs.extend(prefix="csv")
+    csv_dirs = doot.locs.extend(name="csv")
     from doot.data import csv as csv_reports
 
     csv_group += csv_reports.CSVSummaryTask(dirs=csv_dirs)
@@ -168,7 +168,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 dot_group = TaskGroup("dot group")
 try:
     doot.config.tool.doot.group.dot
-    dot_dirs = doot.locs.extend(prefix="dot", _src="docs/visual")
+    dot_dirs = doot.locs.extend(name="dot", _src="docs/visual")
     from doot.docs import dot
     dot_group += dot.DotVisualise(dirs=dot_dirs)
 
@@ -182,7 +182,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 images_group = TaskGroup("images group")
 try:
     doot.config.tool.doot.group.images
-    image_dirs  = doot.locs.extend(prefix="images")
+    image_dirs  = doot.locs.extend(name="images")
     from doot.data import images
     images_group += images.HashImages(dirs=image_dirs)
     images_group += images.OCRGlobber(dirs=image_dirs)

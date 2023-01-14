@@ -15,6 +15,7 @@ toml_template = data_path / "basic_toml"
 dooter_template = data_path / "dooter"
 ##-- end data
 
+__version__ = "0.0.1"
 
 config     : TomlAccess = None
 
@@ -61,12 +62,11 @@ def setup_agnostic(path=default_agnostic):
 def setup_py(path=default_py):
     # print("Setting up python")
     pyproject = TomlAccess.load(path)
-    locs._src = pyproject.project.name
-    pass
+    locs.update(src=pyproject.project.name)
 
 def setup_rust(path=default_rust, config_path=default_rust_config):
     cargo        = TomlAccess.load(path)
     cargo_config = TomlAccess.load(config_path)
 
-    locs._src = cargo.package.name
-    locs._build = cargo_config.build.target_dir
+    locs.update(src=cargo.package.name,
+                build=cargo_config.build.target_dir)

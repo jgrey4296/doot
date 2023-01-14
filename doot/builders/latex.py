@@ -163,7 +163,7 @@ class BibtexBuildPass(globber.EagerFileGlobber):
         bib_loc =  str(self.dirs.temp / "combined.bib")
         has_bib = False
         print("Retargeting: ", aux)
-        for line in fileinput.input(files=[aux], inplace=True):
+        for line in fileinput.input(files=[aux], inplace=True, backup=".backup"):
             line_match = reg.match(line)
             if line_match is None:
                 print(line.strip())

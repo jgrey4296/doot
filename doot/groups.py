@@ -36,7 +36,7 @@ logging = logmod.getLogger(__name__)
 __all__ = [ "defaults_group",
             "pip_group", "jekyll_group", "sphinx_group",
             "latex_group", "tags_group", "git_group",
-            "cargo_group", "epub_group",
+            "cargo_group", "epub_group", "py_group",
            ]
 
 
@@ -56,32 +56,45 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 
 ##-- end defaults
 
-##-- pip/py
+##-- pip
 pip_group = TaskGroup("pip group")
 try:
     if not doot.default_py.exists():
         raise FileNotFoundError(doot.default_py)
     doot.config.tool.doot.group.pip
-    from doot.builders import pip_tasks as pip
-    from doot.code import python as py_tasks
 
-    pip_dirs = doot.locs.extend(prefix="pip", _docs=None)
-    pip_dirs.add_extra({"wheel" : pip_dirs.build / "wheel",
-                        "sdist" : pip_dirs.build / "sdist"})
+    pip_dirs = doot.locs.extend(name="pip", _docs=None)
+    pip_dirs.update(wheel=pip_dirs.build / "wheel")
 
-
-    # for task in pip.build_tasks(pip_dirs):
-    #     pip_group += task
-    pip_group += pip.pip_requirements
-    pip_group += py_tasks.InitPyGlobber(dirs=pip_dirs)
-    pip_group += py_tasks.PyLintTask(dirs=pip_dirs)
-    pip_group += py_tasks.PyUnitTestGlob(dirs=pip_dirs)
-
+    from doot.builders import pip_tasks as pipper
+    pip_group += pipper.IncrementVersion(dirs=pip_dirs)
+    pip_group += pipper.PyBuild(dirs=pip_dirs)
+    pip_group += pipper.PyInstall(dirs=pip_dirs)
+    pip_group += pipper.PipReqs(dirs=pip_dirs)
+    pip_group += pipper.VenvNew(dirs=pip_dirs)
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     if doot.config.or_get(False).tool.doot.group.pip.debug():
         print("To activate group pip needs: ", err)
+##-- end pip
 
-##-- end pip/py
+##-- py
+py_group = TaskGroup("py group")
+try:
+    if not doot.default_py.exists():
+        raise FileNotFoundError(doot.default_py)
+    doot.config.tool.doot.group.python
+    py_dirs = doot.locs.extend(name="py", docs=None)
+
+    from doot.code import python as py_tasks
+    py_group += py_tasks.InitPyGlobber(dirs=py_dirs)
+    py_group += py_tasks.PyLintTask(dirs=py_dirs)
+    py_group += py_tasks.PyUnitTestGlob(dirs=py_dirs)
+
+except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
+    if doot.config.or_get(False).tool.doot.group.pip.debug():
+        print("To activate group python needs: ", err)
+
+##-- end py
 
 ##-- jekyll
 jekyll_group = TaskGroup("jekyll_group")
@@ -89,12 +102,12 @@ try:
     doot.config.tool.doot.group.jekyll
 
 
-    jekyll_dirs = doot.locs.extend(prefix="jekyll",
+    jekyll_dirs = doot.locs.extend(name="jekyll",
                                    _src=doot.locs.docs,
                                    _data=(doot.locs.data,),
                                    _codegen="_generated",
                                    _docs=None)
-    jekyll_dirs.add_extra({
+    jekyll_dirs.update({
         "posts"     : jekyll_dirs.src / "_drafts" ,
         "tags"      : jekyll_dirs.codegen / "_tags",
         "tagsIndex" : jekyll_dirs.data / "tags" / "index.md",
@@ -120,7 +133,7 @@ latex_group = TaskGroup("latex_group")
 try:
     doot.config.tool.doot.group.latex
     from doot.builders import latex
-    tex_dirs = doot.locs.extend(prefix="latex", _src=doot.locs._docs, _docs=(doot.locs._docs,), _build=(doot.locs._build,))
+    tex_dirs = doot.locs.extend(name="latex", _src=doot.locs._docs, _docs=(doot.locs._docs,), _build=(doot.locs._build,))
     latex_group += latex.LatexMultiPass(dirs=tex_dirs,  roots=[tex_dirs.src])
     latex_group += latex.LatexFirstPass(dirs=tex_dirs,  roots=[tex_dirs.src])
     latex_group += latex.LatexSecondPass(dirs=tex_dirs, roots=[tex_dirs.src])
@@ -140,10 +153,10 @@ sphinx_group = TaskGroup("sphinx_group")
 try:
     doot.config.tool.doot.group.sphinx
     from doot.builders import sphinx
-    sphinx_dirs  = doot.locs.extend(prefix="sphinx",
+    sphinx_dirs  = doot.locs.extend(name="sphinx",
                                     _src=doot.locs.docs,
                                     _docs=(doot.locs.docs,))
-    sphinx_dirs.add_extra({"html" : sphinx_dirs.build / "html" / "index.html"})
+    sphinx_dirs.update({"html" : sphinx_dirs.build / "html" / "index.html"})
 
     sphinx_group += sphinx.SphinxDocTask(dirs=sphinx_dirs)
     sphinx_group += sphinx.task_browse(sphinx_dirs)
@@ -158,7 +171,7 @@ tags_group = TaskGroup("tags_group")
 try:
     doot.config.tool.doot.group.tags
     from doot.data import taggers
-    gtags_dirs = doot.locs.extend(prefix="tags",
+    gtags_dirs = doot.locs.extend(name="tags",
                                   _build=None,
                                   _temp=None,
                                   _docs=None)
@@ -176,8 +189,8 @@ git_group = TaskGroup("git group")
 try:
     doot.config.tool.doot.group.git
     from doot.vcs import git_tasks
-    vcs_dirs = doot.locs.extend(prefix="vcs", _src=None, _docs=None, _temp=None)
-    vcs_dirs.add_extra({ "visual" : doot.locs.docs / "visual" })
+    vcs_dirs = doot.locs.extend(name="vcs", _src=None, _docs=None, _temp=None)
+    vcs_dirs.update({ "visual" : doot.locs.docs / "visual" })
 
     git_group += git_tasks.GitLogTask(dirs=vcs_dirs)
     git_group += git_tasks.GitLogAnalyseTask(dirs=vcs_dirs)
@@ -252,7 +265,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 epub_group = TaskGroup("epub group")
 try:
     doot.config.tool.doot.group.epub
-    epub_dirs = doot.locs.extend(prefix="epub", _src="docs/epub")
+    epub_dirs = doot.locs.extend(name="epub", _src="docs/epub")
     from doot.builders import epub
     epub_group += epub.EbookNewTask(dirs=epub_dirs)
     epub_group += epub.EbookCompileTask(dirs=epub_dirs)

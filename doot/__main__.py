@@ -52,11 +52,13 @@ def main():
 
     except FileNotFoundError:
         if not doot.default_agnostic.exists():
-            print("No toml config data found, creating stub doot.toml")
-            doot.default_agnostic.write_text(doot.toml_template.read_text())
+            if input("No toml config data found, create stub doot.toml? _/n ") != "n":
+                doot.default_agnostic.write_text(doot.toml_template.read_text())
+                print("Stubbed")
         if not doot.default_dooter.exists():
-            print("No Dooter file found, creating a stub")
-            doot.default_dooter.write_text(doot.dooter_template.read_text())
+            if input("No Dooter file found, create stub dooter.py? _/n ") != "n":
+                doot.default_dooter.write_text(doot.dooter_template.read_text())
+                print("Stubbed")
 
 
     sys.exit(result)

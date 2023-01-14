@@ -1,12 +1,5 @@
-##-- doit
 verbosity               = 2
 
-# [tool.doit.commands.{command}]
-# [tool.doit.tasks.{task}]
-
-##-- end doit
-
-##-- doot
 [tool.doot]
 announce_groups = false
 
@@ -14,30 +7,10 @@ announce_groups = false
 build = "build"
 # docs  = "docs"
 temp  = ".temp"
-# data    = "data"
 
-##-- end doot
-
-##-- default task group activation
-# Uncomment to activate a group
-# when you import doot.groups.*
-# and doot.groups_secondary.*
-# [tool.doot.group.tex]
 [tool.doot.group.pip]
-# [tool.doot.group.tex]
-# [tool.doot.group.jekyll]
-# [tool.doot.group.sphinx]
+debug = true
+[tool.doot.group.python]
+debug = true
 [tool.doot.group.gtags]
 [tool.doot.group.git]
-# [tool.doot.group.cargo]
-# [tool.doot.group.gradle]
-# [tool.doot.group.epub]
-# [tool.doot.group.godot]
-# [tool.doot.group.xml]
-# [tool.doot.group.sqlite]
-# [tool.doot.group.json]
-# [tool.doot.group.plantuml]
-# [tool.doot.group.csv]
-# [tool.doot.group.dot]
-# [tool.doot.group.images]
-##-- end default task group activation

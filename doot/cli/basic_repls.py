@@ -43,7 +43,6 @@ def task_pyrepl():
     }
 
 def task_prolog_repl():
-    # TODO make a globber for files
     return {
         "basename" : "repl::pl",
         "actions"  : [ Interactive(["swipl"], shell=False)],

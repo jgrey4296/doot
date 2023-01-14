@@ -11,11 +11,11 @@ from doot.utils.loc_data import DootLocData
 from doot.utils.tasker import DootTasker
 ##-- end imports
 
-prefix = doot.config.or_get("python").tool.doot.python.prefix()
+prefix = doot.config.or_get("py").tool.doot.python.prefix()
 
 lint_exec       = doot.config.or_get("pylint").tool.doot.python.lint.exec()
 lint_fmt        = doot.config.or_get("text").tool.doot.python.lint.output_format()
-lint_out        = pl.Path(doot.config.or_get(f"report.lint").tool.doot.python.lint.output_name())
+lint_out        = doot.config.or_get(f"report.lint").tool.doot.python.lint.output_name()
 lint_grouped    = doot.config.or_get(True).tool.doot.python.lint.grouped()
 lint_error      = doot.config.or_get(False).tool.doot.python.lint.error()
 
@@ -35,11 +35,6 @@ def gen_toml(self):
                       "args    = []",
                       ])
 
-def task_buildvenv():
-    return {
-        "basename" : f"{prefix}::venv",
-        "actions" : [],
-        }
 
 class InitPyGlobber(globber.DirGlobber):
     """ ([src] -> src) add missing __init__.py's """
@@ -49,9 +44,8 @@ class InitPyGlobber(globber.DirGlobber):
         super().__init__(name, dirs, roots or [dirs.src], rec=rec)
         self.ignores = ["__pycache__", ".git", "__mypy_cache__"]
 
-
     def filter(self, fpath):
-        if fpath[0] in "_.":
+        if fpath.name[0] in "_.":
             return self.control.reject
         return self.control.accept
 
@@ -102,27 +96,27 @@ class PyLintTask(globber.DirGlobber):
         return task
 
     def subtask_detail(self, task, fpath=None):
-        target = lint_out if lint_grouped else lint_out.with_stem(task['name'])
         task.update({
-            "targets" : [ self.dirs.build / target ],
             "clean"   : True,
+            "actions" : [ CmdAction(self.run_lint, shell=False) ],
         })
         task['meta'].update({
             "format" : lint_fmt,
             "exec"   : lint_exec,
             "error"  : lint_error,
         })
-        task['actions'] += self.subtask_actions(fpath)
         return task
 
-    def subtask_actions(self, fpath):
-        return [ CmdAction(self.run_lint, shell=False) ]
 
-    def run_lint(self, task, targets):
+    def run_lint(self, task):
+        target = self.dirs.build / lint_out
+        if not lint_grouped:
+            target = target.with_stem(task.name)
+
         args = [task.meta['exec'],
                 "--rcfile", "pylint.toml",
                 "--output-format", task.meta['format'],
-                "--output", targets[0],
+                "--output", targets,
                 "-E" if task.meta['error'] else None,
                 "--exit-zero",
                 "-v",

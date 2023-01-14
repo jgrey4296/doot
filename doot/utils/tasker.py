@@ -5,6 +5,7 @@ Utility classes for building tasks with a bit of structure
 ##-- imports
 from __future__ import annotations
 
+import sys
 from time import sleep
 import abc
 import logging as logmod
@@ -124,7 +125,7 @@ class DootTasker:
     def task_detail(self, task:dict) -> dict:
         return task
 
-    def _build_setup(self) -> dict:
+    def _build_setup(self) -> DoitTask:
         """
         Build a pre-task that every subtask depends on
         """
@@ -153,7 +154,13 @@ class DootTasker:
                 yield setup_task
                 maybe_task['setup'].append(self._setup_names['full'])
 
-            full_task = dict_to_task(maybe_task)
+            try:
+                full_task = dict_to_task(maybe_task)
+            except TypeError as err:
+                print("ERROR: Task Creation Failure: ", err, file=sys.stderr)
+                print("ERROR: Task was: ", maybe_task, file=sys.stderr)
+                exit(1)
+
             yield full_task
         except DootDirAbsent:
             return None
