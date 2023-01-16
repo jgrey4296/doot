@@ -16,7 +16,6 @@ from urllib.parse import urlparse
 
 from bkmkorg.bibtex import parsing as BU
 from bkmkorg.bookmarks.collection import BookmarkCollection
-from bkmkorg.files import collect
 ##-- end imports
 
 ##-- logging

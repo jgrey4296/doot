@@ -28,7 +28,6 @@ import bibtexparser as b
 from bibtexparser.customization import splitname
 from bkmkorg.bibtex import parsing as BU
 from bkmkorg.bibtex.writer import JGBibTexWriter
-from bkmkorg.files.collect import get_data_files
 from pdfrw import PdfName, PdfReader, PdfWriter
 
 if TYPE_CHECKING:
@@ -44,7 +43,8 @@ logging = logmod.getLogger(__name__)
 
 def check_pdf(path:pl.Path):
     results = subprocess.run(["pdfinfo", str(path)],
-                             capture_output=True)
+                             capture_output=True,
+                             shell=False)
     assert(results.returncode == 0), path
 
 def add_metadata(path:pl.Path, bib_entry:dict, bib_str:str):
@@ -95,3 +95,24 @@ def add_metadata_alt(path:pl.Path, bib_entry:dict, bib_str:str):
     new_path    = path.parent / f'{new_name}{path.suffix}'
     logging.info("Writing To: %s", new_path.name)
     PdfWriter(new_path, trailer=pdf).write()
+
+
+
+def add_metadata_to_db(db):
+    writer   = JGBibTexWriter()
+    count = 0
+    for i, entry in enumerate(db.entries):
+        if i % 10 == 0:
+            logging.info("%s/10 Complete", count)
+            count += 1
+
+        record = c.convert_to_unicode(entry)
+
+        file_fields = [x for x in record.keys() if 'file' in x]
+        for field in file_fields:
+            fp          = make_path(record[field])
+            orig_parent = fp.parent
+
+            if fp.suffix == ".pdf" and fp.exists():
+                entry_as_str : str = writer._entry_to_bibtex(entry)
+                add_metadata(fp, record, entry_as_str)

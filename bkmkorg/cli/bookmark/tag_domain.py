@@ -11,7 +11,6 @@ from urllib.parse import urlparse
 from collections import defaultdict
 
 import pathlib as pl
-from bkmkorg.files import collect
 from bkmkorg.bibtex import parsing as BU
 from bkmkorg.bookmarks.collection import BookmarkCollection
 from bkmkorg.tag.tagfile import TagFile

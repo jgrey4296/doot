@@ -7,7 +7,6 @@ import abc
 import logging as root_logger
 from dataclasses import InitVar, dataclass, field
 
-from bkmkorg.files.collect import get_data_files
 ##-- end imports
 
 logging = root_logger.getLogger(__name__)

@@ -13,7 +13,7 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     Set, Tuple, TypeVar, Union, cast)
 
 import regex
-from bkmkorg.collections.base_format import BaseFileFormat
+from bkmkorg.file_formats.base_format import BaseFileFormat
 from bs4 import BeautifulSoup
 ##-- end imports
 
@@ -43,6 +43,9 @@ class Bookmark:
 
     @staticmethod
     def build(line, sep=None):
+        """
+        Build a bookmark from a line of a bookmark file
+        """
         assert(isinstance(line, str))
         if sep is None:
             sep = Bookmark.sep
@@ -85,7 +88,7 @@ class BookmarkCollection(BaseFileFormat):
 
 
     @staticmethod
-    def read(f_name:pl.Path) -> "BookmarkCollection":
+    def read(f_name:pl.Path) -> BookmarkCollection:
         """ Read a file to build a bookmark collection """
         bookmarks = BookmarkCollection()
         with open(f_name, 'r') as f:
@@ -139,7 +142,7 @@ class BookmarkCollection(BaseFileFormat):
     def __len__(self):
         return len(self.entries)
 
-    def difference(self, other:"BookmarkCollection"):
+    def difference(self, other:BookmarkCollection):
         result = BookmarkCollection()
         for bkmk in other:
             if bkmk not in self:

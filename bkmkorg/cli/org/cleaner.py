@@ -9,7 +9,6 @@ import pathlib as pl
 import re
 
 from bkmkorg.bibtex import parsing as BU
-from bkmkorg.files import collect
 from bkmkorg.org.links import map_media, make_relative_media_links
 ##-- end imports
 

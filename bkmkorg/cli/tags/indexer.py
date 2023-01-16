@@ -7,8 +7,7 @@ import re
 from collections import defaultdict
 
 import pathlib as pl
-from bkmkorg.files.collect import get_data_files
-from bkmkorg.collections.indexfile import IndexFile
+from bkmkorg.file_formats.indexfile import IndexFile
 ##-- end imports
 
 ##-- logging

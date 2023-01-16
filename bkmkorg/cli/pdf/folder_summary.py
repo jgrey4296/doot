@@ -11,7 +11,6 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 import pathlib as pl
 from bkmkorg.bibtex import parsing as BU
 from bkmkorg.pdf import manipulate as PU
-from bkmkorg.files import collect
 ##-- end imports
 
 ##-- logging

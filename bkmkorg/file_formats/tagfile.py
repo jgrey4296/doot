@@ -14,8 +14,7 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 
-from bkmkorg.collections.base_format import BaseFileFormat
-from bkmkorg.files.collect import get_data_files
+from bkmkorg.file_formats.base_format import BaseFileFormat
 ##-- end imports
 
 logging = root_logger.getLogger(__name__)
@@ -34,36 +33,24 @@ class TagFile(BaseFileFormat):
 
 
     @staticmethod
-    def read(f_name:pl.Path) -> 'TagFile':
+    def read(fpath:pl.Path) -> TagFile:
         obj = TagFile()
-        with open(f_name, 'r') as f:
-            for line in f.readlines():
-                if not bool(line):
-                    continue
-                try:
-                    line_s = [obj.norm_regex.sub("_", x.strip()) for x in line.split(obj.sep)]
-                    obj.set_count(line_s[0], int(line_s[1]))
-                except Exception as err:
-                    logging.warning("Failure Tag Reading: %s, %s", line, err)
+        for i, line in enumerate(fpath.read_text.split("\n")):
+            try:
+                match [x.strip() for x in line.split(obj.sep)]:
+                    case []:
+                        continue
+                    case [tag, count]:
+                        norm_tag = obj.norm_regex.sub("_", tag)
+                        int_count = int(count)
+                        obj.set_count(norm_tag, int_count)
+                    case _:
+                        raise Exception("Unrecognized result")
+            except Exception as err:
+                logging.warning("Failure Tag Reading %s (l:%s) : %s", fpath, i, err)
 
         return obj
 
-
-    @staticmethod
-    def read_bib(f:pl.Path) -> 'TagFile':
-        raise NotImplementedError()
-
-    @staticmethod
-    def read_org(f:pl.Path) -> 'TagFile':
-        raise NotImplementedError()
-
-    @staticmethod
-    def read_html(f:pl.Path) -> 'TagFile':
-        raise NotImplementedError()
-
-    @staticmethod
-    def read_bookmarks(f:pl.Path) -> 'TagFile':
-        raise NotImplementedError()
 
     def __iter__(self):
         return iter(self.count)
@@ -119,7 +106,7 @@ class TagFile(BaseFileFormat):
         norm_tag = self.norm_regex.sub("_", tag.strip())
         return self.count[norm_tag]
 
-    def difference(self, other: 'TagFile') -> 'TagFile':
+    def difference(self, other: 'TagFile') -> TagFile:
         result = TagFile()
         for tag in other:
             if tag not in self:
@@ -135,19 +122,28 @@ class SubstitutionFile(TagFile):
     mapping : Dict[str, str] = field(default_factory=lambda: defaultdict(lambda: ""))
 
     @staticmethod
-    def read(f_path:pl.Path) -> 'SubstitutionFile':
+    def read(fpath:pl.Path) -> SubstitutionFile:
         obj = SubstitutionFile()
-        with open(f_path, 'r') as f:
-            for line in f.readlines():
-                if not bool(line.strip()):
-                    continue
-                try:
-                    line_s = [obj.norm_regex.sub("_", x.strip()) for x in line.split(obj.sep)]
-                    obj.set_count(line_s[0], int(line_s[1]))
-                    if len(line_s) > 2 and bool(line_s[2]):
-                        obj.set_sub(line_s[0], line_s[2])
-                except:
-                    logging.warning("Failure Sub Reading: %s", line)
+        for i, line in enumerate(fpath.read_text().split("\n")):
+            try:
+                match [ x.strip() for x in line.split(obj.sep) ]:
+                    case []:
+                        continue
+                    case [tag, count, *subs]:
+                        norm_tag = obj.norm_regex.sub("_", tag)
+                        int_count = int(count)
+                        norm_subs = [ obj.norm_regex.sub("_", x.strip()) for x in subs if bool(x.strip()) ]
+                        obj.set_count(norm_tag, int_count)
+                        if bool(norm_subs):
+                            obj.set_sub(norm_tag, obj.sep.join(norm_subs))
+                    case [tag, count]:
+                        norm_tag = obj.norm_regex.sub("_", tag)
+                        int_count = int(count)
+                        obj.set_count(norm_tag, int_count)
+                    case _:
+                        raise Exception("Unrecognized result")
+            except Exception as err:
+                logging.warning("Failure Sub Reading: %s (l:%s) : %s", fpath, i, err)
 
         return obj
 
@@ -180,6 +176,7 @@ class SubstitutionFile(TagFile):
 
     def has_sub(self, value):
         return value in self.mapping
+
     def set_sub(self, key, value):
         if not bool(key):
             return

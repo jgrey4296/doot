@@ -13,7 +13,6 @@ import pathlib as pl
 import bibtexparser as b
 from bkmkorg.bibtex import parsing as BU
 from bkmkorg.bibtex import entry_processors as bib_proc
-from bkmkorg.files import collect
 from bkmkorg.pdf import manipulate as PU
 ##-- end imports
 

@@ -11,7 +11,6 @@ from hashlib import sha256
 import pathlib as pl
 from bkmkorg.bibtex import parsing as BU
 from bkmkorg.files import hash_check
-from bkmkorg.files import collect
 ##-- end imports
 
 ##-- logging

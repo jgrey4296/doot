@@ -18,7 +18,6 @@ from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
 from bkmkorg.bibtex import entry_processors as bib_proc
 from bkmkorg.bibtex import parsing as BU
-from bkmkorg.files import collect
 from bkmkorg.tag import clean
 from bkmkorg.tag.tagfile import SubstitutionFile
 ##-- end imports

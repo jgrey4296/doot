@@ -12,7 +12,6 @@ import bibtexparser as b
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
 from bkmkorg.bibtex import parsing as BU
-from bkmkorg.files as collect
 from bkmkorg.org.extraction import get_permalinks
 ##-- end imports
 

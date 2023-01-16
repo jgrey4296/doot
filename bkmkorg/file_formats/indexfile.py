@@ -6,6 +6,7 @@ which map tags to sets of files
 ##-- imports
 from __future__ import annotations
 
+import pathlib as pl
 import logging as root_logger
 from collections import defaultdict
 from dataclasses import InitVar, dataclass, field
@@ -13,7 +14,6 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 
-from bkmkorg.files.collect import get_data_files
 ##-- end imports
 
 logging   = root_logger.getLogger(__name__)
@@ -28,27 +28,31 @@ class IndexFile:
     ext     : str                 = field(default=".index")
 
     @staticmethod
-    def builder(target, sep=None) -> IndexFile:
+    def builder(targets:list[pl.Path], sep=None) -> IndexFile:
         """
         Build an index file from a target directory or file
         """
         main = IndexFile()
-        for target in get_data_files(target, main.ext):
-            try:
-                main += IndexFile.read(target, sep=sep)
-            except Exception as err:
-                logging.warning("IndexFile.builder failure for %s", target)
+        for target in targets:
+            main += IndexFile.read(target, sep=sep)
 
         return main
 
     @staticmethod
-    def read(p:pl.Path, sep=None) -> IndexFile:
+    def read(fpath:pl.Path, sep=None) -> IndexFile:
         obj  = IndexFile(sep=sep)
-        with open(p, 'r') as f:
-            # convert lines to mapping
-            for line in f.readlines():
-                line_s = [x.strip() for x in line.split(obj.sep)]
-                obj.add_files(line_s[0], line_s[2:])
+        # convert lines to mapping
+        for i, line in enumerate(fpath.read_text().split("\n")):
+            try:
+                match [x.strip() for x in line.split(obj.sep)]:
+                    case []:
+                        continue
+                    case [head, *rest]:
+                        obj.add_files(head, rest)
+                    case _:
+                        raise Exception("unexpected result")
+            except Excception as err:
+                logging.warning("Index Read Failure for %s (l:%s) : %s", fpath, i, err)
 
         return obj
 
@@ -60,7 +64,7 @@ class IndexFile:
 
         return self
 
-    def add_files(self, key, values):
+    def add_files(self, key:str, values:list[str]):
         self.mapping[key].update([str(x) for x in values])
 
     def __len__(self):

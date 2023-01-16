@@ -14,7 +14,6 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 from uuid import uuid1
 
 import networkx as nx
-from bkmkorg.files.collect import get_data_files
 ##-- end imports
 
 logging = root_logger.getLogger(__name__)

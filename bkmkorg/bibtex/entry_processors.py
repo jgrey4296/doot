@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""
+a collection of different transformers for bibtex entries
+from their raw load form, to various nicer formats.
+eg: split out authors, split tags, force to unicode...
+"""
 ##-- imports
 from __future__ import annotations
 
@@ -12,23 +17,20 @@ from bibtexparser import customization as c
 
 logging = root_logger.getLogger(__name__)
 
+NEWLINE_RE        = re.compile(r"\n+\s*")
+
 def nop(record):
-    # record = c.type(record)
-    # record = c.author(record)
-    # record = c.editor(record)
-    # record = c.journal(record)
-    # record = c.keyword(record)
-    # record = c.link(record)
-    # record = c.doi(record)
-    # record['tags'] = [i.strip() for i in re.split(',|;', record["tags"].replace("\n",""))]
-    # record['p_authors'] = []
-    # if 'author' in record:
-    #     record['p_authors'] = [c.splitname(x, False) for x in record['author']]
     return record
 
+def to_unicode(record):
+    record = b.customization.convert_to_unicode(record)
+    record = {k:NEWLINE_RE.sub(" ", v) for k,v in record.items()}
+    return record
 
-
-def clean_full(record):
+def basic_clean(record):
+    """
+    basic transforms from bibtexparser
+    """
     record = c.type(record)
     record = c.author(record)
     record = c.editor(record)
@@ -36,97 +38,50 @@ def clean_full(record):
     record = c.keyword(record)
     record = c.link(record)
     record = c.doi(record)
+
+    return record
+
+def tag_split(record):
     tags = set()
 
-    if 'tags' in record:
-        tags.update([i.strip() for i in re.split(',|;', record["tags"].replace('\n', ''))])
-    if "keywords" in record:
-        tags.update([i.strip() for i in re.split(',|;', record["keywords"].replace('\n', ''))])
-    if "mendeley-tags" in record:
-        tags.update([i.strip() for i in re.split(',|;', record["mendeley-tags"].replace('\n', ''))])
+    if 'tags' in record and isinstance(record['tags'], str):
+        tags.update([i.strip() for i in re.split(r',|;', record["tags"].replace('\n', ''))])
+    if "keywords" in record and isinstance(record['keywords'], str):
+        tags.update([i.strip() for i in re.split(r',|;', record["keywords"].replace('\n', ''))])
+        del record['keywords']
+    if "mendeley-tags" in record and isinstance(record['mendeley-tags'], str):
+        tags.update([i.strip() for i in re.split(r',|;', record["mendeley-tags"].replace('\n', ''))])
+        del record['mendeley-tags']
 
-    record['tags']      = tags
-    record['p_authors'] = []
-
-    if 'author' in record:
-        record['p_authors'] += [x.split(' and ') for x in record['author']]
-
-    if 'editor' in record:
-        record['p_authors'] += [c.splitname(x, False) for x in record['editor']]
-
+    record['__tags'] = tags
     return record
 
+def split_names(record):
+    """
+    split tags, author and editors, as unicode
+    """
+    def separate_names(text):
+        return c.getnames([i.strip() for i in re.split(r"\ and\ ", text.replace('\n', ' '), flags=re.IGNORECASE)])
 
-def clean(record):
-    # record = c.type(record)
-    # record = c.author(record)
-    # record = c.editor(record)
-    # record = c.journal(record)
-    # record = c.keyword(record)
-    # record = c.link(record)
-    # record = c.doi(record)
-    tags = set()
-
-    if 'tags' in record:
-        tags.update([i.strip() for i in re.split(',|;', record["tags"].replace('\n', ''))])
-    if "keywords" in record:
-        tags.update([i.strip() for i in re.split(',|;', record["keywords"].replace('\n', ''))])
-    if "mendeley-tags" in record:
-        tags.update([i.strip() for i in re.split(',|;', record["mendeley-tags"].replace('\n', ''))])
-
-    record['tags'] = tags
-    # record['p_authors'] = []
-    # if 'author' in record:
-    #     record['p_authors'] = [c.splitname(x, False) for x in record['author']]
-    return record
-
-def tags(record):
-    record = b.customization.convert_to_unicode(record)
-    record = c.author(record)
-    record = c.editor(record)
-    tags = set()
-
-    if 'tags' in record:
-        tags.update([i.strip() for i in re.split(',|;', record["tags"].replace('\n', ''))])
-
-    record['tags'] = tags
-    record['p_authors'] = []
-    logging.debug("Handling: %s", record['ID'])
-    if 'author' in record:
-        try:
-            record['p_authors'] = [c.splitname(x, False) for x in record['author']]
-        except Exception as err:
-            breakpoint()
-    if 'editor' in record:
-        record['p_authors'] = [c.splitname(x, False) for x in record['editor']]
+    try:
+        match record:
+            case { "author": author }:
+                separated = separate_names(author)
+                record['__authors'] = [c.splitname(x, False) for x in separated]
+            case { "editor" : editor }:
+                separated = separate_names(editor)
+                record['__editors'] = [c.splitname(x, False) for x in separated]
+            case _:
+                raise Exception("No author or editor")
+    except Exception as err:
+        logging.warning("Error processing %s : %s", record['ID'], err)
 
     return record
-
-def tag_summary(record):
-    if 'year' not in record:
-        year_temp = "2020"
-    else:
-        year_temp = record['year']
-    if "/" in year_temp:
-        year_temp = year_temp.split("/")[0]
-
-    year = datetime.datetime.strptime(year_temp, "%Y")
-    tags = []
-    if 'tags' in record:
-        tags = [x.strip() for x in record['tags'].split(",")]
-
-    record['year'] = year
-    record['tags'] = tags
-
-    return record
-
-def author_extract(record):
-    record = c.author(record)
-    record = c.editor(record)
-    return record
-
 
 def year_parse(record):
+    """
+    parse the year into a datetime
+    """
     if 'year' not in record:
         year_temp = "2020"
     else:
@@ -136,11 +91,8 @@ def year_parse(record):
         year_temp = year_temp.split("/")[0]
 
     year = datetime.datetime.strptime(year_temp, "%Y")
-    tags = []
-    if 'tags' in record:
-        tags = [x.strip() for x in record['tags'].split(",")]
-
-    record['year'] = year
-    record['tags'] = tags
+    record['__year'] = year
 
     return record
+
+

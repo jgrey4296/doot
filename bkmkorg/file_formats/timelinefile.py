@@ -8,12 +8,12 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
                     Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
                     TypeVar, cast)
 
-from bkmkorg.collections.base_format import BaseFileFormat
+from bkmkorg.file_formats.base_format import BaseFileFormat
 ##-- end imports
 
 @dataclass
 class TimelineFile(BaseFileFormat):
-    """ File For creating timelines of [Year, Citation] """
+    """ TODO File For creating timelines of [Year, Citation] """
 
     entries : list[Tuple[int, str]] = field(default_factory=list)
 
@@ -41,6 +41,7 @@ class TimelineFile(BaseFileFormat):
 
 class TimelinePlus(TimelineFile):
     """
+    TODO timelineplus
     # Timeline Format:
     # Ext: .timeline
 

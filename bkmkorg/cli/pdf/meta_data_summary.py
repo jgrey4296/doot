@@ -16,7 +16,6 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 import pathlib as pl
 from bkmkorg.bibtex import parsing as BU
 from bkmkorg.pdf import manipulate as PU
-from bkmkorg.files import collect
 ##-- end imports
 
 ##-- logging
@@ -47,7 +46,8 @@ def file_is_finished(path) -> bool:
         return result
 
     response = subprocess.run(['tail', '-n', '1', str(path)],
-                              capture_output=True)
+                              capture_output=True,
+                              shell=False)
     line = response.stdout.decode()
     if line == END_LINE:
         result = True
@@ -59,7 +59,8 @@ def exiftool_pdf_md(path) -> str:
     result = ""
     try:
         response = subprocess.run(["exiftool", str(path), "-PDF:all"],
-                                  capture_output=True)
+                                  capture_output=True,
+                                  shell=False)
         result = response.stdout.decode() if response.returncode == 0 else response.stderr.decode()
 
     except Exception as err:
@@ -72,7 +73,8 @@ def exiftool_xmp_md(path) -> str:
     result = ""
     try:
         response = subprocess.run(["exiftool", str(path), "-XMP:all"],
-                                  capture_output=True)
+                                  capture_output=True,
+                                  shell=False)
         result = response.stdout.decode() if response.returncode == 0 else response.stderr.decode()
 
     except Exception as err:
@@ -84,7 +86,8 @@ def pdftk_md(path) -> str:
     result = ""
     try:
         response = subprocess.run(["pdftk", str(path), "dump_data_utf8"],
-                                  capture_output=True)
+                                  capture_output=True,
+                                  shell=False)
         result = response.stdout.decode() if response.returncode == 0 else response.stderr.decode()
 
         result = "\n".join([x for x in result.split("\n") if "Info" in x])
