@@ -3,12 +3,10 @@ from __future__ import annotations
 
 import pathlib as pl
 from functools import partial
-from doit.action import CmdAction
 
 import doot
 from doot import globber
-from doot.loc_data import DootLocData
-from doot.tasker import DootTasker
+from doot.tasker import DootTasker, DootActions
 ##-- end imports
 
 prefix = doot.config.or_get("py").tool.doot.python.prefix()
@@ -36,7 +34,7 @@ def gen_toml(self):
                       ])
 
 
-class InitPyGlobber(globber.DirGlobber):
+class InitPyGlobber(globber.DirGlobber, DootActions):
     """ ([src] -> src) add missing __init__.py's """
     gen_toml = gen_toml
 
@@ -50,15 +48,11 @@ class InitPyGlobber(globber.DirGlobber):
         return self.control.accept
 
     def subtask_detail(self, task, fpath=None):
-        task['meta'].update({"focus" : fpath})
-        task['actions'] += self.subtask_actions(fpath)
+        task['actions'] += [ (self.touch_initpys, [fpath]) ]
         return task
 
-    def subtask_actions(self, fpath):
-        return [ self.touch_initpys ]
-
-    def touch_initpys(self, task):
-        queue = [ task.meta['focus'] ]
+    def touch_initpys(self, fpath):
+        queue = [ fpath ]
         while bool(queue):
             current = queue.pop()
             if current.is_file():
@@ -72,7 +66,7 @@ class InitPyGlobber(globber.DirGlobber):
             inpy.touch()
 
 
-class PyLintTask(globber.DirGlobber):
+class PyLintTask(globber.DirGlobber, DootActions):
     """ ([root]) lint the package """
 
     gen_toml = gen_toml
@@ -86,38 +80,32 @@ class PyLintTask(globber.DirGlobber):
     def setup_detail(self, task):
         task.update({ "verbosity" : 0,
                       "targets"   : [ "pylint.toml" ],
-                      "uptodate"  : [False],
-                     })
-
-        if not pl.Path("pylint.toml").exists():
-            task['actions'] += [ CmdAction([lint_exec, "--generate-toml-config"], shell=False, save_out="config"),
-                                 lambda task: pl.Path("pylint.toml").write_text(task.values['config']) ]
-
+                      'actions' : [ self.cmd([lint_exec, "--generate-toml-config"], save="config"),
+                                    (self.write_to, [pl.Path("pylint.toml"), "config"]),
+                                   ]
+                      })
         return task
 
     def subtask_detail(self, task, fpath=None):
+        if not lint_grouped:
+            target = target.with_stem(task.name)
+        else:
+            target = self.dirs.build / lint_out
+
         task.update({
             "clean"   : True,
-            "actions" : [ CmdAction(self.run_lint, shell=False) ],
-        })
-        task['meta'].update({
-            "format" : lint_fmt,
-            "exec"   : lint_exec,
-            "error"  : lint_error,
+            "actions" : [ self.cmd(self.run_lint) ],
+            "target"  : [ target ]
         })
         return task
 
 
-    def run_lint(self, task):
-        target = self.dirs.build / lint_out
-        if not lint_grouped:
-            target = target.with_stem(task.name)
-
-        args = [task.meta['exec'],
+    def run_lint(self, targets, task):
+        args = [lint_exec,
                 "--rcfile", "pylint.toml",
-                "--output-format", task.meta['format'],
+                "--output-format", lint_format,
                 "--output", targets,
-                "-E" if task.meta['error'] else None,
+                "-E" if lint_error else None,
                 "--exit-zero",
                 "-v",
                 self.dirs.src
@@ -128,7 +116,7 @@ class PyLintTask(globber.DirGlobber):
 
 
 
-class PyUnitTestGlob(globber.DirGlobber):
+class PyUnitTestGlob(globber.DirGlobber, DootActions):
     """
     ([root]) Run all project unit tests
     """
@@ -145,27 +133,20 @@ class PyUnitTestGlob(globber.DirGlobber):
     def subtask_detail(self, task, fpath=None):
         target = py_test_out if lint_grouped else py_test_out.with_stem(task['name'])
         task.update({"targets" : [ self.dirs.build / target ],
+                     "actions" : [ self.cmd(self.run_tests, fpath, save="results"),
+                                   (self.write_to, [target, "results"])
+                                  ]
                      })
-        task['meta'].update({"dir" : fpath})
-        return task
 
-    def subtask_actions(self, fpath):
-        return [ CmdAction(self.run_tests, shell=False, save_out="results"),
-                 self.write_results,
-                ]
-
-    def write_results(self, task, targets):
-        pl.Path(targets[0]).write_text(task.values['results'])
-
-    def run_tests(self, task):
+    def run_tests(self, fpath, task):
         args = ["python", "-X", "dev", "-m", "unittest", "discover", "-t", pl.Path()]
         args += py_test_args
-        args.append(task.meta['dir'])
+        args.append(fpath)
         return args
 
 
 
-class PyTestGlob(globber.DirGlobber):
+class PyTestGlob(globber.DirGlobber, DootActions):
     """
     ([src]) Run all project unit tests
     """
@@ -182,17 +163,14 @@ class PyTestGlob(globber.DirGlobber):
     def subtask_detail(self, task, fpath=None):
         target = py_test_out if lint_grouped else py_test_out.with_stem(task['name'])
         task.update({"targets" : [ target ],
+                     "actions" : [ self.cmd(self.run_tests, fpath) ]
                      })
-        task['meta'].update({"dir" : fpath})
         return task
 
-    def subtask_actions(self, fpath):
-        return [ CmdAction(self.run_tests) ]
-
-    def run_tests(self, task):
+    def run_tests(self, fpath, task):
         args = ["pytest", "-X", "dev"]
         args += py_test_args
-        args.append(task.meta['dir'])
+        args.append(fpath)
         return args
 
 

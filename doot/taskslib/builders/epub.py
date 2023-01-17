@@ -20,9 +20,9 @@ from doit.task import Task as DoitTask
 
 import doot
 from doot.utils.ziptask import ZipTask
+from doot import tasker
 from doot import globber
 from doot.loc_data import DootLocData
-from doot.tasker import DootTasker
 from doot.utils.clean_actions import clean_target_dirs
 ##-- end imports
 
@@ -36,7 +36,6 @@ title_template      = data_path / "epub_titlepage"
 css_template        = data_path / "epub_css"
 page_style_template = data_path / "epub_page_styles"
 ##-- end data
-
 
 # https://www.w3.org/publishing/epub3/epub-packages.html
 # https://www.w3.org/publishing/epub3/epub-spec.html#sec-cmt-supported
@@ -52,7 +51,7 @@ NAV_ENT_T      = Template(data_path.joinpath("epub_nav_entry").read_text())
 
 ws = re.compile("\s+")
 
-class EbookGlobberBase(globber.DirGlobber):
+class EbookGlobberBase(globber.DirGlobber, tasker.DootActions):
 
     marker_file = ".epub"
 
@@ -62,7 +61,6 @@ class EbookGlobberBase(globber.DirGlobber):
             return self.control.keep
         return self.control.discard
 
-
 class EbookCompileTask(EbookGlobberBase):
     """
     (GlobDirs: [src] -> build) convert directories to zips, then those zips to epubs
@@ -71,17 +69,11 @@ class EbookCompileTask(EbookGlobberBase):
     def __init__(self, name="epub::compile", dirs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], rec=rec)
 
-
     def subtask_detail(self, task, fpath=None):
-        task.update({"task_dep" : [ # f"epub::manifest:{task['name']}",
-                                    # f"_zip::epub:{task['name']}",
-                                    # f"_epub::convert.zip:{task['name']}",
-                                   ],
-                     "file_dep" : [ self.dirs.build / fpath.with_suffix(".epub").name ]
-                     })
+        task.update({
+            "file_dep" : [ self.dirs.build / fpath.with_suffix(".epub").name ]
+        })
         return task
-
-
 
 class EbookConvertTask(EbookGlobberBase):
     """
@@ -97,14 +89,13 @@ class EbookConvertTask(EbookGlobberBase):
         task.update({
             "targets"  : [ self.dirs.build / fpath.with_suffix(".epub").name ],
             "file_dep" : [ self.dirs.temp / fpath.with_suffix(".zip").name ],
-            "actions"  : [ CmdAction(self.action_convert, shell=False), ],
+            "actions"  : [ self.cmd(self.action_convert) ],
             "clean"    : True,
         })
         return task
 
     def action_convert(self, dependencies, targets):
         return ["ebook-convert", dependencies[0], targets[0] ]
-
 
 class EbookZipTask(EbookGlobberBase):
     """
@@ -113,7 +104,6 @@ class EbookZipTask(EbookGlobberBase):
 
     def __init__(self, name="_zip::epub", dirs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], rec=rec)
-
 
     def subtask_detail(self, task, fpath=None):
         target = fpath.with_suffix(".zip").name
@@ -130,7 +120,6 @@ class EbookZipTask(EbookGlobberBase):
         ztaskDict['name'] = task['name']
         ztaskDict['task_dep'] += [ f"epub::manifest:{task['name']}"]
         return ztaskDict
-
 
 class EbookManifestTask(EbookGlobberBase):
     """
@@ -149,11 +138,12 @@ class EbookManifestTask(EbookGlobberBase):
                            fpath / "content" / "nav.xhtml" ],
             "task_dep" : [ f"epub::restruct:{task['name']}" ]
         })
-        task['actions'] += self.subtask_actions(fpath)
+        task['actions'] += [ self.init_uuids,
+                             self.backup,
+                             self.generate_nav,
+                             self.generate_manifest
+                            ]
         return task
-
-    def subtask_actions(self, fpath):
-        return [ self.init_uuids, self.backup, self.generate_nav, self.generate_manifest ]
 
     def init_uuids(self):
         self.uuids.clear()
@@ -273,7 +263,6 @@ class EbookManifestTask(EbookGlobberBase):
             if type_s == "application/xhtml+xml":
                 spine_entries.append(SPINE_ENT_T.substitute(uuid=p_uuid).strip())
 
-
         expanded_template = MANIFEST_T.substitute(title=epub_dir.stem,
                                                   author_sort=self.author,
                                                   author=self.author,
@@ -283,12 +272,6 @@ class EbookManifestTask(EbookGlobberBase):
                                                   spine="\n".join(spine_entries)
                                                   )
         manifest.write_text(expanded_template)
-
-
-
-
-
-
 
 class EbookRestructureTask(EbookGlobberBase):
     """
@@ -313,19 +296,11 @@ class EbookRestructureTask(EbookGlobberBase):
         task.update({
             "targets" : [ (fpath / x) for x in self.content_mapping.keys() ],
         })
-        task['actions'] += self.subtask_actions(fpath)
+        task['actions'] += [ (self.mkdirs, task['targets']),
+                            self.move_files ]
+
         return task
 
-    def subtask_actions(self, fpath):
-        return [ self.make_dirs, self.move_files ]
-
-    def make_dirs(self, targets):
-        for targ in targets:
-            if pl.Path(targ).exists():
-                continue
-
-            pl.Path(targ).mkdir(parents=True)
-    
     def move_files(self, targets):
         """
         Move all files into designated directories
@@ -348,7 +323,6 @@ class EbookRestructureTask(EbookGlobberBase):
                     moved = True
                     break
 
-
 class EbookSplitTask(globber.EagerFileGlobber):
     """
     (GlobDirs: [data] -> build) split any epubs found in the project data
@@ -361,7 +335,7 @@ class EbookSplitTask(globber.EagerFileGlobber):
         task.update({
             "targets"  : [ self.dirs.build / fpath.stem],
             "file_dep" : [ fpath ],
-            "actions"  : [ CmdAction(self.action_convert, shell=False) ],
+            "actions"  : [ self.cmd(self.action_convert), ],
         })
         return task
 
@@ -371,7 +345,7 @@ class EbookSplitTask(globber.EagerFileGlobber):
     def action_convert(self, dependencies, targets):
         return ["ebook-convert", dependencies[0], targets[0]]
 
-class EbookNewTask(DootTasker):
+class EbookNewTask(tasker.DootTasker, tasker.DootActions):
     """
     (-> [src]) Create a new stub structure for an ebook
 
@@ -429,7 +403,6 @@ class EbookNewTask(DootTasker):
         default_styles.write_text(css_template.read_text())
         page_styles.write_text(page_style_template.read_text())
 
-
 class EbookNewPandoc(EbookGlobberBase):
     """
     Build an ebook using pandoc
@@ -440,7 +413,7 @@ class EbookNewPandoc(EbookGlobberBase):
 
     def subtask_detail(self, task, fpath=None):
         task.update({
-            "actions" : [ CmdAction((self.build_ebook, [fpath], {}), shell=False) ],
+            "actions" : [ self.cmd(self.build_ebook, fpath) ],
             "targets" : [ self.dirs.build / f"{fpath.stem}.epub" ],
         })
         return task

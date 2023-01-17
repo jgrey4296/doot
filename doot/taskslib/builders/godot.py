@@ -4,16 +4,15 @@ from __future__ import annotations
 from functools import partial
 import pathlib as pl
 import shutil
-from doit.action import CmdAction
 
-from doot.utils.general import regain_focus, ForceCmd
 from doot import globber
-from doot.tasker import DootTasker
+from doot.tasker import DootTasker, DootActions
 
 ##-- end imports
 # https://docs.godotengine.org/en/stable/tutorials/editor/command_line_tutorial.html
 
-class GodotRunScene(globber.HeadlessFileGlobber):
+
+class GodotRunScene(globber.HeadlessFileGlobber, DootActions):
     """
     ([root]) Globber to allow easy running of scenes
     """
@@ -22,22 +21,22 @@ class GodotRunScene(globber.HeadlessFileGlobber):
         super().__init__(name, dirs, roots or [dir.root], exts=[".tscn"], rec=rec)
 
     def set_params(self):
-        return [{ "name"    : "target",
-                  "short"   : "t",
-                  "type"    : str,
-                  "default" : "",
-                 },
-                { "name"    : "debug",
-                  "short"   : "d",
-                  "type"    : bool,
-                  "default" : False,
-                 },
-                ]
+        return [
+            { "name"    : "target",
+              "short"   : "t",
+              "type"    : str,
+              "default" : "",
+             },
+            { "name"    : "debug",
+              "short"   : "d",
+              "type"    : bool,
+              "default" : False,
+             },
+        ]
 
     def task_detail(self, task:dict):
         task.update({
-            "actions" : [CmdAction(self.run_scene_with_arg, shell=False) ],
-            "actions" : self.set_params(),
+            "actions" : [ self.cmd(self.run_scene_with_arg) ],
         })
         return task
 
@@ -45,25 +44,21 @@ class GodotRunScene(globber.HeadlessFileGlobber):
         task.update({
             "file_dep" : [fpath],
         })
-        task['actions'] += self.subtask_actions(fpath)
+        task['actions'] += [ self.cmd(self.run_scene) ]
         return task
 
-    def subtask_actions(self, fpath):
-        return [ CmdAction(self.run_scene, shell=False) ]
+    def run_scene(self, dependencies):
+        return self.run_scene_with_arg(dependencies[0], self.params['debug'])
 
-    def run_scene(self, dependencies, debug):
-        return self.run_scene_with_arg(dependencies[0], debug)
-
-    def run_scene_with_arg(self, target, debug):
+    def run_scene_with_arg(self):
         args = ["godot"]
-        if debug:
+        if self.params['debug']:
             args.append("-d")
 
-        args.append(target)
+        args.append(self.params['target'])
         return args
 
-
-class GodotRunScript(globber.EagerFileGlobber):
+class GodotRunScript(globber.EagerFileGlobber, DootActions):
     """
     ([root]) Run a godot script, with debugging or without
     """
@@ -80,7 +75,7 @@ class GodotRunScript(globber.EagerFileGlobber):
             { "name"    : "target",
               "short"   : "t",
               "type"    : str,
-              "default" : self.target,
+              "default" : "",
              },
             { "name"    : "debug",
               "short"   : "d",
@@ -91,28 +86,23 @@ class GodotRunScript(globber.EagerFileGlobber):
 
     def subtask_detail(self, task, fpath=None):
         task.update({ "verbosity" : 2,})
-        task['actions'] += self.subtask_actions(fpath)
+        task['actions'] += [ self.cmd(self.run_cmd, [fpath]),
+                             self.regain_focus() ]
+
         return task
 
-    def subtask_actions(self, fpath):
-        return [ CmdAction(partial(self.run_cmd, fpath), shell=False), regain_focus() ]
-
-    def run_cmd(self, target, debug):
-        if not bool(target):
-            return ["echo", "No Target Specified"]
-        if not pl.Path(target).exists():
-            return ["echo", "Target Doesn't Exist: ", target]
+    def run_cmd(self, fpath):
         args = ["godot"]
-        if debug:
+        if self.params['debug']:
             args.append("-d")
 
         args.append("--no-window")
         args.append("--script")
-        args.append(target)
+        args.append(fpath)
 
         return args
 
-class GodotBuild(DootTasker):
+class GodotBuild(DootTasker, DootActions):
     """
     (-> [build]) build a godot project
     """
@@ -148,25 +138,27 @@ class GodotBuild(DootTasker):
 
     def task_detail(self, task):
         return { "basename" : "godot::build",
-                 "actions"  : [ CmdAction(self.cmd_builder, shell=False) ],
+                 "actions"  : [ self.cmd(self.cmd_builder) ],
                  "targets"  : [ self.build_dir / "build.dmg" ],
                  "file_dep" : [ "export_presets.cfg" ],
                  "clean"    : True,
-                 ]
                 }
 
-    def cmd_builder(self, build_type, build_target, targets):
-        return ["godot", "--no-window", f"--{build_type}",  build_target, targets[0] ]
+    def cmd_builder(self, targets):
+        return ["godot",
+                "--no-window",
+                f"--{self.params['build_type']}",
+                self.params['build_target'],
+                targets[0]
+                ]
 
 def task_godot_version():
     return { "basename"  : "godot::version",
              "actions"   : [
-                 ForceCmd(["godot", "--version"], shell=False),
+                 DootActions.force(None, ["godot", "--version"]),
              ],
              "verbosity" : 2,
             }
-
-
 
 def task_godot_test():
     """
@@ -176,7 +168,6 @@ def task_godot_test():
              "actions": []
             }
 
-
 def task_newscene(dirs:DootLocData):
     """
     (-> [scenes])
@@ -184,11 +175,11 @@ def task_newscene(dirs:DootLocData):
     assert("scenes" in dirs.extra)
 
     def mkscene(task, name):
-        return ["touch", (dirs.extra['scenes'] / name).with_suffix(".tscn") ]
+        return [ "touch", (dirs.extra['scenes'] / name).with_suffix(".tscn") ]
 
     return {
         "basename" : "godot::new:scene",
-        "actions" : [ CmdAction(mkscene, shell=False) ],
+        "actions" : [ DootActions.cmd(None, mkscene) ],
         "set_params" : [
             { "name"    : "name",
               "short"   : "n",

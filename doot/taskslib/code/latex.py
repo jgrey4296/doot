@@ -20,7 +20,7 @@ from weakref import ref
 
 import doot
 from doot import globber
-from doot.tasker import DootTasker
+from doot.tasker import DootTasker, DootActions
 
 if TYPE_CHECKING:
     # tc only imports
@@ -55,7 +55,7 @@ def task_latex_docs():
                     ],
     }
 
-class LatexCheckSweep(globber.EagerFileGlobber):
+class LatexCheckSweep(globber.EagerFileGlobber, DootActions):
     """
     ([src] -> temp) Run a latex pass, but don't produce anything,
     just check the syntax
@@ -76,21 +76,20 @@ class LatexCheckSweep(globber.EagerFileGlobber):
 
     def subtask_detail(self, task, fpath=None):
         task.update({"file_dep" : [ fpath ],
+                     "actions"  : [ self.cmd(self.build_draft_cmd, fpath) ]
                      })
-        task['actions'] += self.subtask_actions(fpath)
-
         return task
 
-    def subtask_actions(self, fpath):
-        return [ CmdAction((self.build_draft_cmd, [fpath], {}), shell=False) ]
+    def build_draft_cmd(self, fpath):
+        return ["pdflatex",
+                "-draftmode",
+                f"-interaction={self.params['interaction']}",
+                f"-output-directory={self.dirs.temp}",
+                fpath.with_suffix("")]
 
-    def build_draft_cmd(self, fpath, interaction):
-        no_suffix = fpath.with_suffix("")
-        return ["pdflatex", "-draftmode", f"-interaction={interaction}", f"-output-directory={self.dirs.temp}", no_suffix]
-
-class BibtexCheckSweep(globber.EagerFileGlobber):
+class BibtexCheckSweep(globber.EagerFileGlobber, DootActions):
     """
-    TODO ([src])
+    TODO ([src]) Bibtex Checking
     """
 
     def __init__(self, name="bibtex::check", dirs:DootLocData=None, roots=None, rec=True):
@@ -99,5 +98,3 @@ class BibtexCheckSweep(globber.EagerFileGlobber):
     def subtask_detail(self, task, fpath=None):
         task.update({})
         return task
-
-

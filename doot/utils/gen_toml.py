@@ -18,7 +18,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-
 if TYPE_CHECKING:
     # tc only imports
     pass
@@ -30,7 +29,6 @@ logging = logmod.getLogger(__name__)
 # logging = logmod.root
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
-
 
 class GenToml:
     generators : ClassVar[dict]     = {}
@@ -48,7 +46,6 @@ class GenToml:
             "setup"    : ["generate::toml:setup"],
             }
         GenToml.generators[name] = task
-
 
     @staticmethod
     def gen_toml_tasks():

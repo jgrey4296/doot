@@ -9,15 +9,13 @@ import pathlib as pl
 import shutil
 from functools import partial
 
-from doit.action import CmdAction
-
 import doot
 from doot.taskslib.utils import genx
 from doot import globber
+from doot import tasker
 ##-- end imports
 
-
-class CSVSummaryTask(globber.EagerFileGlobber):
+class CSVSummaryTask(globber.EagerFileGlobber, tasker.DootActions):
     """
     ([data] -> build) Summarise all found csv files,
     grouping those with the same headers,
@@ -26,30 +24,26 @@ class CSVSummaryTask(globber.EagerFileGlobber):
 
     def __init__(self, name="csv::summary", dirs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=[".csv"], rec=rec)
-        report_name = self.dirs.build / "csv.report"
+        self.report_name = self.dirs.build / "csv.report"
 
     def setup_detail(self, task):
-        task['actions']  = [lambda: report_name.unlink(missing_ok=True) ],
+        task['actions']  = [ (self.rmfiles, [self.report_name]) ]
         return task
 
     def task_detail(self, task):
-        task['teardown'] = [CmdAction(["cat", self.report_name], shell=False) ]
+        task['teardown'] = [self.cmd(["cat", self.report_name]) ]
         return task
 
     def subtask_detail(self, task, fpath=None):
         task.update({
             "clean"    : True,
-        })
-        task['actions'] += self.subtask_actions(fpath)
+            "actions" : [
+                (self.write_data, [fpath]),
+                # CmdAction(f"cat {fpath} | wc -l | sed -e 's/$/ Columns: /' -e 's/^/Lines: /' | tr -d \"\n\" >> {report_name}"),
+                # CmdAction(f"head --lines=1 {fpath} | sed -e 's/\r//g' >> {report_name}"),
+            ]
+            })
         return task
-
-
-    def subtask_actions(self, fpath):
-        return [
-            (self.write_path, [fpath]),
-            # CmdAction(f"cat {fpath} | wc -l | sed -e 's/$/ Columns: /' -e 's/^/Lines: /' | tr -d \"\n\" >> {report_name}"),
-            # CmdAction(f"head --lines=1 {fpath} | sed -e 's/\r//g' >> {report_name}"),
-        ]
 
     def write_data(self, fpath, task):
         text        = fpath.read_text().split("\n")
@@ -60,9 +54,7 @@ class CSVSummaryTask(globber.EagerFileGlobber):
             f.write("Columns: ", columns, " ")
             f.write("Header: ", text[0].strip(), "\n")
 
-
-
-class CSVSummaryXMLTask(globber.EagerFileGlobber):
+class CSVSummaryXMLTask(globber.EagerFileGlobber, tasker.DootActions):
     """
     ([data] -> build) Summarise all found csv files,
     grouping those with the same headers,
@@ -82,16 +74,14 @@ class CSVSummaryXMLTask(globber.EagerFileGlobber):
         return task
 
     def subtask_detail(self, task, fpath=None):
-        task.update({"clean" : True,})
-        task['actions'] += self.subtask_actions(fpath)
+        task.update({"clean" : True,
+                     "actions" : [
+                         self.cmd(self.create_entry, fpath),
+                         self.cmd(self.write_lines, fpath),
+                         self.cmd(self.head_line, fpath),
+                     ],
+        })
         return task
-
-    def subtask_actions(self, fpath):
-        return [
-            self.create_entry(fpath),
-            CmdAction(partial(self.write_lines, fpath), shell=False),
-            CmdAction(partial(self.head_line, fpath)),
-        ]
 
     def create_entry(self, fpath):
         cmds = ["xml", "ed", "-L" ]
@@ -99,7 +89,7 @@ class CSVSummaryXMLTask(globber.EagerFileGlobber):
         cmds += genx.attr_xml("/data/csv_file[count\(/data/csv_file\)]", "file", fpath)
         cmds.append(self.report_name)
 
-        return CmdAction(cmds, shell=False)
+        return cmds
 
     def write_lines(self, fpath):
         line_count = len(fpath.read_text().split("\n"))

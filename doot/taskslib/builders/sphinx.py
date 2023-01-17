@@ -3,12 +3,11 @@ from __future__ import annotations
 
 import pathlib as pl
 import shutil
-from doit.action import CmdAction
 
 import doot
 from doot.task_group import TaskGroup
 from doot.utils.clean_actions import clean_target_dirs
-from doot.tasker import DootTasker
+from doot.tasker import DootTasker, DootActions
 
 ##-- end imports
 
@@ -30,12 +29,11 @@ def task_browse(dirs:DootLocData) -> dict:
     assert("html" in dirs.extra)
     return {
         "basename"    : "sphinx::browse",
-        "actions"     : [ CmdAction([ "open",  dirs.extra['html'] ], shell=False) ],
+        "actions"     : [ DootActions.cmd(None, ["open", dirs.extra['html'] ]) ],
         "task_dep"    : ["sphinx::doc"],
     }
 
-
-class SphinxDocTask(DootTasker):
+class SphinxDocTask(DootTasker, DootActions):
     """([docs] -> build) Build sphinx documentation """
     gen_toml = gen_toml
 
@@ -46,16 +44,18 @@ class SphinxDocTask(DootTasker):
 
     def task_detail(self, task:dict) -> dict:
         task.update({
-            "actions"  : [ CmdAction(self.sphinx_command, shell=False) ],
+            "actions"  : [ self.cmd(self.sphinx_command) ],
             "file_dep" : [ self.dirs.docs / "conf.py" ],
             "targets"  : [ self.dirs.extra['html'], self.dirs.build ],
             "clean"    : [ clean_target_dirs ],
         })
         return task
 
-
     def sphinx_command(self):
-        args = ["sphinx-build", '-b', self.builder, self.dirs.docs, self.dirs.build]
+        args = ["sphinx-build",
+                '-b', self.builder,
+                self.dirs.docs,
+                self.dirs.build]
         match self.verbosity:
             case x if x > 0:
                 args += ["-v" for i in range(x)]
@@ -65,6 +65,3 @@ class SphinxDocTask(DootTasker):
                 args.append("-Q")
 
         return args
-
-
-

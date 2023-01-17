@@ -19,9 +19,8 @@ from uuid import UUID, uuid1
 from weakref import ref
 
 import doot
-from doot.tasker import DootTasker
+from doot.tasker import DootTasker, DootActions
 
-from doit.action import CmdAction
 if TYPE_CHECKING:
     # tc only imports
     pass
@@ -36,8 +35,7 @@ logging = logmod.getLogger(__name__)
 
 collect_libs = doot.config.or_get([]).tool.doot.python.compile.collect()
 
-
-class PythonCompile(DootTasker):
+class PythonCompile(DootTasker, DootActions):
     """
     https://pyinstaller.org/en/stable/
     Use pyinstaller to create an exe
@@ -62,8 +60,8 @@ class PythonCompile(DootTasker):
 
     def task_detail(self, task):
         task.update({
-            "actions" : [CmdAction(self.build_cmd, shell=False)],
-                    })
+            "actions" : [ self.cmd(self.build_cmd) ],
+        })
         return task
 
     def build_cmd(self):

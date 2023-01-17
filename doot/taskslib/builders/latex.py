@@ -5,15 +5,15 @@ import pathlib as pl
 import shutil
 import re
 import fileinput
-from functools import partial
-from doit.action import CmdAction
 
 import doot
 from doot import globber
+from doot import tasker
 
 ##-- end imports
 
 interaction_mode = doot.config.or_get("nonstopmode").tool.doot.tex.interaction()
+
 
 class LatexMultiPass(globber.EagerFileGlobber):
     """
@@ -30,7 +30,7 @@ class LatexMultiPass(globber.EagerFileGlobber):
         })
         return task
 
-class LatexFirstPass(globber.EagerFileGlobber):
+class LatexFirstPass(globber.EagerFileGlobber, DootActions):
     """
     ([src] -> [temp, build]) First pass of running latex,
     pre-bibliography resolution
@@ -51,37 +51,33 @@ class LatexFirstPass(globber.EagerFileGlobber):
         ]
 
     def subtask_detail(self, task, fpath=None):
-        first_pass_pdf = self.pdf_name(fpath)
+        first_pass_pdf = self.pdf_path(fpath)
+        temp_pdf = self.dirs.temp / fpath.with_suffix(".pdf").name
         task.update({
-                "file_dep" : [ fpath ],
-                "targets"  : [ self.dirs.temp / fpath.with_suffix(".aux").name,
-                               first_pass_pdf,
-                              ],
-                "clean"    : True,
+            "file_dep" : [ fpath ],
+            "actions"  : [ self.cmd(self.compile_tex),
+                           (self.move_to, [first_pass,pdf, temp_pdf])
+                          ],
+            "targets"  : [ self.dirs.temp / fpath.with_suffix(".aux").name,
+                           first_pass_pdf,
+                          ],
+            "clean"    : True,
         })
-        task['actions'] += self.subtask_actions(fpath)
+
         return task
 
-    def subtask_actions(self, fpath):
-        return [CmdAction(self.compile_tex, shell=False),
-                (self.move_pdf, [fpath]),
-                ]
-
-    def compile_tex(self, interaction, dependencies):
+    def compile_tex(self, dependencies):
         target = pl.Path(dependencies[0]).with_suffix("")
-        return ["pdflatex", f"-interaction={interaction}", f"-output-directory={self.dirs.temp}", target]
+        return ["pdflatex",
+                f"-interaction={self.params['interaction']}",
+                f"-output-directory={self.dirs.temp}",
+                target]
 
-    def move_pdf(self, fpath, task):
-        temp_pdf = self.dirs.temp / fpath.with_suffix(".pdf").name
-        assert(temp_pdf.exists())
-        target_pdf = self.pdf_name(fpath)
-        temp_pdf.replace(target_pdf)
-
-    def pdf_name(self, fpath):
+    def pdf_path(self, fpath):
         first_pass_pdf = self.dirs.build / ("1st_pass_" + fpath.with_suffix(".pdf").name)
         return first_pass_pdf
 
-class LatexSecondPass(globber.EagerFileGlobber):
+class LatexSecondPass(globber.EagerFileGlobber, DootActions):
     """
     ([src, temp] -> build) Second pass of latex compiling,
     post-bibliography resolution
@@ -101,36 +97,28 @@ class LatexSecondPass(globber.EagerFileGlobber):
         ]
 
     def subtask_detail(self, task, fpath=None):
-        no_suffix = fpath.with_suffix("")
-        task.update({ # "task_dep" : [f"_tex::pass:bibtex:{task['name']}"],
-                     "file_dep" : [ self.dirs.temp / fpath.with_suffix(".aux").name,
+        temp_pdf   = self.dirs.temp  / fpath.with_suffix(".pdf").name
+        target_pdf = self.dirs.build / temp_pdf.name
+        task.update({"file_dep" : [ self.dirs.temp / fpath.with_suffix(".aux").name,
                                     self.dirs.temp / fpath.with_suffix(".bbl").name,
                                    ],
-                     "targets"  : [ self.dirs.build / fpath.with_suffix(".pdf").name],
+                     "targets"  : [ target_pdf ],
                      "clean"    : True,
+                     "actions" : [ self.cmd(self.tex_cmd, fpath),
+	                               self.cmd(self.tex_cmd, fpath),
+                                  (self.move_to, [fpath]),
+                                  ]
                      })
-        task['actions'] += self.subtask_actions(fpath)
         return task
 
-    def subtask_actions(self, fpath):
-        build_cmd = partial(self.tex_cmd, fpath)
-        return [CmdAction(build_cmd, shell=False),
-	            CmdAction(build_cmd, shell=False),
-                (self.move_pdf, [fpath]),
-                ]
-
-    def tex_cmd(self, fpath, interaction, task):
-        no_suffix = fpath.with_suffix("")
-        return ["pdflatex", f"-interaction={interaction}", f"-output-directory={self.dirs.temp}", no_suffix]
-
-    def move_pdf(self, fpath, targets):
-        temp_pdf   = self.dirs.temp  / fpath.with_suffix(".pdf").name
-        assert(temp_pdf.exists())
-        target_pdf = pl.Path(targets[0])
-        temp_pdf.replace(target_pdf)
+    def tex_cmd(self, fpath):
+        return ["pdflatex",
+                f"-interaction={self.params['interaction']}",
+                f"-output-directory={self.dirs.temp}",
+                fpath.with_suffix("")]
 
     
-class BibtexBuildPass(globber.EagerFileGlobber):
+class BibtexBuildPass(globber.EagerFileGlobber, DootActions):
     """
     ([src] -> temp) Bibliography resolution pass
     """
@@ -142,20 +130,15 @@ class BibtexBuildPass(globber.EagerFileGlobber):
         aux_file = self.dirs.temp / fpath.with_suffix(".aux").name
         bbl_file = self.dirs.temp / fpath.with_suffix(".bbl").name
 
-        task.update({ # "task_dep" : [f"tex::pass:one:{task['name']}"],
-                     "file_dep" : [ self.dirs.temp / "combined.bib",
+        task.update({"file_dep" : [ self.dirs.temp / "combined.bib",
                                     aux_file ],
                      "targets"  : [ bbl_file ],
                      "clean"    : True,
+                     "actions" : [ (self.retarget_paths, [aux_file]),
+                                   self.cmd(self.maybe_run),
+                                  ]
                      })
-        task['actions'] += self.subtask_actions(fpath)
         return task
-
-    def subtask_actions(self, fpath):
-        aux_file = self.dirs.temp  / fpath.with_suffix(".aux").name
-        return [ (self.retarget_paths, [aux_file]),
-                 CmdAction(self.maybe_run, shell=False),
-                ]
 
     def retarget_paths(self, aux):
         """ Check if the aux file has bibdata, if it does mod it to use the concatenated bib data """
@@ -260,9 +243,9 @@ def task_latex_rebuild():
     
     return {
         "basename" : "tex::rebuild",
-        "actions" : [ CmdAction(["fmtutil",  "--all"], shell=False),
-                      CmdAction(["tlmgr",  "list", "--only-installed"], shell=False, save_out="installed"),
-                      CmdAction(build_install_cmd, shell=False)
+        "actions" : [ DootActions.cmd(None, ["fmtutil",  "--all"]),
+                      DootActions.cmd(None, ["tlmgr",  "list", "--only-installed"], save="installed"),
+                      DootActions.cmd(None, build_install_cmd)
         ],
     }
 

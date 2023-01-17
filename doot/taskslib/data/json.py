@@ -12,15 +12,15 @@ import shlex
 
 from functools import partial
 from itertools import cycle, chain
-from doit.action import CmdAction
 
 import doot
 from doot import globber
+from doot import tasker
 from doot.utils.clean_actions import clean_target_dirs
 
 ##-- end imports
 
-class JsonFormatTask(globber.DirGlobber):
+class JsonFormatTask(globber.DirGlobber, tasker.DootActions):
     """
     ([data] -> data)Lint Json files with jq
     """
@@ -33,16 +33,12 @@ class JsonFormatTask(globber.DirGlobber):
             return self.control.accept
         return self.control.discard
 
-
     def subtask_detail(self, task, fpath=None):
         task.update({
             "uptodate" : [False],
+            "actions" : [ (self.glob_jsons, [fpath]) ],
             })
-        task['actions'] += self.subtask_actions(fpath)
         return task
-
-    def subtask_actions(self, fpath):
-        return [ (self.glob_jsons, [fpath]) ]
 
     def glob_jsons(self, fpath):
         globbed  = self.glob_files(fpath)
@@ -63,7 +59,7 @@ class JsonFormatTask(globber.DirGlobber):
                 continue
             backup.write_text(btarget.read_text())
 
-class JsonPythonSchema(globber.DirGlobber):
+class JsonPythonSchema(globber.DirGlobber, tasker.DootActions):
     """
     ([data] -> codegen) Use XSData to generate python bindings for a directory of json's
     """
@@ -81,19 +77,15 @@ class JsonPythonSchema(globber.DirGlobber):
         task.update({
             "targets"  : [ gen_package ],
             "task_dep" : [ "_xsdata::config" ],
-            "clean"    : [ clean_target_dirs ],
+            "clean"    : [ (self.rmdirs, [gen_package]) ],
+            "actions"  : [ self.cmd(self.generate_on_target, fpath, gen_package) ]
         })
-        task["meta"].update({"package" : gen_package})
-        task['actions'] += self.subtask_actions(fpath)
         return task
 
-    def subtask_actions(self, fpath):
-        return [ CmdAction((self.generate_on_target, [fpath], {}), shell=False) ]
-
-    def generate_on_target(self, fpath, task):
+    def generate_on_target(self, fpath, gen_package, task):
         args = ["xsdata", "generate",
                 ("--recursive" if not self.rec else ""),
-                "-p", task.meta['package'], # generate package name
+                "-p", gen_package,
                 "--relative-imports", "--postponed-annotations",
                 "--kw-only",
                 "--frozen",
@@ -103,9 +95,7 @@ class JsonPythonSchema(globber.DirGlobber):
 
         return args
 
-
-
-class JsonVisualise(globber.EagerFileGlobber):
+class JsonVisualise(globber.EagerFileGlobber, tasker.DootActions):
     """
     ([data] -> visual) Wrap json files with plantuml header and footer,
     ready for plantuml to visualise structure
@@ -115,16 +105,12 @@ class JsonVisualise(globber.EagerFileGlobber):
         super().__init__(name, dirs, roots or [dirs.data], exts=[".json"], rec=rec)
         assert('visual' in dirs.extra)
 
-
     def subtask_detail(self, task, fpath=None):
         task.update({
             "targets"  : [ self.dirs.extra['visual'] / fpath.with_stem(task['name']).name ],
-        })
-        task['actions'] += self.subtask_actions(fpath)
+            "actions"  : [ (self.write_plantuml, [fpath]) ]
+            })
         return task
-
-    def subtask_actions(self, fpath):
-        return [ (self.write_plantuml, [fpath]) ]
 
     def write_plantuml(self, fpath, targets):
         header   = "@startjson\n"

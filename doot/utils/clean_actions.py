@@ -70,24 +70,3 @@ def clean_target_dirs(task, dryrun):
             print(err)
 
 
-class CleanCacheAction:
-    """
-    add to the 'clean' field of a task spec
-    trees = True will remove directories
-    """
-
-    def __init__(self, globs, trees=False):
-        self.trees = trees
-        self.globs = globs
-
-    def __call__(self):
-        to_remove = []
-        for glob in globs:
-            to_remove += src_dir.glob(glob)
-
-        print(f"Removing: {len(to_remove)} targets from globs: ./{src_dir}:{globs}")
-        for x in to_remove:
-            if x.is_file():
-                x.unlink()
-            elif self.trees:
-                shutil.rmtree(x)

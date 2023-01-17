@@ -19,8 +19,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-from doit.action import CmdAction
-
 import doot
 from doot import globber
 from doot import tasker
@@ -43,7 +41,7 @@ hash_record = doot.config.or_get(".hashes").tool.doot.files.hash.record()
 hash_concat = doot.config.or_get(".all_hashes").tool.doot.files.hash.grouped()
 hash_dups   = doot.config.or_get(".dup_hashes").tool.doot.files.hash.duplicates()
 
-class HashAllFiles(globber.DirGlobber):
+class HashAllFiles(globber.DirGlobber, tasker.DootActions, task.DootBatcher):
     """
     ([data] -> data) For each subdir, hash all the files in it
     info
@@ -71,18 +69,12 @@ class HashAllFiles(globber.DirGlobber):
     def subtask_detail(self, task, fpath=None):
         task.update({
             "targets" : [ fpath / self.hash_record ],
-            "actions" : [ CmdAction(["touch", fpath / self.hash_record], shell=False),
+            "actions" : [ self.cmd(["touch", fpath / self.hash_record]),
                           (self.hash_remaining, [fpath]),
                          ],
             "clean"   : True,
         })
         return task
-
-    def load_hashed(self, fpath):
-        hash_file = fpath / self.hash_record
-        hashes = [x.split(" ") for x in hash_file.read_text().split("\n") if bool(x)]
-        self.current_hashed = {" ".join(xs[1:]).strip():xs[0] for xs in hashes}
-        return hash_file
 
     def hash_remaining(self, fpath):
         print("Hashing: ", fpath)
@@ -93,6 +85,12 @@ class HashAllFiles(globber.DirGlobber):
                             batch_size)
 
         self.run_batch(*chunks, target=hash_file)
+
+    def load_hashed(self, fpath):
+        hash_file = fpath / self.hash_record
+        hashes = [x.split(" ") for x in hash_file.read_text().split("\n") if bool(x)]
+        self.current_hashed = {" ".join(xs[1:]).strip():xs[0] for xs in hashes}
+        return hash_file
 
     def batch(self, data, target=None):
         assert(target is not None)
@@ -106,8 +104,7 @@ class HashAllFiles(globber.DirGlobber):
         with open(target, 'a') as f:
             f.write("\n" + act.out)
 
-
-class GroupHashes(globber.DirGlobber):
+class GroupHashes(globber.DirGlobber, tasker.DootActions):
 
     def __init__(self, name="files::hash.group", dirs:DootLocData=None, roots=None, exts=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=exts, rec=rec)
@@ -121,7 +118,7 @@ class GroupHashes(globber.DirGlobber):
 
     def setup_detail(self, task):
         task.update({
-            "actions" : [CmdAction(["touch", dirs.temp / self.hash_concat], shell=False)],
+            "actions" : [ self.cmd(["touch", dirs.temp / self.hash_concat])],
             "targets" : [dirs.temp / self.hash_concat],
             "clean"   : True,
         })
@@ -137,8 +134,7 @@ class GroupHashes(globber.DirGlobber):
         with open(self.dirs.temp / self.hash_concat, 'a') as f:
             f.write("\n" + fpath.read_text())
 
-
-class DuplicateHashes(tasker.DootTasker):
+class DuplicateHashes(tasker.DootTasker, tasker.DootActions):
     """
     sort all_hashes, and run uniq of the first n chars
     """
@@ -147,12 +143,13 @@ class DuplicateHashes(tasker.DootTasker):
         self.hash_concat = hash_concat
 
     def task_detail(self, task):
+        target = self.dirs.build / hash_dups
         task.update({
-            "actions"  : [CmdAction(self.sort_and_uniq, save_out="duplicates"),
-                          self.write_duplicates
+            "actions"  : [ self.cmd(self.sort_and_uniq, shell=True, save="duplicates"),
+                           (self.write_to, target, "duplicates"),
                           ],
-            "file_dep" : [self.dirs.temp / self.hash_concat],
-            "targets"  : [ self.dirs.build / hash_dups ],
+            "file_dep" : [ self.dirs.temp / self.hash_concat ],
+            "targets"  : [ target ],
             "clean"    : True,
         })
         return task
@@ -163,7 +160,3 @@ class DuplicateHashes(tasker.DootTasker):
                          "uniq", "--all-repeated=separate",
                          # 32 : the size of the hash
                          "--check-chars=32"])
-
-    def write_duplicates(self, task, targets):
-        with open(targets[0], 'w') as f:
-            f.write(task.values['duplicates'])

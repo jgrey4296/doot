@@ -4,17 +4,15 @@ from __future__ import annotations
 import sys
 import pathlib as pl
 import shutil
-from doit.action import CmdAction
 import re
 import fileinput
 
 import doot
+from doot.tasker import DootTasker, DootActions
 
 from doot.task_group import TaskGroup
 ##-- end imports
 # https://pip.pypa.io/en/stable/cli/
-# TODO add increment version tasks, plus update __init__.py
-from doot.tasker import DootTasker
 
 prefix = doot.config.or_get("pip").tool.doot.pip.prefix()
 
@@ -37,8 +35,8 @@ class IncrementVersion(DootTasker):
     def set_params(self):
         return [
             {"name" : "major", "long": "major", "type" : bool, "default" : False },
-            {"name": "minor", "short": "m", "type": bool, "default": False},
-            {"name": "force", "long": "force", "type": str, "default": None},
+            {"name" : "minor", "short": "m", "type": bool, "default": False},
+            {"name" : "force", "long": "force", "type": str, "default": None},
         ]
 
 
@@ -101,21 +99,24 @@ class IncrementVersion(DootTasker):
                 raise Exception("this shouldn't happen")
 
 
-class PyBuild(DootTasker):
+class PyBuild(DootTasker, DootActions):
+    """
+    Build a wheel of the package
+    """
 
     def __init__(self, name="pip::build", dirs=None):
         super().__init__(name, dirs)
 
-    def set_params(self):
-        return []
-
     def task_detail(self, task):
-        task.update({})
-
-        task['actions'].append(CmdAction(["pip", "wheel", "--no-input", "--wheel-dir", self.dirs.extra['wheel'], "--use-pep517", "--src", dirs.temp, self.dirs.root], shell=False))
+        task['actions'].append(self.cmd(["pip", "wheel",
+                                         "--no-input",
+                                         "--wheel-dir", self.dirs.extra['wheel'],
+                                         "--use-pep517",
+                                         "--src", dirs.temp,
+                                         self.dirs.root]))
         return task
 
-class PyInstall(DootTasker):
+class PyInstall(DootTasker, DootActions):
     """
     ([src]) install a package, using pip
     editable by default
@@ -126,11 +127,11 @@ class PyInstall(DootTasker):
 
     def set_params(self):
         return [
-            {"name": "regular", "type": bool, "short": "r", "default": False},
-            {"name": "deps",   "type": bool, "short": "D", "default": False},
+            {"name" : "regular", "type": bool, "short": "r", "default": False},
+            {"name" : "deps",   "type": bool, "short": "D", "default": False},
             {"name" : "dryrun", "type": bool, "long":"dry-run", "default": False},
             {"name" : "uninstall", "type": bool, "long":"uninstall", "default": False},
-            {"name": "upgrade", "type" : bool, "short" : "U", "default": False},
+            {"name" : "upgrade", "type" : bool, "short" : "U", "default": False},
         ]
 
     def task_detail(self, task):
@@ -138,13 +139,13 @@ class PyInstall(DootTasker):
             "file_dep" : [self.dirs.root / "requirements.txt"],
         })
         if self.params['uninstall']:
-            task['actions'].append(CmdAction(["pip", "uninstall", "-y", self.dirs.root], shell=False))
+            task['actions'].append(self.cmd(["pip", "uninstall", "-y", self.dirs.root]))
             return task
 
         if self.params['deps']:
-            task['actions'].append(CmdAction(self.install_requirements, shell=False))
+            task['actions'].append(self.cmd(self.install_requirements))
 
-        task['actions'].append(CmdAction(self.install_package, shell=False))
+        task['actions'].append(self.cmd(self.install_package))
         return task
 
     def install_requirements(self, dependencies):
@@ -168,7 +169,7 @@ class PyInstall(DootTasker):
 
 
 
-class PipReqs(DootTasker):
+class PipReqs(DootTasker, DootActions):
     """
     write out pip requirements to requirements.txt
     """
@@ -181,23 +182,18 @@ class PipReqs(DootTasker):
 
     def task_detail(self, task) -> dict:
         pip_args = ["pip", "list", "--format=freeze"]
-
+        req_path = self.dirs.root / "requirements.txt"
         task.update({
-            "actions" : [ CmdAction(pip_args, shell=False, save_out="frozen"),
-                          self.write_out,
+            "actions" : [ self.cmd(pip_args, save="frozen"),
+                          (self.write_to, [req_path, "frozen"]),
                         ],
-            "targets" : [ self.dirs.root / "requirements.txt" ],
+            "targets" : [],
             "clean"   : True,
             "verbosity" : 1,
         })
         return task
 
-    def write_out(self, task, targets):
-        with open(targets[0], 'w') as f:
-            print(task.values['frozen'], file=f)
-
-
-class VenvNew(DootTasker):
+class VenvNew(DootTasker, DootActions):
     """
     (-> temp ) create a new venv
     """
@@ -211,20 +207,20 @@ class VenvNew(DootTasker):
         ]
 
     def task_detail(self, task):
-        venv_path = self.dirs.temp / self.params['name']
-        build_venv = [ CmdAction(["python", "-m", "venv", venv_path ], shell=False),
-                       CmdAction([ venv_path / "bin" / "pip", "install", "-r", self.dirs.root / "requirements.txt" ], shell=False)
+        venv_path = self.dirs.temp / "venv" / self.params['name']
+        build_venv = [ self.cmd(["python", "-m", "venv", venv_path ]),
+                       self.cmd([ venv_path / "bin" / "pip",
+                                 "install",
+                                 "-r", self.dirs.root / "requirements.txt" ]),
                       ]
-        def delete_venv():
-            shutil.rmtree(venv_path)
 
         is_delete = all([self.params['delete'],
                          venv_path.exists(),
                          (venv_path / "pyvenv.cfg").exists()])
 
         task.update({
-            "actions" : [delete_venv] if is_delete else build_venv,
-            "clean"   : [delete_venv],
+            "actions" : [(self.rmdirs, [venv_path])] if is_delete else build_venv,
+            "clean"   : [ (self.rmdirs, [venv_path]) ],
             "verbosity" : 1,
         })
         return task

@@ -11,7 +11,7 @@ from doit.action import CmdAction
 
 import doot
 from doot.utils.clean_actions import clean_target_dirs
-from doot.tasker import DootTasker
+from doot.tasker import DootTasker, DootActions
 
 ##-- end imports
 
@@ -37,7 +37,7 @@ def task_jekyll_serve():
 
 
 
-class JekyllBuild(DootTasker):
+class JekyllBuild(DootTasker, DootActions):
     """
     Build the jekyll site, from the source destination,
     into the build destination
@@ -60,24 +60,17 @@ class JekyllBuild(DootTasker):
     def task_detail(self, task):
         task.update({
             "actions"  : [
-                self.copy_data,
-                self.copy_src,
-                CmdAction(self.cmd_builder, shell=False)
+                (self.copy_to, [self.dirs.temp, self.dirs.data, self.dirs.src])
+                self.cmd(self.cmd_builder)
             ],
             "file_dep" : [ self.jekyll_config ],
             "uptodate" : [False],
         })
         return task
 
-    def copy_data(self):
-        shutil.copytree(str(self.dirs.data), str(self.dirs.temp), dirs_exist_ok=True)
-
-    def copy_src(self):
-        shutil.copytree(str(self.dirs.src), str(self.dirs.temp), dirs_exist_ok=True)
-
-    def cmd_builder(self, drafts):
+    def cmd_builder(self):
         cmd = [ "jekyll", "build", "--config", self.jekyll_config ]
-        if drafts:
+        if self.params['drafts']:
             cmd.append("--drafts")
 
         return cmd

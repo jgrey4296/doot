@@ -5,10 +5,9 @@ import datetime
 import pathlib as pl
 import shutil
 from collections import defaultdict
-from doit.action import CmdAction
 
 import doot
-from doot.tasker import DootTasker
+from doot.tasker import DootTasker, DootActions
 
 ##-- end imports
 
@@ -30,9 +29,7 @@ def roundTime(dt=None, roundTo=60):
    rounding = (seconds+roundTo/2) // roundTo * roundTo
    return dt + datetime.timedelta(0,rounding-seconds,-dt.microsecond)
 
-
-
-class GitLogTask(DootTasker):
+class GitLogTask(DootTasker, DootActions):
     """
     ([root] -> temp) Output a summary of the git repo, with a specific format
     see: https://git-scm.com/docs/git-log
@@ -44,35 +41,33 @@ class GitLogTask(DootTasker):
         self.sep    = sep
 
     def task_detail(self, task):
+        target = self.dirs.temp / "full_git.log"
         task.update({
-            "actions"  : [ CmdAction(self.get_log, shell=False, save_out="result"),
-                           self.save_log,
-                          ],
-            "targets"  : [ self.dirs.temp / "full_git.log" ],
-            "clean"    : True,
+            "actions" : [ self.(self.get_log, save="result"),
+                          (self.write_to, [target, "result"]),
+                         ],
+            "targets" : [ target ],
+            "clean"   : True,
         })
         return task
-
 
     def get_log(self):
         log_format = self.sep.join(self.format)
         return ["git", "log", f"--pretty=format:{log_format}"]
 
-    def save_log(self, task, targets):
-        result = task.values['result']
-        pl.Path(targets[0]).write_text(result)
-        print("\n")
 
-class GitLogAnalyseTask(DootTasker):
+class GitLogAnalyseTask(DootTasker, DootActions):
     """
     (temp -> build) separate the printed log
     """
 
     def __init__(self, dirs=None, sep=default_sep):
         super().__init__("git::analysis", dirs)
+
+        self.totals        = []
+        self.entry_count   = 0
         self.sep           = sep
         self.group_by      = datetime.timedelta(hours=group_hours)
-        self.total         = 0
         self.grouped_total = 0
         self.year_max      = None
         self.year_min      = None
@@ -87,6 +82,15 @@ class GitLogAnalyseTask(DootTasker):
 
         # Deltas in Days:
         self.deltas        = defaultdict(lambda: 0)
+        self.update_tuples = [(self.times         , "%H:%M")
+                              (self.weekday_times , "%w: %H:%M (%a)"),
+                              (self.weekdays      , "%w (%a)"),
+                              (self.days          , "%d"),
+                              (self.day_times     , "%d: %H:%M"),
+                              (self.months        , "%m (%b)"),
+                              (self.month_days    , "%m %d (%b)"),
+                              (self.month_times   , "%m : %H:%M (%b)"),
+                              ]
         # streaks / breaks
         # weekends / weekdays
         # day / night
@@ -95,20 +99,18 @@ class GitLogAnalyseTask(DootTasker):
 
     def task_detail(self, task):
         task.update({
-            "targets"  : [ self.dirs.build / "git.report",
-
-                          ],
-            "file_dep" : [ self.dirs.temp / "full_git.log" ],
+            "targets"  : [ self.dirs.build / "git.report" ],
+            "file_dep" : [ self.dirs.temp / "full_git.log"],
             "actions"  : [
+                self.read_log,
                 self.process_log,
                 self.write_distributions,
-                     ],
+            ],
         })
         return task
 
-    def process_log(self, dependencies):
+    def read_log(self, dependencies):
         last = None
-        totals = []
         linecount = 0
         for line in pl.Path(dependencies[0]).read_text().split("\n"):
             linecount += 1
@@ -118,11 +120,11 @@ class GitLogAnalyseTask(DootTasker):
 
             assert(len(parts) == 4), linecount
             commit : datetime = roundTime(datetime.datetime.fromisoformat(parts[0]), roundTo=60*60)
-            totals.append(commit)
+            self.totals.append(commit)
 
-
-        totals.sort()
-        self.total = len(totals)
+    def process_log(self):
+        self.totals.sort()
+        self.entry_count = len(totals)
         for commit in totals:
             if self.year_max is None:
                 self.year_max = commit.year
@@ -133,7 +135,6 @@ class GitLogAnalyseTask(DootTasker):
             else:
                 self.year_min = min(self.year_min, commit.year)
 
-            
             # Deltas:
             diff = None
             if last is not None:
@@ -145,24 +146,14 @@ class GitLogAnalyseTask(DootTasker):
                 continue
 
             self.grouped_total += 1
-            self.times[commit.strftime("%H:%M")]                  += 1
-            self.weekday_times[commit.strftime("%w: %H:%M (%a)")] += 1
-            self.weekdays[commit.strftime("%w (%a)")]             += 1
-            self.days[commit.strftime("%d")]                      += 1
-            self.day_times[commit.strftime("%d: %H:%M")]          += 1
-            self.months[commit.strftime("%m (%b)")]               += 1
-            self.month_days[commit.strftime("%m %d (%b)")]        += 1
-            self.month_times[commit.strftime("%m : %H:%M (%b)")]  += 1
-
-
-
-
+            for fmt, targ in self.update_tuples:
+                targ[commmit.strftime(fmt)] += 1
 
 
     def write_distributions(self, targets):
         with open(targets[0], 'w') as f:
             print(f"Git Report", file=f)
-            print(f"Total commits: {self.total}", file=f)
+            print(f"Total commits: {self.entry_count}", file=f)
             print(f"With at least a day in between commits: {self.grouped_total}", file=f)
             print(f"Covering {self.year_min} - {self.year_max}", file=f)
             print("----------", file=f)

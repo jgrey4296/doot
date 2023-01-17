@@ -9,10 +9,9 @@ import pathlib as pl
 import shutil
 from functools import partial
 from itertools import cycle, chain
-from doit.action import CmdAction
 
 import doot
-from doot.utils.general import ForceCmd
+from doot import tasker
 from doot import globber
 
 ##-- end imports
@@ -38,7 +37,7 @@ def gen_toml(self):
                       "vis_out_ext = \".dot\"",
                       ])
 
-class ClingoRunner(globber.EagerFileGlobber):
+class ClingoRunner(globber.EagerFileGlobber, DootActions):
     """
     ([src] -> build) Run clingo on ansprolog sources
     """
@@ -52,23 +51,16 @@ class ClingoRunner(globber.EagerFileGlobber):
         task.update({
             "file_dep" : [ fpath ],
             "targets"  : [ target ],
+            "actions"  :[ self.cmd(self.clingo_call, save="result"),
+                          (self.write_to, [target, "result"])
+                         ]
         })
-        task['actions'] += self.subtask_actions(fpath)
         return task
-
-    def subtask_actions(self, fpath):
-        return [CmdAction(self.clingo_call, shell=False, save_out="result"),
-                self.save_result ]
 
     def clingo_call(self, task, dependencies):
         return clingo_call + dependencies
 
-    def save_result(self, task, targets):
-        result = task.values['result']
-        pl.Path(targets[0]).write_text(result)
-
-
-class ClingoDotter(globber.EagerFileGlobber):
+class ClingoDotter(globber.EagerFileGlobber, DootActions):
     """
     ([src] -> build) Run specified clingo files to output json able to be visualised
     """
@@ -82,28 +74,18 @@ class ClingoDotter(globber.EagerFileGlobber):
         task.update({
             "targets"  : [ target ],
             "file_dep" : [ fpath ],
-        })
-        task['actions'] += self.subtask_actions(fpath)
+            "actions" : [self.cmd(self.json_call, save="result"),
+                         (self.write_to, [target, "result"])]
+            })
         return task
-
-
-    def subtask_actions(self, fpath):
-        return [CmdAction(self.json_call, shell=False, save_out="result"),
-                self.save_result ]
 
     def json_call(self, task, dependencies):
         return ["clingo", "--outf2"] + dependencies
 
-    def save_result(self, task, targets):
-        result = task.values['result']
-        pl.Path(targets[0]).write_text(result)
 
-
-
-
-class ClingoVisualise(globber.EagerFileGlobber):
+class ClingoVisualise(globber.EagerFileGlobber, DootActions):
     """
-    ([src] -> visual) Take clingo output with nodes,
+    TODO ([src] -> visual) Take clingo output with nodes,
     and convert to dot format
     """
     gen_toml = gen_toml
@@ -117,12 +99,6 @@ class ClingoVisualise(globber.EagerFileGlobber):
         task.update({
             "targets"  : [ target ],
             "task_dep" : [ "_checkdir::clingo" ],
+            "actions"  : [],
         })
-        task['actions'] += self.subtask_actions(fpath)
         return task
-
-
-    def subtask_actions(self, fpath):
-        # TODO convert json out from clingo to dot
-        return []
-

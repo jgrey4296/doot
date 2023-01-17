@@ -5,10 +5,11 @@ import pathlib as pl
 import shutil
 
 from doot import globber
+from doot import tasker
 
 ##-- end imports
 
-class SqlitePrepTask(globber.EagerFileGlobber):
+class SqlitePrepTask(globber.EagerFileGlobber, tasker.DootActions):
     """
     ([data] -> data) file conversion from mysql to sqlite
     using https://github.com/dumblob/mysql2sqlite
@@ -20,7 +21,7 @@ class SqlitePrepTask(globber.EagerFileGlobber):
     def subtask_detail(self, task, fpath=None):
         return task
 
-class SqliteReportTask(globber.EagerFileGlobber):
+class SqliteReportTask(globber.EagerFileGlobber, tasker.DootActions):
     """
     TODO ([data] -> build) report database tables
      .schema .fullschema

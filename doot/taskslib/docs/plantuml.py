@@ -7,10 +7,10 @@ from functools import partial
 
 import doot
 from doot import globber
+from doot import tasker
 ##-- end imports
 
-
-class PlantUMLGlobberTask(globber.EagerFileGlobber):
+class PlantUMLGlobberTask(globber.EagerFileGlobber, tasker.DootActions):
     """
     ([visual] -> build) run plantuml on a specification, generating target.'ext's
     """
@@ -27,22 +27,18 @@ class PlantUMLGlobberTask(globber.EagerFileGlobber):
                      "file_dep" : [ fpath ],
                      "task_dep" : [ f"plantuml::check:{task['name']}" ],
                      "clean"     : True,
+                     "actions" : [ self.cmd(self.run_plantuml) ],
                      })
-        task['actions'] += self.subtask_actions(fpath)
         return task
-
-    def subtask_actions(self, fpath):
-        return [ CmdAction(self.run_plantuml, shell=False) ]
 
     def run_plantuml(self, dependencies, targets):
         return ["plantuml", f"-t{self.fmt}",
-                "-output", self.build_dir.resolve(),
+                "-output", self.dirs.build.resolve(),
                 "-filename", targets[0],
                 dependencies[0]
                 ]
 
-
-class PlantUMLGlobberCheck(globber.EagerFileGlobber):
+class PlantUMLGlobberCheck(globber.EagerFileGlobber, tasker.DootActions):
     """
     ([visual]) check syntax of plantuml files
     TODO Adapt godot::check pattern
@@ -56,13 +52,9 @@ class PlantUMLGlobberCheck(globber.EagerFileGlobber):
         task.update({
             "file_dep" : [ fpath ],
             "uptodate" : [ False ],
-        })
-        task['actions'] += self.subtask_actions(fpath)
-
+            "actions"  : [ self.cmd(self.check_action) ],
+            })
         return task
-
-    def subtask_actions(self, fpath):
-        return [ CmdAction([self.check_action], shell=False) ]
 
     def check_action(self, dependencies):
         return ["plantuml", "-checkonly", *dependencies]

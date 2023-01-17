@@ -9,9 +9,8 @@ import zipfile
 from doit.task import Task as DoitTask
 
 import doot
-from doot.utils.cmdtask import CmdTask
 from doot.utils.loc_data import DootLocData
-from doot.utils.tasker import DootTasker
+from doot.utils.tasker import DootTasker, DootActions
 ##-- end imports
 
 ##-- logging
@@ -66,14 +65,15 @@ class ZipTask(DootTasker):
         target.unlink(missing_ok=True)
 
     def task_detail(self, task) -> dict:
+        zip_name   = self.dated_target().name
+        target_zip = self.dirs.temp / zip_name
         task.update({
-            "actions"  : [ self.action_zip_create, self.action_zip_add_paths, self.action_zip_globs],
-            "teardown" : [self.action_move_zip],
-            "targets"  : [ self.dirs.temp / self.dated_target().name ],
+            "actions"  : [ self.action_zip_create,
+                           self.action_zip_add_paths,
+                           self.action_zip_globs],
+            "targets"  : [ target_zip ],
             "file_dep" : self.paths,
-            "task_dep" : [ self.dirs.checker ],
             })
-        task['meta'].update({"globs" : self.globs,})
         return task
 
 
@@ -113,22 +113,12 @@ class ZipTask(DootTasker):
                 targ.write(str(dep), pl.Path(dep).relative_to(self.root))
 
     def action_zip_globs(self, task):
-        logging.debug(f"Globbing: {task.meta['globs']}")
+        logging.debug(f"Globbing: {self.globs}")
         cwd = pl.Path()
         target = pl.Path(task.targets[0])
         with zipfile.ZipFile(target, 'a') as targ:
-            for glob in task.meta['globs']:
+            for glob in self.globs:
                 result = list(cwd.glob(glob))
                 print(f"Globbed: {cwd}[{glob}] : {len(result)}")
                 for dep in result:
-                    # if pl.Path(dep).name[0] == ".":
-                    #     continue
                     targ.write(str(dep), pl.Path(dep).relative_to(self.root))
-
-    def action_move_zip(self, task):
-        if not self.to_build_dir:
-            return
-
-        target = pl.Path(task.targets[0])
-        assert(not (self.dirs.build / target.name).exists())
-        target.rename(self.dirs.build / target.name)

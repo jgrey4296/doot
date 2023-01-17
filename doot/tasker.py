@@ -30,14 +30,15 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+import fileinput
 from types import FunctionType, MethodType
 import shutil
-from doit import task_params
 from doit.action import CmdAction
 from doit.tools import Interactive
 from doit.task import Task as DoitTask
 from doit.task import dict_to_task
 from doot.errors import DootDirAbsent
+from doot.utils.general import ForceCmd
 
 class DootTasker:
     """ Util Class for building single tasks
@@ -72,7 +73,7 @@ class DootTasker:
         self.base              = base
         self.dirs              = dirs
         self.setup_name        = "setup"
-        self.params            = {}
+        self.args              = {}
         self.active_setup      = False
 
         if hasattr(self, 'gen_toml') and callable(self.gen_toml):
@@ -156,7 +157,7 @@ class DootTasker:
 
     def _build(self, **kwargs):
         try:
-            self.params.update(kwargs)
+            self.args.update(kwargs)
             setup_task = self._build_setup()
             task       = self._build_task()
 
@@ -172,16 +173,15 @@ class DootTasker:
             print("ERROR: Task was: ", maybe_task, file=sys.stderr)
             exit(1)
 
+class DootBatcher:
 
-class DootBatcher(DootTasker):
-
-    def __init__(self, base:str, dirs):
-        super().__init__(base, dirs)
+    def __init__(self):
         self.batch_count       = 0
 
     def run_batch(self, *batches, reset=True, fn=None, **kwargs):
         """
         handles batch bookkeeping
+
         defaults to self.batch, but can pass in a function
         """
         if reset:
@@ -231,12 +231,16 @@ class DootBatcher(DootTasker):
     def _reset_batch_count(self):
         self.batch_count = 0
 
-class DootActions(DootTasker):
+class DootActions:
 
     def rmglob(self, root:pl.Path, *args):
         for x in args:
             for y in root.glob(x):
                 y.unlink()
+
+    def rmfiles(self, *args):
+        for x in args:
+            x.unlink(missing_ok=True)
 
     def rmdirs(self, *dirs:pl.Path):
         logging.debug("Removing Directories: %s", dirs)
@@ -248,7 +252,7 @@ class DootActions(DootTasker):
         for target in dirs:
             target.mkdir(parents=True, exist_ok=True)
 
-    def write_to(self, key:str|list[str], fpath:pl.Path, task, sep=None):
+    def write_to(self, fpath, key:str|list[str], task, sep=None):
         if sep is None:
             sep = "\n--------------------\n"
         match key:
@@ -259,20 +263,47 @@ class DootActions(DootTasker):
 
         fpath.write_text(value)
 
-    def move_to(self, fpath:pl.Path, *args):
-        for x in args:
-            targ_path = fpath / x.name
-            assert(not targ_path.exists())
-            x.rename(targ_path)
+    def move_to(self, fpath:pl.Path, *args, fn=None, is_backup=False):
+        match fpath.is_file(), fn, is_backup:
+            case _, FunctionType() | MethodType() , _:
+                pass
+            case _, None, True:
+                fn = lambda d, x: d / f"{x.parent.name}_{x.name}_backup"
+            case True, None, _:
+                fn = lambda d,x: d
+            case False, None, _:
+                fn = lambda d,x: d / x.name
 
-    def copy_to(self, fpath ,*args):
+        match fpath.is_file():
+            case True:
+                targ_path = fn(fpath, args[0])
+                assert(len(args) == 1)
+                assert(is_backup or not targ_path.exists())
+                args[0].rename(targ_path)
+            case False:
+                for x in args:
+                    targ_path = fn(fpath, x)
+                    assert(is_backup or not targ_path.exists())
+                    x.rename(targ_path)
+
+    def copy_to(self, fpath ,*args, fn=None, is_backup=False):
+        assert(fpath.is_file())
+        match fn, is_backup:
+            case FunctionType() | MethodType(), _:
+                pass
+            case None, True:
+                fn = lambda d, x: d / f"{x.parent.name}_{x.name}_backup"
+            case None, False:
+                fn = lambda d,x: d / x.name
+
         for x in args:
-            assert(not (fpath / x.name).exists())
+            target_name = fn(fpath, x)
+            assert(is_backup or not (fpath / x.name).exists())
             match x.is_file():
                 case True:
-                    shutil.copy(x, fpath / x.name)
+                    shutil.copy(x, target_name)
                 case False:
-                    shutil.copytree(x, fpath / x.name)
+                    shutil.copytree(x, target_name, dirs_exist_ok=True)
 
     def cmd(self, cmd:list|callable, *args, shell=False, save=None, **kwargs):
         logging.debug("Cmd: %s Args: %s kwargs: %s", cmd, args, kwargs)
@@ -287,6 +318,20 @@ class DootActions(DootTasker):
                 raise TypeError("Unexpected action form: ", cmd)
 
         return CmdAction(action, shell=shell, save_out=save)
+
+    def force(self, cmd:list|callable, *args, handler=None, shell=False, save=None, **kwargs):
+        logging.debug("Forcing Cmd: %s Args: %s kwargs: %s", cmd, args, kwargs)
+        match cmd:
+            case FunctionType() | MethodType():
+                action = (cmd, list(args), kwargs)
+            case list():
+                assert(not bool(args))
+                assert(not bool(kwargs))
+                action = cmd
+            case _:
+                raise TypeError("Unexpected action form: ", cmd)
+
+        return ForceCmd(action, shell=shell, handler=handler, save_out=save)
 
     def shell(self, cmd:list|callable, *args, **kwargs):
         return self.cmd(cmd, *args, shell=True, **kwargs)
@@ -303,8 +348,19 @@ class DootActions(DootTasker):
                 raise TypeError("Unexpected action form: ", cmd)
         return Interactive(action, shell=False, save_out=save)
 
+    def regain_focus(self, prog="iTerm"):
+        """
+        Applescript command to regain focus for if you lose it
+        """
+        return self.cmd(["osascript", "-e", f"tell application \"{prog}\"", "-e", "activate", "-e", "end tell"])
 
-    
+    def get_uuids(self, *args):
+        raise NotImplementedError()
+
+    def edit_by_line(self, files:list[pl.Path], fn, inplace=True):
+        for line in fileinput(files=files, inplace=inplace):
+            fn(line)
+
 class DootSubtasker(DootTasker):
     """ Extends DootTasker to make subtasks
 
@@ -347,7 +403,7 @@ class DootSubtasker(DootTasker):
 
     def _build(self, **kwargs):
         try:
-            self.params.update(kwargs)
+            self.args.update(kwargs)
             setup_task = self._build_setup()
             task       = self._build_task()
             subtasks   = self._build_subs()

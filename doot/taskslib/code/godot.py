@@ -20,8 +20,7 @@ from weakref import ref
 
 import doot
 from doot import globber
-from doot.utils.general import ForceCmd, regain_focus
-from doot.tasker import DootTasker
+from doot.tasker import DootTasker, DootActions
 
 if TYPE_CHECKING:
     # tc only imports
@@ -36,7 +35,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 
-class GodotCheckTask(globber.EagerFileGlobber):
+class GodotCheckTask(globber.EagerFileGlobber, DootActions):
     """
     ([root]) Lint all gd scripts in the project
     """
@@ -48,13 +47,15 @@ class GodotCheckTask(globber.EagerFileGlobber):
         task.update({
             "actions"  : [self.reset_failures],
             "teardown" : [self.report_failures]
+            "target"   : [self.dirs.build / "check_fails.report"]
         })
         return task
 
 
     def subtask_detail(self, task, fpath=None):
         task.update({"actions"   : [
-            ForceCmd(self.build_check, shell=False, handler=partial(self.handle_failure, fpath)),
+            self.force(self.build_check,
+                       handler=partial(self.handle_failure, fpath)),
         ],
                      "file_dep"  : [ fpath ],
                      "uptodate" : [False],
@@ -69,15 +70,16 @@ class GodotCheckTask(globber.EagerFileGlobber):
         self.failures.add(fpath)
         return None
 
-    def report_failures(self):
+    def report_failures(self, targets):
         if not bool(self.failures):
             return
 
-        print("==========")
-        print("Failures Reported In:")
-        for fail in self.failures:
-            print("- ", fail)
-        print("==========")
+        report = ["==========",
+                  "Failures Reported In:"]
+        report += [f"- {fail}" for fail in self.failures]
+        report += ["=========="]
+        print("\n".join(report))
+        self.write_to(targets[0], report)
         return False
 
     def reset_failures(self):

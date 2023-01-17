@@ -12,7 +12,7 @@ import doot
 from doot.utils.dir_tasks import CheckDir
 from doot.utils.clean_actions import clean_target_dirs
 from doot import globber
-from doot.tasker import DootTasker
+from doot.tasker import DootTasker, DootActions
 
 ##-- end imports
 
@@ -32,7 +32,6 @@ ext_format       = doot.config.tool.doot.jekyll.genpost.ext.strip()
 ##-- end toml data
 
 __all__ = ["GenPostTask", "GenTagsTask"]
-
 
 ##-- yaml util
 def load_yaml_data(filename):
@@ -69,8 +68,7 @@ def gen_toml(self):
                         "default_template = \"default\"",
                         ])
 
-
-class GenPostTask(DootTasker):
+class GenPostTask(DootTasker, DootActions):
     """
     (-> posts) create a new post,
     using a template or the default in doot.__templates.jekyll_post
@@ -79,7 +77,6 @@ class GenPostTask(DootTasker):
 
     """
     gen_toml = gen_toml
-
 
     def __init__(self, name="jekyll::post", dirs=None, template=None):
         super().__init__(name, dirs)
@@ -107,7 +104,9 @@ class GenPostTask(DootTasker):
         })
         return task
 
-    def make_post(self, title, template):
+    def make_post(self):
+        title    = self.args['title']
+        template = self.args['template']
         if template != "default":
             template = pl.Path(template)
         else:
@@ -126,10 +125,7 @@ class GenPostTask(DootTasker):
 
         post_path.write_text(post_text)
 
-
-
-
-class GenTagsTask(DootTasker):
+class GenTagsTask(DootTasker, DootActions):
     """
     ([src] -> [tags, tagsIndex]) Generate summary files for all tags used in md files in the jekyll src dir
     """
@@ -162,7 +158,7 @@ class GenTagsTask(DootTasker):
     def make_tag_pages(self):
         tag_text = self.template.read_text()
         for tag in self.tagSet:
-            tag_file = self.dirs.extra['tags'] / f"{tag}.md"
+            tag_file  = self.dirs.extra['tags'] / f"{tag}.md"
             formatted = tag_text.format_map({"tag" : tag})
             tag_file.write_text(formatted)
 
@@ -171,4 +167,3 @@ class GenTagsTask(DootTasker):
             return
 
         tag_index.write_text(self.index.read_text())
-

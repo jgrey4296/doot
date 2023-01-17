@@ -84,10 +84,10 @@ class EagerFileGlobber(DootSubtasker):
         raise ValueError(f"{fpath} is not able to be made relative")
 
     def glob_target(self, target, rec=False, fn=None, exts=None) -> list[pl.Path]:
-        results = []
-        exts    = exts or self.exts or [".*"]
+        results   = []
+        exts      = exts or self.exts or [".*"]
         filter_fn = fn or self.filter
-        glob_fn = target.rglob if (rec or self.rec) else target.glob
+        glob_fn   = target.rglob if (rec or self.rec) else target.glob
 
         for ext in exts:
             results += list(glob_fn("*"+ext))

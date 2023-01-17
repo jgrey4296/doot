@@ -13,6 +13,7 @@ from itertools import cycle, chain
 from doit.action import CmdAction
 
 import doot
+from doot import tasker
 from doot import globber
 from doot.taskslib.files import hash_all
 
@@ -26,12 +27,14 @@ ocr_out_ext : str       = doot.config.or_get(".ocr").tool.doot.images.ocr_out()
 
 framerate   : int       = doot.config.or_get(10).tool.doot.images.framerate()
 
+
+HashImages = hash_all.HashAllFiles
+
 def gen_toml(self):
     return "\n".join(["[tool.doot.images]",
                       f"ocr-exts = {default_ocr_exts}"
                       ])
 
-HashImages = hash_all.HashAllFiles
 
 class OCRGlobber(globber.DirGlobber):
     """
@@ -87,7 +90,7 @@ class OCRGlobber(globber.DirGlobber):
             ocr_cmd.execute()
             mv_txt_cmd.execute()
 
-class Images2PDF(globber.LazyFileGlobber):
+class Images2PDF(globber.LazyFileGlobber, tasker.DootActions):
     """
     Combine globbed images into a single pdf file using imagemagick
     """
@@ -103,9 +106,9 @@ class Images2PDF(globber.LazyFileGlobber):
     def task_detail(self, task):
         task.update({
             "name"    : "build_single",
-            "actions" : [CmdAction(self.combine_pages, shell=False)],
-            "targets" : [ self.dirs.build / f"{self._params['name']}.pdf" ],
-            "clean"   : [self.clean_temp_and_targets],
+            "actions" : [ self.cmd(self.combine_pages) ],
+            "targets" : [ self.dirs.build / f"{self.params['name']}.pdf" ],
+            "clean"   : [ (self.rmglob, [self.dirs.build, f"{self.params['name']}.pdf"}]) ],
         })
         return task
 
@@ -114,12 +117,6 @@ class Images2PDF(globber.LazyFileGlobber):
             "actions" : [(self.images_to_pages, [fpath])],
         })
         return task
-
-    def clean_temp_and_targets(self, targets):
-        pl.Path(targets[0]).unlink(missing_ok=True)
-        for x in self.dirs.temp.iterdir():
-            if x.is_file() and x.suffix == ".pdf":
-                x.unlink(missing_ok=True)
 
     def images_to_pages(self, fpath):
         globbed = self.glob_target(fpath)
@@ -138,7 +135,7 @@ class Images2PDF(globber.LazyFileGlobber):
         pages = [x for x in self.dirs.temp.iterdir() if x.suffix == ".pdf"]
         return ["pdftk", *pages, "cat", "output", targets[0]]
 
-class Images2Video(globber.LazyFileGlobber):
+class Images2Video(globber.LazyFileGlobber, tasker.DootActions):
     """
     https://stackoverflow.com/questions/24961127/
     """
@@ -148,7 +145,7 @@ class Images2Video(globber.LazyFileGlobber):
 
     def subtask_detail(self, task, fpath):
         task.update({
-            "actions" : [CmdAction((self.make_gif, [fpath], {}), shell=False)],
+            "actions" : [self.cmd(self.make_gif, fpath)],
             "targets" : [self.dirs.temp / f"{task['name']}.gif"]
         })
         return task
@@ -166,7 +163,7 @@ class Images2Video(globber.LazyFileGlobber):
         args.append(targets[0])
         raise NotImplementedError
 
-class PDF2Images(globber.LazyFileGlobber):
+class PDF2Images(globber.EagerFileGlobber, tasker.DootActions):
     """
     (src -> temp) Find pdfs and extract images for them for ocr
     """
@@ -177,10 +174,23 @@ class PDF2Images(globber.LazyFileGlobber):
         return self.control.accept
 
     def subtask_detail(self, task, fpath):
-        self.dirs.update({task['name']: task['name']})
+        targ_dir = self.dirs.temp / task['name']
         task.update({
-            "actions"  : [],
-            "targets"  : [ self.dirs.get(task['name']) ],
-            "file_dep" : [fpath],
+            "actions"  : [
+                (self.mkdirs, [targ_dir]),
+                self.cmd(self.split_pdf, fpath, save="info"),
+                (self.write_to, ["info", targ_dir / "info.txt"]),
+            ],
+            "targets"  : [ targ_dir, targ_dir / "info.txt" ],
+           "file_dep" : [ fpath ],
+            "clean"    : [ (self.rmdirs, [ targ_dir ])],
         })
         return task
+
+    def split_pdf(self, fpath, targets, task):
+        cmd = [ "pdfimages", "-j",
+                "-list",
+                fpath,
+                pl.Path(targets[0]) / "page_"
+            ]
+        return cmd

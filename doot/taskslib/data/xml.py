@@ -8,10 +8,10 @@ from functools import partial
 from itertools import cycle
 
 from itertools import cycle, chain
-from doit.action import CmdAction
 from doit.tools import Interactive
 
 from doot import globber
+from doot import tasker
 
 ##-- end imports
 # https://relaxng.org/jclark/
@@ -27,7 +27,7 @@ from doot import globber
 def gen_toml(self):
     return "\n".join([])
 
-class XmlElementsTask(globber.DirGlobber):
+class XmlElementsTask(globber.DirGlobber, tasker.DootActions):
     """
     ([data] -> elements) xml element retrieval using xml starlet toolkit
     http://xmlstar.sourceforge.net/
@@ -44,29 +44,21 @@ class XmlElementsTask(globber.DirGlobber):
 
     def subtask_detail(self, task, fpath=None:dict) -> dict:
         task.update({"targets" : [ self.dirs.extra['elements'] / (task['name'] + ".elements")],
-                     "clean"   : True})
-        task['actions'] += self.subtask_actions(fpath)
+                     "clean"   : True,
+                     "actions" : [ self.cmd(self.generate_on_target, [fpath], save="elements"),
+                                   (self.write_to, [fpath, "elements"]),
+                                  ]
+                     })
         return task
 
-    def subtask_actions(self, fpath):
-        return [ CmdAction((self.generate_on_target, [fpath], {}), shell=False, save_out=str(fpath))
-                 (self.write_elements, [fpath]),
-                ]
-
-    def generate_on_target(self, fpath ,targets, task):
+    def generate_on_target(self, fpath, targets, task):
         """
         build an `xml el` command of all available xmls
         """
         globbed = self.glob_files(fapth)
         return ["xml", "el", "-u", *globbed]
 
-    def write_elements(self, fpath, targets, task):
-        result = task.values[str(fpath)]
-        pl.Path(targets[0]).write_text(result)
-
-
-
-class XmlSchemaTask(globber.DirGlobber):
+class XmlSchemaTask(globber.DirGlobber, tasker.DootActions):
     """
     ([data] -> schema) Generate .xsd's from directories of xml files using trang
     https://relaxng.org/jclark/
@@ -80,24 +72,20 @@ class XmlSchemaTask(globber.DirGlobber):
             return self.control.accept
         return self.control.discard
 
-
     def subtask_detail(self, task, fpath=None):
         task.update({
             "targets"  : [ self.dirs.extra['schema'] / (task['name'] + ".xsd") ],
             "clean"    : True,
-            "uptodate" : [True]})
-        task['actions'] += self.subtask_actions(fpath)
+            "uptodate" : [True],
+            "actions"  : [self.cmd(self.generate_on_target, fpath)],
+            })
         return task
-
-    def subtask_actions(self, fpath):
-        return [CmdAction((self.generate_on_target, [fpath], {}), shell=False)]
 
     def generate_on_target(self, fpath, targets, task):
         globbed = self.glob_files(fpath)
         return ["trang", *globbed, *targets]
 
-
-class XmlPythonSchemaRaw(globber.DirGlobber):
+class XmlPythonSchemaRaw(globber.DirGlobber, tasker.DootActions):
     """
     ([data] -> codegen) Generate Python Dataclass bindings based on raw XML data
     """
@@ -115,18 +103,14 @@ class XmlPythonSchemaRaw(globber.DirGlobber):
         task.update({
             "targets"  : [ gen_package ],
             "task_dep" : [ "_xsdata::config"],
+            "actions"  : [ self.cmd(self.generate_on_target, fpath, gen_package) ],
             })
-        task["meta"].update({"package" : gen_package})
-        task['actions'] += self.subtask_actions(fpath)
         return task
 
-    def subtask_actions(self, fpath):
-        return [ CmdAction((self.generate_on_target, [fpath], {}), shell=False) ]
-
-    def generate_on_target(self, fpath, task):
+    def generate_on_target(self, fpath, gen_package, task):
         args = ["xsdata", "generate",
                 ("--recursive" if not self.rec else ""),
-                "-p", task.meta['package'] , # generate package name
+                "-p", gen_package,
                 "--relative-imports", "--postponed-annotations",
                 "--kw-only",
                 "--frozen",
@@ -135,8 +119,7 @@ class XmlPythonSchemaRaw(globber.DirGlobber):
                 ]
         return args
 
-
-class XmlPythonSchemaXSD(globber.EagerFileGlobber):
+class XmlPythonSchemaXSD(globber.EagerFileGlobber, tasker.DootActions):
     """
     ([data] -> codegen) Generate python dataclass bindings from XSD's
     """
@@ -153,21 +136,17 @@ class XmlPythonSchemaXSD(globber.EagerFileGlobber):
     def subtask_detail(self, task, fpath=None):
         gen_package = str(self.dirs.codegen / task['name'])
         task.update({
-                "targets"  : [ gen_package ],
-                "file_dep" : [ fpath ],
-                "task_dep" : [ "_xsdata::config"],
+            "targets"  : [ gen_package ],
+            "file_dep" : [ fpath ],
+            "task_dep" : [ "_xsdata::config"],
+            "actions" : [self.cmd(self.gen_target, fpath, gen_package) ],
             })
-        task['meta'].update({"package" : gen_package})
-        task['actions'] += self.subtask_actions(fpath)
         return task
 
-    def subtask_actions(self, fpath):
-        return [CmdAction((self.gen_target, [fpath], {}), shell=False)]
-
-    def gen_target(self, fpath, task):
+    def gen_target(self, fpath, gen_package, task):
         args = ["xsdata", "generate",
                 ("--recursive" if not self.rec else ""),
-                "-p", task.meta['package'] , # generate package name
+                "-p", gen_package,
                 "--relative-imports", "--postponed-annotations",
                 "--kw-only",
                 "--frozen",
@@ -177,7 +156,7 @@ class XmlPythonSchemaXSD(globber.EagerFileGlobber):
 
         return args
 
-class XmlSchemaVisualiseTask(globber.EagerFileGlobber):
+class XmlSchemaVisualiseTask(globber.EagerFileGlobber, tasker.DootActions):
     """
     ([data] -> visual) Generate Plantuml files ready for plantuml to generate images
     """
@@ -191,33 +170,19 @@ class XmlSchemaVisualiseTask(globber.EagerFileGlobber):
             return self.control.accept
         return self.control.discard
 
-
     def subtask_detail(self, task, fpath=None):
         task.update({
             "targets"  : [ self.dirs.extra['visual'] / (task['name'] + ".plantuml") ],
             "file_dep" : [ fpath ],
             "task_dep" : [ "_xsdata::config" ],
+            "actions" : [self.cmd([ "xsdata", "generate", "-o", "plantuml", "-pp", fpath], save="result")
+                         (self.write_to, [fpath, "result"])
+                         ],
             "clean"    : True,
-        })
-        task['actions'] += self.subtask_actions(fpath)
+            })
         return task
 
-
-    def subtask_actions(self, fpath):
-        gen_act = CmdAction([ "xsdata", "generate",
-                              "-o", "plantuml", # output as plantuml
-                              "-pp",            # to stdout instead of make a file
-                              fpath
-                             ],
-                            shell=False, save_out=str(fpath))
-
-        return [ gen_act, (self.save_uml, [fpath]) ]
-
-    def save_uml(self, fpath, targets, task):
-        result = task.values[str(fpath)]
-        pl.Path(targets[0]).write_text(result)
-
-class XmlValidateTask(globber.DirGlobber):
+class XmlValidateTask(globber.DirGlobber, tasker.DootActions):
     """
     ([data]) Validate xml's by schemas
     """
@@ -234,11 +199,11 @@ class XmlValidateTask(globber.DirGlobber):
         return self.control.discard
 
     def subtask_detail(self, task, fpath=None):
-        task.update({})
-        task['actions'] += self.subtask_actions(fpath)
-        return task
+        task.update({
+            "actions" : [ self.cmd(self.validate, fpath)]
+                    })
 
-    def subtask_actions(self, fpath):
+    def validate(self, fpath):
         args = ["xml", "val",
                 "-e",    # verbose errors
                 "--net", # net access
@@ -246,13 +211,9 @@ class XmlValidateTask(globber.DirGlobber):
                 ]
         args.append(self.xsd)
         args += self.glob_files(fpath)
+        return args
 
-        return [ CmdAction(args, shell=False) ]
-
-
-
-
-class XmlFormatTask(globber.DirGlobber):
+class XmlFormatTask(globber.DirGlobber, tasker.DootActions):
     """
     ([data] -> data) Basic Formatting with backup
     TODO cleanup backups
@@ -267,16 +228,11 @@ class XmlFormatTask(globber.DirGlobber):
         return self.control.discard
 
     def subtask_detail(self, task, fpath=None):
-        task['meta'].update({ "focus" : fpath })
-        task['actions'] += self.subtask_actions(fpath)
+        task.update({'actions': [ (self.format_xmls, [fpath] )]})
         return task
-
-    def subtask_actions(self, fpath):
-        return [ (self.format_xmls, [fpath] )]
 
     def format_xmls(self, fpath):
         globbed  = self.glob_files(fpath)
-
         self.backup_xmls(globbed)
         for target in globbed:
             args = ["xml" , "fo",
@@ -290,7 +246,7 @@ class XmlFormatTask(globber.DirGlobber):
 
             args.append(target)
             # Format and save result:
-            cmd = CmdAction(args, shell=False)
+            cmd = self.cmd(args)
             cmd.execute()
             target.write_text(cmd.out)
 
@@ -303,4 +259,3 @@ class XmlFormatTask(globber.DirGlobber):
             if backup.exists():
                 continue
             backup.write_text(btarget.read_text())
-

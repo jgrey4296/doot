@@ -21,11 +21,10 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     cast, final, overload, runtime_checkable)
 from uuid import UUID, uuid1
 from weakref import ref
-from doit.action import CmdAction
 
 import doot
 from doot import globber
-from doot.tasker import DootTasker
+from doot.tasker import DootTasker, DootActions
 
 if TYPE_CHECKING:
     # tc only imports
@@ -51,7 +50,7 @@ empty_match = re.match("","")
 
 # TODO thread crosslinking
 
-class LinkCleanExtract(globber.DirGlobber):
+class LinkCleanExtract(globber.DirGlobber, DootActions):
     """
 
     """
@@ -92,8 +91,6 @@ class LinkCleanExtract(globber.DirGlobber):
         finally:
             link_index.close()
 
-
-
     def expand_and_clean_links(self, fpath):
         link_index  = fpath / link_index_file
         links       = set(link_index.read_text().split("\n"))
@@ -103,11 +100,10 @@ class LinkCleanExtract(globber.DirGlobber):
 
         link_index.write("\n".join(clean_links))
 
-
     def retrieve_ocr_text(self, fpath):
         pass
 
-class TweetExtract(globber.DirGlobber):
+class TweetExtract(globber.DirGlobber, DootActions):
 
     def __init__(self, name="tweets::extract", dirs=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=[".org"], rec=rec)
@@ -144,7 +140,6 @@ class TweetExtract(globber.DirGlobber):
         file_listing = [str(x.relative_to(fpath)) for x in file_dir.iterdir()]
         (fpath / file_index_file).write_text("\n".join(file_listing))
 
-    
     def extract_tweet_ids(self, fpath):
         # fileinput over all orgs, get the permalinks
         globbed     = self.glob_files(fpath)
@@ -158,8 +153,7 @@ class TweetExtract(globber.DirGlobber):
 
         tweet_index.write_text("\n".join(permalinks))
 
-
-class OrgThreadCount(globber.DirGlobber):
+class OrgThreadCount(globber.DirGlobber, DootActions):
     """
     mark files with multiple threads
     """
@@ -174,6 +168,9 @@ class OrgThreadCount(globber.DirGlobber):
         else:
             return self.control.discard
 
+    def is_current(self, task):
+        return pl.Path(task.targets[0]).exists()
+
     def subtask_detail(self, task, fpath=None):
         task.update({
             "actions" : [ (self.check_thread_counts, [fpath]) ],
@@ -182,9 +179,6 @@ class OrgThreadCount(globber.DirGlobber):
         })
         return task
 
-    def is_current(self, task):
-        return pl.Path(task.targets[0]).exists()
-    
     def check_thread_counts(self, fpath):
         target        = fpath / thread_file
         counts        = defaultdict(lambda: [0, 0])
@@ -211,7 +205,7 @@ class OrgThreadCount(globber.DirGlobber):
         summary = [f"L1: {y[0]} {x}\nL2: {y[1]} {x}" for x,y in counts.items()]
         target.write_text(f"Total Files: {total_files}\nTotal Threads: {total_threads}\n" + "\n".join(summary))
 
-class ThreadOrganise(globber.DirGlobber):
+class ThreadOrganise(globber.DirGlobber, DootActions):
     """
     move threads in multi thread files to their own separate count
     """
@@ -234,7 +228,7 @@ class ThreadOrganise(globber.DirGlobber):
             "actions" : [
                 (self.read_threadcount, [fpath]),
                 (self.process_threads, [fpath]),
-                     ],
+            ],
             "file_dep" : [fpath / thread_file],
         })
         return task
@@ -262,7 +256,6 @@ class ThreadOrganise(globber.DirGlobber):
                         pass
                     new_thread = None
                     state = 'header'
-
 
                 # Determine state
                 match (self.header_reg.match(line) or empty_match).groups():
@@ -297,7 +290,6 @@ class ThreadOrganise(globber.DirGlobber):
                     case _:
                         raise Exception("This shouldn't be possible")
 
-
         finally:
             try:
                 new_thread.close()
@@ -326,26 +318,23 @@ class ThreadOrganise(globber.DirGlobber):
             elif int(result[2]) > 1:
                 self.multi_threads.add(fpath / result[3].strip())
 
-
-
 ##-- todo
-class OrgExport(globber.DirGlobber):
+class OrgExport(globber.DirGlobber, DootActions):
     """
     Convert each thread to html
     """
     pass
 
-class OrgEpubBuild(globber.DirGlobber):
+class OrgEpubBuild(globber.DirGlobber, DootActions):
     """
     Build working epub directories in each account
     """
     pass
 
-class ZipUser(globber.DirGlobber):
+class ZipUser(globber.DirGlobber, DootActions):
     """
     Zip each account for backup
     """
     pass
-
 
 ##-- end todo

@@ -10,16 +10,14 @@ import shutil
 
 from functools import partial
 from itertools import cycle, chain
-from doit.action import CmdAction
 
 import doot
 from doot import globber
+from doot import tasker
 
 ##-- end imports
 
-
-
-class DotVisualise(globber.EagerFileGlobber):
+class DotVisualise(globber.EagerFileGlobber, tasker.DootActions):
     """
     ([src] -> build) make images from any dot files
     """
@@ -31,18 +29,14 @@ class DotVisualise(globber.EagerFileGlobber):
         self.layout    = layout
         self.scale     = scale
 
-
     def subtask_detail(self, task, fpath=None):
         task.update({
-                     "file_dep" : [ fpath ],
-                     "targets"  : [ self.dirs.build / fpath.with_suffix(f".{self.ext}").name ],
-                     "clean"    : True,
-        })
-        task['actions'] += self.subtask_actions(fpath)
+            "file_dep" : [ fpath ],
+            "targets"  : [ self.dirs.build / fpath.with_suffix(f".{self.ext}").name ],
+            "clean"    : True,
+            "actions' : "[ self.cmd(self.run_on_target) ],
+            })
         return task
-
-    def subtask_actions(self, fpath):
-        return [ CmdAction(self.run_on_target, shell=False) ]
 
     def run_on_target(self, dependencies, targets):
         cmd = ["dot"]
