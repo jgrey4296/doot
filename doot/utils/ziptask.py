@@ -9,7 +9,6 @@ import zipfile
 from doit.task import Task as DoitTask
 
 import doot
-from doot.utils.checkdir import CheckDir
 from doot.utils.cmdtask import CmdTask
 from doot.utils.loc_data import DootLocData
 from doot.utils.tasker import DootTasker

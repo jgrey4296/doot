@@ -4,10 +4,6 @@ from doit.action import CmdAction
 from doit.exceptions import InvalidTask, TaskFailed, TaskError
 ##-- end imports
 
-def make_task(func):
-    """ decorate a function to be a task-creator """
-    func.create_doit_tasks = func
-    return func
 
 def regain_focus(prog="iTerm"):
     """

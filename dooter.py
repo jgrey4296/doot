@@ -23,10 +23,9 @@ DOIT_CONFIG = {
 ##-- end config
 
 ##-- post-config doot imports
-from doot.groups import *
-from doot.groups_secondary import *
+# from doot.taskslib.groups import *
+# from doot.taskslib.groups_secondary import *
 ##-- end post-config doot imports
-
 
 if __name__ == "dooter":
     # the equivalent of main

@@ -1,8 +1,10 @@
 verbosity               = 2
 
 [tool.doot]
-say-on-exit = false
-glob_ignores = ['.git', '.DS_Store', "__pycache__"]
+say-on-exit   = false
+glob_ignores  = ['.git', '.DS_Store', "__pycache__"]
+subtask-sleep = 1
+batch-sleep   = 1
 
 [tool.doot.directories]
 src     = "src"

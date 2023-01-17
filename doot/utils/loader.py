@@ -35,11 +35,12 @@ import inspect
 from doit.cmd_base import NamespaceTaskLoader, opt_cwd, opt_seek_file
 from doit.exceptions import InvalidDodoFile
 from doit import loader as doit_loader
-from doot.utils.checkdir import CheckDir
-from doot.utils.loc_data import DootLocData
+
+from doot.loc_data import DootLocData
 from doot import default_dooter
 from doot.utils.gen_toml import GenToml
-from doot.utils.task_group import TaskGroup
+from doot.task_group import TaskGroup
+from doot.utils.dir_tasks import CheckDir
 
 
 #### options related to dooter.py
@@ -79,13 +80,15 @@ class DootLoader(NamespaceTaskLoader):
         self.namespace['__doot_all_tomls']  = GenToml.gen_toml_tasks()
 
     def load_tasks(self, cmd, pos_args):
-        # expand out task groups
         group_tasks = {}
         for x in self.namespace.values():
-            if isinstance(x, TaskGroup) and not x.as_creator:
+            if isinstance(x, TaskGroup) and not x.as_creator and bool(x):
+                logging.info("Expanding: %s", x)
                 group_tasks.update(x.to_dict())
 
         self.namespace.update(group_tasks)
+
+        logging.info("Creating Tasks")
         tasks = doit_loader.load_tasks(
             self.namespace, self.cmd_names, allow_delayed=cmd.execute_tasks,
             args=pos_args, config=self.config, task_opts=self.task_opts)

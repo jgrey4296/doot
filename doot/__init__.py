@@ -1,25 +1,27 @@
 #!/usr/bin/env python3
 ##-- imports
 from __future__ import annotations
+
+import logging as logmod
 import pathlib as pl
 from importlib import resources
 
-from doot.utils.loc_data import DootLocData
-from doot.utils.tasker import DootTasker
-from doot.utils.toml_access import TomlAccess, TomlAccessError
+from doot.loc_data import DootLocData
+from doot.tasker import DootTasker
+from doot.toml_access import TomlAccess, TomlAccessError
 ##-- end imports
 
+##-- logging
+logging = logmod.getLogger(__name__)
+##-- end logging
+
 ##-- data
-data_path = resources.files("doot.__templates")
-toml_template = data_path / "basic_toml"
+data_path       = resources.files("doot.__templates")
+toml_template   = data_path / "basic_toml"
 dooter_template = data_path / "dooter"
 ##-- end data
 
 __version__ = "0.0.1"
-
-config     : TomlAccess = None
-
-locs       : DootLocData   = None
 
 default_dooter      = pl.Path("dooter.py")
 default_py          = pl.Path("pyproject.toml")
@@ -27,7 +29,11 @@ default_rust        = pl.Path("Cargo.toml")
 default_rust_config = pl.Path("./.cargo/config/toml")
 default_agnostic    = pl.Path("doot.toml")
 
+config     : TomlAccess  = None
+locs       : DootLocData = None
+
 def setup():
+    logging.info("Setting up Doot, version: %s", __version__)
     if config is not None:
         raise Exception("Setup called even though doot is already set up")
 
@@ -60,11 +66,12 @@ def setup_agnostic(path=default_agnostic):
     DootLocData.set_defaults(config)
 
 def setup_py(path=default_py):
-    # print("Setting up python")
+    logging.info("Found: pyproject.toml, using project.name as src location")
     pyproject = TomlAccess.load(path)
     locs.update(src=pyproject.project.name)
 
 def setup_rust(path=default_rust, config_path=default_rust_config):
+    logging.info("Found: cargo.toml, using package.name as src location and build.target_dir for build location")
     cargo        = TomlAccess.load(path)
     cargo_config = TomlAccess.load(config_path)
 

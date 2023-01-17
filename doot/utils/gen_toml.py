@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-
+A Singleton for storing stub toml fragments which can be provided to the user
 """
 ##-- imports
 from __future__ import annotations
@@ -52,6 +52,7 @@ class GenToml:
 
     @staticmethod
     def gen_toml_tasks():
+        logging.info("Building GenToml Auto Tasks: %s", list(GenToml.generators.keys()))
         for task in GenToml.generators.values():
             yield task
 

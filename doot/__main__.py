@@ -5,13 +5,15 @@ Alternative doot cli runner, to use the doot loader
 ##-- imports
 from __future__ import annotations
 
-import sys
 import abc
 import logging as logmod
+import pathlib
 import pathlib as pl
+import sys
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from re import Pattern
+from sys import stderr, stdout
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
@@ -19,29 +21,38 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-
 if TYPE_CHECKING:
     # tc only imports
     pass
 ##-- end imports
 
 ##-- logging
-logging = logmod.getLogger(__name__)
-# If CLI:
-# logging = logmod.root
-# logging.setLevel(logmod.NOTSET)
+logging         = logmod.root
+logging.setLevel(logmod.NOTSET)
+file_handler    = logmod.FileHandler(pl.Path() / "log.doot", mode='w')
+file_handler.setFormatter(logmod.Formatter("PRE_SETUP : {message}", style="{"))
+logging.addHandler(file_handler)
 ##-- end logging
 
-import doot
-from doit.doit_cmd import DoitMain
-from doot.utils.loader import DootLoader
 from doit.action import CmdAction
+from doit.doit_cmd import DoitMain
+
+import doot
+from doot.utils.loader import DootLoader
 
 def main():
     result = 1
     try:
         if doot.config is None:
             doot.setup()
+
+        logging.info("Basic Doot setup loaded")
+        ##-- logging setup
+        file_handler.setLevel(logmod._nameToLevel[doot.config.or_get("DEBUG").tool.doot.log_level()])
+        file_log_format = doot.config.or_get("{levelname} : {module} : {lineno} : {funcName} : {message}").tool.doot.log_format()
+        file_handler.setFormatter(logmod.Formatter(file_log_format, style="{"))
+        ##-- end logging setup
+
         loader    = DootLoader()
         doit_main = DoitMain(task_loader=loader, config_filenames=[doot.default_agnostic])
         result    = doit_main.run(sys.argv[1:])
