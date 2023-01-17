@@ -30,7 +30,11 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from types import FunctionType, MethodType
+import shutil
 from doit import task_params
+from doit.action import CmdAction
+from doit.tools import Interactive
 from doit.task import Task as DoitTask
 from doit.task import dict_to_task
 from doot.errors import DootDirAbsent
@@ -68,7 +72,6 @@ class DootTasker:
         self.base              = base
         self.dirs              = dirs
         self.setup_name        = "setup"
-        self.batch_count       = 0
         self.params            = {}
         self.active_setup      = False
 
@@ -108,61 +111,11 @@ class DootTasker:
     def clean(self, task:DoitTask):
         return
 
-
     def setup_detail(self, task:dict) -> None|dict:
         return task
 
     def task_detail(self, task:dict) -> dict:
         return task
-
-    def run_batch(self, *batches, reset=True, fn=None, **kwargs):
-        """
-        handles batch bookkeeping
-        defaults to self.batch, but can pass in a function
-        """
-        if reset:
-            self._reset_batch_count()
-        if fn is None:
-            fn = self.batch
-
-        result = []
-        for data in batches:
-            batch_list = [x for x in data if x is not None]
-            if not bool(batch_list):
-                continue
-            print(f"Batch: {self.batch_count} : ({len(batch_list)})")
-            result.append(fn(batch_list, **kwargs))
-
-            self.batch_count += 1
-            if -1 < self.batches_max < self.batch_count:
-                print("Max Batch Hit")
-                return
-            if self.sleep_notify:
-                print("Sleep Batch")
-            sleep(self.sleep_batch)
-
-        return result
-
-    def batch(self, data, **kwargs):
-        """ Override to implement what a batch does """
-        pass
-
-    def chunk(self, iterable, n, *, incomplete='fill', fillvalue=None):
-        """Collect data into non-overlapping fixed-length chunks or blocks
-        from https://docs.python.org/3/library/itertools.html
-         grouper('ABCDEFG', 3, fillvalue='x') --> ABC DEF Gxx
-         grouper('ABCDEFG', 3, incomplete='strict') --> ABC DEF ValueError
-         grouper('ABCDEFG', 3, incomplete='ignore') --> ABC DEF
-        """
-        args = [iter(iterable)] * n
-        if incomplete == 'fill':
-            return itertools.zip_longest(*args, fillvalue=fillvalue)
-        if incomplete == 'strict':
-            return zip(*args, strict=True)
-        if incomplete == 'ignore':
-            return zip(*args)
-        else:
-            raise ValueError('Expected fill, strict, or ignore')
 
     @property
     def _setup_names(self):
@@ -220,9 +173,138 @@ class DootTasker:
             exit(1)
 
 
+class DootBatcher(DootTasker):
+
+    def __init__(self, base:str, dirs):
+        super().__init__(base, dirs)
+        self.batch_count       = 0
+
+    def run_batch(self, *batches, reset=True, fn=None, **kwargs):
+        """
+        handles batch bookkeeping
+        defaults to self.batch, but can pass in a function
+        """
+        if reset:
+            self._reset_batch_count()
+        if fn is None:
+            fn = self.batch
+
+        result = []
+        for data in batches:
+            batch_list = [x for x in data if x is not None]
+            if not bool(batch_list):
+                continue
+            print(f"Batch: {self.batch_count} : ({len(batch_list)})")
+            result.append(fn(batch_list, **kwargs))
+
+            self.batch_count += 1
+            if -1 < self.batches_max < self.batch_count:
+                print("Max Batch Hit")
+                return
+            if self.sleep_notify:
+                print("Sleep Batch")
+            sleep(self.sleep_batch)
+
+        return result
+
+    def batch(self, data, **kwargs):
+        """ Override to implement what a batch does """
+        raise NotImplementedError()
+
+    def chunk(self, iterable, n, *, incomplete='fill', fillvalue=None):
+        """Collect data into non-overlapping fixed-length chunks or blocks
+        from https://docs.python.org/3/library/itertools.html
+         grouper('ABCDEFG', 3, fillvalue='x') --> ABC DEF Gxx
+         grouper('ABCDEFG', 3, incomplete='strict') --> ABC DEF ValueError
+         grouper('ABCDEFG', 3, incomplete='ignore') --> ABC DEF
+        """
+        args = [iter(iterable)] * n
+        if incomplete == 'fill':
+            return itertools.zip_longest(*args, fillvalue=fillvalue)
+        if incomplete == 'strict':
+            return zip(*args, strict=True)
+        if incomplete == 'ignore':
+            return zip(*args)
+        else:
+            raise ValueError('Expected fill, strict, or ignore')
+
     def _reset_batch_count(self):
         self.batch_count = 0
 
+class DootActions(DootTasker):
+
+    def rmglob(self, root:pl.Path, *args):
+        for x in args:
+            for y in root.glob(x):
+                y.unlink()
+
+    def rmdirs(self, *dirs:pl.Path):
+        logging.debug("Removing Directories: %s", dirs)
+        for target in dirs:
+            shutil.rmtree(target)
+
+    def mkdirs(self, *dirs:pl.Path):
+        logging.debug("Making Directories: %s", dirs)
+        for target in dirs:
+            target.mkdir(parents=True, exist_ok=True)
+
+    def write_to(self, key:str|list[str], fpath:pl.Path, task, sep=None):
+        if sep is None:
+            sep = "\n--------------------\n"
+        match key:
+            case str():
+                value = task.values[key]
+            case [*strs]:
+                value = sep.join([task.values[x] for x in str])
+
+        fpath.write_text(value)
+
+    def move_to(self, fpath:pl.Path, *args):
+        for x in args:
+            targ_path = fpath / x.name
+            assert(not targ_path.exists())
+            x.rename(targ_path)
+
+    def copy_to(self, fpath ,*args):
+        for x in args:
+            assert(not (fpath / x.name).exists())
+            match x.is_file():
+                case True:
+                    shutil.copy(x, fpath / x.name)
+                case False:
+                    shutil.copytree(x, fpath / x.name)
+
+    def cmd(self, cmd:list|callable, *args, shell=False, save=None, **kwargs):
+        logging.debug("Cmd: %s Args: %s kwargs: %s", cmd, args, kwargs)
+        match cmd:
+            case FunctionType() | MethodType():
+                action = (cmd, list(args), kwargs)
+            case list():
+                assert(not bool(args))
+                assert(not bool(kwargs))
+                action = cmd
+            case _:
+                raise TypeError("Unexpected action form: ", cmd)
+
+        return CmdAction(action, shell=shell, save_out=save)
+
+    def shell(self, cmd:list|callable, *args, **kwargs):
+        return self.cmd(cmd, *args, shell=True, **kwargs)
+
+    def interact(self, cmd:list|callable, *args, save=None, **kwargs):
+        match cmd:
+            case FunctionType():
+                action = (cmd, list(args), kwargs)
+            case list():
+                assert(not bool(args))
+                assert(not bool(kwargs))
+                action = cmd
+            case _:
+                raise TypeError("Unexpected action form: ", cmd)
+        return Interactive(action, shell=False, save_out=save)
+
+
+    
 class DootSubtasker(DootTasker):
     """ Extends DootTasker to make subtasks
 
