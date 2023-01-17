@@ -15,7 +15,6 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 
 import bkmkorg.twitter.dfs as DFSU
 import networkx as nx
-from bkmkorg.files.collect import get_data_files
 from bkmkorg.twitter.dfs import dfs_chains
 from bkmkorg.files.download import download_media
 from bkmkorg.twitter.tweet_retrieval import download_tweets

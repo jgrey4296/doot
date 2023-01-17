@@ -34,21 +34,22 @@ class JGBibTexWriter(bwriter.BibTexWriter):
         self.entry_separator = "\n\n"
 
     def _entry_to_bibtex(self, entry):
+        filtered_entry     = {x:y for x,y in entry.items() if x[:2] != "__"}
         bibtex : list[str] = []
         # Write BibTeX key
-        bibtex.append(head_line.substitute(entry=entry['ENTRYTYPE'], id=entry['ID']))
+        bibtex.append(head_line.substitute(entry=filtered_entry['ENTRYTYPE'], id=filtered_entry['ID']))
 
         # create display_order of fields for this entry
         # first those keys which are both in self.display_order and in entry.keys
-        display_order = [i for i in self.display_order if i in entry]
+        display_order = [i for i in self.display_order if i in filtered_entry]
         # then all the other fields sorted alphabetically
-        display_order += [i for i in sorted(entry) if i not in self.display_order]
+        display_order += [i for i in sorted(filtered_entry) if i not in self.display_order]
 
         # Write field = value lines
         for field in [i for i in display_order if i not in ['ENTRYTYPE', 'ID']]:
             try:
                 buffer_val = " " * (self.equals_column - (len(self.indent) + len(field)))
-                field_val  = bwriter._str_or_expr_to_bibtex(entry[field])
+                field_val  = bwriter._str_or_expr_to_bibtex(filtered_entry[field])
                 # Remove unnecessary double wrapping
                 if field_val[:2] == "{{" and field_val[-2:] == "}}":
                     field_val = field_val[1:-1]
@@ -59,7 +60,7 @@ class JGBibTexWriter(bwriter.BibTexWriter):
                                                    value=field_val)
                 bibtex.append(formatted)
             except TypeError:
-                raise TypeError(u"The field %s in entry %s must be a string" % (field, entry['ID']))
+                raise TypeError(u"The field %s in entry %s must be a string" % (field, filtered_entry['ID']))
         bibtex.append(close_line)
         as_string = "\n".join(bibtex) + self.entry_separator
         return as_string

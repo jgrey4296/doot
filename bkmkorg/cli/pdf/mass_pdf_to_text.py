@@ -9,7 +9,6 @@ import argparse
 import logging as root_logger
 from subprocess import call
 
-from bkmkorg.files import collect
 from bkmkorg.pdf import manipulate as PU
 ##-- end imports
 

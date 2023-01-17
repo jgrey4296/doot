@@ -22,7 +22,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-from bkmkorg.files import collect
 from bkmkorg.files.hash_check import map_files_to_hash
 
 if TYPE_CHECKING:

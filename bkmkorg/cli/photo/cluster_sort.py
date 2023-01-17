@@ -13,7 +13,6 @@ from shutil import copyfile
 
 import numpy as np
 import PIL
-from bkmkorg.files.collection import get_data_files
 from PIL import Image
 from sklearn.cluster import KMeans
 ##-- end imports

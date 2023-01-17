@@ -65,7 +65,7 @@ RESOLUTION_RE        = re.compile(r".*?([0-9]+x[0-9]+)")
 ##-- end config
 
 def get_resolution(filepath:Path) -> str:
-    result = subprocess.run(["file", str(filepath)], capture_output=True)
+    result = subprocess.run(["file", str(filepath)], capture_output=True, shell=False)
     if result.returncode == 0:
         res = RESOLUTION_RE.match(result.stdout.decode())
         return res[1]
@@ -81,7 +81,8 @@ def compress_file(filepath:Path):
     result = subprocess.run([convert_cmd, str(filepath),
                                *conversion_args,
                                str(TEMP_LOC)],
-                             capture_output=True)
+                             capture_output=True,
+                            shell=False)
 
     if result.returncode == 0 and TEMP_LOC.stat().st_size < 5000000:
         return TEMP_LOC

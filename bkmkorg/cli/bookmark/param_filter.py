@@ -10,8 +10,7 @@ import logging as root_logger
 import pathlib as pl
 import regex as re
 from bkmkorg.bibtex import parsing as BU
-from bkmkorg.files import collect
-from bkmkorg.collections.trie import Trie
+from bkmkorg.file_formats.trie import Trie
 from bkmkorg.bookmarks.collection import BookmarkCollection
 ##-- end imports
 

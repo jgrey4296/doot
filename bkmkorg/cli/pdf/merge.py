@@ -9,7 +9,6 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     Set, Tuple, TypeVar, Union, cast)
 
 from bkmkorg.bibtex import parsing as BU
-from bkmkorg.files import collect
 from bkmkorg.pdf import manipulate as PU
 ##-- end imports
 
