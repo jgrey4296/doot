@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Provide Utility classes for working with bookmarks
 """
@@ -13,7 +14,6 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     Set, Tuple, TypeVar, Union, cast)
 
 import regex
-from bkmkorg.file_formats.base_format import BaseFileFormat
 from bs4 import BeautifulSoup
 ##-- end imports
 
@@ -28,6 +28,24 @@ class Bookmark:
     name    : str      = field(default="No Name")
     sep     : str      = field(default=" : ")
 
+    @staticmethod
+    def build(line:str, sep=None):
+        """
+        Build a bookmark from a line of a bookmark file
+        """
+        sep        = sep or Bookmark.sep
+        match [x.strip() for x in line.split(sep)]:
+            case []:
+                raise TypeException("Bad line passed to Bookmark")
+            case [url]:
+                logging.warning("No Tags for: %s", url)
+            case [url, *tags]
+                pass
+
+        return Bookmark(url,
+                        set(tags),
+                        sep=sep)
+
     def __post_init__(self):
         self.tags = {TAG_NORM.sub("_", x.strip()) for x in self.tags}
 
@@ -40,26 +58,6 @@ class Bookmark:
     def __str__(self):
         tags = self.sep.join(sorted(self.tags))
         return f"{self.url}{self.sep}{tags}"
-
-    @staticmethod
-    def build(line, sep=None):
-        """
-        Build a bookmark from a line of a bookmark file
-        """
-        assert(isinstance(line, str))
-        if sep is None:
-            sep = Bookmark.sep
-
-        line_split = line.split(sep)
-        url        = line_split[0]
-        tag_set    = {x.strip() for x in line_split[1:]}
-        if not bool(tag_set):
-            logging.warning("No Tags for: %s", url)
-
-        return Bookmark(url,
-                        tag_set,
-                        sep=sep)
-
 
     @property
     def url_comps(self) -> url_parse.ParseResult:
@@ -81,19 +79,19 @@ class Bookmark:
         self.tags = cleaned_tags
 
 @dataclass
-class BookmarkCollection(BaseFileFormat):
+class BookmarkCollection:
 
     entries : List[Bookmark] = field(default_factory=list)
     ext     : str            = field(default=".bookmarks")
 
-
     @staticmethod
-    def read(f_name:pl.Path) -> BookmarkCollection:
+    def read(fpath:pl.Path) -> BookmarkCollection:
         """ Read a file to build a bookmark collection """
         bookmarks = BookmarkCollection()
-        with open(f_name, 'r') as f:
-            for line in f.readlines():
-                bookmarks += Bookmark.build(line)
+        for line in (x.strip() for x in fpath.read_text().split("\n")):
+            if not bool(line):
+                continue
+            bookmarks += Bookmark.build(line)
 
         return bookmarks
 
@@ -108,11 +106,6 @@ class BookmarkCollection(BaseFileFormat):
         logging.info("Found %s links", len(bkmkList))
         return BookmarkCollection(bkmkList)
 
-    def add_file(self, f_name:pl.Path):
-        with open(f_name, 'r') as f:
-            for line in f.readlines():
-                self.entries.append(Bookmark.build(line))
-
     def __str__(self):
         return "\n".join([str(x) for x in sorted(self.entries)])
 
@@ -120,18 +113,7 @@ class BookmarkCollection(BaseFileFormat):
         return f"<{self.__class__.__name__}: {len(self)}>"
 
     def __iadd__(self, value):
-        assert(isinstance(value, (BookmarkCollection, Bookmark, list)))
-        if isinstance(value, Bookmark):
-            self.entries.append(value)
-        elif isinstance(value, BookmarkCollection):
-            self.entries += value.entries
-        elif isinstance(value, list):
-            assert(all([isinstance(x, Bookmark) for x in value]))
-            self.entries += value
-        else:
-            raise TypeError(type(value))
-
-        return self
+        return self.update(value)
 
     def __iter__(self):
         return iter(self.entries)
@@ -141,6 +123,19 @@ class BookmarkCollection(BaseFileFormat):
 
     def __len__(self):
         return len(self.entries)
+
+    def update(self, *values):
+        for val in values:
+            match value:
+                case Bookmark():
+                    self.entries.append(value)
+                case BookmarkCollection():
+                    self.entries += value.entries
+                case [*vals] | (*vals) | {*vals}:
+                    self.update(*vals)
+                case _:
+                    raise TypeError(type(value))
+        return self
 
     def difference(self, other:BookmarkCollection):
         result = BookmarkCollection()

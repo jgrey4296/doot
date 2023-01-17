@@ -32,7 +32,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import doot
-from doot.tasker import DootTasker
+from doot.tasker import DootTasker, DootActions
 from doot import globber
 
 def merge_json(target, source, key):
@@ -72,34 +72,41 @@ def merge_json(target, source, key):
             case bool(), bool():
                 pass
 
-class NoScriptMerge(DootTasker):
+class NoScriptMerge(DootTasker, DootActions):
     """
     merge noscript json files
     """
 
     def __init__(self, name="noscript::merge", dirs=None):
         super().__init__(name, dirs)
+        self.master_data = defaultdict(lambda: {})
 
     def task_detail(self, task):
+        srcs   = self.dirs.src.glob("noscript*.json")
+        target = self.build / "noscript_merged.json"
         task.update({
-            "actions" : [self.get_and_merge],
-            "targets" : [ self.build / "noscript_merged.json" ],
+            "actions" : [
+                (self.copy_to, [self.dirs.temp, target], {"fn": lambda d,x: d / f"{x.name}_backup"})
+                self.get_and_merge
+                lambda: {"json": json.dumps(self.master_data, indent=4, sort_keys=True, ensure_ascii=False)},
+                (self.write_to, [target, "json"])
+                self.report_on_data,
+            ],
+            "targets" : [ target ],
         })
         return task
 
-    def get_and_merge(self, targets):
-        final = defaultdict(lambda: {})
-
-        for target in self.dirs.src.glob("noscript*.json"):
+    def get_and_merge(self, srcs):
+        for src in srcs
             data = json.loads(target.read_text())
 
             for key in data:
-                merge_json(final, data, key)
+                merge_json(self.master_data, data, key)
 
         for site in final['policy']['sites']['trusted']:
-            assert(site not in final['policy']['sites']['untrusted']), site
+            assert(site not in self.master_data['policy']['sites']['untrusted']), site
 
+    def report_on_data(self):
         print("Final Sizes: ")
-        print(f"Trusted Sites: {len(final['policy']['sites']['trusted'])}")
-        print(f"UnTrusted Sites: {len(final['policy']['sites']['untrusted'])}")
-        pl.Path(targets[0]).write_text(json.dumps(final, indent=4, sort_keys=True, ensure_ascii=False))
+        print(f"Trusted Sites: {len(self.master_data['policy']['sites']['trusted'])}")
+        print(f"UnTrusted Sites: {len(self.master_data['policy']['sites']['untrusted'])}")

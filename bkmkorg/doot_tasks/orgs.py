@@ -31,10 +31,10 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import doot
-from doot.tasker import DootTasker
+from doot.tasker import DootTasker, DootActions
 from doot import globber
 
-class OrgCleaner(globber.EagerFileGlobber):
+class OrgCleaner(globber.EagerFileGlobber, DootActions):
     """
     Find and format any org files
     """

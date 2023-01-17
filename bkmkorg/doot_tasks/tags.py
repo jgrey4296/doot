@@ -34,10 +34,10 @@ import re
 from collections import defaultdict
 import fileinput
 import doot
-from doot.tasker import DootTasker
+from doot.tasker import DootTasker, DootActions
 from doot import globber
 
-from bkmkorg.file_formats.tagfile import SubstitutionFile
+from bkmkorg.file_formats.tagfile import TagFile, SubstitutionFile, IndexFile
 
 tag_path = doot.config.or_get("resources/tags").tool.doot.tags.loc()
 
@@ -47,11 +47,12 @@ bib_tag_re      = re.compile(r"^(\s+tags\s+= ){(.+?)},$")
 org_tag_re      = re.compile(r"^(** .+?)\s+:(.+?):$")
 bookmark_tag_re = re.compile(r"^(http.+?) : (.+)$")
 
-class TagsCleaner(globber.DirGlobber):
+class TagsCleaner(globber.DirGlobber, DootActions):
     """
     (src -> src) Clean tags in bib, org and bookmarks files,
     using tag substitution files
     """
+
     def __init__(self, name="", dirs=None, roots=None, rec=False, exts=None):
         super().__init__(name, dirs, roots or [dirs.src], rec=rec, exts=exts or [".bib", ".bookmarks", ".org"])
         self.tags = SubstitutionFile()
@@ -69,10 +70,12 @@ class TagsCleaner(globber.DirGlobber):
 
     def subtask_detail(self, task, fpath):
         task.update({
-            "actions" : [ (self.clean_orgs, [fpath]),
-                          (self.clean_bibs, [fpath]),
-                          (self.clean_bookmarks, [fpath]),
-                         ],
+            "actions" : [
+                (self.copy_to, [self.dirs.temp, fpath], {"is_backup": True}),
+                (self.clean_orgs, [fpath]),
+                (self.clean_bibs, [fpath]),
+                (self.clean_bookmarks, [fpath]),
+            ],
         })
         return task
 
@@ -101,7 +104,6 @@ class TagsCleaner(globber.DirGlobber):
                                 fileinput.filelineno(),
                                 err)
                 print(line)
-
 
     def clean_bibs(self, task, fpath):
         logging.info("Cleaning Bibs in %s", fpath)
@@ -143,25 +145,30 @@ class TagsCleaner(globber.DirGlobber):
                                 err)
                 print(line)
 
-
-class TagsReport(globber.EagerFileGlobber):
+class TagsReport(globber.EagerFileGlobber, DootActions):
     """
     (src -> build) Report on tags
     """
+
     def __init__(self, name="tags::report", dirs=None, roots=None, rec=True, exts=None):
         super().__init__(name, dirs, roots or [dirs.src], rec=rec, exts=exts or [".sub"])
         self.tags = SubstitutionFile()
 
-
     def task_detail(self, task):
+        report     = self.dirs.build / "tags.report"
+        all_subs   = self.dirs.temp  / "all_subs.sub"
+        all_counts = self.dirs.temp  / "all_counts.tags"
         task.update({
             "actions" : [ self.report_totals,
                           self.report_alphas,
                           self.create_report,
-                          self.write_report,
+                          (self.write_to, [report, "sum_count", "alphas", "subs"]),
+                          (self.write_to, [all_subs, "all_subs"]),
+                          (self.write_to, [all_counts, "all_counts"]),
                          ],
-            "targets" : [ self.dirs.build / "tags.report"]
+            "targets" : [ report, all_subs, all_counts ]
         })
+
     def subtask_detail(self, task, fpath):
         task.update({
             "actions" : [ (self.read_tags, [fpath]) ]
@@ -172,10 +179,12 @@ class TagsReport(globber.EagerFileGlobber):
         tags = SubstitutionFile.read(fpath)
         self.tags += tags
 
-
     def report_totals(self):
         count = len(self.tags)
-        return { "totals" : f"Total Count: {count}" }
+        return { "sum_count" : f"Total Count: {count}",
+                 "all_subs"  : str(self.tags),
+                 "all_counts": TagFile.__str__(self.tags)
+                }
 
     def report_alphas(self):
         counts = defaultdict(lambda: 0)
@@ -186,43 +195,76 @@ class TagsReport(globber.EagerFileGlobber):
 
         return { "alphas" : "Tag Distribution:\n" + report_str }
 
-
     def report_subs(self):
-        count = len(self.tags.mapping)
-        return { "substitutions" : f"Number of Subsitutions: {count}" }
+        count = len(self.tags.substitutions)
+        return { "subs" : f"Number of Subsitutions: {count}" }
 
-    def create_report(self, task):
-        """
-        Accumulate report components into a single string
-        """
-        total = "\n--------------------\n".join(self.task.values.values())
-        return { "report_total" : total }
-
-    def write_report(self, task):
-        target = self.dirs.build / "tags.report"
-        target.write(task.values['report_total'])
-
-class TagsIndexer(globber.EagerFileGlobber):
+class TagsIndexer(globber.EagerFileGlobber, DootActions):
     """
     extract tags from all globbed bookmarks, orgs, bibtexs
+    and index what tags are used in what files
     """
+
     def __init__(self, name="tags::index", dirs=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], rec=True, exts=[".bookmarks", ".org", ".bib"])
+        self.all_subs   = SubstitutionFile()
+        self.bkmk_index = IndexFile()
+        self.bib_index  = IndexFile()
+        self.org_index  = IndexFile()
+
+
+    def task_detail(self, task):
+        existing_indices = self.dirs.temp.glob("*.index")
+        all_subs         = self.dirs.temp / "all_subs.sub"
+        new_tags         = self.dirs.temp / "new_tags.tags"
+        bkmk_if          = self.dirs.temp / "bkmk.index"
+        bib_if           = self.dirs.temp / "bib.index"
+        org_if           = self.dirs.temp / "org.index"
+
+        task.update({
+            "actions" : [
+                (self.copy_to, [self.dirs.temp, *existing], {"is_backup": True}),
+                lambda: self.total_tags.update(self.bkmk_tags, self.bib_tags, self.org_tags),
+                lambda: {"bkmk_str"  : str(self.bkmk_index),
+                         "bib_str"   : str(self.bib_index),
+                         "org_str"   : str(self.org_index),
+                         },
+                (self.write_to, [bkmk_if, "bkmk_str"]),
+                (self.write_to, [bib_if, "bib_str"]),
+                (self.write_to, [org_if, "org_str"]),
+                lambda: self.all_subs.update(SubstitutionFile.read(all_subs))
+                self.calc_newtags,
+                (self.write_to, [new_tags, "new_tags"]),
+            ],
+            "file_dep" : [ all_subs ],
+            "targets"  : [ bkmk_if, bib_if, org_if, new_tags ],
+        })
+        return task
 
     def subtask_detail(self, task, fpath):
         match fpath.suffix:
             case ".bookmarks":
-                pass
+                action = self.process_bookmarks
             case ".bib":
-                pass
+                action = self.process_bibtex
             case ".org":
-                pass
+                action = self.process_org
 
         task.update({
-
-            "actions" : [],
+            "actions" : [(action, fpath)],
         })
         return task
+
+
+    def calc_newtags(self):
+        all_sub_set = self.all_subs.to_set()
+        new_bkmk = self.bkmk_index.to_set() - all_sub_set
+        new_bib  = self.bib_index.to_set() - all_sub_set
+        new_org  = self.org_index.to_set() - all_sub_set
+
+        new_tags = TagFile()
+        new_tags.update(new_bkmk | new_bib | new_org)
+        return { "new_tags" : str(new_tags) }
 
     def process_bookmarks(self, fpath):
         pass
@@ -232,3 +274,4 @@ class TagsIndexer(globber.EagerFileGlobber):
 
     def process_org(self, fpath):
         pass
+

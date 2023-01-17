@@ -31,7 +31,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import doot
-from doot.tasker import DootTasker
+from doot.tasker import DootTasker, DootActions
 from doot import globber
 
 import twitter

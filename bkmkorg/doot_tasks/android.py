@@ -35,7 +35,7 @@ logging = logmod.getLogger(__name__)
 from doit.action import CmdAction
 
 import doot
-from doot.tasker import DootTasker
+from doot.tasker import DootTasker, DootActions
 from doot import globber
 
 adb_path = shutil.which("adb")
@@ -48,7 +48,7 @@ wait_time    = doot.config.or_get(10).tools.doot.android.wait()
 
 NICE = ["nice", "-n", "10"]
 
-class ADBUpload(globber.DirGlobber):
+class ADBUpload(globber.DirGlobber, DootActions):
     """
     Push files from local to device
     """
@@ -70,7 +70,7 @@ class ADBUpload(globber.DirGlobber):
         ]
 
     def task_detail(self, task):
-        self.device_root = android_base / self.params['remote']
+        self.device_root = android_base / self.args['remote']
         task.update({
             "actions" : [ self.write_report ],
         })
@@ -81,22 +81,22 @@ class ADBUpload(globber.DirGlobber):
         rel = self.rel_path(fpath)
 
         task.update({
-            "actions" : [ CmdAction((self.push_dir, [rel], {}), shell=False) ],
+            "actions" : [ self.cmd(self.push_dir, rel) ],
         })
         return task
 
     def push_dir(self, relpath):
-        cmd = [ adb_path, "-t", self.params['id'],
+        cmd = [ adb_path, "-t", self.args['id'],
                 "push", "--sync",
-                pl.Path(self.params['local']) / relpath,
+                pl.Path(self.args['local']) / relpath,
                 (device_root / relpath).parent ]
         print(f"Push Cmd: {cmd}")
         return cmd
 
     def write_report(self):
-        return
+        raise NotImplementedError()
 
-class ADBDownload(DootTasker):
+class ADBDownload(DootTasker, DootActions):
     """
     pull files from device to local
     """
@@ -116,11 +116,11 @@ class ADBDownload(DootTasker):
         ]
 
     def task_detail(self, task):
-        self.device_root = android_base / self.params['remote']
-        self.local_root  = pl.Path(self.params['local'])
+        self.device_root = android_base / self.args['remote']
+        self.local_root  = pl.Path(self.args['local'])
         task.update({
-            "actions" : [ CmdAction(self.query_files, shell=False, save_out="immediate_files"),
-                          CmdAction(self.query_sub_dirs, shell=False, save_out="remote_subdirs"),
+            "actions" : [ self.cmd(self.query_files, save="immediate_files"),
+                          self.cmd(self.query_sub_dirs, save="remote_subdirs"),
                           self.batch_query_subdirs, # -> remote_files
                           self.calc_missing, # -> missing
                           self.pull_missing,
@@ -131,7 +131,7 @@ class ADBDownload(DootTasker):
         return task
 
     def query_sub_dirs(self):
-        cmd = [adb_path, "-t", self.params['id'],
+        cmd = [adb_path, "-t", self.args['id'],
                "shell", "find",
                 self.device_root,
                "-maxdepth", "1",
@@ -141,7 +141,7 @@ class ADBDownload(DootTasker):
         return cmd
 
     def query_files(self):
-        cmd = [adb_path, "-t", self.params['id'],
+        cmd = [adb_path, "-t", self.args['id'],
                "shell", "find",
                 self.device_root,
                "-maxdepth", "1",
@@ -164,10 +164,10 @@ class ADBDownload(DootTasker):
 
     def subdir_batch(self, data):
         print(f"Subdir Batch: {data}", file=sys.stderr)
-        query = CmdAction([adb_path, "-t", self.params['id'],
-                           "shell", "find", data[0],
-                           "-type", "d"
-                          ], shell=False)
+        query = self.cmd([adb_path, "-t", self.args['id'],
+                          "shell", "find", data[0],
+                          "-type", "d"
+                          ])
 
         query.execute()
         return query.out
@@ -189,14 +189,14 @@ class ADBDownload(DootTasker):
             if not dest.parent.exists():
                 dest.parent.mkdir(parents=True)
 
-            cmd_args = [adb_path, "-t", self.params['id'],
+            cmd_args = [adb_path, "-t", self.args['id'],
                         "pull",
                         src,
                         dest,
                         ]
 
-            cmd = CmdAction(cmd_args, shell=False)
+            cmd = self.cmd(cmd_args)
             cmd.execute()
 
     def write_report(self, task):
-        pass
+        raise NotImplementedException()

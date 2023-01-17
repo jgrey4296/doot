@@ -14,7 +14,6 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 
-from bkmkorg.file_formats.base_format import BaseFileFormat
 ##-- end imports
 
 logging = root_logger.getLogger(__name__)
@@ -22,162 +21,200 @@ logging = root_logger.getLogger(__name__)
 TAG_NORM = re.compile(" +")
 
 @dataclass
-class TagFile(BaseFileFormat):
+class TagFile:
     """ A Basic TagFile holds the counts for each tag use """
 
-    count   : Dict[str, int] = field(default_factory=lambda: defaultdict(lambda: 0))
-    sep     : str            = field(default=" : ")
-    ext     : str            = field(default=".tags")
+    counts : dict[str, int] = field(default_factory=lambda: defaultdict(lambda: 0))
+    sep    : str            = field(default=" : ")
+    ext    : str            = field(default=".tags")
 
     norm_regex : re.Pattern  = TAG_NORM
 
-
-    @staticmethod
-    def read(fpath:pl.Path) -> TagFile:
-        obj = TagFile()
+    @classmethod
+    def read(cls, fpath:pl.Path, sep=None) -> TagFile:
+        obj = cls(sep=sep)
         for i, line in enumerate(fpath.read_text.split("\n")):
             try:
-                match [x.strip() for x in line.split(obj.sep)]:
-                    case []:
-                        continue
-                    case [tag, count]:
-                        norm_tag = obj.norm_regex.sub("_", tag)
-                        int_count = int(count)
-                        obj.set_count(norm_tag, int_count)
-                    case _:
-                        raise Exception("Unrecognized result")
+                obj.update(tuple(x.strip() for x in line.split(obj.sep)))
             except Exception as err:
                 logging.warning("Failure Tag Reading %s (l:%s) : %s", fpath, i, err)
 
         return obj
 
-
     def __iter__(self):
-        return iter(self.count)
+        return iter(self.counts)
 
     def __str__(self):
         """
         Export the counts, 1 entry per line, as:
         `key` : `value`
         """
-        key_sort = sorted(list(self.count.keys()))
-        total = [self.sep.join([k, str(self.count[k])]) for k in key_sort]
-        return "\n".join(total)
+        all_lines = []
+        for key in sorted(self.counts.keys()):
+            if not bool(self.counts[key]):
+                continue
+            all_lines.append(self.sep.join([key, str(self.counts[k])]))
+        return "\n".join(all_lines)
 
     def __repr__(self):
         return f"<{self.__class__.__name__}: {len(self)}>"
 
     def __iadd__(self, values):
-        assert(isinstance(values, TagFile))
-        for key, value in values.count.items():
-            norm_key = self.norm_regex.sub("_", key.strip())
-            self.count[norm_key] += value
-
-        return self
+        return self.update(values)
 
     def __len__(self):
-        return len(self.count)
+        return len(self.counts)
 
     def __contains__(self, value):
-        return value in self.count
+        return value in self.counts
 
-    def inc(self, key, clean=True):
-        if not bool(key):
-            return
-        if clean:
-            key = self.norm_regex.sub("_", key.strip())
-
-        self.count[key] += 1
-
-    def set_count(self, key:str, value:int):
-        if not bool(key):
-            return
+    def _inc(self, key, *, amnt=1):
         norm_key = self.norm_regex.sub("_", key.strip())
-        self.count[norm_key] = value
+        self.counts[norm_key] += amnt
+        return norm_key
 
-    def update(self, values):
-        for tag in values:
-            self.inc(tag)
+    def update(self, *values):
+        for val in values:
+            match val:
+                case None or "":
+                    continue
+                case str():
+                    self._inc(val)
+                case (str() as key, int() as counts):
+                    self._inc(key, amnt=counts)
+                case TagFile():
+                    self.update(values.counts.items())
+                case set():
+                    self.update(*val)
+        return self
 
     def to_set(self) -> Set[str]:
-        return set(self.count.keys())
+        return set(self.counts.keys())
 
     def get_count(self, tag):
         norm_tag = self.norm_regex.sub("_", tag.strip())
-        return self.count[norm_tag]
-
-    def difference(self, other: 'TagFile') -> TagFile:
-        result = TagFile()
-        for tag in other:
-            if tag not in self:
-                result.set_count(tag, other.get_count(tag))
-
-        return result
+        return self.counts[norm_tag]
 
 @dataclass
 class SubstitutionFile(TagFile):
     """ SubstitutionFiles add a replacement tag for some tags """
 
-    ext     : str = field(default=".sub")
-    mapping : Dict[str, str] = field(default_factory=lambda: defaultdict(lambda: ""))
-
-    @staticmethod
-    def read(fpath:pl.Path) -> SubstitutionFile:
-        obj = SubstitutionFile()
-        for i, line in enumerate(fpath.read_text().split("\n")):
-            try:
-                match [ x.strip() for x in line.split(obj.sep) ]:
-                    case []:
-                        continue
-                    case [tag, count, *subs]:
-                        norm_tag = obj.norm_regex.sub("_", tag)
-                        int_count = int(count)
-                        norm_subs = [ obj.norm_regex.sub("_", x.strip()) for x in subs if bool(x.strip()) ]
-                        obj.set_count(norm_tag, int_count)
-                        if bool(norm_subs):
-                            obj.set_sub(norm_tag, obj.sep.join(norm_subs))
-                    case [tag, count]:
-                        norm_tag = obj.norm_regex.sub("_", tag)
-                        int_count = int(count)
-                        obj.set_count(norm_tag, int_count)
-                    case _:
-                        raise Exception("Unrecognized result")
-            except Exception as err:
-                logging.warning("Failure Sub Reading: %s (l:%s) : %s", fpath, i, err)
-
-        return obj
+    ext           : str                  = field(default=".sub")
+    substitutions : Dict[str, set[str]] = field(default_factory=lambda: defaultdict(set))
 
     def __str__(self):
         """
-        Export the mapping, 1 entry per line, as:
-        `key` : `count` : `substitution`
+        Export the substitutions, 1 entry per line, as:
+        `key` : `counts` : `substitution`
         """
-        key_sort = sorted(list(self.count.keys()))
-        total    = [self.sep.join([k, self.count[k]] + self.mapping[k]) for k in key_sort]
-        return "\n".join(total)
+        all_lines = []
+        for key in sorted(self.counts.keys()):
+            line = [k, self.counts[k]]
+            line += sorted(self.substitutions[k])
+            all_lines.append(self.sep.join(line))
+
+        return "\n".join(all_lines)
 
     def __iadd__(self, value):
-        assert(isinstance(value, SubstitutionFile))
-        for key in value.count:
-            self.count[key] += value.count[key]
-            if key in value.mapping and key not in self.mapping:
-                self.mapping[key] = value.mapping[key]
-            elif key in self.mapping and key in value.mapping:
-                raise Exception(f"Substitution Conflict for {key}")
+        return self.update(value)
+
+    def sub(self, value:str) -> set[str]:
+        """ apply a substitution if it exists """
+        if value in self.substitutions:
+            return self.substitutions[value]
+
+        return set([value])
+
+    def has_sub(self, value):
+        return value in self.substitutions
+
+    def update(self, *values):
+        for val in values:
+            match val:
+                case None | "":
+                    continue
+                case str():
+                    self._inc(val)
+                case (str() as key, int() as counts):
+                    self._inc(key, amnt=counts)
+                case (str() as key, int() as counts, *subs):
+                    norm_key = self._inc(key, amnt=counts)
+                    norm_subs = [ self.norm_regex.sub("_", x.strip()) for x in subs]
+                    self.substitutions[norm_key].update([x for x in norm_subs if bool(x)])
+                case SubstitutionFile():
+                    self.update(val.counts.items())
+                    for tag, subs in val.substitutions.items():
+                        self.substitutions[tag].update(subs)
+                case TagFile():
+                    self.update(val.counts.items())
 
         return self
 
-    def sub(self, value:str):
-        """ apply a substitution if it exists """
-        if value in self.mapping:
-            return self.mapping[value]
+@dataclass
+class IndexFile(TagFile):
+    """ Utility class for `bkmkorg`-wide index file specification and writing """
 
-        return value
+    mapping : Dict[str, Set[pl.Path]] = field(default_factory=lambda: defaultdict(set))
+    ext     : str                 = field(default=".index")
 
-    def has_sub(self, value):
-        return value in self.mapping
+    def __iadd__(self, value) -> IndexFile:
+        return self.update(value)
 
-    def set_sub(self, key, value):
-        if not bool(key):
-            return
-        self.mapping[key] = value
+    def __str__(self):
+        """
+        Export the mapping, 1 key per line, as:
+        `key` : `len(values)` : ":".join(`values`)
+        """
+        key_sort = sorted(list(self.mapping.keys()))
+        total = [self.sep.join([k, str(self.counts[k])]
+                               + sorted(str(y) for y in self.mapping[k]))
+                 for k in key_sort]
+        return "\n".join(total)
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}: {len(self)}>"
+
+    def update(self, *values):
+        for val in values:
+            match val:
+                case (str() as key, maybecount, *rest):
+                    paths = set(pl.Path(x) for x in rest)
+                    try:
+                        count = int(maybecount)
+                    except ValueError:
+                        paths.add(pl.Path(count))
+                        count = len(paths)
+
+                    norm_key = self._inc(key, amnt=count)
+                    self.mapping[key].update(paths)
+                case _:
+                    raise TypeError("Unexpected form in index update", val)
+
+        return self
+
+    def files_for(self, *values, op="union"):
+        the_files = None
+        match op:
+            case "union":
+                fn = lambda x, y: x & y
+            case "diff":
+                fn = lambda x, y: x | y
+            case "xor":
+                fn = lambda x, y: x ^ y
+            case "rem":
+                fn = lambda x, y: x - y
+            case _:
+                raise TypeError("Bad Op specified: ", op)
+
+        for val in values:
+            match the_files:
+                case None if val in self.mapping:
+                    the_files = self.mapping[val]
+                case None:
+                    continue
+                case {} if op != "union":
+                    return the_files
+                case _:
+                    the_files = fn(the_files, self.mapping[val])
+
+        return the_files

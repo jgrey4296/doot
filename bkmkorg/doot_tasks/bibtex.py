@@ -42,6 +42,7 @@ logging = logmod.getLogger(__name__)
 logmod.getLogger('bibtexparser').setLevel(logmod.CRITICAL)
 ##-- end logging
 
+from doot import tasker
 from bkmkorg.bibtex import entry_processors as entproc
 from bibtexparser.latexenc import string_to_latex
 
@@ -54,10 +55,10 @@ clean_in_place   = doot.config.or_get(False).tool.doot.bibtex.clean_in_place()
 
 ENT_const = 'ENTRYTYPE'
 
-class LibDirClean(globber.DirGlobber):
+class LibDirClean(globber.DirGlobber, tasker.DootActions):
     pass
 
-class BibtexClean(globber.EagerFileGlobber):
+class BibtexClean(globber.EagerFileGlobber, tasker.DootActions):
     """
     (src -> src) Clean all bib files
     formatting, fixing paths, etc
@@ -71,42 +72,54 @@ class BibtexClean(globber.EagerFileGlobber):
         self.issues = []
 
     def task_detail(self, task):
+        issue_report = self.dirs.build / "bib_clean_issues.report"
         task.update({
-            "name" : "report_issues",
-            "actions" : [self.write_issues]
+            "actions" : [
+                lambda: { "issues" : "\n".join(self.issues) },
+                (self.write_to, [issue_report, "issues"] ]
+                ],
+            "targets" : [issue_report],
         })
         return task
 
     def subtask_detail(self, task, fpath):
+        if clean_in_place:
+            target = fpath
+        else:
+            target = self.dirs.temp / fpath.name
         task.update({
-            "actions" : [ (self.clean_bibtex_file, [fpath]), # -> cleaned
-                          (self.write_cleaned, [fpath]),
+            "actions" : [ (self.load_and_clean, [fpath]), # -> cleaned
+                          self.process_whole_db,
+                          (self.db_to_string, "cleaned"),
+                          (self.write_to, [target, "cleaned"]),
                          ],
             "file_dep" : [ fpath ],
             "verbosity" : 2,
         })
         return task
 
-    def clean_bibtex_file(self, fpath):
+    def load_and_clean(self, fpath):
         self.current_year = fpath.stem
         # read
         self.current_db = bib_parse.parse_bib_files([fpath], func=self.clean_record)
 
+    def process_whole_db(self):
         # back to string to write out
         for entry in self.current_db.entries:
             self.prepare_entry_for_write(entry)
 
+    def db_to_string(self, key):
         db_text = self.writer.write(self.current_db)
         logging.info("Bibtex db -> Text (%s, %s)", len(db_text), len(self.current_db.entries))
-        return { 'cleaned' : db_text}
+        return { key : db_text}
 
     def clean_record(self, record):
         try:
             # Preprocess
-            record    = entproc.to_unicode(record)
-            entry     = entproc.split_names(record)
-            record    = bib_clean.expand_paths(record, LIB_ROOT)
-            base_name = bib_clean.get_entry_base_name(record)
+            record     = entproc.to_unicode(record)
+            entry      = entproc.split_names(record)
+            record     = bib_clean.expand_paths(record, LIB_ROOT)
+            base_name  = bib_clean.get_entry_base_name(record)
             ideal_stem = bib_clean.idealize_stem(record)
 
             self.check_year(record)
@@ -161,18 +174,8 @@ class BibtexClean(globber.EagerFileGlobber):
             print(f"{entry['ID']} : File Does Not Exist : {entry[field]}", file=sys.stderr)
             self.issues.append(f"{entry['ID']} : File Does Not Exist : {entry[field]}")
 
-    def write_cleaned(self, fpath, task):
-        logging.info("Writing out cleaned bibtex: (%s) %s", len(task.values['cleaned']), fpath)
-        if clean_in_place:
-            fpath.write_text(task.values['cleaned'])
-        else:
-            (self.dirs.temp / fpath.name).write_text(task.values['cleaned'])
 
-    def write_issues(self):
-        logging.info("Writing out %s issues", len(self.issues))
-        (self.dirs.build / "clean_issues.report").write_text("\n".join(self.issues))
-
-class BibtexReport(globber.EagerFileGlobber):
+class BibtexReport(globber.EagerFileGlobber, tasker.DootActions):
     """
     (src -> build) produce reports on the bibs found
     """
@@ -191,16 +194,37 @@ class BibtexReport(globber.EagerFileGlobber):
         self.editors : set[tuple[str, str]] = set()
 
     def task_detail(self, task):
+        years_target  = self.dirs.build / "years.report"
+        author_target = self.dirs.build / "authors.report"
+        editor_target = self.dirs.build / "editors.report"
+        types_target  = self.dirs.build / "types.report"
+        files_target  = self.dirs.build / "files.report"
+
         task.update({
             "name" : "final",
             "actions" : [
-                self.report_years,
-                self.report_authors_and_editors,
-                self.report_types,
-                self.report_files,
-                self.report_timelines,
+                lambda:   { "author_max" : max(len(x[0]) for x in self.authors) },
+                lambda t: { "author_lines" : (f"{last:<{t['author_max']}}{first}" for last,first in self.authors) },
+                lambda t: { "authors" : "\n".join(sorted(t['author_lines'], key=lambda x: x[0].lower())) },
+                (self.write_to, [author_target, "authors"]),
+
+                lambda:   { "editor_max" : max(len(x[0]) for x in self.editors) },
+                lambda t: { "editor_lines" : (f"{last:<{t['editor_max']}}{first}" for last,first in self.editors) },
+                lambda t: { "editors" : "\n".join(sorted(t['editor_lines'], key=lambda x: x[0].lower())) },
+                (self.write_to, [editor_target, "editors"]),
+
+                self.gen_years,
+                (self.write_to, [years_target, "years"]),
+
+                lambda: { "types" : "\n".join(sorted(f"{x:<15} : {y}" for x,y in self.type_counts.items())) },
+                (self.write_to, [types_target, "types"]),
+
+                lambda: { "files" : "\n".join(sorted(f"{x:<15} : {y}" for x,y in self.files_counts.items())) },
+                (self.write_to, [files_target, "files"]),
+
+                self.write_timelines,
             ],
-            "targets" : [self.dirs.build / f"{x}.report" for x in ["years", "authors", "editors", "types", "files", "timelines"]],
+            "targets" : [ years_target, author_target, editor_target, types_target, files_target, self.dirs.timelines ],
             "clean" : True,
         })
         return task
@@ -272,43 +296,17 @@ class BibtexReport(globber.EagerFileGlobber):
                 case _:
                     logging.warning("Unexpected item in bagging area: %s", parts)
 
-    def report_years(self):
+    def gen_years(self):
         """
         Report on bibliography year distributions of entries
         """
-        target = self.dirs.build / "years.report"
         years = [(int(x), f"{x:<8} : {y}") for x,y in self.year_counts.items()]
-        target.write_text("\n".join(x[1] for x in sorted(years, key=lambda x: x[0])))
+        return { "years" : ("\n".join(x[1] for x in sorted(years, key=lambda x: x[0]))) }
 
-    def report_authors_and_editors(self):
-        """
-        Report bibliography author distributions
-        """
-        author_target = self.dirs.build / "authors.report"
-        author_max = max(len(x[0]) for x in self.authors)
 
-        author_target.write_text("\n".join(sorted((f"{last:<{author_max}}{first}" for last,first in self.authors), key=lambda x: x[0].lower())))
 
-        editor_target = self.dirs.build / "editors.report"
-        editor_max = max(len(x[0]) for x in self.editors)
-        editor_target.write_text("\n".join(sorted((f"{last:<{editor_max}}{first}" for last,first in self.editors), key=lambda x: x[0].lower())))
 
-    def report_types(self):
-        """
-        Report entry type distributions (book, article, proceedings etc)
-        """
-        target = self.dirs.build / "types.report"
-        target.write_text("\n".join(sorted(f"{x:<15} : {y}" for x,y in self.type_counts.items())))
-
-    def report_files(self):
-        """
-        report file anomalys.
-        """
-        target = self.dirs.build / "files.report"
-
-        target.write_text("\n".join(sorted(f"{x:<15} : {y}" for x,y in self.files_counts.items())))
-
-    def report_timelines(self):
+    def write_timelines(self):
         """
         Report timelines of tag uses
         """
@@ -327,7 +325,7 @@ class BibtexReport(globber.EagerFileGlobber):
 
             out_target.write_text("\n".join(report))
 
-class BibtexStub(globber.EagerFileGlobber):
+class BibtexStub(globber.EagerFileGlobber, tasker.DootActions):
     """
     (src -> data) Create basic stubs for found pdfs and epubs
     """

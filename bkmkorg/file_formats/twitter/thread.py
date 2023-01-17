@@ -40,10 +40,8 @@ class TwitterOrg:
     tag_lookup   : 'TweetTodoFile'
     user_lookup  : Dict[str, Any]
 
-
     org_suffix    : str = field(default=".org")
     files_pattern : str = field(default="{}_files")
-
 
     _summary : Any                               = field(init=False, default=None)
     _id_s    : str                               = field(init=False, default=None)
@@ -98,9 +96,7 @@ class TwitterOrg:
                 dr.add("URL", "[[{}]]".format(self._summary['user']['url']))
             dr.add("TWITTER-BUFFER", "t")
 
-
         self._output.append(output)
-
 
     def build_threads(self):
         for thread in self._summary['threads']:
@@ -165,7 +161,6 @@ class TwitterThread:
                 obj.append(x)
             return obj
 
-
         thread_date = tweets[existing[0]]['created_at']
         date = TwitterThread.parse_date(thread_date)
         tags = {y.strip() for x in thread_tweet_ids for y in source_ids.mapping[x].split(",") if bool(y)}
@@ -212,7 +207,6 @@ class TwitterThread:
         """
         self.uses.add(value)
 
-
     @staticmethod
     def retarget_url(url, new_target_dir):
         logging.debug("Retargeting URL: %s to %s", split(url)[1], new_target_dir)
@@ -222,7 +216,6 @@ class TwitterThread:
     def parse_date( a_str) -> 'datetime':
         """ Parse a twitter 'created_at' string to a date """
         return datetime.datetime.strptime(a_str, TwitterThread.date_re)
-
 
     def __str__(self):
         output = OrgStrBuilder()
@@ -257,7 +250,6 @@ class TwitterThread:
         output.nl
 
         return str(output)
-
 
 @dataclass
 class TwitterTweet:
@@ -335,7 +327,6 @@ class TwitterTweet:
         except KeyError:
             pass
 
-
         # TODO min urls in full_text, append full urls at end
         media, alt_texts = TwitterTweet.get_tweet_media(tweet)
         if bool(media):
@@ -372,7 +363,6 @@ class TwitterTweet:
         output.add(self.text)
         output.nl
 
-
         # TODO alt_texts
         if bool(self.media) and not self.is_quote:
             with output.drawer("MEDIA") as dr:
@@ -382,7 +372,6 @@ class TwitterTweet:
         if bool(self.links) and not self.is_quote:
             with output.drawer("LINKS") as dr:
                 dr.add_keyless(*self.links)
-
 
         if self.quote is not None:
             output.add(self.quote[2])
