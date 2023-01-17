@@ -70,7 +70,7 @@ class JekyllBuild(DootTasker, DootActions):
 
     def cmd_builder(self):
         cmd = [ "jekyll", "build", "--config", self.jekyll_config ]
-        if self.params['drafts']:
+        if self.args['drafts']:
             cmd.append("--drafts")
 
         return cmd

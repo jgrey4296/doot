@@ -69,7 +69,7 @@ class LatexFirstPass(globber.EagerFileGlobber, DootActions):
     def compile_tex(self, dependencies):
         target = pl.Path(dependencies[0]).with_suffix("")
         return ["pdflatex",
-                f"-interaction={self.params['interaction']}",
+                f"-interaction={self.args['interaction']}",
                 f"-output-directory={self.dirs.temp}",
                 target]
 
@@ -113,7 +113,7 @@ class LatexSecondPass(globber.EagerFileGlobber, DootActions):
 
     def tex_cmd(self, fpath):
         return ["pdflatex",
-                f"-interaction={self.params['interaction']}",
+                f"-interaction={self.args['interaction']}",
                 f"-output-directory={self.dirs.temp}",
                 fpath.with_suffix("")]
 

@@ -107,8 +107,8 @@ class Images2PDF(globber.LazyFileGlobber, tasker.DootActions):
         task.update({
             "name"    : "build_single",
             "actions" : [ self.cmd(self.combine_pages) ],
-            "targets" : [ self.dirs.build / f"{self.params['name']}.pdf" ],
-            "clean"   : [ (self.rmglob, [self.dirs.build, f"{self.params['name']}.pdf"}]) ],
+            "targets" : [ self.dirs.build / f"{self.args['name']}.pdf" ],
+            "clean"   : [ (self.rmglob, [self.dirs.build, f"{self.args['name']}.pdf"}]) ],
         })
         return task
 

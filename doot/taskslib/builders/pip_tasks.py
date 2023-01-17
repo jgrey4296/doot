@@ -52,7 +52,7 @@ class IncrementVersion(DootTasker):
         return task
 
     def increment_pyproject(self):
-        assert(not (self.params['major'] and self.params['minor']))
+        assert(not (self.args['major'] and self.args['minor']))
         new_ver = None
         for line in fileinput.input(files=[self.dirs.root / "pyproject.toml"], inplace=True, backup=".backup"):
             matched = self.pyproject_ver_regex.match(line)
@@ -86,9 +86,9 @@ class IncrementVersion(DootTasker):
         (self.dirs.src/ "__init__.py.backup").unlink()
 
     def bump_version(self, major, minor, patch):
-        match (self.params['major'], self.params['minor'], self.params['force']):
+        match (self.args['major'], self.args['minor'], self.args['force']):
             case (_, _, str()):
-                return tuple(int(x) for x in self.params['force'].split("."))
+                return tuple(int(x) for x in self.args['force'].split("."))
             case (True, False, _):
                 return (major + 1, 0, 0)
             case (False, True, _):
@@ -138,11 +138,11 @@ class PyInstall(DootTasker, DootActions):
         task.update({
             "file_dep" : [self.dirs.root / "requirements.txt"],
         })
-        if self.params['uninstall']:
+        if self.args['uninstall']:
             task['actions'].append(self.cmd(["pip", "uninstall", "-y", self.dirs.root]))
             return task
 
-        if self.params['deps']:
+        if self.args['deps']:
             task['actions'].append(self.cmd(self.install_requirements))
 
         task['actions'].append(self.cmd(self.install_package))
@@ -150,18 +150,18 @@ class PyInstall(DootTasker, DootActions):
 
     def install_requirements(self, dependencies):
         args = ["pip", "install", "--no-input", "--requirement", dependencies[0] ]
-        if self.params['upgrade']:
+        if self.args['upgrade']:
             args.append('--upgrade')
-        if self.params['dryrun']:
+        if self.args['dryrun']:
             args.append("--dry-run")
 
         return args
 
     def install_package(self):
         args = ["pip", "install", "--no-input"]
-        if not self.params['regular']:
+        if not self.args['regular']:
             args.append("--editable")
-        if self.params['dryrun']:
+        if self.args['dryrun']:
             args.append("--dry-run")
 
         args.append(self.dirs.root)
@@ -207,14 +207,14 @@ class VenvNew(DootTasker, DootActions):
         ]
 
     def task_detail(self, task):
-        venv_path = self.dirs.temp / "venv" / self.params['name']
+        venv_path = self.dirs.temp / "venv" / self.args['name']
         build_venv = [ self.cmd(["python", "-m", "venv", venv_path ]),
                        self.cmd([ venv_path / "bin" / "pip",
                                  "install",
                                  "-r", self.dirs.root / "requirements.txt" ]),
                       ]
 
-        is_delete = all([self.params['delete'],
+        is_delete = all([self.args['delete'],
                          venv_path.exists(),
                          (venv_path / "pyvenv.cfg").exists()])
 

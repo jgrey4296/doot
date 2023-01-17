@@ -48,14 +48,14 @@ class GodotRunScene(globber.HeadlessFileGlobber, DootActions):
         return task
 
     def run_scene(self, dependencies):
-        return self.run_scene_with_arg(dependencies[0], self.params['debug'])
+        return self.run_scene_with_arg(dependencies[0], self.args['debug'])
 
     def run_scene_with_arg(self):
         args = ["godot"]
-        if self.params['debug']:
+        if self.args['debug']:
             args.append("-d")
 
-        args.append(self.params['target'])
+        args.append(self.args['target'])
         return args
 
 class GodotRunScript(globber.EagerFileGlobber, DootActions):
@@ -93,7 +93,7 @@ class GodotRunScript(globber.EagerFileGlobber, DootActions):
 
     def run_cmd(self, fpath):
         args = ["godot"]
-        if self.params['debug']:
+        if self.args['debug']:
             args.append("-d")
 
         args.append("--no-window")
@@ -147,8 +147,8 @@ class GodotBuild(DootTasker, DootActions):
     def cmd_builder(self, targets):
         return ["godot",
                 "--no-window",
-                f"--{self.params['build_type']}",
-                self.params['build_target'],
+                f"--{self.args['build_type']}",
+                self.args['build_target'],
                 targets[0]
                 ]
 

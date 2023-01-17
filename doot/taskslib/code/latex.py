@@ -83,7 +83,7 @@ class LatexCheckSweep(globber.EagerFileGlobber, DootActions):
     def build_draft_cmd(self, fpath):
         return ["pdflatex",
                 "-draftmode",
-                f"-interaction={self.params['interaction']}",
+                f"-interaction={self.args['interaction']}",
                 f"-output-directory={self.dirs.temp}",
                 fpath.with_suffix("")]
 
