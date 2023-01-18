@@ -136,7 +136,7 @@ class TomlAccess:
 
     def keys(self):
         table  = object.__getattribute__(self, "__table")
-        return table.keys()
+        return list(table.keys())
 
     def _report(self) -> list[str]:
         """
@@ -171,3 +171,12 @@ class TomlAccess:
                 return fallback.using(result)
             case _ as result:
                 return result
+
+
+    def __call__(self):
+        table    = getattr(self, "__table")
+        fallback = getattr(self, "__fallback")
+        if fallback is None:
+            raise TomlAccessError("Calling a TomlAccess only work's when guarded with or_get")
+
+        return fallback.using(self.keys())()

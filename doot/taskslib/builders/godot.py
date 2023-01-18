@@ -11,6 +11,21 @@ from doot.tasker import DootTasker, ActionsMixin
 ##-- end imports
 # https://docs.godotengine.org/en/stable/tutorials/editor/command_line_tutorial.html
 
+def task_godot_version():
+    return { "basename"  : "godot::version",
+             "actions"   : [
+                 ActionsMixin.force(None, ["godot", "--version"]),
+             ],
+             "verbosity" : 2,
+            }
+
+def task_godot_test():
+    """
+    TODO run godot tests
+    """
+    return { "basename": "godot::test",
+             "actions": []
+            }
 
 class GodotRunScene(globber.HeadlessGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
@@ -152,39 +167,26 @@ class GodotBuild(DootTasker, ActionsMixin):
                 targets[0]
                 ]
 
-def task_godot_version():
-    return { "basename"  : "godot::version",
-             "actions"   : [
-                 ActionsMixin.force(None, ["godot", "--version"]),
-             ],
-             "verbosity" : 2,
-            }
-
-def task_godot_test():
-    """
-    TODO run godot tests
-    """
-    return { "basename": "godot::test",
-             "actions": []
-            }
-
-def task_newscene(dirs:DootLocData):
+class GodotNewScene(DootTasker, ActionsMixin):
     """
     (-> [scenes])
     """
-    assert("scenes" in dirs.extra)
 
-    def mkscene(task, name):
-        return [ "touch", (dirs.extra['scenes'] / name).with_suffix(".tscn") ]
+    def __init__(self, name="godot::new.scene", dirs=None):
+        assert("scenes" in dirs.extra)
+        super().__init__(name, dirs)
 
-    return {
-        "basename" : "godot::new:scene",
-        "actions" : [ ActionsMixin.cmd(None, mkscene) ],
-        "set_params" : [
-            { "name"    : "name",
-              "short"   : "n",
-              "type"    : str,
-              "default" : "default"
-             }
-        ],
-        }
+    def set_params(self):
+        return [
+            { "name"    : "name", "short"   : "n", "type"    : str, "default" : "default"},
+        ]
+
+    def task_detail(self, task):
+        scene_file = self.dirs.extra['scenes'] / f"{self.args['name']}.tscn"
+        task.update({
+        "actions" : [
+            lambda: scene_file.write_text("# Stub"),
+            ],
+            "targets" : [scene_file],
+        })
+        return task

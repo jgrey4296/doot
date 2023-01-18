@@ -18,24 +18,17 @@ __all__ = [
 conf_builder    = doot.config.or_get("html", str).tool.doot.sphinx.builder()
 conf_verbosity  = int(doot.config.or_get(0, int).tool.door.sphinx.verbosity())
 
-def gen_toml(self):
-    return "\n".join(["[tool.doot.sphinx]",
-                      "builder   = \"html\"",
-                      "verbosity = 0",
-                      ])
-
-def task_browse(dirs:DootLocData) -> dict:
+def task_browse() -> dict:
     """[build] Task definition """
-    assert("html" in dirs.extra)
+    assert("html" in doot.locs)
     return {
         "basename"    : "sphinx::browse",
-        "actions"     : [ ActionsMixin.cmd(None, ["open", dirs.extra['html'] ]) ],
+        "actions"     : [ ActionsMixin.cmd(None, ["open", doot.locs.html ]) ],
         "task_dep"    : ["sphinx::doc"],
     }
 
 class SphinxDocTask(DootTasker, ActionsMixin):
     """([docs] -> build) Build sphinx documentation """
-    gen_toml = gen_toml
 
     def __init__(self, name="sphinx::doc", dirs:DootLocData=None, builder=None, verbosity:int=None):
         super().__init__(name, dirs)

@@ -3,166 +3,226 @@ from __future__ import annotations
 
 import pathlib as pl
 import shutil
-from sys import platform
+import sys
 
+from doit.action import CmdAction
 from doit.tools import Interactive
 
+import doot
 from doot.task_group import TaskGroup
-from doot.toml_access import TomlAccessError
+from doot.toml_access import TomlAccessError, TomlAccess
+from doot import tasker
 
 ##-- end imports
 # https://doc.rust-lang.org/cargo/index.html
 
-def task_cargo_build(dirs:DootLocData, target:tuple[str, str], profile="debug", data:pl.Path|str="Cargo.toml"):
+cargo = TomlAccess.load("Cargo.toml")
+config = TomlAccess.load("./.cargo/config.toml")
+
+build_path   = config.or_get(str(doot.locs.build)).build.target_dir()
+package_name = cargo.package.name
+profiles     = ["release", "debug", "dev"] + cargo.or_get([]).profile()
+binaries     = [x['name'] for x in  cargo.or_get([], list).bin()]
+lib_path     = cargo.or_get(None, None|str).lib.path()
+
+
+class CargoBuild(tasker.DootTasker, tasker.ActionsMixin):
     """
     Build rust binary target, using a tuple (type, name)
     eg: (bin, main) or (lib, mylib)
     """
-    base_name = f"cargo::build.{profile}.{target[1]}"
 
-    def cmd_builder(selection, task):
-        return ["cargo", "build", f"--{target[0]}", target[1], "--profile", profile]
+    def __init__(self, name="cargo::build", dirs=None):
+        super().__init__(name, dirs)
 
-    return {
-        "basename" : base_name,
-        "actions"  : [ CmdAction(cmd_builder, shell=False) ],
-        "targets"  : [ dirs.build  / profile / target[1] ],
-        "file_dep" : [ data ],
+    def set_params(self):
+        return [
+            { "name": "profile", "type": str, "short": "p", "default": "debug", "choices": [(x,"") for x in profiles] },
+            { "name": "target",  "type": str, "short": "t", "default": binaries[0], "choices": [(x, "") for x in binaries]},
+            { "name": "lib", "type": bool, "short": "l", "default": False},
         ]
-    }
 
-def task_cargo_install(profile="debug", data:pl.Path|str="Cargo.toml"):
-    """
-    install a rust binary
-    """
-    return {
-        "basename" : f"cargo::install.{profile}.{target[1]}",
-        "actions"  : [ CmdAction(["cargo", "install", "--profile", profile ], shell=False) ],
-        "file_dep" : [ data ],
-    }
+    def task_detail(self, task):
+        target_dir = self.dirs.build / self.args['profile']
+        match self.args['lib'], sys.platform:
+            case True, "darwin":
+                # libraries on mac need to be renamed:
+                lib_file     =  f"lib{package_name}.dylib"
+                build_target = target_dir / f"{package_name}.so"
+                actions      = [ self.cmd(self.lib_build),
+                                 (self.move_to, [build_target, target_dir / lib_file ]),
+                                ]
+            case True, _:
+                build_target =  target_dir / f"lib{package_name}.dylib"
+                actions      = [ self.cmd(self.lib_build) ]
+            case False, _:
+                build_target = target_dir / self.args['target']
+                actions      = [ self.cmd(self.binary_build) ]
 
-def task_cargo_test(profile="debug", data:pl.Path|str="Cargo.toml"):
-    """
-    run rust tests
-    """
-    return {
-        "basename" : f"cargo::test.{profile}",
-        "actions"  : [CmdAction(["cargo", "test", "--profile", profile, "--workspace"], shell=False) ],
-        "file_dep" : [ data ],
-    }
+        task.update({
+            "actions"  : actions,
+            "targets"  : [ build_target ],
+        })
+        return task
 
-def task_cargo_run(target:tuple[str, str], profile="debug", data:pl.Path|str="Cargo.toml"):
-    """
-    run a rust binary
-    """
-    return {
-        "basename" : "cargo::run.{profile}",
-        "actions"  : [CmdAction(["cargo", "run", f"--{target[0]}", target[1]], shell=False)],
-        "file_dep" : [data],
-        "task_dep" : ["_checkdir::build" ],
-    }
+    def binary_build(self):
+        return ["cargo", "build", "--bin", self.args['target'], "--profile", self.args['profile']]
 
-def task_cargo_doc(data:pl.Path|str="Cargo.toml"):
-    """
-    build rust docs
-    """
-    return {
-        "basename" : "cargo::doc",
-        "actions"  : [CmdAction(["cargo", "doc"], shell=False) ],
-        "file_dep" : [data],
-    }
+    def lib_build(self):
+        return ["cargo", "build", "--lib", "--profile", self.args['profile']]
 
-def task_cargo_clean(data:pl.Path|str="Cargo.toml"):
+class CargoInstall(tasker.DootTasker, tasker.ActionsMixin):
+
+    def __init__(self, name="cargo::install", dirs=None):
+        super().__init__(name, dirs)
+
+    def set_params(self):
+        return [
+            { "name": "profile", "type": str, "short": "p", "default": "debug", "choices": [(x,"") for x in profiles] },
+            { "name": "target",  "type": str, "short": "t", "default": binaries[0], "choices": [(x, "") for x in binaries]},
+        ]
+
+    def task_detail(self, task):
+        task.update({
+            "actions"  : [ self.cmd(self.binary_build) ],
+        })
+        return task
+
+    def binary_build(self):
+        return ["cargo", "install", "--bin", self.args['target'], "--profile", self.args['profile']]
+
+class CargoTest(tasker.DootTasker, tasker.ActionsMixin):
+
+    def __init__(self, name="cargo::test", dirs=None):
+        super().__init__(name, dirs)
+
+    def set_params(self):
+        return [
+            { "name": "profile", "type": str, "short": "p", "default": "debug", "choices": [(x,"") for x in profiles] },
+            { "name": "name", "type": str, "short": "n", "default": ""},
+            { "name": "no_run", "type": bool, "long": "no-run", "default": False},
+        ]
+
+    def task_detail(self, task):
+        task.update({
+            "actions"  : [ self.cmd(self.test_cmd) ],
+            "targets"  : [  ],
+        })
+        return task
+
+    def test_cmd(self):
+        return ["cargo", "test", "--bin", self.args['target'], "--profile", self.args['profile']]
+
+class CargoDocs(tasker.DootTasker, tasker.ActionsMixin):
+
+    def __init__(self, name="cargo::docs", dirs=None):
+        super().__init__(name, dirs)
+
+    def set_params(self):
+        return [
+            {"name": "no-deps", "type": bool, "short": "d", "default": True}
+        ]
+
+    def task_detail(self, task):
+        task.update({
+            "actions"  : [ self.cmd(["cargo", "doc"]) ],
+        })
+        return task
+
+
+class CargoRun(tasker.DootTasker, tasker.ActionsMixin):
+
+    def __init__(self, name="cargo::run", dirs=None):
+        super().__init__(name, dirs)
+
+    def set_params(self):
+        return [
+            { "name": "profile", "type": str, "short": "p", "default": "debug", "choices": [(x,"") for x in profiles] },
+            { "name": "target",  "type": str, "short": "t", "default": binaries[0], "choices": [(x, "") for x in binaries]},
+        ]
+
+    def task_detail(self, task):
+        task.update({
+            "actions"  : [ self.cmd(["cargo", "run", "--bin", self.args['target'], "--profile", self.args['profile'] ]) ],
+        })
+        return task
+
+class CargoClean(tasker.DootTasker, tasker.ActionsMixin):
     """
     clean the rust project
     """
-    return {
-        "basename" : "cargo::clean",
-        "actions"  : [CmdAction(["cargo", "clean"], shell=False) ],
-        "file_dep" : [ data ],
-    }
+    def __init__(self, name="cargo::clean", dirs=None):
+        super().__init__(name, dirs)
 
+    def task_detail(self, task):
+        task.update({
+            "actions"  : [ self.cmd(["cargo", "clean"]) ],
+        })
+        return task
 
-def task_cargo_check(data:pl.Path|str="Cargo.toml"):
+class CargoCheck(tasker.DootTasker, tasker.ActionsMixin):
     """
-    lint the rust project
+    run cargo check on the project
     """
-    return {
-        "basename" : "cargo::check",
-        "actions"  : [ CmdAction(["cargo", "check", "--workspace"], shell=False) ],
-        "file_dep" : [data],
-    }
 
-def task_cargo_update(data:pl.Path|str="Cargo.toml"):
+    def __init__(self, name="cargo::check", dirs=None):
+        super().__init__(name, dirs)
+
+    def task_detail(self, task):
+        task.update({
+            "actions"  : [ self.cmd(["cargo", "check", "--workspace"]) ],
+        })
+        return task
+
+class CargoUpdate(tasker.DootTasker, tasker.ActionsMixin):
     """
     update rust and dependencies
     """
-    return {
-        "basename" : "cargo::update",
-        "actions"  : [CmdAction(["rustup", "update"], shell=False),
-                      CmdAction(["cargo", "update"], shell=False),
-                      ],
-        "file_dep" : [data],
-    }
 
-def task_cargo_mac_lib(dirs:DootLocData, package:str, profile="debug", data:pl.Path|str="Cargo.toml"):
-    """
-    rename the produced rust binary on mac os,
-    for rust-py interaction
-    """
-    if platform != "darwin":
-        return None
+    def __init__(self, name="cargo::update", dirs=None):
+        super().__init__(name, dirs)
 
-    lib_file    = dirs.build  / profile / f"lib{package}.dylib"
-    shared_file = dirs.build / profile / f"{package}.so"
+    def task_detail(self, task):
+        task.update({
+            "actions"  : [ self.cmd(["rustup", "update"]),
+                           self.cmd(["cargo", "update"]),
+                          ],
+        })
+        return task
 
-    def rename_target(task):
-        lib_file.rename(shared_file)
-
-    cmd = f"cp {lib_file} {shared_file}"
-
-    yield {
-        "basename" : f"cargo::mac.{profile}.lib",
-        "actions"  : [ rename_target ],
-        "target"   : [ shared_file ],
-        "file_dep" : [ data, , lib_file],
-        "task_dep" : [ f"_cargo::build.{profile}.lib" ],
-    }
-
-    build_lib = task_cargo_build(dirs.build, target=("lib", fname), profile=profile, data=data)
-    build_lib['basename'] = f"_cargo::build.{profile}.lib"
-    yield build_lib
-
-
-
-def task_cargo_debug(dirs:DootLocData, target:tuple[str, str], data:pl.Path|str="Cargo.toml"):
+class CargoDebug(tasker.DootTasker, tasker.ActionsMixin):
     """
     Start lldb on the debug build of the rust binary
     """
-    assert(target[0] == "bin")
-    return {
-        "basename" : f"cargo::debug.{target[1]}"
-        "actions"  : [Interactive(["lldb", dirs.build / "debug" / target[1] ], shell=False)],
-        "file_dep" : [ data, dirs.build / "debug" / target[1] ],
-        "task_dep" : [f"cargo::build.debug.{target[1]}"],
-    }
 
-def task_cargo_version(data:pl.Path|str="Cargo.toml"):
+    def __init__(self, name="cargo::debug", dirs=None):
+        super().__init__(name, dirs)
+
+    def set_params(self):
+        return [
+            { "name": "target",  "type": str, "short": "t", "default": binaries[0], "choices": [(x, "") for x in binaries]},
+        ]
+
+    def task_detail(self, task):
+        task.update({
+                "actions"  : [ self.interact(["lldb", self.dirs.build / "debug" / self.args['target'] ]) ],
+                "file_dep" : [ self.dirs.build / "debug" / self.args['target'] ],
+            })
+        return task
+
+def task_cargo_version():
     return {
         "basename" : "cargo::version",
-        "actions" : [CmdAction(["cargo", "--version"], shell=False),
-                     CmdAction(["rustup", "--version"], shell=False),
-                     CmdAction(["rustup", "show"], shell=False),
+        "actions" : [ tasker.ActionsMixin.cmd(None, ["cargo", "--version"]),
+                      tasker.ActionsMixin.cmd(None, ["rustup", "--version"]),
+                      tasker.ActionsMixin.cmd(None, ["rustup", "show"]),
                      ],
-        "file_dep" : [data],
         "verbosity" : 2,
     }
 
-
-def task_cargo_report(data:pl.Path|str="Cargo.toml"):
+def task_cargo_report():
     return {
         "basename"  : "cargo::report",
-        "actions"   : [CmdAction(["cargo", "report", "future-incompat"], shell=False) ],
-        "file_dep"  : [data],
+        "actions"   : [ tasker.ActionsMixin.cmd(None, ["cargo", "report", "future-incompat"]) ],
         "verbosity" : 2,
     }

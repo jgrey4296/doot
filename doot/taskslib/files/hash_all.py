@@ -134,7 +134,7 @@ class GroupHashes(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Actions
         with open(self.dirs.temp / self.hash_concat, 'a') as f:
             f.write("\n" + fpath.read_text())
 
-class DuplicateHashes(tasker.DootTasker, tasker.ActionsMixin):
+class DetectDuplicateHashes(tasker.DootTasker, tasker.ActionsMixin):
     """
     sort all_hashes, and run uniq of the first n chars
     """

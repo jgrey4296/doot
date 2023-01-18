@@ -25,23 +25,10 @@ vis_out_ext = doot.config.or_get(".dot", str).tool.doot.clingo.vis_out_ext()
 
 clingo_call = ["clingo"] + data.toml.or_get([]).tool.doot.clingo.options()
 
-def gen_toml(self):
-    return "\n".join(["[tool.doot.clingo]",
-                      "# For running default clingo files:",
-                      "src_ext     = \".lp\"",
-                      "out_ext     = \".asp_result\"",
-                      "options     = []",
-                      "# For producing visualisable output:",
-                      "vis_src_ext = \".lp_vis\"",
-                      "vis_in_ext  = \".json\"",
-                      "vis_out_ext = \".dot\"",
-                      ])
-
 class ClingoRunner(globber.DootEagerGlobber, ActionsMixin):
     """
     ([src] -> build) Run clingo on ansprolog sources
     """
-    gen_toml = gen_toml
 
     def __init__(self, name="clingo::run", dirs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], exts=[src_ext], rec=rec)
@@ -64,7 +51,6 @@ class ClingoDotter(globber.DootEagerGlobber, ActionsMixin):
     """
     ([src] -> build) Run specified clingo files to output json able to be visualised
     """
-    gen_toml = gen_toml
 
     def __init__(self, name="clingo::dotter", dirs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], exts=[vis_src_ext], rec=rec)
@@ -88,7 +74,6 @@ class ClingoVisualise(globber.DootEagerGlobber, ActionsMixin):
     TODO ([src] -> visual) Take clingo output with nodes,
     and convert to dot format
     """
-    gen_toml = gen_toml
 
     def __init__(self, name="clingo::visual", dirs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], exts=[vis_in_ext], rec=rec)

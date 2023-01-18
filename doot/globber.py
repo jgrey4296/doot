@@ -62,7 +62,7 @@ class DootEagerGlobber(DootSubtasker):
         self.total_subtasks    = 0
         for x in roots:
             if not pl.Path(x).exists():
-                depth = len(set(self.__class__.mro()) - set(EagerFileGlobber.mro())) + 1
+                depth = len(set(self.__class__.mro()) - set(DootEagerGlobber.mro()))
                 warnings.warn(f"Globber Missing Root: {x}", stacklevel=depth)
 
     def filter(self, target:pl.Path) -> bool | GlobControl:
@@ -143,9 +143,6 @@ class DootEagerGlobber(DootSubtasker):
         self.total_subtasks = len(subtasks)
         return subtasks
 
-class EagerFileGlobber(DootEagerGlobber):
-    pass
-
 # Multiple Inheritances:
 class DirGlobMixin:
     """
@@ -212,7 +209,6 @@ class HeadlessGlobMixin:
         then customizing the subtasks
         """
         return super(DootSubtasker, self)._build_task()
-
 
 class SubGlobMixin:
     """

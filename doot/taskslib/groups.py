@@ -40,17 +40,12 @@ __all__ = [ "defaults_group",
            ]
 
 ##-- defaults
-defaults_group = TaskGroup("defaults")
+defaults_group = TaskGroup("defaults", as_creator=False)
 try:
     from doot.taskslib.files import list_all
-    for x,y in doot.locs:
-        try:
-            defaults_group += list_all.task_list_target(x, y, doot.locs)
-        except DootDirAbsent:
-            pass
+    defaults_group += list_all.FileListings(dirs=doot.locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    logging.debug("To activate group, defaults needs: %s", err)
     if doot.config.or_get(False, bool).tool.doot.group.defaults.debug():
         print("To activate group, defaults needs: ", err)
 
@@ -73,7 +68,6 @@ try:
     pip_group += pipper.PipReqs(dirs=pip_dirs)
     pip_group += pipper.VenvNew(dirs=pip_dirs)
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    logging.debug("To activate group, pip needs: %s", err)
     if doot.config.or_get(False, bool).tool.doot.group.pip.debug():
         print("To activate group pip needs: ", err)
 ##-- end pip
@@ -92,7 +86,6 @@ try:
     py_group += py_tasks.PyUnitTestGlob(dirs=py_dirs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    logging.debug("To activate group, python needs: %s", err)
     if doot.config.or_get(False, bool).tool.doot.group.python.debug():
         print("To activate group python needs: ", err)
 
@@ -124,7 +117,6 @@ try:
     jekyll_group += j_doc.GenTagsTask(dirs=jekyll_dirs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    logging.debug("To activate group, jekyll needs: %s", err)
     if doot.config.or_get(False, bool).tool.doot.group.jekyll.debug():
         print("To activate group, jekyll needs: ", err)
 
@@ -146,7 +138,6 @@ try:
     latex_group += latex.task_latex_rebuild
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    logging.debug("To activate group, latex needs: %s", err)
     if doot.config.or_get(False, bool).tool.doot.group.latex.debug():
         print("To activate group, latex needs: ", err)
 ##-- end latex
@@ -165,7 +156,6 @@ try:
     sphinx_group += sphinx.task_browse(sphinx_dirs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    logging.debug("To activate group, sphinx needs: %s", err)
     if doot.config.or_get(False, bool).tool.doot.group.sphinx.debug():
         print("To activate group, sphinx needs: ", err)
 ##-- end sphinx
@@ -184,7 +174,6 @@ try:
     tags_group += taggers.task_tags(gtags_dirs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    logging.debug("To activate group, tags needs: %s", err)
     if doot.config.or_get(False, bool).tool.doot.group.tags.debug():
         print("To activate group, tags needs: ", err)
 ##-- end tags
@@ -201,7 +190,6 @@ try:
     git_group += git_tasks.GitLogAnalyseTask(dirs=vcs_dirs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    logging.debug("To activate group, git needs: %s", err)
     if doot.config.or_get(False, bool).tool.doot.group.git.debug():
         print("To activate group, git needs: ", err)
 
@@ -211,34 +199,24 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 cargo_group = TaskGroup("cargo_group")
 try:
     doot.config.tool.doot.group.cargo
-    doot.config.package
-    # TODO swap this with a load of cargo file
-    bin_file = doot.config.package.name
-    try:
-        bin_file = doot.config.bin[0].name
-    except TomlAccessError:
-        pass
 
-    cargo_dirs = door_dirs.extend(name="cargo")
     from doot.taskslib.builders import cargo
+    cargo_dirs = doot.locs.extend(name="cargo",
+                                  build=cargo.build_path)
 
-    cargo_group += cargo.task_cargo_build(cargo_dirs, ("bin", bin_file))
-    cargo_group += cargo.task_cargo_build(cargo_dirs, ("bin", bin_file), profile="release")
-    cargo_group += cargo.task_cargo_mac_lib(cargo_dirs, package=doot.config.package.name)
-    cargo_group += cargo.task_cargo_install
-    cargo_group += cargo.task_cargo_test(("bin", "bin_file"))
-    cargo_group += cargo.task_cargo_run
-    cargo_group += cargo.task_cargo_doc
-    cargo_group += cargo.task_cargo_clean
-    cargo_group += cargo.task_cargo_check
-    cargo_group += cargo.task_cargo_update
-    cargo_group += cargo.task_rustup_show
-    cargo_group += cargo.task_cargo_help
-    cargo_group += cargo.task_cargo_debug(cargo_dirs, target=("bin", bin_file))
+    cargo_group += cargo.CargoBuild(dirs=cargo_dirs)
+    cargo_group += cargo.CargoInstall(dirs=cargo_dirs)
+    cargo_group += cargo.CargoTest(dirs=cargo_dirs)
+    cargo_group += cargo.CargoDocs(dirs=cargo_dirs)
+    cargo_group += cargo.CargoRun(dirs=cargo_dirs)
+    cargo_group += cargo.CargoClean(dirs=cargo_dirs)
+    cargo_group += cargo.CargoCheck(dirs=cargo_dirs)
+    cargo_group += cargo.CargoUpdate(dirs=cargo_dirs)
+    cargo_group += cargo.CargoDebug(dirs=cargo_dirs)
+    cargo_group += cargo.task_cargo_report
     cargo_group += cargo.task_cargo_version
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    logging.debug("To activate group, cargo needs: %s", err)
     if doot.config.or_get(False, bool).tool.doot.group.cargo.debug():
         print("To activate group, cargo needs: ", err)
 
@@ -263,7 +241,6 @@ try:
     gradle_group += gradle.task_gradle_projects
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    logging.debug("To activate group, gradle needs: %s", err)
     if doot.config.or_get(False, bool).tool.doot.group.gradle.debug():
         print("To activate group, gradle needs: ", err)
 
@@ -285,7 +262,6 @@ try:
     epub_group += epub.EbookNewPandoc(dirs=epub_dirs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    logging.debug("To activate group, epub needs: %s", err)
     if doot.config.or_get(False, bool).tool.doot.group.epub.debug():
         print("To activate group, epub needs: ", err)
 

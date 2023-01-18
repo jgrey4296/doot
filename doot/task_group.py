@@ -9,6 +9,7 @@ from __future__ import annotations
 import abc
 import logging as logmod
 import pathlib as pl
+import types
 import re
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
@@ -60,7 +61,9 @@ class TaskGroup:
         self.tasks.append(other)
         return self
     def to_dict(self):
-        return {f"__doot_{self.name}_{id(x)}": x for x in self.tasks}
+        # this can add taskers to the namespace,
+        # but doesn't help for dicts
+        return {f"doot_{self.name}_{id(x)}": x for x in self.tasks}
 
 
     def add_tasks(self, *other):
@@ -68,16 +71,20 @@ class TaskGroup:
             self.tasks.append(other)
 
     def _build_task(self):
-        yield {
-            "basename" : self.name,
-            "name"     : None,
-            "uptodate" : [False],
-            "actions"  : [],
-        }
+        # yield {
+        #     "basename" : "_" + self.name,
+        #     "name"     : None,
+        #     "uptodate" : [False],
+        #     "actions"  : [],
+        # }
 
         for task in self.tasks:
             match task:
                 case dict():
                     yield task
+                case types.GeneratorType():
+                    yield task
+                case types.FunctionType() | types.MethodType():
+                    yield task()
                 case _:
                     yield task._build_task()

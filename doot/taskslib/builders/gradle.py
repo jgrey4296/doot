@@ -17,7 +17,6 @@ data_path               = files("doot.__templates")
 log_properties_template = data_path.joinpath("gradle_logging")
 ##-- end data
 
-
 def task_gradle_run():
     """:: run a program """
 
@@ -96,7 +95,7 @@ def task_gradle_version():
         "verbosity" : 2,
     }
 
-def task_gradle_test() -> dict:
+def task_gradle_test():
     """:: run the project tests """
     return {
         "basename" : "gradle::test",

@@ -15,14 +15,13 @@ from doot.tasker import DootTasker, ActionsMixin
 
 ##-- end imports
 
-
 __all__ = [
     "task_jekyll_serve", "task_jekyll_build",
     "task_init_jekyll", "task_jekyll_install"
 ]
 
-
 def task_jekyll_serve():
+
     def serve():
         cmd = ["bundle", "exec", "jekyll", "serve"]
         return cmd
@@ -35,7 +34,25 @@ def task_jekyll_serve():
         "basename" : "jekyll::serve"
     }
 
+def task_jekyll_install():
+    """
+    install the dependencies of jekyll,
+    and create an initial config file
 
+    # TODO add uptodate for if jekyll is installed
+    """
+    return {
+        "basename" : "jekyll::install",
+        "actions" : [CmdAction(["brew", "install", "chruby", "ruby-install", "xz"], shell=False),
+                     CmdAction(["ruby-install", "ruby"], shell=False),
+                     CmdAction(["chruby", "ruby-3.1.2"], shell=False),
+                     CmdAction(["gem", "install", "jekyll", "tomlrb"], shell=False),
+                     CmdAction(["bundle", "init"], shell=False),
+                     CmdAction(["bundle", "add", "jekyll"], shell=False),
+                     CmdAction(["bundle", "add", "jekyll-sitemap"], shell=False),
+                     ],
+        "clean"   : True,
+    }
 
 class JekyllBuild(DootTasker, ActionsMixin):
     """
@@ -74,26 +91,3 @@ class JekyllBuild(DootTasker, ActionsMixin):
             cmd.append("--drafts")
 
         return cmd
-
-
-
-def task_jekyll_install():
-    """
-    install the dependencies of jekyll,
-    and create an initial config file
-
-    # TODO add uptodate for if jekyll is installed
-    """
-    return {
-        "basename" : "jekyll::install",
-        "actions" : [CmdAction(["brew", "install", "chruby", "ruby-install", "xz"], shell=False),
-                     CmdAction(["ruby-install", "ruby"], shell=False),
-                     CmdAction(["chruby", "ruby-3.1.2"], shell=False),
-                     CmdAction(["gem", "install", "jekyll", "tomlrb"], shell=False),
-                     CmdAction(["bundle", "init"], shell=False),
-                     CmdAction(["bundle", "add", "jekyll"], shell=False),
-                     CmdAction(["bundle", "add", "jekyll-sitemap"], shell=False),
-                     ],
-        "clean"   : True,
-    }
-

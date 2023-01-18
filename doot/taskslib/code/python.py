@@ -21,22 +21,9 @@ py_test_dir_fmt = doot.config.or_get("__test", str).tool.doot.python.test.dir_fm
 py_test_args    = doot.config.or_get([], list).tool.doot.python.test.args()
 py_test_out     = pl.Path(doot.config.or_get("result.test", str).tool.doot.python.test())
 
-def gen_toml(self):
-    return "\n".join(["[tool.doot.python.lint]",
-                      "exec = \"pylint\"",
-                      "output-format = \"text\"",
-                      "output-name = \"lint.results\"",
-                      "error = false",
-                      "grouped = false",
-                      "[tool.doot.python.test]",
-                      "dir-fmt = \"__test\"",
-                      "args    = []",
-                      ])
-
 
 class InitPyGlobber(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """ ([src] -> src) add missing __init__.py's """
-    gen_toml = gen_toml
 
     def __init__(self, name=f"{prefix}::initpy", dirs:DootLocData=None, roots=None, rec=False):
         super().__init__(name, dirs, roots or [dirs.src], rec=rec)
@@ -69,7 +56,6 @@ class InitPyGlobber(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin
 class PyLintTask(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """ ([root]) lint the package """
 
-    gen_toml = gen_toml
 
     def __init__(self, name=f"{prefix}::lint", dirs:DootLocData=None, rec=None):
         super().__init__(name, dirs, [dirs.root], rec=rec or not lint_grouped)
@@ -121,7 +107,6 @@ class PyUnitTestGlob(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixi
     ([root]) Run all project unit tests
     """
 
-    gen_toml = gen_toml
 
     def __init__(self, name=f"{prefix}::test", dirs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.root], exts=[".py"], rec=rec)
@@ -151,7 +136,6 @@ class PyTestGlob(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     ([src]) Run all project unit tests
     """
 
-    gen_toml = gen_toml
 
     def __init__(self, name=f"{prefix}::test", dirs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], exts=[".py"], rec=rec)
@@ -179,6 +163,5 @@ class PyParseRailroad(DootTasker):
     python "$(PY_TOP)/util/build_railroad.py" --parser instal.parser.v1 --out "$(DOCBUILDDIR)"
     """
 
-    gen_toml = gen_toml
 
     pass

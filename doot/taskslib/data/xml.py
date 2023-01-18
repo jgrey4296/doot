@@ -24,8 +24,6 @@ from doot import tasker
 
 # TODO config get data dirs
 
-def gen_toml(self):
-    return "\n".join([])
 
 class XmlElementsTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
     """

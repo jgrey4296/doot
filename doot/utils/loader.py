@@ -86,6 +86,8 @@ class DootLoader(NamespaceTaskLoader):
                 logging.info("Expanding: %s", x)
                 group_tasks.update(x.to_dict())
 
+
+        logging.debug("Total Expanded Tasks: %s", list(x for x in group_tasks.keys()))
         self.namespace.update(group_tasks)
 
         logging.info("Creating Tasks")
@@ -93,6 +95,7 @@ class DootLoader(NamespaceTaskLoader):
             self.namespace, self.cmd_names, allow_delayed=cmd.execute_tasks,
             args=pos_args, config=self.config, task_opts=self.task_opts)
 
+        logging.info("Tasks: %s", tasks)
 
         # Add task options from config, if present
         if self.config is not None:

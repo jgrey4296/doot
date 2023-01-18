@@ -21,13 +21,13 @@ toml_template   = data_path / "basic_toml"
 dooter_template = data_path / "dooter"
 ##-- end data
 
-__version__ = "0.0.1"
+__version__              = "0.0.1"
 
-default_dooter      = pl.Path("dooter.py")
-default_py          = pl.Path("pyproject.toml")
-default_rust        = pl.Path("Cargo.toml")
-default_rust_config = pl.Path("./.cargo/config/toml")
-default_agnostic    = pl.Path("doot.toml")
+default_dooter           = pl.Path("dooter.py")
+default_py               = pl.Path("pyproject.toml")
+default_rust             = pl.Path("Cargo.toml")
+default_rust_config      = pl.Path("./.cargo/config.toml")
+default_agnostic         = pl.Path("doot.toml")
 
 config     : TomlAccess  = None
 locs       : DootLocData = None
@@ -46,8 +46,6 @@ def setup():
 
     if default_py.exists():
         return setup_py()
-    elif default_rust.exists():
-        return setup_rust()
 
 def setup_agnostic(path=default_agnostic):
     global config, locs
@@ -68,12 +66,5 @@ def setup_agnostic(path=default_agnostic):
 def setup_py(path=default_py):
     logging.info("Found: pyproject.toml, using project.name as src location")
     pyproject = TomlAccess.load(path)
-    locs.update(src=pyproject.project.name)
-
-def setup_rust(path=default_rust, config_path=default_rust_config):
-    logging.info("Found: cargo.toml, using package.name as src location and build.target_dir for build location")
-    cargo        = TomlAccess.load(path)
-    cargo_config = TomlAccess.load(config_path)
-
-    locs.update(src=cargo.package.name,
-                build=cargo_config.build.target_dir)
+    if config.or_get(None).tool.doot.directories.src() is None:
+        locs.update(src=pyproject.project.name)

@@ -30,10 +30,6 @@ framerate   : int       = doot.config.or_get(10, int).tool.doot.images.framerate
 
 HashImages = hash_all.HashAllFiles
 
-def gen_toml(self):
-    return "\n".join(["[tool.doot.images]",
-                      f"ocr-exts = {default_ocr_exts}"
-                      ])
 
 
 class OCRGlobber(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.BatchMixin):
@@ -41,7 +37,6 @@ class OCRGlobber(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.BatchMix
     ([data] -> data) Run tesseract on applicable files in each found directory
     to make dot txt files of ocr'd text from the image
     """
-    gen_toml = gen_toml
 
     def __init__(self, name="images::ocr", dirs:DootLocData=None, roots=None, exts=ocr_exts, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=exts, rec=rec)

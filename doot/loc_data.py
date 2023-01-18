@@ -118,6 +118,8 @@ class DootLocData:
         if bool(kwargs):
             self._dir_names.update(kwargs)
 
+        return self
+
     def auto_subdirs(self, *args):
         for x in self._dir_names:
             match self._dir_names[x]:

@@ -42,7 +42,6 @@ from doot.utils.general import ForceCmd
 
 class DootTasker:
     """ Util Class for building single tasks
-    registers 'gen_toml' methods for automatically
 
     'run_batch' controls batching bookkeeping,
     'batch' is the actual action
@@ -75,10 +74,6 @@ class DootTasker:
         self.setup_name        = "setup"
         self.args              = {}
         self.active_setup      = False
-
-        if hasattr(self, 'gen_toml') and callable(self.gen_toml):
-            from doot.utils.gen_toml import GenToml
-            GenToml.add_generator(self.base, self.gen_toml)
 
     def set_params(self) -> list:
         return []
@@ -233,7 +228,7 @@ class DootSubtasker(DootTasker):
 
         except Exception as err:
             print("ERROR: Task Creation Failure: ", err, file=sys.stderr)
-            print("ERROR: Task was: ", maybe_task, file=sys.stderr)
+            print("ERROR: Task was: ", task, file=sys.stderr)
             exit(1)
 
     def _sleep_subtask(self):
@@ -334,16 +329,18 @@ class ActionsMixin:
         fpath.write_text(value)
 
     def move_to(self, fpath:pl.Path, *args, fn=None, is_backup=False):
+        # Set the naming strategy:
         match fpath.is_file(), fn, is_backup:
             case _, FunctionType() | MethodType() , _:
                 pass
-            case _, None, True:
+            case False, _, True:
                 fn = lambda d, x: d / f"{x.parent.name}_{x.name}_backup"
-            case True, None, _:
+            case True, _, False:
                 fn = lambda d,x: d
-            case False, None, _:
+            case False, _, _:
                 fn = lambda d,x: d / x.name
 
+        # Then do the move
         match fpath.is_file():
             case True:
                 targ_path = fn(fpath, args[0])

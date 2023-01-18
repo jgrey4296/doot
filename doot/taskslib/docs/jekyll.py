@@ -52,21 +52,6 @@ def load_yaml_data(filename):
     return yaml.safe_load(total)
 
 ##-- end yaml util
-def gen_toml(self):
-    """
-    Generate a stub toml section used to customize this task
-    """
-    return "\n".join(["##-- doot.jekyll",
-                        "[tool.doot.jekyll.genpost]",
-                        "ext = \"md\"",
-                        "# used in datetime.strftime",
-                        "date_format = \"%Y-%m-%d\"",
-                        "# title_format.format_map({date, title, ext })",
-                        "title_format = \"{date}{title}.{ext}\"",
-                        "# 'default' for doot.__template.jekyll_post, else a path:",
-                        "# can be overriden on cli",
-                        "default_template = \"default\"",
-                        ])
 
 class GenPostTask(DootTasker, ActionsMixin):
     """
@@ -76,7 +61,6 @@ class GenPostTask(DootTasker, ActionsMixin):
     has cli params of title and template
 
     """
-    gen_toml = gen_toml
 
     def __init__(self, name="jekyll::post", dirs=None, template=None):
         super().__init__(name, dirs)
@@ -129,7 +113,6 @@ class GenTagsTask(DootTasker, ActionsMixin):
     """
     ([src] -> [tags, tagsIndex]) Generate summary files for all tags used in md files in the jekyll src dir
     """
-    gen_toml = gen_toml
 
     def __init__(self, name="jekyll::tag", dirs=None, roots=None, template=None, index=None):
         super().__init__(name, dirs)

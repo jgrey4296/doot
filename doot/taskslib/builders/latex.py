@@ -13,6 +13,7 @@ from doot import tasker
 ##-- end imports
 
 interaction_mode = doot.config.or_get("nonstopmode", str).tool.doot.tex.interaction()
+tex_dep          = doot.config.or_get("tex.dependencies", str).too.doot.text.dep_file()
 
 
 class LatexMultiPass(globber.DootEagerGlobber):
@@ -195,39 +196,32 @@ class BibtexConcatenateSweep(globber.LazyFileGlobber):
             for line in fileinput.input(files=self.glob_target(fpath)):
                 print(line.strip(), file=mainBib)
 
-def task_latex_install(dep="tex.dependencies"):
+def task_latex_install():
     """
     install dependencies for the latex document
     """
-
-    def build_install_instr(task):
-        dep_lines = {x for x in pl.Path(dep).read_text().split("\n") if bool(x)}
-        return ["tlmgr", "--usermode",  "install", *dep_lines]
-
-
     if not pl.Path(dep).exists():
         return None
 
     return {
         "basename" : "tex::install",
-        "actions"  : [CmdAction(build_install_instr, shell=False)],
-        "file_dep" : [ dep ],
-
+        "actions"  : [
+            lambda: { "tex_deps" : list({x for x in pl.Path(tex_dep).read_text().split("\n") if bool(x)}) },
+            ActionsMixin.cmd(None, lambda task: ["tlmgr", "--usermode",  "install", *task.values['tex_deps']] ] ),
+            ],
+        "file_dep" : [ tex_dep ],
     }
 
-def task_latex_requirements(reqf="tex.requirements"):
+def task_latex_requirements():
     """
     create a requirements
     """
-    def write_reqs(task):
-        pl.Path(reqf).write_text(task.values['reqs'])
-    
     return {
         "basename" : "tex::requirements",
-        "actions" : [ CmdAction(["tlmgr", "--usermode", "list", "--only-installed", "--data", "name"], shell=False, save_out="reqs"),
-                      write_reqs,
+        "actions" : [ ActionsMixin.cmd(None, ["tlmgr", "--usermode", "list", "--only-installed", "--data", "name"], save="reqs"),
+                      (ActionsMixin.write_to, [None, tex_dep, "reqs"])
                      ],
-        "targets" : [ reqf ],
+        "targets" : [ tex_dep ],
         "clean" : True
     }
 
@@ -237,15 +231,12 @@ def task_latex_rebuild():
     """ rebuild tex formats and metafonts, for handling outdated l3 layer errors """
     package_re = re.compile("^i (.+?):.+?$")
 
-    def build_install_cmd(task):
-        packages = [package_re.match(x)[1] for x in task.values['installed'].split("\n") if package_re.match(x)]
-        return ["tlmgr", "install", "--reinstall", *packages]
-    
     return {
         "basename" : "tex::rebuild",
         "actions" : [ ActionsMixin.cmd(None, ["fmtutil",  "--all"]),
                       ActionsMixin.cmd(None, ["tlmgr",  "list", "--only-installed"], save="installed"),
-                      ActionsMixin.cmd(None, build_install_cmd)
+                      lambda task: { "packages" : [package_re.match(x)[1] for x in task.values['installed'].split("\n") if package_re.match(x)] },
+                      ActionsMixin.cmd(None, lambda task: ["tlmgr", "install", "--reinstall", *task.values['packages']]),
         ],
     }
 
