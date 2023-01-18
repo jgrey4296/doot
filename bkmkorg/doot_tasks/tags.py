@@ -39,7 +39,7 @@ from doot import globber
 
 from bkmkorg.file_formats.tagfile import TagFile, SubstitutionFile, IndexFile
 
-tag_path = doot.config.or_get("resources/tags").tool.doot.tags.loc()
+tag_path = doot.config.or_get("resources/tags", str).tool.doot.tags.loc()
 
 empty_match     = re.match("","")
 # groups: pre, tags, post

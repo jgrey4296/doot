@@ -46,16 +46,19 @@ from doot import tasker
 from bkmkorg.bibtex import entry_processors as entproc
 from bibtexparser.latexenc import string_to_latex
 
-stub_file        = doot.config.or_get("resources/todo.bib").tool.doot.bibtex.todo_file()
-min_tag_timeline = doot.config.or_get(10).tool.doot.bibtex.min_timeline()
-stub_exts        = doot.config.or_get([".pdf", ".epub"]).tool.doot.bibtex.stub_exts()
-LIB_ROOT         = pl.Path(doot.config.or_get("~/pdflibrary").tool.doot.bibtex.lib_root()).expanduser().resolve()
+stub_file        = doot.config.or_get("resources/todo.bib", str).tool.doot.bibtex.todo_file()
+min_tag_timeline = doot.config.or_get(10, int).tool.doot.bibtex.min_timeline()
+stub_exts        = doot.config.or_get([".pdf", ".epub"], list).tool.doot.bibtex.stub_exts()
+LIB_ROOT         = pl.Path(doot.config.or_get("~/pdflibrary", str).tool.doot.bibtex.lib_root()).expanduser().resolve()
 
-clean_in_place   = doot.config.or_get(False).tool.doot.bibtex.clean_in_place()
+clean_in_place   = doot.config.or_get(False, bool).tool.doot.bibtex.clean_in_place()
 
 ENT_const = 'ENTRYTYPE'
 
 class LibDirClean(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
+    """
+    Clean the directories of the bibtex library
+    """
     pass
 
 class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin):
@@ -75,8 +78,9 @@ class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin):
         issue_report = self.dirs.build / "bib_clean_issues.report"
         task.update({
             "actions" : [
-                lambda: { "issues" : "\n".join(self.issues) },
-                (self.write_to, [issue_report, "issues"] ]
+                lambda: { "key_max" : max(len(x[0]) for x in self.issues) },
+                lambda task: { "issues" : "\n".join(f"{x[0]:<{task.values['key_max']}} {x[1]}" for x in self.issues) },
+                (self.write_to, [issue_report, "issues"]),
                 ],
             "targets" : [issue_report],
         })
@@ -90,7 +94,7 @@ class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin):
         task.update({
             "actions" : [ (self.load_and_clean, [fpath]), # -> cleaned
                           self.process_whole_db,
-                          (self.db_to_string, "cleaned"),
+                          (self.db_to_string, ["cleaned"]),
                           (self.write_to, [target, "cleaned"]),
                          ],
             "file_dep" : [ fpath ],
@@ -100,27 +104,17 @@ class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin):
 
     def load_and_clean(self, fpath):
         self.current_year = fpath.stem
-        # read
-        self.current_db = bib_parse.parse_bib_files([fpath], func=self.clean_record)
-
-    def process_whole_db(self):
-        # back to string to write out
-        for entry in self.current_db.entries:
-            self.prepare_entry_for_write(entry)
-
-    def db_to_string(self, key):
-        db_text = self.writer.write(self.current_db)
-        logging.info("Bibtex db -> Text (%s, %s)", len(db_text), len(self.current_db.entries))
-        return { key : db_text}
+        self.current_db   = bib_parse.parse_bib_files([fpath], func=self.clean_record)
+        logging.info("Loaded {len(self.current_db.entrys)} entries")
 
     def clean_record(self, record):
         try:
             # Preprocess
             record     = entproc.to_unicode(record)
-            entry      = entproc.split_names(record)
+            record     = entproc.split_names(record)
             record     = bib_clean.expand_paths(record, LIB_ROOT)
             base_name  = bib_clean.get_entry_base_name(record)
-            ideal_stem = bib_clean.idealize_stem(record)
+            ideal_stem = bib_clean.idealize_stem(record, base_name)
 
             self.check_year(record)
             self.check_files(record)
@@ -128,17 +122,22 @@ class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin):
             record = entproc.tag_split(record)
 
             # Clean files
-            # bib_clean.clean_parent_paths(record, LIB_ROOT)
-            # bib_clean.clean_stems(record, ideal_stem, LIB_ROOT)
+            # TODO bib_clean.clean_parent_paths(record, LIB_ROOT)
+            # TODO bib_clean.clean_stems(record, ideal_stem, LIB_ROOT)
 
             return record
         except Exception as err:
             print(f"Error Occurred for {record['ID']}: {err}", file=sys.stderr)
             raise err
 
+    def process_whole_db(self):
+        # back to string to write out
+        for entry in self.current_db.entries:
+            self.prepare_entry_for_write(entry)
+
     def prepare_entry_for_write(self, entry):
         entry['tags'] = ",".join(entry['__tags'])
-        bib_clean.relativize_paths(record, LIB_ROOT)
+        bib_clean.relativize_paths(entry, LIB_ROOT)
         for field in entry.keys():
             match (field[:2], field):
                 case ("__", _):
@@ -149,6 +148,11 @@ class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin):
                     pass
                 case _:
                     entry[field] = string_to_latex(entry[field])
+
+    def db_to_string(self, key):
+        db_text = self.writer.write(self.current_db)
+        logging.info("Bibtex db -> Text (%s, %s)", len(db_text), len(self.current_db.entries))
+        return { key : db_text}
 
     def clean_parents(self, entry):
         return
@@ -163,17 +167,18 @@ class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin):
         # TODO store record, add it to correct year
         if entry['year'] == self.current_year:
             return
-        print(f"Wrong Year: Entry {entry['ID']} : {entry['year']} != {self.current_year}", file=sys.stderr)
-        self.issues.append(f"Wrong Year: Entry {entry['ID']} : {entry['year']} != {self.current_year}")
+        msg = f" : Wrong Year: (Bibfile: {self.current_year}) != ({entry['year']} : Entry)"
+        print(entry['ID'] + msg, file=sys.stderr)
+        self.issues.append((entry['ID'], msg))
 
     def check_files(self, entry):
         for field in [x for x in entry.keys() if 'file' in x]:
             if pl.Path(entry[field]).exists():
                 continue
 
-            print(f"{entry['ID']} : File Does Not Exist : {entry[field]}", file=sys.stderr)
-            self.issues.append(f"{entry['ID']} : File Does Not Exist : {entry[field]}")
-
+            msg = f" : File Does Not Exist : {entry[field]}"
+            print(entry['ID'] + msg, file=sys.stderr)
+            self.issues.append((entry['ID'], msg))
 
 class BibtexReport(globber.DootEagerGlobber, tasker.ActionsMixin):
     """
@@ -201,26 +206,36 @@ class BibtexReport(globber.DootEagerGlobber, tasker.ActionsMixin):
         files_target  = self.dirs.build / "files.report"
 
         task.update({
-            "name" : "final",
             "actions" : [
+
+                ##-- report on authors
                 lambda:   { "author_max" : max(len(x[0]) for x in self.authors) },
-                lambda t: { "author_lines" : (f"{last:<{t['author_max']}}{first}" for last,first in self.authors) },
-                lambda t: { "authors" : "\n".join(sorted(t['author_lines'], key=lambda x: x[0].lower())) },
+                lambda task: { "author_lines" : [f"{last:<{task.values['author_max']}}{first}" for last,first in self.authors] },
+                lambda task: { "authors" : "\n".join(sorted(task.values['author_lines'], key=lambda x: x[0].lower())) },
                 (self.write_to, [author_target, "authors"]),
+                ##-- end report on authors
 
+                ##-- report on editors
                 lambda:   { "editor_max" : max(len(x[0]) for x in self.editors) },
-                lambda t: { "editor_lines" : (f"{last:<{t['editor_max']}}{first}" for last,first in self.editors) },
-                lambda t: { "editors" : "\n".join(sorted(t['editor_lines'], key=lambda x: x[0].lower())) },
+                lambda task: { "editor_lines" : [f"{last:<{task.values['editor_max']}}{first}" for last,first in self.editors] },
+                lambda task: { "editors" : "\n".join(sorted(task.values['editor_lines'], key=lambda x: x[0].lower())) },
                 (self.write_to, [editor_target, "editors"]),
+                ##-- end report on editors
 
+                ##-- report on years
                 self.gen_years,
                 (self.write_to, [years_target, "years"]),
+                ##-- end report on years
 
+                ##-- report on entry types
                 lambda: { "types" : "\n".join(sorted(f"{x:<15} : {y}" for x,y in self.type_counts.items())) },
                 (self.write_to, [types_target, "types"]),
+                ##-- end report on entry types
 
+                ##-- report on entry files
                 lambda: { "files" : "\n".join(sorted(f"{x:<15} : {y}" for x,y in self.files_counts.items())) },
                 (self.write_to, [files_target, "files"]),
+                ##-- end report on entry files
 
                 self.write_timelines,
             ],
@@ -262,7 +277,7 @@ class BibtexReport(globber.DootEagerGlobber, tasker.ActionsMixin):
         """
         Get all tags from all entries
         """
-        tags = entry['tags']
+        tags = entry['__tags']
         for tag in tags:
             self.tag_file_mapping[tag].append((entry['year'], entry['ID']))
             self.tag_counts[tag] += 1
@@ -301,10 +316,7 @@ class BibtexReport(globber.DootEagerGlobber, tasker.ActionsMixin):
         Report on bibliography year distributions of entries
         """
         years = [(int(x), f"{x:<8} : {y}") for x,y in self.year_counts.items()]
-        return { "years" : ("\n".join(x[1] for x in sorted(years, key=lambda x: x[0]))) }
-
-
-
+        return { "years" : "\n".join(x[1] for x in sorted(years, key=lambda x: x[0])) }
 
     def write_timelines(self):
         """

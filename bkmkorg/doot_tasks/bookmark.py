@@ -36,8 +36,8 @@ from doot import globber
 
 from bkmkorg.bookmarks import database_fns as db_fns
 
-firefox = doot.config.or_get("~/Library/ApplicationSupport/Firefox").tools.doot.bookmarks.firefox_loc()
-databse = doot.config.or_get("places.sqlite").tools.doot.bookmarks.database_name()
+firefox = doot.config.or_get("~/Library/ApplicationSupport/Firefox", str).tools.doot.bookmarks.firefox_loc()
+databse = doot.config.or_get("places.sqlite", str).tools.doot.bookmarks.database_name()
 
 class BookmarksUpdate(DootTasker, ActionsMixin):
     """

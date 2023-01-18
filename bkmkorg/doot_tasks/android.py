@@ -40,11 +40,11 @@ from doot import globber
 
 adb_path = shutil.which("adb")
 
-android_base = pl.Path(doot.config.or_get("/storage/6331-3162").tools.doot.android.base())
-adb_key      = doot.config.or_get("/Users/johngrey/.android/adbkey").tools.doot.android.key()
-timeout      = doot.config.or_get(5).tools.doot.android.timeout()
-port         = doot.config.or_get(37769).tools.doot.android.port()
-wait_time    = doot.config.or_get(10).tools.doot.android.wait()
+android_base = pl.Path(doot.config.or_get("/storage/6331-3162", str).tools.doot.android.base())
+adb_key      = doot.config.or_get("/Users/johngrey/.android/adbkey", str).tools.doot.android.key()
+timeout      = doot.config.or_get(5, int).tools.doot.android.timeout()
+port         = doot.config.or_get(37769, int).tools.doot.android.port()
+wait_time    = doot.config.or_get(10, int).tools.doot.android.wait()
 
 NICE = ["nice", "-n", "10"]
 
