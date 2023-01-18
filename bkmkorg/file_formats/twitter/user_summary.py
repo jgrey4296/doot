@@ -19,7 +19,6 @@ from bkmkorg.twitter.data.thread import TwitterTweet
 
 logging = root_logger.getLogger(__name__)
 
-
 @dataclass
 class TwitterUserSummary:
     """
@@ -54,7 +53,6 @@ class TwitterUserSummary:
                                                 data["rest"],
                                                 data["quotes"])
 
-
         def __post_init__(self):
             # init total from main, rest, quotes
             totals = set(self.main)
@@ -71,6 +69,7 @@ class TwitterUserSummary:
                 }
 
     # End of ThreadObj
+
     def __post_init__(self):
         self.read()
 

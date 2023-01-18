@@ -29,7 +29,6 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-
 def get_user_identities(users_file:pl.Path, twit, users) -> Dict[str, Any]:
     """ Get all user identities from twitter """
     logging.info("Getting user identities")
@@ -55,7 +54,6 @@ def get_user_identities(users_file:pl.Path, twit, users) -> Dict[str, Any]:
 
         except twitter.error.TwitterError as err:
             logging.info("Does not exist: %s", current)
-
 
     with open(users_file, 'w') as f:
         json.dump(list(total_users.values()), f, indent=4)

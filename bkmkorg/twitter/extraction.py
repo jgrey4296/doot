@@ -13,8 +13,6 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 from bkmkorg.files.dfs import dfs as dfs_directory
 ##-- end imports
 
-
-
 logging = root_logger.getLogger(__name__)
 
 PERMALINK_RE = re.compile(r"\[.+?/status/(\d+)\]\]")
@@ -98,7 +96,6 @@ def extract_media_and_users_from_json(the_file:pl.Path):
 
         ids.add(x['user']['id_str'])
 
-
     return ids, media, media_variants
 
 def get_all_tweet_ids(*the_dirs:list[pl.Path], ext=None) -> Set[str]:
@@ -136,8 +133,6 @@ def get_user_and_media_sets(json_dir:pl.Path) -> Tuple[Set[str], Set[str], List[
     logging.info("Found %s unique users", len(users))
 
     return users, media, variants
-
-
 
 def get_library_tweets(lib:List[pl.Path], tweet) -> Set[str]:
     library_tweet_ids = set()

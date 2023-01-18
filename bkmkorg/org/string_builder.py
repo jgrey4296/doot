@@ -93,7 +93,6 @@ class OrgDrawerBuilder(OrgBuilderBase):
     def __exit__(self, type, value, traceback):
         return None
 
-
     def __str__(self):
         """
         Write the drawer, while padding appropriately

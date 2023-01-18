@@ -110,8 +110,6 @@ class TagGraph:
 
         return norm_tags
 
-
-
     def write(self, target:pl.Path):
         nx.write_weighted_edgelist(self.graph, str(target))
 
@@ -119,7 +117,6 @@ class TagGraph:
         keys    = self.tags
         tag_str = "\n".join(["{} : {}".format(k, self.graph.nodes[k]['count']) for k in keys])
         return tag_str
-
 
     @property
     def tags(self) -> TagFile:

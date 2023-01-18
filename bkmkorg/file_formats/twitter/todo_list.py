@@ -28,7 +28,6 @@ class TweetTodoFile:
     ext       : str            = field(default=".tweets")
     remainder : List[str]      = field(default_factory=list)
 
-
     @staticmethod
     def read(p:pl.Path, id_regex=r"status/(\d+)\?"):
         obj   = TweetTodoFile()

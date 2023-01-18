@@ -39,15 +39,12 @@ class Trie:
     def __str__(self):
         return "Trie: {}, {}".format(len(self), len(self.query_keys))
 
-
-
     def get_tuple_list(self):
         results = []
         for x in self.leaves:
             results += x.get_tuple_list()
 
         return results
-
 
     def insert(self, data):
         """ Insert a bookmark into the trie,
@@ -102,8 +99,6 @@ class Trie:
                                                                                       url_pair[1]))
         return "\n".join(result)
 
-
-
 @dataclass
 class Leaf:
 
@@ -116,7 +111,6 @@ class Leaf:
 
     def __str__(self):
         return "Leaf Group({})".format(len(self))
-
 
     def get_tuple_list(self):
         return [x.to_tuple() for x in self.data]
@@ -136,7 +130,6 @@ class Leaf:
         for x in self.data:
             x.filter_queries(query_set)
 
-
 @dataclass
 class LeafComponent:
 
@@ -148,7 +141,6 @@ class LeafComponent:
 
     __repr__ = __str__
 
-
     def __eq__(self, other):
         if not isinstance(other, LeafComponent):
             return False
@@ -158,7 +150,6 @@ class LeafComponent:
 
     def __str__(self):
         return "Leaf({})".format(self.full_path)
-
 
     def filter_queries(self, query_set):
         for k in list(self.query.keys()):

@@ -37,6 +37,7 @@ CHARWIDTH       = 80
 ##-- end consts
 
 #download friend list
+
 def get_friends(twit, id_s=None):
     """ Given a twitter client, get my friends (ie: people I follow)
     friends/ids returns up to 5000, 15 times in 15 minutes
@@ -87,7 +88,6 @@ def get_users(twit, ids=None, writer=None, backup=None|pl.Path):
             loop_count = 0
             logging.info("Sleeping")
             sleep(FIFTEEN_MINUTES)
-
 
 def init_file(filename:pl.Path):
     if filename.exists():

@@ -16,7 +16,6 @@ from bkmkorg.bookmarks.collection import Bookmark
 
 logging = root_logger.getLogger(__name__)
 
-
 def clean_bib_files(bib_files:list[pl.Path], sub, tag_regex=r"^(\s*tags\s*=\s*{)(.+?)(\s*},?)$"):
     """ Parse all the bibtext files, naively
     Extract the tags, deduplicate and apply substitutions,

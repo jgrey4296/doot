@@ -19,7 +19,6 @@ from bkmkorg.org.string_builder import OrgStrBuilder
 
 logging = root_logger.getLogger(__name__)
 
-
 @dataclass
 class TweetComponents:
     """
@@ -90,6 +89,7 @@ class TweetComponents:
             self.stored.clear()
 
     # End of ComponentWriter
+
     def __post_init__(self):
         # For each component
         for comp_set in self.components:

@@ -156,6 +156,7 @@ class BookmarkCollection:
         self.entries = list(deduplicated.values())
 
 ##-- utils
+
 def _getLinks(aSoup) -> List[Bookmark]:
     bkmks = aSoup.find_all('a')
     bkmkList = []

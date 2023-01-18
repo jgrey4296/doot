@@ -14,7 +14,6 @@ groupCount = 0
 listCount  = 0
 entryCount = 0
 
-
 def _header():
     """ Creates the Header for the entire bookmark file """
     s = """<!DOCTYPE NETSCAPE-Bookmark-file-1>
@@ -29,7 +28,6 @@ def _footer():
     """ Finishs the bookmark file """
     return "\n</HTML>"
 
-
 def _bookmarkToItem(bkmk):
     """ Converts a single bookmark to html """
     assert(isinstance(bkmk, Bookmark))
@@ -43,7 +41,6 @@ def _bookmarksToNetscapeString(data):
     strings = [_convertData(x) for x in data]
     wrapped = "\n".join(strings)
     return wrapped
-
 
 def _groupToNetscapeString(name, data):
     group = "<DT><H3 FOLDED> {} </H3> \n\t <DL><p> \n\t\t {} \n\t </DL><p>\n".format(name,_convertData(data))

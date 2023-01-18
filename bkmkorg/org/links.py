@@ -32,6 +32,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 ##-- consts
+
 DEFAULT_PATTERN = re.compile(r"(.*?\[+)/Users/johngrey/Desktop/twitter/orgs/(.+?)(\]\[.+)$")
 PERMALINK       = re.compile(r".*?:PERMALINK: *\[\[(.+?)\]\[")
 LINK            = re.compile(r".*\[\[(.+?)\]\[")
@@ -88,5 +89,3 @@ def make_relative_media_links(org_file, pattern):
     # write file
     with open(org_file, 'w') as f:
         f.write("\n".join([x for x in retargeted]))
-
-

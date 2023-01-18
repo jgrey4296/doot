@@ -40,6 +40,7 @@ fname_extract_re: Pattern = compile(r"(.+)(_\d+)?.org")
 
 def build_threader(output, base_name, pattern):
     count = 1
+
     def next_thread_context():
         nonlocal count
         logging.info("Found Thread: %s", count)
@@ -66,7 +67,6 @@ def process_pattern(target):
     directory = target.parent
     base_name = target.stem
     output    = directory / f"{base_name}_collected"
-
 
     if output.exists() and bool(list(output.glob("*.org"))):
         raise Exception(f"Output Dir can't Exist: {output}")

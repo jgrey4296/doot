@@ -58,7 +58,6 @@ def convert_to_year_counts(tweets):
 
     return sorted([(x[0], x[1]) for x in years.items()], key=lambda x: x[0])
 
-
 def convert_to_month_counts(tweets):
     months = {x : 0 for x in range(12)}
     for tweet in tweets:

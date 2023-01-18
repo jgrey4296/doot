@@ -60,8 +60,6 @@ def construct_component_files(tweet_dir:pl.Path, component_dir:pl.Path, twit=Non
                 quoters = tweet_graph.get_quoters(id_str)
                 id_map.add(tweet, *quoters)
 
-
-
     if bool(id_map.missing):
         logging.info("Missing: %s", id_map.missing)
         if not download_tweets(twit, tweet_dir, id_map.missing):
@@ -89,8 +87,6 @@ def construct_user_summaries(component_dir:pl.Path, combined_threads_dir:pl.Path
         user_counts = defaultdict(lambda: 0)
         for x in data:
             user_counts[x['user']['id_str']] += 1
-
-
 
         head_user   = max(user_counts.items(), key=lambda x: x[1])[0]
         screen_name = str(head_user)
@@ -154,7 +150,6 @@ def construct_user_summaries(component_dir:pl.Path, combined_threads_dir:pl.Path
             else:
                 summary.set_user(screen_name)
 
-
         summary.add_thread(main_thread,
                            cleaned_rest,
                            quotes,
@@ -162,8 +157,6 @@ def construct_user_summaries(component_dir:pl.Path, combined_threads_dir:pl.Path
 
         # write out user file
         summary.write()
-
-
 
 def construct_org_files(combined_threads_dir:pl.Path, org_dir:pl.Path, all_users, todo_tag_bindings:TweetTodoFile):
     logging.info("Constructing org files from: %s \n\tto: %s", combined_threads_dir, org_dir)

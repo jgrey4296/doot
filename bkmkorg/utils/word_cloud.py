@@ -49,7 +49,6 @@ def getFrequencyDictForText(lines):
 
     return tmpDict
 
-
 def makeImage(text:dict[str,int], output:None|pl.Path=None):
     wc = WordCloud(background_color="white",
                    max_words=500,
