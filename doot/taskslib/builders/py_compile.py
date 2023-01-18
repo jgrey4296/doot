@@ -33,7 +33,7 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-collect_libs = doot.config.or_get([]).tool.doot.python.compile.collect()
+collect_libs = doot.config.or_get([], list).tool.doot.python.compile.collect()
 
 class PythonCompile(DootTasker, DootActions):
     """

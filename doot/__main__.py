@@ -48,8 +48,8 @@ def main():
 
         logging.info("Basic Doot setup loaded")
         ##-- logging setup
-        file_handler.setLevel(logmod._nameToLevel[doot.config.or_get("DEBUG").tool.doot.log_level()])
-        file_log_format = doot.config.or_get("{levelname} : {module} : {lineno} : {funcName} : {message}").tool.doot.log_format()
+        file_handler.setLevel(logmod._nameToLevel[doot.config.or_get("DEBUG", str).tool.doot.log_level()])
+        file_log_format = doot.config.or_get("{levelname} : {module} : {lineno} : {funcName} : {message}", str).tool.doot.log_format()
         file_handler.setFormatter(logmod.Formatter(file_log_format, style="{"))
         ##-- end logging setup
 
@@ -57,7 +57,7 @@ def main():
         doit_main = DoitMain(task_loader=loader, config_filenames=[doot.default_agnostic])
         result    = doit_main.run(sys.argv[1:])
 
-        say_text = doot.config.or_get(False).tool.doot.say_on_exit()
+        say_text = doot.config.or_get(False, bool).tool.doot.say_on_exit()
         if bool(say_text):
             CmdAction(["say", say_text], shell=False).execute()
 

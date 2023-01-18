@@ -15,8 +15,8 @@ __all__ = [
         "SphinxDocTask", "task_browse",
 ]
 
-conf_builder    = doot.config.or_get("html").tool.doot.sphinx.builder()
-conf_verbosity  = int(doot.config.or_get(0).tool.door.sphinx.verbosity())
+conf_builder    = doot.config.or_get("html", str).tool.doot.sphinx.builder()
+conf_verbosity  = int(doot.config.or_get(0, int).tool.door.sphinx.verbosity())
 
 def gen_toml(self):
     return "\n".join(["[tool.doot.sphinx]",

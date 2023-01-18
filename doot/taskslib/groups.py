@@ -51,7 +51,7 @@ try:
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     logging.debug("To activate group, defaults needs: %s", err)
-    if doot.config.or_get(False).tool.doot.group.defaults.debug():
+    if doot.config.or_get(False, bool).tool.doot.group.defaults.debug():
         print("To activate group, defaults needs: ", err)
 
 ##-- end defaults
@@ -74,7 +74,7 @@ try:
     pip_group += pipper.VenvNew(dirs=pip_dirs)
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     logging.debug("To activate group, pip needs: %s", err)
-    if doot.config.or_get(False).tool.doot.group.pip.debug():
+    if doot.config.or_get(False, bool).tool.doot.group.pip.debug():
         print("To activate group pip needs: ", err)
 ##-- end pip
 
@@ -93,7 +93,7 @@ try:
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     logging.debug("To activate group, python needs: %s", err)
-    if doot.config.or_get(False).tool.doot.group.python.debug():
+    if doot.config.or_get(False, bool).tool.doot.group.python.debug():
         print("To activate group python needs: ", err)
 
 ##-- end py
@@ -125,7 +125,7 @@ try:
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     logging.debug("To activate group, jekyll needs: %s", err)
-    if doot.config.or_get(False).tool.doot.group.jekyll.debug():
+    if doot.config.or_get(False, bool).tool.doot.group.jekyll.debug():
         print("To activate group, jekyll needs: ", err)
 
 ##-- end jekyll
@@ -147,7 +147,7 @@ try:
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     logging.debug("To activate group, latex needs: %s", err)
-    if doot.config.or_get(False).tool.doot.group.latex.debug():
+    if doot.config.or_get(False, bool).tool.doot.group.latex.debug():
         print("To activate group, latex needs: ", err)
 ##-- end latex
 
@@ -166,7 +166,7 @@ try:
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     logging.debug("To activate group, sphinx needs: %s", err)
-    if doot.config.or_get(False).tool.doot.group.sphinx.debug():
+    if doot.config.or_get(False, bool).tool.doot.group.sphinx.debug():
         print("To activate group, sphinx needs: ", err)
 ##-- end sphinx
 
@@ -185,7 +185,7 @@ try:
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     logging.debug("To activate group, tags needs: %s", err)
-    if doot.config.or_get(False).tool.doot.group.tags.debug():
+    if doot.config.or_get(False, bool).tool.doot.group.tags.debug():
         print("To activate group, tags needs: ", err)
 ##-- end tags
 
@@ -202,7 +202,7 @@ try:
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     logging.debug("To activate group, git needs: %s", err)
-    if doot.config.or_get(False).tool.doot.group.git.debug():
+    if doot.config.or_get(False, bool).tool.doot.group.git.debug():
         print("To activate group, git needs: ", err)
 
 ##-- end git
@@ -239,7 +239,7 @@ try:
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     logging.debug("To activate group, cargo needs: %s", err)
-    if doot.config.or_get(False).tool.doot.group.cargo.debug():
+    if doot.config.or_get(False, bool).tool.doot.group.cargo.debug():
         print("To activate group, cargo needs: ", err)
 
 ##-- end cargo
@@ -264,7 +264,7 @@ try:
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     logging.debug("To activate group, gradle needs: %s", err)
-    if doot.config.or_get(False).tool.doot.group.gradle.debug():
+    if doot.config.or_get(False, bool).tool.doot.group.gradle.debug():
         print("To activate group, gradle needs: ", err)
 
 ##-- end gradle
@@ -286,7 +286,7 @@ try:
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     logging.debug("To activate group, epub needs: %s", err)
-    if doot.config.or_get(False).tool.doot.group.epub.debug():
+    if doot.config.or_get(False, bool).tool.doot.group.epub.debug():
         print("To activate group, epub needs: ", err)
 
 ##-- end epub

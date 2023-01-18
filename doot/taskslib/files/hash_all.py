@@ -35,11 +35,11 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-batch_size  : int       = doot.config.or_get(20).tool.doot.batch_size()
+batch_size  : int       = doot.config.or_get(20, int).tool.doot.batch_size()
 
-hash_record = doot.config.or_get(".hashes").tool.doot.files.hash.record()
-hash_concat = doot.config.or_get(".all_hashes").tool.doot.files.hash.grouped()
-hash_dups   = doot.config.or_get(".dup_hashes").tool.doot.files.hash.duplicates()
+hash_record = doot.config.or_get(".hashes", str).tool.doot.files.hash.record()
+hash_concat = doot.config.or_get(".all_hashes", str).tool.doot.files.hash.grouped()
+hash_dups   = doot.config.or_get(".dup_hashes", str).tool.doot.files.hash.duplicates()
 
 class HashAllFiles(globber.DirGlobber, tasker.DootActions, task.DootBatcher):
     """

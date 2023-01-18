@@ -14,7 +14,7 @@ from doot.task_group import TaskGroup
 ##-- end imports
 # https://pip.pypa.io/en/stable/cli/
 
-prefix = doot.config.or_get("pip").tool.doot.pip.prefix()
+prefix = doot.config.or_get("pip", str).tool.doot.pip.prefix()
 
 # pip_version   = CmdTask("pip", "--version", verbosity=2, basename=f"{prefix}::version")
 

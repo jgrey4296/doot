@@ -53,12 +53,12 @@ def setup_agnostic(path=default_agnostic):
     global config, locs
     config     = TomlAccess.load(path)
 
-    locs = DootLocData(src=config.or_get(None).tool.doot.directories.src(),
-                       build=config.or_get(None).tool.doot.directories.build(),
-                       codegen=config.or_get(None).tool.doot.directories.codegen(),
-                       temp=config.or_get(None).tool.doot.directories.temp(),
-                       docs=config.or_get(None).tool.doot.directories.docs(),
-                       data=config.or_get(None).tool.doot.directories.data(),
+    locs = DootLocData(src=config.or_get(None,     None|str).tool.doot.directories.src(),
+                       build=config.or_get(None,   None|str).tool.doot.directories.build(),
+                       codegen=config.or_get(None, None|str).tool.doot.directories.codegen(),
+                       temp=config.or_get(None,    None|str).tool.doot.directories.temp(),
+                       docs=config.or_get(None,    None|str).tool.doot.directories.docs(),
+                       data=config.or_get(None,    None|str).tool.doot.directories.data(),
                        )
 
     # Done like this to avoid recursive imports

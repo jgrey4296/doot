@@ -34,7 +34,7 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-prolog_ext = doot.config.or_get(".pl").doot.tool.repls.prolog.ext
+prolog_ext = doot.config.or_get(".pl", str).doot.tool.repls.prolog.ext
 
 def task_pyrepl():
     return {

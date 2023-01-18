@@ -54,10 +54,10 @@ class DootTasker:
 
     @staticmethod
     def set_defaults(config:TomlAccess):
-        DootTasker.sleep_subtask = config.or_get(2.0).tool.doot.sleep_subtask()
-        DootTasker.sleep_batch   = config.or_get(2.0).tool.doot.sleep_batch()
-        DootTasker.batches_max   = config.or_get(-1).tool.doot.batches_max()
-        DootTasker.sleep_notify  = config.or_get(False).tool.doot.sleep_notify()
+        DootTasker.sleep_subtask = config.or_get(2.0,   int|float).tool.doot.sleep_subtask()
+        DootTasker.sleep_batch   = config.or_get(2.0,   int|float).tool.doot.sleep_batch()
+        DootTasker.batches_max   = config.or_get(-1,    int).tool.doot.batches_max()
+        DootTasker.sleep_notify  = config.or_get(False, bool).tool.doot.sleep_notify()
 
     def __init__(self, base:str, dirs:DirData=None):
         assert(base is not None)
@@ -173,10 +173,80 @@ class DootTasker:
             print("ERROR: Task was: ", maybe_task, file=sys.stderr)
             exit(1)
 
-class DootBatcher:
 
-    def __init__(self):
-        self.batch_count       = 0
+class DootSubtasker(DootTasker):
+    """ Extends DootTasker to make subtasks
+
+    add a name in task_detail to run actions after all subtasks are finished
+    """
+
+    def __init__(self, base:str, dirs:DirData=None):
+        super().__init__(base, dirs)
+
+    def subtask_detail(self, task, **kwargs) -> None|dict:
+        return task
+
+    def _build_task(self):
+        task = super()._build_task()
+        task.has_subtask = True
+        task.update_deps({'task_dep': [f"{self.base}:*"] })
+        return task
+
+    def _build_subtask(self, n:int, uname, **kwargs):
+        try:
+            spec_doc  = self.doc + f" : {kwargs}"
+            task_spec = self.default_task()
+            task_spec.update({"name"     : f"{uname}",
+                              "doc"      : spec_doc,
+                              })
+            task_spec['meta'].update({ "n" : n })
+            task = self.subtask_detail(task_spec, **kwargs)
+            if task is None:
+                return
+
+            if bool(self.sleep_subtask):
+                task['actions'].append(self._sleep_subtask)
+
+            return task
+        except DootDirAbsent:
+            return None
+
+    def _build_subs(self):
+        raise NotImplementedError()
+
+    def _build(self, **kwargs):
+        try:
+            self.args.update(kwargs)
+            setup_task = self._build_setup()
+            task       = self._build_task()
+            subtasks   = self._build_subs()
+
+            if task is None:
+                return None
+            yield task
+
+            if setup_task is not None:
+                yield setup_task
+
+            for x in subtasks:
+                yield x
+
+        except Exception as err:
+            print("ERROR: Task Creation Failure: ", err, file=sys.stderr)
+            print("ERROR: Task was: ", maybe_task, file=sys.stderr)
+            exit(1)
+
+    def _sleep_subtask(self):
+        if self.sleep_notify:
+            print("Sleep Subtask")
+        sleep(self.sleep_subtask)
+class BatchMixin:
+    """
+    A Mixin to enable running batches of processing with
+    some sleep time
+    """
+
+    batch_count       = 0
 
     def run_batch(self, *batches, reset=True, fn=None, **kwargs):
         """
@@ -231,7 +301,7 @@ class DootBatcher:
     def _reset_batch_count(self):
         self.batch_count = 0
 
-class DootActions:
+class ActionsMixin:
 
     def rmglob(self, root:pl.Path, *args):
         for x in args:
@@ -361,69 +431,3 @@ class DootActions:
         for line in fileinput(files=files, inplace=inplace):
             fn(line)
 
-class DootSubtasker(DootTasker):
-    """ Extends DootTasker to make subtasks
-
-    add a name in task_detail to run actions after all subtasks are finished
-    """
-
-    def __init__(self, base:str, dirs:DirData=None):
-        super().__init__(base, dirs)
-
-    def subtask_detail(self, task, **kwargs) -> None|dict:
-        return task
-
-    def _build_task(self):
-        task = super()._build_task()
-        task.has_subtask = True
-        task.update_deps({'task_dep': [f"{self.base}:*"] })
-        return task
-
-    def _build_subtask(self, n:int, uname, **kwargs):
-        try:
-            spec_doc  = self.doc + f" : {kwargs}"
-            task_spec = self.default_task()
-            task_spec.update({"name"     : f"{uname}",
-                              "doc"      : spec_doc,
-                              })
-            task_spec['meta'].update({ "n" : n })
-            task = self.subtask_detail(task_spec, **kwargs)
-            if task is None:
-                return
-
-            if bool(self.sleep_subtask):
-                task['actions'].append(self._sleep_subtask)
-
-            return task
-        except DootDirAbsent:
-            return None
-
-    def _build_subs(self):
-        raise NotImplementedError()
-
-    def _build(self, **kwargs):
-        try:
-            self.args.update(kwargs)
-            setup_task = self._build_setup()
-            task       = self._build_task()
-            subtasks   = self._build_subs()
-
-            if task is None:
-                return None
-            yield task
-
-            if setup_task is not None:
-                yield setup_task
-
-            for x in subtasks:
-                yield x
-
-        except Exception as err:
-            print("ERROR: Task Creation Failure: ", err, file=sys.stderr)
-            print("ERROR: Task was: ", maybe_task, file=sys.stderr)
-            exit(1)
-
-    def _sleep_subtask(self):
-        if self.sleep_notify:
-            print("Sleep Subtask")
-        sleep(self.sleep_subtask)

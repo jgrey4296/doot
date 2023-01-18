@@ -11,11 +11,11 @@ from doot.tasker import DootTasker, DootActions
 
 ##-- end imports
 
-log_fmt     = doot.config.or_get(["%aI", "%h", "%al", "%s"]).tool.doot.git.fmt()
-default_sep = doot.config.or_get(" :: ").tool.doot.git.sep()
-group_hours = doot.config.or_get(2).tool.doot.git.group_by_hours()
-bar_fmt     = doot.config.or_get("~").tool.doot.git.bar_fmt()
-bar_max     = doot.config.or_get(40).tool.doot.git.bar_max()
+log_fmt     = doot.config.or_get(["%aI", "%h", "%al", "%s"], str).tool.doot.git.fmt()
+default_sep = doot.config.or_get(" :: ", str).tool.doot.git.sep()
+group_hours = doot.config.or_get(2, int).tool.doot.git.group_by_hours()
+bar_fmt     = doot.config.or_get("~", str).tool.doot.git.bar_fmt()
+bar_max     = doot.config.or_get(40, int).tool.doot.git.bar_max()
 
 def roundTime(dt=None, roundTo=60):
    """Round a datetime object to any time lapse in seconds

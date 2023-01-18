@@ -50,7 +50,7 @@ class DootLocData:
 
     @staticmethod
     def set_defaults(config:TomlAccess):
-        DootLocData._default_locs = config.or_get([]).tool.doot.locs
+        DootLocData._default_locs = config.or_get([], list).tool.doot.locs
 
     @staticmethod
     def gen_loc_tasks():

@@ -16,12 +16,12 @@ from doot import globber
 
 ##-- end imports
 
-src_ext     = doot.config.or_get(".lp").tool.doot.clingo.src_ext()
-out_ext     = doot.config.or_get(".lp_result").tool.doot.clingo.out_ext()
+src_ext     = doot.config.or_get(".lp", str).tool.doot.clingo.src_ext()
+out_ext     = doot.config.or_get(".lp_result", str).tool.doot.clingo.out_ext()
 
-vis_src_ext = doot.config.or_get(".lp_vis").tool.doot.clingo.vis_src_ext()
-vis_in_ext  = doot.config.or_get(".json").tool.doot.clingo.vis_in_ext()
-vis_out_ext = doot.config.or_get(".dot").tool.doot.clingo.vis_out_ext()
+vis_src_ext = doot.config.or_get(".lp_vis", str).tool.doot.clingo.vis_src_ext()
+vis_in_ext  = doot.config.or_get(".json", str).tool.doot.clingo.vis_in_ext()
+vis_out_ext = doot.config.or_get(".dot", str).tool.doot.clingo.vis_out_ext()
 
 clingo_call = ["clingo"] + data.toml.or_get([]).tool.doot.clingo.options()
 

@@ -9,17 +9,17 @@ from doot import globber
 from doot.tasker import DootTasker, DootActions
 ##-- end imports
 
-prefix = doot.config.or_get("py").tool.doot.python.prefix()
+prefix = doot.config.or_get("py", str).tool.doot.python.prefix()
 
-lint_exec       = doot.config.or_get("pylint").tool.doot.python.lint.exec()
-lint_fmt        = doot.config.or_get("text").tool.doot.python.lint.output_format()
-lint_out        = doot.config.or_get(f"report.lint").tool.doot.python.lint.output_name()
-lint_grouped    = doot.config.or_get(True).tool.doot.python.lint.grouped()
-lint_error      = doot.config.or_get(False).tool.doot.python.lint.error()
+lint_exec       = doot.config.or_get("pylint", str).tool.doot.python.lint.exec()
+lint_fmt        = doot.config.or_get("text", str).tool.doot.python.lint.output_format()
+lint_out        = doot.config.or_get(f"report.lint", str).tool.doot.python.lint.output_name()
+lint_grouped    = doot.config.or_get(True, bool).tool.doot.python.lint.grouped()
+lint_error      = doot.config.or_get(False, bool).tool.doot.python.lint.error()
 
-py_test_dir_fmt = doot.config.or_get("__test").tool.doot.python.test.dir_fmt()
-py_test_args    = doot.config.or_get([]).tool.doot.python.test.args()
-py_test_out     = pl.Path(doot.config.or_get("result.test").tool.doot.python.test())
+py_test_dir_fmt = doot.config.or_get("__test", str).tool.doot.python.test.dir_fmt()
+py_test_args    = doot.config.or_get([], list).tool.doot.python.test.args()
+py_test_out     = pl.Path(doot.config.or_get("result.test", str).tool.doot.python.test())
 
 def gen_toml(self):
     return "\n".join(["[tool.doot.python.lint]",

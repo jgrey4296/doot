@@ -41,10 +41,10 @@ logging = logmod.getLogger(__name__)
 # Path Quote
 pq = lambda x: quote(str(x))
 
-tweet_index_file = doot.config.or_get(".tweets").tool.doot.twitter.index()
-file_index_file  = doot.config.or_get(".files").tool.doot.twitter.file_index()
-link_index_file  = doot.config.or_get(".links").tool.doot.twitter.link_index()
-thread_file      = doot.config.or_get(".threads").tool.doot.twitter.thread_index()
+tweet_index_file = doot.config.or_get(".tweets", str).tool.doot.twitter.index()
+file_index_file  = doot.config.or_get(".files", str).tool.doot.twitter.file_index()
+link_index_file  = doot.config.or_get(".links", str).tool.doot.twitter.link_index()
+thread_file      = doot.config.or_get(".threads", str).tool.doot.twitter.thread_index()
 
 empty_match = re.match("","")
 

@@ -56,12 +56,12 @@ class TaskGroup:
     def __len__(self):
         return len(self.tasks)
 
-    def to_dict(self):
-        return {f"__doot_{self.name}_{id(x)}": x for x in self.tasks}
-
     def __iadd__(self, other):
         self.tasks.append(other)
         return self
+    def to_dict(self):
+        return {f"__doot_{self.name}_{id(x)}": x for x in self.tasks}
+
 
     def add_tasks(self, *other):
         for x in other:

@@ -24,7 +24,7 @@ from doot.errors import DootDirAbsent
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-glob_ignores = doot.config.or_get(['.git', '.DS_Store', "__pycache__"]).tool.doot.glob_ignores()
+glob_ignores = doot.config.or_get(['.git', '.DS_Store', "__pycache__"], list).tool.doot.glob_ignores()
 
 class GlobControl(enum.Enum):
     """
@@ -38,7 +38,7 @@ class GlobControl(enum.Enum):
     discard = enum.auto()
     reject  = enum.auto()
 
-class EagerFileGlobber(DootSubtasker):
+class DootEagerGlobber(DootSubtasker):
     """
     Base task for file based *on load* globbing.
     Generates a new subtask for each file found.
@@ -85,12 +85,12 @@ class EagerFileGlobber(DootSubtasker):
 
     def glob_target(self, target, rec=False, fn=None, exts=None) -> list[pl.Path]:
         results   = []
-        exts      = exts or self.exts or [".*"]
+        exts      = exts or self.exts or ["*"]
         filter_fn = fn or self.filter
         glob_fn   = target.rglob if (rec or self.rec) else target.glob
 
-        for ext in exts:
-            results += list(glob_fn("*"+ext))
+        for ext in [f"*{x}" if x[0] == "." else x for x in exts]:
+            results += glob_fn(ext)
 
         results = [x for x in results if filter_fn(x) not in [False, GlobControl.reject, GlobControl.discard]]
 
@@ -143,7 +143,11 @@ class EagerFileGlobber(DootSubtasker):
         self.total_subtasks = len(subtasks)
         return subtasks
 
-class DirGlobber(EagerFileGlobber):
+class EagerFileGlobber(DootEagerGlobber):
+    pass
+
+# Multiple Inheritances:
+class DirGlobMixin:
     """
     Globs for directories instead of files.
     Generates a subtask for each found directory
@@ -187,7 +191,7 @@ class DirGlobber(EagerFileGlobber):
 
         return results
 
-class LazyFileGlobber(EagerFileGlobber):
+class LazyGlobMixin:
     """
     Late globber, generates one subtask per root point,
     use self.glob_target to run the glob
@@ -196,7 +200,7 @@ class LazyFileGlobber(EagerFileGlobber):
     def glob_all(self, rec=False):
         return [(str(x).replace("/", "_"), x) for x in self.roots]
 
-class HeadlessFileGlobber(EagerFileGlobber):
+class HeadlessGlobMixin:
     """
     Glob for files, but don't provide a top level task to
     run all of them together
@@ -208,3 +212,11 @@ class HeadlessFileGlobber(EagerFileGlobber):
         then customizing the subtasks
         """
         return super(DootSubtasker, self)._build_task()
+
+
+class SubGlobMixin:
+    """
+    Glob only a subset of potentials
+    """
+
+    pass

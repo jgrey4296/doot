@@ -21,11 +21,11 @@ from doot.taskslib.files import hash_all
 default_ocr_exts = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".ppm"]
 default_pdf_exts = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".ppm"]
 
-ocr_exts    : list[str] = doot.config.or_get(default_ocr_exts).tool.doot.images.ocr_exts()
-batch_size  : int       = doot.config.or_get(20).tool.doot.batch_size()
-ocr_out_ext : str       = doot.config.or_get(".ocr").tool.doot.images.ocr_out()
+ocr_exts    : list[str] = doot.config.or_get(default_ocr_exts, list).tool.doot.images.ocr_exts()
+batch_size  : int       = doot.config.or_get(20, int).tool.doot.batch_size()
+ocr_out_ext : str       = doot.config.or_get(".ocr", str).tool.doot.images.ocr_out()
 
-framerate   : int       = doot.config.or_get(10).tool.doot.images.framerate()
+framerate   : int       = doot.config.or_get(10, int).tool.doot.images.framerate()
 
 
 HashImages = hash_all.HashAllFiles

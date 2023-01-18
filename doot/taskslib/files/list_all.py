@@ -8,7 +8,7 @@ import doot
 
 ##-- end imports
 
-glob_ignores = doot.config.or_get(['.git', '.DS_Store', "__pycache__"]).tool.doot.glob_ignores()
+glob_ignores = doot.config.or_get(['.git', '.DS_Store', "__pycache__"], list).tool.doot.glob_ignores()
 
 def task_list_target(targ:str, target:pl.Path, dirs:DootLocData):
     """

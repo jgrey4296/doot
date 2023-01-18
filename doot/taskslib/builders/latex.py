@@ -12,7 +12,7 @@ from doot import tasker
 
 ##-- end imports
 
-interaction_mode = doot.config.or_get("nonstopmode").tool.doot.tex.interaction()
+interaction_mode = doot.config.or_get("nonstopmode", str).tool.doot.tex.interaction()
 
 
 class LatexMultiPass(globber.EagerFileGlobber):
