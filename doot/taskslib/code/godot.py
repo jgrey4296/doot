@@ -20,7 +20,7 @@ from weakref import ref
 
 import doot
 from doot import globber
-from doot.tasker import DootTasker, DootActions
+from doot.tasker import DootTasker, ActionsMixin
 
 if TYPE_CHECKING:
     # tc only imports
@@ -35,7 +35,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 
-class GodotCheckTask(globber.EagerFileGlobber, DootActions):
+class GodotCheckTask(globber.EagerFileGlobber, ActionsMixin):
     """
     ([root]) Lint all gd scripts in the project
     """

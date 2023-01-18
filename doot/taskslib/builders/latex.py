@@ -30,7 +30,7 @@ class LatexMultiPass(globber.EagerFileGlobber):
         })
         return task
 
-class LatexFirstPass(globber.EagerFileGlobber, DootActions):
+class LatexFirstPass(globber.EagerFileGlobber, ActionsMixin):
     """
     ([src] -> [temp, build]) First pass of running latex,
     pre-bibliography resolution
@@ -77,7 +77,7 @@ class LatexFirstPass(globber.EagerFileGlobber, DootActions):
         first_pass_pdf = self.dirs.build / ("1st_pass_" + fpath.with_suffix(".pdf").name)
         return first_pass_pdf
 
-class LatexSecondPass(globber.EagerFileGlobber, DootActions):
+class LatexSecondPass(globber.EagerFileGlobber, ActionsMixin):
     """
     ([src, temp] -> build) Second pass of latex compiling,
     post-bibliography resolution
@@ -118,7 +118,7 @@ class LatexSecondPass(globber.EagerFileGlobber, DootActions):
                 fpath.with_suffix("")]
 
     
-class BibtexBuildPass(globber.EagerFileGlobber, DootActions):
+class BibtexBuildPass(globber.EagerFileGlobber, ActionsMixin):
     """
     ([src] -> temp) Bibliography resolution pass
     """
@@ -243,9 +243,9 @@ def task_latex_rebuild():
     
     return {
         "basename" : "tex::rebuild",
-        "actions" : [ DootActions.cmd(None, ["fmtutil",  "--all"]),
-                      DootActions.cmd(None, ["tlmgr",  "list", "--only-installed"], save="installed"),
-                      DootActions.cmd(None, build_install_cmd)
+        "actions" : [ ActionsMixin.cmd(None, ["fmtutil",  "--all"]),
+                      ActionsMixin.cmd(None, ["tlmgr",  "list", "--only-installed"], save="installed"),
+                      ActionsMixin.cmd(None, build_install_cmd)
         ],
     }
 

@@ -10,7 +10,7 @@ from doit.task import Task as DoitTask
 
 import doot
 from doot.utils.loc_data import DootLocData
-from doot.utils.tasker import DootTasker, DootActions
+from doot.utils.tasker import DootTasker, ActionsMixin
 ##-- end imports
 
 ##-- logging

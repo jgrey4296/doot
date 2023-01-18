@@ -19,7 +19,7 @@ from uuid import UUID, uuid1
 from weakref import ref
 
 import doot
-from doot.tasker import DootTasker, DootActions
+from doot.tasker import DootTasker, ActionsMixin
 
 if TYPE_CHECKING:
     # tc only imports
@@ -35,7 +35,7 @@ logging = logmod.getLogger(__name__)
 
 collect_libs = doot.config.or_get([], list).tool.doot.python.compile.collect()
 
-class PythonCompile(DootTasker, DootActions):
+class PythonCompile(DootTasker, ActionsMixin):
     """
     https://pyinstaller.org/en/stable/
     Use pyinstaller to create an exe

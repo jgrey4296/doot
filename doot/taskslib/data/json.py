@@ -20,7 +20,7 @@ from doot.utils.clean_actions import clean_target_dirs
 
 ##-- end imports
 
-class JsonFormatTask(globber.DirGlobber, tasker.DootActions):
+class JsonFormatTask(globber.DirGlobber, tasker.ActionsMixin):
     """
     ([data] -> data)Lint Json files with jq
     """
@@ -59,7 +59,7 @@ class JsonFormatTask(globber.DirGlobber, tasker.DootActions):
                 continue
             backup.write_text(btarget.read_text())
 
-class JsonPythonSchema(globber.DirGlobber, tasker.DootActions):
+class JsonPythonSchema(globber.DirGlobber, tasker.ActionsMixin):
     """
     ([data] -> codegen) Use XSData to generate python bindings for a directory of json's
     """
@@ -95,7 +95,7 @@ class JsonPythonSchema(globber.DirGlobber, tasker.DootActions):
 
         return args
 
-class JsonVisualise(globber.EagerFileGlobber, tasker.DootActions):
+class JsonVisualise(globber.EagerFileGlobber, tasker.ActionsMixin):
     """
     ([data] -> visual) Wrap json files with plantuml header and footer,
     ready for plantuml to visualise structure

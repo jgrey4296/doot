@@ -20,7 +20,7 @@ from weakref import ref
 
 import doot
 from doot import globber
-from doot.tasker import DootTasker, DootActions
+from doot.tasker import DootTasker, ActionsMixin
 
 if TYPE_CHECKING:
     # tc only imports
@@ -55,7 +55,7 @@ def task_latex_docs():
                     ],
     }
 
-class LatexCheckSweep(globber.EagerFileGlobber, DootActions):
+class LatexCheckSweep(globber.EagerFileGlobber, ActionsMixin):
     """
     ([src] -> temp) Run a latex pass, but don't produce anything,
     just check the syntax
@@ -87,7 +87,7 @@ class LatexCheckSweep(globber.EagerFileGlobber, DootActions):
                 f"-output-directory={self.dirs.temp}",
                 fpath.with_suffix("")]
 
-class BibtexCheckSweep(globber.EagerFileGlobber, DootActions):
+class BibtexCheckSweep(globber.EagerFileGlobber, ActionsMixin):
     """
     TODO ([src]) Bibtex Checking
     """

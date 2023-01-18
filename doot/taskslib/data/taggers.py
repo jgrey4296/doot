@@ -15,7 +15,7 @@ def task_tags_init(dirs):
     """([src]) initalise gtags """
     return {
         "basename" : "gtags::init",
-        "actions"  : [ tasker.DootActions.cmd(None, ["gtags", "-C", dirs.src, "."])],
+        "actions"  : [ tasker.ActionsMixin.cmd(None, ["gtags", "-C", dirs.src, "."])],
         "targets"  : [ dirs.src / x for x in [ "GPATH", "GRTAGS", "GTAGS" ] ],
         "clean"    : True,
     }
@@ -25,6 +25,6 @@ def task_tags(dirs):
     """([src]) update tag files """
     return {
         "basename" : "gtags::update",
-        "actions"  : [ tasker.DootActions.cmd(None, ["global", "-C", dirs.src, "-u" ])],
+        "actions"  : [ tasker.ActionsMixin.cmd(None, ["global", "-C", dirs.src, "-u" ])],
         "file_dep" : [ dirs.src / x for x in [ "GPATH", "GRTAGS", "GTAGS" ] ],
     }

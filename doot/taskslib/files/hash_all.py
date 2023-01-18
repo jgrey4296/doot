@@ -41,7 +41,7 @@ hash_record = doot.config.or_get(".hashes", str).tool.doot.files.hash.record()
 hash_concat = doot.config.or_get(".all_hashes", str).tool.doot.files.hash.grouped()
 hash_dups   = doot.config.or_get(".dup_hashes", str).tool.doot.files.hash.duplicates()
 
-class HashAllFiles(globber.DirGlobber, tasker.DootActions, task.DootBatcher):
+class HashAllFiles(globber.DirGlobber, tasker.ActionsMixin, task.BatchMixin):
     """
     ([data] -> data) For each subdir, hash all the files in it
     info
@@ -104,7 +104,7 @@ class HashAllFiles(globber.DirGlobber, tasker.DootActions, task.DootBatcher):
         with open(target, 'a') as f:
             f.write("\n" + act.out)
 
-class GroupHashes(globber.DirGlobber, tasker.DootActions):
+class GroupHashes(globber.DirGlobber, tasker.ActionsMixin):
 
     def __init__(self, name="files::hash.group", dirs:DootLocData=None, roots=None, exts=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=exts, rec=rec)
@@ -134,7 +134,7 @@ class GroupHashes(globber.DirGlobber, tasker.DootActions):
         with open(self.dirs.temp / self.hash_concat, 'a') as f:
             f.write("\n" + fpath.read_text())
 
-class DuplicateHashes(tasker.DootTasker, tasker.DootActions):
+class DuplicateHashes(tasker.DootTasker, tasker.ActionsMixin):
     """
     sort all_hashes, and run uniq of the first n chars
     """

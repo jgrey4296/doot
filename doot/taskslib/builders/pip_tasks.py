@@ -8,7 +8,7 @@ import re
 import fileinput
 
 import doot
-from doot.tasker import DootTasker, DootActions
+from doot.tasker import DootTasker, ActionsMixin
 
 from doot.task_group import TaskGroup
 ##-- end imports
@@ -99,7 +99,7 @@ class IncrementVersion(DootTasker):
                 raise Exception("this shouldn't happen")
 
 
-class PyBuild(DootTasker, DootActions):
+class PyBuild(DootTasker, ActionsMixin):
     """
     Build a wheel of the package
     """
@@ -116,7 +116,7 @@ class PyBuild(DootTasker, DootActions):
                                          self.dirs.root]))
         return task
 
-class PyInstall(DootTasker, DootActions):
+class PyInstall(DootTasker, ActionsMixin):
     """
     ([src]) install a package, using pip
     editable by default
@@ -169,7 +169,7 @@ class PyInstall(DootTasker, DootActions):
 
 
 
-class PipReqs(DootTasker, DootActions):
+class PipReqs(DootTasker, ActionsMixin):
     """
     write out pip requirements to requirements.txt
     """
@@ -193,7 +193,7 @@ class PipReqs(DootTasker, DootActions):
         })
         return task
 
-class VenvNew(DootTasker, DootActions):
+class VenvNew(DootTasker, ActionsMixin):
     """
     (-> temp ) create a new venv
     """

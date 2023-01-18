@@ -6,13 +6,13 @@ import pathlib as pl
 import shutil
 
 from doot import globber
-from doot.tasker import DootTasker, DootActions
+from doot.tasker import DootTasker, ActionsMixin
 
 ##-- end imports
 # https://docs.godotengine.org/en/stable/tutorials/editor/command_line_tutorial.html
 
 
-class GodotRunScene(globber.HeadlessFileGlobber, DootActions):
+class GodotRunScene(globber.HeadlessFileGlobber, ActionsMixin):
     """
     ([root]) Globber to allow easy running of scenes
     """
@@ -58,7 +58,7 @@ class GodotRunScene(globber.HeadlessFileGlobber, DootActions):
         args.append(self.args['target'])
         return args
 
-class GodotRunScript(globber.EagerFileGlobber, DootActions):
+class GodotRunScript(globber.EagerFileGlobber, ActionsMixin):
     """
     ([root]) Run a godot script, with debugging or without
     """
@@ -102,7 +102,7 @@ class GodotRunScript(globber.EagerFileGlobber, DootActions):
 
         return args
 
-class GodotBuild(DootTasker, DootActions):
+class GodotBuild(DootTasker, ActionsMixin):
     """
     (-> [build]) build a godot project
     """
@@ -155,7 +155,7 @@ class GodotBuild(DootTasker, DootActions):
 def task_godot_version():
     return { "basename"  : "godot::version",
              "actions"   : [
-                 DootActions.force(None, ["godot", "--version"]),
+                 ActionsMixin.force(None, ["godot", "--version"]),
              ],
              "verbosity" : 2,
             }
@@ -179,7 +179,7 @@ def task_newscene(dirs:DootLocData):
 
     return {
         "basename" : "godot::new:scene",
-        "actions" : [ DootActions.cmd(None, mkscene) ],
+        "actions" : [ ActionsMixin.cmd(None, mkscene) ],
         "set_params" : [
             { "name"    : "name",
               "short"   : "n",

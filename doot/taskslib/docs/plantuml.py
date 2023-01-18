@@ -10,7 +10,7 @@ from doot import globber
 from doot import tasker
 ##-- end imports
 
-class PlantUMLGlobberTask(globber.EagerFileGlobber, tasker.DootActions):
+class PlantUMLGlobberTask(globber.EagerFileGlobber, tasker.ActionsMixin):
     """
     ([visual] -> build) run plantuml on a specification, generating target.'ext's
     """
@@ -38,7 +38,7 @@ class PlantUMLGlobberTask(globber.EagerFileGlobber, tasker.DootActions):
                 dependencies[0]
                 ]
 
-class PlantUMLGlobberCheck(globber.EagerFileGlobber, tasker.DootActions):
+class PlantUMLGlobberCheck(globber.EagerFileGlobber, tasker.ActionsMixin):
     """
     ([visual]) check syntax of plantuml files
     TODO Adapt godot::check pattern

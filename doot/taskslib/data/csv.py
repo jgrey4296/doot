@@ -15,7 +15,7 @@ from doot import globber
 from doot import tasker
 ##-- end imports
 
-class CSVSummaryTask(globber.EagerFileGlobber, tasker.DootActions):
+class CSVSummaryTask(globber.EagerFileGlobber, tasker.ActionsMixin):
     """
     ([data] -> build) Summarise all found csv files,
     grouping those with the same headers,
@@ -54,7 +54,7 @@ class CSVSummaryTask(globber.EagerFileGlobber, tasker.DootActions):
             f.write("Columns: ", columns, " ")
             f.write("Header: ", text[0].strip(), "\n")
 
-class CSVSummaryXMLTask(globber.EagerFileGlobber, tasker.DootActions):
+class CSVSummaryXMLTask(globber.EagerFileGlobber, tasker.ActionsMixin):
     """
     ([data] -> build) Summarise all found csv files,
     grouping those with the same headers,

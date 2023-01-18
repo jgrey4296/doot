@@ -7,7 +7,7 @@ import shutil
 import doot
 from doot.task_group import TaskGroup
 from doot.utils.clean_actions import clean_target_dirs
-from doot.tasker import DootTasker, DootActions
+from doot.tasker import DootTasker, ActionsMixin
 
 ##-- end imports
 
@@ -29,11 +29,11 @@ def task_browse(dirs:DootLocData) -> dict:
     assert("html" in dirs.extra)
     return {
         "basename"    : "sphinx::browse",
-        "actions"     : [ DootActions.cmd(None, ["open", dirs.extra['html'] ]) ],
+        "actions"     : [ ActionsMixin.cmd(None, ["open", dirs.extra['html'] ]) ],
         "task_dep"    : ["sphinx::doc"],
     }
 
-class SphinxDocTask(DootTasker, DootActions):
+class SphinxDocTask(DootTasker, ActionsMixin):
     """([docs] -> build) Build sphinx documentation """
     gen_toml = gen_toml
 

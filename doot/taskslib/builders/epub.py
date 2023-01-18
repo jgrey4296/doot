@@ -51,7 +51,7 @@ NAV_ENT_T      = Template(data_path.joinpath("epub_nav_entry").read_text())
 
 ws = re.compile("\s+")
 
-class EbookGlobberBase(globber.DirGlobber, tasker.DootActions):
+class EbookGlobberBase(globber.DirGlobber, tasker.ActionsMixin):
 
     marker_file = ".epub"
 
@@ -345,7 +345,7 @@ class EbookSplitTask(globber.EagerFileGlobber):
     def action_convert(self, dependencies, targets):
         return ["ebook-convert", dependencies[0], targets[0]]
 
-class EbookNewTask(tasker.DootTasker, tasker.DootActions):
+class EbookNewTask(tasker.DootTasker, tasker.ActionsMixin):
     """
     (-> [src]) Create a new stub structure for an ebook
 

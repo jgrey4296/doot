@@ -7,7 +7,7 @@ import shutil
 from collections import defaultdict
 
 import doot
-from doot.tasker import DootTasker, DootActions
+from doot.tasker import DootTasker, ActionsMixin
 
 ##-- end imports
 
@@ -29,7 +29,7 @@ def roundTime(dt=None, roundTo=60):
    rounding = (seconds+roundTo/2) // roundTo * roundTo
    return dt + datetime.timedelta(0,rounding-seconds,-dt.microsecond)
 
-class GitLogTask(DootTasker, DootActions):
+class GitLogTask(DootTasker, ActionsMixin):
     """
     ([root] -> temp) Output a summary of the git repo, with a specific format
     see: https://git-scm.com/docs/git-log
@@ -56,7 +56,7 @@ class GitLogTask(DootTasker, DootActions):
         return ["git", "log", f"--pretty=format:{log_format}"]
 
 
-class GitLogAnalyseTask(DootTasker, DootActions):
+class GitLogAnalyseTask(DootTasker, ActionsMixin):
     """
     (temp -> build) separate the printed log
     """

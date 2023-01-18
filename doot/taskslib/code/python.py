@@ -6,7 +6,7 @@ from functools import partial
 
 import doot
 from doot import globber
-from doot.tasker import DootTasker, DootActions
+from doot.tasker import DootTasker, ActionsMixin
 ##-- end imports
 
 prefix = doot.config.or_get("py", str).tool.doot.python.prefix()
@@ -34,7 +34,7 @@ def gen_toml(self):
                       ])
 
 
-class InitPyGlobber(globber.DirGlobber, DootActions):
+class InitPyGlobber(globber.DirGlobber, ActionsMixin):
     """ ([src] -> src) add missing __init__.py's """
     gen_toml = gen_toml
 
@@ -66,7 +66,7 @@ class InitPyGlobber(globber.DirGlobber, DootActions):
             inpy.touch()
 
 
-class PyLintTask(globber.DirGlobber, DootActions):
+class PyLintTask(globber.DirGlobber, ActionsMixin):
     """ ([root]) lint the package """
 
     gen_toml = gen_toml
@@ -116,7 +116,7 @@ class PyLintTask(globber.DirGlobber, DootActions):
 
 
 
-class PyUnitTestGlob(globber.DirGlobber, DootActions):
+class PyUnitTestGlob(globber.DirGlobber, ActionsMixin):
     """
     ([root]) Run all project unit tests
     """
@@ -146,7 +146,7 @@ class PyUnitTestGlob(globber.DirGlobber, DootActions):
 
 
 
-class PyTestGlob(globber.DirGlobber, DootActions):
+class PyTestGlob(globber.DirGlobber, ActionsMixin):
     """
     ([src]) Run all project unit tests
     """

@@ -9,7 +9,7 @@ from doot import tasker
 
 ##-- end imports
 
-class SqlitePrepTask(globber.EagerFileGlobber, tasker.DootActions):
+class SqlitePrepTask(globber.EagerFileGlobber, tasker.ActionsMixin):
     """
     ([data] -> data) file conversion from mysql to sqlite
     using https://github.com/dumblob/mysql2sqlite
@@ -21,7 +21,7 @@ class SqlitePrepTask(globber.EagerFileGlobber, tasker.DootActions):
     def subtask_detail(self, task, fpath=None):
         return task
 
-class SqliteReportTask(globber.EagerFileGlobber, tasker.DootActions):
+class SqliteReportTask(globber.EagerFileGlobber, tasker.ActionsMixin):
     """
     TODO ([data] -> build) report database tables
      .schema .fullschema

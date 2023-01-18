@@ -11,7 +11,7 @@ from doit.action import CmdAction
 
 import doot
 from doot.utils.clean_actions import clean_target_dirs
-from doot.tasker import DootTasker, DootActions
+from doot.tasker import DootTasker, ActionsMixin
 
 ##-- end imports
 
@@ -37,7 +37,7 @@ def task_jekyll_serve():
 
 
 
-class JekyllBuild(DootTasker, DootActions):
+class JekyllBuild(DootTasker, ActionsMixin):
     """
     Build the jekyll site, from the source destination,
     into the build destination

@@ -17,7 +17,7 @@ from doot import tasker
 
 ##-- end imports
 
-class DotVisualise(globber.EagerFileGlobber, tasker.DootActions):
+class DotVisualise(globber.EagerFileGlobber, tasker.ActionsMixin):
     """
     ([src] -> build) make images from any dot files
     """

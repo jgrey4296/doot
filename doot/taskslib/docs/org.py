@@ -24,7 +24,7 @@ from weakref import ref
 
 import doot
 from doot import globber
-from doot.tasker import DootTasker, DootActions
+from doot.tasker import DootTasker, ActionsMixin
 
 if TYPE_CHECKING:
     # tc only imports
@@ -50,7 +50,7 @@ empty_match = re.match("","")
 
 # TODO thread crosslinking
 
-class LinkCleanExtract(globber.DirGlobber, DootActions):
+class LinkCleanExtract(globber.DirGlobber, ActionsMixin):
     """
 
     """
@@ -103,7 +103,7 @@ class LinkCleanExtract(globber.DirGlobber, DootActions):
     def retrieve_ocr_text(self, fpath):
         pass
 
-class TweetExtract(globber.DirGlobber, DootActions):
+class TweetExtract(globber.DirGlobber, ActionsMixin):
 
     def __init__(self, name="tweets::extract", dirs=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=[".org"], rec=rec)
@@ -153,7 +153,7 @@ class TweetExtract(globber.DirGlobber, DootActions):
 
         tweet_index.write_text("\n".join(permalinks))
 
-class OrgThreadCount(globber.DirGlobber, DootActions):
+class OrgThreadCount(globber.DirGlobber, ActionsMixin):
     """
     mark files with multiple threads
     """
@@ -205,7 +205,7 @@ class OrgThreadCount(globber.DirGlobber, DootActions):
         summary = [f"L1: {y[0]} {x}\nL2: {y[1]} {x}" for x,y in counts.items()]
         target.write_text(f"Total Files: {total_files}\nTotal Threads: {total_threads}\n" + "\n".join(summary))
 
-class ThreadOrganise(globber.DirGlobber, DootActions):
+class ThreadOrganise(globber.DirGlobber, ActionsMixin):
     """
     move threads in multi thread files to their own separate count
     """
@@ -319,19 +319,19 @@ class ThreadOrganise(globber.DirGlobber, DootActions):
                 self.multi_threads.add(fpath / result[3].strip())
 
 ##-- todo
-class OrgExport(globber.DirGlobber, DootActions):
+class OrgExport(globber.DirGlobber, ActionsMixin):
     """
     Convert each thread to html
     """
     pass
 
-class OrgEpubBuild(globber.DirGlobber, DootActions):
+class OrgEpubBuild(globber.DirGlobber, ActionsMixin):
     """
     Build working epub directories in each account
     """
     pass
 
-class ZipUser(globber.DirGlobber, DootActions):
+class ZipUser(globber.DirGlobber, ActionsMixin):
     """
     Zip each account for backup
     """

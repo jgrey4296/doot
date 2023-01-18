@@ -12,7 +12,7 @@ import doot
 from doot.utils.dir_tasks import CheckDir
 from doot.utils.clean_actions import clean_target_dirs
 from doot import globber
-from doot.tasker import DootTasker, DootActions
+from doot.tasker import DootTasker, ActionsMixin
 
 ##-- end imports
 
@@ -68,7 +68,7 @@ def gen_toml(self):
                         "default_template = \"default\"",
                         ])
 
-class GenPostTask(DootTasker, DootActions):
+class GenPostTask(DootTasker, ActionsMixin):
     """
     (-> posts) create a new post,
     using a template or the default in doot.__templates.jekyll_post
@@ -125,7 +125,7 @@ class GenPostTask(DootTasker, DootActions):
 
         post_path.write_text(post_text)
 
-class GenTagsTask(DootTasker, DootActions):
+class GenTagsTask(DootTasker, ActionsMixin):
     """
     ([src] -> [tags, tagsIndex]) Generate summary files for all tags used in md files in the jekyll src dir
     """
