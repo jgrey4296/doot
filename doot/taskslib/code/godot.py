@@ -35,7 +35,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 
-class GodotCheckTask(globber.EagerFileGlobber, ActionsMixin):
+class GodotCheckTask(globber.DootEagerGlobber, ActionsMixin):
     """
     ([root]) Lint all gd scripts in the project
     """

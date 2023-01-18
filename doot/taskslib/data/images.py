@@ -36,7 +36,7 @@ def gen_toml(self):
                       ])
 
 
-class OCRGlobber(globber.DirGlobber, tasker.BatchMixin):
+class OCRGlobber(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.BatchMixin):
     """
     ([data] -> data) Run tesseract on applicable files in each found directory
     to make dot txt files of ocr'd text from the image
@@ -90,7 +90,7 @@ class OCRGlobber(globber.DirGlobber, tasker.BatchMixin):
             ocr_cmd.execute()
             mv_txt_cmd.execute()
 
-class Images2PDF(globber.LazyFileGlobber, tasker.ActionsMixin, tasker.BatchMixin):
+class Images2PDF(globber.LazyGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin, tasker.BatchMixin):
     """
     Combine globbed images into a single pdf file using imagemagick
     """
@@ -135,7 +135,7 @@ class Images2PDF(globber.LazyFileGlobber, tasker.ActionsMixin, tasker.BatchMixin
         pages = [x for x in self.dirs.temp.iterdir() if x.suffix == ".pdf"]
         return ["pdftk", *pages, "cat", "output", targets[0]]
 
-class Images2Video(globber.LazyFileGlobber, tasker.ActionsMixin):
+class Images2Video(globber.LazyGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
     """
     https://stackoverflow.com/questions/24961127/
     """
@@ -163,7 +163,7 @@ class Images2Video(globber.LazyFileGlobber, tasker.ActionsMixin):
         args.append(targets[0])
         raise NotImplementedError
 
-class PDF2Images(globber.EagerFileGlobber, tasker.ActionsMixin):
+class PDF2Images(globber.DootEagerGlobber, tasker.ActionsMixin):
     """
     (src -> temp) Find pdfs and extract images for them for ocr
     """

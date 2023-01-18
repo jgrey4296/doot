@@ -15,7 +15,7 @@ from doot import tasker
 interaction_mode = doot.config.or_get("nonstopmode", str).tool.doot.tex.interaction()
 
 
-class LatexMultiPass(globber.EagerFileGlobber):
+class LatexMultiPass(globber.DootEagerGlobber):
     """
     ([src] -> build) Trigger both latex passes and the bibtex pass
     """
@@ -30,7 +30,7 @@ class LatexMultiPass(globber.EagerFileGlobber):
         })
         return task
 
-class LatexFirstPass(globber.EagerFileGlobber, ActionsMixin):
+class LatexFirstPass(globber.DootEagerGlobber, ActionsMixin):
     """
     ([src] -> [temp, build]) First pass of running latex,
     pre-bibliography resolution
@@ -77,7 +77,7 @@ class LatexFirstPass(globber.EagerFileGlobber, ActionsMixin):
         first_pass_pdf = self.dirs.build / ("1st_pass_" + fpath.with_suffix(".pdf").name)
         return first_pass_pdf
 
-class LatexSecondPass(globber.EagerFileGlobber, ActionsMixin):
+class LatexSecondPass(globber.DootEagerGlobber, ActionsMixin):
     """
     ([src, temp] -> build) Second pass of latex compiling,
     post-bibliography resolution
@@ -118,7 +118,7 @@ class LatexSecondPass(globber.EagerFileGlobber, ActionsMixin):
                 fpath.with_suffix("")]
 
     
-class BibtexBuildPass(globber.EagerFileGlobber, ActionsMixin):
+class BibtexBuildPass(globber.DootEagerGlobber, ActionsMixin):
     """
     ([src] -> temp) Bibliography resolution pass
     """

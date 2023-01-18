@@ -37,7 +37,7 @@ def gen_toml(self):
                       "vis_out_ext = \".dot\"",
                       ])
 
-class ClingoRunner(globber.EagerFileGlobber, ActionsMixin):
+class ClingoRunner(globber.DootEagerGlobber, ActionsMixin):
     """
     ([src] -> build) Run clingo on ansprolog sources
     """
@@ -60,7 +60,7 @@ class ClingoRunner(globber.EagerFileGlobber, ActionsMixin):
     def clingo_call(self, task, dependencies):
         return clingo_call + dependencies
 
-class ClingoDotter(globber.EagerFileGlobber, ActionsMixin):
+class ClingoDotter(globber.DootEagerGlobber, ActionsMixin):
     """
     ([src] -> build) Run specified clingo files to output json able to be visualised
     """
@@ -83,7 +83,7 @@ class ClingoDotter(globber.EagerFileGlobber, ActionsMixin):
         return ["clingo", "--outf2"] + dependencies
 
 
-class ClingoVisualise(globber.EagerFileGlobber, ActionsMixin):
+class ClingoVisualise(globber.DootEagerGlobber, ActionsMixin):
     """
     TODO ([src] -> visual) Take clingo output with nodes,
     and convert to dot format

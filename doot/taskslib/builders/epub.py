@@ -51,7 +51,7 @@ NAV_ENT_T      = Template(data_path.joinpath("epub_nav_entry").read_text())
 
 ws = re.compile("\s+")
 
-class EbookGlobberBase(globber.DirGlobber, tasker.ActionsMixin):
+class EbookGlobberBase(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
 
     marker_file = ".epub"
 
@@ -323,7 +323,7 @@ class EbookRestructureTask(EbookGlobberBase):
                     moved = True
                     break
 
-class EbookSplitTask(globber.EagerFileGlobber):
+class EbookSplitTask(globber.DootEagerGlobber):
     """
     (GlobDirs: [data] -> build) split any epubs found in the project data
     """

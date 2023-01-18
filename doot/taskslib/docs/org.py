@@ -50,7 +50,7 @@ empty_match = re.match("","")
 
 # TODO thread crosslinking
 
-class LinkCleanExtract(globber.DirGlobber, ActionsMixin):
+class LinkCleanExtract(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
 
     """
@@ -103,7 +103,7 @@ class LinkCleanExtract(globber.DirGlobber, ActionsMixin):
     def retrieve_ocr_text(self, fpath):
         pass
 
-class TweetExtract(globber.DirGlobber, ActionsMixin):
+class TweetExtract(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
 
     def __init__(self, name="tweets::extract", dirs=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=[".org"], rec=rec)
@@ -153,7 +153,7 @@ class TweetExtract(globber.DirGlobber, ActionsMixin):
 
         tweet_index.write_text("\n".join(permalinks))
 
-class OrgThreadCount(globber.DirGlobber, ActionsMixin):
+class OrgThreadCount(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     mark files with multiple threads
     """
@@ -205,7 +205,7 @@ class OrgThreadCount(globber.DirGlobber, ActionsMixin):
         summary = [f"L1: {y[0]} {x}\nL2: {y[1]} {x}" for x,y in counts.items()]
         target.write_text(f"Total Files: {total_files}\nTotal Threads: {total_threads}\n" + "\n".join(summary))
 
-class ThreadOrganise(globber.DirGlobber, ActionsMixin):
+class ThreadOrganise(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     move threads in multi thread files to their own separate count
     """
@@ -319,19 +319,19 @@ class ThreadOrganise(globber.DirGlobber, ActionsMixin):
                 self.multi_threads.add(fpath / result[3].strip())
 
 ##-- todo
-class OrgExport(globber.DirGlobber, ActionsMixin):
+class OrgExport(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     Convert each thread to html
     """
     pass
 
-class OrgEpubBuild(globber.DirGlobber, ActionsMixin):
+class OrgEpubBuild(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     Build working epub directories in each account
     """
     pass
 
-class ZipUser(globber.DirGlobber, ActionsMixin):
+class ZipUser(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     Zip each account for backup
     """

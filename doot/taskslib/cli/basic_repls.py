@@ -49,7 +49,7 @@ def task_prolog_repl():
     }
 
 
-class PrologRunner(globber.EagerFileGlobber):
+class PrologRunner(globber.DootEagerGlobber):
     """
     reminder, to run a goal without printing anything:
     return status is success or fail

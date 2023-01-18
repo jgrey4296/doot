@@ -55,7 +55,7 @@ def task_latex_docs():
                     ],
     }
 
-class LatexCheckSweep(globber.EagerFileGlobber, ActionsMixin):
+class LatexCheckSweep(globber.DootEagerGlobber, ActionsMixin):
     """
     ([src] -> temp) Run a latex pass, but don't produce anything,
     just check the syntax
@@ -87,7 +87,7 @@ class LatexCheckSweep(globber.EagerFileGlobber, ActionsMixin):
                 f"-output-directory={self.dirs.temp}",
                 fpath.with_suffix("")]
 
-class BibtexCheckSweep(globber.EagerFileGlobber, ActionsMixin):
+class BibtexCheckSweep(globber.DootEagerGlobber, ActionsMixin):
     """
     TODO ([src]) Bibtex Checking
     """

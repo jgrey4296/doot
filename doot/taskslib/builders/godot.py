@@ -12,7 +12,7 @@ from doot.tasker import DootTasker, ActionsMixin
 # https://docs.godotengine.org/en/stable/tutorials/editor/command_line_tutorial.html
 
 
-class GodotRunScene(globber.HeadlessFileGlobber, ActionsMixin):
+class GodotRunScene(globber.HeadlessGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     ([root]) Globber to allow easy running of scenes
     """

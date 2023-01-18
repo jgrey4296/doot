@@ -34,7 +34,7 @@ def gen_toml(self):
                       ])
 
 
-class InitPyGlobber(globber.DirGlobber, ActionsMixin):
+class InitPyGlobber(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """ ([src] -> src) add missing __init__.py's """
     gen_toml = gen_toml
 
@@ -66,7 +66,7 @@ class InitPyGlobber(globber.DirGlobber, ActionsMixin):
             inpy.touch()
 
 
-class PyLintTask(globber.DirGlobber, ActionsMixin):
+class PyLintTask(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """ ([root]) lint the package """
 
     gen_toml = gen_toml
@@ -116,7 +116,7 @@ class PyLintTask(globber.DirGlobber, ActionsMixin):
 
 
 
-class PyUnitTestGlob(globber.DirGlobber, ActionsMixin):
+class PyUnitTestGlob(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     ([root]) Run all project unit tests
     """
@@ -146,7 +146,7 @@ class PyUnitTestGlob(globber.DirGlobber, ActionsMixin):
 
 
 
-class PyTestGlob(globber.DirGlobber, ActionsMixin):
+class PyTestGlob(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     ([src]) Run all project unit tests
     """
