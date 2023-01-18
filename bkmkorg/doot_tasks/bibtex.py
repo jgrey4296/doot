@@ -55,10 +55,10 @@ clean_in_place   = doot.config.or_get(False).tool.doot.bibtex.clean_in_place()
 
 ENT_const = 'ENTRYTYPE'
 
-class LibDirClean(globber.DirGlobber, tasker.DootActions):
+class LibDirClean(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
     pass
 
-class BibtexClean(globber.EagerFileGlobber, tasker.DootActions):
+class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin):
     """
     (src -> src) Clean all bib files
     formatting, fixing paths, etc
@@ -175,7 +175,7 @@ class BibtexClean(globber.EagerFileGlobber, tasker.DootActions):
             self.issues.append(f"{entry['ID']} : File Does Not Exist : {entry[field]}")
 
 
-class BibtexReport(globber.EagerFileGlobber, tasker.DootActions):
+class BibtexReport(globber.DootEagerGlobber, tasker.ActionsMixin):
     """
     (src -> build) produce reports on the bibs found
     """
@@ -325,7 +325,7 @@ class BibtexReport(globber.EagerFileGlobber, tasker.DootActions):
 
             out_target.write_text("\n".join(report))
 
-class BibtexStub(globber.EagerFileGlobber, tasker.DootActions):
+class BibtexStub(globber.DootEagerGlobber, tasker.ActionsMixin):
     """
     (src -> data) Create basic stubs for found pdfs and epubs
     """

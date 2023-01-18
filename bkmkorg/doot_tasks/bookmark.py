@@ -31,7 +31,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import doot
-from doot.tasker import DootTasker, DootActions
+from doot.tasker import DootTasker, ActionsMixin
 from doot import globber
 
 from bkmkorg.bookmarks import database_fns as db_fns
@@ -39,7 +39,7 @@ from bkmkorg.bookmarks import database_fns as db_fns
 firefox = doot.config.or_get("~/Library/ApplicationSupport/Firefox").tools.doot.bookmarks.firefox_loc()
 databse = doot.config.or_get("places.sqlite").tools.doot.bookmarks.database_name()
 
-class BookmarksUpdate(DootTasker, DootActions):
+class BookmarksUpdate(DootTasker, ActionsMixin):
     """
     ( -> src ) copy firefox bookmarks databases, extract, merge with bookmarks file
     """
@@ -85,7 +85,7 @@ class BookmarksUpdate(DootTasker, DootActions):
             self.total += collection
             self.total.merge_duplicates()
 
-class BookmarksCleaner(DootTasker, DootActions):
+class BookmarksCleaner(DootTasker, ActionsMixin):
     """
     clean bookmarks file, removing duplicates, stripping urls
     """
@@ -110,13 +110,13 @@ class BookmarksCleaner(DootTasker, DootActions):
         self.total = BC.BookmarkCollection.read(fpath)
         self.total.merge_duplicate()
 
-class BookmarksSplit(DootTasker, DootActions):
+class BookmarksSplit(DootTasker, ActionsMixin):
     """
     Create several bookmarks files of selections
     """
     pass
 
-class BookmarksReport(globber.EagerFileGlobber, DootActions):
+class BookmarksReport(globber.DootEagerGlobber, ActionsMixin):
     """
     Generate reports on bookmarks
     """

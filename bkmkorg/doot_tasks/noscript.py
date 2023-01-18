@@ -32,7 +32,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import doot
-from doot.tasker import DootTasker, DootActions
+from doot.tasker import DootTasker, ActionsMixin
 from doot import globber
 
 def merge_json(target, source, key):
@@ -72,7 +72,7 @@ def merge_json(target, source, key):
             case bool(), bool():
                 pass
 
-class NoScriptMerge(DootTasker, DootActions):
+class NoScriptMerge(DootTasker, ActionsMixin):
     """
     merge noscript json files
     """

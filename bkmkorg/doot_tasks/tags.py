@@ -34,7 +34,7 @@ import re
 from collections import defaultdict
 import fileinput
 import doot
-from doot.tasker import DootTasker, DootActions
+from doot.tasker import DootTasker, ActionsMixin
 from doot import globber
 
 from bkmkorg.file_formats.tagfile import TagFile, SubstitutionFile, IndexFile
@@ -47,7 +47,7 @@ bib_tag_re      = re.compile(r"^(\s+tags\s+= ){(.+?)},$")
 org_tag_re      = re.compile(r"^(** .+?)\s+:(.+?):$")
 bookmark_tag_re = re.compile(r"^(http.+?) : (.+)$")
 
-class TagsCleaner(globber.DirGlobber, DootActions):
+class TagsCleaner(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     (src -> src) Clean tags in bib, org and bookmarks files,
     using tag substitution files
@@ -145,7 +145,7 @@ class TagsCleaner(globber.DirGlobber, DootActions):
                                 err)
                 print(line)
 
-class TagsReport(globber.EagerFileGlobber, DootActions):
+class TagsReport(globber.DootEagerGlobber, ActionsMixin):
     """
     (src -> build) Report on tags
     """
@@ -199,7 +199,7 @@ class TagsReport(globber.EagerFileGlobber, DootActions):
         count = len(self.tags.substitutions)
         return { "subs" : f"Number of Subsitutions: {count}" }
 
-class TagsIndexer(globber.EagerFileGlobber, DootActions):
+class TagsIndexer(globber.DootEagerGlobber, ActionsMixin):
     """
     extract tags from all globbed bookmarks, orgs, bibtexs
     and index what tags are used in what files

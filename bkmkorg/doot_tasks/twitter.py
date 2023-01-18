@@ -139,7 +139,7 @@ def process()::
     system('say -v Moira -r 50 "Finished Twitter Download"')
     logging.info("----- Finished Twitter Automation")
 
-class TwitterIndexer(globber.EagerFileGlobber):
+class TwitterIndexer(globber.DootEagerGlobber):
     """
     (data -> temp)
     """
@@ -173,7 +173,7 @@ class TwitterTweets(DootTasker):
         })
         return task
 
-class TwitterUserIdentities(globber.EagerFileGlobber):
+class TwitterUserIdentities(globber.DootEagerGlobber):
     """
     (temp -> temp)
     """
@@ -191,7 +191,7 @@ class TwitterUserIdentities(globber.EagerFileGlobber):
         })
         return task
 
-class TwitterDownloadMedia(globber.EagerFileGlobber):
+class TwitterDownloadMedia(globber.DootEagerGlobber):
     """
     (temp -> temp)
     """
@@ -209,7 +209,7 @@ class TwitterDownloadMedia(globber.EagerFileGlobber):
         })
         return task
 
-class TwitterThreadAssemble(globber.EagerFileGlobber):
+class TwitterThreadAssemble(globber.DootEagerGlobber):
     """
     (temp -> temp)
     """
@@ -227,7 +227,7 @@ class TwitterThreadAssemble(globber.EagerFileGlobber):
         })
         return task
 
-class TwitterMediaVariants(globber.EagerFileGlobber):
+class TwitterMediaVariants(globber.DootEagerGlobber):
     """
     (temp -> temp)
     """
@@ -244,7 +244,7 @@ class TwitterMediaVariants(globber.EagerFileGlobber):
             "task_dep" : ["twitter::tweets"],
         })
         return task
-class TwitterThreadWrite(globber.EagerFileGlobber):
+class TwitterThreadWrite(globber.DootEagerGlobber):
     """
     (temp -> temp)
     """
@@ -262,7 +262,7 @@ class TwitterThreadWrite(globber.EagerFileGlobber):
         })
         return task
 
-class TwitterMerge(globber.EagerFileGlobber):
+class TwitterMerge(globber.DootEagerGlobber):
     """
     (temp -> data)
     """

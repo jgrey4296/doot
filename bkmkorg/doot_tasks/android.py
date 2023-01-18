@@ -35,7 +35,7 @@ logging = logmod.getLogger(__name__)
 from doit.action import CmdAction
 
 import doot
-from doot.tasker import DootTasker, DootActions
+from doot.tasker import DootTasker, ActionsMixin, BatchMixin
 from doot import globber
 
 adb_path = shutil.which("adb")
@@ -48,7 +48,7 @@ wait_time    = doot.config.or_get(10).tools.doot.android.wait()
 
 NICE = ["nice", "-n", "10"]
 
-class ADBUpload(globber.DirGlobber, DootActions):
+class ADBUpload(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     Push files from local to device
     """
@@ -96,7 +96,7 @@ class ADBUpload(globber.DirGlobber, DootActions):
     def write_report(self):
         raise NotImplementedError()
 
-class ADBDownload(DootTasker, DootActions):
+class ADBDownload(DootTasker, ActionsMixin, BatchMixin):
     """
     pull files from device to local
     """
