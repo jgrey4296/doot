@@ -24,7 +24,12 @@ from doot.errors import DootDirAbsent
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-glob_ignores = doot.config.or_get(['.git', '.DS_Store', "__pycache__"], list).tool.doot.glob_ignores()
+import random
+
+glob_ignores         = doot.config.or_get(['.git', '.DS_Store', "__pycache__"], list).tool.doot.globbing.ignores()
+glob_subselect_exact = doot.config.or_get(10, int).tool.doot.globbing.subselect_exact()
+glob_subselect_pcnt  = doot.config.or_get(0, int).tool.doot.globbing.subselect_percentage()
+
 
 class GlobControl(enum.Enum):
     """
@@ -96,7 +101,7 @@ class DootEagerGlobber(DootSubtasker):
 
         return results
 
-    def glob_all(self, rec=False) -> list[tuple(pl.Path, str)]:
+    def glob_all(self, rec=False) -> list[tuple(str, pl.Path)]:
         """
         Glob all available files,
         and generate unique names for them
@@ -121,7 +126,7 @@ class DootEagerGlobber(DootSubtasker):
 
             results["_".join(parts[index:])] = fpath
 
-        return results.items()
+        return list(results.items())
 
     def _build_subs(self):
         globbed    = self.glob_all()
@@ -215,4 +220,13 @@ class SubGlobMixin:
     Glob only a subset of potentials
     """
 
-    pass
+    def glob_all(self, rec=False):
+        results = super().glob_all(rec)
+        match glob_subselect_exact, glob_subselect_pcnt:
+            case exact, 0:
+                k = min(exact, len(results))
+            case 0, percent:
+                one = len(results) * 0.01
+                k = int(one * percent)
+
+        return random.choices(results, k=k)
