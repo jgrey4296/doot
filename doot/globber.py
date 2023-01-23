@@ -26,9 +26,9 @@ logging = logmod.getLogger(__name__)
 
 import random
 
-glob_ignores         = doot.config.or_get(['.git', '.DS_Store', "__pycache__"], list).tool.doot.globbing.ignores()
-glob_subselect_exact = doot.config.or_get(10, int).tool.doot.globbing.subselect_exact()
-glob_subselect_pcnt  = doot.config.or_get(0, int).tool.doot.globbing.subselect_percentage()
+glob_ignores         = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).tool.doot.globbing.ignores()
+glob_subselect_exact = doot.config.on_fail(10, int).tool.doot.globbing.subselect_exact()
+glob_subselect_pcnt  = doot.config.on_fail(0, int).tool.doot.globbing.subselect_percentage()
 
 
 class GlobControl(enum.Enum):
@@ -59,16 +59,20 @@ class DootEagerGlobber(DootSubtasker):
     """
     control = GlobControl
 
-    def __init__(self, base:str, dirs:DootLocData, roots:list[pl.Path], *, exts:list[str]=None,  rec=False):
-        super().__init__(base, dirs)
-        self.exts              = (exts or [])[:]
-        self.roots            = roots[:]
-        self.rec               = rec
-        self.total_subtasks    = 0
+    def __init__(self, base:str, locs:DootLocData, roots:list[pl.Path], *, exts:list[str]=None,  rec=False, **kwargs):
+        super().__init__(base, locs, **kwargs)
+        self.exts           = (exts or [])[:]
+        self.roots          = roots[:]
+        self.rec            = rec
+        self.total_subtasks = 0
         for x in roots:
-            if not pl.Path(x).exists():
-                depth = len(set(self.__class__.mro()) - set(DootEagerGlobber.mro()))
-                warnings.warn(f"Globber Missing Root: {x}", stacklevel=depth)
+            try:
+                if not pl.Path(x).exists():
+                    depth = len(set(self.__class__.mro()) - set(DootEagerGlobber.mro()))
+                    warnings.warn(f"Globber Missing Root: {x}", stacklevel=depth)
+            except TypeError as err:
+                breakpoint()
+                pass
 
     def filter(self, target:pl.Path) -> bool | GlobControl:
         """ filter function called on each prospective glob result
@@ -130,17 +134,13 @@ class DootEagerGlobber(DootSubtasker):
 
     def _build_subs(self):
         globbed    = self.glob_all()
-        setup_name = self._setup_names['full']
         subtasks   = []
         for i, (uname, fpath) in enumerate(self.glob_all()):
             subtask = self._build_subtask(i, uname, fpath=fpath)
-            match (subtask, self.active_setup):
-                case (None, _):
+            match subtask:
+                case None:
                     pass
-                case (dict(), False):
-                    subtasks.append(subtask)
-                case (dict(), True):
-                    subtask['setup'].append(self._setup_names['full'])
+                case dict():
                     subtasks.append(subtask)
                 case _:
                     raise TypeError("Unexpected type for subtask: %s", type(subtask))

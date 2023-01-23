@@ -43,8 +43,6 @@ from doot.utils.general import ForceCmd
 class DootTasker:
     """ Util Class for building single tasks
 
-    'run_batch' controls batching bookkeeping,
-    'batch' is the actual action
     """
     sleep_subtask : ClassVar[float]
     sleep_batch   : ClassVar[float]
@@ -53,14 +51,14 @@ class DootTasker:
 
     @staticmethod
     def set_defaults(config:TomlAccess):
-        DootTasker.sleep_subtask = config.or_get(2.0,   int|float).tool.doot.sleep_subtask()
-        DootTasker.sleep_batch   = config.or_get(2.0,   int|float).tool.doot.sleep_batch()
-        DootTasker.batches_max   = config.or_get(-1,    int).tool.doot.batches_max()
-        DootTasker.sleep_notify  = config.or_get(False, bool).tool.doot.sleep_notify()
+        DootTasker.sleep_subtask = config.on_fail(2.0,   int|float).tool.doot.sleep_subtask()
+        DootTasker.sleep_batch   = config.on_fail(2.0,   int|float).tool.doot.sleep_batch()
+        DootTasker.batches_max   = config.on_fail(-1,    int).tool.doot.batches_max()
+        DootTasker.sleep_notify  = config.on_fail(False, bool).tool.doot.sleep_notify()
 
-    def __init__(self, base:str, dirs:DirData=None):
+    def __init__(self, base:str, locs:DootLocData=None, output=None):
         assert(base is not None)
-        assert(dirs is not None or dirs is False), dirs
+        assert(locs is not None or locs is False), locs
 
         # Wrap in a lambda because MethodType does not behave as we need it to
         self.create_doit_tasks = lambda *a, **kw: self._build(*a, **kw)
@@ -69,11 +67,12 @@ class DootTasker:
         if bool(params):
             self.create_doit_tasks.__dict__['_task_creator_params'] = params
 
-        self.base              = base
-        self.dirs              = dirs
-        self.setup_name        = "setup"
-        self.args              = {}
-        self.active_setup      = False
+        self.base         = base
+        self.locs         = locs
+        self.args         = {}
+        self._setup_name  = None
+        self.active_setup = False
+        self.output       = None
 
     def set_params(self) -> list:
         return []
@@ -114,29 +113,35 @@ class DootTasker:
         return task
 
     @property
-    def _setup_names(self):
+    def setup_name(self):
+        if self._setup_name is not None:
+            return self._setup_name
+
         private = "_" if self.base[0] != "_" else ""
-        names = { "base" : f"{private}{self.base}",
-                  "name" : f"{self.setup_name}",
-                  "full" : f"{private}{self.base}:{self.setup_name}"
-                 }
-        return names
+        full = f"{private}{self.base}:setup"
+        return full
 
     def _build_setup(self) -> DoitTask:
         """
         Build a pre-task that every subtask depends on
         """
         try:
-            snames                = self._setup_names
             task_spec             = self.default_task()
-            task_spec['name']     = snames['full']
-            if self.dirs is not None and not isinstance(self.dirs, bool):
-                task_spec['setup'] = [ self.dirs.checker ]
+            task_spec['name']     = self.setup_name
+            if self.locs is not None and not isinstance(self.locs, bool):
+                task_spec['setup'] = [ self.locs.checker ]
 
-            val = self.setup_detail(task_spec)
-            if val is not None:
-                self.active_setup = True
-                return dict_to_task(val)
+            match self.setup_detail(task_spec):
+                case None:
+                    return None
+                case str() as sname:
+                    self._setup_name = sname
+                    return None
+                case dict() as val:
+                    self.active_setup = True
+                    return dict_to_task(val)
+                case _ as val:
+                    logging.warning("Setup Detail Returned an unexpected value: ", val)
         except DootDirAbsent:
             return None
 
@@ -146,6 +151,8 @@ class DootTasker:
         maybe_task : None | dict = self.task_detail(task)
         if maybe_task is None:
             return None
+        if self.active_setup:
+            maybe_task['setup'] += [self.setup_name]
 
         full_task = dict_to_task(maybe_task)
         return full_task
@@ -165,9 +172,8 @@ class DootTasker:
 
         except Exception as err:
             print("ERROR: Task Creation Failure: ", err, file=sys.stderr)
-            print("ERROR: Task was: ", maybe_task, file=sys.stderr)
+            print("ERROR: Task was: ", self.base, file=sys.stderr)
             exit(1)
-
 
 class DootSubtasker(DootTasker):
     """ Extends DootTasker to make subtasks
@@ -175,8 +181,8 @@ class DootSubtasker(DootTasker):
     add a name in task_detail to run actions after all subtasks are finished
     """
 
-    def __init__(self, base:str, dirs:DirData=None):
-        super().__init__(base, dirs)
+    def __init__(self, base:str, locs, **kwargs):
+        super().__init__(base, locs, **kwargs)
 
     def subtask_detail(self, task, **kwargs) -> None|dict:
         return task
@@ -185,6 +191,8 @@ class DootSubtasker(DootTasker):
         task = super()._build_task()
         task.has_subtask = True
         task.update_deps({'task_dep': [f"{self.base}:*"] })
+        if self.active_setup:
+            task.update_deps({"task_dep": [self.setup_name]})
         return task
 
     def _build_subtask(self, n:int, uname, **kwargs):
@@ -198,6 +206,9 @@ class DootSubtasker(DootTasker):
             task = self.subtask_detail(task_spec, **kwargs)
             if task is None:
                 return
+
+            if self.active_setup:
+                task['setup'] += [self.setup_name]
 
             if bool(self.sleep_subtask):
                 task['actions'].append(self._sleep_subtask)
@@ -228,22 +239,26 @@ class DootSubtasker(DootTasker):
 
         except Exception as err:
             print("ERROR: Task Creation Failure: ", err, file=sys.stderr)
-            print("ERROR: Task was: ", task, file=sys.stderr)
+            print("ERROR: Task was: ", self.base, file=sys.stderr)
             exit(1)
 
     def _sleep_subtask(self):
         if self.sleep_notify:
             print("Sleep Subtask")
         sleep(self.sleep_subtask)
+
 class BatchMixin:
     """
     A Mixin to enable running batches of processing with
     some sleep time
+
+    'run_batches' controls batching bookkeeping,
+    'batch' is the actual action
     """
 
     batch_count       = 0
 
-    def run_batch(self, *batches, reset=True, fn=None, **kwargs):
+    def run_batches(self, *batches, reset=True, fn=None, **kwargs):
         """
         handles batch bookkeeping
 
@@ -251,16 +266,20 @@ class BatchMixin:
         """
         if reset:
             self._reset_batch_count()
-        if fn is None:
-            fn = self.batch
+        fn = fn or self.batch
 
         result = []
         for data in batches:
-            batch_list = [x for x in data if x is not None]
-            if not bool(batch_list):
-                continue
-            print(f"Batch: {self.batch_count} : ({len(batch_list)})")
-            result.append(fn(batch_list, **kwargs))
+            match data:
+                case [*items]:
+                    batch_data = [x for x in items if x is not None]
+                    if not bool(batch_data):
+                        continue
+                    print(f"Batch: {self.batch_count} : ({len(batch_data)})")
+                case _:
+                    batch_data = data
+
+            result.append(fn(batch_data, **kwargs))
 
             self.batch_count += 1
             if -1 < self.batches_max < self.batch_count:
@@ -307,15 +326,16 @@ class ActionsMixin:
         for x in args:
             x.unlink(missing_ok=True)
 
-    def rmdirs(self, *dirs:pl.Path):
-        logging.debug("Removing Directories: %s", dirs)
-        for target in dirs:
+    def rmdirs(self, *locs:pl.Path):
+        logging.debug("Removing Directories: %s", locs)
+        for target in locs:
             shutil.rmtree(target)
 
-    def mkdirs(self, *dirs:pl.Path):
-        logging.debug("Making Directories: %s", dirs)
-        for target in dirs:
-            target.mkdir(parents=True, exist_ok=True)
+    def mkdirs(self, *locs:pl.Path):
+        for target in locs:
+            if not target.exists():
+                logging.debug("Making Directory: %s", target)
+                target.mkdir(parents=True, exist_ok=True)
 
     def write_to(self, fpath, key:str|list[str], task, sep=None):
         if sep is None:
@@ -427,4 +447,3 @@ class ActionsMixin:
     def edit_by_line(self, files:list[pl.Path], fn, inplace=True):
         for line in fileinput(files=files, inplace=inplace):
             fn(line)
-
