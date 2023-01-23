@@ -58,9 +58,8 @@ try:
         raise FileNotFoundError(doot.default_py)
     doot.config.tool.doot.group.pip
 
-    pip_locs = doot.locs.extend(name="pip", _docs=None)
-    if "wheel" not in pip_locs:
-        pip_locs.update(wheel=pip_locs.build / "wheel")
+    wheel_loc = doot.config.on_fail("build/wheel").tool.doot.group.pip.wheel()
+    pip_locs = doot.locs.extend(name="pip", _docs=None, wheel=wheel_loc)
 
     from doot.taskslib.builders import pip_tasks as pipper
     pip_group += pipper.IncrementVersion(locs=pip_locs)
@@ -97,15 +96,19 @@ jekyll_group = TaskGroup("jekyll_group")
 try:
     doot.config.tool.doot.group.jekyll
 
+    jekyll_src = doot.config.on_fail(doot.locs.docs).tool.doot.group.jekyll.src()
+    jekyll_data = doot.config.on_fail([doot.locs.data]).tool.doot.group.jekyll.data()
+    jekyll_codegen = doot.config.on_fail("_generated").tool.doot.group.jekyll.codegen()
+
     jekyll_locs = doot.locs.extend(name="jekyll",
-                                   _src=doot.locs.docs,
-                                   _data=(doot.locs.data,),
-                                   _codegen="_generated",
-                                   _docs=None)
+                                   src=jekyll_src,
+                                   data=jekyll_data,
+                                   codegen=jekyll_codegen,
+                                   docs=None)
     jekyll_locs.update({
-        "posts"     : jekyll_locs.src / "_drafts" ,
+        "posts"     : jekyll_locs.src     / "_drafts" ,
         "tags"      : jekyll_locs.codegen / "_tags",
-        "tagsIndex" : jekyll_locs.data / "tags" / "index.md",
+        "tagsIndex" : jekyll_locs.data    / "tags" / "index.md",
     })
 
     jekyll_group += project_init.JekyllInit(locs=jekyll_locs)
@@ -128,7 +131,12 @@ latex_group = TaskGroup("latex_group")
 try:
     doot.config.tool.doot.group.latex
     from doot.taskslib.builders import latex
-    tex_locs = doot.locs.extend(name="latex", _src=doot.locs._docs, _docs=(doot.locs._docs,), _build=(doot.locs._build,))
+
+    latex_src = doot.config.on_fail(doot.locs.docs).tool.doot.group.latex.src()
+    latex_docs = doot.config.on_fail([doot.locs.docs]).tool.doot.group.latex.docs()
+    latex_build = doot.config.on_fail([doot.locs.build]).tool.doot.group.latex.build()
+
+    tex_locs = doot.locs.extend(name="latex", src=latex_src, docs=latex_docs, build=latex_build)
     latex_group += latex.LatexMultiPass(locs=tex_locs,  roots=[tex_locs.src])
     latex_group += latex.LatexFirstPass(locs=tex_locs,  roots=[tex_locs.src])
     latex_group += latex.LatexSecondPass(locs=tex_locs, roots=[tex_locs.src])
@@ -148,9 +156,13 @@ sphinx_group = TaskGroup("sphinx_group")
 try:
     doot.config.tool.doot.group.sphinx
     from doot.taskslib.builders import sphinx
+
+    sphinx_src  = doot.config.on_fail(doot.locs.docs).tool.doot.group.sphinx.src()
+    sphinx_docs = doot.config.on_fail([doot.locs.docs]).tool.doot.group.sphinx.docs()
+
     sphinx_locs  = doot.locs.extend(name="sphinx",
-                                    _src=doot.locs.docs,
-                                    _docs=(doot.locs.docs,))
+                                    src=sphinx_src,
+                                    docs=sphinx_locs)
     sphinx_locs.update({"html" : sphinx_locs.build / "html" / "index.html"})
 
     sphinx_group += sphinx.SphinxDocTask(locs=sphinx_locs)
@@ -167,9 +179,9 @@ try:
     doot.config.tool.doot.group.tags
     from doot.taskslib.data import taggers
     gtags_locs = doot.locs.extend(name="tags",
-                                  _build=None,
-                                  _temp=None,
-                                  _docs=None)
+                                  build=None,
+                                  temp=None,
+                                  docs=None)
 
     tags_group += taggers.task_tags_init(gtags_locs)
     tags_group += taggers.task_tags(gtags_locs)
@@ -184,8 +196,10 @@ git_group = TaskGroup("git group")
 try:
     doot.config.tool.doot.group.git
     from doot.taskslib.vcs import git_tasks
-    vcs_locs = doot.locs.extend(name="vcs", _src=None, _docs=None, _temp=None)
-    vcs_locs.update({ "visual" : doot.locs.docs / "visual" })
+
+    vcs_visual = doot.config.on_fail(doot.locs.docs / "visual").tool.doot.group.git.visual()
+
+    vcs_locs = doot.locs.extend(name="vcs", src=None, docs=None, temp=None, visual=vcs_visual)
 
     git_group += git_tasks.GitLogTask(locs=vcs_locs)
     git_group += git_tasks.GitLogAnalyseTask(locs=vcs_locs)
@@ -251,7 +265,10 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 epub_group = TaskGroup("epub group")
 try:
     doot.config.tool.doot.group.epub
-    epub_locs = doot.locs.extend(name="epub", _src="docs/epub")
+    epub_src = doot.config.on_fail("docs/epub").tool.doot.group.epub.src()
+    epub_build = doot.config.on_fail(["build"]).tool.doot.group.epub.build()
+
+    epub_locs = doot.locs.extend(name="epub", src=epub_src, build=epub_build)
     from doot.taskslib.builders import epub
     epub_group += epub.EbookNewTask(locs=epub_locs)
     epub_group += epub.EbookCompileTask(locs=epub_locs)

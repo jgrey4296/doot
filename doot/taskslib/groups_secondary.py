@@ -48,7 +48,8 @@ godot_group = TaskGroup("godot_group")
 try:
     doot.config.tool.doot.group.godot
     from doot.taskslib.builders import godot
-    godot_locs = doot.locs.extend(name="godot", _src="")
+    godot_src  = doot.config.on_fail(".").tool.doot.group.godot.src()
+    godot_locs = doot.locs.extend(name="godot", src=godot_src)
     godot_locs.update({ "scenes" : godot_locs.src / "scenes",
                       })
 
@@ -68,12 +69,13 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 xml_group = TaskGroup("xml_group")
 try:
     doot.config.tool.doot.group.xml
-    xml_locs = doot.locs.extend(name="xml")
-    xml_locs.update({"visual": xml_locs.docs / "visual",
-                        "elements" : xml_locs.build / "elements",
-                        "schema"    : xml_locs.build / "schema",
-
-                        })
+    xml_build = doot.config.on_fail(["build"]).tool.doot.group.xml.build()
+    xml_docs  = doot.config.on_fail(["docs"]).tool.doot.group.xml.docs()
+    xml_locs = doot.locs.extend(name="xml", build=xml_build, docs=xml_docs)
+    xml_locs.update({"visual"   : xml_locs.docs / "visual",
+                     "elements" : xml_locs.build / "elements",
+                     "schema"   : xml_locs.build / "schema",
+                     })
     from doot.taskslib.data import xml as xml_reports
 
     xml_group += xml_reports.XmlElementsTask(locs=xml_locs)
@@ -109,10 +111,8 @@ json_group = TaskGroup("json group")
 try:
     doot.config.tool.doot.group.json
     from doot.taskslib.data import json as json_reports
-    json_locs = doot.locs.extend(name="json")
-    json_locs.update({
-        "visual" : json_locs.build / "visual"
-    })
+    json_visual = doot.config.on_fail(["build/visual"]).tool.doot.group.json.visual()
+    json_locs = doot.locs.extend(name="json", visual=json_visual)
     # from doot.taskslib.docs.plantuml import task_plantuml_json
 
     json_group += json_reports.JsonPythonSchema(locs=json_locs)
@@ -130,10 +130,9 @@ plantuml_group = TaskGroup("plantuml_group")
 try:
     doot.config.tool.doot.group.plantuml
     from doot.taskslib.docs import visual
-    plant_locs = doot.locs.extend(name="plantuml", _src="docs/visual")
-    plant_locs.update({
-        "visual" : plant_locs.build / "visual"
-    })
+    plant_src  = doot.config.on_fail("docs/visual").tool.doot.group.plantuml.src()
+    plant_visual = doot.config.on_fail(["build/visual"]).tool.doot.group.plantuml.visual()
+    plant_locs = doot.locs.extend(name="plantuml", src=plant_src, visual=plant_visual)
 
     plantuml_group += visual.PlantUMLGlobberTask(locs=plant_locs)
     plantuml_group += visual.PlantUMLGlobberTask(locs=plant_locs)
@@ -166,7 +165,8 @@ dot_group = TaskGroup("dot group")
 try:
     doot.config.tool.doot.group.dot
     from doot.taskslib.docs import visual
-    dot_locs = doot.locs.extend(name="dot", _src="docs/visual")
+    dot_src = doot.config.on_fail("docs/visual").tool.doot.group.dot.src()
+    dot_locs = doot.locs.extend(name="dot", src=dot_src)
     dot_group += visual.DotVisualise(locs=dot_locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:

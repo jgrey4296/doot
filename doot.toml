@@ -17,3 +17,4 @@ debug = true
 [tool.doot.group.git]
 
 [tool.doot.group.dot]
+src = "."
