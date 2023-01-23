@@ -33,7 +33,7 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-collect_libs = doot.config.or_get([], list).tool.doot.python.compile.collect()
+collect_libs = doot.config.on_fail([], list).tool.doot.python.compile.collect()
 
 class PythonCompile(DootTasker, ActionsMixin):
     """
@@ -42,7 +42,7 @@ class PythonCompile(DootTasker, ActionsMixin):
     pyinstaller --collect-all tkinterdnd2 -w sub_processor.py
     """
 
-    def __init__(self, name="python::compile", dirs=None):
+    def __init__(self, name="python::compile", locs=None):
         super().__init__(name, dirs)
 
     def set_params(self):
@@ -66,9 +66,9 @@ class PythonCompile(DootTasker, ActionsMixin):
 
     def build_cmd(self):
         args = [ "pyinstaller",
-                 "--distpath", self.dirs.build,
-                 "--workpath", self.dirs.temp,
-                 "--name", self.dirs.src.name,
+                 "--distpath", self.locs.build,
+                 "--workpath", self.locs.temp,
+                 "--name", self.locs.src.name,
                  ]
         # TODO --add-data
         # TODO --paths
@@ -77,5 +77,5 @@ class PythonCompile(DootTasker, ActionsMixin):
             args.append("--collect-all")
             args += collect_libs
         args.append("-w")
-        args.append(self.dirs.src)
+        args.append(self.locs.src)
         return args

@@ -32,7 +32,7 @@ class GodotRunScene(globber.HeadlessGlobMixin, globber.DootEagerGlobber, Actions
     ([root]) Globber to allow easy running of scenes
     """
 
-    def __init__(self, name="godot::run:scene", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+    def __init__(self, name="godot::run:scene", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, dirs, roots or [dir.root], exts=[".tscn"], rec=rec)
 
     def set_params(self):
@@ -78,7 +78,7 @@ class GodotRunScript(globber.EagerFileGlobber, ActionsMixin):
     ([root]) Run a godot script, with debugging or without
     """
 
-    def __init__(self, name="godot::run", dirs:DootLocData=None, roots=None, rec=True):
+    def __init__(self, name="godot::run", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.root], exts=[".gd"], rec=rec)
 
     def filter(self, fpath):
@@ -122,7 +122,7 @@ class GodotBuild(DootTasker, ActionsMixin):
     (-> [build]) build a godot project
     """
 
-    def __init__(self, name="godot::build", dirs:DootLocData=None):
+    def __init__(self, name="godot::build", locs:DootLocData=None):
         super().__init__(name, dirs)
 
     def set_params(self):
@@ -172,7 +172,7 @@ class GodotNewScene(DootTasker, ActionsMixin):
     (-> [scenes])
     """
 
-    def __init__(self, name="godot::new.scene", dirs=None):
+    def __init__(self, name="godot::new.scene", locs=None):
         assert("scenes" in dirs.extra)
         super().__init__(name, dirs)
 
@@ -182,7 +182,7 @@ class GodotNewScene(DootTasker, ActionsMixin):
         ]
 
     def task_detail(self, task):
-        scene_file = self.dirs.extra['scenes'] / f"{self.args['name']}.tscn"
+        scene_file = self.locs.extra['scenes'] / f"{self.args['name']}.tscn"
         task.update({
         "actions" : [
             lambda: scene_file.write_text("# Stub"),

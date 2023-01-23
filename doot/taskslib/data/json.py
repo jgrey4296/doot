@@ -25,7 +25,7 @@ class JsonFormatTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Acti
     ([data] -> data)Lint Json files with jq
     """
 
-    def __init__(self, name="json::format", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+    def __init__(self, name="json::format", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=[".json"], rec=rec)
 
     def filter(self, fpath):
@@ -64,7 +64,7 @@ class JsonPythonSchema(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Ac
     ([data] -> codegen) Use XSData to generate python bindings for a directory of json's
     """
 
-    def __init__(self, name="json::schema.python", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+    def __init__(self, name="json::schema.python", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=[".json"], rec=rec)
 
     def filter(self, fpath):
@@ -73,7 +73,7 @@ class JsonPythonSchema(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Ac
         return self.control.discard
 
     def subtask_detail(self, task, fpath=None):
-        gen_package = str(self.dirs.codegen / task['name'])
+        gen_package = str(self.locs.codegen / task['name'])
         task.update({
             "targets"  : [ gen_package ],
             "task_dep" : [ "_xsdata::config" ],
@@ -101,13 +101,13 @@ class JsonVisualise(globber.DootEagerGlobber, tasker.ActionsMixin):
     ready for plantuml to visualise structure
     """
 
-    def __init__(self, name="json::schema.visual", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+    def __init__(self, name="json::schema.visual", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=[".json"], rec=rec)
         assert('visual' in dirs.extra)
 
     def subtask_detail(self, task, fpath=None):
         task.update({
-            "targets"  : [ self.dirs.extra['visual'] / fpath.with_stem(task['name']).name ],
+            "targets"  : [ self.locs.extra['visual'] / fpath.with_stem(task['name']).name ],
             "actions"  : [ (self.write_plantuml, [fpath]) ]
             })
         return task

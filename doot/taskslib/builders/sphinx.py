@@ -15,8 +15,8 @@ __all__ = [
         "SphinxDocTask", "task_browse",
 ]
 
-conf_builder    = doot.config.or_get("html", str).tool.doot.sphinx.builder()
-conf_verbosity  = int(doot.config.or_get(0, int).tool.door.sphinx.verbosity())
+conf_builder    = doot.config.on_fail("html", str).tool.doot.sphinx.builder()
+conf_verbosity  = int(doot.config.on_fail(0, int).tool.door.sphinx.verbosity())
 
 def task_browse() -> dict:
     """[build] Task definition """
@@ -30,7 +30,7 @@ def task_browse() -> dict:
 class SphinxDocTask(DootTasker, ActionsMixin):
     """([docs] -> build) Build sphinx documentation """
 
-    def __init__(self, name="sphinx::doc", dirs:DootLocData=None, builder=None, verbosity:int=None):
+    def __init__(self, name="sphinx::doc", locs:DootLocData=None, builder=None, verbosity:int=None):
         super().__init__(name, dirs)
         self.builder = builder or conf_builder
         self.verbosity = verbosity or conf_verbosity
@@ -38,8 +38,8 @@ class SphinxDocTask(DootTasker, ActionsMixin):
     def task_detail(self, task:dict) -> dict:
         task.update({
             "actions"  : [ self.cmd(self.sphinx_command) ],
-            "file_dep" : [ self.dirs.docs / "conf.py" ],
-            "targets"  : [ self.dirs.extra['html'], self.dirs.build ],
+            "file_dep" : [ self.locs.docs / "conf.py" ],
+            "targets"  : [ self.locs.extra['html'], self.locs.build ],
             "clean"    : [ clean_target_dirs ],
         })
         return task
@@ -47,8 +47,8 @@ class SphinxDocTask(DootTasker, ActionsMixin):
     def sphinx_command(self):
         args = ["sphinx-build",
                 '-b', self.builder,
-                self.dirs.docs,
-                self.dirs.build]
+                self.locs.docs,
+                self.locs.build]
         match self.verbosity:
             case x if x > 0:
                 args += ["-v" for i in range(x)]

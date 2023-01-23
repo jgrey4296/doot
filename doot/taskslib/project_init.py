@@ -122,9 +122,9 @@ class JekyllInit(DootTasker):
     in the config's src path
     """
 
-    def __init__(self, name="jekyll::init", dirs=None):
+    def __init__(self, name="jekyll::init", locs=None):
         super().__init__(name, dirs)
-        self.config_file = self.dirs.root / "jekyll.toml"
+        self.config_file = self.locs.root / "jekyll.toml"
 
     def task_detail(self, task):
         task.update({
@@ -138,24 +138,24 @@ class JekyllInit(DootTasker):
     def init_cmd(self):
         project_init = ["jekyll", "new",
                         "--force", "--blank",
-                        self.dirs.src,
+                        self.locs.src,
                         ]
         return project_init
 
     def make_config(self):
         author = environ['USER'] if 'USER' in environ else "Default"
-        includes = [self.dirs.codegen.name, self.dirs.extra['tags'].name]
+        includes = [self.locs.codegen.name, self.locs.extra['tags'].name]
         config_text = jekyll_template.substitute(author=author,
-                                                 src=f'./{self.dirs.temp}',
-                                                 dst=f'./{self.dirs.build}',
+                                                 src=f'./{self.locs.temp}',
+                                                 dst=f'./{self.locs.build}',
                                                  includes=f"{includes}",
                                                  )
         self.config_file.write_text(config_text)
-        (self.dirs.src / "_config.yml").unlink(),
+        (self.locs.src / "_config.yml").unlink(),
 
 
 
     def move_data(self):
-        for f in self.dirs.src.iterdir():
+        for f in self.locs.src.iterdir():
             if f.is_dir() and f.name[0] != "_":
-                f.rename(self.dirs.data / f.name)
+                f.rename(self.locs.data / f.name)

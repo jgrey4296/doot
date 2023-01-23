@@ -12,6 +12,7 @@ from doot.tasker import DootTasker
 
 class CombinePDFTask(globber.DirGlobMixin, globber.DootEagerGlobber):
     """
+    TODO Combine pdfs
     For pdfs in directories,
     concatenate them into one
     """
@@ -19,6 +20,7 @@ class CombinePDFTask(globber.DirGlobMixin, globber.DootEagerGlobber):
 
 class SamplePDFTask(globber.DirGlobMixin, globber.DootEagerGlobber):
     """
+    TODO sample pdfs
     For PDFs in each directory, get their leading n pages,
     and build a summary pdf
     """
@@ -26,12 +28,14 @@ class SamplePDFTask(globber.DirGlobMixin, globber.DootEagerGlobber):
 
 class PDFMetaData(globber.DootEagerGlobber):
     """
+    TODO pdf metadata
     build metadata summaries of found pdfs
     """
     pass
 
 class PDFBibtexMetaData(globber.DootEagerGlobber):
     """
+    TODO pdf bibtex metadata
     For found pdf's get bibtex data and add it into metadata
     """
     pass

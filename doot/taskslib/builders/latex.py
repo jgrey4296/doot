@@ -12,8 +12,8 @@ from doot import tasker
 
 ##-- end imports
 
-interaction_mode = doot.config.or_get("nonstopmode", str).tool.doot.tex.interaction()
-tex_dep          = doot.config.or_get("tex.dependencies", str).too.doot.text.dep_file()
+interaction_mode = doot.config.on_fail("nonstopmode", str).tool.doot.tex.interaction()
+tex_dep          = doot.config.on_fail("tex.dependencies", str).too.doot.text.dep_file()
 
 
 class LatexMultiPass(globber.DootEagerGlobber):
@@ -21,13 +21,13 @@ class LatexMultiPass(globber.DootEagerGlobber):
     ([src] -> build) Trigger both latex passes and the bibtex pass
     """
 
-    def __init__(self, name="tex::build", dirs:DootLocData=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.src], exts=['.tex'], rec=rec)
+    def __init__(self, name="tex::build", locs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, locs, roots or [locs.src], exts=['.tex'], rec=rec)
 
 
     def subtask_detail(self, task, fpath=None):
         task.update({
-            "file_dep" : [ self.dirs.build / fpath.with_suffix(".pdf").name ],
+            "file_dep" : [ self.locs.build / fpath.with_suffix(".pdf").name ],
         })
         return task
 
@@ -37,8 +37,8 @@ class LatexFirstPass(globber.DootEagerGlobber, ActionsMixin):
     pre-bibliography resolution
     """
 
-    def __init__(self, name="text::pass:one", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True, interaction=interaction_mode):
-        super().__init__(name, dirs, roots or [dirs.src], exts=[".tex"], rec=rec)
+    def __init__(self, name="text::pass:one", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True, interaction=interaction_mode):
+        super().__init__(name, locs, roots or [locs.src], exts=[".tex"], rec=rec)
         self.interaction = interaction
 
     def set_params(self):
@@ -53,13 +53,13 @@ class LatexFirstPass(globber.DootEagerGlobber, ActionsMixin):
 
     def subtask_detail(self, task, fpath=None):
         first_pass_pdf = self.pdf_path(fpath)
-        temp_pdf = self.dirs.temp / fpath.with_suffix(".pdf").name
+        temp_pdf = self.locs.temp / fpath.with_suffix(".pdf").name
         task.update({
             "file_dep" : [ fpath ],
             "actions"  : [ self.cmd(self.compile_tex),
                            (self.move_to, [first_pass,pdf, temp_pdf])
                           ],
-            "targets"  : [ self.dirs.temp / fpath.with_suffix(".aux").name,
+            "targets"  : [ self.locs.temp / fpath.with_suffix(".aux").name,
                            first_pass_pdf,
                           ],
             "clean"    : True,
@@ -71,11 +71,11 @@ class LatexFirstPass(globber.DootEagerGlobber, ActionsMixin):
         target = pl.Path(dependencies[0]).with_suffix("")
         return ["pdflatex",
                 f"-interaction={self.args['interaction']}",
-                f"-output-directory={self.dirs.temp}",
+                f"-output-directory={self.locs.temp}",
                 target]
 
     def pdf_path(self, fpath):
-        first_pass_pdf = self.dirs.build / ("1st_pass_" + fpath.with_suffix(".pdf").name)
+        first_pass_pdf = self.locs.build / ("1st_pass_" + fpath.with_suffix(".pdf").name)
         return first_pass_pdf
 
 class LatexSecondPass(globber.DootEagerGlobber, ActionsMixin):
@@ -84,8 +84,8 @@ class LatexSecondPass(globber.DootEagerGlobber, ActionsMixin):
     post-bibliography resolution
     """
 
-    def __init__(self, name="_tex::pass:two", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.src], exts=[".tex"], rec=rec)
+    def __init__(self, name="_tex::pass:two", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+        super().__init__(name, locs, roots or [locs.src], exts=[".tex"], rec=rec)
 
     def set_params(self):
         return [
@@ -98,10 +98,10 @@ class LatexSecondPass(globber.DootEagerGlobber, ActionsMixin):
         ]
 
     def subtask_detail(self, task, fpath=None):
-        temp_pdf   = self.dirs.temp  / fpath.with_suffix(".pdf").name
-        target_pdf = self.dirs.build / temp_pdf.name
-        task.update({"file_dep" : [ self.dirs.temp / fpath.with_suffix(".aux").name,
-                                    self.dirs.temp / fpath.with_suffix(".bbl").name,
+        temp_pdf   = self.locs.temp  / fpath.with_suffix(".pdf").name
+        target_pdf = self.locs.build / temp_pdf.name
+        task.update({"file_dep" : [ self.locs.temp / fpath.with_suffix(".aux").name,
+                                    self.locs.temp / fpath.with_suffix(".bbl").name,
                                    ],
                      "targets"  : [ target_pdf ],
                      "clean"    : True,
@@ -115,7 +115,7 @@ class LatexSecondPass(globber.DootEagerGlobber, ActionsMixin):
     def tex_cmd(self, fpath):
         return ["pdflatex",
                 f"-interaction={self.args['interaction']}",
-                f"-output-directory={self.dirs.temp}",
+                f"-output-directory={self.locs.temp}",
                 fpath.with_suffix("")]
 
     
@@ -124,14 +124,14 @@ class BibtexBuildPass(globber.DootEagerGlobber, ActionsMixin):
     ([src] -> temp) Bibliography resolution pass
     """
 
-    def __init__(self, name="_tex::pass:bibtex", dirs:DootLocData=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.src], exts=[".tex"], rec=rec)
+    def __init__(self, name="_tex::pass:bibtex", locs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, locs, roots or [locs.src], exts=[".tex"], rec=rec)
 
     def subtask_detail(self, task, fpath=None):
-        aux_file = self.dirs.temp / fpath.with_suffix(".aux").name
-        bbl_file = self.dirs.temp / fpath.with_suffix(".bbl").name
+        aux_file = self.locs.temp / fpath.with_suffix(".aux").name
+        bbl_file = self.locs.temp / fpath.with_suffix(".bbl").name
 
-        task.update({"file_dep" : [ self.dirs.temp / "combined.bib",
+        task.update({"file_dep" : [ self.locs.temp / "combined.bib",
                                     aux_file ],
                      "targets"  : [ bbl_file ],
                      "clean"    : True,
@@ -144,7 +144,7 @@ class BibtexBuildPass(globber.DootEagerGlobber, ActionsMixin):
     def retarget_paths(self, aux):
         """ Check if the aux file has bibdata, if it does mod it to use the concatenated bib data """
         reg     = re.compile(r"\\bibdata{(.+?)}")
-        bib_loc =  str(self.dirs.temp / "combined.bib")
+        bib_loc =  str(self.locs.temp / "combined.bib")
         has_bib = False
         print("Retargeting: ", aux)
         for line in fileinput.input(files=[aux], inplace=True, backup=".backup"):
@@ -174,9 +174,9 @@ class BibtexConcatenateSweep(globber.LazyFileGlobber):
     ([src, data, docs] -> temp) concatenate all found bibtex files
     to produce a master file for latex's use
     """
-    def __init__(self, name="_tex::bib", dirs:DootLocData=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.src, dirs.data, dirs.docs], exts=[".bib"], rec=rec)
-        self.target = dirs.temp / "combined.bib"
+    def __init__(self, name="_tex::bib", locs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, locs, roots or [locs.src, locs.data, locs.docs], exts=[".bib"], rec=rec)
+        self.target = locs.temp / "combined.bib"
 
     def task_detail(self, task):
         task.update({

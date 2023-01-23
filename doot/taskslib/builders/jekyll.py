@@ -61,9 +61,9 @@ class JekyllBuild(DootTasker, ActionsMixin):
     using jekyll.toml
     """
 
-    def __init__(self, name="jekyll::build", dirs=None):
+    def __init__(self, name="jekyll::build", locs=None):
         super().__init__(name, dirs)
-        self.jekyll_config = self.dirs.root / "jekyll.toml"
+        self.jekyll_config = self.locs.root / "jekyll.toml"
 
     def set_params(self):
         return [
@@ -77,7 +77,7 @@ class JekyllBuild(DootTasker, ActionsMixin):
     def task_detail(self, task):
         task.update({
             "actions"  : [
-                (self.copy_to, [self.dirs.temp, self.dirs.data, self.dirs.src])
+                (self.copy_to, [self.locs.temp, self.locs.data, self.locs.src])
                 self.cmd(self.cmd_builder)
             ],
             "file_dep" : [ self.jekyll_config ],

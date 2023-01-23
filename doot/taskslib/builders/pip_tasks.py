@@ -14,7 +14,7 @@ from doot.task_group import TaskGroup
 ##-- end imports
 # https://pip.pypa.io/en/stable/cli/
 
-prefix = doot.config.or_get("pip", str).tool.doot.pip.prefix()
+prefix = doot.config.on_fail("pip", str).tool.doot.pip.prefix()
 
 # pip_version   = CmdTask("pip", "--version", verbosity=2, basename=f"{prefix}::version")
 
@@ -24,8 +24,8 @@ class IncrementVersion(DootTasker):
     Defaults to inc patch version
     """
 
-    def __init__(self, name="py::semver", dirs=None):
-        super().__init__(name, dirs)
+    def __init__(self, name="py::semver", locs=None):
+        super().__init__(name, locs)
         self.initpy_ver_regex     = re.compile(r"^\s*__version__\s+=\s\"(\d+)\.(\d+)\.(\d+)\"")
         self.initpy_ver_format    = "__version__ = \"{}.{}.{}\""
         self.pyproject_ver_regex  = re.compile("^version\s+=\s+\"(\d+)\.(\d+)\.(\d+)\"")
@@ -44,8 +44,8 @@ class IncrementVersion(DootTasker):
         task.update({
             "actions" : [self.increment_pyproject, self.set_initpy],
             "file_dep": [
-                self.dirs.root / "pyproject.toml",
-                self.dirs.src / "__init__.py"
+                self.locs.root / "pyproject.toml",
+                self.locs.src / "__init__.py"
             ],
             "verbosity" : 2,
         })
@@ -54,7 +54,7 @@ class IncrementVersion(DootTasker):
     def increment_pyproject(self):
         assert(not (self.args['major'] and self.args['minor']))
         new_ver = None
-        for line in fileinput.input(files=[self.dirs.root / "pyproject.toml"], inplace=True, backup=".backup"):
+        for line in fileinput.input(files=[self.locs.root / "pyproject.toml"], inplace=True, backup=".backup"):
             matched = self.pyproject_ver_regex.match(line)
             if not matched or new_ver is not None:
                 print(line, end="")
@@ -66,14 +66,14 @@ class IncrementVersion(DootTasker):
         if new_ver is None:
             raise Exception("Didn't find version in pyproject.toml")
         else:
-            (self.dirs.root / "pyproject.toml.backup").unlink()
+            (self.locs.root / "pyproject.toml.backup").unlink()
             print(f"Bumped Version to: {new_ver}")
 
         return {"new_version" : new_ver}
 
     def set_initpy(self, dependencies, task):
         new_ver = task.values['new_version']
-        for line in fileinput.input(files=[self.dirs.src / "__init__.py"], inplace=True, backup=".backup"):
+        for line in fileinput.input(files=[self.locs.src / "__init__.py"], inplace=True, backup=".backup"):
             matched = self.initpy_ver_regex.match(line)
             # Note the inverted condition compared to inc pyproject above:
             if not matched or new_ver is None:
@@ -83,7 +83,7 @@ class IncrementVersion(DootTasker):
             print(self.initpy_ver_format.format(*new_ver))
             new_ver = None
 
-        (self.dirs.src/ "__init__.py.backup").unlink()
+        (self.locs.src/ "__init__.py.backup").unlink()
 
     def bump_version(self, major, minor, patch):
         match (self.args['major'], self.args['minor'], self.args['force']):
@@ -99,31 +99,31 @@ class IncrementVersion(DootTasker):
                 raise Exception("this shouldn't happen")
 
 
-class PyBuild(DootTasker, ActionsMixin):
+class PipBuild(DootTasker, ActionsMixin):
     """
     Build a wheel of the package
     """
 
-    def __init__(self, name="pip::build", dirs=None):
-        super().__init__(name, dirs)
+    def __init__(self, name="pip::build", locs=None):
+        super().__init__(name, locs)
 
     def task_detail(self, task):
         task['actions'].append(self.cmd(["pip", "wheel",
                                          "--no-input",
-                                         "--wheel-dir", self.dirs.extra['wheel'],
+                                         "--wheel-dir", self.locs.wheel,
                                          "--use-pep517",
-                                         "--src", dirs.temp,
-                                         self.dirs.root]))
+                                         "--src", self.locs.temp,
+                                         self.locs.root]))
         return task
 
-class PyInstall(DootTasker, ActionsMixin):
+class PipInstall(DootTasker, ActionsMixin):
     """
     ([src]) install a package, using pip
     editable by default
     """
 
-    def __init__(self, name=f"pip::install", dirs=None):
-        super().__init__(name, dirs)
+    def __init__(self, name=f"pip::install", locs=None):
+        super().__init__(name, locs)
 
     def set_params(self):
         return [
@@ -136,10 +136,10 @@ class PyInstall(DootTasker, ActionsMixin):
 
     def task_detail(self, task):
         task.update({
-            "file_dep" : [self.dirs.root / "requirements.txt"],
+            "file_dep" : [self.locs.root / "requirements.txt"],
         })
         if self.args['uninstall']:
-            task['actions'].append(self.cmd(["pip", "uninstall", "-y", self.dirs.root]))
+            task['actions'].append(self.cmd(["pip", "uninstall", "-y", self.locs.root]))
             return task
 
         if self.args['deps']:
@@ -164,7 +164,7 @@ class PyInstall(DootTasker, ActionsMixin):
         if self.args['dryrun']:
             args.append("--dry-run")
 
-        args.append(self.dirs.root)
+        args.append(self.locs.root)
         return args
 
 
@@ -174,15 +174,15 @@ class PipReqs(DootTasker, ActionsMixin):
     write out pip requirements to requirements.txt
     """
 
-    def __init__(self, name="pip::req", dirs=None):
-        super().__init__(name, dirs)
+    def __init__(self, name="pip::req", locs=None):
+        super().__init__(name, locs)
 
     def is_current(self, fpath):
         return True
 
     def task_detail(self, task) -> dict:
         pip_args = ["pip", "list", "--format=freeze"]
-        req_path = self.dirs.root / "requirements.txt"
+        req_path = self.locs.root / "requirements.txt"
         task.update({
             "actions" : [ self.cmd(pip_args, save="frozen"),
                           (self.write_to, [req_path, "frozen"]),
@@ -197,8 +197,8 @@ class VenvNew(DootTasker, ActionsMixin):
     """
     (-> temp ) create a new venv
     """
-    def __init__(self, name="py::venv", dirs=None):
-        super().__init__(name, dirs)
+    def __init__(self, name="py::venv", locs=None):
+        super().__init__(name, locs)
 
     def set_params(self):
         return [
@@ -207,11 +207,11 @@ class VenvNew(DootTasker, ActionsMixin):
         ]
 
     def task_detail(self, task):
-        venv_path = self.dirs.temp / "venv" / self.args['name']
+        venv_path = self.locs.temp / "venv" / self.args['name']
         build_venv = [ self.cmd(["python", "-m", "venv", venv_path ]),
                        self.cmd([ venv_path / "bin" / "pip",
                                  "install",
-                                 "-r", self.dirs.root / "requirements.txt" ]),
+                                 "-r", self.locs.root / "requirements.txt" ]),
                       ]
 
         is_delete = all([self.args['delete'],

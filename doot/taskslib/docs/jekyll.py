@@ -62,10 +62,10 @@ class GenPostTask(DootTasker, ActionsMixin):
 
     """
 
-    def __init__(self, name="jekyll::post", dirs=None, template=None):
-        super().__init__(name, dirs)
+    def __init__(self, name="jekyll::post", locs=None, template=None):
+        super().__init__(name, locs)
         self.template  = pl.Path(template or post_template)
-        assert('posts' in self.dirs.extra)
+        assert('posts' in self.locs.extra)
 
     def set_params(self):
         return [
@@ -96,7 +96,7 @@ class GenPostTask(DootTasker, ActionsMixin):
         else:
             template = self.template
 
-        post_path = self.dirs.extra['posts'] / (title_format
+        post_path = self.locs.extra['posts'] / (title_format
                                                 .format_map({ "date"  : strftime(date_format),
                                                               "title" : title.strip().replace(" ","_"),
                                                               "ext"   : ext_format}))
@@ -114,14 +114,14 @@ class GenTagsTask(DootTasker, ActionsMixin):
     ([src] -> [tags, tagsIndex]) Generate summary files for all tags used in md files in the jekyll src dir
     """
 
-    def __init__(self, name="jekyll::tag", dirs=None, roots=None, template=None, index=None):
-        super().__init__(name, dirs)
+    def __init__(self, name="jekyll::tag", locs=None, roots=None, template=None, index=None):
+        super().__init__(name, locs)
         self.tagset   = set()
         self.template = pl.Path(template or tag_template)
         self.index    = pl.Path(index or index_template)
-        self.roots    = roots or [dirs.src]
-        assert("tags"       in self.dirs.extra)
-        assert("tagsIndex"  in self.dirs.extra)
+        self.roots    = roots or [locs.src]
+        assert("tags"       in self.locs.extra)
+        assert("tagsIndex"  in self.locs.extra)
 
     def task_detail(self, task):
         task.update({
@@ -141,12 +141,12 @@ class GenTagsTask(DootTasker, ActionsMixin):
     def make_tag_pages(self):
         tag_text = self.template.read_text()
         for tag in self.tagSet:
-            tag_file  = self.dirs.extra['tags'] / f"{tag}.md"
+            tag_file  = self.locs.extra['tags'] / f"{tag}.md"
             formatted = tag_text.format_map({"tag" : tag})
             tag_file.write_text(formatted)
 
     def make_tag_index(self):
-        if self.dirs.extra['tagsIndex'].exists():
+        if self.locs.extra['tagsIndex'].exists():
             return
 
         tag_index.write_text(self.index.read_text())

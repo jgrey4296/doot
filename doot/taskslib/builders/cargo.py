@@ -19,11 +19,11 @@ from doot import tasker
 cargo = TomlAccess.load("Cargo.toml")
 config = TomlAccess.load("./.cargo/config.toml")
 
-build_path   = config.or_get(str(doot.locs.build)).build.target_dir()
+build_path   = config.on_fail(str(doot.locs.build)).build.target_dir()
 package_name = cargo.package.name
-profiles     = ["release", "debug", "dev"] + cargo.or_get([]).profile()
-binaries     = [x['name'] for x in  cargo.or_get([], list).bin()]
-lib_path     = cargo.or_get(None, None|str).lib.path()
+profiles     = ["release", "debug", "dev"] + cargo.on_fail([]).profile()
+binaries     = [x['name'] for x in  cargo.on_fail([], list).bin()]
+lib_path     = cargo.on_fail(None, None|str).lib.path()
 
 
 class CargoBuild(tasker.DootTasker, tasker.ActionsMixin):
@@ -32,7 +32,7 @@ class CargoBuild(tasker.DootTasker, tasker.ActionsMixin):
     eg: (bin, main) or (lib, mylib)
     """
 
-    def __init__(self, name="cargo::build", dirs=None):
+    def __init__(self, name="cargo::build", locs=None):
         super().__init__(name, dirs)
 
     def set_params(self):
@@ -43,7 +43,7 @@ class CargoBuild(tasker.DootTasker, tasker.ActionsMixin):
         ]
 
     def task_detail(self, task):
-        target_dir = self.dirs.build / self.args['profile']
+        target_dir = self.locs.build / self.args['profile']
         match self.args['lib'], sys.platform:
             case True, "darwin":
                 # libraries on mac need to be renamed:
@@ -73,7 +73,7 @@ class CargoBuild(tasker.DootTasker, tasker.ActionsMixin):
 
 class CargoInstall(tasker.DootTasker, tasker.ActionsMixin):
 
-    def __init__(self, name="cargo::install", dirs=None):
+    def __init__(self, name="cargo::install", locs=None):
         super().__init__(name, dirs)
 
     def set_params(self):
@@ -93,7 +93,7 @@ class CargoInstall(tasker.DootTasker, tasker.ActionsMixin):
 
 class CargoTest(tasker.DootTasker, tasker.ActionsMixin):
 
-    def __init__(self, name="cargo::test", dirs=None):
+    def __init__(self, name="cargo::test", locs=None):
         super().__init__(name, dirs)
 
     def set_params(self):
@@ -115,7 +115,7 @@ class CargoTest(tasker.DootTasker, tasker.ActionsMixin):
 
 class CargoDocs(tasker.DootTasker, tasker.ActionsMixin):
 
-    def __init__(self, name="cargo::docs", dirs=None):
+    def __init__(self, name="cargo::docs", locs=None):
         super().__init__(name, dirs)
 
     def set_params(self):
@@ -132,7 +132,7 @@ class CargoDocs(tasker.DootTasker, tasker.ActionsMixin):
 
 class CargoRun(tasker.DootTasker, tasker.ActionsMixin):
 
-    def __init__(self, name="cargo::run", dirs=None):
+    def __init__(self, name="cargo::run", locs=None):
         super().__init__(name, dirs)
 
     def set_params(self):
@@ -151,7 +151,7 @@ class CargoClean(tasker.DootTasker, tasker.ActionsMixin):
     """
     clean the rust project
     """
-    def __init__(self, name="cargo::clean", dirs=None):
+    def __init__(self, name="cargo::clean", locs=None):
         super().__init__(name, dirs)
 
     def task_detail(self, task):
@@ -165,7 +165,7 @@ class CargoCheck(tasker.DootTasker, tasker.ActionsMixin):
     run cargo check on the project
     """
 
-    def __init__(self, name="cargo::check", dirs=None):
+    def __init__(self, name="cargo::check", locs=None):
         super().__init__(name, dirs)
 
     def task_detail(self, task):
@@ -179,7 +179,7 @@ class CargoUpdate(tasker.DootTasker, tasker.ActionsMixin):
     update rust and dependencies
     """
 
-    def __init__(self, name="cargo::update", dirs=None):
+    def __init__(self, name="cargo::update", locs=None):
         super().__init__(name, dirs)
 
     def task_detail(self, task):
@@ -195,7 +195,7 @@ class CargoDebug(tasker.DootTasker, tasker.ActionsMixin):
     Start lldb on the debug build of the rust binary
     """
 
-    def __init__(self, name="cargo::debug", dirs=None):
+    def __init__(self, name="cargo::debug", locs=None):
         super().__init__(name, dirs)
 
     def set_params(self):
@@ -205,8 +205,8 @@ class CargoDebug(tasker.DootTasker, tasker.ActionsMixin):
 
     def task_detail(self, task):
         task.update({
-                "actions"  : [ self.interact(["lldb", self.dirs.build / "debug" / self.args['target'] ]) ],
-                "file_dep" : [ self.dirs.build / "debug" / self.args['target'] ],
+                "actions"  : [ self.interact(["lldb", self.locs.build / "debug" / self.args['target'] ]) ],
+                "file_dep" : [ self.locs.build / "debug" / self.args['target'] ],
             })
         return task
 

@@ -39,7 +39,7 @@ class GodotCheckTask(globber.DootEagerGlobber, ActionsMixin):
     """
     ([root]) Lint all gd scripts in the project
     """
-    def __init__(self, name="godot::check", dirs:DootLocData=None, roots=None, rec=True):
+    def __init__(self, name="godot::check", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.root], exts=[".gd"], rec=rec)
         self.failures = set()
 
@@ -47,7 +47,7 @@ class GodotCheckTask(globber.DootEagerGlobber, ActionsMixin):
         task.update({
             "actions"  : [self.reset_failures],
             "teardown" : [self.report_failures]
-            "target"   : [self.dirs.build / "check_fails.report"]
+            "target"   : [self.locs.build / "check_fails.report"]
         })
         return task
 

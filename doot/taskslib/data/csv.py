@@ -22,9 +22,9 @@ class CSVSummaryTask(globber.DootEagerGlobber, tasker.ActionsMixin):
     and listing number of rows
     """
 
-    def __init__(self, name="csv::summary", dirs:DootLocData=None, roots=None, rec=True):
+    def __init__(self, name="csv::summary", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=[".csv"], rec=rec)
-        self.report_name = self.dirs.build / "csv.report"
+        self.report_name = self.locs.build / "csv.report"
 
     def setup_detail(self, task):
         task['actions']  = [ (self.rmfiles, [self.report_name]) ]
@@ -61,9 +61,9 @@ class CSVSummaryXMLTask(globber.DootEagerGlobber, tasker.ActionsMixin):
     and listing number of rows
     """
 
-    def __init__(self, name="csv::summary.xml", dirs:DootLocData=None, roots=None, rec=True):
+    def __init__(self, name="csv::summary.xml", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=[".csv"], rec=rec)
-        self.report_name = self.dirs.build / "csv.xml"
+        self.report_name = self.locs.build / "csv.xml"
 
     def setup_detail(self, task):
         task['actions']  = [lambda: genx.create_xml(self.report_name)]

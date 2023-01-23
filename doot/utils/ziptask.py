@@ -41,7 +41,7 @@ class ZipTask(DootTasker):
     TODO add filter_fn
     """
 
-    def __init__(self, base:str="ziptask::default", dirs:DootLocData=None, target:str, root:pl.Path, paths:list[pl.Path]=None, globs:list[str]=None,  date:bool|str=False, to_build_dir=False):
+    def __init__(self, base:str="ziptask::default", locs:DootLocData=None, target:str, root:pl.Path, paths:list[pl.Path]=None, globs:list[str]=None,  date:bool|str=False, to_build_dir=False):
         super().__init__(base, dirs)
         self.date     : bool | str = date
         self.target : str          = pl.Path(target)
@@ -66,7 +66,7 @@ class ZipTask(DootTasker):
 
     def task_detail(self, task) -> dict:
         zip_name   = self.dated_target().name
-        target_zip = self.dirs.temp / zip_name
+        target_zip = self.locs.temp / zip_name
         task.update({
             "actions"  : [ self.action_zip_create,
                            self.action_zip_add_paths,

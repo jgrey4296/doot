@@ -22,7 +22,7 @@ from doot import tasker
 # https://github.com/tefra/xsdata-plantuml
 # https://python-jsonschema.readthedocs.io/en/stable/
 
-# TODO config get data dirs
+# TODO config get data locs
 
 
 class XmlElementsTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
@@ -31,9 +31,9 @@ class XmlElementsTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Act
     http://xmlstar.sourceforge.net/
     """
 
-    def __init__(self, name="xml::elements", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=[".xml"], rec=rec)
-        assert("elements" in self.dirs.extra)
+    def __init__(self, name="xml::elements", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+        super().__init__(name, locs, roots or [locs.data], exts=[".xml"], rec=rec)
+        assert("elements" in self.locs.extra)
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for fpath.iterdir()):
@@ -41,7 +41,7 @@ class XmlElementsTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Act
         return self.control.discard
 
     def subtask_detail(self, task, fpath=None:dict) -> dict:
-        task.update({"targets" : [ self.dirs.extra['elements'] / (task['name'] + ".elements")],
+        task.update({"targets" : [ self.locs.extra['elements'] / (task['name'] + ".elements")],
                      "clean"   : True,
                      "actions" : [ self.cmd(self.generate_on_target, [fpath], save="elements"),
                                    (self.write_to, [fpath, "elements"]),
@@ -61,9 +61,9 @@ class XmlSchemaTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Actio
     ([data] -> schema) Generate .xsd's from directories of xml files using trang
     https://relaxng.org/jclark/
     """
-    def __init__(self, name="xml::schema", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=[".xml"], rec=rec)
-        assert("schema" in self.dirs.extra)
+    def __init__(self, name="xml::schema", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+        super().__init__(name, locs, roots or [locs.data], exts=[".xml"], rec=rec)
+        assert("schema" in self.locs.extra)
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for fpath.iterdir()):
@@ -72,7 +72,7 @@ class XmlSchemaTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Actio
 
     def subtask_detail(self, task, fpath=None):
         task.update({
-            "targets"  : [ self.dirs.extra['schema'] / (task['name'] + ".xsd") ],
+            "targets"  : [ self.locs.extra['schema'] / (task['name'] + ".xsd") ],
             "clean"    : True,
             "uptodate" : [True],
             "actions"  : [self.cmd(self.generate_on_target, fpath)],
@@ -88,8 +88,8 @@ class XmlPythonSchemaRaw(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.
     ([data] -> codegen) Generate Python Dataclass bindings based on raw XML data
     """
 
-    def __init__(self, name="xml::schema.python.raw", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=[".xml"], rec=rec)
+    def __init__(self, name="xml::schema.python.raw", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+        super().__init__(name, locs, roots or [locs.data], exts=[".xml"], rec=rec)
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for fpath.iterdir()):
@@ -97,7 +97,7 @@ class XmlPythonSchemaRaw(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.
         return self.control.discard
 
     def subtask_detail(self, task, fpath=None):
-        gen_package = str(self.dirs.codegen / task['name'])
+        gen_package = str(self.locs.codegen / task['name'])
         task.update({
             "targets"  : [ gen_package ],
             "task_dep" : [ "_xsdata::config"],
@@ -122,9 +122,9 @@ class XmlPythonSchemaXSD(globber.DootEagerGlobber, tasker.ActionsMixin):
     ([data] -> codegen) Generate python dataclass bindings from XSD's
     """
 
-    def __init__(self, name="xml::schema.python.xsd", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=[".xsd"], rec=rec)
-        self.dirs.build = dirs.build
+    def __init__(self, name="xml::schema.python.xsd", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+        super().__init__(name, locs, roots or [locs.data], exts=[".xsd"], rec=rec)
+        self.locs.build = locs.build
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for fpath.iterdir()):
@@ -132,7 +132,7 @@ class XmlPythonSchemaXSD(globber.DootEagerGlobber, tasker.ActionsMixin):
         return self.control.discard
 
     def subtask_detail(self, task, fpath=None):
-        gen_package = str(self.dirs.codegen / task['name'])
+        gen_package = str(self.locs.codegen / task['name'])
         task.update({
             "targets"  : [ gen_package ],
             "file_dep" : [ fpath ],
@@ -159,9 +159,9 @@ class XmlSchemaVisualiseTask(globber.DootEagerGlobber, tasker.ActionsMixin):
     ([data] -> visual) Generate Plantuml files ready for plantuml to generate images
     """
 
-    def __init__(self, name="xml::schema.plantuml", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=[".xsd"], rec=rec)
-        assert("visual" in dirs.extra)
+    def __init__(self, name="xml::schema.plantuml", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+        super().__init__(name, locs, roots or [locs.data], exts=[".xsd"], rec=rec)
+        assert("visual" in locs.extra)
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for fpath.iterdir()):
@@ -170,7 +170,7 @@ class XmlSchemaVisualiseTask(globber.DootEagerGlobber, tasker.ActionsMixin):
 
     def subtask_detail(self, task, fpath=None):
         task.update({
-            "targets"  : [ self.dirs.extra['visual'] / (task['name'] + ".plantuml") ],
+            "targets"  : [ self.locs.extra['visual'] / (task['name'] + ".plantuml") ],
             "file_dep" : [ fpath ],
             "task_dep" : [ "_xsdata::config" ],
             "actions" : [self.cmd([ "xsdata", "generate", "-o", "plantuml", "-pp", fpath], save="result")
@@ -185,8 +185,8 @@ class XmlValidateTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Act
     ([data]) Validate xml's by schemas
     """
 
-    def __init__(self, name="xml::validate", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=False, xsd=None):
-        super().__init__(name, dirs, roots or [dirs.data], exts=[".xml", ".xhtml", ".htm"], rec=rec)
+    def __init__(self, name="xml::validate", locs:DootLocData=None, roots:list[pl.Path]=None, rec=False, xsd=None):
+        super().__init__(name, locs, roots or [locs.data], exts=[".xml", ".xhtml", ".htm"], rec=rec)
         self.xsd = xsd
         if self.xsd is None:
             raise Exception("For Xml Validation you need to specify an xsd to validate against")
@@ -217,8 +217,8 @@ class XmlFormatTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Actio
     TODO cleanup backups
     """
 
-    def __init__(self, name="xml::format", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=[".xml", ".xhtml", ".html"], rec=rec)
+    def __init__(self, name="xml::format", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+        super().__init__(name, locs, roots or [locs.data], exts=[".xml", ".xhtml", ".html"], rec=rec)
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for fpath.iterdir()):

@@ -15,7 +15,7 @@ class SqlitePrepTask(globber.DootEagerGlobber, tasker.ActionsMixin):
     using https://github.com/dumblob/mysql2sqlite
     # TODO
     """
-    def __init__(self, name="sqlite::prep", dirs:DootLocData=None, roots=None, rec=True):
+    def __init__(self, name="sqlite::prep", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=[".sql"], rec=rec)
 
     def subtask_detail(self, task, fpath=None):
@@ -28,7 +28,7 @@ class SqliteReportTask(globber.DootEagerGlobber, tasker.ActionsMixin):
      .table
     """
 
-    def __init__(self, name="sqlite::report", dirs:DootLocData=None, roots=None, rec=True):
+    def __init__(self, name="sqlite::report", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=[".db"], rec=rec)
 
     def subtask_detail(self, task, fpath=None):

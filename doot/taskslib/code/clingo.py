@@ -16,25 +16,30 @@ from doot import globber
 
 ##-- end imports
 
-src_ext     = doot.config.or_get(".lp", str).tool.doot.clingo.src_ext()
-out_ext     = doot.config.or_get(".lp_result", str).tool.doot.clingo.out_ext()
+src_ext     = doot.config.on_fail(".lp", str).tool.doot.clingo.src_ext()
+out_ext     = doot.config.on_fail(".lp_result", str).tool.doot.clingo.out_ext()
 
-vis_src_ext = doot.config.or_get(".lp_vis", str).tool.doot.clingo.vis_src_ext()
-vis_in_ext  = doot.config.or_get(".json", str).tool.doot.clingo.vis_in_ext()
-vis_out_ext = doot.config.or_get(".dot", str).tool.doot.clingo.vis_out_ext()
+vis_src_ext = doot.config.on_fail(".lp_vis", str).tool.doot.clingo.vis_src_ext()
+vis_in_ext  = doot.config.on_fail(".json", str).tool.doot.clingo.vis_in_ext()
+vis_out_ext = doot.config.on_fail(".dot", str).tool.doot.clingo.vis_out_ext()
 
-clingo_call = ["clingo"] + data.toml.or_get([]).tool.doot.clingo.options()
+clingo_call = ["clingo"] + data.toml.on_fail([]).tool.doot.clingo.options()
 
+class ClingoCheck:
+    """
+    TODO clingo check
+    """
+    pass
 class ClingoRunner(globber.DootEagerGlobber, ActionsMixin):
     """
     ([src] -> build) Run clingo on ansprolog sources
     """
 
-    def __init__(self, name="clingo::run", dirs:DootLocData=None, roots=None, rec=True):
+    def __init__(self, name="clingo::run", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], exts=[src_ext], rec=rec)
 
     def subtask_detail(self, task, fpath=None):
-        target = self.dirs.build / path.with_suffix(out_ext).name
+        target = self.locs.build / path.with_suffix(out_ext).name
         task.update({
             "file_dep" : [ fpath ],
             "targets"  : [ target ],
@@ -52,11 +57,11 @@ class ClingoDotter(globber.DootEagerGlobber, ActionsMixin):
     ([src] -> build) Run specified clingo files to output json able to be visualised
     """
 
-    def __init__(self, name="clingo::dotter", dirs:DootLocData=None, roots=None, rec=True):
+    def __init__(self, name="clingo::dotter", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], exts=[vis_src_ext], rec=rec)
 
     def subtask_detail(self, task, fpath=None):
-        target = self.dirs.build / path.with_suffix(vis_in_ext).name
+        target = self.locs.build / path.with_suffix(vis_in_ext).name
         task.update({
             "targets"  : [ target ],
             "file_dep" : [ fpath ],
@@ -75,12 +80,12 @@ class ClingoVisualise(globber.DootEagerGlobber, ActionsMixin):
     and convert to dot format
     """
 
-    def __init__(self, name="clingo::visual", dirs:DootLocData=None, roots=None, rec=True):
+    def __init__(self, name="clingo::visual", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], exts=[vis_in_ext], rec=rec)
         assert('visual' in dirs.extra)
 
     def subtask_detail(self, task, fpath=None):
-        target = self.dirs.extra['visual'] / targ_fname
+        target = self.locs.extra['visual'] / targ_fname
         task.update({
             "targets"  : [ target ],
             "task_dep" : [ "_checkdir::clingo" ],

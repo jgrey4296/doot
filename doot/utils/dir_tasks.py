@@ -36,14 +36,14 @@ class CheckDir:
                          *CheckDir._all_registered.values(),
                          as_creator=True)
 
-    def __init__(self, name="default", dirs=None, private=True):
+    def __init__(self, name="default", locs=None, private=True):
         self.base = name
-        self.dirs = dirs
+        self.locs = locs
         self.name = f"{CheckDir._checker_name}:{self.base}"
         CheckDir._all_registered[self.name] = self
 
     def is_current(self):
-        return all([y.exists() for x,y in self.dirs])
+        return all([y.exists() for x,y in self.locs])
 
     def _build_task(self) -> dict:
         task = {
@@ -56,7 +56,7 @@ class CheckDir:
         return task
 
     def mkdir(self):
-        for _,x in self.dirs:
+        for _,x in self.locs:
             try:
                 x.mkdir(parents=True)
                 print("Built Missing Location: ", x)

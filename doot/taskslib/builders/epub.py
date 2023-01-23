@@ -66,12 +66,12 @@ class EbookCompileTask(EbookGlobberBase):
     (GlobDirs: [src] -> build) convert directories to zips, then those zips to epubs
     """
 
-    def __init__(self, name="epub::compile", dirs:DootLocData=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.src], rec=rec)
+    def __init__(self, name="epub::compile", locs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, locs, roots or [locs.src], rec=rec)
 
     def subtask_detail(self, task, fpath=None):
         task.update({
-            "file_dep" : [ self.dirs.build / fpath.with_suffix(".epub").name ]
+            "file_dep" : [ self.locs.build / fpath.with_suffix(".epub").name ]
         })
         return task
 
@@ -82,13 +82,13 @@ class EbookConvertTask(EbookGlobberBase):
     TODO possibly only zips with the right contents
     """
 
-    def __init__(self, name="_epub::convert.zip", dirs:DootLocData=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.src], rec=rec)
+    def __init__(self, name="_epub::convert.zip", locs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, locs, roots or [locs.src], rec=rec)
 
     def subtask_detail(self, task, fpath=None):
         task.update({
-            "targets"  : [ self.dirs.build / fpath.with_suffix(".epub").name ],
-            "file_dep" : [ self.dirs.temp / fpath.with_suffix(".zip").name ],
+            "targets"  : [ self.locs.build / fpath.with_suffix(".epub").name ],
+            "file_dep" : [ self.locs.temp / fpath.with_suffix(".zip").name ],
             "actions"  : [ self.cmd(self.action_convert) ],
             "clean"    : True,
         })
@@ -102,15 +102,15 @@ class EbookZipTask(EbookGlobberBase):
     (GlobDirs: [src] -> temp) wrapper around ZipTask to build zips of epub directories
     """
 
-    def __init__(self, name="_zip::epub", dirs:DootLocData=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.src], rec=rec)
+    def __init__(self, name="_zip::epub", locs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, locs, roots or [locs.src], rec=rec)
 
     def subtask_detail(self, task, fpath=None):
         target = fpath.with_suffix(".zip").name
         glob   = str(fpath) + "/**/*"
         # TODO could process the globs here, and exclude stuff
         ztask  = ZipTask(task['basename'],
-                         self.dirs,
+                         self.locs,
                          root=fpath,
                          target=target,
                          globs=[glob],
@@ -126,8 +126,8 @@ class EbookManifestTask(EbookGlobberBase):
     (GlobDirs: [src] -> src), Generate the manifest for an epub directory
     """
 
-    def __init__(self, name="epub::manifest", dirs:DootLocData=None, roots=None, rec=True, author=None):
-        super().__init__(name, dirs, roots or [dirs.src], rec=rec)
+    def __init__(self, name="epub::manifest", locs:DootLocData=None, roots=None, rec=True, author=None):
+        super().__init__(name, locs, roots or [locs.src], rec=rec)
         # Map path -> uuid
         self.uuids  = {}
         self.author = author or environ['USER']
@@ -236,7 +236,7 @@ class EbookManifestTask(EbookGlobberBase):
         manifest = pl.Path(targets[0])
         date_str = datetime.now().isoformat()
         epub_dir = manifest.parent
-        assert(epub_dir.parent == self.dirs.src)
+        assert(epub_dir.parent == self.locs.src)
         manifest_entries = []
         spine_entries    = []
         guide_entries    = []
@@ -275,15 +275,15 @@ class EbookManifestTask(EbookGlobberBase):
 
 class EbookRestructureTask(EbookGlobberBase):
     """
-    (GlobDirs: [src] -> src) Reformat working epub dirs to the same structure
+    (GlobDirs: [src] -> src) Reformat working epub locs to the same structure
     *.x?htm?              -> content/
     *.css                 -> style/
     *.jpg|gif|png|svg     -> image/
     *.ttf|otf|woff|woff2  -> font/
     """
 
-    def __init__(self, name="epub::restruct", dirs:DootLocData=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.src], rec=rec)
+    def __init__(self, name="epub::restruct", locs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, locs, roots or [locs.src], rec=rec)
         self.content_mapping : OrderedDict[str, re.Pattern] = OrderedDict((
             ("content", re.compile(".+(x?html?|js)")),
             ("style", re.compile(".+(css|xpgt)")),
@@ -306,7 +306,7 @@ class EbookRestructureTask(EbookGlobberBase):
         Move all files into designated directories
         """
         root = pl.Path(targets[0]).parent
-        assert(root.parent == self.dirs.src)
+        assert(root.parent == self.locs.src)
         for poss in root.glob("**/*"):
             if poss.name in ["titlepage.xhtml", self.marker_file]:
                 continue
@@ -328,12 +328,12 @@ class EbookSplitTask(globber.DootEagerGlobber):
     (GlobDirs: [data] -> build) split any epubs found in the project data
     """
 
-    def __init__(self, name="epub::split", dirs:DootLocData=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data] , exts=[".epub"], rec=rec)
+    def __init__(self, name="epub::split", locs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, locs, roots or [locs.data] , exts=[".epub"], rec=rec)
 
     def subtask_detail(self, task, fpath=None):
         task.update({
-            "targets"  : [ self.dirs.build / fpath.stem],
+            "targets"  : [ self.locs.build / fpath.stem],
             "file_dep" : [ fpath ],
             "actions"  : [ self.cmd(self.action_convert), ],
         })
@@ -350,8 +350,9 @@ class EbookNewTask(tasker.DootTasker, tasker.ActionsMixin):
     (-> [src]) Create a new stub structure for an ebook
 
     """
-    def __init__(self, name="epub::new", dirs:DootLocData=None):
-        super().__init__(name, dirs)
+
+    def __init__(self, name="epub::new", locs:DootLocData=None):
+        super().__init__(name, locs)
         self.marker_file = ".epub"
         self.paths : list[pl.Path|str] = [
             "content", "style", "image", "font", "image"
@@ -362,7 +363,7 @@ class EbookNewTask(tasker.DootTasker, tasker.ActionsMixin):
 
     def is_current(self, task):
         name = task.options['name']
-        return (self.dirs.src / name / self.marker_file).exists()
+        return (self.locs.src / name / self.marker_file).exists()
 
     def set_params(self):
         return [ { "name"    : "name",
@@ -383,20 +384,21 @@ class EbookNewTask(tasker.DootTasker, tasker.ActionsMixin):
 
     def make_dirs(self, name):
         for sub_path in self.paths:
-            targ = self.dirs.src / name / sub_path
+            targ = self.locs.src / name / sub_path
             if targ.exists():
                 continue
 
             targ.mkdir(parents=True)
 
-        (self.dirs.src / name / self.marker_file).touch()
+        (self.locs.src / name / self.marker_file).touch()
 
     def make_titlepage(self, name):
-        tp = self.dirs.src / name / "titlepage.xhtml"
+        tp = self.locs.src / name / "titlepage.xhtml"
         tp.write_text(title_template.read_text())
 
     def make_default_styles(self, name):
-        style_base     = self.dirs.src / name / "style"
+        style_base     = self.locs.src / name / "style"
+
         default_styles = style_base / "stylesheet.css"
         page_styles    = style_base / "page_styles.css"
 
@@ -405,16 +407,16 @@ class EbookNewTask(tasker.DootTasker, tasker.ActionsMixin):
 
 class EbookNewPandoc(EbookGlobberBase):
     """
-    Build an ebook using pandoc
+    TODO Build an ebook using pandoc
     """
 
-    def __init__(self, name="epub::pandoc", dirs=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots=roots or [dirs.src], rec=rec)
+    def __init__(self, name="epub::pandoc", locs=None, roots=None, rec=True):
+        super().__init__(name, locs, roots=roots or [locs.src], rec=rec)
 
     def subtask_detail(self, task, fpath=None):
         task.update({
             "actions" : [ self.cmd(self.build_ebook, fpath) ],
-            "targets" : [ self.dirs.build / f"{fpath.stem}.epub" ],
+            "targets" : [ self.locs.build / f"{fpath.stem}.epub" ],
         })
         return task
 

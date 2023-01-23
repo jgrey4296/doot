@@ -34,7 +34,7 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-prolog_ext = doot.config.or_get(".pl", str).doot.tool.repls.prolog.ext
+prolog_ext = doot.config.on_fail(".pl", str).doot.tool.repls.prolog.ext
 
 def task_pyrepl():
     return {
@@ -56,7 +56,7 @@ class PrologRunner(globber.DootEagerGlobber):
     swipl -g "paired(bob,london)" -t halt ./simple.pl
     """
 
-    def __init__(self, name="prolog::query", dirs=None, roots=None, rec=True):
+    def __init__(self, name="prolog::query", locs=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], exts=[prolog_ext], rec=rect)
 
     def filter(self, fpath):

@@ -61,7 +61,7 @@ class LatexCheckSweep(globber.DootEagerGlobber, ActionsMixin):
     just check the syntax
     """
 
-    def __init__(self, name="tex::check", dirs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+    def __init__(self, name="tex::check", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], exts=['.tex'], rec=rec)
 
     def set_params(self):
@@ -84,7 +84,7 @@ class LatexCheckSweep(globber.DootEagerGlobber, ActionsMixin):
         return ["pdflatex",
                 "-draftmode",
                 f"-interaction={self.args['interaction']}",
-                f"-output-directory={self.dirs.temp}",
+                f"-output-directory={self.locs.temp}",
                 fpath.with_suffix("")]
 
 class BibtexCheckSweep(globber.DootEagerGlobber, ActionsMixin):
@@ -92,7 +92,7 @@ class BibtexCheckSweep(globber.DootEagerGlobber, ActionsMixin):
     TODO ([src]) Bibtex Checking
     """
 
-    def __init__(self, name="bibtex::check", dirs:DootLocData=None, roots=None, rec=True):
+    def __init__(self, name="bibtex::check", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.src], exts=['.bib'], rec=rec)
 
     def subtask_detail(self, task, fpath=None):

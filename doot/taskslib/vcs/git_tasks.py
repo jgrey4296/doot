@@ -11,11 +11,11 @@ from doot.tasker import DootTasker, ActionsMixin
 
 ##-- end imports
 
-log_fmt     = doot.config.or_get(["%aI", "%h", "%al", "%s"], str).tool.doot.git.fmt()
-default_sep = doot.config.or_get(" :: ", str).tool.doot.git.sep()
-group_hours = doot.config.or_get(2, int).tool.doot.git.group_by_hours()
-bar_fmt     = doot.config.or_get("~", str).tool.doot.git.bar_fmt()
-bar_max     = doot.config.or_get(40, int).tool.doot.git.bar_max()
+log_fmt     = doot.config.on_fail(["%aI", "%h", "%al", "%s"], list).tool.doot.git.fmt()
+default_sep = doot.config.on_fail(" :: ", str).tool.doot.git.sep()
+group_hours = doot.config.on_fail(2, int).tool.doot.git.group_by_hours()
+bar_fmt     = doot.config.on_fail("~", str).tool.doot.git.bar_fmt()
+bar_max     = doot.config.on_fail(40, int).tool.doot.git.bar_max()
 
 def roundTime(dt=None, roundTo=60):
    """Round a datetime object to any time lapse in seconds
@@ -35,15 +35,15 @@ class GitLogTask(DootTasker, ActionsMixin):
     see: https://git-scm.com/docs/git-log
     """
 
-    def __init__(self, name="git::logs", dirs:DootLocData=None, fmt:list[str]=None, sep:str=default_sep):
+    def __init__(self, name="git::logs", locs:DootLocData=None, fmt:list[str]=None, sep:str=default_sep):
         super().__init__(name, dirs)
         self.format = fmt or log_fmt
         self.sep    = sep
 
     def task_detail(self, task):
-        target = self.dirs.temp / "full_git.log"
+        target = self.locs.temp / "full_git.log"
         task.update({
-            "actions" : [ self.(self.get_log, save="result"),
+            "actions" : [ self.cmd(self.get_log, save="result"),
                           (self.write_to, [target, "result"]),
                          ],
             "targets" : [ target ],
@@ -61,7 +61,7 @@ class GitLogAnalyseTask(DootTasker, ActionsMixin):
     (temp -> build) separate the printed log
     """
 
-    def __init__(self, dirs=None, sep=default_sep):
+    def __init__(self, locs=None, sep=default_sep):
         super().__init__("git::analysis", dirs)
 
         self.totals        = []
@@ -99,8 +99,8 @@ class GitLogAnalyseTask(DootTasker, ActionsMixin):
 
     def task_detail(self, task):
         task.update({
-            "targets"  : [ self.dirs.build / "git.report" ],
-            "file_dep" : [ self.dirs.temp / "full_git.log"],
+            "targets"  : [ self.locs.build / "git.report" ],
+            "file_dep" : [ self.locs.temp / "full_git.log"],
             "actions"  : [
                 self.read_log,
                 self.process_log,

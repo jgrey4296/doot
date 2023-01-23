@@ -41,10 +41,10 @@ logging = logmod.getLogger(__name__)
 # Path Quote
 pq = lambda x: quote(str(x))
 
-tweet_index_file = doot.config.or_get(".tweets", str).tool.doot.twitter.index()
-file_index_file  = doot.config.or_get(".files", str).tool.doot.twitter.file_index()
-link_index_file  = doot.config.or_get(".links", str).tool.doot.twitter.link_index()
-thread_file      = doot.config.or_get(".threads", str).tool.doot.twitter.thread_index()
+tweet_index_file = doot.config.on_fail(".tweets", str).tool.doot.twitter.index()
+file_index_file  = doot.config.on_fail(".files", str).tool.doot.twitter.file_index()
+link_index_file  = doot.config.on_fail(".links", str).tool.doot.twitter.link_index()
+thread_file      = doot.config.on_fail(".threads", str).tool.doot.twitter.thread_index()
 
 empty_match = re.match("","")
 
@@ -52,10 +52,11 @@ empty_match = re.match("","")
 
 class LinkCleanExtract(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
-
+    OCR all files for all thread directories,
+    and extract all links into .links files
     """
 
-    def __init__(self, name="thread::links.clean", dirs=None, roots=None, rec=True):
+    def __init__(self, name="thread::links.clean", locs=None, roots=None, rec=True):
         super().__init__(name, dirs, roots, rec=True)
 
     def filter(self, fpath):
@@ -104,8 +105,12 @@ class LinkCleanExtract(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMi
         pass
 
 class TweetExtract(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
+    """
+    glob all directories with orgs in,
+    and write .tweets and .files listings
+    """
 
-    def __init__(self, name="tweets::extract", dirs=None, roots=None, rec=True):
+    def __init__(self, name="tweets::extract", locs=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=[".org"], rec=rec)
         self.permalink_re = re.compile(r":PERMALINK:\s+\[\[.+?\]\[(.+?)\]\]")
 
@@ -158,7 +163,7 @@ class OrgThreadCount(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixi
     mark files with multiple threads
     """
 
-    def __init__(self, name="org::threadcount", dirs=None, roots=None, rec=True):
+    def __init__(self, name="org::threadcount", locs=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=[".org"], rec=True)
         self.heading_re = re.compile(f"^\** ")
 
@@ -210,7 +215,7 @@ class ThreadOrganise(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixi
     move threads in multi thread files to their own separate count
     """
 
-    def __init__(self, name="thread::organise", dirs=None, roots=None, rec=True):
+    def __init__(self, name="thread::organise", locs=None, roots=None, rec=True):
         super().__init__(name, dirs, roots or [dirs.data], exts=[".org"], rec=rec)
         self.total_threads   = 0
         self.multi_threads   = set()

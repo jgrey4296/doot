@@ -38,6 +38,7 @@ distlib==0.3.6
 docformatter==1.5.0
 docutils==0.18.1
 doit==0.36.0
+doit-graph==0.3.0
 doot==0.0.1
 dulwich==0.20.50
 filelock==3.8.2

@@ -5,8 +5,9 @@ announce_groups = false
 
 [tool.doot.directories]
 build = "build"
-# docs  = "docs"
 temp  = ".temp"
+
+wheel = "build/wheel"
 
 [tool.doot.group.pip]
 debug = true

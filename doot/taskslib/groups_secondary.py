@@ -48,19 +48,19 @@ godot_group = TaskGroup("godot_group")
 try:
     doot.config.tool.doot.group.godot
     from doot.taskslib.builders import godot
-    godot_dirs = doot.locs.extend(name="godot", _src="")
-    godot_dirs.update({ "scenes" : godot_dirs.src / "scenes",
+    godot_locs = doot.locs.extend(name="godot", _src="")
+    godot_locs.update({ "scenes" : godot_locs.src / "scenes",
                       })
 
-    godot_group += godot.GodotBuild(dirs=godot_dirs)
-    godot_group += godot.GodotRunScene(dirs=godot_dirs, roots=[godot_dirs.src])
-    godot_group += godot.GodotRunScript(dirs=godot_dirs, roots=[godot_dirs.src])
+    godot_group += godot.GodotBuild(locs=godot_locs)
+    godot_group += godot.GodotRunScene(locs=godot_locs, roots=[godot_locs.src])
+    godot_group += godot.GodotRunScript(locs=godot_locs, roots=[godot_locs.src])
     godot_group += godot.task_godot_version
     godot_group += godot.task_godot_test
-    godot_group += godot.task_newscene(godot_dirs)
+    godot_group += godot.task_newscene(godot_locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.or_get(False, bool).tool.doot.group.godot.debug():
+    if doot.config.on_fail(False, bool).tool.doot.group.godot.debug():
         print("To activate group godot needs: ", err)
 ##-- end godot
 
@@ -68,23 +68,23 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 xml_group = TaskGroup("xml_group")
 try:
     doot.config.tool.doot.group.xml
-    xml_dirs = doot.locs.extend(name="xml")
-    xml_dirs.update({"visual": xml_dirs.docs / "visual",
-                        "elements" : xml_dirs.build / "elements",
-                        "schema"    : xml_dirs.build / "schema",
+    xml_locs = doot.locs.extend(name="xml")
+    xml_locs.update({"visual": xml_locs.docs / "visual",
+                        "elements" : xml_locs.build / "elements",
+                        "schema"    : xml_locs.build / "schema",
 
                         })
     from doot.taskslib.data import xml as xml_reports
 
-    xml_group += xml_reports.XmlElementsTask(dirs=xml_dirs)
-    xml_group += xml_reports.XmlSchemaTask(dirs=xml_dirs)
-    xml_group += xml_reports.XmlPythonSchemaRaw(dirs=xml_dirs)
-    xml_group += xml_reports.XmlPythonSchemaXSD(dirs=xml_dirs)
-    xml_group += xml_reports.XmlSchemaVisualiseTask(dirs=xml_dirs)
-    xml_group += xml_reports.XmlFormatTask(dirs=xml_dirs)
+    xml_group += xml_reports.XmlElementsTask(locs=xml_locs)
+    xml_group += xml_reports.XmlSchemaTask(locs=xml_locs)
+    xml_group += xml_reports.XmlPythonSchemaRaw(locs=xml_locs)
+    xml_group += xml_reports.XmlPythonSchemaXSD(locs=xml_locs)
+    xml_group += xml_reports.XmlSchemaVisualiseTask(locs=xml_locs)
+    xml_group += xml_reports.XmlFormatTask(locs=xml_locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.or_get(False, bool).tool.doot.group.xml.debug():
+    if doot.config.on_fail(False, bool).tool.doot.group.xml.debug():
         print("To activate group, xml needs: ", err)
 ##-- end xml
 
@@ -93,13 +93,13 @@ sqlite_group = TaskGroup("sqlite_group")
 try:
     doot.config.tool.doot.group.database
     from doot.taskslib.data import database
-    sqlite_dirs  = doot.locs.extend(name="sqlite")
+    sqlite_locs  = doot.locs.extend(name="sqlite")
 
-    sqlite_group += database.SqliteReportTask(dirs=sqlite_dirs)
-    sqlite_group += database.SqlitePrepTask(dirs=sqlite_dirs)
+    sqlite_group += database.SqliteReportTask(locs=sqlite_locs)
+    sqlite_group += database.SqlitePrepTask(locs=sqlite_locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.or_get(False, bool).tool.doot.group.database.debug():
+    if doot.config.on_fail(False, bool).tool.doot.group.database.debug():
         print("To activate group, sqlite needs: ", err)
 
 ##-- end sqlite
@@ -109,19 +109,19 @@ json_group = TaskGroup("json group")
 try:
     doot.config.tool.doot.group.json
     from doot.taskslib.data import json as json_reports
-    json_dirs = doot.locs.extend(name="json")
-    json_dirs.update({
-        "visual" : json_dirs.build / "visual"
+    json_locs = doot.locs.extend(name="json")
+    json_locs.update({
+        "visual" : json_locs.build / "visual"
     })
     # from doot.taskslib.docs.plantuml import task_plantuml_json
 
-    json_group += json_reports.JsonPythonSchema(dirs=json_dirs)
-    json_group += json_reports.JsonFormatTask(dirs=json_dirs)
-    json_group += json_reports.JsonVisualise(dirs=json_dirs)
+    json_group += json_reports.JsonPythonSchema(locs=json_locs)
+    json_group += json_reports.JsonFormatTask(locs=json_locs)
+    json_group += json_reports.JsonVisualise(locs=json_locs)
     # json_group += json_reports.JsonSchemaTask()
     #
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.or_get(False, bool).tool.doot.group.json.debug():
+    if doot.config.on_fail(False, bool).tool.doot.group.json.debug():
         print("To activate group, json needs: ", err)
 ##-- end json
 
@@ -130,17 +130,17 @@ plantuml_group = TaskGroup("plantuml_group")
 try:
     doot.config.tool.doot.group.plantuml
     from doot.taskslib.docs import plantuml
-    plant_dirs = doot.locs.extend(name="plantuml", _src="docs/visual")
-    plant_dirs.update({
-        "visual" : plant_dirs.build / "visual"
+    plant_locs = doot.locs.extend(name="plantuml", _src="docs/visual")
+    plant_locs.update({
+        "visual" : plant_locs.build / "visual"
     })
 
-    plantuml_group += plantuml.PlantUMLGlobberTask(dirs=plant_dirs)
-    plantuml_group += plantuml.PlantUMLGlobberTask(dirs=plant_dirs)
-    plantuml_group += plantuml.PlantUMLGlobberCheck(dirs=plant_dirs)
+    plantuml_group += plantuml.PlantUMLGlobberTask(locs=plant_locs)
+    plantuml_group += plantuml.PlantUMLGlobberTask(locs=plant_locs)
+    plantuml_group += plantuml.PlantUMLGlobberCheck(locs=plant_locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.or_get(False, bool).tool.doot.group.plantuml.debug():
+    if doot.config.on_fail(False, bool).tool.doot.group.plantuml.debug():
         print("To activate group, plantuml needs: ", err)
 
 ##-- end plantuml
@@ -149,14 +149,14 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 csv_group = TaskGroup("csv group")
 try:
     doot.config.tool.doot.group.csv
-    csv_dirs = doot.locs.extend(name="csv")
+    csv_locs = doot.locs.extend(name="csv")
     from doot.taskslib.data import csv as csv_reports
 
-    csv_group += csv_reports.CSVSummaryTask(dirs=csv_dirs)
-    csv_group += csv_reports.CSVSummaryXMLTask(dirs=csv_dirs)
+    csv_group += csv_reports.CSVSummaryTask(locs=csv_locs)
+    csv_group += csv_reports.CSVSummaryXMLTask(locs=csv_locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.or_get(False, bool).tool.doot.group.csv.debug():
+    if doot.config.on_fail(False, bool).tool.doot.group.csv.debug():
         print("To activate group, csv needs: ", err)
 
 ##-- end csv
@@ -165,12 +165,12 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 dot_group = TaskGroup("dot group")
 try:
     doot.config.tool.doot.group.dot
-    dot_dirs = doot.locs.extend(name="dot", _src="docs/visual")
+    dot_locs = doot.locs.extend(name="dot", _src="docs/visual")
     from doot.taskslib.docs import dot
-    dot_group += dot.DotVisualise(dirs=dot_dirs)
+    dot_group += dot.DotVisualise(locs=dot_locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.or_get(False, bool).tool.doot.group.dot.debug():
+    if doot.config.on_fail(False, bool).tool.doot.group.dot.debug():
         print("To activate group, dot needs: ", err)
 
 ##-- end dot
@@ -179,13 +179,13 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 images_group = TaskGroup("images group")
 try:
     doot.config.tool.doot.group.images
-    image_dirs  = doot.locs.extend(name="images")
+    image_locs  = doot.locs.extend(name="images")
     from doot.taskslib.data import images
-    images_group += images.HashImages(dirs=image_dirs)
-    images_group += images.OCRGlobber(dirs=image_dirs)
+    images_group += images.HashImages(locs=image_locs)
+    images_group += images.OCRGlobber(locs=image_locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.or_get(False, bool).tool.doot.group.images.debug():
+    if doot.config.on_fail(False, bool).tool.doot.group.images.debug():
         print("To activate group, images needs: ", err)
 
 ##-- end images
@@ -199,7 +199,7 @@ try:
     repls_group += basic_repls.task_pyrepl
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.or_get(False, bool).tool.doot.group.repls.debug():
+    if doot.config.on_fail(False, bool).tool.doot.group.repls.debug():
         print("To activate python repl, needs: ", err)
 
 try:
@@ -208,7 +208,7 @@ try:
     repls_group += basic_repls.task_prolog_repl
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.or_get(False, bool).tool.doot.group.repls.debug():
+    if doot.config.on_fail(False, bool).tool.doot.group.repls.debug():
         print("To activate prolog repl, needs: ", err)
 
 ##-- end repls

@@ -9,7 +9,7 @@ from doot import tasker, globber
 
 ##-- end imports
 
-glob_ignores = doot.config.or_get(['.git', '.DS_Store', "__pycache__"], list).tool.doot.glob_ignores()
+glob_ignores = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).tool.doot.glob_ignores()
 
 class FileListings(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
     """
@@ -17,11 +17,11 @@ class FileListings(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Action
     to the build_dir/allfiles.report
     """
 
-    def __init__(self, name="listing::files", dirs=None, roots=None, rec=False, exts=None):
-        super().__init__(name, dirs, roots or [dirs.src, dirs.data], rec=rec, exts=exts)
+    def __init__(self, name="listing::files", locs=None, roots=None, rec=False, exts=None):
+        super().__init__(name, locs, roots or [x[1] for x in locs], rec=rec, exts=exts)
 
     def subtask_detail(self, task, fpath):
-        report = self.dirs.build / f"{task['name']}.listing"
+        report = self.locs.build / f"{task['name']}.listing"
         task.update({
             "actions"  : [
                 self.cmd(["rg", "--no-ignore", "--files", fpath], save="listing"),
@@ -39,12 +39,12 @@ class SimpleListing(tasker.DootTasker, tasker.ActionsMixin):
     to the build_dir/allfiles.report
     """
 
-    def __init__(self, name="listing::simple", dirs=None, focus=None):
-        super().__init__(name, dirs)
-        self.focus = focus or dirs.root
+    def __init__(self, name="listing::simple", locs=None, focus=None):
+        super().__init__(name, locs)
+        self.focus = focus or locs.root
 
     def task_detail(self, task):
-        report = self.dirs.build / f"{task['name']}.listing"
+        report = self.locs.build / f"{task['name']}.listing"
         task.update({
             "actions"  : [
                 self.cmd(["rg", "--no-ignore", "--sort", "path", "--files", self.focus], save="listing"),

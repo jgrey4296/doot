@@ -9,24 +9,24 @@ from doot import globber
 from doot.tasker import DootTasker, ActionsMixin
 ##-- end imports
 
-prefix = doot.config.or_get("py", str).tool.doot.python.prefix()
+prefix = doot.config.on_fail("py", str).tool.doot.python.prefix()
 
-lint_exec       = doot.config.or_get("pylint", str).tool.doot.python.lint.exec()
-lint_fmt        = doot.config.or_get("text", str).tool.doot.python.lint.output_format()
-lint_out        = doot.config.or_get(f"report.lint", str).tool.doot.python.lint.output_name()
-lint_grouped    = doot.config.or_get(True, bool).tool.doot.python.lint.grouped()
-lint_error      = doot.config.or_get(False, bool).tool.doot.python.lint.error()
+lint_exec       = doot.config.on_fail("pylint", str).tool.doot.python.lint.exec()
+lint_fmt        = doot.config.on_fail("text", str).tool.doot.python.lint.output_format()
+lint_out        = doot.config.on_fail(f"report.lint", str).tool.doot.python.lint.output_name()
+lint_grouped    = doot.config.on_fail(True, bool).tool.doot.python.lint.grouped()
+lint_error      = doot.config.on_fail(False, bool).tool.doot.python.lint.error()
 
-py_test_dir_fmt = doot.config.or_get("__test", str).tool.doot.python.test.dir_fmt()
-py_test_args    = doot.config.or_get([], list).tool.doot.python.test.args()
-py_test_out     = pl.Path(doot.config.or_get("result.test", str).tool.doot.python.test())
+py_test_dir_fmt = doot.config.on_fail("__test", str).tool.doot.python.test.dir_fmt()
+py_test_args    = doot.config.on_fail([], list).tool.doot.python.test.args()
+py_test_out     = pl.Path(doot.config.on_fail("result.test", str).tool.doot.python.test())
 
 
 class InitPyGlobber(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """ ([src] -> src) add missing __init__.py's """
 
-    def __init__(self, name=f"{prefix}::initpy", dirs:DootLocData=None, roots=None, rec=False):
-        super().__init__(name, dirs, roots or [dirs.src], rec=rec)
+    def __init__(self, name=f"{prefix}::initpy", locs:DootLocData=None, roots=None, rec=False):
+        super().__init__(name, locs, roots or [locs.src], rec=rec)
         self.ignores = ["__pycache__", ".git", "__mypy_cache__"]
 
     def filter(self, fpath):
@@ -57,8 +57,8 @@ class PyLintTask(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """ ([root]) lint the package """
 
 
-    def __init__(self, name=f"{prefix}::lint", dirs:DootLocData=None, rec=None):
-        super().__init__(name, dirs, [dirs.root], rec=rec or not lint_grouped)
+    def __init__(self, name=f"{prefix}::lint", locs:DootLocData=None, rec=None):
+        super().__init__(name, locs, [locs.root], rec=rec or not lint_grouped)
 
     def filter(self, fpath):
         return (fpath / "__init__.py").exists()
@@ -74,14 +74,14 @@ class PyLintTask(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
 
     def subtask_detail(self, task, fpath=None):
         if not lint_grouped:
-            target = target.with_stem(task.name)
+            target = fpath.with_stem(task.name)
         else:
-            target = self.dirs.build / lint_out
+            target = self.locs.build / lint_out
 
         task.update({
             "clean"   : True,
             "actions" : [ self.cmd(self.run_lint) ],
-            "target"  : [ target ]
+            "targets" : [ target ]
         })
         return task
 
@@ -94,7 +94,7 @@ class PyLintTask(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
                 "-E" if lint_error else None,
                 "--exit-zero",
                 "-v",
-                self.dirs.src
+                self.locs.src
                 ]
 
         return [x for x in args if x is not None]
@@ -108,8 +108,8 @@ class PyUnitTestGlob(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixi
     """
 
 
-    def __init__(self, name=f"{prefix}::test", dirs:DootLocData=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.root], exts=[".py"], rec=rec)
+    def __init__(self, name=f"{prefix}::test", locs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, locs, roots or [locs.root], exts=[".py"], rec=rec)
 
     def filter(self, fpath):
         if py_test_dir_fmt in fpath.name:
@@ -117,7 +117,7 @@ class PyUnitTestGlob(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixi
 
     def subtask_detail(self, task, fpath=None):
         target = py_test_out if lint_grouped else py_test_out.with_stem(task['name'])
-        task.update({"targets" : [ self.dirs.build / target ],
+        task.update({"targets" : [ self.locs.build / target ],
                      "actions" : [ self.cmd(self.run_tests, fpath, save="results"),
                                    (self.write_to, [target, "results"])
                                   ]
@@ -137,8 +137,8 @@ class PyTestGlob(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
 
 
-    def __init__(self, name=f"{prefix}::test", dirs:DootLocData=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.src], exts=[".py"], rec=rec)
+    def __init__(self, name=f"{prefix}::test", locs:DootLocData=None, roots=None, rec=True):
+        super().__init__(name, locs, roots or [locs.src], exts=[".py"], rec=rec)
 
     def filter(self, fpath):
         if py_test_dir_fmt in fpath.name:
