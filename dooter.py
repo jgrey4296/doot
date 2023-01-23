@@ -24,7 +24,7 @@ DOIT_CONFIG = {
 
 ##-- post-config doot imports
 from doot.taskslib.groups import *
-# from doot.taskslib.groups_secondary import *
+from doot.taskslib.groups_secondary import *
 ##-- end post-config doot imports
 
 

@@ -57,7 +57,7 @@ class LinkCleanExtract(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMi
     """
 
     def __init__(self, name="thread::links.clean", locs=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots, rec=True)
+        super().__init__(name, locs, roots, rec=True)
 
     def filter(self, fpath):
         if any(x.suffix == ".org" for x in fpath.iterdir()):
@@ -111,7 +111,7 @@ class TweetExtract(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin)
     """
 
     def __init__(self, name="tweets::extract", locs=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=[".org"], rec=rec)
+        super().__init__(name, locs, roots or [locs.data], exts=[".org"], rec=rec)
         self.permalink_re = re.compile(r":PERMALINK:\s+\[\[.+?\]\[(.+?)\]\]")
 
     def filter(self, fpath):
@@ -164,7 +164,7 @@ class OrgThreadCount(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixi
     """
 
     def __init__(self, name="org::threadcount", locs=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=[".org"], rec=True)
+        super().__init__(name, locs, roots or [locs.data], exts=[".org"], rec=True)
         self.heading_re = re.compile(f"^\** ")
 
     def filter(self, fpath):
@@ -216,7 +216,7 @@ class ThreadOrganise(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixi
     """
 
     def __init__(self, name="thread::organise", locs=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=[".org"], rec=rec)
+        super().__init__(name, locs, roots or [locs.data], exts=[".org"], rec=rec)
         self.total_threads   = 0
         self.multi_threads   = set()
         self.total_files_reg = re.compile(r"^Total Files: (\d+)$")

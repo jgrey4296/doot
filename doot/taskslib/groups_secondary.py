@@ -129,15 +129,15 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 plantuml_group = TaskGroup("plantuml_group")
 try:
     doot.config.tool.doot.group.plantuml
-    from doot.taskslib.docs import plantuml
+    from doot.taskslib.docs import visual
     plant_locs = doot.locs.extend(name="plantuml", _src="docs/visual")
     plant_locs.update({
         "visual" : plant_locs.build / "visual"
     })
 
-    plantuml_group += plantuml.PlantUMLGlobberTask(locs=plant_locs)
-    plantuml_group += plantuml.PlantUMLGlobberTask(locs=plant_locs)
-    plantuml_group += plantuml.PlantUMLGlobberCheck(locs=plant_locs)
+    plantuml_group += visual.PlantUMLGlobberTask(locs=plant_locs)
+    plantuml_group += visual.PlantUMLGlobberTask(locs=plant_locs)
+    plantuml_group += visual.PlantUMLGlobberCheck(locs=plant_locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     if doot.config.on_fail(False, bool).tool.doot.group.plantuml.debug():
@@ -165,9 +165,9 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 dot_group = TaskGroup("dot group")
 try:
     doot.config.tool.doot.group.dot
+    from doot.taskslib.docs import visual
     dot_locs = doot.locs.extend(name="dot", _src="docs/visual")
-    from doot.taskslib.docs import dot
-    dot_group += dot.DotVisualise(locs=dot_locs)
+    dot_group += visual.DotVisualise(locs=dot_locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     if doot.config.on_fail(False, bool).tool.doot.group.dot.debug():

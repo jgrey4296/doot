@@ -16,7 +16,7 @@ class SqlitePrepTask(globber.DootEagerGlobber, tasker.ActionsMixin):
     # TODO
     """
     def __init__(self, name="sqlite::prep", locs:DootLocData=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=[".sql"], rec=rec)
+        super().__init__(name, locs, roots or [locs.data], exts=[".sql"], rec=rec)
 
     def subtask_detail(self, task, fpath=None):
         return task
@@ -29,7 +29,7 @@ class SqliteReportTask(globber.DootEagerGlobber, tasker.ActionsMixin):
     """
 
     def __init__(self, name="sqlite::report", locs:DootLocData=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=[".db"], rec=rec)
+        super().__init__(name, locs, roots or [locs.data], exts=[".db"], rec=rec)
 
     def subtask_detail(self, task, fpath=None):
         task['actions'] += self.subtask_actions(fpath)

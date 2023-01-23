@@ -171,23 +171,22 @@ class PipInstall(DootTasker, ActionsMixin):
 
 class PipReqs(DootTasker, ActionsMixin):
     """
-    write out pip requirements to requirements.txt
+    use pipreqs to make a concise requirements.txt
     """
 
     def __init__(self, name="pip::req", locs=None):
         super().__init__(name, locs)
 
-    def is_current(self, fpath):
-        return True
+    def is_current(self, task):
+        return False
 
     def task_detail(self, task) -> dict:
-        pip_args = ["pip", "list", "--format=freeze"]
         req_path = self.locs.root / "requirements.txt"
+        pip_args = ["pipreqs", "--force", "--savepath", req_path, self.locs.src]
         task.update({
-            "actions" : [ self.cmd(pip_args, save="frozen"),
-                          (self.write_to, [req_path, "frozen"]),
+            "actions" : [ self.cmd(pip_args)
                         ],
-            "targets" : [],
+            "targets" : [ req_path ],
             "clean"   : True,
             "verbosity" : 1,
         })

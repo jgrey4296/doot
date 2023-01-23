@@ -46,8 +46,8 @@ def task_line_report(locs:DootLocData):
     find_cmd = ["find", locs.src, "-name", '"*.py"',
                 "-not", "-name", '"test_*.py"',
                 "-not", "-name", '"*__init__.py"',
-                "-print0"])
-    line_cmd = ["xargs", "-0", "wc", "-l"])
+                "-print0"]
+    line_cmd = ["xargs", "-0", "wc", "-l"]
     sort_cmd = "sort"
 
     target = locs.build / "linecounts.report"

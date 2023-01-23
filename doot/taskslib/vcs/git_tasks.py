@@ -36,7 +36,7 @@ class GitLogTask(DootTasker, ActionsMixin):
     """
 
     def __init__(self, name="git::logs", locs:DootLocData=None, fmt:list[str]=None, sep:str=default_sep):
-        super().__init__(name, dirs)
+        super().__init__(name, locs)
         self.format = fmt or log_fmt
         self.sep    = sep
 
@@ -62,7 +62,7 @@ class GitLogAnalyseTask(DootTasker, ActionsMixin):
     """
 
     def __init__(self, locs=None, sep=default_sep):
-        super().__init__("git::analysis", dirs)
+        super().__init__("git::analysis", locs)
 
         self.totals        = []
         self.entry_count   = 0
@@ -82,7 +82,7 @@ class GitLogAnalyseTask(DootTasker, ActionsMixin):
 
         # Deltas in Days:
         self.deltas        = defaultdict(lambda: 0)
-        self.update_tuples = [(self.times         , "%H:%M")
+        self.update_tuples = [(self.times         , "%H:%M"),
                               (self.weekday_times , "%w: %H:%M (%a)"),
                               (self.weekdays      , "%w (%a)"),
                               (self.days          , "%d"),

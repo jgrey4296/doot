@@ -43,7 +43,7 @@ class PythonCompile(DootTasker, ActionsMixin):
     """
 
     def __init__(self, name="python::compile", locs=None):
-        super().__init__(name, dirs)
+        super().__init__(name, locs)
 
     def set_params(self):
         return [

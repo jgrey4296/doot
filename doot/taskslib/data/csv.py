@@ -23,7 +23,7 @@ class CSVSummaryTask(globber.DootEagerGlobber, tasker.ActionsMixin):
     """
 
     def __init__(self, name="csv::summary", locs:DootLocData=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=[".csv"], rec=rec)
+        super().__init__(name, locs, roots or [locs.data], exts=[".csv"], rec=rec)
         self.report_name = self.locs.build / "csv.report"
 
     def setup_detail(self, task):
@@ -62,7 +62,7 @@ class CSVSummaryXMLTask(globber.DootEagerGlobber, tasker.ActionsMixin):
     """
 
     def __init__(self, name="csv::summary.xml", locs:DootLocData=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=[".csv"], rec=rec)
+        super().__init__(name, locs, roots or [locs.data], exts=[".csv"], rec=rec)
         self.report_name = self.locs.build / "csv.xml"
 
     def setup_detail(self, task):

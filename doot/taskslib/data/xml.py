@@ -36,11 +36,11 @@ class XmlElementsTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Act
         assert("elements" in self.locs.extra)
 
     def filter(self, fpath):
-        if any(x.suffix in self.exts for fpath.iterdir()):
+        if any(x.suffix in self.exts for x in fpath.iterdir()):
             return self.control.accept
         return self.control.discard
 
-    def subtask_detail(self, task, fpath=None:dict) -> dict:
+    def subtask_detail(self, task, fpath:dict=None) -> dict:
         task.update({"targets" : [ self.locs.extra['elements'] / (task['name'] + ".elements")],
                      "clean"   : True,
                      "actions" : [ self.cmd(self.generate_on_target, [fpath], save="elements"),
@@ -66,7 +66,7 @@ class XmlSchemaTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Actio
         assert("schema" in self.locs.extra)
 
     def filter(self, fpath):
-        if any(x.suffix in self.exts for fpath.iterdir()):
+        if any(x.suffix in self.exts for x in fpath.iterdir()):
             return self.control.accept
         return self.control.discard
 
@@ -92,7 +92,7 @@ class XmlPythonSchemaRaw(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.
         super().__init__(name, locs, roots or [locs.data], exts=[".xml"], rec=rec)
 
     def filter(self, fpath):
-        if any(x.suffix in self.exts for fpath.iterdir()):
+        if any(x.suffix in self.exts for x in fpath.iterdir()):
             return self.control.accept
         return self.control.discard
 
@@ -127,7 +127,7 @@ class XmlPythonSchemaXSD(globber.DootEagerGlobber, tasker.ActionsMixin):
         self.locs.build = locs.build
 
     def filter(self, fpath):
-        if any(x.suffix in self.exts for fpath.iterdir()):
+        if any(x.suffix in self.exts for x in fpath.iterdir()):
             return self.control.accept
         return self.control.discard
 
@@ -164,7 +164,7 @@ class XmlSchemaVisualiseTask(globber.DootEagerGlobber, tasker.ActionsMixin):
         assert("visual" in locs.extra)
 
     def filter(self, fpath):
-        if any(x.suffix in self.exts for fpath.iterdir()):
+        if any(x.suffix in self.exts for x in fpath.iterdir()):
             return self.control.accept
         return self.control.discard
 
@@ -192,7 +192,7 @@ class XmlValidateTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Act
             raise Exception("For Xml Validation you need to specify an xsd to validate against")
 
     def filter(self, fpath):
-        if any(x.suffix in self.exts for fpath.iterdir()):
+        if any(x.suffix in self.exts for x in fpath.iterdir()):
             return self.control.accept
         return self.control.discard
 
@@ -221,7 +221,7 @@ class XmlFormatTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Actio
         super().__init__(name, locs, roots or [locs.data], exts=[".xml", ".xhtml", ".html"], rec=rec)
 
     def filter(self, fpath):
-        if any(x.suffix in self.exts for fpath.iterdir()):
+        if any(x.suffix in self.exts for x in fpath.iterdir()):
             return self.control.accept
         return self.control.discard
 

@@ -15,3 +15,5 @@ debug = true
 debug = true
 [tool.doot.group.gtags]
 [tool.doot.group.git]
+
+[tool.doot.group.dot]

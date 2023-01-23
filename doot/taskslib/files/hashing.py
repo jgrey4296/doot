@@ -49,7 +49,7 @@ class HashAllFiles(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Action
     """
 
     def __init__(self, name="files::hash", locs:DootLocData=None, roots=None, exts=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=exts, rec=rec)
+        super().__init__(name, locs, roots or [locs.data], exts=exts, rec=rec)
         self.current_hashed = {}
         self.hash_record    = hash_record
         self.ext_check_fn = lambda x: x.is_file() and x.suffix in self.exts
@@ -108,7 +108,7 @@ class HashAllFiles(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Action
 class GroupHashes(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
 
     def __init__(self, name="files::hash.group", locs:DootLocData=None, roots=None, exts=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=exts, rec=rec)
+        super().__init__(name, locs, roots or [locs.data], exts=exts, rec=rec)
         self.hash_record    = hash_record
         self.hash_concat    = hash_concat
 
@@ -119,8 +119,8 @@ class GroupHashes(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Actions
 
     def setup_detail(self, task):
         task.update({
-            "actions" : [ self.cmd(["touch", dirs.temp / self.hash_concat])],
-            "targets" : [dirs.temp / self.hash_concat],
+            "actions" : [ self.cmd(["touch", locs.temp / self.hash_concat])],
+            "targets" : [locs.temp / self.hash_concat],
             "clean"   : True,
         })
         return task
@@ -140,7 +140,7 @@ class DetectDuplicateHashes(tasker.DootTasker, tasker.ActionsMixin):
     sort all_hashes, and run uniq of the first n chars
     """
     def __init__(self, name="files::hash.duplicates", locs=None):
-        super().__init__(name, dirs)
+        super().__init__(name, locs)
         self.hash_concat = hash_concat
 
     def task_detail(self, task):

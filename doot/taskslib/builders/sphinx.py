@@ -31,7 +31,7 @@ class SphinxDocTask(DootTasker, ActionsMixin):
     """([docs] -> build) Build sphinx documentation """
 
     def __init__(self, name="sphinx::doc", locs:DootLocData=None, builder=None, verbosity:int=None):
-        super().__init__(name, dirs)
+        super().__init__(name, locs)
         self.builder = builder or conf_builder
         self.verbosity = verbosity or conf_verbosity
 

@@ -207,7 +207,7 @@ def task_latex_install():
         "basename" : "tex::install",
         "actions"  : [
             lambda: { "tex_deps" : list({x for x in pl.Path(tex_dep).read_text().split("\n") if bool(x)}) },
-            ActionsMixin.cmd(None, lambda task: ["tlmgr", "--usermode",  "install", *task.values['tex_deps']] ] ),
+            ActionsMixin.cmd(None, lambda task: ["tlmgr", "--usermode",  "install", *task.values['tex_deps']]),
             ],
         "file_dep" : [ tex_dep ],
     }

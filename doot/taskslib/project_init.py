@@ -123,7 +123,7 @@ class JekyllInit(DootTasker):
     """
 
     def __init__(self, name="jekyll::init", locs=None):
-        super().__init__(name, dirs)
+        super().__init__(name, locs)
         self.config_file = self.locs.root / "jekyll.toml"
 
     def task_detail(self, task):

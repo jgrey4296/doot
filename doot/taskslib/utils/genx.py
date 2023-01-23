@@ -52,7 +52,7 @@ def sub_xml(xpath, name, val=None) -> list:
 
 def attr_xml(xpath, name, val) -> list:
     """ set the attribute of an xpath element """
-    return ["-i", xpath,  "-t", "attr", "-n",  name "-v",  val]
+    return ["-i", xpath,  "-t", "attr", "-n",  name, "-v",  val]
 
 def val_xml(xpath, val) -> list:
     return ["-s", xpath, "-t", "text", "-n", "null", "-v", val]

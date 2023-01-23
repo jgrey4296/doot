@@ -57,7 +57,7 @@ class PrologRunner(globber.DootEagerGlobber):
     """
 
     def __init__(self, name="prolog::query", locs=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.src], exts=[prolog_ext], rec=rect)
+        super().__init__(name, locs, roots or [locs.src], exts=[prolog_ext], rec=rect)
 
     def filter(self, fpath):
         # test for it being a main file

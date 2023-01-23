@@ -33,7 +33,7 @@ class GodotRunScene(globber.HeadlessGlobMixin, globber.DootEagerGlobber, Actions
     """
 
     def __init__(self, name="godot::run:scene", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
-        super().__init__(name, dirs, roots or [dir.root], exts=[".tscn"], rec=rec)
+        super().__init__(name, locs, roots or [dir.root], exts=[".tscn"], rec=rec)
 
     def set_params(self):
         return [
@@ -79,7 +79,7 @@ class GodotRunScript(globber.EagerFileGlobber, ActionsMixin):
     """
 
     def __init__(self, name="godot::run", locs:DootLocData=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.root], exts=[".gd"], rec=rec)
+        super().__init__(name, locs, roots or [locs.root], exts=[".gd"], rec=rec)
 
     def filter(self, fpath):
         # TODO test script for implementing runnable interface
@@ -123,7 +123,7 @@ class GodotBuild(DootTasker, ActionsMixin):
     """
 
     def __init__(self, name="godot::build", locs:DootLocData=None):
-        super().__init__(name, dirs)
+        super().__init__(name, locs)
 
     def set_params(self):
         return [ { "name"    : "build_target",
@@ -173,8 +173,8 @@ class GodotNewScene(DootTasker, ActionsMixin):
     """
 
     def __init__(self, name="godot::new.scene", locs=None):
-        assert("scenes" in dirs.extra)
-        super().__init__(name, dirs)
+        assert("scenes" in locs.extra)
+        super().__init__(name, locs)
 
     def set_params(self):
         return [

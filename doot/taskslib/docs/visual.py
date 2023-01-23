@@ -34,6 +34,8 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from doot import globber,tasker
+
 class DotVisualise(globber.DootEagerGlobber, tasker.ActionsMixin):
     """
     ([src] -> build) make images from any dot files
@@ -42,7 +44,7 @@ class DotVisualise(globber.DootEagerGlobber, tasker.ActionsMixin):
 
     def __init__(self, name=None, locs:DootLocData=None, roots=None, ext="png", layout="neato", scale:float=72.0, rec=True):
         name = name or f"dot::{ext}"
-        super().__init__(name, dirs, roots or [dirs.src], exts=[".dot"], rec=rec)
+        super().__init__(name, locs, roots or [locs.src], exts=[".dot"], rec=rec)
         self.ext       = ext
         self.layout    = layout
         self.scale     = scale
@@ -52,7 +54,7 @@ class DotVisualise(globber.DootEagerGlobber, tasker.ActionsMixin):
             "file_dep" : [ fpath ],
             "targets"  : [ self.locs.build / fpath.with_suffix(f".{self.ext}").name ],
             "clean"    : True,
-            "actions' : "[ self.cmd(self.run_on_target) ],
+            "actions"  : [ self.cmd(self.run_on_target) ],
             })
         return task
 
@@ -84,9 +86,9 @@ class PlantUMLGlobberTask(globber.DootEagerGlobber, tasker.ActionsMixin):
     """
 
     def __init__(self, name=None, locs:DootLocData=None, roots:list[pl.Path]=None, fmt="png", rec=True):
-        assert(roots or 'visual' in dirs.extra)
+        assert(roots or 'visual' in locs.extra)
         name = name or f"plantuml::{fmt}"
-        super().__init__(name, dirs, roots or [dirs.src], exts=[".plantuml"], rec=True)
+        super().__init__(name, locs, roots or [locs.src], exts=[".plantuml"], rec=True)
         self.fmt       = fmt
 
     def subtask_detail(self, task, fpath=None):
@@ -113,8 +115,8 @@ class PlantUMLGlobberCheck(globber.DootEagerGlobber, tasker.ActionsMixin):
     """
 
     def __init__(self, name="plantuml::check", locs=None, roots:list[pl.Path]=None, rec=True):
-        assert(roots or 'visual' in dirs.extra)
-        super().__init__(name, dirs, roots or [dirs.extra['visual']], exts=[".plantuml"], rec=rec)
+        assert(roots or 'visual' in locs.extra)
+        super().__init__(name, locs, roots or [locs.extra['visual']], exts=[".plantuml"], rec=rec)
 
     def subtask_detail(self, task, fpath=None):
         task.update({

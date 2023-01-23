@@ -26,10 +26,10 @@ class JsonFormatTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Acti
     """
 
     def __init__(self, name="json::format", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=[".json"], rec=rec)
+        super().__init__(name, locs, roots or [locs.data], exts=[".json"], rec=rec)
 
     def filter(self, fpath):
-        if any(x.suffix in self.exts for fpath.iterdir()):
+        if any(x.suffix in self.exts for x in fpath.iterdir()):
             return self.control.accept
         return self.control.discard
 
@@ -65,10 +65,10 @@ class JsonPythonSchema(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Ac
     """
 
     def __init__(self, name="json::schema.python", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=[".json"], rec=rec)
+        super().__init__(name, locs, roots or [locs.data], exts=[".json"], rec=rec)
 
     def filter(self, fpath):
-        if any(x.suffix in self.exts for fpath.iterdir()):
+        if any(x.suffix in self.exts for x in fpath.iterdir()):
             return self.control.accept
         return self.control.discard
 
@@ -102,8 +102,8 @@ class JsonVisualise(globber.DootEagerGlobber, tasker.ActionsMixin):
     """
 
     def __init__(self, name="json::schema.visual", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=[".json"], rec=rec)
-        assert('visual' in dirs.extra)
+        super().__init__(name, locs, roots or [locs.data], exts=[".json"], rec=rec)
+        assert('visual' in locs.extra)
 
     def subtask_detail(self, task, fpath=None):
         task.update({

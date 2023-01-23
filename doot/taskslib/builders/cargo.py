@@ -33,7 +33,7 @@ class CargoBuild(tasker.DootTasker, tasker.ActionsMixin):
     """
 
     def __init__(self, name="cargo::build", locs=None):
-        super().__init__(name, dirs)
+        super().__init__(name, locs)
 
     def set_params(self):
         return [
@@ -74,7 +74,7 @@ class CargoBuild(tasker.DootTasker, tasker.ActionsMixin):
 class CargoInstall(tasker.DootTasker, tasker.ActionsMixin):
 
     def __init__(self, name="cargo::install", locs=None):
-        super().__init__(name, dirs)
+        super().__init__(name, locs)
 
     def set_params(self):
         return [
@@ -94,7 +94,7 @@ class CargoInstall(tasker.DootTasker, tasker.ActionsMixin):
 class CargoTest(tasker.DootTasker, tasker.ActionsMixin):
 
     def __init__(self, name="cargo::test", locs=None):
-        super().__init__(name, dirs)
+        super().__init__(name, locs)
 
     def set_params(self):
         return [
@@ -116,7 +116,7 @@ class CargoTest(tasker.DootTasker, tasker.ActionsMixin):
 class CargoDocs(tasker.DootTasker, tasker.ActionsMixin):
 
     def __init__(self, name="cargo::docs", locs=None):
-        super().__init__(name, dirs)
+        super().__init__(name, locs)
 
     def set_params(self):
         return [
@@ -133,7 +133,7 @@ class CargoDocs(tasker.DootTasker, tasker.ActionsMixin):
 class CargoRun(tasker.DootTasker, tasker.ActionsMixin):
 
     def __init__(self, name="cargo::run", locs=None):
-        super().__init__(name, dirs)
+        super().__init__(name, locs)
 
     def set_params(self):
         return [
@@ -152,7 +152,7 @@ class CargoClean(tasker.DootTasker, tasker.ActionsMixin):
     clean the rust project
     """
     def __init__(self, name="cargo::clean", locs=None):
-        super().__init__(name, dirs)
+        super().__init__(name, locs)
 
     def task_detail(self, task):
         task.update({
@@ -166,7 +166,7 @@ class CargoCheck(tasker.DootTasker, tasker.ActionsMixin):
     """
 
     def __init__(self, name="cargo::check", locs=None):
-        super().__init__(name, dirs)
+        super().__init__(name, locs)
 
     def task_detail(self, task):
         task.update({
@@ -180,7 +180,7 @@ class CargoUpdate(tasker.DootTasker, tasker.ActionsMixin):
     """
 
     def __init__(self, name="cargo::update", locs=None):
-        super().__init__(name, dirs)
+        super().__init__(name, locs)
 
     def task_detail(self, task):
         task.update({
@@ -196,7 +196,7 @@ class CargoDebug(tasker.DootTasker, tasker.ActionsMixin):
     """
 
     def __init__(self, name="cargo::debug", locs=None):
-        super().__init__(name, dirs)
+        super().__init__(name, locs)
 
     def set_params(self):
         return [

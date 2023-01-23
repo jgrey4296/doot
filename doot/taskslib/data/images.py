@@ -45,7 +45,7 @@ class OCRGlobber(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.BatchMix
     """
 
     def __init__(self, name="images::ocr", locs:DootLocData=None, roots=None, exts=ocr_exts, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=exts, rec=rec)
+        super().__init__(name, locs, roots or [locs.data], exts=exts, rec=rec)
         assert(bool(self.exts))
         self.processed = dict()
         self.ext_check_fn = lambda x: x.is_file() and x.suffix in self.exts
@@ -97,7 +97,7 @@ class Images2PDF(globber.LazyGlobMixin, globber.DootEagerGlobber, tasker.Actions
     """
 
     def __init__(self, name="images::pdf", locs=None, roots=None, exts=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=exts or default_pdf_exts, rec=rec)
+        super().__init__(name, locs, roots or [locs.data], exts=exts or default_pdf_exts, rec=rec)
 
     def set_params(self):
         return [
@@ -109,7 +109,7 @@ class Images2PDF(globber.LazyGlobMixin, globber.DootEagerGlobber, tasker.Actions
             "name"    : "build_single",
             "actions" : [ self.cmd(self.combine_pages) ],
             "targets" : [ self.locs.build / f"{self.args['name']}.pdf" ],
-            "clean"   : [ (self.rmglob, [self.locs.build, f"{self.args['name']}.pdf"}]) ],
+            "clean"   : [ (self.rmglob, [self.locs.build, f"{self.args['name']}.pdf"]) ],
         })
         return task
 
@@ -142,7 +142,7 @@ class Images2Video(globber.LazyGlobMixin, globber.DootEagerGlobber, tasker.Actio
     """
 
     def __init__(self, name="images::to.video", locs=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.data], exts=default_ocr_exts, rec=rec)
+        super().__init__(name, locs, roots or [locs.data], exts=default_ocr_exts, rec=rec)
 
     def subtask_detail(self, task, fpath):
         task.update({
@@ -170,7 +170,7 @@ class PDF2Images(globber.DootEagerGlobber, tasker.ActionsMixin):
     """
 
     def __init__(self, name="image::from.pdf", locs=None, roots=None, rec=False, exts=None):
-        super().__init__(name, dirs, roots or [dirs.src], rec=rec, exts=exts or [".pdf"])
+        super().__init__(name, locs, roots or [locs.src], rec=rec, exts=exts or [".pdf"])
 
     def filter(self, fpath):
         return self.control.accept

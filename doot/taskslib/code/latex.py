@@ -62,7 +62,7 @@ class LatexCheckSweep(globber.DootEagerGlobber, ActionsMixin):
     """
 
     def __init__(self, name="tex::check", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.src], exts=['.tex'], rec=rec)
+        super().__init__(name, locs, roots or [locs.src], exts=['.tex'], rec=rec)
 
     def set_params(self):
         return [
@@ -93,7 +93,7 @@ class BibtexCheckSweep(globber.DootEagerGlobber, ActionsMixin):
     """
 
     def __init__(self, name="bibtex::check", locs:DootLocData=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.src], exts=['.bib'], rec=rec)
+        super().__init__(name, locs, roots or [locs.src], exts=['.bib'], rec=rec)
 
     def subtask_detail(self, task, fpath=None):
         task.update({})
