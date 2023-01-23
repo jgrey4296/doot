@@ -38,6 +38,19 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
+class LocProxy:
+
+    def __init__(self, locs, val):
+        self.locs = locs
+        self.val = val
+
+    def __getattr__(self, attr):
+        try:
+            return getattr(self.locs, attr)
+        except Exception:
+            DootLocData._defaulted.append(f"{attr} = \"{self.val}\"")
+            return self.locs._calc_path(self.val)
+
 class DootLocData:
     """
     Manage locations in a dict-like class, with attribute access,
@@ -45,12 +58,13 @@ class DootLocData:
     """
 
     _all_registered : ClassVar[dict[str, DootLocData]] = {}
-    _default_locs   : ClassVar[list[str]]
     _locs_name  = "_locs::report"
+
+    _defaulted : ClassVar[list[str]] =   []
 
     @staticmethod
     def set_defaults(config:TomlAccess):
-        DootLocData._default_locs = config.or_get([], list).tool.doot.locs
+        DootLocData._default_locs = config.on_fail([], list).tool.doot.locs
 
     @staticmethod
     def gen_loc_tasks():
@@ -65,31 +79,52 @@ class DootLocData:
                          *DootLocData._all_registered.values(),
                          as_creator=True)
 
-    def __init__(self, name="base", **kwargs):
+    @staticmethod
+    def _report() -> list[str]:
+        return DootLocData._defaulted[:]
+
+    def __init__(self, name="base", files:dict=None, **kwargs):
         self._root    : pl.Path() = pl.Path()
         self._postfix             = name
         self._prefix              = DootLocData._locs_name
         self._check_name          = None
+        self._dirs                = {}
         if bool(kwargs):
-            self._dir_names       = {x:y for x,y in kwargs.items() if y is not None}
-        else:
-            self._dir_names       = {x.replace("_",""):x for x in DootLocData._default_locs}
-        assert(self.name not in DootLocData._all_registered), self.name
+            self._dirs.update({x:y for x,y in kwargs.items() if y is not None})
+
+        self._files = {x:y for x,y in (files or {}).items() if y is not None}
+
+        intersect = set(self._dirs.keys()) & set(self._files.keys())
+        assert(not bool(intersect)), f"Directory and File Sets can't intersect: {intersect}"
+        assert(self.name not in DootLocData._all_registered), f"Conflicting LocData Name: {self.name}"
         DootLocData._all_registered[self.name] = self
         self.checker
 
     def __getattr__(self, val):
-        if val in self._dir_names and self._dir_names[val] is not None:
-            pathname, postfix = self._calc_postfix(self._dir_names[val])
-            return self.root / pathname / postfix
+        match val in self._dirs, val in self._files:
+            case True, False:
+                target = self._dirs[val]
+            case False, True:
+                target =  self._files[val]
+            case _:
+                raise DootDirAbsent(f"{val} is not a location in {self.name}")
 
-        raise DootDirAbsent(f"{val} is not a location in {self.name}")
+        return self._calc_path(target)
+
+    def _calc_path(self, val) -> tupl(str, str):
+        match val[0], val:
+            case "/" | "~", _: # absolute path or home
+                return pl.Path(val).expanduser()
+            case _, (solo,) | [solo]: # with postfix
+                return self.root / solo / self._postfix or ""
+            case _, _: # normal
+                return self.root / val
 
     def __contains__(self, val):
-        return val in self._dir_names
+        return val in self._dirs
 
     def __iter__(self):
-        for x,y in self._dir_names.items():
+        for x,y in self._dirs.items():
             if y is not None:
                 yield (x, getattr(self, x))
 
@@ -102,42 +137,38 @@ class DootLocData:
     def get(self, val):
         return self.__getattr__(val)
 
+    def on_fail(self, val):
+        return LocProxy(self, val)
+
     @property
     def name(self):
         return f"{self._prefix}:{self._postfix}"
 
     def extend(self, *, name=None, **kwargs):
         new_locs = DootLocData(name or self._postfix,
-                               **self._dir_names.copy())
+                               **self._dirs.copy())
         new_locs.update(kwargs)
         return new_locs
 
     def update(self, extra:dict[str,str|pl.Path]=None, **kwargs):
         if extra is not None:
-            self._dir_names.update((x, y) for x,y in extra.items())
+            self._dirs.update((x, y) for x,y in extra.items())
         if bool(kwargs):
-            self._dir_names.update(kwargs)
+            self._dirs.update(kwargs)
 
         return self
 
     def auto_subdirs(self, *args):
-        for x in self._dir_names:
-            match self._dir_names[x]:
+        for x in self._dirs:
+            match self._dirs[x]:
                 case (val,) if x in args:
                     continue
                 case (val,):
-                    self._dir_names[x] = val
+                    self._dirs[x] = val
                 case val if x in args:
-                    self._dir_names[x] = (val,)
+                    self._dirs[x] = (val,)
                 case _:
                     continue
-
-    def _calc_postfix(self, val) -> tupl(str, str):
-        match val:
-            case (solo,):
-                return (solo, self._postfix or "")
-            case _:
-                return (val, "")
 
     @property
     def root(self):
@@ -149,13 +180,16 @@ class DootLocData:
     @property
     def checker(self) -> str:
         if self._check_name is None:
-            self._check_name = CheckDir(self._postfix, dirs=self).name
+            self._check_name = CheckDir(self._postfix, locs=self).name
         return self._check_name
 
     def _build_task(self):
         task = {
             "name"     : self._postfix,
-            "actions"  : [lambda: print(repr(self))],
+            "actions"  : [
+                lambda: print(f"{self._postfix} Dirs : {self._dir_str()}"),
+                lambda: print(f"{self._postfix} Files: {self._file_str()}") if bool(self._files) else "",
+            ],
             "uptodate" : [False],
             "verbosity" : 2,
             "meta" : {
@@ -163,3 +197,9 @@ class DootLocData:
             }
         }
         return task
+
+    def _dir_str(self):
+        return "  ".join(f"[{x}: {y}]" for x,y in self._dirs.items())
+
+    def _file_str(self):
+        return " ".join(f"[{x}: {y}]" for x,y in self._files.items())
