@@ -14,8 +14,6 @@ from doot.task_group import TaskGroup
 ##-- end imports
 # https://pip.pypa.io/en/stable/cli/
 
-prefix = doot.config.on_fail("pip", str).tool.doot.pip.prefix()
-
 # pip_version   = CmdTask("pip", "--version", verbosity=2, basename=f"{prefix}::version")
 
 class IncrementVersion(DootTasker):

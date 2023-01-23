@@ -64,31 +64,49 @@ class TomlAccessProxy:
         self._path  = path or []
 
         if self._types != "Any" and not isinstance(value, self._types):
-            match self._types:
-                case UnionType() as targ:
-                    types_str = repr(targ)
-                case type(__name__=targ):
-                    types_str = targ
-                case _ as targ:
-                    types_str = str(targ)
+            types_str = self._types_str()
             path_str = ".".join(self._path + ['(' + types_str + ')'])
             raise TypeError("Toml Value doesn't match declared Type: ", path_str, self._value, self._types).with_traceback(TraceHelper()[5:10])
 
     def __call__(self, wrapper:callable=None):
-        wrapper = wrapper or (lambda x: x)
-        match self._value, self._path:
-            case (val,), []:
-                return wrapper(val)
-            case (val,), [*path]:
-                path_str = ".".join(path) + f"   =  <{self._types}> {val}"
-                TomlAccess._defaulted.append(path_str)
-                return wrapper(val)
-            case val, path:
-                raise TypeError("Unexpected Values found: ", val, path)
+        self._notify()
+        wrapper   = wrapper or (lambda x: x)
+        return wrapper(self._value[0])
 
     def __getattr__(self, attr):
         self._path.append(attr)
         return self
+
+    def _notify(self):
+        types_str = self._types_str()
+        match self._value, self._path:
+            case (val,), []:
+                return
+            case (str() as val,), [*path]:
+                path_str = ".".join(path) + f"   =  \"{val}\" # <{types_str}>"
+                TomlAccess._defaulted.append(path_str)
+                return
+            case (bool() as val,), [*path]:
+                path_str = ".".join(path) + f"   =  {str(val).lower()} # <{types_str}>"
+                TomlAccess._defaulted.append(path_str)
+                return
+            case (val,), [*path]:
+                path_str = ".".join(path) + f"   =  {val} # <{types_str}>"
+                TomlAccess._defaulted.append(path_str)
+                return
+            case val, path:
+                raise TypeError("Unexpected Values found: ", val, path)
+
+    def _types_str(self):
+        match self._types:
+            case UnionType() as targ:
+                types_str = repr(targ)
+            case type(__name__=targ):
+                types_str = targ
+            case _ as targ:
+                types_str = str(targ)
+
+        return types_str
 
     def using(self, val):
         return TomlAccessProxy(val, types=self._types, path=self._path)
@@ -119,6 +137,7 @@ class TomlAccess:
         Report the paths using default values
         """
         return TomlAccess._defaulted[:]
+
     def __init__(self, path, table, fallback=None):
         assert(isinstance(fallback, (NoneType, TomlAccessProxy)))
         path = path if isinstance(path, list) else [path]
@@ -144,7 +163,6 @@ class TomlAccess:
 
     def get_table(self):
         return getattr(self, "__table")
-
 
     def __setattr__(self, attr, value):
         if attr in getattr(self, "__table"):

@@ -9,7 +9,7 @@ from doot import tasker, globber
 
 ##-- end imports
 
-glob_ignores = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).tool.doot.glob_ignores()
+glob_ignores = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).tool.doot.globbing.ignores()
 
 class FileListings(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
     """
