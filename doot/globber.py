@@ -93,11 +93,15 @@ class DootEagerGlobber(DootSubtasker):
 
         raise ValueError(f"{fpath} is not able to be made relative")
 
-    def glob_target(self, target, rec=False, fn=None, exts=None) -> list[pl.Path]:
+    def glob_target(self, target, rec=None, fn=None, exts=None) -> list[pl.Path]:
         results   = []
         exts      = exts or self.exts or ["*"]
         filter_fn = fn or self.filter
-        glob_fn   = target.rglob if (rec or self.rec) else target.glob
+        match rec, self.rec:
+            case (True, _) | (None, True):
+                glob_fn   = target.rglob
+            case (False, _) | (None, False):
+                glob_fn   = target.glob
 
         for ext in [f"*{x}" if x[0] == "." else x for x in exts]:
             results += glob_fn(ext)
@@ -172,6 +176,8 @@ class DirGlobMixin:
             queue = [target]
             while bool(queue):
                 current = queue.pop()
+                if not current.exists():
+                    continue
                 if current.name in glob_ignores:
                     continue
                 if current.is_file():
@@ -189,7 +195,7 @@ class DirGlobMixin:
                     case _ as x:
                         raise TypeException("Unexpected glob filter value", x)
 
-        else:
+        elif target.exists():
             results += [x for x in target.iterdir() if x.is_dir() and filter_fn(x) not in [False, GlobControl.reject, GlobControl.discard]]
 
         return results

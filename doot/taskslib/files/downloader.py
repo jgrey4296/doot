@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import logging as logmod
+import pathlib as pl
 from os import system
 from os.path import split
 from typing import (Any, Callable, ClassVar, Dict, Final, Generic, Iterable,
                     Iterator, List, Mapping, Match, MutableMapping, Optional,
                     Sequence, Set, Tuple, TypeVar, Union, cast)
 
-import requests
 import doot
+import requests
 from doot import tasker
 
 ##-- end imports
@@ -24,10 +25,10 @@ class DownloaderMixin:
 
     def download_media(self, media_dir:pl.Path, media:list):
         """ Download all media mentioned in json files """
-        print("Downloading media %s to: %s", len(media), media_dir)
-        assert(media_dir.is_dir())
+        print("Downloading media %s to: %s" % (len(media), media_dir))
         if not media_dir.exists():
             media_dir.mkdir()
+        assert(media_dir.is_dir())
 
         remaining = [x for x in media if x is not None and not (media_dir / pl.Path(x).name).exists()]
 
@@ -41,7 +42,7 @@ class DownloaderMixin:
         scaler = int(len(media) / 100) + 1
         for i, x in enumerate(media):
             if i % scaler == 0:
-                logging.info("%s/100", int(i/scaler))
+                print("%s/100" % int(i/scaler))
 
             filename = media_dir / split(x)[1]
             if filename.exists():

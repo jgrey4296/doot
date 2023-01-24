@@ -20,9 +20,16 @@ class FileListings(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Action
 
     def __init__(self, name="listing::files", locs=None, roots=None, rec=False, exts=None):
         super().__init__(name, locs, roots or [x[1] for x in locs], rec=rec, exts=exts)
+        self.output = self.locs.on_fail(self.locs.build).listings_out()
+
+    def filter(self, fpath):
+        if fpath.exists():
+            return self.control.accept
+
+        self.control.reject
 
     def subtask_detail(self, task, fpath):
-        report = self.locs.build / f"{task['name']}.listing"
+        report = self.output / f"{task['name']}.listing"
         task.update({
             "actions"  : [
                 self.cmd(["rg", "--no-ignore", "--files", fpath], save="listing"),

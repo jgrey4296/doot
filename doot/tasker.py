@@ -332,6 +332,9 @@ class ActionsMixin:
     def rmdirs(self, *locs:pl.Path):
         logging.debug("Removing Directories: %s", locs)
         for target in locs:
+            if not target.exists():
+                logging.warning("Non-existent rmdir: %s", target)
+                continue
             shutil.rmtree(target)
 
     def mkdirs(self, *locs:pl.Path):

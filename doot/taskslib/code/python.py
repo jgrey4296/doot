@@ -10,7 +10,13 @@ from doot import globber
 from doot.tasker import DootTasker, ActionsMixin
 ##-- end imports
 
-prefix          : Final = doot.config.on_fail("py", str).tool.doot.python.prefix()
+##-- imports
+import logging as logmod
+##-- end imports
+
+##-- logging
+logging = logmod.getLogger(__name__)
+##-- end logging
 
 lint_exec       : Final = doot.config.on_fail("pylint", str).tool.doot.python.lint.exec()
 lint_fmt        : Final = doot.config.on_fail("text", str).tool.doot.python.lint.output_format()
@@ -22,11 +28,10 @@ py_test_dir_fmt : Final = doot.config.on_fail("__test", str).tool.doot.python.te
 py_test_args    : Final = doot.config.on_fail([], list).tool.doot.python.test.args()
 py_test_out     : Final = pl.Path(doot.config.on_fail("result.test", str).tool.doot.python.test())
 
-
 class InitPyGlobber(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """ ([src] -> src) add missing __init__.py's """
 
-    def __init__(self, name=f"{prefix}::initpy", locs:DootLocData=None, roots=None, rec=False):
+    def __init__(self, name=f"py::initpy", locs:DootLocData=None, roots=None, rec=False):
         super().__init__(name, locs, roots or [locs.src], rec=rec)
         self.ignores = ["__pycache__", ".git", "__mypy_cache__"]
 
@@ -53,16 +58,29 @@ class InitPyGlobber(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin
             inpy = current / "__init__.py"
             inpy.touch()
 
-
 class PyLintTask(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """ ([root]) lint the package """
 
-
-    def __init__(self, name=f"{prefix}::lint", locs:DootLocData=None, rec=None):
-        super().__init__(name, locs, [locs.root], rec=rec or not lint_grouped)
+    def __init__(self, name=f"py::lint", locs:DootLocData=None, rec=None, exts=None):
+        super().__init__(name, locs, [locs.root], rec=rec or not lint_grouped, exts=exts or [".py"])
+        self.output = self.locs.on_fail(self.locs.build).lint_out()
 
     def filter(self, fpath):
-        return (fpath / "__init__.py").exists()
+        logging.info("Checking: %s", fpath)
+        match [x.stem for x in fpath.glob("*.py")]:
+            case []:
+                return self.control.discard
+            case ["__init__"]:
+                return self.control.discard
+            case [*others] if bool(others) and "__init__" in others:
+                return self.control.accept
+            case _:
+                return self.control.discard
+
+    def set_params(self):
+        return [
+            {"name": "verbose", "type": bool, "default": False, "short": "v"}
+        ]
 
     def setup_detail(self, task):
         task.update({ "verbosity" : 0,
@@ -75,41 +93,45 @@ class PyLintTask(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
 
     def subtask_detail(self, task, fpath=None):
         if not lint_grouped:
-            target = fpath.with_stem(task.name)
+            target = (self.output / task['name']).with_suffix(".lint")
         else:
-            target = self.locs.build / lint_out
+            target = self.output / lint_out
 
         task.update({
-            "clean"   : True,
-            "actions" : [ self.cmd(self.run_lint) ],
-            "targets" : [ target ]
+            "actions"   : [ self.cmd(self.run_lint, fpath, save="lint"),
+                          (self.write_lint_report, [target]),
+                         ],
+            "targets"   : [ target ],
+            "clean"     : True,
+            "verbosity" : 2 if self.args['verbose'] else 1,
         })
         return task
 
-
-    def run_lint(self, targets, task):
+    def run_lint(self, fpath, task):
         args = [lint_exec,
                 "--rcfile", "pylint.toml",
-                "--output-format", lint_format,
-                "--output", targets,
+                "--output-format", lint_fmt,
                 "-E" if lint_error else None,
                 "--exit-zero",
-                "-v",
-                self.locs.src
                 ]
-
+        lint_targets = self.glob_files(fpath, rec=lint_grouped)
+        args += lint_targets
         return [x for x in args if x is not None]
 
+    def write_lint_report(self, fpath, task):
+        if lint_grouped:
+            with open(fpath, 'a') as f:
+                f.write("\n" + task.values['lint'])
 
-
+        else:
+            fpath.write_text(task.values['lint'])
 
 class PyUnitTestGlob(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     ([root]) Run all project unit tests
     """
 
-
-    def __init__(self, name=f"{prefix}::test", locs:DootLocData=None, roots=None, rec=True):
+    def __init__(self, name=f"py::test", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.root], exts=[".py"], rec=rec)
 
     def filter(self, fpath):
@@ -130,15 +152,12 @@ class PyUnitTestGlob(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixi
         args.append(fpath)
         return args
 
-
-
 class PyTestGlob(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     ([src]) Run all project unit tests
     """
 
-
-    def __init__(self, name=f"{prefix}::test", locs:DootLocData=None, roots=None, rec=True):
+    def __init__(self, name=f"py::test", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=[".py"], rec=rec)
 
     def filter(self, fpath):
@@ -158,11 +177,9 @@ class PyTestGlob(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
         args.append(fpath)
         return args
 
-
 class PyParseRailroad(DootTasker):
     """
     python "$(PY_TOP)/util/build_railroad.py" --parser instal.parser.v1 --out "$(DOCBUILDDIR)"
     """
-
 
     pass

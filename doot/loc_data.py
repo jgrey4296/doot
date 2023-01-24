@@ -46,13 +46,17 @@ class LocProxy:
 
     def __getattr__(self, attr):
         try:
-            return getattr(self.locs, attr)
+            return LocProxy(self.locs, getattr(self.locs, attr))
         except Exception:
             DootLocData._defaulted.append(f"{attr} = \"{self.val}\"")
             return self
 
     def __call__(self):
-        return self.locs._calc_path(self.val)
+        match self.val:
+            case str():
+                return self.locs._calc_path(self.val)
+            case pl.Path():
+                return self.val
 
 class DootLocData:
     """
