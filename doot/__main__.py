@@ -66,8 +66,8 @@ def main():
         if bool(say_text):
             CmdAction(["say", say_text], shell=False).execute()
 
-        defaulted_locs = doot.DootLocData._report()
-        defaulted_toml = doot.TomlAccess._report()
+        defaulted_locs = doot.DootLocData.report_defaulted()
+        defaulted_toml = doot.TomlAccess.report_defaulted()
 
         with open("_doot_defaults.toml", 'w') as f:
             f.write("# default values used:\n")

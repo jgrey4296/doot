@@ -121,7 +121,7 @@ class TomlAccess:
     data.on_fail("test", str | int).a.path.that.may.exist()
 
     while it can then report missing paths:
-    data._report() -> ['a.path.that.may.exist.<str|int>']
+    data.report_defaulted() -> ['a.path.that.may.exist.<str|int>']
     """
 
     _defaulted : ClassVar[list[str]] = []
@@ -132,7 +132,7 @@ class TomlAccess:
         return TomlAccess("<root>", toml.load(path))
 
     @staticmethod
-    def _report() -> list[str]:
+    def report_defaulted() -> list[str]:
         """
         Report the paths using default values
         """

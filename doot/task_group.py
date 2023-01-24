@@ -86,5 +86,9 @@ class TaskGroup:
                     yield task
                 case types.FunctionType() | types.MethodType():
                     yield task()
+                case _ if hasattr(task, "build_report"):
+                    yield task.build_report()
+                case _ if hasattr(task, "build_check"):
+                    yield task.build_check()
                 case _:
                     yield task._build_task()

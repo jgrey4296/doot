@@ -45,7 +45,7 @@ class CheckDir:
     def is_current(self):
         return all([y.exists() for x,y in self.locs])
 
-    def _build_task(self) -> dict:
+    def build_check(self) -> dict:
         task = {
             "name"      : self.base,
             "actions"   : [ self.mkdir ],

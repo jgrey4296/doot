@@ -49,12 +49,21 @@ class LocProxy:
             return getattr(self.locs, attr)
         except Exception:
             DootLocData._defaulted.append(f"{attr} = \"{self.val}\"")
-            return self.locs._calc_path(self.val)
+            return self
+
+    def __call__(self):
+        return self.locs._calc_path(self.val)
 
 class DootLocData:
     """
     Manage locations in a dict-like class, with attribute access,
     that can build tasks for location checks
+
+    `.on_fail` provides a proxy to continue accessing,
+    and when `__call__`ed, provides the real value, or a default
+
+    The proxy also reports values that fallback to the default
+    to the LocData to then add to `_doot_defaults.toml`
     """
 
     _all_registered : ClassVar[dict[str, DootLocData]] = {}
@@ -80,7 +89,7 @@ class DootLocData:
                          as_creator=True)
 
     @staticmethod
-    def _report() -> list[str]:
+    def report_defaulted() -> list[str]:
         return DootLocData._defaulted[:]
 
     def __init__(self, name="base", files:dict=None, **kwargs):
@@ -111,8 +120,8 @@ class DootLocData:
 
         return self._calc_path(target)
 
-    def _calc_path(self, val) -> tupl(str, str):
-        match val[0], val:
+    def _calc_path(self, val) -> pl.Path:
+        match str(val)[0], val:
             case "/" | "~", _: # absolute path or home
                 return pl.Path(val).expanduser()
             case _, (solo,) | [solo]: # with postfix
@@ -152,9 +161,9 @@ class DootLocData:
 
     def update(self, extra:dict[str,str|pl.Path]=None, **kwargs):
         if extra is not None:
-            self._dirs.update((x, y) for x,y in extra.items())
+            self._dirs.update((x, y) for x,y in extra.items() if y is not None)
         if bool(kwargs):
-            self._dirs.update(kwargs)
+            self._dirs.update((x,y) for x,y in kwargs.items() if y is not None)
 
         return self
 
@@ -183,12 +192,13 @@ class DootLocData:
             self._check_name = CheckDir(self._postfix, locs=self).name
         return self._check_name
 
-    def _build_task(self):
+    def build_report(self):
+        max_postfix = max(len(x) for x in DootLocData._all_registered.keys())
         task = {
             "name"     : self._postfix,
             "actions"  : [
-                lambda: print(f"{self._postfix} Dirs : {self._dir_str()}"),
-                lambda: print(f"{self._postfix} Files: {self._file_str()}") if bool(self._files) else "",
+                lambda: print(f"{self._postfix:<{max_postfix}} Dirs : {self._dir_str()}"),
+                lambda: print(f"{self._postfix:<{max_postfix}} Files: {self._file_str()}") if bool(self._files) else "",
             ],
             "uptodate" : [False],
             "verbosity" : 2,
@@ -199,7 +209,7 @@ class DootLocData:
         return task
 
     def _dir_str(self):
-        return "  ".join(f"[{x}: {y}]" for x,y in self._dirs.items())
+        return "  ".join(f"{{{x}: {getattr(self, x)}}}" for x,y in sorted(self._dirs.items()))
 
     def _file_str(self):
-        return " ".join(f"[{x}: {y}]" for x,y in self._files.items())
+        return " ".join(f"{{{x}: {getattr(self, x)}}}" for x,y in sorted(self._files.items()))
