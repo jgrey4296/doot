@@ -5,6 +5,7 @@ import pathlib as pl
 import shutil
 import re
 import fileinput
+from typing import Final
 
 import doot
 from doot import globber
@@ -12,9 +13,8 @@ from doot import tasker
 
 ##-- end imports
 
-interaction_mode = doot.config.on_fail("nonstopmode", str).tool.doot.tex.interaction()
-tex_dep          = doot.config.on_fail("tex.dependencies", str).too.doot.text.dep_file()
-
+interaction_mode  : Final = doot.config.on_fail("nonstopmode", str).tool.doot.tex.interaction()
+tex_dep           : Final = doot.config.on_fail("tex.dependencies", str).tool.doot.text.dep_file()
 
 class LatexMultiPass(globber.DootEagerGlobber):
     """
@@ -23,7 +23,6 @@ class LatexMultiPass(globber.DootEagerGlobber):
 
     def __init__(self, name="tex::build", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=['.tex'], rec=rec)
-
 
     def subtask_detail(self, task, fpath=None):
         task.update({
@@ -118,7 +117,6 @@ class LatexSecondPass(globber.DootEagerGlobber, ActionsMixin):
                 f"-output-directory={self.locs.temp}",
                 fpath.with_suffix("")]
 
-    
 class BibtexBuildPass(globber.DootEagerGlobber, ActionsMixin):
     """
     ([src] -> temp) Bibliography resolution pass
@@ -168,12 +166,12 @@ class BibtexBuildPass(globber.DootEagerGlobber, ActionsMixin):
 
         return ["bibtex",  deps['.aux']]
 
-
 class BibtexConcatenateSweep(globber.LazyFileGlobber):
     """
     ([src, data, docs] -> temp) concatenate all found bibtex files
     to produce a master file for latex's use
     """
+
     def __init__(self, name="_tex::bib", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src, locs.data, locs.docs], exts=[".bib"], rec=rec)
         self.target = locs.temp / "combined.bib"
@@ -225,8 +223,6 @@ def task_latex_requirements():
         "clean" : True
     }
 
-
-
 def task_latex_rebuild():
     """ rebuild tex formats and metafonts, for handling outdated l3 layer errors """
     package_re = re.compile("^i (.+?):.+?$")
@@ -239,5 +235,3 @@ def task_latex_rebuild():
                       ActionsMixin.cmd(None, lambda task: ["tlmgr", "install", "--reinstall", *task.values['packages']]),
         ],
     }
-
-

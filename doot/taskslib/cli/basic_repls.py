@@ -15,7 +15,7 @@ from re import Pattern
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
+                    cast, final, overload, runtime_checkable, Final)
 from uuid import UUID, uuid1
 from weakref import ref
 
@@ -34,12 +34,20 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-prolog_ext = doot.config.on_fail(".pl", str).doot.tool.repls.prolog.ext
+# TODO chuck, tidal, supercollider repls
+
+prolog_ext : Final = doot.config.on_fail(".pl", str).doot.tool.repls.prolog.ext()
 
 def task_pyrepl():
     return {
         "basename" : "repl::py",
         "actions"  : [ PythonInteractiveAction(lambda: breakpoint()) ],
+    }
+
+def task_csharp_repl):
+    return {
+        "basename": "repl::csharp",
+        "actions" : [Interactive(["csharp"], shell=False)],
     }
 
 def task_prolog_repl():

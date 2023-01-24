@@ -1,6 +1,7 @@
 ##-- imports
 from __future__ import annotations
 
+from typing import Final
 import pathlib as pl
 import shutil
 
@@ -9,7 +10,7 @@ from doot import tasker, globber
 
 ##-- end imports
 
-glob_ignores = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).tool.doot.globbing.ignores()
+glob_ignores : Final = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).tool.doot.globbing.ignores()
 
 class FileListings(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
     """
@@ -55,3 +56,11 @@ class SimpleListing(tasker.DootTasker, tasker.ActionsMixin):
             "verbosity": 1,
         })
         return task
+
+
+class EncodingListing(globber.DirGlobMixin, globber.DootEagerGlobber):
+    """
+    file -I {}
+    iconv -f {enc} -t {enc} {} > conv-{}
+    """
+    pass

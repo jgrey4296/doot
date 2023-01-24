@@ -1,4 +1,13 @@
 ##-- imports
+"""
+https://relaxng.org/jclark/
+xmlschema, xsdata, xsdata-plantuml, generateDS
+http://www.davekuhlman.org/generateDS.html
+https://pyxb.sourceforge.net/
+https://xmlschema.readthedocs.io/en/latest/
+https://github.com/tefra/xsdata-plantuml
+https://python-jsonschema.readthedocs.io/en/stable/
+"""
 from __future__ import annotations
 
 import pathlib as pl
@@ -14,16 +23,8 @@ from doot import globber
 from doot import tasker
 
 ##-- end imports
-# https://relaxng.org/jclark/
-# xmlschema, xsdata, xsdata-plantuml, generateDS
-# http://www.davekuhlman.org/generateDS.html
-# https://pyxb.sourceforge.net/
-# https://xmlschema.readthedocs.io/en/latest/
-# https://github.com/tefra/xsdata-plantuml
-# https://python-jsonschema.readthedocs.io/en/stable/
 
 # TODO config get data locs
-
 
 class XmlElementsTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
     """
@@ -33,7 +34,7 @@ class XmlElementsTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Act
 
     def __init__(self, name="xml::elements", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".xml"], rec=rec)
-        assert("elements" in self.locs.extra)
+        assert("elements" in self.locs)
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for x in fpath.iterdir()):
@@ -41,7 +42,7 @@ class XmlElementsTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Act
         return self.control.discard
 
     def subtask_detail(self, task, fpath:dict=None) -> dict:
-        task.update({"targets" : [ self.locs.extra['elements'] / (task['name'] + ".elements")],
+        task.update({"targets" : [ self.locs.elements / (task['name'] + ".elements")],
                      "clean"   : True,
                      "actions" : [ self.cmd(self.generate_on_target, [fpath], save="elements"),
                                    (self.write_to, [fpath, "elements"]),
@@ -61,9 +62,10 @@ class XmlSchemaTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Actio
     ([data] -> schema) Generate .xsd's from directories of xml files using trang
     https://relaxng.org/jclark/
     """
+
     def __init__(self, name="xml::schema", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".xml"], rec=rec)
-        assert("schema" in self.locs.extra)
+        assert("schema" in self.locs)
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for x in fpath.iterdir()):
@@ -72,7 +74,7 @@ class XmlSchemaTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Actio
 
     def subtask_detail(self, task, fpath=None):
         task.update({
-            "targets"  : [ self.locs.extra['schema'] / (task['name'] + ".xsd") ],
+            "targets"  : [ self.locs.schema / (task['name'] + ".xsd") ],
             "clean"    : True,
             "uptodate" : [True],
             "actions"  : [self.cmd(self.generate_on_target, fpath)],
@@ -161,7 +163,7 @@ class XmlSchemaVisualiseTask(globber.DootEagerGlobber, tasker.ActionsMixin):
 
     def __init__(self, name="xml::schema.plantuml", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".xsd"], rec=rec)
-        assert("visual" in locs.extra)
+        assert("visual" in locs)
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for x in fpath.iterdir()):
@@ -170,7 +172,7 @@ class XmlSchemaVisualiseTask(globber.DootEagerGlobber, tasker.ActionsMixin):
 
     def subtask_detail(self, task, fpath=None):
         task.update({
-            "targets"  : [ self.locs.extra['visual'] / (task['name'] + ".plantuml") ],
+            "targets"  : [ self.locs.visual / (task['name'] + ".plantuml") ],
             "file_dep" : [ fpath ],
             "task_dep" : [ "_xsdata::config" ],
             "actions" : [self.cmd([ "xsdata", "generate", "-o", "plantuml", "-pp", fpath], save="result")

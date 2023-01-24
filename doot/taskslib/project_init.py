@@ -144,7 +144,7 @@ class JekyllInit(DootTasker):
 
     def make_config(self):
         author = environ['USER'] if 'USER' in environ else "Default"
-        includes = [self.locs.codegen.name, self.locs.extra['tags'].name]
+        includes = [self.locs.codegen.name, self.locs.tags.name]
         config_text = jekyll_template.substitute(author=author,
                                                  src=f'./{self.locs.temp}',
                                                  dst=f'./{self.locs.build}',

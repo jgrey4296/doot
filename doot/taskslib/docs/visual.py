@@ -3,10 +3,6 @@
 
 """
 ##-- imports
-
-##-- end imports
-
-##-- default imports
 from __future__ import annotations
 
 import types
@@ -28,7 +24,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-##-- end default imports
+##-- end imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -86,7 +82,7 @@ class PlantUMLGlobberTask(globber.DootEagerGlobber, tasker.ActionsMixin):
     """
 
     def __init__(self, name=None, locs:DootLocData=None, roots:list[pl.Path]=None, fmt="png", rec=True):
-        assert(roots or 'visual' in locs.extra)
+        assert(roots or 'visual' in locs)
         name = name or f"plantuml::{fmt}"
         super().__init__(name, locs, roots or [locs.src], exts=[".plantuml"], rec=True)
         self.fmt       = fmt
@@ -115,8 +111,8 @@ class PlantUMLGlobberCheck(globber.DootEagerGlobber, tasker.ActionsMixin):
     """
 
     def __init__(self, name="plantuml::check", locs=None, roots:list[pl.Path]=None, rec=True):
-        assert(roots or 'visual' in locs.extra)
-        super().__init__(name, locs, roots or [locs.extra['visual']], exts=[".plantuml"], rec=rec)
+        assert(roots or 'visual' in locs)
+        super().__init__(name, locs, roots or [locs.visual], exts=[".plantuml"], rec=rec)
 
     def subtask_detail(self, task, fpath=None):
         task.update({

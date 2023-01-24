@@ -1,4 +1,14 @@
 ##-- imports
+"""
+| .show              | List settings                                |                                                  |
+| .mode              | Set output formatting mode                   | csv, column, html, insert, line, list, tabs, tcl |
+| .nullvalue $STRING | set a default string in place of null values |                                                  |
+| .schema $TABLE     | show the setup of a table                    |                                                  |
+| .tables            | list all tables in the file                  |                                                  |
+| .dump $TABLE       | output the table in SQL format               |                                                  |
+| .headers on/off    | display headers on output                    |                                                  |
+| .backup main $FILE | backup db main to a file                     |                                                  |
+"""
 from __future__ import annotations
 
 import pathlib as pl
@@ -15,6 +25,7 @@ class SqlitePrepTask(globber.DootEagerGlobber, tasker.ActionsMixin):
     using https://github.com/dumblob/mysql2sqlite
     # TODO
     """
+
     def __init__(self, name="sqlite::prep", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".sql"], rec=rec)
 

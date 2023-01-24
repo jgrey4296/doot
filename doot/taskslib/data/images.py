@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import pathlib as pl
 import shutil
+from typing import Final
 
 from functools import partial
 from itertools import cycle, chain
@@ -24,17 +25,16 @@ import PIL
 from PIL import Image
 from sklearn.cluster import KMeans
 
-default_ocr_exts = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".ppm"]
+default_ocr_exts : Final = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".ppm"]
+default_pdf_exts : Final = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".ppm"]
 
-default_pdf_exts = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".ppm"]
+ocr_exts         : Final = doot.config.on_fail(default_ocr_exts, list).tool.doot.images.ocr_exts()
+batch_size       : Final = doot.config.on_fail(20, int).tool.doot.batch_size()
+ocr_out_ext      : Final = doot.config.on_fail(".ocr", str).tool.doot.images.ocr_out()
 
-ocr_exts    : list[str] = doot.config.on_fail(default_ocr_exts, list).tool.doot.images.ocr_exts()
-batch_size  : int       = doot.config.on_fail(20, int).tool.doot.batch_size()
-ocr_out_ext : str       = doot.config.on_fail(".ocr", str).tool.doot.images.ocr_out()
+framerate        : Final = doot.config.on_fail(10, int).tool.doot.images.framerate()
 
-framerate   : int       = doot.config.on_fail(10, int).tool.doot.images.framerate()
-
-THUMB = (200,200)
+THUMB            : Final = (200,200)
 
 HashImages = hashing.HashAllFiles
 

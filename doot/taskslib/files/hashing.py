@@ -36,11 +36,11 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 from hashlib import sha256
 
-batch_size  : int       = doot.config.on_fail(20, int).tool.doot.batch_size()
+batch_size  : Final= doot.config.on_fail(20, int).tool.doot.batch_size()
 
-hash_record = doot.config.on_fail(".hashes", str).tool.doot.files.hash.record()
-hash_concat = doot.config.on_fail(".all_hashes", str).tool.doot.files.hash.grouped()
-hash_dups   = doot.config.on_fail(".dup_hashes", str).tool.doot.files.hash.duplicates()
+hash_record  : Final = doot.config.on_fail(".hashes", str).tool.doot.files.hash.record()
+hash_concat  : Final = doot.config.on_fail(".all_hashes", str).tool.doot.files.hash.grouped()
+hash_dups    : Final = doot.config.on_fail(".dup_hashes", str).tool.doot.files.hash.duplicates()
 
 class HashAllFiles(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin, task.BatchMixin):
     """

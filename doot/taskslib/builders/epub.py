@@ -2,6 +2,7 @@
 ##-- imports
 from __future__ import annotations
 
+from typing import Final
 import logging as logmod
 import pathlib as pl
 import re
@@ -49,7 +50,7 @@ NAV_T          = Template(data_path.joinpath("epub_nav").read_text())
 NAV_ENT_T      = Template(data_path.joinpath("epub_nav_entry").read_text())
 ##-- end epub templates
 
-ws = re.compile("\s+")
+ws : Final = re.compile("\s+")
 
 class EbookGlobberBase(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
 

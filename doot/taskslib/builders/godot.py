@@ -173,7 +173,7 @@ class GodotNewScene(DootTasker, ActionsMixin):
     """
 
     def __init__(self, name="godot::new.scene", locs=None):
-        assert("scenes" in locs.extra)
+        assert("scenes" in locs)
         super().__init__(name, locs)
 
     def set_params(self):
@@ -182,7 +182,7 @@ class GodotNewScene(DootTasker, ActionsMixin):
         ]
 
     def task_detail(self, task):
-        scene_file = self.locs.extra['scenes'] / f"{self.args['name']}.tscn"
+        scene_file = self.locs.scenes / f"{self.args['name']}.tscn"
         task.update({
         "actions" : [
             lambda: scene_file.write_text("# Stub"),

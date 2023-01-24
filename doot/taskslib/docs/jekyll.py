@@ -65,7 +65,7 @@ class GenPostTask(DootTasker, ActionsMixin):
     def __init__(self, name="jekyll::post", locs=None, template=None):
         super().__init__(name, locs)
         self.template  = pl.Path(template or post_template)
-        assert('posts' in self.locs.extra)
+        assert('posts' in self.locs)
 
     def set_params(self):
         return [
@@ -96,10 +96,10 @@ class GenPostTask(DootTasker, ActionsMixin):
         else:
             template = self.template
 
-        post_path = self.locs.extra['posts'] / (title_format
-                                                .format_map({ "date"  : strftime(date_format),
-                                                              "title" : title.strip().replace(" ","_"),
-                                                              "ext"   : ext_format}))
+        post_path = self.locs.posts / (title_format
+                                       .format_map({ "date"  : strftime(date_format),
+                                                     "title" : title.strip().replace(" ","_"),
+                                                     "ext"   : ext_format}))
 
         post_text = (template
                      .read_text()
@@ -120,8 +120,8 @@ class GenTagsTask(DootTasker, ActionsMixin):
         self.template = pl.Path(template or tag_template)
         self.index    = pl.Path(index or index_template)
         self.roots    = roots or [locs.src]
-        assert("tags"       in self.locs.extra)
-        assert("tagsIndex"  in self.locs.extra)
+        assert("tags"       in self.locs)
+        assert("tagsIndex"  in self.locs)
 
     def task_detail(self, task):
         task.update({
@@ -141,12 +141,12 @@ class GenTagsTask(DootTasker, ActionsMixin):
     def make_tag_pages(self):
         tag_text = self.template.read_text()
         for tag in self.tagSet:
-            tag_file  = self.locs.extra['tags'] / f"{tag}.md"
+            tag_file  = self.locs.tags / f"{tag}.md"
             formatted = tag_text.format_map({"tag" : tag})
             tag_file.write_text(formatted)
 
     def make_tag_index(self):
-        if self.locs.extra['tagsIndex'].exists():
+        if self.locs.tagsIndex.exists():
             return
 
         tag_index.write_text(self.index.read_text())

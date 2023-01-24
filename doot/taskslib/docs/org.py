@@ -18,7 +18,7 @@ from re import Pattern
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
+                    cast, final, overload, runtime_checkable, Final)
 from uuid import UUID, uuid1
 from weakref import ref
 
@@ -38,15 +38,12 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-# Path Quote
-pq = lambda x: quote(str(x))
+tweet_index_file : Final = doot.config.on_fail(".tweets", str).tool.doot.twitter.index()
+file_index_file  : Final = doot.config.on_fail(".files", str).tool.doot.twitter.file_index()
+link_index_file  : Final = doot.config.on_fail(".links", str).tool.doot.twitter.link_index()
+thread_file      : Final = doot.config.on_fail(".threads", str).tool.doot.twitter.thread_index()
 
-tweet_index_file = doot.config.on_fail(".tweets", str).tool.doot.twitter.index()
-file_index_file  = doot.config.on_fail(".files", str).tool.doot.twitter.file_index()
-link_index_file  = doot.config.on_fail(".links", str).tool.doot.twitter.link_index()
-thread_file      = doot.config.on_fail(".threads", str).tool.doot.twitter.thread_index()
-
-empty_match = re.match("","")
+empty_match      : Final = re.match("","")
 
 # TODO thread crosslinking
 
@@ -324,6 +321,7 @@ class ThreadOrganise(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixi
                 self.multi_threads.add(fpath / result[3].strip())
 
 ##-- todo
+
 class OrgExport(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     Convert each thread to html

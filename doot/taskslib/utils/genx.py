@@ -32,8 +32,8 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 ##-- data
-data_path    = files("doot.__templates")
-xml_template = data_path.joinpath("xl_template")
+data_path    : Final = files("doot.__templates")
+xml_template : Final = data_path.joinpath("xl_template")
 ##-- end data
 
 def create_xml(fpath):

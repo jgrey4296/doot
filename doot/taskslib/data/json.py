@@ -103,11 +103,11 @@ class JsonVisualise(globber.DootEagerGlobber, tasker.ActionsMixin):
 
     def __init__(self, name="json::schema.visual", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".json"], rec=rec)
-        assert('visual' in locs.extra)
+        assert('visual' in locs)
 
     def subtask_detail(self, task, fpath=None):
         task.update({
-            "targets"  : [ self.locs.extra['visual'] / fpath.with_stem(task['name']).name ],
+            "targets"  : [ self.locs.visual / fpath.with_stem(task['name']).name ],
             "actions"  : [ (self.write_plantuml, [fpath]) ]
             })
         return task

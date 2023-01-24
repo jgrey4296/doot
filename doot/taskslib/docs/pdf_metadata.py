@@ -3,10 +3,6 @@
 
 """
 ##-- imports
-
-##-- end imports
-
-##-- default imports
 from __future__ import annotations
 
 import types
@@ -24,18 +20,18 @@ from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
+                    cast, final, overload, runtime_checkable, Final)
 from uuid import UUID, uuid1
 from weakref import ref
 
-##-- end default imports
+##-- end imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+END_LINE : Final = "---%%%--- Finished"
 
-END_LINE = "---%%%--- Finished"
 def file_is_finished(path) -> bool:
     result = False
     if not path.exists():
@@ -50,7 +46,6 @@ def file_is_finished(path) -> bool:
 
     return result
 
-
 def exiftool_pdf_md(path) -> str:
     result = ""
     try:
@@ -63,7 +58,6 @@ def exiftool_pdf_md(path) -> str:
         result = str(err)
 
     return result
-
 
 def exiftool_xmp_md(path) -> str:
     result = ""
@@ -87,7 +81,6 @@ def pdftk_md(path) -> str:
         result = response.stdout.decode() if response.returncode == 0 else response.stderr.decode()
 
         result = "\n".join([x for x in result.split("\n") if "Info" in x])
-
 
     except Exception as err:
         result = str(err)

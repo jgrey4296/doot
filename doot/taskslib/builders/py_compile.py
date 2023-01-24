@@ -14,7 +14,7 @@ from re import Pattern
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
+                    cast, final, overload, runtime_checkable, Final)
 from uuid import UUID, uuid1
 from weakref import ref
 
@@ -33,7 +33,7 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-collect_libs = doot.config.on_fail([], list).tool.doot.python.compile.collect()
+collect_libs  : Final = doot.config.on_fail([], list).tool.doot.python.compile.collect()
 
 class PythonCompile(DootTasker, ActionsMixin):
     """

@@ -5,17 +5,18 @@ import datetime
 import pathlib as pl
 import shutil
 from collections import defaultdict
+from typing import Final
 
 import doot
-from doot.tasker import DootTasker, ActionsMixin
+from doot.tasker import ActionsMixin, DootTasker
 
 ##-- end imports
 
-log_fmt     = doot.config.on_fail(["%aI", "%h", "%al", "%s"], list).tool.doot.git.fmt()
-default_sep = doot.config.on_fail(" :: ", str).tool.doot.git.sep()
-group_hours = doot.config.on_fail(2, int).tool.doot.git.group_by_hours()
-bar_fmt     = doot.config.on_fail("~", str).tool.doot.git.bar_fmt()
-bar_max     = doot.config.on_fail(40, int).tool.doot.git.bar_max()
+log_fmt     : Final = doot.config.on_fail(["%aI", "%h", "%al", "%s"], list).tool.doot.git.fmt()
+default_sep : Final = doot.config.on_fail(" :: ", str).tool.doot.git.sep()
+group_hours : Final = doot.config.on_fail(2, int).tool.doot.git.group_by_hours()
+bar_fmt     : Final = doot.config.on_fail("~", str).tool.doot.git.bar_fmt()
+bar_max     : Final = doot.config.on_fail(40, int).tool.doot.git.bar_max()
 
 def roundTime(dt=None, roundTo=60):
    """Round a datetime object to any time lapse in seconds

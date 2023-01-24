@@ -18,7 +18,6 @@ from pdfrw import IndirectPdfDict, PageMerge, PdfReader, PdfWriter
 
 logging = root_logger.getLogger(__name__)
 
-
 def get2(srcpages):
     scale = 0.5
     srcpages = PageMerge() + srcpages.pages[:2]
@@ -29,7 +28,6 @@ def get2(srcpages):
         page.y = 0
 
     return srcpages.render()
-
 
 def convert_pdfs_to_text(files:list[pl.Path]):
     logging.info("Converting %s files", len(files))
@@ -47,7 +45,6 @@ def convert_alternative(source, output_dir, title):
     target = output_dir / f".{title}.txt"
     logging.info("Converting %s from %s", target, source)
     run(['mutool', 'convert', '-F', 'text', '-o', str(target), str(source)], stdout=subprocess.PIPE)
-
 
 def merge_pdfs(paths, output="./pdf_summary"):
     output = pl.Path(output).expanduser().resolve().with_suffix(".pdf")
@@ -67,9 +64,6 @@ def merge_pdfs(paths, output="./pdf_summary"):
 
     writer.write(str(output))
 
-
-
-##-- pdf summary
 def summarise_to_pdfs(paths:list[pl.Path], func=None, output="./pdf_summary", base_name="summary", bound=200):
     """
     For a list of pdfs, get the first two pages of each,
@@ -99,7 +93,6 @@ def summarise_to_pdfs(paths:list[pl.Path], func=None, output="./pdf_summary", ba
             count, writer = finalise_writer(output, writer, base_name, count, bound)
 
         finalise_writer(output, writer, base_name, count, bound, force=True)
-
 
 def handle_epub(path, writer, func, temp) -> bool:
     result = False
@@ -141,7 +134,6 @@ def uncompress_pdf(path, writer, func, temp):
     #              capture_output=True)
     return add_to_writer(temp_unc,writer, func, temp)
 
-
 def add_simple_text_to_writer(path, writer, func, temp):
     logging.warning("Adding Simple Text to Writer: %s", path)
     # from stackoverflow.com/questions/2365411
@@ -156,7 +148,6 @@ def add_simple_text_to_writer(path, writer, func, temp):
     return True
 
 def finalise_writer(output, writer, base_name, count, bound, force=False) -> tuple[int, PdfWriter]:
-
 
     if force or len(writer.pagearray) > bound:
         logging.warning("Writing and incrementing")
@@ -173,5 +164,3 @@ def finalise_writer(output, writer, base_name, count, bound, force=False) -> tup
         count += 1
 
     return count, writer
-
-##-- end pdf summary

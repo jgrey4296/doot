@@ -1,6 +1,7 @@
 ##-- imports
 from __future__ import annotations
 
+from typing import Final
 import pathlib as pl
 import shutil
 import sys
@@ -16,14 +17,14 @@ from doot import tasker
 ##-- end imports
 # https://doc.rust-lang.org/cargo/index.html
 
-cargo = TomlAccess.load("Cargo.toml")
+cargo  = TomlAccess.load("Cargo.toml")
 config = TomlAccess.load("./.cargo/config.toml")
 
-build_path   = config.on_fail(str(doot.locs.build)).build.target_dir()
-package_name = cargo.package.name
-profiles     = ["release", "debug", "dev"] + cargo.on_fail([]).profile()
-binaries     = [x['name'] for x in  cargo.on_fail([], list).bin()]
-lib_path     = cargo.on_fail(None, None|str).lib.path()
+build_path    : Final = config.on_fail(str(doot.locs.build)).build.target_dir()
+package_name  : Final = cargo.package.name
+profiles      : Final = ["release", "debug", "dev"] + cargo.on_fail([]).profile()
+binaries      : Final = [x.get('name') for x in  cargo.on_fail([], list).bin()]
+lib_path      : Final = cargo.on_fail(None, None|str).lib.path()
 
 
 class CargoBuild(tasker.DootTasker, tasker.ActionsMixin):

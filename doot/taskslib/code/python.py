@@ -3,23 +3,24 @@ from __future__ import annotations
 
 import pathlib as pl
 from functools import partial
+from typing import Final
 
 import doot
 from doot import globber
 from doot.tasker import DootTasker, ActionsMixin
 ##-- end imports
 
-prefix = doot.config.on_fail("py", str).tool.doot.python.prefix()
+prefix          : Final = doot.config.on_fail("py", str).tool.doot.python.prefix()
 
-lint_exec       = doot.config.on_fail("pylint", str).tool.doot.python.lint.exec()
-lint_fmt        = doot.config.on_fail("text", str).tool.doot.python.lint.output_format()
-lint_out        = doot.config.on_fail(f"report.lint", str).tool.doot.python.lint.output_name()
-lint_grouped    = doot.config.on_fail(True, bool).tool.doot.python.lint.grouped()
-lint_error      = doot.config.on_fail(False, bool).tool.doot.python.lint.error()
+lint_exec       : Final = doot.config.on_fail("pylint", str).tool.doot.python.lint.exec()
+lint_fmt        : Final = doot.config.on_fail("text", str).tool.doot.python.lint.output_format()
+lint_out        : Final = doot.config.on_fail(f"report.lint", str).tool.doot.python.lint.output_name()
+lint_grouped    : Final = doot.config.on_fail(True, bool).tool.doot.python.lint.grouped()
+lint_error      : Final = doot.config.on_fail(False, bool).tool.doot.python.lint.error()
 
-py_test_dir_fmt = doot.config.on_fail("__test", str).tool.doot.python.test.dir_fmt()
-py_test_args    = doot.config.on_fail([], list).tool.doot.python.test.args()
-py_test_out     = pl.Path(doot.config.on_fail("result.test", str).tool.doot.python.test())
+py_test_dir_fmt : Final = doot.config.on_fail("__test", str).tool.doot.python.test.dir_fmt()
+py_test_args    : Final = doot.config.on_fail([], list).tool.doot.python.test.args()
+py_test_out     : Final = pl.Path(doot.config.on_fail("result.test", str).tool.doot.python.test())
 
 
 class InitPyGlobber(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):

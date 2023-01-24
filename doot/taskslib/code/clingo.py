@@ -5,6 +5,7 @@
 ##-- imports
 from __future__ import annotations
 
+from typing import Final
 import pathlib as pl
 import shutil
 from functools import partial
@@ -16,14 +17,14 @@ from doot import globber
 
 ##-- end imports
 
-src_ext     = doot.config.on_fail(".lp", str).tool.doot.clingo.src_ext()
-out_ext     = doot.config.on_fail(".lp_result", str).tool.doot.clingo.out_ext()
+src_ext      : Final = doot.config.on_fail(".lp", str).tool.doot.clingo.src_ext()
+out_ext      : Final = doot.config.on_fail(".lp_result", str).tool.doot.clingo.out_ext()
 
-vis_src_ext = doot.config.on_fail(".lp_vis", str).tool.doot.clingo.vis_src_ext()
-vis_in_ext  = doot.config.on_fail(".json", str).tool.doot.clingo.vis_in_ext()
-vis_out_ext = doot.config.on_fail(".dot", str).tool.doot.clingo.vis_out_ext()
+vis_src_ext  : Final = doot.config.on_fail(".lp_vis", str).tool.doot.clingo.vis_src_ext()
+vis_in_ext   : Final = doot.config.on_fail(".json", str).tool.doot.clingo.vis_in_ext()
+vis_out_ext  : Final = doot.config.on_fail(".dot", str).tool.doot.clingo.vis_out_ext()
 
-clingo_call = ["clingo"] + data.toml.on_fail([]).tool.doot.clingo.options()
+clingo_call  : Final = ["clingo"] + data.toml.on_fail([], list).tool.doot.clingo.options()
 
 class ClingoCheck:
     """
@@ -82,10 +83,10 @@ class ClingoVisualise(globber.DootEagerGlobber, ActionsMixin):
 
     def __init__(self, name="clingo::visual", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=[vis_in_ext], rec=rec)
-        assert('visual' in locs.extra)
+        assert('visual' in locs)
 
     def subtask_detail(self, task, fpath=None):
-        target = self.locs.extra['visual'] / targ_fname
+        target = self.locs.visual / targ_fname
         task.update({
             "targets"  : [ target ],
             "task_dep" : [ "_checkdir::clingo" ],

@@ -3,11 +3,12 @@ from __future__ import annotations
 
 import pathlib as pl
 import shutil
+from typing import Final
 
 import doot
 from doot.task_group import TaskGroup
+from doot.tasker import ActionsMixin, DootTasker
 from doot.utils.clean_actions import clean_target_dirs
-from doot.tasker import DootTasker, ActionsMixin
 
 ##-- end imports
 
@@ -15,8 +16,8 @@ __all__ = [
         "SphinxDocTask", "task_browse",
 ]
 
-conf_builder    = doot.config.on_fail("html", str).tool.doot.sphinx.builder()
-conf_verbosity  = int(doot.config.on_fail(0, int).tool.door.sphinx.verbosity())
+conf_builder     : Final = doot.config.on_fail("html", str).tool.doot.sphinx.builder()
+conf_verbosity   : Final = doot.config.on_fail(0, int).tool.door.sphinx.verbosity()
 
 def task_browse() -> dict:
     """[build] Task definition """
@@ -39,7 +40,7 @@ class SphinxDocTask(DootTasker, ActionsMixin):
         task.update({
             "actions"  : [ self.cmd(self.sphinx_command) ],
             "file_dep" : [ self.locs.docs / "conf.py" ],
-            "targets"  : [ self.locs.extra['html'], self.locs.build ],
+            "targets"  : [ self.locshtml, self.locs.build ],
             "clean"    : [ clean_target_dirs ],
         })
         return task
