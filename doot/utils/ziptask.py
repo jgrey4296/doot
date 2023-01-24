@@ -5,12 +5,14 @@ from __future__ import annotations
 import datetime
 import logging as logmod
 import pathlib as pl
+import sys
 import zipfile
 from doit.task import Task as DoitTask
+from random import randint
 
 import doot
-from doot.utils.loc_data import DootLocData
-from doot.utils.tasker import DootTasker, ActionsMixin
+from doot.loc_data import DootLocData
+from doot.tasker import DootTasker, ActionsMixin, ZipperMixin
 ##-- end imports
 
 ##-- logging
@@ -22,7 +24,7 @@ __all__ = [
         "ZipTask"
 ]
 
-class ZipTask(DootTasker):
+class ZipTask(DootTasker, ActionsMixin, ZipperMixin):
     """
     (-> temp) Automate creation of archive zipfiles
     will be named `zip::{name/default}`
@@ -41,14 +43,14 @@ class ZipTask(DootTasker):
     TODO add filter_fn
     """
 
-    def __init__(self, base:str="ziptask::default", locs:DootLocData=None, target:str=None, root:pl.Path=None, paths:list[pl.Path]=None, globs:list[str]=None,  date:bool|str=False, to_build_dir=False):
+    def __init__(self, base:str="zip::default", locs:DootLocData=None, date:bool|str=False, pathsNglobs=None, overwrite=False):
         super().__init__(base, locs)
         self.date     : bool | str = date
-        self.target : str          = pl.Path(target)
-        self.root                  = root
-        self.paths                 = paths or []
-        self.globs    : list[str]  = globs or []
-        self.to_build_dir : bool   = to_build_dir
+        self.zip_overwrite         = overwrite
+        self.output                = self.locs.build
+        self.paths                 = (pathsNglobs or ([], []))[0]
+        self.globs                 = (pathsNglobs or ([], []))[1]
+
 
     def clean(self, task):
         """
@@ -64,24 +66,37 @@ class ZipTask(DootTasker):
 
         target.unlink(missing_ok=True)
 
-    def task_detail(self, task) -> dict:
-        zip_name   = self.dated_target().name
-        target_zip = self.locs.temp / zip_name
+
+    def task_setup(self, task):
+        target_zip = self.zip_path()
         task.update({
-            "actions"  : [ self.action_zip_create,
-                           self.action_zip_add_paths,
-                           self.action_zip_globs],
-            "targets"  : [ target_zip ],
-            "file_dep" : self.paths,
+            "actions": [ (self.zip_create, [target_zip])],
+        })
+        return task
+
+    def task_detail(self, task) -> dict:
+        temp_zip   = self.zip_path()
+        task.update({
+            "actions"  : [ (self.zip_add_paths, [temp_zip, *self.paths]),
+                           (self.zip_globs,     [temp_zip, *self.globs]),
+                          ],
+            "targets"  : [ self.output / temp_zip.name ],
+            "teardown" : [ (self.copy_to, (self.output, temp_zip), {"fn":"overwrite"}) ],
+            "clean"    : [ (self.rmfiles, [self.output / temp_zip.name, temp_zip]) ],
             })
         return task
 
+    def zip_path(self):
+        zip_name   = self._calc_target_stem().with_suffix(".zip")
+        target_zip = self.locs.temp / zip_name
+        return target_zip
 
-    def dated_target(self):
-        target_stem = self.target.stem
-        match self.date:
+    def _calc_target_stem(self):
+        target = pl.Path(self.zip_name)
+        date   = self.date
+        match date:
             case False:
-                pass
+                target_stem = target
             case True:
                 now         = datetime.datetime.strftime(datetime.datetime.now(), "%Y:%m:%d::%H:%M:%S")
                 target_stem = f"{target.stem}-{now}"
@@ -89,36 +104,6 @@ class ZipTask(DootTasker):
                 now         = datetime.datetime.strftime(datetime.datetime.now(), date)
                 target_stem = f"{target.stem}-{now}"
 
-        return self.target.with_stem(target_stem)
+        return target_stem
 
 
-    def action_zip_create(self, task:DoitTask):
-        target = pl.Path(task.targets[0])
-        if target.exists():
-            target.unlink()
-
-        now = datetime.datetime.strftime(datetime.datetime.now(), "%Y:%m:%d::%H:%M:%S")
-        record_str = f"Zip File created at {now} for doot task: {task.name}"
-
-        with zipfile.ZipFile(target, 'w') as targ:
-            targ.writestr(".taskrecord", record_str)
-
-    def action_zip_add_paths(self, task:DoitTask, dependencies):
-        assert(all(pl.Path(x).exists() for x in dependencies))
-        target = pl.Path(task.targets[0])
-        with zipfile.ZipFile(target, 'a') as targ:
-            for dep in dependencies:
-                if pl.Path(dep).name[0] == ".":
-                    continue
-                targ.write(str(dep), pl.Path(dep).relative_to(self.root))
-
-    def action_zip_globs(self, task):
-        logging.debug(f"Globbing: {self.globs}")
-        cwd = pl.Path()
-        target = pl.Path(task.targets[0])
-        with zipfile.ZipFile(target, 'a') as targ:
-            for glob in self.globs:
-                result = list(cwd.glob(glob))
-                print(f"Globbed: {cwd}[{glob}] : {len(result)}")
-                for dep in result:
-                    targ.write(str(dep), pl.Path(dep).relative_to(self.root))

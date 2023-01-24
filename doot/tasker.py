@@ -17,7 +17,7 @@ from re import Pattern
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
+                    cast, final, overload, runtime_checkable, Final)
 from uuid import UUID, uuid1
 from weakref import ref
 
@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+import datetime
 import fileinput
 from types import FunctionType, MethodType
 import shutil
@@ -39,15 +40,17 @@ from doit.task import Task as DoitTask
 from doit.task import dict_to_task
 from doot.errors import DootDirAbsent
 from doot.utils.general import ForceCmd
+import zipfile
+from random import randint
 
 class DootTasker:
     """ Util Class for building single tasks
 
     """
-    sleep_subtask : ClassVar[float]
-    sleep_batch   : ClassVar[float]
-    sleep_notify  : ClassVar[bool]
-    batches_max   : ClassVar[int]
+    sleep_subtask : ClassVar[Final[float]]
+    sleep_batch   : ClassVar[Final[float]]
+    sleep_notify  : ClassVar[Final[bool]]
+    batches_max   : ClassVar[Final[int]]
 
     @staticmethod
     def set_defaults(config:TomlAccess):
@@ -348,44 +351,54 @@ class ActionsMixin:
 
         fpath.write_text(value)
 
-    def move_to(self, fpath:pl.Path, *args, fn=None, is_backup=False):
+    def move_to(self, fpath:pl.Path, *args, fn=None):
+        """
+        Move *args to fpath, with fn as the naming strategy
+        only overwrite if is_backup is true
+        if fpath is a file, only one arg is allowed
+        """
         # Set the naming strategy:
-        match fpath.is_file(), fn, is_backup:
-            case _, FunctionType() | MethodType() , _:
+        assert(fpath.exists() and fpath.is_dir())
+        overwrite = True
+        match fn:
+            case FunctionType() | MethodType():
                 pass
-            case False, _, True:
+            case "overwrite":
+                fn = lambda d, x: d / x.name
+            case "backup":
                 fn = lambda d, x: d / f"{x.parent.name}_{x.name}_backup"
-            case True, _, False:
-                fn = lambda d,x: d
-            case False, _, _:
-                fn = lambda d,x: d / x.name
+            case "file":
+                fn = lambda d, x: d
+            case _:
+                overwrite = False
+                fn = lambda d, x: d / x.name
 
         # Then do the move
-        match fpath.is_file():
-            case True:
-                targ_path = fn(fpath, args[0])
-                assert(len(args) == 1)
-                assert(is_backup or not targ_path.exists())
-                args[0].rename(targ_path)
-            case False:
-                for x in args:
-                    targ_path = fn(fpath, x)
-                    assert(is_backup or not targ_path.exists())
-                    x.rename(targ_path)
+        for x in args:
+            targ_path = fn(fpath, x)
+            assert(overwrite or not targ_path.exists())
+            logging.debug("Renaming: %s -> %s", x, targ_path)
+            x.rename(targ_path)
 
-    def copy_to(self, fpath ,*args, fn=None, is_backup=False):
-        assert(fpath.is_file())
-        match fn, is_backup:
-            case FunctionType() | MethodType(), _:
+    def copy_to(self, fpath ,*args, fn=None):
+        assert(fpath.exists() and fpath.is_dir())
+        overwrite = True
+        match fn:
+            case FunctionType() | MethodType():
                 pass
-            case None, True:
+            case "overwrite":
+                fn = lambda d, x: d / x.name
+            case "backup":
                 fn = lambda d, x: d / f"{x.parent.name}_{x.name}_backup"
-            case None, False:
-                fn = lambda d,x: d / x.name
+            case "file":
+                fn = lambda d, x: d
+            case _:
+                overwrite = False
+                fn = lambda d, x: d / x.name
 
         for x in args:
             target_name = fn(fpath, x)
-            assert(is_backup or not (fpath / x.name).exists())
+            assert(overwrite or not (fpath / x.name).exists()), fpath / x.name
             match x.is_file():
                 case True:
                     shutil.copy(x, target_name)
@@ -447,3 +460,79 @@ class ActionsMixin:
     def edit_by_line(self, files:list[pl.Path], fn, inplace=True):
         for line in fileinput(files=files, inplace=inplace):
             fn(line)
+
+    def say(self, *text):
+        cmd = ["say", "-v", "Moira", "-r", "50"]
+        cmd += text
+        return CmdAction(cmd, shell=False)
+
+class ZipperMixin:
+    zip_name      = "default"
+    zip_overwrite = False
+    zip_root      = None
+
+    def zip_create(self, fpath):
+        assert(fpath.suffix== ".zip")
+        if self.zip_overwrite and fpath.exists():
+            fpath.unlink()
+        elif fpath.exists():
+            return
+
+        logging.info("Creating Zip File: %s", fpath)
+        now = datetime.datetime.strftime(datetime.datetime.now(), "%Y:%m:%d::%H:%M:%S")
+        record_str = f"Zip File created at {now} for doot task: {self.base}"
+
+        with zipfile.ZipFile(fpath, 'w') as targ:
+            targ.writestr(".taskrecord", record_str)
+
+    def zip_add_paths(self, fpath, *args):
+        """
+        Add specific files to the zip
+        """
+        logging.info("Adding to Zipfile: %s : %s", fpath, args)
+        assert(fpath.suffix == ".zip")
+        root = self.zip_root or pl.Path()
+        paths = [pl.Path(x) for x in args]
+        with zipfile.ZipFile(fpath, 'a') as targ:
+            for file_to_add in paths:
+                try:
+                    relpath = file_to_add.relative_to(root)
+                    attempts = 0
+                    write_as = relpath
+                    while str(write_as) in targ.namelist():
+                        if attempts > 10:
+                            print(f"Couldn't settle on a de-duplicated name for: {file_to_add}")
+                            break
+                        print(f"Attempted Name Duplication: {relpath}", file=sys.stderr)
+                        write_as = relpath.with_stem(f"{relpath.stem}_{hex(randint(1,100))}")
+                        attempts += 1
+
+                    targ.write(str(file_to_add), write_as)
+
+                except ValueError:
+                    relpath = root / pl.Path(file_to_add).name
+                except FileNotFoundError as err:
+                    print(f"Adding File to Zip {fpath} failed: {err}", file=sys.stderr)
+
+    def zip_globs(self, fpath, *globs):
+        """
+        Add files chosen by globs to the zip, relative to the cwd
+        """
+        logging.debug(f"Zip Globbing: %s : %s", fpath, globs)
+        assert(fpath.suffix == ".zip")
+        cwd  = pl.Path()
+        root = self.zip_root or cwd
+        with zipfile.ZipFile(fpath, 'a') as targ:
+            for glob in globs:
+                result = list(cwd.glob(glob))
+                print(f"Globbed: {cwd}[{glob}] : {len(result)}")
+                for dep in result:
+                    try:
+                        if dep.stem[0] == ".":
+                            continue
+                        relpath = pl.Path(dep).relative_to(root)
+                        targ.write(str(dep), relpath)
+                    except ValueError:
+                        relpath = root / pl.Path(dep).name
+                    except FileNotFoundError as err:
+                        print(f"Adding File to Zip {fpath} failed: {err}", file=sys.stderr)
