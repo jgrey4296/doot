@@ -38,7 +38,7 @@ from doit.exceptions import InvalidDodoFile
 from doit import loader as doit_loader
 
 from doot.loc_data import DootLocData
-from doot import default_dooter
+import doot
 from doot.utils.gen_toml import GenToml
 from doot.task_group import TaskGroup
 from doot.utils.dir_tasks import CheckDir
@@ -53,7 +53,7 @@ opt_doot = {
     'short': 'f',
     'long': 'file',
     'type': str,
-    'default': str(default_dooter),
+    'default': str(doot.default_dooter),
     'env_var': 'DOOT_FILE',
     'help': "load task from doot FILE [default: %(default)s]"
 }
@@ -82,6 +82,11 @@ class DootLoader(NamespaceTaskLoader):
         self.namespace['__doot_all_dirs']   = DootLocData.gen_loc_tasks()
         self.namespace['__doot_all_checks'] = CheckDir.gen_check_tasks()
         self.namespace['__doot_all_tomls']  = GenToml.gen_toml_tasks()
+
+
+    def load_doit_config(self):
+        return doot.config.get_table()
+
 
     def load_tasks(self, cmd, pos_args):
         self.expand_task_groups()

@@ -14,19 +14,8 @@ from doit.task import clean_targets
 import doot
 ##-- end imports
 
-##-- config
-DOIT_CONFIG = {
-    "action_string_formatting" : "new",
-    "default_tasks" : ["doot::dirs"],
-}
-
-##-- end config
-
-##-- post-config doot imports
 from doot.taskslib.groups import *
 from doot.taskslib.groups_secondary import *
-##-- end post-config doot imports
-
 
 if __name__ == "dooter":
     # the equivalent of main
