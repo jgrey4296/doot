@@ -31,12 +31,12 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-user_head_str   : str     = r"^\* {}'s Threads"
-thread_start_re : Pattern = compile(r"^\*\* Thread:")
-short_url_re    : Pattern = compile(r"^([^\[]*)(https?://t\.co/.+)$")
-file_uri_re     : Pattern = compile(r"(.*?)(file:\./)(.+)$")
-link_re         : Pattern = compile(r"(.*?)\[\[(https://t\.co/.+?)\](\[.+?\])?\](.*)$")
-fname_extract_re: Pattern = compile(r"(.+)(_\d+)?.org")
+user_head_str   : Final[str]     = r"^\* {}'s Threads"
+thread_start_re : Final[Pattern] = compile(r"^\*\* Thread:")
+short_url_re    : Final[Pattern] = compile(r"^([^\[]*)(https?://t\.co/.+)$")
+file_uri_re     : Final[Pattern] = compile(r"(.*?)(file:\./)(.+)$")
+link_re         : Final[Pattern] = compile(r"(.*?)\[\[(https://t\.co/.+?)\](\[.+?\])?\](.*)$")
+fname_extract_re: Final[Pattern] = compile(r"(.+)(_\d+)?.org")
 
 def build_threader(output, base_name, pattern):
     count = 1

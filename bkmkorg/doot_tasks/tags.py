@@ -30,22 +30,20 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
+import fileinput
 import re
 from collections import defaultdict
-import fileinput
+
 import doot
-from doot.tasker import DootTasker, ActionsMixin
+from bkmkorg.formats.tagfile import IndexFile, SubstitutionFile, TagFile
 from doot import globber
+from doot.tasker import ActionsMixin, DootTasker
 
-from bkmkorg.file_formats.tagfile import TagFile, SubstitutionFile, IndexFile
-
-tag_path = doot.config.or_get("resources/tags", str).tool.doot.tags.loc()
-
-empty_match     = re.match("","")
-# groups: pre, tags, post
-bib_tag_re      = re.compile(r"^(\s+tags\s+= ){(.+?)},$")
-org_tag_re      = re.compile(r"^(** .+?)\s+:(.+?):$")
-bookmark_tag_re = re.compile(r"^(http.+?) : (.+)$")
+tag_path        : Final = doot.config.on_fail("resources/tags", str).tool.doot.tags.loc()
+empty_match     : Final = re.match("","")
+bib_tag_re      : Final = re.compile(r"^(\s+tags\s+= ){(.+?)},$")
+org_tag_re      : Final = re.compile(r"^(** .+?)\s+:(.+?):$")
+bookmark_tag_re : Final = re.compile(r"^(http.+?) : (.+)$")
 
 class TagsCleaner(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
@@ -53,8 +51,8 @@ class TagsCleaner(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     using tag substitution files
     """
 
-    def __init__(self, name="", dirs=None, roots=None, rec=False, exts=None):
-        super().__init__(name, dirs, roots or [dirs.src], rec=rec, exts=exts or [".bib", ".bookmarks", ".org"])
+    def __init__(self, name="tags::clean", locs=None, roots=None, rec=False, exts=None):
+        super().__init__(name, locs, roots or [locs.bibtex, locs.bookmarks, locs.org], rec=rec, exts=exts or [".bib", ".bookmarks", ".org"])
         self.tags = SubstitutionFile()
 
     def filter(self, fpath):
@@ -71,7 +69,7 @@ class TagsCleaner(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     def subtask_detail(self, task, fpath):
         task.update({
             "actions" : [
-                (self.copy_to, [self.dirs.temp, fpath], {"is_backup": True}),
+                (self.copy_to, [self.locs.temp, fpath], {"is_backup": True}),
                 (self.clean_orgs, [fpath]),
                 (self.clean_bibs, [fpath]),
                 (self.clean_bookmarks, [fpath]),
@@ -80,7 +78,7 @@ class TagsCleaner(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
         return task
 
     def read_tags(self):
-        for sub in self.glob_files(self.dirs.data / tag_path, exts=[".sub"]):
+        for sub in self.glob_files(self.locs.tags / tag_path, exts=[".sub"]):
             logging.info(f"Reading Tag Sub File: %s", sub)
             tags = SubstitutionFile.read(sub)
             self.tags += tags
@@ -150,14 +148,14 @@ class TagsReport(globber.DootEagerGlobber, ActionsMixin):
     (src -> build) Report on tags
     """
 
-    def __init__(self, name="tags::report", dirs=None, roots=None, rec=True, exts=None):
-        super().__init__(name, dirs, roots or [dirs.src], rec=rec, exts=exts or [".sub"])
+    def __init__(self, name="tags::report", locs=None, roots=None, rec=True, exts=None):
+        super().__init__(name, locs, roots or [locs.tags], rec=rec, exts=exts or [".sub"])
         self.tags = SubstitutionFile()
 
     def task_detail(self, task):
-        report     = self.dirs.build / "tags.report"
-        all_subs   = self.dirs.temp  / "all_subs.sub"
-        all_counts = self.dirs.temp  / "all_counts.tags"
+        report     = self.locs.build / "tags.report"
+        all_subs   = self.locs.temp  / "all_subs.sub"
+        all_counts = self.locs.temp  / "all_counts.tags"
         task.update({
             "actions" : [ self.report_totals,
                           self.report_alphas,
@@ -205,8 +203,8 @@ class TagsIndexer(globber.DootEagerGlobber, ActionsMixin):
     and index what tags are used in what files
     """
 
-    def __init__(self, name="tags::index", dirs=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.src], rec=True, exts=[".bookmarks", ".org", ".bib"])
+    def __init__(self, name="tags::index", locs=None, roots=None, rec=True):
+        super().__init__(name, locs, roots or [locs.bookmarks, locs.bibtex, locs.org], rec=True, exts=[".bookmarks", ".org", ".bib"])
         self.all_subs   = SubstitutionFile()
         self.bkmk_index = IndexFile()
         self.bib_index  = IndexFile()
@@ -214,16 +212,16 @@ class TagsIndexer(globber.DootEagerGlobber, ActionsMixin):
 
 
     def task_detail(self, task):
-        existing_indices = self.dirs.temp.glob("*.index")
-        all_subs         = self.dirs.temp / "all_subs.sub"
-        new_tags         = self.dirs.temp / "new_tags.tags"
-        bkmk_if          = self.dirs.temp / "bkmk.index"
-        bib_if           = self.dirs.temp / "bib.index"
-        org_if           = self.dirs.temp / "org.index"
+        existing_indices = self.locs.temp.glob("*.index")
+        all_subs         = self.locs.temp / "all_subs.sub"
+        new_tags         = self.locs.temp / "new_tags.tags"
+        bkmk_if          = self.locs.temp / "bkmk.index"
+        bib_if           = self.locs.temp / "bib.index"
+        org_if           = self.locs.temp / "org.index"
 
         task.update({
             "actions" : [
-                (self.copy_to, [self.dirs.temp, *existing], {"is_backup": True}),
+                (self.copy_to, [self.locs.temp, *existing], {"is_backup": True}),
                 lambda: self.total_tags.update(self.bkmk_tags, self.bib_tags, self.org_tags),
                 lambda: {"bkmk_str"  : str(self.bkmk_index),
                          "bib_str"   : str(self.bib_index),

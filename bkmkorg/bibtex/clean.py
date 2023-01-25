@@ -3,24 +3,22 @@
 utilities for cleaning bibtex files
 """
 ##-- imports
+from __future__ import annotations
+
 import argparse
 import logging as logmod
 import pathlib as pl
+from typing import Final
 from dataclasses import InitVar, dataclass, field
 from hashlib import sha256
+from itertools import cycle
 from math import ceil
 from shutil import copyfile, move
 from uuid import uuid4
 
-import bibtexparser as b
 import regex as re
-from bibtexparser import customization as c
-from bibtexparser.bparser import BibTexParser
 from bibtexparser.latexenc import latex_to_unicode
-from bkmkorg.bibtex.meta_data import add_metadata, check_pdf
-from bkmkorg.bibtex import parsing as BU
 from bkmkorg.bibtex.writer import JGBibTexWriter
-from bkmkorg.files.hash_check import file_to_hash
 
 ##-- end imports
 
@@ -28,157 +26,270 @@ from bkmkorg.files.hash_check import file_to_hash
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-STEM_CLEAN_RE     = re.compile(r"[^a-zA-Z0-9_]+")
-UNDERSCORE_RE     = re.compile(r"_+")
+__all__ = ["BibFieldCleanMixin", "BibPathCleanMixin"]
 
-##-- path util
-def full_path(text, lib_root):
-    if text[0] not in  ["~", "/"]:
-        return lib_root / text
+from bibtexparser import customization as bib_customization
+from bibtexparser.latexenc import string_to_latex
 
-    return pl.Path(text).expanduser().resolve()
+STEM_CLEAN_RE : Final = re.compile(r"[^a-zA-Z0-9_]+")
+UNDERSCORE_RE : Final = re.compile(r"_+")
+NEWLINE_RE    : Final = re.compile(r"\n+\s*")
+AND_RE        : Final = re.compile(r"\ and\ ", flags=re.IGNORECASE)
+TAGSPLIT_RE   : Final = re.compile(r",|;")
 
-def short_path(path, lib_root):
-    if not path.is_relative_to(lib_root):
-        return path
-
-    return path.relative_to(lib_root)
-
-def expand_paths(record, lib_root):
-    for field in [x for x in record.keys() if 'file' in x]:
-        fp            = full_path(record[field], lib_root)
-        record[field] = str(fp)
-
-    return record
-
-def relativize_paths(record, lib_root):
+class _PrivateCleanMixin:
     """
-    Convert file paths to relative
+    Private Mixin utility methods
     """
-    for field in [x for x in record.keys() if 'file' in x]:
-        fp            = full_path(record[field], lib_root)
-        record[field] = str(short_path(fp, lib_root))
 
-    return record
+    def _clean_parent_paths(self, entry, base_name, lib_root) -> list[tuple[str, pl.Path]]:
+        """ prepare parent directories if they have commas in them
+        handles clean target already existing
+        """
+        if 'crossref' in entry:
+            return
+        assert('__paths' in entry)
+        assert('__base_name' in entry)
+        base = entry['__base_name']
 
-##-- end path util
+        results = []
+        for field, fpath in entry['__paths'].items():
+            match self.__ideal_parent(fpath, year, base):
+                case None:
+                    pass
+                case _ as val:
+                    results.append((field, val))
 
-def get_entry_base_name(record):
+        return results
+
+    def __ideal_parent(self, fpath, year, base, lib_root):
+        """
+        Get the correct parent location for files
+        """
+        #(focus: /lib/root/1922/bib_customization) (rst: blah.pdf)
+        focus   = fpath.parent
+
+        if not focus.is_relative_to(lib_root):
+            # Not in library
+            return None
+
+        # Copy root for in place editing
+        cleaned = pl.Path(lib_root)
+
+        # Everything is in root/year/base
+        cleaned /= year
+        cleaned /= base
+
+        return cleaned
+
+    def _separate_names(self, text):
+        names = bib_customization.getnames([x.strip() for x in AND_RE.split(text)])
+        return [bib_customization.splitname(x.strip(), False) for x in names]
+
+class BibFieldCleanMixin(_PrivateCleanMixin):
     """
-    Get the first author or editor's surname
+    mixin for cleaning fields of bibtex records
     """
-    target = None
-    match record:
-        case { "__authors" : [author, *_] }:
-            target = author['last'][0]
-        case { "__editors" : [editor, *_] }:
-            target = editor['last'][0]
-        case _:
-            raise Exception("No author or editor for record: %s", record)
 
-    as_unicode = latex_to_unicode(target)
-    as_ascii   = as_unicode.encode("ascii", "ignore").decode().replace("\\", "")
-    return as_ascii
+    def bc_match_year(self, entry, target, msg=None) -> None|tuple[str, str]:
+        """
+        check the year is the right one for the file its in
+        """
+        if entry['year'] == target:
+            return None
 
-def idealize_stem(record, base_name):
+        return entry['ID'], msg.format(target=target, actual=entry['year'])
+
+    def bc_check_files(self, entry, msg) -> list[tuple[str, str]]:
+        """
+        check all files exist
+        """
+        assert('__paths' in entry)
+        results = []
+        for field, fpath in entry['__paths']:
+            if pl.Path(entry[field]).exists():
+                continue
+
+            results.append((entry['ID'], msg.format(file=entry[field])))
+
+        return results
+
+    def bc_to_unicode(self, entry):
+        """
+        convert the entry to unicode, removing newlines
+        """
+        entry = bib_customization.convert_to_unicode(entry)
+        entry.update({k:NEWLINE_RE.sub(" ", v) for k,v in entry.items()})
+        entry['__as_unicode'] = True
+
+    def bc_split_names(self, entry):
+        """
+        convert names to component parts, for authors and editors
+        """
+        try:
+            match entry:
+                case { "author": author }:
+                    entry['__authors'] = self._separate_names(author)
+                    entry['__split_names'] = "author"
+                case { "editor" : editor }:
+                    entry['__editors'] = self._separate_names(editor)
+                    entry['__split_names'] = "editor"
+                case _:
+                    raise Exception("No author or editor", entry)
+        except Exception as err:
+            logging.warning("Error processing %s : %s", entry['ID'], err)
+
+    def bc_tag_split(self, entry):
+        """
+        split raw tag strings into parts, clean and strip whitespace,
+        then make them a set
+        """
+        tags = set()
+        if "tags"          in entry and isinstance(entry["tags"], str):
+            tags_subbed = NEWLINE_RE.sub("_", entry["tags"])
+            tags.update(TAGSPLIT_RE.split(tags_subbed))
+        if "keywords"      in entry and isinstance(entry["keywords"], str):
+            tags_subbed = NEWLINE_RE.sub("_", entry["keywords"])
+            tags.update(TAGSPLIT_RE.split(tags_subbed))
+            del entry["keywords"]
+        if "mendeley-tags" in entry and isinstance(entry["mendeley-tags"], str):
+            tags_subbed = NEWLINE_RE.sub("_", entry["mendeley-tags"])
+            tags.update(TAGSPLIT_RE.split(tags_subbed))
+            del entry["mendeley-tags"]
+
+        entry["__tags"] = {x.strip() for x in tags}
+        return entry
+
+class BibPathCleanMixin(_PrivateCleanMixin):
     """
-    create an ideal stem for a file, from a record
+    Mixin for cleaning path elements of bib records
     """
-    match record:
-        case { "title" : t }:
-            title = t[:40]
-        case { "short_parties": t }:
-            title = t
 
-    year = record['year']
+    def bc_expand_paths(self, entry, lib_root):
+        if 'crossref' in entry:
+            return
 
-    form       = f"{base_name}_{year}_{title}"
-    # Convert latex characters to unicode
-    as_unicode = latex_to_unicode(form)
-    # Then flatten to ascii
-    as_ascii   = as_unicode.encode("ascii", "ignore").decode()
-    # Remove symbols
-    clean      = STEM_CLEAN_RE.sub("_", as_ascii)
-    # And collapse multiple underscores
-    collapsed  = UNDERSCORE_RE.sub("_", clean)
-    return clean.strip()
+        results = set()
+        for field, fname in entry.items():
+            if 'file' not in field:
+                continue
+            assert(field not in results)
+            if fname[0] not in  ["~", "/"]:
+                fname = lib_root / fname
+            fpath = pl.Path(fname).expanduser().resolve()
+            results[field] = fpath
 
-def clean_parent_paths(record, base_name, lib_root):
-    """ Rename parent directories if they have commas in them
-    handles clean target already existing
+        entry['__paths'] = results
+
+    def bc_base_name(self, entry) -> str:
+        """
+        Get the first author or editor's surname
+        """
+        assert("__split_names" in entry)
+        assert("__as_unicode" in entry)
+        target = None
+        match entry:
+            case { "__authors" : [author, *_] }:
+                target = author['last'][0]
+            case { "__editors" : [editor, *_] }:
+                target = editor['last'][0]
+            case _:
+                raise Exception("No author or editor for entry: %s", entry)
+
+        as_unicode = latex_to_unicode(target)
+        as_ascii   = as_unicode.encode("ascii", "ignore").decode().replace("\\", "")
+        entry['__base_name'] = as_ascii
+
+    def bc_ideal_stem(self, entry) -> str:
+        """
+        create an ideal stem for an entry's files
+        if there are multiple files, they will have a unique hex value added to their stem later
+        """
+        assert('__base_name' in entry)
+        match entry:
+            case { "title" : t }:
+                title = t[:40]
+            case { "short_parties": t }:
+                title = t
+
+        year      = entry['year']
+        base_name = entry['__base_name']
+
+        form       = f"{base_name}_{year}_{title}"
+        # Convert latex characters to unicode
+        as_unicode = latex_to_unicode(form)
+        # Then flatten to ascii
+        as_ascii   = as_unicode.encode("ascii", "ignore").decode()
+        # Remove symbols
+        clean      = STEM_CLEAN_RE.sub("_", as_ascii)
+        # And collapse multiple underscores
+        collapsed  = UNDERSCORE_RE.sub("_", clean)
+        entry['__ideal_stem'] = collapsed.strip()
+
+    def bc_prepare_file_movements(self, entry, lib_root) -> list:
+        """
+        Calculate the proper place for files
+        """
+        assert('__paths' in entry)
+        assert('__base_name' in entry)
+        assert('__ideal_stem' in entry)
+        parents = self._clean_parent_paths(entry, LIB_ROOT)
+        stem = entry['__ideal_stem']
+
+        results = []
+        for field, parent in parents:
+            results.append((field,
+                            entry['__paths'][field],
+                            parent,
+                            stem))
+
+        return results
+
+    def bc_unique_stem(self, orig, proposed) -> None|pl.Path:
+        """
+        Returns a guaranteed non-existing path, or None
+        """
+        assert(orig.exists())
+        if orig.samefile(proposed):
+            return None
+
+        if orig.stem[:-6] == ideal_fp.stem:
+            # fp is already a stem+uuid, so do nothing
+            return proposed.parent / orig.name
+
+        hexed  = proposed
+        while hexed.exists():
+            hex_val     = str(uuid4().hex)[:5]
+            ideal_stem += f"_{hex_val}"
+            hexed       = proposed.with_stem(ideal_stem)
+
+        return hexed
+
+def basic_clean(entry):
     """
-    if 'crossref' in record:
-        return
-
-    for field in [x for x in record.keys() if 'file' in x]:
-        fp          = pl.Path(record[field])
-        orig_parent = fp.parent
-
-        if fp.is_relative_to(lib_root) and 'year' in record:
-            # Ensure the year directory is correct as well
-            year          = record['year']
-            parent_target = fp.parent.parent / base_name
-
-        file_target = parent_target / fp.name
-
-        if not parent_target.exists():
-            parent_target.mkdir()
-
-        match fp.parent.exists(), fp.exists(), file_target.exists():
-            case _, True, False:
-                logging.info("Moving single file %s to %s", short_path(fp, lib_root), short_path(file_target, lib_root))
-                fp.rename(file_target)
-            case _, True, True if not fp.samefile(file_target):
-                logging.info("File Conflict %s and %s", short_path(fp, lib_root), short_path(file_target, lib_root))
-                alt_stem    = file_target.stem + "_alt"
-                file_target = file_target.with_stem(alt_stem)
-                fp.rename(file_target)
-            case _, True, True:
-                # they are the same file, so no problem
-                pass
-            case False, False, True:
-                # File has been moved by an whole directory move
-                pass
-            case _, _, _, _:
-                raise Exception("Unexpected parent path situation", (fp, file_target))
-
-
-        fp            = file_target
-        record[field] = str(fp)
-
-    return record
-
-def clean_stems(record, ideal_stem, lib_root):
+    basic transforms from bibtexparser
     """
-    Clean the stems of filenames, regularizing them
-    Handles if theres already a file with the canonical name
+    bib_customization.type(entry)
+    bib_customization.author(entry)
+    bib_customization.editor(entry)
+    bib_customization.journal(entry)
+    bib_customization.keyword(entry)
+    bib_customization.link(entry)
+    bib_customization.doi(entry)
+
+    return entry
+
+def year_parse(entry):
     """
-    if 'crossref' in record:
-        return
+    parse the year into a datetime
+    """
+    if 'year' not in entry:
+        year_temp = "2020"
+    else:
+        year_temp = entry['year']
 
-    for field in [x for x in record.keys() if 'file' in x]:
-        fp          = full_path(record[field], lib_root)
-        orig_parent = fp.parent
+    if "/" in year_temp:
+        year_temp = year_temp.split("/")[0]
 
-        logging.debug("Cleaning stem")
-        ideal_fp   = fp.with_stem(ideal_stem)
-        match fp.exists(), ideal_fp.exists():
-            case False, True:
-                fp = ideal_fp
-            case True, True if not fp.samefile(ideal_fp) and fp.stem[:-6] == ideal_fp.stem:
-                # fp is already a stem+uuid, so do nothing
-                pass
-            case True, True if not fp.samefile(ideal_fp):
-                logging.warning("Ideal Stem Already Exists: %s", ideal_fp)
-                hex_val    = str(uuid4().hex)[:5]
-                ideal_stem += f"_{hex_val}"
-                ideal_fp   = fp.with_stem(ideal_stem)
-                assert(not ideal_fp.exists())
-                fp         = fp.rename(ideal_fp)
-            case True, False:
-                logging.info("Renaming %s to %s", fp, ideal_fp)
-                fp = fp.rename(ideal_fp)
-
-        record[field] = str(fp)
-
-    return record
+    year = datetime.datetime.strptime(year_temp, "%Y")
+    entry['__year'] = year

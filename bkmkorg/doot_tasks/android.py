@@ -33,28 +33,27 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from doit.action import CmdAction
-
 import doot
 from doot.tasker import DootTasker, ActionsMixin, BatchMixin
 from doot import globber
 
-adb_path = shutil.which("adb")
+adb_path     : Final = shutil.which("adb")
 
-android_base = pl.Path(doot.config.or_get("/storage/6331-3162", str).tools.doot.android.base())
-adb_key      = doot.config.or_get("/Users/johngrey/.android/adbkey", str).tools.doot.android.key()
-timeout      = doot.config.or_get(5, int).tools.doot.android.timeout()
-port         = doot.config.or_get(37769, int).tools.doot.android.port()
-wait_time    = doot.config.or_get(10, int).tools.doot.android.wait()
+android_base : Final = pl.Path(doot.config.on_fail("/storage/6331-3162", str).tools.doot.android.base())
+adb_key      : Final = doot.config.on_fail("/Users/johngrey/.android/adbkey", str).tools.doot.android.key()
+timeout      : Final = doot.config.on_fail(5, int).tools.doot.android.timeout()
+port         : Final = doot.config.on_fail(37769, int).tools.doot.android.port()
+wait_time    : Final = doot.config.on_fail(10, int).tools.doot.android.wait()
 
-NICE = ["nice", "-n", "10"]
+NICE         : Final = ["nice", "-n", "10"]
 
 class ADBUpload(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     Push files from local to device
     """
 
-    def __init__(self, name="android::upload", dirs=None, roots=None, rec=True):
-        super().__init__(name, dirs, roots or [dirs.src], rec=rec)
+    def __init__(self, name="android::upload", locs=None, roots=None, rec=True):
+        super().__init__(name, locs, roots or [locs.src], rec=rec)
         self.device_root = None
         self.report      = {}
 
@@ -79,7 +78,6 @@ class ADBUpload(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     def subtask_detail(self, task, fpath):
         # relative fpath from root
         rel = self.rel_path(fpath)
-
         task.update({
             "actions" : [ self.cmd(self.push_dir, rel) ],
         })
@@ -101,8 +99,8 @@ class ADBDownload(DootTasker, ActionsMixin, BatchMixin):
     pull files from device to local
     """
 
-    def __init__(self, name="android::download", dirs=None):
-        super().__init__(name, dirs)
+    def __init__(self, name="android::download", locs=None):
+        super().__init__(name, locs)
         self.report      = {}
         self.device_root = None
         self.local_root  = None
@@ -158,7 +156,7 @@ class ADBDownload(DootTasker, ActionsMixin, BatchMixin):
         remote_files = [immediate_files]
         if bool(subdirs):
             print(f"Subdirs to Batch: {subdirs}", file=sys.stderr)
-            remote_files += self.run_batch(*[[x] for x in subdirs], fn=self.subdir_batch)
+            remote_files += self.run_batches(*[[x] for x in subdirs], fn=self.subdir_batch)
 
         return { "remote_files" : "\n".join(remote_files) }
 

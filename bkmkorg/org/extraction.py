@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pathlib as pl
-import logging as root_logger
+import logging as logmod
 import re
 from datetime import Datetime
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
@@ -11,7 +11,7 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     Set, Tuple, TypeVar, Union, cast)
 ##-- end imports
 
-logging = root_logger.getLogger(__name__)
+logging = logmod.getLogger(__name__)
 
 def get_tweet_dates_and_ids(org_files:list[pl.Path], line_regex=None) -> List[Tuple[Datetime, str]]:
     """

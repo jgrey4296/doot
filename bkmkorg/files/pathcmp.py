@@ -36,6 +36,7 @@ class PathCmp:
     PathCmp(a, b, ignore=None, hide=None)
       A and B are directories.
       IGNORE is a list of names to ignore,
+
         defaults to DEFAULT_IGNORES.
       HIDE is a list of names to hide
 
@@ -176,6 +177,3 @@ class PathCmp:
         for sd in self.subdirs.values():
             print()
             sd.report_full_closure()
-
-
-

@@ -2,11 +2,11 @@
 ##-- imports
 from __future__ import annotations
 
+import pathlib as pl
 import datetime
 import json
-import logging as root_logger
+import logging as logmod
 from collections import defaultdict
-from os.path import split
 from dataclasses import InitVar, dataclass, field
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
@@ -84,7 +84,7 @@ class OrgDrawerBuilder(OrgBuilderBase):
             self._contents.append(("", arg))
 
     def add_file_links(self, *args):
-        as_links = [OrgDrawerBuilder.named_file_pattern.format(x, split(x)[1]) for x in args]
+        as_links = [OrgDrawerBuilder.named_file_pattern.format(x, pl.Path(x).name) for x in args]
         self.add_keyless(*as_links)
 
     def __enter__(self):

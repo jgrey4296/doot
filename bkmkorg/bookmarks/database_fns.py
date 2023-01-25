@@ -2,6 +2,8 @@
 """
 A Direct Firefox sqlite databse -> bookmarks file merger
 uses pony
+Database is found at ~/Library/ApplicationSupport/Firefox/Profiles/?/places.sqlite
+tables of interest: moz_bookmarks and moz_places
 """
 ##-- imports
 from __future__ import annotations
@@ -23,16 +25,13 @@ from uuid import UUID, uuid1
 from weakref import ref
 
 import pony.orm as pony
-from bkmkorg.file_formats import bookmarks as BC
+from bkmkorg.formats import bookmarks as BC
 
 ##-- end imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-# Database is found at ~/Library/ApplicationSupport/Firefox/Profiles/?/places.sqlite
-# tables of interest: moz_bookmarks and moz_places
 
 ##-- initiatilization
 db = pony.Database()

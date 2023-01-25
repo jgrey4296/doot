@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pathlib as pl
-import logging as root_logger
+import logging as logmod
 from datetime import datetime
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
@@ -14,7 +14,7 @@ import regex as re
 from bkmkorg.bookmarks.collection import Bookmark
 ##-- end imports
 
-logging = root_logger.getLogger(__name__)
+logging = logmod.getLogger(__name__)
 
 def clean_bib_files(bib_files:list[pl.Path], sub, tag_regex=r"^(\s*tags\s*=\s*{)(.+?)(\s*},?)$"):
     """ Parse all the bibtext files, naively

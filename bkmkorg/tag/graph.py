@@ -6,12 +6,12 @@ Tagset Reading
 ##-- imports
 from __future__ import annotations
 
-import logging as root_logger
+import logging as logmod
 import re
 from dataclasses import dataclass, field
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
-                    Set, Tuple, TypeVar, Union, cast)
+                    Set, Tuple, TypeVar, Union, cast, Final, TypeAlias)
 
 import networkx as nx
 import regex
@@ -19,23 +19,22 @@ from bkmkorg.bookmarks.collection import BookmarkCollection
 from bkmkorg.tag.tagfile import TagFile
 ##-- end imports
 
-logging = root_logger.getLogger(__name__)
+logging = logmod.getLogger(__name__)
 
 IGNORE_REPLACEMENTS = ["TO_CHECK"]
 
-TAG_NORM = regex.compile(" +")
+TAG_NORM    : Final = regex.compile(" +")
+ORG_PATTERN : str   = r"^\*\*\s+.+?\s+:(\S+):$"
+ORG_SEP     : str   = ":"
 
-Tag  = str
+Tag : TypeAlias = str
 
-@dataclass
 class TagGraph:
-    graph     : nx.Graph = field(default_factory=nx.Graph)
 
-    org_pattern  : str        = r"^\*\*\s+.+?\s+:(\S+):$"
-    org_sep      : str        = ":"
-    norm_regex   : re.Pattern = TAG_NORM
+    def __init__(self):
+        self.graph : nx.Graph = nx.Graph()
 
-    def extract_bibtex(self, db:'bibtexparser.BibtexDatabase') -> TagFile:
+    def extract_bibtex(self, db:bibtexparser.BibtexDatabase) -> TagFile:
         logging.info("Processing Bibtex: %s", len(db.entries))
 
         proportion = int(len(db.entries) / 10)
@@ -54,8 +53,7 @@ class TagGraph:
 
     def extract_org(self, org_files:List[pl.Path], tag_regex=None) -> TagFile:
         logging.info("Extracting data from orgs")
-        if tag_regex is None:
-            tag_regex = self.org_pattern
+        tag_regex = tag_regex or ORG_PATTERN
 
         ORG_TAG_REGEX = regex.compile(tag_regex)
         total = TagFile()
@@ -73,7 +71,7 @@ class TagGraph:
                 if not bool(tags):
                     continue
 
-                e_tags = [x for x in tags[0].split(self.org_sep)]
+                e_tags = [x for x in tags[0].split(ORG_SEP)]
                 total.update(self.link(e_tags))
 
         return total
@@ -93,7 +91,7 @@ class TagGraph:
         """
         Add a set of tags to the graph, after normalising
         """
-        norm_tags = [self.norm_regex.sub("_", x.strip()) for x in tags if bool(x)]
+        norm_tags = [TAG_NORM.sub("_", x.strip()) for x in tags if bool(x)]
         remaining = norm_tags[:]
 
         [self.graph.add_node(x, count=0) for x in norm_tags if x not in self.graph]
