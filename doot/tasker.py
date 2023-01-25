@@ -361,7 +361,7 @@ class ActionsMixin:
         if fpath is a file, only one arg is allowed
         """
         # Set the naming strategy:
-        assert(fpath.exists() and fpath.is_dir())
+        assert(fpath.parent.exists())
         overwrite = True
         match fn:
             case FunctionType() | MethodType():
@@ -371,6 +371,7 @@ class ActionsMixin:
             case "backup":
                 fn = lambda d, x: d / f"{x.parent.name}_{x.name}_backup"
             case "file":
+                assert(not fpath.is_dir())
                 fn = lambda d, x: d
             case _:
                 overwrite = False
@@ -378,13 +379,15 @@ class ActionsMixin:
 
         # Then do the move
         for x in args:
-            targ_path = fn(fpath, x)
-            assert(overwrite or not targ_path.exists())
-            logging.debug("Renaming: %s -> %s", x, targ_path)
-            x.rename(targ_path)
+            target_path = fn(fpath, x)
+            if not overwrite and target_name.exists():
+                 logging.warning("Not Moving: %s -> %s", x, target_name)
+                 continue
+            logging.debug("Renaming: %s -> %s", x, target_path)
+            x.rename(target_path)
 
     def copy_to(self, fpath ,*args, fn=None):
-        assert(fpath.exists() and fpath.is_dir())
+        assert(fpath.parent.exists())
         overwrite = True
         match fn:
             case FunctionType() | MethodType():
@@ -394,6 +397,7 @@ class ActionsMixin:
             case "backup":
                 fn = lambda d, x: d / f"{x.parent.name}_{x.name}_backup"
             case "file":
+                assert(not fpath.is_dir())
                 fn = lambda d, x: d
             case _:
                 overwrite = False
@@ -401,7 +405,9 @@ class ActionsMixin:
 
         for x in args:
             target_name = fn(fpath, x)
-            assert(overwrite or not (fpath / x.name).exists()), fpath / x.name
+            if not overwrite and target_name.exists():
+                logging.warning("Not Copying: %s -> %s", x, target_name)
+                continue
             match x.is_file():
                 case True:
                     shutil.copy(x, target_name)
