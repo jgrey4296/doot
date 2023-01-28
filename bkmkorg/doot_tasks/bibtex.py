@@ -23,7 +23,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-
 if TYPE_CHECKING:
     # tc only imports
     pass
@@ -34,9 +33,11 @@ logging = logmod.getLogger(__name__)
 logmod.getLogger('bibtexparser').setLevel(logmod.CRITICAL)
 ##-- end logging
 
+import shutil
 import bkmkorg
 import doot
 from bkmkorg.bibtex import clean as bib_clean
+from bkmkorg.bibtex.load_save import BibLoadSaveMixin
 from bkmkorg.formats.timelinefile import TimelineFile
 from bkmkorg.bibtex import utils as bib_utils
 from doot import globber
@@ -46,7 +47,7 @@ from doot import tasker
 pl_expand : Final = lambda x: pl.Path(x).expanduser().resolve()
 
 min_tag_timeline : Final = doot.config.on_fail(10, int).tool.doot.bibtex.min_timeline()
-stub_exts        : Final = doot.config.on_fail([".pdf", ".epub"], list).tool.doot.bibtex.stub_exts()
+stub_exts        : Final = doot.config.on_fail([".pdf", ".epub", ".djvu", ".ps"], list).tool.doot.bibtex.stub_exts()
 clean_in_place   : Final = doot.config.on_fail(False, bool).tool.doot.bibtex.clean_in_place()
 
 ENT_const        : Final = 'ENTRYTYPE'
@@ -68,7 +69,7 @@ class LibDirClean(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Actions
         })
         return task
 
-class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin, bib_clean.BibFieldCleanMixin, bib_clean.BibPathCleanMixin, bib_clean.BibLoadSaveMixin):
+class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin, bib_clean.BibFieldCleanMixin, bib_clean.BibPathCleanMixin, BibLoadSaveMixin):
     """
     (src -> src) Clean all bib files
     formatting, fixing paths, etc
@@ -77,15 +78,19 @@ class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin, bib_clean.BibFi
     bad_file_msg   = " : File Does Not Exist : {file}"
 
     def __init__(self, name="bibtex::clean", locs=None, roots=None, rec=True):
-        super().__init__(name, locs, roots or [locs.bibtex], exts=[".bib"], rec=rec)
+        super().__init__(name, locs, roots or [locs.bibtex_library], exts=[".bib"], rec=rec)
         self.current_db   = None
         self.current_year = None
         self.issues = []
+        assert(self.locs.build)
+        assert(self.locs.temp)
+        assert(self.locs.bibtex_library)
 
     def set_params(self):
         return [
             { "name": "move-files", "long": "move-files", "type": bool, "default": False },
-            ]
+        ]
+
     def task_detail(self, task):
         issue_report = self.locs.build / "bib_clean_issues.report"
         task.update({
@@ -99,7 +104,7 @@ class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin, bib_clean.BibFi
         return task
 
     def subtask_detail(self, task, fpath):
-        target = fpath in clean_in_place else self.locs.temp / fpath.name
+        target = fpath if clean_in_place else self.locs.temp / fpath.name
         task.update({
             "actions" : [ (self.load_and_clean, [fpath]), # -> cleaned
                           lambda: {"cleaned" : self.bc_db_to_str(self.current_db, self.bc_prep_entry_for_write, self.locs.bibtex_library) },
@@ -128,7 +133,6 @@ class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin, bib_clean.BibFi
                     print(e_id + msg, file=sys.stderr)
                     self.issues.append(err)
 
-
             self.bc_expand_paths(entry, self.locs.bibtex_library)
             assert("__paths" in entry)
             for e_id, msg in self.check_files(self, entry, self.bad_file_msg):
@@ -141,7 +145,7 @@ class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin, bib_clean.BibFi
             # Clean files [(field, orig, newloc, newstem)]
             movements : list[tuple[str, pl.Path, pl.Path, str]] = self.bc_prepare_file_movements(entry, self.locs.bibtex_library)
             orig_parents = set()
-            for field, orig, new_dir, new_stem:
+            for field, orig, new_dir, new_stem in movements:
                 orig_parents.add(orig.parent)
                 unique = self.bc_unique_stem(orig, newloc / new_stem)
                 if unique is None:
@@ -173,13 +177,14 @@ class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin, bib_clean.BibFi
         except Exception as err:
             print(f"Error Occurred for {entry['ID']}: {err}", file=sys.stderr)
             raise err
-class BibtexReport(globber.DootEagerGlobber, tasker.ActionsMixin, bib_clean.BibLoadSaveMixin, bib_clean.BibFieldCleanMixin):
+
+class BibtexReport(globber.DootEagerGlobber, tasker.ActionsMixin, BibLoadSaveMixin, bib_clean.BibFieldCleanMixin):
     """
     (src -> build) produce reports on the bibs found
     """
 
     def __init__(self, name="bibtex::report", locs=None, roots=None, rec=True):
-        super().__init__(name, locs, roots or [locs.bibtex], rec=rec, exts=[".bib"])
+        super().__init__(name, locs, roots or [locs.bibtex_library], rec=rec, exts=[".bib"])
         self.locs.update(timelines=self.locs.build / "timelines")
 
         self.db                             = self.bc_load_db([], lambda x: x)
@@ -240,7 +245,7 @@ class BibtexReport(globber.DootEagerGlobber, tasker.ActionsMixin, bib_clean.BibL
     def subtask_detail(self, task, fpath):
         task.update({
             "actions" : [
-                (self.bc_load_db, [[fpath], self.process_entry, self.db]),)
+                (self.bc_load_db, [[fpath], self.process_entry, self.db]),
             ],
         })
         return task
@@ -251,7 +256,7 @@ class BibtexReport(globber.DootEagerGlobber, tasker.ActionsMixin, bib_clean.BibL
             self.bc_tag_split(entry)
             self.bc_split_names(entry)
 
-            assert(all(x in entry for x in ['__paths', '__split_names', '__as_unicode']]))
+            assert(all(x in entry for x in ['__paths', '__split_names', '__as_unicode']))
             self.collect_tags(entry)
             self.collect_authors_and_editors(entry)
             self.year_counts[entry['year']] += 1
@@ -320,52 +325,78 @@ class BibtexStub(globber.DootEagerGlobber, tasker.ActionsMixin):
     """
     (src -> data) Create basic stubs for found pdfs and epubs
     """
-    stub_t     = Template("@misc{stub_$id,\n  author = {},\n  title = {$title},\n  year = {$year},\n  file = {$file}\n}")
+    stub_t     = Template("@misc{stub_key_$id,\n  author = {},\n  title = {$title},\n  year = {$year},\n  file = {$file}\n}")
 
     def __init__(self, name="bibtex::stub", locs=None, roots=None, rec=False, exts=None):
         super().__init__(name, locs, roots or [locs.downloads, locs.desktop, locs.dropbox], rec=rec, exts=exts or stub_exts)
         self.source_text = self.locs.bib_stub_file.read_text()
+        self.max_stub_id = 0
         self.stubs       = []
+
+    def current_max_stub_id(self):
+        stub_re = re.compile(r"^@.+?{stub_key_(\d+),$")
+        stub_ids = [0]
+        for line in self.source_text.split("\n"):
+            result = stub_re.match(line)
+            if result is not None:
+                stub_ids.append(int(result[1]))
+
+        self.max_stub_id = max(stub_ids)
 
     def filter(self, fpath):
         return fpath.name not in self.source_text
 
     def task_detail(self, task):
         task.update({
-            "actions" : [self.append_stubs],
+            "actions" : [
+                self.current_max_stub_id,
+                self.stub_all,
+                self.append_stubs],
             })
         return task
 
     def subtask_detail(self, task, fpath):
         task.update({
             "actions" : [
-                (self.move_file, fpath),  # locs.src/fpath -> moved_to: locs.data/fpath
-                (self.stub_entry, fpath), # moved_to
+                (self.move_to_workdir, [fpath]),  # locs.src/fpath -> moved_to: locs.data/fpath
+                # (self.stub_entry, [fpath]), # moved_to
             ],
         })
         return task
 
-    def move_file(self, fpath):
+    def move_to_workdir(self, fpath):
         src = fpath
-        dst = self.locs.src / fpath.name
+        dst = self.locs.bibtex_working / fpath.name
         if dst.exists():
             src.rename(src.with_stem(f"exists_{src.stem}"))
             return None
 
-        src.rename(dst)
+        shutil.move(str(src), str(dst))
+        # src.rename(dst)
         return { "moved_to" : str(dst)}
 
-    def stub_entry(self, task):
-        if 'moved_to' not in task.values:
-            return
+    def stub_all(self):
+        for fpath in self.locs.bibtex_working.glob("*"):
+            if fpath.suffix not in self.exts:
+                continue
 
-        fpath = pl.Path(task.values['moved_to'])
-        stub_str = BibtexStub.stub_t.substitute(id=num,
+            if not self.filter(fpath):
+                continue
+
+            self.stub_entry(fpath)
+
+    def stub_entry(self, fpath):
+        self.max_stub_id += 1
+        stub_str = BibtexStub.stub_t.substitute(id=self.max_stub_id,
                                                 title=fpath.stem,
                                                 year=datetime.datetime.now().year,
                                                 file=str(fpath.expanduser().resolve()))
         self.stubs.append(stub_str)
 
     def append_stubs(self):
+        if not bool(self.stubs):
+            return
+
+        print(f"Adding {len(self.stubs)} stubs")
         with open(self.locs.bib_stub_file, 'a') as f:
             f.write("\n\n".join(self.stubs))

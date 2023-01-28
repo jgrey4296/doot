@@ -90,7 +90,8 @@ class TwitterMixin:
             return { "twitter_result": False }
 
     def tw_download_tweets(self, target_dir, missing_file, task):
-        """ Download all tweets and related tweets for a list,
+        """
+        Download all tweets and related tweets for a list,
         """
         assert(target_dir.is_dir())
         logging.info("Downloading tweets to: %s", target_dir)

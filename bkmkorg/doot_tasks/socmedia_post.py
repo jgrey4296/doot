@@ -62,6 +62,12 @@ class BibPoster(tasker.DootTasker, MastodonMixin, TwitterMixin, BibLoadSaveMixin
         self.db              = None
         self.blacklist       = set()
         self.already_tweeted = set()
+        assert(self.locs.secrets)
+        assert(self.locs.bib_blacklist)
+        assert(self.locs.bib_success)
+        assert(self.locs.bib_fail)
+        assert(self.locs.bibtex_lib)
+
 
     def setup_detail(self, task):
         task.update({
@@ -222,6 +228,8 @@ class ImagePoster(tasker.DootTasker, MastodonMixin, TwitterMixin, tasker.Actions
     def __init__(self, name="post::image", locs=None):
         super().__init__(name, locs)
         self.whitelist = set()
+        assert(self.locs.secrets)
+        assert(self.locs.image_whitelist)
 
     def setup_detail(self, task):
         task.update({

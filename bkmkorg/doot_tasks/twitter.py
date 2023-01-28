@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-
+Tasks for archiving twitter threads
 """
 ##-- imports
 from __future__ import annotations
@@ -29,7 +29,7 @@ from bkmkorg.twitter.org_writer import TwitterTweet
 from bkmkorg.twitter.todo_list import TweetTodoFile
 from bkmkorg.twitter.tweet_graph import TwitterGraph
 from doot import globber
-from doot.tasker import ActionsMixin, BatchMixin, DootTasker
+from doot.tasker import ActionsMixin, BatchMixin, DootTasker, ZipperMixin
 from doot.taskslib.files.downloader import DownloaderMixin
 from doot.toml_access import TomlAccess
 
@@ -43,17 +43,32 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-pl_expand       : Final = lambda x: pl.Path(x).expanduser()
 user_batch_size : Final = doot.config.on_fail(100, int).tool.doot.twitter.user_batch()
+
+class TwitterFull(DootTasker):
+
+    def __init__(self, name="twitter::go", locs=None):
+        super().__init__(name, locs)
+
+    def task_detail(self, task):
+        task.update({
+            "task_dep": ["twitter::tweets",
+                         "twitter::users",
+                         "twitter::components",
+                         "twitter::threads",
+                         "twitter::write",
+                     ],
+        })
+        return task
 
 class TwitterAccess(DootTasker, TwitterMixin): # TweepyMixin):
 
     def __init__(self, name="twitter::access", locs=None):
         super().__init__(name, locs)
         self.twitter = None
+        assert(self.locs.secrets)
 
     def task_detail(self, task):
-        print("Running task detail")
         task.update({
             "actions": [(self.setup_twitter, [self.locs.secrets]),
                         self.pause,
@@ -80,6 +95,10 @@ class TwitterLibTweets(DootTasker, ActionsMixin, TwitterMixin):
         self.library_ids    = set()
         self.existing_json_ids = set()
         self.output         = self.locs.lib_tweets
+        assert(self.locs.secrets)
+        assert(self.locs.missing_ids)
+        assert(self.locs.tweet_archive)
+        assert(self.locs.tweet_library)
 
     def task_detail(self, task):
         task.update({
@@ -140,10 +159,11 @@ class TwitterTweets(DootTasker, ActionsMixin, TwitterMixin):
         self.library_ids = set()
         self.todos       = None
         self.output      = self.locs.tweets
-        try:
-            self.uptodate = bool(list(self.output.iterdir()))
-        except FileNotFoundError:
-            self.uptodate = False
+        assert(self.locs.secrets)
+        assert(self.locs.missing_ids)
+        assert(self.locs.tweet_archive)
+        assert(self.locs.tweet_library)
+        assert(self.locs.current_tweets)
 
     def set_params(self):
         return [
@@ -159,7 +179,6 @@ class TwitterTweets(DootTasker, ActionsMixin, TwitterMixin):
                            (self.read_temp_ids, [self.output]),
                            (self.read_missing_ids, [ self.locs.missing_ids ]),
                           ],
-            "uptodate" : [self.uptodate],
         })
         return task
 
@@ -173,7 +192,6 @@ class TwitterTweets(DootTasker, ActionsMixin, TwitterMixin):
             "targets"  : [ self.locs.tweet_archive ],
             "file_dep" : [ self.locs.current_tweets ],
             "clean"    : [ (self.rmdirs, [self.output]) ],
-            "uptodate" : [self.uptodate],
         })
         return task
 
@@ -235,15 +253,13 @@ class TwitterUserIdentities(globber.LazyGlobMixin, globber.DootEagerGlobber, Bat
 
     def __init__(self, name="twitter::users", locs=None, roots=None, rec=False, exts=None):
         super().__init__(name, locs, roots or [locs.tweets], rec=rec, exts=exts or [".json"])
-        self.twitter = None
+        self.twitter    = None
         self.todo_users = set()
-        self.lib_users = set()
-        self.output = self.locs.users
-        try:
-            self.uptodate = (bool(list(self.locs.tweets.iterdir()))
-                             and bool(list(self.output.iterdir())))
-        except FileNotFoundError:
-            self.uptodate = False
+        self.lib_users  = set()
+        self.output     = self.locs.users
+        assert(self.locs.secrets)
+        assert(self.locs.tweet_library)
+        assert(self.locs.tweets)
 
     def filter(self, fpath):
         return self.control.accept
@@ -265,14 +281,12 @@ class TwitterUserIdentities(globber.LazyGlobMixin, globber.DootEagerGlobber, Bat
                 (self.retrieve_users_in_batches, [self.locs.tweets]),
             ],
             "clean" : [(self.rmdirs, [self.output])],
-            "uptodate" : [self.uptodate],
         })
         return task
 
     def subtask_detail(self, task, fpath):
         task.update({
             "actions" : [ (self.extract_users_from_jsons, [fpath]) ],
-            "uptodate" : [self.uptodate],
         })
         return task
 
@@ -280,7 +294,7 @@ class TwitterUserIdentities(globber.LazyGlobMixin, globber.DootEagerGlobber, Bat
         if not fpath.exists():
             return
         self.lib_users.update(x.strip() for x in fpath.read_text().split("\n"))
-        logging.info("Library users file records %s ids", len(self.lib_users))
+        print("Library users file records %s ids", len(self.lib_users))
 
     def extract_users_from_jsons(self, fpath):
         print("-------------------- Loading User Ids out of Tweet Data")
@@ -296,7 +310,7 @@ class TwitterUserIdentities(globber.LazyGlobMixin, globber.DootEagerGlobber, Bat
                 self.todo_users.add(user)
 
     def retrieve_users_in_batches(self, fpath):
-        print("-------------------- Getting User Identities")
+        print(f"-------------------- Getting User Identities: {len(self.todo_users)}")
         user_queue  = self.chunk(sorted(self.todo_users), user_batch_size)
         self.run_batches(*user_queue, fn=self.batch_retrieve)
 
@@ -306,7 +320,8 @@ class TwitterUserIdentities(globber.LazyGlobMixin, globber.DootEagerGlobber, Bat
         new_users   = [json.loads(x.AsJsonString()) for x in result]
         user_dict   = {x['id_str'] : x for x in new_users}
         users_file  = self.output / f"users_{data[0]}.json"
-        assert(not users_file.exists())
+        if users_file.exists():
+            user_dict.update(json.loads(users_file.read_text()))
         users_file.write_text(json.dumps(user_dict, indent=4))
 
 class TwitterComponentGraph(DootTasker, ActionsMixin, passes.TwGraphComponentMixin):
@@ -314,16 +329,12 @@ class TwitterComponentGraph(DootTasker, ActionsMixin, passes.TwGraphComponentMix
     (temp -> temp) combine individual tweets into threads
     """
 
-    def __init__(self, name="twitter::graph", locs=None):
+    def __init__(self, name="twitter::components", locs=None):
         super().__init__(name, locs)
         self.output      = self.locs.components
         self.tweet_graph = TwitterGraph()
-        try:
-            self.uptodate = (bool(list(self.locs.tweets.iterdir()))
-                             and bool(list(self.output.iterdir()))
-                             and bool(list(self.locs.users.iterdir())))
-        except FileNotFoundError:
-            self.uptodate = False
+        assert(self.locs.tweets)
+        assert(self.locs.users)
 
     def setup_detail(self, task):
         task.update({
@@ -338,7 +349,7 @@ class TwitterComponentGraph(DootTasker, ActionsMixin, passes.TwGraphComponentMix
                 (self.build_graph, [self.locs.tweets]),
                 (self.tw_construct_component_files, [self.locs.tweets, self.locs.users])],
             "clean" : [ (self.rmdirs, [self.output]) ],
-            "uptodate": [self.uptodate]
+            "task_dep": ["twitter::tweets"],
         })
         return task
 
@@ -360,24 +371,21 @@ class TwitterThreadBuild(globber.LazyGlobMixin, globber.DootEagerGlobber, Action
         super().__init__(name, locs, roots or [locs.components], rec=rec, exts=exts or [".json"])
         self.output = self.locs.threads
 
-        try:
-            self.uptodate = (bool(list(self.locs.components.iterdir()))
-                             and bool(list(self.output.iterdir())))
-        except FileNotFoundError:
-            self.uptodate = False
+
+    def setup_detail(self, task):
+        task.update({
+        })
+        return task
 
     def task_detail(self, task):
         task.update({
             "clean": [(self.rmdirs, [self.output])],
-            "task_dep": ["twitter::graph"],
-            "uptodate": [self.uptodate],
         })
         return task
 
     def subtask_detail(self, task, fpath):
         task.update({
             "actions": [(self.construct_threads, [fpath])],
-            "uptodate": [self.uptodate],
         })
         return task
 
@@ -396,7 +404,7 @@ class TwitterThreadWrite(globber.LazyGlobMixin, globber.DootEagerGlobber, passes
         self.todos = None
         # Just Build, as construct org/html uses subdirs
         self.output = self.locs.build
-        self.uptodate = False
+        assert(self.locs.current_tweets)
 
     def setup_detail(self, task):
         task.update({
@@ -418,7 +426,6 @@ class TwitterThreadWrite(globber.LazyGlobMixin, globber.DootEagerGlobber, passes
                 (self.make_orgs, [fpath]),
                 #(self.make_htmls, [fpath])
             ],
-            "uptodate" : [self.uptodate],
         })
         return task
 
@@ -446,19 +453,16 @@ class TwitterDownloadMedia(globber.LazyGlobMixin, globber.DootEagerGlobber, Down
         super().__init__(name, locs, roots or [locs.threads], rec=rec, exts=exts or [".json"])
         self.output = self.locs.on_fail(locs.build).media()
 
-        try:
-            self.uptodate = (bool(list(self.locs.components.iterdir()))
-                             and bool(list(self.output.iterdir())))
-        except FileNotFoundError:
-            self.uptodate = False
+    def setup_detail(self, task):
+        task.update({
+        })
+        return task
 
     def subtask_detail(self, task, fpath):
         task.update({
             "actions" : [
                 (self.process_components, [fpath]),
             ],
-            "task_dep" : ["twitter::tweets"],
-            "uptodate" : [self.uptodate],
         })
         return task
 
@@ -483,7 +487,7 @@ class TwitterDownloadMedia(globber.LazyGlobMixin, globber.DootEagerGlobber, Down
             # download
             self.download_media(download_to, media)
 
-class TwitterMerge(globber.SubGlobMixin, globber.DootEagerGlobber, ActionsMixin):
+class TwitterMerge(globber.DootEagerGlobber, ActionsMixin):
     """
     (temp -> data) integrate threads into the library
     """
@@ -493,6 +497,8 @@ class TwitterMerge(globber.SubGlobMixin, globber.DootEagerGlobber, ActionsMixin)
         self.base_user_reg = re.compile(r"^(.+?)_thread_\d+$")
         self.group_reg     = re.compile(r"^[a-zA-Z]")
         self.files_dir_reg = re.compile(r"^(.+?)_files$")
+        assert(self.locs.tweet_library)
+        assert(self.locs.media)
 
     def task_detail(self, task):
         task.update({
@@ -514,12 +520,7 @@ class TwitterMerge(globber.SubGlobMixin, globber.DootEagerGlobber, ActionsMixin)
                 (self.mkdirs, [lib_base / group / base_user ]),
                 (self.count_lib_threads, [lib_base / group / base_user ]),
                 (self.copy_thread, [lib_base / group / base_user, fpath]),
-
-                # maybe create json zip
-                # combine thread and component jsons
-                # add combined json to json zip
             ],
-            "task_dep" : ["twitter::threads"],
         })
         return task
 
@@ -537,12 +538,12 @@ class TwitterMerge(globber.SubGlobMixin, globber.DootEagerGlobber, ActionsMixin)
 
             dest = lib / group / parent / fdir.name
             if not dest.exists():
-                print(f"Would Make: {dest}")
-                # dest.mkdir()
+                # print(f"Would Make: {dest}")
+                dest.mkdir()
 
             for x in list(fdir.glob("*")):
-                print(f"Would Copy: {x} -> {dest}")
-                # self.copy_to(dest, x)
+                # print(f"Would Copy: {x} -> {dest}")
+                self.copy_to(dest, x)
 
     def count_lib_threads(self, fpath):
         return { "count" : len(list(fpath.glob("thread_*.org"))) }
@@ -551,5 +552,54 @@ class TwitterMerge(globber.SubGlobMixin, globber.DootEagerGlobber, ActionsMixin)
         count = task.values['count'] + 1
         copy_target = dest / f"thread_{count}{src.suffix}"
         assert(not copy_target.exists())
-        print(f"Would Copy: {copy_target}")
-        # self.copy_to(copy_target, src, fn="file")
+        # print(f"Would Copy: {copy_target}")
+        self.copy_to(copy_target, src, fn="file")
+
+class TwitterArchive(globber.DootEagerGlobber, ActionsMixin, ZipperMixin):
+    """
+    Zip json data for users
+
+    Get Threads -> components,
+    combine,
+    add to archive.zip in base user's library directory
+    """
+
+    def __init__(self, name="twitter::zip", locs=None, roots=None, rec=False, exts=None):
+        super().__init__(name, locs, roots or [locs.threads], rec=rec, exts=exts or [".json"])
+        self.group_reg     = re.compile(r"^[a-zA-Z]")
+        self.output         = None
+        self.thread_data    = None
+        self.component_data = None
+        assert(self.locs.tweet_library)
+
+    def subtask_detail(self, task, fpath):
+        task.update({
+            "actions": [
+                (self.load_thread, [fpath]),
+                self.load_component,
+                self.add_to_user_archive,
+            ],
+        })
+        return task
+
+    def load_thread(self, fpath):
+        self.thread_data = json.loads(fpath.load_text())
+        return { "component": self.thread_data['component'],
+                 "base_user": self.thread_data['base_user'],
+                }
+
+    def load_component(self, task):
+        self.component_data = json.loads(pl.Path(task.values['component']))
+
+    def add_to_user_archive(self, task):
+        group = "group_symbols"
+        if re.match(r"^[a-zA-Z]", task.values['base_user']):
+            group = f"group_{base_user[0]}"
+
+        target_path = self.locs.tweet_library / group / task.values['base_user'] / "archive.zip"
+        if not target_path.exists():
+            self.zip_create(target_path)
+
+        as_json = json.dumps({"thread": self.thread_data, "component": self.component_data})
+        json_name = pl.Path(task.values['component']).name
+        self.zip_add_str(json_name, as_json)

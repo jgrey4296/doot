@@ -54,6 +54,9 @@ class TagsCleaner(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     def __init__(self, name="tags::clean", locs=None, roots=None, rec=False, exts=None):
         super().__init__(name, locs, roots or [locs.bibtex, locs.bookmarks, locs.org], rec=rec, exts=exts or [".bib", ".bookmarks", ".org"])
         self.tags = SubstitutionFile()
+        assert(self.locs.temp)
+        assert(self.locs.tags)
+
 
     def filter(self, fpath):
         if bool(self.glob_files(fpath)):
@@ -96,6 +99,7 @@ class TagsCleaner(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
                     case ():
                         print(line)
                         pass
+
             except Exception as err:
                 logging.warning("Error Processing %s (l:%s) : %s",
                                 fileinput.filename(),
@@ -151,6 +155,8 @@ class TagsReport(globber.DootEagerGlobber, ActionsMixin):
     def __init__(self, name="tags::report", locs=None, roots=None, rec=True, exts=None):
         super().__init__(name, locs, roots or [locs.tags], rec=rec, exts=exts or [".sub"])
         self.tags = SubstitutionFile()
+        assert(self.locs.build)
+        assert(self.locs.temp)
 
     def task_detail(self, task):
         report     = self.locs.build / "tags.report"
@@ -209,6 +215,7 @@ class TagsIndexer(globber.DootEagerGlobber, ActionsMixin):
         self.bkmk_index = IndexFile()
         self.bib_index  = IndexFile()
         self.org_index  = IndexFile()
+        assert(self.locs.temp)
 
 
     def task_detail(self, task):
@@ -253,7 +260,6 @@ class TagsIndexer(globber.DootEagerGlobber, ActionsMixin):
         })
         return task
 
-
     def calc_newtags(self):
         all_sub_set = self.all_subs.to_set()
         new_bkmk = self.bkmk_index.to_set() - all_sub_set
@@ -272,4 +278,3 @@ class TagsIndexer(globber.DootEagerGlobber, ActionsMixin):
 
     def process_org(self, fpath):
         pass
-

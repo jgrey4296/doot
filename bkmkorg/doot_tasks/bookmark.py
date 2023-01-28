@@ -49,6 +49,10 @@ class BookmarksUpdate(DootTasker, ActionsMixin):
         self.database                                      = database
         self.new_collections : list[BC.BookmarkCollection] = []
         self.total : BC.BookmarkCollection                 = None
+        assert(self.locs.firefox)
+        assert(self.locs.src)
+        assert(self.locs.temp)
+
 
     def task_detail(self, task):
         dbs         = self.locs.firefox.rglob(self.database)
@@ -91,6 +95,8 @@ class BookmarksCleaner(DootTasker, ActionsMixin):
     def __init__(self, name="bkmk::clean", locs=None):
         super().__init__(name, locs)
         self.total = None
+        assert(self.locs.temp)
+        assert(self.locs.src)
 
     def task_detail(self, task):
         task.update({
@@ -122,6 +128,7 @@ class BookmarksReport(globber.DootEagerGlobber, ActionsMixin):
     def __init__(self, name="bkmk::report", locs=None, roots=None, rec=False, exts=None):
         super().__init__(name, locs, roots or [locs.bookmarks], rec=rec, exts=exts or [".bookmarks"])
         self.bookmarks = BC.BookmarkCollection()
+        assert(self.locs.build)
 
     def filter(self, fpath):
         return self.control.accept

@@ -38,6 +38,7 @@ class MastodonMixin:
         )
 
         self.mastodon = instance
+        assert(self.locs.image_temp)
 
     def post_toot(self, task):
         try:
@@ -129,3 +130,19 @@ class MastodonMixin:
             return { 'image': self.locs.image_temp }
 
         return False
+
+    def ms_download_tooks(self, target_dir, missing_file, task):
+        """
+        Download all toots and related toots for a list
+        """
+        # queue toots from todo
+
+        # Get bookmarks
+
+
+        # loop and get
+        # \.status(id)
+        # \.status_context(id) : {'ancestors': [], 'descendants' : []}
+
+
+        pass

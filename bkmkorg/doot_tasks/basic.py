@@ -60,6 +60,8 @@ class NoScriptMerge(DootTasker, ActionsMixin):
     def __init__(self, name="noscript::merge", locs=None):
         super().__init__(name, locs)
         self.master_data = defaultdict(lambda: {})
+        assert(self.locs.src)
+        assert(self.locs.temp)
 
     def task_detail(self, task):
         srcs   = self.locs.src.glob("noscript*.json")
