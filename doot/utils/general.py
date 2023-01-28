@@ -4,7 +4,6 @@ from doit.action import CmdAction
 from doit.exceptions import InvalidTask, TaskFailed, TaskError
 ##-- end imports
 
-human     = lambda x, y=False: tracemalloc._format_size(x, y)
 
 
 def regain_focus(prog="iTerm"):

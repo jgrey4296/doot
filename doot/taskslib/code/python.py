@@ -133,6 +133,7 @@ class PyUnitTestGlob(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixi
 
     def __init__(self, name=f"py::test", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.root], exts=[".py"], rec=rec)
+        assert(self.locs.build)
 
     def filter(self, fpath):
         if py_test_dir_fmt in fpath.name:

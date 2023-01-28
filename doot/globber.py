@@ -31,7 +31,6 @@ glob_ignores          : Final = doot.config.on_fail(['.git', '.DS_Store', "__pyc
 glob_subselect_exact  : Final = doot.config.on_fail(10, int).tool.doot.globbing.subselect_exact()
 glob_subselect_pcnt   : Final = doot.config.on_fail(0, int).tool.doot.globbing.subselect_percentage()
 
-
 class GlobControl(enum.Enum):
     """
     accept  : is a result, and descend if recursive
@@ -62,7 +61,7 @@ class DootEagerGlobber(DootSubtasker):
 
     def __init__(self, base:str, locs:DootLocData, roots:list[pl.Path], *, exts:list[str]=None,  rec=False, **kwargs):
         super().__init__(base, locs, **kwargs)
-        self.exts           = (exts or [])[:]
+        self.exts           = {y for x in (exts or []) for y in [x.lower(), x.upper()]}
         self.roots          = roots[:]
         self.rec            = rec
         self.total_subtasks = 0
@@ -154,6 +153,7 @@ class DootEagerGlobber(DootSubtasker):
         return subtasks
 
 # Multiple Inheritances:
+
 class DirGlobMixin:
     """
     Globs for directories instead of files.

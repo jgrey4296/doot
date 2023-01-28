@@ -42,6 +42,7 @@ class GodotCheckTask(globber.DootEagerGlobber, ActionsMixin):
     def __init__(self, name="godot::check", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.root], exts=[".gd"], rec=rec)
         self.failures = set()
+        assert(self.locs.build)
 
     def setup_detail(self, task):
         task.update({

@@ -44,6 +44,7 @@ class DotVisualise(globber.DootEagerGlobber, tasker.ActionsMixin):
         self.ext       = ext
         self.layout    = layout
         self.scale     = scale
+        assert(self.locs.build)
 
     def subtask_detail(self, task, fpath=None):
         task.update({
@@ -82,10 +83,11 @@ class PlantUMLGlobberTask(globber.DootEagerGlobber, tasker.ActionsMixin):
     """
 
     def __init__(self, name=None, locs:DootLocData=None, roots:list[pl.Path]=None, fmt="png", rec=True):
-        assert(roots or 'visual' in locs)
         name = name or f"plantuml::{fmt}"
         super().__init__(name, locs, roots or [locs.src], exts=[".plantuml"], rec=True)
         self.fmt       = fmt
+        assert(self.locs.visual)
+        assert(self.locs.build)
 
     def subtask_detail(self, task, fpath=None):
         targ_fname = fpath.with_suffix(f".{self.fmt}")

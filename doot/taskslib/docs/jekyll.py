@@ -10,7 +10,7 @@ import yaml
 
 import doot
 from doot.utils.dir_tasks import CheckDir
-from doot.utils.clean_actions import clean_target_dirs
+from doot.utils.cleaning import CleanerMixin
 from doot import globber
 from doot.tasker import DootTasker, ActionsMixin
 
@@ -65,7 +65,7 @@ class GenPostTask(DootTasker, ActionsMixin):
     def __init__(self, name="jekyll::post", locs=None, template=None):
         super().__init__(name, locs)
         self.template  = pl.Path(template or post_template)
-        assert('posts' in self.locs)
+        assert(self.locs.posts)
 
     def set_params(self):
         return [
@@ -109,7 +109,7 @@ class GenPostTask(DootTasker, ActionsMixin):
 
         post_path.write_text(post_text)
 
-class GenTagsTask(DootTasker, ActionsMixin):
+class GenTagsTask(DootTasker, ActionsMixin, CleanerMixin):
     """
     ([src] -> [tags, tagsIndex]) Generate summary files for all tags used in md files in the jekyll src dir
     """
@@ -120,14 +120,14 @@ class GenTagsTask(DootTasker, ActionsMixin):
         self.template = pl.Path(template or tag_template)
         self.index    = pl.Path(index or index_template)
         self.roots    = roots or [locs.src]
-        assert("tags"       in self.locs)
-        assert("tagsIndex"  in self.locs)
+        assert(self.locs.tags)
+        assert(self.locs.tagsIndex)
 
     def task_detail(self, task):
         task.update({
             "actions"  : [self.get_tags, self.make_tag_pages ],
             "teardown" : [self.make_tag_index],
-            "clean"    : [ clean_target_dirs ],
+            "clean"    : [ self.clean_target_dirs ],
         })
         return task
 

@@ -20,11 +20,9 @@ from doit.tools import Interactive
 from doit.task import Task as DoitTask
 
 import doot
-from doot.utils.ziptask import ZipTask
 from doot import tasker
 from doot import globber
 from doot.loc_data import DootLocData
-from doot.utils.clean_actions import clean_target_dirs
 ##-- end imports
 
 ##-- logging
@@ -69,6 +67,7 @@ class EbookCompileTask(EbookGlobberBase):
 
     def __init__(self, name="epub::compile", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], rec=rec)
+        assert(self.locs.build)
 
     def subtask_detail(self, task, fpath=None):
         task.update({
@@ -85,6 +84,8 @@ class EbookConvertTask(EbookGlobberBase):
 
     def __init__(self, name="_epub::convert.zip", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], rec=rec)
+        assert(self.locs.temp)
+        assert(self.locs.build)
 
     def subtask_detail(self, task, fpath=None):
         task.update({
@@ -98,29 +99,29 @@ class EbookConvertTask(EbookGlobberBase):
     def action_convert(self, dependencies, targets):
         return ["ebook-convert", dependencies[0], targets[0] ]
 
-class EbookZipTask(EbookGlobberBase):
+class EbookZipTask(EbookGlobberBase, tasker.ZipperMixin):
     """
     (GlobDirs: [src] -> temp) wrapper around ZipTask to build zips of epub directories
     """
 
     def __init__(self, name="_zip::epub", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], rec=rec)
+        assert(self.locs.temp)
 
     def subtask_detail(self, task, fpath=None):
-        target = fpath.with_suffix(".zip").name
+        # TODO process the globs here, and exclude stuff
+        zipf = self.locs.temp / fpath.with_suffix(".zip").name
         glob   = str(fpath) + "/**/*"
-        # TODO could process the globs here, and exclude stuff
-        ztask  = ZipTask(task['basename'],
-                         self.locs,
-                         root=fpath,
-                         target=target,
-                         globs=[glob],
-                         )
 
-        ztaskDict = ztask._build_task()
-        ztaskDict['name'] = task['name']
-        ztaskDict['task_dep'] += [ f"epub::manifest:{task['name']}"]
-        return ztaskDict
+        task.update({
+            "actions": [
+                (self.zip_set_root, [fpath]),
+                (self.zip_create, [zipf]),
+                (self.zip_globs, [zipf, glob]),
+            ],
+            'task_dep': [ f"epub::manifest:{task['name']}"],
+        })
+        return task
 
 class EbookManifestTask(EbookGlobberBase):
     """
@@ -292,13 +293,17 @@ class EbookRestructureTask(EbookGlobberBase):
             ("font", re.compile(".+(ttf|oft|woff2?)")),
             ("other", re.compile(".")),
         ))
+        assert(self.locs.src)
 
     def subtask_detail(self, task, fpath=None):
+        targets = [ (fpath / x) for x in self.content_mapping.keys() ],
         task.update({
-            "targets" : [ (fpath / x) for x in self.content_mapping.keys() ],
+            "targets" : targets,
+            'actions' : [ (self.mkdirs, task['targets']),
+                          self.move_files,
+                         ],
         })
-        task['actions'] += [ (self.mkdirs, task['targets']),
-                            self.move_files ]
+
 
         return task
 
@@ -331,6 +336,7 @@ class EbookSplitTask(globber.DootEagerGlobber):
 
     def __init__(self, name="epub::split", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.data] , exts=[".epub"], rec=rec)
+        assert(self.locs.build)
 
     def subtask_detail(self, task, fpath=None):
         task.update({
@@ -361,6 +367,7 @@ class EbookNewTask(tasker.DootTasker, tasker.ActionsMixin):
         self.files : list[pl.Path|str] = [
             "images/title.jpg"
         ]
+        assert(self.locs.src)
 
     def is_current(self, task):
         name = task.options['name']
@@ -413,6 +420,7 @@ class EbookNewPandoc(EbookGlobberBase):
 
     def __init__(self, name="epub::pandoc", locs=None, roots=None, rec=True):
         super().__init__(name, locs, roots=roots or [locs.src], rec=rec)
+        assert(self.locs.build)
 
     def subtask_detail(self, task, fpath=None):
         task.update({

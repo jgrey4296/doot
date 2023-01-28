@@ -9,7 +9,7 @@ from typing import ClassVar
 
 from doot.task_group import TaskGroup
 from doot.tasker import DootTasker
-from doot.utils.clean_actions import clean_target_dirs
+from doot.utils.cleaning import CleanerMixin
 ##-- end imports
 
 ##-- logging
@@ -49,7 +49,7 @@ class CheckDir:
         task = {
             "name"      : self.base,
             "actions"   : [ self.mkdir ],
-            "clean"     : [ clean_target_dirs ],
+            "clean"     : [ CleanerMixin.clean_target_dirs ],
             "uptodate"  : [ self.is_current ],
             "verbosity" : 2,
         }

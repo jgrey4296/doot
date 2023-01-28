@@ -23,6 +23,8 @@ class LatexMultiPass(globber.DootEagerGlobber):
 
     def __init__(self, name="tex::build", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=['.tex'], rec=rec)
+        assert(self.locs.build)
+
 
     def subtask_detail(self, task, fpath=None):
         task.update({
@@ -39,6 +41,8 @@ class LatexFirstPass(globber.DootEagerGlobber, ActionsMixin):
     def __init__(self, name="text::pass:one", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True, interaction=interaction_mode):
         super().__init__(name, locs, roots or [locs.src], exts=[".tex"], rec=rec)
         self.interaction = interaction
+        assert(self.locs.temp)
+        assert(self.locs.build)
 
     def set_params(self):
         return [
@@ -85,6 +89,8 @@ class LatexSecondPass(globber.DootEagerGlobber, ActionsMixin):
 
     def __init__(self, name="_tex::pass:two", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=[".tex"], rec=rec)
+        assert(self.locs.temp)
+        assert(self.locs.build)
 
     def set_params(self):
         return [
@@ -124,6 +130,7 @@ class BibtexBuildPass(globber.DootEagerGlobber, ActionsMixin):
 
     def __init__(self, name="_tex::pass:bibtex", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=[".tex"], rec=rec)
+        assert(self.locs.temp)
 
     def subtask_detail(self, task, fpath=None):
         aux_file = self.locs.temp / fpath.with_suffix(".aux").name

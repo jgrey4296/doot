@@ -12,23 +12,14 @@ from doot.tasker import ActionsMixin, DootTasker
 
 ##-- end imports
 
+from doot.utils.misc import HumanMixin
+
 log_fmt     : Final = doot.config.on_fail(["%aI", "%h", "%al", "%s"], list).tool.doot.git.fmt()
 default_sep : Final = doot.config.on_fail(" :: ", str).tool.doot.git.sep()
 group_hours : Final = doot.config.on_fail(2, int).tool.doot.git.group_by_hours()
 bar_fmt     : Final = doot.config.on_fail("~", str).tool.doot.git.bar_fmt()
 bar_max     : Final = doot.config.on_fail(40, int).tool.doot.git.bar_max()
 
-def roundTime(dt=None, roundTo=60):
-   """Round a datetime object to any time lapse in seconds
-   dt : datetime.datetime object, default now.
-   roundTo : Closest number of seconds to round to, default 1 minute.
-   Author: Thierry Husson 2012 - Use it as you want but don't blame me.
-   from: https://stackoverflow.com/questions/3463930
-   """
-   dt = dt or datetime.datetime.now()
-   seconds = (dt.replace(tzinfo=None) - dt.min).seconds
-   rounding = (seconds+roundTo/2) // roundTo * roundTo
-   return dt + datetime.timedelta(0,rounding-seconds,-dt.microsecond)
 
 class GitLogTask(DootTasker, ActionsMixin):
     """
@@ -40,6 +31,7 @@ class GitLogTask(DootTasker, ActionsMixin):
         super().__init__(name, locs)
         self.format = fmt or log_fmt
         self.sep    = sep
+        assert(self.locs.temp)
 
     def task_detail(self, task):
         target = self.locs.temp / "full_git.log"
@@ -57,14 +49,15 @@ class GitLogTask(DootTasker, ActionsMixin):
         return ["git", "log", f"--pretty=format:{log_format}"]
 
 
-class GitLogAnalyseTask(DootTasker, ActionsMixin):
+class GitLogAnalyseTask(DootTasker, ActionsMixin, HumanMixin):
     """
     (temp -> build) separate the printed log
     """
 
-    def __init__(self, locs=None, sep=default_sep):
-        super().__init__("git::analysis", locs)
+    def __init__(self, name="git::analysis", locs=None, sep=default_sep):
+        super().__init__(name, locs)
 
+        # Data extracted from logs:
         self.totals        = []
         self.entry_count   = 0
         self.sep           = sep
@@ -97,6 +90,8 @@ class GitLogAnalyseTask(DootTasker, ActionsMixin):
         # day / night
         # tags
         # files touched
+        assert(self.locs.build)
+        assert(self.locs.temp)
 
     def task_detail(self, task):
         task.update({
@@ -111,6 +106,9 @@ class GitLogAnalyseTask(DootTasker, ActionsMixin):
         return task
 
     def read_log(self, dependencies):
+        """
+        Read the log file line by line, and prepare it for extraction
+        """
         last = None
         linecount = 0
         for line in pl.Path(dependencies[0]).read_text().split("\n"):
@@ -120,10 +118,13 @@ class GitLogAnalyseTask(DootTasker, ActionsMixin):
             parts = line.split(self.sep)
 
             assert(len(parts) == 4), linecount
-            commit : datetime = roundTime(datetime.datetime.fromisoformat(parts[0]), roundTo=60*60)
+            commit : datetime = self.round_time(datetime.datetime.fromisoformat(parts[0]), roundTo=60*60)
             self.totals.append(commit)
 
     def process_log(self):
+        """
+        With all information loaded, extract information from the commits
+        """
         self.totals.sort()
         self.entry_count = len(totals)
         for commit in totals:
@@ -152,6 +153,9 @@ class GitLogAnalyseTask(DootTasker, ActionsMixin):
 
 
     def write_distributions(self, targets):
+        """
+        Finally write the information into a report
+        """
         with open(targets[0], 'w') as f:
             print(f"Git Report", file=f)
             print(f"Total commits: {self.entry_count}", file=f)

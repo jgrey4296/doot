@@ -44,6 +44,9 @@ class PythonCompile(DootTasker, ActionsMixin):
 
     def __init__(self, name="python::compile", locs=None):
         super().__init__(name, locs)
+        assert(self.locs.build)
+        assert(self.locs.temp)
+        assert(self.locs.src)
 
     def set_params(self):
         return [

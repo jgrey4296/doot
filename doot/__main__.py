@@ -40,9 +40,11 @@ from doit.doit_cmd import DoitMain
 import doot
 from doot.utils.loader import DootLoader
 from doot.utils.log_filter import DootAnyFilter
+from doot.tasker import ActionsMixin
 
 def main():
-    result = 1
+    result  = 1
+    errored = False
     try:
         if doot.config is None:
             doot.setup()
@@ -62,10 +64,6 @@ def main():
         doit_main = DoitMain(task_loader=loader, config_filenames=[doot.default_agnostic])
         result    = doit_main.run(sys.argv[1:])
 
-        say_text = doot.config.on_fail(False, bool).tool.doot.say_on_exit()
-        if bool(say_text):
-            CmdAction(["say", say_text], shell=False).execute()
-
         defaulted_locs = doot.DootLocData.report_defaulted()
         defaulted_toml = doot.TomlAccess.report_defaulted()
 
@@ -74,6 +72,7 @@ def main():
             f.write("\n".join(defaulted_toml) + "\n\n")
             f.write("[tool.doot.directories]\n")
             f.write("\n".join(defaulted_locs))
+
 
     except FileNotFoundError:
         if not doot.default_agnostic.exists():
@@ -84,6 +83,20 @@ def main():
             if input("No Dooter file found, create stub dooter.py? _/n ") != "n":
                 doot.default_dooter.write_text(doot.dooter_template.read_text())
                 print("Stubbed")
+    except Exception as err:
+        print("Error: ", err, file=sys.stderr)
+        errored = True
+    finally:
+        match errored, doot.config.on_fail(False, bool|str).tool.doot.say_on_exit():
+            case False, str() as say_text:
+                cmd = ActionsMixin.say(None, say_text)
+                cmd.execute()
+            case False, True:
+                cmd = ActionsMixin.say(None, "Doot Has Finished")
+                cmd.execute()
+            case True, True|str():
+                cmd = ActionsMixin.say(None, "Doot Encountered a problem")
+                cmd.execute()
 
 
     sys.exit(result)

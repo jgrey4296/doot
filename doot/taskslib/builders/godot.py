@@ -173,8 +173,8 @@ class GodotNewScene(DootTasker, ActionsMixin):
     """
 
     def __init__(self, name="godot::new.scene", locs=None):
-        assert("scenes" in locs)
         super().__init__(name, locs)
+        assert(self.locs.scenes)
 
     def set_params(self):
         return [

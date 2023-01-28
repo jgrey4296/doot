@@ -10,7 +10,6 @@ from doit.tools import LongRunning
 from doit.action import CmdAction
 
 import doot
-from doot.utils.clean_actions import clean_target_dirs
 from doot.tasker import DootTasker, ActionsMixin
 
 ##-- end imports
@@ -64,6 +63,9 @@ class JekyllBuild(DootTasker, ActionsMixin):
     def __init__(self, name="jekyll::build", locs=None):
         super().__init__(name, locs)
         self.jekyll_config = self.locs.root / "jekyll.toml"
+        assert(self.locs.data)
+        assert(self.locs.src)
+        assert(self.locs.temp)
 
     def set_params(self):
         return [

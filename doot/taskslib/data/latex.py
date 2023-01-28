@@ -5,12 +5,18 @@
 ##-- imports
 from __future__ import annotations
 
+import types
 import abc
+import datetime
+import enum
+import functools as ftz
+import itertools as itz
 import logging as logmod
 import pathlib as pl
+import re
+import time
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
-from re import Pattern
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
@@ -18,23 +24,29 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-from doot.tasker import DootTasker
-
-if TYPE_CHECKING:
-    # tc only imports
-    pass
 ##-- end imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-# If CLI:
-# logging = logmod.root
-# logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-class Stubber(DootTasker):
-    """
-    Interactive task to stub a new task in the dooter
+import doot
+from doot import tasker
 
+class VerticalState(tasker.DootTasker):
+    """
+    Build a vertical state trace (originally from instal)
+    """
+    pass
+
+class HorizontalState(tasker.DootTasker):
+    """
+    Create a horizontal state trace (originally from instal)
+    """
+    pass
+
+class GanttVisual(tasker.DootTasker):
+    """
+    Build a gantt chart (originally from instal)
     """
     pass

@@ -16,7 +16,6 @@ from itertools import cycle, chain
 import doot
 from doot import globber
 from doot import tasker
-from doot.utils.clean_actions import clean_target_dirs
 
 ##-- end imports
 
@@ -66,6 +65,7 @@ class JsonPythonSchema(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Ac
 
     def __init__(self, name="json::schema.python", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".json"], rec=rec)
+        assert(self.locs.codegen)
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for x in fpath.iterdir()):
@@ -103,7 +103,7 @@ class JsonVisualise(globber.DootEagerGlobber, tasker.ActionsMixin):
 
     def __init__(self, name="json::schema.visual", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".json"], rec=rec)
-        assert('visual' in locs)
+        assert(self.locs.visual)
 
     def subtask_detail(self, task, fpath=None):
         task.update({

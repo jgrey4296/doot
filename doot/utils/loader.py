@@ -30,6 +30,7 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
+import sys
 from types import FunctionType, MethodType
 from collections import OrderedDict
 import inspect
@@ -72,25 +73,26 @@ class DootLoader(NamespaceTaskLoader):
         self.task_list = []
 
     def setup(self, opt_values):
-        # lazily load namespace from dodo file per config parameters:
-        self.namespace = dict(inspect.getmembers(doit_loader.get_module(
-            opt_values['dooter'],
-            opt_values['cwdPath'],
-            opt_values['seek_file'],
-        )))
-
-        self.namespace['__doot_all_dirs']   = DootLocData.gen_loc_tasks()
-        self.namespace['__doot_all_checks'] = CheckDir.gen_check_tasks()
-        self.namespace['__doot_all_tomls']  = GenToml.gen_toml_tasks()
-
+        # lazily load namespace from dooter file per config parameters:
+        try:
+            self.namespace = dict(inspect.getmembers(doit_loader.get_module(
+                opt_values['dooter'],
+                opt_values['cwdPath'],
+                opt_values['seek_file'],
+            )))
+            self.namespace['__doot_all_dirs']   = DootLocData.gen_loc_tasks()
+            self.namespace['__doot_all_checks'] = CheckDir.gen_check_tasks()
+            self.namespace['__doot_all_tomls']  = GenToml.gen_toml_tasks()
+        except doot.errors.DootDirAbsent as err:
+            print("LOCATION MISSING: " + err.args[0], file=sys.stderr)
+            sys.exit(1)
 
     def load_doit_config(self):
         return doot.config.get_table()
 
 
     def load_tasks(self, cmd, pos_args):
-        self.expand_task_groups()
-        logging.info("Creating Tasks")
+        self._expand_task_groups()
         self._load_tasks(self.namespace, self.cmd_names, allow_delayed=cmd.execute_tasks, args=pos_args, config=self.config, task_opts=self.task_opts)
 
         logging.info("Tasks: %s", self.task_list)
@@ -112,7 +114,7 @@ class DootLoader(NamespaceTaskLoader):
 
         return self.task_list
 
-    def expand_task_groups(self):
+    def _expand_task_groups(self):
         group_tasks = {}
         for x in self.namespace.values():
             if isinstance(x, TaskGroup) and not x.as_creator and bool(x):
@@ -126,6 +128,7 @@ class DootLoader(NamespaceTaskLoader):
         """
         Reimplementation of doit.loader.load_tasks
         """
+        logging.info("Loading Tasks")
         funcs = self._get_task_creators(namespace, command_names)
         # sort by the order functions were defined (line number)
         # TODO: this ordering doesnt make sense when generators come

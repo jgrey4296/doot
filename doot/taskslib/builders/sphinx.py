@@ -8,7 +8,7 @@ from typing import Final
 import doot
 from doot.task_group import TaskGroup
 from doot.tasker import ActionsMixin, DootTasker
-from doot.utils.clean_actions import clean_target_dirs
+from doot.utils.cleaning import CleanerMixin
 
 ##-- end imports
 
@@ -21,27 +21,30 @@ conf_verbosity   : Final = doot.config.on_fail(0, int).tool.door.sphinx.verbosit
 
 def task_browse() -> dict:
     """[build] Task definition """
-    assert("html" in doot.locs)
+    assert(doot.locs.html)
     return {
         "basename"    : "sphinx::browse",
         "actions"     : [ ActionsMixin.cmd(None, ["open", doot.locs.html ]) ],
         "task_dep"    : ["sphinx::doc"],
     }
 
-class SphinxDocTask(DootTasker, ActionsMixin):
+class SphinxDocTask(DootTasker, ActionsMixin, CleanerMixin):
     """([docs] -> build) Build sphinx documentation """
 
     def __init__(self, name="sphinx::doc", locs:DootLocData=None, builder=None, verbosity:int=None):
         super().__init__(name, locs)
         self.builder = builder or conf_builder
         self.verbosity = verbosity or conf_verbosity
+        assert(self.locs.docs)
+        assert(self.locs.html)
+        assert(self.locs.build)
 
     def task_detail(self, task:dict) -> dict:
         task.update({
             "actions"  : [ self.cmd(self.sphinx_command) ],
             "file_dep" : [ self.locs.docs / "conf.py" ],
-            "targets"  : [ self.locshtml, self.locs.build ],
-            "clean"    : [ clean_target_dirs ],
+            "targets"  : [ self.locs.html, self.locs.build ],
+            "clean"    : [ self.clean_target_dirs ],
         })
         return task
 

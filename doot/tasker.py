@@ -176,7 +176,7 @@ class DootTasker:
         except Exception as err:
             print("ERROR: Task Creation Failure: ", err, file=sys.stderr)
             print("ERROR: Task was: ", self.base, file=sys.stderr)
-            exit(1)
+            sys.exit(1)
 
 class DootSubtasker(DootTasker):
     """ Extends DootTasker to make subtasks
@@ -243,7 +243,7 @@ class DootSubtasker(DootTasker):
         except Exception as err:
             print("ERROR: Task Creation Failure: ", err, file=sys.stderr)
             print("ERROR: Task was: ", self.base, file=sys.stderr)
-            exit(1)
+            sys.exit(1)
 
     def _sleep_subtask(self):
         if self.sleep_notify:
@@ -406,7 +406,7 @@ class ActionsMixin:
         for x in args:
             target_name = fn(fpath, x)
             if not overwrite and target_name.exists():
-                logging.warning("Not Copying: %s -> %s", x, target_name)
+                logging.warning("File Exists already: %s -> %s", x, target_name)
                 continue
             match x.is_file():
                 case True:
@@ -470,16 +470,20 @@ class ActionsMixin:
         for line in fileinput(files=files, inplace=inplace):
             fn(line)
 
-    def say(self, *text):
-        cmd = ["say", "-v", "Moira", "-r", "50"]
+    def say(self, *text, voice="Moira"):
+        cmd = ["say", "-v", voice, "-r", "50"]
         cmd += text
         return CmdAction(cmd, shell=False)
 
 class ZipperMixin:
-    zip_name      = "default"
-    zip_overwrite = False
-    zip_root      = None
+    zip_name       = "default"
+    zip_overwrite  = False
+    zip_root       = None
+    compression    = 'ZIP_DEFLATED'
+    compress_level = 4
 
+    def zip_set_root(self, fpath):
+        self.zip_root = fpath
     def zip_create(self, fpath):
         assert(fpath.suffix== ".zip")
         if self.zip_overwrite and fpath.exists():
@@ -491,7 +495,7 @@ class ZipperMixin:
         now = datetime.datetime.strftime(datetime.datetime.now(), "%Y:%m:%d::%H:%M:%S")
         record_str = f"Zip File created at {now} for doot task: {self.base}"
 
-        with zipfile.ZipFile(fpath, 'w') as targ:
+        with zipfile.ZipFile(fpath, mode='w', compression=self.compression, compresslevel=self.compress_level, allowZip64=True ) as targ:
             targ.writestr(".taskrecord", record_str)
 
     def zip_add_paths(self, fpath, *args):
@@ -502,7 +506,9 @@ class ZipperMixin:
         assert(fpath.suffix == ".zip")
         root = self.zip_root or pl.Path()
         paths = [pl.Path(x) for x in args]
-        with zipfile.ZipFile(fpath, 'a') as targ:
+        with zipfile.ZipFile(fpath, mode='a',
+                             compression=self.compression, compresslevel=self.compress_level,
+                             allowZip64=True ) as targ:
             for file_to_add in paths:
                 try:
                     relpath = file_to_add.relative_to(root)
@@ -531,7 +537,9 @@ class ZipperMixin:
         assert(fpath.suffix == ".zip")
         cwd  = pl.Path()
         root = self.zip_root or cwd
-        with zipfile.ZipFile(fpath, 'a') as targ:
+        with zipfile.ZipFile(fpath, mode='a',
+                             compression=self.compression, compresslevel=self.compress_level,
+                             allowZip64=True) as targ:
             for glob in globs:
                 result = list(cwd.glob(glob))
                 print(f"Globbed: {cwd}[{glob}] : {len(result)}")
@@ -545,3 +553,12 @@ class ZipperMixin:
                         relpath = root / pl.Path(dep).name
                     except FileNotFoundError as err:
                         print(f"Adding File to Zip {fpath} failed: {err}", file=sys.stderr)
+
+
+    def zip_add_str(self, fpath, fname, text:str):
+        assert(fpath.suffix == ".zip")
+        with zipfile.ZipFile(fpath, mode='a',
+                             compression=self.compression, compresslevel=self.compress_level,
+                             allowZip64=True) as targ:
+            assert(fname not in targ.namelist())
+            targ.writestr(fname, text)

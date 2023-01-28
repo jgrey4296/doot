@@ -42,7 +42,7 @@ hash_record  : Final = doot.config.on_fail(".hashes", str).tool.doot.files.hash.
 hash_concat  : Final = doot.config.on_fail(".all_hashes", str).tool.doot.files.hash.grouped()
 hash_dups    : Final = doot.config.on_fail(".dup_hashes", str).tool.doot.files.hash.duplicates()
 
-class HashAllFiles(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin, task.BatchMixin):
+class HashAllFiles(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin, tasker.BatchMixin):
     """
     ([data] -> data) For each subdir, hash all the files in it
     info
@@ -106,11 +106,15 @@ class HashAllFiles(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Action
             f.write("\n" + act.out)
 
 class GroupHashes(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
+    """
+
+    """
 
     def __init__(self, name="files::hash.group", locs:DootLocData=None, roots=None, exts=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=exts, rec=rec)
         self.hash_record    = hash_record
         self.hash_concat    = hash_concat
+        assert(self.locs.temp)
 
     def filter(self, fpath):
         if (fpath / self.hash_record).exists():
@@ -142,6 +146,8 @@ class DetectDuplicateHashes(tasker.DootTasker, tasker.ActionsMixin):
     def __init__(self, name="files::hash.duplicates", locs=None):
         super().__init__(name, locs)
         self.hash_concat = hash_concat
+        assert(self.locs.build)
+        assert(self.locs.temp)
 
     def task_detail(self, task):
         target = self.locs.build / hash_dups
@@ -163,60 +169,3 @@ class DetectDuplicateHashes(tasker.DootTasker, tasker.ActionsMixin):
                          "--check-chars=32"])
 
 
-def file_to_hash(filename:pl.Path):
-    with open(filename, 'rb') as f:
-        return sha256(f.read()).hexdigest()
-
-def map_files_to_hash(files:list[pl.Path]) -> dict[str, int]:
-    hash_dict = {}
-
-    for fl in files:
-        rel      = fl.relative_to(fl.parent.parent.parent)
-        hash_val = file_to_hash(fl)
-
-        hash_dict[str(rel)] = str(hash_val)
-
-    return hash_dict
-
-
-
-def hash_all(files:list[pl.Path]) -> tuple[dict, list]:
-    """
-    Map hashes to files,
-    plus hashes with more than one image
-    """
-    assert(isinstance(files, list))
-    assert(all([isinstance(x, pl.Path) for x in files]))
-    assert(all([x.is_file() for x in files]))
-
-    hash_dict = {}
-    conflicts = {}
-    update_num = int(len(files) / 100)
-    count = 0
-    for i,x in enumerate(files):
-        if i % update_num == 0:
-            logging.info("%s / 100", count)
-            count += 1
-        the_hash = file_to_hash(x)
-        if the_hash not in hash_dict:
-            hash_dict[the_hash] = []
-        hash_dict[the_hash].append(x)
-        if len(hash_dict[the_hash]) > 1:
-            conflicts[the_hash] = len(hash_dict[the_hash])
-
-    return (hash_dict, conflicts)
-
-def find_missing(library:list[pl.Path], others:list[pl.Path]):
-    # TODO: handle library hashes that already have a conflict
-    library_hash, conflicts = hash_all(library)
-    missing = []
-    update_num = int(len(others) / 100)
-    count = 0
-    for i,x in enumerate(others):
-        if i % update_num == 0:
-            logging.info("%s / 100", count)
-            count += 1
-        the_hash = file_to_hash(x)
-        if the_hash not in library_hash:
-            missing.append(x)
-    return missing
