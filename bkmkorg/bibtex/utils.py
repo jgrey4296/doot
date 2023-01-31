@@ -34,7 +34,7 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-def names_to_pairs(people) -> list[tuple[str, str]]:
+def names_to_pairs(people, entry) -> list[tuple[str, str]]:
     target = set()
     for person in people:
         parts = [" ".join(person[x]).strip() for x in ["first", "last", "von", "jr"]]
@@ -55,7 +55,7 @@ def names_to_pairs(people) -> list[tuple[str, str]]:
 
     return target
 
-def names_to_str(people:list, et_al=3) -> list[str]:
+def names_to_str(people:list, entry, et_al=3) -> list[str]:
     """
     Convert a list of name parts from bibtex into a string
     """
@@ -81,3 +81,19 @@ def names_to_str(people:list, et_al=3) -> list[str]:
         return f"{target[0]} et al"
     else:
         return " ".join(target)
+
+
+def year_parse(entry):
+    """
+    parse the year into a datetime
+    """
+    if 'year' not in entry:
+        year_temp = "2020"
+    else:
+        year_temp = entry['year']
+
+    if "/" in year_temp:
+        year_temp = year_temp.split("/")[0]
+
+    year = datetime.datetime.strptime(year_temp, "%Y")
+    entry['__year'] = year

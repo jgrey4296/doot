@@ -38,6 +38,7 @@ import bibtexparser as b
 import doot
 from bibtexparser import customization as c
 from bibtexparser.bparser import BibTexParser
+from .writer import JGBibTexWriter
 
 __all__ = ["BibLoadSaveMixin"]
 
@@ -59,7 +60,7 @@ class BibLoadSaveMixin:
         return self._parse_bib_files(files, fn=fn, db=db)
 
     def bc_db_to_str(self, db, fn:callable, lib_root) -> str:
-        writer = b_write.JGBibTexWriter()
+        writer = JGBibTexWriter()
         for entry in db.entries:
             fn(entry, lib_root)
 
@@ -70,21 +71,25 @@ class BibLoadSaveMixin:
         removing the the __{field} once processed
         """
 
+        delete_fields = set()
         for field in entry.keys():
             if field[:2] != "__":
                 continue
 
+            delete_fields.add(field)
             match field:
                 case "__tags":
                     entry["tags"] = self._join_tags(entry[field])
-                case "__paths":
-                    entry.update(self._path_strs(entry[field]))
+                case "__paths" if bool(entry['__paths']):
+                    entry.update(self._path_strs(entry[field], lib_root))
                 case "__authors":
                     pass
                 case "__editors":
                     pass
                 case _:
                     pass
+
+        for field in delete_fields:
             del entry[field]
 
     def _join_tags(self, tagset) -> str:
@@ -95,10 +100,11 @@ class BibLoadSaveMixin:
         for field, path in pathdict.items():
             if not path.is_relative_to(lib_root):
                 results[field] = str(path)
+                continue
 
             assert(field not in results)
             rel_path = path.relative_to(lib_root)
-            results[field] = rel_path
+            results[field] = str(rel_path)
 
         return results
 

@@ -40,56 +40,7 @@ TITLESPLIT_RE : Final = re.compile(r"^(.+?): (.+)$")
 
 empty_match : Final = re.match("","")
 
-class _PrivateCleanMixin:
-    """
-    Private Mixin utility methods
-    """
-
-    def _clean_parent_paths(self, entry, base_name, lib_root) -> list[tuple[str, pl.Path]]:
-        """ prepare parent directories if they have commas in them
-        handles clean target already existing
-        """
-        if 'crossref' in entry:
-            return
-        assert('__paths' in entry)
-        assert('__base_name' in entry)
-        base = entry['__base_name']
-
-        results = []
-        for field, fpath in entry['__paths'].items():
-            match self.__ideal_parent(fpath, year, base):
-                case None:
-                    pass
-                case _ as val:
-                    results.append((field, val))
-
-        return results
-
-    def __ideal_parent(self, fpath, year, base, lib_root):
-        """
-        Get the correct parent location for files
-        """
-        #(focus: /lib/root/1922/bib_customization) (rst: blah.pdf)
-        focus   = fpath.parent
-
-        if not focus.is_relative_to(lib_root):
-            # Not in library
-            return None
-
-        # Copy root for in place editing
-        cleaned = pl.Path(lib_root)
-
-        # Everything is in root/year/base
-        cleaned /= year
-        cleaned /= base
-
-        return cleaned
-
-    def _separate_names(self, text):
-        names = bib_customization.getnames([x.strip() for x in AND_RE.split(text)])
-        return [bib_customization.splitname(x.strip(), False) for x in names]
-
-class BibFieldCleanMixin(_PrivateCleanMixin):
+class BibFieldCleanMixin:
     """
     mixin for cleaning fields of bibtex records
     """
@@ -102,20 +53,6 @@ class BibFieldCleanMixin(_PrivateCleanMixin):
             return None
 
         return entry['ID'], msg.format(target=target, actual=entry['year'])
-
-    def bc_check_files(self, entry, msg) -> list[tuple[str, str]]:
-        """
-        check all files exist
-        """
-        assert('__paths' in entry)
-        results = []
-        for field, fpath in entry['__paths']:
-            if pl.Path(entry[field]).exists():
-                continue
-
-            results.append((entry['ID'], msg.format(file=entry[field])))
-
-        return results
 
     def bc_title_split(self, entry):
         if 'title' not in entry:
@@ -176,16 +113,21 @@ class BibFieldCleanMixin(_PrivateCleanMixin):
         entry["__tags"] = {x.strip() for x in tags}
         return entry
 
-class BibPathCleanMixin(_PrivateCleanMixin):
+    def _separate_names(self, text):
+        names = bib_customization.getnames([x.strip() for x in AND_RE.split(text)])
+        return [bib_customization.splitname(x.strip(), False) for x in names]
+
+class BibPathCleanMixin:
     """
     Mixin for cleaning path elements of bib records
     """
 
     def bc_expand_paths(self, entry, lib_root):
         if 'crossref' in entry:
+            entry['__paths'] = {}
             return
 
-        results = set()
+        results = dict()
         for field, fname in entry.items():
             if 'file' not in field:
                 continue
@@ -196,6 +138,20 @@ class BibPathCleanMixin(_PrivateCleanMixin):
             results[field] = fpath
 
         entry['__paths'] = results
+
+    def bc_check_files(self, entry, msg) -> list[tuple[str, str]]:
+        """
+        check all files exist
+        """
+        assert('__paths' in entry)
+        results = []
+        for field, fpath in entry['__paths'].items():
+            if pl.Path(fpath).exists():
+                continue
+
+            results.append((entry['ID'], msg.format(file=fpath)))
+
+        return results
 
     def bc_base_name(self, entry) -> str:
         """
@@ -216,7 +172,7 @@ class BibPathCleanMixin(_PrivateCleanMixin):
         as_ascii   = as_unicode.encode("ascii", "ignore").decode().replace("\\", "")
         entry['__base_name'] = as_ascii
 
-    def bc_ideal_stem(self, entry) -> str:
+    def bc_ideal_stem(self, entry):
         """
         create an ideal stem for an entry's files
         if there are multiple files, they will have a unique hex value added to their stem later
@@ -249,8 +205,8 @@ class BibPathCleanMixin(_PrivateCleanMixin):
         assert('__paths' in entry)
         assert('__base_name' in entry)
         assert('__ideal_stem' in entry)
-        parents = self._clean_parent_paths(entry, LIB_ROOT)
-        stem = entry['__ideal_stem']
+        parents = self.__clean_parent_paths(entry, lib_root)
+        stem    = entry['__ideal_stem']
 
         results = []
         for field, parent in parents:
@@ -261,20 +217,70 @@ class BibPathCleanMixin(_PrivateCleanMixin):
 
         return results
 
-    def bc_unique_stem(self, orig, proposed) -> None|pl.Path:
+    def __clean_parent_paths(self, entry, lib_root) -> list[tuple[str, pl.Path]]:
+        """ prepare parent directories if they have commas in them
+        handles clean target already existing
+        """
+        if 'crossref' in entry:
+            return []
+
+        assert('__paths' in entry)
+        assert('__base_name' in entry)
+        base = entry['__base_name']
+        year = entry['year']
+        results = []
+
+        for field, fpath in entry['__paths'].items():
+            if not fpath.exists():
+                continue
+            match self.__ideal_parent(fpath, year, base, lib_root):
+                case None:
+                    pass
+                case _ as val:
+                    results.append((field, val))
+
+        return results
+
+    def __ideal_parent(self, fpath, year, base, lib_root):
+        """
+        Get the correct parent location for files
+        """
+        #(focus: /lib/root/1922/bib_customization) (rst: blah.pdf)
+        focus   = fpath.parent
+
+        if not focus.is_relative_to(lib_root):
+            # Not in library
+            return None
+
+        # Copy root for in place editing
+        cleaned = pl.Path(lib_root)
+
+        # Everything is in root/year/base
+        cleaned /= year
+        cleaned /= base
+
+        return cleaned
+
+    def bc_unique_stem(self, orig:pl.Path, proposed:pl.Path) -> None|pl.Path:
         """
         Returns a guaranteed non-existing path, or None
         """
-        assert(orig.exists())
-        if orig.samefile(proposed):
+        if not orig.exists() or (proposed.exists() and orig.samefile(proposed)):
             return None
 
-        if orig.stem[:-6] == ideal_fp.stem:
-            # fp is already a stem+uuid, so do nothing
-            return proposed.parent / orig.name
+        stems_eq   = orig.stem[:-6] == proposed.stem
+        parents_eq = orig.parent == proposed.parent
+        match parents_eq, stems_eq:
+            case True, True:
+                return None
+            case False, True:
+                return proposed.parent / orig.name
+            case _:
+                pass
 
         hexed  = proposed
         while hexed.exists():
+            logging.debug("Finding a unique non-existent path")
             hex_val     = str(uuid4().hex)[:5]
             ideal_stem += f"_{hex_val}"
             hexed       = proposed.with_stem(ideal_stem)
@@ -294,18 +300,3 @@ def basic_clean(entry):
     bib_customization.doi(entry)
 
     return entry
-
-def year_parse(entry):
-    """
-    parse the year into a datetime
-    """
-    if 'year' not in entry:
-        year_temp = "2020"
-    else:
-        year_temp = entry['year']
-
-    if "/" in year_temp:
-        year_temp = year_temp.split("/")[0]
-
-    year = datetime.datetime.strptime(year_temp, "%Y")
-    entry['__year'] = year

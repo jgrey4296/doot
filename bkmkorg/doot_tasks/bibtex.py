@@ -107,7 +107,9 @@ class BibtexClean(globber.DootEagerGlobber, task_mixins.ActionsMixin, bib_clean.
         target = fpath if clean_in_place else self.locs.temp / fpath.name
         task.update({
             "actions" : [ (self.load_and_clean, [fpath]), # -> cleaned
-                          lambda: {"cleaned" : self.bc_db_to_str(self.current_db, self.bc_prep_entry_for_write, self.locs.bibtex) },
+                          lambda: {"cleaned" : self.bc_db_to_str(self.current_db,
+                                                                 self.bc_prepare_entry_for_write,
+                                                                 self.locs.pdfs) },
                           (self.write_to, [target, "cleaned"]),
                          ],
             "file_dep" : [ fpath ],
@@ -137,19 +139,19 @@ class BibtexClean(globber.DootEagerGlobber, task_mixins.ActionsMixin, bib_clean.
 
             self.bc_expand_paths(entry, self.locs.pdfs)
             assert("__paths" in entry)
-            for e_id, msg in self.check_files(self, entry, self.bad_file_msg):
+            for e_id, msg in self.bc_check_files(entry, self.bad_file_msg):
                 self.issues.append((e_id, msg))
                 print(e_id + msg, file=sys.stderr)
 
             self.bc_base_name(entry)
-            self.bc_ideal_stem(entry, base_name)
+            self.bc_ideal_stem(entry)
 
             # Clean files [(field, orig, newloc, newstem)]
             movements : list[tuple[str, pl.Path, pl.Path, str]] = self.bc_prepare_file_movements(entry, self.locs.pdfs)
             orig_parents = set()
             for field, orig, new_dir, new_stem in movements:
                 orig_parents.add(orig.parent)
-                unique = self.bc_unique_stem(orig, newloc / new_stem)
+                unique = self.bc_unique_stem(orig, (new_dir / new_stem).with_suffix(orig.suffix))
                 if unique is None:
                     continue
 
@@ -166,10 +168,10 @@ class BibtexClean(globber.DootEagerGlobber, task_mixins.ActionsMixin, bib_clean.
             # Clean up parents
             for parent in orig_parents:
                 try:
-                    should_rm = bool(list(parent.iterdir()))
-                    if should_rm and self.args['move-files']:
-                        parent.rmdir()
-                    elif should_rm:
+                    should_rm = not bool(list(parent.iterdir()))
+                    # if should_rm and self.args['move-files']:
+                    #     parent.rmdir()
+                    if should_rm:
                         logging.info("Proposed Directory Cleanup: %s", parent)
                 except OSError as err:
                     if not err.args[0] == 66:
@@ -180,7 +182,7 @@ class BibtexClean(globber.DootEagerGlobber, task_mixins.ActionsMixin, bib_clean.
             print(f"Error Occurred for {entry['ID']}: {err}", file=sys.stderr)
             raise err
 
-class BibtexReport(globber.DootEagerGlobber, task_mixins.ActionsMixin, BibLoadSaveMixin, bib_clean.BibFieldCleanMixin):
+class BibtexReport(globber.DootEagerGlobber, task_mixins.ActionsMixin, BibLoadSaveMixin, bib_clean.BibFieldCleanMixin, bib_clean.BibPathCleanMixin):
     """
     (src -> build) produce reports on the bibs found
     """
@@ -209,14 +211,14 @@ class BibtexReport(globber.DootEagerGlobber, task_mixins.ActionsMixin, BibLoadSa
             "actions" : [
 
                 ##-- report on authors
-                lambda:   { "author_max" : max(len(x[0]) for x in self.authors) },
+                lambda:      { "author_max" : max((len(x[0]) for x in self.authors), default=0) },
                 lambda task: { "author_lines" : [f"{last:<{task.values['author_max']}}{first}" for last,first in self.authors] },
                 lambda task: { "authors" : "\n".join(sorted(task.values['author_lines'], key=lambda x: x[0].lower())) },
                 (self.write_to, [author_target, "authors"]),
                 ##-- end report on authors
 
                 ##-- report on editors
-                lambda:   { "editor_max" : max(len(x[0]) for x in self.editors) },
+                lambda:   { "editor_max" : max((len(x[0]) for x in self.editors), default=0) },
                 lambda task: { "editor_lines" : [f"{last:<{task.values['editor_max']}}{first}" for last,first in self.editors] },
                 lambda task: { "editors" : "\n".join(sorted(task.values['editor_lines'], key=lambda x: x[0].lower())) },
                 (self.write_to, [editor_target, "editors"]),
@@ -247,28 +249,32 @@ class BibtexReport(globber.DootEagerGlobber, task_mixins.ActionsMixin, BibLoadSa
     def subtask_detail(self, task, fpath):
         task.update({
             "actions" : [
-                (self.bc_load_db, [[fpath], self.process_entry, self.db]),
+                (self.load_db, [fpath]),
             ],
         })
         return task
 
+    def load_db(self, fpath):
+        self.db = self.bc_load_db([fpath], fn=self.process_entry, db=self.db)
+
     def process_entry(self, entry):
         try:
             self.bc_to_unicode(entry)
+            self.bc_expand_paths(entry, self.locs.pdfs)
             self.bc_tag_split(entry)
             self.bc_split_names(entry)
 
-            assert(all(x in entry for x in ['__paths', '__split_names', '__as_unicode']))
+            assert(all(x in entry for x in ['__paths', '__split_names', '__as_unicode', '__tags']))
             self.collect_tags(entry)
             self.collect_authors_and_editors(entry)
-            self.year_counts[entry['year']] += 1
+            self.year_counts[entry['year']]    += 1
             self.type_counts[entry[ENT_const]] += 1
 
-            if any("file" in key for key in entry.keys()):
+            if bool(entry['__paths']):
                 self.files_counts[entry[ENT_const]] += 1
 
         except Exception as err:
-            logging.warning("Failure to process %s : %s", original['ID'], err)
+            logging.warning("Failure to process %s : %s", entry['ID'], err)
         finally:
             return entry
 
@@ -295,7 +301,7 @@ class BibtexReport(globber.DootEagerGlobber, task_mixins.ActionsMixin, BibLoadSa
                 logging.warning("Unexpected entry: %s", entry['ID'])
 
         assert(bool(people))
-        target.update(bib_utils.names_to_pars(people, target))
+        target.update(bib_utils.names_to_pairs(people, entry))
 
     def gen_years(self):
         """
