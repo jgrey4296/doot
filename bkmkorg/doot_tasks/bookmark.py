@@ -57,7 +57,6 @@ class BookmarksUpdate(DootTasker, ActionsMixin):
         assert(self.locs.temp)
         assert(self.locs.bookmarks_total)
 
-
     def task_detail(self, task):
         dbs         = self.locs.firefox.rglob(self.database)
         bkmks       = self.locs.bookmarks_total
@@ -155,13 +154,17 @@ class BookmarksReport(globber.DootEagerGlobber, ActionsMixin):
             ]
         })
         return task
+
     def subtask_detail(self, task, fpath):
         task.update({
             "actions" : [
-                lambda: self.bookmarks.update(BC.BookmarkCollection.read(fpath)),
+                (self.add_bookmarks, [fpath])
             ]
         })
         return task
+
+    def add_bookmarks(self, fpath):
+        self.bookmarks.update(BC.BookmarkCollection.read(fpath))
 
     def gen_report(self):
 
