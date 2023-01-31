@@ -88,8 +88,10 @@ def main():
         errored = True
     finally:
         say_on_exit = False
+        voice = "Moira"
         if doot.config is not None:
             say_on_exit = doot.config.on_fail(False, bool|str).tool.doot.say_on_exit()
+            voice       = doot.config.on_fail(voice, str).tool.doot.voice()
         match errored, say_on_exit:
             case False, str() as say_text:
                 cmd = CmdAction(["say", "-v", voice, "-r", "50", say_text], shell=False)

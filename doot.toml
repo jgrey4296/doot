@@ -17,10 +17,13 @@ temp     = ".temp"
 lint-out = "build/lint"
 wheel    = "build/wheel"
 
+[tool.doot.files]
+
+[tool.doot.listing]
+core = []
+
 [tool.doot.group.pip]
-debug = true
 [tool.doot.group.python]
-debug = true
 [tool.doot.group.gtags]
 [tool.doot.group.git]
 
@@ -28,4 +31,3 @@ debug = true
 src = "."
 
 [tool.doot.python.lint]
-grouped = false

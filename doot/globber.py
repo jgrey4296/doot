@@ -109,7 +109,7 @@ class DootEagerGlobber(DootSubtasker):
 
         return results
 
-    def glob_all(self, rec=False) -> list[tuple(str, pl.Path)]:
+    def glob_all(self, rec=None) -> list[tuple(str, pl.Path)]:
         """
         Glob all available files,
         and generate unique names for them

@@ -156,7 +156,7 @@ class ActionsMixin:
             case str():
                 value = task.values[key]
             case [*strs]:
-                value = sep.join([task.values[x] for x in str])
+                value = sep.join([task.values[x] for x in key])
 
         fpath.write_text(value)
 

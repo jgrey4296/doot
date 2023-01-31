@@ -10,6 +10,7 @@ from doot import tasker, globber, task_mixins
 
 ##-- end imports
 
+listing_roots = doot.config.on_fail([], list).tool.doot.listing.core()
 glob_ignores : Final = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).tool.doot.globbing.ignores()
 
 class FileListings(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
@@ -19,7 +20,8 @@ class FileListings(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.A
     """
 
     def __init__(self, name="listing::files", locs=None, roots=None, rec=False, exts=None):
-        super().__init__(name, locs, roots or [x[1] for x in locs], rec=rec, exts=exts)
+        list_these = [getattr(locs, x) for x in listing_roots]
+        super().__init__(name, locs, roots or list_these , rec=rec, exts=exts)
         self.output = self.locs.on_fail(self.locs.build).listings_out()
 
     def filter(self, fpath):
