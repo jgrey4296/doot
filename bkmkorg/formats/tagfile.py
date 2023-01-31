@@ -32,8 +32,8 @@ class TagFile:
 
     @classmethod
     def read(cls, fpath:pl.Path, sep=None) -> TagFile:
-        obj = cls(sep=sep)
-        for i, line in enumerate(fpath.read_text.split("\n")):
+        obj = cls(sep=sep or cls.sep)
+        for i, line in enumerate(fpath.read_text().split("\n")):
             try:
                 obj.update(tuple(x.strip() for x in line.split(obj.sep)))
             except Exception as err:
@@ -53,7 +53,7 @@ class TagFile:
         for key in sorted(self.counts.keys()):
             if not bool(self.counts[key]):
                 continue
-            all_lines.append(self.sep.join([key, str(self.counts[k])]))
+            all_lines.append(self.sep.join([key, str(self.counts[key])]))
         return "\n".join(all_lines)
 
     def __repr__(self):
@@ -80,10 +80,10 @@ class TagFile:
                     continue
                 case str():
                     self._inc(val)
-                case (str() as key, int() as counts):
-                    self._inc(key, amnt=counts)
+                case (str() as key, str() as counts):
+                    self._inc(key, amnt=int(counts))
                 case TagFile():
-                    self.update(values.counts.items())
+                    self.update(*values.counts.items())
                 case set():
                     self.update(*val)
         return self
@@ -109,14 +109,11 @@ class SubstitutionFile(TagFile):
         """
         all_lines = []
         for key in sorted(self.counts.keys()):
-            line = [k, self.counts[k]]
-            line += sorted(self.substitutions[k])
+            line = [key, str(self.counts[key])]
+            line += sorted(self.substitutions[key])
             all_lines.append(self.sep.join(line))
 
         return "\n".join(all_lines)
-
-    def __iadd__(self, value):
-        return self.update(value)
 
     def sub(self, value:str) -> set[str]:
         """ apply a substitution if it exists """
@@ -135,14 +132,17 @@ class SubstitutionFile(TagFile):
                     continue
                 case str():
                     self._inc(val)
-                case (str() as key, int() as counts):
-                    self._inc(key, amnt=counts)
-                case (str() as key, int() as counts, *subs):
-                    norm_key = self._inc(key, amnt=counts)
+                case (str() as key, str() as counts):
+                    self._inc(key, amnt=int(counts))
+                case (str() as key, str() as counts, *subs):
+                    norm_key = self._inc(key, amnt=int(counts))
                     norm_subs = [ self.norm_regex.sub("_", x.strip()) for x in subs]
                     self.substitutions[norm_key].update([x for x in norm_subs if bool(x)])
+                case dict():
+                    for key, val in val.items():
+                        self._inc(key, amnt=val)
                 case SubstitutionFile():
-                    self.update(val.counts.items())
+                    self.update(val.counts)
                     for tag, subs in val.substitutions.items():
                         self.substitutions[tag].update(subs)
                 case TagFile():

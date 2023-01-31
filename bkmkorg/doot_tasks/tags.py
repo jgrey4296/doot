@@ -161,13 +161,13 @@ class TagsReport(globber.DootEagerGlobber, ActionsMixin):
 
     def task_detail(self, task):
         report     = self.locs.build / "tags.report"
-        all_subs   = self.locs.temp  / "all_subs.sub"
-        all_counts = self.locs.temp  / "all_counts.tags"
+        all_subs   = self.locs.temp  / "tags" / "all_subs.sub"
+        all_counts = self.locs.temp  / "tags" / "all_counts.tags"
         task.update({
             "actions" : [ self.report_totals,
                           self.report_alphas,
                           self.report_subs,
-                          (self.write_to, [report, "sum_count", "alphas", "subs"]),
+                          (self.write_to, [report, ["sum_count", "alphas", "subs"]]),
                           (self.write_to, [all_subs, "all_subs"]),
                           (self.write_to, [all_counts, "all_counts"]),
                          ],
