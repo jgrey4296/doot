@@ -29,9 +29,9 @@ from bkmkorg.twitter.org_writer import TwitterTweet
 from bkmkorg.twitter.todo_list import TweetTodoFile
 from bkmkorg.twitter.tweet_graph import TwitterGraph
 from doot import globber
-from doot.tasker import ActionsMixin, BatchMixin, DootTasker, ZipperMixin
+from doot.tasker import DootTasker
+from doot.task_mixins import ActionsMixin, BatchMixin, ZipperMixin
 from doot.taskslib.files.downloader import DownloaderMixin
-from doot.toml_access import TomlAccess
 
 import twitter
 
@@ -583,23 +583,24 @@ class TwitterArchive(globber.DootEagerGlobber, ActionsMixin, ZipperMixin):
         return task
 
     def load_thread(self, fpath):
-        self.thread_data = json.loads(fpath.load_text())
+        self.thread_data = json.loads(fpath.read_text())
         return { "component": self.thread_data['component'],
                  "base_user": self.thread_data['base_user'],
                 }
 
     def load_component(self, task):
-        self.component_data = json.loads(pl.Path(task.values['component']))
+        self.component_data = json.loads(pl.Path(task.values['component']).read_text())
 
     def add_to_user_archive(self, task):
         group = "group_symbols"
-        if re.match(r"^[a-zA-Z]", task.values['base_user']):
+        base_user = task.values['base_user']
+        if re.match(r"^[a-zA-Z]", base_user):
             group = f"group_{base_user[0]}"
 
-        target_path = self.locs.tweet_library / group / task.values['base_user'] / "archive.zip"
+        target_path = self.locs.tweet_library / group / base_user / "archive.zip"
         if not target_path.exists():
             self.zip_create(target_path)
 
         as_json = json.dumps({"thread": self.thread_data, "component": self.component_data})
         json_name = pl.Path(task.values['component']).name
-        self.zip_add_str(json_name, as_json)
+        self.zip_add_str(target_path, json_name, as_json)

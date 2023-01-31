@@ -33,13 +33,14 @@ class Bookmark:
         """
         Build a bookmark from a line of a bookmark file
         """
-        sep        = sep or Bookmark.sep
+        sep  = sep or Bookmark.sep
+        tags = []
         match [x.strip() for x in line.split(sep)]:
             case []:
                 raise TypeException("Bad line passed to Bookmark")
             case [url]:
                 logging.warning("No Tags for: %s", url)
-            case [url, *tags]
+            case [url, *tags]:
                 pass
 
         return Bookmark(url,
@@ -121,15 +122,15 @@ class BookmarkCollection:
 
     def update(self, *values):
         for val in values:
-            match value:
+            match val:
                 case Bookmark():
-                    self.entries.append(value)
+                    self.entries.append(val)
                 case BookmarkCollection():
-                    self.entries += value.entries
-                case [*vals] | (*vals) | {*vals}:
+                    self.entries += val.entries
+                case [*vals] | set(vals):
                     self.update(*vals)
                 case _:
-                    raise TypeError(type(value))
+                    raise TypeError(type(val))
         return self
 
     def difference(self, other:BookmarkCollection):

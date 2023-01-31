@@ -76,7 +76,7 @@ class TagFile:
     def update(self, *values):
         for val in values:
             match val:
-                case None or "":
+                case None | "":
                     continue
                 case str():
                     self._inc(val)

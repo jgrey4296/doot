@@ -20,8 +20,8 @@ import time
 import json
 import uuid
 import doot
-from doot import TomlAccess
-from doot.tasker import BatchMixin
+from doot.task_mixins import BatchMixin
+import tomler
 import tweepy
 
 tweet_size         : Final = doot.config.on_fail(250, int).tool.doot.twitter.tweet_size()
@@ -42,7 +42,7 @@ class TwitterMixin:
 
     def setup_twitter(self, config:pl.Path|str):
         logging.info("---------- Initialising Twitter")
-        secrets      = TomlAccess.load(pl.Path(config).expanduser())
+        secrets      = tomler.load(pl.Path(config).expanduser())
         should_sleep = secrets.DEFAULT.sleep
         self.twitter = tw.Api(consumer_key=secrets.twitter.py.apiKey,
                               consumer_secret=secrets.twitter.py.apiSecret,
@@ -160,7 +160,7 @@ class TweepyMixin:
 
     def setup_twitter(self, config:pl.Path|str):
         logging.info("---------- Initialising Tweepy")
-        secrets      = TomlAccess.load(pl.Path(config).expanduser())
+        secrets      = tomler.load(pl.Path(config).expanduser())
         match secrets.twitter.method:
             case "v1bearer":
                 self.setup_twitter_v1_bearer(secrets)

@@ -53,7 +53,7 @@ class ADBUpload(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
 
     def __init__(self, name="android::upload", locs=None, roots=None, rec=True):
-        super().__init__(name, locs, roots or [locs.library], rec=rec)
+        super().__init__(name, locs, roots or [locs.pdfs], rec=rec)
         self.device_root = None
         self.report      = {}
 

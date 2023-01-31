@@ -32,7 +32,7 @@ logging = logmod.getLogger(__name__)
 
 from random import choice
 import doot
-from doot import tasker
+from doot import tasker, task_mixins
 from bkmkorg.apis.mastodon import MastodonMixin
 from bkmkorg.apis.twitter import TwitterMixin
 from bkmkorg.bibtex.load_save import BibLoadSaveMixin
@@ -220,7 +220,7 @@ class BibPoster(tasker.DootTasker, MastodonMixin, TwitterMixin, BibLoadSaveMixin
     def write_blacklist(self):
         self.locs.bib_blacklist.write_text("\n".join(self.blacklist))
 
-class ImagePoster(tasker.DootTasker, MastodonMixin, TwitterMixin, tasker.ActionsMixin):
+class ImagePoster(tasker.DootTasker, MastodonMixin, TwitterMixin, task_mixins.ActionsMixin):
     """
     Select an image from the whitelist, and tweet/toot
     """

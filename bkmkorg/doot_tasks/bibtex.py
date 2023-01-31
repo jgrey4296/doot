@@ -42,7 +42,7 @@ from bkmkorg.formats.timelinefile import TimelineFile
 from bkmkorg.bibtex import utils as bib_utils
 from doot import globber
 from doot.tasker import DootTasker
-from doot import tasker
+from doot import tasker, task_mixins
 
 pl_expand : Final = lambda x: pl.Path(x).expanduser().resolve()
 
@@ -52,24 +52,24 @@ clean_in_place   : Final = doot.config.on_fail(False, bool).tool.doot.bibtex.cle
 
 ENT_const        : Final = 'ENTRYTYPE'
 
-class LibDirClean(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
+class LibDirClean(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     Clean the directories of the bibtex library
     """
 
     def __init__(self, name="pdflibrary::clean", locs=None, roots=None, rec=False, exts=None):
-        super().__init__(name, locs, roots or [locs.lib], rec=False, exts=exts)
+        super().__init__(name, locs, roots or [locs.pdfs], rec=False, exts=exts)
 
     def filter(self, fpath):
         return not bool(list(fpath.iterdir()))
 
     def subtask_detail(self, task, fpath):
         task.update({
-            "actions": [ (self.rmdir, [fpath]) ],
+            "actions": [ (self.rmdirs, [fpath]) ],
         })
         return task
 
-class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin, bib_clean.BibFieldCleanMixin, bib_clean.BibPathCleanMixin, BibLoadSaveMixin):
+class BibtexClean(globber.DootEagerGlobber, task_mixins.ActionsMixin, bib_clean.BibFieldCleanMixin, bib_clean.BibPathCleanMixin, BibLoadSaveMixin):
     """
     (src -> src) Clean all bib files
     formatting, fixing paths, etc
@@ -78,13 +78,13 @@ class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin, bib_clean.BibFi
     bad_file_msg   = " : File Does Not Exist : {file}"
 
     def __init__(self, name="bibtex::clean", locs=None, roots=None, rec=True):
-        super().__init__(name, locs, roots or [locs.bibtex_library], exts=[".bib"], rec=rec)
+        super().__init__(name, locs, roots or [locs.bibtex], exts=[".bib"], rec=rec)
         self.current_db   = None
         self.current_year = None
         self.issues = []
         assert(self.locs.build)
         assert(self.locs.temp)
-        assert(self.locs.bibtex_library)
+        assert(self.locs.bibtex)
 
     def set_params(self):
         return [
@@ -107,7 +107,7 @@ class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin, bib_clean.BibFi
         target = fpath if clean_in_place else self.locs.temp / fpath.name
         task.update({
             "actions" : [ (self.load_and_clean, [fpath]), # -> cleaned
-                          lambda: {"cleaned" : self.bc_db_to_str(self.current_db, self.bc_prep_entry_for_write, self.locs.bibtex_library) },
+                          lambda: {"cleaned" : self.bc_db_to_str(self.current_db, self.bc_prep_entry_for_write, self.locs.bibtex) },
                           (self.write_to, [target, "cleaned"]),
                          ],
             "file_dep" : [ fpath ],
@@ -125,6 +125,8 @@ class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin, bib_clean.BibFi
             self.bc_to_unicode(entry)
             self.bc_split_names(entry)
             self.bc_tag_split(entry)
+            # self.bc_title_split(entry)
+
             assert("__tags" in entry)
 
             # TODO store entry, add it to correct year
@@ -133,7 +135,7 @@ class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin, bib_clean.BibFi
                     print(e_id + msg, file=sys.stderr)
                     self.issues.append(err)
 
-            self.bc_expand_paths(entry, self.locs.bibtex_library)
+            self.bc_expand_paths(entry, self.locs.pdfs)
             assert("__paths" in entry)
             for e_id, msg in self.check_files(self, entry, self.bad_file_msg):
                 self.issues.append((e_id, msg))
@@ -143,7 +145,7 @@ class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin, bib_clean.BibFi
             self.bc_ideal_stem(entry, base_name)
 
             # Clean files [(field, orig, newloc, newstem)]
-            movements : list[tuple[str, pl.Path, pl.Path, str]] = self.bc_prepare_file_movements(entry, self.locs.bibtex_library)
+            movements : list[tuple[str, pl.Path, pl.Path, str]] = self.bc_prepare_file_movements(entry, self.locs.pdfs)
             orig_parents = set()
             for field, orig, new_dir, new_stem in movements:
                 orig_parents.add(orig.parent)
@@ -178,13 +180,13 @@ class BibtexClean(globber.DootEagerGlobber, tasker.ActionsMixin, bib_clean.BibFi
             print(f"Error Occurred for {entry['ID']}: {err}", file=sys.stderr)
             raise err
 
-class BibtexReport(globber.DootEagerGlobber, tasker.ActionsMixin, BibLoadSaveMixin, bib_clean.BibFieldCleanMixin):
+class BibtexReport(globber.DootEagerGlobber, task_mixins.ActionsMixin, BibLoadSaveMixin, bib_clean.BibFieldCleanMixin):
     """
     (src -> build) produce reports on the bibs found
     """
 
     def __init__(self, name="bibtex::report", locs=None, roots=None, rec=True):
-        super().__init__(name, locs, roots or [locs.bibtex_library], rec=rec, exts=[".bib"])
+        super().__init__(name, locs, roots or [locs.bibtex], rec=rec, exts=[".bib"])
         self.locs.update(timelines=self.locs.build / "timelines")
 
         self.db                             = self.bc_load_db([], lambda x: x)
@@ -321,7 +323,7 @@ class BibtexReport(globber.DootEagerGlobber, tasker.ActionsMixin, BibLoadSaveMix
 
             out_target.write_text("\n".join(report))
 
-class BibtexStub(globber.DootEagerGlobber, tasker.ActionsMixin):
+class BibtexStub(globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     (src -> data) Create basic stubs for found pdfs and epubs
     """
@@ -400,3 +402,13 @@ class BibtexStub(globber.DootEagerGlobber, tasker.ActionsMixin):
         print(f"Adding {len(self.stubs)} stubs")
         with open(self.locs.bib_stub_file, 'a') as f:
             f.write("\n\n".join(self.stubs))
+
+
+class BibtexWaybacker(globber.DootEagerGlobber, task_mixins.ActionsMixin):
+    """
+    get all urls from bibtexs,
+    then check they are in wayback machine,
+    or add them to it
+    then add the wayback urls to the relevant bibtex entry
+    """
+    pass

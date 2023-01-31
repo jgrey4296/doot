@@ -14,7 +14,7 @@ import mastodon
 ##-- end imports
 
 import doot
-from doot import TomlAccess
+import tomler
 
 logging = logmod.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class MastodonMixin:
 
     def setup_mastodon(self, config:pl.Path|str):
         logging.info("---------- Initialising Mastodon")
-        secrets = TomlAccess.load(pl.Path(config).expanduser())
+        secrets = tomler.load(pl.Path(config).expanduser())
         instance = mastodon.Mastodon(
             access_token = secrets.mastodon.access_token,
             api_base_url = secrets.mastodon.url

@@ -36,6 +36,9 @@ UNDERSCORE_RE : Final = re.compile(r"_+")
 NEWLINE_RE    : Final = re.compile(r"\n+\s*")
 AND_RE        : Final = re.compile(r"\ and\ ", flags=re.IGNORECASE)
 TAGSPLIT_RE   : Final = re.compile(r",|;")
+TITLESPLIT_RE : Final = re.compile(r"^(.+?): (.+)$")
+
+empty_match : Final = re.match("","")
 
 class _PrivateCleanMixin:
     """
@@ -113,6 +116,19 @@ class BibFieldCleanMixin(_PrivateCleanMixin):
             results.append((entry['ID'], msg.format(file=entry[field])))
 
         return results
+
+    def bc_title_split(self, entry):
+        if 'title' not in entry:
+            return entry
+        match (TAGSPLIT_RE.match(entry['title']) or empty_match).groups():
+            case ():
+                pass
+            case (title, subtitle):
+                entry['__orig_title'] = entry['title']
+                entry['title']        = title
+                entry['subtitle']     = subtitle
+
+        return entry
 
     def bc_to_unicode(self, entry):
         """

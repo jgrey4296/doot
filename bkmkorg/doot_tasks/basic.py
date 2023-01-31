@@ -30,13 +30,14 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from collections import defaultdict
 import doot
-from doot import tasker
+from doot import tasker, task_mixins
 
 time_format : Final = doot.config.on_fail("%I:%M %p", str).tool.doot.announce.time_format()
 time_voice  : Final = doot.config.on_fail("Moira", str).tool.doot.announce.voice()
 
-class TimeAnnounce(tasker.DootTasker, tasker.ActionsMixin):
+class TimeAnnounce(tasker.DootTasker, task_mixins.ActionsMixin):
 
     def __init__(self, name="say::time", locs=None):
         super().__init__(name, locs)
@@ -52,7 +53,7 @@ class TimeAnnounce(tasker.DootTasker, tasker.ActionsMixin):
         msg     = f"The Time is {now}"
         return ["say", "-v", "Moira", "-r", "50", msg]
 
-class NoScriptMerge(DootTasker, ActionsMixin):
+class NoScriptMerge(tasker.DootTasker, task_mixins.ActionsMixin):
     """
     merge noscript json files
     """
@@ -65,10 +66,10 @@ class NoScriptMerge(DootTasker, ActionsMixin):
 
     def task_detail(self, task):
         srcs   = self.locs.src.glob("noscript*.json")
-        target = self.build / "noscript_merged.json"
+        target = self.locs.build / "noscript_merged.json"
         task.update({
             "actions" : [
-                (self.copy_to, [self.locs.temp, target], {"fn": lambda d,x: d / f"{x.name}_backup"}),
+                (self.copy_to, [self.locs.temp, target], {"fn": "backup"}),
                 self.get_and_merge,
                 lambda: {"json": json.dumps(self.master_data, indent=4, sort_keys=True, ensure_ascii=False)},
                 (self.write_to, [target, "json"]),
@@ -79,7 +80,7 @@ class NoScriptMerge(DootTasker, ActionsMixin):
         return task
 
     def get_and_merge(self, srcs):
-        for src in srcs
+        for src in srcs:
             data = json.loads(target.read_text())
 
             for key in data:
