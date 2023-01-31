@@ -156,7 +156,7 @@ class BibPoster(tasker.DootTasker, MastodonMixin, TwitterMixin, BibLoadSaveMixin
             case _:
                 raise Exception("No author or editor for entry: %s", entry)
 
-        author = bib_utils.names_to_str(people)
+        author = bib_utils.names_to_str(people, entry)
 
         if len(author) > 30:
             author = f"{author[:30]}..."
