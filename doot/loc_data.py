@@ -76,7 +76,7 @@ class DootLocData:
     _defaulted : ClassVar[list[str]] =   []
 
     @staticmethod
-    def set_defaults(config:TomlAccess):
+    def set_defaults(config:Tomler):
         DootLocData._default_locs = config.on_fail([], list).tool.doot.locs
 
     @staticmethod

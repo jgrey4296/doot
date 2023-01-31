@@ -19,7 +19,8 @@ from uuid import UUID, uuid1
 from weakref import ref
 
 import doot
-from doot.tasker import DootTasker, ActionsMixin
+from doot.tasker import DootTasker
+from doot.task_mixins import ActionsMixin
 
 if TYPE_CHECKING:
     # tc only imports

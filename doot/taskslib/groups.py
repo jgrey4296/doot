@@ -18,9 +18,9 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
+from tomler import TomlAccessError
 import doot
 from doot.task_group import TaskGroup
-from doot.toml_access import TomlAccessError, TomlAccess
 
 from doot.taskslib import project_init
 from doot.errors import DootDirAbsent

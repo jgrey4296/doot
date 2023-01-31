@@ -11,14 +11,14 @@ from doit.tools import Interactive
 
 import doot
 from doot.task_group import TaskGroup
-from doot.toml_access import TomlAccessError, TomlAccess
-from doot import tasker
+from tomler import TomlAccessError, Tomler
+from doot import tasker, task_mixins
 
 ##-- end imports
 # https://doc.rust-lang.org/cargo/index.html
 
-cargo  = TomlAccess.load("Cargo.toml")
-config = TomlAccess.load("./.cargo/config.toml")
+cargo  = Tomler.load("Cargo.toml")
+config = Tomler.load("./.cargo/config.toml")
 
 build_path    : Final = config.on_fail(str(doot.locs.build)).build.target_dir()
 package_name  : Final = cargo.package.name
@@ -27,7 +27,7 @@ binaries      : Final = [x.get('name') for x in  cargo.on_fail([], list).bin()]
 lib_path      : Final = cargo.on_fail(None, None|str).lib.path()
 
 
-class CargoBuild(tasker.DootTasker, tasker.ActionsMixin):
+class CargoBuild(tasker.DootTasker, task_mixins.ActionsMixin):
     """
     Build rust binary target, using a tuple (type, name)
     eg: (bin, main) or (lib, mylib)
@@ -73,7 +73,7 @@ class CargoBuild(tasker.DootTasker, tasker.ActionsMixin):
     def lib_build(self):
         return ["cargo", "build", "--lib", "--profile", self.args['profile']]
 
-class CargoInstall(tasker.DootTasker, tasker.ActionsMixin):
+class CargoInstall(tasker.DootTasker, task_mixins.ActionsMixin):
 
     def __init__(self, name="cargo::install", locs=None):
         super().__init__(name, locs)
@@ -93,7 +93,7 @@ class CargoInstall(tasker.DootTasker, tasker.ActionsMixin):
     def binary_build(self):
         return ["cargo", "install", "--bin", self.args['target'], "--profile", self.args['profile']]
 
-class CargoTest(tasker.DootTasker, tasker.ActionsMixin):
+class CargoTest(tasker.DootTasker, task_mixins.ActionsMixin):
 
     def __init__(self, name="cargo::test", locs=None):
         super().__init__(name, locs)
@@ -115,7 +115,7 @@ class CargoTest(tasker.DootTasker, tasker.ActionsMixin):
     def test_cmd(self):
         return ["cargo", "test", "--bin", self.args['target'], "--profile", self.args['profile']]
 
-class CargoDocs(tasker.DootTasker, tasker.ActionsMixin):
+class CargoDocs(tasker.DootTasker, task_mixins.ActionsMixin):
 
     def __init__(self, name="cargo::docs", locs=None):
         super().__init__(name, locs)
@@ -132,7 +132,7 @@ class CargoDocs(tasker.DootTasker, tasker.ActionsMixin):
         return task
 
 
-class CargoRun(tasker.DootTasker, tasker.ActionsMixin):
+class CargoRun(tasker.DootTasker, task_mixins.ActionsMixin):
 
     def __init__(self, name="cargo::run", locs=None):
         super().__init__(name, locs)
@@ -149,7 +149,7 @@ class CargoRun(tasker.DootTasker, tasker.ActionsMixin):
         })
         return task
 
-class CargoClean(tasker.DootTasker, tasker.ActionsMixin):
+class CargoClean(tasker.DootTasker, task_mixins.ActionsMixin):
     """
     clean the rust project
     """
@@ -162,7 +162,7 @@ class CargoClean(tasker.DootTasker, tasker.ActionsMixin):
         })
         return task
 
-class CargoCheck(tasker.DootTasker, tasker.ActionsMixin):
+class CargoCheck(tasker.DootTasker, task_mixins.ActionsMixin):
     """
     run cargo check on the project
     """
@@ -176,7 +176,7 @@ class CargoCheck(tasker.DootTasker, tasker.ActionsMixin):
         })
         return task
 
-class CargoUpdate(tasker.DootTasker, tasker.ActionsMixin):
+class CargoUpdate(tasker.DootTasker, task_mixins.ActionsMixin):
     """
     update rust and dependencies
     """
@@ -192,7 +192,7 @@ class CargoUpdate(tasker.DootTasker, tasker.ActionsMixin):
         })
         return task
 
-class CargoDebug(tasker.DootTasker, tasker.ActionsMixin):
+class CargoDebug(tasker.DootTasker, task_mixins.ActionsMixin):
     """
     Start lldb on the debug build of the rust binary
     """
@@ -216,9 +216,9 @@ class CargoDebug(tasker.DootTasker, tasker.ActionsMixin):
 def task_cargo_version():
     return {
         "basename" : "cargo::version",
-        "actions" : [ tasker.ActionsMixin.cmd(None, ["cargo", "--version"]),
-                      tasker.ActionsMixin.cmd(None, ["rustup", "--version"]),
-                      tasker.ActionsMixin.cmd(None, ["rustup", "show"]),
+        "actions" : [ task_mixins.ActionsMixin.cmd(None, ["cargo", "--version"]),
+                      task_mixins.ActionsMixin.cmd(None, ["rustup", "--version"]),
+                      task_mixins.ActionsMixin.cmd(None, ["rustup", "show"]),
                      ],
         "verbosity" : 2,
     }
@@ -226,6 +226,6 @@ def task_cargo_version():
 def task_cargo_report():
     return {
         "basename"  : "cargo::report",
-        "actions"   : [ tasker.ActionsMixin.cmd(None, ["cargo", "report", "future-incompat"]) ],
+        "actions"   : [ task_mixins.ActionsMixin.cmd(None, ["cargo", "report", "future-incompat"]) ],
         "verbosity" : 2,
     }

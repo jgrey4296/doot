@@ -12,14 +12,14 @@ from typing import (Any, Callable, ClassVar, Dict, Final, Generic, Iterable,
 
 import doot
 import requests
-from doot import tasker
+from doot import tasker, task_mixins
 
 ##-- end imports
 
 logging = logmod.getLogger(__name__)
 
 CHECK_AMNT    : Final = doot.config.on_fail(150, int).tool.doot.downloader.check_amnt()
-speak_confirm : Final = tasker.ActionsMixin.say(None, "Found a Large Group of Files, waiting for confirmation")
+speak_confirm : Final = task_mixins.ActionsMixin.say(None, "Found a Large Group of Files, waiting for confirmation")
 
 class DownloaderMixin:
 

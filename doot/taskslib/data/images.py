@@ -14,8 +14,7 @@ from itertools import cycle, chain
 from doit.action import CmdAction
 
 import doot
-from doot import tasker
-from doot import globber
+from doot import tasker, globber, task_mixins
 from doot.taskslib.files import hashing
 
 ##-- end imports
@@ -38,7 +37,7 @@ THUMB            : Final = (200,200)
 
 HashImages = hashing.HashAllFiles
 
-class OCRGlobber(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.BatchMixin):
+class OCRGlobber(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.BatchMixin):
     """
     ([data] -> data) Run tesseract on applicable files in each found directory
     to make dot txt files of ocr'd text from the image
@@ -91,7 +90,7 @@ class OCRGlobber(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.BatchMix
             ocr_cmd.execute()
             mv_txt_cmd.execute()
 
-class Images2PDF(globber.LazyGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin, tasker.BatchMixin):
+class Images2PDF(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin, task_mixins.BatchMixin):
     """
     Combine globbed images into a single pdf file using imagemagick
     """
@@ -138,7 +137,7 @@ class Images2PDF(globber.LazyGlobMixin, globber.DootEagerGlobber, tasker.Actions
         pages = [x for x in self.locs.temp.iterdir() if x.suffix == ".pdf"]
         return ["pdftk", *pages, "cat", "output", targets[0]]
 
-class Images2Video(globber.LazyGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
+class Images2Video(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     https://stackoverflow.com/questions/24961127/
     """
@@ -167,7 +166,7 @@ class Images2Video(globber.LazyGlobMixin, globber.DootEagerGlobber, tasker.Actio
         args.append(targets[0])
         raise NotImplementedError
 
-class PDF2Images(globber.DootEagerGlobber, tasker.ActionsMixin):
+class PDF2Images(globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     (src -> temp) Find pdfs and extract images for them for ocr
     """

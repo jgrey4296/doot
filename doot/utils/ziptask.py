@@ -12,7 +12,8 @@ from random import randint
 
 import doot
 from doot.loc_data import DootLocData
-from doot.tasker import DootTasker, ActionsMixin, ZipperMixin
+from doot.tasker import DootTasker
+from doot.task_mixins import ActionsMixin, ZipperMixin
 ##-- end imports
 
 ##-- logging

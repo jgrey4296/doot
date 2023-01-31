@@ -37,10 +37,10 @@ logging.addHandler(file_handler)
 from doit.action import CmdAction
 from doit.doit_cmd import DoitMain
 
+import tomler
 import doot
 from doot.utils.loader import DootLoader
 from doot.utils.log_filter import DootAnyFilter
-from doot.tasker import ActionsMixin
 
 def main():
     result  = 1
@@ -65,7 +65,7 @@ def main():
         result    = doit_main.run(sys.argv[1:])
 
         defaulted_locs = doot.DootLocData.report_defaulted()
-        defaulted_toml = doot.TomlAccess.report_defaulted()
+        defaulted_toml = tomler.Tomler.report_defaulted()
 
         with open("_doot_defaults.toml", 'w') as f:
             f.write("# default values used:\n")
@@ -87,16 +87,21 @@ def main():
         print("Error: ", err, file=sys.stderr)
         errored = True
     finally:
-        match errored, doot.config.on_fail(False, bool|str).tool.doot.say_on_exit():
+        say_on_exit = False
+        if doot.config is not None:
+            say_on_exit = doot.config.on_fail(False, bool|str).tool.doot.say_on_exit()
+        match errored, say_on_exit:
             case False, str() as say_text:
-                cmd = ActionsMixin.say(None, say_text)
-                cmd.execute()
+                cmd = CmdAction(["say", "-v", voice, "-r", "50", say_text], shell=False)
             case False, True:
-                cmd = ActionsMixin.say(None, "Doot Has Finished")
+                cmd = CmdAction(["say", "-v", voice, "-r", "50", "Doot Has Finished"], shell=False)
                 cmd.execute()
             case True, True|str():
-                cmd = ActionsMixin.say(None, "Doot Encountered a problem")
-                cmd.execute()
+                cmd = CmdAction(["say", "-v", voice, "-r", "50", "Doot Encountered a problem"])
+            case _:
+                cmd = None
+        if cmd is not None:
+            cmd.execute()
 
 
     sys.exit(result)

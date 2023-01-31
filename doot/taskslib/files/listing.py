@@ -6,13 +6,13 @@ import pathlib as pl
 import shutil
 
 import doot
-from doot import tasker, globber
+from doot import tasker, globber, task_mixins
 
 ##-- end imports
 
 glob_ignores : Final = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).tool.doot.globbing.ignores()
 
-class FileListings(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
+class FileListings(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     (-> build )list all files in the targ directory,
     to the build_dir/allfiles.report
@@ -41,7 +41,7 @@ class FileListings(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Action
         })
         return task
 
-class SimpleListing(tasker.DootTasker, tasker.ActionsMixin):
+class SimpleListing(tasker.DootTasker, task_mixins.ActionsMixin):
     """
     (-> build ) ripgrep list all files in the focus, or root
     to the build_dir/allfiles.report

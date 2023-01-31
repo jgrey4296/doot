@@ -14,12 +14,11 @@ from __future__ import annotations
 import pathlib as pl
 import shutil
 
-from doot import globber
-from doot import tasker
+from doot import globber, tasker, task_mixins
 
 ##-- end imports
 
-class SqlitePrepTask(globber.DootEagerGlobber, tasker.ActionsMixin):
+class SqlitePrepTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> data) file conversion from mysql to sqlite
     using https://github.com/dumblob/mysql2sqlite
@@ -32,7 +31,7 @@ class SqlitePrepTask(globber.DootEagerGlobber, tasker.ActionsMixin):
     def subtask_detail(self, task, fpath=None):
         return task
 
-class SqliteReportTask(globber.DootEagerGlobber, tasker.ActionsMixin):
+class SqliteReportTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     TODO ([data] -> build) report database tables
      .schema .fullschema

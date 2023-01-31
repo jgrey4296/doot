@@ -230,6 +230,8 @@ class SubGlobMixin:
     def glob_all(self, rec=False):
         results = super().glob_all(rec)
         match glob_subselect_exact, glob_subselect_pcnt:
+            case (-1, -1):
+                return results
             case exact, 0:
                 k = min(exact, len(results))
             case 0, percent:

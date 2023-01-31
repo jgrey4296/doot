@@ -8,7 +8,7 @@ from importlib import resources
 
 from doot.loc_data import DootLocData
 from doot.tasker import DootTasker
-from doot.toml_access import TomlAccess, TomlAccessError
+import tomler
 ##-- end imports
 
 ##-- logging
@@ -29,8 +29,8 @@ default_rust             = pl.Path("Cargo.toml")
 default_rust_config      = pl.Path("./.cargo/config.toml")
 default_agnostic         = pl.Path("doot.toml")
 
-config     : TomlAccess  = None
-locs       : DootLocData = None
+config     : tomler.Tomler = None
+locs       : DootLocData   = None
 
 def setup():
     logging.info("Setting up Doot, version: %s", __version__)
@@ -49,7 +49,7 @@ def setup():
 
 def setup_agnostic(path=default_agnostic):
     global config, locs
-    config     = TomlAccess.load(path)
+    config     = tomler.load(path)
 
     locs = DootLocData(files=config.on_fail({}, dict).tool.doot.files.get_table(),
                        **config.tool.doot.directories.get_table())
@@ -60,6 +60,6 @@ def setup_agnostic(path=default_agnostic):
 
 def setup_py(path=default_py):
     logging.info("Found: pyproject.toml, using project.name as src location")
-    pyproject = TomlAccess.load(path)
+    pyproject = tomler.load(path)
     if config.on_fail(None, None|str).tool.doot.directories.src() is None:
         locs.update(src=pyproject.project.name)

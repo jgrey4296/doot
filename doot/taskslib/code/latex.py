@@ -20,7 +20,8 @@ from weakref import ref
 
 import doot
 from doot import globber
-from doot.tasker import DootTasker, ActionsMixin
+from doot.tasker import DootTasker
+from doot.task_mixins import ActionsMixin
 
 if TYPE_CHECKING:
     # tc only imports

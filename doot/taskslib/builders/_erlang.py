@@ -42,3 +42,6 @@ from doot import tasker, globber
 
 class ErlangBuild(tasker.DootTasker):
     pass
+
+class ElixirBuild(tasker.DootTasker):
+    pass

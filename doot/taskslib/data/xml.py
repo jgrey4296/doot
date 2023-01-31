@@ -19,14 +19,13 @@ from itertools import cycle
 from itertools import cycle, chain
 from doit.tools import Interactive
 
-from doot import globber
-from doot import tasker
+from doot import globber, tasker, task_mixins
 
 ##-- end imports
 
 # TODO config get data locs
 
-class XmlElementsTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
+class XmlElementsTask(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> elements) xml element retrieval using xml starlet toolkit
     http://xmlstar.sourceforge.net/
@@ -57,7 +56,7 @@ class XmlElementsTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Act
         globbed = self.glob_files(fapth)
         return ["xml", "el", "-u", *globbed]
 
-class XmlSchemaTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
+class XmlSchemaTask(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> schema) Generate .xsd's from directories of xml files using trang
     https://relaxng.org/jclark/
@@ -86,7 +85,7 @@ class XmlSchemaTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Actio
         globbed = self.glob_files(fpath)
         return ["trang", *globbed, *targets]
 
-class XmlPythonSchemaRaw(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
+class XmlPythonSchemaRaw(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> codegen) Generate Python Dataclass bindings based on raw XML data
     """
@@ -121,7 +120,7 @@ class XmlPythonSchemaRaw(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.
                 ]
         return args
 
-class XmlPythonSchemaXSD(globber.DootEagerGlobber, tasker.ActionsMixin):
+class XmlPythonSchemaXSD(globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> codegen) Generate python dataclass bindings from XSD's
     """
@@ -159,7 +158,7 @@ class XmlPythonSchemaXSD(globber.DootEagerGlobber, tasker.ActionsMixin):
 
         return args
 
-class XmlSchemaVisualiseTask(globber.DootEagerGlobber, tasker.ActionsMixin):
+class XmlSchemaVisualiseTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> visual) Generate Plantuml files ready for plantuml to generate images
     """
@@ -185,7 +184,7 @@ class XmlSchemaVisualiseTask(globber.DootEagerGlobber, tasker.ActionsMixin):
             })
         return task
 
-class XmlValidateTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
+class XmlValidateTask(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data]) Validate xml's by schemas
     """
@@ -216,7 +215,7 @@ class XmlValidateTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Act
         args += self.glob_files(fpath)
         return args
 
-class XmlFormatTask(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
+class XmlFormatTask(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> data) Basic Formatting with backup
     TODO cleanup backups

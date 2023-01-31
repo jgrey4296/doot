@@ -30,9 +30,9 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doot import globber,tasker
+from doot import globber,tasker, task_mixins
 
-class DotVisualise(globber.DootEagerGlobber, tasker.ActionsMixin):
+class DotVisualise(globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([src] -> build) make images from any dot files
     https://graphviz.org/doc/info/command.html
@@ -77,7 +77,7 @@ class DotMakeGraph:
     def build(self):
         return {}
 
-class PlantUMLGlobberTask(globber.DootEagerGlobber, tasker.ActionsMixin):
+class PlantUMLGlobberTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([visual] -> build) run plantuml on a specification, generating target.'ext's
     """
@@ -106,7 +106,7 @@ class PlantUMLGlobberTask(globber.DootEagerGlobber, tasker.ActionsMixin):
                 dependencies[0]
                 ]
 
-class PlantUMLGlobberCheck(globber.DootEagerGlobber, tasker.ActionsMixin):
+class PlantUMLGlobberCheck(globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([visual]) check syntax of plantuml files
     TODO Adapt godot::check pattern

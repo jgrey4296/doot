@@ -20,8 +20,7 @@ from doit.tools import Interactive
 from doit.task import Task as DoitTask
 
 import doot
-from doot import tasker
-from doot import globber
+from doot import tasker, globber, task_mixins
 from doot.loc_data import DootLocData
 ##-- end imports
 
@@ -50,7 +49,7 @@ NAV_ENT_T      = Template(data_path.joinpath("epub_nav_entry").read_text())
 
 ws : Final = re.compile("\s+")
 
-class EbookGlobberBase(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
+class EbookGlobberBase(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
 
     marker_file = ".epub"
 
@@ -99,7 +98,7 @@ class EbookConvertTask(EbookGlobberBase):
     def action_convert(self, dependencies, targets):
         return ["ebook-convert", dependencies[0], targets[0] ]
 
-class EbookZipTask(EbookGlobberBase, tasker.ZipperMixin):
+class EbookZipTask(EbookGlobberBase, task_mixins.ZipperMixin):
     """
     (GlobDirs: [src] -> temp) wrapper around ZipTask to build zips of epub directories
     """
@@ -352,7 +351,7 @@ class EbookSplitTask(globber.DootEagerGlobber):
     def action_convert(self, dependencies, targets):
         return ["ebook-convert", dependencies[0], targets[0]]
 
-class EbookNewTask(tasker.DootTasker, tasker.ActionsMixin):
+class EbookNewTask(tasker.DootTasker, task_mixins.ActionsMixin):
     """
     (-> [src]) Create a new stub structure for an ebook
 

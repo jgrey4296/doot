@@ -8,7 +8,8 @@ from collections import defaultdict
 from typing import Final
 
 import doot
-from doot.tasker import ActionsMixin, DootTasker
+from doot.tasker import DootTasker
+from doot.task_mixins import ActionsMixin
 
 ##-- end imports
 

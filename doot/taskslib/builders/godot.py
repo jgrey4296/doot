@@ -6,7 +6,8 @@ import pathlib as pl
 import shutil
 
 from doot import globber
-from doot.tasker import DootTasker, ActionsMixin
+from doot.tasker import DootTasker
+from doot.task_mixins import ActionsMixin
 
 ##-- end imports
 # https://docs.godotengine.org/en/stable/tutorials/editor/command_line_tutorial.html

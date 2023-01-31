@@ -12,7 +12,8 @@ import doot
 from doot.utils.dir_tasks import CheckDir
 from doot.utils.cleaning import CleanerMixin
 from doot import globber
-from doot.tasker import DootTasker, ActionsMixin
+from doot.tasker import DootTasker
+from doot.task_mixins import ActionsMixin
 
 ##-- end imports
 

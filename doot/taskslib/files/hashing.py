@@ -20,8 +20,7 @@ from uuid import UUID, uuid1
 from weakref import ref
 
 import doot
-from doot import globber
-from doot import tasker
+from doot import globber, tasker, task_mixins
 
 if TYPE_CHECKING:
     # tc only imports
@@ -42,7 +41,7 @@ hash_record  : Final = doot.config.on_fail(".hashes", str).tool.doot.files.hash.
 hash_concat  : Final = doot.config.on_fail(".all_hashes", str).tool.doot.files.hash.grouped()
 hash_dups    : Final = doot.config.on_fail(".dup_hashes", str).tool.doot.files.hash.duplicates()
 
-class HashAllFiles(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin, tasker.BatchMixin):
+class HashAllFiles(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin, task_mixins.BatchMixin):
     """
     ([data] -> data) For each subdir, hash all the files in it
     info
@@ -105,7 +104,7 @@ class HashAllFiles(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Action
         with open(target, 'a') as f:
             f.write("\n" + act.out)
 
-class GroupHashes(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.ActionsMixin):
+class GroupHashes(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
 
     """
@@ -139,7 +138,7 @@ class GroupHashes(globber.DirGlobMixin, globber.DootEagerGlobber, tasker.Actions
         with open(self.locs.temp / self.hash_concat, 'a') as f:
             f.write("\n" + fpath.read_text())
 
-class DetectDuplicateHashes(tasker.DootTasker, tasker.ActionsMixin):
+class DetectDuplicateHashes(tasker.DootTasker, task_mixins.ActionsMixin):
     """
     sort all_hashes, and run uniq of the first n chars
     """

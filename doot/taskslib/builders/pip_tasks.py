@@ -8,7 +8,8 @@ import re
 import fileinput
 
 import doot
-from doot.tasker import DootTasker, ActionsMixin
+from doot.tasker import DootTasker
+from doot.task_mixins import ActionsMixin
 
 from doot.task_group import TaskGroup
 ##-- end imports

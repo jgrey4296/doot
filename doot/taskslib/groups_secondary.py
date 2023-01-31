@@ -20,7 +20,7 @@ from weakref import ref
 
 import doot
 from doot.task_group import TaskGroup
-from doot.toml_access import TomlAccessError, TomlAccess
+from tomler  import TomlAccessError, Tomler
 from doot.errors import DootDirAbsent
 
 if TYPE_CHECKING:
