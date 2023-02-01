@@ -12,6 +12,7 @@ import fileinput
 import functools as ftz
 import itertools as itz
 import logging as logmod
+import os
 import pathlib as pl
 import re
 import shutil
@@ -47,9 +48,10 @@ logging = logmod.getLogger(__name__)
 
 import doot
 
-sleep_batch   = doot.config.on_fail(2.0,   int|float).tool.doot.sleep_batch()
-batches_max   = doot.config.on_fail(-1,    int).tool.doot.batches_max()
-sleep_notify  = doot.config.on_fail(False, bool).tool.doot.sleep_notify()
+conda_exe        = os.environ['CONDA_EXE']
+sleep_batch      = doot.config.on_fail(2.0,   int|float).tool.doot.sleep_batch()
+batches_max      = doot.config.on_fail(-1,    int).tool.doot.batches_max()
+sleep_notify     = doot.config.on_fail(False, bool).tool.doot.sleep_notify()
 
 zip_default_name = doot.config.on_fail("default", str).tool.doot.zip.name()
 zip_overwrite    = doot.config.on_fail(False, bool).tool.doot.zip.overwrite()
@@ -124,7 +126,66 @@ class BatchMixin:
     def _reset_batch_count(self):
         self.batch_count = 0
 
-class ActionsMixin:
+class CommanderMixin:
+
+    def cmd(self, cmd:list|callable, *args, shell=False, save=None, **kwargs):
+        logging.debug("Cmd: %s Args: %s kwargs: %s", cmd, args, kwargs)
+        match cmd:
+            case FunctionType() | MethodType():
+                action = (cmd, list(args), kwargs)
+            case list():
+                assert(not bool(args))
+                assert(not bool(kwargs))
+                action = cmd
+            case _:
+                raise TypeError("Unexpected action form: ", cmd)
+
+        return CmdAction(action, shell=shell, save_out=save)
+
+    def force(self, cmd:list|callable, *args, handler=None, shell=False, save=None, **kwargs):
+        logging.debug("Forcing Cmd: %s Args: %s kwargs: %s", cmd, args, kwargs)
+        match cmd:
+            case FunctionType() | MethodType():
+                action = (cmd, list(args), kwargs)
+            case list():
+                assert(not bool(args))
+                assert(not bool(kwargs))
+                action = cmd
+            case _:
+                raise TypeError("Unexpected action form: ", cmd)
+
+        return ForceCmd(action, shell=shell, handler=handler, save_out=save)
+
+    def shell(self, cmd:list|callable, *args, **kwargs):
+        return self.cmd(cmd, *args, shell=True, **kwargs)
+
+    def interact(self, cmd:list|callable, *args, save=None, **kwargs):
+        match cmd:
+            case FunctionType():
+                action = (cmd, list(args), kwargs)
+            case list():
+                assert(not bool(args))
+                assert(not bool(kwargs))
+                action = cmd
+            case _:
+                raise TypeError("Unexpected action form: ", cmd)
+        return Interactive(action, shell=False, save_out=save)
+
+    def regain_focus(self, prog="iTerm"):
+        """
+        Applescript command to regain focus for if you lose it
+        """
+        return self.cmd(["osascript", "-e", f"tell application \"{prog}\"", "-e", "activate", "-e", "end tell"])
+
+    def say(self, *text, voice="Moira"):
+        cmd = ["say", "-v", voice, "-r", "50"]
+        cmd += text
+        return CmdAction(cmd, shell=False)
+
+    def in_conda(self, env, *args):
+        return CmdAction([conda_exe, "run", "-n", env, *args], shell=False)
+
+class FilerMixin:
 
     def rmglob(self, root:pl.Path, *args):
         for x in args:
@@ -159,6 +220,19 @@ class ActionsMixin:
                 value = sep.join([task.values[x] for x in key])
 
         fpath.write_text(value)
+
+    def append_to(self, fpath, key:str|list[str], task, sep=None):
+        if sep is None:
+            sep = "\n--------------------\n"
+
+        match key:
+            case str():
+                value = task.values[key]
+            case [*strs]:
+                value = sep.join([task.values[x] for x in key])
+
+        with open(fpath, 'a') as f:
+            f.write(value)
 
     def move_to(self, fpath:pl.Path, *args, fn=None):
         """
@@ -220,54 +294,7 @@ class ActionsMixin:
                 case False:
                     shutil.copytree(x, target_name, dirs_exist_ok=True)
 
-    def cmd(self, cmd:list|callable, *args, shell=False, save=None, **kwargs):
-        logging.debug("Cmd: %s Args: %s kwargs: %s", cmd, args, kwargs)
-        match cmd:
-            case FunctionType() | MethodType():
-                action = (cmd, list(args), kwargs)
-            case list():
-                assert(not bool(args))
-                assert(not bool(kwargs))
-                action = cmd
-            case _:
-                raise TypeError("Unexpected action form: ", cmd)
-
-        return CmdAction(action, shell=shell, save_out=save)
-
-    def force(self, cmd:list|callable, *args, handler=None, shell=False, save=None, **kwargs):
-        logging.debug("Forcing Cmd: %s Args: %s kwargs: %s", cmd, args, kwargs)
-        match cmd:
-            case FunctionType() | MethodType():
-                action = (cmd, list(args), kwargs)
-            case list():
-                assert(not bool(args))
-                assert(not bool(kwargs))
-                action = cmd
-            case _:
-                raise TypeError("Unexpected action form: ", cmd)
-
-        return ForceCmd(action, shell=shell, handler=handler, save_out=save)
-
-    def shell(self, cmd:list|callable, *args, **kwargs):
-        return self.cmd(cmd, *args, shell=True, **kwargs)
-
-    def interact(self, cmd:list|callable, *args, save=None, **kwargs):
-        match cmd:
-            case FunctionType():
-                action = (cmd, list(args), kwargs)
-            case list():
-                assert(not bool(args))
-                assert(not bool(kwargs))
-                action = cmd
-            case _:
-                raise TypeError("Unexpected action form: ", cmd)
-        return Interactive(action, shell=False, save_out=save)
-
-    def regain_focus(self, prog="iTerm"):
-        """
-        Applescript command to regain focus for if you lose it
-        """
-        return self.cmd(["osascript", "-e", f"tell application \"{prog}\"", "-e", "activate", "-e", "end tell"])
+class ActionsMixin(CommanderMixin, FilerMixin):
 
     def get_uuids(self, *args):
         raise NotImplementedError()
@@ -275,11 +302,6 @@ class ActionsMixin:
     def edit_by_line(self, files:list[pl.Path], fn, inplace=True):
         for line in fileinput(files=files, inplace=inplace):
             fn(line)
-
-    def say(self, *text, voice="Moira"):
-        cmd = ["say", "-v", voice, "-r", "50"]
-        cmd += text
-        return CmdAction(cmd, shell=False)
 
 class ZipperMixin:
     zip_name       = zip_default_name

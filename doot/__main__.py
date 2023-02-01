@@ -88,7 +88,7 @@ def main():
         errored = True
     finally:
         say_on_exit = False
-        voice = "Moira"
+        voice       = "Moira"
         if doot.config is not None:
             say_on_exit = doot.config.on_fail(False, bool|str).tool.doot.say_on_exit()
             voice       = doot.config.on_fail(voice, str).tool.doot.voice()
@@ -97,7 +97,6 @@ def main():
                 cmd = CmdAction(["say", "-v", voice, "-r", "50", say_text], shell=False)
             case False, True:
                 cmd = CmdAction(["say", "-v", voice, "-r", "50", "Doot Has Finished"], shell=False)
-                cmd.execute()
             case True, True|str():
                 cmd = CmdAction(["say", "-v", voice, "-r", "50", "Doot Encountered a problem"])
             case _:
@@ -105,8 +104,7 @@ def main():
         if cmd is not None:
             cmd.execute()
 
-
-    sys.exit(result)
+        sys.exit(result)
 
 ##-- ifmain
 if __name__ == '__main__':
