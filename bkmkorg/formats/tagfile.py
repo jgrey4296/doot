@@ -66,10 +66,10 @@ class TagFile:
         return len(self.counts)
 
     def __contains__(self, value):
-        return value in self.counts
+        return self.norm_tag(value) in self.counts
 
     def _inc(self, key, *, amnt=1):
-        norm_key = self.norm_regex.sub("_", key.strip())
+        norm_key = self.norm_tag(key)
         self.counts[norm_key] += amnt
         return norm_key
 
@@ -92,8 +92,10 @@ class TagFile:
         return set(self.counts.keys())
 
     def get_count(self, tag):
-        norm_tag = self.norm_regex.sub("_", tag.strip())
-        return self.counts[norm_tag]
+        return self.counts[self.norm_tag(tag)]
+
+    def norm_tag(self, tag):
+        return self.norm_regex.sub("_", tag.strip())
 
 @dataclass
 class SubstitutionFile(TagFile):
@@ -117,10 +119,11 @@ class SubstitutionFile(TagFile):
 
     def sub(self, value:str) -> set[str]:
         """ apply a substitution if it exists """
-        if value in self.substitutions:
-            return self.substitutions[value]
+        normed = self.norm_tag(value)
+        if normed in self.substitutions:
+            return self.substitutions[normed]
 
-        return set([value])
+        return set([normed])
 
     def has_sub(self, value):
         return value in self.substitutions
@@ -135,8 +138,8 @@ class SubstitutionFile(TagFile):
                 case (str() as key, str() as counts):
                     self._inc(key, amnt=int(counts))
                 case (str() as key, str() as counts, *subs):
-                    norm_key = self._inc(key, amnt=int(counts))
-                    norm_subs = [ self.norm_regex.sub("_", x.strip()) for x in subs]
+                    norm_key  = self._inc(key, amnt=int(counts))
+                    norm_subs = [ self.norm_tag(x) for x in subs]
                     self.substitutions[norm_key].update([x for x in norm_subs if bool(x)])
                 case dict():
                     for key, val in val.items():
@@ -186,7 +189,7 @@ class IndexFile(TagFile):
                         count = len(paths)
 
                     norm_key = self._inc(key, amnt=count)
-                    self.mapping[key].update(paths)
+                    self.mapping[norm_key].update(paths)
                 case _:
                     raise TypeError("Unexpected form in index update", val)
 

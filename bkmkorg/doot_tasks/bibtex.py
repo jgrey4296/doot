@@ -418,3 +418,31 @@ class BibtexWaybacker(globber.DootEagerGlobber, task_mixins.ActionsMixin):
     then add the wayback urls to the relevant bibtex entry
     """
     pass
+
+
+class PdfLibSummary(doot.DootTasker):
+    """
+    Compile the first n pages of each pdf in a decade together
+    """
+    pass
+
+class PdfBibtexCompile(doot.DootTasker):
+    """
+    Compile individual bibtex files into pdfs
+    then combine them together into decades and total
+    """
+    pass
+
+class TimelineCompile(doot.DootTasker):
+    """
+    take a timeline and create a pdf of the citations,
+    and the combined pdfs
+    """
+    pass
+
+
+class HashVerify(doot.DootTasker):
+    """
+    Check a random selection of files for hash consistency
+    """
+    pass

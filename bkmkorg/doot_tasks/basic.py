@@ -44,14 +44,14 @@ class TimeAnnounce(tasker.DootTasker, task_mixins.ActionsMixin):
 
     def task_detail(self, task):
         task.update({
-            self.cmd(self.speak_time),
+            "actions" : [self.cmd(self.speak_time)],
         })
         return task
 
     def speak_time(self):
         now     = datetime.now().strftime(time_format)
         msg     = f"The Time is {now}"
-        return ["say", "-v", "Moira", "-r", "50", msg]
+        return ["say", "-v", time_voice, "-r", "50", msg]
 
 class NoScriptMerge(tasker.DootTasker, task_mixins.ActionsMixin):
     """
@@ -130,3 +130,5 @@ class NoScriptMerge(tasker.DootTasker, task_mixins.ActionsMixin):
                         current[0][current[2]] = src
                 case bool(), bool():
                     pass
+
+

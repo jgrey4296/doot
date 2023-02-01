@@ -66,7 +66,7 @@ class BibPoster(tasker.DootTasker, MastodonMixin, TwitterMixin, BibLoadSaveMixin
         assert(self.locs.bib_blacklist)
         assert(self.locs.bib_success)
         assert(self.locs.bib_fail)
-        assert(self.locs.bibtex_lib)
+        assert(self.locs.bibtex)
 
 
     def setup_detail(self, task):
@@ -103,7 +103,7 @@ class BibPoster(tasker.DootTasker, MastodonMixin, TwitterMixin, BibLoadSaveMixin
     def select_bibtex_file(self) -> pl.Path:
         print("Selecting bibtex")
         # load blacklist
-        bibs      = {x for x in self.locs.bibtex_lib.iterdir() if x.suffix == ".bib"}
+        bibs      = {x for x in self.locs.bibtex.iterdir() if x.suffix == ".bib"}
         filtered  = [x for x in bibs if x.stem not in self.blacklist]
 
         if not bool(filtered):

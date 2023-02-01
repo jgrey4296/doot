@@ -53,7 +53,6 @@ class BookmarksUpdate(DootTasker, ActionsMixin):
         self.total : BC.BookmarkCollection                 = None
         self.temp_dbs = self.locs.temp / "dbs"
         assert(self.locs.firefox)
-        assert(self.locs.src)
         assert(self.locs.temp)
         assert(self.locs.bookmarks_total)
 

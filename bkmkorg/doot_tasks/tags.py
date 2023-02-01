@@ -1,3 +1,4 @@
+# -*- mode:doot; -*-
 #!/usr/bin/env python3
 """
 
@@ -43,7 +44,7 @@ from doot.task_mixins import ActionsMixin
 tag_path        : Final = doot.config.on_fail("resources/tags", str).tool.doot.tags.loc()
 empty_match     : Final = re.match("","")
 bib_tag_re      : Final = re.compile(r"^(\s+tags\s+= ){(.+?)},$")
-org_tag_re      : Final = re.compile(r"^(\*\* .+?)\s+:(.+?):$")
+org_tag_re      : Final = re.compile(r"^(\*\* .+?)\s+:(\S+):$")
 bookmark_tag_re : Final = re.compile(r"^(http.+?) : (.+)$")
 
 class TagsCleaner(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
@@ -53,11 +54,11 @@ class TagsCleaner(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
 
     def __init__(self, name="tags::clean", locs=None, roots=None, rec=False, exts=None):
-        super().__init__(name, locs, roots or [locs.bibtex, locs.bookmarks, locs.orgs], rec=rec, exts=exts or [".bib", ".bookmarks", ".org"])
+        # super().__init__(name, locs, roots or [locs.bibtex, locs.bookmarks, locs.orgs], rec=rec, exts=exts or [".bib", ".bookmarks", ".org"])
+        super().__init__(name, locs, roots or [locs.bookmarks], rec=rec, exts=exts or [".bib", ".bookmarks", ".org"])
         self.tags = SubstitutionFile()
         assert(self.locs.temp)
         assert(self.locs.tags)
-
 
     def filter(self, fpath):
         if bool(self.glob_files(fpath)):
@@ -87,18 +88,21 @@ class TagsCleaner(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
             tags = SubstitutionFile.read(sub)
             self.tags += tags
 
-    def clean_orgs(self, task, fpath):
+    def clean_orgs(self, fpath, task):
         logging.info("Cleaning Orgs in %s", fpath)
-        for line in fileinput.input(files=self.glob_files(fpath, exts=[".org"]),
-                                    inplace=True):
+        targets = self.glob_files(fpath ,exts=[".org"])
+        if not bool(targets):
+            return
+
+        for line in fileinput.input(files=targets, inplace=True):
             try:
                 match (org_tag_re.match(line) or empty_match).groups():
                     case (pre, tags):
                         tags_list = tags.split(":")
-                        cleaned = ":".join({self.tags.sub(x) for x in tags_list})
+                        cleaned   = ":".join({y for x in tags_list for y in self.tags.sub(x)})
                         print(f"{pre} :{cleaned}:")
                     case ():
-                        print(line)
+                        print(line, end="")
                         pass
 
             except Exception as err:
@@ -106,47 +110,53 @@ class TagsCleaner(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
                                 fileinput.filename(),
                                 fileinput.filelineno(),
                                 err)
-                print(line)
+                print(line, end="")
 
-    def clean_bibs(self, task, fpath):
+    def clean_bibs(self, fpath, task):
         logging.info("Cleaning Bibs in %s", fpath)
-        for line in fileinput.input(files=self.glob_files(fpath, exts=[".bib"]),
-                                    inplace=True):
+        targets = self.glob_files(fpath ,exts=[".bib"])
+        if not bool(targets):
+            return
+
+        for line in fileinput.input(files=targets, inplace=True):
             try:
                 match (bib_tag_re.match(line) or empty_match).groups():
                     case (pre, tags):
                         tags_list = tags.split(",")
-                        cleaned = ",".join({self.tags.sub(x) for x in tags_list})
+                        cleaned = ",".join({y for x in tags_list for y in self.tags.sub(x)})
                         print(f"{pre}{{{cleaned}}},")
                     case ():
-                        print(line)
+                        print(line, end="")
                         pass
             except Exception as err:
                 logging.warning("Error Processing %s (l:%s) : %s",
                                 fileinput.filename(),
                                 fileinput.filelineno(),
                                 err)
-                print(line)
+                print(line, end="")
 
-    def clean_bookmarks(self, task, fpath):
+    def clean_bookmarks(self, fpath, task):
         logging.info("Cleaning Bookmarks in %s", fpath)
-        for line in fileinput.input(files=self.glob_files(fpath, exts=[".bookmarks"]),
-                                    inplace=True):
+        targets = self.glob_files(fpath ,exts=[".bookmarks"])
+        if not bool(targets):
+            return
+
+        for line in fileinput.input(files=targets, inplace=True):
             try:
-                match (bookmark_tag_re.match(line) or empty_match).groups():
+                match (bookmark_tag_re.match(line.strip()) or empty_match).groups():
                     case (pre, tags):
                         tags_list = tags.split(":")
-                        cleaned = " : ".join({self.tags.sub(x.strip()) for x in tags_list})
+                        cleaned = " : ".join({y for x in tags_list for y in self.tags.sub(x)})
                         print(f"{pre} : {{{cleaned}}}")
                     case ():
-                        print(line)
+                        print(line, end="")
                         pass
             except Exception as err:
                 logging.warning("Error Processing %s (l:%s) : %s",
                                 fileinput.filename(),
                                 fileinput.filelineno(),
                                 err)
-                print(line)
+                print(line, end="")
 
 class TagsReport(globber.DootEagerGlobber, ActionsMixin):
     """
@@ -167,7 +177,7 @@ class TagsReport(globber.DootEagerGlobber, ActionsMixin):
             "actions" : [ self.report_totals,
                           self.report_alphas,
                           self.report_subs,
-                          (self.write_to, [report, ["sum_count", "alphas", "subs"]]),
+                          (self.write_to, [report, ["sum_count", "subs", "alphas"]]),
                           (self.write_to, [all_subs, "all_subs"]),
                           (self.write_to, [all_counts, "all_counts"]),
                          ],
@@ -197,7 +207,7 @@ class TagsReport(globber.DootEagerGlobber, ActionsMixin):
         for tag in self.tags:
             counts[tag[0]] += 1
 
-        report_str = "\n".join(f"{x} : {y}" for x,y in counts.items())
+        report_str = "\n".join(sorted(f"{x} : {y}" for x,y in counts.items()))
 
         return { "alphas" : "Tag Distribution:\n" + report_str }
 
@@ -218,7 +228,6 @@ class TagsIndexer(globber.DootEagerGlobber, ActionsMixin):
         self.bib_index  = IndexFile()
         self.org_index  = IndexFile()
         assert(self.locs.temp)
-
 
     def task_detail(self, task):
         existing_indices = self.locs.temp.glob("*.index")
@@ -280,3 +289,17 @@ class TagsIndexer(globber.DootEagerGlobber, ActionsMixin):
 
     def process_org(self, fpath):
         pass
+
+class TagsGrep(DootTasker):
+    """
+    grep directories slowly to build tag indices
+    """
+
+    def __init__(self, name="tags::grep", dirs=None):
+        super().__init__(name, dirs)
+
+    def task_detail(self, task):
+        task.update({
+            "actions" : [],
+        })
+        return task
