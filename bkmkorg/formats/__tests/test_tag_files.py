@@ -9,7 +9,7 @@ import unittest.mock as mock
 import logging
 
 
-class OrgStringBuilderTests(unittest.TestCase):
+class TagFileTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):

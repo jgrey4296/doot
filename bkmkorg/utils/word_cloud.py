@@ -18,21 +18,18 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-import matplotlib.pyplot as plt
-from PIL import Image
-from wordcloud import WordCloud
-import numpy as np
 if TYPE_CHECKING:
-    # tc only imports
     pass
 ##-- end imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-# If CLI:
-# logging = logmod.root
-# logging.setLevel(logmod.NOTSET)
 ##-- end logging
+
+import matplotlib.pyplot as plt
+import numpy as np
+from PIL import Image
+from wordcloud import WordCloud
 
 def getFrequencyDictForText(lines):
     tmpDict = {}
@@ -48,7 +45,6 @@ def getFrequencyDictForText(lines):
             breakpoint()
 
     return tmpDict
-
 
 def makeImage(text:dict[str,int], output:None|pl.Path=None):
     wc = WordCloud(background_color="white",

@@ -31,36 +31,42 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import doot
-from doot.tasker import DootTasker, DootActions
-from doot import globber
-
 from bkmkorg.bookmarks import database_fns as db_fns
+from doot import globber
+from doot.tasker import DootTasker
+from doot.task_mixins import ActionsMixin
+from bkmkorg.formats import bookmarks as BC
 
-firefox = doot.config.or_get("~/Library/ApplicationSupport/Firefox").tools.doot.bookmarks.firefox_loc()
-databse = doot.config.or_get("places.sqlite").tools.doot.bookmarks.database_name()
+pl_expand : Final = lambda x: pl.Path(x).expanduser().resolve()
 
-class BookmarksUpdate(DootTasker, DootActions):
+database_name   : Final = doot.config.on_fail("places.sqlite", str).tools.doot.bookmarks.database_name()
+
+class BookmarksUpdate(DootTasker, ActionsMixin):
     """
     ( -> src ) copy firefox bookmarks databases, extract, merge with bookmarks file
     """
 
-    def __init__(self, name="bkmk::update", dirs=None):
-        super().__init__(name, dirs)
-        self.firefox                                       = pl.Path(firefox).expanduser().resolve()
-        self.database                                      = database
+    def __init__(self, name="bkmk::update", locs=None):
+        super().__init__(name, locs)
+        self.database                                      = database_name
         self.new_collections : list[BC.BookmarkCollection] = []
         self.total : BC.BookmarkCollection                 = None
+        self.temp_dbs = self.locs.temp / "dbs"
+        assert(self.locs.firefox)
+        assert(self.locs.temp)
+        assert(self.locs.bookmarks_total)
 
     def task_detail(self, task):
-        dbs         = self.firefox.rglob(self.database)
-        working_dir = self.dirs.temp
-        bkmks       = self.dirs.src / "total.bookmarks"
+        dbs         = self.locs.firefox.rglob(self.database)
+        bkmks       = self.locs.bookmarks_total
         task.update({
             "actions" : [
-                (self.copy_to, [self.dirs.temp, bkmks], {"is_backup": True}),
-                (self.copy_to, [self.dirs.temp, *dbs], {"fn": lambda d,x: d / f"{x.parent.name}_{x.name}"})
+                (self.mkdirs,  [self.temp_dbs]),
+                (self.copy_to, [self.temp_dbs, bkmks], {"fn": "backup"}),
+                (self.copy_to, [self.temp_dbs, *dbs],  {"fn": lambda d,x: d / f"{x.parent.name}_{x.name}" }),
                 self._extract,
-                self._merge,
+                self._store_new_extracts,
+                (self._merge,  [bkmks]),
                 lambda: { "merged": str(self.total)},
                 (self.write_to, [bkmks, "merged"]),
             ],
@@ -72,37 +78,46 @@ class BookmarksUpdate(DootTasker, DootActions):
         """
         start pony, load db, extract, for each sqlite
         """
-        for db_file in self.dirs.temp.glob("*.sqlite"):
-            self.new_collections.append(db_fns.extract(db_file))
+        for db_file in self.temp_dbs.glob("*.sqlite"):
+            full_path = db_file.resolve()
+            self.new_collections.append(db_fns.extract(full_path))
 
-    def _merge(self, dependencies, task):
+    def _store_new_extracts(self):
+        for i, coll in enumerate(self.new_collections):
+            (self.temp_dbs / f"extracted_1.bookmarks").write_text(str(coll))
+
+    def _merge(self, fpath, task):
         """
         load total.bookmarks, merge extracted
         """
-        self.total = BC.BookmarkCollection.read(dependencies[0])
+        self.total = BC.BookmarkCollection.read(fpath)
         original_amnt = len(self.total)
         for extracted in self.new_collections:
-            self.total += collection
+            self.total += extracted
             self.total.merge_duplicates()
+        print(f"Bookmark Count: {original_amnt} -> {len(self.total)}")
 
-class BookmarksCleaner(DootTasker, DootActions):
+class BookmarksCleaner(DootTasker, ActionsMixin):
     """
     clean bookmarks file, removing duplicates, stripping urls
     """
 
-    def __init__(self, name="bkmk::clean", dirs=None):
-        super().__init__(name, dirs)
+    def __init__(self, name="bkmk::clean", locs=None):
+        super().__init__(name, locs)
         self.total = None
+        assert(self.locs.temp)
+        assert(self.locs.src)
 
     def task_detail(self, task):
+        fpath =  self.locs.src / "total.bookmarks"
         task.update({
             "actions"  : [
-                (self.copy_to, [self.dirs.temp, fpath], {"fn": lambda d,x: d / f"{x.name}.backup}"}),
+                (self.copy_to, [self.locs.temp, fpath], {"fn": "backup"}),
                 (self._merge, [fpath]),
                 lambda: {"merged": str(self.total)},
-                (self.write_to, [fpath, "merged"]),)
+                (self.write_to, [fpath, "merged"]),
             ],
-            "file_dep" : [ self.dirs.src / "total.bookmarks" ],
+            "file_dep" : [ fpath ],
         })
         return task
 
@@ -110,41 +125,46 @@ class BookmarksCleaner(DootTasker, DootActions):
         self.total = BC.BookmarkCollection.read(fpath)
         self.total.merge_duplicate()
 
-class BookmarksSplit(DootTasker, DootActions):
+class BookmarksSplit(DootTasker, ActionsMixin):
     """
-    Create several bookmarks files of selections
+    TODO Create several bookmarks files of selections
     """
     pass
 
-class BookmarksReport(globber.EagerFileGlobber, DootActions):
+class BookmarksReport(globber.DootEagerGlobber, ActionsMixin):
     """
-    Generate reports on bookmarks
+    TODO Generate reports on bookmarks
     """
 
-    def __init__(self, name="bkmk::report", dirs=None, roots=None, rec=False, exts=None):
-        super().__init__(name, dirs, roots or [dirs.src], rec=rec, exts=exts or [".bookmarks"])
+    def __init__(self, name="bkmk::report", locs=None, roots=None, rec=False, exts=None):
+        super().__init__(name, locs, roots or [locs.bookmarks], rec=rec, exts=exts or [".bookmarks"])
         self.bookmarks = BC.BookmarkCollection()
+        self.output = locs.build
 
     def filter(self, fpath):
         return self.control.accept
 
     def task_detail(self, task):
-        report_target = self.dirs.build / "bookmarks.report"
+        report_target = self.output / "bookmarks.report"
         task.update({
             "actions" : [
                 self.gen_report,
                 (self.write_to, [report_target, "report"]),
             ]
-            })
+        })
         return task
+
     def subtask_detail(self, task, fpath):
         task.update({
             "actions" : [
-                lambda: self.bookmarks.update(BC.BookmarkCollection.read(fpath)),
+                (self.add_bookmarks, [fpath])
             ]
         })
         return task
 
+    def add_bookmarks(self, fpath):
+        self.bookmarks.update(BC.BookmarkCollection.read(fpath))
+
     def gen_report(self):
 
-        return { "report" : "" }
+        return { "report" : "TODO report" }

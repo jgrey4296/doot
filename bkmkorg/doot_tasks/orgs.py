@@ -31,16 +31,16 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import doot
-from doot.tasker import DootTasker, DootActions
+from doot.tasker import DootTasker, ActionsMixin
 from doot import globber
 
-class OrgCleaner(globber.EagerFileGlobber, DootActions):
+class OrgCleaner(globber.DootEagerGlobber, ActionsMixin):
     """
-    Find and format any org files
+    TODO Find and format any org files
     """
 
-    def __init__(self, name="org::clean", dirs=None, roots=None, rec=False, exts=None):
-        super().__init__(name, dirs, roots or [dirs.src], rec=rec, exts=exts or [".org"])
+    def __init__(self, name="org::clean", locs=None, roots=None, rec=False, exts=None):
+        super().__init__(name, locs, roots or [locs.orgs], rec=rec, exts=exts or [".org"])
 
     def filter(self, fpath):
         return self.control.accept
@@ -50,3 +50,6 @@ class OrgCleaner(globber.EagerFileGlobber, DootActions):
             "actions" : []
         })
         return task
+
+class Org2Html:
+    pass

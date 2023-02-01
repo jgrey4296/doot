@@ -31,66 +31,14 @@ test = ["pytest > 7.0.0"]
 [project.urls]
 homepage      = "https://github.com/jgrey4296/acab"
 documentation = "https://readthedocs.org/acab"
-repository    = "https://github.com/jgrey4296/acab"
-changelog     = "https://github.com/jgrey4296/acab/blob/master/CHANGELOG.md"
+repository    = "https://github.com/jgrey4296/bkmkorg"
 
 ##-- scripts
 [project.scripts]
-bkmk                   = "bkmkorg.__main__:main"
-# describers:
-bkmk-bib-cmp           = "bkmkorg.cli.bibtex.compare:main"
-bkmk-bib-desc          = "bkmkorg.cli.bibtex.describer:main"
-bkmk-bib-check         = "bkmkorg.cli.bibtex.file_check:main"
-bkmk-bib-graph         = "bkmkorg.cli.bibtex.graphing:main"
-bkmk-bib-timeline      = "bkmkorg.cli.bibtex.timelines:main"
-bkmk-bib-authors       = "bkmkorg.cli.bibtex.author_extract:main"
-bkmk-bib-index         = "bkmkorg.cli.bibtex.index:main"
-bkmk-bib-compile       = "bkmkorg.cli.bibtex.compile:main"
-
-bkmk-pdf-summarise     = "bkmkorg.cli.pdf.folder_summary:main"
-bkmk-pdf-tag-summarise = "bkmkorg.cli.pdf.tag_summary:main"
-bkmk-pdf-metadata      = "bkmkorg.cli.pdf.meta_data_summary:main"
-bkmk-pdf-validity      = "bkmkorg.cli.pdf.validity_check:main"
-
-bkmk-tag-index         = "bkmkorg.cli.tags.indexer:main"
-bkmk-tag-totals        = "bkmkorg.cli.tags.totals:main"
-bkmk-tag-graph         = "bkmkorg.cli.tags.graph:main"
-
-bkmk-twit-index        = "bkmkorg.cli.twitter.indexer:main"
-bkmk-tag-grep          = "bkmkorg.cli.twitter.tag_grep:main"
-
-# filters:
-bkmk-bib-clean         = "bkmkorg.cli.bibtex.clean:main"
-bkmk-tag-clean         = "bkmkorg.cli.tags.clean:main"
-bkmk-tag-graph-query   = "bkmkorg.cli.tags.graph_query:main"
-
-# integrators:
-bkmk-twit-merge        = "bkmkorg.cli.twitter.unify:main"
-bkmk-merge             = "bkmkorg.cli.bookmark.unify:main"
-bkmk-sql               = "bkmkorg.cli.bookmark.sql_unify:main"
-bkmk-bib-merge         = "bkmkorg.cli.bibtex.unify:main"
-bkmk-backup            = "bkmkorg.cli.files.unify:main"
-bkmk-adb-backup        = "bkmkorg.cli.android.adb_unify:main"
-bkmk-noscript          = "bkmkorg.cli.noscript.merge:main"
-
-# splitters:
-bkmk-split             = "bkmkorg.cli.bookmark.split:main"
-bkmk-to-txt            = "bkmkorg.cli.bookmark.bkmk_to_text:main"
-
-#download
-bkmk-twit              = "bkmkorg.cli.twitter.automator:main"
-
-# bots
-bkmk-bot-time          = "bkmkorg.cli.bots.time_announce:main"
-bkmk-bot-bibtex        = "bkmkorg.cli.bibtex.post:main"
-bkmk-bot-image         = "bkmkorg.cli.photo.image_post:main"
-bkmk-bot-stub          = "bkmkorg.cli.bibtex.stubber:main"
 
 [project.gui-scripts]
-# spam-gui      = "spam:main_gui"
 
 [project.entry-points."nothing"]
-# tomatoes      = "spam:main_tomatoes"
 
 ##-- end scripts
 

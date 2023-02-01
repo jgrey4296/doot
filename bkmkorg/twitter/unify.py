@@ -45,7 +45,6 @@ def copy_files(source_dir:pl.Path, target_dir:pl.Path):
             call_sig = ['cp', str(y), str(target_dir / y.name)]
             run(call_sig, capture_output=True, check=True)
 
-
 def copy_new(source:pl.Path, lib_path:pl.Path):
     logging.info("Adding to library with: %s", source)
     file_dir  = source.parent / f"{source.stem}_files"
@@ -62,7 +61,6 @@ def copy_new(source:pl.Path, lib_path:pl.Path):
     run(["mv", str(source), str(source.parent / f"{source.name}{PROCESSED}")], capture_output=True, check=True)
 
     copy_files(file_dir, target_for_new / f"{source.stem}_files")
-
 
 def integrate(source:pl.Path, lib_dict:dict[str,Any]):
     logging.info("Integrating: %s", source)
@@ -87,8 +85,6 @@ def integrate(source:pl.Path, lib_dict:dict[str,Any]):
         return
 
     copy_files(new_files, existing_files)
-
-
 
 def update_record(path:pl.Path, sources:List[pl.Path]):
     now : str = datetime.datetime.now().strftime("%Y-%m-%d")

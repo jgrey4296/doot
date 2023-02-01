@@ -1,4 +1,0 @@
-
-[formats]
-images = [".jpg",".jpeg",".png",".gif",".webp",".tiff", ".bmp"]
-video  = [".mp4", ".mov", ".avi", ".webp"]

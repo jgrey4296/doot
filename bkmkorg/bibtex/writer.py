@@ -19,9 +19,10 @@ if TYPE_CHECKING:
 ##-- end imports
 
 logging    = logmod.getLogger(__name__)
-head_line  = Template("@$entry{$id,")
-field_line = Template("$indent$field$eq_buffer= $value,")
-close_line = "}"
+
+head_line  : Final = Template("@$entry{$id,")
+field_line : Final = Template("$indent$field$eq_buffer= $value,")
+close_line : Final = "}"
 
 class JGBibTexWriter(bwriter.BibTexWriter):
     """
