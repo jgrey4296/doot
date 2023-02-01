@@ -164,12 +164,12 @@ class DirGlobMixin:
     Always provides the root directories
     """
 
-    def glob_files(self, target, rec=False, fn=None, exts=None):
+    def glob_files(self, target, rec=None, fn=None, exts=None):
         if fn is None:
             fn = lambda x: True
-        return super().glob_target(target, rec=rec, fn=fn, exts=None)
+        return super().glob_target(target, rec=rec, fn=fn, exts=exts)
 
-    def glob_target(self, target, rec=False, fn=None, exts=None):
+    def glob_target(self, target, rec=None, fn=None, exts=None):
         results = []
         filter_fn = fn or self.filter
         if rec or self.rec:
@@ -196,6 +196,8 @@ class DirGlobMixin:
                         raise TypeException("Unexpected glob filter value", x)
 
         elif target.exists():
+            if filter_fn(target) not in [False, GlobControl.reject, GlobControl.discard]:
+                results.append(target)
             results += [x for x in target.iterdir() if x.is_dir() and filter_fn(x) not in [False, GlobControl.reject, GlobControl.discard]]
 
         return results
@@ -206,7 +208,7 @@ class LazyGlobMixin:
     use self.glob_target to run the glob
     """
 
-    def glob_all(self, rec=False):
+    def glob_all(self, rec=None):
         return [(str(x).replace("/", "_"), x) for x in self.roots]
 
 class HeadlessGlobMixin:
@@ -227,7 +229,7 @@ class SubGlobMixin:
     Glob only a subset of potentials
     """
 
-    def glob_all(self, rec=False):
+    def glob_all(self, rec=None):
         results = super().glob_all(rec)
         match glob_subselect_exact, glob_subselect_pcnt:
             case (-1, -1):

@@ -155,7 +155,7 @@ class BibtexBuildPass(globber.DootEagerGlobber, ActionsMixin):
         for line in fileinput.input(files=[aux], inplace=True, backup=".backup"):
             line_match = reg.match(line)
             if line_match is None:
-                print(line.strip())
+                print(line, end="")
             else:
                 has_bib = True
                 print(r"\bibdata{" + bib_loc + "}")
@@ -199,7 +199,7 @@ class BibtexConcatenateSweep(globber.LazyFileGlobber):
     def glob_and_add(self, fpath, task):
         with open(self.target, 'w') as mainBib:
             for line in fileinput.input(files=self.glob_target(fpath)):
-                print(line.strip(), file=mainBib)
+                print(line, file=mainBib, end="")
 
 def task_latex_install():
     """
