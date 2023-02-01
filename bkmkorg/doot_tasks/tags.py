@@ -41,9 +41,8 @@ from doot import globber
 from doot.tasker import DootTasker
 from doot.task_mixins import ActionsMixin
 
-tag_path        : Final = doot.config.on_fail("resources/tags", str).tool.doot.tags.loc()
 empty_match     : Final = re.match("","")
-bib_tag_re      : Final = re.compile(r"^(\s+tags\s+= ){(.+?)},$")
+bib_tag_re      : Final = re.compile(r"^(\s+tags\s+=)\s+{(.+?)},$")
 org_tag_re      : Final = re.compile(r"^(\*\* .+?)\s+:(\S+):$")
 bookmark_tag_re : Final = re.compile(r"^(http.+?) : (.+)$")
 
@@ -55,7 +54,7 @@ class TagsCleaner(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
 
     def __init__(self, name="tags::clean", locs=None, roots=None, rec=False, exts=None):
         # super().__init__(name, locs, roots or [locs.bibtex, locs.bookmarks, locs.orgs], rec=rec, exts=exts or [".bib", ".bookmarks", ".org"])
-        super().__init__(name, locs, roots or [locs.bookmarks], rec=rec, exts=exts or [".bib", ".bookmarks", ".org"])
+        super().__init__(name, locs, roots or [locs.bibtex, locs.bookmarks], rec=rec, exts=exts or [".bib", ".bookmarks", ".org"])
         self.tags = SubstitutionFile()
         assert(self.locs.temp)
         assert(self.locs.tags)
@@ -83,7 +82,8 @@ class TagsCleaner(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
         return task
 
     def read_tags(self):
-        for sub in self.glob_files(self.locs.tags / tag_path, exts=[".sub"]):
+        targets = self.glob_files(self.locs.tags , exts=[".sub"], rec=True)
+        for sub in targets:
             logging.info(f"Reading Tag Sub File: %s", sub)
             tags = SubstitutionFile.read(sub)
             self.tags += tags
@@ -99,7 +99,7 @@ class TagsCleaner(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
                 match (org_tag_re.match(line) or empty_match).groups():
                     case (pre, tags):
                         tags_list = tags.split(":")
-                        cleaned   = ":".join({y for x in tags_list for y in self.tags.sub(x)})
+                        cleaned   = ":".join(sorted({y for x in tags_list for y in self.tags.sub(x) if bool(y)}))
                         print(f"{pre} :{cleaned}:")
                     case ():
                         print(line, end="")
@@ -123,8 +123,8 @@ class TagsCleaner(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
                 match (bib_tag_re.match(line) or empty_match).groups():
                     case (pre, tags):
                         tags_list = tags.split(",")
-                        cleaned = ",".join({y for x in tags_list for y in self.tags.sub(x)})
-                        print(f"{pre}{{{cleaned}}},")
+                        cleaned = ",".join(sorted({y for x in tags_list for y in self.tags.sub(x) if bool(y)}))
+                        print(f"{pre} {{{cleaned}}},")
                     case ():
                         print(line, end="")
                         pass
@@ -146,8 +146,8 @@ class TagsCleaner(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
                 match (bookmark_tag_re.match(line.strip()) or empty_match).groups():
                     case (pre, tags):
                         tags_list = tags.split(":")
-                        cleaned = " : ".join({y for x in tags_list for y in self.tags.sub(x)})
-                        print(f"{pre} : {{{cleaned}}}")
+                        cleaned = " : ".join(sorted({y for x in tags_list for y in self.tags.sub(x) if bool(y)}))
+                        print(f"{pre} : {cleaned}")
                     case ():
                         print(line, end="")
                         pass
