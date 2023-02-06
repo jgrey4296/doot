@@ -90,7 +90,16 @@ class BatchMixin:
                 case _:
                     batch_data = data
 
-            result.append(fn(batch_data, **kwargs))
+            batch_result =  fn(batch_data, **kwargs)
+            match batch_result:
+                case None:
+                    pass
+                case list():
+                    result += batch_result
+                case set():
+                    result += list(batch_result)
+                case _:
+                    result.append(batch_result)
 
             self.batch_count += 1
             if -1 < batches_max < self.batch_count:
@@ -115,7 +124,7 @@ class BatchMixin:
         """
         args = [iter(iterable)] * n
         if incomplete == 'fill':
-            return itertools.zip_longest(*args, fillvalue=fillvalue)
+            return itz.zip_longest(*args, fillvalue=fillvalue)
         if incomplete == 'strict':
             return zip(*args, strict=True)
         if incomplete == 'ignore':

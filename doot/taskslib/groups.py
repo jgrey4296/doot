@@ -37,6 +37,7 @@ __all__ = [ "defaults_group",
             "pip_group", "jekyll_group", "sphinx_group",
             "latex_group", "tags_group", "git_group",
             "cargo_group", "epub_group", "py_group",
+            "maintain_group"
            ]
 
 ##-- defaults
@@ -284,3 +285,26 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
         print("To activate group, epub needs: ", err)
 
 ##-- end epub
+
+##-- maintain
+maintain_group = TaskGroup("Maintain Group")
+try:
+    doot.config.tool.doot.group.maintain
+    from doot.taskslib.utils import maintenance as maintain
+    maintain_group += maintain.CheckMail(locs=doot.locs)
+    maintain_group += maintain.MaintainFull(locs=doot.locs)
+    maintain_group += maintain.RustMaintain(locs=doot.locs)
+    maintain_group += maintain.LatexMaintain(locs=doot.locs)
+    maintain_group += maintain.CabalMaintain(locs=doot.locs)
+    maintain_group += maintain.DoomMaintain(locs=doot.locs)
+    maintain_group += maintain.BrewMaintain(locs=doot.locs)
+    maintain_group += maintain.CondaMaintain(locs=doot.locs)
+    maintain_group += maintain.CronMaintain(locs=doot.locs)
+    maintain_group += maintain.GitMaintain(locs=doot.locs)
+
+
+
+except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
+    if doot.config.on_fail(False, bool).tool.doot.group.epub.debug():
+        print("To activate group, epub needs: ", err)
+##-- end maintain

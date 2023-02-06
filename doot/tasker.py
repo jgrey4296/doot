@@ -65,9 +65,6 @@ class DootTasker:
         # Wrap in a lambda because MethodType does not behave as we need it to
         self.create_doit_tasks = lambda *a, **kw: self._build(*a, **kw)
         self.create_doit_tasks.__dict__['basename'] = base
-        params = self.set_params()
-        if bool(params):
-            self.create_doit_tasks.__dict__['_task_creator_params'] = params
 
         self.base         = base
         self.locs         = locs
@@ -75,6 +72,10 @@ class DootTasker:
         self._setup_name  = None
         self.active_setup = False
         self.output       = None
+
+        params = self.set_params()
+        if bool(params):
+            self.create_doit_tasks.__dict__['_task_creator_params'] = params
 
     def set_params(self) -> list:
         return []
