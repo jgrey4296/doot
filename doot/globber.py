@@ -94,18 +94,40 @@ class DootEagerGlobber(DootSubtasker):
 
     def glob_target(self, target, rec=None, fn=None, exts=None) -> list[pl.Path]:
         results   = []
-        exts      = exts or self.exts or ["*"]
+        exts      = exts or self.exts or []
         filter_fn = fn or self.filter
-        match rec, self.rec:
-            case (True, _) | (None, True):
-                glob_fn   = target.rglob
-            case (False, _) | (None, False):
-                glob_fn   = target.glob
 
-        for ext in [f"*{x}" if x[0] == "." else x for x in exts]:
-            results += glob_fn(ext)
+        if not target.exists():
+            return []
+        elif not (rec or self.rec):
+            if filter_fn(target) not in [False, GlobControl.reject, GlobControl.discard]:
+                results.append(target)
+            results += [x for x in target.iterdir() if filter_fn(x) not in [False, GlobControl.reject, GlobControl.discard]]
+            return results
 
-        results = [x for x in results if filter_fn(x) not in [False, GlobControl.reject, GlobControl.discard]]
+        assert(rec or self.rec)
+        queue = [target]
+        while bool(queue):
+            current = queue.pop()
+            if not current.exists():
+                continue
+            if current.name in glob_ignores:
+                continue
+            if bool(exts) and current.is_file() and current.suffix not in exts:
+                continue
+            match filter_fn(current):
+                case GlobControl.keep:
+                    results.append(current)
+                case GlobControl.discard if current.is_dir():
+                    queue += [x for x in current.iterdir()]
+                case True | GlobControl.accept:
+                    results.append(current)
+                    if current.is_dir():
+                        queue += [x for x in current.iterdir()]
+                case None | False | GlobControl.reject:
+                    continue
+                case _ as x:
+                    raise TypeException("Unexpected glob filter value", x)
 
         return results
 
@@ -172,33 +194,36 @@ class DirGlobMixin:
     def glob_target(self, target, rec=None, fn=None, exts=None):
         results = []
         filter_fn = fn or self.filter
-        if rec or self.rec:
-            queue = [target]
-            while bool(queue):
-                current = queue.pop()
-                if not current.exists():
-                    continue
-                if current.name in glob_ignores:
-                    continue
-                if current.is_file():
-                    continue
-                match filter_fn(current):
-                    case GlobControl.keep:
-                        results.append(current)
-                    case GlobControl.discard:
-                        queue += [x for x in current.iterdir() if x.is_dir()]
-                    case True | GlobControl.accept:
-                        results.append(current)
-                        queue += [x for x in current.iterdir() if x.is_dir()]
-                    case None | False | GlobControl.reject:
-                        continue
-                    case _ as x:
-                        raise TypeException("Unexpected glob filter value", x)
-
-        elif target.exists():
+        if not target.exists():
+            return []
+        elif not (rec or self.rec):
             if filter_fn(target) not in [False, GlobControl.reject, GlobControl.discard]:
                 results.append(target)
             results += [x for x in target.iterdir() if x.is_dir() and filter_fn(x) not in [False, GlobControl.reject, GlobControl.discard]]
+            return results
+
+        assert(rec or self.rec)
+        queue = [target]
+        while bool(queue):
+            current = queue.pop()
+            if not current.exists():
+                continue
+            if current.name in glob_ignores:
+                continue
+            if current.is_file():
+                continue
+            match filter_fn(current):
+                case GlobControl.keep:
+                    results.append(current)
+                case GlobControl.discard:
+                    queue += [x for x in current.iterdir() if x.is_dir()]
+                case True | GlobControl.accept:
+                    results.append(current)
+                    queue += [x for x in current.iterdir() if x.is_dir()]
+                case None | False | GlobControl.reject:
+                    continue
+                case _ as x:
+                    raise TypeException("Unexpected glob filter value", x)
 
         return results
 

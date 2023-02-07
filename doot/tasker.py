@@ -71,7 +71,7 @@ class DootTasker:
         self.args         = {}
         self._setup_name  = None
         self.active_setup = False
-        self.output       = None
+        self.output       = output
 
         params = self.set_params()
         if bool(params):

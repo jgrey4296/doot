@@ -288,7 +288,7 @@ class GitMaintain(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEager
     def get_repo_urls(self):
         globbed = super(globber.LazyGlobMixin, self).glob_all()
         results = []
-        for fpath in globbed:
+        for name, fpath in globbed:
             cmd = self.cmd(["git", "config", "--get-regexp", "url"], save="urls")
             cmd.execute()
             results += cmd.result.split("\n")
