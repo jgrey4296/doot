@@ -43,6 +43,7 @@ from bkmkorg.bibtex import utils as bib_utils
 from doot import globber
 from doot.tasker import DootTasker
 from doot import tasker, task_mixins
+from doot.taskslib.files.backup import BackupTask
 
 pl_expand : Final = lambda x: pl.Path(x).expanduser().resolve()
 
@@ -51,6 +52,19 @@ stub_exts        : Final = doot.config.on_fail([".pdf", ".epub", ".djvu", ".ps"]
 clean_in_place   : Final = doot.config.on_fail(False, bool).tool.doot.bibtex.clean_in_place()
 
 ENT_const        : Final = 'ENTRYTYPE'
+
+
+class BackupBibtexLib(BackupTask):
+
+    def __init__(self, name="bibtex::backup", locs=None):
+        output = locs.backup_root / "Library" / locs.pdfs.name
+        super().__init__(name, locs, [locs.pdfs], output=output)
+
+class BackupBibtexSummary(BackupTask):
+
+    def __init__(self, name="bibtex::backup", locs=None):
+        output = locs.backup_root / "Library" / locs.bibtex_summary.name
+        super().__init__(name, locs, [locs.pdfs], output=output)
 
 class LibDirClean(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """

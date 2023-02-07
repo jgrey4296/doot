@@ -45,6 +45,12 @@ logging = logmod.getLogger(__name__)
 
 user_batch_size : Final = doot.config.on_fail(100, int).tool.doot.twitter.user_batch()
 
+class BackupTwitterLib(BackupTask):
+
+    def __init__(self, name="twitter::backup", locs=None):
+        output = locs.backup_root / "Library" / locs.twitter_threads.name
+        super().__init__(name, locs, [locs.twitter_threads], output=output)
+
 class TwitterFull(DootTasker):
 
     def __init__(self, name="twitter::go", locs=None):
@@ -106,8 +112,8 @@ class TwitterLibTweets(DootTasker, ActionsMixin, TwitterMixin):
                            (self.setup_twitter, [self.locs.secrets]),
                            self.read_target_ids,
                            (self.read_temp_ids, [self.output]),
-                           self.calc_missing_ids,
                            (self.read_missing_ids, [ self.locs.missing_ids ]),
+                           self.calc_remaining_ids,
                            (self.tw_download_tweets, [self.output, self.locs.missing_ids]),
                            (self.write_log, [self.locs.tweet_archive]),
                           ],
@@ -115,24 +121,44 @@ class TwitterLibTweets(DootTasker, ActionsMixin, TwitterMixin):
         return task
 
     def read_target_ids(self):
-        logging.info("---------- Getting target Tweet ids")
+        print("---------- Getting target Tweet ids")
+        target = self.locs.tweet_library / ".tweets"
+        if not target.exists():
+            return
+
+        count = 0
         for line in fileinput.input(files=[self.locs.tweet_library / ".tweets"]):
-            self.target_ids.add(pl.Path(line).name)
-        logging.info("Found %s library ids", len(self.target_ids))
+            count += 1
+            self.target_ids.add(pl.Path(line.strip()).name)
+
+        print("Found %s library ids from %s lines" % (len(self.target_ids), count))
 
     def read_temp_ids(self, fpath):
+        print("---------- Getting Temp Tweet ids")
         for jfile in fpath.glob('*.json'):
             data = json.loads(jfile.read_text(), strict=False)
-            ids  = [x['id_str'] for x in data]
+            ids  = [x['id_str'] for x in data if bool(x['id_str'])]
             self.existing_json_ids.update(ids)
 
-    def read_missing_ids(self, fpath):
-        text = fpath.read_text().split("\n")
-        self.existing_json_ids.update([x.strip() for x in text])
+        print("Read %s temp ids" % len(self.existing_json_ids))
 
-    def calc_missing_ids(self):
+    def read_missing_ids(self, fpath):
+        print("---------- Getting Missing Tweet ids")
+        if not fpath.exists():
+            return
+
+        text = fpath.read_text().split("\n")
+        ids  = [x.strip() for x in text]
+        print("Read %s missing ids" % len(ids))
+        self.existing_json_ids.update(ids)
+
+    def calc_remaining_ids(self):
+        print("---------- Calculating Target Tweet ids")
+        print("Initial Library Ids: %s" % len(self.target_ids))
+        print("Existing Json Ids: %s" % len(self.existing_json_ids))
         raw_todo_ids = self.target_ids
-        remaining = raw_todo_ids - self.existing_json_ids
+        remaining    = raw_todo_ids - self.existing_json_ids
+        print("Remaining Target Ids: %s" % len(remaining))
         return { "target_ids": list(remaining) }
 
     def write_log(self, fpath, task):
@@ -210,7 +236,7 @@ class TwitterTweets(DootTasker, ActionsMixin, TwitterMixin):
             return
 
         for line in fileinput.input(files=[self.locs.tweet_library / ".tweets"]):
-            self.library_ids.add(pl.Path(line).name)
+            self.library_ids.add(pl.Path(line.strip()).name)
         logging.info("Found %s library ids", len(self.library_ids))
 
     def read_temp_ids(self, fpath):
@@ -371,7 +397,6 @@ class TwitterThreadBuild(globber.LazyGlobMixin, globber.DootEagerGlobber, Action
         super().__init__(name, locs, roots or [locs.components], rec=rec, exts=exts or [".json"])
         self.output = self.locs.threads
 
-
     def setup_detail(self, task):
         task.update({
         })
@@ -493,7 +518,7 @@ class TwitterMerge(globber.DootEagerGlobber, ActionsMixin):
     """
 
     def __init__(self, name="twitter::merge", locs=None, roots=None, rec=False, exts=None):
-        super().__init__(name, locs, roots or [locs.orgs], rec=rec, exts=exts or [".org"])
+        super().__init__(name, locs, roots or [locs.twitter_threads], rec=rec, exts=exts or [".org"])
         self.base_user_reg = re.compile(r"^(.+?)_thread_\d+$")
         self.group_reg     = re.compile(r"^[a-zA-Z]")
         self.files_dir_reg = re.compile(r"^(.+?)_files$")
