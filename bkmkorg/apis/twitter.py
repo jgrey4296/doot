@@ -66,6 +66,7 @@ class TwitterMixin:
                 return {"twitter_result": True}
         except Exception as err:
             logging.warning("Twitter Post Failure: %s", err)
+            print("Twitter Post Failed: ", str(err), msg)
             return {"twitter_result": False}
 
     def post_twitter_image(self, task):
@@ -86,7 +87,8 @@ class TwitterMixin:
             print("Twitter Image Posted")
             return {"twitter_result": True }
         except Exception as err:
-            print("Twitter Post Failed: ", str(err))
+            logging.warning("Twitter Post Failure: %s", err)
+            print("Twitter Post Failed: ", str(err), msg, the_file)
             return { "twitter_result": False }
 
     def tw_download_tweets(self, target_dir, missing_file, task):

@@ -49,7 +49,7 @@ class TimeAnnounce(tasker.DootTasker, task_mixins.ActionsMixin):
         return task
 
     def speak_time(self):
-        now     = datetime.now().strftime(time_format)
+        now     = datetime.datetime.now().strftime(time_format)
         msg     = f"The Time is {now}"
         return ["say", "-v", time_voice, "-r", "50", msg]
 

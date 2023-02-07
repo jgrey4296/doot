@@ -214,8 +214,8 @@ class BibPoster(tasker.DootTasker, MastodonMixin, TwitterMixin, BibLoadSaveMixin
         if any([sufficient_entry(x) for x in self.db.entries]):
             return
 
-        logging.info("Bibtex failed check, blacklisting: %s", fpath)
-        self.blacklisted.update(fpath.stem for fpath in files)
+        logging.info("Bibtex failed check, blacklisting: %s", files)
+        self.blacklist.update(pl.Path(fpath).stem for fpath in files)
 
     def write_blacklist(self):
         self.locs.bib_blacklist.write_text("\n".join(self.blacklist))
@@ -257,11 +257,11 @@ class ImagePoster(tasker.DootTasker, MastodonMixin, TwitterMixin, task_mixins.Ac
 
     def select_file(self):
         selected = choice(list(self.whitelist))
-        if "Cora" in selected:
-            msg = "Cora"
+        if "cora" in str(selected).down():
+            msg  = "Cora"
             desc = "My Cat, Cora"
-        elif "Kira" in selected:
-            msg = "Kira"
+        elif "kira" in str(selected).down():
+            msg  = "Kira"
             desc = "My Cat, Kira"
         else:
             raise Exception("Unexpected Image", selected)
