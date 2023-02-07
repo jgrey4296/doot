@@ -49,7 +49,7 @@ class CheckMail(tasker.DootTasker, task_mixins.CommanderMixin):
         })
         return task
 
-class MaintainFull(DootTasker, task_mixins.CommanderMixin):
+class MaintainFull(task_mixins.FilerMixin, DootTasker, task_mixins.CommanderMixin):
     """
     Run all maintain tasks combined
     """
