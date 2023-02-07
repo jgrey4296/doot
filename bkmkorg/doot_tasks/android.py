@@ -32,69 +32,73 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-from doit.action import CmdAction
 import doot
-from doot.tasker import DootTasker, ActionsMixin, BatchMixin
+from doot.tasker import DootTasker
+from doot.task_mixins import ActionsMixin, BatchMixin
 from doot import globber
+from bkmkorg.apis import android
 
-adb_path     : Final = shutil.which("adb")
-
-android_base : Final = pl.Path(doot.config.on_fail("/storage/6331-3162", str).tools.doot.android.base())
+android_base : Final = doot.config.on_fail("/storage/6331-3162", str).tools.doot.android.base(wrapper=pl.Path)
 timeout      : Final = doot.config.on_fail(5, int).tools.doot.android.timeout()
 port         : Final = doot.config.on_fail(37769, int).tools.doot.android.port()
 wait_time    : Final = doot.config.on_fail(10, int).tools.doot.android.wait()
 
 NICE         : Final = ["nice", "-n", "10"]
 
-class ADBUpload(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
+class ADBUpload(android.ADBMixin, globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     Push files from local to device
     """
 
     def __init__(self, name="android::upload", locs=None, roots=None, rec=True):
-        super().__init__(name, locs, roots or [locs.pdfs], rec=rec)
+        super().__init__(name, locs, roots or [locs.local_push], rec=rec)
         self.device_root = None
-        self.report      = {}
-
+        self.local_root  = None
+        self.report      = list()
+        self.count = 0
 
     def filter(self, fpath):
-        if fpath in self.roots:
-            return self.control.discard
-        return self.control.keep
+        if fpath.parent in self.roots:
+            return self.control.keep
+        return self.control.discard
 
     def set_params(self):
         return [
             {"name": "id", "long": "id", "type": str, "default": None},
-            {"name": "remote", "long": "remote", "type": str, "default": None},
+            {"name": "remote", "long": "remote", "type": str, "default": "."},
         ]
 
     def task_detail(self, task):
         self.device_root = android_base / self.args['remote']
+        self.local_root  = self.locs.local_push
+        print(f"Set Device Root to: {self.device_root}")
         task.update({
             "actions" : [ self.write_report ],
         })
         return task
 
     def subtask_detail(self, task, fpath):
-        # relative fpath from root
-        rel = self.rel_path(fpath)
         task.update({
-            "actions" : [ self.cmd(self.push_dir, rel) ],
+            "actions" : [ self.cmd(self.args_adb_push_dir, fpath, save="result"),
+                          (self.add_to_log, [fpath]),
+                         ],
         })
         return task
 
-    def push_dir(self, relpath):
-        cmd = [ adb_path, "-t", self.args['id'],
-                "push", "--sync",
-                pl.Path(self.args['local']) / relpath,
-                (device_root / relpath).parent ]
-        print(f"Push Cmd: {cmd}")
-        return cmd
+    def add_to_log(self, fpath, task):
+        entry = f"{fpath}: {task.values['result']}"
+        self.report.append(entry)
 
     def write_report(self):
-        raise NotImplementedError()
+        print("Completed")
+        report = []
+        report.append("--------------------")
+        report.append("Pushed: ")
+        report += [str(x) for x in self.report]
 
-class ADBDownload(DootTasker, ActionsMixin, BatchMixin):
+        (self.locs.build / "adb_push.report").write_text("\n".join(report))
+
+class ADBDownload(android.ADBMixin, DootTasker, ActionsMixin, BatchMixin):
     """
     pull files from device to local
     """
@@ -104,118 +108,60 @@ class ADBDownload(DootTasker, ActionsMixin, BatchMixin):
         self.report      = {}
         self.device_root = None
         self.local_root  = None
-        assert(locs.temp)
+        assert(locs.local_pull)
 
     def set_params(self):
         return [
             {"name": "id", "long": "id", "type": str, "default": None},
-            {"name": "remote", "long": "remote", "type": str, "default": "__na"},
-            {"name" : "local", "long": "local", "type": str, "default": str(self.locs.temp)},
+            {"name": "remote", "long": "remote", "type": str, "default": "."},
+            {"name" : "local", "long": "local", "type": str, "default": str(self.locs.local_pull)},
         ]
 
     def task_detail(self, task):
         self.device_root = android_base / self.args['remote']
         self.local_root  = pl.Path(self.args['local'])
         task.update({
-            "actions" : [ self.cmd(self.query_files,    save="immediate_files"),
-                          self.cmd(self.query_sub_dirs, save="remote_subdirs"),
-                          self.batch_query_subdirs, # -> remote_files
-                          self.calc_missing, # -> missing
-                          self.pull_missing, # -> downloaded, failed
+            "actions" : [ self.cmd(self.args_adb_query, ftype="f", save="immediate_files"),
+                          self.cmd(self.args_adb_query,            save="remote_subdirs"),
+                          (self.batch_query_subdirs, [self._subbatch_query] ), # -> remote_files
+                          self.calc_pull_targets, # -> pull_targets
+                          self.pull_files, # -> downloaded, failed
                           self.write_report,
                          ],
             "verbosity" : 2,
         })
         return task
 
-    def query_sub_dirs(self):
-        cmd = [adb_path, "-t", self.args['id'],
-               "shell", "find",
-                self.device_root,
-               "-maxdepth", "1",
-               "-type", "d"
-               ]
-
-        return cmd
-
-    def query_files(self):
-        cmd = [adb_path, "-t", self.args['id'],
-               "shell", "find",
-                self.device_root,
-               "-maxdepth", "1",
-               "-type", "f"
-               ]
-
-        return cmd
-
-    def batch_query_subdirs(self, task):
-        immediate_files = task.values['immediate_files']
-        subdirs         = {pl.Path(x.strip()) for x in task.values['remote_subdirs'].split("\n") if bool(x.strip())}
-        subdirs.remove(self.device_root)
-
-        remote_files = [immediate_files]
-        if bool(subdirs):
-            print(f"Subdirs to Batch: {subdirs}", file=sys.stderr)
-            remote_files += self.run_batches(*[[x] for x in subdirs], fn=self.subdir_batch)
-
-        return { "remote_files" : "\n".join(remote_files) }
-
-    def subdir_batch(self, data):
+    def _subbatch_query(self, data):
+        """
+        Run a single query directory query
+        """
         print(f"Subdir Batch: {data}", file=sys.stderr)
-        query = self.cmd([adb_path, "-t", self.args['id'],
-                          "shell", "find", data[0],
-                          "-type", "d"
-                          ])
-
+        query = self.cmd(self.args_adb_query(data[0], depth=-1, ftype="f"))
         query.execute()
-        return query.out
+        query_result = {x.strip() for x in query.out.split("\n")}
+        return query_result
 
-    def calc_missing(self, task):
-        device_set = { pl.Path(x.strip()).relative_to(self.device_root) for x in task.values['remote_files'].split("\n") if bool(x.strip()) }
+    def calc_pull_targets(self, task):
+        device_set = { pl.Path(x.strip()).relative_to(self.device_root) for x in task.values['remote_files']}
         local_set  = { x.relative_to(self.local_root) for x in self.local_root.rglob("*") }
 
-        missing = device_set - local_set
-        print(f"Missing: {missing}")
-        return { "missing" : [str(x) for x in missing] }
-
-    def pull_missing(self, task):
-        missing    = task.values['missing']
-        downloaded = []
-        failures   = []
-
-        for mpath in missing:
-            try:
-                src  = self.device_root / mpath
-                dest = self.local_root / mpath
-                if not dest.parent.exists():
-                    dest.parent.mkdir(parents=True)
-
-                cmd_args = [adb_path, "-t", self.args['id'],
-                            "pull",
-                            src,
-                            dest,
-                            ]
-
-                cmd = self.cmd(cmd_args)
-                cmd.execute()
-                downloaded.append(str(dest)
-            except Exception:
-                failures.append(f"{src} : {dest}")
-
-        return { "downloaded" : downloaded, "failed": failures }
+        pull_set = device_set - local_set
+        print(f"Pull Set: {len(pull_set)}")
+        return { "pull_targets" : [str(x) for x in pull_set] }
 
     def write_report(self, task):
         report = []
         report.append("--------------------")
-        report.append("Missing From Local: ")
-        report += self.values['missing']
+        report.append("Pull Targets From Device: ")
+        report += task.values['pull_targets']
 
         report.append("--------------------")
         report.append("Downloaded: ")
-        report += self.values['downloaded']
+        report += task.values['downloaded']
 
         report.append("--------------------")
         report.append("Failed: ")
-        report += self.values['failed']
+        report += task.values['failed']
 
-        (self.locs.build / "adb_pull.report").write_text("\n".report)
+        (self.locs.build / "adb_pull.report").write_text("\n".join(report))
