@@ -257,10 +257,10 @@ class ImagePoster(tasker.DootTasker, MastodonMixin, TwitterMixin, task_mixins.Ac
 
     def select_file(self):
         selected = choice(list(self.whitelist))
-        if "cora" in str(selected).down():
+        if "cora" in str(selected).lower():
             msg  = "Cora"
             desc = "My Cat, Cora"
-        elif "kira" in str(selected).down():
+        elif "kira" in str(selected).lower():
             msg  = "Kira"
             desc = "My Cat, Kira"
         else:
