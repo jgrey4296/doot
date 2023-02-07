@@ -45,7 +45,7 @@ wait_time    : Final = doot.config.on_fail(10, int).tools.doot.android.wait()
 
 NICE         : Final = ["nice", "-n", "10"]
 
-class ADBUpload(android.ADBMixin, globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
+class ADBUpload(android.ADBMixin, BatchMixin, globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     Push files from local to device
     """
@@ -73,21 +73,24 @@ class ADBUpload(android.ADBMixin, globber.DirGlobMixin, globber.DootEagerGlobber
         self.local_root  = self.locs.local_push
         print(f"Set Device Root to: {self.device_root}")
         task.update({
-            "actions" : [ self.write_report ],
+            "actions" : [
+                self.upload_target,
+                self.write_report,
+            ],
         })
         return task
 
-    def subtask_detail(self, task, fpath):
-        task.update({
-            "actions" : [ self.cmd(self.args_adb_push_dir, fpath, save="result"),
-                          (self.add_to_log, [fpath]),
-                         ],
-        })
-        return task
+    def upload_target(self):
+        globbed = super(globber.LazyGlobMixin, self).glob_all()
+        chunks  = self.chunk(globbed, 10)
+        self.run_batches(*chunks)
 
-    def add_to_log(self, fpath, task):
-        entry = f"{fpath}: {task.values['result']}"
-        self.report.append(entry)
+    def batch(self, data):
+        for name, fpath in data:
+            cmd = self.cmd(self.args_adb_push_dir, fpath, save="result")
+            cmd.execute()
+            entry = f"{fpath}: {cmd.out}"
+            self.report.append(entry)
 
     def write_report(self):
         print("Completed")

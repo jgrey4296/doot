@@ -39,14 +39,14 @@ import doot
 from bkmkorg.formats.tagfile import IndexFile, SubstitutionFile, TagFile
 from doot import globber
 from doot.tasker import DootTasker
-from doot.task_mixins import ActionsMixin
+from doot.task_mixins import ActionsMixin, BatchMixin
 
 empty_match     : Final = re.match("","")
 bib_tag_re      : Final = re.compile(r"^(\s+tags\s+=)\s+{(.+?)},$")
 org_tag_re      : Final = re.compile(r"^(\*\* .+?)\s+:(\S+):$")
 bookmark_tag_re : Final = re.compile(r"^(http.+?) : (.+)$")
 
-class TagsCleaner(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
+class TagsCleaner(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin, BatchMixin):
     """
     (src -> src) Clean tags in bib, org and bookmarks files,
     using tag substitution files
@@ -70,16 +70,25 @@ class TagsCleaner(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
         })
         return task
 
-    def subtask_detail(self, task, fpath):
+    def task_detail(self, task):
         task.update({
             "actions" : [
-                (self.copy_to, [self.locs.temp, fpath], {"fn": "backup"}),
-                (self.clean_orgs, [fpath]),
-                (self.clean_bibs, [fpath]),
-                (self.clean_bookmarks, [fpath]),
-            ],
+                self.process_all,
+            ]
         })
         return task
+
+    def process_all(self):
+        globbed = super(globber.LazyGlobMixin, self).glob_all()
+        chunks  = self.chunk(globbed, 10)
+        self.run_batches(*chunks)
+
+    def batch(self, data):
+        for name, fpath in data:
+            self.copy_to(self.locs.temp, fpath, fn="backup")
+            self.clean_orgs(fpath)
+            self.clean_bibs(fpath)
+            self.clean_bookmarks(fpath)
 
     def read_tags(self):
         targets = self.glob_files(self.locs.tags , exts=[".sub"], rec=True)
@@ -265,6 +274,8 @@ class TagsIndexer(globber.DootEagerGlobber, ActionsMixin):
                 action = self.process_bibtex
             case ".org":
                 action = self.process_org
+            case _:
+                return None
 
         task.update({
             "actions" : [(action, fpath)],

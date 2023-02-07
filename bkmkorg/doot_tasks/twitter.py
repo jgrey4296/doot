@@ -43,6 +43,8 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from doot.taskslib.files.backup import BackupTask
+
 user_batch_size : Final = doot.config.on_fail(100, int).tool.doot.twitter.user_batch()
 
 class BackupTwitterLib(BackupTask):
