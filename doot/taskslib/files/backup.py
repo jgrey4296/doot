@@ -39,7 +39,7 @@ import doot
 from doot import tasker, globber, task_mixins
 
 
-class BackupTask(task_mixins.BatchMixin, globber.LazyGlobMixin, globber.DootEagerGlobber):
+class BackupTask(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.BatchMixin):
     """
     copy all files to the target if they are newer or don't exist
     """
@@ -49,7 +49,7 @@ class BackupTask(task_mixins.BatchMixin, globber.LazyGlobMixin, globber.DootEage
     def task_detail(self, task):
         task.update({
             "actions" : [ self.backup_files ],
-            "verbosity" : 1,
+            "verbosity" : 2,
         })
         return task
 
@@ -77,7 +77,8 @@ class BackupTask(task_mixins.BatchMixin, globber.LazyGlobMixin, globber.DootEage
         if not bool(globbed):
             print("No Changes", file=sys.stderr)
 
-        chunked = self.chunk(globbed, 100)
+        print(f"{self.base}: Globbed {len(globbed)}")
+        chunked = self.chunk(globbed)
         self.run_batches(*chunked)
 
     def batch(self, data):
@@ -86,13 +87,13 @@ class BackupTask(task_mixins.BatchMixin, globber.LazyGlobMixin, globber.DootEage
             target        = self.output / rel_path
             target_parent = target.parent
             if not target_parent.exists():
-                print(f"Making Directory: {target_parent}")
+                logging.debug(f"Making Directory: {target_parent}")
                 target_parent.mkdir(parents=True)
 
             if fpath.is_dir():
-                print(f"Copying Tree: {fpath} -> {target}")
+                logging.debug(f"Copying Tree: {fpath} -> {target}")
                 shutil.copytree(fpath, target)
                 continue
 
-            print(f"Copying File: {fpath}")
+            logging.debug(f"Copying File: {fpath}")
             shutil.copy(fpath, target)

@@ -49,10 +49,10 @@ logging = logmod.getLogger(__name__)
 import doot
 
 conda_exe        = os.environ['CONDA_EXE']
+sleep_notify     = doot.config.on_fail(False, bool).tool.doot.notify.sleep()
 batch_size       = doot.config.on_fail(10, int).tool.doot.batch.size()
-sleep_batch      = doot.config.on_fail(2.0,   int|float).tool.doot.sleep_batch()
-batches_max      = doot.config.on_fail(-1,    int).tool.doot.batches_max()
-sleep_notify     = doot.config.on_fail(False, bool).tool.doot.sleep_notify()
+batches_max      = doot.config.on_fail(-1,    int).tool.doot.batch.max()
+sleep_batch      = doot.config.on_fail(2.0,   int|float).tool.doot.batch.sleep()
 
 zip_default_name = doot.config.on_fail("default", str).tool.doot.zip.name()
 zip_overwrite    = doot.config.on_fail(False, bool).tool.doot.zip.overwrite()

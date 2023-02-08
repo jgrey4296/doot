@@ -255,6 +255,7 @@ class CronMaintain(DootTasker):
             "actions" : [],
         })
         return task
+
 class GitMaintain(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerGlobber):
 
     def __init__(self, name="maintain::git", locs=None, roots=None):

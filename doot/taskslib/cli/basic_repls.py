@@ -57,6 +57,9 @@ def task_prolog_repl():
     }
 
 
+def task_haskell_repl():
+    return {}
+
 class PrologRunner(globber.DootEagerGlobber):
     """
     reminder, to run a goal without printing anything:

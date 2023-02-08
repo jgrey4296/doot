@@ -412,9 +412,9 @@ class EbookNewTask(tasker.DootTasker, task_mixins.ActionsMixin):
         default_styles.write_text(css_template.read_text())
         page_styles.write_text(page_style_template.read_text())
 
-class EbookNewPandoc(EbookGlobberBase):
+class TODOEbookNewPandoc(EbookGlobberBase):
     """
-    TODO Build an ebook using pandoc
+    Build an ebook using pandoc
     """
 
     def __init__(self, name="epub::pandoc", locs=None, roots=None, rec=True):

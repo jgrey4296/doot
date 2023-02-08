@@ -51,13 +51,13 @@ def main():
 
         logging.info("Basic Doot setup loaded")
         ##-- logging setup
-        file_handler.setLevel(logmod._nameToLevel[doot.config.on_fail("DEBUG", str).tool.doot.log_level()])
-        file_log_format = doot.config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str).tool.doot.log_format()
+        log_level        = doot.config.on_fail("DEBUG", str).tool.doot.logging.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
+        file_log_format  = doot.config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str).tool.doot.logging.format()
+        log_filter_names = doot.config.on_fail(["doot"], list).tool.doot.logging.filters()
+
+        file_handler.setLevel(log_level)
         file_handler.setFormatter(logmod.Formatter(file_log_format, style="{"))
-        log_filter_names = doot.config.on_fail(["doot"], list).tool.doot.log_filters()
-        l_filter = DootAnyFilter(log_filter_names)
-        file_handler.addFilter(l_filter)
-        logging.info("Log Filter Regex: %s", l_filter.name_re)
+        file_handler.addFilter(DootAnyFilter(log_filter_names))
         ##-- end logging setup
 
         loader    = DootLoader()
@@ -90,8 +90,8 @@ def main():
         say_on_exit = False
         voice       = "Moira"
         if doot.config is not None:
-            say_on_exit = doot.config.on_fail(False, bool|str).tool.doot.say_on_exit()
-            voice       = doot.config.on_fail(voice, str).tool.doot.voice()
+            say_on_exit = doot.config.on_fail(False, bool|str).tool.doot.notify.say_on_exit()
+            voice       = doot.config.on_fail(voice, str).tool.doot.notify.voice()
         match errored, say_on_exit:
             case False, str() as say_text:
                 cmd = CmdAction(["say", "-v", voice, "-r", "50", say_text], shell=False)

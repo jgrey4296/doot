@@ -25,10 +25,11 @@ from PIL import Image
 from sklearn.cluster import KMeans
 
 default_ocr_exts : Final = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".ppm"]
+
 default_pdf_exts : Final = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".ppm"]
 
 ocr_exts         : Final = doot.config.on_fail(default_ocr_exts, list).tool.doot.images.ocr_exts()
-batch_size       : Final = doot.config.on_fail(20, int).tool.doot.batch_size()
+batch_size       : Final = doot.config.on_fail(20, int).tool.doot.batch.size()
 ocr_out_ext      : Final = doot.config.on_fail(".ocr", str).tool.doot.images.ocr_out()
 
 framerate        : Final = doot.config.on_fail(10, int).tool.doot.images.framerate()
@@ -37,7 +38,22 @@ THUMB            : Final = (200,200)
 
 HashImages = hashing.HashAllFiles
 
-class OCRGlobber(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.BatchMixin):
+def load_img(path:pl.Path):
+    try:
+        img = Image.open(str(path))
+        img2 = img.convert('RGB')
+        return img2
+    except:
+        return None
+
+def norm_img(img):
+    split_c1 = img.split()
+    histograms = [np.array(x.histogram()) for x in split_c1]
+    sums = [sum(x) for x in histograms]
+    norm_c1 = [x/y for x,y in zip(histograms, sums)]
+    return np.array(norm_c1).reshape((1,-1))
+
+class OCRGlobber(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.BatchMixin, task_mixins.TargetedMixin):
     """
     ([data] -> data) Run tesseract on applicable files in each found directory
     to make dot txt files of ocr'd text from the image
@@ -51,6 +67,9 @@ class OCRGlobber(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.Bat
         if not bool(self.exts):
             self.ext_check_fn = lambda x: x.is_file()
 
+    def set_params(self):
+        return self.target_params()
+
     def filter(self, fpath):
         is_cache = fpath != pl.Path() and fpath.name[0] in "._"
         if is_cache:
@@ -62,33 +81,41 @@ class OCRGlobber(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.Bat
 
         return self.control.discard
 
-    def subtask_detail(self, task, fpath=None):
+    def task_detail(self, task, fpath=None):
         task.update({
-            "actions" : [(self.ocr_remaining, [fpath])],
-            "clean"   : [(self.clean_ocr_files, [fpath])],
+            "actions" : [ self.ocr_all ],
+            "clean"   : [ self.clean_all ],
         })
         return task
 
-    def ocr_file_name(self, fpath):
-        return fpath.parent / f".{fpath.stem}{ocr_out_ext}"
+    def clean_all(self):
+        chunks = self.target_chunks(base=globber.LazyGlobMixin)
+        self.run_batches(*chunks, fn=self.clean_ocr_results)
 
-    def clean_ocr_files(self, fpath):
-        for f in fpath.glob(f".*{ocr_out_ext}"):
-            f.unlink()
+    def clean_ocr_results(self, data):
+        for name, fpath in data:
+            for f in fpath.rglob(f".*{ocr_out_ext}"):
+                f.unlink()
 
-    def ocr_remaining(self, fpath):
-        chunks = self.chunk((x for x in fpath.iterdir() if x.suffix in self.exts and not self.ocr_file_name(x).exists()),
-                            batch_size)
-
+    def ocr_all(self):
+        chunks  = self.target_chunks(base=globbed.LazyGlobMixin)
         self.run_batches(*chunks)
 
     def batch(self, data):
+        for name, fpath in data:
+            file_chunks = self.chunk((x for x in fpath.iterdir() if x.suffix in self.exts and not self.ocr_file_name(x).exists()))
+            self.run_batches(*chunks, fn=self.batch_on_files)
+
+    def batch_on_files(self, data):
         for src in data:
-            dst = self.ocr_file_name(src)
-            ocr_cmd    = CmdAction(["tesseract", src, dst.stem, "--psm", "1",  "-l", "eng"], shell=False)
-            mv_txt_cmd = CmdAction(["mv", dst.with_suffix(".txt").name, dst], shell=False)
+            dst        = self.get_ocr_file_name(src)
+            ocr_cmd    = self.cmd("tesseract" src, dst.stem, "--psm", "1",  "-l", "eng")
+            mv_txt_cmd = self.cmd("mv", dst.with_suffix(".txt").name, dst)
             ocr_cmd.execute()
             mv_txt_cmd.execute()
+
+    def get_ocr_file_name(self, fpath):
+        return fpath.parent / f".{fpath.stem}{ocr_out_ext}"
 
 class Images2PDF(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin, task_mixins.BatchMixin):
     """
@@ -108,36 +135,35 @@ class Images2PDF(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.Ac
     def task_detail(self, task):
         task.update({
             "name"    : "build_single",
-            "actions" : [ self.cmd(self.combine_pages) ],
+            "actions" : [
+                self.find_and_process,,
+                self.cmd(self.combine_pages)
+            ],
             "targets" : [ self.locs.build / f"{self.args['name']}.pdf" ],
             "clean"   : [ (self.rmglob, [self.locs.build, f"{self.args['name']}.pdf"]) ],
         })
         return task
 
-    def subtask_detail(self, task, fpath):
-        task.update({
-            "actions" : [(self.images_to_pages, [fpath])],
-        })
-        return task
+    def find_and_process(self):
+        globbed = super(globber.LazyGlobMixin, self).glob_all()
+        chunks = self.chunk(globbed)
+        self.run_batches(*chunks)
 
-    def images_to_pages(self, fpath):
-        globbed = self.glob_target(fpath)
-        chunks = self.chunk(globbed, batch_size)
-        self.run_batches(*chunks, root=fpath)
-
-    def batch(self, data, root=None):
-        batch_name = f"{root.stem}_{self.batch_count}.pdf"
+    def batch(self, data):
+        batch_name = self.locs.temp / f"{root.stem}_{self.batch_count}.pdf"
         print(f"Batch {self.batch_count}: {batch_name}")
-        args = ["magick", "convert"] + data + ["-alpha", "off", self.locs.temp / batch_name]
+        args = ["magick", "convert"]
+        args += [x[1] for x in data]
+        args += ["-alpha", "off", batch_name]
         print(f"Batch Args: {args}")
-        conversion = CmdAction(args, shell=False)
+        conversion = self.cmd(*args)
         conversion.execute()
 
     def combine_pages(self, targets):
         pages = [x for x in self.locs.temp.iterdir() if x.suffix == ".pdf"]
         return ["pdftk", *pages, "cat", "output", targets[0]]
 
-class Images2Video(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class TODOImages2Video(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     https://stackoverflow.com/questions/24961127/
     """
@@ -146,9 +172,11 @@ class Images2Video(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.
         super().__init__(name, locs, roots or [locs.data], exts=default_ocr_exts, rec=rec)
         assert(self.locs.temp)
 
-    def subtask_detail(self, task, fpath):
+    def task_detail(self, task, fpath):
         task.update({
-            "actions" : [self.cmd(self.make_gif, fpath)],
+            "actions" : [
+                self.cmd(self.make_gif, fpath)
+            ],
             "targets" : [self.locs.temp / f"{task['name']}.gif"]
         })
         return task
@@ -166,7 +194,7 @@ class Images2Video(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.
         args.append(targets[0])
         raise NotImplementedError
 
-class PDF2Images(globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class TODOPDF2Images(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin, task_mixins.BatchMixin):
     """
     (src -> temp) Find pdfs and extract images for them for ocr
     """
@@ -178,7 +206,7 @@ class PDF2Images(globber.DootEagerGlobber, task_mixins.ActionsMixin):
     def filter(self, fpath):
         return self.control.accept
 
-    def subtask_detail(self, task, fpath):
+    def task_detail(self, task, fpath):
         targ_dir = self.locs.temp / task['name']
         task.update({
             "actions"  : [
@@ -186,32 +214,14 @@ class PDF2Images(globber.DootEagerGlobber, task_mixins.ActionsMixin):
                 self.cmd(self.split_pdf, fpath, save="info"),
                 (self.write_to, ["info", targ_dir / "info.txt"]),
             ],
-            "targets"  : [ targ_dir, targ_dir / "info.txt" ],
+            "targets" : [ targ_dir, targ_dir / "info.txt" ],
            "file_dep" : [ fpath ],
-            "clean"    : [ (self.rmdirs, [ targ_dir ])],
+            "clean"   : [ (self.rmdirs, [ targ_dir ])],
         })
         return task
 
     def split_pdf(self, fpath, targets, task):
-        cmd = [ "pdfimages", "-j",
-                "-list",
-                fpath,
-                pl.Path(targets[0]) / "page_"
-            ]
+        cmd = [ "pdfimages", "-j", "-list"]
+        cmd.append(fpath)
+        cmd.append(pl.Path(targets[0]) / "page_")
         return cmd
-
-
-def load_img(path:pl.Path):
-    try:
-        img = Image.open(str(path))
-        img2 = img.convert('RGB')
-        return img2
-    except:
-        return None
-
-def norm_img(img):
-    split_c1 = img.split()
-    histograms = [np.array(x.histogram()) for x in split_c1]
-    sums = [sum(x) for x in histograms]
-    norm_c1 = [x/y for x,y in zip(histograms, sums)]
-    return np.array(norm_c1).reshape((1,-1))

@@ -55,8 +55,8 @@ class DootTasker:
 
     @staticmethod
     def set_defaults(config:Tomler):
-        DootTasker.sleep_subtask = config.on_fail(2.0,   int|float).tool.doot.sleep_subtask()
-        DootTasker.sleep_notify  = config.on_fail(False, bool).tool.doot.sleep_notify()
+        DootTasker.sleep_subtask = config.on_fail(2.0,   int|float).tool.doot.subtask.sleep()
+        DootTasker.sleep_notify  = config.on_fail(False, bool).tool.doot.notify.sleep()
 
     def __init__(self, base:str, locs:DootLocData=None, output=None):
         assert(base is not None)
