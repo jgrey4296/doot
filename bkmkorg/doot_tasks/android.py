@@ -71,9 +71,9 @@ class ADBUpload(android.ADBMixin, BatchMixin, globber.LazyGlobMixin, globber.Dir
     def task_detail(self, task):
         self.device_root = android_base / self.args['remote']
         self.local_root  = self.locs.local_push
-        print(f"Set Device Root to: {self.device_root}")
         task.update({
             "actions" : [
+                lambda: print(f"Set Device Root to: {self.device_root}"),
                 self.upload_target,
                 self.write_report,
             ],

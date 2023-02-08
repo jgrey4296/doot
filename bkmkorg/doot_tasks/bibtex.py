@@ -53,18 +53,6 @@ clean_in_place   : Final = doot.config.on_fail(False, bool).tool.doot.bibtex.cle
 
 ENT_const        : Final = 'ENTRYTYPE'
 
-class BackupBibtexLib(BackupTask):
-
-    def __init__(self, name="bibtex::backup", locs=None):
-        output = locs.backup_root / "Library" / locs.pdfs.name
-        super().__init__(name, locs, [locs.pdfs], output=output)
-
-class BackupBibtexSummary(BackupTask):
-
-    def __init__(self, name="bibtex::backup", locs=None):
-        output = locs.backup_root / "Library" / locs.bibtex_summary.name
-        super().__init__(name, locs, [locs.pdfs], output=output)
-
 class LibDirClean(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin, task_mixins.BatchMixin):
     """
     Clean the directories of the bibtex library

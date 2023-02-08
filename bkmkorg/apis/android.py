@@ -37,7 +37,7 @@ from collections import defaultdict
 import sys
 from doot import task_mixins
 
-batch_sleep  : Final = doot.config.on_fail(2, int|float).tool.doot.subtask_sleep()
+batch_sleep  : Final = doot.config.on_fail(2, int|float).tool.doot.subtask.sleep()
 adb_path     : Final = shutil.which("adb")
 
 class ADBMixin(task_mixins.BatchMixin, task_mixins.CommanderMixin):

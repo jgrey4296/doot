@@ -33,9 +33,10 @@ logging = logmod.getLogger(__name__)
 from collections import defaultdict
 import doot
 from doot import tasker, task_mixins
+from bkmkorg.apis.twitter import TwitterMixin
 
-time_format : Final = doot.config.on_fail("%I:%M %p", str).tool.doot.announce.time_format()
-time_voice  : Final = doot.config.on_fail("Moira", str).tool.doot.announce.voice()
+time_format : Final = doot.config.on_fail("%I:%M %p", str).tool.doot.notify.time_format()
+time_voice  : Final = doot.config.on_fail("Moira", str).tool.doot.notify.voice()
 
 class TimeAnnounce(tasker.DootTasker, task_mixins.ActionsMixin):
 
@@ -131,4 +132,23 @@ class NoScriptMerge(tasker.DootTasker, task_mixins.ActionsMixin):
                 case bool(), bool():
                     pass
 
+class TwitterAccess(tasker.DootTasker, TwitterMixin): # TweepyMixin):
 
+    def __init__(self, name="twitter::access", locs=None):
+        super().__init__(name, locs)
+        self.twitter = None
+        assert(self.locs.secrets)
+
+    def task_detail(self, task):
+        task.update({
+            "actions": [(self.setup_twitter, [self.locs.secrets]),
+                        self.pause,
+                        ],
+            "verbosity": 2,
+        })
+        return task
+
+    def pause(self):
+        print("Pausing")
+        breakpoint()
+        pass

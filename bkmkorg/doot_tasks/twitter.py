@@ -49,11 +49,6 @@ user_batch_size : Final = doot.config.on_fail(100, int).tool.doot.twitter.user_b
 
 empty_match = re.match("","")
 
-class BackupTwitterLib(BackupTask):
-
-    def __init__(self, name="twitter::backup", locs=None):
-        output = locs.backup_root / "Library" / locs.thread_library.name
-        super().__init__(name, locs, [locs.thread_library], output=output)
 
 class TwitterFull(DootTasker):
 
@@ -71,27 +66,6 @@ class TwitterFull(DootTasker):
                      ],
         })
         return task
-
-class TwitterAccess(DootTasker, TwitterMixin): # TweepyMixin):
-
-    def __init__(self, name="twitter::access", locs=None):
-        super().__init__(name, locs)
-        self.twitter = None
-        assert(self.locs.secrets)
-
-    def task_detail(self, task):
-        task.update({
-            "actions": [(self.setup_twitter, [self.locs.secrets]),
-                        self.pause,
-                        ],
-            "verbosity": 2,
-        })
-        return task
-
-    def pause(self):
-        print("Pausing")
-        breakpoint()
-        pass
 
 class TwitterLibTweets(DootTasker, ActionsMixin, TwitterMixin):
     """
@@ -575,52 +549,3 @@ class TwitterMerge(globber.LazyGlobMixin, globber.DootEagerGlobber, ActionsMixin
             for x in list(fdir.glob("*")):
                 self.copy_to(dest, x)
 
-class TwitterArchive(globber.DootEagerGlobber, ActionsMixin, ZipperMixin):
-    """
-    Zip json data for users
-
-    Get Threads -> components,
-    combine,
-    add to archive.zip in base user's library directory
-    """
-
-    def __init__(self, name="twitter::zip", locs=None, roots=None, rec=False, exts=None):
-        super().__init__(name, locs, roots or [locs.threads], rec=rec, exts=exts or [".json"])
-        self.group_reg     = re.compile(r"^[a-zA-Z]")
-        self.output         = None
-        self.thread_data    = None
-        self.component_data = None
-        assert(self.locs.thread_library)
-
-    def subtask_detail(self, task, fpath):
-        task.update({
-            "actions": [
-                (self.load_thread, [fpath]),
-                self.load_component,
-                self.add_to_user_archive,
-            ],
-        })
-        return task
-
-    def load_thread(self, fpath):
-        self.thread_data = json.loads(fpath.read_text())
-        return { "component": self.thread_data['component'],
-                 "base_user": self.thread_data['base_user'],
-                }
-
-    def load_component(self, task):
-        self.component_data = json.loads(pl.Path(task.values['component']).read_text())
-
-    def add_to_user_archive(self, task):
-        group = "group_symbols"
-        base_user = task.values['base_user']
-        if re.match(r"^[a-zA-Z]", base_user):
-            group = f"group_{base_user[0]}"
-
-        target_path = self.locs.thread_library / group / base_user / "archive.zip"
-        if not target_path.exists():
-            self.zip_create(target_path)
-
-        as_json = json.dumps({"thread": self.thread_data, "component": self.component_data})
-        json_name = pl.Path(task.values['component']).name
-        self.zip_add_str(target_path, json_name, as_json)
