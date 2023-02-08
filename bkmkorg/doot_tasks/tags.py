@@ -39,7 +39,7 @@ import doot
 from bkmkorg.formats.tagfile import IndexFile, SubstitutionFile, TagFile
 from doot import globber
 from doot.tasker import DootTasker
-from doot.task_mixins import ActionsMixin, BatchMixin
+from doot.task_mixins import ActionsMixin, BatchMixin, TargetedMixin
 
 empty_match     : Final = re.match("","")
 bib_tag_re      : Final = re.compile(r"^(\s+tags\s+=)\s+{(.+?)},$")
@@ -167,7 +167,7 @@ class TagsCleaner(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEager
                                 err)
                 print(line, end="")
 
-class TagsReport(globber.DootEagerGlobber, ActionsMixin):
+class TagsReport(globber.LazyGlobMixin, globber.DootEagerGlobber, ActionsMixin, BatchMixin, TargetedMixin):
     """
     (src -> build) Report on tags
     """
@@ -177,6 +177,9 @@ class TagsReport(globber.DootEagerGlobber, ActionsMixin):
         self.tags = SubstitutionFile()
         assert(self.locs.build)
         assert(self.locs.temp)
+
+    def set_params(self):
+        return self.target_params()
 
     def task_detail(self, task):
         report     = self.locs.build / "tags.report"
@@ -194,15 +197,14 @@ class TagsReport(globber.DootEagerGlobber, ActionsMixin):
         })
         return task
 
-    def subtask_detail(self, task, fpath):
-        task.update({
-            "actions" : [ (self.read_tags, [fpath]) ]
-        })
-        return task
+    def read_all_tags(self):
+        chunks = self.target_chunks(base=globber.LazyGlobMixin)
+        self.run_batches(*chunks)
 
-    def read_tags(self, fpath):
-        tags = SubstitutionFile.read(fpath)
-        self.tags += tags
+    def batch(self, data):
+        for name, fpath in data:
+            tags = SubstitutionFile.read(fpath)
+            self.tags += tags
 
     def report_totals(self):
         count = len(self.tags)
@@ -224,9 +226,9 @@ class TagsReport(globber.DootEagerGlobber, ActionsMixin):
         count = len(self.tags.substitutions)
         return { "subs" : f"Number of Subsitutions: {count}" }
 
-class TagsIndexer(globber.DootEagerGlobber, ActionsMixin):
+class TagsIndexer(globber.LazyGlobMixin, globber.DootEagerGlobber, ActionsMixin, BatchMixin, TargetedMixin):
     """
-    TODO extract tags from all globbed bookmarks, orgs, bibtexs
+    extract tags from all globbed bookmarks, orgs, bibtexs
     and index what tags are used in what files
     """
 
@@ -238,6 +240,9 @@ class TagsIndexer(globber.DootEagerGlobber, ActionsMixin):
         self.org_index  = IndexFile()
         assert(self.locs.temp)
 
+    def set_params(self):
+        return self.target_params()
+
     def task_detail(self, task):
         existing_indices = self.locs.temp.glob("*.index")
         all_subs         = self.locs.temp / "all_subs.sub"
@@ -248,17 +253,25 @@ class TagsIndexer(globber.DootEagerGlobber, ActionsMixin):
 
         task.update({
             "actions" : [
+                self.process_all_available,
+                # Backup the existing index files
                 (self.copy_to, [self.locs.temp, *existing_indices], {"fn": "backup"}),
+                # update the combined tag index
                 lambda: self.total_tags.update(self.bkmk_tags, self.bib_tags, self.org_tags),
+                # Convert to strings
                 lambda: {"bkmk_str"  : str(self.bkmk_index),
                          "bib_str"   : str(self.bib_index),
                          "org_str"   : str(self.org_index),
                          },
+                # Write out
                 (self.write_to, [bkmk_if, "bkmk_str"]),
                 (self.write_to, [bib_if, "bib_str"]),
                 (self.write_to, [org_if, "org_str"]),
+                # Update the substitution index
                 lambda: self.all_subs.update(SubstitutionFile.read(all_subs)),
-                self.calc_newtags,
+                # Diff total against sub guaranteed
+                self.calc_newtags, # -> new_tags
+                # Write out
                 (self.write_to, [new_tags, "new_tags"]),
             ],
             "file_dep" : [ all_subs ],
@@ -266,40 +279,49 @@ class TagsIndexer(globber.DootEagerGlobber, ActionsMixin):
         })
         return task
 
-    def subtask_detail(self, task, fpath):
-        match fpath.suffix:
-            case ".bookmarks":
-                action = self.process_bookmarks
-            case ".bib":
-                action = self.process_bibtex
-            case ".org":
-                action = self.process_org
-            case _:
-                return None
+    def process_all_available(self):
+        chunks = self.target_chunks(base=globber.LazyGlobMixin)
+        self.run_batches(*chunks)
 
-        task.update({
-            "actions" : [(action, fpath)],
-        })
-        return task
+    def batch(self, data):
+        files = [x[1] for x in data]
+        if not bool(files):
+            return
+
+        for line in fileinput.input(files=files):
+            regex       = None
+            splt_by     = ":"
+            tags_target = None
+            match pl.Path(fileinput.filename()).suffix:
+                case ".bookmarks":
+                    regex = bookmark_tag_re
+                    tags_target = self.bkmk_index
+                case ".bib":
+                    regex = bib_tag_re
+                    split_by = ","
+                    tags_target = self.bib_index
+                case ".org":
+                    regex = org_tag_re
+                    tags_target = self.org_index
+                case _:
+                    continue
+
+            result = regex.match(line)
+            if result is None:
+                continue
+
+            extracted = [(x.strip(), 1, fileinput.filename()) for x in result[1].split(split_by)]
+            tags_target.update(extracted)
 
     def calc_newtags(self):
         all_sub_set = self.all_subs.to_set()
-        new_bkmk = self.bkmk_index.to_set() - all_sub_set
-        new_bib  = self.bib_index.to_set() - all_sub_set
-        new_org  = self.org_index.to_set() - all_sub_set
+        new_bkmk    = self.bkmk_index.to_set() - all_sub_set
+        new_bib     = self.bib_index.to_set()  - all_sub_set
+        new_org     = self.org_index.to_set()  - all_sub_set
 
         new_tags = TagFile()
         new_tags.update(new_bkmk | new_bib | new_org)
         return { "new_tags" : str(new_tags) }
-
-    def process_bookmarks(self, fpath):
-        pass
-
-    def process_bibtex(self, fpath):
-        pass
-
-    def process_org(self, fpath):
-        pass
 
 class TagsGrep(DootTasker):
     """
