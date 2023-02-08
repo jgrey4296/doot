@@ -43,7 +43,12 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from doot.taskslib.files.backup import BackupTask
+
 user_batch_size : Final = doot.config.on_fail(100, int).tool.doot.twitter.user_batch()
+
+empty_match = re.match("","")
+
 
 class TwitterFull(DootTasker):
 
@@ -57,30 +62,10 @@ class TwitterFull(DootTasker):
                          "twitter::components",
                          "twitter::threads",
                          "twitter::write",
+                         "twitter::media",
                      ],
         })
         return task
-
-class TwitterAccess(DootTasker, TwitterMixin): # TweepyMixin):
-
-    def __init__(self, name="twitter::access", locs=None):
-        super().__init__(name, locs)
-        self.twitter = None
-        assert(self.locs.secrets)
-
-    def task_detail(self, task):
-        task.update({
-            "actions": [(self.setup_twitter, [self.locs.secrets]),
-                        self.pause,
-                        ],
-            "verbosity": 2,
-        })
-        return task
-
-    def pause(self):
-        print("Pausing")
-        breakpoint()
-        pass
 
 class TwitterLibTweets(DootTasker, ActionsMixin, TwitterMixin):
     """
@@ -98,7 +83,7 @@ class TwitterLibTweets(DootTasker, ActionsMixin, TwitterMixin):
         assert(self.locs.secrets)
         assert(self.locs.missing_ids)
         assert(self.locs.tweet_archive)
-        assert(self.locs.tweet_library)
+        assert(self.locs.thread_library)
 
     def task_detail(self, task):
         task.update({
@@ -106,8 +91,8 @@ class TwitterLibTweets(DootTasker, ActionsMixin, TwitterMixin):
                            (self.setup_twitter, [self.locs.secrets]),
                            self.read_target_ids,
                            (self.read_temp_ids, [self.output]),
-                           self.calc_missing_ids,
                            (self.read_missing_ids, [ self.locs.missing_ids ]),
+                           self.calc_remaining_ids,
                            (self.tw_download_tweets, [self.output, self.locs.missing_ids]),
                            (self.write_log, [self.locs.tweet_archive]),
                           ],
@@ -115,24 +100,44 @@ class TwitterLibTweets(DootTasker, ActionsMixin, TwitterMixin):
         return task
 
     def read_target_ids(self):
-        logging.info("---------- Getting target Tweet ids")
-        for line in fileinput.input(files=[self.locs.tweet_library / ".tweets"]):
-            self.target_ids.add(pl.Path(line).name)
-        logging.info("Found %s library ids", len(self.target_ids))
+        print("---------- Getting target Tweet ids")
+        target = self.locs.thread_library / ".tweets"
+        if not target.exists():
+            return
+
+        count = 0
+        for line in fileinput.input(files=[self.locs.thread_library / ".tweets"]):
+            count += 1
+            self.target_ids.add(pl.Path(line.strip()).name)
+
+        print("Found %s library ids from %s lines" % (len(self.target_ids), count))
 
     def read_temp_ids(self, fpath):
+        print("---------- Getting Temp Tweet ids")
         for jfile in fpath.glob('*.json'):
             data = json.loads(jfile.read_text(), strict=False)
-            ids  = [x['id_str'] for x in data]
+            ids  = [x['id_str'] for x in data if bool(x['id_str'])]
             self.existing_json_ids.update(ids)
 
-    def read_missing_ids(self, fpath):
-        text = fpath.read_text().split("\n")
-        self.existing_json_ids.update([x.strip() for x in text])
+        print("Read %s temp ids" % len(self.existing_json_ids))
 
-    def calc_missing_ids(self):
+    def read_missing_ids(self, fpath):
+        print("---------- Getting Missing Tweet ids")
+        if not fpath.exists():
+            return
+
+        text = fpath.read_text().split("\n")
+        ids  = [x.strip() for x in text]
+        print("Read %s missing ids" % len(ids))
+        self.existing_json_ids.update(ids)
+
+    def calc_remaining_ids(self):
+        print("---------- Calculating Target Tweet ids")
+        print("Initial Library Ids: %s" % len(self.target_ids))
+        print("Existing Json Ids: %s" % len(self.existing_json_ids))
         raw_todo_ids = self.target_ids
-        remaining = raw_todo_ids - self.existing_json_ids
+        remaining    = raw_todo_ids - self.existing_json_ids
+        print("Remaining Target Ids: %s" % len(remaining))
         return { "target_ids": list(remaining) }
 
     def write_log(self, fpath, task):
@@ -162,14 +167,14 @@ class TwitterTweets(DootTasker, ActionsMixin, TwitterMixin):
         assert(self.locs.secrets)
         assert(self.locs.missing_ids)
         assert(self.locs.tweet_archive)
-        assert(self.locs.tweet_library)
+        assert(self.locs.thread_library)
         assert(self.locs.current_tweets)
 
     def set_params(self):
         return [
             {"name": "tweet", "type": str, "short": "t", "default": None},
             {"name": "no-lib", "type": bool, "short": "l", "default": False}
-            ]
+        ]
 
     def setup_detail(self, task):
         task.update({
@@ -209,8 +214,8 @@ class TwitterTweets(DootTasker, ActionsMixin, TwitterMixin):
         if self.args['no-lib']:
             return
 
-        for line in fileinput.input(files=[self.locs.tweet_library / ".tweets"]):
-            self.library_ids.add(pl.Path(line).name)
+        for line in fileinput.input(files=[self.locs.thread_library / ".tweets"]):
+            self.library_ids.add(pl.Path(line.strip()).name)
         logging.info("Found %s library ids", len(self.library_ids))
 
     def read_temp_ids(self, fpath):
@@ -258,35 +263,16 @@ class TwitterUserIdentities(globber.LazyGlobMixin, globber.DootEagerGlobber, Bat
         self.lib_users  = set()
         self.output     = self.locs.users
         assert(self.locs.secrets)
-        assert(self.locs.tweet_library)
+        assert(self.locs.thread_library)
         assert(self.locs.tweets)
-
-    def filter(self, fpath):
-        return self.control.accept
 
     def setup_detail(self, task):
         task.update({
             "actions" : [ (self.setup_twitter, [self.locs.secrets]),
                           (self.mkdirs, [self.output]),
-                          (self.load_library_users, [self.locs.tweet_library / ".users"]),
+                          (self.load_library_users, [self.locs.thread_library / ".users"]),
                          ],
             "task_dep" : ["twitter::tweets"],
-        })
-        return task
-
-    def task_detail(self, task):
-        task.update({
-            "actions": [
-                lambda: print(f"-------------------- Loaded ID strings, {len(self.todo_users)} to process"),
-                (self.retrieve_users_in_batches, [self.locs.tweets]),
-            ],
-            "clean" : [(self.rmdirs, [self.output])],
-        })
-        return task
-
-    def subtask_detail(self, task, fpath):
-        task.update({
-            "actions" : [ (self.extract_users_from_jsons, [fpath]) ],
         })
         return task
 
@@ -296,18 +282,30 @@ class TwitterUserIdentities(globber.LazyGlobMixin, globber.DootEagerGlobber, Bat
         self.lib_users.update(x.strip() for x in fpath.read_text().split("\n"))
         print("Library users file records %s ids", len(self.lib_users))
 
-    def extract_users_from_jsons(self, fpath):
-        print("-------------------- Loading User Ids out of Tweet Data")
-        jsons   = self.glob_target(fpath)
-        self.run_batches(*jsons, fn=self.batch_load)
+    def task_detail(self, task):
+        task.update({
+            "actions": [
+                self.load_all_users,
+                lambda: print(f"-------------------- Loaded ID strings, {len(self.todo_users)} to process"),
+                (self.retrieve_users_in_batches, [self.locs.tweets]),
+            ],
+            "clean" : [(self.rmdirs, [self.output])],
+        })
+        return task
 
-    def batch_load(self, fpath):
-        print("...")
-        data = json.loads(fpath.read_text())
-        for tweet in data:
-            user = tweet['user']['id_str']
-            if user not in self.lib_users:
-                self.todo_users.add(user)
+    def load_all_users(self):
+        print("-------------------- Loading User Ids out of Tweet Data")
+        globbed = super(globber.LazyGlobMixin, self).glob_all()
+        chunks = self.chunk(globbed)
+        self.run_batches(*chunks)
+
+    def batch(self, data):
+        for name, fpath in data:
+            data = json.loads(fpath.read_text())
+            for tweet in data:
+                user = tweet['user']['id_str']
+                if user not in self.lib_users:
+                    self.todo_users.add(user)
 
     def retrieve_users_in_batches(self, fpath):
         print(f"-------------------- Getting User Identities: {len(self.todo_users)}")
@@ -315,7 +313,6 @@ class TwitterUserIdentities(globber.LazyGlobMixin, globber.DootEagerGlobber, Bat
         self.run_batches(*user_queue, fn=self.batch_retrieve)
 
     def batch_retrieve(self, data):
-        print("...")
         result      = self.twitter.UsersLookup(user_id=data)
         new_users   = [json.loads(x.AsJsonString()) for x in result]
         user_dict   = {x['id_str'] : x for x in new_users}
@@ -371,7 +368,6 @@ class TwitterThreadBuild(globber.LazyGlobMixin, globber.DootEagerGlobber, Action
         super().__init__(name, locs, roots or [locs.components], rec=rec, exts=exts or [".json"])
         self.output = self.locs.threads
 
-
     def setup_detail(self, task):
         task.update({
         })
@@ -379,20 +375,20 @@ class TwitterThreadBuild(globber.LazyGlobMixin, globber.DootEagerGlobber, Action
 
     def task_detail(self, task):
         task.update({
+            "actions" : [ self.construct_all_threads ],
             "clean": [(self.rmdirs, [self.output])],
         })
         return task
 
-    def subtask_detail(self, task, fpath):
-        task.update({
-            "actions": [(self.construct_threads, [fpath])],
-        })
-        return task
-
-    def construct_threads(self, fpath):
-        globbed = self.glob_target(fpath)
+    def construct_all_threads(self):
+        globbed = super(globber.LazyGlobMixin, self).glob_all()
         print(f"-------------------- Constructing threads for {len(globbed)} components")
-        self.run_batches(*globbed, fn=self.tw_construct_thread)
+        chunks = self.chunk(globbed)
+        self.run_batches(*chunks)
+
+    def batch(self, data):
+        for name, fpath in data:
+            self.tw_construct_thread(fpath)
 
 class TwitterThreadWrite(globber.LazyGlobMixin, globber.DootEagerGlobber, passes.TwThreadWritingMixin, BatchMixin, ActionsMixin):
     """
@@ -414,37 +410,29 @@ class TwitterThreadWrite(globber.LazyGlobMixin, globber.DootEagerGlobber, passes
         })
         return task
 
-    def task_detail(self, task):
-        task.update({
-            "clean" : [ (self.rmdirs, [self.output / "org", self.output / "html"]) ],
-        })
-        return task
-
-    def subtask_detail(self, task, fpath):
-        task.update({
-            "actions": [
-                (self.make_orgs, [fpath]),
-                #(self.make_htmls, [fpath])
-            ],
-        })
-        return task
-
     def read_target_ids(self, fpath):
         print("---------- Getting Target Tweet ids")
         self.todos = TweetTodoFile.read(fpath)
         logging.info("Found %s source ids", len(self.todos))
 
-    def make_orgs(self, fpath):
-        print("---------- Building Orgs from Threads")
-        globbed = list(fpath.glob("*.json"))
-        self.run_batches(*globbed, fn=self.tw_construct_org_files)
+    def task_detail(self, task):
+        task.update({
+            "actions" : [ self.make_all_orgs ],
+            "clean"   : [ (self.rmdirs, [self.output / "org", self.output / "html"]) ],
+        })
+        return task
 
-    def make_htmls(self, fpath):
-        print("---------- Building Orgs from Threads")
-        globbed = list(fpath.glob("*.json"))
-        self.run_batches(*globbed, fn=self.tw_construct_html_files)
+    def make_all_orgs(self):
+        globbed = super(globber.LazyGlobMixin, self).glob_all()
+        chunks = self.chunk(globbed)
+        self.run_batches(*chunks)
 
-class TwitterDownloadMedia(globber.LazyGlobMixin, globber.DootEagerGlobber, DownloaderMixin):
+    def batch(self, data):
+        for name, fpath in data:
+            self.tw_construct_org_files(fpath)
+            # self.tw_construct_html_files(fpath)
+
+class TwitterDownloadMedia(globber.LazyGlobMixin, globber.DootEagerGlobber, DownloaderMixin, BatchMixin):
     """
     (threads, components -> build) read components, get media, download into the base user's _files dir
     """
@@ -455,21 +443,24 @@ class TwitterDownloadMedia(globber.LazyGlobMixin, globber.DootEagerGlobber, Down
 
     def setup_detail(self, task):
         task.update({
+
         })
         return task
 
-    def subtask_detail(self, task, fpath):
+    def task_detail(self, task):
         task.update({
-            "actions" : [
-                (self.process_components, [fpath]),
-            ],
+            "actions" : [ self.process_all_components ],
         })
         return task
 
-    def process_components(self, fpath):
-        globbed = fpath.glob("*.json")
-        for jfile in globbed:
-            data         = json.loads(jfile.read_text())
+    def process_all_components(self):
+        globbed = super(globber.LazyGlobMixin, self).glob_all()
+        chunks = self.chunk(globbed)
+        self.run_batches(*chunks)
+
+    def batch(self, data):
+        for name, fpath in data:
+            data         = json.loads(fpath.read_text())
             component    = json.loads(pl.Path(data['component']).read_text())
             tweets       = component['tweets']
             base_user    = data['base_user']
@@ -487,7 +478,7 @@ class TwitterDownloadMedia(globber.LazyGlobMixin, globber.DootEagerGlobber, Down
             # download
             self.download_media(download_to, media)
 
-class TwitterMerge(globber.DootEagerGlobber, ActionsMixin):
+class TwitterMerge(globber.LazyGlobMixin, globber.DootEagerGlobber, ActionsMixin, BatchMixin):
     """
     (temp -> data) integrate threads into the library
     """
@@ -497,110 +488,64 @@ class TwitterMerge(globber.DootEagerGlobber, ActionsMixin):
         self.base_user_reg = re.compile(r"^(.+?)_thread_\d+$")
         self.group_reg     = re.compile(r"^[a-zA-Z]")
         self.files_dir_reg = re.compile(r"^(.+?)_files$")
-        assert(self.locs.tweet_library)
+        assert(self.locs.thread_library)
         assert(self.locs.media)
 
     def task_detail(self, task):
         task.update({
-            "actions": [
-                (self.copy_media, [ self.locs.tweet_library, self.locs.media ]),
-            ]
+            "actions" : [ self.merge_all_threads, self.merge_all_media ]
         })
         return task
 
-    def subtask_detail(self, task, fpath):
-        lib_base  = self.locs.tweet_library
-        base_user = self.base_user_reg.match(fpath.stem)[1]
-        if re.match(r"^[a-zA-Z]", base_user):
-            group = f"group_{base_user[0]}"
-        else:
-            group = "group_symbols"
-        task.update({
-            "actions" : [
-                (self.mkdirs, [lib_base / group / base_user ]),
-                (self.count_lib_threads, [lib_base / group / base_user ]),
-                (self.copy_thread, [lib_base / group / base_user, fpath]),
-            ],
-        })
-        return task
+    def merge_all_threads(self):
+        print("Merging Threads")
+        globbed = super(globber.LazyGlobMixin, self).glob_all()
+        chunks  = self.chunk(globbed)
+        self.run_batches(*chunks)
 
-    def copy_media(self, lib, media):
-        for fdir in media.iterdir():
-            if fdir.is_file():
+    def batch(self, data):
+        for name, fpath in data:
+            lib_path = self.build_lib_path(fpath)
+            if lib_path is None:
                 continue
 
-            parent = self.files_dir_reg.match(fdir.stem)[1]
+            self.mkdirs(lib_path)
+            thread_count = len(list(lib_path.glob("thread_*.org")))
+            self.copy_thread(lib_path, fpath, thread_count + 1)
 
-            if self.group_reg.match(fdir.stem):
-                group = f"group_{fdir.stem[0]}"
-            else:
-                group = "group_symbols"
+    def build_lib_path(self, fpath):
+        lib_base  = self.locs.thread_library
 
-            dest = lib / group / parent / fdir.name
+        match (self.base_user_reg.match(fpath.stem) or empty_match).groups():
+            case ():
+                print(f"Unknown base User: {fpath}")
+                return None
+            case (str() as base_user):
+                if re.match(r"^[a-zA-Z]", base_user):
+                    group = f"group_{base_user[0]}"
+                else:
+                    group = "group_symbols"
+
+                return lib_base / group / base_user
+            case _:
+                raise ValueError("Unexpected base value regex result")
+
+    def copy_thread(self, dest, src, count):
+        copy_target = dest / f"thread_{count}{src.suffix}"
+        assert(not copy_target.exists())
+        self.copy_to(copy_target, src, fn="file")
+
+    def merge_all_media(self):
+        print("Merging Media")
+        for fdir in self.locs.media.iterdir():
+            if fdir.is_file():
+                continue
+            print(f"- {fdir.stem}")
+            lib_path = self.build_lib_path(fdir.parent)
+            dest = lib_path / fdir.name
             if not dest.exists():
-                # print(f"Would Make: {dest}")
                 dest.mkdir()
 
             for x in list(fdir.glob("*")):
-                # print(f"Would Copy: {x} -> {dest}")
                 self.copy_to(dest, x)
 
-    def count_lib_threads(self, fpath):
-        return { "count" : len(list(fpath.glob("thread_*.org"))) }
-
-    def copy_thread(self, dest, src, task):
-        count = task.values['count'] + 1
-        copy_target = dest / f"thread_{count}{src.suffix}"
-        assert(not copy_target.exists())
-        # print(f"Would Copy: {copy_target}")
-        self.copy_to(copy_target, src, fn="file")
-
-class TwitterArchive(globber.DootEagerGlobber, ActionsMixin, ZipperMixin):
-    """
-    Zip json data for users
-
-    Get Threads -> components,
-    combine,
-    add to archive.zip in base user's library directory
-    """
-
-    def __init__(self, name="twitter::zip", locs=None, roots=None, rec=False, exts=None):
-        super().__init__(name, locs, roots or [locs.threads], rec=rec, exts=exts or [".json"])
-        self.group_reg     = re.compile(r"^[a-zA-Z]")
-        self.output         = None
-        self.thread_data    = None
-        self.component_data = None
-        assert(self.locs.tweet_library)
-
-    def subtask_detail(self, task, fpath):
-        task.update({
-            "actions": [
-                (self.load_thread, [fpath]),
-                self.load_component,
-                self.add_to_user_archive,
-            ],
-        })
-        return task
-
-    def load_thread(self, fpath):
-        self.thread_data = json.loads(fpath.read_text())
-        return { "component": self.thread_data['component'],
-                 "base_user": self.thread_data['base_user'],
-                }
-
-    def load_component(self, task):
-        self.component_data = json.loads(pl.Path(task.values['component']).read_text())
-
-    def add_to_user_archive(self, task):
-        group = "group_symbols"
-        base_user = task.values['base_user']
-        if re.match(r"^[a-zA-Z]", base_user):
-            group = f"group_{base_user[0]}"
-
-        target_path = self.locs.tweet_library / group / base_user / "archive.zip"
-        if not target_path.exists():
-            self.zip_create(target_path)
-
-        as_json = json.dumps({"thread": self.thread_data, "component": self.component_data})
-        json_name = pl.Path(task.values['component']).name
-        self.zip_add_str(target_path, json_name, as_json)

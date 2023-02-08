@@ -26,8 +26,8 @@ import tweepy
 
 tweet_size         : Final = doot.config.on_fail(250, int).tool.doot.twitter.tweet_size()
 tweet_img_types    : Final = doot.config.on_fail([".jpg", ".png", ".gif"], list).tool.doot.twitter.image_types()
-tweet_image_size     : Final = doot.config.on_fail(4_500_000, int).tool.doot.twitter.max_image()
-sleep_batch        : Final = doot.config.on_fail(2.0,   int|float).tool.doot.sleep_batch()
+tweet_image_size   : Final = doot.config.on_fail(4_500_000, int).tool.doot.twitter.max_image()
+sleep_batch        : Final = doot.config.on_fail(2.0,   int|float).tool.doot.batch.sleep()
 twitter_batch_size : Final = doot.config.on_fail(100, int).tool.doot.twitter.batch_size()
 
 REPLY              : Final = 'in_reply_to_status_id_str'
@@ -58,7 +58,7 @@ class TwitterMixin:
             print("Posting Tweet")
             msg = task.values['msg']
             if len(msg) >= tweet_size:
-                logging.warning("Resulting Tweet too long for twitter: %s\n%s", len(tweet_text), tweet_text)
+                logging.warning("Resulting Tweet too long for twitter: %s\n%s", len(msg), msg)
                 return { "twitter_result": False }
             else:
                 result   = self.twitter.PostUpdate(msg)
@@ -66,6 +66,7 @@ class TwitterMixin:
                 return {"twitter_result": True}
         except Exception as err:
             logging.warning("Twitter Post Failure: %s", err)
+            print("Twitter Post Failed: ", str(err), msg)
             return {"twitter_result": False}
 
     def post_twitter_image(self, task):
@@ -86,7 +87,8 @@ class TwitterMixin:
             print("Twitter Image Posted")
             return {"twitter_result": True }
         except Exception as err:
-            print("Twitter Post Failed: ", str(err))
+            logging.warning("Twitter Post Failure: %s", err)
+            print("Twitter Post Failed: ", str(err), msg, the_file)
             return { "twitter_result": False }
 
     def tw_download_tweets(self, target_dir, missing_file, task):

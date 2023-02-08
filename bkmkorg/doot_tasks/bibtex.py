@@ -43,6 +43,7 @@ from bkmkorg.bibtex import utils as bib_utils
 from doot import globber
 from doot.tasker import DootTasker
 from doot import tasker, task_mixins
+from doot.taskslib.files.backup import BackupTask
 
 pl_expand : Final = lambda x: pl.Path(x).expanduser().resolve()
 
@@ -52,7 +53,7 @@ clean_in_place   : Final = doot.config.on_fail(False, bool).tool.doot.bibtex.cle
 
 ENT_const        : Final = 'ENTRYTYPE'
 
-class LibDirClean(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class LibDirClean(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin, task_mixins.BatchMixin):
     """
     Clean the directories of the bibtex library
     """
@@ -63,13 +64,22 @@ class LibDirClean(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.Ac
     def filter(self, fpath):
         return not bool(list(fpath.iterdir()))
 
-    def subtask_detail(self, task, fpath):
+    def task_detail(self, task):
         task.update({
-            "actions": [ (self.rmdirs, [fpath]) ],
+            "actions": [ self.rm_empty_lib_dirs ],
         })
         return task
 
-class BibtexClean(globber.DootEagerGlobber, task_mixins.ActionsMixin, bib_clean.BibFieldCleanMixin, bib_clean.BibPathCleanMixin, BibLoadSaveMixin):
+    def rm_empty_lib_dirs(self):
+        globbed = super(globber.LazyGlobMixin, self).glob_all()
+        chunks  = self.chunk(globbed, 10)
+        self.run_batches(*chunks)
+
+    def batch(self, data):
+        for name, fpath in data:
+            self.rmdirs(fpath)
+
+class BibtexClean(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin, bib_clean.BibFieldCleanMixin, bib_clean.BibPathCleanMixin, BibLoadSaveMixin, task_mixins.BatchMixin):
     """
     (src -> src) Clean all bib files
     formatting, fixing paths, etc
@@ -95,6 +105,7 @@ class BibtexClean(globber.DootEagerGlobber, task_mixins.ActionsMixin, bib_clean.
         issue_report = self.locs.build / "bib_clean_issues.report"
         task.update({
             "actions" : [
+                self.clean_all_bibtex,
                 lambda: { "key_max" : max(len(x[0]) for x in self.issues) },
                 lambda task: { "issues" : "\n".join(f"{x[0]:<{task.values['key_max']}} {x[1]}" for x in self.issues) },
                 (self.write_to, [issue_report, "issues"]),
@@ -103,19 +114,17 @@ class BibtexClean(globber.DootEagerGlobber, task_mixins.ActionsMixin, bib_clean.
         })
         return task
 
-    def subtask_detail(self, task, fpath):
-        target = fpath if clean_in_place else self.locs.temp / fpath.name
-        task.update({
-            "actions" : [ (self.load_and_clean, [fpath]), # -> cleaned
-                          lambda: {"cleaned" : self.bc_db_to_str(self.current_db,
-                                                                 self.bc_prepare_entry_for_write,
-                                                                 self.locs.pdfs) },
-                          (self.write_to, [target, "cleaned"]),
-                         ],
-            "file_dep" : [ fpath ],
-            "verbosity" : 2,
-        })
-        return task
+    def clean_all_bibtex(self):
+        globbed = super(globber.LazyGlobMixin, self).glob_all()
+        chunks  = self.chunk(globbed, 10)
+        self.run_batches(*chunks)
+
+    def batch(self, data):
+        for name, fpath in data:
+            target = fpath if clean_in_place else self.locs.temp / fpath.name
+            self.load_and_clean(fpath), # -> cleaned
+            bib_str = self.bc_db_to_str(self.current_db, self.bc_prepare_entry_for_write, self.locs.pdfs)
+            target.write_text(bib_str)
 
     def load_and_clean(self, fpath):
         self.current_year = fpath.stem
@@ -182,7 +191,7 @@ class BibtexClean(globber.DootEagerGlobber, task_mixins.ActionsMixin, bib_clean.
             print(f"Error Occurred for {entry['ID']}: {err}", file=sys.stderr)
             raise err
 
-class BibtexReport(globber.DootEagerGlobber, task_mixins.ActionsMixin, BibLoadSaveMixin, bib_clean.BibFieldCleanMixin, bib_clean.BibPathCleanMixin):
+class BibtexReport(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.BatchMixin, task_mixins.ActionsMixin, BibLoadSaveMixin, bib_clean.BibFieldCleanMixin, bib_clean.BibPathCleanMixin):
     """
     (src -> build) produce reports on the bibs found
     """
@@ -209,6 +218,7 @@ class BibtexReport(globber.DootEagerGlobber, task_mixins.ActionsMixin, BibLoadSa
 
         task.update({
             "actions" : [
+                self.load_all_bibtex,
 
                 ##-- report on authors
                 lambda:      { "author_max" : max((len(x[0]) for x in self.authors), default=0) },
@@ -246,16 +256,14 @@ class BibtexReport(globber.DootEagerGlobber, task_mixins.ActionsMixin, BibLoadSa
         })
         return task
 
-    def subtask_detail(self, task, fpath):
-        task.update({
-            "actions" : [
-                (self.load_db, [fpath]),
-            ],
-        })
-        return task
+    def load_all_bibtex(self):
+        globbed = super(globbed.LAzyGlobMixin, self).glob_all()
+        chunks  = self.chunk(globbed, 10)
+        self.run_batches(*chunks)
 
-    def load_db(self, fpath):
-        self.db = self.bc_load_db([fpath], fn=self.process_entry, db=self.db)
+    def batch(self, data):
+        for name, fpath in data:
+            self.db = self.bc_load_db([fpath], fn=self.process_entry, db=self.db)
 
     def process_entry(self, entry):
         try:
@@ -409,8 +417,7 @@ class BibtexStub(globber.DootEagerGlobber, task_mixins.ActionsMixin):
         with open(self.locs.bib_stub_file, 'a') as f:
             f.write("\n\n".join(self.stubs))
 
-
-class BibtexWaybacker(globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class TODOBibtexWaybacker(globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     get all urls from bibtexs,
     then check they are in wayback machine,
@@ -419,29 +426,27 @@ class BibtexWaybacker(globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     pass
 
-
-class PdfLibSummary(doot.DootTasker):
+class TODOPdfLibSummary(doot.DootTasker):
     """
     Compile the first n pages of each pdf in a decade together
     """
     pass
 
-class PdfBibtexCompile(doot.DootTasker):
+class TODOPdfBibtexCompile(doot.DootTasker):
     """
     Compile individual bibtex files into pdfs
     then combine them together into decades and total
     """
     pass
 
-class TimelineCompile(doot.DootTasker):
+class TODOTimelineCompile(doot.DootTasker):
     """
     take a timeline and create a pdf of the citations,
     and the combined pdfs
     """
     pass
 
-
-class HashVerify(doot.DootTasker):
+class TODOHashVerify(doot.DootTasker):
     """
     Check a random selection of files for hash consistency
     """

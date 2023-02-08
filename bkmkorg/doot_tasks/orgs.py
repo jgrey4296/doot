@@ -30,13 +30,24 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
+from collections import defaultdict
+import fileinput
+from doit.exceptions import TaskFailed
 import doot
-from doot.tasker import DootTasker, ActionsMixin
+from doot.tasker import DootTasker
+from doot.task_mixins import ActionsMixin, BatchMixin, TargetedMixin
 from doot import globber
 
-class OrgCleaner(globber.DootEagerGlobber, ActionsMixin):
+tweet_index_file : Final = doot.config.on_fail(".tweets", str).tool.doot.twitter.index()
+file_index_file  : Final = doot.config.on_fail(".files", str).tool.doot.twitter.file_index()
+link_index_file  : Final = doot.config.on_fail(".links", str).tool.doot.twitter.link_index()
+thread_file      : Final = doot.config.on_fail(".threads", str).tool.doot.twitter.thread_index()
+
+empty_match      : Final = re.match("","")
+
+class TODOOrgCleaner(globber.LazyGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
-    TODO Find and format any org files
+    Find and format any org files
     """
 
     def __init__(self, name="org::clean", locs=None, roots=None, rec=False, exts=None):
@@ -45,11 +56,332 @@ class OrgCleaner(globber.DootEagerGlobber, ActionsMixin):
     def filter(self, fpath):
         return self.control.accept
 
-    def subtask_detail(self, task, fpath):
+    def task_detail(self, task, fpath):
         task.update({
             "actions" : []
         })
         return task
 
-class Org2Html:
+class TODOOrg2Html:
     pass
+
+class ThreadListings(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin, BatchMixin, TargetedMixin):
+    """
+    glob all directories with orgs in,
+    and write .tweets and .files listings
+    """
+
+    def __init__(self, name="threads::listing", locs=None, roots=None, rec=True):
+        super().__init__(name, locs, roots or [locs.data], exts=[".org"], rec=rec)
+        self.permalink_re = re.compile(r":PERMALINK:\s+\[\[.+?\]\[(.+?)\]\]")
+
+    def set_params(self):
+        return self.target_params()
+
+    def filter(self, fpath):
+        if any(x.suffix == ".org" for x in fpath.iterdir()):
+            return self.control.keep
+        else:
+            return self.control.discard
+
+    def task_detail(self, task):
+        task.update({
+            "actions" : [ self.process_all ],
+        })
+        return task
+
+    def process_all(self):
+        chunks = self.target_chunks(base=globber.LazyGlobMixin)
+        self.run_batches(*chunks)
+
+    def batch(self, data):
+        for name, fpath in data:
+            self.extract_tweet_ids(fpath)
+            self.get_files(fpath)
+
+    def get_files(self, fpath):
+        """
+        make a file listing for a user
+        """
+        file_dir   = fpath / f"{fpath.name}_files"
+        file_index = fpath / file_index_file,
+        if not file_dir.exists():
+            return
+
+        if file_dir.is_file():
+            with open(pl.Path() / "file_dirs.errors", 'a') as f:
+                f.write("\n" + str(fpath))
+            return
+
+        file_listing = [str(x.relative_to(fpath)) for x in file_dir.iterdir()]
+        file_index.write_text("\n".join(file_listing))
+
+    def extract_tweet_ids(self, fpath):
+        """
+        Get all tweet id's from all threads
+        """
+        tweet_index = fpath / tweet_index_file
+        globbed     = self.glob_files(fpath)
+        permalinks  = set()
+
+        for line in fileinput.input(files=globbed):
+            result = self.permalink_re.search(line)
+            if result:
+                permalinks.add(result[1])
+
+        tweet_index.write_text("\n".join(permalinks))
+
+class OrgMultiThreadCount(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin, BatchMixin, TargetedMixin):
+    """
+    Count threads in files, make a thread file (default: .threads)
+    """
+
+    def __init__(self, name="org::threadcount", locs=None, roots=None, rec=True):
+        super().__init__(name, locs, roots or [locs.data], exts=[".org"], rec=True)
+        self.heading_re = re.compile(f"^\** ")
+
+    def set_params(self):
+        return self.target_params()
+
+    def task_detail(self, task):
+        task.update({
+            "actions" : [ self.count_all ],
+        })
+        return task
+
+    def filter(self, fpath):
+        if any(x.suffix == ".org" for x in fpath.iterdir()):
+            return self.control.keep
+        else:
+            return self.control.discard
+
+    def count_all(self):
+        chunks = self.target_chunks(base=globber.LazyGlobMixin)
+        self.run_batches(*chunks)
+
+    def batch(self, data):
+        for name, fpath in data:
+            self.build_thread_file(fpath)
+
+    def build_thread_file(self, fpath):
+        thread_listing = fpath / thread_file
+        counts         = defaultdict(lambda: [0, 0])
+        globbed        = [x for x in self.glob_files(fpath) if "thread" in x.stem]
+        total_files    = len(globbed)
+        total_threads  = 0
+
+        for line in fileinput.input(files=globbed):
+            if not self.heading_re.match(line):
+                continue
+
+            current = pl.Path(fileinput.filename()).relative_to(fpath)
+            match line.count("*"):
+                case 1:
+                    # file header
+                    counts[current][0] += 1
+                case 2:
+                    # thread header
+                    counts[current][1] += 1
+                    total_threads += 1
+                case _:
+                    pass
+
+        summary = [f"L1: {y[0]} {x}\nL2: {y[1]} {x}" for x,y in counts.items()]
+        thread_listing.write_text(f"Total Files: {total_files}\nTotal Threads: {total_threads}\n" + "\n".join(summary))
+
+class ThreadOrganise(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin, BatchMixin, TargetedMixin):
+    """
+    move threads in multi thread files to their own separate count
+    """
+
+    def __init__(self, name="thread::organise", locs=None, roots=None, rec=True):
+        super().__init__(name, locs, roots or [locs.data], exts=[".org"], rec=rec)
+        self.total_threads   = 0
+        self.multi_threads   = set()
+        self.total_files_reg = re.compile(r"^Total Files: (\d+)$")
+        self.header_reg      = re.compile(r"^(\**) ")
+
+    def set_params(self):
+        return self.target_params()
+
+    def task_detail(self, task, fpath=None):
+        task.update({
+            "actions" : [ self.process_threads ],
+        })
+        return task
+
+    def filter(self, fpath):
+        if any(x.suffix == ".org" for x in fpath.iterdir()):
+            return self.control.keep
+        else:
+            return self.control.discard
+
+    def process_threads(self):
+        chunks = self.target_chunks()
+        self.run_batches(*chunks)
+
+    def batch(self, data):
+        for name, fpath in data:
+            self.read_threadcount(fpath)
+            self.process_threads(fpath)
+
+    def read_threadcount(self, fpath):
+        threadp = fpath / thread_file
+        self.multi_threads.clear()
+        for line in threadp.read_text().split("\n"):
+            result = self.total_files_reg.match(line)
+            if result:
+                self.total_threads = int(result[1])
+                continue
+
+            result = re.match("L(\d): (\d+) (.+?)$", line)
+            if not result:
+                continue
+
+            if int(result[1]) == 1 and int(result[2]) > 0:
+                self.multi_threads.add(fpath / result[3].strip())
+            elif int(result[2]) > 1:
+                self.multi_threads.add(fpath / result[3].strip())
+
+    def process_threads(self, fpath):
+        if not bool(self.multi_threads):
+            return
+
+        print(f"Processing: {fpath} : Total: {self.total_threads}, {self.multi_threads}", file=sys.stderr)
+
+        targets = list(self.multi_threads)
+        self.multi_threads.clear()
+
+        header_file  = fpath / "headers.org"
+        current_file = None
+        state        = 'header'
+        header_lines = []
+        new_thread   = None
+        # Run through lines in multi thread files,
+        # as a state machine, moving extra threads into new files
+        try:
+            for line in fileinput.input(files=targets, inplace=True, backup=".backup"):
+                if fileinput.filename() != current_file:
+                    current_file = fileinput.filename()
+                    try:
+                        new_thread.close()
+                    except AttributeError:
+                        pass
+                    new_thread = None
+                    state      = 'header'
+
+                # Determine state
+                match (self.header_reg.match(line) or empty_match).groups():
+                    case ():
+                        pass
+                    case ("*",):
+                        state = 'header'
+                    case ("**",) if state == 'header' and new_thread is None: # first thread
+                        state = 'first_thread'
+                        new_thread = True
+                    case ("**",): # new thread
+                        try:
+                            new_thread.close()
+                        except AttributeError:
+                            pass
+                        self.total_threads += 1
+                        new_thread_name = fpath / f"thread_{self.total_threads}.org"
+                        assert(not new_thread_name.exists())
+                        new_thread = new_thread_name.open('a')
+                        state = 'new_thread'
+                    case _: # sub levels, ignore
+                        pass
+
+                # Act on state
+                match state:
+                    case 'header':
+                        header_lines.append(line)
+                    case 'first_thread':
+                        print(line, end="")
+                    case 'new_thread':
+                        print(line, end="", file=new_thread)
+                    case _:
+                        raise Exception("This shouldn't be possible")
+
+        finally:
+            try:
+                new_thread.close()
+            except AttributeError:
+                pass
+
+        # After everything, write to the headers file
+        with open(header_file, 'a') as f:
+            f.write("\n" + "".join(header_lines))
+
+class ThreadImageOCR(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin, BatchMixin, TargetedMixin):
+    """
+    OCR all files for all thread directories,
+    and extract all links into .links files
+    """
+
+    def __init__(self, name="thread::ocr", locs=None, roots=None, rec=True):
+        super().__init__(name, locs, roots, rec=True)
+        self.link_reg   = re.compile(r"\[\[(.+?)\]")
+
+    def set_params(self):
+        return self.target_params()
+
+    def task_detail(self, task, fpath=None):
+        task.update({
+            "actions" : [ self.process_all ],
+        })
+        return task
+
+    def filter(self, fpath):
+        if any(x.suffix == ".org" for x in fpath.iterdir()):
+            return self.control.keep
+        else:
+            return self.control.discard
+
+    def process_all(self):
+        chunks = self.target_chunks(base=globber.LazyGlobMixin)
+        self.run_batches(*chunks)
+
+    def batch(self, data):
+        for name, fpath in data:
+            link_index = fpath / link_index_file
+            links      = self.extract_links(fpath)
+            link_index.write_text("\n".join(links))
+
+            cleaned = self.expand_and_clean_links(fpath, links)
+            link_index.write_text("\n".join(links))
+
+            self.retrieve_ocr_text(fpath)
+
+    def extract_links(self, fpath) -> list:
+        """
+        For all files in the dir,
+        """
+        globbed    = self.glob_files(fpath)
+        if not bool(globbed):
+            return []
+
+        links      = []
+        for line in fileinput.input(files=globbed):
+            result = self.link_reg.search(line)
+            if result is None:
+                continue
+
+            links.append(result[1])
+
+        return links
+
+    def expand_and_clean_links(self, fpath, links) -> list:
+        clean_links = set()
+        # process
+        return list(clean_links)
+
+    def retrieve_ocr_text(self, fpath) -> list:
+        """
+        Get all txt files in the files dir, and... map img -> txt
+        """
+        file_path = fpath / f"{fpath.name}_files"
+        if not file_path.exists():
+            return []
+
+        return []
