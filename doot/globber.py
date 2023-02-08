@@ -100,9 +100,8 @@ class DootEagerGlobber(DootSubtasker):
         if not target.exists():
             return []
         elif not (rec or self.rec):
-            if filter_fn(target) not in [False, GlobControl.reject, GlobControl.discard]:
-                results.append(target)
-            results += [x for x in target.iterdir() if filter_fn(x) not in [False, GlobControl.reject, GlobControl.discard]]
+            potentials  = [target] + [x for x in target.iterdir()]
+            results    += [x for x in potentials if filter_fn(x) not in [False, GlobControl.reject, GlobControl.discard] and x.suffix in exts or not bool(exts)]
             return results
 
         assert(rec or self.rec)

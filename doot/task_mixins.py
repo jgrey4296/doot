@@ -49,6 +49,7 @@ logging = logmod.getLogger(__name__)
 import doot
 
 conda_exe        = os.environ['CONDA_EXE']
+batch_size       = doot.config.on_fail(10, int).tool.doot.batch.size()
 sleep_batch      = doot.config.on_fail(2.0,   int|float).tool.doot.sleep_batch()
 batches_max      = doot.config.on_fail(-1,    int).tool.doot.batches_max()
 sleep_notify     = doot.config.on_fail(False, bool).tool.doot.sleep_notify()
@@ -115,7 +116,7 @@ class BatchMixin:
         """ Override to implement what a batch does """
         raise NotImplementedError()
 
-    def chunk(self, iterable, n, *, incomplete='fill', fillvalue=None):
+    def chunk(self, iterable, n=batch_size, *, incomplete='fill', fillvalue=None):
         """Collect data into non-overlapping fixed-length chunks or blocks
         from https://docs.python.org/3/library/itertools.html
          grouper('ABCDEFG', 3, fillvalue='x') --> ABC DEF Gxx
@@ -399,3 +400,33 @@ class ZipperMixin:
                              allowZip64=True) as targ:
             assert(fname not in targ.namelist())
             targ.writestr(fname, text)
+
+class TargetedMixin:
+    """
+    For Quickly making a task have cli args to control batching
+    """
+
+    def target_params(self) -> list:
+        return [
+            {"name": "target", "short": "t", "type": str, "default": None},
+            {"name": "all", "long": "all", "type": bool, "default": False},
+            {"name": "chunkSize", "long": "chunkSize", "type": int, "default": batch_size},
+        ]
+
+    def target_chunks(self, *, base=None):
+        if self.args['target'] is None:
+            raise TaskFailed("No Target Specified")
+
+        if self.args['all']:
+            globbed = super(base, self).glob_all()
+            chunks  = self.chunk(globbed, self.arags['chunkSize'])
+            return chunks
+
+        fpath  = self.locs.root / self.args['target']
+        if not fpath.exists():
+            raise TaskFailed("Target Doesn't Exist")
+
+        globbed = [(x.name, x) for x in self.glob_target(fpath)]
+        print("Generating for: ", [x[0] for x in globbed])
+        chunks  = self.chunk(globbed, self.args['chunkSize'])
+        return chunks
