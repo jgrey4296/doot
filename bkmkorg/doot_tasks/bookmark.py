@@ -52,9 +52,7 @@ class BookmarksUpdate(DootTasker, ActionsMixin):
         self.new_collections : list[BC.BookmarkCollection] = []
         self.total : BC.BookmarkCollection                 = None
         self.temp_dbs = self.locs.temp / "dbs"
-        assert(self.locs.firefox)
-        assert(self.locs.temp)
-        assert(self.locs.bookmarks_total)
+        self.locs.ensure("firefox", "temp", "bookmarks_total")
 
     def task_detail(self, task):
         dbs         = self.locs.firefox.rglob(self.database)
@@ -105,8 +103,7 @@ class BookmarksCleaner(DootTasker, ActionsMixin):
     def __init__(self, name="bkmk::clean", locs=None):
         super().__init__(name, locs)
         self.total = None
-        assert(self.locs.temp)
-        assert(self.locs.src)
+        self.locs.ensure("temp", "src")
 
     def task_detail(self, task):
         fpath =  self.locs.src / "total.bookmarks"

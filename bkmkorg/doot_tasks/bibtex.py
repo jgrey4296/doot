@@ -92,9 +92,7 @@ class BibtexClean(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.A
         self.current_db   = None
         self.current_year = None
         self.issues = []
-        assert(self.locs.build)
-        assert(self.locs.temp)
-        assert(self.locs.bibtex)
+        self.locs.ensure("build", "temp", "bibtex")
 
     def set_params(self):
         return [

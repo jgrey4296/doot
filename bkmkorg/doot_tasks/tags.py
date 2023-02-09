@@ -56,8 +56,7 @@ class TagsCleaner(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEager
         # super().__init__(name, locs, roots or [locs.bibtex, locs.bookmarks, locs.orgs], rec=rec, exts=exts or [".bib", ".bookmarks", ".org"])
         super().__init__(name, locs, roots or [locs.bibtex, locs.bookmarks], rec=rec, exts=exts or [".bib", ".bookmarks", ".org"])
         self.tags = SubstitutionFile()
-        assert(self.locs.temp)
-        assert(self.locs.tags)
+        self.locs.ensure("temp", "tags")
 
     def filter(self, fpath):
         if bool(self.glob_files(fpath)):
@@ -175,8 +174,7 @@ class TagsReport(globber.LazyGlobMixin, globber.DootEagerGlobber, ActionsMixin, 
     def __init__(self, name="tags::report", locs=None, roots=None, rec=True, exts=None):
         super().__init__(name, locs, roots or [locs.tags], rec=rec, exts=exts or [".sub"])
         self.tags = SubstitutionFile()
-        assert(self.locs.build)
-        assert(self.locs.temp)
+        self.locs.ensure("build", "temp")
 
     def set_params(self):
         return self.target_params()
@@ -238,7 +236,7 @@ class TagsIndexer(globber.LazyGlobMixin, globber.DootEagerGlobber, ActionsMixin,
         self.bkmk_index = IndexFile()
         self.bib_index  = IndexFile()
         self.org_index  = IndexFile()
-        assert(self.locs.temp)
+        self.locs.ensure("temp")
 
     def set_params(self):
         return self.target_params()

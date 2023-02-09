@@ -65,7 +65,7 @@ class TwitterArchive(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixin
         self.output         = None
         self.thread_data    = None
         self.component_data = None
-        assert(self.locs.thread_library)
+        self.locs.ensure("thread_library")
 
     def task_detail(self, task, fpath):
         task.update({

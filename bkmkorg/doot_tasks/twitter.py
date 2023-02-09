@@ -80,10 +80,7 @@ class TwitterLibTweets(DootTasker, ActionsMixin, TwitterMixin):
         self.library_ids    = set()
         self.existing_json_ids = set()
         self.output         = self.locs.lib_tweets
-        assert(self.locs.secrets)
-        assert(self.locs.missing_ids)
-        assert(self.locs.tweet_archive)
-        assert(self.locs.thread_library)
+        self.locs.ensure("secrets", "missing_ids", "tweet_archive", "thread_library")
 
     def task_detail(self, task):
         task.update({
@@ -164,11 +161,7 @@ class TwitterTweets(DootTasker, ActionsMixin, TwitterMixin):
         self.library_ids = set()
         self.todos       = None
         self.output      = self.locs.tweets
-        assert(self.locs.secrets)
-        assert(self.locs.missing_ids)
-        assert(self.locs.tweet_archive)
-        assert(self.locs.thread_library)
-        assert(self.locs.current_tweets)
+        self.locs.ensure("secrets", "missing_ids", "tweet_archive", "thread_library", "current_tweets")
 
     def set_params(self):
         return [
@@ -262,9 +255,7 @@ class TwitterUserIdentities(globber.LazyGlobMixin, globber.DootEagerGlobber, Bat
         self.todo_users = set()
         self.lib_users  = set()
         self.output     = self.locs.users
-        assert(self.locs.secrets)
-        assert(self.locs.thread_library)
-        assert(self.locs.tweets)
+        self.locs.ensure("secrets", "thread_library", "tweets")
 
     def setup_detail(self, task):
         task.update({
@@ -330,8 +321,7 @@ class TwitterComponentGraph(DootTasker, ActionsMixin, passes.TwGraphComponentMix
         super().__init__(name, locs)
         self.output      = self.locs.components
         self.tweet_graph = TwitterGraph()
-        assert(self.locs.tweets)
-        assert(self.locs.users)
+        self.locs.ensure("tweets", "users")
 
     def setup_detail(self, task):
         task.update({
@@ -400,7 +390,7 @@ class TwitterThreadWrite(globber.LazyGlobMixin, globber.DootEagerGlobber, passes
         self.todos = None
         # Just Build, as construct org/html uses subdirs
         self.output = self.locs.build
-        assert(self.locs.current_tweets)
+        self.locs.ensure("current_tweets")
 
     def setup_detail(self, task):
         task.update({
@@ -488,8 +478,7 @@ class TwitterMerge(globber.LazyGlobMixin, globber.DootEagerGlobber, ActionsMixin
         self.base_user_reg = re.compile(r"^(.+?)_thread_\d+$")
         self.group_reg     = re.compile(r"^[a-zA-Z]")
         self.files_dir_reg = re.compile(r"^(.+?)_files$")
-        assert(self.locs.thread_library)
-        assert(self.locs.media)
+        self.locs.ensure("thread_library", "media")
 
     def task_detail(self, task):
         task.update({

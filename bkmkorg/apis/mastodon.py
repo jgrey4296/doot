@@ -38,7 +38,7 @@ class MastodonMixin:
         )
 
         self.mastodon = instance
-        assert(self.locs.image_temp)
+        self.locs.ensure("image_temp")
 
     def post_toot(self, task):
         try:
