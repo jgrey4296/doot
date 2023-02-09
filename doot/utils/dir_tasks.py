@@ -25,7 +25,7 @@ class CheckDir:
 
     @staticmethod
     def gen_check_tasks():
-        logging.info("Building CheckDir Auto Tasks: %s", list(CheckDir._all_registered.keys()))
+        logging.debug("Building CheckDir Auto Tasks: %s", list(CheckDir._all_registered.keys()))
         return TaskGroup(CheckDir._checker_name,
                          {
                              "basename" : "locs::build",
@@ -59,7 +59,7 @@ class CheckDir:
         for _,x in self.locs:
             try:
                 x.mkdir(parents=True)
-                print("Built Missing Location: ", x)
+                logging.info("Built Missing Location: %s", x)
             except FileExistsError:
                 pass
 

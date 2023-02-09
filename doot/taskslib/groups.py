@@ -302,9 +302,7 @@ try:
     maintain_group += maintain.CronMaintain(locs=doot.locs)
     maintain_group += maintain.GitMaintain(locs=doot.locs)
 
-
-
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     if doot.config.on_fail(False, bool).tool.doot.group.epub.debug():
-        print("To activate group, epub needs: ", err)
+        logging.debug("To activate group, epub needs: ", err)
 ##-- end maintain

@@ -25,7 +25,7 @@ class ForceCmd(CmdAction):
         self.handler = handler or self.default_handler
 
     def default_handler(self, result):
-        print("Task Failure Overriden: ", self.task.name)
+        logging.info("Task Failure Overriden: ", self.task.name)
         return None
 
     def execute(self, *args, **kwargs):

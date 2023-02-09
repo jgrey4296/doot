@@ -61,7 +61,7 @@ class ZipTask(DootTasker, ActionsMixin, ZipperMixin):
         zip_base = target.parent
         zip_stem = target.stem
 
-        print(f"Cleaning {zip_base}/{zip_stem}*.zip")
+        logging.info(f"Cleaning {zip_base}/{zip_stem}*.zip")
         for zipf in zip_base.glob(f"{zip_stem}*.zip"):
             zipf.unlink()
 

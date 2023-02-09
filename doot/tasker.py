@@ -115,6 +115,9 @@ class DootTasker:
     def task_detail(self, task:dict) -> dict:
         return task
 
+    def log(self, msg, level=logmod.DEBUG):
+        logging.log(level, msg)
+
     @property
     def setup_name(self):
         if self._setup_name is not None:
@@ -149,7 +152,7 @@ class DootTasker:
             return None
 
     def _build_task(self):
-        logging.info("Building Task for: %s", self.base)
+        logging.debug("Building Task for: %s", self.base)
         task                     = self.default_task()
         maybe_task : None | dict = self.task_detail(task)
         if maybe_task is None:

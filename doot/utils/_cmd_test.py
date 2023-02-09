@@ -56,9 +56,9 @@ class JGTestCmd(DoitCmdBase):
         control       = TaskControl(self.task_list)
         self.tasks    = control.tasks
 
-        print("Tasks:")
+        logging.info("Tasks:")
         for x in self.tasks.values():
-            print(x.name)
+            logging.info(x.name)
         # task = control.tasks.get(...)
 
-        print("Test Command")
+        logging.info("Test Command")

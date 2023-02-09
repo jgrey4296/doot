@@ -81,7 +81,7 @@ class DootLocData:
 
     @staticmethod
     def gen_loc_tasks():
-        logging.info("Building LocData Auto Tasks: %s", list(DootLocData._all_registered.keys()))
+        logging.debug("Building LocData Auto Tasks: %s", list(DootLocData._all_registered.keys()))
         return TaskGroup(DootLocData._locs_name,
                          {
                              "basename" : "locs::report",
@@ -108,8 +108,11 @@ class DootLocData:
         self._files = {x:y for x,y in (files or {}).items() if y is not None}
 
         intersect = set(self._dirs.keys()) & set(self._files.keys())
-        assert(not bool(intersect)), f"Directory and File Sets can't intersect: {intersect}"
-        assert(self.name not in DootLocData._all_registered), f"Conflicting LocData Name: {self.name}"
+        if bool(intersect):
+            raise ValueError(f"Directory and File Sets can't intersect: {intersect}")
+        if not (self.name not in DootLocData._all_registered):
+            raise ValueError(f"Conflicting LocData Name: {self.name}")
+
         DootLocData._all_registered[self.name] = self
         self.checker
 
@@ -120,6 +123,7 @@ class DootLocData:
             case False, True:
                 target =  self._files[val]
             case _:
+                logging.warning(f"{val} is not a location in {self.name}")
                 raise DootDirAbsent(f"{val} is not a location in {self.name}")
 
         return self._calc_path(target)
@@ -217,3 +221,12 @@ class DootLocData:
 
     def _file_str(self):
         return " ".join(f"{{{x}: {getattr(self, x)}}}" for x,y in sorted(self._files.items()))
+
+
+    def ensure(self, *values):
+        try:
+            for val in values:
+                getattr(self, val)
+        except AttributeError as err:
+            logging.warning("Missing Location Data: %s", val)
+            raise err

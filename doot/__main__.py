@@ -31,7 +31,13 @@ logging         = logmod.root
 logging.setLevel(logmod.NOTSET)
 file_handler    = logmod.FileHandler(pl.Path() / "log.doot", mode='w')
 file_handler.setFormatter(logmod.Formatter("PRE_SETUP : {message}", style="{"))
+
+std_handler = logmod.StreamHandler()
+std_handler.setLevel(logmod.WARNING)
+std_handler.setFormatter(logmod.Formatter("PRE_SETUP  : {message}", style="{"))
+
 logging.addHandler(file_handler)
+logging.addHandler(std_handler)
 ##-- end logging
 
 from doit.action import CmdAction
@@ -51,13 +57,21 @@ def main():
 
         logging.info("Basic Doot setup loaded")
         ##-- logging setup
-        log_level        = doot.config.on_fail("DEBUG", str).tool.doot.logging.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
-        file_log_format  = doot.config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str).tool.doot.logging.format()
-        log_filter_names = doot.config.on_fail(["doot"], list).tool.doot.logging.filters()
+        file_log_level    = doot.config.on_fail("DEBUG", str).tool.doot.logging.file.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
+        file_log_format   = doot.config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str).tool.doot.logging.file.format()
+        file_filter_names = doot.config.on_fail(["doot"], list).tool.doot.logging.file.filters()
 
-        file_handler.setLevel(log_level)
+        file_handler.setLevel(file_log_level)
         file_handler.setFormatter(logmod.Formatter(file_log_format, style="{"))
-        file_handler.addFilter(DootAnyFilter(log_filter_names))
+        file_handler.addFilter(DootAnyFilter(file_filter_names))
+
+        stream_log_level    = doot.config.on_fail("DEBUG", str).tool.doot.logging.stream.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
+        stream_log_format   = doot.config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str).tool.doot.logging.stream.format()
+        stream_filter_names = doot.config.on_fail(["doot"], list).tool.doot.logging.stream.filters()
+
+        std_handler.setLevel(stream_log_level)
+        std_handler.setFormatter(logmod.Formatter(stream_log_format, style="{"))
+        std_handler.addFilter(DootAnyFilter(stream_filter_names))
         ##-- end logging setup
 
         loader    = DootLoader()
@@ -78,13 +92,13 @@ def main():
         if not doot.default_agnostic.exists():
             if input("No toml config data found, create stub doot.toml? _/n ") != "n":
                 doot.default_agnostic.write_text(doot.toml_template.read_text())
-                print("Stubbed")
+                logging.info("Stubbed")
         if not doot.default_dooter.exists():
             if input("No Dooter file found, create stub dooter.py? _/n ") != "n":
                 doot.default_dooter.write_text(doot.dooter_template.read_text())
-                print("Stubbed")
+                logging.info("Stubbed")
     except Exception as err:
-        print("Error: ", err, file=sys.stderr)
+        logging.error("Error: ", err, file=sys.stderr)
         errored = True
     finally:
         say_on_exit = False

@@ -87,7 +87,7 @@ class BatchMixin:
                     batch_data = [x for x in items if x is not None]
                     if not bool(batch_data):
                         continue
-                    print(f"Batch: {self.batch_count} : ({len(batch_data)})")
+                    self.log(f"Batch: {self.batch_count} : ({len(batch_data)})")
                 case _:
                     batch_data = data
 
@@ -104,10 +104,10 @@ class BatchMixin:
 
             self.batch_count += 1
             if -1 < batches_max < self.batch_count:
-                print("Max Batch Hit")
+                self.log("Max Batch Hit")
                 return
             if sleep_notify:
-                print("Sleep Batch")
+                self.log("Sleep Batch")
             sleep(sleep_batch)
 
         return result
@@ -355,9 +355,9 @@ class ZipperMixin:
                     write_as = relpath
                     while str(write_as) in targ.namelist():
                         if attempts > 10:
-                            print(f"Couldn't settle on a de-duplicated name for: {file_to_add}")
+                            logging.warning(f"Couldn't settle on a de-duplicated name for: {file_to_add}")
                             break
-                        print(f"Attempted Name Duplication: {relpath}", file=sys.stderr)
+                        logging.debug(f"Attempted Name Duplication: {relpath}", file=sys.stderr)
                         write_as = relpath.with_stem(f"{relpath.stem}_{hex(randint(1,100))}")
                         attempts += 1
 
@@ -366,7 +366,7 @@ class ZipperMixin:
                 except ValueError:
                     relpath = root / pl.Path(file_to_add).name
                 except FileNotFoundError as err:
-                    print(f"Adding File to Zip {fpath} failed: {err}", file=sys.stderr)
+                    logging.warning(f"Adding File to Zip {fpath} failed: {err}", file=sys.stderr)
 
     def zip_globs(self, fpath, *globs):
         """
@@ -381,7 +381,7 @@ class ZipperMixin:
                              allowZip64=True) as targ:
             for glob in globs:
                 result = list(cwd.glob(glob))
-                print(f"Globbed: {cwd}[{glob}] : {len(result)}")
+                logging.info(f"Globbed: {cwd}[{glob}] : {len(result)}")
                 for dep in result:
                     try:
                         if dep.stem[0] == ".":
@@ -391,7 +391,7 @@ class ZipperMixin:
                     except ValueError:
                         relpath = root / pl.Path(dep).name
                     except FileNotFoundError as err:
-                        print(f"Adding File to Zip {fpath} failed: {err}", file=sys.stderr)
+                        logging.warning(f"Adding File to Zip {fpath} failed: {err}", file=sys.stderr)
 
     def zip_add_str(self, fpath, fname, text:str):
         assert(fpath.suffix == ".zip")
@@ -427,6 +427,6 @@ class TargetedMixin:
             raise TaskFailed("Target Doesn't Exist")
 
         globbed = [(x.name, x) for x in self.glob_target(fpath)]
-        print("Generating for: ", [x[0] for x in globbed])
+        logging.debug("Generating for: ", [x[0] for x in globbed])
         chunks  = self.chunk(globbed, self.args['chunkSize'])
         return chunks

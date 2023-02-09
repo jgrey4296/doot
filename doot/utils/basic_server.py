@@ -59,5 +59,5 @@ class BasicServer(DoitCmdBase):
 def index():
     # https://improveandrepeat.com/2022/03/python-friday-112-how-to-use-tweepy-in-flask/
     # args               = request.args
-    print(request.url)
+    logging.info(request.url)
     return "nothing"

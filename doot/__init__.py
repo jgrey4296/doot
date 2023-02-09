@@ -24,9 +24,13 @@ dooter_template = data_path / "dooter"
 __version__              = "0.0.1"
 
 default_dooter           = pl.Path("dooter.py")
+
 default_py               = pl.Path("pyproject.toml")
+
 default_rust             = pl.Path("Cargo.toml")
+
 default_rust_config      = pl.Path("./.cargo/config.toml")
+
 default_agnostic         = pl.Path("doot.toml")
 
 config     : tomler.Tomler = None
@@ -49,10 +53,9 @@ def setup():
 
 def setup_agnostic(path=default_agnostic):
     global config, locs
-    config     = tomler.load(path)
-
-    locs = DootLocData(files=config.on_fail({}, dict).tool.doot.files.get_table(),
-                       **config.tool.doot.directories.get_table())
+    config = tomler.load(path)
+    locs   = DootLocData(files=config.flatten_on().tool.doot.files(wrapper=lambda x: x.get_table()),
+                         **config.flatten_on().tool.doot.directories(wrapper=lambda x: x.get_table()))
 
     # Done like this to avoid recursive imports
     DootTasker.set_defaults(config)
@@ -61,5 +64,5 @@ def setup_agnostic(path=default_agnostic):
 def setup_py(path=default_py):
     logging.info("Found: pyproject.toml, using project.name as src location")
     pyproject = tomler.load(path)
-    if config.on_fail(None, None|str).tool.doot.directories.src() is None:
+    if config.any_of((None,)).tool.doot.directories.src() is None:
         locs.update(src=pyproject.project.name)

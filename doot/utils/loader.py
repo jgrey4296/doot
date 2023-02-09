@@ -84,7 +84,7 @@ class DootLoader(NamespaceTaskLoader):
             self.namespace['__doot_all_checks'] = CheckDir.gen_check_tasks()
             self.namespace['__doot_all_tomls']  = GenToml.gen_toml_tasks()
         except doot.errors.DootDirAbsent as err:
-            print("LOCATION MISSING: " + err.args[0], file=sys.stderr)
+            logging.warning("LOCATION MISSING: " + err.args[0])
             sys.exit(1)
 
     def load_doit_config(self):
@@ -95,7 +95,7 @@ class DootLoader(NamespaceTaskLoader):
         self._expand_task_groups()
         self._load_tasks(self.namespace, self.cmd_names, allow_delayed=cmd.execute_tasks, args=pos_args, config=self.config, task_opts=self.task_opts)
 
-        logging.info("Tasks: %s", self.task_list)
+        logging.debug("Tasks: %s", self.task_list)
 
         # Add task options from config, if present
         if self.config is not None:
@@ -118,7 +118,7 @@ class DootLoader(NamespaceTaskLoader):
         group_tasks = {}
         for x in self.namespace.values():
             if isinstance(x, TaskGroup) and not x.as_creator and bool(x):
-                logging.info("Expanding: %s", x)
+                logging.debug("Expanding: %s", x)
                 group_tasks.update(x.to_dict())
 
         logging.debug("Total Expanded Tasks: %s", list(x for x in group_tasks.keys()))
@@ -128,7 +128,7 @@ class DootLoader(NamespaceTaskLoader):
         """
         Reimplementation of doit.loader.load_tasks
         """
-        logging.info("Loading Tasks")
+        logging.debug("Loading Tasks")
         funcs = self._get_task_creators(namespace, command_names)
         # sort by the order functions were defined (line number)
         # TODO: this ordering doesnt make sense when generators come
