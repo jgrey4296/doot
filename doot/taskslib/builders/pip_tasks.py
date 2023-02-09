@@ -17,9 +17,11 @@ from doot.task_group import TaskGroup
 
 # pip_version   = CmdTask("pip", "--version", verbosity=2, basename=f"{prefix}::version")
 
+
 class IncrementVersion(DootTasker):
     """
     Increment semver of package.
+
     Defaults to inc patch version
     """
 
@@ -37,7 +39,6 @@ class IncrementVersion(DootTasker):
             {"name" : "minor", "short": "m", "type": bool, "default": False},
             {"name" : "force", "long": "force", "type": str, "default": None},
         ]
-
 
     def task_detail(self, task):
         task.update({
@@ -97,7 +98,6 @@ class IncrementVersion(DootTasker):
             case _:
                 raise Exception("this shouldn't happen")
 
-
 class PipBuild(DootTasker, ActionsMixin):
     """
     Build a wheel of the package
@@ -125,7 +125,7 @@ class PipInstall(DootTasker, ActionsMixin):
     def __init__(self, name=f"pip::install", locs=None):
         super().__init__(name, locs)
         self.locs.ensure("root")
-
+        self.egg_info = self.locs.src.with_suffix(".egg-info")
 
     def set_params(self):
         return [
@@ -137,17 +137,21 @@ class PipInstall(DootTasker, ActionsMixin):
         ]
 
     def task_detail(self, task):
+        match self.args:
+            case {'uninstall': True}:
+                action = self.cmd(["pip", "uninstall", "-y", self.locs.root])
+            case {'deps': True}:
+                action = self.cmd(self.install_requirements)
+            case _:
+                action = self.cmd(self.install_package)
+
         task.update({
+            "actions"  : [
+                action,
+                (self.rmdirs, [self.egg_info ]),
+            ],
             "file_dep" : [self.locs.root / "requirements.txt"],
         })
-        if self.args['uninstall']:
-            task['actions'].append(self.cmd(["pip", "uninstall", "-y", self.locs.root]))
-            return task
-
-        if self.args['deps']:
-            task['actions'].append(self.cmd(self.install_requirements))
-
-        task['actions'].append(self.cmd(self.install_package))
         return task
 
     def install_requirements(self, dependencies):
@@ -169,8 +173,6 @@ class PipInstall(DootTasker, ActionsMixin):
         args.append(self.locs.root)
         return args
 
-
-
 class PipReqs(DootTasker, ActionsMixin):
     """
     use pipreqs to make a concise requirements.txt
@@ -185,12 +187,12 @@ class PipReqs(DootTasker, ActionsMixin):
 
     def task_detail(self, task) -> dict:
         req_path = self.locs.root / "requirements.txt"
-        pip_args = ["pipreqs", "--force", "--savepath", req_path, self.locs.src]
         task.update({
-            "actions" : [ self.cmd(pip_args)
-                        ],
-            "targets" : [ req_path ],
-            "clean"   : True,
+            "actions" : [
+                self.cmd(["pipreqs", "--force", "--savepath", req_path, self.locs.src])
+            ],
+            "targets"   : [ req_path ],
+            "clean"     : True,
             "verbosity" : 1,
         })
         return task
@@ -199,6 +201,7 @@ class VenvNew(DootTasker, ActionsMixin):
     """
     (-> temp ) create a new venv
     """
+
     def __init__(self, name="py::venv", locs=None):
         super().__init__(name, locs)
         self.locs.ensure("temp", "root")

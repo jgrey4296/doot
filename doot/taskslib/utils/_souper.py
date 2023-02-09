@@ -30,23 +30,10 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-import doot
-from doot import tasker
+from bs4 import BeautifulSoup
 
-class VerticalState(tasker.DootTasker):
+class TODODootSouper:
     """
-    Build a vertical state trace (originally from instal)
-    """
-    pass
-
-class HorizontalState(tasker.DootTasker):
-    """
-    Create a horizontal state trace (originally from instal)
-    """
-    pass
-
-class GanttVisual(tasker.DootTasker):
-    """
-    Build a gantt chart (originally from instal)
+    Utility class to simplify construction of html reports using BeautifulSoup
     """
     pass

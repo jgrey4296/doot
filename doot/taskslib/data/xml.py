@@ -23,8 +23,6 @@ from doot import globber, tasker, task_mixins
 
 ##-- end imports
 
-# TODO config get data locs
-
 class XmlElementsTask(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> elements) xml element retrieval using xml starlet toolkit

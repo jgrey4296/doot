@@ -22,6 +22,11 @@ CHECK_AMNT    : Final = doot.config.on_fail(150, int).tool.doot.downloader.check
 speak_confirm : Final = task_mixins.ActionsMixin.say(None, "Found a Large Group of Files, waiting for confirmation")
 
 class DownloaderMixin:
+    """
+    Download files in a url list to specified target,
+    skips files that already exist,
+    asks for confirmation if downloading more than CHECK_AMNT
+    """
 
     def download_media(self, media_dir:pl.Path, media:list):
         """ Download all media mentioned in json files """
@@ -29,8 +34,10 @@ class DownloaderMixin:
         if not media_dir.exists():
             media_dir.mkdir()
         assert(media_dir.is_dir())
+        self.download_to(media_dir, media)
 
-        remaining = [x for x in media if x is not None and not (media_dir / pl.Path(x).name).exists()]
+    def download_to(self, fpath:pl.Path, urls:list):
+        remaining = [x for x in urls if x is not None and not (fpath / pl.Path(x).name).exists()]
 
         if len(remaining) > CHECK_AMNT:
             speak_confirm.execute()

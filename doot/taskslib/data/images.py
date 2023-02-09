@@ -29,7 +29,6 @@ default_ocr_exts : Final = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".j
 default_pdf_exts : Final = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".ppm"]
 
 ocr_exts         : Final = doot.config.on_fail(default_ocr_exts, list).tool.doot.images.ocr_exts()
-batch_size       : Final = doot.config.on_fail(20, int).tool.doot.batch.size()
 ocr_out_ext      : Final = doot.config.on_fail(".ocr", str).tool.doot.images.ocr_out()
 
 framerate        : Final = doot.config.on_fail(10, int).tool.doot.images.framerate()
@@ -109,7 +108,7 @@ class OCRGlobber(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerG
     def batch_on_files(self, data):
         for src in data:
             dst        = self.get_ocr_file_name(src)
-            ocr_cmd    = self.cmd("tesseract" src, dst.stem, "--psm", "1",  "-l", "eng")
+            ocr_cmd    = self.cmd("tesseract", src, dst.stem, "--psm", "1",  "-l", "eng")
             mv_txt_cmd = self.cmd("mv", dst.with_suffix(".txt").name, dst)
             ocr_cmd.execute()
             mv_txt_cmd.execute()
@@ -135,7 +134,7 @@ class Images2PDF(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.Ac
         task.update({
             "name"    : "build_single",
             "actions" : [
-                self.find_and_process,,
+                self.find_and_process,
                 self.cmd(self.combine_pages)
             ],
             "targets" : [ self.locs.build / f"{self.args['name']}.pdf" ],

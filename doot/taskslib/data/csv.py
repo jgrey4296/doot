@@ -55,7 +55,7 @@ class CSVSummaryTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
 
 class CSVSummaryXMLTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
-    ([data] -> build) Summarise all found csv files,
+    ([data] -> build) Summarise all found csv files, using xmlstarlet
     grouping those with the same headers,
     and listing number of rows
     """

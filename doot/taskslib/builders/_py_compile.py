@@ -36,7 +36,7 @@ logging = logmod.getLogger(__name__)
 
 collect_libs  : Final = doot.config.on_fail([], list).tool.doot.python.compile.collect()
 
-class PythonCompile(DootTasker, ActionsMixin):
+class TODOPythonCompile(DootTasker, ActionsMixin):
     """
     https://pyinstaller.org/en/stable/
     Use pyinstaller to create an exe

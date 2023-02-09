@@ -44,20 +44,14 @@ def task_pyrepl():
         "actions"  : [ PythonInteractiveAction(lambda: breakpoint()) ],
     }
 
-def task_csharp_repl):
+def task_csharp_repl():
     return {
         "basename": "repl::csharp",
         "actions" : [Interactive(["csharp"], shell=False)],
     }
 
-def task_prolog_repl():
-    return {
-        "basename" : "repl::pl",
-        "actions"  : [ Interactive(["swipl"], shell=False)],
-    }
 
-
-def task_haskell_repl():
+def TODOtask_haskell_repl():
     return {}
 
 class PrologRunner(globber.DootEagerGlobber):

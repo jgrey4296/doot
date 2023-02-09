@@ -33,15 +33,20 @@ logging = logmod.getLogger(__name__)
 import doot
 from doot import tasker
 
-from matplotlib import pyplot
-import pandas
-import seaborn
-
-class TODOBarChart(tasker.DootTasker):
+class TODOVerticalState(tasker.DootTasker):
     """
-    Convert basic data into a bar chart
+    Build a vertical state trace (originally from instal)
     """
     pass
 
-class TODOScatterChart(tasker.DootTasker):
+class TODOHorizontalState(tasker.DootTasker):
+    """
+    Create a horizontal state trace (originally from instal)
+    """
+    pass
+
+class TODOGanttVisual(tasker.DootTasker):
+    """
+    Build a gantt chart (originally from instal)
+    """
     pass

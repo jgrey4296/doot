@@ -16,6 +16,53 @@ from doot import tasker
 interaction_mode  : Final = doot.config.on_fail("nonstopmode", str).tool.doot.tex.interaction()
 tex_dep           : Final = doot.config.on_fail("tex.dependencies", str).tool.doot.text.dep_file()
 
+def task_latex_install():
+    """
+    install dependencies for the latex document
+    """
+    if not pl.Path(dep).exists():
+        return None
+
+    return {
+        "basename" : "tex::install",
+        "actions"  : [
+            # TODO log message
+            lambda: { "tex_deps" : list({x for x in pl.Path(tex_dep).read_text().split("\n") if bool(x)}) },
+            ActionsMixin.cmd(None, lambda task: ["tlmgr", "--usermode",  "install", *task.values['tex_deps']]),
+            ],
+        "file_dep" : [ tex_dep ],
+    }
+
+def task_latex_requirements():
+    """
+    create a requirements file of latex packages
+    """
+    return {
+        "basename" : "tex::requirements",
+        "actions" : [
+            # TODO log msg
+            ActionsMixin.cmd(None, ["tlmgr", "--usermode", "list", "--only-installed", "--data", "name"], save="reqs"),
+            (ActionsMixin.write_to, [None, tex_dep, "reqs"])
+        ],
+        "targets" : [ tex_dep ],
+        "clean" : True
+    }
+
+def task_latex_rebuild():
+    """ rebuild tex formats and metafonts, for handling outdated l3 layer errors """
+    package_re = re.compile("^i (.+?):.+?$")
+
+    return {
+        "basename" : "tex::rebuild",
+        "actions" : [
+            # TODO log msg
+            ActionsMixin.cmd(None, ["fmtutil",  "--all"]),
+            ActionsMixin.cmd(None, ["tlmgr",  "list", "--only-installed"], save="installed"),
+            lambda task: { "packages" : [package_re.match(x)[1] for x in task.values['installed'].split("\n") if package_re.match(x)] },
+            ActionsMixin.cmd(None, lambda task: ["tlmgr", "install", "--reinstall", *task.values['packages']]),
+        ],
+    }
+
 class LatexMultiPass(globber.DootEagerGlobber):
     """
     ([src] -> build) Trigger both latex passes and the bibtex pass
@@ -24,7 +71,6 @@ class LatexMultiPass(globber.DootEagerGlobber):
     def __init__(self, name="tex::build", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=['.tex'], rec=rec)
         self.locs.ensure("build")
-
 
     def subtask_detail(self, task, fpath=None):
         task.update({
@@ -58,9 +104,11 @@ class LatexFirstPass(globber.DootEagerGlobber, ActionsMixin):
         temp_pdf = self.locs.temp / fpath.with_suffix(".pdf").name
         task.update({
             "file_dep" : [ fpath ],
-            "actions"  : [ self.cmd(self.compile_tex),
-                           (self.move_to, [first_pass,pdf, temp_pdf])
-                          ],
+            "actions"  : [
+                (self.log, ["Running Pass 1", logmod.INFO]),
+                self.cmd(self.compile_tex),
+                (self.move_to, [first_pass,pdf, temp_pdf])
+            ],
             "targets"  : [ self.locs.temp / fpath.with_suffix(".aux").name,
                            first_pass_pdf,
                           ],
@@ -108,10 +156,12 @@ class LatexSecondPass(globber.DootEagerGlobber, ActionsMixin):
                                    ],
                      "targets"  : [ target_pdf ],
                      "clean"    : True,
-                     "actions" : [ self.cmd(self.tex_cmd, fpath),
-	                               self.cmd(self.tex_cmd, fpath),
-                                  (self.move_to, [fpath]),
-                                  ]
+                     "actions" : [
+                         (self.log, ["Running Pass 2", logmod.INFO]),
+                         self.cmd(self.tex_cmd, fpath),
+	                     self.cmd(self.tex_cmd, fpath),
+                         (self.move_to, [fpath]),
+                     ]
                      })
         return task
 
@@ -138,10 +188,12 @@ class BibtexBuildPass(globber.DootEagerGlobber, ActionsMixin):
                                     aux_file ],
                      "targets"  : [ bbl_file ],
                      "clean"    : True,
-                     "actions" : [ (self.retarget_paths, [aux_file]),
-                                   self.cmd(self.maybe_run),
-                                  ]
-                     })
+                     "actions" : [
+                         (self.log, ["Running Bibtex Pass", logmod.INFO]),
+                         (self.retarget_paths, [aux_file]),
+                         self.cmd(self.maybe_run),
+                     ]
+        })
         return task
 
     def retarget_paths(self, aux):
@@ -183,6 +235,7 @@ class BibtexConcatenateSweep(globber.LazyFileGlobber):
 
     def task_detail(self, task):
         task.update({
+            "actions" : [ (self.log, ["Combining Bibtex", logmod.INFO]) ],
             "targets"  : [ self.target ],
             "clean"    : True,
         })
@@ -198,45 +251,3 @@ class BibtexConcatenateSweep(globber.LazyFileGlobber):
         with open(self.target, 'w') as mainBib:
             for line in fileinput.input(files=self.glob_target(fpath)):
                 print(line, file=mainBib, end="")
-
-def task_latex_install():
-    """
-    install dependencies for the latex document
-    """
-    if not pl.Path(dep).exists():
-        return None
-
-    return {
-        "basename" : "tex::install",
-        "actions"  : [
-            lambda: { "tex_deps" : list({x for x in pl.Path(tex_dep).read_text().split("\n") if bool(x)}) },
-            ActionsMixin.cmd(None, lambda task: ["tlmgr", "--usermode",  "install", *task.values['tex_deps']]),
-            ],
-        "file_dep" : [ tex_dep ],
-    }
-
-def task_latex_requirements():
-    """
-    create a requirements
-    """
-    return {
-        "basename" : "tex::requirements",
-        "actions" : [ ActionsMixin.cmd(None, ["tlmgr", "--usermode", "list", "--only-installed", "--data", "name"], save="reqs"),
-                      (ActionsMixin.write_to, [None, tex_dep, "reqs"])
-                     ],
-        "targets" : [ tex_dep ],
-        "clean" : True
-    }
-
-def task_latex_rebuild():
-    """ rebuild tex formats and metafonts, for handling outdated l3 layer errors """
-    package_re = re.compile("^i (.+?):.+?$")
-
-    return {
-        "basename" : "tex::rebuild",
-        "actions" : [ ActionsMixin.cmd(None, ["fmtutil",  "--all"]),
-                      ActionsMixin.cmd(None, ["tlmgr",  "list", "--only-installed"], save="installed"),
-                      lambda task: { "packages" : [package_re.match(x)[1] for x in task.values['installed'].split("\n") if package_re.match(x)] },
-                      ActionsMixin.cmd(None, lambda task: ["tlmgr", "install", "--reinstall", *task.values['packages']]),
-        ],
-    }

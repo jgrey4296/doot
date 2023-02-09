@@ -65,7 +65,7 @@ class DotVisualise(globber.DootEagerGlobber, task_mixins.ActionsMixin):
         cmd += ["-o", targets[0]]
         return cmd
 
-class DotMakeGraph:
+class TODODotMakeGraph:
     """
     TODO use graphviz's gvgen to generate graphs
     https://graphviz.org/doc/info/command.html

@@ -41,9 +41,11 @@ __all__ = [ "defaults_group",
            ]
 
 ##-- defaults
+
 defaults_group = TaskGroup("defaults", as_creator=False)
 try:
     from doot.taskslib.files import listing
+
     defaults_group += listing.FileListings(locs=doot.locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:

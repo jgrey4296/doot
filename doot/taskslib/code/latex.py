@@ -35,13 +35,6 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-# TODO bibtex - reports
-# TODO bibtex - clean
-# TODO bibtex - file check
-# TODO bibtex - indexer
-# TODO bibtex - timelines
-# TODO bibtex - split
-
 def task_latex_docs():
     """ run texdoc  """
     return {
@@ -89,14 +82,3 @@ class LatexCheckSweep(globber.DootEagerGlobber, ActionsMixin):
                 f"-output-directory={self.locs.temp}",
                 fpath.with_suffix("")]
 
-class BibtexCheckSweep(globber.DootEagerGlobber, ActionsMixin):
-    """
-    TODO ([src]) Bibtex Checking
-    """
-
-    def __init__(self, name="bibtex::check", locs:DootLocData=None, roots=None, rec=True):
-        super().__init__(name, locs, roots or [locs.src], exts=['.bib'], rec=rec)
-
-    def subtask_detail(self, task, fpath=None):
-        task.update({})
-        return task

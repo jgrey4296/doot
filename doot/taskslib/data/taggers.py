@@ -9,10 +9,8 @@ from doot import tasker, task_mixins
 
 ##-- end imports
 
-# TODO handle bib/bkmk/twit tags here too
-
 def task_tags_init(locs):
-    """([src]) initalise gtags """
+    """([src]) initialise gtags """
     return {
         "basename" : "gtags::init",
         "actions"  : [ task_mixins.ActionsMixin.cmd(None, ["gtags", "-C", locs.src, "."])],

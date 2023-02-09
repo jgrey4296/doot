@@ -26,11 +26,12 @@ vis_out_ext  : Final = doot.config.on_fail(".dot", str).tool.doot.clingo.vis_out
 
 clingo_call  : Final = ["clingo"] + data.toml.on_fail([], list).tool.doot.clingo.options()
 
-class ClingoCheck:
+class TODOClingoCheck:
     """
-    TODO clingo check
+    check a file can be parsed by clingo
     """
     pass
+
 class ClingoRunner(globber.DootEagerGlobber, ActionsMixin):
     """
     ([src] -> build) Run clingo on ansprolog sources
@@ -77,9 +78,9 @@ class ClingoDotter(globber.DootEagerGlobber, ActionsMixin):
         return ["clingo", "--outf2"] + dependencies
 
 
-class ClingoVisualise(globber.DootEagerGlobber, ActionsMixin):
+class TODOClingoVisualise(globber.DootEagerGlobber, ActionsMixin):
     """
-    TODO ([src] -> visual) Take clingo output with nodes,
+    ([src] -> visual) Take clingo output with nodes,
     and convert to dot format
     """
 

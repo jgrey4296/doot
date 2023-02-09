@@ -33,3 +33,4 @@ logging = logmod.getLogger(__name__)
 from doot import tasker
 
 class SCLangRun(tasker.DootTasker):
+    pass

@@ -9,7 +9,7 @@ from doot import globber
 
 ##-- end imports
 
-class LineReport(globber.DirGlobMixin, globber.DootEagerGlobber):
+class TODOLineReport(globber.DirGlobMixin, globber.DootEagerGlobber):
     """
     Glob for all files in a target, and report on the amount of lines
     """
@@ -40,7 +40,7 @@ class LineReport(globber.DirGlobMixin, globber.DootEagerGlobber):
 def task_line_report(locs:DootLocData):
     """
     ([src] -> build) Generate a report of all files and their line count
-    TODO update without pipes
+    update without pipes
     """
     return DeprecationWarning()
     find_cmd = ["find", locs.src, "-name", '"*.py"',

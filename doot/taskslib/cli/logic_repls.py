@@ -30,10 +30,15 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from bs4 import BeautifulSoup
 
-class DootSouper:
-    """
-    Utility class to simplify construction of html reports using BeautifulSoup
-    """
-    pass
+def task_prolog_repl():
+    return {
+        "basename" : "repl::pl",
+        "actions"  : [ Interactive(["swipl"], shell=False)],
+    }
+
+def TODOtask_clips_repl():
+    return {}
+
+def TODOtask_soar_repl():
+    return {}

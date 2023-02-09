@@ -83,7 +83,7 @@ class LatexCompilerBase:
         """
         self._compiled_text.append(self.expand(pattern, **kwargs))
 
-class GanttLatexMixin(LatexCompilerBase):
+class TODOGanttLatexMixin(LatexCompilerBase):
     """
     InstalGanttTracer
     Implementation of Reporter for gantt output.
@@ -233,7 +233,7 @@ class GanttLatexMixin(LatexCompilerBase):
         with open(path, 'w') as f:
             f.write("\n".join(self._compiled_text))
 
-class StateTracerMixin(LatexCompilerBase):
+class TODOStateTracerMixin(LatexCompilerBase):
     """
         InstalPDFTracer
         Implementation of ABC InstalTracer for pdf output.

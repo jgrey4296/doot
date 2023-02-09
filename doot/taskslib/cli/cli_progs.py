@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-
+Tasks for ensuring programs exist
 """
 ##-- imports
 from __future__ import annotations
@@ -29,6 +29,30 @@ logging = logmod.getLogger(__name__)
 # logging = logmod.root
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
+
+import shutil
+
+brew          = shutil.which("brew")
+cargo         = shutil.which("cargo")
+clingo        = shutil.which("clingo")
+datadata      = shutil.which("datadata")
+dot           = shutil.which("dot")
+ebook_convert = shutil.which("ebook-convert")
+godot         = shutil.which("godot")
+gradle        = shutil.which("gradle")
+gtags         = shutil.which("gtags")
+jekyll        = shutil.which("jekyll")
+pdflatex      = shutil.which("pdflatex")
+pdftk         = shutil.which("pdftk")
+pip           = shutil.which("pip")
+plantuml      = shutil.which("plantuml")
+poetry        = shutil.which("poetry")
+ruby          = shutil.which("ruby")
+sphinix       = shutil.which("sphinix")
+trang         = shutil.which("trang")
+xml           = shutil.which("xml")
+xsdata        = shutil.which("xsdata")
+xsdata        = shutil.which("xsdata")
 
 def task_xsdata_config():
     return {

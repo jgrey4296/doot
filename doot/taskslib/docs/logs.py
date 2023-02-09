@@ -34,6 +34,9 @@ import doot
 from doot import tasker, globber, task_mixins
 
 class MoveLogs(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+    """
+    Move logs in the direct root directory, to a logs directory
+    """
 
     def __init__(self, name="logs::move", locs=None, roots=None):
         super().__init__(name, locs, roots=roots or [locs.root], rec=False)

@@ -20,10 +20,10 @@ from doot import globber, tasker, task_mixins
 
 class JsonFormatTask(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
-    ([data] -> data)Lint Json files with jq
+    ([data] -> data) Lint Json files with jq *inplace*
     """
 
-    def __init__(self, name="json::format", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+    def __init__(self, name="json::format.inplace", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".json"], rec=rec)
 
     def filter(self, fpath):

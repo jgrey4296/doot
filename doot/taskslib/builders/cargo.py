@@ -26,6 +26,22 @@ profiles      : Final = ["release", "debug", "dev"] + cargo.on_fail([]).profile(
 binaries      : Final = [x.get('name') for x in  cargo.on_fail([], list).bin()]
 lib_path      : Final = cargo.on_fail(None, None|str).lib.path()
 
+def task_cargo_version():
+    return {
+        "basename" : "cargo::version",
+        "actions" : [ task_mixins.ActionsMixin.cmd(None, ["cargo", "--version"]),
+                      task_mixins.ActionsMixin.cmd(None, ["rustup", "--version"]),
+                      task_mixins.ActionsMixin.cmd(None, ["rustup", "show"]),
+                     ],
+        "verbosity" : 2,
+    }
+
+def task_cargo_report():
+    return {
+        "basename"  : "cargo::report",
+        "actions"   : [ task_mixins.ActionsMixin.cmd(None, ["cargo", "report", "future-incompat"]) ],
+        "verbosity" : 2,
+    }
 
 class CargoBuild(tasker.DootTasker, task_mixins.ActionsMixin):
     """
@@ -131,7 +147,6 @@ class CargoDocs(tasker.DootTasker, task_mixins.ActionsMixin):
         })
         return task
 
-
 class CargoRun(tasker.DootTasker, task_mixins.ActionsMixin):
 
     def __init__(self, name="cargo::run", locs=None):
@@ -153,6 +168,7 @@ class CargoClean(tasker.DootTasker, task_mixins.ActionsMixin):
     """
     clean the rust project
     """
+
     def __init__(self, name="cargo::clean", locs=None):
         super().__init__(name, locs)
 
@@ -212,20 +228,3 @@ class CargoDebug(tasker.DootTasker, task_mixins.ActionsMixin):
                 "file_dep" : [ self.locs.build / "debug" / self.args['target'] ],
             })
         return task
-
-def task_cargo_version():
-    return {
-        "basename" : "cargo::version",
-        "actions" : [ task_mixins.ActionsMixin.cmd(None, ["cargo", "--version"]),
-                      task_mixins.ActionsMixin.cmd(None, ["rustup", "--version"]),
-                      task_mixins.ActionsMixin.cmd(None, ["rustup", "show"]),
-                     ],
-        "verbosity" : 2,
-    }
-
-def task_cargo_report():
-    return {
-        "basename"  : "cargo::report",
-        "actions"   : [ task_mixins.ActionsMixin.cmd(None, ["cargo", "report", "future-incompat"]) ],
-        "verbosity" : 2,
-    }

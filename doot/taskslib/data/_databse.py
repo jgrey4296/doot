@@ -18,11 +18,10 @@ from doot import globber, tasker, task_mixins
 
 ##-- end imports
 
-class SqlitePrepTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class TODOSqlitePrepTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> data) file conversion from mysql to sqlite
     using https://github.com/dumblob/mysql2sqlite
-    # TODO
     """
 
     def __init__(self, name="sqlite::prep", locs:DootLocData=None, roots=None, rec=True):
@@ -31,9 +30,9 @@ class SqlitePrepTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
     def subtask_detail(self, task, fpath=None):
         return task
 
-class SqliteReportTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class TODOSqliteReportTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
-    TODO ([data] -> build) report database tables
+    ([data] -> build) report database tables
      .schema .fullschema
      .table
     """

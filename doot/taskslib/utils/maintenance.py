@@ -56,7 +56,7 @@ class CheckMail(DootTasker, task_mixins.CommanderMixin):
     def task_detail(self, task):
         task.update({
                     "actions": [
-                        self.cmd([mbsync, "-a"]),
+                        self.cmd(mbsync, "-a"),
                      ],
         })
         return task
@@ -109,8 +109,8 @@ class RustMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMixi
         task.update({
             "actions" : [
                 (self.log, ["Updating Rust", logmod.INFO]),
-                # self.cmd([rustup, "update"], save="rustup"),
-                # (self.write_to, [self.locs.maintain / "rust.backup", "rustup"]),
+                self.cmd([rustup, "update"], save="rustup"),
+                (self.write_to, [self.locs.maintain / "rust.backup", "rustup"]),
             ],
         })
         return task
@@ -139,8 +139,8 @@ class LatexMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMix
         task.update({
             "actions" : [
                 (self.log, ["Updating Latex", logmod.INFO]),
-                # self.cmd([tlmgr, "update", "--all"], save="update"),
-                # (self.write_to, [self.locs.maintain / "tex.log",  "update"])
+                self.cmd([tlmgr, "update", "--all"], save="update"),
+                (self.write_to, [self.locs.maintain / "tex.log",  "update"])
             ],
         })
         return task
@@ -168,8 +168,8 @@ class CabalMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMix
         task.update({
             "actions" : [
                 (self.log, ["Updating Cabal", logmod.INFO]),
-                # self.cmd([cabal, "update"], save="cabal"),
-                # (self.write_to, [self.locs.maintain / "cabal.backup", "cabal"]),
+                self.cmd([cabal, "update"], save="cabal"),
+                (self.write_to, [self.locs.maintain / "cabal.backup", "cabal"]),
             ],
         })
         return task
@@ -196,9 +196,9 @@ class DoomMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMixi
         task.update({
             "actions" : [
                 (self.log, ["Updating Doom", logmod.INFO]),
-                # self.cmd([doom, "upgrade", "-!", "-v"], save="upgrade"),
-                # self.cmd([doom, "sync", "-v"], save="sync"),
-                # (self.write_to, [self.locs.maintain / "doom.backup", ["upgrade", "sync"]]),
+                self.cmd([doom, "upgrade", "-!", "-v"], save="upgrade"),
+                self.cmd([doom, "sync", "-v"], save="sync"),
+                (self.write_to, [self.locs.maintain / "doom.backup", ["upgrade", "sync"]]),
             ],
         })
         return task
@@ -226,10 +226,10 @@ class BrewMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMixi
         task.update({
             "actions" : [
                 (self.log, ["Updating Homebrew", logmod.INFO]),
-                # self.cmd([brew, "cleanup"], save="cleanup"),
-                # self.cmd([brew, "update"],  save="update"),
-                # self.cmd([brew, "upgrade"], save="upgrade"),
-                # (self.append_to, [self._maintain / "brew.log", ["cleanup", "update", "upgrade"]]),
+                self.cmd([brew, "cleanup"], save="cleanup"),
+                self.cmd([brew, "update"],  save="update"),
+                self.cmd([brew, "upgrade"], save="upgrade"),
+                (self.append_to, [self._maintain / "brew.log", ["cleanup", "update", "upgrade"]]),
             ],
         })
         return task
@@ -256,7 +256,7 @@ class CondaMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMix
         task.update({
             "actions" : [
                 (self.log, ["Updating Conda Environments", logmod.INFO]),
-                # self._maintain,
+                self._maintain,
             ],
         })
         return task
@@ -326,7 +326,7 @@ class GitMaintain(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEager
         task.update({
             "actions" : [
                 (self.log, ["Recording Git Repo Urls", logmod.INFO]),
-                # self.get_repo_urls,
+                self.get_repo_urls,
             ],
         })
         return task
