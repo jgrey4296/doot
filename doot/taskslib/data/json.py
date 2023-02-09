@@ -64,7 +64,7 @@ class JsonPythonSchema(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixi
 
     def __init__(self, name="json::schema.python", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".json"], rec=rec)
-        assert(self.locs.codegen)
+        self.locs.ensure("codegen")
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for x in fpath.iterdir()):
@@ -102,7 +102,7 @@ class JsonVisualise(globber.DootEagerGlobber, task_mixins.ActionsMixin):
 
     def __init__(self, name="json::schema.visual", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".json"], rec=rec)
-        assert(self.locs.visual)
+        self.locs.ensure("visual")
 
     def subtask_detail(self, task, fpath=None):
         task.update({

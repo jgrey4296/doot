@@ -52,7 +52,7 @@ class SimpleListing(tasker.DootTasker, task_mixins.ActionsMixin):
     def __init__(self, name="listing::simple", locs=None, focus=None):
         super().__init__(name, locs)
         self.focus = focus or locs.root
-        assert(self.locs.build)
+        self.locs.ensure("build")
 
     def task_detail(self, task):
         report = self.locs.build / f"{task['name']}.listing"

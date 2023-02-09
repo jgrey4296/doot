@@ -32,7 +32,7 @@ class GitLogTask(DootTasker, ActionsMixin):
         super().__init__(name, locs)
         self.format = fmt or log_fmt
         self.sep    = sep
-        assert(self.locs.temp)
+        self.locs.ensure("temp")
 
     def task_detail(self, task):
         target = self.locs.temp / "full_git.log"
@@ -91,8 +91,7 @@ class GitLogAnalyseTask(DootTasker, ActionsMixin, HumanMixin):
         # day / night
         # tags
         # files touched
-        assert(self.locs.build)
-        assert(self.locs.temp)
+        self.locs.ensure("build", "temp")
 
     def task_detail(self, task):
         task.update({

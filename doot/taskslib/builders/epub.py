@@ -66,7 +66,7 @@ class EbookCompileTask(EbookGlobberBase):
 
     def __init__(self, name="epub::compile", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], rec=rec)
-        assert(self.locs.build)
+        self.locs.ensure("build")
 
     def subtask_detail(self, task, fpath=None):
         task.update({
@@ -83,8 +83,7 @@ class EbookConvertTask(EbookGlobberBase):
 
     def __init__(self, name="_epub::convert.zip", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], rec=rec)
-        assert(self.locs.temp)
-        assert(self.locs.build)
+        self.locs.ensure("temp", "build")
 
     def subtask_detail(self, task, fpath=None):
         task.update({
@@ -105,7 +104,7 @@ class EbookZipTask(EbookGlobberBase, task_mixins.ZipperMixin):
 
     def __init__(self, name="_zip::epub", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], rec=rec)
-        assert(self.locs.temp)
+        self.locs.ensure("temp")
 
     def subtask_detail(self, task, fpath=None):
         # TODO process the globs here, and exclude stuff
@@ -292,7 +291,7 @@ class EbookRestructureTask(EbookGlobberBase):
             ("font", re.compile(".+(ttf|oft|woff2?)")),
             ("other", re.compile(".")),
         ))
-        assert(self.locs.src)
+        self.locs.ensure("src")
 
     def subtask_detail(self, task, fpath=None):
         targets = [ (fpath / x) for x in self.content_mapping.keys() ],
@@ -335,7 +334,7 @@ class EbookSplitTask(globber.DootEagerGlobber):
 
     def __init__(self, name="epub::split", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.data] , exts=[".epub"], rec=rec)
-        assert(self.locs.build)
+        self.locs.ensure("build")
 
     def subtask_detail(self, task, fpath=None):
         task.update({
@@ -366,7 +365,7 @@ class EbookNewTask(tasker.DootTasker, task_mixins.ActionsMixin):
         self.files : list[pl.Path|str] = [
             "images/title.jpg"
         ]
-        assert(self.locs.src)
+        self.locs.ensure("src")
 
     def is_current(self, task):
         name = task.options['name']
@@ -419,7 +418,7 @@ class TODOEbookNewPandoc(EbookGlobberBase):
 
     def __init__(self, name="epub::pandoc", locs=None, roots=None, rec=True):
         super().__init__(name, locs, roots=roots or [locs.src], rec=rec)
-        assert(self.locs.build)
+        self.locs.ensure("build")
 
     def subtask_detail(self, task, fpath=None):
         task.update({

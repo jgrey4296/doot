@@ -54,7 +54,7 @@ class MaintainFull(task_mixins.FilerMixin, DootTasker, task_mixins.CommanderMixi
     Run all maintain tasks combined
     """
 
-    def __init__(self, name="maintance", locs=None):
+    def __init__(self, name="maintain", locs=None):
         super().__init__(name, locs)
 
     def setup_detail(self, task):
@@ -68,8 +68,9 @@ class MaintainFull(task_mixins.FilerMixin, DootTasker, task_mixins.CommanderMixi
     def task_detail(self, task):
         task.update({
             "actions" : [
+                (self.log, ["Full Maintenance", logmod.INFO]),
             ],
-            "task_dep" : ["maintain::*"],
+            "task_dep" : ["maintain::cargo", "maintain::latex", "maintain::cabal", "maintain::doom", "maintain::brew", "maintain::conda", "maintain::cron", "maintain::git"],
         })
         return task
 
@@ -77,7 +78,7 @@ class RustMaintain(DootTasker):
 
     def __init__(self, name="maintain::cargo", locs=None):
         super().__init__(name, locs)
-        assert(locs.maintain)
+        locs.ensure("maintain")
 
     def setup_detail(self, task):
         task.update({
@@ -92,8 +93,9 @@ class RustMaintain(DootTasker):
     def task_detail(self, task):
         task.update({
             "actions" : [
-                self.cmd(["rustup", "update"], save="rustup"),
-                (self.write_to, [self.locs.maintain / "rust.backup", "rustup"]),
+                (self.log, ["Updating Rust", logmod.INFO]),
+                # self.cmd(["rustup", "update"], save="rustup"),
+                # (self.write_to, [self.locs.maintain / "rust.backup", "rustup"]),
             ],
         })
         return task
@@ -102,7 +104,7 @@ class LatexMaintain(DootTasker):
 
     def __init__(self, name="maintain::latex", locs=None):
         super().__init__(name, locs)
-        assert(locs.maintain)
+        locs.ensure("maintain")
 
     def setup_detail(self, task):
         task.update({
@@ -118,8 +120,9 @@ class LatexMaintain(DootTasker):
     def task_detail(self, task):
         task.update({
             "actions" : [
-                self.cmd(["tlmgr", "update", "--all"], save="update"),
-                (self.write_to, [self.locs.maintain / "tex.log",  "update"])
+                (self.cmd, ["Updating Latex", logmod.INFO]),
+                # self.cmd(["tlmgr", "update", "--all"], save="update"),
+                # (self.write_to, [self.locs.maintain / "tex.log",  "update"])
             ],
         })
         return task
@@ -128,7 +131,7 @@ class CabalMaintain(DootTasker):
 
     def __init__(self, name="maintenace::cabal", locs=None):
         super().__init__(name, locs)
-        assert(locs.maintain)
+        locs.ensure("maintain")
 
     def setup_detail(self, task):
         task.update({
@@ -143,8 +146,9 @@ class CabalMaintain(DootTasker):
     def task_detail(self, task):
         task.update({
             "actions" : [
-                self.cmd(["cabal", "update"], save="cabal"),
-                (self.write_to, [self.locs.maintain / "cabal.backup", "cabal"]),
+                (self.log, ["Updating Cabal", logmod.INFO]),
+                # self.cmd(["cabal", "update"], save="cabal"),
+                # (self.write_to, [self.locs.maintain / "cabal.backup", "cabal"]),
             ],
         })
         return task
@@ -153,7 +157,7 @@ class DoomMaintain(DootTasker):
 
     def __init__(self, name="maintain::doom", locs=None):
         super().__init__(name, locs)
-        assert(locs.maintain)
+        locs.ensure("maintain")
 
     def setup_detail(self, task):
         task.update({
@@ -167,10 +171,12 @@ class DoomMaintain(DootTasker):
 
     def task_detail(self, task):
         task.update({
-            "actions" : [ self.cmd(["doom", "upgrade", "-!", "-v"], save="upgrade"),
-                          self.cmd(["doom", "sync", "-v"], save="sync"),
-                          (self.write_to, [self.locs.maintain / "doom.backup", ["upgrade", "sync"]]),
-                     ],
+            "actions" : [
+                (self.log, ["Updating Doom", logmod.INFO]),
+                # self.cmd(["doom", "upgrade", "-!", "-v"], save="upgrade"),
+                # self.cmd(["doom", "sync", "-v"], save="sync"),
+                # (self.write_to, [self.locs.maintain / "doom.backup", ["upgrade", "sync"]]),
+            ],
         })
         return task
 
@@ -178,7 +184,7 @@ class BrewMaintain(DootTasker):
 
     def __init__(self, name="maintain::brew", locs=None):
         super().__init__(name, locs)
-        assert(locs.maintain)
+        locs.ensure("maintain")
 
     def setup_detail(self, task):
         task.update({
@@ -193,11 +199,11 @@ class BrewMaintain(DootTasker):
     def task_detail(self, task):
         task.update({
             "actions" : [
-                # Brew cleanup
-                self.cmd(["brew", "cleanup"], save="cleanup"),
-                self.cmd(["brew", "update"],  save="update"),
-                self.cmd(["brew", "upgrade"], save="upgrade"),
-                (self.append_to, [self.maintain / "brew.log", ["cleanup", "update", "upgrade"]]),
+                (self.log, ["Updating Homebrew", logmod.INFO]),
+                # self.cmd(["brew", "cleanup"], save="cleanup"),
+                # self.cmd(["brew", "update"],  save="update"),
+                # self.cmd(["brew", "upgrade"], save="upgrade"),
+                # (self.append_to, [self.maintain / "brew.log", ["cleanup", "update", "upgrade"]]),
             ],
         })
         return task
@@ -206,7 +212,7 @@ class CondaMaintain(DootTasker):
 
     def __init__(self, name="maintain::conda", locs=None):
         super().__init__(name, locs)
-        assert(locs.maintain)
+        locs.ensure("maintain")
 
     def setup_detail(self, task):
         task.update({
@@ -220,7 +226,8 @@ class CondaMaintain(DootTasker):
     def task_detail(self, task):
         task.update({
             "actions" : [
-                self.maintain,
+                (self.log, ["Updating Conda Environments", logmod.INFO]),
+                # self.maintain,
             ],
         })
         return task
@@ -238,7 +245,7 @@ class CronMaintain(DootTasker):
 
     def __init__(self, name="maintain::cron", locs=None):
         super().__init__(name, locs)
-        assert(locs.maintain)
+        locs.ensure("maintain")
 
     def setup_detail(self, task):
         task.update({
@@ -252,7 +259,9 @@ class CronMaintain(DootTasker):
 
     def task_detail(self, task):
         task.update({
-            "actions" : [],
+            "actions" : [
+                (self.log, ["Cron Maintenance", logmod.INFO]),
+            ],
         })
         return task
 
@@ -260,7 +269,7 @@ class GitMaintain(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEager
 
     def __init__(self, name="maintain::git", locs=None, roots=None):
         super().__init__(name, locs, roots or [locs.github], rec=True)
-        assert(locs.maintain)
+        locs.ensure("maintain")
 
     def filter(self, fpath):
         try:
@@ -281,7 +290,8 @@ class GitMaintain(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEager
     def task_detail(self, task):
         task.update({
             "actions" : [
-                self.get_repo_urls,
+                (self.log, ["Recording Git Repo Urls", logmod.INFO]),
+                # self.get_repo_urls,
             ],
         })
         return task

@@ -33,7 +33,7 @@ class XmlElementsTask(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixin
 
     def __init__(self, name="xml::elements", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".xml"], rec=rec)
-        assert(self.locs.elements)
+        self.locs.ensure("elements")
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for x in fpath.iterdir()):
@@ -64,8 +64,7 @@ class XmlSchemaTask(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.
 
     def __init__(self, name="xml::schema", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".xml"], rec=rec)
-        assert("schema" in self.locs)
-        assert(self.locs.schema)
+        self.locs.ensure("schema")
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for x in fpath.iterdir()):
@@ -92,7 +91,7 @@ class XmlPythonSchemaRaw(globber.DirGlobMixin, globber.DootEagerGlobber, task_mi
 
     def __init__(self, name="xml::schema.python.raw", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".xml"], rec=rec)
-        assert(self.locs.codegen)
+        self.locs.ensure("codegen")
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for x in fpath.iterdir()):
@@ -127,8 +126,7 @@ class XmlPythonSchemaXSD(globber.DootEagerGlobber, task_mixins.ActionsMixin):
 
     def __init__(self, name="xml::schema.python.xsd", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".xsd"], rec=rec)
-        assert(self.locs.build)
-        assert(self.locs.codegen)
+        self.locs.ensure("build", "codegen")
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for x in fpath.iterdir()):
@@ -165,7 +163,7 @@ class XmlSchemaVisualiseTask(globber.DootEagerGlobber, task_mixins.ActionsMixin)
 
     def __init__(self, name="xml::schema.plantuml", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".xsd"], rec=rec)
-        assert(self.locs.visual)
+        self.locs.ensure("visual")
 
     def filter(self, fpath):
         if any(x.suffix in self.exts for x in fpath.iterdir()):

@@ -124,8 +124,7 @@ class Images2PDF(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.Ac
 
     def __init__(self, name="images::pdf", locs=None, roots=None, exts=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=exts or default_pdf_exts, rec=rec)
-        assert(self.locs.build)
-        assert(self.locs.temp)
+        self.locs.ensure("build", "temp")
 
     def set_params(self):
         return [
@@ -170,7 +169,7 @@ class TODOImages2Video(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mix
 
     def __init__(self, name="images::to.video", locs=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=default_ocr_exts, rec=rec)
-        assert(self.locs.temp)
+        self.locs.ensure("temp")
 
     def task_detail(self, task, fpath):
         task.update({
@@ -201,7 +200,7 @@ class TODOPDF2Images(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixin
 
     def __init__(self, name="image::from.pdf", locs=None, roots=None, rec=False, exts=None):
         super().__init__(name, locs, roots or [locs.src], rec=rec, exts=exts or [".pdf"])
-        assert(self.locs.temp)
+        self.locs.ensure("temp")
 
     def filter(self, fpath):
         return self.control.accept

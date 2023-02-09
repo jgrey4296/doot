@@ -38,7 +38,7 @@ class ClingoRunner(globber.DootEagerGlobber, ActionsMixin):
 
     def __init__(self, name="clingo::run", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=[src_ext], rec=rec)
-        assert(self.locs.build)
+        self.locs.ensure("build")
 
     def subtask_detail(self, task, fpath=None):
         target = self.locs.build / path.with_suffix(out_ext).name
@@ -61,7 +61,7 @@ class ClingoDotter(globber.DootEagerGlobber, ActionsMixin):
 
     def __init__(self, name="clingo::dotter", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=[vis_src_ext], rec=rec)
-        assert(self.locs.build)
+        self.locs.ensure("build")
 
     def subtask_detail(self, task, fpath=None):
         target = self.locs.build / path.with_suffix(vis_in_ext).name
@@ -85,7 +85,7 @@ class ClingoVisualise(globber.DootEagerGlobber, ActionsMixin):
 
     def __init__(self, name="clingo::visual", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=[vis_in_ext], rec=rec)
-        assert(self.locs.visual)
+        self.locs.ensure("visual")
 
     def subtask_detail(self, task, fpath=None):
         target = self.locs.visual / targ_fname

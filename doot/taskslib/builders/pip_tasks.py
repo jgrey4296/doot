@@ -29,8 +29,7 @@ class IncrementVersion(DootTasker):
         self.initpy_ver_format    = "__version__ = \"{}.{}.{}\""
         self.pyproject_ver_regex  = re.compile("^version\s+=\s+\"(\d+)\.(\d+)\.(\d+)\"")
         self.pyproject_ver_format = "version = \"{}.{}.{}\""
-        assert(self.locs.root)
-        assert(self.locs.src)
+        self.locs.ensure("root", "src")
 
     def set_params(self):
         return [
@@ -106,9 +105,7 @@ class PipBuild(DootTasker, ActionsMixin):
 
     def __init__(self, name="pip::build", locs=None):
         super().__init__(name, locs)
-        assert(self.locs.wheel)
-        assert(self.locs.temp)
-        assert(self.locs.root)
+        self.locs.ensure("wheel", "temp", "root")
 
     def task_detail(self, task):
         task['actions'].append(self.cmd(["pip", "wheel",
@@ -127,7 +124,7 @@ class PipInstall(DootTasker, ActionsMixin):
 
     def __init__(self, name=f"pip::install", locs=None):
         super().__init__(name, locs)
-        assert(self.locs.root)
+        self.locs.ensure("root")
 
 
     def set_params(self):
@@ -181,8 +178,7 @@ class PipReqs(DootTasker, ActionsMixin):
 
     def __init__(self, name="pip::req", locs=None):
         super().__init__(name, locs)
-        assert(self.locs.root)
-        assert(self.locs.src)
+        self.locs.ensure("root", "src")
 
     def is_current(self, task):
         return False
@@ -205,8 +201,7 @@ class VenvNew(DootTasker, ActionsMixin):
     """
     def __init__(self, name="py::venv", locs=None):
         super().__init__(name, locs)
-        assert(self.locs.temp)
-        assert(self.locs.root)
+        self.locs.ensure("temp", "root")
 
     def set_params(self):
         return [

@@ -128,7 +128,7 @@ class GroupHashes(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.A
         self.hash_record    = hash_record
         self.hash_concat    = hash_concat
         self.output         = locs.temp / self.hash_concat
-        assert(self.locs.temp)
+        self.locs.ensure("temp")
 
     def set_params(self):
         return self.target_params()
@@ -171,7 +171,7 @@ class DetectDuplicateHashes(tasker.DootTasker, task_mixins.ActionsMixin):
         self.hash_collection = defaultdict(lambda: set())
         self.hash_concat     = hash_concat
         self.output          = self.locs.build / hash_dups
-        assert(self.locs.temp)
+        self.locs.ensure("temp")
 
     def task_detail(self, task):
         task.update({

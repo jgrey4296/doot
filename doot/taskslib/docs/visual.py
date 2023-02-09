@@ -44,7 +44,7 @@ class DotVisualise(globber.DootEagerGlobber, task_mixins.ActionsMixin):
         self.ext       = ext
         self.layout    = layout
         self.scale     = scale
-        assert(self.locs.build)
+        self.locs.ensure("build")
 
     def subtask_detail(self, task, fpath=None):
         task.update({
@@ -86,8 +86,7 @@ class PlantUMLGlobberTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
         name = name or f"plantuml::{fmt}"
         super().__init__(name, locs, roots or [locs.src], exts=[".plantuml"], rec=True)
         self.fmt       = fmt
-        assert(self.locs.visual)
-        assert(self.locs.build)
+        self.locs.ensure("visual", "build")
 
     def subtask_detail(self, task, fpath=None):
         targ_fname = fpath.with_suffix(f".{self.fmt}")
@@ -113,8 +112,8 @@ class PlantUMLGlobberCheck(globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
 
     def __init__(self, name="plantuml::check", locs=None, roots:list[pl.Path]=None, rec=True):
-        assert(roots or 'visual' in locs)
         super().__init__(name, locs, roots or [locs.visual], exts=[".plantuml"], rec=rec)
+        self.locs.ensure(roots, 'visual')
 
     def subtask_detail(self, task, fpath=None):
         task.update({

@@ -175,7 +175,7 @@ class GodotNewScene(DootTasker, ActionsMixin):
 
     def __init__(self, name="godot::new.scene", locs=None):
         super().__init__(name, locs)
-        assert(self.locs.scenes)
+        self.locs.ensure("scenes")
 
     def set_params(self):
         return [

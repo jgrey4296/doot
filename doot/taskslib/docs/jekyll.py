@@ -66,7 +66,7 @@ class GenPostTask(DootTasker, ActionsMixin):
     def __init__(self, name="jekyll::post", locs=None, template=None):
         super().__init__(name, locs)
         self.template  = pl.Path(template or post_template)
-        assert(self.locs.posts)
+        self.locs.ensure("posts")
 
     def set_params(self):
         return [
@@ -121,8 +121,7 @@ class GenTagsTask(DootTasker, ActionsMixin, CleanerMixin):
         self.template = pl.Path(template or tag_template)
         self.index    = pl.Path(index or index_template)
         self.roots    = roots or [locs.src]
-        assert(self.locs.tags)
-        assert(self.locs.tagsIndex)
+        self.locs.ensure("tags", "tagsIndex")
 
     def task_detail(self, task):
         task.update({
