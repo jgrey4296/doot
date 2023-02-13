@@ -1,33 +1,28 @@
 verbosity                = 2
-default_tasks            =  ["locs::report"]
+default_tasks            = ["locs::report"]
 action_string_formatting = "new"
 
-[plugins.command]
-step = "doot.utils.step_cmd:StepCmd"
-
 [tool.doot]
-say-on-exit     = false
-glob_ignores    = ['.git', '.DS_Store', "__pycache__"]
-subtask-sleep   = 1
-batch-sleep     = 1
+subtask = { sleep = 1 }
+batch   = { sleep = 1 }
+notify  = { say-on-exit = false }
 
-[tool.doot.directories]
-build    = "build"
-temp     = ".temp"
-lint-out = "build/lint"
-wheel    = "build/wheel"
+[tool.doot.logging]
+stream = { level = "INFO", format  = "{levelname:<8} : {message}", filters = ["doot", "bkmkorg"] }
+file   = { level = "DEBUG", format = "{levelname:<8} : {message:<20} : ({module}.{lineno}.{funcName})", filters =  ["doot", "bkmkorg"] }
 
-[tool.doot.files]
+[tool.doot.globbing]
+ignores  = ['.git', '.DS_Store', "__pycache__"]
 
-[tool.doot.listing]
-core = []
+[[tool.doot.directories]]
+src          = "doot"
+codegen      = "doot/_codegen"
+temp         = ".temp"
+build        = "build"
+docs         = "docs"
+data         = "data"
+listings_out = "build/listing"
+lint_out     = "build/lint"
 
 [tool.doot.group.pip]
 [tool.doot.group.python]
-[tool.doot.group.gtags]
-[tool.doot.group.git]
-
-[tool.doot.group.dot]
-src = "."
-
-[tool.doot.python.lint]

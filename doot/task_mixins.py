@@ -46,6 +46,7 @@ from doot.utils.general import ForceCmd
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from doit.exceptions import TaskFailed
 import doot
 
 conda_exe        = os.environ['CONDA_EXE']
@@ -143,6 +144,8 @@ class CommanderMixin:
         match cmd:
             case FunctionType() | MethodType():
                 action = (cmd, list(args), kwargs)
+            case str():
+                action = [cmd, *args]
             case list():
                 assert(not bool(args))
                 assert(not bool(kwargs))
@@ -413,20 +416,29 @@ class TargetedMixin:
             {"name": "chunkSize", "long": "chunkSize", "type": int, "default": batch_size},
         ]
 
-    def target_chunks(self, *, base=None):
-        if self.args['target'] is None:
-            raise TaskFailed("No Target Specified")
+    def target_chunks(self, *, root=None, base=None):
+        match self.args, root:
+            case {'all': True}, None:
+                globbed = super(base, self).glob_all()
+                chunks  = self.chunk(globbed, self.args['chunkSize'])
+                return chunks
+            case {'all': True}, _:
+                globbed = [(x.name, x) for x in self.glob_target(root)]
+                chunks  = self.chunk(globbed, self.args['chunkSize'])
+                return chunks
+            case {'target': None}, None:
+                raise Exception("No Target Specified")
+            case {'target': None}, _:
+                fpath  = root
+            case {'target': targ}, None:
+                fpath = self.locs.root / targ
+            case _, _:
+                raise Exception("No Target Specified")
 
-        if self.args['all']:
-            globbed = super(base, self).glob_all()
-            chunks  = self.chunk(globbed, self.arags['chunkSize'])
-            return chunks
-
-        fpath  = self.locs.root / self.args['target']
         if not fpath.exists():
-            raise TaskFailed("Target Doesn't Exist")
+            raise Exception("Target Doesn't Exist")
 
         globbed = [(x.name, x) for x in self.glob_target(fpath)]
-        logging.debug("Generating for: ", [x[0] for x in globbed])
+        logging.debug("Generating for: %s", [x[0] for x in globbed])
         chunks  = self.chunk(globbed, self.args['chunkSize'])
         return chunks

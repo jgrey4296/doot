@@ -99,9 +99,13 @@ class DootEagerGlobber(DootSubtasker):
 
         if not target.exists():
             return []
-        elif not (rec or self.rec):
+        elif not (bool(rec) or rec is None and self.rec):
+            check_fn = lambda x: (filter_fn(x) not in [False, GlobControl.reject, GlobControl.discard]
+                                  and x.name not in glob_ignores
+                                  and (not bool(exts) or x.suffix in exts))
+
             potentials  = [target] + [x for x in target.iterdir()]
-            results    += [x for x in potentials if filter_fn(x) not in [False, GlobControl.reject, GlobControl.discard] and x.suffix in exts or not bool(exts)]
+            results     = [x for x in potentials if check_fn(x)]
             return results
 
         assert(rec or self.rec)
@@ -123,10 +127,10 @@ class DootEagerGlobber(DootSubtasker):
                     results.append(current)
                     if current.is_dir():
                         queue += [x for x in current.iterdir()]
-                case None | False | GlobControl.reject:
+                case None | False | GlobControl.reject | GlobControl.discard:
                     continue
                 case _ as x:
-                    raise TypeException("Unexpected glob filter value", x)
+                    raise TypeError("Unexpected glob filter value", x)
 
         return results
 
@@ -233,7 +237,8 @@ class LazyGlobMixin:
     """
 
     def glob_all(self, rec=None):
-        return [(str(x).replace("/", "_"), x) for x in self.roots]
+        # return [(str(x).replace("/", "_"), x) for x in self.roots]
+        return []
 
 class HeadlessGlobMixin:
     """
