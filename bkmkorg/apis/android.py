@@ -37,8 +37,10 @@ from collections import defaultdict
 import sys
 from doot import task_mixins
 
-batch_sleep  : Final = doot.config.on_fail(2, int|float).tool.doot.subtask.sleep()
-adb_path     : Final = shutil.which("adb")
+android_base   : Final = doot.config.on_fail("/storage/6331-3162", str).tools.doot.android.base(wrapper=pl.Path)
+batch_sleep    : Final = doot.config.on_fail(2, int|float).tool.doot.subtask.sleep()
+pull_group_max : Final = doot.config.on_fail(100, int).tool.doot.android.pull.max_group()
+adb_path       : Final = shutil.which("adb")
 
 class ADBMixin(task_mixins.BatchMixin, task_mixins.CommanderMixin):
     """
@@ -123,8 +125,15 @@ class ADBMixin(task_mixins.BatchMixin, task_mixins.CommanderMixin):
         cmd = [adb_path, "-t", self.args['id'], "pull"]
         cmd += list(group)
         cmd.append(dest)
-        print(f"Group Pull: {cmd}")
+        print(f"Group Pull: {cmd[:20]} {cmd[-1]}")
         return cmd
+
+    def args_adb_mv(self, dest:pl.Path, paths:list[pl.Path]):
+        cmd = [adb_path, "-t", self.args['id'], "shell", "mv"]
+        cmd += ["-t", dest, "-n"]
+        cmd += paths
+        return cmd
+
 
     def batch_query_subdirs(self, fn, task) -> dict:
         """"
@@ -162,12 +171,36 @@ class ADBMixin(task_mixins.BatchMixin, task_mixins.CommanderMixin):
         for parent, vals in grouped.items():
             try:
                 dest     = self.local_root / parent
-                core_cmd = self.args_adb_pull_group(dest, vals)
-                cmd      = self.cmd(core_cmd)
-                cmd.execute()
+                if len(vals) < pull_group_max:
+                    core_cmd = self.args_adb_pull_group(dest, vals)
+                    cmd      = self.cmd(core_cmd)
+                    cmd.execute()
+                else:
+                    logging.info("Pulling in chunks of %s", pull_chunk_max)
+                    self._pull_files_chunked(self, dest, vals)
+
                 downloaded.append(f"{vals}")
                 time.sleep(batch_sleep)
             except Exception:
                 failures.append(f"{parent} : {vals}")
 
         return { "downloaded" : downloaded, "failed": failures }
+
+    def _pull_files_chunked(self, dest, vals):
+        for chunk in self.chunk(vals, pull_chunk_max):
+            logging.info("Chunk...")
+            guard = [x for x in chunk if x is not None]
+            core_cmd = self.args_adb_pull_group(dest, guard)
+            cmd      = self.cmd(core_cmd)
+            cmd.execute()
+    
+    def adb_delete_files(self, task):
+        """
+        delete files specified in task.values['delete_targets']
+        """
+        mv_to       = android_base / "to_delete"
+        mk_dest_cmd = [adb_path, "-t", self.args['id'], "shell", "mkdir", mv_to]
+        mv_cmd      = self.args_adb_mv(mv_to, self.targets)
+
+        self.cmd(mk_dest_cmd).execute()
+        self.cmd(mv_cmd).execute()

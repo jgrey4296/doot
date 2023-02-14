@@ -123,14 +123,28 @@ class ADBDownload(android.ADBMixin, DootTasker, ActionsMixin, BatchMixin):
     def task_detail(self, task):
         self.device_root = android_base / self.args['remote']
         self.local_root  = pl.Path(self.args['local'])
-        task.update({
-            "actions" : [ self.cmd(self.args_adb_query, ftype="f", save="immediate_files"),
+
+        if (self.locs.build / "pull_cache.adb").exists():
+            # Cached query results
+            query_cmds = [ self.read_cache,
+                           self.say("Using Pull Cache"),
+                          ]
+        else:
+            query_cmds = [self.cmd(self.args_adb_query, ftype="f", save="immediate_files"),
                           self.cmd(self.args_adb_query,            save="remote_subdirs"),
                           (self.batch_query_subdirs, [self._subbatch_query] ), # -> remote_files
                           self.calc_pull_targets, # -> pull_targets
-                          self.pull_files, # -> downloaded, failed
-                          self.write_report,
-                         ],
+                          self.write_query_cache,
+                          self.say("Finished Queries"),
+                          ]
+
+        task.update({
+            "actions" : [
+                *query_cmds,
+                self.say("Starting Pull"),
+                self.pull_files, # -> downloaded, failed
+                self.write_report,
+            ],
             "verbosity" : 2,
         })
         return task
@@ -168,3 +182,44 @@ class ADBDownload(android.ADBMixin, DootTasker, ActionsMixin, BatchMixin):
         report += task.values['failed']
 
         (self.locs.build / "adb_pull.report").write_text("\n".join(report))
+
+    def write_query_cache(self, task):
+        cache_str = "\n".join(x for x in task.values['pull_targets'])
+        (self.locs.build / "pull_cache.adb").write_text(cache_str)
+
+    def read_cache(self):
+        cache   = self.locs.build / "pull_cache.adb"
+        targets = [x.strip() for x in cache.read_text().split("\n")]
+        return { 'pull_targets': [x for x in targets if bool(x) ]}
+
+class ADBDelete(android.ADBMixin, DootTasker, ActionsMixin, BatchMixin):
+    """
+    delete all files specified in the provided list
+    """
+
+    def __init__(self, name="android::delete", locs=None):
+        super().__init__(name, locs)
+        self.report      = {}
+        self.device_root = None
+        self.targets     = []
+
+    def set_params(self):
+        return [
+            {"name": "id", "long": "id", "type": str, "default": None},
+            {"name": "remote", "long": "remote", "type": str, "default": "."},
+            {"name": "targetList", "long": "list", "type": pl.Path, "default": None},
+        ]
+
+    def task_detail(self, task):
+        self.device_root = android_base / self.args['remote']
+        task.update({
+            "actions": [
+                self.read_target,
+                self.adb_delete_files,
+            ],
+        })
+        return task
+
+    def read_target(self):
+        lines        = self.args['targetList'].read_text().split("\n")
+        self.targets = [self.device_root / fname.strip() for fname in lines]
