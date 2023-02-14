@@ -10,7 +10,7 @@ import shutil
 from functools import partial
 
 import doot
-from doot.taskslib.utils import genx
+from doot.tasks.utils import genx
 from doot import globber, tasker, task_mixins
 ##-- end imports
 

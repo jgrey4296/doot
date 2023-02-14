@@ -1,0 +1,5 @@
+These are python string.Template files
+to produce latex.
+
+Variables which will be replaced are in the form
+${varname}

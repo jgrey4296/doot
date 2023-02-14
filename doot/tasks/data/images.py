@@ -15,7 +15,7 @@ from doit.action import CmdAction
 
 import doot
 from doot import tasker, globber, task_mixins
-from doot.taskslib.files import hashing
+from doot.tasks.files import hashing
 
 ##-- end imports
 

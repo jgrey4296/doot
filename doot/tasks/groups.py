@@ -22,7 +22,7 @@ from tomler import TomlAccessError
 import doot
 from doot.task_group import TaskGroup
 
-from doot.taskslib import project_init
+from doot.tasks import project_init
 from doot.errors import DootDirAbsent
 ##-- end imports
 
@@ -44,7 +44,7 @@ __all__ = [ "defaults_group",
 
 defaults_group = TaskGroup("defaults", as_creator=False)
 try:
-    from doot.taskslib.files import listing
+    from doot.tasks.files import listing
 
     defaults_group += listing.FileListings(locs=doot.locs)
 
@@ -64,7 +64,7 @@ try:
     wheel_loc = doot.config.on_fail("build/wheel").tool.doot.group.pip.wheel()
     pip_locs = doot.locs.extend(name="pip", _docs=None, wheel=wheel_loc)
 
-    from doot.taskslib.builders import pip_tasks as pipper
+    from doot.tasks.builders import pip_tasks as pipper
     pip_group += pipper.IncrementVersion(locs=pip_locs)
     pip_group += pipper.PipBuild(locs=pip_locs)
     pip_group += pipper.PipInstall(locs=pip_locs)
@@ -83,7 +83,7 @@ try:
     doot.config.tool.doot.group.python
     py_locs = doot.locs.extend(name="py", docs=None)
 
-    from doot.taskslib.code import python as py_tasks
+    from doot.tasks.code import python as py_tasks
     py_group += py_tasks.InitPyGlobber(locs=py_locs)
     py_group += py_tasks.PyLintTask(locs=py_locs)
     py_group += py_tasks.PyUnitTestGlob(locs=py_locs)
@@ -115,11 +115,11 @@ try:
     })
 
     jekyll_group += project_init.JekyllInit(locs=jekyll_locs)
-    from doot.taskslib.builders import jekyll as j_build
+    from doot.tasks.builders import jekyll as j_build
     jekyll_group += j_build.JekyllBuild(locs=jekyll_locs)
     jekyll_group += j_build.task_jekyll_serve
     jekyll_group += j_build.task_jekyll_install()
-    from doot.taskslib.docs import jekyll as j_doc
+    from doot.tasks.docs import jekyll as j_doc
     jekyll_group += j_doc.GenPostTask(locs=jekyll_locs)
     jekyll_group += j_doc.GenTagsTask(locs=jekyll_locs)
 
@@ -133,7 +133,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 latex_group = TaskGroup("latex_group")
 try:
     doot.config.tool.doot.group.latex
-    from doot.taskslib.builders import latex
+    from doot.tasks.builders import latex
 
     latex_src = doot.config.on_fail(doot.locs.docs).tool.doot.group.latex.src()
     latex_docs = doot.config.on_fail([doot.locs.docs]).tool.doot.group.latex.docs()
@@ -158,7 +158,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 sphinx_group = TaskGroup("sphinx_group")
 try:
     doot.config.tool.doot.group.sphinx
-    from doot.taskslib.builders import sphinx
+    from doot.tasks.builders import sphinx
 
     sphinx_src  = doot.config.on_fail(doot.locs.docs).tool.doot.group.sphinx.src()
     sphinx_docs = doot.config.on_fail([doot.locs.docs]).tool.doot.group.sphinx.docs()
@@ -180,7 +180,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 tags_group = TaskGroup("tags_group")
 try:
     doot.config.tool.doot.group.tags
-    from doot.taskslib.data import taggers
+    from doot.tasks.data import taggers
     gtags_locs = doot.locs.extend(name="tags",
                                   build=None,
                                   temp=None,
@@ -198,7 +198,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 git_group = TaskGroup("git group")
 try:
     doot.config.tool.doot.group.git
-    from doot.taskslib.vcs import git_tasks
+    from doot.tasks.vcs import git_tasks
 
     vcs_visual = doot.config.on_fail(doot.locs.docs / "visual").tool.doot.group.git.visual()
 
@@ -218,7 +218,7 @@ cargo_group = TaskGroup("cargo_group")
 try:
     doot.config.tool.doot.group.cargo
 
-    from doot.taskslib.builders import cargo
+    from doot.tasks.builders import cargo
     cargo_locs = doot.locs.extend(name="cargo",
                                   build=cargo.build_path)
 
@@ -244,7 +244,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 gradle_group = TaskGroup("gradle_group")
 try:
     doot.config.tool.doot.group.gradle
-    from doot.taskslib.builders import gradle
+    from doot.tasks.builders import gradle
 
     gradle_group += gradle.task_gradle_run
     gradle_group += gradle.task_gradle_build
@@ -272,7 +272,7 @@ try:
     epub_build = doot.config.on_fail(["build"]).tool.doot.group.epub.build()
 
     epub_locs = doot.locs.extend(name="epub", src=epub_src, build=epub_build)
-    from doot.taskslib.builders import epub
+    from doot.tasks.builders import epub
     epub_group += epub.EbookNewTask(locs=epub_locs)
     epub_group += epub.EbookCompileTask(locs=epub_locs)
     epub_group += epub.EbookConvertTask(locs=epub_locs)
@@ -292,7 +292,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 maintain_group = TaskGroup("Maintain Group")
 try:
     doot.config.tool.doot.group.maintain
-    from doot.taskslib.utils import maintenance as maintain
+    from doot.tasks.utils import maintenance as maintain
     maintain_group += maintain.CheckMail(locs=doot.locs)
     maintain_group += maintain.MaintainFull(locs=doot.locs)
     maintain_group += maintain.RustMaintain(locs=doot.locs)

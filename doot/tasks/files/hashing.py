@@ -189,6 +189,49 @@ class GroupHashes(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.A
             for name, fpath in data:
                 f.write("\n" + fpath.read_text())
 
+class RemoveMissingHashes(tasker.DootTasker, task_mixins.ActionsMixin):
+    """
+    Remove hashes in hash files that dont exist anymore
+    """
+
+    def __init__(self, name="files::hash.clean", locs=None):
+        super().__init__(name, locs)
+        self.hash_record = hash_record
+
+    def task_detail(self, task):
+        task.update({
+            "actions" : [ self.clean_hashes ]
+        })
+        return task
+
+    def clean_hashes(self):
+        globbed = list(self.locs.data.rglob(self.hash_record))
+        if not bool(globbed):
+            return
+
+        current_file = None
+        current_set  = set()
+        for line in fileinput.input(files=globbed, inplace=True):
+            if fileinput.filename() != current_file:
+                current_file = fileinput.filename()
+                current_set.clear()
+
+            if not bool(line.strip()):
+                continue
+
+            parts    = line.strip().split(" ")
+            hash_val = parts[0]
+            fpath    = pl.Path(" ".join(parts[1:]).strip())
+            if hash_val in current_set:
+                continue
+            if not fpath.exists():
+                continue
+            if fpath.name[0] == ".":
+                continue
+
+            current_set.add(hash_val)
+            print(line.strip())
+
 class DetectDuplicateHashes(tasker.DootTasker, task_mixins.ActionsMixin):
     """
     sort all_hashes, and run uniq of the first n chars
@@ -223,31 +266,25 @@ class DetectDuplicateHashes(tasker.DootTasker, task_mixins.ActionsMixin):
                 continue
             # split into (`hash` `filepath`)
             parts = line.strip().split(" ")
-            self.hash_collection[parts[0]].add(" ".join(parts[1:]))
+            fpath = pl.Path(" ".join(parts[1:]).strip())
+            if fpath.exists():
+                self.hash_collection[parts[0]].add(fpath)
 
     def identify_duplicates(self):
         duplicates = []
-        for hash_key, fnames in self.hash_collection.items():
-            match len(fnames):
+        for hash_key, fpaths in self.hash_collection.items():
+            match len(fpaths):
                 case 0:
                     raise ValueError("Hash Collecion shouldn't be able to have a hash key without associated file")
                 case 1:
                     continue
                 case _:
-                    fnames_joined = " : ".join(sorted(fnames))
-                    duplicates.append(f"{hash_key} : {fnames_joined}")
+                    fnames_joined = " : ".join(sorted(str(x) for x in fpaths))
+                    dup_line      = f"{hash_key} : {fnames_joined}"
+                    duplicates.append(dup_line)
 
         dup_str = "\n".join(duplicates)
         return {'duplicates': dup_str}
-
-    def __sort_and_uniq(self):
-        cmd = " ".join(["sort", self.hash_concat,
-                         "|",
-                         "uniq", "--all-repeated=separate",
-                         # 32 : the size of the hash
-                         "--check-chars=32"])
-
-        raise DeprecationWarning()
 
 class DeleteDuplicates(tasker.DootTasker, task_mixins.ActionsMixin):
     """
@@ -277,27 +314,36 @@ class DeleteDuplicates(tasker.DootTasker, task_mixins.ActionsMixin):
     def task_detail(self, task):
         task.update({
             "actions" : [
+                (self.mkdirs, [self.output]),
                 self.delete_duplicates,
                 self.write_delete_log,
             ],
         })
         return task
 
-    def delete_duplicates(self):
-        if not self.output.exists():
-            self.output.mkdir()
 
-        process = lambda xs: None
+    def _select_process(self):
+        """
+        select and prepare the filter process
+        """
+        process = lambda xs: ([], None)
         match self.args:
             case { "samedir": True}:
                 process = self.delete_in_same_dir
             case { "prefer" : pair} if pair is not None:
                 prefs = pair.split("<")
                 process = functools.partial(self.delete_preferring, prefs)
+
             case _:
                 logging.info("No Applicable heuristic selected")
-                return
 
+        return process
+
+    def delete_duplicates(self):
+        """
+        run through all duplicates, and delete ones that the process says to
+        """
+        process = self._select_process()
         for line in self.target.read_text().split("\n"):
             if not bool(line.strip()):
                 continue
@@ -307,14 +353,17 @@ class DeleteDuplicates(tasker.DootTasker, task_mixins.ActionsMixin):
                 raise Exception("Bad duplicate line: ", line)
 
             fpaths   = [pl.Path(x.strip()) for x in parts[1:]]
-            suitable = [x for x in fpaths if x.is_relative_to(self.args['root'])]
-            if not bool(suitable):
+            suitable = [x for x in fpaths if x.is_relative_to(self.args['root']) and x.exists()]
+            if not bool(suitable) or len(suitable) < 2:
                 continue
 
-            to_delete = process(suitable)
-            self.queue_delete(to_delete)
+            to_delete, keeper = process(suitable)
+            self.queue_delete(to_delete, keeper)
 
     def delete_in_same_dir(self, dups):
+        """
+        delete duplicates in the same directory if they end with (\d+)
+        """
         parent_dirs = defaultdict(lambda: set())
         for fpath in dups:
             parent_dirs[str(fpath.parent)].add(fpath)
@@ -328,10 +377,9 @@ class DeleteDuplicates(tasker.DootTasker, task_mixins.ActionsMixin):
             if len(available) >= len(group):
                 continue
 
-
             results += available
 
-        return results
+        return results, None
 
     def delete_preferring(self, prefs, dups):
         pref_dict            = {y:x for x,y in enumerate(prefs, 1)}
@@ -341,54 +389,39 @@ class DeleteDuplicates(tasker.DootTasker, task_mixins.ActionsMixin):
         to_delete            = sorted_by_preference[:-1]
 
         if not bool(to_delete):
-            return []
+            return [], None
 
-        return [x[0] for x in to_delete]
+        keeper               = sorted_by_preference[-1][0]
+        return [x[0] for x in to_delete], keeper
 
+    def queue_delete(self, delete_list, keeper):
+        if not bool(delete_list):
+            return
 
-    def queue_delete(self, delete_list):
         for fpath in delete_list:
             try:
+                if fpath.samefile(keeper):
+                    continue
                 fpath.rename(self.output / fpath.name)
             except FileNotFoundError:
                 logging.info("Not Found for deletion: %s", fpath)
 
-        self.delete_log.append(delete_list)
+        self.delete_log.append((delete_list, keeper))
 
     def write_delete_log(self):
-        with open(self.locs.build / "delete.log", 'w') as f:
-            for line in self.delete_log:
-                line_str = " ".join([str(x) for x in line])
-                print(line_str, file=f)
+        with open(self.locs.build / "delete.log", 'a') as f:
+            for delete_list, keeper in self.delete_log:
+                if not bool(delete_list):
+                    continue
 
-class RemoveMissingHashes(tasker.DootTasker, task_mixins.ActionsMixin):
-    """
-    Remove hashes in hash files that dont exist anymore
-    """
+                del_strs = [str(x) for x in delete_list]
+                line_str = f" Keeper: {keeper} :- " + " ".join(del_strs)
+                    print(line_str, file=f)
 
-    def __init__(self, name="files::hash.clean", locs=None):
-        super().__init__(name, locs)
-        self.hash_record = hash_record
+        with open(self.locs.build / "delete.adb", "a") as f:
+            for delete_list, keeper in self.delete_log:
+                if not bool(delete_list):
+                    continue
 
-    def task_detail(self, task):
-        task.update({
-            "actions" : [ self.clean_hashes ]
-        })
-        return task
-
-    def clean_hashes(self):
-        globbed = list(self.locs.data.rglob(self.hash_record))
-        if not bool(globbed):
-            return
-
-        for line in fileinput.input(files=globbed, inplace=True):
-            if not bool(line.strip()):
-                continue
-
-            fpath = pl.Path(" ".join(line.strip().split(" ")[1:]))
-            if not fpath.exists():
-                continue
-            if fpath.name[0] == ".":
-                continue
-
-            print(line.strip())
+                del_strs = "\n".join([str(x) for x in delete_list])
+                print(del_strs, file=f)

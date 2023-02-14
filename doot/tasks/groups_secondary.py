@@ -47,7 +47,7 @@ __all__ = [
 godot_group = TaskGroup("godot_group")
 try:
     doot.config.tool.doot.group.godot
-    from doot.taskslib.builders import godot
+    from doot.tasks.builders import godot
     godot_src  = doot.config.on_fail(".").tool.doot.group.godot.src()
     godot_locs = doot.locs.extend(name="godot", src=godot_src)
     godot_locs.update({ "scenes" : godot_locs.src / "scenes",
@@ -76,7 +76,7 @@ try:
                      "elements" : xml_locs.build / "elements",
                      "schema"   : xml_locs.build / "schema",
                      })
-    from doot.taskslib.data import xml as xml_reports
+    from doot.tasks.data import xml as xml_reports
 
     xml_group += xml_reports.XmlElementsTask(locs=xml_locs)
     xml_group += xml_reports.XmlSchemaTask(locs=xml_locs)
@@ -94,7 +94,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 sqlite_group = TaskGroup("sqlite_group")
 try:
     doot.config.tool.doot.group.database
-    from doot.taskslib.data import database
+    from doot.tasks.data import database
     sqlite_locs  = doot.locs.extend(name="sqlite")
 
     sqlite_group += database.SqliteReportTask(locs=sqlite_locs)
@@ -110,10 +110,10 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 json_group = TaskGroup("json group")
 try:
     doot.config.tool.doot.group.json
-    from doot.taskslib.data import json as json_reports
+    from doot.tasks.data import json as json_reports
     json_visual = doot.config.on_fail(["build/visual"]).tool.doot.group.json.visual()
     json_locs = doot.locs.extend(name="json", visual=json_visual)
-    # from doot.taskslib.docs.plantuml import task_plantuml_json
+    # from doot.tasks.docs.plantuml import task_plantuml_json
 
     json_group += json_reports.JsonPythonSchema(locs=json_locs)
     json_group += json_reports.JsonFormatTask(locs=json_locs)
@@ -129,7 +129,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 plantuml_group = TaskGroup("plantuml_group")
 try:
     doot.config.tool.doot.group.plantuml
-    from doot.taskslib.docs import visual
+    from doot.tasks.docs import visual
     plant_src  = doot.config.on_fail("docs/visual").tool.doot.group.plantuml.src()
     plant_visual = doot.config.on_fail(["build/visual"]).tool.doot.group.plantuml.visual()
     plant_locs = doot.locs.extend(name="plantuml", src=plant_src, visual=plant_visual)
@@ -149,7 +149,7 @@ csv_group = TaskGroup("csv group")
 try:
     doot.config.tool.doot.group.csv
     csv_locs = doot.locs.extend(name="csv")
-    from doot.taskslib.data import csv as csv_reports
+    from doot.tasks.data import csv as csv_reports
 
     csv_group += csv_reports.CSVSummaryTask(locs=csv_locs)
     csv_group += csv_reports.CSVSummaryXMLTask(locs=csv_locs)
@@ -164,7 +164,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 dot_group = TaskGroup("dot group")
 try:
     doot.config.tool.doot.group.dot
-    from doot.taskslib.docs import visual
+    from doot.tasks.docs import visual
     dot_src = doot.config.on_fail("docs/visual").tool.doot.group.dot.src()
     dot_locs = doot.locs.extend(name="dot", src=dot_src)
     dot_group += visual.DotVisualise(locs=dot_locs)
@@ -180,7 +180,7 @@ images_group = TaskGroup("images group")
 try:
     doot.config.tool.doot.group.images
     image_locs  = doot.locs.extend(name="images")
-    from doot.taskslib.data import images
+    from doot.tasks.data import images
     images_group += images.HashImages(locs=image_locs)
     images_group += images.OCRGlobber(locs=image_locs)
 
@@ -195,7 +195,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 repls_group = TaskGroup("repls group")
 try:
     doot.config.tool.doot.group.repls.py
-    from doot.taskslib.cli import basic_repls
+    from doot.tasks.cli import basic_repls
     repls_group += basic_repls.task_pyrepl
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
@@ -204,7 +204,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 
 try:
     doot.config.tool.doot.group.repls.prolog
-    from doot.taskslib.cli import basic_repls
+    from doot.tasks.cli import basic_repls
     repls_group += basic_repls.task_prolog_repl
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:

@@ -229,7 +229,7 @@ class BrewMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMixi
                 self.cmd([brew, "cleanup"], save="cleanup"),
                 self.cmd([brew, "update"],  save="update"),
                 self.cmd([brew, "upgrade"], save="upgrade"),
-                (self.append_to, [self._maintain / "brew.log", ["cleanup", "update", "upgrade"]]),
+                (self.append_to, [self.locs.maintain / "brew.log", ["cleanup", "update", "upgrade"]]),
             ],
         })
         return task
