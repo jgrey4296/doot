@@ -32,7 +32,7 @@ logging = logmod.getLogger(__name__)
 
 import doot
 from doot import globber, task_mixins
-from doot.taskslib.files.backup import BackupTask
+from doot.tasks.files.backup import BackupTask
 
 class BackupBibtexLib(BackupTask):
 

@@ -31,7 +31,7 @@ from bkmkorg.twitter.tweet_graph import TwitterGraph
 from doot import globber
 from doot.tasker import DootTasker
 from doot.task_mixins import ActionsMixin, BatchMixin, ZipperMixin
-from doot.taskslib.files.downloader import DownloaderMixin
+from doot.tasks.files.downloader import DownloaderMixin
 
 import twitter
 
@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doot.taskslib.files.backup import BackupTask
+from doot.tasks.files.backup import BackupTask
 
 user_batch_size : Final = doot.config.on_fail(100, int).tool.doot.twitter.user_batch()
 
