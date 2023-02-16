@@ -37,7 +37,7 @@ __all__ = [ "defaults_group",
             "pip_group", "jekyll_group", "sphinx_group",
             "latex_group", "tags_group", "git_group",
             "cargo_group", "epub_group", "py_group",
-            "maintain_group"
+            "maintain_group", "hashing_group"
            ]
 
 ##-- defaults
@@ -305,6 +305,23 @@ try:
     maintain_group += maintain.GitMaintain(locs=doot.locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.on_fail(False, bool).tool.doot.group.epub.debug():
+    if doot.config.on_fail(False, bool).tool.doot.group.maintain.debug():
         logging.debug("To activate group, epub needs: ", err)
 ##-- end maintain
+
+##-- hashing
+hashing_group = TaskGroup("Hashing")
+try:
+    doot.config.tool.doot.group.hashing
+    from doot.tasks.files import hashing
+    hashing_group += hashing.HashAllFiles(locs=doot.locs)
+    hashing_group += hashing.GroupHashes(locs=doot.locs)
+    hashing_group += hashing.RemoveMissingHashes(locs=doot.locs)
+    hashing_group += hashing.DetectDuplicateHashes(locs=doot.locs)
+    hashing_group += hashing.DeleteDuplicates(locs=doot.locs)
+    hashing_group += hashing.RepeatDeletions(locs=doot.locs)
+
+except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
+    if doot.config.on_fail(False, bool).tool.doot.group.hashing.debug():
+        logging.debug("To activate group, epub needs: ", err)
+##-- end hashing

@@ -35,7 +35,7 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 from hashlib import sha256
-from doot.task_mixins import TargetedMixin
+from doot.task_mixins import TargetedMixin, BatchMixin
 from doit.exceptions import TaskFailed
 from collections import defaultdict
 import fileinput
@@ -74,7 +74,7 @@ class HashAllFiles(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEage
         return task
 
     def filter(self, fpath):
-        is_cache = fpath != pl.Path() and fpath.name[0] in "._"
+        is_cache = fpath != pl.Path() and fpath.name[0] in "."
         if is_cache:
             return self.control.reject
 
@@ -309,6 +309,8 @@ class DeleteDuplicates(tasker.DootTasker, task_mixins.ActionsMixin):
             {"name": "root", "long": "root", "type": pl.Path, "default": self.locs.data },
 
             {"name": "prefer", "long": "pref", "type": str, "default": None},
+            {"name": "preferenceFocus", "long": "pref-focus", "type": str, "default": "parent", "choices": [("parent", "Filter by the parent name"),
+                                                                                                            ("root", "Filter by the root name")]},
         ]
 
     def task_detail(self, task):
@@ -382,8 +384,11 @@ class DeleteDuplicates(tasker.DootTasker, task_mixins.ActionsMixin):
         return results, None
 
     def delete_preferring(self, prefs, dups):
+        sel_fn = lambda x: x.parent.name
+        if self.args['preferenceFocus'] == "root":
+            sel_fn = lambda x: x.parts[0]
         pref_dict            = {y:x for x,y in enumerate(prefs, 1)}
-        matching             = [(x,pref_dict.get(x.parent.name, -10)) for x in dups]
+        matching             = [(x,pref_dict.get(sel_fn(x), -10)) for x in dups]
         only_preferences     = [x for x in matching if x[1] > 0]
         sorted_by_preference = sorted(only_preferences, key=lambda x: x[1])
         to_delete            = sorted_by_preference[:-1]
@@ -400,7 +405,7 @@ class DeleteDuplicates(tasker.DootTasker, task_mixins.ActionsMixin):
 
         for fpath in delete_list:
             try:
-                if fpath.samefile(keeper):
+                if fpath.resolve().samefile(keeper.resolve()):
                     continue
                 fpath.rename(self.output / fpath.name)
             except FileNotFoundError:
@@ -416,7 +421,7 @@ class DeleteDuplicates(tasker.DootTasker, task_mixins.ActionsMixin):
 
                 del_strs = [str(x) for x in delete_list]
                 line_str = f" Keeper: {keeper} :- " + " ".join(del_strs)
-                    print(line_str, file=f)
+                print(line_str, file=f)
 
         with open(self.locs.build / "delete.adb", "a") as f:
             for delete_list, keeper in self.delete_log:
@@ -425,3 +430,43 @@ class DeleteDuplicates(tasker.DootTasker, task_mixins.ActionsMixin):
 
                 del_strs = "\n".join([str(x) for x in delete_list])
                 print(del_strs, file=f)
+
+
+class RepeatDeletions(tasker.DootTasker, task_mixins.ActionsMixin, BatchMixin):
+    """
+    Repeat the deletions logged from deleteduplicates, for a backup target
+    """
+
+    def __init__(self, name="deletion::repeat", locs=None):
+        super().__init__(name, locs)
+        self.deletion_list = []
+
+    def set_params(self):
+        return [
+            {"name": "deletions", "short": "f",      "type": pl.Path, "default": None},
+            {"name": "target",    "long" : "target", "type": pl.Path, "default": None},
+        ]
+
+    def task_detail(self, task):
+        task.update({
+            "actions" : [ self.load_deletions, self.run_deletions ],
+        })
+        return task
+
+    def load_deletions(self):
+        lines              = self.args['targetList'].read_text().split("\n")
+        self.deletion_list = [self.args['target'] / fname.strip() for fname in lines]
+
+    def run_deletions(self):
+        move_target = self.locs.build / "to_delete"
+        move_target.mkdir()
+        deleted = []
+
+        try:
+            for chunk in self.chunk(self.deletion_list):
+                deleted += chunk
+                for fpath in chunk:
+                    fpath.rename(move_target / fpath.name)
+
+        finally:
+            (self.locs.build / "deletion.log").write_text("\n".join(str(x) for x in deleted))

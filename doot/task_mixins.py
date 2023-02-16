@@ -176,6 +176,8 @@ class CommanderMixin:
         match cmd:
             case FunctionType():
                 action = (cmd, list(args), kwargs)
+            case str():
+                action = [cmd, *args]
             case list():
                 assert(not bool(args))
                 assert(not bool(kwargs))
