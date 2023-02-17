@@ -18,8 +18,11 @@ from doot import tasker, task_mixins
 
 logging = logmod.getLogger(__name__)
 
+import doot
+from doot.mixins.commander import CommanderMixin
+
 CHECK_AMNT    : Final = doot.config.on_fail(150, int).tool.doot.downloader.check_amnt()
-speak_confirm : Final = task_mixins.ActionsMixin.say(None, "Found a Large Group of Files, waiting for confirmation")
+speak_confirm : Final = CommanderMixin.say(None, "Found a Large Group of Files, waiting for confirmation")
 
 class DownloaderMixin:
     """

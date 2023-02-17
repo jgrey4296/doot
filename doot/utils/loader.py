@@ -43,7 +43,7 @@ import doot
 from doot.utils.gen_toml import GenToml
 from doot.task_group import TaskGroup
 from doot.utils.dir_tasks import CheckDir
-from doot.utils.TaskExt import DootTaskExt
+from doot.utils.task_ext import DootTaskExt
 
 TASK_STRING = "task_"
 

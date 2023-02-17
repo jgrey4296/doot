@@ -44,7 +44,7 @@ from doit.tools import Interactive
 
 from doot.errors import DootDirAbsent
 from doot.utils.general import ForceCmd
-from doot.utils.TaskExt import DootTaskExt
+from doot.utils.task_ext import DootTaskExt
 
 
 class DootTasker:
