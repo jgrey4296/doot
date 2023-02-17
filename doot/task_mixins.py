@@ -144,7 +144,7 @@ class CommanderMixin:
         match cmd:
             case FunctionType() | MethodType():
                 action = (cmd, list(args), kwargs)
-            case str():
+            case str() | pl.Path():
                 action = [cmd, *args]
             case list():
                 assert(not bool(args))

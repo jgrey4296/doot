@@ -30,11 +30,11 @@ if TYPE_CHECKING:
 logging         = logmod.root
 logging.setLevel(logmod.NOTSET)
 file_handler    = logmod.FileHandler(pl.Path() / "log.doot", mode='w')
-file_handler.setFormatter(logmod.Formatter("PRE_SETUP : {message}", style="{"))
+file_handler.setFormatter(logmod.Formatter("{levelname} : INIT : {message}", style="{"))
 
 std_handler = logmod.StreamHandler()
 std_handler.setLevel(logmod.WARNING)
-std_handler.setFormatter(logmod.Formatter("PRE_SETUP  : {message}", style="{"))
+std_handler.setFormatter(logmod.Formatter("{levelname}  : INIT : {message}", style="{"))
 
 logging.addHandler(file_handler)
 logging.addHandler(std_handler)
@@ -55,7 +55,7 @@ def main():
         if doot.config is None:
             doot.setup()
 
-        logging.info("Basic Doot setup loaded")
+        logging.debug("Basic Doot setup loaded")
         ##-- logging setup
         file_log_level    = doot.config.on_fail("DEBUG", str).tool.doot.logging.file.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
         file_log_format   = doot.config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str).tool.doot.logging.file.format()

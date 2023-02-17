@@ -37,7 +37,7 @@ config     : tomler.Tomler = None
 locs       : DootLocData   = None
 
 def setup():
-    logging.info("Setting up Doot, version: %s", __version__)
+    logging.debug("Setting up Doot, version: %s", __version__)
     if config is not None:
         raise Exception("Setup called even though doot is already set up")
 
@@ -62,7 +62,7 @@ def setup_agnostic(path=default_agnostic):
     DootLocData.set_defaults(config)
 
 def setup_py(path=default_py):
-    logging.info("Found: pyproject.toml, using project.name as src location")
+    logging.debug("Found: pyproject.toml, using project.name as src location")
     pyproject = tomler.load(path)
     if config.any_of((None,)).tool.doot.directories.src() is None:
         locs.update(src=pyproject.project.name)

@@ -177,8 +177,8 @@ class DootTasker:
                 yield setup_task
 
         except Exception as err:
-            print("ERROR: Task Creation Failure: ", err, file=sys.stderr)
-            print("ERROR: Task was: ", self.base, file=sys.stderr)
+            logging.error("ERROR: Task Creation Failure: ", err, file=sys.stderr)
+            logging.error("ERROR: Task was: ", self.base, file=sys.stderr)
             sys.exit(1)
 
 class DootSubtasker(DootTasker):
@@ -244,12 +244,12 @@ class DootSubtasker(DootTasker):
                 yield x
 
         except Exception as err:
-            print("ERROR: Task Creation Failure: ", err, file=sys.stderr)
-            print("ERROR: Task was: ", self.base, file=sys.stderr)
+            logging.error("ERROR: Task Creation Failure: ", err, file=sys.stderr)
+            logging.error("ERROR: Task was: ", self.base, file=sys.stderr)
             sys.exit(1)
 
     def _sleep_subtask(self):
         if self.sleep_notify:
-            print("Sleep Subtask")
+            logging.info("Sleep Subtask")
         sleep(self.sleep_subtask)
 

@@ -84,16 +84,16 @@ class DootLoader(NamespaceTaskLoader):
             self.namespace['__doot_all_checks'] = CheckDir.gen_check_tasks()
             self.namespace['__doot_all_tomls']  = GenToml.gen_toml_tasks()
         except doot.errors.DootDirAbsent as err:
-            logging.warning("LOCATION MISSING: " + err.args[0])
+            logging.error("LOCATION MISSING: " + err.args[0])
             sys.exit(1)
 
     def load_doit_config(self):
         return doot.config.get_table()
 
-
     def load_tasks(self, cmd, pos_args):
+        logging.debug("---- Loading Tasks")
         self._expand_task_groups()
-        self._load_tasks(self.namespace, self.cmd_names, allow_delayed=cmd.execute_tasks, args=pos_args, config=self.config, task_opts=self.task_opts)
+        self._build_tasks(self.namespace, self.cmd_names, allow_delayed=cmd.execute_tasks, args=pos_args, config=self.config, task_opts=self.task_opts)
 
         logging.debug("Tasks: %s", self.task_list)
 
@@ -112,6 +112,7 @@ class DootLoader(NamespaceTaskLoader):
                     if task.pos_arg and task.pos_arg in task.cfg_values:
                         task.pos_arg_val = task.cfg_values[task.pos_arg]
 
+        logging.debug("---- Tasks Loaded")
         return self.task_list
 
     def _expand_task_groups(self):
@@ -121,14 +122,17 @@ class DootLoader(NamespaceTaskLoader):
                 logging.debug("Expanding: %s", x)
                 group_tasks.update(x.to_dict())
 
+        if not bool(group_tasks):
+            return
+
         logging.debug("Total Expanded Tasks: %s", list(x for x in group_tasks.keys()))
         self.namespace.update(group_tasks)
 
-    def _load_tasks(self, namespace, command_names=(), allow_delayed=False, args=(), config=None, task_opts=None):
+    def _build_tasks(self, namespace, command_names=(), allow_delayed=False, args=(), config=None, task_opts=None):
         """
         Reimplementation of doit.loader.load_tasks
         """
-        logging.debug("Loading Tasks")
+        logging.debug("Building Tasks")
         funcs = self._get_task_creators(namespace, command_names)
         # sort by the order functions were defined (line number)
         # TODO: this ordering doesnt make sense when generators come
@@ -186,6 +190,7 @@ class DootLoader(NamespaceTaskLoader):
 
         @return (list - func) task-creators
         """
+        logging.debug("Getting Task Creators from namespace")
         funcs = []
         prefix_len = len(TASK_STRING)
         # get all functions that are task-creators
@@ -244,10 +249,10 @@ class DootLoader(NamespaceTaskLoader):
         @param tasks: dictionary with created tasks
         @return None: the created task is added to 'tasks' dict
         """
+        logging.debug("Generator yielded value, building task from it")
         # check valid input
         if not isinstance(task_dict, dict):
-            raise doit_loader.InvalidTask("doit_loader.Task '%s' must yield dictionaries" %
-                            func_name)
+            raise doit_loader.InvalidTask("doit_loader.Task '%s' must yield dictionaries" % func_name)
 
         msg_dup = "doit_loader.Task generation '%s' has duplicated definition of '%s'"
         basename = task_dict.pop('basename', None)
@@ -351,13 +356,6 @@ class DootLoader(NamespaceTaskLoader):
                         " in conjuction with `@self.task_params`")
                     raise doit_loader.InvalidTask(msg)
                 task.creator_params = param_def
-
-    def _process_gen(self, ref, creator_kwargs):
-        """process a task creator, generating tasks"""
-        gen_tasks = self._generate_tasks(self.current_name, ref(**creator_kwargs), ref.__doc__)
-        if hasattr(ref, '_task_creator_params'):
-            self._append_params(gen_tasks, ref._task_creator_params)
-        self.task_list.extend(gen_tasks)
 
     def _add_delayed(self, tname, ref, original_delayed, kwargs):
         # Make sure create_after can be used on class methods.

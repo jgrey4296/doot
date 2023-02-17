@@ -9,7 +9,7 @@ notify  = { say-on-exit = false }
 
 [tool.doot.logging]
 stream = { level = "INFO", format  = "{levelname:<8} : {message}", filters = ["doot", "bkmkorg"] }
-file   = { level = "DEBUG", format = "{levelname:<8} : {message:<20} : ({module}.{lineno}.{funcName})", filters =  ["doot", "bkmkorg"] }
+file   = { level = "DEBUG", format = "{levelname:<8} : {message:<20} :|: (module:{module} line:{lineno} fn:{funcName})", filters =  ["doot", "bkmkorg"] }
 
 [tool.doot.globbing]
 ignores  = ['.git', '.DS_Store', "__pycache__"]
