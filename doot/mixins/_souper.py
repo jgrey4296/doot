@@ -32,7 +32,7 @@ logging = logmod.getLogger(__name__)
 
 from bs4 import BeautifulSoup
 
-class TODODootSouper:
+class TODOSoupMixin:
     """
     Utility class to simplify construction of html reports using BeautifulSoup
     """

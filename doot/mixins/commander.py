@@ -31,7 +31,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import doot
-from doot.utils.TaskExt import DootCmdAction
+from doot.utils.task_ext import DootCmdAction
 
 conda_exe        = os.environ['CONDA_EXE']
 

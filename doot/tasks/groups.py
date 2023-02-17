@@ -292,7 +292,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 maintain_group = TaskGroup("Maintain Group")
 try:
     doot.config.tool.doot.group.maintain
-    from doot.tasks.utils import maintenance as maintain
+    from doot.tasks.misc import maintenance as maintain
     maintain_group += maintain.CheckMail(locs=doot.locs)
     maintain_group += maintain.MaintainFull(locs=doot.locs)
     maintain_group += maintain.RustMaintain(locs=doot.locs)

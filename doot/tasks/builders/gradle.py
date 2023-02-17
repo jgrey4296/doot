@@ -12,10 +12,12 @@ import doot
 # https://docs.gradle.org/current/userguide/command_line_interface.html
 ## create build.grade, run tasks, create logging.properties
 
-##-- data
+from doot import tasker
+from doot.tasks.utils.gradle import GradleMixin
+
 data_path               = files("doot.__templates")
 log_properties_template = data_path.joinpath("gradle_logging")
-##-- end data
+
 
 def task_gradle_run():
     """:: run a program """

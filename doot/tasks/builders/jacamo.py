@@ -30,16 +30,98 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doot import tasker
+from os import environ
+import shutil
+import doot
+from doot import tasker, task_mixins
+from doot.tasks.utils.gradle import GradleMixin
 
-class JacamoNewProject(tasker.DootTasker):
+jacamo_home = doot.config.on_fail(environ.get("JACAMO_HOME", None), str).tool.doot.jacamo.home(wrapper=pl.Path)
+
+class JacamoNewProject(tasker.DootTasker, GradleMixin, task_mixins.CommanderMixin):
     """
     Create a new jacamo agent project
     """
-    pass
 
-class JacamoRun(tasker.DootTasker):
+    def __init__(self, name="jacamo::new", locs=doot.locs):
+        super().__init__(name, locs)
+        logging.debug("Using Jacamo Home: %s", jacamo_home)
+        self.locs.ensure("src")
+
+    def set_params(self):
+        return [
+            {"name": "project-name", "short": "n", "default": "jacamo_new", "type": str}
+        ]
+
+    def is_setup(self, task):
+        return (self.locs.root / "build.gradle.kts").exists()
+
+    def setup_detail(self, task):
+        task.update({
+            "actions"  : [ self.initialise_gradle_root ],
+            "targets"  : [ "build.gradle.kts", "settings.gradle.kts" ],
+            "uptodate" : [ self.is_setup ],
+        })
+        return task
+
+    def task_detail(self, task):
+        task.update({
+            "actions" : [
+                (self.log, [f"Adding New Jacamo Project: {self.locs.src}/{self.args['project-name']}", logmod.INFO]),
+                self.cmd(jacamo_home / "scripts/jacamo-new-project", self.locs.src / self.args['project-name']),
+                (self.add_project_to_gradle_settings, [self.locs.src / self.args['project-name']]),
+            ],
+        })
+        return task
+
+class JacamoRun(tasker.DootTasker, GradleMixin, task_mixins.CommanderMixin):
     """
     use gradle to run a jacamo agent
     """
-    pass
+
+    def __init__(self, name="jacamo::run", locs=None):
+        super().__init__(name, locs)
+
+    def set_params(self):
+        return [
+            {"name": "project-name", "type": str, "default": None, "short": "n"}
+        ]
+
+    def task_detail(self, task):
+        if not self.args['project-name']:
+            return None
+
+        run_task = self.gradle_subname(self.locs.src / self.args['project-name'] / "run")
+        task.update({
+            "actions": [
+                self.call_gradle(run_task)
+            ],
+            "verbosity": 2,
+        })
+        return task
+
+class JacamoBuild(tasker.DootTasker, task_mixins.CommanderMixin):
+    """
+    Build the jacamo project
+    """
+
+    def __init__(self, name="jacamo::build", locs=None):
+        super().__init__(name, locs)
+
+    def set_params(self):
+        return [
+            {"name": "project-name", "type": str, "default": None, "short": "n"}
+        ]
+
+    def task_detail(self, task):
+        if not self.args['project-name']:
+            return None
+
+        build_task = self.gradle_subname(self.locs.src / self.args['project-name'] / "build")
+        task.update({
+            "actions": [
+                self.call_gradle(build_task),
+            ],
+
+        })
+        return task

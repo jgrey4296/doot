@@ -50,7 +50,6 @@ class CargoMixin:
 
     def get_cargo_params(self):
         """
-
         Default param generator for cargo to get binaries and profiles
         """
         return [
@@ -58,8 +57,8 @@ class CargoMixin:
             { "name": "target",  "type": str, "short": "t", "default": binaries[0], "choices": [(x, "") for x in binaries]},
         ]
 
-    def _cargo_action(self, *args) -> CmdAction:
-        return self.cmd(cargo, *args)
-
     def cargo_do(self, action, *args, **kwargs):
-        return self._cargo_action(action, *args, *(val for x,y in kwargs.items() for val in (f"--{x}", y)))
+        """
+        builds a cargo action
+        """
+        return self.cmd(cargo, action, *args, *(val for x,y in kwargs.items() for val in (f"--{x}", y)))

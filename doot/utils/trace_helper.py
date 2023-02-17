@@ -35,8 +35,6 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-
-
 class TraceHelper:
 
     def __init__(self):
@@ -51,6 +49,7 @@ class TraceHelper:
                 return self.to_tb(self.frames[val])
             case _:
                 raise TypeError("Bad value passed to TraceHelper")
+
     def get_frames(self):
         """ from https://stackoverflow.com/questions/27138440 """
         tb    = None
@@ -63,7 +62,6 @@ class TraceHelper:
                 break
 
             self.frames.append(frame)
-
 
     def to_tb(self, frames=None):
         top = None

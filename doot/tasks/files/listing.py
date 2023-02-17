@@ -68,9 +68,3 @@ class SimpleListing(tasker.DootTasker, task_mixins.ActionsMixin):
         return task
 
 
-class EncodingListing(globber.DirGlobMixin, globber.DootEagerGlobber):
-    """
-    file -I {}
-    iconv -f {enc} -t {enc} {} > conv-{}
-    """
-    pass

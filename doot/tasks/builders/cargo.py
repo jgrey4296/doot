@@ -17,6 +17,8 @@ from doot import tasker, task_mixins
 ##-- end imports
 # https://doc.rust-lang.org/cargo/index.html
 
+from doot.tasks.utils.cargo import CargoMixin
+
 cargo  = Tomler.load("Cargo.toml")
 config = Tomler.load("./.cargo/config.toml")
 
@@ -43,7 +45,7 @@ def task_cargo_report():
         "verbosity" : 2,
     }
 
-class CargoBuild(tasker.DootTasker, task_mixins.ActionsMixin):
+class Cargouild(tasker.DootTasker, task_mixins.CommanderMixin, CargoMixin):
     """
     Build rust binary target, using a tuple (type, name)
     eg: (bin, main) or (lib, mylib)
@@ -55,8 +57,7 @@ class CargoBuild(tasker.DootTasker, task_mixins.ActionsMixin):
 
     def set_params(self):
         return [
-            { "name": "profile", "type": str, "short": "p", "default": "debug", "choices": [(x,"") for x in profiles] },
-            { "name": "target",  "type": str, "short": "t", "default": binaries[0], "choices": [(x, "") for x in binaries]},
+            *self.get_cargo_params(),
             { "name": "lib", "type": bool, "short": "l", "default": False},
         ]
 

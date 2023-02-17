@@ -9,7 +9,7 @@ from time import strftime
 import yaml
 
 import doot
-from doot.utils.dir_tasks import CheckDir
+from doot.utils.check_dirs import CheckDir
 from doot.utils.cleaning import CleanerMixin
 from doot import globber
 from doot.tasker import DootTasker

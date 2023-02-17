@@ -22,7 +22,7 @@ from doit.task import Task as DoitTask
 from doit.task import dict_to_task
 
 from doot.task_group import TaskGroup
-from doot.utils.dir_tasks import CheckDir
+from doot.utils.check_dirs import CheckDir
 from doot.tasker import DootTasker
 from doot.errors import DootDirAbsent
 
