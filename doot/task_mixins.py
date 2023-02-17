@@ -55,6 +55,9 @@ from doot.mixins.zipper import ZipperMixin
 from doot.mixins.batch import BatchMixin
 
 class ActionsMixin(CommanderMixin, FilerMixin):
+    """
+    Utility Mixin that combines command and file methods
+    """
 
     def get_uuids(self, *args):
         raise NotImplementedError()

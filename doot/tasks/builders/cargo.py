@@ -61,33 +61,29 @@ class CargoBuild(tasker.DootTasker, task_mixins.ActionsMixin):
         ]
 
     def task_detail(self, task):
-        target_dir = self.locs.build / self.args['profile']
+        target_dir   = self.locs.build / self.args['profile']
+        build_target = None
+
         match self.args['lib'], sys.platform:
             case True, "darwin":
                 # libraries on mac need to be renamed:
                 lib_file     =  f"lib{package_name}.dylib"
                 build_target = target_dir / f"{package_name}.so"
-                actions      = [ self.cmd(self.lib_build),
+                actions      = [ self.cargo_do("build", "--lib", profile=self.args['profile']),
                                  (self.move_to, [build_target, target_dir / lib_file ]),
                                 ]
             case True, _:
                 build_target =  target_dir / f"lib{package_name}.dylib"
-                actions      = [ self.cmd(self.lib_build) ]
+                actions      = [ self.cargo_do("build", "--lib", profile=self.args['profile']) ]
             case False, _:
                 build_target = target_dir / self.args['target']
-                actions      = [ self.cmd(self.binary_build) ]
+                actions      = [ self.cargo_do("build", bin=self.args['target'], profile=self.args['profile']) ]
 
         task.update({
             "actions"  : actions,
             "targets"  : [ build_target ],
         })
         return task
-
-    def binary_build(self):
-        return ["cargo", "build", "--bin", self.args['target'], "--profile", self.args['profile']]
-
-    def lib_build(self):
-        return ["cargo", "build", "--lib", "--profile", self.args['profile']]
 
 class CargoInstall(tasker.DootTasker, task_mixins.ActionsMixin):
 

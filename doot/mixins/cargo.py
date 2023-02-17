@@ -61,6 +61,5 @@ class CargoMixin:
     def _cargo_action(self, *args) -> CmdAction:
         return self.cmd(cargo, *args)
 
-    def cargo_do(self, action, **kwargs):
-        return self.cargo_action(action,
-                                 *(val for x,y in kwargs.items() for val in (f"--{x}", y)))
+    def cargo_do(self, action, *args, **kwargs):
+        return self._cargo_action(action, *args, *(val for x,y in kwargs.items() for val in (f"--{x}", y)))
