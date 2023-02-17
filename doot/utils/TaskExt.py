@@ -79,7 +79,7 @@ class DootCmdAction(CmdAction):
             for element in action_prepped:
                 if isinstance(element, str):
                     action.append(element)
-                elif isinstance(element, PurePath):
+                elif isinstance(element, pl.PurePath):
                     action.append(str(element))
                 else:
                     msg = ("%s. CmdAction element must be a str "
