@@ -48,6 +48,7 @@ logging = logmod.getLogger(__name__)
 
 from doit.exceptions import TaskFailed
 import doot
+from doot.utils.TaskExt import DootCmdAction
 
 conda_exe        = os.environ['CONDA_EXE']
 sleep_notify     = doot.config.on_fail(False, bool).tool.doot.notify.sleep()
@@ -153,7 +154,7 @@ class CommanderMixin:
             case _:
                 raise TypeError("Unexpected action form: ", cmd)
 
-        return CmdAction(action, shell=shell, save_out=save)
+        return DootCmdAction(action, shell=shell, save_out=save)
 
     def force(self, cmd:list|callable, *args, handler=None, shell=False, save=None, **kwargs):
         logging.debug("Forcing Cmd: %s Args: %s kwargs: %s", cmd, args, kwargs)
@@ -195,10 +196,10 @@ class CommanderMixin:
     def say(self, *text, voice="Moira"):
         cmd = ["say", "-v", voice, "-r", "50"]
         cmd += text
-        return CmdAction(cmd, shell=False)
+        return DootCmdAction(cmd, shell=False)
 
     def in_conda(self, env, *args):
-        return CmdAction([conda_exe, "run", "-n", env, *args], shell=False)
+        return DootCmdAction([conda_exe, "run", "-n", env, *args], shell=False)
 
 class FilerMixin:
 

@@ -43,6 +43,7 @@ import doot
 from doot.utils.gen_toml import GenToml
 from doot.task_group import TaskGroup
 from doot.utils.dir_tasks import CheckDir
+from doot.utils.TaskExt import DootTaskExt
 
 TASK_STRING = "task_"
 
@@ -228,77 +229,13 @@ class DootLoader(NamespaceTaskLoader):
 
         return funcs
 
-    def _generate_task_from_return(self, func_name, task_dict, gen_doc):
-        """generate a single task from a dict returned by a task generator"""
-        if 'name' in task_dict:
-            raise doit_loader.InvalidTask("doit_loader.Task '%s'. Only subtasks use field name." %
-                            func_name)
-
-        task_dict['name'] = task_dict.pop('basename', func_name)
-
-        # Use task generator docstring
-        # if no doc present in task dict
-        if 'doc' not in task_dict:
-            task_dict['doc'] = gen_doc
-
-        return doit_loader.dict_to_task(task_dict)
-
-    def _generate_task_from_yield(self, tasks, func_name, task_dict, gen_doc):
-        """generate a single task from a dict yielded by task generator
-
-        @param tasks: dictionary with created tasks
-        @return None: the created task is added to 'tasks' dict
-        """
-        logging.debug("Generator yielded value, building task from it")
-        # check valid input
-        if not isinstance(task_dict, dict):
-            raise doit_loader.InvalidTask("doit_loader.Task '%s' must yield dictionaries" % func_name)
-
-        msg_dup = "doit_loader.Task generation '%s' has duplicated definition of '%s'"
-        basename = task_dict.pop('basename', None)
-        # if has 'name' this is a sub-task
-        if 'name' in task_dict:
-            basename = basename or func_name
-            # if subname is None attributes from group task
-            if task_dict['name'] is None:
-                task_dict['name'] = basename
-                task_dict['actions'] = None
-                group_task = doit_loader.dict_to_task(task_dict)
-                group_task.has_subtask = True
-                tasks[basename] = group_task
-                return
-
-            # name is '<task>.<subtask>'
-            full_name = f"{basename}:{task_dict['name']}"
-            if full_name in tasks:
-                raise doit_loader.InvalidTask(msg_dup % (func_name, full_name))
-            task_dict['name'] = full_name
-            sub_task = doit_loader.dict_to_task(task_dict)
-            sub_task.subtask_of = basename
-
-            # get/create task group
-            group_task = tasks.get(basename)
-            if group_task:
-                if not group_task.has_subtask:
-                    raise doit_loader.InvalidTask(msg_dup % (func_name, basename))
-            else:
-                group_task = doit_loader.Task(basename, None, doc=gen_doc, has_subtask=True)
-                tasks[basename] = group_task
-            group_task.task_dep.append(sub_task.name)
-            tasks[sub_task.name] = sub_task
-        # NOT a sub-task
-        else:
-            if not basename:
-                raise doit_loader.InvalidTask(
-                    "doit_loader.Task '%s' must contain field 'name' or 'basename'. %s" %
-                    (func_name, task_dict))
-            if basename in tasks:
-                raise doit_loader.InvalidTask(msg_dup % (func_name, basename))
-            task_dict['name'] = basename
-            # Use task generator docstring if no doc present in task dict
-            if 'doc' not in task_dict:
-                task_dict['doc'] = gen_doc
-            tasks[basename] = doit_loader.dict_to_task(task_dict)
+    def _process_gen(self, ref, creator_kwargs):
+        """process a task creator, generating tasks"""
+        logging.debug("Processing task generator")
+        gen_tasks = self._generate_tasks(self.current_name, ref(**creator_kwargs), ref.__doc__)
+        if hasattr(ref, '_task_creator_params'):
+            self._append_params(gen_tasks, ref._task_creator_params)
+        self.task_list.extend(gen_tasks)
 
     def _generate_tasks(self, func_name, gen_result, gen_doc=None):
         """Create tasks from a task generator result.
@@ -312,6 +249,7 @@ class DootLoader(NamespaceTaskLoader):
         @return: (list - doit_loader.Task)
         """
         # a task instance, just return it without any processing
+        logging.debug("Generating Task for %s", func_name)
         if isinstance(gen_result, doit_loader.Task):
             return (gen_result,)
 
@@ -334,7 +272,7 @@ class DootLoader(NamespaceTaskLoader):
             else:
                 # special case task_generator did not generate any task
                 # create an empty group task
-                return [doit_loader.Task(func_name, None, doc=gen_doc, has_subtask=True)]
+                return [DootTaskExt(func_name, None, doc=gen_doc, has_subtask=True)]
 
         if gen_result is None:
             return ()
@@ -342,6 +280,80 @@ class DootLoader(NamespaceTaskLoader):
         raise doit_loader.InvalidTask(
             "doit_loader.Task '%s'. Must return a dictionary or generator. Got %s" %
             (func_name, type(gen_result)))
+
+
+    def _generate_task_from_return(self, func_name, task_dict, gen_doc):
+        """generate a single task from a dict returned by a task generator"""
+        logging.debug("Generator Returned a Value, building task from it")
+        if 'name' in task_dict:
+            raise doit_loader.InvalidTask("doit_loader.Task '%s'. Only subtasks use field name." %
+                            func_name)
+
+        task_dict['name'] = task_dict.pop('basename', func_name)
+
+        # Use task generator docstring
+        # if no doc present in task dict
+        if 'doc' not in task_dict:
+            task_dict['doc'] = gen_doc
+
+        return DootTaskExt(**task_dict)
+
+    def _generate_task_from_yield(self, tasks, func_name, task_dict, gen_doc):
+        """generate a single task from a dict yielded by task generator
+
+        @param tasks: dictionary with created tasks
+        @return None: the created task is added to 'tasks' dict
+        """
+        logging.debug("Generator yielded value, building task from it")
+        # check valid input
+        if not isinstance(task_dict, dict):
+            raise doit_loader.InvalidTask("doit_loader.Task '%s' must yield dictionaries" % func_name)
+
+        msg_dup = "doit_loader.Task generation '%s' has duplicated definition of '%s'"
+        basename = task_dict.pop('basename', None)
+        # if has 'name' this is a sub-task
+        if 'name' in task_dict:
+            basename = basename or func_name
+            # if subname is None attributes from group task
+            if task_dict['name'] is None:
+                task_dict['name'] = basename
+                task_dict['actions'] = None
+                group_task = DootTaskExt(**task_dict)
+                group_task.has_subtask = True
+                tasks[basename] = group_task
+                return
+
+            # name is '<task>.<subtask>'
+            full_name = f"{basename}:{task_dict['name']}"
+            if full_name in tasks:
+                raise doit_loader.InvalidTask(msg_dup % (func_name, full_name))
+            task_dict['name'] = full_name
+            sub_task = DootTaskExt(**task_dict)
+            sub_task.subtask_of = basename
+
+            # get/create task group
+            group_task = tasks.get(basename)
+            if group_task:
+                if not group_task.has_subtask:
+                    raise doit_loader.InvalidTask(msg_dup % (func_name, basename))
+            else:
+                group_task = DootTaskExt(basename, None, doc=gen_doc, has_subtask=True)
+                tasks[basename] = group_task
+            group_task.task_dep.append(sub_task.name)
+            tasks[sub_task.name] = sub_task
+        # NOT a sub-task
+        else:
+            if not basename:
+                raise doit_loader.InvalidTask(
+                    "doit_loader.Task '%s' must contain field 'name' or 'basename'. %s" %
+                    (func_name, task_dict))
+            if basename in tasks:
+                raise doit_loader.InvalidTask(msg_dup % (func_name, basename))
+            task_dict['name'] = basename
+            # Use task generator docstring if no doc present in task dict
+            if 'doc' not in task_dict:
+                task_dict['doc'] = gen_doc
+            tasks[basename] = DootTaskExt(**task_dict)
 
     def _append_params(self, tasks, param_def):
         """Apply parameters defined for the task generator to the tasks
@@ -365,7 +377,7 @@ class DootLoader(NamespaceTaskLoader):
         # because it is bounded method.
         this_delayed = copy.copy(delayed)
         this_delayed.creator = ref
-        d_task = doit_loader.Task(tname, None, loader=this_delayed, doc=delayed.creator.__doc__)
+        d_task = DootTaskExt(tname, None, loader=this_delayed, doc=delayed.creator.__doc__)
 
         if hasattr(ref, '_task_creator_params'):
             this_delayed.kwargs = kwargs

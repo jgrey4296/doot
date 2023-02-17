@@ -44,6 +44,7 @@ from doit.tools import Interactive
 
 from doot.errors import DootDirAbsent
 from doot.utils.general import ForceCmd
+from doot.utils.TaskExt import DootTaskExt
 
 
 class DootTasker:
@@ -145,7 +146,7 @@ class DootTasker:
                     return None
                 case dict() as val:
                     self.active_setup = True
-                    return dict_to_task(val)
+                    return DootTaskExt(**val)
                 case _ as val:
                     logging.warning("Setup Detail Returned an unexpected value: ", val)
         except DootDirAbsent:
@@ -160,7 +161,7 @@ class DootTasker:
         if self.active_setup:
             maybe_task['setup'] += [self.setup_name]
 
-        full_task = dict_to_task(maybe_task)
+        full_task = DootTaskExt(**maybe_task)
         return full_task
 
     def _build(self, **kwargs):
