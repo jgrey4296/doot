@@ -7,8 +7,8 @@ from collections import defaultdict
 from importlib.resources import files
 from string import Template, ascii_uppercase
 
-from instal.defaults import STATE_HOLDSAT_GROUPS, TEX_loc
-from instal.interfaces.reporter import InstalReporter_i
+# from instal.defaults import STATE_HOLDSAT_GROUPS, TEX_loc
+# from instal.interfaces.reporter import InstalReporter_i
 
 ##-- end imports
 

@@ -38,7 +38,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 ##-- data
-data_path       = files("doot.tasks.__templates")
+data_path       = files("doot.__templates.jekyll")
 jekyll_config   = data_path.joinpath("jekyll_config")
 jekyll_template = Template(jekyll_config.read_text())
 ##-- end data

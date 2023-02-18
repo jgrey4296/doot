@@ -37,8 +37,8 @@ import doot
 cargo  = shutil.which("cargo")
 rustup = shutil.which("rustup")
 
-cargo_config    = Tomler.load("Cargo.toml")
-cargo_subconfig = Tomler.load("./.cargo/config.toml")
+cargo_config    = tomler.load("Cargo.toml")
+cargo_subconfig = tomler.load("./.cargo/config.toml")
 
 package_name  : Final = cargo_config.package.name
 build_path    : Final = cargo_subconfig.on_fail(str(doot.locs.build)).build.target_dir()

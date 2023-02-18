@@ -30,6 +30,8 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from types import FunctionType, MethodType
+import os
 import doot
 from doot.utils.task_ext import DootCmdAction
 

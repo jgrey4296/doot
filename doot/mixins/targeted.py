@@ -32,6 +32,8 @@ logging = logmod.getLogger(__name__)
 
 import doot
 
+batch_size       = doot.config.on_fail(10, int).tool.doot.batch.size()
+
 class TargetedMixin:
     """
     For Quickly making a task have cli args to control batching

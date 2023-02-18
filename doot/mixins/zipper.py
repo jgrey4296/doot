@@ -30,6 +30,7 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+import zipfile
 import doot
 
 zip_default_name = doot.config.on_fail("default", str).tool.doot.zip.name()

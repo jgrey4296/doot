@@ -245,8 +245,8 @@ class DootSubtasker(DootTasker):
                 yield x
 
         except Exception as err:
-            logging.error("ERROR: Task Creation Failure: ", err, file=sys.stderr)
-            logging.error("ERROR: Task was: ", self.base, file=sys.stderr)
+            logging.error("ERROR: Task Creation Failure: ", err)
+            logging.error("ERROR: Task was: ", self.base)
             sys.exit(1)
 
     def _sleep_subtask(self):

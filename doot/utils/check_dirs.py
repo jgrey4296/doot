@@ -9,7 +9,7 @@ from typing import ClassVar
 
 from doot.task_group import TaskGroup
 from doot.tasker import DootTasker
-from doot.utils.cleaning import CleanerMixin
+from doot.mixins.cleaning import CleanerMixin
 ##-- end imports
 
 ##-- logging
