@@ -58,6 +58,7 @@ class DootEagerGlobber(DootSubtasker):
     .default_task : the basic task definition that everything customises
     """
     control = GlobControl
+    globc   = GlobControl
 
     def __init__(self, base:str, locs:DootLocData, roots:list[pl.Path], *, exts:list[str]=None,  rec=False, **kwargs):
         super().__init__(base, locs, **kwargs)
@@ -102,7 +103,7 @@ class DootEagerGlobber(DootSubtasker):
         elif not (bool(rec) or rec is None and self.rec):
             check_fn = lambda x: (filter_fn(x) not in [False, GlobControl.reject, GlobControl.discard]
                                   and x.name not in glob_ignores
-                                  and (not bool(exts) or x.suffix in exts))
+                                  and not (bool(exts) and x.is_file() and x.suffix not in exts))
 
             potentials  = [target] + [x for x in target.iterdir()]
             results     = [x for x in potentials if check_fn(x)]
@@ -134,14 +135,14 @@ class DootEagerGlobber(DootSubtasker):
 
         return results
 
-    def glob_all(self, rec=None) -> list[tuple(str, pl.Path)]:
+    def glob_all(self, rec=None, fn=None) -> list[tuple(str, pl.Path)]:
         """
         Glob all available files,
         and generate unique names for them
         """
         globbed = set()
         for root in self.roots:
-            globbed.update(self.glob_target(root, rec=rec))
+            globbed.update(self.glob_target(root, rec=rec, fn=fn))
 
         results = {}
         # then create unique names based on path:
@@ -236,7 +237,10 @@ class LazyGlobMixin:
     use self.glob_target to run the glob
     """
 
-    def glob_all(self, rec=None):
+    def __init__(self, *args, **kwargs):
+        raise DeprecationWarning("Use The DelayedMixin")
+
+    def glob_all(self, root=None, rec=None, fn=None):
         # return [(str(x).replace("/", "_"), x) for x in self.roots]
         return []
 
@@ -258,7 +262,7 @@ class SubGlobMixin:
     Glob only a subset of potentials
     """
 
-    def glob_all(self, rec=None):
+    def glob_all(self, rec=None, fn=None):
         results = super().glob_all(rec)
         match glob_subselect_exact, glob_subselect_pcnt:
             case (-1, -1):

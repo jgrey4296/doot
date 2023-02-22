@@ -8,8 +8,8 @@ import fileinput
 from typing import Final
 
 import doot
-from doot import globber
-from doot import tasker
+from doot import globber, tasker
+from doot.mixins.delayed import DelayedMixin
 
 ##-- end imports
 
@@ -223,7 +223,7 @@ class BibtexBuildPass(globber.DootEagerGlobber, ActionsMixin):
 
         return ["bibtex",  deps['.aux']]
 
-class BibtexConcatenateSweep(globber.LazyFileGlobber):
+class BibtexConcatenateSweep(DelayedMixin, globber.DootEagerGlobber):
     """
     ([src, data, docs] -> temp) concatenate all found bibtex files
     to produce a master file for latex's use
@@ -241,13 +241,17 @@ class BibtexConcatenateSweep(globber.LazyFileGlobber):
         })
         return task
 
+    def filter(self, fpath):
+        if fpath.suffix == ".bib":
+            return self.globc.accept
+        return self.globc.discard
+
     def subtask_detail(self, task, fpath=None):
         task.update({
-            "actions" : [(self.glob_and_add, [fpath])]
+            "actions" : [(self.add_bib, [fpath])]
         })
         return task
 
-    def glob_and_add(self, fpath, task):
-        with open(self.target, 'w') as mainBib:
-            for line in fileinput.input(files=self.glob_target(fpath)):
-                print(line, file=mainBib, end="")
+    def add_bib(self, fpath):
+        with open(self.target, 'a') as mainBib:
+            print(fpath.read_text(), file=mainBib)

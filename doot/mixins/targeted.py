@@ -32,7 +32,8 @@ logging = logmod.getLogger(__name__)
 
 import doot
 
-batch_size       = doot.config.on_fail(10, int).tool.doot.batch.size()
+
+maybe_build_path = lambda x: pl.Path(x) if x is not None else None
 
 class TargetedMixin:
     """
@@ -41,34 +42,28 @@ class TargetedMixin:
 
     def target_params(self) -> list:
         return [
-            {"name": "target", "short": "t", "type": str, "default": None},
+            {"name": "target", "short": "t", "type": maybe_build_path, "default": None},
             {"name": "all", "long": "all", "type": bool, "default": False},
-            {"name": "chunkSize", "long": "chunkSize", "type": int, "default": batch_size},
         ]
 
-    def target_chunks(self, *, root=None, base=None):
+    def glob_all(self, rec=None, fn=None, root:pl.Path=None):
         match self.args, root:
-            case {'all': True}, None:
-                globbed = super(base, self).glob_all()
-                chunks  = self.chunk(globbed, self.args['chunkSize'])
-                return chunks
-            case {'all': True}, _:
-                globbed = [(x.name, x) for x in self.glob_target(root)]
-                chunks  = self.chunk(globbed, self.args['chunkSize'])
-                return chunks
-            case {'target': None}, None:
+            case {'all': False, 'target': None}, None:
                 raise Exception("No Target Specified")
-            case {'target': None}, _:
-                fpath  = root
+            case {'all': True}, None:
+                globbed = super().glob_all()
+            case _, x if x is not None:
+                globbed = [(y.name, y) for y in self.glob_target(x, fn=fn, rec=rec)]
+            case {'target': targ}, None if targ.parts[0] == "~":
+                globbed = [(y,name, y) for y in self.glob_target(targ.expanduser(), fn=fn, rec=rec)]
+            case {'target': targ}, None if targ.is_absolute():
+                globbed = [(y,name, y) for y in self.glob_target(targ, fn=fn, rec=rec)]
             case {'target': targ}, None:
-                fpath = self.locs.root / targ
+                globbed = [(y,name, y) for y in self.glob_target(self.locs.root / targ, fn=fn, rec=rec)]
             case _, _:
                 raise Exception("No Target Specified")
 
-        if not fpath.exists():
+        if not globbed[0].exists():
             raise Exception("Target Doesn't Exist")
 
-        globbed = [(x.name, x) for x in self.glob_target(fpath)]
-        logging.debug("Generating for: %s", [x[0] for x in globbed])
-        chunks  = self.chunk(globbed, self.args['chunkSize'])
-        return chunks
+        return globbed

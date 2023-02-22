@@ -18,7 +18,10 @@ from doot import globber, tasker, task_mixins
 
 ##-- end imports
 
-class JsonFormatTask(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.targeted import TargetedMixin
+
+class JsonFormatTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> data) Lint Json files with jq *inplace*
     """
@@ -26,38 +29,39 @@ class JsonFormatTask(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins
     def __init__(self, name="json::format.inplace", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".json"], rec=rec)
 
+    def set_params(self):
+        return self.target_params()
+
     def filter(self, fpath):
         if any(x.suffix in self.exts for x in fpath.iterdir()):
-            return self.control.accept
-        return self.control.discard
+            return self.globc.accept
+        return self.globc.discard
 
     def subtask_detail(self, task, fpath=None):
         task.update({
             "uptodate" : [False],
-            "actions" : [ (self.glob_jsons, [fpath]) ],
+            "actions" : [ (self.format_jsons_in_dir, [fpath]) ],
             })
         return task
 
-    def glob_jsons(self, fpath):
-        globbed  = self.glob_files(fpath)
-        self.backup_jsons(globbed)
+    def sub_filter(self, fpath):
+        if fpath.is_file() and fpath.suffix in self.exts:
+            return self.globc.accept
+        return self.globc.discard
+
+    def format_jsons_in_dir(self, fpath):
+        globbed  = self.glob_target(fpath, fn=self.sub_filter)
         for target in globbed:
+            backup = target.with_suffix(f"{btarget.suffix}.backup")
+            if not backup.exists():
+                backup.write_text(btarget.read_text())
             # Format
-            cmd = CmdAction(["jq", "-M", "-S" , ".", target ], shell=False)
+            cmd = self.cmd("jq", "-M", "-S" , ".", target)
             # and save
             target.write_text(cmd.out)
 
-    def backup_jsons(self, fpaths:list[pl.Path]):
-        """
-        Find all applicable files, and copy them
-        """
-        for btarget in fpaths:
-            backup = btarget.with_suffix(f"{btarget.suffix}.backup")
-            if backup.exists():
-                continue
-            backup.write_text(btarget.read_text())
 
-class JsonPythonSchema(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class JsonPythonSchema(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> codegen) Use XSData to generate python bindings for a directory of json's
     """
@@ -66,10 +70,13 @@ class JsonPythonSchema(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixi
         super().__init__(name, locs, roots or [locs.data], exts=[".json"], rec=rec)
         self.locs.ensure("codegen")
 
+    def set_params(self):
+        return self.target_params()
+
     def filter(self, fpath):
-        if any(x.suffix in self.exts for x in fpath.iterdir()):
-            return self.control.accept
-        return self.control.discard
+        if fpath.is_dir() and any(x.suffix in self.exts for x in fpath.iterdir()):
+            return self.globc.accept
+        return self.globc.discard
 
     def subtask_detail(self, task, fpath=None):
         gen_package = str(self.locs.codegen / task['name'])
@@ -94,7 +101,7 @@ class JsonPythonSchema(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixi
 
         return args
 
-class JsonVisualise(globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class JsonVisualise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> visual) Wrap json files with plantuml header and footer,
     ready for plantuml to visualise structure
@@ -103,6 +110,9 @@ class JsonVisualise(globber.DootEagerGlobber, task_mixins.ActionsMixin):
     def __init__(self, name="json::schema.visual", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".json"], rec=rec)
         self.locs.ensure("visual")
+
+    def set_params(self):
+        return self.target_params()
 
     def subtask_detail(self, task, fpath=None):
         task.update({

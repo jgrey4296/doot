@@ -50,6 +50,11 @@ class BatchMixin:
 
     batch_count       = 0
 
+    def batch_params(self) -> list:
+        return [
+            {"name": "chunkSize", "long": "chunkSize", "type": int, "default": batch_size},
+        ]
+
     def run_batches(self, *batches, reset=True, fn=None, **kwargs):
         """
         handles batch bookkeeping
@@ -96,13 +101,14 @@ class BatchMixin:
         """ Override to implement what a batch does """
         raise NotImplementedError()
 
-    def chunk(self, iterable, n=batch_size, *, incomplete='fill', fillvalue=None):
+    def chunk(self, iterable, n:int=None, *, incomplete='fill', fillvalue=None):
         """Collect data into non-overlapping fixed-length chunks or blocks
         from https://docs.python.org/3/library/itertools.html
          grouper('ABCDEFG', 3, fillvalue='x') --> ABC DEF Gxx
          grouper('ABCDEFG', 3, incomplete='strict') --> ABC DEF ValueError
          grouper('ABCDEFG', 3, incomplete='ignore') --> ABC DEF
         """
+        n    = n or batch_size
         args = [iter(iterable)] * n
         if incomplete == 'fill':
             return itz.zip_longest(*args, fillvalue=fillvalue)

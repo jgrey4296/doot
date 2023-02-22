@@ -18,7 +18,7 @@ from doot import globber, tasker, task_mixins
 
 ##-- end imports
 
-class TODOSqlitePrepTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class TODOSqlitePrepTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> data) file conversion from mysql to sqlite
     using https://github.com/dumblob/mysql2sqlite
@@ -27,10 +27,13 @@ class TODOSqlitePrepTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
     def __init__(self, name="sqlite::prep", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".sql"], rec=rec)
 
+    def set_params(self):
+        return self.target_params()
+
     def subtask_detail(self, task, fpath=None):
         return task
 
-class TODOSqliteReportTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class TODOSqliteReportTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> build) report database tables
      .schema .fullschema
@@ -39,6 +42,9 @@ class TODOSqliteReportTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
 
     def __init__(self, name="sqlite::report", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".db"], rec=rec)
+
+    def set_params(self):
+        return self.target_params()
 
     def subtask_detail(self, task, fpath=None):
         task['actions'] += self.subtask_actions(fpath)

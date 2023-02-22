@@ -14,23 +14,30 @@ from doot.tasks.utils import genx
 from doot import globber, tasker, task_mixins
 ##-- end imports
 
-class CSVSummaryTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.targeted import TargetedMixin
+
+class CSVSummaryTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> build) Summarise all found csv files,
     grouping those with the same headers,
     and listing number of rows
+    # TODO actually load the csv
     """
 
     def __init__(self, name="csv::summary", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".csv"], rec=rec)
         self.report_name = self.locs.build / "csv.report"
 
+    def set_params(self):
+        return self.target_params()
+
     def setup_detail(self, task):
         task['actions']  = [ (self.rmfiles, [self.report_name]) ]
         return task
 
     def task_detail(self, task):
-        task['teardown'] = [self.cmd(["cat", self.report_name]) ]
+        task['teardown'] = [self.cmd("cat", self.report_name) ]
         return task
 
     def subtask_detail(self, task, fpath=None):
@@ -38,10 +45,8 @@ class CSVSummaryTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
             "clean"    : True,
             "actions" : [
                 (self.write_data, [fpath]),
-                # CmdAction(f"cat {fpath} | wc -l | sed -e 's/$/ Columns: /' -e 's/^/Lines: /' | tr -d \"\n\" >> {report_name}"),
-                # CmdAction(f"head --lines=1 {fpath} | sed -e 's/\r//g' >> {report_name}"),
             ]
-            })
+        })
         return task
 
     def write_data(self, fpath, task):
@@ -53,7 +58,7 @@ class CSVSummaryTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
             f.write("Columns: ", columns, " ")
             f.write("Header: ", text[0].strip(), "\n")
 
-class CSVSummaryXMLTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class CSVSummaryXMLTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> build) Summarise all found csv files, using xmlstarlet
     grouping those with the same headers,
@@ -64,6 +69,10 @@ class CSVSummaryXMLTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
         super().__init__(name, locs, roots or [locs.data], exts=[".csv"], rec=rec)
         self.report_name = self.locs.build / "csv.xml"
 
+
+    def set_params(self):
+        return self.target_params()
+
     def setup_detail(self, task):
         task['actions']  = [lambda: genx.create_xml(self.report_name)]
         return task
@@ -72,13 +81,13 @@ class CSVSummaryXMLTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
         task['teardown'] = [f"cat {self.report_name}"]
         return task
 
-    def subtask_detail(self, task, fpath=None):
-        task.update({"clean" : True,
-                     "actions" : [
-                         self.cmd(self.create_entry, fpath),
-                         self.cmd(self.write_lines, fpath),
-                         self.cmd(self.head_line, fpath),
-                     ],
+    def subtask_detail(self, task, fpath):
+        task.update({
+            "actions" : [
+                self.cmd(self.create_entry, fpath),
+                self.cmd(self.write_lines, fpath),
+                self.cmd(self.head_line, fpath),
+            ],
         })
         return task
 

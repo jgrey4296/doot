@@ -35,6 +35,10 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.targeted import TargetedMixin
+
+
 def task_latex_docs():
     """ run texdoc  """
     return {
@@ -49,7 +53,7 @@ def task_latex_docs():
                     ],
     }
 
-class LatexCheckSweep(globber.DootEagerGlobber, ActionsMixin):
+class LatexCheckSweep(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     ([src] -> temp) Run a latex pass, but don't produce anything,
     just check the syntax
@@ -67,7 +71,7 @@ class LatexCheckSweep(globber.DootEagerGlobber, ActionsMixin):
               "choices" : [ ("batchmode", ""), ("nonstopmode", ""), ("scrollmode", ""), ("errorstopmode", ""),],
               "default" : "nonstopmode",
              },
-        ]
+        ] + self.target_params()
 
     def subtask_detail(self, task, fpath=None):
         task.update({"file_dep" : [ fpath ],
@@ -80,5 +84,5 @@ class LatexCheckSweep(globber.DootEagerGlobber, ActionsMixin):
                 "-draftmode",
                 f"-interaction={self.args['interaction']}",
                 f"-output-directory={self.locs.temp}",
-                fpath.with_suffix("")]
-
+                fpath.with_suffix(""),
+                ]

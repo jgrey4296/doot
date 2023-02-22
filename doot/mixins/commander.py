@@ -34,6 +34,7 @@ from types import FunctionType, MethodType
 import os
 import doot
 from doot.utils.task_ext import DootCmdAction
+from doot.utils.general import ForceCmd
 
 conda_exe        = os.environ['CONDA_EXE']
 

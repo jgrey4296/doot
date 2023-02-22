@@ -9,20 +9,31 @@ from doot import globber
 
 ##-- end imports
 
-class TODOLineReport(globber.DirGlobMixin, globber.DootEagerGlobber):
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.targeted import TargetedMixin
+
+class ineReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
     """
     Glob for all files in a target, and report on the amount of lines
     """
 
     def __init__(self, name="report::linecount", locs=None, roots=None, exts=None, rec=False):
         super().__init__(name, locs, roots or [locs.src], exts=exts, rec=rec)
-        self.counts = {}
+        self.counts = []
+        self.output = locs.build / "linecount.report"
+
+    def set_params(self):
+        return self.target_params()
+
+    def filter(self, fpath):
+        if fpath.is_file():
+            return self.globc.accept
+        return self.globc.discard
 
     def task_detail(self, task):
         task.update({
             "actions": [
-                # sort counts
-                # write to output report
+                self.write_report,
             ],
         })
         return task
@@ -30,33 +41,22 @@ class TODOLineReport(globber.DirGlobMixin, globber.DootEagerGlobber):
     def subtask_detail(self, task, fpath):
         task.update({
             "actions": [
-                # Glob For Files
-                # line count them
-                # add to counts
+                (self.store_count, [fpath]),
             ],
         })
         return task
 
-def task_line_report(locs:DootLocData):
-    """
-    ([src] -> build) Generate a report of all files and their line count
-    update without pipes
-    """
-    return DeprecationWarning()
-    find_cmd = ["find", locs.src, "-name", '"*.py"',
-                "-not", "-name", '"test_*.py"',
-                "-not", "-name", '"*__init__.py"',
-                "-print0"]
-    line_cmd = ["xargs", "-0", "wc", "-l"]
-    sort_cmd = "sort"
+    def store_count(self, fpath):
+        cmd = self.cmd("wc", "-l", fpath)
+        cmd.execute()
+        self.counts.append(cmd.result.strip())
 
-    target = locs.build / "linecounts.report"
+    def write_report(self):
+        report = [
+            "Line Count Report:",
+            "--------------------",
+            "",
+        ] + sorted(self.counts, key=lambda x: int(x.split(" ")[0]))
 
-    return {
-        "basename"  : "line-report",
-        "actions"   : [ f"{find_cmd} | {line_cmd} | {sort_cmd} > {target}" ],
-        "targets"   : [ target ],
-        "task_dep"  : ["_checkdir::build"],
-        "clean"     : True,
-        "verbosity" : 2,
-    }
+
+        self.output.write_text("\n".join(report)

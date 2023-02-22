@@ -17,6 +17,9 @@ from doot import globber
 
 ##-- end imports
 
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.targeted import TargetedMixin
+
 src_ext      : Final = doot.config.on_fail(".lp", str).tool.doot.clingo.src_ext()
 out_ext      : Final = doot.config.on_fail(".lp_result", str).tool.doot.clingo.out_ext()
 
@@ -32,7 +35,7 @@ class TODOClingoCheck:
     """
     pass
 
-class ClingoRunner(globber.DootEagerGlobber, ActionsMixin):
+class ClingoRunner(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     ([src] -> build) Run clingo on ansprolog sources
     """
@@ -41,21 +44,24 @@ class ClingoRunner(globber.DootEagerGlobber, ActionsMixin):
         super().__init__(name, locs, roots or [locs.src], exts=[src_ext], rec=rec)
         self.locs.ensure("build")
 
+    def set_params(self):
+        return self.target_params()
+
     def subtask_detail(self, task, fpath=None):
         target = self.locs.build / path.with_suffix(out_ext).name
         task.update({
             "file_dep" : [ fpath ],
             "targets"  : [ target ],
-            "actions"  :[ self.cmd(self.clingo_call, save="result"),
-                          (self.write_to, [target, "result"])
-                         ]
+            "actions"  : [ self.cmd(self.clingo_call, fpath, save="result"),
+                           (self.write_to, [target, "result"])
+                          ]
         })
         return task
 
-    def clingo_call(self, task, dependencies):
-        return clingo_call + dependencies
+    def clingo_call(self, fpath):
+        return clingo_call + [fpath]
 
-class ClingoDotter(globber.DootEagerGlobber, ActionsMixin):
+class ClingoDotter(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     ([src] -> build) Run specified clingo files to output json able to be visualised
     """
@@ -64,21 +70,25 @@ class ClingoDotter(globber.DootEagerGlobber, ActionsMixin):
         super().__init__(name, locs, roots or [locs.src], exts=[vis_src_ext], rec=rec)
         self.locs.ensure("build")
 
+    def set_params(self):
+        return self.target_params()
+
     def subtask_detail(self, task, fpath=None):
         target = self.locs.build / path.with_suffix(vis_in_ext).name
         task.update({
             "targets"  : [ target ],
             "file_dep" : [ fpath ],
-            "actions" : [self.cmd(self.json_call, save="result"),
-                         (self.write_to, [target, "result"])]
-            })
+            "actions" :  [ self.cmd(self.json_call, fpath, save="result"),
+                           (self.write_to, [target, "result"])
+                          ]
+        })
         return task
 
-    def json_call(self, task, dependencies):
-        return ["clingo", "--outf2"] + dependencies
+    def json_call(self, fpath):
+        return clingo_call + ["--outf2", fpath]
 
 
-class TODOClingoVisualise(globber.DootEagerGlobber, ActionsMixin):
+class TODOClingoVisualise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     ([src] -> visual) Take clingo output with nodes,
     and convert to dot format
@@ -87,6 +97,9 @@ class TODOClingoVisualise(globber.DootEagerGlobber, ActionsMixin):
     def __init__(self, name="clingo::visual", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=[vis_in_ext], rec=rec)
         self.locs.ensure("visual")
+
+    def set_params(self):
+        return self.target_params()
 
     def subtask_detail(self, task, fpath=None):
         target = self.locs.visual / targ_fname

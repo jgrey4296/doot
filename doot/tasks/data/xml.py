@@ -23,7 +23,10 @@ from doot import globber, tasker, task_mixins
 
 ##-- end imports
 
-class XmlElementsTask(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.targeted import TargetedMixin
+
+class XmlElementsTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> elements) xml element retrieval using xml starlet toolkit
     http://xmlstar.sourceforge.net/
@@ -33,28 +36,32 @@ class XmlElementsTask(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixin
         super().__init__(name, locs, roots or [locs.data], exts=[".xml"], rec=rec)
         self.locs.ensure("elements")
 
+    def set_params(self):
+        return self.target_params()
+
     def filter(self, fpath):
-        if any(x.suffix in self.exts for x in fpath.iterdir()):
+        if fpath.is_dir() and any(x.suffix in self.exts for x in fpath.iterdir()):
             return self.control.accept
         return self.control.discard
 
     def subtask_detail(self, task, fpath:dict=None) -> dict:
-        task.update({"targets" : [ self.locs.elements / (task['name'] + ".elements")],
-                     "clean"   : True,
-                     "actions" : [ self.cmd(self.generate_on_target, [fpath], save="elements"),
-                                   (self.write_to, [fpath, "elements"]),
-                                  ]
-                     })
+        task.update({
+            "targets" : [ self.locs.elements / (task['name'] + ".elements")],
+            "clean"   : True,
+            "actions" : [ self.cmd(self.generate_on_target, fpath, save="elements"),
+                          (self.write_to, [fpath, "elements"]),
+                         ]
+        })
         return task
 
     def generate_on_target(self, fpath, targets, task):
         """
         build an `xml el` command of all available xmls
         """
-        globbed = self.glob_files(fapth)
+        globbed = self.glob_target(fpath, fn=lambda x: x.is_file())
         return ["xml", "el", "-u", *globbed]
 
-class XmlSchemaTask(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class XmlSchemaTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> schema) Generate .xsd's from directories of xml files using trang
     https://relaxng.org/jclark/
@@ -64,8 +71,11 @@ class XmlSchemaTask(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.
         super().__init__(name, locs, roots or [locs.data], exts=[".xml"], rec=rec)
         self.locs.ensure("schema")
 
+    def set_params(self):
+        return self.target_params()
+
     def filter(self, fpath):
-        if any(x.suffix in self.exts for x in fpath.iterdir()):
+        if fpath.is_dir() and any(x.suffix in self.exts for x in fpath.iterdir()):
             return self.control.accept
         return self.control.discard
 
@@ -79,10 +89,10 @@ class XmlSchemaTask(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.
         return task
 
     def generate_on_target(self, fpath, targets, task):
-        globbed = self.glob_files(fpath)
+        globbed = self.glob_target(fpath, fn=lambda x: x.is_file())
         return ["trang", *globbed, *targets]
 
-class XmlPythonSchemaRaw(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class XmlPythonSchemaRaw(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> codegen) Generate Python Dataclass bindings based on raw XML data
     """
@@ -91,8 +101,11 @@ class XmlPythonSchemaRaw(globber.DirGlobMixin, globber.DootEagerGlobber, task_mi
         super().__init__(name, locs, roots or [locs.data], exts=[".xml"], rec=rec)
         self.locs.ensure("codegen")
 
+    def set_params(self):
+        return self.target_params()
+
     def filter(self, fpath):
-        if any(x.suffix in self.exts for x in fpath.iterdir()):
+        if fpath.is_dir() and any(x.suffix in self.exts for x in fpath.iterdir()):
             return self.control.accept
         return self.control.discard
 
@@ -117,7 +130,7 @@ class XmlPythonSchemaRaw(globber.DirGlobMixin, globber.DootEagerGlobber, task_mi
                 ]
         return args
 
-class XmlPythonSchemaXSD(globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class XmlPythonSchemaXSD(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> codegen) Generate python dataclass bindings from XSD's
     """
@@ -126,8 +139,11 @@ class XmlPythonSchemaXSD(globber.DootEagerGlobber, task_mixins.ActionsMixin):
         super().__init__(name, locs, roots or [locs.data], exts=[".xsd"], rec=rec)
         self.locs.ensure("build", "codegen")
 
+    def set_params(self):
+        return self.target_params()
+
     def filter(self, fpath):
-        if any(x.suffix in self.exts for x in fpath.iterdir()):
+        if fpath.is_dir() and any(x.suffix in self.exts for x in fpath.iterdir()):
             return self.control.accept
         return self.control.discard
 
@@ -137,7 +153,7 @@ class XmlPythonSchemaXSD(globber.DootEagerGlobber, task_mixins.ActionsMixin):
             "targets"  : [ gen_package ],
             "file_dep" : [ fpath ],
             "task_dep" : [ "_xsdata::config"],
-            "actions" : [self.cmd(self.gen_target, fpath, gen_package) ],
+            "actions"  : [self.cmd(self.gen_target, fpath, gen_package) ],
             })
         return task
 
@@ -154,7 +170,7 @@ class XmlPythonSchemaXSD(globber.DootEagerGlobber, task_mixins.ActionsMixin):
 
         return args
 
-class XmlSchemaVisualiseTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class XmlSchemaVisualiseTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> visual) Generate Plantuml files ready for plantuml to generate images
     """
@@ -163,8 +179,11 @@ class XmlSchemaVisualiseTask(globber.DootEagerGlobber, task_mixins.ActionsMixin)
         super().__init__(name, locs, roots or [locs.data], exts=[".xsd"], rec=rec)
         self.locs.ensure("visual")
 
+    def set_params(self):
+        return self.target_params()
+
     def filter(self, fpath):
-        if any(x.suffix in self.exts for x in fpath.iterdir()):
+        if fpath.is_dir() and any(x.suffix in self.exts for x in fpath.iterdir()):
             return self.control.accept
         return self.control.discard
 
@@ -173,14 +192,14 @@ class XmlSchemaVisualiseTask(globber.DootEagerGlobber, task_mixins.ActionsMixin)
             "targets"  : [ self.locs.visual / (task['name'] + ".plantuml") ],
             "file_dep" : [ fpath ],
             "task_dep" : [ "_xsdata::config" ],
-            "actions" : [self.cmd([ "xsdata", "generate", "-o", "plantuml", "-pp", fpath], save="result")
+            "actions" : [self.cmd("xsdata", "generate", "-o", "plantuml", "-pp", fpath, save="result")
                          (self.write_to, [fpath, "result"])
                          ],
             "clean"    : True,
             })
         return task
 
-class XmlValidateTask(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class XmlValidateTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data]) Validate xml's by schemas
     """
@@ -191,15 +210,19 @@ class XmlValidateTask(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixin
         if self.xsd is None:
             raise Exception("For Xml Validation you need to specify an xsd to validate against")
 
+    def set_params(self):
+        return self.target_params()
+
     def filter(self, fpath):
-        if any(x.suffix in self.exts for x in fpath.iterdir()):
+        if fpath.is_dir() and any(x.suffix in self.exts for x in fpath.iterdir()):
             return self.control.accept
         return self.control.discard
 
     def subtask_detail(self, task, fpath=None):
         task.update({
             "actions" : [ self.cmd(self.validate, fpath)]
-                    })
+        })
+        return task
 
     def validate(self, fpath):
         args = ["xml", "val",
@@ -208,31 +231,38 @@ class XmlValidateTask(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixin
                 "--xsd"  # xsd schema
                 ]
         args.append(self.xsd)
-        args += self.glob_files(fpath)
+        args += self.glob_target(fpath, fn=lambda x: x.is_file())
         return args
 
-class XmlFormatTask(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class XmlFormatTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([data] -> data) Basic Formatting with backup
-    TODO cleanup backups
     """
 
     def __init__(self, name="xml::format", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".xml", ".xhtml", ".html"], rec=rec)
 
+    def set_params(self):
+        return self.target_params()
+
     def filter(self, fpath):
-        if any(x.suffix in self.exts for x in fpath.iterdir()):
+        if fpath.is_dir() and any(x.suffix in self.exts for x in fpath.iterdir()):
             return self.control.accept
         return self.control.discard
 
     def subtask_detail(self, task, fpath=None):
-        task.update({'actions': [ (self.format_xmls, [fpath] )]})
+        task.update({
+            'actions': [ (self.format_xmls, [fpath] )]
+        })
         return task
 
     def format_xmls(self, fpath):
-        globbed  = self.glob_files(fpath)
-        self.backup_xmls(globbed)
+        globbed  = self.glob_target(fpath, fn=lambda x: x.is_file())
         for target in globbed:
+            backup = btarget.with_suffix(f"{btarget.suffix}.backup")
+            if not backup.exists():
+                backup.write_text(btarget.read_text())
+
             args = ["xml" , "fo",
                     "-s", "4",     # indent 4 spaces
                     "-R",          # Recover
@@ -248,12 +278,3 @@ class XmlFormatTask(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.
             cmd.execute()
             target.write_text(cmd.out)
 
-    def backup_xmls(self, globbed):
-        """
-        Find all applicable files, and copy them
-        """
-        for btarget in globbed:
-            backup = btarget.with_suffix(f"{btarget.suffix}.backup")
-            if backup.exists():
-                continue
-            backup.write_text(btarget.read_text())

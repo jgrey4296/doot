@@ -30,10 +30,12 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.targeted import TargetedMixin
 import doot
 from doot import tasker, globber, task_mixins
 
-class MoveLogs(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class MoveLogs(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     Move logs in the direct root directory, to a logs directory
     """
@@ -42,6 +44,14 @@ class MoveLogs(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.Acti
         super().__init__(name, locs, roots=roots or [locs.root], rec=False)
         self.output      = locs.logs
         self.history_reg = re.compile(r"^..+?_history")
+
+    def set_params(self):
+        return self.target_params()
+
+    def filter(self, fpath):
+        if fpath.is_dir():
+            return self.globc.accept
+        return self.globc.discard
 
     def subtask_detail(self, task, fpath):
         task.update({

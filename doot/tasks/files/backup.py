@@ -32,25 +32,29 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import time
-
 import sys
 import shutil
 import doot
 from doot import tasker, globber, task_mixins
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.targeted import TargetedMixin
 
+batch_size       = doot.config.on_fail(10, int).tool.doot.batch.size()
+sleep_batch      = doot.config.on_fail(2.0,   int|float).tool.doot.batch.sleep()
 
-class BackupTask(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.BatchMixin):
+class BackupTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
     """
     copy all files to the target if they are newer or don't exist
     """
+
     def __init__(self, name="backup::default", locs=None, roots=None, output=None):
         super().__init__(name, locs, roots, rec=True, output=output)
 
+    def set_params(self):
+        return self.target_params()
+
     def task_detail(self, task):
-        task.update({
-            "actions" : [ self.backup_files ],
-            "verbosity" : 2,
-        })
+        task.update({})
         return task
 
     def filter(self, fpath):
@@ -72,28 +76,40 @@ class BackupTask(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.Ba
 
         return self.control.reject
 
-    def backup_files(self):
-        globbed = super(globber.LazyGlobMixin, self).glob_all()
-        if not bool(globbed):
-            print("No Changes", file=sys.stderr)
 
-        print(f"{self.base}: Globbed {len(globbed)}")
-        chunked = self.chunk(globbed)
-        self.run_batches(*chunked)
+    def subtask_detail(self, task, fpath):
+        actions = []
+        if fpath.is_dir():
+            actions.append( (self.backup_dir, [fpath]) )
+        else:
+            actions.append( (self.backup_file, [fpath]) )
 
-    def batch(self, data):
-        for name, fpath in data:
-            rel_path      = self.rel_path(fpath)
-            target        = self.output / rel_path
-            target_parent = target.parent
-            if not target_parent.exists():
-                logging.debug(f"Making Directory: {target_parent}")
-                target_parent.mkdir(parents=True)
+        if task.get('meta', {}).get('n', 1) % batch_size == 0;
+            actions.append(lambda: sleep(sleep_batch))
 
-            if fpath.is_dir():
-                logging.debug(f"Copying Tree: {fpath} -> {target}")
-                shutil.copytree(fpath, target)
-                continue
+        task.update({
+            "actions" : actions,
+        })
+        return fpath
 
-            logging.debug(f"Copying File: {fpath}")
-            shutil.copy(fpath, target)
+    def backup_file(self, fpath):
+        rel_path      = self.rel_path(fpath)
+        target        = self.output / rel_path
+        target_parent = target.parent
+        if not target_parent.exists():
+            logging.debug(f"Making Directory: {target_parent}")
+            target_parent.mkdir(parents=True)
+
+        logging.debug(f"Copying File: {fpath}")
+        shutil.copy(fpath, target)
+
+    def backup_dir(self, fpath):
+        rel_path      = self.rel_path(fpath)
+        target        = self.output / rel_path
+        target_parent = target.parent
+        if not target_parent.exists():
+            logging.debug(f"Making Directory: {target_parent}")
+            target_parent.mkdir(parents=True)
+
+        logging.debug(f"Copying Tree: {fpath} -> {target}")
+        shutil.copytree(fpath, target)

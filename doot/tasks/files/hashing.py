@@ -35,11 +35,14 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 from hashlib import sha256
-from doot.task_mixins import TargetedMixin, BatchMixin
 from doit.exceptions import TaskFailed
 from collections import defaultdict
 import fileinput
 import re
+
+from doot.mixins.batch import BatchMixin
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.targeted import TargetedMixin
 
 batch_size   : Final= doot.config.on_fail(10, int).tool.doot.batch.size()
 
@@ -47,7 +50,7 @@ hash_record  : Final = doot.config.on_fail(".hashes", str).tool.doot.files.hash.
 hash_concat  : Final = doot.config.on_fail(".all_hashes", str).tool.doot.files.hash.grouped()
 hash_dups    : Final = doot.config.on_fail(".dup_hashes", str).tool.doot.files.hash.duplicates()
 
-class HashAllFiles(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin, task_mixins.BatchMixin, TargetedMixin):
+class HashAllFiles(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin, task_mixins.BatchMixin):
     """
     ([data] -> data) For each subdir, hash all the files in it to .hashes
 
@@ -59,24 +62,17 @@ class HashAllFiles(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEage
         self.hash_record    = hash_record
         self.check_fn       = lambda x: x.is_file() and x.name[0] != "."
 
+    def set_params(self):
+        return self.target_params()
+
     def clean(self, task):
         for root in self.roots:
             for fpath in root.rglob(self.hash_record):
                 logging.info("Would Delete: %s", fpath)
 
-    def set_params(self):
-        return self.target_params()
-
-    def task_detail(self, task):
-        task.update({
-            "actions" : [ self.hash_in_dirs ],
-        })
-        return task
-
     def filter(self, fpath):
-        is_cache = fpath != pl.Path() and fpath.name[0] in "."
-        if is_cache:
-            return self.control.reject
+        if fpath.is_file():
+            return self.control.discard
 
         for x in fpath.iterdir():
             if self.check_fn(x):
@@ -84,110 +80,93 @@ class HashAllFiles(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEage
 
         return self.control.discard
 
-    def hash_in_dirs(self):
-        """
-        Glob for applicable directories
-        """
-        chunks = self.target_chunks(base=globber.LazyGlobMixin)
-        self.run_batches(*chunks)
+    def subtask_detail(self, task, fpath):
+        hash_file = fpath / self.hash_record
 
-    def batch(self, data):
-        """
-        For each applicable directory, hash files as necessary
-        """
-        for name, fpath in data:
-            logging.info("Processing: %s", fpath)
-            dir_contents = self.glob_files(fpath, rec=False, fn=self.check_fn)
-            if not bool(dir_contents):
-                continue
-            logging.debug("%s Dir Contents: %s", fpath, dir_contents)
-
-            hash_file    = self.load_hashed(fpath)
-            if not hash_file.exists():
-                self.cmd(["touch", fpath / self.hash_record]).execute()
-
-            chunks       = self.chunk((x for x in dir_contents if str(x) not in self.current_hashed), self.args['chunkSize'])
-            self.run_batches(*chunks, fn=self.batch_hash, target=fpath / self.hash_record)
+        task.update({
+            "actions" : [
+                (self.load_hashed, hash_file),
+                (self.hash_dir, fpath, hash_file)
+            ],
+            "targets" : [ hash_file ],
+        })
+        return task
 
     def load_hashed(self, fpath):
         self.current_hashed.clear()
-        hash_file           = fpath / self.hash_record
-        if not hash_file.exists():
-            return hash_file
-        hashes              = [x.split(" ") for x in hash_file.read_text().split("\n") if bool(x)]
+        if not fpath.exists():
+            return
+
+        hashes              = [x.split(" ") for x in fpath.read_text().split("\n") if bool(x)]
         self.current_hashed = {" ".join(xs[1:]).strip():xs[0] for xs in hashes}
-        return hash_file
 
-    def batch_hash(self, data, target=None):
-        assert(target is not None)
+    def sub_filter(self, fpath):
+        if fpath.is_file() and fpath.name != self.hash_record and str(fpath) not in self.current_hashed:
+            return self.globc.keep
+        return self.globc.discard
+
+    def hash_dir(self, fpath, hash_file):
+        """
+        Glob for applicable directories
+        """
+        chunks = self.chunk(self.glob_target(fpath, rec=False, fn=self.sub_filter))
+        self.run_batches(*chunks, hash_file=hash_file)
+
+    def batch(self, data, hash_file=None):
+        """
+        For each applicable directory, hash files as necessary
+        """
+        if not bool(data):
+            return
         try:
-            fpaths = [x for x in data if x.name != self.hash_record]
-            if not bool(fpaths):
-                return
-
             logging.info("Batch Count: %s (size: %s)", self.batch_count, len(data))
             # -r puts the hash first, making it easier to run `uniq` later
-            act = self.cmd(["md5", "-r"] + fpaths)
+            act = self.cmd("md5", "-r", *data)
             act.execute()
+            with open(hash_file, 'a') as f:
+                print(act.out, file=f)
+
         except TypeError as err:
             print(err, file=sys.stderr)
             raise err
 
-        with open(target, 'a') as f:
-            f.write("\n" + act.out)
-
-class GroupHashes(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin, TargetedMixin, task_mixins.BatchMixin):
+class GroupHashes(tasker.DootTasker, task_mixins.ActionsMixin):
     """
     Concat all .hashes files together, to prep for duplicate detection
     """
 
-    def __init__(self, name="files::hash.group", locs:DootLocData=None, roots=None, exts=None, rec=True):
-        super().__init__(name, locs, roots or [locs.data], exts=exts, rec=rec)
+    def __init__(self, name="files::hash.group", locs=None):
+        super().__init__(name, locs)
         self.hash_record    = hash_record
         self.hash_concat    = hash_concat
         self.output         = locs.temp / self.hash_concat
-
-    def set_params(self):
-        return self.target_params()
+        self.locs.ensure("data")
 
     def setup_detail(self, task):
         task.update({
             "actions" : [
                 (self.rmfiles, [self.output]),
-                self.cmd(["touch", self.output ]),
+                self.cmd("touch", self.output),
             ],
         })
         return task
 
-    def is_current(self, task):
-        match self.args:
-            case {'all': False, 'target': None}:
-                return True
-            case _:
-                return False
-
     def task_detail(self, task):
         task.update({
-            "actions" : [ self.concat_all_hash_files ],
             "targets" : [ self.output ],
+            "actions" : [ self.concat_hash_files ],
             "clean"   : True,
         })
         return task
 
-    def filter(self, fpath):
-        if fpath.name == self.hash_record:
-            return self.control.accept
-        return self.control.discard
+    def concat_hash_files(self):
+        globbed = list(self.locs.data.rglob(self.hash_record))
+        if not bool(globbed):
+            return
 
-    def concat_all_hash_files(self):
-        chunks = self.target_chunks(base=globber.LazyGlobMixin)
-        self.run_batches(*chunks)
-
-    def batch(self, data):
-        logging.debug("Hash Concat: %s", data)
-        with open(self.output, 'a') as f:
-            for name, fpath in data:
-                f.write("\n" + fpath.read_text())
+        with open(self.output, "w") as allHashes:
+            for line in fileinput.input(files=globbed):
+                print(line, end="", file=allHashes)
 
 class RemoveMissingHashes(tasker.DootTasker, task_mixins.ActionsMixin):
     """
@@ -244,9 +223,6 @@ class DetectDuplicateHashes(tasker.DootTasker, task_mixins.ActionsMixin):
         self.output          = self.locs.build / hash_dups
         self.locs.ensure("temp")
 
-    def is_current(self, task):
-        return False
-
     def task_detail(self, task):
         task.update({
             "actions"  : [
@@ -298,9 +274,9 @@ class DeleteDuplicates(tasker.DootTasker, task_mixins.ActionsMixin):
 
     def __init__(self, name="files::dups.rm", locs=None):
         super().__init__(name, locs)
-        self.target = self.locs.build / hash_dups
-        self.num_re = re.compile(r"\(\d+\)$")
-        self.output = self.locs.build / "to_delete"
+        self.target     = self.locs.build / hash_dups
+        self.num_re     = re.compile(r"\(\d+\)$")
+        self.output     = self.locs.build / "to_delete"
         self.delete_log = []
 
     def set_params(self):
@@ -322,7 +298,6 @@ class DeleteDuplicates(tasker.DootTasker, task_mixins.ActionsMixin):
             ],
         })
         return task
-
 
     def _select_process(self):
         """
@@ -430,7 +405,6 @@ class DeleteDuplicates(tasker.DootTasker, task_mixins.ActionsMixin):
 
                 del_strs = "\n".join([str(x) for x in delete_list])
                 print(del_strs, file=f)
-
 
 class RepeatDeletions(tasker.DootTasker, task_mixins.ActionsMixin, BatchMixin):
     """

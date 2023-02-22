@@ -36,6 +36,9 @@ import doot
 from doot import tasker, globber, task_mixins
 from doot.tasker import DootTasker
 from doit.exceptions import TaskError
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.targeted import TargetedMixin
+
 
 mbsync  = shutil.which("mbsync")
 rustup  = shutil.which("rustup")
@@ -297,15 +300,17 @@ class CronMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMixi
         })
         return task
 
-class GitMaintain(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.FilerMixin, task_mixins.CommanderMixin):
+class GitMaintain(DelayedMixin, globber.DootEagerGlobber, task_mixins.FilerMixin, task_mixins.CommanderMixin):
 
     def __init__(self, name="_maintain::git", locs=None, roots=None):
         super().__init__(name, locs, roots or [locs.github], rec=True)
         locs.ensure("maintain")
+        self.output = self.locs.maintain / "git.version", "git"
+
 
     def filter(self, fpath):
         try:
-            self.cmd([git, "rev-parse", "--is-inside-work-tree"]).execute()
+            self.cmd(git, "rev-parse", "--is-inside-work-tree").execute()
             return self.control.keep
         except TaskError:
             return self.control.discard
@@ -314,7 +319,7 @@ class GitMaintain(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEager
         task.update({
             "actions" : [
                 self.cmd([git, "--version"], save="git"),
-                (self.write_to, [self.locs.maintain / "git.version", "git"]),
+                (self.write_to, [self.output, "git"]),
             ],
         })
         return task
@@ -326,17 +331,15 @@ class GitMaintain(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEager
         task.update({
             "actions" : [
                 (self.log, ["Recording Git Repo Urls", logmod.INFO]),
-                self.get_repo_urls,
             ],
         })
         return task
 
-    def get_repo_urls(self):
-        globbed = super(globber.LazyGlobMixin, self).glob_all()
-        results = []
-        for name, fpath in globbed:
-            cmd = self.cmd([git, "config", "--get-regexp", "url"], save="urls")
-            cmd.execute()
-            results += cmd.result.split("\n")
-
-        (self.locs.maintain / "git.urls").write_text("\n".join(sorted(results)))
+    def subtask_detail(self, task, fpath):
+        task.update({
+            "actions" : [
+                self.cmd([git, "config", "--get-regexp", "url"], save="urls"),
+                (self.append_to, [self.output, "urls"]),
+            ],
+        })
+        return task

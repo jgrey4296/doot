@@ -30,40 +30,114 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.targeted import TargetedMixin
 from doot import globber,tasker, task_mixins
 
-class DotVisualise(globber.DootEagerGlobber, task_mixins.ActionsMixin):
+dot_scale  = doot.config.on_fail(72.0, float).tool.doot.dot_graph.scale()
+dot_layout = doot.config.on_fail("neato", str).tool.doot.dot_graph.layout()
+dot_ext    = doot.config.on_fail("png", str).tool.doot.dot_graph.ext()
+
+plant_ext  = doot.config.on_fail("png", str).tool.doot.plantuml.ext()
+
+class DotVisualise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     ([src] -> build) make images from any dot files
     https://graphviz.org/doc/info/command.html
     """
 
-    def __init__(self, name=None, locs:DootLocData=None, roots=None, ext="png", layout="neato", scale:float=72.0, rec=True):
-        name = name or f"dot::{ext}"
+    def __init__(self, name=f"dot::visual", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=[".dot"], rec=rec)
-        self.ext       = ext
-        self.layout    = layout
-        self.scale     = scale
-        self.locs.ensure("build")
+        self.output = self.locs.build
+
+    def set_params(self):
+        return self.target_params() + [
+            { "name" : "layout", "type": str,   "short": "l", "default": dot_layout},
+            { "name" : "scale" , "type": float, "short", "s", "default": dot_scale},
+            { "name" : "ext",    "type": str,   "short": "e", "default": dot_ext}
+        ]
 
     def subtask_detail(self, task, fpath=None):
         task.update({
             "file_dep" : [ fpath ],
             "targets"  : [ self.locs.build / fpath.with_suffix(f".{self.ext}").name ],
             "clean"    : True,
-            "actions"  : [ self.cmd(self.run_on_target) ],
+            "actions"  : [ self.cmd(self.visualise_graph) ],
             })
         return task
 
-    def run_on_target(self, dependencies, targets):
+    def visualise_graph(self, dependencies, targets):
         cmd = ["dot"]
         # Options:
-        cmd +=[f"-T{self.ext}", f"-K{self.layout}", f"-s{self.scale}"]
+        cmd +=[f"-T{self.args['ext']}", f"-K{self.args['layout']}", f"-s{self.args['scale']}"]
         # file to process:
         cmd.append(dependencies[0])
         # output to:
         cmd += ["-o", targets[0]]
         return cmd
+
+class PlantUMLGlobberTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+    """
+    ([visual] -> build) run plantuml on a specification, generating target.'ext's
+    """
+
+    def __init__(self, name="plantuml::visual",, locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+        super().__init__(name, locs, roots or [locs.src], exts=[".plantuml"], rec=True)
+        self.locs.ensure("visual", "build")
+        self.output = self.locs.build
+
+    def set_params(self):
+        return self.target_params() + [
+            { "name" : "ext", "type": str, "short": "e", "default": plant_ext},
+        ]
+
+    def subtask_detail(self, task, fpath=None):
+        targ_fname = fpath.with_suffix(f".{self.args['ext']}")
+        target     = self.locs.build / targ_fname.name
+        task.update({"targets"  : [ target ],
+                     "file_dep" : [ fpath ],
+                     "clean"     : True,
+                     "actions" : [ self.cmd(self.run_plantuml, target, fpath) ],
+                     })
+        return task
+
+    def run_plantuml(self, plOut, plIn):
+        return ["plantuml", f"-t{self.args['ext']}",
+                "-output", self.output.resolve(),
+                "-filename", plOut,
+                plIn
+                ]
+
+class PlantUMLGlobberCheck(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+    """
+    ([visual]) check syntax of plantuml files
+    """
+
+    def __init__(self, name="plantuml::check", locs=None, roots:list[pl.Path]=None, rec=True):
+        super().__init__(name, locs, roots or [locs.visual], exts=[".plantuml"], rec=rec)
+        self.locs.ensure(roots, 'visual')
+        self.output = self.locs.temp / "plantuml"/ "checked.report"
+
+    def set_params(self):
+        return self.target_params()
+
+    def task_detail(self, task):
+        task.update({
+            "targets": [ self.output ],
+            "clean"  : True,
+        })
+        return task
+
+    def subtask_detail(self, task, fpath=None):
+        task.update({
+            "file_dep" : [ fpath ],
+            "uptodate" : [ False ],
+            "actions"  : [
+                self.cmd("plantuml", "-checkonly", fpath, save="checked"),
+                (self.write_to, [self.output, "checked"]),
+            ],
+        })
+        return task
 
 class TODODotMakeGraph:
     """
@@ -76,52 +150,3 @@ class TODODotMakeGraph:
 
     def build(self):
         return {}
-
-class PlantUMLGlobberTask(globber.DootEagerGlobber, task_mixins.ActionsMixin):
-    """
-    ([visual] -> build) run plantuml on a specification, generating target.'ext's
-    """
-
-    def __init__(self, name=None, locs:DootLocData=None, roots:list[pl.Path]=None, fmt="png", rec=True):
-        name = name or f"plantuml::{fmt}"
-        super().__init__(name, locs, roots or [locs.src], exts=[".plantuml"], rec=True)
-        self.fmt       = fmt
-        self.locs.ensure("visual", "build")
-
-    def subtask_detail(self, task, fpath=None):
-        targ_fname = fpath.with_suffix(f".{self.fmt}")
-        task.update({"targets"  : [ self.locs.build / targ_fname.name],
-                     "file_dep" : [ fpath ],
-                     "task_dep" : [ f"plantuml::check:{task['name']}" ],
-                     "clean"     : True,
-                     "actions" : [ self.cmd(self.run_plantuml) ],
-                     })
-        return task
-
-    def run_plantuml(self, dependencies, targets):
-        return ["plantuml", f"-t{self.fmt}",
-                "-output", self.locs.build.resolve(),
-                "-filename", targets[0],
-                dependencies[0]
-                ]
-
-class PlantUMLGlobberCheck(globber.DootEagerGlobber, task_mixins.ActionsMixin):
-    """
-    ([visual]) check syntax of plantuml files
-    TODO Adapt godot::check pattern
-    """
-
-    def __init__(self, name="plantuml::check", locs=None, roots:list[pl.Path]=None, rec=True):
-        super().__init__(name, locs, roots or [locs.visual], exts=[".plantuml"], rec=rec)
-        self.locs.ensure(roots, 'visual')
-
-    def subtask_detail(self, task, fpath=None):
-        task.update({
-            "file_dep" : [ fpath ],
-            "uptodate" : [ False ],
-            "actions"  : [ self.cmd(self.check_action) ],
-            })
-        return task
-
-    def check_action(self, dependencies):
-        return ["plantuml", "-checkonly", *dependencies]

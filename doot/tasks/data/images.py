@@ -19,6 +19,7 @@ from doot.tasks.files import hashing
 
 ##-- end imports
 
+from doot.mixins.delayed import DelayedMixin
 import numpy as np
 import PIL
 from PIL import Image
@@ -52,7 +53,7 @@ def norm_img(img):
     norm_c1 = [x/y for x,y in zip(histograms, sums)]
     return np.array(norm_c1).reshape((1,-1))
 
-class OCRGlobber(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.BatchMixin, task_mixins.TargetedMixin):
+class OCRGlobber(DelayedMixin, task_mixins.TargetedMixin, globber.DootEagerGlobber, task_mixins.BatchMixin):
     """
     ([data] -> data) Run tesseract on applicable files in each found directory
     to make dot txt files of ocr'd text from the image
@@ -67,56 +68,78 @@ class OCRGlobber(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerG
             self.ext_check_fn = lambda x: x.is_file()
 
     def set_params(self):
-        return self.target_params()
-
-    def filter(self, fpath):
-        is_cache = fpath != pl.Path() and fpath.name[0] in "._"
-        if is_cache:
-            return self.control.reject
-
-        for x in fpath.iterdir():
-            if self.ext_check_fn(x):
-                return self.control.accept
-
-        return self.control.discard
+        return self.target_params() + self.batch_params()
 
     def task_detail(self, task, fpath=None):
+        """
+        Top Level task
+        has all delayed subtasks as deps
+        """
         task.update({
-            "actions" : [ self.ocr_all ],
             "clean"   : [ self.clean_all ],
         })
         return task
 
+    def filter(self, fpath):
+        """
+        main filter, selects applicable directories
+        """
+        is_cache = fpath != pl.Path() and fpath.name[0] in "._"
+        if is_cache or not fpath.is_dir():
+            return self.control.reject
+
+        for x in fpath.iterdir():
+            if self.ext_check_fn(x):
+                return self.globc.accept
+
+        return self.control.discard
+
+    def ocr_filter(self, fpath):
+        """
+        selects applicable files that haven't been ocr'd
+        """
+        if self.ext_check_fn(fpath) and not self.ocr_file_name(fpath).exists():
+            return globc.accept
+        return globc.discard
+
     def clean_all(self):
-        chunks = self.target_chunks(base=globber.LazyGlobMixin)
-        self.run_batches(*chunks, fn=self.clean_ocr_results)
+        """
+        remove all ocr results
+        """
 
-    def clean_ocr_results(self, data):
-        for name, fpath in data:
-            for f in fpath.rglob(f".*{ocr_out_ext}"):
-                f.unlink()
+        def clean_ocr_results(data):
+            for name, fpath in data:
+                for f in fpath.rglob(f".*{ocr_out_ext}"):
+                    f.unlink()
 
-    def ocr_all(self):
-        chunks  = self.target_chunks(base=globbed.LazyGlobMixin)
+        chunks = self.chunk(self.glob_all())
+        self.run_batches(*chunks, fn=clean_ocr_results)
+
+    def subtask_detail(self, task, fpath):
+        """
+        Subtasks of each applicable directory
+        """
+        task.update({
+            "actions" : [ (self.ocr_dir, [fpath])],
+        })
+        return task
+
+    def ocr_dir(self, fpath):
+        chunks  = self.chunk(self.glob_target(root=fpath, fn=self.ocr_filter))
         self.run_batches(*chunks)
+
+    def get_ocr_file_name(self, fpath):
+        return fpath.parent / f".{fpath.stem}{ocr_out_ext}"
 
     def batch(self, data):
         for name, fpath in data:
-            file_chunks = self.chunk((x for x in fpath.iterdir() if x.suffix in self.exts and not self.ocr_file_name(x).exists()))
-            self.run_batches(*chunks, fn=self.batch_on_files)
-
-    def batch_on_files(self, data):
-        for src in data:
-            dst        = self.get_ocr_file_name(src)
+            dst        = self.get_ocr_file_name(fpath)
             ocr_cmd    = self.cmd("tesseract", src, dst.stem, "--psm", "1",  "-l", "eng")
             mv_txt_cmd = self.cmd("mv", dst.with_suffix(".txt").name, dst)
             ocr_cmd.execute()
             mv_txt_cmd.execute()
 
-    def get_ocr_file_name(self, fpath):
-        return fpath.parent / f".{fpath.stem}{ocr_out_ext}"
-
-class Images2PDF(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin, task_mixins.BatchMixin):
+class TODOImages2PDF(task_mixins.TargetedMixin, tasker.DootTasker, task_mixins.ActionsMixin, task_mixins.BatchMixin):
     """
     Combine globbed images into a single pdf file using imagemagick
     """
@@ -124,11 +147,12 @@ class Images2PDF(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.Ac
     def __init__(self, name="images::pdf", locs=None, roots=None, exts=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=exts or default_pdf_exts, rec=rec)
         self.locs.ensure("build", "temp")
+        raise NotImplementedError()
 
     def set_params(self):
         return [
             { "name": "name", "short": "n", "type": str, "default": "collected"}
-        ]
+        ] + self.target_params() + self.batch_params()
 
     def task_detail(self, task):
         task.update({
@@ -142,8 +166,8 @@ class Images2PDF(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.Ac
         })
         return task
 
-    def find_and_process(self):
-        globbed = super(globber.LazyGlobMixin, self).glob_all()
+    def find_and_process(self, fpath):
+        globbed = self.glob_target(fpath),
         chunks = self.chunk(globbed)
         self.run_batches(*chunks)
 
@@ -161,7 +185,7 @@ class Images2PDF(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.Ac
         pages = [x for x in self.locs.temp.iterdir() if x.suffix == ".pdf"]
         return ["pdftk", *pages, "cat", "output", targets[0]]
 
-class TODOImages2Video(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class TODOImages2Video(DelayedMixin, task_mixins.TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     https://stackoverflow.com/questions/24961127/
     """

@@ -35,8 +35,10 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.targeted import TargetedMixin
 
-class GodotCheckTask(globber.DootEagerGlobber, ActionsMixin):
+class GodotCheckTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     ([root]) Lint all gd scripts in the project
     """
@@ -44,6 +46,9 @@ class GodotCheckTask(globber.DootEagerGlobber, ActionsMixin):
         super().__init__(name, locs, roots or [locs.root], exts=[".gd"], rec=rec)
         self.failures = set()
         self.locs.ensure("build")
+
+    def set_params(self):
+        return self.target_params()
 
     def setup_detail(self, task):
         task.update({
@@ -54,18 +59,18 @@ class GodotCheckTask(globber.DootEagerGlobber, ActionsMixin):
         return task
 
 
-    def subtask_detail(self, task, fpath=None):
-        task.update({"actions"   : [
-            self.force(self.build_check,
-                       handler=partial(self.handle_failure, fpath)),
-        ],
-                     "file_dep"  : [ fpath ],
-                     "uptodate" : [False],
-                     })
+    def subtask_detail(self, task, fpath):
+        task.update({
+            "actions"  : [
+                self.force(self.build_check, fpath, handler=partial(self.handle_failure, fpath)),
+            ],
+            "file_dep" : [ fpath ],
+            "uptodate" : [ False ],
+        })
         return task
 
-    def build_check(self, dependencies):
-        return ["godot", "--no-window", "--check-only", "--script", *dependencies]
+    def build_check(self, fpath):
+        return ["godot", "--no-window", "--check-only", "--script", fpath]
 
     def handle_failure(self, fpath, result):
         print("Errors Found in: ", fpath)
@@ -77,7 +82,8 @@ class GodotCheckTask(globber.DootEagerGlobber, ActionsMixin):
             return
 
         report = ["==========",
-                  "Failures Reported In:"]
+                  "Failures Reported In:",
+                  ]
         report += [f"- {fail}" for fail in self.failures]
         report += ["=========="]
         print("\n".join(report))

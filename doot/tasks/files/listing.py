@@ -10,10 +10,13 @@ from doot import tasker, globber, task_mixins
 
 ##-- end imports
 
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.targeted import TargetedMixin
+
 listing_roots = doot.config.on_fail([], list).tool.doot.listing.core()
 glob_ignores : Final = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).tool.doot.globbing.ignores()
 
-class FileListings(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class FileListings(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     (-> build )list all files in the targ directory,
     to the build_dir/allfiles.report
@@ -25,10 +28,9 @@ class FileListings(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.A
         self.output = self.locs.on_fail(self.locs.build).listings_out()
 
     def filter(self, fpath):
-        if fpath.exists():
-            return self.control.accept
-
-        self.control.reject
+        if fpath.is_dir():
+            return self.control.keep
+        self.control.discard
 
     def subtask_detail(self, task, fpath):
         report = self.output / f"{task['name']}.listing"
@@ -66,5 +68,3 @@ class SimpleListing(tasker.DootTasker, task_mixins.ActionsMixin):
             "verbosity": 1,
         })
         return task
-
-

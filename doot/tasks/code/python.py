@@ -19,6 +19,9 @@ import logging as logmod
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.targeted import TargetedMixin
+
 lint_config     : Final = doot.config.on_fail("pylint.toml", str).tool.doot.python.lint.config()
 lint_exec       : Final = doot.config.on_fail("pylint", str).tool.doot.python.lint.exec()
 lint_fmt        : Final = doot.config.on_fail("text", str).tool.doot.python.lint.output_format()
@@ -30,66 +33,49 @@ py_test_dir_fmt : Final = doot.config.on_fail("__test", str).tool.doot.python.te
 py_test_args    : Final = doot.config.on_fail([], list).tool.doot.python.test.args()
 py_test_out     : Final = pl.Path(doot.config.on_fail("result.test", str).tool.doot.python.test())
 
-class InitPyGlobber(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
+class InitPyGlobber(DelayedMixin, TargetedMixin, globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """ ([src] -> src) add missing __init__.py's """
 
     def __init__(self, name=f"py::initpy", locs:DootLocData=None, roots=None, rec=False):
         super().__init__(name, locs, roots or [locs.src], rec=rec)
         self.ignores = ["__pycache__", ".git", "__mypy_cache__"]
 
+    def set_params(self):
+        return self.target_params()
+
     def filter(self, fpath):
-        if fpath.name[0] in "_.":
-            return self.control.reject
-        return self.control.accept
+        if fpath.is_dir() and bool(list(fpath.glob("*.py"))) and not (fpath / "__init__.py").exists():
+            return self.control.keep
+        return self.control.reject
 
     def subtask_detail(self, task, fpath=None):
-        task['actions'] += [ (self.touch_initpys, [fpath]) ]
+        task['actions'] += [ self.cmd("touch", fpath / "__init__.py") ]
         return task
 
-    def touch_initpys(self, fpath):
-        queue = [ fpath ]
-        while bool(queue):
-            current = queue.pop()
-            if current.is_file():
-                continue
-            if current.name in self.ignores:
-                continue
-
-            queue += list(current.iterdir())
-
-            inpy = current / "__init__.py"
-            inpy.touch()
-
-class PyLintTask(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
+class PyLintTask(DelayedMixin, TargetedMixin, globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """ ([root]) lint the package """
 
     def __init__(self, name=f"py::lint", locs:DootLocData=None, rec=None, exts=None):
         super().__init__(name, locs, [locs.root], rec=rec or not lint_grouped, exts=exts or [".py"])
         self.output = self.locs.on_fail(self.locs.build).lint_out()
 
-    def filter(self, fpath):
-        match [x.stem for x in fpath.glob("*.py")]:
-            case []:
-                return self.control.discard
-            case ["__init__"]:
-                return self.control.discard
-            case [*others] if bool(others) and "__init__" in others:
-                return self.control.accept
-            case _:
-                return self.control.discard
-
     def set_params(self):
         return [
-            {"name": "verbose", "type": bool, "default": False, "short": "v"},
             {"name": "grouped", "type": bool, "default": lint_grouped, "short": "g"},
-        ]
+        ] + self.target_params()
+
+    def filter(self, fpath):
+        if fpath.is_dir() and bool(list(fpath.glob("*.py"))):
+            return self.globc.accept
+        return self.globc.discard
+
 
     def setup_detail(self, task):
         task.update({
             "verbosity" : 0,
             "targets"   : [ "pylint.toml" ],
-            "uptodate" : [ lambda task: pl.Path("pylint.toml").exists() ],
-            'actions' : [
+            "uptodate"  : [ lambda task: pl.Path("pylint.toml").exists() ],
+            'actions'   : [
                 (self.log, ["Generating Pylint Config Toml", logmod.INFO]),
                 self.cmd([lint_exec, "--generate-toml-config"], save="config"),
                 (self.write_to, [pl.Path("pylint.toml"), "config"]),
@@ -111,11 +97,10 @@ class PyLintTask(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
             ],
             "targets"   : [ target ],
             "clean"     : True,
-            "verbosity" : 2 if self.args['verbose'] else 1,
         })
         return task
 
-    def run_lint(self, fpath, task):
+    def run_lint(self, fpath):
         args = [lint_exec, "--rcfile", lint_config, "--output-format", lint_fmt,
                 "-E" if lint_error else None, "--exit-zero",
                 ]
@@ -131,7 +116,7 @@ class PyLintTask(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
         else:
             fpath.write_text(task.values['lint'])
 
-class PyUnitTestGlob(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
+class PyUnitTestGlob(DelayedMixin, TargetedMixin, globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
     """
     ([root]) Run all project unit tests
     """
@@ -140,25 +125,32 @@ class PyUnitTestGlob(globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixi
         super().__init__(name, locs, roots or [locs.root], exts=[".py"], rec=rec)
         self.locs.ensure("build")
         self.output = self.locs.build
+
+    def set_params(self):
+        return self.target_params()
+
     def filter(self, fpath):
         if py_test_dir_fmt in fpath.name:
             return self.control.keep
+        return self.control.discard
 
     def subtask_detail(self, task, fpath=None):
         target = self.output / py_test_out.with_stem(task['name'])
-        task.update({"targets" : [ self.locs.build / target ],
-                     "actions" : [ self.cmd(self.run_tests, fpath, save="results"),
-                                   (self.write_to, [target, "results"])
-                                  ]
-                     })
+        task.update({
+            "targets" : [ target ],
+            "actions" : [ self.cmd(self.run_tests, fpath, save="results"),
+                          (self.write_to, [target, "results"])
+                         ]
+        })
+        return task
 
-    def run_tests(self, fpath, task):
+    def run_tests(self, fpath):
         args = ["python", "-X", "dev", "-m", "unittest", "discover", "-t", pl.Path()]
         args += py_test_args
         args.append(fpath)
         return args
 
-class PyParseRailroad(DootTasker):
+class TODOPyParseRailroad(DootTasker):
     """
     python "$(PY_TOP)/util/build_railroad.py" --parser instal.parser.v1 --out "$(DOCBUILDDIR)"
     """
