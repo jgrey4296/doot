@@ -253,7 +253,7 @@ class DootTaskExt(Task):
 
     def __init__(self, *args, **kwargs):
         pass
-        super().__init__(*args, **{x:y for x,y in kwargs.items() if x in Task.valid_attr})
+        super().__init__(*args, **{x:y for x,y in kwargs.items() if x in Task.valid_attr or x == 'loader'})
         if self.meta is None:
             self.meta = dict()
         self.meta.update({x:y for x,y in kwargs.items() if x not in Task.valid_attr})
