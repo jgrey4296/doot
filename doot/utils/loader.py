@@ -99,7 +99,7 @@ class DootLoader(NamespaceTaskLoader):
         creators = self._get_task_creators(self.namespace, self.cmd_names)
         self._build_task_list(creators, allow_delayed=cmd.execute_tasks, args=pos_args, config=self.config, task_opts=self.task_opts)
 
-        logging.debug("Tasks: %s", self.task_list)
+        logging.debug("Task List Size: %s", len(self.task_list))
 
         # Add task options from config, if present
         if self.config is not None:
@@ -189,7 +189,7 @@ class DootLoader(NamespaceTaskLoader):
         """
         Reimplementation of doit.loader.load_tasks
         """
-        logging.debug("Building Tasks")
+        logging.debug("Building Tasks from %s creators", len(creators))
 
         # Map arg_name to its position.
         # Save only args that do not start with `-` (potentially task names)
@@ -220,9 +220,9 @@ class DootLoader(NamespaceTaskLoader):
 
             match ref:
                 case DootTasker():
-                    self._process_gen(name, ref._build, creator_kwargs)
+                    self._process_creator(name, ref._build, creator_kwargs)
                 case _:
-                    self._process_gen(name, ref, creator_kwargs)
+                    self._process_creator(name, ref, creator_kwargs)
 
     def _add_delayed(self, tname, ref, original_delayed, kwargs):
         # Make sure create_after can be used on class methods.
@@ -230,6 +230,7 @@ class DootLoader(NamespaceTaskLoader):
         # so always an unbound function.
         # Here we re-assign with the reference taken on doit load phase
         # because it is bounded method.
+        logging.debug("Delaying: %s", tname)
         this_delayed = copy(original_delayed)
         this_delayed.creator = ref
         d_task = DootTaskExt(tname, None, loader=this_delayed, doc=original_delayed.creator.__doc__)
@@ -239,9 +240,9 @@ class DootLoader(NamespaceTaskLoader):
             d_task.creator_params = getattr(ref, '_task_creator_params', None)
         self.task_list.append(d_task)
 
-    def _process_gen(self, name, ref, creator_kwargs):
+    def _process_creator(self, name, ref, creator_kwargs):
         """process a task creator, generating tasks"""
-        logging.debug("Processing task generator")
+        logging.debug("Running task creator: %s", name)
         tasks = self._generate_tasks(name, ref(**creator_kwargs), ref.__doc__)
         if hasattr(ref, '_task_creator_params'):
             self._append_params(tasks, ref._task_creator_params)
@@ -259,8 +260,8 @@ class DootLoader(NamespaceTaskLoader):
         @return: (list - doit_loader.Task)
         """
         # a task instance, just return it without any processing
-        logging.debug("Generating Task for %s", func_name)
         if isinstance(gen_result, doit_loader.Task):
+            logging.debug("Task is a Task Object, nothing to do")
             return (gen_result,)
 
         # task described as a dictionary
@@ -269,6 +270,7 @@ class DootLoader(NamespaceTaskLoader):
 
         # a generator
         if inspect.isgenerator(gen_result):
+            logging.debug("Task is a generator, running")
             tasks = OrderedDict()  # task_name: task
             # the generator return subtasks as dictionaries
             for task_dict, x_doc in doit_loader.flat_generator(gen_result, gen_doc):
@@ -293,7 +295,7 @@ class DootLoader(NamespaceTaskLoader):
 
     def _generate_task_from_return(self, func_name, task_dict, gen_doc):
         """generate a single task from a dict returned by a task generator"""
-        logging.debug("Generator Returned a Value, building task from it")
+        logging.debug("Generator %s Returned a Value, building task from it", func_name)
         if 'name' in task_dict:
             raise doit_loader.InvalidTask("doit_loader.Task '%s'. Only subtasks use field name." %
                             func_name)
@@ -313,7 +315,7 @@ class DootLoader(NamespaceTaskLoader):
         @param tasks: dictionary with created tasks
         @return None: the created task is added to 'tasks' dict
         """
-        logging.debug("Generator yielded value, building task from it")
+        logging.debug("Generator %s yielded value, building task from it", func_name)
         # check valid input
         if not isinstance(task_dict, dict):
             raise doit_loader.InvalidTask("doit_loader.Task '%s' must yield dictionaries" % func_name)
@@ -365,6 +367,7 @@ class DootLoader(NamespaceTaskLoader):
             tasks[basename] = DootTaskExt(**task_dict)
 
     def _parse_creator_params(self, name, ref) -> dict:
+        logging.debug("Parsing Creator Params for: %s", name)
         creator_params = getattr(ref, '_task_creator_params', None)
         if creator_params is not None:
             parser = doit_loader.TaskParse([doit_loader.CmdOption(opt) for opt in creator_params])

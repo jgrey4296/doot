@@ -64,8 +64,7 @@ class DootTasker:
         assert(locs is not None or locs is False), locs
 
         # Wrap in a lambda because MethodType does not behave as we need it to
-        self.create_doit_tasks = lambda *a, **kw: self._build(*a, **kw)
-        self.create_doit_tasks.__dict__['basename'] = base
+        self.basename     = base
 
         self.base         = base
         self.locs         = locs
@@ -76,7 +75,7 @@ class DootTasker:
 
         params = self.set_params()
         if bool(params):
-            self.create_doit_tasks.__dict__['_task_creator_params'] = params
+            self._task_creator_params = params
 
     def set_params(self) -> list:
         return []
