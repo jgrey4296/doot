@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from types import LambdaType
 import datetime
 import fileinput
 import shutil
@@ -45,7 +46,7 @@ from doit.tools import Interactive
 from doot.errors import DootDirAbsent
 from doot.utils.general import ForceCmd
 from doot.utils.task_ext import DootTaskExt
-
+from doot.utils.task_namer import task_namer
 
 class DootTasker:
     """ Util Class for building single tasks
@@ -59,29 +60,52 @@ class DootTasker:
         DootTasker.sleep_subtask = config.on_fail(2.0,   int|float).tool.doot.subtask.sleep()
         DootTasker.sleep_notify  = config.on_fail(False, bool).tool.doot.notify.sleep()
 
-    def __init__(self, base:str, locs:DootLocData=None, output=None):
+    def __init__(self, base:str|list, locs:DootLocData=None, output=None, subgroups=None):
         assert(base is not None)
         assert(locs is not None or locs is False), locs
 
         # Wrap in a lambda because MethodType does not behave as we need it to
-        self.basename     = base
+        match base:
+            case str():
+                self.basename         = base
+                self.subgroups        = subgroups or []
+            case [x, *xs]:
+                self.basename = x
+                self.subgroups = xs + (subgroups or [])
+            case _:
+                raise TypeError("Bad base name provided to task: %s", base)
 
-        self.base         = base
-        self.locs         = locs
-        self.args         = {}
-        self._setup_name  = None
-        self.active_setup = False
-        self.output       = output
+        self.locs             = locs
+        self.args             = {}
+        self._setup_name      = None
+        self.has_active_setup = False
+        self.output           = output
 
-        params = self.set_params()
-        if bool(params):
-            self._task_creator_params = params
+    @property
+    def setup_name(self):
+        if self._setup_name is not None:
+            return self._setup_name
+
+        self._setup_name = task_namer(self.basename, "setup", private=True)
+        return self._setup_name
+
+    @property
+    def fullname(self):
+        return task_namer(self.basename, *self.subgroups)
+
+    @property
+    def doc(self):
+        try:
+            split_doc = [x for x in self.__class__.__doc__.split("\n") if bool(x)]
+            return ":: " + split_doc[0].strip() if bool(split_doc) else ""
+        except AttributeError:
+            return ":: "
 
     def set_params(self) -> list:
         return []
 
     def default_task(self) -> dict:
-        return dict([("name"     , self.base),
+        return dict([("name"     , self.fullname),
                      ("meta"     , self.default_meta()),
                      ("actions"  , list()),
                      ("task_dep" , list()),
@@ -95,14 +119,6 @@ class DootTasker:
         meta = dict()
         return meta
 
-    @property
-    def doc(self):
-        try:
-            split_doc = [x for x in self.__class__.__doc__.split("\n") if bool(x)]
-            return ":: " + split_doc[0].strip() if bool(split_doc) else ""
-        except AttributeError:
-            return ":: "
-
     def is_current(self, task:DoitTask):
         return False
 
@@ -115,25 +131,30 @@ class DootTasker:
     def task_detail(self, task:dict) -> dict:
         return task
 
-    def log(self, msg, level=logmod.DEBUG):
-        logging.log(level, msg)
+    def log(self, msg, level=logmod.DEBUG, prefix=None):
+        prefix = prefix or ""
+        lines  = []
+        match msg:
+            case str():
+                lines.append(msg)
+            case LambdaType():
+                lines.append(msg())
+            case [LambdaType()]:
+                lines += msg[0]()
+            case list():
+                lines += msg
 
-    @property
-    def setup_name(self):
-        if self._setup_name is not None:
-            return self._setup_name
+        for line in lines:
+            logging.log(level, prefix + str(line))
 
-        private = "_" if self.base[0] != "_" else ""
-        full = f"{private}{self.base}:setup"
-        return full
-
-    def _build_setup(self) -> DoitTask:
+    def _build_setup(self) -> None|DoitTask:
         """
         Build a pre-task that every subtask depends on
         """
         try:
-            task_spec             = self.default_task()
-            task_spec['name']     = self.setup_name
+            task_spec         = self.default_task()
+            task_spec['doc']  = ""
+            task_spec['name'] = self.setup_name
             if self.locs is not None and not isinstance(self.locs, bool):
                 task_spec['setup'] = [ self.locs.checker ]
 
@@ -144,112 +165,35 @@ class DootTasker:
                     self._setup_name = sname
                     return None
                 case dict() as val:
-                    self.active_setup = True
+                    self.has_active_setup = True
                     return DootTaskExt(**val)
                 case _ as val:
                     logging.warning("Setup Detail Returned an unexpected value: ", val)
         except DootDirAbsent:
             return None
 
-    def _build_task(self):
-        logging.debug("Building Task for: %s", self.base)
+    def _build_task(self) -> None|DoitTask:
+        logging.debug("Building Task for: %s", self.fullname)
         task                     = self.default_task()
         maybe_task : None | dict = self.task_detail(task)
         if maybe_task is None:
             return None
-        if self.active_setup:
+        if self.has_active_setup:
             maybe_task['setup'] += [self.setup_name]
 
         full_task = DootTaskExt(**maybe_task)
         return full_task
 
-    def _build(self, **kwargs):
-        try:
-            self.args.update(kwargs)
-            setup_task = self._build_setup()
-            task       = self._build_task()
+    def build(self, **kwargs) -> GeneratorType:
+        logging.debug("Building Tasker: %s", self.fullname)
+        self.args.update(kwargs)
+        setup_task = self._build_setup()
+        task       = self._build_task()
 
-            if task is not None:
-                yield task
-            else:
-                return None
-            if setup_task is not None:
-                yield setup_task
-
-        except Exception as err:
-            logging.error("ERROR: Task Creation Failure: ", err, file=sys.stderr)
-            logging.error("ERROR: Task was: ", self.base, file=sys.stderr)
-            sys.exit(1)
-
-class DootSubtasker(DootTasker):
-    """ Extends DootTasker to make subtasks
-
-    add a name in task_detail to run actions after all subtasks are finished
-    """
-
-    def __init__(self, base:str, locs, **kwargs):
-        super().__init__(base, locs, **kwargs)
-
-    def subtask_detail(self, task, **kwargs) -> None|dict:
-        return task
-
-    def _build_task(self):
-        task = super()._build_task()
-        task.has_subtask = True
-        task.update_deps({'task_dep': [f"{self.base}:*"] })
-        if self.active_setup:
-            task.update_deps({"task_dep": [self.setup_name]})
-        return task
-
-    def _build_subtask(self, n:int, uname, **kwargs):
-        try:
-            spec_doc  = self.doc + f" : {kwargs}"
-            task_spec = self.default_task()
-            task_spec.update({"name"     : f"{uname}",
-                              "doc"      : spec_doc,
-                              })
-            task_spec['meta'].update({ "n" : n })
-            task = self.subtask_detail(task_spec, **kwargs)
-            if task is None:
-                return
-
-            if self.active_setup:
-                task['setup'] += [self.setup_name]
-
-            if bool(self.sleep_subtask):
-                task['actions'].append(self._sleep_subtask)
-
-            return task
-        except DootDirAbsent:
+        if task is not None:
+            yield task
+        else:
             return None
 
-    def _build_subs(self):
-        raise NotImplementedError()
-
-    def _build(self, **kwargs):
-        try:
-            self.args.update(kwargs)
-            setup_task = self._build_setup()
-            task       = self._build_task()
-            subtasks   = self._build_subs()
-
-            if task is None:
-                return None
-            yield task
-
-            if setup_task is not None:
-                yield setup_task
-
-            for x in subtasks:
-                yield x
-
-        except Exception as err:
-            logging.error("ERROR: Task Creation Failure: ", err)
-            logging.error("ERROR: Task was: ", self.base)
-            sys.exit(1)
-
-    def _sleep_subtask(self):
-        if self.sleep_notify:
-            logging.info("Sleep Subtask")
-        sleep(self.sleep_subtask)
-
+        if setup_task is not None:
+            yield setup_task
