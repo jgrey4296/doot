@@ -13,10 +13,10 @@ from doot import tasker, globber, task_mixins
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
 
-listing_roots = doot.config.on_fail([], list).tool.doot.listing.core()
+listing_roots = doot.config.on_fail(["root"], list).tool.doot.listing.core()
 glob_ignores : Final = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).tool.doot.globbing.ignores()
 
-class FileListings(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class FileListings(DelayedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
     """
     (-> build )list all files in the targ directory,
     to the build_dir/allfiles.report
@@ -25,7 +25,7 @@ class FileListings(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_m
     def __init__(self, name="listing::files", locs=None, roots=None, rec=False, exts=None):
         list_these = [getattr(locs, x) for x in listing_roots]
         super().__init__(name, locs, roots or list_these , rec=rec, exts=exts)
-        self.output = self.locs.on_fail(self.locs.build).listings_out()
+        self.output = self.locs.temp
 
     def filter(self, fpath):
         if fpath.is_dir():

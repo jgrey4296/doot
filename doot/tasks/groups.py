@@ -144,10 +144,10 @@ try:
     latex_group += latex.LatexFirstPass(locs=tex_locs,  roots=[tex_locs.src])
     latex_group += latex.LatexSecondPass(locs=tex_locs, roots=[tex_locs.src])
     latex_group += latex.BibtexBuildPass(locs=tex_locs, roots=[tex_locs.src])
-    latex_group += latex.BibtexConcatenateSweep(locs=tex_locs, roots=[tex_locs.src])
-    latex_group += latex.task_latex_install()
-    latex_group += latex.task_latex_requirements()
-    latex_group += latex.task_latex_rebuild
+    latex_group += latex.BibtexConcatenateSweep(locs=tex_locs)
+    # latex_group += latex.task_latex_install()
+    # latex_group += latex.task_latex_requirements()
+    # latex_group += latex.task_latex_rebuild
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     if doot.config.on_fail(False, bool).tool.doot.group.latex.debug():

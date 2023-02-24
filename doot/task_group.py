@@ -47,9 +47,6 @@ class TaskGroup:
         self.name       = name.replace(" ", "_")
         self.tasks      = list(args)
         self.as_creator = as_creator
-        if as_creator:
-            self.create_doit_tasks = lambda *a, **kw: self._build_task(*a, **kw)
-            self.create_doit_tasks.__dict__['basename'] = name
 
     def __str__(self):
         return f"group:{self.name}({len(self)})"
@@ -69,26 +66,3 @@ class TaskGroup:
     def add_tasks(self, *other):
         for x in other:
             self.tasks.append(other)
-
-    def _build_task(self):
-        # yield {
-        #     "basename" : "_" + self.name,
-        #     "name"     : None,
-        #     "uptodate" : [False],
-        #     "actions"  : [],
-        # }
-
-        for task in self.tasks:
-            match task:
-                case dict():
-                    yield task
-                case types.GeneratorType():
-                    yield task
-                case types.FunctionType() | types.MethodType():
-                    yield task()
-                case _ if hasattr(task, "build_report"):
-                    yield task.build_report()
-                case _ if hasattr(task, "build_check"):
-                    yield task.build_check()
-                case _:
-                    yield task._build_task()

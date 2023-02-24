@@ -49,13 +49,10 @@ class BackupTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
 
     def __init__(self, name="backup::default", locs=None, roots=None, output=None):
         super().__init__(name, locs, roots, rec=True, output=output)
+        self._backup_log = []
 
     def set_params(self):
         return self.target_params()
-
-    def task_detail(self, task):
-        task.update({})
-        return task
 
     def filter(self, fpath):
         rel_path      = self.rel_path(fpath)
@@ -77,20 +74,32 @@ class BackupTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
         return self.control.reject
 
 
+    def task_detail(self, task):
+        task.update({
+            "actions" : [ (self.log, [[lambda: self._backup_log], logmod.INFO, "Backed Up: " ]) ],
+        })
+        return task
+
     def subtask_detail(self, task, fpath):
-        actions = []
+        """
+        Build the backup instruction.
+        Either backup the entire directory, or a single file
+        if you hit modulo of batch size, sleep
+        """
+        actions = [ lambda: self._backup_log.append(fpath) ]
         if fpath.is_dir():
             actions.append( (self.backup_dir, [fpath]) )
         else:
             actions.append( (self.backup_file, [fpath]) )
 
-        if task.get('meta', {}).get('n', 1) % batch_size == 0;
-            actions.append(lambda: sleep(sleep_batch))
+        if task.get('meta', {}).get('n', 1) % batch_size == 0:
+            actions.append( (self.log, ["...", logmod.INFO]) )
+            actions.append( lambda: time.sleep(sleep_batch) )
 
         task.update({
             "actions" : actions,
         })
-        return fpath
+        return task
 
     def backup_file(self, fpath):
         rel_path      = self.rel_path(fpath)

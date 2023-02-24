@@ -16,38 +16,42 @@ from doot.mixins.cleaning import CleanerMixin
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from doot.utils.task_namer import task_namer
+
 class CheckDir:
     """ Task for checking directories exist,
     making them if they don't
     """
     _all_registered : ClassVar[dict[str, CheckDir]] = {}
-    _checker_name = "_locs::check"
+    _checker_basename = "locs::build"
 
     @staticmethod
-    def gen_check_tasks():
+    def as_taskgroup() -> TaskGroup:
         logging.debug("Building CheckDir Auto Tasks: %s", list(CheckDir._all_registered.keys()))
-        return TaskGroup(CheckDir._checker_name,
+        return TaskGroup(CheckDir._checker_basename,
                          {
-                             "basename" : "locs::build",
+                             "basename" : task_namer(CheckDir._checker_basename),
                              "doc"      : ":: Build all locations for all registered location checks",
                              "actions"  : [],
                              "task_dep" : [x for x in CheckDir._all_registered.keys()],
                          },
-                         *CheckDir._all_registered.values(),
-                         as_creator=True)
+                         *[x.build for x in CheckDir._all_registered.values()],
+                         )
 
     def __init__(self, name="default", locs=None, private=True):
-        self.base = name
+        self.base = CheckDir._checker_basename
         self.locs = locs
-        self.name = f"{CheckDir._checker_name}:{self.base}"
-        CheckDir._all_registered[self.name] = self
+        self.name = name
+        CheckDir._all_registered[task_namer(self.base, self.name, private=True)] = self
 
     def is_current(self):
         return all([y.exists() for x,y in self.locs])
 
-    def build_check(self) -> dict:
+    def build(self) -> dict:
         task = {
-            "name"      : self.base,
+            "basename"  : self.base,
+            "doc"       : ":: Build any missing directories in the loc",
+            "name"      : self.name,
             "actions"   : [ self.mkdir ],
             "clean"     : [ CleanerMixin.clean_target_dirs ],
             "uptodate"  : [ self.is_current ],
@@ -62,4 +66,3 @@ class CheckDir:
                 logging.info("Built Missing Location: %s", x)
             except FileExistsError:
                 pass
-

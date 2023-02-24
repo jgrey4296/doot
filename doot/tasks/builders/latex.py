@@ -7,11 +7,21 @@ import re
 import fileinput
 from typing import Final
 
+import logging as logmod
 import doot
 from doot import globber, tasker
+from doot.task_mixins import ActionsMixin
 from doot.mixins.delayed import DelayedMixin
 
 ##-- end imports
+
+##-- logging
+logging = logmod.getLogger(__name__)
+##-- end logging
+
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.targeted import TargetedMixin
+from doot.mixins.calc_deps import CalcDepsMixin
 
 interaction_mode  : Final = doot.config.on_fail("nonstopmode", str).tool.doot.tex.interaction()
 tex_dep           : Final = doot.config.on_fail("tex.dependencies", str).tool.doot.text.dep_file()
@@ -20,7 +30,7 @@ def task_latex_install():
     """
     install dependencies for the latex document
     """
-    if not pl.Path(dep).exists():
+    if not pl.Path(tex_dep).exists():
         return None
 
     return {
@@ -72,9 +82,13 @@ class LatexMultiPass(globber.DootEagerGlobber):
         super().__init__(name, locs, roots or [locs.src], exts=['.tex'], rec=rec)
         self.locs.ensure("build")
 
+    def filter(self, fpath):
+        return fpath.is_file()
+
     def subtask_detail(self, task, fpath=None):
         task.update({
             "file_dep" : [ self.locs.build / fpath.with_suffix(".pdf").name ],
+            "private"  : False,
         })
         return task
 
@@ -84,10 +98,13 @@ class LatexFirstPass(globber.DootEagerGlobber, ActionsMixin):
     pre-bibliography resolution
     """
 
-    def __init__(self, name="text::pass:one", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True, interaction=interaction_mode):
+    def __init__(self, name="tex::pass:one", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True, interaction=interaction_mode):
         super().__init__(name, locs, roots or [locs.src], exts=[".tex"], rec=rec)
         self.interaction = interaction
         self.locs.ensure("temp", "build")
+
+    def filter(self, fpath):
+        return fpath.is_file()
 
     def set_params(self):
         return [
@@ -101,13 +118,13 @@ class LatexFirstPass(globber.DootEagerGlobber, ActionsMixin):
 
     def subtask_detail(self, task, fpath=None):
         first_pass_pdf = self.pdf_path(fpath)
-        temp_pdf = self.locs.temp / fpath.with_suffix(".pdf").name
+        temp_pdf       = self.locs.temp / fpath.with_suffix(".pdf").name
         task.update({
             "file_dep" : [ fpath ],
             "actions"  : [
                 (self.log, ["Running Pass 1", logmod.INFO]),
                 self.cmd(self.compile_tex),
-                (self.move_to, [first_pass,pdf, temp_pdf])
+                (self.move_to, [first_pass_pdf, temp_pdf])
             ],
             "targets"  : [ self.locs.temp / fpath.with_suffix(".aux").name,
                            first_pass_pdf,
@@ -148,7 +165,10 @@ class LatexSecondPass(globber.DootEagerGlobber, ActionsMixin):
              },
         ]
 
-    def subtask_detail(self, task, fpath=None):
+    def filter(self, fpath):
+        return fpath.is_file()
+
+    def subtask_detail(self, task, fpath):
         temp_pdf   = self.locs.temp  / fpath.with_suffix(".pdf").name
         target_pdf = self.locs.build / temp_pdf.name
         task.update({"file_dep" : [ self.locs.temp / fpath.with_suffix(".aux").name,
@@ -160,7 +180,7 @@ class LatexSecondPass(globber.DootEagerGlobber, ActionsMixin):
                          (self.log, ["Running Pass 2", logmod.INFO]),
                          self.cmd(self.tex_cmd, fpath),
 	                     self.cmd(self.tex_cmd, fpath),
-                         (self.move_to, [fpath]),
+                         (self.move_to, [target_pdf, temp_pdf]),
                      ]
                      })
         return task
@@ -179,6 +199,9 @@ class BibtexBuildPass(globber.DootEagerGlobber, ActionsMixin):
     def __init__(self, name="_tex::pass:bibtex", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=[".tex"], rec=rec)
         self.locs.ensure("temp")
+
+    def filter(self, fpath):
+        return fpath.is_file()
 
     def subtask_detail(self, task, fpath=None):
         aux_file = self.locs.temp / fpath.with_suffix(".aux").name
@@ -223,35 +246,44 @@ class BibtexBuildPass(globber.DootEagerGlobber, ActionsMixin):
 
         return ["bibtex",  deps['.aux']]
 
-class BibtexConcatenateSweep(DelayedMixin, globber.DootEagerGlobber):
+class BibtexConcatenateSweep(CalcDepsMixin, tasker.DootTasker):
     """
     ([src, data, docs] -> temp) concatenate all found bibtex files
     to produce a master file for latex's use
     """
 
-    def __init__(self, name="_tex::bib", locs:DootLocData=None, roots=None, rec=True):
-        super().__init__(name, locs, roots or [locs.src, locs.data, locs.docs], exts=[".bib"], rec=rec)
-        self.target = locs.temp / "combined.bib"
+    def __init__(self, name="_tex::bib", locs:DootLocData=None):
+        super().__init__(name, locs)
+        self.output   = locs.temp / "combined.bib"
+        self.all_bibs = set()
+        self.locs.ensure("data", "docs")
+
+    def setup_detail(self, task):
+        task.update({
+            "actions" :  [ self.glob_bibs ],
+        })
+        return task
 
     def task_detail(self, task):
         task.update({
-            "actions" : [ (self.log, ["Combining Bibtex", logmod.INFO]) ],
-            "targets"  : [ self.target ],
+            "actions" : [
+                (self.log, ["Combining Bibtex", logmod.INFO]),
+                self.concat_bibs,
+            ],
+            "targets"  : [ self.output],
             "clean"    : True,
         })
         return task
 
-    def filter(self, fpath):
-        if fpath.suffix == ".bib":
-            return self.globc.accept
-        return self.globc.discard
+    def calc_action(self):
+        return { "file_dep": list(self.all_bibs) }
 
-    def subtask_detail(self, task, fpath=None):
-        task.update({
-            "actions" : [(self.add_bib, [fpath])]
-        })
-        return task
+    def glob_bibs(self):
+        self.all_bibs.update(self.locs.src.rglob("*.bib"))
+        self.all_bibs.update(self.locs.data.rglob("*.bib"))
+        self.all_bibs.update(self.locs.docs.rglob("*.bib"))
 
-    def add_bib(self, fpath):
-        with open(self.target, 'a') as mainBib:
-            print(fpath.read_text(), file=mainBib)
+    def concat_bibs(self):
+        with open(self.output, "w") as catbib:
+            for line in fileinput.input(files=self.all_bibs):
+                print(line, end="", file=catbib)

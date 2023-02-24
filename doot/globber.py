@@ -17,7 +17,6 @@ from doit.action import CmdAction
 from doit.task import dict_to_task
 
 import doot
-from doot.tasker import DootSubtasker
 from doot.errors import DootDirAbsent
 ##-- end imports
 
@@ -26,6 +25,8 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import random
+from doot.tasker import DootTasker
+from doot.mixins.subtask import SubMixin
 
 glob_ignores          : Final = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).tool.doot.globbing.ignores()
 glob_subselect_exact  : Final = doot.config.on_fail(10, int).tool.doot.globbing.subselect_exact()
@@ -43,7 +44,7 @@ class GlobControl(enum.Enum):
     discard = enum.auto()
     reject  = enum.auto()
 
-class DootEagerGlobber(DootSubtasker):
+class DootEagerGlobber(SubMixin, DootTasker):
     """
     Base task for file based *on load* globbing.
     Generates a new subtask for each file found.
@@ -101,9 +102,9 @@ class DootEagerGlobber(DootSubtasker):
         if not target.exists():
             return []
         elif not (bool(rec) or rec is None and self.rec):
-            check_fn = lambda x: (filter_fn(x) not in [False, GlobControl.reject, GlobControl.discard]
+            check_fn = lambda x: (filter_fn(x) not in [None, False, GlobControl.reject, GlobControl.discard]
                                   and x.name not in glob_ignores
-                                  and not (bool(exts) and x.is_file() and x.suffix not in exts))
+                                  and (not bool(exts) or x.is_file() and x.suffix not in exts))
 
             potentials  = [target] + [x for x in target.iterdir()]
             results     = [x for x in potentials if check_fn(x)]
@@ -122,7 +123,7 @@ class DootEagerGlobber(DootSubtasker):
             match filter_fn(current):
                 case GlobControl.keep:
                     results.append(current)
-                case GlobControl.discard if current.is_dir():
+                case False | GlobControl.discard if current.is_dir():
                     queue += [x for x in current.iterdir()]
                 case True | GlobControl.accept:
                     results.append(current)
@@ -145,6 +146,7 @@ class DootEagerGlobber(DootSubtasker):
             globbed.update(self.glob_target(root, rec=rec, fn=fn))
 
         results = {}
+
         # then create unique names based on path:
         for fpath in globbed:
             parts = list(fpath.parts[:-1]) + [fpath.stem]
@@ -163,6 +165,7 @@ class DootEagerGlobber(DootSubtasker):
         return list(results.items())
 
     def _build_subs(self):
+        logging.debug("%s : Building Globber SubTasks", self.basename)
         globbed    = self.glob_all()
         subtasks   = []
         for i, (uname, fpath) in enumerate(self.glob_all()):
@@ -177,100 +180,3 @@ class DootEagerGlobber(DootSubtasker):
 
         self.total_subtasks = len(subtasks)
         return subtasks
-
-# Multiple Inheritances:
-
-class DirGlobMixin:
-    """
-    Globs for directories instead of files.
-    Generates a subtask for each found directory
-
-    Recursive: all directories from roots down
-    Non-Recursive: immediate subdirectories roots
-    Always provides the root directories
-    """
-
-    def glob_files(self, target, rec=None, fn=None, exts=None):
-        if fn is None:
-            fn = lambda x: True
-        return super().glob_target(target, rec=rec, fn=fn, exts=exts)
-
-    def glob_target(self, target, rec=None, fn=None, exts=None):
-        results = []
-        filter_fn = fn or self.filter
-        if not target.exists():
-            return []
-        elif not (rec or self.rec):
-            if filter_fn(target) not in [False, GlobControl.reject, GlobControl.discard]:
-                results.append(target)
-            results += [x for x in target.iterdir() if x.is_dir() and filter_fn(x) not in [False, GlobControl.reject, GlobControl.discard]]
-            return results
-
-        assert(rec or self.rec)
-        queue = [target]
-        while bool(queue):
-            current = queue.pop()
-            if not current.exists():
-                continue
-            if current.name in glob_ignores:
-                continue
-            if current.is_file():
-                continue
-            match filter_fn(current):
-                case GlobControl.keep:
-                    results.append(current)
-                case GlobControl.discard:
-                    queue += [x for x in current.iterdir() if x.is_dir()]
-                case True | GlobControl.accept:
-                    results.append(current)
-                    queue += [x for x in current.iterdir() if x.is_dir()]
-                case None | False | GlobControl.reject:
-                    continue
-                case _ as x:
-                    raise TypeException("Unexpected glob filter value", x)
-
-        return results
-
-class LazyGlobMixin:
-    """
-    Late globber, generates one subtask per root point,
-    use self.glob_target to run the glob
-    """
-
-    def __init__(self, *args, **kwargs):
-        raise DeprecationWarning("Use The DelayedMixin")
-
-    def glob_all(self, root=None, rec=None, fn=None):
-        # return [(str(x).replace("/", "_"), x) for x in self.roots]
-        return []
-
-class HeadlessGlobMixin:
-    """
-    Glob for files, but don't provide a top level task to
-    run all of them together
-    """
-
-    def _build_task(self, **kwargs):
-        """
-        Generalized task builder for globbing on files
-        then customizing the subtasks
-        """
-        return super(DootSubtasker, self)._build_task()
-
-class SubGlobMixin:
-    """
-    Glob only a subset of potentials
-    """
-
-    def glob_all(self, rec=None, fn=None):
-        results = super().glob_all(rec)
-        match glob_subselect_exact, glob_subselect_pcnt:
-            case (-1, -1):
-                return results
-            case exact, 0:
-                k = min(exact, len(results))
-            case 0, percent:
-                one = len(results) * 0.01
-                k = int(one * percent)
-
-        return random.choices(results, k=k)

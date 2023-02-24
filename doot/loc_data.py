@@ -23,7 +23,6 @@ from doit.task import dict_to_task
 
 from doot.task_group import TaskGroup
 from doot.utils.check_dirs import CheckDir
-from doot.tasker import DootTasker
 from doot.errors import DootDirAbsent
 
 if TYPE_CHECKING:
@@ -37,6 +36,8 @@ logging = logmod.getLogger(__name__)
 # logging = logmod.root
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
+
+from doot.utils.task_namer import task_namer
 
 class LocProxy:
 
@@ -71,7 +72,7 @@ class DootLocData:
     """
 
     _all_registered : ClassVar[dict[str, DootLocData]] = {}
-    _locs_name  = "_locs::report"
+    _locs_report_name  = "locs::report"
 
     _defaulted : ClassVar[list[str]] =   []
 
@@ -80,17 +81,18 @@ class DootLocData:
         DootLocData._default_locs = config.on_fail([], list).tool.doot.locs
 
     @staticmethod
-    def gen_loc_tasks():
+    def as_taskgroup() -> TaskGroup:
         logging.debug("Building LocData Auto Tasks: %s", list(DootLocData._all_registered.keys()))
-        return TaskGroup(DootLocData._locs_name,
+        return TaskGroup(DootLocData._locs_report_name,
                          {
-                             "basename" : "locs::report",
+                             "basename" : task_namer(DootLocData._locs_report_name),
                              "doc"      : ":: Report All Registered Locations",
                              "actions"  : [],
                              "task_dep" : [x for x in DootLocData._all_registered.keys()],
                          },
-                         *DootLocData._all_registered.values(),
-                         as_creator=True)
+                         *[x._build_report_task() for x in DootLocData._all_registered.values()],
+                         )
+
 
     @staticmethod
     def report_defaulted() -> list[str]:
@@ -99,7 +101,7 @@ class DootLocData:
     def __init__(self, name="base", files:dict=None, **kwargs):
         self._root    : pl.Path() = pl.Path()
         self._postfix             = name
-        self._prefix              = DootLocData._locs_name
+        self._prefix              = DootLocData._locs_report_name
         self._check_name          = None
         self._dirs                = {}
         if bool(kwargs):
@@ -159,7 +161,7 @@ class DootLocData:
 
     @property
     def name(self):
-        return f"{self._prefix}:{self._postfix}"
+        return task_namer(self._prefix, self._postfix, private=True)
 
     def extend(self, *, name=None, **kwargs):
         new_locs = DootLocData(name or self._postfix,
@@ -198,11 +200,12 @@ class DootLocData:
     def checker(self) -> str:
         if self._check_name is None:
             self._check_name = CheckDir(self._postfix, locs=self).name
-        return self._check_name
+        return task_namer(CheckDir._checker_basename, self._check_name, private=True)
 
-    def build_report(self):
+    def _build_report_task(self):
         max_postfix = max(len(x) for x in DootLocData._all_registered.keys())
         task = {
+            "basename" : self._locs_report_name,
             "name"     : self._postfix,
             "actions"  : [
                 lambda: print(f"{self._postfix:<{max_postfix}} Dirs : {self._dir_str()}"),
