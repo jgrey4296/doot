@@ -91,7 +91,7 @@ class FilerMixin:
         assert(fpath.parent.exists())
         overwrite = True
         match fn:
-            case FunctionType() | MethodType():
+            case types.FunctionType() | types.MethodType() | types.LambdaType():
                 pass
             case "overwrite":
                 fn = lambda d, x: d / x.name
@@ -100,15 +100,18 @@ class FilerMixin:
             case "file":
                 assert(not fpath.is_dir())
                 fn = lambda d, x: d
+            case _ if len(args) == 1:
+                fn        = lambda d, x: d
             case _:
+                assert(fpath.exists() and fpath.is_dir())
                 overwrite = False
-                fn = lambda d, x: d / x.name
+                fn        = lambda d, x: d / x.name
 
         # Then do the move
         for x in args:
             target_path = fn(fpath, x)
-            if not overwrite and target_name.exists():
-                 logging.warning("Not Moving: %s -> %s", x, target_name)
+            if not overwrite and target_path.exists():
+                 logging.warning("Not Moving: %s -> %s", x, target_path)
                  continue
             logging.debug("Renaming: %s -> %s", x, target_path)
             x.rename(target_path)
@@ -117,7 +120,7 @@ class FilerMixin:
         assert(fpath.parent.exists())
         overwrite = True
         match fn:
-            case FunctionType() | MethodType():
+            case types.FunctionType() | types.MethodType() | types.LambdaType():
                 pass
             case "overwrite":
                 fn = lambda d, x: d / x.name

@@ -30,6 +30,9 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+
+from doot.utils.task_namer import task_namer
+
 import sys
 
 class DelayedMixin:
@@ -37,28 +40,66 @@ class DelayedMixin:
     Delays Subtask generation until the main task is executed
 
     """
-    delay_pattern = "_{}::delayed"
+    _delayed_task_names = None
 
-    def _build(self, **kwargs):
-        try:
-            self.args.update(kwargs)
-            setup_task = self._build_setup()
-            task       = self._build_task()
-            task.task_dep.append(self.delay_pattern.format(self.base))
+    @property
+    def delayed_name(self):
+        return task_namer("delayed", self.fullname, private=True)
 
-            if task is None:
-                return None
-            yield task
+    @property
+    def calc_dep_taskname(self):
+        return task_namer(self.delayed_name, "calc_delayed_tasks", private=True)
 
-            if setup_task is not None:
-                yield setup_task
+    @property
+    def delayed_subtask_name(self):
+        return task_namer(self.delayed_name, "subtask_gen", private=True)
 
-        except Exception as err:
-            logging.error("ERROR: Task Creation Failure: ", err)
-            logging.error("ERROR: Task was: ", self.base)
-            sys.exit(1)
+    def _build_task(self):
+        task = super()._build_task()
+        if task is None:
+            return None
 
+        task.name = self.delayed_name
+        task.update_deps({ "calc_dep" : [ self.calc_dep_taskname ]})
+        return task
+
+    def build(self, **kwargs):
+        logging.debug("Wrapping Task for delay sequencing: %s", self.fullname)
+        yield { # Simple Wrapper to sequence properly
+            "head_task" : True,
+            "basename"  : self.fullname,
+            "actions"   : None,
+            "task_dep"  : [
+                # The delayed subtasks generator
+                self.delayed_subtask_name,
+                # The actual task this wraps
+                self.delayed_name,
+            ],
+        }
+        yield from super().build(**kwargs)
+        yield self._build_delayed_deps
+
+    def _build_delayed_deps(self):
+        return { # The calc_deps subtask for main
+            "basename": self.calc_dep_taskname,
+            "actions": [ self.delayed_tasknames_action ],
+        }
+
+    def delayed_tasknames_action(self, task):
+        logging.debug("Retrieving Delayed Task Names: %s : %s", task.name, self._delayed_task_names)
+        task_names = self._delayed_task_names or []
+        return { "task_dep": task_names[:] }
+
+    def _build_subs(self):
+        return []
 
     def _build_delayed(self, **kwargs):
-        logging.debug("Delayed Tasks now building")
-        yield from self._build_subs()
+        logging.debug("Delayed Tasks now building : %s", self.fullname)
+        self._delayed_task_names = []
+        for task in super(DelayedMixin, self)._build_subs():
+            task['basename'] = task_namer(self.delayed_name, task["name"])
+            del task['name']
+            self._delayed_task_names.append(task['basename'])
+            yield task
+
+        logging.debug("There are %s newly delayed tasks", len(self._delayed_task_names))

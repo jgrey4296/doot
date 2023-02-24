@@ -32,7 +32,6 @@ logging = logmod.getLogger(__name__)
 
 import doot
 
-
 maybe_build_path = lambda x: pl.Path(x) if x is not None else None
 
 class TargetedMixin:
@@ -49,7 +48,8 @@ class TargetedMixin:
     def glob_all(self, rec=None, fn=None, root:pl.Path=None):
         match self.args, root:
             case {'all': False, 'target': None}, None:
-                raise Exception("No Target Specified")
+                logging.debug("%s : No Target Specified", self.basename)
+                globbed = []
             case {'all': True}, None:
                 globbed = super().glob_all()
             case _, x if x is not None:
@@ -61,9 +61,11 @@ class TargetedMixin:
             case {'target': targ}, None:
                 globbed = [(y,name, y) for y in self.glob_target(self.locs.root / targ, fn=fn, rec=rec)]
             case _, _:
-                raise Exception("No Target Specified")
+                logging.warning("%s : No Recognizable Target Specified", self.basename)
+                globbed = []
 
-        if not globbed[0].exists():
-            raise Exception("Target Doesn't Exist")
+        if bool(globbed) and not globbed[0][1].exists():
+            logging.error("%s : Target Doesn't Exist : %s", self.basename, globbed[0])
+            exit(1)
 
         return globbed
