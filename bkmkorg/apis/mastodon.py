@@ -45,7 +45,7 @@ class MastodonMixin:
             print("Posting Toot")
             msg = task.values['msg']
             if len(msg) >= toot_size:
-                logging.warning("Resulting Tweet too long for mastodon: %s\n%s", len(tweet_text), tweet_text)
+                logging.warning("Resulting Toot too long for mastodon: %s\n%s", len(msg), msg)
             else:
                 result = self.mastodon.status_post(msg)
                 return { "toot_result": True }

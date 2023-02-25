@@ -34,9 +34,14 @@ logging = logmod.getLogger(__name__)
 
 import doot
 from doot.tasker import DootTasker
-from doot.task_mixins import ActionsMixin, BatchMixin
 from doot import globber
 from bkmkorg.apis import android
+from doot.mixins.batch import  BatchMixin
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.targeted import TargetedMixin
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.filer import FilerMixin
+
 
 android_base : Final = doot.config.on_fail("/storage/6331-3162", str).tools.doot.android.base(wrapper=pl.Path)
 timeout      : Final = doot.config.on_fail(5, int).tools.doot.android.timeout()
@@ -45,7 +50,7 @@ wait_time    : Final = doot.config.on_fail(10, int).tools.doot.android.wait()
 
 NICE         : Final = ["nice", "-n", "10"]
 
-class ADBUpload(android.ADBMixin, BatchMixin, globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
+class ADBUpload(android.ADBMixin, BatchMixin, DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
     """
     Push files from local to device
     """
@@ -55,7 +60,7 @@ class ADBUpload(android.ADBMixin, BatchMixin, globber.LazyGlobMixin, globber.Dir
         self.device_root = None
         self.local_root  = None
         self.report      = list()
-        self.count = 0
+        self.count       = 0
 
     def filter(self, fpath):
         if fpath.parent in self.roots:
@@ -66,23 +71,35 @@ class ADBUpload(android.ADBMixin, BatchMixin, globber.LazyGlobMixin, globber.Dir
         return [
             {"name": "id", "long": "id", "type": str, "default": None},
             {"name": "remote", "long": "remote", "type": str, "default": "."},
-        ]
+        ] + self.target_params()
 
-    def task_detail(self, task):
+
+    def setup_detail(self, task):
         self.device_root = android_base / self.args['remote']
         self.local_root  = self.locs.local_push
         task.update({
             "actions" : [
                 lambda: print(f"Set Device Root to: {self.device_root}"),
-                self.upload_target,
-                self.write_report,
+            ],
+            "teardown" : [ self.write_report ],
+        })
+        return task
+
+    def subtask_detail(self, task, fpath):
+        task.update({
+            "actions" : [
+                (self.upload_target, [fpath]),
             ],
         })
         return task
 
-    def upload_target(self):
-        globbed = super(globber.LazyGlobMixin, self).glob_all()
-        chunks  = self.chunk(globbed, 10)
+    def sub_filter(self, fpath):
+        if fpath.is_dir():
+            return self.globc.accept
+        return self.globc.discard
+
+    def upload_target(self, fpath):
+        chunks = self.chunk(self.glob_target(fpath, fn=self.sub_filter, rec=False))
         self.run_batches(*chunks)
 
     def batch(self, data):
@@ -93,7 +110,7 @@ class ADBUpload(android.ADBMixin, BatchMixin, globber.LazyGlobMixin, globber.Dir
             self.report.append(entry)
 
     def write_report(self):
-        print("Completed")
+        logging("Completed")
         report = []
         report.append("--------------------")
         report.append("Pushed: ")
@@ -101,7 +118,7 @@ class ADBUpload(android.ADBMixin, BatchMixin, globber.LazyGlobMixin, globber.Dir
 
         (self.locs.build / "adb_push.report").write_text("\n".join(report))
 
-class ADBDownload(android.ADBMixin, DootTasker, ActionsMixin, BatchMixin):
+class ADBDownload(android.ADBMixin, DootTasker, CommanderMixin, FilerMixin, BatchMixin):
     """
     pull files from device to local
     """
@@ -126,14 +143,14 @@ class ADBDownload(android.ADBMixin, DootTasker, ActionsMixin, BatchMixin):
 
         if (self.locs.build / "pull_cache.adb").exists():
             # Cached query results
-            query_cmds = [ self.read_cache,
-                           self.say("Using Pull Cache"),
-                          ]
+            query_cmds = [
+                self.say("Using Pull Cache"),
+                self.read_cache, # -> remote_files
+            ]
         else:
             query_cmds = [self.cmd(self.args_adb_query, ftype="f", save="immediate_files"),
                           self.cmd(self.args_adb_query,            save="remote_subdirs"),
                           (self.batch_query_subdirs, [self._subbatch_query] ), # -> remote_files
-                          self.calc_pull_targets, # -> pull_targets
                           self.write_query_cache,
                           self.say("Finished Queries"),
                           ]
@@ -141,6 +158,7 @@ class ADBDownload(android.ADBMixin, DootTasker, ActionsMixin, BatchMixin):
         task.update({
             "actions" : [
                 *query_cmds,
+                self.calc_pull_targets, # -> pull_targets
                 self.say("Starting Pull"),
                 self.pull_files, # -> downloaded, failed
                 self.write_report,
@@ -153,7 +171,7 @@ class ADBDownload(android.ADBMixin, DootTasker, ActionsMixin, BatchMixin):
         """
         Run a single query directory query
         """
-        print(f"Subdir Batch: {data}", file=sys.stderr)
+        logging.info(f"Subdir Batch: {data}")
         query = self.cmd(self.args_adb_query(data[0], depth=-1, ftype="f"))
         query.execute()
         query_result = {x.strip() for x in query.out.split("\n")}
@@ -164,7 +182,10 @@ class ADBDownload(android.ADBMixin, DootTasker, ActionsMixin, BatchMixin):
         local_set  = { x.relative_to(self.local_root) for x in self.local_root.rglob("*") }
 
         pull_set = device_set - local_set
-        print(f"Pull Set: {len(pull_set)}")
+        logging.info(f"Pull Set: {len(pull_set)}")
+        if not bool(pull_set):
+            return False
+
         return { "pull_targets" : [str(x) for x in pull_set] }
 
     def write_report(self, task):
@@ -184,15 +205,15 @@ class ADBDownload(android.ADBMixin, DootTasker, ActionsMixin, BatchMixin):
         (self.locs.build / "adb_pull.report").write_text("\n".join(report))
 
     def write_query_cache(self, task):
-        cache_str = "\n".join(x for x in task.values['pull_targets'])
+        cache_str = "\n".join(x for x in task.values['remote_files'])
         (self.locs.build / "pull_cache.adb").write_text(cache_str)
 
     def read_cache(self):
         cache   = self.locs.build / "pull_cache.adb"
         targets = [x.strip() for x in cache.read_text().split("\n")]
-        return { 'pull_targets': [x for x in targets if bool(x) ]}
+        return { 'remote_files': [x for x in targets if bool(x) ]}
 
-class ADBDelete(android.ADBMixin, DootTasker, ActionsMixin, BatchMixin):
+class ADBDelete(android.ADBMixin, DootTasker, CommanderMixin, FilerMixin, BatchMixin):
     """
     delete all files specified in the provided list
     """

@@ -30,13 +30,18 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-from collections import defaultdict
 import fileinput
-from doit.exceptions import TaskFailed
+from collections import defaultdict
+
 import doot
-from doot.tasker import DootTasker
-from doot.task_mixins import ActionsMixin, BatchMixin, TargetedMixin
+from doit.exceptions import TaskFailed
 from doot import globber
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.filer import FilerMixin
+from doot.mixins.batch import BatchMixin
+from doot.mixins.targeted import TargetedMixin
+from doot.tasker import DootTasker
 
 tweet_index_file : Final = doot.config.on_fail(".tweets", str).tool.doot.twitter.index()
 file_index_file  : Final = doot.config.on_fail(".files", str).tool.doot.twitter.file_index()
@@ -45,7 +50,7 @@ thread_file      : Final = doot.config.on_fail(".threads", str).tool.doot.twitte
 
 empty_match      : Final = re.match("","")
 
-class TODOOrgCleaner(globber.LazyGlobMixin, globber.DootEagerGlobber, ActionsMixin):
+class TODOOrgCleaner(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
     """
     Find and format any org files
     """
@@ -65,7 +70,7 @@ class TODOOrgCleaner(globber.LazyGlobMixin, globber.DootEagerGlobber, ActionsMix
 class TODOOrg2Html:
     pass
 
-class ThreadListings(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin, BatchMixin, TargetedMixin):
+class ThreadListings(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchMixin):
     """
     glob all directories with orgs in,
     and write .tweets and .files listings
@@ -79,59 +84,53 @@ class ThreadListings(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEa
         return self.target_params()
 
     def filter(self, fpath):
-        if any(x.suffix == ".org" for x in fpath.iterdir()):
+        if fpath.is_dir() and any(x.suffix == ".org" for x in fpath.iterdir()):
             return self.control.keep
         else:
             return self.control.discard
 
-    def task_detail(self, task):
+    def subtask_detail(self, task, fpath):
         task.update({
-            "actions" : [ self.process_all ],
+            "actions" : [ (self.process_dir, [fpath]) ],
         })
         return task
 
-    def process_all(self):
-        chunks = self.target_chunks(base=globber.LazyGlobMixin)
-        self.run_batches(*chunks)
+    def sub_filter(self, fpath):
+        if fpath.suffix == ".org":
+            return self.globc.accept
+        return self.globc.discard
 
-    def batch(self, data):
-        for name, fpath in data:
-            self.extract_tweet_ids(fpath)
-            self.get_files(fpath)
+    def process_dir(self, fpath):
+        file_index = fpath / file_index_file
+        tweet_index = fpath / tweet_index_file
+
+        file_listing = self.get_files(fpath)
+        permalinks   = set()
+
+        for line in fileinput.input(files=self.glob_target(fpath, fn=self.sub_filter)):
+            result = self.permalink_re.search(line)
+            if result:
+                permalinks.add(result[1])
+
+        file_index.write_text("\n".join(file_listing))
+        tweet_index.write_text("\n".join(permalinks))
 
     def get_files(self, fpath):
         """
         make a file listing for a user
         """
         file_dir   = fpath / f"{fpath.name}_files"
-        file_index = fpath / file_index_file,
         if not file_dir.exists():
             return
 
         if file_dir.is_file():
             with open(pl.Path() / "file_dirs.errors", 'a') as f:
                 f.write("\n" + str(fpath))
-            return
+            return []
 
-        file_listing = [str(x.relative_to(fpath)) for x in file_dir.iterdir()]
-        file_index.write_text("\n".join(file_listing))
+        return [str(x.relative_to(fpath)) for x in file_dir.iterdir()]
 
-    def extract_tweet_ids(self, fpath):
-        """
-        Get all tweet id's from all threads
-        """
-        tweet_index = fpath / tweet_index_file
-        globbed     = self.glob_files(fpath)
-        permalinks  = set()
-
-        for line in fileinput.input(files=globbed):
-            result = self.permalink_re.search(line)
-            if result:
-                permalinks.add(result[1])
-
-        tweet_index.write_text("\n".join(permalinks))
-
-class OrgMultiThreadCount(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin, BatchMixin, TargetedMixin):
+class OrgMultiThreadCount(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchMixin):
     """
     Count threads in files, make a thread file (default: .threads)
     """
@@ -143,27 +142,24 @@ class OrgMultiThreadCount(globber.LazyGlobMixin, globber.DirGlobMixin, globber.D
     def set_params(self):
         return self.target_params()
 
-    def task_detail(self, task):
+    def filter(self, fpath):
+        if fpath.is_dir() and any(x.suffix == ".org" for x in fpath.iterdir()):
+            return self.control.keep
+        return self.control.discard
+
+    def subtask_detail(self, task, fpath):
         task.update({
-            "actions" : [ self.count_all ],
+            "actions" : [ (self.count_threads, [fpath]) ],
         })
         return task
 
-    def filter(self, fpath):
-        if any(x.suffix == ".org" for x in fpath.iterdir()):
-            return self.control.keep
-        else:
-            return self.control.discard
+    def sub_filter(self, fpath):
+        if fpath.is_file() and fpath.suffix == ".org":
+            return self.globc.accept
+        return self.globc.discard
 
-    def count_all(self):
-        chunks = self.target_chunks(base=globber.LazyGlobMixin)
-        self.run_batches(*chunks)
-
-    def batch(self, data):
-        for name, fpath in data:
-            self.build_thread_file(fpath)
-
-    def build_thread_file(self, fpath):
+    def count_threads(self, fpath):
+        globbed        = self.glob_target(fpath, fn=self.sub_filter, rec=False):
         thread_listing = fpath / thread_file
         counts         = defaultdict(lambda: [0, 0])
         globbed        = [x for x in self.glob_files(fpath) if "thread" in x.stem]
@@ -189,7 +185,7 @@ class OrgMultiThreadCount(globber.LazyGlobMixin, globber.DirGlobMixin, globber.D
         summary = [f"L1: {y[0]} {x}\nL2: {y[1]} {x}" for x,y in counts.items()]
         thread_listing.write_text(f"Total Files: {total_files}\nTotal Threads: {total_threads}\n" + "\n".join(summary))
 
-class ThreadOrganise(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin, BatchMixin, TargetedMixin):
+class ThreadOrganise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchMixin):
     """
     move threads in multi thread files to their own separate count
     """
@@ -204,29 +200,24 @@ class ThreadOrganise(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEa
     def set_params(self):
         return self.target_params()
 
-    def task_detail(self, task, fpath=None):
-        task.update({
-            "actions" : [ self.process_threads ],
-        })
-        return task
-
     def filter(self, fpath):
-        if any(x.suffix == ".org" for x in fpath.iterdir()):
+        if fpath.is_dir() and any(x.suffix == ".org" for x in fpath.iterdir()):
             return self.control.keep
         else:
             return self.control.discard
 
-    def process_threads(self):
-        chunks = self.target_chunks()
-        self.run_batches(*chunks)
+    def subtask_detail(self, task, fpath):
+        task.update({
+            "actions" : [ (self.process_thread_file, [fpath])],
+        })
+        return task
 
-    def batch(self, data):
-        for name, fpath in data:
-            self.read_threadcount(fpath)
-            self.process_threads(fpath)
+    def process_thread_file(self, fpath):
+        self.read_threadcount(fpath)
+        self.process_threads(fpath)
 
     def read_threadcount(self, fpath):
-        threadp = fpath / thread_file
+        threadp = fpath.parent / thread_file
         self.multi_threads.clear()
         for line in threadp.read_text().split("\n"):
             result = self.total_files_reg.match(line)
@@ -247,7 +238,7 @@ class ThreadOrganise(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEa
         if not bool(self.multi_threads):
             return
 
-        print(f"Processing: {fpath} : Total: {self.total_threads}, {self.multi_threads}", file=sys.stderr)
+        logging.info(f"Processing: {fpath} : Total: {self.total_threads}, {self.multi_threads}")
 
         targets = list(self.multi_threads)
         self.multi_threads.clear()
@@ -313,7 +304,7 @@ class ThreadOrganise(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEa
         with open(header_file, 'a') as f:
             f.write("\n" + "".join(header_lines))
 
-class ThreadImageOCR(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin, BatchMixin, TargetedMixin):
+class ThreadImageOCR(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchMixin, TargetedMixin):
     """
     OCR all files for all thread directories,
     and extract all links into .links files
@@ -326,20 +317,24 @@ class ThreadImageOCR(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEa
     def set_params(self):
         return self.target_params()
 
-    def task_detail(self, task, fpath=None):
+    def filter(self, fpath):
+        if fpath.is_dir() and any(x.suffix == ".org" for x in fpath.iterdir()):
+            return self.control.keep
+        return self.control.discard
+
+    def subtask_detail(self, task, fpath=None):
         task.update({
-            "actions" : [ self.process_all ],
+            "actions" : [ (self.process_files, [fpath]) ],
         })
         return task
 
-    def filter(self, fpath):
-        if any(x.suffix == ".org" for x in fpath.iterdir()):
-            return self.control.keep
-        else:
-            return self.control.discard
+    def sub_filter(self, fpath):
+        if fpath.is_file():
+            return self.globc.accept
+        return self.globc.discard
 
-    def process_all(self):
-        chunks = self.target_chunks(base=globber.LazyGlobMixin)
+    def process_files(self, fpath):
+        chunks = self.chunk(self.glob_target(fpath, fn=self.sub_filter))
         self.run_batches(*chunks)
 
     def batch(self, data):

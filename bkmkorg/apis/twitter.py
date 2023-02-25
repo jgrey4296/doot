@@ -20,7 +20,7 @@ import time
 import json
 import uuid
 import doot
-from doot.task_mixins import BatchMixin
+from doot.mixins.batch import BatchMixin
 import tomler
 import tweepy
 

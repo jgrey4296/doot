@@ -34,15 +34,20 @@ logmod.getLogger('bibtexparser').setLevel(logmod.CRITICAL)
 ##-- end logging
 
 import shutil
+
 import bkmkorg
 import doot
 from bkmkorg.bibtex import clean as bib_clean
+from bkmkorg.bibtex import utils as bib_utils
 from bkmkorg.bibtex.load_save import BibLoadSaveMixin
 from bkmkorg.formats.timelinefile import TimelineFile
-from bkmkorg.bibtex import utils as bib_utils
-from doot import globber
+from doot import globber, tasker
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.batch import BatchMixin
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.filer import FilerMixin
+from doot.mixins.targeted import TargetedMixin
 from doot.tasker import DootTasker
-from doot import tasker, task_mixins
 from doot.tasks.files.backup import BackupTask
 
 pl_expand : Final = lambda x: pl.Path(x).expanduser().resolve()
@@ -53,33 +58,28 @@ clean_in_place   : Final = doot.config.on_fail(False, bool).tool.doot.bibtex.cle
 
 ENT_const        : Final = 'ENTRYTYPE'
 
-class LibDirClean(globber.LazyGlobMixin, globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin, task_mixins.BatchMixin):
+class LibDirClean(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerMixin):
     """
     Clean the directories of the bibtex library
     """
 
-    def __init__(self, name="pdflibrary::clean", locs=None, roots=None, rec=False, exts=None):
+    def __init__(self, name="pdflibrary::clean", locs=None, roots=None, rec=True, exts=None):
         super().__init__(name, locs, roots or [locs.pdfs], rec=False, exts=exts)
 
+    def set_params(self):
+        return self.target_params()
+
     def filter(self, fpath):
-        return not bool(list(fpath.iterdir()))
+        if fpath.is_dir() and not bool(list(fpath.iterdir())):
+            return self.globc.keep
+        return self.globc.discard
 
-    def task_detail(self, task):
+    def subtask_detail(self, task, fpath):
         task.update({
-            "actions": [ self.rm_empty_lib_dirs ],
+            "actions": [ (self.rmdirs, [fpath]) ],
         })
-        return task
 
-    def rm_empty_lib_dirs(self):
-        globbed = super(globber.LazyGlobMixin, self).glob_all()
-        chunks  = self.chunk(globbed, 10)
-        self.run_batches(*chunks)
-
-    def batch(self, data):
-        for name, fpath in data:
-            self.rmdirs(fpath)
-
-class BibtexClean(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin, bib_clean.BibFieldCleanMixin, bib_clean.BibPathCleanMixin, BibLoadSaveMixin, task_mixins.BatchMixin):
+class BibtexClean(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, bib_clean.BibFieldCleanMixin, bib_clean.BibPathCleanMixin, BibLoadSaveMixin, BatchMixin, FilerMixin):
     """
     (src -> src) Clean all bib files
     formatting, fixing paths, etc
@@ -91,19 +91,18 @@ class BibtexClean(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.A
         super().__init__(name, locs, roots or [locs.bibtex], exts=[".bib"], rec=rec)
         self.current_db   = None
         self.current_year = None
-        self.issues = []
+        self.issues       = []
         self.locs.ensure("build", "temp", "bibtex")
 
     def set_params(self):
         return [
             { "name": "move-files", "long": "move-files", "type": bool, "default": False },
-        ]
+        ] + self.target_params()
 
     def task_detail(self, task):
         issue_report = self.locs.build / "bib_clean_issues.report"
         task.update({
             "actions" : [
-                self.clean_all_bibtex,
                 lambda: { "key_max" : max(len(x[0]) for x in self.issues) },
                 lambda task: { "issues" : "\n".join(f"{x[0]:<{task.values['key_max']}} {x[1]}" for x in self.issues) },
                 (self.write_to, [issue_report, "issues"]),
@@ -112,17 +111,20 @@ class BibtexClean(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.A
         })
         return task
 
-    def clean_all_bibtex(self):
-        globbed = super(globber.LazyGlobMixin, self).glob_all()
-        chunks  = self.chunk(globbed, 10)
-        self.run_batches(*chunks)
+    def subtask_detail(self, task, fpath):
+        target = fpath if clean_in_place else self.locs.temp / fpath.name
+        task.update({
+            "actions" : [
+                (self.load_and_clean, [fpath]), # -> cleaned
+                self.db_to_str, # -> db
+                (self.write_to, [target, "db"]),
+            ],
+        })
 
-    def batch(self, data):
-        for name, fpath in data:
-            target = fpath if clean_in_place else self.locs.temp / fpath.name
-            self.load_and_clean(fpath), # -> cleaned
-            bib_str = self.bc_db_to_str(self.current_db, self.bc_prepare_entry_for_write, self.locs.pdfs)
-            target.write_text(bib_str)
+    def db_to_str(self):
+        return {
+            "db" : self.bc_db_to_str(self.current_db, self.bc_prepare_entry_for_write, self.locs.pdfs)
+        }
 
     def load_and_clean(self, fpath):
         self.current_year = fpath.stem
@@ -189,7 +191,7 @@ class BibtexClean(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.A
             print(f"Error Occurred for {entry['ID']}: {err}", file=sys.stderr)
             raise err
 
-class BibtexReport(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.BatchMixin, task_mixins.ActionsMixin, BibLoadSaveMixin, bib_clean.BibFieldCleanMixin, bib_clean.BibPathCleanMixin):
+class BibtexReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerMixin, BatchMixin, BibLoadSaveMixin, bib_clean.BibFieldCleanMixin, bib_clean.BibPathCleanMixin):
     """
     (src -> build) produce reports on the bibs found
     """
@@ -198,7 +200,7 @@ class BibtexReport(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.
         super().__init__(name, locs, roots or [locs.bibtex], rec=rec, exts=[".bib"])
         self.locs.update(timelines=self.locs.build / "timelines")
 
-        self.db                             = self.bc_load_db([], lambda x: x)
+        self.db                             = None
         self.tag_file_mapping               = defaultdict(list)
         self.tag_counts                     = defaultdict(lambda: 0)
         self.year_counts                    = defaultdict(lambda: 0)
@@ -206,6 +208,12 @@ class BibtexReport(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.
         self.files_counts                   = defaultdict(lambda: 0)
         self.authors : set[tuple[str, str]] = set()
         self.editors : set[tuple[str, str]] = set()
+
+    def setup_detail(self, task):
+        task.update({
+            "actions": [ (self.bc_load_db, [[], lambda x: x]) ]
+        })
+        return task
 
     def task_detail(self, task):
         years_target  = self.locs.build / "years.report"
@@ -216,7 +224,6 @@ class BibtexReport(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.
 
         task.update({
             "actions" : [
-                self.load_all_bibtex,
 
                 ##-- report on authors
                 lambda:      { "author_max" : max((len(x[0]) for x in self.authors), default=0) },
@@ -254,14 +261,16 @@ class BibtexReport(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.
         })
         return task
 
-    def load_all_bibtex(self):
-        globbed = super(globbed.LAzyGlobMixin, self).glob_all()
-        chunks  = self.chunk(globbed, 10)
-        self.run_batches(*chunks)
+    def subtask_detail(self, task, fpath):
+        task.update({
+            "actions" : [
+                (self.load_bib, [fpath]),
+            ]
+        })
+        return task
 
-    def batch(self, data):
-        for name, fpath in data:
-            self.db = self.bc_load_db([fpath], fn=self.process_entry, db=self.db)
+    def load_bib(self, fpath):
+        self.db = self.bc_load_db([fpath], fn=self.process_entry, db=self.db)
 
     def process_entry(self, entry):
         try:
@@ -288,7 +297,6 @@ class BibtexReport(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.
         """
         Get all tags from all entries
         """
-
         for tag in entry['__tags']:
             self.tag_file_mapping[tag].append((entry['year'], entry['ID']))
             self.tag_counts[tag] += 1
@@ -335,7 +343,7 @@ class BibtexReport(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.
 
             out_target.write_text("\n".join(report))
 
-class BibtexStub(globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class BibtexStub(DelayedMixin, globber.DootEagerGlobber):
     """
     (src -> data) Create basic stubs for found pdfs and epubs
     """
@@ -343,9 +351,33 @@ class BibtexStub(globber.DootEagerGlobber, task_mixins.ActionsMixin):
 
     def __init__(self, name="bibtex::stub", locs=None, roots=None, rec=False, exts=None):
         super().__init__(name, locs, roots or [locs.downloads, locs.desktop, locs.dropbox], rec=rec, exts=exts or stub_exts)
-        self.source_text = self.locs.bib_stub_file.read_text()
+        self.source_text = ""
         self.max_stub_id = 0
         self.stubs       = []
+
+    def setup_detail(self, task):
+        task.update({
+            "actions": [
+                self.read_stub_contents
+            ]
+        })
+
+    def read_stub_contents(self):
+        self.source_text = self.locs.bib_stub_file.read_text()
+
+    def filter(self, fpath):
+        if fpath.is_file() and fpath.name not in self.source_text:
+            return self.globc.accept
+        return self.globc.discard
+
+    def task_detail(self, task):
+        task.update({
+            "actions" : [
+                self.current_max_stub_id,
+                self.append_stubs
+            ],
+        })
+        return task
 
     def current_max_stub_id(self):
         stub_re = re.compile(r"^@.+?{stub_key_(\d+),$")
@@ -357,23 +389,11 @@ class BibtexStub(globber.DootEagerGlobber, task_mixins.ActionsMixin):
 
         self.max_stub_id = max(stub_ids)
 
-    def filter(self, fpath):
-        return fpath.name not in self.source_text
-
-    def task_detail(self, task):
-        task.update({
-            "actions" : [
-                self.current_max_stub_id,
-                self.stub_all,
-                self.append_stubs],
-            })
-        return task
-
     def subtask_detail(self, task, fpath):
         task.update({
             "actions" : [
-                (self.move_to_workdir, [fpath]),  # locs.src/fpath -> moved_to: locs.data/fpath
-                # (self.stub_entry, [fpath]), # moved_to
+                (self.move_to_workdir, [fpath]), # locs.src/fpath -> moved_to: locs.data/fpath
+                (self.stub_entry, [fpath]),      # moved_to
             ],
         })
         return task
@@ -389,16 +409,6 @@ class BibtexStub(globber.DootEagerGlobber, task_mixins.ActionsMixin):
         # src.rename(dst)
         return { "moved_to" : str(dst)}
 
-    def stub_all(self):
-        for fpath in self.locs.bibtex_working.glob("*"):
-            if fpath.suffix not in self.exts:
-                continue
-
-            if not self.filter(fpath):
-                continue
-
-            self.stub_entry(fpath)
-
     def stub_entry(self, fpath):
         self.max_stub_id += 1
         stub_str = BibtexStub.stub_t.substitute(id=self.max_stub_id,
@@ -413,9 +423,10 @@ class BibtexStub(globber.DootEagerGlobber, task_mixins.ActionsMixin):
 
         print(f"Adding {len(self.stubs)} stubs")
         with open(self.locs.bib_stub_file, 'a') as f:
+            f.write("\n")
             f.write("\n\n".join(self.stubs))
 
-class TODOBibtexWaybacker(globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class TODOBibtexWaybacker(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
     """
     get all urls from bibtexs,
     then check they are in wayback machine,
