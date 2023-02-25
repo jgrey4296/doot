@@ -20,7 +20,7 @@ from doit.tools import Interactive
 from doit.task import Task as DoitTask
 
 import doot
-from doot import tasker, globber, task_mixins
+from doot import tasker, globber
 from doot.loc_data import DootLocData
 ##-- end imports
 
@@ -47,15 +47,19 @@ NAV_T          = Template(data_path.joinpath("epub_nav").read_text())
 NAV_ENT_T      = Template(data_path.joinpath("epub_nav_entry").read_text())
 ##-- end epub templates
 
+from doot.mixins.filer import FilerMixin
+from doot.mixins.zipper import ZipperMixin
+from doot.mixins.commander import CommanderMixin
+
 ws : Final = re.compile("\s+")
 
-class EbookGlobberBase(globber.DirGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class EbookGlobberBase(globber.DootEagerGlobber):
 
     marker_file = ".epub"
 
     def filter(self, fpath):
         """ marker file exists? """
-        if (fpath / self.marker_file ).exists():
+        if fpath.is_dir() and (fpath / self.marker_file ).exists():
             return self.control.keep
         return self.control.discard
 
@@ -74,7 +78,7 @@ class EbookCompileTask(EbookGlobberBase):
         })
         return task
 
-class EbookConvertTask(EbookGlobberBase):
+class EbookConvertTask(EbookGlobberBase, CommanderMixin):
     """
     (GlobDirs: [src, temp] -> build) *.zip -> *.epub
 
@@ -97,7 +101,7 @@ class EbookConvertTask(EbookGlobberBase):
     def action_convert(self, dependencies, targets):
         return ["ebook-convert", dependencies[0], targets[0] ]
 
-class EbookZipTask(EbookGlobberBase, task_mixins.ZipperMixin):
+class EbookZipTask(EbookGlobberBase, ZipperMixin):
     """
     (GlobDirs: [src] -> temp) wrapper around ZipTask to build zips of epub directories
     """
@@ -273,7 +277,7 @@ class EbookManifestTask(EbookGlobberBase):
                                                   )
         manifest.write_text(expanded_template)
 
-class EbookRestructureTask(EbookGlobberBase):
+class EbookRestructureTask(EbookGlobberBase, FilerMixin):
     """
     (GlobDirs: [src] -> src) Reformat working epub locs to the same structure
     *.x?htm?              -> content/
@@ -327,7 +331,7 @@ class EbookRestructureTask(EbookGlobberBase):
                     moved = True
                     break
 
-class EbookSplitTask(globber.DootEagerGlobber):
+class EbookSplitTask(globber.DootEagerGlobber, CommanderMixin):
     """
     (GlobDirs: [data] -> build) split any epubs found in the project data
     """
@@ -350,7 +354,7 @@ class EbookSplitTask(globber.DootEagerGlobber):
     def action_convert(self, dependencies, targets):
         return ["ebook-convert", dependencies[0], targets[0]]
 
-class EbookNewTask(tasker.DootTasker, task_mixins.ActionsMixin):
+class EbookNewTask(tasker.DootTasker):
     """
     (-> [src]) Create a new stub structure for an ebook
 
@@ -372,12 +376,9 @@ class EbookNewTask(tasker.DootTasker, task_mixins.ActionsMixin):
         return (self.locs.src / name / self.marker_file).exists()
 
     def set_params(self):
-        return [ { "name"    : "name",
-                   "short"   : "n",
-                   "type"    : str,
-                   "default" : "default",
-                  }
-                ]
+        return [
+            { "name" : "name", "short" : "n", "type": str, "default" : "default" }
+        ]
 
     def task_detail(self, task):
         task.update({
@@ -411,7 +412,7 @@ class EbookNewTask(tasker.DootTasker, task_mixins.ActionsMixin):
         default_styles.write_text(css_template.read_text())
         page_styles.write_text(page_style_template.read_text())
 
-class TODOEbookNewPandoc(EbookGlobberBase):
+class TODOEbookNewPandoc(EbookGlobberBase, CommanderMixin):
     """
     Build an ebook using pandoc
     """

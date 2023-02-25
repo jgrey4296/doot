@@ -14,12 +14,15 @@ from itertools import cycle, chain
 from doit.action import CmdAction
 
 import doot
-from doot import tasker, globber, task_mixins
+from doot import tasker, globber
 from doot.tasks.files import hashing
 
 ##-- end imports
 
+from doot.mixins.targeted import TargetedMixin
 from doot.mixins.delayed import DelayedMixin
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.batch import BatchMixin
 import numpy as np
 import PIL
 from PIL import Image
@@ -53,7 +56,7 @@ def norm_img(img):
     norm_c1 = [x/y for x,y in zip(histograms, sums)]
     return np.array(norm_c1).reshape((1,-1))
 
-class OCRGlobber(DelayedMixin, task_mixins.TargetedMixin, globber.DootEagerGlobber, task_mixins.BatchMixin):
+class OCRGlobber(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, BatchMixin):
     """
     ([data] -> data) Run tesseract on applicable files in each found directory
     to make dot txt files of ocr'd text from the image
@@ -139,7 +142,7 @@ class OCRGlobber(DelayedMixin, task_mixins.TargetedMixin, globber.DootEagerGlobb
             ocr_cmd.execute()
             mv_txt_cmd.execute()
 
-class TODOImages2PDF(task_mixins.TargetedMixin, tasker.DootTasker, task_mixins.ActionsMixin, task_mixins.BatchMixin):
+class TODOImages2PDF(TargetedMixin, tasker.DootTasker, CommandMixin, BatchMixin):
     """
     Combine globbed images into a single pdf file using imagemagick
     """
@@ -185,7 +188,7 @@ class TODOImages2PDF(task_mixins.TargetedMixin, tasker.DootTasker, task_mixins.A
         pages = [x for x in self.locs.temp.iterdir() if x.suffix == ".pdf"]
         return ["pdftk", *pages, "cat", "output", targets[0]]
 
-class TODOImages2Video(DelayedMixin, task_mixins.TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class TODOImages2Video(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin):
     """
     https://stackoverflow.com/questions/24961127/
     """
@@ -216,7 +219,7 @@ class TODOImages2Video(DelayedMixin, task_mixins.TargetedMixin, globber.DootEage
         args.append(targets[0])
         raise NotImplementedError
 
-class TODOPDF2Images(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin, task_mixins.BatchMixin):
+class TODOPDF2Images(globber.DootEagerGlobber, CommanderMixin, FilerMixin, BatchMixin):
     """
     (src -> temp) Find pdfs and extract images for them for ocr
     """

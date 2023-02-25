@@ -21,7 +21,6 @@ from weakref import ref
 import doot
 from doot import globber
 from doot.tasker import DootTasker
-from doot.task_mixins import ActionsMixin
 
 if TYPE_CHECKING:
     # tc only imports
@@ -37,6 +36,7 @@ logging = logmod.getLogger(__name__)
 
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
+from doot.mixins.commander import CommanderMixin
 
 
 def task_latex_docs():
@@ -53,7 +53,7 @@ def task_latex_docs():
                     ],
     }
 
-class LatexCheckSweep(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, ActionsMixin):
+class LatexCheckSweep(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
     """
     ([src] -> temp) Run a latex pass, but don't produce anything,
     just check the syntax
@@ -65,9 +65,7 @@ class LatexCheckSweep(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Act
 
     def set_params(self):
         return [
-            { "name"   : "interaction",
-              "short"  : "i",
-              "type"    : str,
+            { "name"   : "interaction", "short"  : "i", "type"    : str,
               "choices" : [ ("batchmode", ""), ("nonstopmode", ""), ("scrollmode", ""), ("errorstopmode", ""),],
               "default" : "nonstopmode",
              },

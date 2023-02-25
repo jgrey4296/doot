@@ -52,7 +52,6 @@ sphinix       = shutil.which("sphinix")
 trang         = shutil.which("trang")
 xml           = shutil.which("xml")
 xsdata        = shutil.which("xsdata")
-xsdata        = shutil.which("xsdata")
 
 def task_xsdata_config():
     return {

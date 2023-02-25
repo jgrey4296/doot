@@ -104,7 +104,7 @@ class DootEagerGlobber(SubMixin, DootTasker):
         elif not (bool(rec) or rec is None and self.rec):
             check_fn = lambda x: (filter_fn(x) not in [None, False, GlobControl.reject, GlobControl.discard]
                                   and x.name not in glob_ignores
-                                  and (not bool(exts) or x.is_file() and x.suffix not in exts))
+                                  and (not bool(exts) or (x.is_file() and x.suffix in exts)))
 
             potentials  = [target] + [x for x in target.iterdir()]
             results     = [x for x in potentials if check_fn(x)]
@@ -145,6 +145,14 @@ class DootEagerGlobber(SubMixin, DootTasker):
         for root in self.roots:
             globbed.update(self.glob_target(root, rec=rec, fn=fn))
 
+        logging.debug("Globbed: (%s) : %s", len(globbed), globbed)
+        # match input("Continue? _/N "):
+        #     case "N":
+        #         return []
+        #     case "d":
+        #         breakpoint()
+        #         pass
+
         results = {}
 
         # then create unique names based on path:
@@ -168,7 +176,7 @@ class DootEagerGlobber(SubMixin, DootTasker):
         logging.debug("%s : Building Globber SubTasks", self.basename)
         globbed    = self.glob_all()
         subtasks   = []
-        for i, (uname, fpath) in enumerate(self.glob_all()):
+        for i, (uname, fpath) in enumerate(globbed):
             subtask = self._build_subtask(i, uname, fpath=fpath)
             match subtask:
                 case None:

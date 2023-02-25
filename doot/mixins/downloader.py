@@ -12,7 +12,7 @@ from typing import (Any, Callable, ClassVar, Dict, Final, Generic, Iterable,
 
 import doot
 import requests
-from doot import tasker, task_mixins
+from doot import tasker
 
 ##-- end imports
 

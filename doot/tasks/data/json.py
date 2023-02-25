@@ -14,14 +14,16 @@ from functools import partial
 from itertools import cycle, chain
 
 import doot
-from doot import globber, tasker, task_mixins
+from doot import globber, tasker
 
 ##-- end imports
 
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.filer import FilerMixin
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
 
-class JsonFormatTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class JsonFormatTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerMixin, CommanderMixin):
     """
     ([data] -> data) Lint Json files with jq *inplace*
     """
@@ -61,7 +63,7 @@ class JsonFormatTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task
             target.write_text(cmd.out)
 
 
-class JsonPythonSchema(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class JsonPythonSchema(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerMixin, CommanderMixin):
     """
     ([data] -> codegen) Use XSData to generate python bindings for a directory of json's
     """
@@ -101,7 +103,7 @@ class JsonPythonSchema(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, ta
 
         return args
 
-class JsonVisualise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class JsonVisualise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
     """
     ([data] -> visual) Wrap json files with plantuml header and footer,
     ready for plantuml to visualise structure

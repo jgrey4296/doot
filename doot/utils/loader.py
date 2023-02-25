@@ -133,7 +133,7 @@ class DootLoader(NamespaceTaskLoader):
                     continue
                 case _, TaskGroup() if bool(ref):
                     logging.debug("Expanding TaskGroup: %s", ref)
-                    creators += [(ref.name, x) for x in ref.tasks]
+                    creators += [(getattr(x, "basename", task_name), x) for x in ref.tasks]
                 case _,  DootTasker():
                     creators += [(ref.basename, ref)]
                 case True, FunctionType() | MethodType():
@@ -207,7 +207,8 @@ class DootLoader(NamespaceTaskLoader):
             self._build_failures.append(task)
             return
 
-        if task.has_subtask and bool(param_spec):
+        if not task.subtask_of and bool(param_spec):
+            logging.debug("Adding params spec to task: %s : %s", task.name, param_spec)
             task.creator_params = param_spec
 
         self._task_collection[task.name] = task
@@ -296,12 +297,14 @@ class DootLoader(NamespaceTaskLoader):
 
         if hasattr(ref, 'set_params'):
             creator_params = ref.set_params()
+            ref._task_creator_params = creator_params
         else:
             creator_params = getattr(ref, '_task_creator_params', None)
 
         if creator_params is None:
             return [], {}
 
+        logging.debug("Creator has params: %s", creator_params)
         # Add task options from config, if present
         parser      = doit_loader.TaskParse([doit_loader.CmdOption(opt) for opt in creator_params])
         if self.config and task_stanza in self.config:

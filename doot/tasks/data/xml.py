@@ -19,14 +19,16 @@ from itertools import cycle
 from itertools import cycle, chain
 from doit.tools import Interactive
 
-from doot import globber, tasker, task_mixins
+from doot import globber, tasker
 
 ##-- end imports
 
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.filer import FilerMixin
 
-class XmlElementsTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class XmlElementsTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
     """
     ([data] -> elements) xml element retrieval using xml starlet toolkit
     http://xmlstar.sourceforge.net/
@@ -61,7 +63,7 @@ class XmlElementsTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, tas
         globbed = self.glob_target(fpath, fn=lambda x: x.is_file())
         return ["xml", "el", "-u", *globbed]
 
-class XmlSchemaTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class XmlSchemaTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
     """
     ([data] -> schema) Generate .xsd's from directories of xml files using trang
     https://relaxng.org/jclark/
@@ -92,7 +94,7 @@ class XmlSchemaTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_
         globbed = self.glob_target(fpath, fn=lambda x: x.is_file())
         return ["trang", *globbed, *targets]
 
-class XmlPythonSchemaRaw(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class XmlPythonSchemaRaw(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
     """
     ([data] -> codegen) Generate Python Dataclass bindings based on raw XML data
     """
@@ -130,7 +132,7 @@ class XmlPythonSchemaRaw(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, 
                 ]
         return args
 
-class XmlPythonSchemaXSD(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class XmlPythonSchemaXSD(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
     """
     ([data] -> codegen) Generate python dataclass bindings from XSD's
     """
@@ -170,7 +172,7 @@ class XmlPythonSchemaXSD(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, 
 
         return args
 
-class XmlSchemaVisualiseTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class XmlSchemaVisualiseTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
     """
     ([data] -> visual) Generate Plantuml files ready for plantuml to generate images
     """
@@ -199,7 +201,7 @@ class XmlSchemaVisualiseTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobb
             })
         return task
 
-class XmlValidateTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class XmlValidateTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
     """
     ([data]) Validate xml's by schemas
     """
@@ -234,7 +236,7 @@ class XmlValidateTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, tas
         args += self.glob_target(fpath, fn=lambda x: x.is_file())
         return args
 
-class XmlFormatTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class XmlFormatTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
     """
     ([data] -> data) Basic Formatting with backup
     """
@@ -277,4 +279,3 @@ class XmlFormatTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_
             cmd = self.cmd(args)
             cmd.execute()
             target.write_text(cmd.out)
-

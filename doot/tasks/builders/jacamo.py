@@ -33,12 +33,13 @@ logging = logmod.getLogger(__name__)
 from os import environ
 import shutil
 import doot
-from doot import tasker, task_mixins
-from doot.tasks.utils.gradle import GradleMixin
+from doot import tasker
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.gradle import GradleMixin
 
 jacamo_home = doot.config.on_fail(environ.get("JACAMO_HOME", None), str).tool.doot.jacamo.home(wrapper=pl.Path)
 
-class JacamoNewProject(tasker.DootTasker, GradleMixin, task_mixins.CommanderMixin):
+class JacamoNewProject(tasker.DootTasker, GradleMixin, CommanderMixin):
     """
     Create a new jacamo agent project
     """
@@ -53,14 +54,14 @@ class JacamoNewProject(tasker.DootTasker, GradleMixin, task_mixins.CommanderMixi
             {"name": "project-name", "short": "n", "default": "jacamo_new", "type": str}
         ]
 
-    def is_setup(self, task):
+    def is_current(self, task):
         return (self.locs.root / "build.gradle.kts").exists()
 
     def setup_detail(self, task):
         task.update({
             "actions"  : [ self.initialise_gradle_root ],
             "targets"  : [ "build.gradle.kts", "settings.gradle.kts" ],
-            "uptodate" : [ self.is_setup ],
+            "uptodate" : [ self.is_current ],
         })
         return task
 
@@ -74,7 +75,7 @@ class JacamoNewProject(tasker.DootTasker, GradleMixin, task_mixins.CommanderMixi
         })
         return task
 
-class JacamoRun(tasker.DootTasker, GradleMixin, task_mixins.CommanderMixin):
+class JacamoRun(tasker.DootTasker, GradleMixin, CommanderMixin):
     """
     use gradle to run a jacamo agent
     """
@@ -100,7 +101,7 @@ class JacamoRun(tasker.DootTasker, GradleMixin, task_mixins.CommanderMixin):
         })
         return task
 
-class JacamoBuild(tasker.DootTasker, task_mixins.CommanderMixin):
+class JacamoBuild(tasker.DootTasker, CommanderMixin):
     """
     Build the jacamo project
     """

@@ -21,7 +21,6 @@ from weakref import ref
 import doot
 from doot import globber
 from doot.tasker import DootTasker
-from doot.task_mixins import ActionsMixin
 
 if TYPE_CHECKING:
     # tc only imports
@@ -37,8 +36,9 @@ logging = logmod.getLogger(__name__)
 
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
+from doot.mixins.commander import CommanderMixin
 
-class GodotCheckTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, ActionsMixin):
+class GodotCheckTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin):
     """
     ([root]) Lint all gd scripts in the project
     """

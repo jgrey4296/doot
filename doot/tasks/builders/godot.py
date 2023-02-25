@@ -7,10 +7,11 @@ import shutil
 
 from doot import globber
 from doot.tasker import DootTasker
-from doot.task_mixins import ActionsMixin
 
 ##-- end imports
 # https://docs.godotengine.org/en/stable/tutorials/editor/command_line_tutorial.html
+
+from doot.mixins.commander import CommanderMixin
 
 def task_godot_version():
     return { "basename"  : "godot::version",
@@ -28,7 +29,7 @@ def task_godot_test():
              "actions": []
             }
 
-class GodotRunScene(globber.HeadlessGlobMixin, globber.DootEagerGlobber, ActionsMixin):
+class GodotRunScene(globber.DootEagerGlobber, CommanderMixin):
     """
     ([root]) Globber to allow easy running of scenes
     """
@@ -38,16 +39,8 @@ class GodotRunScene(globber.HeadlessGlobMixin, globber.DootEagerGlobber, Actions
 
     def set_params(self):
         return [
-            { "name"    : "target",
-              "short"   : "t",
-              "type"    : str,
-              "default" : "",
-             },
-            { "name"    : "debug",
-              "short"   : "d",
-              "type"    : bool,
-              "default" : False,
-             },
+            { "name"    : "target", "short"   : "t", "type"    : str, "default" : "",},
+            { "name"    : "debug", "short"   : "d", "type"    : bool, "default" : False,},
         ]
 
     def task_detail(self, task:dict):
@@ -74,7 +67,7 @@ class GodotRunScene(globber.HeadlessGlobMixin, globber.DootEagerGlobber, Actions
         args.append(self.args['target'])
         return args
 
-class GodotRunScript(globber.EagerFileGlobber, ActionsMixin):
+class GodotRunScript(globber.EagerFileGlobber, CommanderMixin):
     """
     ([root]) Run a godot script, with debugging or without
     """
@@ -84,26 +77,20 @@ class GodotRunScript(globber.EagerFileGlobber, ActionsMixin):
 
     def filter(self, fpath):
         # TODO test script for implementing runnable interface
-        return True
+        return fpath.is_file()
 
     def set_params(self):
         return [
-            { "name"    : "target",
-              "short"   : "t",
-              "type"    : str,
-              "default" : "",
-             },
-            { "name"    : "debug",
-              "short"   : "d",
-              "type"    : bool,
-              "default" : False,
-             },
+            { "name"    : "target", "short"   : "t", "type"    : str, "default" : "",},
+            { "name"    : "debug", "short"   : "d", "type"    : bool, "default" : False,},
         ]
 
     def subtask_detail(self, task, fpath=None):
         task.update({ "verbosity" : 2,})
-        task['actions'] += [ self.cmd(self.run_cmd, [fpath]),
-                             self.regain_focus() ]
+        task['actions'] += [
+            self.cmd(self.run_cmd, [fpath]),
+            self.regain_focus()
+        ]
 
         return task
 
@@ -118,7 +105,7 @@ class GodotRunScript(globber.EagerFileGlobber, ActionsMixin):
 
         return args
 
-class GodotBuild(DootTasker, ActionsMixin):
+class GodotBuild(DootTasker, CommanderMixin):
     """
     (-> [build]) build a godot project
     """
@@ -127,23 +114,10 @@ class GodotBuild(DootTasker, ActionsMixin):
         super().__init__(name, locs)
 
     def set_params(self):
-        return [ { "name"    : "build_target",
-                   "short"   : "t",
-                   "type"    : str,
-                   "default" : "osx",
-                   "choices" : [("Mac OSX", ""),
-                                ("Android", ""),
-                                ],
-                  },
-                 { "name"    : "build_type",
-                   "long"    : "type",
-                   "type"    : str,
-                   "default" : "export",
-                   "choices" : [ ("export", ""),
-                                 ("export-debug", "")
-                                ]
-                  },
-                ]
+        return [
+            { "name" : "build_target", "short" : "t",    "type" : str, "default" : "osx",    "choices" : [("Mac OSX", ""), ("Android", ""),],},
+            { "name" : "build_type",   "long"  : "type", "type" : str, "default" : "export", "choices" : [ ("export", ""), ("export-debug", "")]},
+        ]
 
     def setup_detail(self, task):
         task.update({
@@ -153,12 +127,12 @@ class GodotBuild(DootTasker, ActionsMixin):
         return task
 
     def task_detail(self, task):
-        return { "basename" : "godot::build",
-                 "actions"  : [ self.cmd(self.cmd_builder) ],
-                 "targets"  : [ self.build_dir / "build.dmg" ],
-                 "file_dep" : [ "export_presets.cfg" ],
-                 "clean"    : True,
-                }
+        return {
+            "actions"  : [ self.cmd(self.cmd_builder) ],
+            "targets"  : [ self.locs.build / "build.dmg" ],
+            "file_dep" : [ "export_presets.cfg" ],
+            "clean"    : True,
+        }
 
     def cmd_builder(self, targets):
         return ["godot",
@@ -179,7 +153,7 @@ class GodotNewScene(DootTasker, ActionsMixin):
 
     def set_params(self):
         return [
-            { "name"    : "name", "short"   : "n", "type"    : str, "default" : "default"},
+            { "name" : "name", "short" : "n", "type" : str, "default" : "default"},
         ]
 
     def task_detail(self, task):

@@ -19,6 +19,7 @@ from doot import globber
 
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
+from doot.mixins.commander import CommanderMixin
 
 src_ext      : Final = doot.config.on_fail(".lp", str).tool.doot.clingo.src_ext()
 out_ext      : Final = doot.config.on_fail(".lp_result", str).tool.doot.clingo.out_ext()
@@ -35,7 +36,7 @@ class TODOClingoCheck:
     """
     pass
 
-class ClingoRunner(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, ActionsMixin):
+class ClingoRunner(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin):
     """
     ([src] -> build) Run clingo on ansprolog sources
     """
@@ -61,7 +62,7 @@ class ClingoRunner(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Action
     def clingo_call(self, fpath):
         return clingo_call + [fpath]
 
-class ClingoDotter(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, ActionsMixin):
+class ClingoDotter(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin):
     """
     ([src] -> build) Run specified clingo files to output json able to be visualised
     """
@@ -87,8 +88,7 @@ class ClingoDotter(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Action
     def json_call(self, fpath):
         return clingo_call + ["--outf2", fpath]
 
-
-class TODOClingoVisualise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, ActionsMixin):
+class TODOClingoVisualise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin):
     """
     ([src] -> visual) Take clingo output with nodes,
     and convert to dot format

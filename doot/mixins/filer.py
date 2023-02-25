@@ -55,31 +55,35 @@ class FilerMixin:
         for target in locs:
             if not target.exists():
                 logging.debug("Making Directory: %s", target)
-                target.mkdir(parents=True, exist_ok=True)
+                target.expanduser().resolve().mkdir(parents=True, exist_ok=True)
 
     def write_to(self, fpath, key:str|list[str], task, sep=None):
         if sep is None:
             sep = "\n--------------------\n"
         match key:
-            case str():
+            case str() if key in task.values:
                 value = task.values[key]
             case [*strs]:
-                value = sep.join([task.values[x] for x in key])
+                value = sep.join([task.values.get(x, x) for x in key])
+            case _:
+                value = str(key)
 
-        fpath.write_text(value)
+        fpath.expanduser().resolve().write_text(value)
 
     def append_to(self, fpath, key:str|list[str], task, sep=None):
         if sep is None:
             sep = "\n--------------------\n"
 
         match key:
-            case str():
+            case str() if key in task.values:
                 value = task.values[key]
             case [*strs]:
-                value = sep.join([task.values[x] for x in key])
+                value = sep.join([task.values.get(x, x) for x in key])
+            case _:
+                value = str(x)
 
-        with open(fpath, 'a') as f:
-            f.write(value)
+        with open(fpath.expanduser().resolve(), 'a') as f:
+            f.write("\n"+ value)
 
     def move_to(self, fpath:pl.Path, *args, fn=None):
         """

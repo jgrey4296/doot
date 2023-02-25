@@ -1,6 +1,7 @@
 ##-- imports
 from __future__ import annotations
 
+import logging as logmod
 import pathlib as pl
 from functools import partial
 from typing import Final
@@ -8,12 +9,9 @@ from typing import Final
 import doot
 from doot import globber
 from doot.tasker import DootTasker
-from doot.task_mixins import ActionsMixin
+
 ##-- end imports
 
-##-- imports
-import logging as logmod
-##-- end imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -21,6 +19,8 @@ logging = logmod.getLogger(__name__)
 
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.filer import FilerMixin
 
 lint_config     : Final = doot.config.on_fail("pylint.toml", str).tool.doot.python.lint.config()
 lint_exec       : Final = doot.config.on_fail("pylint", str).tool.doot.python.lint.exec()
@@ -33,7 +33,7 @@ py_test_dir_fmt : Final = doot.config.on_fail("__test", str).tool.doot.python.te
 py_test_args    : Final = doot.config.on_fail([], list).tool.doot.python.test.args()
 py_test_out     : Final = pl.Path(doot.config.on_fail("result.test", str).tool.doot.python.test())
 
-class InitPyGlobber(DelayedMixin, TargetedMixin, globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
+class InitPyGlobber(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin):
     """ ([src] -> src) add missing __init__.py's """
 
     def __init__(self, name=f"py::initpy", locs:DootLocData=None, roots=None, rec=False):
@@ -52,7 +52,7 @@ class InitPyGlobber(DelayedMixin, TargetedMixin, globber.DirGlobMixin, globber.D
         task['actions'] += [ self.cmd("touch", fpath / "__init__.py") ]
         return task
 
-class PyLintTask(DelayedMixin, TargetedMixin, globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
+class PyLintTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
     """ ([root]) lint the package """
 
     def __init__(self, name=f"py::lint", locs:DootLocData=None, rec=None, exts=None):
@@ -116,7 +116,7 @@ class PyLintTask(DelayedMixin, TargetedMixin, globber.DirGlobMixin, globber.Doot
         else:
             fpath.write_text(task.values['lint'])
 
-class PyUnitTestGlob(DelayedMixin, TargetedMixin, globber.DirGlobMixin, globber.DootEagerGlobber, ActionsMixin):
+class PyUnitTestGlob(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
     """
     ([root]) Run all project unit tests
     """
@@ -130,7 +130,7 @@ class PyUnitTestGlob(DelayedMixin, TargetedMixin, globber.DirGlobMixin, globber.
         return self.target_params()
 
     def filter(self, fpath):
-        if py_test_dir_fmt in fpath.name:
+        if fpath.is_dir() and py_test_dir_fmt in fpath.name:
             return self.control.keep
         return self.control.discard
 

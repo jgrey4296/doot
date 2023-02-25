@@ -12,7 +12,7 @@ from doot import globber
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
 
-class ineReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
+class LineReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
     """
     Glob for all files in a target, and report on the amount of lines
     """

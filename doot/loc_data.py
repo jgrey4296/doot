@@ -93,7 +93,6 @@ class DootLocData:
                          *[x._build_report_task() for x in DootLocData._all_registered.values()],
                          )
 
-
     @staticmethod
     def report_defaulted() -> list[str]:
         return DootLocData._defaulted[:]
@@ -224,7 +223,6 @@ class DootLocData:
 
     def _file_str(self):
         return " ".join(f"{{{x}: {getattr(self, x)}}}" for x,y in sorted(self._files.items()))
-
 
     def ensure(self, *values):
         try:

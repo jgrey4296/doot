@@ -6,7 +6,6 @@
 ##-- imports
 from __future__ import annotations
 
-import types
 import abc
 import datetime
 import enum
@@ -15,7 +14,9 @@ import itertools as itz
 import logging as logmod
 import pathlib as pl
 import re
+import shutil
 import time
+import types
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
@@ -31,14 +32,14 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-import shutil
 import doot
-from doot import tasker, globber, task_mixins
-from doot.tasker import DootTasker
 from doit.exceptions import TaskError
+from doot import globber, tasker
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
-
+from doot.mixins.filer import FilerMixin
+from doot.mixins.commander import CommanderMixin
+from doot.tasker import DootTasker
 
 mbsync  = shutil.which("mbsync")
 rustup  = shutil.which("rustup")
@@ -51,7 +52,7 @@ conda   = shutil.which("conda")
 crontab = shutil.which("crontab")
 git     = shutil.which("git")
 
-class CheckMail(DootTasker, task_mixins.CommanderMixin):
+class CheckMail(DootTasker, CommanderMixin):
 
     def __init__(self, name="mail::check", locs=None):
         super().__init__(name, locs)
@@ -64,7 +65,7 @@ class CheckMail(DootTasker, task_mixins.CommanderMixin):
         })
         return task
 
-class MaintainFull(task_mixins.FilerMixin, DootTasker, task_mixins.CommanderMixin):
+class MaintainFull(DootTasker, CommanderMixin, FilerMixin):
     """
     Run all maintain tasks combined
     """
@@ -85,13 +86,13 @@ class MaintainFull(task_mixins.FilerMixin, DootTasker, task_mixins.CommanderMixi
             "actions" : [
                 (self.log, ["Full Maintenance", logmod.INFO]),
             ],
-            "task_dep" : ["_maintain::cargo", "_maintain::latex", "_maintain::cabal", "_maintain::doom", "_maintain::brew", "_maintain::conda", "_maintain::cron", "_maintain::git"],
+            "task_dep" : [  "_maintain::cron", "_maintain::git",  "_maintain::brew", "_maintain::conda", "_maintain::rust", "_maintain::haskell", "_maintain::doom",  "_maintain::latex"],
         })
         return task
 
-class RustMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMixin):
+class RustMaintain(DootTasker, CommanderMixin, FilerMixin):
 
-    def __init__(self, name="_maintain::cargo", locs=None):
+    def __init__(self, name="_maintain::rust", locs=None):
         super().__init__(name, locs)
         locs.ensure("maintain")
 
@@ -118,7 +119,7 @@ class RustMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMixi
         })
         return task
 
-class LatexMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMixin):
+class LatexMaintain(DootTasker, CommanderMixin, FilerMixin):
 
     def __init__(self, name="_maintain::latex", locs=None):
         super().__init__(name, locs)
@@ -148,9 +149,9 @@ class LatexMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMix
         })
         return task
 
-class CabalMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMixin):
+class HaskellMaintain(DootTasker, CommanderMixin, FilerMixin):
 
-    def __init__(self, name="_maintain::cabal", locs=None):
+    def __init__(self, name="_maintain::haskell", locs=None):
         super().__init__(name, locs)
         locs.ensure("maintain")
 
@@ -177,36 +178,40 @@ class CabalMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMix
         })
         return task
 
-class DoomMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMixin):
+class DoomMaintain(DootTasker, CommanderMixin, FilerMixin):
 
     def __init__(self, name="_maintain::doom", locs=None):
         super().__init__(name, locs)
         locs.ensure("maintain")
 
     def setup_detail(self, task):
+        if doom is None:
+            return None
+
         task.update({
                     "actions": [
-                        self.cmd([doom, "version"], save="doom"),
-                        self.cmd([doom, "info"], save="doom.info"),
+                        self.cmd(doom, "version", save="doom"),
+                        self.cmd(doom, "info", save="doom.info"),
                         (self.write_to, [self.locs.maintain / "doom.versions", ["doom", "doom.info"]]),
                     ],
         })
         return task
 
     def task_detail(self, task):
-        if not bool(doom):
-            return None
+        if doom is None:
+            return task
+
         task.update({
             "actions" : [
                 (self.log, ["Updating Doom", logmod.INFO]),
-                self.cmd([doom, "upgrade", "-!", "-v"], save="upgrade"),
-                self.cmd([doom, "sync", "-v"], save="sync"),
+                self.cmd(doom, "upgrade", "-!", "-v", save="upgrade"),
+                self.cmd(doom, "sync", "-v", save="sync"),
                 (self.write_to, [self.locs.maintain / "doom.backup", ["upgrade", "sync"]]),
             ],
         })
         return task
 
-class BrewMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMixin):
+class BrewMaintain(DootTasker, CommanderMixin, FilerMixin):
 
     def __init__(self, name="_maintain::brew", locs=None):
         super().__init__(name, locs)
@@ -237,13 +242,16 @@ class BrewMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMixi
         })
         return task
 
-class CondaMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMixin):
+class CondaMaintain(DootTasker,CommanderMixin, FilerMixin):
 
     def __init__(self, name="_maintain::conda", locs=None):
         super().__init__(name, locs)
         locs.ensure("maintain")
 
     def setup_detail(self, task):
+        if conda is None:
+            return None
+
         task.update({
                     "actions": [
                         self.cmd([conda, "--version"], save="conda"),
@@ -253,8 +261,8 @@ class CondaMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMix
         return task
 
     def task_detail(self, task):
-        if not bool(conda):
-            return None
+        if conda is None:
+            return task
 
         task.update({
             "actions" : [
@@ -273,7 +281,7 @@ class CondaMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMix
             export_cmd.execute()
             env.write_text(update_cmd.out + "\n--------------------\n" + export_cmd.out)
 
-class CronMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMixin):
+class CronMaintain(DootTasker, CommanderMixin, FilerMixin):
 
     def __init__(self, name="_maintain::cron", locs=None):
         super().__init__(name, locs)
@@ -300,13 +308,12 @@ class CronMaintain(DootTasker, task_mixins.CommanderMixin, task_mixins.FilerMixi
         })
         return task
 
-class GitMaintain(DelayedMixin, globber.DootEagerGlobber, task_mixins.FilerMixin, task_mixins.CommanderMixin):
+class GitMaintain(DelayedMixin, globber.DootEagerGlobber, FilerMixin, CommanderMixin):
 
     def __init__(self, name="_maintain::git", locs=None, roots=None):
         super().__init__(name, locs, roots or [locs.github], rec=True)
         locs.ensure("maintain")
-        self.output = self.locs.maintain / "git.version", "git"
-
+        self.output = self.locs.maintain / "git.version"
 
     def filter(self, fpath):
         try:

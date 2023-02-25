@@ -297,7 +297,7 @@ try:
     maintain_group += maintain.MaintainFull(locs=doot.locs)
     maintain_group += maintain.RustMaintain(locs=doot.locs)
     maintain_group += maintain.LatexMaintain(locs=doot.locs)
-    maintain_group += maintain.CabalMaintain(locs=doot.locs)
+    maintain_group += maintain.HaskellMaintain(locs=doot.locs)
     maintain_group += maintain.DoomMaintain(locs=doot.locs)
     maintain_group += maintain.BrewMaintain(locs=doot.locs)
     maintain_group += maintain.CondaMaintain(locs=doot.locs)

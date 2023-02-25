@@ -33,12 +33,12 @@ logging = logmod.getLogger(__name__)
 import shutil
 
 import doot
-from doot import tasker, globber, task_mixins
+from doot.mixins.commander import CommanderMixin
 
 gpg = shutil.which("gpg")
 gpg_user = doot.config.tool.doot.encrypt.user_email
 
-class EncryptMixin(task_mixins.CommanderMixin):
+class EncryptMixin(CommanderMixin):
     """
     mixin for standard gnupg actions
     """

@@ -30,9 +30,11 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from doot.mixins.filer import FilerMixin
+from doot.mixins.commander import CommanderMixin
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
-from doot import globber,tasker, task_mixins
+from doot import globber, tasker
 
 dot_scale  = doot.config.on_fail(72.0, float).tool.doot.dot_graph.scale()
 dot_layout = doot.config.on_fail("neato", str).tool.doot.dot_graph.layout()
@@ -40,7 +42,7 @@ dot_ext    = doot.config.on_fail("png", str).tool.doot.dot_graph.ext()
 
 plant_ext  = doot.config.on_fail("png", str).tool.doot.plantuml.ext()
 
-class DotVisualise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class DotVisualise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin):
     """
     ([src] -> build) make images from any dot files
     https://graphviz.org/doc/info/command.html
@@ -76,7 +78,7 @@ class DotVisualise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_m
         cmd += ["-o", targets[0]]
         return cmd
 
-class PlantUMLGlobberTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class PlantUMLGlobberTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin):
     """
     ([visual] -> build) run plantuml on a specification, generating target.'ext's
     """
@@ -108,7 +110,7 @@ class PlantUMLGlobberTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber,
                 plIn
                 ]
 
-class PlantUMLGlobberCheck(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class PlantUMLGlobberCheck(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
     """
     ([visual]) check syntax of plantuml files
     """
@@ -139,7 +141,7 @@ class PlantUMLGlobberCheck(DelayedMixin, TargetedMixin, globber.DootEagerGlobber
         })
         return task
 
-class TODODotMakeGraph:
+class TODODotMakeGraph(tasker.DootTasker):
     """
     TODO use graphviz's gvgen to generate graphs
     https://graphviz.org/doc/info/command.html

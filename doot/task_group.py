@@ -57,11 +57,11 @@ class TaskGroup:
     def __iadd__(self, other):
         self.tasks.append(other)
         return self
+
     def to_dict(self):
         # this can add taskers to the namespace,
         # but doesn't help for dicts
         return {f"doot_{self.name}_{id(x)}": x for x in self.tasks}
-
 
     def add_tasks(self, *other):
         for x in other:

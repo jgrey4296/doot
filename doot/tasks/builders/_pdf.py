@@ -10,7 +10,7 @@ from doot.tasker import DootTasker
 
 ##-- end imports
 
-class TODOCombinePDFTask(globber.DirGlobMixin, globber.DootEagerGlobber):
+class TODOCombinePDFTask(globber.DootEagerGlobber):
     """
     Combine pdfs
     For pdfs in directories,
@@ -18,7 +18,7 @@ class TODOCombinePDFTask(globber.DirGlobMixin, globber.DootEagerGlobber):
     """
     pass
 
-class TODOSamplePDFTask(globber.DirGlobMixin, globber.DootEagerGlobber):
+class TODOSamplePDFTask(globber.DootEagerGlobber):
     """
     sample pdfs
     For PDFs in each directory, get their leading n pages,

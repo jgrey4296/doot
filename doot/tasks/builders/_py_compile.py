@@ -20,7 +20,7 @@ from weakref import ref
 
 import doot
 from doot.tasker import DootTasker
-from doot.task_mixins import ActionsMixin
+from doot.mixins.commander import CommanderMixin
 
 if TYPE_CHECKING:
     # tc only imports
@@ -36,7 +36,7 @@ logging = logmod.getLogger(__name__)
 
 collect_libs  : Final = doot.config.on_fail([], list).tool.doot.python.compile.collect()
 
-class TODOPythonCompile(DootTasker, ActionsMixin):
+class TODOPythonCompile(DootTasker, CommanderMixin):
     """
     https://pyinstaller.org/en/stable/
     Use pyinstaller to create an exe

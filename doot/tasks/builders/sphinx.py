@@ -8,14 +8,15 @@ from typing import Final
 import doot
 from doot.task_group import TaskGroup
 from doot.tasker import DootTasker
-from doot.task_mixins import ActionsMixin
-from doot.utils.cleaning import CleanerMixin
 
 ##-- end imports
 
 __all__ = [
         "SphinxDocTask", "task_browse",
 ]
+
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.cleaning import CleanerMixin
 
 conf_builder     : Final = doot.config.on_fail("html", str).tool.doot.sphinx.builder()
 conf_verbosity   : Final = doot.config.on_fail(0, int).tool.door.sphinx.verbosity()
@@ -25,11 +26,11 @@ def task_browse() -> dict:
     doot.locs.ensure("html")
     return {
         "basename"    : "sphinx::browse",
-        "actions"     : [ ActionsMixin.cmd(None, ["open", doot.locs.html ]) ],
+        "actions"     : [ CommanderMixin.cmd(None, ["open", doot.locs.html ]) ],
         "task_dep"    : ["sphinx::doc"],
     }
 
-class SphinxDocTask(DootTasker, ActionsMixin, CleanerMixin):
+class SphinxDocTask(DootTasker, CleanerMixin, CommanderMixin):
     """([docs] -> build) Build sphinx documentation """
 
     def __init__(self, name="sphinx::doc", locs:DootLocData=None, builder=None, verbosity:int=None):

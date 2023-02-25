@@ -54,7 +54,7 @@ def task_csharp_repl():
 def TODOtask_haskell_repl():
     return {}
 
-class PrologRunner(globber.DootEagerGlobber):
+class TODOPrologRunner(globber.DootEagerGlobber):
     """
     reminder, to run a goal without printing anything:
     return status is success or fail

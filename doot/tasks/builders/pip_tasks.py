@@ -9,7 +9,6 @@ import fileinput
 
 import doot
 from doot.tasker import DootTasker
-from doot.task_mixins import ActionsMixin
 
 from doot.task_group import TaskGroup
 ##-- end imports
@@ -17,6 +16,8 @@ from doot.task_group import TaskGroup
 
 # pip_version   = CmdTask("pip", "--version", verbosity=2, basename=f"{prefix}::version")
 
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.filer import FilerMixin
 
 class IncrementVersion(DootTasker):
     """
@@ -98,7 +99,7 @@ class IncrementVersion(DootTasker):
             case _:
                 raise Exception("this shouldn't happen")
 
-class PipBuild(DootTasker, ActionsMixin):
+class PipBuild(DootTasker, CommanderMixin):
     """
     Build a wheel of the package
     """
@@ -116,7 +117,7 @@ class PipBuild(DootTasker, ActionsMixin):
                                          self.locs.root]))
         return task
 
-class PipInstall(DootTasker, ActionsMixin):
+class PipInstall(DootTasker, CommanderMixin, FilerMixin):
     """
     ([src]) install a package, using pip
     editable by default
@@ -173,7 +174,7 @@ class PipInstall(DootTasker, ActionsMixin):
         args.append(self.locs.root)
         return args
 
-class PipReqs(DootTasker, ActionsMixin):
+class PipReqs(DootTasker, CommanderMixin):
     """
     use pipreqs to make a concise requirements.txt
     """
@@ -197,7 +198,7 @@ class PipReqs(DootTasker, ActionsMixin):
         })
         return task
 
-class VenvNew(DootTasker, ActionsMixin):
+class VenvNew(DootTasker, CommanderMixin, FilerMixin):
     """
     (-> temp ) create a new venv
     """

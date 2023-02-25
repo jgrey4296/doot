@@ -35,7 +35,7 @@ import time
 import sys
 import shutil
 import doot
-from doot import tasker, globber, task_mixins
+from doot import tasker, globber
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
 

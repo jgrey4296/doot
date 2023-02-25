@@ -7,13 +7,14 @@ import shutil
 from collections import defaultdict
 from typing import Final
 
-import doot
-from doot.tasker import DootTasker
-from doot.task_mixins import ActionsMixin
 
 ##-- end imports
 
-from doot.utils.misc import HumanMixin
+import doot
+from doot.tasker import DootTasker
+from doot.mixins.human import HumanMixin
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.filer import FilerMixin
 
 log_fmt     : Final = doot.config.on_fail(["%aI", "%h", "%al", "%s"], list).tool.doot.git.fmt()
 default_sep : Final = doot.config.on_fail(" :: ", str).tool.doot.git.sep()
@@ -22,7 +23,7 @@ bar_fmt     : Final = doot.config.on_fail("~", str).tool.doot.git.bar_fmt()
 bar_max     : Final = doot.config.on_fail(40, int).tool.doot.git.bar_max()
 
 
-class GitLogTask(DootTasker, ActionsMixin):
+class GitLogTask(DootTasker, CommanderMixin, FilerMixin):
     """
     ([root] -> temp) Output a summary of the git repo, with a specific format
     see: https://git-scm.com/docs/git-log
@@ -50,7 +51,7 @@ class GitLogTask(DootTasker, ActionsMixin):
         return ["git", "log", f"--pretty=format:{log_format}"]
 
 
-class GitLogAnalyseTask(DootTasker, ActionsMixin, HumanMixin):
+class GitLogAnalyseTask(DootTasker, HumanMixin):
     """
     (temp -> build) separate the printed log
     """

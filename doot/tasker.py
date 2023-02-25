@@ -186,6 +186,8 @@ class DootTasker:
 
     def build(self, **kwargs) -> GeneratorType:
         logging.debug("Building Tasker: %s", self.fullname)
+        if bool(kwargs):
+            logging.debug("Recieved kwargs: %s", kwargs)
         self.args.update(kwargs)
         setup_task = self._build_setup()
         task       = self._build_task()

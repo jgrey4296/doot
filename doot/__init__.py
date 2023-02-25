@@ -21,7 +21,7 @@ toml_template   = data_path / "basic_toml"
 dooter_template = data_path / "dooter"
 ##-- end data
 
-__version__              = "0.0.1"
+__version__ = "0.1.0"
 
 default_dooter           = pl.Path("dooter.py")
 

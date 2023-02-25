@@ -14,11 +14,17 @@ from __future__ import annotations
 import pathlib as pl
 import shutil
 
-from doot import globber, tasker, task_mixins
+from doot import globber, tasker
 
 ##-- end imports
 
-class TODOSqlitePrepTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.targeted import TargetedMixin
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.filer import FilerMixin
+
+
+class TODOSqlitePrepTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
     """
     ([data] -> data) file conversion from mysql to sqlite
     using https://github.com/dumblob/mysql2sqlite
@@ -33,7 +39,7 @@ class TODOSqlitePrepTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, 
     def subtask_detail(self, task, fpath=None):
         return task
 
-class TODOSqliteReportTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class TODOSqliteReportTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
     """
     ([data] -> build) report database tables
      .schema .fullschema

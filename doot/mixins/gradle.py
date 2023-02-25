@@ -33,7 +33,7 @@ logging = logmod.getLogger(__name__)
 from os import environ
 import shutil
 import doot
-from doot import tasker, task_mixins
+from doot import tasker
 
 gradle = shutil.which("gradle")
 

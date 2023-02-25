@@ -5,18 +5,19 @@ from typing import Final
 import pathlib as pl
 import shutil
 
-import doot
-from doot import tasker, globber, task_mixins
-
 ##-- end imports
 
+import doot
+from doot import tasker, globber
+from doot.mixins.filer import FilerMixin
+from doot.mixins.commander import CommanderMixin
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
 
 listing_roots = doot.config.on_fail(["root"], list).tool.doot.listing.core()
 glob_ignores : Final = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).tool.doot.globbing.ignores()
 
-class FileListings(DelayedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin):
+class FileListings(DelayedMixin, globber.DootEagerGlobber, FilerMixin, CommanderMixin):
     """
     (-> build )list all files in the targ directory,
     to the build_dir/allfiles.report
@@ -45,7 +46,7 @@ class FileListings(DelayedMixin, globber.DootEagerGlobber, task_mixins.ActionsMi
         })
         return task
 
-class SimpleListing(tasker.DootTasker, task_mixins.ActionsMixin):
+class SimpleListing(tasker.DootTasker, CommanderMixin, FilerMixin):
     """
     (-> build ) ripgrep list all files in the focus, or root
     to the build_dir/allfiles.report

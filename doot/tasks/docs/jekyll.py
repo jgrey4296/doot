@@ -9,11 +9,8 @@ from time import strftime
 import yaml
 
 import doot
-from doot.utils.check_dirs import CheckDir
-from doot.utils.cleaning import CleanerMixin
 from doot import globber
 from doot.tasker import DootTasker
-from doot.task_mixins import ActionsMixin
 
 ##-- end imports
 
@@ -54,7 +51,13 @@ def load_yaml_data(filename):
 
 ##-- end yaml util
 
-class GenPostTask(DootTasker, ActionsMixin):
+from doot.mixins.cleaning import CleanerMixin
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.targeted import TargetedMixin
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.filer import FilerMixin
+
+class GenPostTask(DootTasker):
     """
     (-> posts) create a new post,
     using a template or the default in doot.__templates.jekyll_post
@@ -70,17 +73,8 @@ class GenPostTask(DootTasker, ActionsMixin):
 
     def set_params(self):
         return [
-            { "name"   : "title",
-              "long"    : "title",
-              "short"   : "t",
-              "type"    : str,
-              "default" : "unnamed"
-             },
-            { "name"   : "template",
-              "long"   : "template",
-              "type"    : str,
-              "default" : default_template,
-             }
+            { "name"   : "title", "long"    : "title", "short"   : "t", "type"    : str, "default" : "unnamed"},
+            { "name"   : "template", "long"   : "template", "type"    : str, "default" : default_template}
         ]
 
     def task_detail(self, task) -> dict:
@@ -110,7 +104,7 @@ class GenPostTask(DootTasker, ActionsMixin):
 
         post_path.write_text(post_text)
 
-class GenTagsTask(DootTasker, ActionsMixin, CleanerMixin):
+class GenTagsTask(DootTasker, CleanerMixin):
     """
     ([src] -> [tags, tagsIndex]) Generate summary files for all tags used in md files in the jekyll src dir
     """

@@ -20,9 +20,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-import doot
-from doot import globber, tasker, task_mixins
-
 if TYPE_CHECKING:
     # tc only imports
     pass
@@ -34,12 +31,17 @@ logging = logmod.getLogger(__name__)
 # logging = logmod.root
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
+
+import doot
+from doot import globber, tasker
+
 from hashlib import sha256
 from doit.exceptions import TaskFailed
 from collections import defaultdict
 import fileinput
 import re
 
+from doot.mixins.commander import CommanderMixin
 from doot.mixins.batch import BatchMixin
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
@@ -50,7 +52,7 @@ hash_record  : Final = doot.config.on_fail(".hashes", str).tool.doot.files.hash.
 hash_concat  : Final = doot.config.on_fail(".all_hashes", str).tool.doot.files.hash.grouped()
 hash_dups    : Final = doot.config.on_fail(".dup_hashes", str).tool.doot.files.hash.duplicates()
 
-class HashAllFiles(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_mixins.ActionsMixin, task_mixins.BatchMixin):
+class HashAllFiles(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, BatchMixin):
     """
     ([data] -> data) For each subdir, hash all the files in it to .hashes
 
@@ -130,7 +132,7 @@ class HashAllFiles(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, task_m
             print(err, file=sys.stderr)
             raise err
 
-class GroupHashes(tasker.DootTasker, task_mixins.ActionsMixin):
+class GroupHashes(tasker.DootTasker, CommanderMixin, FilerMixin):
     """
     Concat all .hashes files together, to prep for duplicate detection
     """
@@ -168,7 +170,7 @@ class GroupHashes(tasker.DootTasker, task_mixins.ActionsMixin):
             for line in fileinput.input(files=globbed):
                 print(line, end="", file=allHashes)
 
-class RemoveMissingHashes(tasker.DootTasker, task_mixins.ActionsMixin):
+class RemoveMissingHashes(tasker.DootTasker):
     """
     Remove hashes in hash files that dont exist anymore
     """
@@ -211,7 +213,7 @@ class RemoveMissingHashes(tasker.DootTasker, task_mixins.ActionsMixin):
             current_set.add(hash_val)
             print(line.strip())
 
-class DetectDuplicateHashes(tasker.DootTasker, task_mixins.ActionsMixin):
+class DetectDuplicateHashes(tasker.DootTasker, CommanderMixin, FilerMixin):
     """
     sort all_hashes, and run uniq of the first n chars
     """
@@ -262,7 +264,7 @@ class DetectDuplicateHashes(tasker.DootTasker, task_mixins.ActionsMixin):
         dup_str = "\n".join(duplicates)
         return {'duplicates': dup_str}
 
-class DeleteDuplicates(tasker.DootTasker, task_mixins.ActionsMixin):
+class DeleteDuplicates(tasker.DootTasker, FilerMixin):
     """
     Delete duplicates, using a set heuristic
 
@@ -406,7 +408,7 @@ class DeleteDuplicates(tasker.DootTasker, task_mixins.ActionsMixin):
                 del_strs = "\n".join([str(x) for x in delete_list])
                 print(del_strs, file=f)
 
-class RepeatDeletions(tasker.DootTasker, task_mixins.ActionsMixin, BatchMixin):
+class RepeatDeletions(tasker.DootTasker, BatchMixin):
     """
     Repeat the deletions logged from deleteduplicates, for a backup target
     """

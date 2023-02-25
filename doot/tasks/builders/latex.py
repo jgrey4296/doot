@@ -10,7 +10,6 @@ from typing import Final
 import logging as logmod
 import doot
 from doot import globber, tasker
-from doot.task_mixins import ActionsMixin
 from doot.mixins.delayed import DelayedMixin
 
 ##-- end imports
@@ -19,6 +18,8 @@ from doot.mixins.delayed import DelayedMixin
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.filer import FilerMixin
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
 from doot.mixins.calc_deps import CalcDepsMixin
@@ -38,7 +39,7 @@ def task_latex_install():
         "actions"  : [
             # TODO log message
             lambda: { "tex_deps" : list({x for x in pl.Path(tex_dep).read_text().split("\n") if bool(x)}) },
-            ActionsMixin.cmd(None, lambda task: ["tlmgr", "--usermode",  "install", *task.values['tex_deps']]),
+            CommanderMixin.cmd(None, lambda task: ["tlmgr", "--usermode",  "install", *task.values['tex_deps']]),
             ],
         "file_dep" : [ tex_dep ],
     }
@@ -51,8 +52,8 @@ def task_latex_requirements():
         "basename" : "tex::requirements",
         "actions" : [
             # TODO log msg
-            ActionsMixin.cmd(None, ["tlmgr", "--usermode", "list", "--only-installed", "--data", "name"], save="reqs"),
-            (ActionsMixin.write_to, [None, tex_dep, "reqs"])
+            CommanderMixin.cmd(None, ["tlmgr", "--usermode", "list", "--only-installed", "--data", "name"], save="reqs"),
+            (CommanderMixin.write_to, [None, tex_dep, "reqs"])
         ],
         "targets" : [ tex_dep ],
         "clean" : True
@@ -66,10 +67,10 @@ def task_latex_rebuild():
         "basename" : "tex::rebuild",
         "actions" : [
             # TODO log msg
-            ActionsMixin.cmd(None, ["fmtutil",  "--all"]),
-            ActionsMixin.cmd(None, ["tlmgr",  "list", "--only-installed"], save="installed"),
+            CommanderMixin.cmd(None, ["fmtutil",  "--all"]),
+            CommanderMixin.cmd(None, ["tlmgr",  "list", "--only-installed"], save="installed"),
             lambda task: { "packages" : [package_re.match(x)[1] for x in task.values['installed'].split("\n") if package_re.match(x)] },
-            ActionsMixin.cmd(None, lambda task: ["tlmgr", "install", "--reinstall", *task.values['packages']]),
+            CommanderMixin.cmd(None, lambda task: ["tlmgr", "install", "--reinstall", *task.values['packages']]),
         ],
     }
 
@@ -92,7 +93,7 @@ class LatexMultiPass(globber.DootEagerGlobber):
         })
         return task
 
-class LatexFirstPass(globber.DootEagerGlobber, ActionsMixin):
+class LatexFirstPass(globber.DootEagerGlobber, FilerMixin, CommanderMixin):
     """
     ([src] -> [temp, build]) First pass of running latex,
     pre-bibliography resolution
@@ -145,7 +146,7 @@ class LatexFirstPass(globber.DootEagerGlobber, ActionsMixin):
         first_pass_pdf = self.locs.build / ("1st_pass_" + fpath.with_suffix(".pdf").name)
         return first_pass_pdf
 
-class LatexSecondPass(globber.DootEagerGlobber, ActionsMixin):
+class LatexSecondPass(globber.DootEagerGlobber, CommanderMixin, FilerMixin):
     """
     ([src, temp] -> build) Second pass of latex compiling,
     post-bibliography resolution
@@ -157,9 +158,7 @@ class LatexSecondPass(globber.DootEagerGlobber, ActionsMixin):
 
     def set_params(self):
         return [
-            { "name"   : "interaction",
-              "short"  : "i",
-              "type"    : str,
+            { "name"   : "interaction", "short"  : "i", "type"    : str,
               "choices" : [ ("batchmode", ""), ("nonstopmode", ""), ("scrollmode", ""), ("errorstopmode", ""),],
               "default" : "nonstopmode",
              },
@@ -171,18 +170,19 @@ class LatexSecondPass(globber.DootEagerGlobber, ActionsMixin):
     def subtask_detail(self, task, fpath):
         temp_pdf   = self.locs.temp  / fpath.with_suffix(".pdf").name
         target_pdf = self.locs.build / temp_pdf.name
-        task.update({"file_dep" : [ self.locs.temp / fpath.with_suffix(".aux").name,
-                                    self.locs.temp / fpath.with_suffix(".bbl").name,
-                                   ],
-                     "targets"  : [ target_pdf ],
-                     "clean"    : True,
-                     "actions" : [
-                         (self.log, ["Running Pass 2", logmod.INFO]),
-                         self.cmd(self.tex_cmd, fpath),
-	                     self.cmd(self.tex_cmd, fpath),
-                         (self.move_to, [target_pdf, temp_pdf]),
-                     ]
-                     })
+        task.update({
+            "file_dep" : [ self.locs.temp / fpath.with_suffix(".aux").name,
+                           self.locs.temp / fpath.with_suffix(".bbl").name,
+                          ],
+            "targets"  : [ target_pdf ],
+            "clean"    : True,
+            "actions" : [
+                (self.log, ["Running Pass 2", logmod.INFO]),
+                self.cmd(self.tex_cmd, fpath),
+	            self.cmd(self.tex_cmd, fpath),
+                (self.move_to, [target_pdf, temp_pdf]),
+            ]
+        })
         return task
 
     def tex_cmd(self, fpath):
@@ -191,7 +191,7 @@ class LatexSecondPass(globber.DootEagerGlobber, ActionsMixin):
                 f"-output-directory={self.locs.temp}",
                 fpath.with_suffix("")]
 
-class BibtexBuildPass(globber.DootEagerGlobber, ActionsMixin):
+class BibtexBuildPass(globber.DootEagerGlobber, CommanderMixin):
     """
     ([src] -> temp) Bibliography resolution pass
     """
@@ -207,15 +207,16 @@ class BibtexBuildPass(globber.DootEagerGlobber, ActionsMixin):
         aux_file = self.locs.temp / fpath.with_suffix(".aux").name
         bbl_file = self.locs.temp / fpath.with_suffix(".bbl").name
 
-        task.update({"file_dep" : [ self.locs.temp / "combined.bib",
-                                    aux_file ],
-                     "targets"  : [ bbl_file ],
-                     "clean"    : True,
-                     "actions" : [
-                         (self.log, ["Running Bibtex Pass", logmod.INFO]),
-                         (self.retarget_paths, [aux_file]),
-                         self.cmd(self.maybe_run),
-                     ]
+        task.update({
+            "file_dep" : [ self.locs.temp / "combined.bib",
+                           aux_file ],
+            "targets"  : [ bbl_file ],
+            "clean"    : True,
+            "actions" : [
+                (self.log, ["Running Bibtex Pass", logmod.INFO]),
+                (self.retarget_paths, [aux_file]),
+                self.cmd(self.maybe_run),
+            ]
         })
         return task
 

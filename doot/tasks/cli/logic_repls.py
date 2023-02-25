@@ -30,7 +30,6 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-
 def task_prolog_repl():
     return {
         "basename" : "repl::pl",

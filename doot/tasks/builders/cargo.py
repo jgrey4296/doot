@@ -12,12 +12,14 @@ from doit.tools import Interactive
 import doot
 from doot.task_group import TaskGroup
 from tomler import TomlAccessError, Tomler
-from doot import tasker, task_mixins
+from doot import tasker
 
 ##-- end imports
 # https://doc.rust-lang.org/cargo/index.html
 
 from doot.tasks.utils.cargo import CargoMixin
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.filer import FilerMixin
 
 cargo  = Tomler.load("Cargo.toml")
 config = Tomler.load("./.cargo/config.toml")
@@ -31,9 +33,9 @@ lib_path      : Final = cargo.on_fail(None, None|str).lib.path()
 def task_cargo_version():
     return {
         "basename" : "cargo::version",
-        "actions" : [ task_mixins.ActionsMixin.cmd(None, ["cargo", "--version"]),
-                      task_mixins.ActionsMixin.cmd(None, ["rustup", "--version"]),
-                      task_mixins.ActionsMixin.cmd(None, ["rustup", "show"]),
+        "actions" : [ CommanderMixin.cmd(None, "cargo", "--version"),
+                      CommanderMixin.cmd(None, "rustup", "--version"),
+                      CommanderMixin.cmd(None, "rustup", "show"),
                      ],
         "verbosity" : 2,
     }
@@ -41,11 +43,11 @@ def task_cargo_version():
 def task_cargo_report():
     return {
         "basename"  : "cargo::report",
-        "actions"   : [ task_mixins.ActionsMixin.cmd(None, ["cargo", "report", "future-incompat"]) ],
+        "actions"   : [ CommanderMixin.cmd(None, "cargo", "report", "future-incompat") ],
         "verbosity" : 2,
     }
 
-class Cargouild(tasker.DootTasker, task_mixins.CommanderMixin, CargoMixin):
+class CargoBuild(tasker.DootTasker, CommanderMixin, CargoMixin, FilerMixin):
     """
     Build rust binary target, using a tuple (type, name)
     eg: (bin, main) or (lib, mylib)
@@ -86,7 +88,7 @@ class Cargouild(tasker.DootTasker, task_mixins.CommanderMixin, CargoMixin):
         })
         return task
 
-class CargoInstall(tasker.DootTasker, task_mixins.ActionsMixin):
+class CargoInstall(tasker.DootTasker, CommanderMixin):
 
     def __init__(self, name="cargo::install", locs=None):
         super().__init__(name, locs)
@@ -106,7 +108,7 @@ class CargoInstall(tasker.DootTasker, task_mixins.ActionsMixin):
     def binary_build(self):
         return ["cargo", "install", "--bin", self.args['target'], "--profile", self.args['profile']]
 
-class CargoTest(tasker.DootTasker, task_mixins.ActionsMixin):
+class CargoTest(tasker.DootTasker, CommanderMixin):
 
     def __init__(self, name="cargo::test", locs=None):
         super().__init__(name, locs)
@@ -128,7 +130,7 @@ class CargoTest(tasker.DootTasker, task_mixins.ActionsMixin):
     def test_cmd(self):
         return ["cargo", "test", "--bin", self.args['target'], "--profile", self.args['profile']]
 
-class CargoDocs(tasker.DootTasker, task_mixins.ActionsMixin):
+class CargoDocs(tasker.DootTasker, CommanderMixin):
 
     def __init__(self, name="cargo::docs", locs=None):
         super().__init__(name, locs)
@@ -140,11 +142,11 @@ class CargoDocs(tasker.DootTasker, task_mixins.ActionsMixin):
 
     def task_detail(self, task):
         task.update({
-            "actions"  : [ self.cmd(["cargo", "doc"]) ],
+            "actions"  : [ self.cmd("cargo", "doc") ],
         })
         return task
 
-class CargoRun(tasker.DootTasker, task_mixins.ActionsMixin):
+class CargoRun(tasker.DootTasker, CommanderMixin):
 
     def __init__(self, name="cargo::run", locs=None):
         super().__init__(name, locs)
@@ -157,11 +159,11 @@ class CargoRun(tasker.DootTasker, task_mixins.ActionsMixin):
 
     def task_detail(self, task):
         task.update({
-            "actions"  : [ self.cmd(["cargo", "run", "--bin", self.args['target'], "--profile", self.args['profile'] ]) ],
+            "actions"  : [ self.cmd("cargo", "run", "--bin", self.args['target'], "--profile", self.args['profile'] ) ],
         })
         return task
 
-class CargoClean(tasker.DootTasker, task_mixins.ActionsMixin):
+class CargoClean(tasker.DootTasker, CommanderMixin):
     """
     clean the rust project
     """
@@ -171,11 +173,11 @@ class CargoClean(tasker.DootTasker, task_mixins.ActionsMixin):
 
     def task_detail(self, task):
         task.update({
-            "actions"  : [ self.cmd(["cargo", "clean"]) ],
+            "actions"  : [ self.cmd("cargo", "clean") ],
         })
         return task
 
-class CargoCheck(tasker.DootTasker, task_mixins.ActionsMixin):
+class CargoCheck(tasker.DootTasker, CommanderMixin):
     """
     run cargo check on the project
     """
@@ -185,11 +187,11 @@ class CargoCheck(tasker.DootTasker, task_mixins.ActionsMixin):
 
     def task_detail(self, task):
         task.update({
-            "actions"  : [ self.cmd(["cargo", "check", "--workspace"]) ],
+            "actions"  : [ self.cmd("cargo", "check", "--workspace") ],
         })
         return task
 
-class CargoUpdate(tasker.DootTasker, task_mixins.ActionsMixin):
+class CargoUpdate(tasker.DootTasker, CommanderMixin):
     """
     update rust and dependencies
     """
@@ -199,13 +201,13 @@ class CargoUpdate(tasker.DootTasker, task_mixins.ActionsMixin):
 
     def task_detail(self, task):
         task.update({
-            "actions"  : [ self.cmd(["rustup", "update"]),
-                           self.cmd(["cargo", "update"]),
+            "actions"  : [ self.cmd("rustup", "update"),
+                           self.cmd("cargo", "update"),
                           ],
         })
         return task
 
-class CargoDebug(tasker.DootTasker, task_mixins.ActionsMixin):
+class CargoDebug(tasker.DootTasker, CommanderMixin):
     """
     Start lldb on the debug build of the rust binary
     """

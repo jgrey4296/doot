@@ -39,6 +39,10 @@ class DelayedMixin:
     """
     Delays Subtask generation until the main task is executed
 
+    _build_delayed is wrapped into a delayed task by doot loader,
+    and .build wraps the main task so that delayed tasks are built,
+    and the main task updates it's dependencies after
+
     """
     _delayed_task_names = None
 
@@ -77,9 +81,9 @@ class DelayedMixin:
             ],
         }
         yield from super().build(**kwargs)
-        yield self._build_delayed_deps
+        yield self._build_delayed_deps_update()
 
-    def _build_delayed_deps(self):
+    def _build_delayed_deps_update(self):
         return { # The calc_deps subtask for main
             "basename": self.calc_dep_taskname,
             "actions": [ self.delayed_tasknames_action ],

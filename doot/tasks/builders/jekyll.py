@@ -10,7 +10,7 @@ from doit.tools import LongRunning
 from doit.action import CmdAction
 
 import doot
-from doot.tasker import DootTasker, ActionsMixin
+from doot.tasker import DootTasker
 
 ##-- end imports
 
@@ -18,6 +18,9 @@ __all__ = [
     "task_jekyll_serve", "task_jekyll_build",
     "task_init_jekyll", "task_jekyll_install"
 ]
+
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.filer import FilerMixin
 
 def task_jekyll_serve():
 
@@ -53,7 +56,7 @@ def task_jekyll_install():
         "clean"   : True,
     }
 
-class JekyllBuild(DootTasker, ActionsMixin):
+class JekyllBuild(DootTasker, CommanderMixin, FilerMixin):
     """
     Build the jekyll site, from the source destination,
     into the build destination
