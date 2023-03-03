@@ -33,7 +33,6 @@ logging = logmod.getLogger(__name__)
 from doot.utils.task_namer import task_namer
 from time import sleep
 
-
 class DirGlobMixin:
     """
     Globs for directories instead of files.

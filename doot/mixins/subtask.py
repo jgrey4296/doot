@@ -54,7 +54,7 @@ class SubMixin:
     def subtask_name(self, val):
         return task_namer(self.fullname, val, private=True)
 
-    def _build_task(self):
+    def _build_task(self) -> None|DoitTask:
         task = super()._build_task()
         if task is None:
             return None
@@ -67,7 +67,7 @@ class SubMixin:
     def _build_subs(self):
         raise NotImplementedError()
 
-    def _build_subtask(self, n:int, uname, **kwargs):
+    def _build_subtask(self, n:int, uname, **kwargs) -> dict:
         try:
             spec_doc  = self.doc + f" : {kwargs}"
             task_spec = self.default_task()
@@ -95,7 +95,7 @@ class SubMixin:
         except DootDirAbsent:
             return None
 
-    def build(self, **kwargs):
+    def build(self, **kwargs) -> GeneratorType:
         yield super().build(**kwargs)
 
         subtasks   = self._build_subs()

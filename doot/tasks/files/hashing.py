@@ -45,6 +45,7 @@ from doot.mixins.commander import CommanderMixin
 from doot.mixins.batch import BatchMixin
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
+from doot.mixins.filer import FilerMixin
 
 batch_size   : Final= doot.config.on_fail(10, int).tool.doot.batch.size()
 
