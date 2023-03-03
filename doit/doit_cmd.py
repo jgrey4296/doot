@@ -45,7 +45,7 @@ def set_var(name, value):
 
 
 
-class DoitConfig():
+class DoitConfig:
     """Parse and store values taken from INI and TOML configuration files"""
     # support TOML python libs
     _TOML_LIBS = ['tomllib', 'tomli', 'tomlkit']
@@ -150,7 +150,7 @@ class DoitConfig():
         return toml_config
 
 
-class DoitMain(object):
+class DoitMain:
     # core doit commands
     BIN_NAME = sys.argv[0].split('/')[-1]
     DOIT_CMDS = (Help, Run, List, Info, Clean, Forget, Ignore, DumpDB,
