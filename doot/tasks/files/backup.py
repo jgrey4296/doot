@@ -39,8 +39,8 @@ from doot import tasker, globber
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
 
-batch_size       = doot.config.on_fail(10, int).tool.doot.batch.size()
-sleep_batch      = doot.config.on_fail(2.0,   int|float).tool.doot.batch.sleep()
+batch_size       = doot.config.on_fail(10, int).batch.size()
+sleep_batch      = doot.config.on_fail(2.0,   int|float).batch.sleep()
 
 class BackupTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
     """

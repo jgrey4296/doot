@@ -23,6 +23,7 @@ from doot.mixins.targeted import TargetedMixin
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.commander import CommanderMixin
 from doot.mixins.batch import BatchMixin
+from doot.mixins.filer import FilerMixin
 import numpy as np
 import PIL
 from PIL import Image
@@ -32,10 +33,10 @@ default_ocr_exts : Final = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".j
 
 default_pdf_exts : Final = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".ppm"]
 
-ocr_exts         : Final = doot.config.on_fail(default_ocr_exts, list).tool.doot.images.ocr_exts()
-ocr_out_ext      : Final = doot.config.on_fail(".ocr", str).tool.doot.images.ocr_out()
+ocr_exts         : Final = doot.config.on_fail(default_ocr_exts, list).images.ocr_exts()
+ocr_out_ext      : Final = doot.config.on_fail(".ocr", str).images.ocr_out()
 
-framerate        : Final = doot.config.on_fail(10, int).tool.doot.images.framerate()
+framerate        : Final = doot.config.on_fail(10, int).images.framerate()
 
 THUMB            : Final = (200,200)
 
@@ -142,7 +143,7 @@ class OCRGlobber(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Commande
             ocr_cmd.execute()
             mv_txt_cmd.execute()
 
-class TODOImages2PDF(TargetedMixin, tasker.DootTasker, CommandMixin, BatchMixin):
+class TODOImages2PDF(TargetedMixin, tasker.DootTasker, CommanderMixin, BatchMixin):
     """
     Combine globbed images into a single pdf file using imagemagick
     """

@@ -33,17 +33,38 @@ logging = logmod.getLogger(__name__)
 import zipfile
 import doot
 
-zip_default_name = doot.config.on_fail("default", str).tool.doot.zip.name()
-zip_overwrite    = doot.config.on_fail(False, bool).tool.doot.zip.overwrite()
-zip_compression  = doot.config.on_fail("ZIP_DEFLATED", str).tool.doot.zip.compression(wrapper=lambda x: getattr(zipfile, x))
-zip_level        = doot.config.on_fail(4, int).tool.doot.zip.level()
+zip_default_name = doot.config.on_fail("default", str).zip.name()
+zip_overwrite    = doot.config.on_fail(False, bool).zip.overwrite()
+zip_compression  = doot.config.on_fail("ZIP_DEFLATED", str).zip.compression(wrapper=lambda x: getattr(zipfile, x))
+zip_level        = doot.config.on_fail(4, int).zip.level()
+
+zip_choices = [("none", "No compression"), ("zip", "Default Zip Compression"), ("bzip2", "bzip2 Compression"), ("lzma", "lzma compression")]
 
 class ZipperMixin:
-    zip_name       = zip_default_name
-    zip_overwrite  = zip_overwrite
-    zip_root       = None
-    compression    = zip_compression
-    compress_level = zip_level
+    zip_name                    = zip_default_name
+    zip_overwrite               = zip_overwrite
+    zip_root                    = None
+    _zip_default_compression    = zip_compression
+    _zip_default_compress_level = zip_level
+
+    def zip_params(self):
+        return [
+            {"name": "compression", "short": "c", "type": str, "default": self._zip_default_compression, "choices": zip_choices },
+            {"name": "level", "short": "l", "type": int, "default": self._zip_default_compress_level}
+        ]
+
+    def _zip_get_compression_settings(self) -> tuple[int, int]:
+        match self.args:
+            case { "compression": "none", "level": x }:
+                return zipfile.ZIP_STORED, x
+            case { "compression": "zip", "level": x }:
+                return zipfile.ZIP_DEFLATED, x
+            case { "compression": "bzip2", "level": x }:
+                return zipfile.ZIP_BZIP2, x
+            case { "compression" : "lzma", "level": x}:
+                return zipfile.ZIP_LZMA, x
+            case _:
+                return self._zip_default_compression, self._zip_default_compress_level
 
     def zip_set_root(self, fpath):
         self.zip_root = fpath
@@ -57,9 +78,10 @@ class ZipperMixin:
 
         logging.info("Creating Zip File: %s", fpath)
         now = datetime.datetime.strftime(datetime.datetime.now(), "%Y:%m:%d::%H:%M:%S")
-        record_str = f"Zip File created at {now} for doot task: {self.base}"
+        record_str = f"Zip File created at {now} for doot task: {self.basename}"
+        compress_type, compress_level = self._zip_get_compression_settings()
 
-        with zipfile.ZipFile(fpath, mode='w', compression=self.compression, compresslevel=self.compress_level, allowZip64=True ) as targ:
+        with zipfile.ZipFile(fpath, mode='w', compression=compress_type, compresslevel=compress_level, allowZip64=True ) as targ:
             targ.writestr(".taskrecord", record_str)
 
     def zip_add_paths(self, fpath, *args):
@@ -70,9 +92,8 @@ class ZipperMixin:
         assert(fpath.suffix == ".zip")
         root = self.zip_root or pl.Path()
         paths = [pl.Path(x) for x in args]
-        with zipfile.ZipFile(fpath, mode='a',
-                             compression=self.compression, compresslevel=self.compress_level,
-                             allowZip64=True ) as targ:
+        compress_type, compress_level = self._zip_get_compression_settings()
+        with zipfile.ZipFile(fpath, mode='a', compression=compress_type, compresslevel=compress_level, allowZip64=True ) as targ:
             for file_to_add in paths:
                 try:
                     relpath = file_to_add.relative_to(root)
@@ -99,29 +120,34 @@ class ZipperMixin:
         """
         logging.debug(f"Zip Globbing: %s : %s", fpath, globs)
         assert(fpath.suffix == ".zip")
-        cwd  = pl.Path()
-        root = self.zip_root or cwd
-        with zipfile.ZipFile(fpath, mode='a',
-                             compression=self.compression, compresslevel=self.compress_level,
-                             allowZip64=True) as targ:
-            for glob in globs:
-                result = list(cwd.glob(glob))
-                logging.info(f"Globbed: {cwd}[{glob}] : {len(result)}")
-                for dep in result:
+        root                          = self.zip_root or pl.Path()
+        compress_type, compress_level = self._zip_get_compression_settings()
+        with zipfile.ZipFile(fpath, mode='a', compression=compress_type, compresslevel=compress_level, allowZip64=True) as targ:
+            contents = targ.namelist()
+            for globstr in globs:
+                result = list(root.glob(globstr))
+                logging.info(f"Globbed: {root}/{globstr} : {len(result)}")
+                for globf in result:
                     try:
-                        if dep.stem[0] == ".":
+                        if globf.stem[0] == ".":
                             continue
-                        relpath = pl.Path(dep).relative_to(root)
-                        targ.write(str(dep), relpath)
+                        relpath = pl.Path(globf).relative_to(root)
+                        if relpath not in contents:
+                            targ.write(str(globf), relpath)
                     except ValueError:
-                        relpath = root / pl.Path(dep).name
+                        relpath = root / pl.Path(globf).name
                     except FileNotFoundError as err:
                         logging.warning(f"Adding File to Zip {fpath} failed: {err}", file=sys.stderr)
 
     def zip_add_str(self, fpath, fname, text:str):
         assert(fpath.suffix == ".zip")
+        compress_type, compress_level = self._zip_get_compression_settings()
         with zipfile.ZipFile(fpath, mode='a',
-                             compression=self.compression, compresslevel=self.compress_level,
-                             allowZip64=True) as targ:
+                             compression=compress_type, compresslevel=compress_level, allowZip64=True) as targ:
             assert(fname not in targ.namelist())
             targ.writestr(fname, text)
+
+
+    def zip_get_contents(self, fpath) -> list[str]:
+        with zipfile.Zipfile(fpath):
+            return zipfile.namelist()

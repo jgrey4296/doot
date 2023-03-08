@@ -37,7 +37,7 @@ from doot import tasker
 from doot.mixins.commander import CommanderMixin
 from doot.mixins.gradle import GradleMixin
 
-jacamo_home = doot.config.on_fail(environ.get("JACAMO_HOME", None), str).tool.doot.jacamo.home(wrapper=pl.Path)
+jacamo_home = doot.config.on_fail(environ.get("JACAMO_HOME", None), str).jacamo.home(wrapper=pl.Path)
 
 class JacamoNewProject(tasker.DootTasker, GradleMixin, CommanderMixin):
     """

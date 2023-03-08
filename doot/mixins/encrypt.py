@@ -36,7 +36,7 @@ import doot
 from doot.mixins.commander import CommanderMixin
 
 gpg = shutil.which("gpg")
-gpg_user = doot.config.tool.doot.encrypt.user_email
+gpg_user = doot.config.encrypt.user_email
 
 class EncryptMixin(CommanderMixin):
     """

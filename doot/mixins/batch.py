@@ -34,10 +34,10 @@ from doit.exceptions import TaskFailed
 import doot
 from doot.utils.task_ext import DootCmdAction
 
-batch_size       = doot.config.on_fail(10, int).tool.doot.batch.size()
-batches_max      = doot.config.on_fail(-1,    int).tool.doot.batch.max()
-sleep_batch      = doot.config.on_fail(2.0,   int|float).tool.doot.batch.sleep()
-sleep_notify     = doot.config.on_fail(False, bool).tool.doot.notify.sleep()
+batch_size       = doot.config.on_fail(10, int).batch.size()
+batches_max      = doot.config.on_fail(-1,    int).batch.max()
+sleep_batch      = doot.config.on_fail(2.0,   int|float).batch.sleep()
+sleep_notify     = doot.config.on_fail(False, bool).notify.sleep()
 
 class BatchMixin:
     """

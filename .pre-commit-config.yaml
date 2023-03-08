@@ -23,7 +23,7 @@ repos:
       args:
         [
           "-rn", # Only display messages
-          "-sn", # Don't display the score
-          "--rcfile=pylint.toml", # Link to your config file
+          # "-sn", # Don't display the score
+          # "--rcfile=pylint.toml", # Link to your config file
           "--exit-zero",
         ]

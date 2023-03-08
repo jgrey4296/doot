@@ -108,12 +108,13 @@ class RustMaintain(DootTasker, CommanderMixin, FilerMixin):
 
     def task_detail(self, task):
         if not bool(rustup):
+            logging.warning("No Rustup found")
             return None
 
         task.update({
             "actions" : [
                 (self.log, ["Updating Rust", logmod.INFO]),
-                self.cmd([rustup, "update"], save="rustup"),
+                self.cmd(rustup, "update", save="rustup"),
                 (self.write_to, [self.locs.maintain / "rust.backup", "rustup"]),
             ],
         })
@@ -129,7 +130,7 @@ class LatexMaintain(DootTasker, CommanderMixin, FilerMixin):
         task.update({
             "actions" : [
                 # Backup tex packages
-                self.cmd([tlmgr, "info", "--only-installed"], save="tex"),
+                self.cmd(tlmgr, "info", "--only-installed", save="tex"),
                 (self.write_to, [self.locs.maintain / "tex.versions", ["tex"]]),
 
             ],
@@ -138,6 +139,7 @@ class LatexMaintain(DootTasker, CommanderMixin, FilerMixin):
 
     def task_detail(self, task):
         if not bool(tlmgr):
+            logging.warning("No tlmgr found")
             return None
 
         task.update({
@@ -167,6 +169,7 @@ class HaskellMaintain(DootTasker, CommanderMixin, FilerMixin):
 
     def task_detail(self, task):
         if not bool(cabal):
+            logging.warning("No Cabal found")
             return None
 
         task.update({
@@ -229,6 +232,7 @@ class BrewMaintain(DootTasker, CommanderMixin, FilerMixin):
 
     def task_detail(self, task):
         if not bool(brew):
+            logging.warning("No Brew found")
             return None
 
         task.update({
@@ -299,6 +303,7 @@ class CronMaintain(DootTasker, CommanderMixin, FilerMixin):
 
     def task_detail(self, task):
         if not bool(crontab):
+            logging.warning("No cron found")
             return None
 
         task.update({
@@ -333,6 +338,7 @@ class GitMaintain(DelayedMixin, globber.DootEagerGlobber, FilerMixin, CommanderM
 
     def task_detail(self, task):
         if not bool(git):
+            logging.warning("No git found")
             return None
 
         task.update({

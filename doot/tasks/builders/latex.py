@@ -24,8 +24,8 @@ from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
 from doot.mixins.calc_deps import CalcDepsMixin
 
-interaction_mode  : Final = doot.config.on_fail("nonstopmode", str).tool.doot.tex.interaction()
-tex_dep           : Final = doot.config.on_fail("tex.dependencies", str).tool.doot.text.dep_file()
+interaction_mode  : Final = doot.config.on_fail("nonstopmode", str).tex.interaction()
+tex_dep           : Final = doot.config.on_fail("tex.dependencies", str).text.dep_file()
 
 def task_latex_install():
     """

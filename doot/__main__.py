@@ -57,21 +57,23 @@ def main():
 
         logging.debug("Basic Doot setup loaded")
         ##-- logging setup
-        file_log_level    = doot.config.on_fail("DEBUG", str).tool.doot.logging.file.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
-        file_log_format   = doot.config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str).tool.doot.logging.file.format()
-        file_filter_names = doot.config.on_fail(["doot"], list).tool.doot.logging.file.filters()
+        file_log_level    = doot.config.on_fail("DEBUG", str).logging.file.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
+        file_log_format   = doot.config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str).logging.file.format()
+        file_filter_names = doot.config.on_fail([], list).logging.file.filters()
 
         file_handler.setLevel(file_log_level)
         file_handler.setFormatter(logmod.Formatter(file_log_format, style="{"))
-        file_handler.addFilter(DootAnyFilter(file_filter_names))
+        if bool(file_filter_names):
+            file_handler.addFilter(DootAnyFilter(file_filter_names))
 
-        stream_log_level    = doot.config.on_fail("DEBUG", str).tool.doot.logging.stream.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
-        stream_log_format   = doot.config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str).tool.doot.logging.stream.format()
-        stream_filter_names = doot.config.on_fail(["doot"], list).tool.doot.logging.stream.filters()
+        stream_log_level    = doot.config.on_fail("DEBUG", str).logging.stream.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
+        stream_log_format   = doot.config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str)..logging.stream.format()
+        stream_filter_names = doot.config.on_fail([], list)..logging.stream.filters()
 
         std_handler.setLevel(stream_log_level)
         std_handler.setFormatter(logmod.Formatter(stream_log_format, style="{"))
-        std_handler.addFilter(DootAnyFilter(stream_filter_names))
+        if bool(stream_filter_names):
+            std_handler.addFilter(DootAnyFilter(stream_filter_names))
         ##-- end logging setup
 
         loader    = DootLoader()
@@ -84,7 +86,7 @@ def main():
         with open("_doot_defaults.toml", 'w') as f:
             f.write("# default values used:\n")
             f.write("\n".join(defaulted_toml) + "\n\n")
-            f.write("[tool.doot.directories]\n")
+            f.write("[.directories]\n")
             f.write("\n".join(defaulted_locs))
 
 
@@ -98,14 +100,14 @@ def main():
                 doot.default_dooter.write_text(doot.dooter_template.read_text())
                 logging.info("Stubbed")
     except Exception as err:
-        logging.error("Error: ", err, file=sys.stderr)
+        logging.error("Error: ", err)
         errored = True
     finally:
         say_on_exit = False
         voice       = "Moira"
         if doot.config is not None:
-            say_on_exit = doot.config.on_fail(False, bool|str).tool.doot.notify.say_on_exit()
-            voice       = doot.config.on_fail(voice, str).tool.doot.notify.voice()
+            say_on_exit = doot.config.on_fail(False, bool|str)..notify.say_on_exit()
+            voice       = doot.config.on_fail(voice, str)..notify.voice()
         match errored, say_on_exit:
             case False, str() as say_text:
                 cmd = CmdAction(["say", "-v", voice, "-r", "50", say_text], shell=False)

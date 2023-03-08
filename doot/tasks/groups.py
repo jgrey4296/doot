@@ -49,7 +49,7 @@ try:
     defaults_group += listing.FileListings(locs=doot.locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.on_fail(False, bool).tool.doot.group.defaults.debug():
+    if doot.config.on_fail(False, bool).group.defaults.debug():
         print("To activate group, defaults needs: ", err)
 
 ##-- end defaults
@@ -59,9 +59,9 @@ pip_group = TaskGroup("pip group")
 try:
     if not doot.default_py.exists():
         raise FileNotFoundError(doot.default_py)
-    doot.config.tool.doot.group.pip
+    doot.config.group.pip
 
-    wheel_loc = doot.config.on_fail("build/wheel").tool.doot.group.pip.wheel()
+    wheel_loc = doot.config.on_fail("build/wheel").group.pip.wheel()
     pip_locs = doot.locs.extend(name="pip", _docs=None, wheel=wheel_loc)
 
     from doot.tasks.builders import pip_tasks as pipper
@@ -71,7 +71,7 @@ try:
     pip_group += pipper.PipReqs(locs=pip_locs)
     pip_group += pipper.VenvNew(locs=pip_locs)
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.on_fail(False, bool).tool.doot.group.pip.debug():
+    if doot.config.on_fail(False, bool).group.pip.debug():
         print("To activate group pip needs: ", err)
 ##-- end pip
 
@@ -80,7 +80,7 @@ py_group = TaskGroup("py group")
 try:
     if not doot.default_py.exists():
         raise FileNotFoundError(doot.default_py)
-    doot.config.tool.doot.group.python
+    doot.config.group.python
     py_locs = doot.locs.extend(name="py", docs=None)
 
     from doot.tasks.code import python as py_tasks
@@ -89,7 +89,7 @@ try:
     py_group += py_tasks.PyUnitTestGlob(locs=py_locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.on_fail(False, bool).tool.doot.group.python.debug():
+    if doot.config.on_fail(False, bool).group.python.debug():
         print("To activate group python needs: ", err)
 
 ##-- end py
@@ -97,11 +97,11 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 ##-- jekyll
 jekyll_group = TaskGroup("jekyll_group")
 try:
-    doot.config.tool.doot.group.jekyll
+    doot.config.group.jekyll
 
-    jekyll_src = doot.config.on_fail(doot.locs.docs).tool.doot.group.jekyll.src()
-    jekyll_data = doot.config.on_fail([doot.locs.data]).tool.doot.group.jekyll.data()
-    jekyll_codegen = doot.config.on_fail("_generated").tool.doot.group.jekyll.codegen()
+    jekyll_src = doot.config.on_fail(doot.locs.docs).group.jekyll.src()
+    jekyll_data = doot.config.on_fail([doot.locs.data]).group.jekyll.data()
+    jekyll_codegen = doot.config.on_fail("_generated").group.jekyll.codegen()
 
     jekyll_locs = doot.locs.extend(name="jekyll",
                                    src=jekyll_src,
@@ -124,7 +124,7 @@ try:
     jekyll_group += j_doc.GenTagsTask(locs=jekyll_locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.on_fail(False, bool).tool.doot.group.jekyll.debug():
+    if doot.config.on_fail(False, bool).group.jekyll.debug():
         print("To activate group, jekyll needs: ", err)
 
 ##-- end jekyll
@@ -132,12 +132,12 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 ##-- latex
 latex_group = TaskGroup("latex_group")
 try:
-    doot.config.tool.doot.group.latex
+    doot.config.group.latex
     from doot.tasks.builders import latex
 
-    latex_src = doot.config.on_fail(doot.locs.docs).tool.doot.group.latex.src()
-    latex_docs = doot.config.on_fail([doot.locs.docs]).tool.doot.group.latex.docs()
-    latex_build = doot.config.on_fail([doot.locs.build]).tool.doot.group.latex.build()
+    latex_src = doot.config.on_fail(doot.locs.docs).group.latex.src()
+    latex_docs = doot.config.on_fail([doot.locs.docs]).group.latex.docs()
+    latex_build = doot.config.on_fail([doot.locs.build]).group.latex.build()
 
     tex_locs = doot.locs.extend(name="latex", src=latex_src, docs=latex_docs, build=latex_build)
     latex_group += latex.LatexMultiPass(locs=tex_locs,  roots=[tex_locs.src])
@@ -150,18 +150,18 @@ try:
     # latex_group += latex.task_latex_rebuild
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.on_fail(False, bool).tool.doot.group.latex.debug():
+    if doot.config.on_fail(False, bool).group.latex.debug():
         print("To activate group, latex needs: ", err)
 ##-- end latex
 
 ##-- sphinx
 sphinx_group = TaskGroup("sphinx_group")
 try:
-    doot.config.tool.doot.group.sphinx
+    doot.config.group.sphinx
     from doot.tasks.builders import sphinx
 
-    sphinx_src  = doot.config.on_fail(doot.locs.docs).tool.doot.group.sphinx.src()
-    sphinx_docs = doot.config.on_fail([doot.locs.docs]).tool.doot.group.sphinx.docs()
+    sphinx_src  = doot.config.on_fail(doot.locs.docs).group.sphinx.src()
+    sphinx_docs = doot.config.on_fail([doot.locs.docs]).group.sphinx.docs()
 
     sphinx_locs  = doot.locs.extend(name="sphinx",
                                     src=sphinx_src,
@@ -172,14 +172,14 @@ try:
     sphinx_group += sphinx.task_browse(sphinx_locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.on_fail(False, bool).tool.doot.group.sphinx.debug():
+    if doot.config.on_fail(False, bool).group.sphinx.debug():
         print("To activate group, sphinx needs: ", err)
 ##-- end sphinx
 
 ##-- tags
 tags_group = TaskGroup("tags_group")
 try:
-    doot.config.tool.doot.group.tags
+    doot.config.group.tags
     from doot.tasks.data import taggers
     gtags_locs = doot.locs.extend(name="tags",
                                   build=None,
@@ -190,17 +190,17 @@ try:
     tags_group += taggers.task_tags(gtags_locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.on_fail(False, bool).tool.doot.group.tags.debug():
+    if doot.config.on_fail(False, bool).group.tags.debug():
         print("To activate group, tags needs: ", err)
 ##-- end tags
 
 ##-- git
 git_group = TaskGroup("git group")
 try:
-    doot.config.tool.doot.group.git
+    doot.config.group.git
     from doot.tasks.vcs import git_tasks
 
-    vcs_visual = doot.config.on_fail(doot.locs.docs / "visual").tool.doot.group.git.visual()
+    vcs_visual = doot.config.on_fail(doot.locs.docs / "visual").group.git.visual()
 
     vcs_locs = doot.locs.extend(name="vcs", src=None, docs=None, temp=None, visual=vcs_visual)
 
@@ -208,7 +208,7 @@ try:
     git_group += git_tasks.GitLogAnalyseTask(locs=vcs_locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.on_fail(False, bool).tool.doot.group.git.debug():
+    if doot.config.on_fail(False, bool).group.git.debug():
         print("To activate group, git needs: ", err)
 
 ##-- end git
@@ -216,7 +216,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 ##-- cargo
 cargo_group = TaskGroup("cargo_group")
 try:
-    doot.config.tool.doot.group.cargo
+    doot.config.group.cargo
 
     from doot.tasks.builders import cargo
     cargo_locs = doot.locs.extend(name="cargo",
@@ -235,7 +235,7 @@ try:
     cargo_group += cargo.task_cargo_version
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.on_fail(False, bool).tool.doot.group.cargo.debug():
+    if doot.config.on_fail(False, bool).group.cargo.debug():
         print("To activate group, cargo needs: ", err)
 
 ##-- end cargo
@@ -243,7 +243,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 ##-- gradle
 gradle_group = TaskGroup("gradle_group")
 try:
-    doot.config.tool.doot.group.gradle
+    doot.config.group.gradle
     from doot.tasks.builders import gradle
 
     gradle_group += gradle.task_gradle_run
@@ -259,7 +259,7 @@ try:
     gradle_group += gradle.task_gradle_projects
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.on_fail(False, bool).tool.doot.group.gradle.debug():
+    if doot.config.on_fail(False, bool).group.gradle.debug():
         print("To activate group, gradle needs: ", err)
 
 ##-- end gradle
@@ -267,9 +267,9 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 ##-- epub
 epub_group = TaskGroup("epub group")
 try:
-    doot.config.tool.doot.group.epub
-    epub_src = doot.config.on_fail("docs/epub").tool.doot.group.epub.src()
-    epub_build = doot.config.on_fail(["build"]).tool.doot.group.epub.build()
+    doot.config.group.epub
+    epub_src = doot.config.on_fail("docs/epub").group.epub.src()
+    epub_build = doot.config.on_fail(["build"]).group.epub.build()
 
     epub_locs = doot.locs.extend(name="epub", src=epub_src, build=epub_build)
     from doot.tasks.builders import epub
@@ -283,7 +283,7 @@ try:
     epub_group += epub.EbookNewPandoc(locs=epub_locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.on_fail(False, bool).tool.doot.group.epub.debug():
+    if doot.config.on_fail(False, bool).group.epub.debug():
         print("To activate group, epub needs: ", err)
 
 ##-- end epub
@@ -291,7 +291,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 ##-- maintain
 maintain_group = TaskGroup("Maintain Group")
 try:
-    doot.config.tool.doot.group.maintain
+    doot.config.group.maintain
     from doot.tasks.misc import maintenance as maintain
     maintain_group += maintain.CheckMail(locs=doot.locs)
     maintain_group += maintain.MaintainFull(locs=doot.locs)
@@ -305,14 +305,14 @@ try:
     maintain_group += maintain.GitMaintain(locs=doot.locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.on_fail(False, bool).tool.doot.group.maintain.debug():
+    if doot.config.on_fail(False, bool).group.maintain.debug():
         logging.debug("To activate group, epub needs: ", err)
 ##-- end maintain
 
 ##-- hashing
 hashing_group = TaskGroup("Hashing")
 try:
-    doot.config.tool.doot.group.hashing
+    doot.config.group.hashing
     from doot.tasks.files import hashing
     hashing_group += hashing.HashAllFiles(locs=doot.locs)
     hashing_group += hashing.GroupHashes(locs=doot.locs)
@@ -322,6 +322,6 @@ try:
     hashing_group += hashing.RepeatDeletions(locs=doot.locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.on_fail(False, bool).tool.doot.group.hashing.debug():
+    if doot.config.on_fail(False, bool).group.hashing.debug():
         logging.debug("To activate group, epub needs: ", err)
 ##-- end hashing

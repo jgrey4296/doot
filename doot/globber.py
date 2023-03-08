@@ -28,9 +28,9 @@ import random
 from doot.tasker import DootTasker
 from doot.mixins.subtask import SubMixin
 
-glob_ignores          : Final = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).tool.doot.globbing.ignores()
-glob_subselect_exact  : Final = doot.config.on_fail(10, int).tool.doot.globbing.subselect_exact()
-glob_subselect_pcnt   : Final = doot.config.on_fail(0, int).tool.doot.globbing.subselect_percentage()
+glob_ignores          : Final = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).globbing.ignores()
+glob_subselect_exact  : Final = doot.config.on_fail(10, int).globbing.subselect_exact()
+glob_subselect_pcnt   : Final = doot.config.on_fail(0, int).globbing.subselect_percentage()
 
 class GlobControl(enum.Enum):
     """

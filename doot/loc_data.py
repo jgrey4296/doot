@@ -78,7 +78,7 @@ class DootLocData:
 
     @staticmethod
     def set_defaults(config:Tomler):
-        DootLocData._default_locs = config.on_fail([], list).tool.doot.locs
+        DootLocData._default_locs = config.on_fail([], list).locs
 
     @staticmethod
     def as_taskgroup() -> TaskGroup:

@@ -59,7 +59,7 @@ class TargetedMixin:
             case {'target': targ}, None if targ.is_absolute():
                 globbed = [(y,name, y) for y in self.glob_target(targ, fn=fn, rec=rec)]
             case {'target': targ}, None:
-                globbed = [(y,name, y) for y in self.glob_target(self.locs.root / targ, fn=fn, rec=rec)]
+                globbed = [(y.name, y) for y in self.glob_target(self.locs.root / targ, fn=fn, rec=rec)]
             case _, _:
                 logging.warning("%s : No Recognizable Target Specified", self.basename)
                 globbed = []

@@ -22,10 +22,10 @@ tag_template   = data_path / "jekyll_tagfile"
 ##-- end data
 
 ##-- toml data
-default_template = doot.config.tool.doot.jekyll.genpost.default_template
-date_format      = doot.config.tool.doot.jekyll.genpost.date_format.strip()
-title_format     = doot.config.tool.doot.jekyll.genpost.title_format.strip()
-ext_format       = doot.config.tool.doot.jekyll.genpost.ext.strip()
+default_template = doot.config.jekyll.genpost.default_template
+date_format      = doot.config.jekyll.genpost.date_format.strip()
+title_format     = doot.config.jekyll.genpost.title_format.strip()
+ext_format       = doot.config.jekyll.genpost.ext.strip()
 
 ##-- end toml data
 

@@ -36,11 +36,11 @@ from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
 from doot import globber, tasker
 
-dot_scale  = doot.config.on_fail(72.0, float).tool.doot.dot_graph.scale()
-dot_layout = doot.config.on_fail("neato", str).tool.doot.dot_graph.layout()
-dot_ext    = doot.config.on_fail("png", str).tool.doot.dot_graph.ext()
+dot_scale  = doot.config.on_fail(72.0, float).dot_graph.scale()
+dot_layout = doot.config.on_fail("neato", str).dot_graph.layout()
+dot_ext    = doot.config.on_fail("png", str).dot_graph.ext()
 
-plant_ext  = doot.config.on_fail("png", str).tool.doot.plantuml.ext()
+plant_ext  = doot.config.on_fail("png", str).plantuml.ext()
 
 class DotVisualise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin):
     """
