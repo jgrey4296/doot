@@ -37,8 +37,8 @@ from bkmkorg.apis.twitter import TwitterMixin
 from doot.mixins.commander import CommanderMixin
 from doot.mixins.filer import FilerMixin
 
-time_format : Final = doot.config.on_fail("%I:%M %p", str).tool.doot.notify.time_format()
-time_voice  : Final = doot.config.on_fail("Moira", str).tool.doot.notify.voice()
+time_format : Final = doot.config.on_fail("%I:%M %p", str).notify.time_format()
+time_voice  : Final = doot.config.on_fail("Moira", str).notify.voice()
 
 class TimeAnnounce(tasker.DootTasker, CommanderMixin):
 

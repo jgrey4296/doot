@@ -18,8 +18,8 @@ import tomler
 
 logging = logmod.getLogger(__name__)
 
-toot_size            : Final = doot.config.on_fail(250, int).tool.doot.mastodon.toot_size()
-toot_image_size      : Final = doot.config.on_fail("8mb", str).tool.doot.mastodon.image_size()
+toot_size            : Final = doot.config.on_fail(250, int).mastodon.toot_size()
+toot_image_size      : Final = doot.config.on_fail("8mb", str).mastodon.image_size()
 RESOLUTION_BLACKLIST : Final = doot.locs.image_blacklist
 
 RESOLUTION_RE        : Final = re.compile(r".*?([0-9]+x[0-9]+)")

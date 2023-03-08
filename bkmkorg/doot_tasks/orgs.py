@@ -30,6 +30,7 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
+import re
 import fileinput
 from collections import defaultdict
 
@@ -43,10 +44,10 @@ from doot.mixins.batch import BatchMixin
 from doot.mixins.targeted import TargetedMixin
 from doot.tasker import DootTasker
 
-tweet_index_file : Final = doot.config.on_fail(".tweets", str).tool.doot.twitter.index()
-file_index_file  : Final = doot.config.on_fail(".files", str).tool.doot.twitter.file_index()
-link_index_file  : Final = doot.config.on_fail(".links", str).tool.doot.twitter.link_index()
-thread_file      : Final = doot.config.on_fail(".threads", str).tool.doot.twitter.thread_index()
+tweet_index_file : Final = doot.config.on_fail(".tweets", str).twitter.index()
+file_index_file  : Final = doot.config.on_fail(".files", str).twitter.file_index()
+link_index_file  : Final = doot.config.on_fail(".links", str).twitter.link_index()
+thread_file      : Final = doot.config.on_fail(".threads", str).twitter.thread_index()
 
 empty_match      : Final = re.match("","")
 
@@ -67,8 +68,25 @@ class TODOOrgCleaner(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
         })
         return task
 
-class TODOOrg2Html:
-    pass
+class TODOOrg2Html(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
+
+    def __init__(self, name="org::2html", locs=None, roots=None):
+        super().__init__(name, locs, roots or [locs.data], rec=True)
+
+    def set_params(self):
+        return self.target_params()
+
+    def filter(self, fpath):
+        return fpath.suffix(".org")
+
+    def subtask_detail(self, task, fpath):
+        task.update({
+            "actions" : [ (self.convert_to_html, [fpath]) ],
+        })
+        return task
+
+    def convert_to_html(self, fpath):
+        pass
 
 class ThreadListings(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchMixin):
     """
@@ -159,10 +177,9 @@ class OrgMultiThreadCount(DelayedMixin, TargetedMixin, globber.DootEagerGlobber,
         return self.globc.discard
 
     def count_threads(self, fpath):
-        globbed        = self.glob_target(fpath, fn=self.sub_filter, rec=False):
+        globbed        = [x for x in self.glob_files(fpath) if "thread" in x.stem]
         thread_listing = fpath / thread_file
         counts         = defaultdict(lambda: [0, 0])
-        globbed        = [x for x in self.glob_files(fpath) if "thread" in x.stem]
         total_files    = len(globbed)
         total_threads  = 0
 
@@ -304,7 +321,7 @@ class ThreadOrganise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Batc
         with open(header_file, 'a') as f:
             f.write("\n" + "".join(header_lines))
 
-class ThreadImageOCR(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchMixin, TargetedMixin):
+class ThreadImageOCR(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchMixin):
     """
     OCR all files for all thread directories,
     and extract all links into .links files

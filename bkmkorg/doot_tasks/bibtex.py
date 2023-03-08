@@ -35,6 +35,7 @@ logmod.getLogger('bibtexparser').setLevel(logmod.CRITICAL)
 
 import shutil
 
+import itertools
 import bkmkorg
 import doot
 from bkmkorg.bibtex import clean as bib_clean
@@ -52,9 +53,9 @@ from doot.tasks.files.backup import BackupTask
 
 pl_expand : Final = lambda x: pl.Path(x).expanduser().resolve()
 
-min_tag_timeline : Final = doot.config.on_fail(10, int).tool.doot.bibtex.min_timeline()
-stub_exts        : Final = doot.config.on_fail([".pdf", ".epub", ".djvu", ".ps"], list).tool.doot.bibtex.stub_exts()
-clean_in_place   : Final = doot.config.on_fail(False, bool).tool.doot.bibtex.clean_in_place()
+min_tag_timeline : Final = doot.config.on_fail(10, int).bibtex.min_timeline()
+stub_exts        : Final = doot.config.on_fail([".pdf", ".epub", ".djvu", ".ps"], list).bibtex.stub_exts()
+clean_in_place   : Final = doot.config.on_fail(False, bool).bibtex.clean_in_place()
 
 ENT_const        : Final = 'ENTRYTYPE'
 
@@ -374,6 +375,7 @@ class BibtexStub(DelayedMixin, globber.DootEagerGlobber):
         task.update({
             "actions" : [
                 self.current_max_stub_id,
+                self.stub_all,
                 self.append_stubs
             ],
         })
@@ -393,7 +395,6 @@ class BibtexStub(DelayedMixin, globber.DootEagerGlobber):
         task.update({
             "actions" : [
                 (self.move_to_workdir, [fpath]), # locs.src/fpath -> moved_to: locs.data/fpath
-                (self.stub_entry, [fpath]),      # moved_to
             ],
         })
         return task
@@ -409,13 +410,18 @@ class BibtexStub(DelayedMixin, globber.DootEagerGlobber):
         # src.rename(dst)
         return { "moved_to" : str(dst)}
 
-    def stub_entry(self, fpath):
-        self.max_stub_id += 1
-        stub_str = BibtexStub.stub_t.substitute(id=self.max_stub_id,
-                                                title=fpath.stem,
-                                                year=datetime.datetime.now().year,
-                                                file=str(fpath.expanduser().resolve()))
-        self.stubs.append(stub_str)
+    def stub_all(self):
+        wd = self.locs.bibtex_working
+        for fpath in itertools.chain(wd.glob("*.pdf"), wd.glob("*.epub")):
+            if fpath.name in self.source_text:
+                continue
+
+            self.max_stub_id += 1
+            stub_str = BibtexStub.stub_t.substitute(id=self.max_stub_id,
+                                                    title=fpath.stem,
+                                                    year=datetime.datetime.now().year,
+                                                    file=str(fpath.expanduser().resolve()))
+            self.stubs.append(stub_str)
 
     def append_stubs(self):
         if not bool(self.stubs):

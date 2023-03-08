@@ -49,7 +49,7 @@ from doot.tasks.files.downloader import DownloaderMixin
 
 import twitter
 
-user_batch_size : Final = doot.config.on_fail(100, int).tool.doot.twitter.user_batch()
+user_batch_size : Final = doot.config.on_fail(100, int).twitter.user_batch()
 
 empty_match = re.match("","")
 
