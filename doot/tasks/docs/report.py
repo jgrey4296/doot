@@ -59,4 +59,4 @@ class LineReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
         ] + sorted(self.counts, key=lambda x: int(x.split(" ")[0]))
 
 
-        self.output.write_text("\n".join(report)
+        self.output.write_text("\n".join(report))

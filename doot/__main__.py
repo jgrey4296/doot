@@ -32,12 +32,12 @@ logging.setLevel(logmod.NOTSET)
 file_handler    = logmod.FileHandler(pl.Path() / "log.doot", mode='w')
 file_handler.setFormatter(logmod.Formatter("{levelname} : INIT : {message}", style="{"))
 
-std_handler = logmod.StreamHandler()
-std_handler.setLevel(logmod.WARNING)
-std_handler.setFormatter(logmod.Formatter("{levelname}  : INIT : {message}", style="{"))
+stream_handler = logmod.StreamHandler()
+stream_handler.setLevel(logmod.WARNING)
+stream_handler.setFormatter(logmod.Formatter("{levelname}  : INIT : {message}", style="{"))
 
 logging.addHandler(file_handler)
-logging.addHandler(std_handler)
+logging.addHandler(stream_handler)
 ##-- end logging
 
 from doit.action import CmdAction
@@ -67,13 +67,13 @@ def main():
             file_handler.addFilter(DootAnyFilter(file_filter_names))
 
         stream_log_level    = doot.config.on_fail("DEBUG", str).logging.stream.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
-        stream_log_format   = doot.config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str)..logging.stream.format()
-        stream_filter_names = doot.config.on_fail([], list)..logging.stream.filters()
+        stream_log_format   = doot.config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str).logging.stream.format()
+        stream_filter_names = doot.config.on_fail([], list).logging.stream.filters()
 
-        std_handler.setLevel(stream_log_level)
-        std_handler.setFormatter(logmod.Formatter(stream_log_format, style="{"))
+        stream_handler.setLevel(stream_log_level)
+        stream_handler.setFormatter(logmod.Formatter(stream_log_format, style="{"))
         if bool(stream_filter_names):
-            std_handler.addFilter(DootAnyFilter(stream_filter_names))
+            stream_handler.addFilter(DootAnyFilter(stream_filter_names))
         ##-- end logging setup
 
         loader    = DootLoader()
@@ -100,14 +100,14 @@ def main():
                 doot.default_dooter.write_text(doot.dooter_template.read_text())
                 logging.info("Stubbed")
     except Exception as err:
-        logging.error("Error: ", err)
+        logging.error("Error: %s", err)
         errored = True
     finally:
         say_on_exit = False
         voice       = "Moira"
         if doot.config is not None:
-            say_on_exit = doot.config.on_fail(False, bool|str)..notify.say_on_exit()
-            voice       = doot.config.on_fail(voice, str)..notify.voice()
+            say_on_exit = doot.config.on_fail(False, bool|str).notify.say_on_exit()
+            voice       = doot.config.on_fail(voice, str).notify.voice()
         match errored, say_on_exit:
             case False, str() as say_text:
                 cmd = CmdAction(["say", "-v", voice, "-r", "50", say_text], shell=False)

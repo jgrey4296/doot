@@ -36,7 +36,7 @@ default_agnostic         = pl.Path("doot.toml")
 config     : tomler.Tomler = None
 locs       : DootLocData   = None
 
-def setup(prefix=""):
+def setup(prefix=None):
     global config, locs
     logging.debug("Setting up Doot, version: %s", __version__)
     if config is not None:
@@ -49,11 +49,15 @@ def setup(prefix=""):
     else:
         raise FileNotFoundError("No Config File was found")
 
+    if default_py.exists():
+        return setup_py()
+
+    if prefix is None:
+        return config
+
     for x in prefix.split("."):
         config = getattr(config, x)
 
-    if default_py.exists():
-        return setup_py()
 
 def setup_agnostic(path=default_agnostic):
     config = tomler.load(path)

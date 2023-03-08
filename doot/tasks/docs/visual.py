@@ -55,7 +55,7 @@ class DotVisualise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Comman
     def set_params(self):
         return self.target_params() + [
             { "name" : "layout", "type": str,   "short": "l", "default": dot_layout},
-            { "name" : "scale" , "type": float, "short", "s", "default": dot_scale},
+            { "name" : "scale" , "type": float, "short": "s", "default": dot_scale},
             { "name" : "ext",    "type": str,   "short": "e", "default": dot_ext}
         ]
 
@@ -83,7 +83,7 @@ class PlantUMLGlobberTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber,
     ([visual] -> build) run plantuml on a specification, generating target.'ext's
     """
 
-    def __init__(self, name="plantuml::visual",, locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+    def __init__(self, name="plantuml::visual", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=[".plantuml"], rec=True)
         self.locs.ensure("visual", "build")
         self.output = self.locs.build
