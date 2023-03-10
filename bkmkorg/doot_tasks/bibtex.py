@@ -352,9 +352,9 @@ class BibtexStub(DelayedMixin, globber.DootEagerGlobber):
 
     def __init__(self, name="bibtex::stub", locs=None, roots=None, rec=False, exts=None):
         super().__init__(name, locs, roots or [locs.downloads, locs.desktop, locs.dropbox], rec=rec, exts=exts or stub_exts)
-        self.source_text = ""
-        self.max_stub_id = 0
-        self.stubs       = []
+        self.source_file_set = set()
+        self.max_stub_id      = 0
+        self.stubs            = []
 
     def setup_detail(self, task):
         task.update({
@@ -364,32 +364,36 @@ class BibtexStub(DelayedMixin, globber.DootEagerGlobber):
         })
 
     def read_stub_contents(self):
-        self.source_text = self.locs.bib_stub_file.read_text()
+        source_text = self.locs.bib_stub_file.read_text()
+        file_re = re.compile(r"\s+file\s+=\s+{(.+)}")
+        stub_re = re.compile(r"^@.+?{stub_key_(\d+),$")
+        stub_ids = [0]
+        for line in source_text.split("\n"):
+            file_match = file_re.match(line)
+            key_match  = stub_re.match(line)
+
+            if key_match is not None:
+                stub_ids.append(int(key_match[1]))
+            elif file_match is not None:
+                self.source_file_set.add(pl.Path(file_match[1]).name)
+
+        self.max_stub_id = max(stub_ids)
+
 
     def filter(self, fpath):
-        if fpath.is_file() and fpath.name not in self.source_text:
+        if fpath.is_file() and fpath.name not in self.source_file_set:
             return self.globc.accept
         return self.globc.discard
 
     def task_detail(self, task):
         task.update({
             "actions" : [
-                self.current_max_stub_id,
                 self.stub_all,
                 self.append_stubs
             ],
         })
         return task
 
-    def current_max_stub_id(self):
-        stub_re = re.compile(r"^@.+?{stub_key_(\d+),$")
-        stub_ids = [0]
-        for line in self.source_text.split("\n"):
-            result = stub_re.match(line)
-            if result is not None:
-                stub_ids.append(int(result[1]))
-
-        self.max_stub_id = max(stub_ids)
 
     def subtask_detail(self, task, fpath):
         task.update({
@@ -413,7 +417,7 @@ class BibtexStub(DelayedMixin, globber.DootEagerGlobber):
     def stub_all(self):
         wd = self.locs.bibtex_working
         for fpath in itertools.chain(wd.glob("*.pdf"), wd.glob("*.epub")):
-            if fpath.name in self.source_text:
+            if fpath.name in self.source_file_set:
                 continue
 
             self.max_stub_id += 1
