@@ -141,35 +141,3 @@ class DownloaderMiddleware:
 
     def spider_opened(self, spider):
         pass
-
-class TODOSaveDataDownloadMiddleware:
-    """
-    For when initial scraping has been run,
-    and data has been saved,
-    Intercepts the request, and returns the saved data instead
-    """
-
-    @classmethod
-    def from_crawler(cls, crawler):
-        # This method is used by Scrapy to create your spiders.
-        s = cls()
-        crawler.signals.connect(s.spider_opened, signal=signals.spider_opened)
-        return s
-
-    def process_request(self, request, spider):
-        # Called for each request that goes through the downloader
-        # middleware.
-
-        # Must either:
-        # - return None: continue processing this request
-        # - or return a Response object
-        # - or return a Request object
-        # - or raise IgnoreRequest: process_exception() methods of
-        #   installed downloader middleware will be called
-
-        return None
-
-    def spider_opened(self, spider):
-        # get locs from the spider,
-        # and preprare interception urls
-        pass

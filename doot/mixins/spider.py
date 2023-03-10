@@ -45,10 +45,20 @@ settings_with_defaults = default_toml.copy()
 settings_with_defaults.update(spider_settings)
 
 class SpiderMixin:
+    """
+    Run a scrapy spider either with default doot settings,
+    or passed in toml data
+    """
 
-    def run_spider(self, name:str, spider:type, urls:list, with_defaults=False):
-        logging.info("Running spider")
-        settings = settings_with_defaults if with_defaults else spider_settings
+    def run_spider(self, name:str, spider:type, urls:list, settings=None):
+        logging.info("Running spider: %s", name)
+        match settings:
+            case None:
+                settings = settings_with_defaults
+            case dict() | tomler.Tomler():
+                pass
+            case False:
+                settings = default_toml
 
         self.crawler = CrawlerProcessFix(settings=settings, install_root_handler=False)
         self.crawler.crawl(spider, name=name, locs=self.locs, urls=urls)

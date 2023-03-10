@@ -127,6 +127,10 @@ class LatexMaintain(DootTasker, CommanderMixin, FilerMixin):
         locs.ensure("maintain")
 
     def setup_detail(self, task):
+        if not bool(tlmgr):
+            logging.warning("No tlmgr found")
+            return None
+
         task.update({
             "actions" : [
                 # Backup tex packages

@@ -66,25 +66,23 @@ class JekyllBuild(DootTasker, CommanderMixin, FilerMixin):
     def __init__(self, name="jekyll::build", locs=None):
         super().__init__(name, locs)
         self.jekyll_config = self.locs.root / "jekyll.toml"
-        self.locs.ensure("data", "src", "temp")
+        self.locs.ensure("data", "site", "temp", "generated")
+
+    def is_current(self):
+        return False
 
     def set_params(self):
         return [
-            { "name" : "drafts",
-              "long" : "drafts",
-              "type" : bool,
-              "default" : False,
-             }
+            { "name" : "drafts", "long" : "drafts", "type" : bool, "default" : False }
         ]
 
     def task_detail(self, task):
         task.update({
             "actions"  : [
-                (self.copy_to, [self.locs.temp, self.locs.data, self.locs.src]),
+                (self.copy_to, [self.locs.temp, self.locs.data, self.locs.site]),
                 self.cmd(self.cmd_builder),
             ],
             "file_dep" : [ self.jekyll_config ],
-            "uptodate" : [False],
         })
         return task
 

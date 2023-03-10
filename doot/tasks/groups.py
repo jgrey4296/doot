@@ -99,27 +99,18 @@ jekyll_group = TaskGroup("jekyll_group")
 try:
     doot.config.group.jekyll
 
-    jekyll_src = doot.config.on_fail(doot.locs.docs).group.jekyll.src()
-    jekyll_data = doot.config.on_fail([doot.locs.data]).group.jekyll.data()
-    jekyll_codegen = doot.config.on_fail("_generated").group.jekyll.codegen()
-
     jekyll_locs = doot.locs.extend(name="jekyll",
-                                   src=jekyll_src,
-                                   data=jekyll_data,
-                                   codegen=jekyll_codegen,
-                                   docs=None)
-    jekyll_locs.update({
-        "posts"     : jekyll_locs.src     / "_drafts" ,
-        "tags"      : jekyll_locs.codegen / "_tags",
-        "tagsIndex" : jekyll_locs.data    / "tags" / "index.md",
-    })
+                                   posts=doot.locs.site / "_drafts" ,
+                                   tags=doot.locs.generated / "tags",
+                                   tagsIndex=doot.locs.data / "tags" / "index.md",
+                                   )
+    from doot.tasks.builders import jekyll as j_build
+    from doot.tasks.docs import jekyll as j_doc
 
     jekyll_group += project_init.JekyllInit(locs=jekyll_locs)
-    from doot.tasks.builders import jekyll as j_build
     jekyll_group += j_build.JekyllBuild(locs=jekyll_locs)
     jekyll_group += j_build.task_jekyll_serve
     jekyll_group += j_build.task_jekyll_install()
-    from doot.tasks.docs import jekyll as j_doc
     jekyll_group += j_doc.GenPostTask(locs=jekyll_locs)
     jekyll_group += j_doc.GenTagsTask(locs=jekyll_locs)
 

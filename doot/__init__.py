@@ -61,8 +61,8 @@ def setup(prefix=None):
 
 def setup_agnostic(path=default_agnostic):
     config = tomler.load(path)
-    locs   = DootLocData(files=config.flatten_on().files(wrapper=lambda x: x.get_table()),
-                         **config.flatten_on().directories(wrapper=lambda x: x.get_table()))
+    locs   = DootLocData(files=config.flatten_on().files(wrapper=dict),
+                         **config.flatten_on().directories(wrapper=dict))
 
     # Done like this to avoid recursive imports
     DootTasker.set_defaults(config)
