@@ -32,6 +32,7 @@ logging = logmod.getLogger(__name__)
 
 import scrapy
 from scrapy import signals
+from scrapy.utils.log import log_scrapy_info
 from itemadapter import is_item, ItemAdapter
 from scrapy.utils.httpobj import urlparse_cached
 import gzip
@@ -63,10 +64,14 @@ class CrawlerProcessFix(CrawlerProcess):
     existing loggers
     """
 
-    def __init__(self, settings=None, install_root_handler=True):
-        super(CrawlerProcess, self).__init__(settings)
-        # skpped -> configure_logging(self.settings, install_root_handler)
-        logging.debug("CrawlerProcess Settings: %s", self.settings)
+    def __init__(self, settings=None, install_root_handler=False):
+        if not install_root_handler:
+            super(CrawlerProcess, self).__init__(settings)
+        else:
+            super().__init__(settings, install_root_handler=install_root_handler)
+        # skipped -> configure_logging(self.settings, install_root_handler)
+        log_scrapy_info(self.settings)
+        logging.debug("CrawlerProcess Settings: %s", list(self.settings._to_dict().keys()))
         self._initialized_reactor = False
         filter_nls = SimpleFilter()
         for logName in [f"scrapy.{x}" for x in dir(scrapy) if "__" not in x]:

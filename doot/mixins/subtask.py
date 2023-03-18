@@ -31,6 +31,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from doot.utils.task_namer import task_namer
+from doot.errors import DootDirAbsent
 from time import sleep
 
 class SubMixin:

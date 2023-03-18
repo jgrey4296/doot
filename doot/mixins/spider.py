@@ -37,6 +37,7 @@ from importlib.resources import files
 import tomler
 import doot
 from doot.spiders.crawler import CrawlerProcessFix
+from urllib.parse import urlparse
 
 default_toml           = tomler.load(files("doot.__templates") / "spider_toml").flatten_on().spiders().get_table()
 spider_settings        = doot.config.flatten_on().spiders().get_table()
@@ -50,16 +51,30 @@ class SpiderMixin:
     or passed in toml data
     """
 
-    def run_spider(self, name:str, spider:type, urls:list, settings=None):
-        logging.info("Running spider: %s", name)
+    def _urlparse(self, url:str):
+        return urlparse(url)
+
+    def run_spider(self, name:str, spider:type, urls:list, settings=None, auto_limit=True):
+        """
+        auto_limit = True -> auto set allowed_domains to the domains of initial urls
+        """
+        logging.info("Running spider: %s : %s : %s : %s", name, spider, urls, settings)
+        merged = settings_with_defaults
         match settings:
             case None:
-                settings = settings_with_defaults
-            case dict() | tomler.Tomler():
                 pass
-            case False:
-                settings = default_toml
+            case dict() if bool(settings):
+                merged.update(settings)
+            case tomler.Tomler():
+                merged.update(dict(settings))
+            case [dict() as val]:
+                merged = val
 
-        self.crawler = CrawlerProcessFix(settings=settings, install_root_handler=False)
+        if auto_limit and not merged.get('allowed_domains', False):
+            merged['allowed_domains'] = [self._urlparse(x).netloc for x in urls]
+
+        self.crawler = CrawlerProcessFix(settings=merged)
         self.crawler.crawl(spider, name=name, locs=self.locs, urls=urls)
+        logging.debug("------ Starting Crawl")
         self.crawler.start()
+        logging.debug("------ Crawl Finished")

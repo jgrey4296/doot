@@ -95,7 +95,7 @@ class CacheStorage:
         metadata       = self._read_meta(spider, request)
         if metadata is None:
             return  # not cached
-        logging.info("Resusing cached response")
+        logging.info("Reusing cached response")
         rpath          = self._get_request_path(spider, request)
         with self._open(rpath / "response_body", "rb") as f:
             body       = f.read()
