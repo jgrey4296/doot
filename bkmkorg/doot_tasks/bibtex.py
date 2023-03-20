@@ -128,6 +128,7 @@ class BibtexClean(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, bib_cle
         }
 
     def load_and_clean(self, fpath):
+        logging.info("Cleaning: %s", fpath)
         self.current_year = fpath.stem
         self.current_db   = self.bc_load_db([fpath], fn=self.clean_entry)
 

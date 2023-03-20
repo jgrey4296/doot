@@ -119,6 +119,7 @@ class ThreadListings(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Batc
         return self.globc.discard
 
     def process_dir(self, fpath):
+        logging.info("Processing: %s", fpath)
         file_index = fpath / file_index_file
         tweet_index = fpath / tweet_index_file
 
@@ -230,6 +231,7 @@ class ThreadOrganise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Batc
         return task
 
     def process_thread_file(self, fpath):
+        logging.info("Processing: %s", fpath)
         self.read_threadcount(fpath)
         self.process_threads(fpath)
 
@@ -355,7 +357,7 @@ class ThreadImageOCR(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Batc
         self.run_batches(*chunks)
 
     def batch(self, data):
-        for name, fpath in data:
+        for fpath in data:
             link_index = fpath / link_index_file
             links      = self.extract_links(fpath)
             link_index.write_text("\n".join(links))

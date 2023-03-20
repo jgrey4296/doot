@@ -63,7 +63,9 @@ class ADBUpload(android.ADBMixin, BatchMixin, DelayedMixin, TargetedMixin, globb
         self.count       = 0
 
     def filter(self, fpath):
-        if fpath.parent in self.roots:
+        is_build = fpath.name == self.locs.build.name
+        is_temp  = fpath.name == self.locs.temp.name
+        if not (is_build or is_temp) and fpath.is_dir() and fpath.parent in self.roots:
             return self.control.keep
         return self.control.discard
 
@@ -79,7 +81,7 @@ class ADBUpload(android.ADBMixin, BatchMixin, DelayedMixin, TargetedMixin, globb
         self.local_root  = self.locs.local_push
         task.update({
             "actions" : [
-                lambda: print(f"Set Device Root to: {self.device_root}"),
+                (self.log, [f"Set Device Root to: {self.device_root}", logmod.INFO]),
             ],
             "teardown" : [ self.write_report ],
         })
@@ -99,18 +101,19 @@ class ADBUpload(android.ADBMixin, BatchMixin, DelayedMixin, TargetedMixin, globb
         return self.globc.discard
 
     def upload_target(self, fpath):
+        logging.info("Uploading Chunks of %s", fpath)
         chunks = self.chunk(self.glob_target(fpath, fn=self.sub_filter, rec=False))
         self.run_batches(*chunks)
 
     def batch(self, data):
-        for name, fpath in data:
+        for fpath in data:
             cmd = self.cmd(self.args_adb_push_dir, fpath, save="result")
             cmd.execute()
             entry = f"{fpath}: {cmd.out}"
             self.report.append(entry)
 
     def write_report(self):
-        logging("Completed")
+        logging.info("Completed")
         report = []
         report.append("--------------------")
         report.append("Pushed: ")

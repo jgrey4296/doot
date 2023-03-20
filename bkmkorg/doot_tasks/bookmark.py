@@ -124,7 +124,7 @@ class BookmarksCleaner(DootTasker, FilerMixin):
         self.total = BC.BookmarkCollection.read(fpath)
         self.total.merge_duplicate()
 
-class BookmarksSplit(DootTasker):
+class TODOBookmarksSplit(DootTasker):
     """
     TODO Create several bookmarks files of selections
     """

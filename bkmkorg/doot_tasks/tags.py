@@ -189,6 +189,7 @@ class TagsReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchMix
         return task
 
     def read_tag_file(self, fpath):
+        logging.info("Reading: %s", fpath)
         tags = SubstitutionFile.read(fpath)
         self.tags += tags
 
@@ -271,6 +272,7 @@ class TagsIndexer(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchMi
         return tas
 
     def process_file(self, fpath):
+        logging.info("Indexing: %s", fpath)
         for line in fileinput.input(files=[fpath]):
             regex       = None
             splt_by     = ":"
@@ -306,7 +308,7 @@ class TagsIndexer(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchMi
         new_tags.update(new_bkmk | new_bib | new_org)
         return { "new_tags" : str(new_tags) }
 
-class TagsGrep(DootTasker, FilerMixin):
+class TODOTagsGrep(DootTasker, FilerMixin):
     """
     grep directories slowly to build tag indices
     """
