@@ -363,10 +363,11 @@ class BibtexStub(DelayedMixin, globber.DootEagerGlobber):
                 self.read_stub_contents
             ]
         })
+        return task
 
     def read_stub_contents(self):
         source_text = self.locs.bib_stub_file.read_text()
-        file_re = re.compile(r"\s+file\s+=\s+{(.+)}")
+        file_re = re.compile(r"\s*file\s*=\s*{(.+)}")
         stub_re = re.compile(r"^@.+?{stub_key_(\d+),$")
         stub_ids = [0]
         for line in source_text.split("\n"):
@@ -375,10 +376,12 @@ class BibtexStub(DelayedMixin, globber.DootEagerGlobber):
 
             if key_match is not None:
                 stub_ids.append(int(key_match[1]))
-            elif file_match is not None:
+
+            if file_match is not None:
                 self.source_file_set.add(pl.Path(file_match[1]).name)
 
         self.max_stub_id = max(stub_ids)
+        logging.debug("Found %s existing stubs", len(self.source_file_set))
 
 
     def filter(self, fpath):
@@ -394,7 +397,6 @@ class BibtexStub(DelayedMixin, globber.DootEagerGlobber):
             ],
         })
         return task
-
 
     def subtask_detail(self, task, fpath):
         task.update({
