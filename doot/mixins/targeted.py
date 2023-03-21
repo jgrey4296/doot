@@ -55,9 +55,9 @@ class TargetedMixin:
             case _, x if x is not None:
                 globbed = [(y.name, y) for y in self.glob_target(x, fn=fn, rec=rec)]
             case {'target': targ}, None if targ.parts[0] == "~":
-                globbed = [(y,name, y) for y in self.glob_target(targ.expanduser(), fn=fn, rec=rec)]
+                globbed = [(y.name, y) for y in self.glob_target(targ.expanduser(), fn=fn, rec=rec)]
             case {'target': targ}, None if targ.is_absolute():
-                globbed = [(y,name, y) for y in self.glob_target(targ, fn=fn, rec=rec)]
+                globbed = [(y.name, y) for y in self.glob_target(targ, fn=fn, rec=rec)]
             case {'target': targ}, None:
                 globbed = [(y.name, y) for y in self.glob_target(self.locs.root / targ, fn=fn, rec=rec)]
             case _, _:

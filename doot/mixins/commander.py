@@ -40,21 +40,20 @@ conda_exe        = os.environ['CONDA_EXE']
 
 class CommanderMixin:
 
-    def cmd(self, cmd:list|callable, *args, shell=False, save=None, **kwargs):
+    def cmd(self, cmd:str|list|callable, *args, shell=False, save=None, **kwargs):
         logging.debug("Cmd: %s Args: %s kwargs: %s", cmd, args, kwargs)
         match cmd:
             case FunctionType() | MethodType():
-                action = (cmd, list(args), kwargs)
+                action = (cmd, args, kwargs)
             case str() | pl.Path():
                 action = [cmd, *args]
             case list():
                 assert(not bool(args))
-                assert(not bool(kwargs))
                 action = cmd
             case _:
                 raise TypeError("Unexpected action form: ", cmd)
 
-        return DootCmdAction(action, shell=shell, save_out=save)
+        return DootCmdAction(action, shell=shell, save_out=save, **kwargs)
 
     def force(self, cmd:list|callable, *args, handler=None, shell=False, save=None, **kwargs):
         logging.debug("Forcing Cmd: %s Args: %s kwargs: %s", cmd, args, kwargs)

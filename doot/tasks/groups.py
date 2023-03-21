@@ -101,7 +101,7 @@ try:
 
     jekyll_locs = doot.locs.extend(name="jekyll",
                                    posts=doot.locs.site / "_drafts" ,
-                                   tags=doot.locs.generated / "tags",
+                                   tags=doot.locs.codegen / "tags",
                                    tagsIndex=doot.locs.data / "tags" / "index.md",
                                    )
     from doot.tasks.builders import jekyll as j_build
@@ -109,10 +109,10 @@ try:
 
     jekyll_group += project_init.JekyllInit(locs=jekyll_locs)
     jekyll_group += j_build.JekyllBuild(locs=jekyll_locs)
-    jekyll_group += j_build.task_jekyll_serve
+    jekyll_group += j_build.JekyllServe(locs=jekyll_locs)
+    jekyll_group += j_build.GenTagsTask(locs=jekyll_locs)
     jekyll_group += j_build.task_jekyll_install()
     jekyll_group += j_doc.GenPostTask(locs=jekyll_locs)
-    jekyll_group += j_doc.GenTagsTask(locs=jekyll_locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     if doot.config.on_fail(False, bool).group.jekyll.debug():

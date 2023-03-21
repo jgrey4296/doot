@@ -124,11 +124,11 @@ class DootEagerGlobber(SubMixin, DootTasker):
                 case GlobControl.keep:
                     results.append(current)
                 case False | GlobControl.discard if current.is_dir():
-                    queue += [x for x in current.iterdir()]
+                    queue += sorted(current.iterdir())
                 case True | GlobControl.accept:
                     results.append(current)
                     if current.is_dir():
-                        queue += [x for x in current.iterdir()]
+                        queue += sorted(current.iterdir())
                 case None | False | GlobControl.reject | GlobControl.discard:
                     continue
                 case _ as x:
@@ -146,26 +146,16 @@ class DootEagerGlobber(SubMixin, DootTasker):
             globbed.update(self.glob_target(root, rec=rec, fn=fn))
 
         logging.debug("Globbed: (%s) : %s", len(globbed), globbed)
-        # match input("Continue? _/N "):
-        #     case "N":
-        #         return []
-        #     case "d":
-        #         breakpoint()
-        #         pass
-
         results = {}
 
         # then create unique names based on path:
         for fpath in globbed:
             parts = list(fpath.parts[:-1]) + [fpath.stem]
-            if "_".join(parts[-2:]) not in results:
-                results["_".join(parts[-2:])] = fpath
-                continue
 
             # name already exists, create a unique version
             # based on its path
             index = len(parts) - 2
-            while "_".join(parts[index:]) in results:
+            while 0 < index and "_".join(parts[index:]) in results:
                 index -= 1
 
             results["_".join(parts[index:])] = fpath

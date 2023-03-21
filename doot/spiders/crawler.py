@@ -54,7 +54,7 @@ class SimpleFilter(logmod.Filter):
 
     def filter(self, record):
         record.args = {x:y.replace("\n"," ") for x,y in record.args.items()}
-        record.msg = record.msg.replace("\n", " ")
+        record.msg  = record.msg.replace("\n", " ")
         return True
 
 class CrawlerProcessFix(CrawlerProcess):
@@ -68,9 +68,11 @@ class CrawlerProcessFix(CrawlerProcess):
         if not install_root_handler:
             super(CrawlerProcess, self).__init__(settings)
         else:
+            logging.warning("Using standard scrapy crawler, will override log settings")
             super().__init__(settings, install_root_handler=install_root_handler)
+
         # skipped -> configure_logging(self.settings, install_root_handler)
-        log_scrapy_info(self.settings)
+        # log_scrapy_info(self.settings)
         logging.debug("CrawlerProcess Settings: %s", list(self.settings._to_dict().keys()))
         self._initialized_reactor = False
         filter_nls = SimpleFilter()

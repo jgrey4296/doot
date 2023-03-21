@@ -99,8 +99,8 @@ class RustMaintain(DootTasker, CommanderMixin, FilerMixin):
     def setup_detail(self, task):
         task.update({
             "actions" : [
-                self.cmd([rustup, "--version"], save="rustup"),
-                self.cmd([cargo, "--version"], save="cargo"),
+                self.cmd(rustup, "--version", save="rustup"),
+                self.cmd(cargo, "--version", save="cargo"),
                 (self.write_to, [self.locs.maintain / "rust.versions", ["rustup", "cargo"]]),
             ],
         })
@@ -149,7 +149,7 @@ class LatexMaintain(DootTasker, CommanderMixin, FilerMixin):
         task.update({
             "actions" : [
                 (self.log, ["Updating Latex", logmod.INFO]),
-                self.cmd([tlmgr, "update", "--all"], save="update"),
+                self.cmd(tlmgr, "update", "--all", save="update"),
                 (self.write_to, [self.locs.maintain / "tex.log",  "update"])
             ],
         })
@@ -164,8 +164,8 @@ class HaskellMaintain(DootTasker, CommanderMixin, FilerMixin):
     def setup_detail(self, task):
         task.update({
             "actions" : [
-                self.cmd([cabal, "--version"], save="cabal"),
-                self.cmd([cabal, "list", "--installed"], save="cabal.installed"),
+                self.cmd(cabal, "--version", save="cabal"),
+                self.cmd(cabal, "list", "--installed", save="cabal.installed"),
                 (self.write_to, [self.locs.maintain / "cabal.version", ["cabal", "cabal.installed"]]),
             ],
         })
@@ -179,7 +179,7 @@ class HaskellMaintain(DootTasker, CommanderMixin, FilerMixin):
         task.update({
             "actions" : [
                 (self.log, ["Updating Cabal", logmod.INFO]),
-                self.cmd([cabal, "update"], save="cabal"),
+                self.cmd(cabal, "update", save="cabal"),
                 (self.write_to, [self.locs.maintain / "cabal.backup", "cabal"]),
             ],
         })
@@ -227,8 +227,8 @@ class BrewMaintain(DootTasker, CommanderMixin, FilerMixin):
     def setup_detail(self, task):
         task.update({
             "actions": [
-                self.cmd([brew, "--version"], save="brew_version"),
-                self.cmd([brew, "list", "--version"], save="installed_versions"),
+                self.cmd(brew, "--version", save="brew_version"),
+                self.cmd(brew, "list", "--version", save="installed_versions"),
                 (self.write_to, [self.locs.maintain / "brew.versions", ["brew_version", "installed_versions"]]),
             ]
         })
@@ -242,9 +242,9 @@ class BrewMaintain(DootTasker, CommanderMixin, FilerMixin):
         task.update({
             "actions" : [
                 (self.log, ["Updating Homebrew", logmod.INFO]),
-                self.cmd([brew, "cleanup"], save="cleanup"),
-                self.cmd([brew, "update"],  save="update"),
-                self.cmd([brew, "upgrade"], save="upgrade"),
+                self.cmd(brew, "cleanup", save="cleanup"),
+                self.cmd(brew, "update",  save="update"),
+                self.cmd(brew, "upgrade", save="upgrade"),
                 (self.append_to, [self.locs.maintain / "brew.log", ["cleanup", "update", "upgrade"]]),
             ],
         })
@@ -262,7 +262,7 @@ class CondaMaintain(DootTasker,CommanderMixin, FilerMixin):
 
         task.update({
                     "actions": [
-                        self.cmd([conda, "--version"], save="conda"),
+                        self.cmd(conda, "--version", save="conda"),
                         (self.write_to, [self.locs.maintain / "conda.versions", ["conda"]]),
                      ],
         })
@@ -299,7 +299,7 @@ class CronMaintain(DootTasker, CommanderMixin, FilerMixin):
         task.update({
             "actions" : [
                 # Backup cron
-                self.cmd([crontab, "-l"], save="cron"),
+                self.cmd(crontab, "-l", save="cron"),
                 (self.write_to, [self.locs.maintain / "cron.backup", ["cron"]]),
             ],
         })
@@ -320,21 +320,28 @@ class CronMaintain(DootTasker, CommanderMixin, FilerMixin):
 class GitMaintain(DelayedMixin, globber.DootEagerGlobber, FilerMixin, CommanderMixin):
 
     def __init__(self, name="_maintain::git", locs=None, roots=None):
-        super().__init__(name, locs, roots or [locs.github], rec=True)
+        super().__init__(name, locs, roots or [locs.git_libs.resolve(), locs.github.resolve()], rec=True)
         locs.ensure("maintain")
         self.output = self.locs.maintain / "git.version"
 
     def filter(self, fpath):
-        try:
-            self.cmd(git, "rev-parse", "--is-inside-work-tree").execute()
-            return self.control.keep
-        except TaskError:
+        if not fpath.is_dir():
             return self.control.discard
+        if (fpath / ".doot_ignore").exists():
+            return self.control.reject
+        if fpath.is_symlink():
+            return self.control.reject
+
+        match self.cmd(git, "rev-parse", "--is-inside-work-tree", cwd=fpath).execute():
+            case TaskError():
+                return self.control.discard
+            case _:
+                return self.control.keep
 
     def setup_detail(self, task):
         task.update({
             "actions" : [
-                self.cmd([git, "--version"], save="git"),
+                self.cmd(git, "--version", save="git"),
                 (self.write_to, [self.output, "git"]),
             ],
         })
@@ -355,7 +362,8 @@ class GitMaintain(DelayedMixin, globber.DootEagerGlobber, FilerMixin, CommanderM
     def subtask_detail(self, task, fpath):
         task.update({
             "actions" : [
-                self.cmd([git, "config", "--get-regexp", "url"], save="urls"),
+                (self.log, [f"Getting Repo: {fpath}", logmod.INFO]),
+                self.cmd(git, "config", "--get-regexp", "url", cwd=fpath, save="urls"),
                 (self.append_to, [self.output, "urls"]),
             ],
         })
