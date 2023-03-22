@@ -32,7 +32,8 @@ class JGBibTexWriter(bwriter.BibTexWriter):
     def __init__(self, *args):
         super(JGBibTexWriter, self).__init__(*args)
         self.equals_column = 14
-        self.entry_separator = "\n\n"
+        self.entry_separator = "\n"
+        self.display_order = ["author", "editor", "title", "subtitle", "short_parties", "year", "journal", "booktitle", "institution", "country", "tags"]
 
     def _entry_to_bibtex(self, entry):
         filtered_entry     = {x:y for x,y in entry.items() if x[:2] != "__"}

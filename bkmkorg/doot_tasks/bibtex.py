@@ -93,18 +93,24 @@ class BibtexClean(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, bib_cle
         self.current_db   = None
         self.current_year = None
         self.issues       = []
-        self.locs.ensure("build", "temp", "bibtex")
+        self.locs.ensure("build", "temp", "bibtex", "pdfs")
+
+    def filter(self, fpath):
+        if fpath.is_dir():
+            return self.control.discard
+        return self.control.accept
 
     def set_params(self):
         return [
             { "name": "move-files", "long": "move-files", "type": bool, "default": False },
+            { "name": "clean-in-place", "short": "i", "type": bool, "default": clean_in_place},
         ] + self.target_params()
 
     def task_detail(self, task):
         issue_report = self.locs.build / "bib_clean_issues.report"
         task.update({
             "actions" : [
-                lambda: { "key_max" : max(len(x[0]) for x in self.issues) },
+                lambda: { "key_max" : max((len(x[0]) for x in self.issues), default=1) },
                 lambda task: { "issues" : "\n".join(f"{x[0]:<{task.values['key_max']}} {x[1]}" for x in self.issues) },
                 (self.write_to, [issue_report, "issues"]),
                 ],
@@ -113,7 +119,7 @@ class BibtexClean(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, bib_cle
         return task
 
     def subtask_detail(self, task, fpath):
-        target = fpath if clean_in_place else self.locs.temp / fpath.name
+        target = fpath if self.args['clean-in-place'] else self.locs.temp / fpath.name
         task.update({
             "actions" : [
                 (self.load_and_clean, [fpath]), # -> cleaned
@@ -121,6 +127,7 @@ class BibtexClean(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, bib_cle
                 (self.write_to, [target, "db"]),
             ],
         })
+        return task
 
     def db_to_str(self):
         return {
@@ -130,68 +137,83 @@ class BibtexClean(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, bib_cle
     def load_and_clean(self, fpath):
         logging.info("Cleaning: %s", fpath)
         self.current_year = fpath.stem
-        self.current_db   = self.bc_load_db([fpath], fn=self.clean_entry)
+        self.current_db   = self.bc_load_db([fpath], fn=self.on_parse_clean_entry)
+        # Everything loaded, crossrefs resolved
+        for entry in self.current_db.entries:
+            self.loaded_clean_entry(entry)
 
-    def clean_entry(self, entry):
-        try:
-            # Preprocess
-            self.bc_to_unicode(entry)
-            self.bc_split_names(entry)
-            self.bc_tag_split(entry)
-            # self.bc_title_split(entry)
+    def on_parse_clean_entry(self, entry) -> dict:
+        # Preprocess
+        self.bc_to_unicode(entry)
+        self.bc_lowercase_keys(entry)
+        self.bc_tag_split(entry)
+        assert("__tags" in entry)
 
-            assert("__tags" in entry)
+        if 'year' not in entry:
+            entry['year'] = "2023"
 
-            # TODO store entry, add it to correct year
-            match self.bc_match_year(entry, self.current_year, self.wrong_year_msg):
-                case (e_id, msg) as err:
-                    print(e_id + msg, file=sys.stderr)
-                    self.issues.append(err)
+        if 'school' in entry and 'institution' not in entry:
+            entry['institution'] = entry['school']
+            del entry['school']
 
-            self.bc_expand_paths(entry, self.locs.pdfs)
-            assert("__paths" in entry)
-            for e_id, msg in self.bc_check_files(entry, self.bad_file_msg):
-                self.issues.append((e_id, msg))
+        if entry['ENTRYTYPE'].lower() in ["phdthesis", "mastersthesis"]:
+            entry['type'] = entry['ENTRYTYPE'].lower().replace("thesis","")
+            entry['ENTRYTYPE'] = "thesis"
+
+        # TODO store entry, add it to correct year
+        match self.bc_match_year(entry, self.current_year, self.wrong_year_msg):
+            case (e_id, msg) as err:
                 print(e_id + msg, file=sys.stderr)
+                self.issues.append(err)
 
-            self.bc_base_name(entry)
-            self.bc_ideal_stem(entry)
+        self.bc_expand_paths(entry, self.locs.pdfs)
+        assert("__paths" in entry)
+        for e_id, msg in self.bc_check_files(entry, self.bad_file_msg):
+            self.issues.append((e_id, msg))
+            logging.warning(e_id + msg)
 
-            # Clean files [(field, orig, newloc, newstem)]
-            movements : list[tuple[str, pl.Path, pl.Path, str]] = self.bc_prepare_file_movements(entry, self.locs.pdfs)
-            orig_parents = set()
-            for field, orig, new_dir, new_stem in movements:
-                orig_parents.add(orig.parent)
-                unique = self.bc_unique_stem(orig, (new_dir / new_stem).with_suffix(orig.suffix))
-                if unique is None:
-                    continue
+        return entry
 
-                if self.args['move-files'] and not new_dir.exists():
-                    new_dir.mkdir(parents=True)
-                elif not new_dir.exists():
-                    logging.info("Proposed Directory Creation: %s", new_dir)
+    def loaded_clean_entry(self, entry) -> None:
+        assert('crossref' not in entry or '_FROM_CROSSREF' in entry), entry
+        self.bc_split_names(entry)
+        self.bc_title_split(entry)
+        self.bc_base_name(entry)
+        self.bc_ideal_stem(entry)
 
-                if self.args['move-files']:
-                    entry['__paths'][field] = orig.rename(unique)
-                else:
-                    logging.info("Proposed File Move: %s -> %s", orig, unique)
+        ##-- file path cleanup
+        # Clean files [(field, orig, newloc, newstem)]
+        movements : list[tuple[str, pl.Path, pl.Path, str]] = self.bc_prepare_file_movements(entry, self.locs.pdfs)
+        orig_parents = set()
+        for field, orig, new_dir, new_stem in movements:
+            orig_parents.add(orig.parent)
+            unique = self.bc_unique_stem(orig, (new_dir / new_stem).with_suffix(orig.suffix))
+            if unique is None:
+                continue
 
-            # Clean up parents
-            for parent in orig_parents:
-                try:
-                    should_rm = not bool(list(parent.iterdir()))
-                    # if should_rm and self.args['move-files']:
-                    #     parent.rmdir()
-                    if should_rm:
-                        logging.info("Proposed Directory Cleanup: %s", parent)
-                except OSError as err:
-                    if not err.args[0] == 66:
-                        logging.exception("Removing empty directories went bad: ", err)
+            if self.args['move-files'] and not new_dir.exists():
+                new_dir.mkdir(parents=True)
+            elif not new_dir.exists():
+                logging.info("Proposed Directory Creation: %s", new_dir)
 
-            return entry
-        except Exception as err:
-            print(f"Error Occurred for {entry['ID']}: {err}", file=sys.stderr)
-            raise err
+            if self.args['move-files']:
+                entry['__paths'][field] = orig.rename(unique)
+            else:
+                logging.info("Proposed File Move: %s -> %s", orig, unique)
+        ##-- end file path cleanup
+
+        ##-- parent path cleanup
+        for parent in orig_parents:
+            try:
+                should_rm = not bool(list(parent.iterdir()))
+                # if should_rm and self.args['move-files']:
+                #     parent.rmdir()
+                if should_rm:
+                    logging.info("Proposed Directory Cleanup: %s", parent)
+            except OSError as err:
+                if not err.args[0] == 66:
+                    logging.exception("Removing empty directories went bad: ", err)
+            ##-- end parent path cleanup
 
 class BibtexReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerMixin, BatchMixin, BibLoadSaveMixin, bib_clean.BibFieldCleanMixin, bib_clean.BibPathCleanMixin):
     """
@@ -201,6 +223,7 @@ class BibtexReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerM
     def __init__(self, name="bibtex::report", locs=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.bibtex], rec=rec, exts=[".bib"])
         self.locs.update(timelines=self.locs.build / "timelines")
+        self.locs.ensure("pdfs")
 
         self.db                             = None
         self.tag_file_mapping               = defaultdict(list)
@@ -382,7 +405,6 @@ class BibtexStub(DelayedMixin, globber.DootEagerGlobber):
 
         self.max_stub_id = max(stub_ids)
         logging.debug("Found %s existing stubs", len(self.source_file_set))
-
 
     def filter(self, fpath):
         if fpath.is_file() and fpath.name not in self.source_file_set:

@@ -31,12 +31,13 @@ __all__ = ["BibFieldCleanMixin", "BibPathCleanMixin"]
 from bibtexparser import customization as bib_customization
 from bibtexparser.latexenc import string_to_latex
 
-STEM_CLEAN_RE : Final = re.compile(r"[^a-zA-Z0-9_]+")
-UNDERSCORE_RE : Final = re.compile(r"_+")
-NEWLINE_RE    : Final = re.compile(r"\n+\s*")
-AND_RE        : Final = re.compile(r"\ and\ ", flags=re.IGNORECASE)
-TAGSPLIT_RE   : Final = re.compile(r",|;")
-TITLESPLIT_RE : Final = re.compile(r"^(.+?): (.+)$")
+STEM_CLEAN_RE  : Final = re.compile(r"[^a-zA-Z0-9_]+")
+UNDERSCORE_RE  : Final = re.compile(r"_+")
+NEWLINE_RE     : Final = re.compile(r"\n+\s*")
+AND_RE         : Final = re.compile(r"\ and\ ", flags=re.IGNORECASE)
+TAGSPLIT_RE    : Final = re.compile(r",|;")
+TITLESPLIT_RE  : Final = re.compile(r"^\s*(.+?): (.+)$")
+TITLE_CLEAN_RE : Final = re.compile("[^a-zA-Z0-9]")
 
 empty_match : Final = re.match("","")
 
@@ -45,10 +46,17 @@ class BibFieldCleanMixin:
     mixin for cleaning fields of bibtex records
     """
 
+    def bc_lowercase_keys(self, entry):
+        uppercase = {x for x in entry.keys() if not (x.islower() or x.isupper()) }
+        entry.update({x.lower(): entry.pop(x) for x in uppercase})
+
+
     def bc_match_year(self, entry, target, msg=None) -> None|tuple[str, str]:
         """
         check the year is the right one for the file its in
         """
+        if 'year' not in entry:
+            raise KeyError(f"Entry doesn't have a year: {entry}")
         if entry['year'] == target:
             return None
 
@@ -57,13 +65,16 @@ class BibFieldCleanMixin:
     def bc_title_split(self, entry):
         if 'title' not in entry:
             return entry
-        match (TAGSPLIT_RE.match(entry['title']) or empty_match).groups():
+        if "subtitle" in entry:
+            return entry
+
+        match (TITLESPLIT_RE.match(entry['title']) or empty_match).groups():
             case ():
                 pass
             case (title, subtitle):
                 entry['__orig_title'] = entry['title']
-                entry['title']        = title
-                entry['subtitle']     = subtitle
+                entry['title']        = (title[0].upper() + title[1:]).strip()
+                entry['subtitle']     = (subtitle[0].upper() + subtitle[1:]).strip()
 
         return entry
 
@@ -74,48 +85,56 @@ class BibFieldCleanMixin:
         entry = bib_customization.convert_to_unicode(entry)
         entry.update({k:NEWLINE_RE.sub(" ", v) for k,v in entry.items()})
         entry['__as_unicode'] = True
+        return entry
 
     def bc_split_names(self, entry):
         """
         convert names to component parts, for authors and editors
         """
-        try:
-            match entry:
-                case { "author": author }:
-                    entry['__authors'] = self._separate_names(author)
-                    entry['__split_names'] = "author"
-                case { "editor" : editor }:
-                    entry['__editors'] = self._separate_names(editor)
-                    entry['__split_names'] = "editor"
-                case _:
-                    raise Exception("No author or editor", entry)
-        except Exception as err:
-            logging.warning("Error processing %s : %s", entry['ID'], err)
+        match entry:
+            case { "author" : "" }:
+                logging.warning("Entry Has empty author: %s", entry['ID'])
+                entry['author']        = "Anon"
+                entry['__authors']     = self._separate_names("Anon")
+                entry['__split_names'] = "author"
+            case { "editor" : "" }:
+                logging.warning("Entry Has empty editor: %s", entry['ID'])
+                entry['editor']        = "Anon"
+                entry['__editor']     = self._separate_names("Anon")
+                entry['__split_names'] = "editor"
+            case { "author": author }:
+                entry['__authors'] = self._separate_names(author)
+                entry['__split_names'] = "author"
+            case { "editor" : editor }:
+                entry['__editors']     = self._separate_names(editor)
+                entry['__split_names'] = "editor"
+            case _:
+                logging.warning("Entry Has No author or editor: %s", entry['ID'])
+                entry['author']        = "Anon"
+                entry['__authors']     = self._separate_names("Anon")
+                entry['__split_names'] = "author"
+
+        return entry
 
     def bc_tag_split(self, entry):
         """
         split raw tag strings into parts, clean and strip whitespace,
         then make them a set
         """
-        tags = set()
-        if "tags"          in entry and isinstance(entry["tags"], str):
-            tags_subbed = NEWLINE_RE.sub("_", entry["tags"])
-            tags.update(TAGSPLIT_RE.split(tags_subbed))
-        if "keywords"      in entry and isinstance(entry["keywords"], str):
-            tags_subbed = NEWLINE_RE.sub("_", entry["keywords"])
-            tags.update(TAGSPLIT_RE.split(tags_subbed))
-            del entry["keywords"]
-        if "mendeley-tags" in entry and isinstance(entry["mendeley-tags"], str):
-            tags_subbed = NEWLINE_RE.sub("_", entry["mendeley-tags"])
-            tags.update(TAGSPLIT_RE.split(tags_subbed))
-            del entry["mendeley-tags"]
-
-        entry["__tags"] = {x.strip() for x in tags}
+        tags_subbed     = NEWLINE_RE.sub("_", entry.get("tags", ""))
+        tags            = TAGSPLIT_RE.split(tags_subbed)
+        entry["__tags"] = {x.strip() for x in tags if bool(x.strip())}
+        if not bool(entry["__tags"]):
+            entry["__tags"].add("__untagged")
         return entry
 
     def _separate_names(self, text):
-        names = bib_customization.getnames([x.strip() for x in AND_RE.split(text)])
-        return [bib_customization.splitname(x.strip(), False) for x in names]
+        try:
+            names = AND_RE.split(text)
+            result = [bib_customization.splitname(x.strip(), False) for x in names]
+            return result
+        except StopIteration:
+            raise IndexError(f"Unbalanced curlys in {text}")
 
 class BibPathCleanMixin:
     """
@@ -164,13 +183,13 @@ class BibPathCleanMixin:
             case { "__authors" : [author, *_] }:
                 target = author['last'][0]
             case { "__editors" : [editor, *_] }:
-                target = editor['last'][0]
+                    target = editor['last'][0]
             case _:
-                raise Exception("No author or editor for entry: %s", entry)
+                logging.warning("No author or editor for entry: %s", entry)
+                target = str(uuid4().hex)[:5]
 
-        as_unicode = latex_to_unicode(target)
-        as_ascii   = as_unicode.encode("ascii", "ignore").decode().replace("\\", "")
-        entry['__base_name'] = as_ascii
+        as_ascii = target.encode("ascii", "replace").decode().replace("?", "")
+        entry['__base_name'] = TITLE_CLEAN_RE.sub("", as_ascii)
 
     def bc_ideal_stem(self, entry):
         """
@@ -183,17 +202,17 @@ class BibPathCleanMixin:
                 title = t[:40]
             case { "short_parties": t }:
                 title = t
+            case _:
+                title = "_"
+                logging.warning("Entry Missing Title: %s", entry)
 
-        year      = entry['year']
-        base_name = entry['__base_name']
+        year        = entry['year']
+        base_name   = entry['__base_name']
+        title_ascii = title.encode("ascii", "replace").decode().replace("?", "")
 
-        form       = f"{base_name}_{year}_{title}"
-        # Convert latex characters to unicode
-        as_unicode = latex_to_unicode(form)
-        # Then flatten to ascii
-        as_ascii   = as_unicode.encode("ascii", "ignore").decode()
+        form       = f"{base_name}_{year}_{title_ascii}"
         # Remove symbols
-        clean      = STEM_CLEAN_RE.sub("_", as_ascii)
+        clean      = STEM_CLEAN_RE.sub("_", form)
         # And collapse multiple underscores
         collapsed  = UNDERSCORE_RE.sub("_", clean)
         entry['__ideal_stem'] = collapsed.strip()
@@ -221,9 +240,6 @@ class BibPathCleanMixin:
         """ prepare parent directories if they have commas in them
         handles clean target already existing
         """
-        if 'crossref' in entry:
-            return []
-
         assert('__paths' in entry)
         assert('__base_name' in entry)
         base = entry['__base_name']
@@ -282,8 +298,7 @@ class BibPathCleanMixin:
         while hexed.exists():
             logging.debug("Finding a unique non-existent path")
             hex_val     = str(uuid4().hex)[:5]
-            ideal_stem += f"_{hex_val}"
-            hexed       = proposed.with_stem(ideal_stem)
+            hexed       = proposed.with_stem(f"_{hex_val}")
 
         return hexed
 
