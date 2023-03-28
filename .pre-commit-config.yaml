@@ -17,17 +17,17 @@ repos:
     -   id: check-json
     -   id: pretty-format-json
         args: ["--autofix"]
-- repo: local
-  hooks:
-    - id: pylint
-      name: pylint
-      entry: pylint
-      language: system
-      types: [python]
-      args:
-        [
-          "-rn", # Only display messages
-          # "-sn", # Don't display the score
-          # "--rcfile=pylint.toml", # Link to your config file
-          # "--exit-zero",
-        ]
+# - repo: local
+#   hooks:
+#     - id: pylint
+#       name: pylint
+#       entry: pylint
+#       language: system
+#       types: [python]
+#       args:
+#         [
+#           "-rn", # Only display messages
+#           # "-sn", # Don't display the score
+#           # "--rcfile=pylint.toml", # Link to your config file
+#           # "--exit-zero",
+#         ]

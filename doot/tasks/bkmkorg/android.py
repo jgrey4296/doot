@@ -35,7 +35,7 @@ logging = logmod.getLogger(__name__)
 import doot
 from doot.tasker import DootTasker
 from doot import globber
-from bkmkorg.apis import android
+from doot.mixins.apis import android
 from doot.mixins.batch import  BatchMixin
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin

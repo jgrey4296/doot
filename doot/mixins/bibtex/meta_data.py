@@ -25,7 +25,7 @@ from weakref import ref
 
 import fitz
 from bibtexparser.customization import splitname
-from bkmkorg.bibtex.writer import JGBibTexWriter
+from doot.mixins.bibtex.writer import JGBibTexWriter
 from pdfrw import PdfName, PdfReader, PdfWriter
 
 if TYPE_CHECKING:

@@ -11,7 +11,7 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     Set, Tuple, TypeVar, Union, cast)
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
-from bkmkorg.bookmarks.collection import Bookmark
+from doot.utils.formats.bookmarks import Bookmark
 ##-- end imports
 
 logging = logmod.getLogger(__name__)

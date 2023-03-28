@@ -17,7 +17,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     cast, final, overload, runtime_checkable)
 from uuid import UUID, uuid1
 from weakref import ref
-from bkmkorg.twitter.extraction import get_all_tweet_ids
 
 if TYPE_CHECKING:
     # tc only imports
@@ -86,14 +85,14 @@ def integrate(source:pl.Path, lib_dict:dict[str,Any]):
 
     copy_files(new_files, existing_files)
 
-def update_record(path:pl.Path, sources:List[pl.Path]):
-    now : str = datetime.datetime.now().strftime("%Y-%m-%d")
+# def update_record(path:pl.Path, sources:List[pl.Path]):
+#     now : str = datetime.datetime.now().strftime("%Y-%m-%d")
 
-    all_ids = get_all_tweet_ids(*sources, ext=".org_processed")
+#     all_ids = get_all_tweet_ids(*sources, ext=".org_processed")
 
-    # add it to the library record
-    with open(path, 'a') as f:
-        # Insert date
-        f.write(f"{now}:\n\t")
-        f.write("\n\t".join(sorted(all_ids)))
-        f.write("\n----------------------------------------\n")
+#     # add it to the library record
+#     with open(path, 'a') as f:
+#         # Insert date
+#         f.write(f"{now}:\n\t")
+#         f.write("\n\t".join(sorted(all_ids)))
+#         f.write("\n----------------------------------------\n")

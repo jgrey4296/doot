@@ -14,12 +14,12 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     Set, Tuple, TypeVar, Union, cast)
 
 import networkx as nx
-from bkmkorg.twitter.html_writer import HtmlThreadWriter
-from bkmkorg.twitter.lazy_component_writer import LazyComponentWriter
-from bkmkorg.twitter.org_writer import OrgThreadWriter
-from bkmkorg.twitter.thread_obj import TwitterThreadObj
-from bkmkorg.twitter.todo_list import TweetTodoFile
-from bkmkorg.twitter.tweet_graph import TwitterGraph
+from doot.utils.formats.html_writer import HtmlThreadWriter
+from doot.utils.twitter.lazy_component_writer import LazyComponentWriter
+from doot.utils.twitter.org_writer import OrgThreadWriter
+from doot.utils.twitter.thread_obj import TwitterThreadObj
+from doot.utils.twitter.todo_list import TweetTodoFile
+from doot.utils.twitter.tweet_graph import TwitterGraph
 
 ##-- end imports
 

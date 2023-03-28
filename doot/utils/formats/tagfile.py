@@ -155,7 +155,7 @@ class SubstitutionFile(TagFile):
 
 @dataclass
 class IndexFile(TagFile):
-    """ Utility class for `bkmkorg`-wide index file specification and writing """
+    """ Utility class for index file specification and writing """
 
     mapping : Dict[str, Set[pl.Path]] = field(default_factory=lambda: defaultdict(set))
     ext     : str                 = field(default=".index")

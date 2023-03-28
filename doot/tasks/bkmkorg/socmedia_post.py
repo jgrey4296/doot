@@ -33,11 +33,11 @@ logging = logmod.getLogger(__name__)
 from random import choice
 
 import doot
-from bkmkorg.apis.mastodon import MastodonMixin
-from bkmkorg.apis.twitter import TwitterMixin
-from bkmkorg.bibtex import utils as bib_utils
-from bkmkorg.bibtex.clean import BibFieldCleanMixin, BibPathCleanMixin
-from bkmkorg.bibtex.load_save import BibLoadSaveMixin
+from doot.mixins.apis.mastodon import MastodonMixin
+from doot.mixins.apis.twitter import TwitterMixin
+from doot.mixins.bibtex import utils as bib_utils
+from doot.mixins.bibtex.clean import BibFieldCleanMixin, BibPathCleanMixin
+from doot.mixins.bibtex.load_save import BibLoadSaveMixin
 from doot import tasker
 from doot.mixins.commander import CommanderMixin
 from doot.mixins.delayed import DelayedMixin

@@ -30,12 +30,12 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-import bkmkorg.twitter.mixin_passes as passes
+import doot.utils.twitter.mixin_passes as passes
 import doot
-from bkmkorg.apis.twitter import TweepyMixin, TwitterMixin
-from bkmkorg.twitter.org_writer import TwitterTweet
-from bkmkorg.twitter.todo_list import TweetTodoFile
-from bkmkorg.twitter.tweet_graph import TwitterGraph
+from doot.mixins.apis.twitter import TweepyMixin, TwitterMixin
+from doot.utils.twitter.org_writer import TwitterTweet
+from doot.utils.twitter.todo_list import TweetTodoFile
+from doot.utils.twitter.tweet_graph import TwitterGraph
 from doot import globber
 from doot.mixins.commander import CommanderMixin
 from doot.mixins.delayed import DelayedMixin

@@ -31,8 +31,8 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import doot
-from bkmkorg.bookmarks import database_fns as db_fns
-from bkmkorg.formats import bookmarks as BC
+from doot.utils.bookmarks import database_fns as db_fns
+from doot.utils.formats import bookmarks as BC
 from doot import globber
 from doot.mixins.commander import CommanderMixin
 from doot.mixins.delayed import DelayedMixin

@@ -36,12 +36,11 @@ logmod.getLogger('bibtexparser').setLevel(logmod.CRITICAL)
 import shutil
 
 import itertools
-import bkmkorg
 import doot
-from bkmkorg.bibtex import clean as bib_clean
-from bkmkorg.bibtex import utils as bib_utils
-from bkmkorg.bibtex.load_save import BibLoadSaveMixin
-from bkmkorg.formats.timelinefile import TimelineFile
+from doot.mixins.bibtex import clean as bib_clean
+from doot.mixins.bibtex import utils as bib_utils
+from doot.mixins.bibtex.load_save import BibLoadSaveMixin
+from doot.utils.formats.timelinefile import TimelineFile
 from doot import globber, tasker
 from doot.mixins.commander import CommanderMixin
 from doot.mixins.batch import BatchMixin

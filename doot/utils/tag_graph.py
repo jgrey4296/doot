@@ -15,8 +15,8 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 
 import networkx as nx
 import regex
-from bkmkorg.bookmarks.collection import BookmarkCollection
-from bkmkorg.tag.tagfile import TagFile
+from doot.utils.formats.bookmarks import BookmarkCollection
+from doot.utils.formats.tagfile import TagFile
 ##-- end imports
 
 logging = logmod.getLogger(__name__)

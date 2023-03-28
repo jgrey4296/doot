@@ -19,7 +19,7 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 from uuid import uuid1
 
 import networkx as nx
-from bkmkorg.formats.org_builder import OrgStrBuilder
+from doot.utils.formats.org_builder import OrgStrBuilder
 
 ##-- end imports
 

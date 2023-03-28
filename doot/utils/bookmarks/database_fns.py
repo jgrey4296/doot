@@ -25,7 +25,7 @@ from uuid import UUID, uuid1
 from weakref import ref
 
 import pony.orm as pony
-from bkmkorg.formats import bookmarks as BC
+from doot.utils.formats import bookmarks as BC
 
 ##-- end imports
 

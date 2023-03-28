@@ -36,7 +36,7 @@ import re
 from collections import defaultdict
 
 import doot
-from bkmkorg.formats.tagfile import IndexFile, SubstitutionFile, TagFile
+from doot.utils.formats.tagfile import IndexFile, SubstitutionFile, TagFile
 from doot import globber
 from doot.tasker import DootTasker
 from doot.mixins.batch import BatchMixin

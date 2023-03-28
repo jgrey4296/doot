@@ -18,7 +18,7 @@ from uuid import uuid4
 
 import regex as re
 from bibtexparser.latexenc import latex_to_unicode
-from bkmkorg.bibtex.writer import JGBibTexWriter
+from doot.mixins.bibtex.writer import JGBibTexWriter
 
 ##-- end imports
 

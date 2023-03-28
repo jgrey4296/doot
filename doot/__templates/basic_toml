@@ -7,8 +7,8 @@ batch                    = { sleep = 1 }
 notify                   = { say-on-exit = false }
 
 [logging]
-stream = { level = "INFO", format  = "{levelname:<8} : {message}", filters = ["doot", "bkmkorg"] }
-file   = { level = "DEBUG", format = "{levelname:<8} : {message:<20} :|: (module:{module} line:{lineno} fn:{funcName})", filters =  ["doot", "bkmkorg"] }
+stream = { level = "INFO", format  = "{levelname:<8} : {message}", filters = ["doot"] }
+file   = { level = "DEBUG", format = "{levelname:<8} : {message:<20} :|: (module:{module} line:{lineno} fn:{funcName})", filters =  ["doot"] }
 
 [globbing]
 ignores  = ['.git', '.DS_Store', "__pycache__"]

@@ -155,7 +155,7 @@ def finalise_writer(output, writer, base_name, count, bound, force=False) -> tup
             Title=f'Pdf Summary of {base_name} : Number: {count}',
             Author='JG',
             Subject='pdf summary',
-            Creator='bkmkorg.pdf.manipluate.summarise_to_pdfs',
+            Creator='doot.pdf.manipluate.summarise_to_pdfs',
         )
         if output.with_stem(f"{output.stem}_{count}").exists():
             logging.info("Overwriting existing summary")
