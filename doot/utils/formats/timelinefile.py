@@ -149,4 +149,3 @@ class TimelineFile:
                     self.min = entry.when
                 case _, maxDate if maxDate < entry.when:
                     self.max = entry.when
-

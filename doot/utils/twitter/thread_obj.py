@@ -47,6 +47,3 @@ class TwitterThreadObj:
             'component'   : self.component,
             'base_user'   : self.base_user,
             }
-
-
-

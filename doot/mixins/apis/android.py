@@ -198,7 +198,7 @@ class ADBMixin:
             core_cmd = self.args_adb_pull_group(dest, guard)
             cmd      = self.cmd(core_cmd)
             cmd.execute()
-    
+
     def adb_delete_files(self):
         """
         delete files specified in task.values['delete_targets']

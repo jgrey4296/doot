@@ -138,6 +138,3 @@ def add_members(twit, list_name, list_id, members):
             logging.warning("Remaining: %s / %s", len(chunked) * 100, len(members))
             logging.warning(e)
             sleep(60)
-
-
-

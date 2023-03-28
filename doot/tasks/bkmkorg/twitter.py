@@ -541,4 +541,3 @@ class TwitterMerge(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchM
 
             for x in list(fdir.glob("*")):
                 self.copy_to(dest, x)
-
