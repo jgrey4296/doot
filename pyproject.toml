@@ -619,11 +619,3 @@ ignored-argument-names = "_.*"
 redefining-builtins-modules = ["six.moves", "past.builtins", "future.builtins", "builtins", "io"]
 
 ##-- end pylint
-
-##-- doit
-[tool.doit]
-verbosity = 2
-build_dir = "build"
-
-##-- end doit
-

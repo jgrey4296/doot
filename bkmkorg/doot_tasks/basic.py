@@ -32,13 +32,15 @@ logging = logmod.getLogger(__name__)
 
 from collections import defaultdict
 import doot
-from doot import tasker, task_mixins
+from doot import tasker
 from bkmkorg.apis.twitter import TwitterMixin
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.filer import FilerMixin
 
-time_format : Final = doot.config.on_fail("%I:%M %p", str).tool.doot.notify.time_format()
-time_voice  : Final = doot.config.on_fail("Moira", str).tool.doot.notify.voice()
+time_format : Final = doot.config.on_fail("%I:%M %p", str).notify.time_format()
+time_voice  : Final = doot.config.on_fail("Moira", str).notify.voice()
 
-class TimeAnnounce(tasker.DootTasker, task_mixins.ActionsMixin):
+class TimeAnnounce(tasker.DootTasker, CommanderMixin):
 
     def __init__(self, name="say::time", locs=None):
         super().__init__(name, locs)
@@ -54,7 +56,7 @@ class TimeAnnounce(tasker.DootTasker, task_mixins.ActionsMixin):
         msg     = f"The Time is {now}"
         return ["say", "-v", time_voice, "-r", "50", msg]
 
-class NoScriptMerge(tasker.DootTasker, task_mixins.ActionsMixin):
+class NoScriptMerge(tasker.DootTasker, CommanderMixin, FilerMixin):
     """
     merge noscript json files
     """
@@ -62,8 +64,7 @@ class NoScriptMerge(tasker.DootTasker, task_mixins.ActionsMixin):
     def __init__(self, name="noscript::merge", locs=None):
         super().__init__(name, locs)
         self.master_data = defaultdict(lambda: {})
-        assert(self.locs.src)
-        assert(self.locs.temp)
+        self.locs.ensure("src", "temp")
 
     def task_detail(self, task):
         srcs   = self.locs.src.glob("noscript*.json")
@@ -137,7 +138,7 @@ class TwitterAccess(tasker.DootTasker, TwitterMixin): # TweepyMixin):
     def __init__(self, name="twitter::access", locs=None):
         super().__init__(name, locs)
         self.twitter = None
-        assert(self.locs.secrets)
+        self.locs.ensure("secrets")
 
     def task_detail(self, task):
         task.update({

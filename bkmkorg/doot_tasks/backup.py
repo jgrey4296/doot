@@ -31,8 +31,15 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import doot
-from doot import globber, task_mixins
-from doot.taskslib.files.backup import BackupTask
+from doot import globber, tasker
+from doot.tasks.files.backup import BackupTask
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.targeted import TargetedMixin
+from doot.mixins.filer import FilerMixin
+from doot.mixins.batch import BatchMixin
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.zipper import ZipperMixin
+
 
 class BackupBibtexLib(BackupTask):
 
@@ -50,7 +57,7 @@ class BackupTwitterLib(BackupTask):
         super().__init__(name, locs, [locs.thread_library], output=locs.thread_backup)
 
 
-class TwitterArchive(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixins.BatchMixin, task_mixins.ActionsMixin, task_mixins.ZipperMixin):
+class TwitterArchive(tasker.DootTasker, CommanderMixin, BatchMixin, ZipperMixin):
     """
     Zip json data for users
 
@@ -59,27 +66,26 @@ class TwitterArchive(globber.LazyGlobMixin, globber.DootEagerGlobber, task_mixin
     add to archive.zip in base user's library directory
     """
 
-    def __init__(self, name="twitter::zip", locs=None, roots=None, rec=False, exts=None):
-        super().__init__(name, locs, roots or [locs.threads], rec=rec, exts=exts or [".json"])
-        self.group_reg     = re.compile(r"^[a-zA-Z]")
+    def __init__(self, name="twitter::zip", locs=None):
+        super().__init__(name, locs)
+        self.group_reg      = re.compile(r"^[a-zA-Z]")
         self.output         = None
         self.thread_data    = None
         self.component_data = None
-        assert(self.locs.thread_library)
+        self.locs.ensure("thread_library", "threads")
 
-    def task_detail(self, task, fpath):
+    def task_detail(self, task):
         task.update({
-            "actions": [ self.archive_all ],
+            "actions": [ self.archive ],
         })
         return task
 
-    def archive_all(self):
-        globbed = super(globber.LazyGlobMixin, self).glob_all()
-        chunks = self.chunk(globbed)
+    def archive(self):
+        chunks = self.chunk(self.locs.threads.glob("*.json"))
         self.run_batches(*chunks)
 
     def batch(self, data):
-        for name, fpath in data:
+        for fpath in data:
             self.thread_data    = json.loads(fpath.read_text())
             self.component_data = json.loads(pl.Path(task.values['component']).read_text())
             component           = self.thread_data['component']

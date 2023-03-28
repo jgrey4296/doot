@@ -18,8 +18,8 @@ import tomler
 
 logging = logmod.getLogger(__name__)
 
-toot_size            : Final = doot.config.on_fail(250, int).tool.doot.mastodon.toot_size()
-toot_image_size      : Final = doot.config.on_fail("8mb", str).tool.doot.mastodon.image_size()
+toot_size            : Final = doot.config.on_fail(250, int).mastodon.toot_size()
+toot_image_size      : Final = doot.config.on_fail("8mb", str).mastodon.image_size()
 RESOLUTION_BLACKLIST : Final = doot.locs.image_blacklist
 
 RESOLUTION_RE        : Final = re.compile(r".*?([0-9]+x[0-9]+)")
@@ -38,14 +38,14 @@ class MastodonMixin:
         )
 
         self.mastodon = instance
-        assert(self.locs.image_temp)
+        self.locs.ensure("image_temp")
 
     def post_toot(self, task):
         try:
             print("Posting Toot")
             msg = task.values['msg']
             if len(msg) >= toot_size:
-                logging.warning("Resulting Tweet too long for mastodon: %s\n%s", len(tweet_text), tweet_text)
+                logging.warning("Resulting Toot too long for mastodon: %s\n%s", len(msg), msg)
             else:
                 result = self.mastodon.status_post(msg)
                 return { "toot_result": True }

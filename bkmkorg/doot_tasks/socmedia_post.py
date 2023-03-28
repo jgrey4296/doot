@@ -5,7 +5,6 @@
 ##-- imports
 from __future__ import annotations
 
-import types
 import abc
 import datetime
 import enum
@@ -15,6 +14,7 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
+import types
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
@@ -31,24 +31,28 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from random import choice
+
 import doot
-from doot import tasker, task_mixins
 from bkmkorg.apis.mastodon import MastodonMixin
 from bkmkorg.apis.twitter import TwitterMixin
-from bkmkorg.bibtex.load_save import BibLoadSaveMixin
-from bkmkorg.bibtex.clean import BibPathCleanMixin, BibFieldCleanMixin
 from bkmkorg.bibtex import utils as bib_utils
+from bkmkorg.bibtex.clean import BibFieldCleanMixin, BibPathCleanMixin
+from bkmkorg.bibtex.load_save import BibLoadSaveMixin
+from doot import tasker
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.filer import FilerMixin
+from doot.mixins.targeted import TargetedMixin
 
 pl_expand           : Final = lambda x: pl.Path(x).expanduser().resolve()
 
-MAX_ATTEMPTS       : Final = doot.config.on_fail(20, int).tool.doot.bibtex.max_attempts()
-tweet_size         : Final = doot.config.on_fail(250, int).tool.doot.twitter.tweet_size()
-toot_size          : Final = doot.config.on_fail(250, int).tool.doot.mastodon.toot_size()
+MAX_ATTEMPTS       : Final = doot.config.on_fail(20, int).bibtex.max_attempts()
+tweet_size         : Final = doot.config.on_fail(250, int).twitter.tweet_size()
+toot_size          : Final = doot.config.on_fail(250, int).mastodon.toot_size()
 
-
-conversion_args     : Final = doot.config.on_fail(["-define", "jpeg:extent=4800KB"], list).tool.doot.photo.convert_args()
-required_keys       : Final = doot.config.on_fail(["year", "author", "title", "tags"], list).tool.doot.bibtex.required_keys()
-one_of_keys         : Final = doot.config.on_fail(["doi", "url", "isbn"], list).tool.doot.bibtex.one_of_keys()
+conversion_args     : Final = doot.config.on_fail(["-define", "jpeg:extent=4800KB"], list).photo.convert_args()
+required_keys       : Final = doot.config.on_fail(["year", "author", "title", "tags"], list).bibtex.required_keys()
+one_of_keys         : Final = doot.config.on_fail(["doi", "url", "isbn"], list).bibtex.one_of_keys()
 
 class BibPoster(tasker.DootTasker, MastodonMixin, TwitterMixin, BibLoadSaveMixin, BibPathCleanMixin, BibFieldCleanMixin):
     """
@@ -62,12 +66,7 @@ class BibPoster(tasker.DootTasker, MastodonMixin, TwitterMixin, BibLoadSaveMixin
         self.db              = None
         self.blacklist       = set()
         self.already_tweeted = set()
-        assert(self.locs.secrets)
-        assert(self.locs.bib_blacklist)
-        assert(self.locs.bib_success)
-        assert(self.locs.bib_fail)
-        assert(self.locs.bibtex)
-
+        self.locs.ensure("secrets", "bib_blacklist", "bib_success", "bib_fail", "bibtex")
 
     def setup_detail(self, task):
         task.update({
@@ -204,7 +203,6 @@ class BibPoster(tasker.DootTasker, MastodonMixin, TwitterMixin, BibLoadSaveMixin
                 with open(self.locs.bib_fail, 'a') as f:
                     f.write(f"\n{entry_id}")
 
-
     def maybe_blacklist_files(self, files:list[pl.Path]):
         has_fields       = lambda poss_entry: any([x in poss_entry for x in one_of_keys])
         not_tweeted_yet  = lambda poss_entry: poss_entry['ID'] not in self.already_tweeted
@@ -220,7 +218,7 @@ class BibPoster(tasker.DootTasker, MastodonMixin, TwitterMixin, BibLoadSaveMixin
     def write_blacklist(self):
         self.locs.bib_blacklist.write_text("\n".join(self.blacklist))
 
-class ImagePoster(tasker.DootTasker, MastodonMixin, TwitterMixin, task_mixins.ActionsMixin):
+class ImagePoster(tasker.DootTasker, MastodonMixin, TwitterMixin):
     """
     Select an image from the whitelist, and tweet/toot
     """
@@ -228,8 +226,7 @@ class ImagePoster(tasker.DootTasker, MastodonMixin, TwitterMixin, task_mixins.Ac
     def __init__(self, name="post::image", locs=None):
         super().__init__(name, locs)
         self.whitelist = set()
-        assert(self.locs.secrets)
-        assert(self.locs.image_whitelist)
+        self.locs.ensure("secrets", "image_whitelist")
 
     def setup_detail(self, task):
         task.update({

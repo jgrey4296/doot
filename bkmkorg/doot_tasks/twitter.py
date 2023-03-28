@@ -22,19 +22,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-import bkmkorg.twitter.mixin_passes as passes
-import doot
-from bkmkorg.apis.twitter import TweepyMixin, TwitterMixin
-from bkmkorg.twitter.org_writer import TwitterTweet
-from bkmkorg.twitter.todo_list import TweetTodoFile
-from bkmkorg.twitter.tweet_graph import TwitterGraph
-from doot import globber
-from doot.tasker import DootTasker
-from doot.task_mixins import ActionsMixin, BatchMixin, ZipperMixin
-from doot.taskslib.files.downloader import DownloaderMixin
-
-import twitter
-
 if TYPE_CHECKING:
     pass
 ##-- end imports
@@ -43,9 +30,26 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doot.taskslib.files.backup import BackupTask
+import bkmkorg.twitter.mixin_passes as passes
+import doot
+from bkmkorg.apis.twitter import TweepyMixin, TwitterMixin
+from bkmkorg.twitter.org_writer import TwitterTweet
+from bkmkorg.twitter.todo_list import TweetTodoFile
+from bkmkorg.twitter.tweet_graph import TwitterGraph
+from doot import globber
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.filer import FilerMixin
+from doot.mixins.targeted import TargetedMixin
+from doot.mixins.batch import BatchMixin
+from doot.mixins.zipper import ZipperMixin
+from doot.tasker import DootTasker
+from doot.tasks.files.backup import BackupTask
+from doot.tasks.files.downloader import DownloaderMixin
 
-user_batch_size : Final = doot.config.on_fail(100, int).tool.doot.twitter.user_batch()
+import twitter
+
+user_batch_size : Final = doot.config.on_fail(100, int).twitter.user_batch()
 
 empty_match = re.match("","")
 
@@ -67,7 +71,7 @@ class TwitterFull(DootTasker):
         })
         return task
 
-class TwitterLibTweets(DootTasker, ActionsMixin, TwitterMixin):
+class TwitterLibTweets(DootTasker, TwitterMixin, FilerMixin, CommanderMixin):
     """
     (data -> temp ) download tweets from the library as jsons
     """
@@ -80,10 +84,7 @@ class TwitterLibTweets(DootTasker, ActionsMixin, TwitterMixin):
         self.library_ids    = set()
         self.existing_json_ids = set()
         self.output         = self.locs.lib_tweets
-        assert(self.locs.secrets)
-        assert(self.locs.missing_ids)
-        assert(self.locs.tweet_archive)
-        assert(self.locs.thread_library)
+        self.locs.ensure("secrets", "missing_ids", "tweet_archive", "thread_library")
 
     def task_detail(self, task):
         task.update({
@@ -152,7 +153,7 @@ class TwitterLibTweets(DootTasker, ActionsMixin, TwitterMixin):
             f.write("--------------------\n")
             f.write("\n".join(newly_downloaded))
 
-class TwitterTweets(DootTasker, ActionsMixin, TwitterMixin):
+class TwitterTweets(DootTasker, TwitterMixin, FilerMixin):
     """
     (data -> temp ) download tweets and their thread predecessors using todo file
     """
@@ -164,11 +165,7 @@ class TwitterTweets(DootTasker, ActionsMixin, TwitterMixin):
         self.library_ids = set()
         self.todos       = None
         self.output      = self.locs.tweets
-        assert(self.locs.secrets)
-        assert(self.locs.missing_ids)
-        assert(self.locs.tweet_archive)
-        assert(self.locs.thread_library)
-        assert(self.locs.current_tweets)
+        self.locs.ensure("secrets", "missing_ids", "tweet_archive", "thread_library", "current_tweets")
 
     def set_params(self):
         return [
@@ -251,7 +248,7 @@ class TwitterTweets(DootTasker, ActionsMixin, TwitterMixin):
             f.write("--------------------\n")
             f.write("\n".join(newly_downloaded))
 
-class TwitterUserIdentities(globber.LazyGlobMixin, globber.DootEagerGlobber, BatchMixin, ActionsMixin, TwitterMixin):
+class TwitterUserIdentities(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchMixin, TwitterMixin):
     """
     (temp -> temp) download identities of user id's found in tweets
     """
@@ -262,9 +259,7 @@ class TwitterUserIdentities(globber.LazyGlobMixin, globber.DootEagerGlobber, Bat
         self.todo_users = set()
         self.lib_users  = set()
         self.output     = self.locs.users
-        assert(self.locs.secrets)
-        assert(self.locs.thread_library)
-        assert(self.locs.tweets)
+        self.locs.ensure("secrets", "thread_library", "tweets")
 
     def setup_detail(self, task):
         task.update({
@@ -321,7 +316,7 @@ class TwitterUserIdentities(globber.LazyGlobMixin, globber.DootEagerGlobber, Bat
             user_dict.update(json.loads(users_file.read_text()))
         users_file.write_text(json.dumps(user_dict, indent=4))
 
-class TwitterComponentGraph(DootTasker, ActionsMixin, passes.TwGraphComponentMixin):
+class TwitterComponentGraph(DootTasker, passes.TwGraphComponentMixin, FilerMixin):
     """
     (temp -> temp) combine individual tweets into threads
     """
@@ -330,8 +325,7 @@ class TwitterComponentGraph(DootTasker, ActionsMixin, passes.TwGraphComponentMix
         super().__init__(name, locs)
         self.output      = self.locs.components
         self.tweet_graph = TwitterGraph()
-        assert(self.locs.tweets)
-        assert(self.locs.users)
+        self.locs.ensure("tweets", "users")
 
     def setup_detail(self, task):
         task.update({
@@ -359,7 +353,7 @@ class TwitterComponentGraph(DootTasker, ActionsMixin, passes.TwGraphComponentMix
 
         logging.info("Graph Built")
 
-class TwitterThreadBuild(globber.LazyGlobMixin, globber.DootEagerGlobber, ActionsMixin, BatchMixin, passes.TwThreadBuildMixin):
+class TwitterThreadBuild(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchMixin, passes.TwThreadBuildMixin, FilerMixin):
     """
     (components -> threads)
     """
@@ -390,7 +384,7 @@ class TwitterThreadBuild(globber.LazyGlobMixin, globber.DootEagerGlobber, Action
         for name, fpath in data:
             self.tw_construct_thread(fpath)
 
-class TwitterThreadWrite(globber.LazyGlobMixin, globber.DootEagerGlobber, passes.TwThreadWritingMixin, BatchMixin, ActionsMixin):
+class TwitterThreadWrite(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, passes.TwThreadWritingMixin, BatchMixin, FilerMixin):
     """
     (threads -> build) build the org files from threads
     """
@@ -400,7 +394,7 @@ class TwitterThreadWrite(globber.LazyGlobMixin, globber.DootEagerGlobber, passes
         self.todos = None
         # Just Build, as construct org/html uses subdirs
         self.output = self.locs.build
-        assert(self.locs.current_tweets)
+        self.locs.ensure("current_tweets")
 
     def setup_detail(self, task):
         task.update({
@@ -432,7 +426,7 @@ class TwitterThreadWrite(globber.LazyGlobMixin, globber.DootEagerGlobber, passes
             self.tw_construct_org_files(fpath)
             # self.tw_construct_html_files(fpath)
 
-class TwitterDownloadMedia(globber.LazyGlobMixin, globber.DootEagerGlobber, DownloaderMixin, BatchMixin):
+class TwitterDownloadMedia(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, DownloaderMixin, BatchMixin, FilerMixin):
     """
     (threads, components -> build) read components, get media, download into the base user's _files dir
     """
@@ -478,7 +472,7 @@ class TwitterDownloadMedia(globber.LazyGlobMixin, globber.DootEagerGlobber, Down
             # download
             self.download_media(download_to, media)
 
-class TwitterMerge(globber.LazyGlobMixin, globber.DootEagerGlobber, ActionsMixin, BatchMixin):
+class TwitterMerge(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchMixin, FilerMixin):
     """
     (temp -> data) integrate threads into the library
     """
@@ -488,8 +482,7 @@ class TwitterMerge(globber.LazyGlobMixin, globber.DootEagerGlobber, ActionsMixin
         self.base_user_reg = re.compile(r"^(.+?)_thread_\d+$")
         self.group_reg     = re.compile(r"^[a-zA-Z]")
         self.files_dir_reg = re.compile(r"^(.+?)_files$")
-        assert(self.locs.thread_library)
-        assert(self.locs.media)
+        self.locs.ensure("thread_library", "media")
 
     def task_detail(self, task):
         task.update({

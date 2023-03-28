@@ -5,8 +5,6 @@
 ##-- imports
 from __future__ import annotations
 
-import shutil
-import types
 import abc
 import datetime
 import enum
@@ -15,7 +13,9 @@ import itertools as itz
 import logging as logmod
 import pathlib as pl
 import re
+import shutil
 import time
+import types
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
@@ -31,16 +31,22 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-import doot
+import sys
 import time
 from collections import defaultdict
-import sys
-from doot import task_mixins
 
-batch_sleep  : Final = doot.config.on_fail(2, int|float).tool.doot.subtask.sleep()
-adb_path     : Final = shutil.which("adb")
+import doot
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.batch import BatchMixin
+from doot.mixins.filer import FilerMixin
+from doot.mixins.targeted import TargetedMixin
 
-class ADBMixin(task_mixins.BatchMixin, task_mixins.CommanderMixin):
+android_base   : Final = doot.config.on_fail("/storage/6331-3162", str).tools.doot.android.base(wrapper=pl.Path)
+batch_sleep    : Final = doot.config.on_fail(2, int|float).subtask.sleep()
+pull_group_max : Final = doot.config.on_fail(100, int).android.pull.max_group()
+adb_path       : Final = shutil.which("adb")
+
+class ADBMixin:
     """
     Mixin for tasks using ADB to push/pull to android
     """
@@ -123,8 +129,15 @@ class ADBMixin(task_mixins.BatchMixin, task_mixins.CommanderMixin):
         cmd = [adb_path, "-t", self.args['id'], "pull"]
         cmd += list(group)
         cmd.append(dest)
-        print(f"Group Pull: {cmd}")
+        print(f"Group Pull: {cmd[:20]} {cmd[-1]}")
         return cmd
+
+    def args_adb_mv(self, dest:pl.Path, paths:list[pl.Path]):
+        cmd = [adb_path, "-t", self.args['id'], "shell", "mv"]
+        cmd += ["-t", dest, "-n"]
+        cmd += paths
+        return cmd
+
 
     def batch_query_subdirs(self, fn, task) -> dict:
         """"
@@ -162,12 +175,46 @@ class ADBMixin(task_mixins.BatchMixin, task_mixins.CommanderMixin):
         for parent, vals in grouped.items():
             try:
                 dest     = self.local_root / parent
-                core_cmd = self.args_adb_pull_group(dest, vals)
-                cmd      = self.cmd(core_cmd)
-                cmd.execute()
+                if len(vals) < pull_group_max:
+                    core_cmd = self.args_adb_pull_group(dest, vals)
+                    cmd      = self.cmd(core_cmd)
+                    cmd.execute()
+                else:
+                    logging.info("Pulling in chunks of %s", pull_group_max)
+                    self._pull_files_chunked(dest, vals)
+
                 downloaded.append(f"{vals}")
                 time.sleep(batch_sleep)
-            except Exception:
+            except Exception as err:
+                logging.warning("Failed Pull Due to: %s", err)
                 failures.append(f"{parent} : {vals}")
 
         return { "downloaded" : downloaded, "failed": failures }
+
+    def _pull_files_chunked(self, dest, vals):
+        for chunk in self.chunk(vals, pull_group_max):
+            logging.info("Chunk...")
+            guard = [x for x in chunk if x is not None]
+            core_cmd = self.args_adb_pull_group(dest, guard)
+            cmd      = self.cmd(core_cmd)
+            cmd.execute()
+    
+    def adb_delete_files(self):
+        """
+        delete files specified in task.values['delete_targets']
+        """
+        logging.info("Moving %s Files to directory to delete", len(self.targets))
+        mv_to       = android_base / "to_delete"
+        mk_dest_cmd = [adb_path, "-t", self.args['id'], "shell", "mkdir", mv_to]
+        self.cmd(mk_dest_cmd).execute()
+
+        deleted = []
+        try:
+            for chunk in self.chunk(self.targets):
+                logging.info("Chunk...")
+                deleted += chunk
+                mv_cmd      = self.args_adb_mv(mv_to, [x for x in chunk if x is not None])
+                self.cmd(mv_cmd).execute()
+
+        finally:
+            (self.locs.temp / "deletions.log").write_text("\n".join(str(x) for x in deleted))

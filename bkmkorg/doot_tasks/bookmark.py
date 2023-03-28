@@ -32,16 +32,18 @@ logging = logmod.getLogger(__name__)
 
 import doot
 from bkmkorg.bookmarks import database_fns as db_fns
-from doot import globber
-from doot.tasker import DootTasker
-from doot.task_mixins import ActionsMixin
 from bkmkorg.formats import bookmarks as BC
+from doot import globber
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.filer import FilerMixin
+from doot.mixins.targeted import TargetedMixin
+from doot.tasker import DootTasker
 
-pl_expand : Final = lambda x: pl.Path(x).expanduser().resolve()
+pl_expand     : Final = lambda x: pl.Path(x).expanduser().resolve()
+database_name : Final = doot.config.on_fail("places.sqlite", str).tools.doot.bookmarks.database_name()
 
-database_name   : Final = doot.config.on_fail("places.sqlite", str).tools.doot.bookmarks.database_name()
-
-class BookmarksUpdate(DootTasker, ActionsMixin):
+class BookmarksUpdate(DootTasker, FilerMixin, CommanderMixin):
     """
     ( -> src ) copy firefox bookmarks databases, extract, merge with bookmarks file
     """
@@ -52,9 +54,7 @@ class BookmarksUpdate(DootTasker, ActionsMixin):
         self.new_collections : list[BC.BookmarkCollection] = []
         self.total : BC.BookmarkCollection                 = None
         self.temp_dbs = self.locs.temp / "dbs"
-        assert(self.locs.firefox)
-        assert(self.locs.temp)
-        assert(self.locs.bookmarks_total)
+        self.locs.ensure("firefox", "temp", "bookmarks_total")
 
     def task_detail(self, task):
         dbs         = self.locs.firefox.rglob(self.database)
@@ -97,7 +97,7 @@ class BookmarksUpdate(DootTasker, ActionsMixin):
             self.total.merge_duplicates()
         print(f"Bookmark Count: {original_amnt} -> {len(self.total)}")
 
-class BookmarksCleaner(DootTasker, ActionsMixin):
+class BookmarksCleaner(DootTasker, FilerMixin):
     """
     clean bookmarks file, removing duplicates, stripping urls
     """
@@ -105,8 +105,7 @@ class BookmarksCleaner(DootTasker, ActionsMixin):
     def __init__(self, name="bkmk::clean", locs=None):
         super().__init__(name, locs)
         self.total = None
-        assert(self.locs.temp)
-        assert(self.locs.src)
+        self.locs.ensure("temp", "src")
 
     def task_detail(self, task):
         fpath =  self.locs.src / "total.bookmarks"
@@ -125,13 +124,13 @@ class BookmarksCleaner(DootTasker, ActionsMixin):
         self.total = BC.BookmarkCollection.read(fpath)
         self.total.merge_duplicate()
 
-class BookmarksSplit(DootTasker, ActionsMixin):
+class TODOBookmarksSplit(DootTasker):
     """
     TODO Create several bookmarks files of selections
     """
     pass
 
-class BookmarksReport(globber.DootEagerGlobber, ActionsMixin):
+class BookmarksReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerMixin):
     """
     TODO Generate reports on bookmarks
     """
@@ -166,5 +165,4 @@ class BookmarksReport(globber.DootEagerGlobber, ActionsMixin):
         self.bookmarks.update(BC.BookmarkCollection.read(fpath))
 
     def gen_report(self):
-
         return { "report" : "TODO report" }
