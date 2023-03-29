@@ -40,7 +40,7 @@ from doot.loc_data import DootLocData
 from doot.task_group import TaskGroup
 from doot.tasker import DootTasker
 from doot.utils.check_dirs import CheckDir
-from doot.core.utils.gen_toml import GenToml
+from doot.utils.gen_toml import GenToml
 from doot.utils.task_ext import DootTaskExt
 from doot.utils.task_namer import task_namer
 

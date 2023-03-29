@@ -111,6 +111,8 @@ class SubstitutionFile(TagFile):
         """
         all_lines = []
         for key in sorted(self.counts.keys()):
+            if not bool(self.substitutions[key]):
+                continue
             line = [key, str(self.counts[key])]
             line += sorted(self.substitutions[key])
             all_lines.append(self.sep.join(line))

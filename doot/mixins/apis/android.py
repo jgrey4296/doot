@@ -75,7 +75,7 @@ class ADBMixin:
         if bool(ftype):
             cmd += ["-type", ftype]
 
-        print(f"ADB Query: {cmd}")
+        logging.info(f"ADB Query: {cmd}")
         return cmd
 
     def args_adb_push_dir(self, fpath:str|pl.Path="."):
@@ -84,7 +84,7 @@ class ADBMixin:
         strictly speaking {device}/{relpath.parent}, creating {relpath}
         """
         self.count += 1
-        print(f"building push for: {fpath}")
+        logging.info(f"building push for: {fpath}")
         cmd = [ adb_path, "-t", self.args['id'], "push", "--sync"]
         match str(fpath)[0]:
             case "/":
@@ -95,7 +95,7 @@ class ADBMixin:
                 cmd.append(self.local_root / fpath)
                 cmd.append((self.device_root / fpath).parent)
 
-        print(f"ADB Push: {cmd}")
+        logging.info(f"ADB Push: {cmd}")
         return cmd
 
     def args_adb_pull(self, fpath:str|pl.Path="."):
@@ -117,7 +117,7 @@ class ADBMixin:
         cmd = [adb_path, "-t", self.args['id'], "pull"]
         cmd.append(src)
         cmd.append(dest)
-        print(f"ADB Pull: {cmd}")
+        logging.info(f"ADB Pull: {cmd}")
         return cmd
 
     def args_adb_pull_group(self, dest:pl.Path, group:list[pl.Path]):
@@ -129,7 +129,7 @@ class ADBMixin:
         cmd = [adb_path, "-t", self.args['id'], "pull"]
         cmd += list(group)
         cmd.append(dest)
-        print(f"Group Pull: {cmd[:20]} {cmd[-1]}")
+        logging.info(f"Group Pull: {cmd[:20]} {cmd[-1]}")
         return cmd
 
     def args_adb_mv(self, dest:pl.Path, paths:list[pl.Path]):
@@ -151,7 +151,7 @@ class ADBMixin:
         remote_files = set()
         remote_files.update(immediate_files)
         if bool(subdirs):
-            print(f"Subdirs to Batch: {subdirs}", file=sys.stderr)
+            logging.info(f"Subdirs to Batch: {subdirs}", file=sys.stderr)
             remote_files.update(self.run_batches(*[[x] for x in subdirs], fn=fn))
 
         return { "remote_files" : [x for x in remote_files if bool(x)] }

@@ -41,7 +41,7 @@ class TwitterMixin:
     library_ids : set
 
     def setup_twitter(self, config:pl.Path|str):
-        logging.info("---------- Initialising Twitter")
+        logging.debug("---------- Initialising Twitter")
         secrets      = tomler.load(pl.Path(config).expanduser())
         should_sleep = secrets.DEFAULT.sleep
         self.twitter = tw.Api(consumer_key=secrets.twitter.py.apiKey,
@@ -55,23 +55,23 @@ class TwitterMixin:
 
     def post_tweet(self, task):
         try:
-            print("Posting Tweet")
+            logging.debug("Posting Tweet")
             msg = task.values['msg']
             if len(msg) >= tweet_size:
                 logging.warning("Resulting Tweet too long for twitter: %s\n%s", len(msg), msg)
                 return { "twitter_result": False }
             else:
                 result   = self.twitter.PostUpdate(msg)
-                print("Tweet Posted")
+                logging.debug("Tweet Posted")
                 return {"twitter_result": True}
         except Exception as err:
             logging.warning("Twitter Post Failure: %s", err)
-            print("Twitter Post Failed: ", str(err), msg)
+            logging.warning("Twitter Post Failed: ", str(err), msg)
             return {"twitter_result": False}
 
     def post_twitter_image(self, task):
         try:
-            print("Posting Image Tweet")
+            logging.debug("Posting Image Tweet")
             msg          = task.values.get('msg', "")
             desc         = task.values.get('desc', '')
             the_file     = pl.Path(task.values['image']).expanduser()
@@ -84,11 +84,10 @@ class TwitterMixin:
             result = self.twitter.UploadMediaChunked(str(the_file))
             self.twitter.PostMediaMetadata(result, alt_text=desc)
             result = self.twitter.PostUpdate(msg, media=result)
-            print("Twitter Image Posted")
+            logging.debug("Twitter Image Posted")
             return {"twitter_result": True }
         except Exception as err:
-            logging.warning("Twitter Post Failure: %s", err)
-            print("Twitter Post Failed: ", str(err), msg, the_file)
+            logging.warning("Twitter Post Failed: ", str(err), msg, the_file)
             return { "twitter_result": False }
 
     def tw_download_tweets(self, target_dir, missing_file, task):
@@ -96,18 +95,17 @@ class TwitterMixin:
         Download all tweets and related tweets for a list,
         """
         assert(target_dir.is_dir())
-        logging.info("Downloading tweets to: %s", target_dir)
+        logging.debug("Downloading tweets to: %s", target_dir)
         queue : list[str] = task.values['target_ids']
         if not bool(queue):
-            print("No Ids to Download")
-            logging.info("No Ids to Download")
+            logging.debug("No Ids to Download")
             return { "downloaded": [], "missing": [] }
 
         downloaded  = set()
         missing_ids = set()
         # Download in batches:
         while bool(queue):
-            print("Download Queue Remaining: ", len(queue))
+            logging.debug("Download Queue Remaining: ", len(queue))
             # Pop group amount:
             current = list(set(queue[:twitter_batch_size]) - self.library_ids - missing_ids)
             queue   = queue[twitter_batch_size:]
@@ -161,7 +159,7 @@ class TweepyMixin:
     library_ids : set
 
     def setup_twitter(self, config:pl.Path|str):
-        logging.info("---------- Initialising Tweepy")
+        logging.debug("---------- Initialising Tweepy")
         secrets      = tomler.load(pl.Path(config).expanduser())
         match secrets.twitter.method:
             case "v1bearer":
@@ -178,14 +176,14 @@ class TweepyMixin:
                 self.setup_twitter_v2_pin(secrets)
 
     def setup_twitter_v1_bearer(self, secrets):
-        logging.info("---------- Initialising V1 OAuth2 Bearer")
+        logging.debug("---------- Initialising V1 OAuth2 Bearer")
         auth         = tweepy.OAuth2BearerHandler(secrets.twitter.py.bearerToken)
         self.twitter = tweepy.API(auth)
 
         return True
 
     def setup_twitter_v1_user_context(self, secrets):
-        logging.info("---------- Initialising V1 OAuth1 User Context")
+        logging.debug("---------- Initialising V1 OAuth1 User Context")
         auth         = tweepy.OAuth1UserHandler(
             secrets.twitter.py.apiKey, secrets.twitter.py.apiSecret,
             secrets.twitter.py.accessToken, secrets.twitter.py.accessSecret
@@ -195,12 +193,12 @@ class TweepyMixin:
         return True
 
     def setup_twitter_v2_bearer(self, secrets):
-        logging.info("---------- Initialising V2 OAuth2 Bearer")
+        logging.debug("---------- Initialising V2 OAuth2 Bearer")
         self.twitter = tweepy.Client(secrets.twitter.py.bearerToken)
         return True
 
     def setup_twitter_v2_user_context(self, secrets):
-        logging.info("---------- Initialising V2 OAuth2 Bearer")
+        logging.debug("---------- Initialising V2 OAuth2 Bearer")
         self.twitter = tweepy.Client(
             consumer_key=secrets.twitter.py.apiKey,
             consumer_secret=secrets.twitter.py.apiSecret,
@@ -210,7 +208,7 @@ class TweepyMixin:
         return True
 
     def setup_twitter_v2_pkce(self, secrets):
-        logging.info("---------- Initialising V2 OAuth2 Bearer")
+        logging.debug("---------- Initialising V2 OAuth2 Bearer")
         handler = tweepy.OAuth2UserHandler(
             client_id=secrets.twitter.py.clientID,
             client_secret=secrets.twitter.py.clientSecret,
@@ -227,7 +225,7 @@ class TweepyMixin:
         return True
 
     def setup_twitter_v2_pin(self, secrets):
-        logging.info("---------- Initialising V2 OAuth2 Bearer")
+        logging.debug("---------- Initialising V2 OAuth2 Bearer")
         oauth1_user_handler = tweepy.OAuth1UserHandler(
             secrets.twitter.py.apiKey, secrets.twitter.py.apiSecret,
             callback="oob"

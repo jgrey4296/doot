@@ -163,16 +163,18 @@ class TagsReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchMix
 
     def task_detail(self, task):
         report     = self.locs.build / "tags.report"
-        all_subs   = self.locs.temp  / "tags" / "all_subs.sub"
-        all_counts = self.locs.temp  / "tags" / "all_counts.tags"
+        tag_dir    = self.locs.temp  / "tags"
+        all_subs   = tag_dir / "all_subs.sub"
+        all_counts = tag_dir / "totals.tags"
         task.update({
-            "actions" : [ self.report_totals,
-                          self.report_alphas,
-                          self.report_subs,
-                          (self.write_to, [report, ["sum_count", "subs", "alphas"]]),
-                          (self.write_to, [all_subs, "all_subs"]),
-                          (self.write_to, [all_counts, "all_counts"]),
-                         ],
+            "actions" : [ self.report_totals, # -> {sum_count, all_subs, all_counts}
+                          self.report_alphas, # -> {alphas}
+                          self.report_subs,   # -> {subs}
+                         (self.mkdirs, [tag_dir]),
+                         (self.write_to, [report, ["sum_count", "subs", "alphas"]]),
+                         (self.write_to, [all_subs, "all_subs"]),
+                         (self.write_to, [all_counts, "all_counts"]),
+                     ],
             "targets" : [ report, all_subs, all_counts ]
         })
         return task

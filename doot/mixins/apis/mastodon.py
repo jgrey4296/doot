@@ -30,7 +30,7 @@ class MastodonMixin:
     resolution_blacklist : set() = set()
 
     def setup_mastodon(self, config:pl.Path|str):
-        logging.info("---------- Initialising Mastodon")
+        logging.debug("---------- Initialising Mastodon")
         secrets = tomler.load(pl.Path(config).expanduser())
         instance = mastodon.Mastodon(
             access_token = secrets.mastodon.access_token,
@@ -42,7 +42,7 @@ class MastodonMixin:
 
     def post_toot(self, task):
         try:
-            print("Posting Toot")
+            logging.debug("Posting Toot")
             msg = task.values['msg']
             if len(msg) >= toot_size:
                 logging.warning("Resulting Toot too long for mastodon: %s\n%s", len(msg), msg)
@@ -55,7 +55,7 @@ class MastodonMixin:
 
     def post_mastodon_image(self, task):
         try:
-            print("Posting Toot Image")
+            logging.debug("Posting Toot Image")
             # 8MB
             msg  = task.values.get('msg', "")
             desc = task.values.get('desc', "")
@@ -70,7 +70,7 @@ class MastodonMixin:
             media_id = self.mastodon.media_post(str(the_file), description=desc)
             # media_id = self.mastodon.media_update(media_id, description=desc)
             self.mastodon.status_post(msg, media_ids=media_id)
-            print("Image Toot Posted")
+            logging.debug("Image Toot Posted")
             return { "toot_result": True }
         except mastodon.MastodonAPIError as err:
             general, errcode, form, detail = err.args
@@ -102,7 +102,7 @@ class MastodonMixin:
         res_x, res_y = res.split("x")
         res_x, res_y = int(res_x), int(res_y)
         if res in resolution_blacklist or (min_x <= res_x and min_y <= res_y):
-            logging.info("Image is too big %s: %s", selected_file, res)
+            logging.warning("Image is too big %s: %s", selected_file, res)
             return
 
 
@@ -117,7 +117,7 @@ class MastodonMixin:
 
     def maybe_compress_file(self, task):
         image = task.values['image']
-        print("Attempting compression of: %s", image)
+        logging.debug("Attempting compression of: %s", image)
         assert(isinstance(filepath, pl.Path) and filepath.exists())
         ext               = filepath.suffix
         conversion_target = self.locs.image_temp.with_suffix(ext)
