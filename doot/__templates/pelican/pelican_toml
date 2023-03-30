@@ -1,0 +1,211 @@
+# -*- mode:conf-toml; -*-
+[pelican]
+AUTHOR           = 'john grey'
+DEFAULT_METADATA = {}
+SITENAME         = 'Mostly Harmless'
+SITEURL          = 'jgrey4296.github.io'
+PATH             = 'site'
+STATIC_PATHS     =  ['images']
+TIMEZONE         = 'Europe/Rome'
+DEFAULT_LANG     = 'en'
+READERS          = {}
+FORMATTED_FIELDS =  ['summary']
+
+[site.articles]
+ARTICLE_PATHS                  =  ["posts", "_drafts"]
+ARTICLE_EXCLUDES               =  []
+USE_FOLDER_AS_CATEGORY         =  true
+DEFAULT_CATEGORY               =  'misc'
+WITH_FUTURE_DATES              =  true
+NEWEST_FIRST_ARCHIVES          =  true
+REVERSE_CATEGORY_ORDER         =  false
+
+[site.articles.summary]
+SUMMARY_END_SUFFIX                     =  '…'
+SUMMARY_MAX_LENGTH                     =  50
+
+[site.pages]
+PAGE_PATHS                     =  ['about', 'cv', 'resources']
+PAGE_EXCLUDES                  =  ['_theme', '_layouts']
+
+[site.blogroll]
+LINKS                          = []
+SOCIAL                         = []
+TWITTER_USERNAME               = ""
+
+[theme]
+THEME                     = 'site/_theme'
+THEME_STATIC_DIR          = 'theme'
+THEME_STATIC_PATHS        = ['static']
+CSS_FILE                  = 'main.css'
+
+[templates]
+TEMPLATE_PAGES            = {}
+TEMPLATE_EXTENSIONS       = ['.html']
+THEME_TEMPLATES_OVERRIDES = []
+DIRECT_TEMPLATES          = ['index', 'tags', 'categories', 'archives']
+PAGINATED_TEMPLATES       = {'index' = false, 'tag' = false, 'category' = false,  'author' = false}
+PAGINATION_PATTERNS       = [['1', '{name}{extension}', '{name}{extension}'], ['2', '{name}{number}{extension}', '{name}{number}{extension}']]
+
+[rst]
+PYGMENTS_RST_OPTIONS           =  {}
+
+[markdown]
+output_format                  =  'html5'
+
+[markdown.extension_configs]
+markdown.extensions.codehilite = {'css_class' = 'highlight'}
+markdown.extensions.extra      = {}
+markdown.extensions.meta       = {}
+
+[build]
+PELICAN_CLASS            = 'pelican.Pelican'
+OUTPUT_PATH              = 'build/.site'
+content_extensions       = [".md", ".rst"]
+static_extensions        = [".css", ".js"]
+OUTPUT_SOURCES           = false
+OUTPUT_SOURCES_EXTENSION = '.text'
+LOAD_CONTENT_CACHE       =  false
+STATIC_EXCLUDES           = []
+STATIC_EXCLUDE_SOURCES    = true
+
+[[build.default]]
+DISQUS_SITENAME                = ""
+GOOGLE_ANALYTICS               = ""
+DELETE_OUTPUT_DIRECTORY        =  false
+OUTPUT_RETENTION               =  []
+IGNORE_FILES                   =  ['.#*']
+
+[[build.dev]]
+PORT                  =  8000
+BIND                  =  '127.0.0.1'
+FEED_ALL_ATOM         = false
+CATEGORY_FEED_ATOM    = false
+TRANSLATION_FEED_ATOM = false
+AUTHOR_FEED_ATOM      = false
+AUTHOR_FEED_RSS       = false
+RELATIVE_URLS         = true
+
+[[build.publish]]
+RELATIVE_URLS                  = false
+DELETE_OUTPUT_DIRECTORY        = true
+FEED_ALL_ATOM                  = 'feeds/all.atom.xml'
+CATEGORY_FEED_ATOM             = 'feeds/{slug}.atom.xml'
+AUTHOR_FEED_ATOM               = 'feeds/{slug}.atom.xml'
+AUTHOR_FEED_RSS                = 'feeds/{slug}.rss.xml'
+TRANSLATION_FEED_ATOM          = 'feeds/all-{lang}.atom.xml'
+FEED_MAX_ITEMS                 = ''
+RSS_FEED_SUMMARY_ONLY          = true
+
+
+[jinja]
+JINJA_FILTERS                          =  {}
+JINJA_GLOBALS                          =  {}
+JINJA_TESTS                            =  {}
+
+[jinja.JINJA_ENVIRONMENT]
+trim_blocks  = true
+strip_blocks = true
+extensions   = []
+
+[logging]
+LOG_FILTER                             =  []
+
+
+[plugins]
+PLUGIN_PATHS                           =  []
+PLUGINS                                =  []
+
+[typogrify]
+TYPOGRIFY                              =  false
+TYPOGRIFY_IGNORE_TAGS                  =  []
+TYPOGRIFY_DASHES                       =  'default'
+
+[slugify]
+SLUG_REGEX_SUBSTITUTIONS               =  []
+# (r[^\w\s-], ''),  # remove non-alphabetical/whitespace/'-' chars
+# (r(?u)\A\s*, ''), # strip leading whitespace
+# (r(?u)\s*\Z, ''), # strip trailing whitespace
+# (r[-\s]+, '-'),   # reduce multiple whitespace or '-' to single '-'
+#
+INTRASITE_LINK_REGEX                   =  '[{|](?P<what>.*?)[|}]'
+SLUGIFY_SOURCE                         =  'title'
+SLUGIFY_USE_UNICODE                    =  false
+SLUGIFY_PRESERVE_CASE                  =  false
+
+[cache]
+CACHE_CONTENT                          =  false
+CONTENT_CACHING_LAYER                  =  'reader'
+CACHE_PATH                             =  'cache'
+GZIP_CACHE                             =  true
+CHECK_MODIFIED_METHOD                  =  'mtime'
+WRITE_SELECTED                         =  []
+
+[site.settings]
+ARTICLE_PERMALINK_STRUCTURE = ''
+ARTICLE_TRANSLATION_ID      = 'slug'
+DEFAULT_ORPHANS             = 0
+DEFAULT_PAGINATION          = false
+DISPLAY_CATEGORIES_ON_MENU  = true
+DISPLAY_PAGES_ON_MENU       = true
+DOCUTILS_SETTINGS           = {}
+EXTRA_PATH_METADATA         = {}
+FILENAME_METADATA           = '(?P<date>\d{4}-\d{2}-\d{2}).*'
+INDEX_SAVE_AS               = 'index.html'
+LOCALE                      = []  # defaults to user locale
+PAGE_TRANSLATION_ID         = 'slug'
+PATH_METADATA               = ''
+STATIC_CHECK_IF_MODIFIED    = false
+STATIC_CREATE_LINKS         = false
+
+[site.settings.datetime]
+DATE_FORMATS                = {}
+DEFAULT_DATE_FORMAT         = '%a %d %B %Y'
+
+[[site.urls]]
+ARTICLE_URL                            =  '{slug}.html'
+ARTICLE_SAVE_AS                        =  '{slug}.html'
+ARTICLE_ORDER_BY                       =  'reversed-date'
+ARTICLE_LANG_URL                       =  '{slug}-{lang}.html'
+ARTICLE_LANG_SAVE_AS                   =  '{slug}-{lang}.html'
+DRAFT_URL                              =  'drafts/{slug}.html'
+DRAFT_SAVE_AS                          =  'drafts/{slug}.html'
+DRAFT_LANG_URL                         =  'drafts/{slug}-{lang}.html'
+DRAFT_LANG_SAVE_AS                     =  'drafts/{slug}-{lang}.html'
+
+[[site.urls]]
+PAGE_URL                               =  'pages/{slug}.html'
+PAGE_SAVE_AS                           =  'pages/{slug}.html'
+PAGE_ORDER_BY                          =  'basename'
+PAGE_LANG_URL                          =  'pages/{slug}-{lang}.html'
+PAGE_LANG_SAVE_AS                      =  'pages/{slug}-{lang}.html'
+
+[[site.urls]]
+DRAFT_PAGE_URL                         =  'drafts/pages/{slug}.html'
+DRAFT_PAGE_SAVE_AS                     =  'drafts/pages/{slug}.html'
+DRAFT_PAGE_LANG_URL                    =  'drafts/pages/{slug}-{lang}.html'
+DRAFT_PAGE_LANG_SAVE_AS                =  'drafts/pages/{slug}-{lang}.html'
+
+[[site.urls]]
+STATIC_URL                             =  '{path}'
+STATIC_SAVE_AS                         =  '{path}'
+
+[[site.urls]]
+CATEGORY_URL                           =  'category/{slug}.html'
+CATEGORY_SAVE_AS                       =  'category/{slug}.html'
+
+[[site.urls]]
+TAG_URL                                =  'tag/{slug}.html'
+TAG_SAVE_AS                            =  'tag/{slug}.html'
+
+[[site.urls]]
+AUTHOR_URL                             =  'author/{slug}.html'
+AUTHOR_SAVE_AS                         =  'author/{slug}.html'
+
+[[site.urls]]
+YEAR_ARCHIVE_URL                       =  ''
+YEAR_ARCHIVE_SAVE_AS                   =  ''
+MONTH_ARCHIVE_URL                      =  ''
+MONTH_ARCHIVE_SAVE_AS                  =  ''
+DAY_ARCHIVE_URL                        =  ''
+DAY_ARCHIVE_SAVE_AS                    =  ''
