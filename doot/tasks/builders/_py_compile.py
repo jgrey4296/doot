@@ -45,7 +45,7 @@ class TODOPythonCompile(DootTasker, CommanderMixin):
 
     def __init__(self, name="python::compile", locs=None):
         super().__init__(name, locs)
-        self.locs.ensure("build", "temp", "src")
+        self.locs.ensure("build", "temp", "src", task=name)
 
     def set_params(self):
         return [

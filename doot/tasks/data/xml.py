@@ -36,7 +36,7 @@ class XmlElementsTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Com
 
     def __init__(self, name="xml::elements", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".xml"], rec=rec)
-        self.locs.ensure("elements")
+        self.locs.ensure("elements", task=name)
 
     def set_params(self):
         return self.target_params()
@@ -71,7 +71,7 @@ class XmlSchemaTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Comma
 
     def __init__(self, name="xml::schema", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".xml"], rec=rec)
-        self.locs.ensure("schema")
+        self.locs.ensure("schema", task=name)
 
     def set_params(self):
         return self.target_params()
@@ -101,7 +101,7 @@ class XmlPythonSchemaRaw(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, 
 
     def __init__(self, name="xml::schema.python.raw", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".xml"], rec=rec)
-        self.locs.ensure("codegen")
+        self.locs.ensure("codegen", task=name)
 
     def set_params(self):
         return self.target_params()
@@ -139,7 +139,7 @@ class XmlPythonSchemaXSD(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, 
 
     def __init__(self, name="xml::schema.python.xsd", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".xsd"], rec=rec)
-        self.locs.ensure("build", "codegen")
+        self.locs.ensure("build", "codegen", task=name)
 
     def set_params(self):
         return self.target_params()
@@ -179,7 +179,7 @@ class XmlSchemaVisualiseTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobb
 
     def __init__(self, name="xml::schema.plantuml", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".xsd"], rec=rec)
-        self.locs.ensure("visual")
+        self.locs.ensure("visual", task=name)
 
     def set_params(self):
         return self.target_params()

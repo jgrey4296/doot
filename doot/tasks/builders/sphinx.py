@@ -23,7 +23,7 @@ conf_verbosity   : Final = doot.config.on_fail(0, int).sphinx.verbosity()
 
 def task_browse() -> dict:
     """[build] Task definition """
-    doot.locs.ensure("html")
+    doot.locs.ensure("html", task="sphinx::browse")
     return {
         "basename"    : "sphinx::browse",
         "actions"     : [ CommanderMixin.cmd(None, ["open", doot.locs.html ]) ],
@@ -37,7 +37,7 @@ class SphinxDocTask(DootTasker, CleanerMixin, CommanderMixin):
         super().__init__(name, locs)
         self.builder = builder or conf_builder
         self.verbosity = verbosity or conf_verbosity
-        self.locs.ensure("docs", "html", "build")
+        self.locs.ensure("docs", "html", "build", task=name)
 
     def task_detail(self, task:dict) -> dict:
         task.update({

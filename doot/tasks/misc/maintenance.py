@@ -94,7 +94,7 @@ class RustMaintain(DootTasker, CommanderMixin, FilerMixin):
 
     def __init__(self, name="_maintain::rust", locs=None):
         super().__init__(name, locs)
-        locs.ensure("maintain")
+        locs.ensure("maintain", task=name)
 
     def setup_detail(self, task):
         task.update({
@@ -124,7 +124,7 @@ class LatexMaintain(DootTasker, CommanderMixin, FilerMixin):
 
     def __init__(self, name="_maintain::latex", locs=None):
         super().__init__(name, locs)
-        locs.ensure("maintain")
+        locs.ensure("maintain", task=name)
 
     def setup_detail(self, task):
         if not bool(tlmgr):
@@ -159,7 +159,7 @@ class HaskellMaintain(DootTasker, CommanderMixin, FilerMixin):
 
     def __init__(self, name="_maintain::haskell", locs=None):
         super().__init__(name, locs)
-        locs.ensure("maintain")
+        locs.ensure("maintain", task=name)
 
     def setup_detail(self, task):
         task.update({
@@ -189,7 +189,7 @@ class DoomMaintain(DootTasker, CommanderMixin, FilerMixin):
 
     def __init__(self, name="_maintain::doom", locs=None):
         super().__init__(name, locs)
-        locs.ensure("maintain")
+        locs.ensure("maintain", task=name)
 
     def setup_detail(self, task):
         if doom is None:
@@ -222,7 +222,7 @@ class BrewMaintain(DootTasker, CommanderMixin, FilerMixin):
 
     def __init__(self, name="_maintain::brew", locs=None):
         super().__init__(name, locs)
-        locs.ensure("maintain")
+        locs.ensure("maintain", task=name)
 
     def setup_detail(self, task):
         task.update({
@@ -254,7 +254,7 @@ class CondaMaintain(DootTasker,CommanderMixin, FilerMixin):
 
     def __init__(self, name="_maintain::conda", locs=None):
         super().__init__(name, locs)
-        locs.ensure("maintain")
+        locs.ensure("maintain", task=name)
 
     def setup_detail(self, task):
         if conda is None:
@@ -293,7 +293,7 @@ class CronMaintain(DootTasker, CommanderMixin, FilerMixin):
 
     def __init__(self, name="_maintain::cron", locs=None):
         super().__init__(name, locs)
-        locs.ensure("maintain")
+        locs.ensure("maintain", task=name)
 
     def setup_detail(self, task):
         task.update({
@@ -321,7 +321,7 @@ class GitMaintain(DelayedMixin, globber.DootEagerGlobber, FilerMixin, CommanderM
 
     def __init__(self, name="_maintain::git", locs=None, roots=None):
         super().__init__(name, locs, roots or [locs.git_libs.resolve(), locs.github.resolve()], rec=True)
-        locs.ensure("maintain")
+        locs.ensure("maintain", task=name)
         self.output = self.locs.maintain / "git.version"
 
     def filter(self, fpath):

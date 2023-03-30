@@ -123,7 +123,7 @@ class PyUnitTestGlob(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Comm
 
     def __init__(self, name=f"py::test", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.root], exts=[".py"], rec=rec)
-        self.locs.ensure("build")
+        self.locs.ensure("build", task=name)
         self.output = self.locs.build
 
     def set_params(self):

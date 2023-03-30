@@ -37,10 +37,8 @@ import tomler
 from doot import config
 from doot.tasker import DootTasker
 
-from pelican import main as pelican_main
-from pelican.server import ComplexHTTPRequestHandler, RootedHTTPServer
-from pelican.settings import DEFAULT_CONFIG, get_settings_from_file
-
+from pelican import Pelican
+from pelican.settings import DEFAULT_CONFIG
 
 class PelicanTasker(DootTasker):
     """
@@ -49,41 +47,36 @@ class PelicanTasker(DootTasker):
 
     def __init__(self, name="pelican::build", locs=None):
         super().__init__(name, locs)
+        self.pelican_settings = {}
+        self.pelican          = None
+        locs.ensure("site", task=name)
 
     def setup_detail(self, task):
         task.update({
-
+                "actions": [ self.load_pelican_settings]
         })
         return tas
 
     def load_pelican_settings(self):
-        SETTINGS_FILE_BASE = 'pelicanconf.py'
-        SETTINGS = {}
-        SETTINGS.update(DEFAULT_CONFIG)
-        LOCAL_SETTINGS = get_settings_from_file(SETTINGS_FILE_BASE)
-        SETTINGS.update(LOCAL_SETTINGS)
-
-        self.pelican_CONFIG = {
-            'settings_base': SETTINGS_FILE_BASE,
-            'settings_publish': 'publishconf.py',
-            # Output path. Can be absolute or relative to tasks.py. Default: 'output'
-            'deploy_path': SETTINGS['OUTPUT_PATH'],
-            # Github Pages configuration
-            'github_pages_branch': 'main',
-            'commit_message': "'Publish site on {}'".format(datetime.date.today().isoformat()),
-            # Host and port for `serve`
-            'host': 'localhost',
-            'port': 8000,
-            }
+        data = tomler.load(locs.pelican_settings)
+        # TODO flatten properly
+        self.pelican_settings.update(dict(data))
+        self.pelican = Pelican(self.pelican_settings)
 
     def task_detail(self, task):
         task.update({
-
+            "actions" : [ self.pelican_build ]
         })
         return task
 
     def clean(self, task):
-        pass
+        for x in self.locs.site_build.iterdir():
+            if x.name[0] == ".":
+                continue
+            if x.is_dir():
+                x.rmdir()
+            else:
+                x.rm()
 
     def pelican_build(self):
-        pass
+        self.pelican.run()

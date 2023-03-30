@@ -55,7 +55,7 @@ class SimpleListing(tasker.DootTasker, CommanderMixin, FilerMixin):
     def __init__(self, name="listing::simple", locs=None, focus=None):
         super().__init__(name, locs)
         self.focus = focus or locs.root
-        self.locs.ensure("build")
+        self.locs.ensure("build", task=name)
 
     def task_detail(self, task):
         report = self.locs.build / f"{task['name']}.listing"

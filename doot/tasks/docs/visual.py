@@ -85,7 +85,7 @@ class PlantUMLGlobberTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber,
 
     def __init__(self, name="plantuml::visual", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=[".plantuml"], rec=True)
-        self.locs.ensure("visual", "build")
+        self.locs.ensure("visual", "build", task=name)
         self.output = self.locs.build
 
     def set_params(self):
@@ -117,7 +117,7 @@ class PlantUMLGlobberCheck(DelayedMixin, TargetedMixin, globber.DootEagerGlobber
 
     def __init__(self, name="plantuml::check", locs=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.visual], exts=[".plantuml"], rec=rec)
-        self.locs.ensure(roots, 'visual')
+        self.locs.ensure(roots, 'visual', task=name)
         self.output = self.locs.temp / "plantuml"/ "checked.report"
 
     def set_params(self):

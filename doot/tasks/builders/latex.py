@@ -81,7 +81,7 @@ class LatexMultiPass(globber.DootEagerGlobber):
 
     def __init__(self, name="tex::build", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=['.tex'], rec=rec)
-        self.locs.ensure("build")
+        self.locs.ensure("build", task=name)
 
     def filter(self, fpath):
         return fpath.is_file()
@@ -102,7 +102,7 @@ class LatexFirstPass(globber.DootEagerGlobber, FilerMixin, CommanderMixin):
     def __init__(self, name="tex::pass:one", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True, interaction=interaction_mode):
         super().__init__(name, locs, roots or [locs.src], exts=[".tex"], rec=rec)
         self.interaction = interaction
-        self.locs.ensure("temp", "build")
+        self.locs.ensure("temp", "build", task=name)
 
     def filter(self, fpath):
         return fpath.is_file()
@@ -154,7 +154,7 @@ class LatexSecondPass(globber.DootEagerGlobber, CommanderMixin, FilerMixin):
 
     def __init__(self, name="_tex::pass:two", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=[".tex"], rec=rec)
-        self.locs.ensure("temp", "build")
+        self.locs.ensure("temp", "build", task=name)
 
     def set_params(self):
         return [
@@ -198,7 +198,7 @@ class BibtexBuildPass(globber.DootEagerGlobber, CommanderMixin):
 
     def __init__(self, name="_tex::pass:bibtex", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=[".tex"], rec=rec)
-        self.locs.ensure("temp")
+        self.locs.ensure("temp", task=name)
 
     def filter(self, fpath):
         return fpath.is_file()
@@ -257,7 +257,7 @@ class BibtexConcatenateSweep(CalcDepsMixin, tasker.DootTasker):
         super().__init__(name, locs)
         self.output   = locs.temp / "combined.bib"
         self.all_bibs = set()
-        self.locs.ensure("data", "docs")
+        self.locs.ensure("data", "docs", task=name)
 
     def setup_detail(self, task):
         task.update({

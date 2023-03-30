@@ -70,7 +70,7 @@ class JsonPythonSchema(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Fi
 
     def __init__(self, name="json::schema.python", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".json"], rec=rec)
-        self.locs.ensure("codegen")
+        self.locs.ensure("codegen", task=name)
 
     def set_params(self):
         return self.target_params()
@@ -111,7 +111,7 @@ class JsonVisualise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
 
     def __init__(self, name="json::schema.visual", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".json"], rec=rec)
-        self.locs.ensure("visual")
+        self.locs.ensure("visual", task=name)
 
     def set_params(self):
         return self.target_params()

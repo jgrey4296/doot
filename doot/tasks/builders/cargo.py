@@ -55,7 +55,7 @@ class CargoBuild(tasker.DootTasker, CommanderMixin, CargoMixin, FilerMixin):
 
     def __init__(self, name="cargo::build", locs=None):
         super().__init__(name, locs)
-        self.locs.ensure("build")
+        self.locs.ensure("build", task=name)
 
     def set_params(self):
         return [
@@ -214,7 +214,7 @@ class CargoDebug(tasker.DootTasker, CommanderMixin):
 
     def __init__(self, name="cargo::debug", locs=None):
         super().__init__(name, locs)
-        self.locs.ensure("build")
+        self.locs.ensure("build", task=name)
 
     def set_params(self):
         return [

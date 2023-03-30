@@ -45,7 +45,7 @@ class GodotCheckTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Comm
     def __init__(self, name="godot::check", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.root], exts=[".gd"], rec=rec)
         self.failures = set()
-        self.locs.ensure("build")
+        self.locs.ensure("build", task=name)
 
     def set_params(self):
         return self.target_params()

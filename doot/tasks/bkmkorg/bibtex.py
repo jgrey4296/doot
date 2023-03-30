@@ -92,7 +92,7 @@ class BibtexClean(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, bib_cle
         self.current_db   = None
         self.current_year = None
         self.issues       = []
-        self.locs.ensure("build", "temp", "bibtex", "pdfs")
+        self.locs.ensure("build", "temp", "bibtex", "pdfs", task=name)
 
     def filter(self, fpath):
         if fpath.is_dir():
@@ -222,7 +222,7 @@ class BibtexReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerM
     def __init__(self, name="bibtex::report", locs=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.bibtex], rec=rec, exts=[".bib"])
         self.locs.update(timelines=self.locs.build / "timelines")
-        self.locs.ensure("pdfs")
+        self.locs.ensure("pdfs", task=name)
 
         self.db                             = None
         self.tag_file_mapping               = defaultdict(list)

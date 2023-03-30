@@ -131,7 +131,7 @@ class ADBDownload(android.ADBMixin, DootTasker, CommanderMixin, FilerMixin, Batc
         self.report      = {}
         self.device_root = None
         self.local_root  = None
-        self.locs.ensure("local_pull")
+        self.locs.ensure("local_pull", task=name)
 
     def set_params(self):
         return [

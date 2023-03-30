@@ -143,7 +143,7 @@ class GroupHashes(tasker.DootTasker, CommanderMixin, FilerMixin):
         self.hash_record    = hash_record
         self.hash_concat    = hash_concat
         self.output         = locs.temp / self.hash_concat
-        self.locs.ensure("data")
+        self.locs.ensure("data", task=name)
 
     def setup_detail(self, task):
         task.update({
@@ -224,7 +224,7 @@ class DetectDuplicateHashes(tasker.DootTasker, CommanderMixin, FilerMixin):
         self.hash_collection = defaultdict(lambda: set())
         self.hash_concat     = self.locs.temp / hash_concat
         self.output          = self.locs.build / hash_dups
-        self.locs.ensure("temp")
+        self.locs.ensure("temp", task=name)
 
     def task_detail(self, task):
         task.update({

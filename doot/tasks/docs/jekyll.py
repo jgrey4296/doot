@@ -47,7 +47,7 @@ class GenPostTask(DootTasker):
     def __init__(self, name="web::post", locs=None, template=None):
         super().__init__(name, locs)
         self.template  = pl.Path(template or post_template)
-        self.locs.ensure("posts")
+        self.locs.ensure("posts", task=name)
 
     def set_params(self):
         return [

@@ -61,7 +61,7 @@ class LatexCheckSweep(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
 
     def __init__(self, name="tex::check", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=['.tex'], rec=rec)
-        self.locs.ensure("temp")
+        self.locs.ensure("temp", task=name)
 
     def set_params(self):
         return [

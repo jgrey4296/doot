@@ -84,7 +84,7 @@ class TwitterLibTweets(DootTasker, TwitterMixin, FilerMixin, CommanderMixin):
         self.library_ids    = set()
         self.existing_json_ids = set()
         self.output         = self.locs.lib_tweets
-        self.locs.ensure("secrets", "missing_ids", "tweet_archive", "thread_library")
+        self.locs.ensure("secrets", "missing_ids", "tweet_archive", "thread_library", task=name)
 
     def task_detail(self, task):
         task.update({
@@ -165,7 +165,7 @@ class TwitterTweets(DootTasker, TwitterMixin, FilerMixin):
         self.library_ids = set()
         self.todos       = None
         self.output      = self.locs.tweets
-        self.locs.ensure("secrets", "missing_ids", "tweet_archive", "thread_library", "current_tweets")
+        self.locs.ensure("secrets", "missing_ids", "tweet_archive", "thread_library", "current_tweets", task=name)
 
     def set_params(self):
         return [
@@ -259,7 +259,7 @@ class TwitterUserIdentities(DelayedMixin, TargetedMixin, globber.DootEagerGlobbe
         self.todo_users = set()
         self.lib_users  = set()
         self.output     = self.locs.users
-        self.locs.ensure("secrets", "thread_library", "tweets")
+        self.locs.ensure("secrets", "thread_library", "tweets", task=name)
 
     def setup_detail(self, task):
         task.update({
@@ -325,7 +325,7 @@ class TwitterComponentGraph(DootTasker, passes.TwGraphComponentMixin, FilerMixin
         super().__init__(name, locs)
         self.output      = self.locs.components
         self.tweet_graph = TwitterGraph()
-        self.locs.ensure("tweets", "users")
+        self.locs.ensure("tweets", "users", task=name)
 
     def setup_detail(self, task):
         task.update({
@@ -394,7 +394,7 @@ class TwitterThreadWrite(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, 
         self.todos = None
         # Just Build, as construct org/html uses subdirs
         self.output = self.locs.build
-        self.locs.ensure("current_tweets")
+        self.locs.ensure("current_tweets", task=name)
 
     def setup_detail(self, task):
         task.update({
@@ -482,7 +482,7 @@ class TwitterMerge(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchM
         self.base_user_reg = re.compile(r"^(.+?)_thread_\d+$")
         self.group_reg     = re.compile(r"^[a-zA-Z]")
         self.files_dir_reg = re.compile(r"^(.+?)_files$")
-        self.locs.ensure("thread_library", "media")
+        self.locs.ensure("thread_library", "media", task=name)
 
     def task_detail(self, task):
         task.update({

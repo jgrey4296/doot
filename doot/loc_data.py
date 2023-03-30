@@ -124,7 +124,6 @@ class DootLocData:
             case False, True:
                 target =  self._files[val]
             case _:
-                logging.warning(f"{val} is not a location in {self.name}")
                 raise DootDirAbsent(f"{val} is not a location in {self.name}")
 
         return self._calc_path(target)
@@ -224,10 +223,11 @@ class DootLocData:
     def _file_str(self):
         return " ".join(f"{{{x}: {getattr(self, x)}}}" for x,y in sorted(self._files.items()))
 
-    def ensure(self, *values):
+    def ensure(self, *values, task=None):
         try:
             for val in values:
                 getattr(self, val)
         except AttributeError as err:
-            logging.warning("Missing Location Data: %s", val)
+            if task:
+                logging.warning("Missing Location Data: %s", task)
             raise err

@@ -41,7 +41,7 @@ class ManBuild(DootTasker, CommanderMixin):
 
     def __init__(self, name="man::build", locs=None):
         super().__init__(name, locs)
-        locs.ensure("man", "man_markdown")
+        locs.ensure("man", "man_markdown", task=name)
 
     def task_detail(self, task):
         task.update({

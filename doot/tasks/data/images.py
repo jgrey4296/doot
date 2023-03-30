@@ -150,7 +150,7 @@ class TODOImages2PDF(TargetedMixin, tasker.DootTasker, CommanderMixin, BatchMixi
 
     def __init__(self, name="images::pdf", locs=None, roots=None, exts=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=exts or default_pdf_exts, rec=rec)
-        self.locs.ensure("build", "temp")
+        self.locs.ensure("build", "temp", task=name)
         raise NotImplementedError()
 
     def set_params(self):
@@ -196,7 +196,7 @@ class TODOImages2Video(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Co
 
     def __init__(self, name="images::to.video", locs=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=default_ocr_exts, rec=rec)
-        self.locs.ensure("temp")
+        self.locs.ensure("temp", task=name)
 
     def task_detail(self, task, fpath):
         task.update({
@@ -227,7 +227,7 @@ class TODOPDF2Images(globber.DootEagerGlobber, CommanderMixin, FilerMixin, Batch
 
     def __init__(self, name="image::from.pdf", locs=None, roots=None, rec=False, exts=None):
         super().__init__(name, locs, roots or [locs.src], rec=rec, exts=exts or [".pdf"])
-        self.locs.ensure("temp")
+        self.locs.ensure("temp", task=name)
 
     def filter(self, fpath):
         return self.control.accept

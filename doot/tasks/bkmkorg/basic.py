@@ -64,7 +64,7 @@ class NoScriptMerge(tasker.DootTasker, CommanderMixin, FilerMixin):
     def __init__(self, name="noscript::merge", locs=None):
         super().__init__(name, locs)
         self.master_data = defaultdict(lambda: {})
-        self.locs.ensure("src", "temp")
+        self.locs.ensure("src", "temp", task=name)
 
     def task_detail(self, task):
         srcs   = self.locs.src.glob("noscript*.json")
@@ -138,7 +138,7 @@ class TwitterAccess(tasker.DootTasker, TwitterMixin): # TweepyMixin):
     def __init__(self, name="twitter::access", locs=None):
         super().__init__(name, locs)
         self.twitter = None
-        self.locs.ensure("secrets")
+        self.locs.ensure("secrets", task=name)
 
     def task_detail(self, task):
         task.update({

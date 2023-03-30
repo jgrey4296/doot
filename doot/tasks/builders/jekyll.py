@@ -63,7 +63,7 @@ class JekyllBuild(DootTasker, CommanderMixin, FilerMixin):
     def __init__(self, name="web::build", locs=None):
         super().__init__(name, locs)
         self.jekyll_config = self.locs.root / "jekyll.toml"
-        self.locs.ensure("data", "site", "temp", "codegen")
+        self.locs.ensure("data", "site", "temp", "codegen", task=name)
 
     def is_current(self):
         return False
@@ -132,7 +132,7 @@ class GenTagsTask(DootTasker, CleanerMixin):
         self.template = pl.Path(template or tag_template)
         self.index    = pl.Path(index or index_template)
         self.roots    = roots or [locs.site]
-        self.locs.ensure("tags", "tagsIndex")
+        self.locs.ensure("tags", "tagsIndex", task=name)
 
     def task_detail(self, task):
         task.update({

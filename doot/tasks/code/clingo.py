@@ -43,7 +43,7 @@ class ClingoRunner(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Comman
 
     def __init__(self, name="clingo::run", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=[src_ext], rec=rec)
-        self.locs.ensure("build")
+        self.locs.ensure("build", task=name)
 
     def set_params(self):
         return self.target_params()
@@ -69,7 +69,7 @@ class ClingoDotter(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Comman
 
     def __init__(self, name="clingo::dotter", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=[vis_src_ext], rec=rec)
-        self.locs.ensure("build")
+        self.locs.ensure("build", task=name)
 
     def set_params(self):
         return self.target_params()
@@ -96,7 +96,7 @@ class TODOClingoVisualise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber,
 
     def __init__(self, name="clingo::visual", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.src], exts=[vis_in_ext], rec=rec)
-        self.locs.ensure("visual")
+        self.locs.ensure("visual", task=name)
 
     def set_params(self):
         return self.target_params()

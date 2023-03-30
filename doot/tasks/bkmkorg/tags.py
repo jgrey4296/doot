@@ -59,7 +59,7 @@ class TagsCleaner(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchMi
         # super().__init__(name, locs, roots or [locs.bibtex, locs.bookmarks, locs.orgs], rec=rec, exts=exts or [".bib", ".bookmarks", ".org"])
         super().__init__(name, locs, roots or [locs.bibtex, locs.bookmarks], rec=rec, exts=exts or [".bib", ".bookmarks", ".org"])
         self.tags = SubstitutionFile()
-        self.locs.ensure("temp", "tags")
+        self.locs.ensure("temp", "tags", task=name)
 
     def filter(self, fpath):
         if fpath.is_file():
@@ -156,7 +156,7 @@ class TagsReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchMix
     def __init__(self, name="tags::report", locs=None, roots=None, rec=True, exts=None):
         super().__init__(name, locs, roots or [locs.tags], rec=rec, exts=exts or [".sub"])
         self.tags = SubstitutionFile()
-        self.locs.ensure("build", "temp")
+        self.locs.ensure("build", "temp", task=name)
 
     def set_params(self):
         return self.target_params()
@@ -227,7 +227,7 @@ class TagsIndexer(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchMi
         self.bkmk_index = IndexFile()
         self.bib_index  = IndexFile()
         self.org_index  = IndexFile()
-        self.locs.ensure("temp")
+        self.locs.ensure("temp", task=name)
 
     def set_params(self):
         return self.target_params()

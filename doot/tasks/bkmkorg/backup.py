@@ -72,7 +72,7 @@ class TwitterArchive(tasker.DootTasker, CommanderMixin, BatchMixin, ZipperMixin)
         self.output         = None
         self.thread_data    = None
         self.component_data = None
-        self.locs.ensure("thread_library", "threads")
+        self.locs.ensure("thread_library", "threads", task=name)
 
     def task_detail(self, task):
         task.update({

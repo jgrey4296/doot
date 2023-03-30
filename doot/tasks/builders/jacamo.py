@@ -47,7 +47,7 @@ class JacamoNewProject(tasker.DootTasker, GradleMixin, CommanderMixin):
     def __init__(self, name="jacamo::new", locs=doot.locs):
         super().__init__(name, locs)
         logging.debug("Using Jacamo Home: %s", jacamo_home)
-        self.locs.ensure("src")
+        self.locs.ensure("src", task=name)
 
     def set_params(self):
         return [
