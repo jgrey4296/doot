@@ -45,7 +45,7 @@ database_name : Final = doot.config.on_fail("places.sqlite", str).tools.doot.boo
 
 class BookmarksUpdate(DootTasker, FilerMixin, CommanderMixin):
     """
-    ( -> src ) copy firefox bookmarks databases, extract, merge with bookmarks file
+    ( -> ) copy firefox bookmarks databases, extract, merge with bookmarks file
     """
 
     def __init__(self, name="bkmk::update", locs=None):
@@ -105,10 +105,10 @@ class BookmarksCleaner(DootTasker, FilerMixin):
     def __init__(self, name="bkmk::clean", locs=None):
         super().__init__(name, locs)
         self.total = None
-        self.locs.ensure("temp", "src", task=name)
+        self.locs.ensure("temp", "bookmarks", task=name)
 
     def task_detail(self, task):
-        fpath =  self.locs.src / "total.bookmarks"
+        fpath =  self.locs.bookmarks/ "total.bookmarks"
         task.update({
             "actions"  : [
                 (self.copy_to, [self.locs.temp, fpath], {"fn": "backup"}),

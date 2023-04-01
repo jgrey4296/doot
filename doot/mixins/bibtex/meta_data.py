@@ -110,7 +110,7 @@ class PdfMetaDataMixin:
                 logging.info("%s/10 Complete", count)
                 count += 1
 
-            record = c.convert_to_unicode(entry)
+            # record = c.convert_to_unicode(entry)
 
             file_fields = [x for x in record.keys() if 'file' in x]
             for field in file_fields:

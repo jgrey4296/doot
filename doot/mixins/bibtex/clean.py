@@ -17,7 +17,6 @@ from shutil import copyfile, move
 from uuid import uuid4
 
 import regex as re
-from bibtexparser.latexenc import latex_to_unicode
 from doot.mixins.bibtex.writer import JGBibTexWriter
 
 ##-- end imports
@@ -29,7 +28,6 @@ logging = logmod.getLogger(__name__)
 __all__ = ["BibFieldCleanMixin", "BibPathCleanMixin"]
 
 from bibtexparser import customization as bib_customization
-from bibtexparser.latexenc import string_to_latex
 
 STEM_CLEAN_RE  : Final = re.compile(r"[^a-zA-Z0-9_]+")
 UNDERSCORE_RE  : Final = re.compile(r"_+")
@@ -49,7 +47,6 @@ class BibFieldCleanMixin:
     def bc_lowercase_keys(self, entry):
         uppercase = {x for x in entry.keys() if not (x.islower() or x.isupper()) }
         entry.update({x.lower(): entry.pop(x) for x in uppercase})
-
 
     def bc_match_year(self, entry, target, msg=None) -> None|tuple[str, str]:
         """
@@ -78,15 +75,6 @@ class BibFieldCleanMixin:
 
         return entry
 
-    def bc_to_unicode(self, entry):
-        """
-        convert the entry to unicode, removing newlines
-        """
-        entry = bib_customization.convert_to_unicode(entry)
-        entry.update({k:NEWLINE_RE.sub(" ", v) for k,v in entry.items()})
-        entry['__as_unicode'] = True
-        return entry
-
     def bc_split_names(self, entry):
         """
         convert names to component parts, for authors and editors
@@ -95,7 +83,7 @@ class BibFieldCleanMixin:
             case { "author" : "" }:
                 logging.warning("Entry Has empty author: %s", entry['ID'])
                 entry['author']        = "Anon"
-                entry['__authors']     = self._separate_names("Anon")
+                entry['__author']     = self._separate_names("Anon")
                 entry['__split_names'] = "author"
             case { "editor" : "" }:
                 logging.warning("Entry Has empty editor: %s", entry['ID'])
@@ -103,15 +91,15 @@ class BibFieldCleanMixin:
                 entry['__editor']     = self._separate_names("Anon")
                 entry['__split_names'] = "editor"
             case { "author": author }:
-                entry['__authors'] = self._separate_names(author)
+                entry['__author'] = self._separate_names(author)
                 entry['__split_names'] = "author"
             case { "editor" : editor }:
-                entry['__editors']     = self._separate_names(editor)
+                entry['__editor']     = self._separate_names(editor)
                 entry['__split_names'] = "editor"
             case _:
                 logging.warning("Entry Has No author or editor: %s", entry['ID'])
                 entry['author']        = "Anon"
-                entry['__authors']     = self._separate_names("Anon")
+                entry['__author']     = self._separate_names("Anon")
                 entry['__split_names'] = "author"
 
         return entry
@@ -179,14 +167,18 @@ class BibPathCleanMixin:
         assert("__split_names" in entry)
         assert("__as_unicode" in entry)
         target = None
-        match entry:
-            case { "__authors" : [author, *_] }:
-                target = author['last'][0]
-            case { "__editors" : [editor, *_] }:
-                    target = editor['last'][0]
-            case _:
-                logging.warning("No author or editor for entry: %s", entry)
-                target = str(uuid4().hex)[:5]
+        try:
+            match entry:
+                case { "__author" : [author, *_] }:
+                    target = author['last'][0]
+                case { "__editor" : [editor, *_] }:
+                        target = editor['last'][0]
+                case _:
+                    logging.warning("No author or editor for entry: %s", entry)
+                    target = str(uuid4().hex)[:5]
+        except IndexError as err:
+            logging.error("Bad Acces to author/editor in %s", entry)
+            raise err
 
         as_ascii = target.encode("ascii", "replace").decode().replace("?", "")
         entry['__base_name'] = TITLE_CLEAN_RE.sub("", as_ascii)

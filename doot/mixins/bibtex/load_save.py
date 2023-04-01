@@ -2,11 +2,8 @@
 """
 
 """
+
 ##-- imports
-
-##-- end imports
-
-##-- default imports
 from __future__ import annotations
 
 import abc
@@ -28,7 +25,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-##-- end default imports
+##-- end imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -36,33 +33,15 @@ logging = logmod.getLogger(__name__)
 
 import bibtexparser as b
 import doot
-from bibtexparser import customization as c
-from bibtexparser.bparser import BibTexParser
-from bibtexparser.latexenc import unicode_to_latex_map
 from .writer import JGBibTexWriter
+from doot.utils.formats import latex
+from bibtexparser.bparser import BibTexParser
 
 __all__ = ["BibLoadSaveMixin"]
 
-default_escape = [' ', '{', '}']
-
-def string_to_latex(string, escape_chars=None):
-    """
-    Convert a string to its latex equivalent
-    modified slightly from the default in bibtexparser
-    """
-    if string.isascii():
-        return string
-
-    escape_chars = escape_chars or default_escape
-    new = []
-    for char in string:
-        match char.isascii() or char in escape_chars:
-            case True:
-                new.append(char)
-            case False:
-                new.append(unicode_to_latex_map.get(char, char))
-
-    return ''.join(new)
+NEWLINE_RE     : Final = re.compile(r"\n+\s*")
+default_convert_exclusions = ["file", "url", "ID", "ENTRYTYPE", "_FROM_CROSSREF", "doi", "crossref", "tags", "look_in", "note", "reference_number", "see_also"]
+convert_exclusions = doot.config.on_fail(default_convert_exclusions, list).bibtex.convert_exclusions()
 
 class OverrideDict(dict):
     """
@@ -79,15 +58,33 @@ class OverrideDict(dict):
 class BibLoadSaveMixin:
 
     def bc_load_db(self, files:list[str|pl.Path], fn:callable=None, db=None) -> BibtexDatabase:
+        """ Parse all the bibtext files into a shared database """
         try:
-            return self._parse_bib_files(files, fn=fn, db=db)
-        except UnicodeDecodeError as err:
-            raise Exception(f"File: {files}, Start: {err.start}") from err
-        except Exception as err:
-            raise err.__class__(f"File: {files}", *err.args) from err
+            def transform(entry):
+                entry = self._entry_to_unicode(entry)
+                if fn:
+                    return fn(entry)
+                return entry
 
-    def bc_db_to_str(self, db, fn:callable, lib_root) -> str:
+            db                   = db or b.bibdatabase.BibDatabase()
+            db.strings           = OverrideDict()
+            bparser              = self._make_parser(transform)
+            bparser.bib_database = db
+
+            for x in files:
+                logging.info("Loading bibtex: %s", x)
+                text = pl.Path(x).read_bytes().decode("utf-8", "replace")
+                bparser.parse(text, partial=True)
+            logging.info("Bibtex loaded: %s entries", len(db.entries))
+            return db
+        except UnicodeDecodeError as err:
+            raise Exception(f"Unicode Error in File: {x}, Start: {err.start}") from err
+        except Exception as err:
+            raise err.__class__(f"Bibtex File Loading Error: {x}", *err.args) from err
+
+    def bc_db_to_str(self, db, lib_root:pl.Path, fn:None|callable=None) -> str:
         writer = JGBibTexWriter()
+        fn = fn or self.bc_prepare_entry_for_write
         for entry in db.entries:
             fn(entry, lib_root)
 
@@ -106,13 +103,7 @@ class BibLoadSaveMixin:
 
         for field in sorted(entry.keys()):
             match field:
-                case "ID"  | "ENTRYTYPE" | "_FROM_CROSSREF" :
-                    pass
-                case _ if "url" in field:
-                    pass
-                case _ if "file" in field:
-                    pass
-                case "tags" | "series" | "doi" | "crossref" :
+                case _ if any([x in field for x in convert_exclusions]):
                     pass
                 case "__tags":
                     delete_fields.add(field)
@@ -120,24 +111,33 @@ class BibLoadSaveMixin:
                 case "__paths" if bool(entry['__paths']):
                     delete_fields.add(field)
                     entry.update(self._path_strs(entry[field], lib_root))
-                case "__authors" if bool(entry[field]):
+                case "__author" | "__editor" if bool(entry[field]):
                     delete_fields.add(field)
-                    entry['author'] = self._flatten_names(entry['__authors'])
-                case "__editors" if bool(entry[field]):
-                    delete_fields.add(field)
-                    entry['editor'] = self._flatten_names(entry['__editors'])
+                    entry[field.replace("__","")] = self._flatten_names(entry[field])
                 case _ if "__" in field:
                     delete_fields.add(field)
                 case _:
                     try:
-                        entry[field] = string_to_latex(entry[field])
+                        entry[field] = latex.to_latex(entry[field])
                     except AttributeError as err:
-                        raise AttributeError(f"Failed using {field}", *err.args) from err
+                        raise AttributeError(f"Failed converting {field} to unicode: {entry}", *err.args) from err
 
         for field in delete_fields:
-            if field == 'author':
+            if field == 'author' or field == "year":
                 continue
             del entry[field]
+
+
+    def _entry_to_unicode(self, entry):
+        """
+        convert the entry to unicode, removing newlines
+        """
+        for k,v in entry.items():
+            if 'url' in k or 'file' in k:
+                continue
+            entry[k] = NEWLINE_RE.sub(" ", latex.to_unicode(v))
+        entry['__as_unicode'] = True
+        return entry
 
     def _flatten_names(self, names:list[dict]) -> str:
         """ join names to  {von} Last, {Jr,} First and... """
@@ -154,7 +154,8 @@ class BibLoadSaveMixin:
             parts.append(" ".join(person['first']).strip())
             result.append(" ".join(parts).strip())
 
-        return string_to_latex(" and ".join(result))
+        final = " and ".join(result)
+        return final
 
 
     def _join_tags(self, tagset) -> str:
@@ -165,7 +166,7 @@ class BibLoadSaveMixin:
     def _path_strs(self, pathdict, lib_root) -> dict:
         results = {}
         for field, path in pathdict.items():
-            if not path.is_relative_to(lib_root):
+            if not path.resolve().is_relative_to(lib_root):
                 results[field] = str(path)
                 continue
 
@@ -179,7 +180,7 @@ class BibLoadSaveMixin:
         bparser = BibTexParser(common_strings=False)
         bparser.customization             = func
         bparser.ignore_nonstandard_types  = False
-        bparser.homogenise_fields         = True
+        bparser.homogenise_fields         = False
         bparser.expect_multiple_parse     = True
         bparser.add_missing_from_crossref = True
         bparser.alt_dict = {
@@ -193,20 +194,3 @@ class BibLoadSaveMixin:
             "school"   : "institution",
         }
         return bparser
-
-    def _parse_bib_files(self, bib_files:list[str|pl.Path], fn=None, db=None):
-        """ Parse all the bibtext files into a shared database """
-        bparser = self._make_parser(fn)
-        if db is None:
-            logging.info("Creating new database")
-            db = b.bibdatabase.BibDatabase()
-
-        db.strings = OverrideDict()
-
-        bparser.bib_database = db
-        for x in bib_files:
-            logging.info("Loading bibtex: %s", x)
-            text = pl.Path(x).read_bytes().decode("utf-8", "replace")
-            bparser.parse(text, partial=True)
-        logging.info("Bibtex loaded: %s entries", len(db.entries))
-        return db

@@ -35,6 +35,7 @@ logmod.getLogger('bibtexparser').setLevel(logmod.CRITICAL)
 
 import shutil
 
+from os.path import commonpath
 import itertools
 import doot
 from doot.mixins.bibtex import clean as bib_clean
@@ -130,7 +131,7 @@ class BibtexClean(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, bib_cle
 
     def db_to_str(self):
         return {
-            "db" : self.bc_db_to_str(self.current_db, self.bc_prepare_entry_for_write, self.locs.pdfs)
+            "db" : self.bc_db_to_str(self.current_db, self.locs.pdfs)
         }
 
     def load_and_clean(self, fpath):
@@ -143,7 +144,6 @@ class BibtexClean(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, bib_cle
 
     def on_parse_clean_entry(self, entry) -> dict:
         # Preprocess
-        self.bc_to_unicode(entry)
         self.bc_lowercase_keys(entry)
         self.bc_tag_split(entry)
         assert("__tags" in entry)
@@ -193,12 +193,16 @@ class BibtexClean(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, bib_cle
             if self.args['move-files'] and not new_dir.exists():
                 new_dir.mkdir(parents=True)
             elif not new_dir.exists():
-                logging.info("Proposed Directory Creation: %s", new_dir)
+                logging.info("+ dir? : %s", new_dir)
 
             if self.args['move-files']:
                 entry['__paths'][field] = orig.rename(unique)
             else:
-                logging.info("Proposed File Move: %s -> %s", orig, unique)
+                common = commonpath((orig, unique))
+                logging.info("--- ")
+                logging.info("|-  : %s", str(orig).removeprefix(common))
+                logging.info("->  : %s", str(unique).removeprefix(common))
+                logging.info("---")
         ##-- end file path cleanup
 
         ##-- parent path cleanup

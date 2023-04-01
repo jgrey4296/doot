@@ -18,11 +18,15 @@ if TYPE_CHECKING:
     pass
 ##-- end imports
 
+import doot
 logging    = logmod.getLogger(__name__)
 
-head_line  : Final = Template("@$entry{$id,")
-field_line : Final = Template("$indent$field$eq_buffer= $value,")
-close_line : Final = "}"
+head_line  : Final         = Template("@$entry{$id,")
+field_line : Final         = Template("$indent$field$eq_buffer= $value,")
+close_line : Final         = "}"
+default_field_sort : Final = ["author", "editor", "title", "subtitle", "short_parties", "year", "journal", "booktitle", "institution", "country", "tags"]
+field_sort : Final         = doot.config.on_fail(default_field_sort, list).bibtex.field_sort()
+indent_column : Final      = doot.config.on_fail(14, int).bibtex.indent_column()
 
 class JGBibTexWriter(bwriter.BibTexWriter):
     """
@@ -31,9 +35,9 @@ class JGBibTexWriter(bwriter.BibTexWriter):
 
     def __init__(self, *args):
         super(JGBibTexWriter, self).__init__(*args)
-        self.equals_column = 14
+        self.equals_column   = indent_column
         self.entry_separator = "\n"
-        self.display_order = ["author", "editor", "title", "subtitle", "short_parties", "year", "journal", "booktitle", "institution", "country", "tags"]
+        self.display_order   = field_sort
 
     def _entry_to_bibtex(self, entry):
         filtered_entry     = {x:y for x,y in entry.items() if x[:2] != "__"}
