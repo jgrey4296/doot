@@ -53,7 +53,6 @@ user_batch_size : Final = doot.config.on_fail(100, int).twitter.user_batch()
 
 empty_match = re.match("","")
 
-
 class TwitterFull(DootTasker):
 
     def __init__(self, name="twitter::go", locs=None):
@@ -541,3 +540,56 @@ class TwitterMerge(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchM
 
             for x in list(fdir.glob("*")):
                 self.copy_to(dest, x)
+
+class TwitterArchive(DootTasker, CommanderMixin, BatchMixin, ZipperMixin):
+    """
+    Zip json data for users
+
+    Get Threads -> components,
+    combine,
+    add to archive.zip in base user's library directory
+    """
+
+    def __init__(self, name="twitter::zip", locs=None):
+        super().__init__(name, locs)
+        self.group_reg      = re.compile(r"^[a-zA-Z]")
+        self.output         = None
+        self.thread_data    = None
+        self.component_data = None
+        self.locs.ensure("thread_library", "threads", task=name)
+
+    def task_detail(self, task):
+        task.update({
+            "actions": [ self.archive ],
+        })
+        return task
+
+    def archive(self):
+        chunks = self.chunk(self.locs.threads.glob("*.json"))
+        self.run_batches(*chunks)
+
+    def batch(self, data):
+        for fpath in data:
+            self.thread_data    = json.loads(fpath.read_text())
+            self.component_data = json.loads(pl.Path(task.values['component']).read_text())
+            component           = self.thread_data['component']
+            base_user           = self.thread_data['base_user']
+            target_path         = self.calc_target_path(base_user)
+            self.add_to_user_archive(target_path, base_user, component)
+
+    def calc_target_path(self, base_user):
+        group = "group_symbols"
+        if re.match(r"^[a-zA-Z]", base_user):
+            group = f"group_{base_user[0]}"
+
+        target_path = self.locs.thread_library / group / base_user / "archive.zip"
+        return target_path
+
+    def add_to_user_archive(self, target_path, base_user, component):
+        as_json = json.dumps({"thread": self.thread_data, "component": self.component_data})
+        json_name = pl.Path(component).name
+
+        if not target_path.exists():
+            self.zip_create(target_path)
+
+        self.zip_add_str(target_path, json_name, as_json)
