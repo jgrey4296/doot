@@ -302,7 +302,6 @@ class BibtexReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerM
 
     def process_entry(self, entry):
         try:
-            self.bc_to_unicode(entry)
             self.bc_expand_paths(entry, self.locs.pdfs)
             self.bc_tag_split(entry)
             self.bc_split_names(entry)
@@ -459,7 +458,7 @@ class BibtexStub(DelayedMixin, globber.DootEagerGlobber):
         if not bool(self.stubs):
             return
 
-        print(f"Adding {len(self.stubs)} stubs")
+        logging.info(f"Adding {len(self.stubs)} stubs")
         with open(self.locs.bib_stub_file, 'a') as f:
             f.write("\n")
             f.write("\n\n".join(self.stubs))

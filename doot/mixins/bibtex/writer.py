@@ -28,6 +28,14 @@ default_field_sort : Final = ["author", "editor", "title", "subtitle", "short_pa
 field_sort : Final         = doot.config.on_fail(default_field_sort, list).bibtex.field_sort()
 indent_column : Final      = doot.config.on_fail(14, int).bibtex.indent_column()
 
+class TODO_BibtexWriter_i:
+    """ TODO replace bibtexparser writer with custom interface """
+    def write(self, db:list[dict]):
+        raise NotImplementedError()
+
+
+
+
 class JGBibTexWriter(bwriter.BibTexWriter):
     """
     A Modified writer to work nicely with org-ref-clean
@@ -39,7 +47,7 @@ class JGBibTexWriter(bwriter.BibTexWriter):
         self.entry_separator = "\n"
         self.display_order   = field_sort
 
-    def _entry_to_bibtex(self, entry):
+    def _entry_to_bibtex(self, entry) -> str:
         filtered_entry     = {x:y for x,y in entry.items() if x[:2] != "__"}
         bibtex : list[str] = []
         # Write BibTeX key
@@ -70,3 +78,20 @@ class JGBibTexWriter(bwriter.BibTexWriter):
         bibtex.append(close_line)
         as_string = "\n".join(bibtex) + self.entry_separator
         return as_string
+
+
+class JGMarkdownWriter:
+    """
+    For converting bibtex files to markdown
+    """
+
+    def write(self, db) -> str:
+        results = []
+        for entry in db.entries:
+            results.append(self._write_entry(entry))
+
+        return "\n".join(results)
+
+    def _write_entry(self, entry:dict) -> str:
+        # TODO use templates?
+        return str(entry)

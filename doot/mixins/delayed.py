@@ -79,6 +79,7 @@ class DelayedMixin:
                 # The actual task this wraps
                 self.delayed_name,
             ],
+            "doc" : self.doc,
         }
         yield from super().build(**kwargs)
         yield self._build_delayed_deps_update()

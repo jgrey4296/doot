@@ -90,6 +90,8 @@ class ZipperMixin:
         """
         logging.info("Adding to Zipfile: %s : %s", fpath, args)
         assert(fpath.suffix == ".zip")
+        self.zip_create(fpath)
+
         root = self.zip_root or pl.Path()
         paths = [pl.Path(x) for x in args]
         compress_type, compress_level = self._zip_get_compression_settings()
@@ -120,6 +122,8 @@ class ZipperMixin:
         """
         logging.debug(f"Zip Globbing: %s : %s", fpath, globs)
         assert(fpath.suffix == ".zip")
+        self.zip_create(fpath)
+
         root                          = self.zip_root or pl.Path()
         compress_type, compress_level = self._zip_get_compression_settings()
         with zipfile.ZipFile(fpath, mode='a', compression=compress_type, compresslevel=compress_level, allowZip64=True) as targ:
@@ -141,11 +145,16 @@ class ZipperMixin:
 
     def zip_add_str(self, fpath, fname, text:str):
         assert(fpath.suffix == ".zip")
+        self.zip_create(fpath)
+
         compress_type, compress_level = self._zip_get_compression_settings()
         with zipfile.ZipFile(fpath, mode='a',
                              compression=compress_type, compresslevel=compress_level, allowZip64=True) as targ:
-            assert(fname not in targ.namelist())
-            targ.writestr(fname, text)
+            match fname in targ.namelist():
+                case True:
+                    logging.warning("Duplication Attempt: %s -> %s", fpath, fname)
+                case False:
+                    targ.writestr(fname, text)
 
 
     def zip_get_contents(self, fpath) -> list[str]:

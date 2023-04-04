@@ -82,8 +82,8 @@ class BibLoadSaveMixin:
         except Exception as err:
             raise err.__class__(f"Bibtex File Loading Error: {x}", *err.args) from err
 
-    def bc_db_to_str(self, db, lib_root:pl.Path, fn:None|callable=None) -> str:
-        writer = JGBibTexWriter()
+    def bc_db_to_str(self, db, lib_root:pl.Path, writer=None, fn:None|callable=None) -> str:
+        writer = writer or JGBibTexWriter()
         fn = fn or self.bc_prepare_entry_for_write
         for entry in db.entries:
             fn(entry, lib_root)

@@ -51,19 +51,20 @@ class BookmarksUpdate(DootTasker, FilerMixin, CommanderMixin):
     def __init__(self, name="bkmk::update", locs=None):
         super().__init__(name, locs)
         self.database                                      = database_name
+        self.dbs                                           = []
         self.new_collections : list[BC.BookmarkCollection] = []
         self.total : BC.BookmarkCollection                 = None
-        self.temp_dbs = self.locs.temp / "dbs"
+        self.temp_dbs                                      = self.locs.temp / "dbs"
         self.locs.ensure("firefox", "temp", "bookmarks_total", task=name)
 
     def task_detail(self, task):
-        dbs         = self.locs.firefox.rglob(self.database)
         bkmks       = self.locs.bookmarks_total
         task.update({
             "actions" : [
+                self._get_firefox_dbs,
                 (self.mkdirs,  [self.temp_dbs]),
                 (self.copy_to, [self.temp_dbs, bkmks], {"fn": "backup"}),
-                (self.copy_to, [self.temp_dbs, *dbs],  {"fn": lambda d,x: d / f"{x.parent.name}_{x.name}" }),
+                (self.copy_to, [self.temp_dbs, *self.dbs],  {"fn": lambda d,x: d / f"{x.parent.name}_{x.name}" }),
                 self._extract,
                 self._store_new_extracts,
                 (self._merge,  [bkmks]),
@@ -73,6 +74,9 @@ class BookmarksUpdate(DootTasker, FilerMixin, CommanderMixin):
             "file_dep" : [ bkmks ],
         })
         return task
+
+    def _get_firefox_dbs(self):
+        self.dbs = self.locs.firefox.rglob(self.database)
 
     def _extract(self):
         """
@@ -95,7 +99,7 @@ class BookmarksUpdate(DootTasker, FilerMixin, CommanderMixin):
         for extracted in self.new_collections:
             self.total += extracted
             self.total.merge_duplicates()
-        print(f"Bookmark Count: {original_amnt} -> {len(self.total)}")
+        logging.info(f"Bookmark Count: {original_amnt} -> {len(self.total)}")
 
 class BookmarksCleaner(DootTasker, FilerMixin):
     """

@@ -49,12 +49,12 @@ class DownloaderMixin:
                 print("Skipping download")
                 return
 
-        scaler = int(len(media) / 100) + 1
-        for i, x in enumerate(media):
+        scaler = int(len(urls) / 100) + 1
+        for i, x in enumerate(urls):
             if i % scaler == 0:
                 print("%s/100" % int(i/scaler))
 
-            filename = media_dir / split(x)[1]
+            filename = fpath / split(x)[1]
             if filename.exists():
                 continue
 

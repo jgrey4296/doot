@@ -118,7 +118,6 @@ class EbookZipTask(EbookGlobberBase, ZipperMixin):
         task.update({
             "actions": [
                 (self.zip_set_root, [fpath]),
-                (self.zip_create, [zipf]),
                 (self.zip_globs, [zipf, glob]),
             ],
             'task_dep': [ f"epub::manifest:{task['name']}"],

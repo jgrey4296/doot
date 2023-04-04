@@ -100,7 +100,7 @@ class BibPoster(tasker.DootTasker, MastodonMixin, TwitterMixin, BibLoadSaveMixin
             self.already_tweeted = {x for x in self.locs.bib_success.read_text().split("\n")}
 
     def select_bibtex_file(self) -> pl.Path:
-        print("Selecting bibtex")
+        logging.info("Selecting bibtex")
         # load blacklist
         bibs      = {x for x in self.locs.bibtex.iterdir() if x.suffix == ".bib"}
         filtered  = [x for x in bibs if x.stem not in self.blacklist]
@@ -114,14 +114,13 @@ class BibPoster(tasker.DootTasker, MastodonMixin, TwitterMixin, BibLoadSaveMixin
         self.db = self.bc_load_db(task.values['selected'], fn=self.process_entry)
 
     def process_entry(self, entry):
-        self.bc_to_unicode(entry)
         self.bc_split_names(entry)
         self.bc_tag_split(entry)
 
         return entry
 
     def select_entry(self, task):
-        print("Selecting Entry")
+        logging.info("Selecting Entry")
         if not bool(self.db.entries):
             return False
 
@@ -139,7 +138,7 @@ class BibPoster(tasker.DootTasker, MastodonMixin, TwitterMixin, BibLoadSaveMixin
         return False
 
     def format_tweet(self, task):
-        print("Formatting Entry")
+        logging.info("Formatting Entry")
         entry = self.db.entries_dict.get(task.values['entry_id'], None)
         assert(entry is not None)
         assert("__split_names" in entry)
@@ -196,9 +195,9 @@ class BibPoster(tasker.DootTasker, MastodonMixin, TwitterMixin, BibLoadSaveMixin
                 with open(self.locs.bib_success, 'a') as f:
                     f.write(f"\n{entry_id}")
             case { "twitter_result" : False, "toot_result": True, "entry_id": entry_id }:
-                print("Only Toot Posted")
+                logging.info("Only Toot Posted")
             case { "twitter_result" : True, "toot_result": True, "entry_id": entry_id }:
-                print("Only Tweet Posted")
+                logging.info("Only Tweet Posted")
             case { "entry_id": entry_id }:
                 with open(self.locs.bib_fail, 'a') as f:
                     f.write(f"\n{entry_id}")

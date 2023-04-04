@@ -92,9 +92,9 @@ class NoScriptMerge(tasker.DootTasker, CommanderMixin, FilerMixin):
             assert(site not in self.master_data['policy']['sites']['untrusted']), site
 
     def report_on_data(self):
-        print("Final Sizes: ")
-        print(f"Trusted Sites: {len(self.master_data['policy']['sites']['trusted'])}")
-        print(f"UnTrusted Sites: {len(self.master_data['policy']['sites']['untrusted'])}")
+        logging.info("Final Sizes: ")
+        logging.info(f"Trusted Sites: {len(self.master_data['policy']['sites']['trusted'])}")
+        logging.info(f"UnTrusted Sites: {len(self.master_data['policy']['sites']['untrusted'])}")
 
     def merge_json(self, target, source, key):
         """
@@ -105,7 +105,7 @@ class NoScriptMerge(tasker.DootTasker, CommanderMixin, FilerMixin):
 
         while bool(queue):
             current = queue.pop()
-            print(f"Merging: {current[2]}")
+            logging.info(f"Merging: {current[2]}")
             targ = current[0][current[2]]
             sour = current[1][current[2]]
 
@@ -117,14 +117,14 @@ class NoScriptMerge(tasker.DootTasker, CommanderMixin, FilerMixin):
                         else:
                             queue += [(targ, src, key)]
                 case list(), list():
-                    print(f"Merging Lists: {len(targ)} : {len(src)}")
+                    logging.info(f"Merging Lists: {len(targ)} : {len(src)}")
                     now_set = set(targ)
                     now_set.update(src)
-                    print(f"Updated Length: {len(now_set)}")
+                    logging.info(f"Updated Length: {len(now_set)}")
                     targ.clear()
                     targ.extend(now_set)
                 case bool(), bool() if targ != src:
-                    print(f"{current[2]} Conflict: {targ}, {src}")
+                    logging.info(f"{current[2]} Conflict: {targ}, {src}")
                     result = input(f"Enter for {targ}, else {src}")
                     if not bool(result):
                         current[0][current[2]] = targ
@@ -150,6 +150,6 @@ class TwitterAccess(tasker.DootTasker, TwitterMixin): # TweepyMixin):
         return task
 
     def pause(self):
-        print("Pausing")
+        logging.info("Pausing")
         breakpoint()
         pass

@@ -181,7 +181,9 @@ class DootTasker:
         if self.has_active_setup:
             maybe_task['setup'] += [self.setup_name]
 
-        full_task = DootTaskExt(**maybe_task)
+        full_task     = DootTaskExt(**maybe_task)
+        if not bool(full_task.doc):
+            full_task.doc = self.doc
         return full_task
 
     def build(self, **kwargs) -> GeneratorType:

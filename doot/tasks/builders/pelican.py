@@ -37,8 +37,8 @@ import tomler
 from doot import config
 from doot.tasker import DootTasker
 
-from pelican import Pelican
-from pelican.settings import DEFAULT_CONFIG
+from pelican import Pelican, listen
+from pelican.settings import DEFAULT_CONFIG, configure_settings
 
 class PelicanTasker(DootTasker):
     """
@@ -47,20 +47,39 @@ class PelicanTasker(DootTasker):
 
     def __init__(self, name="pelican::build", locs=None):
         super().__init__(name, locs)
-        self.pelican_settings = {}
+        self.pelican_settings = DEFAULT_CONFIG.copy()
         self.pelican          = None
-        locs.ensure("site", task=name)
+        locs.ensure("site", "pelican_settings", task=name)
+
+    def set_params(self):
+        return [
+            { "name": "build", "short": "b", "type": str, "default" : "dev"},
+        ]
 
     def setup_detail(self, task):
         task.update({
                 "actions": [ self.load_pelican_settings]
         })
-        return tas
+        return task
 
     def load_pelican_settings(self):
-        data = tomler.load(locs.pelican_settings)
-        # TODO flatten properly
-        self.pelican_settings.update(dict(data))
+        # Walk data, if key matches key in settings, copy it over
+        data     = tomler.load(self.locs.pelican_settings)
+        queue    = [([k], v) for k,v in dict(data).items()]
+        while bool(queue):
+            match queue.pop(0):
+                case ["build", "config", k], v if k != self.args['build']:
+                    pass
+                case [k], v if k in self.pelican_settings:
+                    self.pelican_settings[k] = v
+                case [*ks, k], v if k in self.pelican_settings:
+                    self.pelican_settings[k] = v
+                case ks, dict() as v:
+                    queue += [(ks + [k], v) for k,v in v.items()]
+                case ks, list() as v:
+                    queue += [(ks + ["__"], v2) for v2 in v]
+
+        self.pelican_settings = configure_settings(self.pelican_settings)
         self.pelican = Pelican(self.pelican_settings)
 
     def task_detail(self, task):
@@ -80,3 +99,20 @@ class PelicanTasker(DootTasker):
 
     def pelican_build(self):
         self.pelican.run()
+
+
+class PelicanServer(PelicanTasker):
+
+    def __init__(self, name="pelican::serve", locs=None):
+        super().__init__(name, locs)
+
+    def task_detail(self, task):
+        task.update({
+            "actions" : [ self.pelican_serve]
+        })
+        return task
+
+    def pelican_serve(self):
+        listen(self.pelican_settings.get('BIND'),
+               self.pelican_settings.get('PORT'),
+               self.pelican_settings.get("OUTPUT_PATH"))

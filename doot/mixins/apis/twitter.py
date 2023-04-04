@@ -10,7 +10,6 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     Set, Tuple, TypeVar, Union, cast, Final)
 
 import requests
-import twitter as tw
 ##-- end imports
 
 logging = logmod.getLogger(__name__)
@@ -22,6 +21,7 @@ import uuid
 import doot
 from doot.mixins.batch import BatchMixin
 import tomler
+import twitter as tw
 import tweepy
 
 tweet_size         : Final = doot.config.on_fail(250, int).twitter.tweet_size()
@@ -44,13 +44,16 @@ class TwitterMixin:
         logging.debug("---------- Initialising Twitter")
         secrets      = tomler.load(pl.Path(config).expanduser())
         should_sleep = secrets.DEFAULT.sleep
-        self.twitter = tw.Api(consumer_key=secrets.twitter.py.apiKey,
-                              consumer_secret=secrets.twitter.py.apiSecret,
-                              access_token_key=secrets.twitter.py.accessToken,
-                              access_token_secret=secrets.twitter.py.accessSecret,
-                              sleep_on_rate_limit=should_sleep,
-                              tweet_mode='extended')
-
+        logging.debug("Loaded Secrets")
+        self.twitter = tw.Api(
+            consumer_key=secrets.twitter.py.apiKey,
+            consumer_secret=secrets.twitter.py.apiSecret,
+            access_token_key=secrets.twitter.py.accessToken,
+            access_token_secret=secrets.twitter.py.accessSecret,
+            sleep_on_rate_limit=should_sleep,
+            tweet_mode='extended'
+            )
+        logging.debug("Twitter Initialised")
         return True
 
     def post_tweet(self, task):
@@ -65,8 +68,7 @@ class TwitterMixin:
                 logging.debug("Tweet Posted")
                 return {"twitter_result": True}
         except Exception as err:
-            logging.warning("Twitter Post Failure: %s", err)
-            logging.warning("Twitter Post Failed: ", str(err), msg)
+            logging.warning("Twitter Post Failure: %s", err, msg)
             return {"twitter_result": False}
 
     def post_twitter_image(self, task):
@@ -87,7 +89,7 @@ class TwitterMixin:
             logging.debug("Twitter Image Posted")
             return {"twitter_result": True }
         except Exception as err:
-            logging.warning("Twitter Post Failed: ", str(err), msg, the_file)
+            logging.warning("Twitter Post Failed: %s %s", str(err), msg, the_file)
             return { "twitter_result": False }
 
     def tw_download_tweets(self, target_dir, missing_file, task):
@@ -105,7 +107,7 @@ class TwitterMixin:
         missing_ids = set()
         # Download in batches:
         while bool(queue):
-            logging.debug("Download Queue Remaining: ", len(queue))
+            logging.debug("Download Queue Remaining: %s", len(queue))
             # Pop group amount:
             current = list(set(queue[:twitter_batch_size]) - self.library_ids - missing_ids)
             queue   = queue[twitter_batch_size:]

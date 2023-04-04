@@ -278,6 +278,7 @@ class DootTaskExt(Task):
         actions.reverse()
         while bool(actions):
             action = actions.pop()
+            logging.debug("%s Task Action: %s", self.name, action)
             if action.task is None:
                 action.task = self
             action_return = action.execute(task_stdout, task_stderr)

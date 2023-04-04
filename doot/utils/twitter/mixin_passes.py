@@ -14,7 +14,7 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     Set, Tuple, TypeVar, Union, cast)
 
 import networkx as nx
-from doot.utils.formats.html_writer import HtmlThreadWriter
+from doot.utils.twitter.html_writer import HtmlThreadWriter
 from doot.utils.twitter.lazy_component_writer import LazyComponentWriter
 from doot.utils.twitter.org_writer import OrgThreadWriter
 from doot.utils.twitter.thread_obj import TwitterThreadObj
@@ -43,11 +43,11 @@ class TwGraphComponentMixin:
         returns any missing ids for later download
         """
         assert(self.tweet_graph is not None)
-        print("---------- Getting Components")
+        logging.info("---------- Getting Components")
         components : List[Set[str]]
         components, rest  = self.tweet_graph.components()
-        print("Creating {} component files\n\tfrom: {}\n\tto: {}".format(len(components), tweet_dir, self.output))
-        print("Non-Component Tweets: ", len(rest))
+        logging.info("Creating %s component files\n\tfrom: %s\n\tto: %s", len(components), tweet_dir, self.output)
+        logging.info("Non-Component Tweets: %s", len(rest))
 
         # Tweet Components allows lazy writing to component files
         # if enough tweets in one component have been queued
@@ -68,9 +68,9 @@ class TwGraphComponentMixin:
                 assert(isinstance(data, dict))
                 id_map.add_users(data)
 
-        print("Component Files Created")
+        logging.info("Component Files Created")
         if bool(id_map.missing):
-            logging.info("Missing: %s", id_map.missing)
+            logging.info("Missing: (%s) %s", len(id_map.missing), id_map.missing)
 
         return { "missing" : list(id_map.missing) }
 
@@ -79,11 +79,11 @@ class TwThreadBuildMixin:
     def tw_construct_thread(self, fpath:pl.Path):
         """ dfs on components to get order  """
         # Create final orgs, grouped by head user
-        print("---------- Constructing Summary for: ", fpath)
+        logging.info("---------- Constructing Summary for: %s", fpath)
         # read fpath
         data = json.loads(fpath.read_text(), strict=False)
-        tweet_lookup = {x['id_str']: x for x in data['tweets']}
-        user_lookup  = {x['id_str']: x for x in data['users'] }
+        tweet_lookup = { x['id_str']: x for x in data['tweets'] }
+        user_lookup  = { x['id_str']: x for x in data['users'] }
         assert(bool(data))
 
         thread_graph         = TwitterGraph()
@@ -93,7 +93,7 @@ class TwThreadBuildMixin:
         roots  = thread_graph.roots()
         chains, extra = thread_graph.reply_chains(roots)
         if len(chains) > 1:
-            print(f"Component with more than one chain: {fpath}")
+            logging.warning(f"Component with more than one chain: %s", fpath)
         quotes = thread_graph.get_quotes()
         assert(bool(chains))
 
