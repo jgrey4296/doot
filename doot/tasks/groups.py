@@ -226,7 +226,7 @@ try:
     cargo_group += cargo.task_cargo_version
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
-    if doot.config.on_fail(False, bool).group.cargo.debug():
+    if doot.config.on_fail(False, bool).group.rust.debug():
         print("To activate group, cargo needs: ", err)
 
 ##-- end cargo

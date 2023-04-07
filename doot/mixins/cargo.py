@@ -42,7 +42,7 @@ cargo_subconfig = tomler.load("./.cargo/config.toml")
 
 package_name  : Final = cargo_config.package.name
 build_path    : Final = cargo_subconfig.on_fail(str(doot.locs.build)).build.target_dir()
-profiles      : Final = ["release", "debug", "dev"] + cargo_config.on_fail([]).profile()
+profiles      : Final = ["release", "dev"] + cargo_config.on_fail([]).profile()
 binaries      : Final = [x.get('name') for x in  cargo_config.on_fail([], list).bin()]
 lib_path      : Final = cargo_config.on_fail(None, None|str).lib.path()
 
@@ -52,9 +52,13 @@ class CargoMixin:
         """
         Default param generator for cargo to get binaries and profiles
         """
+        default_target = ""
+        if bool(binaries):
+            default_target = binaries[0]
+
         return [
-            { "name": "profile", "type": str, "short": "p", "default": "debug", "choices": [(x,"") for x in profiles] },
-            { "name": "target",  "type": str, "short": "t", "default": binaries[0], "choices": [(x, "") for x in binaries]},
+            { "name": "profile", "type": str, "short": "p", "default": "dev", "choices": [(x,"") for x in profiles] },
+            { "name": "target",  "type": str, "short": "t", "default": default_target, "choices": [(x, "") for x in binaries]},
         ]
 
     def cargo_do(self, action, *args, **kwargs):

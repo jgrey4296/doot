@@ -25,7 +25,7 @@ config = Tomler.load("./.cargo/config.toml")
 
 build_path    : Final = config.on_fail(str(doot.locs.build)).build.target_dir()
 package_name  : Final = cargo.package.name
-profiles      : Final = ["release", "debug", "dev"] + cargo.on_fail([]).profile()
+profiles      : Final = ["release", "dev"] + cargo.on_fail([]).profile()
 binaries      : Final = [x.get('name') for x in  cargo.on_fail([], list).bin()]
 lib_path      : Final = cargo.on_fail(None, None|str).lib.path()
 
@@ -54,7 +54,7 @@ class CargoBuild(tasker.DootTasker, CommanderMixin, CargoMixin, FilerMixin):
 
     def __init__(self, name="cargo::build", locs=None):
         super().__init__(name, locs)
-        self.locs.ensure("build", task=name)
+        self.locs.ensure("build", "python", task=name)
 
     def set_params(self):
         return [
@@ -63,16 +63,20 @@ class CargoBuild(tasker.DootTasker, CommanderMixin, CargoMixin, FilerMixin):
         ]
 
     def task_detail(self, task):
-        target_dir   = self.locs.build / self.args['profile']
         build_target = None
+        target_dir   = self.locs.build / "debug"
+        if self.args['profile'] != "dev":
+            target_dir   = self.locs.build / "release"
+
 
         match self.args['lib'], sys.platform:
             case True, "darwin":
                 # libraries on mac need to be renamed:
                 lib_file     =  f"lib{package_name}.dylib"
-                build_target = target_dir / f"{package_name}.so"
+                so_file      =  f"{package_name}.so"
+                build_target = target_dir / so_file
                 actions      = [ self.cargo_do("build", "--lib", profile=self.args['profile']),
-                                 (self.move_to, [build_target, target_dir / lib_file ]),
+                                 (self.copy_to, [self.locs.python / "__data" / so_file, target_dir / lib_file ], {"fn": "file"}),
                                 ]
             case True, _:
                 build_target =  target_dir / f"lib{package_name}.dylib"
@@ -87,16 +91,13 @@ class CargoBuild(tasker.DootTasker, CommanderMixin, CargoMixin, FilerMixin):
         })
         return task
 
-class CargoInstall(tasker.DootTasker, CommanderMixin):
+class CargoInstall(tasker.DootTasker, CommanderMixin, CargoMixin):
 
     def __init__(self, name="cargo::install", locs=None):
         super().__init__(name, locs)
 
     def set_params(self):
-        return [
-            { "name": "profile", "type": str, "short": "p", "default": "debug", "choices": [(x,"") for x in profiles] },
-            { "name": "target",  "type": str, "short": "t", "default": binaries[0], "choices": [(x, "") for x in binaries]},
-        ]
+        return self.get_cargo_params()
 
     def task_detail(self, task):
         task.update({
@@ -107,14 +108,14 @@ class CargoInstall(tasker.DootTasker, CommanderMixin):
     def binary_build(self):
         return ["cargo", "install", "--bin", self.args['target'], "--profile", self.args['profile']]
 
-class CargoTest(tasker.DootTasker, CommanderMixin):
+class CargoTest(tasker.DootTasker, CommanderMixin, CargoMixin):
 
     def __init__(self, name="cargo::test", locs=None):
         super().__init__(name, locs)
 
     def set_params(self):
         return [
-            { "name": "profile", "type": str, "short": "p", "default": "debug", "choices": [(x,"") for x in profiles] },
+            { "name": "profile", "type": str, "short": "p", "default": "dev", "choices": [(x,"") for x in profiles] },
             { "name": "name", "type": str, "short": "n", "default": ""},
             { "name": "no_run", "type": bool, "long": "no-run", "default": False},
         ]
@@ -129,7 +130,7 @@ class CargoTest(tasker.DootTasker, CommanderMixin):
     def test_cmd(self):
         return ["cargo", "test", "--bin", self.args['target'], "--profile", self.args['profile']]
 
-class CargoDocs(tasker.DootTasker, CommanderMixin):
+class CargoDocs(tasker.DootTasker, CommanderMixin, CargoMixin):
 
     def __init__(self, name="cargo::docs", locs=None):
         super().__init__(name, locs)
@@ -145,16 +146,13 @@ class CargoDocs(tasker.DootTasker, CommanderMixin):
         })
         return task
 
-class CargoRun(tasker.DootTasker, CommanderMixin):
+class CargoRun(tasker.DootTasker, CommanderMixin, CargoMixin):
 
     def __init__(self, name="cargo::run", locs=None):
         super().__init__(name, locs)
 
     def set_params(self):
-        return [
-            { "name": "profile", "type": str, "short": "p", "default": "debug", "choices": [(x,"") for x in profiles] },
-            { "name": "target",  "type": str, "short": "t", "default": binaries[0], "choices": [(x, "") for x in binaries]},
-        ]
+        return self.get_cargo_params()
 
     def task_detail(self, task):
         task.update({
@@ -162,7 +160,7 @@ class CargoRun(tasker.DootTasker, CommanderMixin):
         })
         return task
 
-class CargoClean(tasker.DootTasker, CommanderMixin):
+class CargoClean(tasker.DootTasker, CommanderMixin, CargoMixin):
     """
     clean the rust project
     """
@@ -176,7 +174,7 @@ class CargoClean(tasker.DootTasker, CommanderMixin):
         })
         return task
 
-class CargoCheck(tasker.DootTasker, CommanderMixin):
+class CargoCheck(tasker.DootTasker, CommanderMixin, CargoMixin):
     """
     run cargo check on the project
     """
@@ -190,7 +188,7 @@ class CargoCheck(tasker.DootTasker, CommanderMixin):
         })
         return task
 
-class CargoUpdate(tasker.DootTasker, CommanderMixin):
+class CargoUpdate(tasker.DootTasker, CommanderMixin, CargoMixin):
     """
     update rust and dependencies
     """
@@ -206,7 +204,7 @@ class CargoUpdate(tasker.DootTasker, CommanderMixin):
         })
         return task
 
-class CargoDebug(tasker.DootTasker, CommanderMixin):
+class CargoDebug(tasker.DootTasker, CommanderMixin, CargoMixin):
     """
     Start lldb on the debug build of the rust binary
     """
@@ -216,13 +214,11 @@ class CargoDebug(tasker.DootTasker, CommanderMixin):
         self.locs.ensure("build", task=name)
 
     def set_params(self):
-        return [
-            { "name": "target",  "type": str, "short": "t", "default": binaries[0], "choices": [(x, "") for x in binaries]},
-        ]
+        return self.get_cargo_params()
 
     def task_detail(self, task):
         task.update({
-                "actions"  : [ self.interact(["lldb", self.locs.build / "debug" / self.args['target'] ]) ],
+                "actions"  : [ self.interact(["lldb", self.locs.build / "dev" / self.args['target'] ]) ],
                 "file_dep" : [ self.locs.build / "debug" / self.args['target'] ],
             })
         return task
