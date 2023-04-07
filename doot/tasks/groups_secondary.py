@@ -19,7 +19,7 @@ from uuid import UUID, uuid1
 from weakref import ref
 
 import doot
-from doot.task_group import TaskGroup
+from doot.core.task.task_group import TaskGroup
 from tomler  import TomlAccessError, Tomler
 from doot.errors import DootDirAbsent
 

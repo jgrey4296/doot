@@ -20,7 +20,7 @@ from weakref import ref
 
 from tomler import TomlAccessError
 import doot
-from doot.task_group import TaskGroup
+from doot.core.task.task_group import TaskGroup
 
 from doot.tasks import project_init
 from doot.errors import DootDirAbsent
@@ -207,7 +207,7 @@ except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
 ##-- cargo
 cargo_group = TaskGroup("cargo_group")
 try:
-    doot.config.group.cargo
+    doot.config.group.rust
 
     from doot.tasks.builders import cargo
     cargo_locs = doot.locs.extend(name="cargo",

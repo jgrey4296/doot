@@ -31,6 +31,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import doot
+import random
 
 maybe_build_path = lambda x: pl.Path(x) if x is not None else None
 

@@ -7,13 +7,17 @@ from __future__ import annotations
 
 import abc
 import datetime
+import itertools
 import logging as logmod
 import pathlib as pl
 import re
+import shutil
 import sys
+import time
 from collections import defaultdict
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
+from os.path import commonpath
 from re import Pattern
 from string import Template
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
@@ -23,35 +27,23 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-if TYPE_CHECKING:
-    # tc only imports
-    pass
-##-- end imports
-
-##-- logging
-logging = logmod.getLogger(__name__)
-logmod.getLogger('bibtexparser').setLevel(logmod.CRITICAL)
-##-- end logging
-
-import shutil
-
-from os.path import commonpath
-import itertools
 import doot
+from doot import globber, tasker
+from doot.mixins.batch import BatchMixin
 from doot.mixins.bibtex import clean as bib_clean
 from doot.mixins.bibtex import utils as bib_utils
 from doot.mixins.bibtex.load_save import BibLoadSaveMixin
-from doot.utils.formats.timelinefile import TimelineFile
-from doot import globber, tasker
 from doot.mixins.commander import CommanderMixin
-from doot.mixins.batch import BatchMixin
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.filer import FilerMixin
+from doot.mixins.pdf import PdfMixin
 from doot.mixins.targeted import TargetedMixin
+from doot.mixins.web import WebMixin
 from doot.tasker import DootTasker
 from doot.tasks.files.backup import BackupTask
+from doot.utils.formats.timelinefile import TimelineFile
 
-pl_expand : Final = lambda x: pl.Path(x).expanduser().resolve()
+##-- end imports
 
 min_tag_timeline : Final = doot.config.on_fail(10, int).bibtex.min_timeline()
 stub_exts        : Final = doot.config.on_fail([".pdf", ".epub", ".djvu", ".ps"], list).bibtex.stub_exts()

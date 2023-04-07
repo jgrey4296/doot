@@ -4,7 +4,7 @@ from __future__ import annotations
 import pathlib as pl
 import shutil
 
-from doot.task_group import TaskGroup
+from doot.core.task.task_group import TaskGroup
 from doot import globber
 from doot.tasker import DootTasker
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from doit.action import CmdAction
 from doit.exceptions import InvalidTask, TaskFailed, TaskError
 ##-- end imports
-from doot.utils.task_ext import DootCmdAction
+from doot.core.task.task_ext import DootCmdAction
 
 class ForceCmd(DootCmdAction):
     """

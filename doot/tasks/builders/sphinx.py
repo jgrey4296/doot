@@ -6,7 +6,7 @@ import shutil
 from typing import Final
 
 import doot
-from doot.task_group import TaskGroup
+from doot.core.task.task_group import TaskGroup
 from doot.tasker import DootTasker
 
 ##-- end imports

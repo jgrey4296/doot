@@ -44,9 +44,9 @@ from doit.task import dict_to_task
 from doit.tools import Interactive
 
 from doot.errors import DootDirAbsent
-from doot.utils.general import ForceCmd
-from doot.utils.task_ext import DootTaskExt
-from doot.utils.task_namer import task_namer
+from doot.core.actions.force_cmd_action import ForceCmd
+from doot.core.task.task_ext import DootTaskExt
+from doot.core.utils.task_namer import task_namer
 
 class DootTasker:
     """ Util Class for building single tasks

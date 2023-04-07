@@ -32,7 +32,7 @@ logging = logmod.getLogger(__name__)
 from time import sleep
 from doit.exceptions import TaskFailed
 import doot
-from doot.utils.task_ext import DootCmdAction
+from doot.core.task.task_ext import DootCmdAction
 
 batch_size       = doot.config.on_fail(10, int).batch.size()
 batches_max      = doot.config.on_fail(-1,    int).batch.max()

@@ -45,7 +45,7 @@ from doit.doit_cmd import DoitMain
 
 import tomler
 import doot
-from doot.utils.loader import DootLoader
+from doot.core.loaders.loader import DootLoader
 from doot.core.utils.log_filter import DootAnyFilter
 
 def main():

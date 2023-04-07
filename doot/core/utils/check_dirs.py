@@ -7,7 +7,7 @@ import pathlib as pl
 import shutil
 from typing import ClassVar
 
-from doot.task_group import TaskGroup
+from doot.core.task.task_group import TaskGroup
 from doot.tasker import DootTasker
 from doot.mixins.cleaning import CleanerMixin
 ##-- end imports
@@ -16,7 +16,7 @@ from doot.mixins.cleaning import CleanerMixin
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doot.utils.task_namer import task_namer
+from doot.core.utils.task_namer import task_namer
 
 class CheckDir:
     """ Task for checking directories exist,

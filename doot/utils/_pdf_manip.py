@@ -5,41 +5,16 @@ from __future__ import annotations
 import logging as root_logger
 import pathlib as pl
 import subprocess
-import tempfile
-from subprocess import call, run
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 from uuid import uuid4
 
-import pypandoc as pandoc
-from pdfrw import IndirectPdfDict, PageMerge, PdfReader, PdfWriter
+
 ##-- end imports
 
 logging = root_logger.getLogger(__name__)
 
-def get2(srcpages):
-    scale = 0.5
-    srcpages = PageMerge() + srcpages.pages[:2]
-    x_increment, y_increment = (scale * i for i in srcpages.xobj_box[2:])
-    for i, page in enumerate(srcpages):
-        page.scale(scale)
-        page.x = 0 if i == 0 else x_increment
-        page.y = 0
-
-    return srcpages.render()
-
-def convert_pdfs_to_text(files:list[pl.Path]):
-    logging.info("Converting %s files", len(files))
-    for x in files:
-        name = x.name
-        text_file = x.parent / f".{name}.txt"
-        if text_file.exists():
-            continue
-
-        call_sig = ['pdftotext', str(x), str(text_file)]
-        logging.info("Converting: %s", " ".join(call_sig))
-        call(call_sig)
 
 def convert_alternative(source, output_dir, title):
     target = output_dir / f".{title}.txt"

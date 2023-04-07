@@ -10,7 +10,7 @@ import fileinput
 import doot
 from doot.tasker import DootTasker
 
-from doot.task_group import TaskGroup
+from doot.core.task.task_group import TaskGroup
 ##-- end imports
 # https://pip.pypa.io/en/stable/cli/
 

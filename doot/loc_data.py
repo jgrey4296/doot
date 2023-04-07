@@ -21,8 +21,8 @@ from weakref import ref
 from doit.task import Task as DoitTask
 from doit.task import dict_to_task
 
-from doot.task_group import TaskGroup
-from doot.utils.check_dirs import CheckDir
+from doot.core.task.task_group import TaskGroup
+from doot.core.utils.check_dirs import CheckDir
 from doot.errors import DootDirAbsent
 
 if TYPE_CHECKING:
@@ -37,7 +37,7 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-from doot.utils.task_namer import task_namer
+from doot.core.utils.task_namer import task_namer
 
 class LocProxy:
 

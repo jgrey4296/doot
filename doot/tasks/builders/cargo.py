@@ -7,17 +7,16 @@ import shutil
 import sys
 
 from doit.action import CmdAction
-from doit.tools import Interactive
 
 import doot
-from doot.task_group import TaskGroup
+from doot.core.task.task_group import TaskGroup
 from tomler import TomlAccessError, Tomler
 from doot import tasker
 
 ##-- end imports
 # https://doc.rust-lang.org/cargo/index.html
 
-from doot.tasks.utils.cargo import CargoMixin
+from doot.mixins.cargo import CargoMixin
 from doot.mixins.commander import CommanderMixin
 from doot.mixins.filer import FilerMixin
 
