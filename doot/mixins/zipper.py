@@ -116,7 +116,7 @@ class ZipperMixin:
                 except FileNotFoundError as err:
                     logging.warning(f"Adding File to Zip {fpath} failed: {err}", file=sys.stderr)
 
-    def zip_globs(self, fpath, *globs):
+    def zip_globs(self, fpath, *globs:str, ignore_dots=False):
         """
         Add files chosen by globs to the zip, relative to the cwd
         """
@@ -127,19 +127,19 @@ class ZipperMixin:
         root                          = self.zip_root or pl.Path()
         compress_type, compress_level = self._zip_get_compression_settings()
         with zipfile.ZipFile(fpath, mode='a', compression=compress_type, compresslevel=compress_level, allowZip64=True) as targ:
-            contents = targ.namelist()
             for globstr in globs:
                 result = list(root.glob(globstr))
                 logging.info(f"Globbed: {root}/{globstr} : {len(result)}")
                 for globf in result:
                     try:
-                        if globf.stem[0] == ".":
+                        if globf.stem[0] == "." and ignore_dots:
                             continue
                         relpath = pl.Path(globf).relative_to(root)
-                        if relpath not in contents:
-                            targ.write(str(globf), relpath)
-                    except ValueError:
-                        relpath = root / pl.Path(globf).name
+                        match str(relpath) in targ.namelist():
+                            case True:
+                                logging.warning("Duplication Attempt: %s -> %s", globf, relpath)
+                            case False:
+                                targ.write(str(globf), relpath)
                     except FileNotFoundError as err:
                         logging.warning(f"Adding File to Zip {fpath} failed: {err}", file=sys.stderr)
 
@@ -148,8 +148,7 @@ class ZipperMixin:
         self.zip_create(fpath)
 
         compress_type, compress_level = self._zip_get_compression_settings()
-        with zipfile.ZipFile(fpath, mode='a',
-                             compression=compress_type, compresslevel=compress_level, allowZip64=True) as targ:
+        with zipfile.ZipFile(fpath, mode='a', compression=compress_type, compresslevel=compress_level, allowZip64=True) as targ:
             match fname in targ.namelist():
                 case True:
                     logging.warning("Duplication Attempt: %s -> %s", fpath, fname)
@@ -160,3 +159,41 @@ class ZipperMixin:
     def zip_get_contents(self, fpath) -> list[str]:
         with zipfile.Zipfile(fpath):
             return zipfile.namelist()
+
+
+    def zip_unzip_to(self, fpath:pl.Path, *zips:pl.Path, fn=None):
+        """
+        extract everything or everything that returns true from fn, from all zips given
+        into subdirs of fpath
+        """
+        fn = fn or (lambda x: True)
+
+        for zipf in zips:
+            logging.debug("Extracting: %s (%s) to %s", zipf, fn, fpath)
+            self.mkdirs(fpath / zipf.stem)
+            with zipfile.ZipFile(zipf) as targ:
+                subset = [x for x in targ.namelist() if fn(x)]
+                targ.extractall(fpath / zipf.stem, members=subset)
+
+    def zip_unzip_concat(self, fpath:pl.Path, *zips:pl.Path, member=None, header=b"\n\n#------\n\n", footer=b"\n\n#------\n\n"):
+        with open(fpath, "ab") as out:
+            for zipf in zips:
+                try:
+                    logging.debug("Concating: %s (%s) to %s", zipf, member, fpath)
+                    with zipfile.ZipFile(zipf) as targ:
+                        data = targ.read(member)
+                        if header:
+                            out.write(header)
+                        out.write(data)
+                        if footer:
+                            out.write(footer)
+
+                except Exception as err:
+                    logging.warning("Issue reading: %s : %s", zipf, err)
+
+    def zip_test(self, *zips:pl.Path):
+        for zipf in zips:
+            with zipfile.ZipFile(zipf) as targ:
+                result = targ.testzip()
+                if result is not None:
+                    logging.warning("Issue with %s : %s", zipf, targ)
