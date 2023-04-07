@@ -39,31 +39,36 @@ class TargetedMixin:
     """
     For Quickly making a task have cli args to control batching
     """
+    glob_all_as_default = False
 
     def target_params(self) -> list:
         return [
             {"name": "target", "short": "t", "type": maybe_build_path, "default": None},
-            {"name": "all", "long": "all", "type": bool, "default": False},
+            {"name": "all", "long": "all", "type": bool, "default": self.glob_all_as_default},
+            {"name": "some", "long": "some", "type": float, "default": -1.0 },
         ]
 
     def glob_all(self, rec=None, fn=None, root:pl.Path=None):
         match self.args, root:
-            case {'all': False, 'target': None}, None:
-                logging.debug("%s : No Target Specified", self.basename)
-                globbed = []
-            case {'all': True}, None:
-                globbed = super().glob_all()
             case _, x if x is not None:
                 globbed = [(y.name, y) for y in self.glob_target(x, fn=fn, rec=rec)]
-            case {'target': targ}, None if targ.parts[0] == "~":
+            case {'target': targ}, None if bool(targ) and targ.parts[0] == "~":
                 globbed = [(y.name, y) for y in self.glob_target(targ.expanduser(), fn=fn, rec=rec)]
-            case {'target': targ}, None if targ.is_absolute():
+            case {'target': targ}, None if bool(targ) and targ.is_absolute():
                 globbed = [(y.name, y) for y in self.glob_target(targ, fn=fn, rec=rec)]
-            case {'target': targ}, None:
+            case {'target': targ}, None if bool(targ):
                 globbed = [(y.name, y) for y in self.glob_target(self.locs.root / targ, fn=fn, rec=rec)]
+            case {"some": val}, None if not val.is_integer() and 0 < val < 1:
+                k       = int(len(globbed) * val)
+                globbed = random.choices(super().glob_all(), k=k)
+            case {"some": val}, None if val.is_integer() and 1 < val:
+                globbed = random.choices(super().glob_all(), k=int(val))
+            case {'all': True}, None:
+                globbed = super().glob_all()
             case _, _:
                 logging.warning("%s : No Recognizable Target Specified", self.basename)
                 globbed = []
+
 
         if bool(globbed) and not globbed[0][1].exists():
             logging.error("%s : Target Doesn't Exist : %s", self.basename, globbed[0])
