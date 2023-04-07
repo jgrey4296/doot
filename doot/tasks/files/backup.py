@@ -45,6 +45,7 @@ sleep_batch      = doot.config.on_fail(2.0,   int|float).batch.sleep()
 class BackupTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
     """
     copy all files to the target if they are newer or don't exist
+    # TODO option for backup as zip
     """
 
     def __init__(self, name="backup::default", locs=None, roots=None, output=None):
@@ -88,6 +89,7 @@ class BackupTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
         """
         actions = [ lambda: self._backup_log.append(fpath) ]
         if fpath.is_dir():
+            actions.append( (self.log, [f"Backup Up Directory: {fpath}"]) )
             actions.append( (self.backup_dir, [fpath]) )
         else:
             actions.append( (self.backup_file, [fpath]) )
@@ -121,4 +123,7 @@ class BackupTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
             target_parent.mkdir(parents=True)
 
         logging.debug(f"Copying Tree: {fpath} -> {target}")
-        shutil.copytree(fpath, target)
+        try:
+            shutil.copytree(fpath, target)
+        except shutil.Error as err:
+            logging.warning("Directory Backup Issue: %s", err)

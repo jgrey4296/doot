@@ -458,7 +458,7 @@ class TwitterMerge(DelayedMixin, globber.DootEagerGlobber, BatchMixin, FilerMixi
     def task_detail(self, task):
         task.update({
             "actions" : [ self.merge_all_media ],
-            "task_dep" : [ "twitter::zip" ],
+            "task_dep" : [ ],
         })
         return task
 
@@ -519,7 +519,7 @@ class TwitterMerge(DelayedMixin, globber.DootEagerGlobber, BatchMixin, FilerMixi
             dest     = lib_path / fdir.name
             logging.info(f"- {fdir.stem}")
             if not dest.exists():
-                dest.mkdir()
+                dest.mkdir(parents=True)
 
             for x in list(fdir.glob("*")):
                 self.copy_to(dest, x)

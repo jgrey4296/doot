@@ -92,6 +92,7 @@ class SubMixin:
             if bool(self.sleep_subtask):
                 task['actions'].append(self._sleep_subtask)
 
+            task['actions'] = [x for x in task['actions'] if bool(x)]
             return task
         except DootDirAbsent:
             return None

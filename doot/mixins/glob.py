@@ -83,21 +83,3 @@ class DirGlobMixin:
                     raise TypeException("Unexpected glob filter value", x)
 
         return results
-
-class SubGlobMixin:
-    """
-    Glob only a subset of potentials
-    """
-
-    def glob_all(self, rec=None, fn=None):
-        results = super().glob_all(rec)
-        match glob_subselect_exact, glob_subselect_pcnt:
-            case (-1, -1):
-                return results
-            case exact, 0:
-                k = min(exact, len(results))
-            case 0, percent:
-                one = len(results) * 0.01
-                k = int(one * percent)
-
-        return random.choices(results, k=k)

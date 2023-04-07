@@ -166,6 +166,7 @@ class DootTasker:
                     return None
                 case dict() as val:
                     self.has_active_setup = True
+                    val['actions'] = [x for x in val['actions'] if bool(x)]
                     return DootTaskExt(**val)
                 case _ as val:
                     logging.warning("Setup Detail Returned an unexpected value: ", val)
@@ -181,7 +182,8 @@ class DootTasker:
         if self.has_active_setup:
             maybe_task['setup'] += [self.setup_name]
 
-        full_task     = DootTaskExt(**maybe_task)
+        maybe_task['actions'] = [x for x in maybe_task['actions'] if bool(x)]
+        full_task             = DootTaskExt(**maybe_task)
         if not bool(full_task.doc):
             full_task.doc = self.doc
         return full_task
