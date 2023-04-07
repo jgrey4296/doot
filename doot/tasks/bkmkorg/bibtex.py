@@ -45,18 +45,24 @@ from doot.utils.formats.timelinefile import TimelineFile
 
 ##-- end imports
 
-min_tag_timeline : Final = doot.config.on_fail(10, int).bibtex.min_timeline()
-stub_exts        : Final = doot.config.on_fail([".pdf", ".epub", ".djvu", ".ps"], list).bibtex.stub_exts()
-clean_in_place   : Final = doot.config.on_fail(False, bool).bibtex.clean_in_place()
+##-- logging
+logging = logmod.getLogger(__name__)
+logmod.getLogger('bibtexparser').setLevel(logmod.CRITICAL)
+##-- end logging
 
-ENT_const        : Final = 'ENTRYTYPE'
+min_tag_timeline     : Final = doot.config.on_fail(10, int).bibtex.min_timeline()
+stub_exts            : Final = doot.config.on_fail([".pdf", ".epub", ".djvu", ".ps"], list).bibtex.stub_exts()
+clean_in_place       : Final = doot.config.on_fail(False, bool).bibtex.clean_in_place()
+wayback_wait         : Final = doot.config.on_fail(10, int).bibtex.wayback_wait()
+acceptible_responses : Final = doot.config.on_fail(["200"], list).bibtex.accept_wayback()
+ENT_const            : Final = 'ENTRYTYPE'
 
 class LibDirClean(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerMixin):
     """
     Clean the directories of the bibtex library
     """
 
-    def __init__(self, name="pdflibrary::clean", locs=None, roots=None, rec=True, exts=None):
+    def __init__(self, name="pdflib::clean", locs=None, roots=None, rec=True, exts=None):
         super().__init__(name, locs, roots or [locs.pdfs], rec=False, exts=exts)
 
     def set_params(self):
@@ -129,12 +135,12 @@ class BibtexClean(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, bib_cle
     def load_and_clean(self, fpath):
         logging.info("Cleaning: %s", fpath)
         self.current_year = fpath.stem
-        self.current_db   = self.bc_load_db([fpath], fn=self.on_parse_clean_entry)
+        self.current_db   = self.bc_load_db([fpath], fn=self.on_parse_check_entry)
         # Everything loaded, crossrefs resolved
         for entry in self.current_db.entries:
             self.loaded_clean_entry(entry)
 
-    def on_parse_clean_entry(self, entry) -> dict:
+    def on_parse_check_entry(self, entry) -> dict:
         # Preprocess
         self.bc_lowercase_keys(entry)
         self.bc_tag_split(entry)
@@ -218,7 +224,7 @@ class BibtexReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerM
     def __init__(self, name="bibtex::report", locs=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.bibtex], rec=rec, exts=[".bib"])
         self.locs.update(timelines=self.locs.build / "timelines")
-        self.locs.ensure("pdfs", task=name)
+        self.locs.ensure("pdfs", "timelines", task=name)
 
         self.db                             = None
         self.tag_file_mapping               = defaultdict(list)
@@ -438,6 +444,8 @@ class BibtexStub(DelayedMixin, globber.DootEagerGlobber):
         for fpath in itertools.chain(wd.glob("*.pdf"), wd.glob("*.epub")):
             if fpath.name in self.source_file_set:
                 continue
+            if "_refiled" in fpath.name:
+                continue
 
             self.max_stub_id += 1
             stub_str = BibtexStub.stub_t.substitute(id=self.max_stub_id,
@@ -455,37 +463,160 @@ class BibtexStub(DelayedMixin, globber.DootEagerGlobber):
             f.write("\n")
             f.write("\n\n".join(self.stubs))
 
-class TODOBibtexWaybacker(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
+class BibtexWaybacker(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, bib_clean.BibFieldCleanMixin, bib_clean.BibPathCleanMixin, BibLoadSaveMixin, BatchMixin, FilerMixin, WebMixin):
     """
     get all urls from bibtexs,
     then check they are in wayback machine,
     or add them to it
     then add the wayback urls to the relevant bibtex entry
     """
-    pass
 
-class TODOPdfLibSummary(doot.DootTasker):
+    def __init__(self, name="bibtex::wayback", locs=None, roots=None, exts=None):
+        super().__init__(name, locs, roots or [locs.bibtex], rec=True, exts=exts or [".bib"])
+        self.current_db   = None
+        self.current_year = None
+
+    def set_params(self):
+        return self.target_params()
+
+    def subtask_detail(self, task, fpath):
+        task.update({
+            "actions" : [
+                (self.load_and_clean, [fpath]), # -> cleaned
+                self.db_to_str, # -> db
+                (self.write_to, [fpath, "db"]),
+            ],
+        })
+        return task
+
+    def db_to_str(self):
+        return {
+            "db" : self.bc_db_to_str(self.current_db, self.locs.pdfs)
+        }
+
+    def load_and_clean(self, fpath):
+        logging.info("Cleaning: %s", fpath)
+        self.current_year = fpath.stem
+        self.current_db   = self.bc_load_db([fpath], fn=self.on_parse_check_entry)
+
+    def on_parse_check_entry(self, entry) -> dict:
+        url_keys = [k for k in entry.keys() if "url" in k]
+        if not bool(url_keys):
+            return entry
+
+        save_prefix = "https://web.archive.org/save"
+        for k in url_keys:
+            url = entry[k]
+            match self.check_wayback(url):
+                case None: # is wayback url? continue
+                    pass
+                case False: # create wayback url and replace
+                    result = self.post_url(save_prefix, url=url)
+                    recheck = self.check_wayback(url)
+                    if isinstance(recheck, str):
+                        entry[k] = recheck
+                case str() as way_url: # wayback url exists? replace
+                    entry[k] = way_url
+                case _:
+                    raise TypeError("Unknown wayback response")
+
+        return entry
+
+    def check_wayback(self, url) -> bool|str:
+        if "web.archive.org" in url:
+            return None
+        time.sleep(wayback_wait)
+        check_url = " http://archive.org/wayback/available?url=" + url
+        json_data : dict = self.get_url(check_url)
+        if 'archived_snapshots' not in json_data:
+            return False
+
+        closest = json_data['archived_snapshots'].get('closest', None)
+        if closest is not None and closest['status'] in acceptible_responses and closest.get('available', False):
+            return closest["url"]
+
+class PdfLibSummary(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, PdfMixin):
     """
     Compile the first n pages of each pdf in a decade together
     """
-    pass
 
-class TODOPdfBibtexCompile(doot.DootTasker):
+    def __init__(self, name="pdflib::summary", locs=None, roots=None, output=None):
+        super().__init__(name, locs, roots or [locs.pdfs], rec=True)
+        self.output = output or locs.pdf_summary
+
+    def set_params(self):
+        return self.target_params()
+
+    def filter(self, fpath):
+        if fpath.is_dir() and fpath.name.isdigit():
+            return self.globc.keep
+        return self.globc.discard
+
+    def subtask_detail(self, task, fpath):
+        task.update({
+            "actions" : [ (self.summarise_year, [fpath]) ],
+        })
+        return task
+
+    def summarise_year(self, fpath):
+        pdfs = fpath.rglob("*.pdf")
+        self.pdf_summary(pdfs, output=self.output)
+
+class BibtexCompile(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
     """
     Compile individual bibtex files into pdfs
     then combine them together into decades and total
     """
-    pass
 
-class TODOTimelineCompile(doot.DootTasker):
+    def __init__(self, name="bibtex::compile", locs=None, roots=None, output=None):
+        super().__init__(name, locs, roots or [locs.bibtex], rec=False, exts=[".bib"])
+        self.output = output or locs.pdf_summary
+        self.locs.ensure("temp", task=name)
+
+    def subtask_detail(self, task, fpath):
+        task.update({
+            "actions" : [
+                # create tex wrapper in temp
+                # compile bs
+            ],
+        })
+        return task
+
+class TimelineCompile(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
     """
     take a timeline and create a pdf of the citations,
     and the combined pdfs
     """
-    pass
 
-class TODOHashVerify(doot.DootTasker):
+    def __init__(self, name="timeline::compile", locs=None, roots=None, exts=None, output=None):
+        super().__init__(name, locs, roots or [locs.timelines], exts=exts or [".tag_timeline"])
+        self.output = output or self.locs.build
+
+    def set_params(self):
+        return self.target_params()
+
+    def subtask_detail(self, task, fpath):
+        task.update({
+            "actions" : [
+                # construct tex file
+                # Compile
+                     ],
+        })
+        return task
+
+class TODOHashVerify(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
     """
     Check a random selection of files for hash consistency
     """
-    pass
+
+    def __init__(self, name="bibtex::hash.check", locs=None, roots=None, exts=None):
+        super().__init__(name, locs, roots or [locs.bibtex], exts=exts or [".bib"])
+
+    def set_params(self):
+        return self.target_params()
+
+    def subtask_detail(self, task, fpath):
+        task.update({
+            "actions" : [],
+        })
+        return task
