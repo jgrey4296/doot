@@ -53,7 +53,9 @@ class BackupTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
         self._backup_log = []
 
     def set_params(self):
-        return self.target_params()
+        return self.target_params() + [
+            {"name": "dry", "long": "dry", "type": bool, "default": False}
+        ]
 
     def filter(self, fpath):
         rel_path      = self.rel_path(fpath)
@@ -74,7 +76,6 @@ class BackupTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
 
         return self.control.reject
 
-
     def task_detail(self, task):
         task.update({
             "actions" : [ (self.log, [[lambda: self._backup_log], logmod.INFO, "Backed Up: " ]) ],
@@ -88,13 +89,15 @@ class BackupTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
         if you hit modulo of batch size, sleep
         """
         actions = [ lambda: self._backup_log.append(fpath) ]
-        if fpath.is_dir():
-            actions.append( (self.log, [f"Backup Up Directory: {fpath}"]) )
+        if self.args['dry']:
+            actions.append( (self.log, [f"Dry Run: {fpath}", logmod.INFO]) )
+        elif fpath.is_dir():
+            actions.append( (self.log, [f"Backup Up Directory: {fpath}", logmod.INFO]) )
             actions.append( (self.backup_dir, [fpath]) )
         else:
             actions.append( (self.backup_file, [fpath]) )
 
-        if task.get('meta', {}).get('n', 1) % batch_size == 0:
+        if not self.args['dry'] and task.get('meta', {}).get('n', 1) % batch_size == 0:
             actions.append( (self.log, ["...", logmod.INFO]) )
             actions.append( lambda: time.sleep(sleep_batch) )
 
@@ -127,3 +130,6 @@ class BackupTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
             shutil.copytree(fpath, target)
         except shutil.Error as err:
             logging.warning("Directory Backup Issue: %s", err)
+
+    def backup_to_zip(self, fpath):
+        pass

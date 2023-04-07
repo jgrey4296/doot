@@ -188,7 +188,7 @@ class DootTasker:
             full_task.doc = self.doc
         return full_task
 
-    def build(self, **kwargs) -> GeneratorType:
+    def build(self, **kwargs) -> Generator[DoitTask|dict]:
         logging.debug("Building Tasker: %s", self.fullname)
         if bool(kwargs):
             logging.debug("Recieved kwargs: %s", kwargs)

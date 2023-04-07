@@ -51,27 +51,22 @@ class TargetedMixin:
     def glob_all(self, rec=None, fn=None, root:pl.Path=None):
         match self.args, root:
             case _, x if x is not None:
-                globbed = [(y.name, y) for y in self.glob_target(x, fn=fn, rec=rec)]
+                yield from ((y.name, y) for y in self.glob_target(x, fn=fn, rec=rec))
             case {'target': targ}, None if bool(targ) and targ.parts[0] == "~":
-                globbed = [(y.name, y) for y in self.glob_target(targ.expanduser(), fn=fn, rec=rec)]
+                yield from ((y.name, y) for y in self.glob_target(targ.expanduser(), fn=fn, rec=rec))
             case {'target': targ}, None if bool(targ) and targ.is_absolute():
-                globbed = [(y.name, y) for y in self.glob_target(targ, fn=fn, rec=rec)]
+                yield from ((y.name, y) for y in self.glob_target(targ, fn=fn, rec=rec))
             case {'target': targ}, None if bool(targ):
-                globbed = [(y.name, y) for y in self.glob_target(self.locs.root / targ, fn=fn, rec=rec)]
+                yield from ((y.name, y) for y in self.glob_target(self.locs.root / targ, fn=fn, rec=rec))
             case {"some": val}, None if not val.is_integer() and 0 < val < 1:
-                k       = int(len(globbed) * val)
-                globbed = random.choices(super().glob_all(), k=k)
+                k           = int(len(globbed) * val)
+                all_globbed = list(super().glob_all())
+                yield from random.choices(all_globbed, k=k)
             case {"some": val}, None if val.is_integer() and 1 < val:
-                globbed = random.choices(super().glob_all(), k=int(val))
+                all_globbed = list(super().glob_all())
+                yield from random.choices(all_globbed, k=int(val))
             case {'all': True}, None:
-                globbed = super().glob_all()
+                yield from super().glob_all()
             case _, _:
                 logging.warning("%s : No Recognizable Target Specified", self.basename)
-                globbed = []
-
-
-        if bool(globbed) and not globbed[0][1].exists():
-            logging.error("%s : Target Doesn't Exist : %s", self.basename, globbed[0])
-            exit(1)
-
-        return globbed
+                yield from []

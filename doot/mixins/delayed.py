@@ -59,6 +59,9 @@ class DelayedMixin:
         return task_namer(self.delayed_name, "subtask_gen", private=True)
 
     def _build_task(self):
+        """
+        adds a calculated task dependency to grab late-built subtasks
+        """
         task = super()._build_task()
         if task is None:
             return None
@@ -67,7 +70,7 @@ class DelayedMixin:
         task.update_deps({ "calc_dep" : [ self.calc_dep_taskname ]})
         return task
 
-    def build(self, **kwargs):
+    def build(self, **kwargs) -> Generator[DoitTask]:
         logging.debug("Wrapping Task for delay sequencing: %s", self.fullname)
         yield { # Simple Wrapper to sequence properly
             "head_task" : True,
@@ -84,7 +87,7 @@ class DelayedMixin:
         yield from super().build(**kwargs)
         yield self._build_delayed_deps_update()
 
-    def _build_delayed_deps_update(self):
+    def _build_delayed_deps_update(self) -> dict:
         return { # The calc_deps subtask for main
             "basename": self.calc_dep_taskname,
             "actions": [ self.delayed_tasknames_action ],
@@ -98,8 +101,8 @@ class DelayedMixin:
     def _build_subs(self):
         return []
 
-    def _build_delayed(self, **kwargs):
-        logging.debug("Delayed Tasks now building : %s", self.fullname)
+    def _build_delayed(self, **kwargs) -> Generator[dict]:
+        logging.info("%s : Building Delayed Subtasks", self.fullname)
         self._delayed_task_names = []
         for task in super(DelayedMixin, self)._build_subs():
             task['basename'] = task_namer(self.delayed_name, task["name"])
@@ -107,4 +110,4 @@ class DelayedMixin:
             self._delayed_task_names.append(task['basename'])
             yield task
 
-        logging.debug("There are %s newly delayed tasks", len(self._delayed_task_names))
+        logging.info("%s : %s delayed tasks", self.fullname, len(self._delayed_task_names))

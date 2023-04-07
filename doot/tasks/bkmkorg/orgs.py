@@ -234,14 +234,14 @@ class ThreadOrganise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Batc
     def subtask_detail(self, task, fpath):
         task.update({
             "actions" : [
-                (self.read_threadcount, [fpath])
+                (self.read_threadcount, [fpath]),
                 (self.process_threads, [fpath]),
             ],
         })
         return task
 
     def read_threadcount(self, fpath):
-        threadp = fpath.parent / thread_file
+        threadp = fpath / thread_file
         self.multi_threads.clear()
         for line in threadp.read_text().split("\n"):
             result = self.total_files_reg.match(line)
@@ -262,7 +262,7 @@ class ThreadOrganise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Batc
         if not bool(self.multi_threads):
             return
 
-        logging.info(f"Processing: {fpath} : Total: {self.total_threads}, {self.multi_threads}")
+        logging.info(f"Processing: {fpath} : Total: {self.total_threads}, {len(self.multi_threads)}")
 
         targets = list(self.multi_threads)
         self.multi_threads.clear()

@@ -98,8 +98,5 @@ class SubMixin:
             return None
 
     def build(self, **kwargs) -> GeneratorType:
-        yield super().build(**kwargs)
-
-        subtasks   = self._build_subs()
-        for x in subtasks:
-            yield x
+        yield from super().build(**kwargs)
+        yield from self._build_subs()

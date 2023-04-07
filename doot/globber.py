@@ -91,21 +91,27 @@ class DootEagerGlobber(SubMixin, DootTasker):
 
         raise ValueError(f"{fpath} is not able to be made relative")
 
-    def glob_target(self, target, rec=None, fn=None, exts=None) -> list[pl.Path]:
-        results   = []
+    def glob_target(self, target, rec=None, fn=None, exts=None) -> Generator[pl.Path]:
         exts      = exts or self.exts or []
         filter_fn = fn or self.filter
 
         if not target.exists():
-            return []
-        elif not (bool(rec) or rec is None and self.rec):
+            yield from []
+            return None
+
+        if not (bool(rec) or rec is None and self.rec):
             check_fn = lambda x: (filter_fn(x) not in [None, False, GlobControl.reject, GlobControl.discard]
                                   and x.name not in glob_ignores
                                   and (not bool(exts) or (x.is_file() and x.suffix in exts)))
 
-            potentials  = [target] + [x for x in target.iterdir()]
-            results     = [x for x in potentials if check_fn(x)]
-            return results
+            if check_fn(target):
+                yield target
+
+            for x in target.iterdir():
+                if check_fn(x):
+                    yield x
+
+            return None
 
         assert(rec or self.rec)
         queue = [target]
@@ -119,11 +125,11 @@ class DootEagerGlobber(SubMixin, DootTasker):
                 continue
             match filter_fn(current):
                 case GlobControl.keep:
-                    results.append(current)
+                    yield current
                 case False | GlobControl.discard if current.is_dir():
                     queue += sorted(current.iterdir())
                 case True | GlobControl.accept:
-                    results.append(current)
+                    yield current
                     if current.is_dir():
                         queue += sorted(current.iterdir())
                 case None | False | GlobControl.reject | GlobControl.discard:
@@ -131,47 +137,38 @@ class DootEagerGlobber(SubMixin, DootTasker):
                 case _ as x:
                     raise TypeError("Unexpected glob filter value", x)
 
-        return results
 
-    def glob_all(self, rec=None, fn=None) -> list[tuple(str, pl.Path)]:
+    def glob_all(self, rec=None, fn=None) -> Generator[tuple(str, pl.Path)]:
         """
         Glob all available files,
         and generate unique names for them
         """
-        globbed = set()
+        globbed_count = 0
+        globbed_names = set()
         for root in self.roots:
-            globbed.update(self.glob_target(root, rec=rec, fn=fn))
+            for fpath in self.glob_target(root, rec=rec, fn=fn):
+                parts = list(fpath.parts[:-1]) + [fpath.stem]
 
-        logging.debug("Globbed: (%s) : %s", len(globbed), globbed)
-        results = {}
+                # ensure unique task names
+                index = len(parts) - 2
+                while 0 < index and "_".join(parts[index:]) in globbed_names:
+                    index -= 1
 
-        # then create unique names based on path:
-        for fpath in globbed:
-            parts = list(fpath.parts[:-1]) + [fpath.stem]
+                unique_name = "_".join(parts[index:])
+                globbed_names.add(unique_name)
+                yield unique_name, fpath
 
-            # name already exists, create a unique version
-            # based on its path
-            index = len(parts) - 2
-            while 0 < index and "_".join(parts[index:]) in results:
-                index -= 1
+        logging.debug("Globbed : %s", globbed_count)
 
-            results["_".join(parts[index:])] = fpath
-
-        return list(results.items())
-
-    def _build_subs(self):
+    def _build_subs(self) -> Generator[dict]:
+        self.total_subtasks = 0
         logging.debug("%s : Building Globber SubTasks", self.basename)
-        globbed    = self.glob_all()
-        subtasks   = []
-        for i, (uname, fpath) in enumerate(globbed):
-            subtask = self._build_subtask(i, uname, fpath=fpath)
-            match subtask:
+        for i, (uname, fpath) in enumerate(self.glob_all()):
+            match self._build_subtask(i, uname, fpath=fpath):
                 case None:
                     pass
-                case dict():
-                    subtasks.append(subtask)
+                case dict() as subtask:
+                    self.total_subtasks += 1
+                    yield subtask
                 case _:
                     raise TypeError("Unexpected type for subtask: %s", type(subtask))
-
-        self.total_subtasks = len(subtasks)
-        return subtasks

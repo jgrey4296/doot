@@ -161,8 +161,6 @@ class DootLoader(NamespaceTaskLoader):
         """
         Run each task creator, or delay it
         """
-        logging.debug("Building Tasks from %s creators", len(creators))
-
         for name, ref in creators:
             # Parse command line arguments for task generator parameters
             param_spec, creator_kwargs = self._parse_creator_params(name, ref, args)
@@ -220,10 +218,10 @@ class DootLoader(NamespaceTaskLoader):
         self._task_collection[task.name] = task
 
     def _generate_tasks(self, func_name, gen_result, creator_kwargs, param_spec, gen_doc=None) -> list:
-        # a task instance, just return it without any processing
         new_task = None
         match gen_result:
             case doit_loader.Task():
+                # a task instance, just return it without any processing
                 logging.debug("Task is a Task Object, nothing to do: %s", gen_result.name)
                 new_task = gen_result
             case DootTasker():
