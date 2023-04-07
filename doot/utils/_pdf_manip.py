@@ -39,36 +39,6 @@ def merge_pdfs(paths, output="./pdf_summary"):
 
     writer.write(str(output))
 
-def summarise_to_pdfs(paths:list[pl.Path], func=None, output="./pdf_summary", base_name="summary", bound=200):
-    """
-    For a list of pdfs, get the first two pages of each,
-    and make a pdf of those
-    """
-    output = pl.Path(output).expanduser().resolve()
-    count = 0
-    func = func or get2
-    if output.is_dir() and not output.exists():
-        output.mkdir()
-    if output.is_dir():
-        output = output / base_name
-
-    output = output.with_suffix(".pdf")
-
-    writer = PdfWriter()
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        for path in paths:
-            # Try to add to the writer in various forms:
-            for attempt in [handle_epub, add_to_writer, uncompress_pdf, add_simple_text_to_writer]:
-                if attempt(path, writer, func, temp_dir):
-                    break
-                else:
-                    continue
-
-            count, writer = finalise_writer(output, writer, base_name, count, bound)
-
-        finalise_writer(output, writer, base_name, count, bound, force=True)
-
 def handle_epub(path, writer, func, temp) -> bool:
     result = False
     if path.suffix == ".epub":
@@ -84,17 +54,6 @@ def handle_epub(path, writer, func, temp) -> bool:
             logging.debug("Epub Error: %s", err)
 
     return result
-
-def add_to_writer(path, writer, func, temp) -> bool:
-    logging.warning("Adding to writer: %s", path)
-    result = False
-    try:
-        if path.suffix == ".pdf":
-            pdf_obj = PdfReader(path)
-            writer.addpage(func(pdf_obj))
-            result = True
-    finally:
-        return result
 
 def uncompress_pdf(path, writer, func, temp):
     if path.suffix != ".pdf":
@@ -139,3 +98,59 @@ def finalise_writer(output, writer, base_name, count, bound, force=False) -> tup
         count += 1
 
     return count, writer
+
+
+def file_is_finished(path) -> bool:
+    result = False
+    if not path.exists():
+        return result
+
+    response = subprocess.run(['tail', '-n', '1', str(path)],
+                              capture_output=True,
+                              shell=False)
+    line = response.stdout.decode()
+    if line == END_LINE:
+        result = True
+
+    return result
+
+def exiftool_pdf_md(path) -> str:
+    result = ""
+    try:
+        response = subprocess.run(["exiftool", str(path), "-PDF:all"],
+                                  capture_output=True,
+                                  shell=False)
+        result = response.stdout.decode() if response.returncode == 0 else response.stderr.decode()
+
+    except Exception as err:
+        result = str(err)
+
+    return result
+
+def exiftool_xmp_md(path) -> str:
+    result = ""
+    try:
+        response = subprocess.run(["exiftool", str(path), "-XMP:all"],
+                                  capture_output=True,
+                                  shell=False)
+        result = response.stdout.decode() if response.returncode == 0 else response.stderr.decode()
+
+    except Exception as err:
+        result = str(err)
+
+    return result
+
+def pdftk_md(path) -> str:
+    result = ""
+    try:
+        response = subprocess.run(["pdftk", str(path), "dump_data_utf8"],
+                                  capture_output=True,
+                                  shell=False)
+        result = response.stdout.decode() if response.returncode == 0 else response.stderr.decode()
+
+        result = "\n".join([x for x in result.split("\n") if "Info" in x])
+
+    except Exception as err:
+        result = str(err)
+
+    return result
