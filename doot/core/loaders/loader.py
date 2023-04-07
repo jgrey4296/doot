@@ -60,6 +60,8 @@ opt_doot = {
     "help"    : "load task from doot FILE [default: %(default)s]"
 }
 
+
+
 class DootLoader(NamespaceTaskLoader):
     """
     Customized doit_loader.Task loader that automatically
@@ -95,6 +97,7 @@ class DootLoader(NamespaceTaskLoader):
         return self.config
 
     def load_tasks(self, cmd, pos_args) -> list:
+        start_time = time.perf_counter()
         logging.debug("---- Loading Tasks")
         creators = self._get_task_creators(self.namespace, self.cmd_names)
 
@@ -106,7 +109,9 @@ class DootLoader(NamespaceTaskLoader):
         logging.debug("Task List Names: %s", list(self._task_collection.keys()))
         if bool(self._build_failures):
             logging.warning("%s task build failures", len(self._build_failures))
-        logging.debug("---- Tasks Loaded")
+        logging.debug("---- Tasks Loaded in %s seconds", f"{time.perf_counter() - start_time:0.4f}")
+
+
         return self._task_collection.values()
 
     def _get_task_creators(self, namespace, command_names):
