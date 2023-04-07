@@ -194,7 +194,7 @@ class RemoveMissingHashes(tasker.DootTasker):
         current_file = None
         current_set  = set()
         for line in fileinput.input(files=globbed, inplace=True):
-            if fileinput.filename() != current_file:
+            if fileinput.isfirstline():
                 current_file = fileinput.filename()
                 current_set.clear()
 

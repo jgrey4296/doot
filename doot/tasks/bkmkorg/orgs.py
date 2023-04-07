@@ -127,6 +127,9 @@ class ThreadListings(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Batc
         permalinks   = set()
 
         for line in fileinput.input(files=self.glob_target(fpath, fn=self.sub_filter)):
+            if fileinput.isfirstline():
+                logging.info("Processing: %s", fileinput.filename())
+
             result = self.permalink_re.search(line)
             if result:
                 permalinks.add(result[1])
@@ -140,7 +143,7 @@ class ThreadListings(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Batc
         """
         file_dir   = fpath / f"{fpath.name}_files"
         if not file_dir.exists():
-            return
+            return []
 
         if file_dir.is_file():
             with open(pl.Path() / "file_dirs.errors", 'a') as f:
@@ -178,13 +181,17 @@ class OrgMultiThreadCount(DelayedMixin, TargetedMixin, globber.DootEagerGlobber,
         return self.globc.discard
 
     def count_threads(self, fpath):
-        globbed        = [x for x in self.glob_files(fpath) if "thread" in x.stem]
+        logging.info("Counting Threadings for: %s", fpath)
+        globbed        = [x for x in self.glob_target(fpath, fn=self.sub_filter)]
         thread_listing = fpath / thread_file
         counts         = defaultdict(lambda: [0, 0])
         total_files    = len(globbed)
         total_threads  = 0
-
+        logging.info("Globbed: %s", len(globbed))
         for line in fileinput.input(files=globbed):
+            if fileinput.isfirstline():
+                logging.info("Processing: %s", fileinput.filename())
+
             if not self.heading_re.match(line):
                 continue
 
@@ -226,14 +233,12 @@ class ThreadOrganise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Batc
 
     def subtask_detail(self, task, fpath):
         task.update({
-            "actions" : [ (self.process_thread_file, [fpath])],
+            "actions" : [
+                (self.read_threadcount, [fpath])
+                (self.process_threads, [fpath]),
+            ],
         })
         return task
-
-    def process_thread_file(self, fpath):
-        logging.info("Processing: %s", fpath)
-        self.read_threadcount(fpath)
-        self.process_threads(fpath)
 
     def read_threadcount(self, fpath):
         threadp = fpath.parent / thread_file
@@ -271,7 +276,7 @@ class ThreadOrganise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Batc
         # as a state machine, moving extra threads into new files
         try:
             for line in fileinput.input(files=targets, inplace=True, backup=".backup"):
-                if fileinput.filename() != current_file:
+                if fileinput.isfirstline():
                     current_file = fileinput.filename()
                     try:
                         new_thread.close()

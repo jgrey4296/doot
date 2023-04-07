@@ -275,23 +275,25 @@ class TagsIndexer(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchMi
 
     def process_file(self, fpath):
         logging.info("Indexing: %s", fpath)
+        regex       = None
+        splt_by     = ":"
+        tags_target = None
+
         for line in fileinput.input(files=[fpath]):
-            regex       = None
-            splt_by     = ":"
-            tags_target = None
-            match pl.Path(fileinput.filename()).suffix:
-                case ".bookmarks":
-                    regex = bookmark_tag_re
-                    tags_target = self.bkmk_index
-                case ".bib":
-                    regex = bib_tag_re
-                    split_by = ","
-                    tags_target = self.bib_index
-                case ".org":
-                    regex = org_tag_re
-                    tags_target = self.org_index
-                case _:
-                    continue
+            if fileinput.isfirstline():
+                match pl.Path(fileinput.filename()).suffix:
+                    case ".bookmarks":
+                        regex = bookmark_tag_re
+                        tags_target = self.bkmk_index
+                    case ".bib":
+                        regex = bib_tag_re
+                        split_by = ","
+                        tags_target = self.bib_index
+                    case ".org":
+                        regex = org_tag_re
+                        tags_target = self.org_index
+                    case _:
+                        continue
 
             result = regex.match(line)
             if result is None:
