@@ -83,7 +83,7 @@ def main():
         defaulted_locs = doot.DootLocData.report_defaulted()
         defaulted_toml = tomler.Tomler.report_defaulted()
 
-        with open("_doot_defaults.toml", 'w') as f:
+        with open(".doot_defaults.toml", 'w') as f:
             f.write("# default values used:\n")
             f.write("\n".join(defaulted_toml) + "\n\n")
             f.write("[.directories]\n")
