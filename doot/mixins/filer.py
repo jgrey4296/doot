@@ -58,31 +58,64 @@ class FilerMixin:
                 logging.debug("Making Directory: %s", target)
                 target.expanduser().resolve().mkdir(parents=True, exist_ok=True)
 
-    def write_to(self, fpath, key:str|list[str], task, sep=None):
+    def write_to(self, fpath, key:str|list[str], task, sep=None, sub_sep=None):
         if sep is None:
             sep = "\n--------------------\n"
-        match key:
-            case str() if key in task.values:
-                value = task.values[key]
-            case [*strs]:
-                value = sep.join([task.values.get(x, x) for x in key])
-            case _:
-                value = str(key)
 
+        keys   = []
+        values = []
+        match key:
+            case str():
+                keys.append(key)
+            case []:
+                pass
+            case [*strs]:
+                keys += key
+            case _:
+                keys.append(str(key))
+
+        for k in keys:
+            match task.values.get(k, None):
+                case None:
+                    pass
+                case list() as v if sub_sep is None:
+                    values += [str(x) for x in v]
+                case list() as v:
+                    values += sub_sep.join(str(x) for x in v)
+                case _ as v:
+                    valuse.append(str(v))
+
+        value = sep.join(values)
         fpath.expanduser().resolve().write_text(value)
 
-    def append_to(self, fpath, key:str|list[str], task, sep=None):
+    def append_to(self, fpath, key:str|list[str], task, sep=None, sub_sep=None):
         if sep is None:
             sep = "\n--------------------\n"
 
+        keys   = []
+        values = []
         match key:
-            case str() if key in task.values:
-                value = task.values[key]
+            case str():
+                keys.append(key)
+            case []:
+                pass
             case [*strs]:
-                value = sep.join([task.values.get(x, x) for x in key])
+                keys += key
             case _:
-                value = str(x)
+                keys.append(str(key))
 
+        for k in keys:
+            match task.values.get(k, None):
+                case None:
+                    pass
+                case list() as v if sub_sep is None:
+                    values += [str(x) for x in v]
+                case list() as v:
+                    values += sub_sep.join(str(x) for x in v)
+                case _ as v:
+                    valuse.append(str(v))
+
+        value = sep.join(values)
         with open(fpath.expanduser().resolve(), 'a') as f:
             f.write("\n"+ value)
 
@@ -148,3 +181,6 @@ class FilerMixin:
                     shutil.copy(x, target_name)
                 case False:
                     shutil.copytree(x, target_name, dirs_exist_ok=True)
+
+    def read_from(self, fpath, key):
+        return { key : fpath.read_text() }
