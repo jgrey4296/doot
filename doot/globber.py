@@ -37,9 +37,17 @@ class GlobControl(enum.Enum):
     reject  : not a result, don't descend
     """
     accept  = enum.auto()
+    yesAnd  = enum.auto()
+
     keep    = enum.auto()
+    yes     = enum.auto()
+
     discard = enum.auto()
+    noBut   = enum.auto()
+
     reject  = enum.auto()
+    no      = enum.auto()
+
 
 class DootEagerGlobber(SubMixin, DootTasker):
     """
@@ -124,15 +132,19 @@ class DootEagerGlobber(SubMixin, DootTasker):
             if bool(exts) and current.is_file() and current.suffix not in exts:
                 continue
             match filter_fn(current):
-                case GlobControl.keep:
+                case GlobControl.keep | GlobControl.yes:
                     yield current
-                case False | GlobControl.discard if current.is_dir():
+                case False | GlobControl.discard | GlobControl.noBut if current.is_dir():
                     queue += sorted(current.iterdir())
-                case True | GlobControl.accept:
+                case True | GlobControl.accept | GlobControl.yesAnd:
                     yield current
                     if current.is_dir():
                         queue += sorted(current.iterdir())
-                case None | False | GlobControl.reject | GlobControl.discard:
+                case None | False:
+                    continue
+                case GlobControl.reject | GlobControl.discard:
+                    continue
+                case GlobControl.no | GlobControl.noBut:
                     continue
                 case _ as x:
                     raise TypeError("Unexpected glob filter value", x)
