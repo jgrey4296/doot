@@ -32,9 +32,9 @@ lib_path      : Final = cargo.on_fail(None, None|str).lib.path()
 def task_cargo_version():
     return {
         "basename" : "cargo::version",
-        "actions" : [ CommanderMixin.cmd(None, "cargo", "--version"),
-                      CommanderMixin.cmd(None, "rustup", "--version"),
-                      CommanderMixin.cmd(None, "rustup", "show"),
+        "actions" : [ CommanderMixin.make_cmd(None, "cargo", "--version"),
+                      CommanderMixin.make_cmd(None, "rustup", "--version"),
+                      CommanderMixin.make_cmd(None, "rustup", "show"),
                      ],
         "verbosity" : 2,
     }
@@ -42,7 +42,7 @@ def task_cargo_version():
 def task_cargo_report():
     return {
         "basename"  : "cargo::report",
-        "actions"   : [ CommanderMixin.cmd(None, "cargo", "report", "future-incompat") ],
+        "actions"   : [ CommanderMixin.make_cmd(None, "cargo", "report", "future-incompat") ],
         "verbosity" : 2,
     }
 
@@ -54,7 +54,7 @@ class CargoBuild(tasker.DootTasker, CommanderMixin, CargoMixin, FilerMixin):
 
     def __init__(self, name="cargo::build", locs=None):
         super().__init__(name, locs)
-        self.locs.ensure("build", "python", task=name)
+        self.locs.ensure("build", task=name)
 
     def set_params(self):
         return [
@@ -72,6 +72,7 @@ class CargoBuild(tasker.DootTasker, CommanderMixin, CargoMixin, FilerMixin):
         match self.args['lib'], sys.platform:
             case True, "darwin":
                 # libraries on mac need to be renamed:
+                self.locs.ensure("python", task=self.basename)
                 lib_file     =  f"lib{package_name}.dylib"
                 so_file      =  f"{package_name}.so"
                 build_target = target_dir / so_file
@@ -218,7 +219,7 @@ class CargoDebug(tasker.DootTasker, CommanderMixin, CargoMixin):
 
     def task_detail(self, task):
         task.update({
-                "actions"  : [ self.make_interact["lldb", self.locs.build / "dev" / self.args['target'] ]) ],
+                "actions"  : [ self.make_interact("lldb", self.locs.build / "dev" / self.args['target']) ],
                 "file_dep" : [ self.locs.build / "debug" / self.args['target'] ],
             })
         return task
