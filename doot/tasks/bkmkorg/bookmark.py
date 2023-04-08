@@ -64,7 +64,7 @@ class BookmarksUpdate(DootTasker, FilerMixin, CommanderMixin):
                 self._get_firefox_dbs,
                 (self.mkdirs,  [self.temp_dbs]),
                 (self.copy_to, [self.temp_dbs, bkmks], {"fn": "backup"}),
-                (self.copy_to, [self.temp_dbs, *self.dbs],  {"fn": lambda d,x: d / f"{x.parent.name}_{x.name}" }),
+                (self.copy_to, [self.temp_dbs, self.dbs],  {"fn": lambda d,x: d / f"{x.parent.name}_{x.name}" }),
                 self._extract,
                 self._store_new_extracts,
                 (self._merge,  [bkmks]),
@@ -76,7 +76,7 @@ class BookmarksUpdate(DootTasker, FilerMixin, CommanderMixin):
         return task
 
     def _get_firefox_dbs(self):
-        self.dbs = self.locs.firefox.rglob(self.database)
+        self.dbs += self.locs.firefox.rglob(self.database)
 
     def _extract(self):
         """
