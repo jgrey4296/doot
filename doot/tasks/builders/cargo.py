@@ -101,7 +101,7 @@ class CargoInstall(tasker.DootTasker, CommanderMixin, CargoMixin):
 
     def task_detail(self, task):
         task.update({
-            "actions"  : [ self.cmd(self.binary_build) ],
+            "actions"  : [ self.make_cmd(self.binary_build) ],
         })
         return task
 
@@ -122,7 +122,7 @@ class CargoTest(tasker.DootTasker, CommanderMixin, CargoMixin):
 
     def task_detail(self, task):
         task.update({
-            "actions"  : [ self.cmd(self.test_cmd) ],
+            "actions"  : [ self.make_cmd(self.test_cmd) ],
             "targets"  : [  ],
         })
         return task
@@ -142,7 +142,7 @@ class CargoDocs(tasker.DootTasker, CommanderMixin, CargoMixin):
 
     def task_detail(self, task):
         task.update({
-            "actions"  : [ self.cmd("cargo", "doc") ],
+            "actions"  : [ self.make_cmd("cargo", "doc") ],
         })
         return task
 
@@ -156,7 +156,7 @@ class CargoRun(tasker.DootTasker, CommanderMixin, CargoMixin):
 
     def task_detail(self, task):
         task.update({
-            "actions"  : [ self.cmd("cargo", "run", "--bin", self.args['target'], "--profile", self.args['profile'] ) ],
+            "actions"  : [ self.make_cmd("cargo", "run", "--bin", self.args['target'], "--profile", self.args['profile'] ) ],
         })
         return task
 
@@ -170,7 +170,7 @@ class CargoClean(tasker.DootTasker, CommanderMixin, CargoMixin):
 
     def task_detail(self, task):
         task.update({
-            "actions"  : [ self.cmd("cargo", "clean") ],
+            "actions"  : [ self.make_cmd("cargo", "clean") ],
         })
         return task
 
@@ -184,7 +184,7 @@ class CargoCheck(tasker.DootTasker, CommanderMixin, CargoMixin):
 
     def task_detail(self, task):
         task.update({
-            "actions"  : [ self.cmd("cargo", "check", "--workspace") ],
+            "actions"  : [ self.make_cmd("cargo", "check", "--workspace") ],
         })
         return task
 
@@ -198,8 +198,8 @@ class CargoUpdate(tasker.DootTasker, CommanderMixin, CargoMixin):
 
     def task_detail(self, task):
         task.update({
-            "actions"  : [ self.cmd("rustup", "update"),
-                           self.cmd("cargo", "update"),
+            "actions"  : [ self.make_cmd("rustup", "update"),
+                           self.make_cmd("cargo", "update"),
                           ],
         })
         return task
@@ -218,7 +218,7 @@ class CargoDebug(tasker.DootTasker, CommanderMixin, CargoMixin):
 
     def task_detail(self, task):
         task.update({
-                "actions"  : [ self.interact(["lldb", self.locs.build / "dev" / self.args['target'] ]) ],
+                "actions"  : [ self.make_interact["lldb", self.locs.build / "dev" / self.args['target'] ]) ],
                 "file_dep" : [ self.locs.build / "debug" / self.args['target'] ],
             })
         return task

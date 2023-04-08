@@ -45,7 +45,7 @@ class GodotRunScene(globber.DootEagerGlobber, CommanderMixin):
 
     def task_detail(self, task:dict):
         task.update({
-            "actions" : [ self.cmd(self.run_scene_with_arg) ],
+            "actions" : [ self.make_cmd(self.run_scene_with_arg) ],
         })
         return task
 
@@ -53,7 +53,7 @@ class GodotRunScene(globber.DootEagerGlobber, CommanderMixin):
         task.update({
             "file_dep" : [fpath],
         })
-        task['actions'] += [ self.cmd(self.run_scene) ]
+        task['actions'] += [ self.make_cmd(self.run_scene) ]
         return task
 
     def run_scene(self, dependencies):
@@ -88,7 +88,7 @@ class GodotRunScript(globber.EagerFileGlobber, CommanderMixin):
     def subtask_detail(self, task, fpath=None):
         task.update({ "verbosity" : 2,})
         task['actions'] += [
-            self.cmd(self.run_cmd, [fpath]),
+            self.make_cmd(self.run_cmd, [fpath]),
             self.regain_focus()
         ]
 
@@ -128,7 +128,7 @@ class GodotBuild(DootTasker, CommanderMixin):
 
     def task_detail(self, task):
         return {
-            "actions"  : [ self.cmd(self.cmd_builder) ],
+            "actions"  : [ self.make_cmd(self.cmd_builder) ],
             "targets"  : [ self.locs.build / "build.dmg" ],
             "file_dep" : [ "export_presets.cfg" ],
             "clean"    : True,

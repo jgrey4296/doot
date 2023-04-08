@@ -70,7 +70,7 @@ class ManBuild(DootTasker, CommanderMixin):
             out_file = out_dir / source.with_suffix("").name
 
             logging.info("Compiling: %s -> %s", source, out_file)
-            cmd = self.cmd("pandoc", source, "-s", "-t", "man", "-o", out_file)
+            cmd = self.make_cmd("pandoc", source, "-s", "-t", "man", "-o", out_file)
             cmd.execute()
             logging.info(cmd.out)
             logging.info(cmd.err)

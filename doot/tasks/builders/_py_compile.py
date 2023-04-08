@@ -62,7 +62,7 @@ class TODOPythonCompile(DootTasker, CommanderMixin):
 
     def task_detail(self, task):
         task.update({
-            "actions" : [ self.cmd(self.build_cmd) ],
+            "actions" : [ self.make_cmd(self.build_cmd) ],
         })
         return task
 

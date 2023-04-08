@@ -42,6 +42,9 @@ conda_exe        = os.environ['CONDA_EXE']
 class CommanderMixin:
 
     def cmd(self, cmd:str|list|callable, *args, shell=False, save=None, **kwargs):
+        raise DeprecationWarning("use make_cmd")
+
+    def make_cmd(self, cmd:str|list|callable, *args, shell=False, save=None, **kwargs):
         logging.debug("Cmd: %s Args: %s kwargs: %s", cmd, args, kwargs)
         match cmd:
             case FunctionType() | MethodType():
@@ -57,6 +60,9 @@ class CommanderMixin:
         return DootCmdAction(action, shell=shell, save_out=save, **kwargs)
 
     def force(self, cmd:list|callable, *args, handler=None, shell=False, save=None, **kwargs):
+        raise DeprecationWarning("use make_force")
+
+    def make_force(self, cmd:list|callable, *args, handler=None, shell=False, save=None, **kwargs):
         logging.debug("Forcing Cmd: %s Args: %s kwargs: %s", cmd, args, kwargs)
         match cmd:
             case FunctionType() | MethodType():
@@ -71,9 +77,15 @@ class CommanderMixin:
         return ForceCmd(action, shell=shell, handler=handler, save_out=save)
 
     def shell(self, cmd:list|callable, *args, **kwargs):
-        return self.cmd(cmd, *args, shell=True, **kwargs)
+        raise DeprecationWarning("use make_shell")
+
+    def make_shell(self, cmd:list|callable, *args, **kwargs):
+        return self.make_cmd(cmd, *args, shell=True, **kwargs)
 
     def interact(self, cmd:list|callable, *args, save=None, **kwargs):
+        raise DeprecationWarning("use make_interact")
+
+    def make_interact(self, cmd:list|callable, *args, save=None, **kwargs):
         match cmd:
             case FunctionType():
                 action = (cmd, list(args), kwargs)
@@ -91,9 +103,12 @@ class CommanderMixin:
         """
         Applescript command to regain focus for if you lose it
         """
-        return self.cmd(["osascript", "-e", f"tell application \"{prog}\"", "-e", "activate", "-e", "end tell"])
+        return self.make_cmd(["osascript", "-e", f"tell application \"{prog}\"", "-e", "activate", "-e", "end tell"])
 
     def say(self, *text, voice="Moira"):
+        raise DeprecationWarning("use make_say")
+
+    def make_say(self, *text, voice="Moira"):
         cmd = ["say", "-v", voice, "-r", "50"]
         cmd += text
         return DootCmdAction(cmd, shell=False)

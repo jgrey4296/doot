@@ -169,7 +169,7 @@ class ADBMixin:
         downloaded = []
         failures   = []
 
-        self.say("Ready to Inspect").execute()
+        self.make_say("Ready to Inspect").execute()
         breakpoint()
         pass
         for parent, vals in grouped.items():
@@ -177,7 +177,7 @@ class ADBMixin:
                 dest     = self.local_root / parent
                 if len(vals) < pull_group_max:
                     core_cmd = self.args_adb_pull_group(dest, vals)
-                    cmd      = self.cmd(core_cmd)
+                    cmd      = self.make_cmd(core_cmd)
                     cmd.execute()
                 else:
                     logging.info("Pulling in chunks of %s", pull_group_max)
@@ -196,7 +196,7 @@ class ADBMixin:
             logging.info("Chunk...")
             guard = [x for x in chunk if x is not None]
             core_cmd = self.args_adb_pull_group(dest, guard)
-            cmd      = self.cmd(core_cmd)
+            cmd      = self.make_cmd(core_cmd)
             cmd.execute()
 
     def adb_delete_files(self):
@@ -206,7 +206,7 @@ class ADBMixin:
         logging.info("Moving %s Files to directory to delete", len(self.targets))
         mv_to       = android_base / "to_delete"
         mk_dest_cmd = [adb_path, "-t", self.args['id'], "shell", "mkdir", mv_to]
-        self.cmd(mk_dest_cmd).execute()
+        self.make_cmd(mk_dest_cmd).execute()
 
         deleted = []
         try:
@@ -214,7 +214,7 @@ class ADBMixin:
                 logging.info("Chunk...")
                 deleted += chunk
                 mv_cmd      = self.args_adb_mv(mv_to, [x for x in chunk if x is not None])
-                self.cmd(mv_cmd).execute()
+                self.make_cmd(mv_cmd).execute()
 
         finally:
             (self.locs.temp / "deletions.log").write_text("\n".join(str(x) for x in deleted))

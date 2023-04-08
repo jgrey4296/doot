@@ -64,7 +64,7 @@ class DotVisualise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Comman
             "file_dep" : [ fpath ],
             "targets"  : [ self.locs.build / fpath.with_suffix(f".{self.ext}").name ],
             "clean"    : True,
-            "actions"  : [ self.cmd(self.visualise_graph) ],
+            "actions"  : [ self.make_cmd(self.visualise_graph) ],
             })
         return task
 
@@ -99,7 +99,7 @@ class PlantUMLGlobberTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber,
         task.update({"targets"  : [ target ],
                      "file_dep" : [ fpath ],
                      "clean"     : True,
-                     "actions" : [ self.cmd(self.run_plantuml, target, fpath) ],
+                     "actions" : [ self.make_cmd(self.run_plantuml, target, fpath) ],
                      })
         return task
 
@@ -135,7 +135,7 @@ class PlantUMLGlobberCheck(DelayedMixin, TargetedMixin, globber.DootEagerGlobber
             "file_dep" : [ fpath ],
             "uptodate" : [ False ],
             "actions"  : [
-                self.cmd("plantuml", "-checkonly", fpath, save="checked"),
+                self.make_cmd("plantuml", "-checkonly", fpath, save="checked"),
                 (self.write_to, [self.output, "checked"]),
             ],
         })

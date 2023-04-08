@@ -49,7 +49,7 @@ class InitPyGlobber(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Comma
         return self.control.reject
 
     def subtask_detail(self, task, fpath=None):
-        task['actions'] += [ self.cmd("touch", fpath / "__init__.py") ]
+        task['actions'] += [ self.make_cmd("touch", fpath / "__init__.py") ]
         return task
 
 class PyLintTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
@@ -77,7 +77,7 @@ class PyLintTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Commande
             "uptodate"  : [ lambda task: pl.Path("pylint.toml").exists() ],
             'actions'   : [
                 (self.log, ["Generating Pylint Config Toml", logmod.INFO]),
-                self.cmd([lint_exec, "--generate-toml-config"], save="config"),
+                self.make_cmd([lint_exec, "--generate-toml-config"], save="config"),
                 (self.write_to, [pl.Path("pylint.toml"), "config"]),
             ]
         })
@@ -92,7 +92,7 @@ class PyLintTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Commande
         task.update({
             "actions"   : [
                 (self.log, [f"Checking: {fpath}", logmod.INFO]),
-                self.cmd(self.run_lint, fpath, save="lint"),
+                self.make_cmd(self.run_lint, fpath, save="lint"),
                 (self.write_lint_report, [target]),
             ],
             "targets"   : [ target ],
@@ -138,7 +138,7 @@ class PyUnitTestGlob(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Comm
         target = self.output / py_test_out.with_stem(task['name'])
         task.update({
             "targets" : [ target ],
-            "actions" : [ self.cmd(self.run_tests, fpath, save="results"),
+            "actions" : [ self.make_cmd(self.run_tests, fpath, save="results"),
                           (self.write_to, [target, "results"])
                          ]
         })

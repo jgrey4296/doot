@@ -39,7 +39,7 @@ class CSVSummaryTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, File
         return task
 
     def task_detail(self, task):
-        task['teardown'] = [self.cmd("cat", self.report_name) ]
+        task['teardown'] = [self.make_cmd("cat", self.report_name) ]
         return task
 
     def subtask_detail(self, task, fpath=None):
@@ -86,9 +86,9 @@ class CSVSummaryXMLTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, C
     def subtask_detail(self, task, fpath):
         task.update({
             "actions" : [
-                self.cmd(self.create_entry, fpath),
-                self.cmd(self.write_lines, fpath),
-                self.cmd(self.head_line, fpath),
+                self.make_cmd(self.create_entry, fpath),
+                self.make_cmd(self.write_lines, fpath),
+                self.make_cmd(self.head_line, fpath),
             ],
         })
         return task

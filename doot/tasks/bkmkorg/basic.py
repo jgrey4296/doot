@@ -47,7 +47,7 @@ class TimeAnnounce(tasker.DootTasker, CommanderMixin):
 
     def task_detail(self, task):
         task.update({
-            "actions" : [self.cmd(self.speak_time)],
+            "actions" : [self.make_cmd(self.speak_time)],
         })
         return task
 

@@ -44,7 +44,7 @@ class EncryptMixin(CommanderMixin):
     """
 
     def list_keys(self):
-        cmd = self.cmd(gpg, "--list-keys")
+        cmd = self.make_cmd(gpg, "--list-keys")
         cmd.execute()
         print(cmd.result)
 
@@ -54,10 +54,10 @@ class EncryptMixin(CommanderMixin):
         """
         user = user or gpg_user
         if secret:
-            cmd = self.cmd(gpg, "--armor", "--export-secret-keys",
+            cmd = self.make_cmd(gpg, "--armor", "--export-secret-keys",
                            "-o", fpath, gpg_user)
         else:
-            cmd = self.cmd(gpg, "--armor", "--export",
+            cmd = self.make_cmd(gpg, "--armor", "--export",
                            "-o", fpath, gpg_user)
 
         cmd.execute()
@@ -70,13 +70,13 @@ class EncryptMixin(CommanderMixin):
         if not (fpath and fpath.exists()):
             return False
 
-        cmd = self.cmd(gpg, "--batch", "--import", fpath)
+        cmd = self.make_cmd(gpg, "--batch", "--import", fpath)
         cmd.execute()
         print(cmd.result)
 
         if sign:
             name = input("Public Key: ")
-            cmd = self.cmd(gpg, "--lsign-key", name)
+            cmd = self.make_cmd(gpg, "--lsign-key", name)
             cmd.execute()
             print(cmd.result)
 
@@ -86,11 +86,11 @@ class EncryptMixin(CommanderMixin):
         """
         user = user or gpg_user
         if secret:
-            sec_cmd = self.cmd(gpg, "--delete-secret-keys", user)
+            sec_cmd = self.make_cmd(gpg, "--delete-secret-keys", user)
             sec_cmd.execute()
             print(sec_cmd.result)
 
-        cmd = self.cmd(gpg, "--delete-keys", user)
+        cmd = self.make_cmd(gpg, "--delete-keys", user)
         cmd.execute()
         print(cmd.result)
 
@@ -99,11 +99,11 @@ class EncryptMixin(CommanderMixin):
         add a new key to the keychain
         plus add a recoke certificate
         """
-        cmd = self.interact(gpg, "--gen-key")
+        cmd = self.make_interactgpg, "--gen-key")
         cmd.execute()
         print(cmd.result)
 
-        rev_cmd = self.cmd(gpg, "--gen-revoke", "--armor",
+        rev_cmd = self.make_cmd(gpg, "--gen-revoke", "--armor",
                            "-o", self.locs.secrets / "revoke_cert.asc",
                            gpg_user)
 
@@ -122,7 +122,7 @@ class EncryptMixin(CommanderMixin):
 
         recipients = [x for pair in zip(["-r"] * len(users), users) for x in pair]
 
-        cmd = self.interact(gpg, "--sign", "--armor", "--batch",
+        cmd = self.make_interactgpg, "--sign", "--armor", "--batch",
                        "-u", gpg_user,
                        *recipients,
                        "-o", fpath.with_suffix(fpath.suffix + ".gpg"),
@@ -138,7 +138,7 @@ class EncryptMixin(CommanderMixin):
         decrypt a file, outputing to fpath without the suffix by default
         """
         output = output or fpath.with_suffix("")
-        cmd = self.cmd(gpg, "--batch",
+        cmd = self.make_cmd(gpg, "--batch",
                        "-o", output,
                        "-d", fpath)
 
@@ -150,9 +150,9 @@ class EncryptMixin(CommanderMixin):
         ClearSign a file, optionally detached
         """
         if detached:
-            cmd = self.cmd(gpg, "--detach-sign", "--clearsign", fpath)
+            cmd = self.make_cmd(gpg, "--detach-sign", "--clearsign", fpath)
         else:
-            cmd = self.cmd(gpg, "--clearsign", fpath)
+            cmd = self.make_cmd(gpg, "--clearsign", fpath)
         cmd.execute()
         print(cmd.result)
 
@@ -160,6 +160,6 @@ class EncryptMixin(CommanderMixin):
         """
         Verify a signature
         """
-        cmd = self.cmd(gpg, "--verify", fpath)
+        cmd = self.make_cmd(gpg, "--verify", fpath)
         cmd.execute()
         print(cmd.result)

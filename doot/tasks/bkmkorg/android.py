@@ -107,7 +107,7 @@ class ADBUpload(android.ADBMixin, BatchMixin, DelayedMixin, TargetedMixin, globb
 
     def batch(self, data):
         for fpath in data:
-            cmd = self.cmd(self.args_adb_push_dir, fpath, save="result")
+            cmd = self.make_cmd(self.args_adb_push_dir, fpath, save="result")
             cmd.execute()
             entry = f"{fpath}: {cmd.out}"
             self.report.append(entry)
@@ -147,22 +147,22 @@ class ADBDownload(android.ADBMixin, DootTasker, CommanderMixin, FilerMixin, Batc
         if (self.locs.build / "pull_cache.adb").exists():
             # Cached query results
             query_cmds = [
-                self.say("Using Pull Cache"),
+                self.make_say("Using Pull Cache"),
                 self.read_cache, # -> remote_files
             ]
         else:
-            query_cmds = [self.cmd(self.args_adb_query, ftype="f", save="immediate_files"),
-                          self.cmd(self.args_adb_query,            save="remote_subdirs"),
+            query_cmds = [self.make_cmd(self.args_adb_query, ftype="f", save="immediate_files"),
+                          self.make_cmd(self.args_adb_query,            save="remote_subdirs"),
                           (self.batch_query_subdirs, [self._subbatch_query] ), # -> remote_files
                           self.write_query_cache,
-                          self.say("Finished Queries"),
+                          self.make_say("Finished Queries"),
                           ]
 
         task.update({
             "actions" : [
                 *query_cmds,
                 self.calc_pull_targets, # -> pull_targets
-                self.say("Starting Pull"),
+                self.make_say("Starting Pull"),
                 self.pull_files, # -> downloaded, failed
                 self.write_report,
             ],
@@ -175,7 +175,7 @@ class ADBDownload(android.ADBMixin, DootTasker, CommanderMixin, FilerMixin, Batc
         Run a single query directory query
         """
         logging.info(f"Subdir Batch: {data}")
-        query = self.cmd(self.args_adb_query(data[0], depth=-1, ftype="f"))
+        query = self.make_cmd(self.args_adb_query(data[0], depth=-1, ftype="f"))
         query.execute()
         query_result = {x.strip() for x in query.out.split("\n")}
         return query_result

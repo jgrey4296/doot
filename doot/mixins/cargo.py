@@ -65,4 +65,4 @@ class CargoMixin:
         """
         builds a cargo action
         """
-        return self.cmd(cargo, action, *args, *(val for x,y in kwargs.items() for val in (f"--{x}", y)))
+        return self.make_cmd(cargo, action, *args, *(val for x,y in kwargs.items() for val in (f"--{x}", y)))

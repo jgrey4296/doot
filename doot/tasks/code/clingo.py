@@ -53,7 +53,7 @@ class ClingoRunner(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Comman
         task.update({
             "file_dep" : [ fpath ],
             "targets"  : [ target ],
-            "actions"  : [ self.cmd(self.clingo_call, fpath, save="result"),
+            "actions"  : [ self.make_cmd(self.clingo_call, fpath, save="result"),
                            (self.write_to, [target, "result"])
                           ]
         })
@@ -79,7 +79,7 @@ class ClingoDotter(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Comman
         task.update({
             "targets"  : [ target ],
             "file_dep" : [ fpath ],
-            "actions" :  [ self.cmd(self.json_call, fpath, save="result"),
+            "actions" :  [ self.make_cmd(self.json_call, fpath, save="result"),
                            (self.write_to, [target, "result"])
                           ]
         })

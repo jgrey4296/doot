@@ -58,7 +58,7 @@ class JsonFormatTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, File
             if not backup.exists():
                 backup.write_text(btarget.read_text())
             # Format
-            cmd = self.cmd("jq", "-M", "-S" , ".", target)
+            cmd = self.make_cmd("jq", "-M", "-S" , ".", target)
             # and save
             target.write_text(cmd.out)
 
@@ -86,7 +86,7 @@ class JsonPythonSchema(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Fi
             "targets"  : [ gen_package ],
             "task_dep" : [ "_xsdata::config" ],
             "clean"    : [ (self.rmdirs, [gen_package]) ],
-            "actions"  : [ self.cmd(self.generate_on_target, fpath, gen_package) ]
+            "actions"  : [ self.make_cmd(self.generate_on_target, fpath, gen_package) ]
         })
         return task
 

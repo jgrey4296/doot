@@ -138,8 +138,8 @@ class OCRGlobber(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Commande
     def batch(self, data):
         for name, fpath in data:
             dst        = self.get_ocr_file_name(fpath)
-            ocr_cmd    = self.cmd("tesseract", src, dst.stem, "--psm", "1",  "-l", "eng")
-            mv_txt_cmd = self.cmd("mv", dst.with_suffix(".txt").name, dst)
+            ocr_cmd    = self.make_cmd("tesseract", src, dst.stem, "--psm", "1",  "-l", "eng")
+            mv_txt_cmd = self.make_cmd("mv", dst.with_suffix(".txt").name, dst)
             ocr_cmd.execute()
             mv_txt_cmd.execute()
 
@@ -163,7 +163,7 @@ class TODOImages2PDF(TargetedMixin, tasker.DootTasker, CommanderMixin, BatchMixi
             "name"    : "build_single",
             "actions" : [
                 self.find_and_process,
-                self.cmd(self.combine_pages)
+                self.make_cmd(self.combine_pages)
             ],
             "targets" : [ self.locs.build / f"{self.args['name']}.pdf" ],
             "clean"   : [ (self.rmglob, [self.locs.build, f"{self.args['name']}.pdf"]) ],
@@ -182,7 +182,7 @@ class TODOImages2PDF(TargetedMixin, tasker.DootTasker, CommanderMixin, BatchMixi
         args += [x[1] for x in data]
         args += ["-alpha", "off", batch_name]
         print(f"Batch Args: {args}")
-        conversion = self.cmd(*args)
+        conversion = self.make_cmd(*args)
         conversion.execute()
 
     def combine_pages(self, targets):
@@ -201,7 +201,7 @@ class TODOImages2Video(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Co
     def task_detail(self, task, fpath):
         task.update({
             "actions" : [
-                self.cmd(self.make_gif, fpath)
+                self.make_cmd(self.make_gif, fpath)
             ],
             "targets" : [self.locs.temp / f"{task['name']}.gif"]
         })
@@ -237,7 +237,7 @@ class TODOPDF2Images(globber.DootEagerGlobber, CommanderMixin, FilerMixin, Batch
         task.update({
             "actions"  : [
                 (self.mkdirs, [targ_dir]),
-                self.cmd(self.split_pdf, fpath, save="info"),
+                self.make_cmd(self.split_pdf, fpath, save="info"),
                 (self.write_to, ["info", targ_dir / "info.txt"]),
             ],
             "targets" : [ targ_dir, targ_dir / "info.txt" ],

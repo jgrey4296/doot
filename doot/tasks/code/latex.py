@@ -73,7 +73,7 @@ class LatexCheckSweep(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
 
     def subtask_detail(self, task, fpath=None):
         task.update({"file_dep" : [ fpath ],
-                     "actions"  : [ self.cmd(self.build_draft_cmd, fpath) ]
+                     "actions"  : [ self.make_cmd(self.build_draft_cmd, fpath) ]
                      })
         return task
 

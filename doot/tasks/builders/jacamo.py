@@ -69,7 +69,7 @@ class JacamoNewProject(tasker.DootTasker, GradleMixin, CommanderMixin):
         task.update({
             "actions" : [
                 (self.log, [f"Adding New Jacamo Project: {self.locs.src}/{self.args['project-name']}", logmod.INFO]),
-                self.cmd(jacamo_home / "scripts/jacamo-new-project", self.locs.src / self.args['project-name']),
+                self.make_cmd(jacamo_home / "scripts/jacamo-new-project", self.locs.src / self.args['project-name']),
                 (self.add_project_to_gradle_settings, [self.locs.src / self.args['project-name']]),
             ],
         })

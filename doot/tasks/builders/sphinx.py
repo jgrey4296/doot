@@ -41,7 +41,7 @@ class SphinxDocTask(DootTasker, CleanerMixin, CommanderMixin):
 
     def task_detail(self, task:dict) -> dict:
         task.update({
-            "actions"  : [ self.cmd(self.sphinx_command) ],
+            "actions"  : [ self.make_cmd(self.sphinx_command) ],
             "file_dep" : [ self.locs.docs / "conf.py" ],
             "targets"  : [ self.locs.html, self.locs.build ],
             "clean"    : [ self.clean_target_dirs ],

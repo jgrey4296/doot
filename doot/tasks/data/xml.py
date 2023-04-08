@@ -50,7 +50,7 @@ class XmlElementsTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Com
         task.update({
             "targets" : [ self.locs.elements / (task['name'] + ".elements")],
             "clean"   : True,
-            "actions" : [ self.cmd(self.generate_on_target, fpath, save="elements"),
+            "actions" : [ self.make_cmd(self.generate_on_target, fpath, save="elements"),
                           (self.write_to, [fpath, "elements"]),
                          ]
         })
@@ -86,7 +86,7 @@ class XmlSchemaTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Comma
             "targets"  : [ self.locs.schema / (task['name'] + ".xsd") ],
             "clean"    : True,
             "uptodate" : [True],
-            "actions"  : [self.cmd(self.generate_on_target, fpath)],
+            "actions"  : [self.make_cmd(self.generate_on_target, fpath)],
             })
         return task
 
@@ -116,7 +116,7 @@ class XmlPythonSchemaRaw(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, 
         task.update({
             "targets"  : [ gen_package ],
             "task_dep" : [ "_xsdata::config"],
-            "actions"  : [ self.cmd(self.generate_on_target, fpath, gen_package) ],
+            "actions"  : [ self.make_cmd(self.generate_on_target, fpath, gen_package) ],
             })
         return task
 
@@ -155,7 +155,7 @@ class XmlPythonSchemaXSD(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, 
             "targets"  : [ gen_package ],
             "file_dep" : [ fpath ],
             "task_dep" : [ "_xsdata::config"],
-            "actions"  : [self.cmd(self.gen_target, fpath, gen_package) ],
+            "actions"  : [self.make_cmd(self.gen_target, fpath, gen_package) ],
             })
         return task
 
@@ -194,7 +194,7 @@ class XmlSchemaVisualiseTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobb
             "targets"  : [ self.locs.visual / (task['name'] + ".plantuml") ],
             "file_dep" : [ fpath ],
             "task_dep" : [ "_xsdata::config" ],
-            "actions" : [self.cmd("xsdata", "generate", "-o", "plantuml", "-pp", fpath, save="result")
+            "actions" : [self.make_cmd("xsdata", "generate", "-o", "plantuml", "-pp", fpath, save="result")
                          (self.write_to, [fpath, "result"])
                          ],
             "clean"    : True,
@@ -222,7 +222,7 @@ class XmlValidateTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Com
 
     def subtask_detail(self, task, fpath=None):
         task.update({
-            "actions" : [ self.cmd(self.validate, fpath)]
+            "actions" : [ self.make_cmd(self.validate, fpath)]
         })
         return task
 
@@ -276,6 +276,6 @@ class XmlFormatTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Comma
 
             args.append(target)
             # Format and save result:
-            cmd = self.cmd(args)
+            cmd = self.make_cmd(args)
             cmd.execute()
             target.write_text(cmd.out)

@@ -38,7 +38,7 @@ class GitLogTask(DootTasker, CommanderMixin, FilerMixin):
     def task_detail(self, task):
         target = self.locs.temp / "full_git.log"
         task.update({
-            "actions" : [ self.cmd(self.get_log, save="result"),
+            "actions" : [ self.make_cmd(self.get_log, save="result"),
                           (self.write_to, [target, "result"]),
                          ],
             "targets" : [ target ],

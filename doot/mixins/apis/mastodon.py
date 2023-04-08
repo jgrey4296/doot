@@ -121,9 +121,9 @@ class MastodonMixin:
         assert(isinstance(filepath, pl.Path) and filepath.exists())
         ext               = filepath.suffix
         conversion_target = self.locs.image_temp.with_suffix(ext)
-        convert_cmd = self.cmd(["convert", str(filepath),
-                                *conversion_args,
-                                str(conversion_target)])
+        convert_cmd = self.make_cmd(["convert", str(filepath),
+                                    *conversion_args,
+                                    str(conversion_target)])
         convert_cmd.execute()
 
         if self.locs.image_temp.stat().st_size < 5000000:

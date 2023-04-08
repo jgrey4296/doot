@@ -47,7 +47,7 @@ class LineReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
         return task
 
     def store_count(self, fpath):
-        cmd = self.cmd("wc", "-l", fpath)
+        cmd = self.make_cmd("wc", "-l", fpath)
         cmd.execute()
         self.counts.append(cmd.result.strip())
 

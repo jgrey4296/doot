@@ -124,7 +124,7 @@ class HashAllFiles(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Comman
         try:
             logging.info("Batch Count: %s (size: %s)", self.batch_count, len(data))
             # -r puts the hash first, making it easier to run `uniq` later
-            act = self.cmd("md5", "-r", *data)
+            act = self.make_cmd("md5", "-r", *data)
             act.execute()
             with open(hash_file, 'a') as f:
                 print(act.out, file=f)
@@ -149,7 +149,7 @@ class GroupHashes(tasker.DootTasker, CommanderMixin, FilerMixin):
         task.update({
             "actions" : [
                 (self.rmfiles, [self.output]),
-                self.cmd("touch", self.output),
+                self.make_cmd("touch", self.output),
             ],
         })
         return task

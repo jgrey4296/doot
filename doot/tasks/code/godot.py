@@ -62,7 +62,7 @@ class GodotCheckTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Comm
     def subtask_detail(self, task, fpath):
         task.update({
             "actions"  : [
-                self.force(self.build_check, fpath, handler=partial(self.handle_failure, fpath)),
+                self.make_force(self.build_check, fpath, handler=partial(self.handle_failure, fpath)),
             ],
             "file_dep" : [ fpath ],
             "uptodate" : [ False ],

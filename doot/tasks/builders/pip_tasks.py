@@ -109,7 +109,7 @@ class PipBuild(DootTasker, CommanderMixin):
         self.locs.ensure("wheel", "temp", "root", task=name)
 
     def task_detail(self, task):
-        task['actions'].append(self.cmd(["pip", "wheel",
+        task['actions'].append(self.make_cmd(["pip", "wheel",
                                          "--no-input",
                                          "--wheel-dir", self.locs.wheel,
                                          "--use-pep517",
@@ -140,11 +140,11 @@ class PipInstall(DootTasker, CommanderMixin, FilerMixin):
     def task_detail(self, task):
         match self.args:
             case {'uninstall': True}:
-                action = self.cmd(["pip", "uninstall", "-y", self.locs.root])
+                action = self.make_cmd(["pip", "uninstall", "-y", self.locs.root])
             case {'deps': True}:
-                action = self.cmd(self.install_requirements)
+                action = self.make_cmd(self.install_requirements)
             case _:
-                action = self.cmd(self.install_package)
+                action = self.make_cmd(self.install_package)
 
         task.update({
             "actions"  : [
@@ -190,7 +190,7 @@ class PipReqs(DootTasker, CommanderMixin):
         req_path = self.locs.root / "requirements.txt"
         task.update({
             "actions" : [
-                self.cmd(["pipreqs", "--force", "--savepath", req_path, self.locs.src])
+                self.make_cmd(["pipreqs", "--force", "--savepath", req_path, self.locs.src])
             ],
             "targets"   : [ req_path ],
             "clean"     : True,
@@ -215,8 +215,8 @@ class VenvNew(DootTasker, CommanderMixin, FilerMixin):
 
     def task_detail(self, task):
         venv_path = self.locs.temp / "venv" / self.args['name']
-        build_venv = [ self.cmd(["python", "-m", "venv", venv_path ]),
-                       self.cmd([ venv_path / "bin" / "pip",
+        build_venv = [ self.make_cmd(["python", "-m", "venv", venv_path ]),
+                       self.make_cmd([ venv_path / "bin" / "pip",
                                  "install",
                                  "-r", self.locs.root / "requirements.txt" ]),
                       ]

@@ -93,7 +93,7 @@ class EbookConvertTask(EbookGlobberBase, CommanderMixin):
         task.update({
             "targets"  : [ self.locs.build / fpath.with_suffix(".epub").name ],
             "file_dep" : [ self.locs.temp / fpath.with_suffix(".zip").name ],
-            "actions"  : [ self.cmd(self.action_convert) ],
+            "actions"  : [ self.make_cmd(self.action_convert) ],
             "clean"    : True,
         })
         return task
@@ -343,7 +343,7 @@ class EbookSplitTask(globber.DootEagerGlobber, CommanderMixin):
         task.update({
             "targets"  : [ self.locs.build / fpath.stem],
             "file_dep" : [ fpath ],
-            "actions"  : [ self.cmd(self.action_convert), ],
+            "actions"  : [ self.make_cmd(self.action_convert), ],
         })
         return task
 
@@ -422,7 +422,7 @@ class TODOEbookNewPandoc(EbookGlobberBase, CommanderMixin):
 
     def subtask_detail(self, task, fpath=None):
         task.update({
-            "actions" : [ self.cmd(self.build_ebook, fpath) ],
+            "actions" : [ self.make_cmd(self.build_ebook, fpath) ],
             "targets" : [ self.locs.build / f"{fpath.stem}.epub" ],
         })
         return task

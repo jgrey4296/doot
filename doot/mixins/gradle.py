@@ -43,7 +43,7 @@ class GradleMixin:
         return str(name).replace("/", ":")
 
     def call_gradle(self, *args):
-        self.cmd(gradle, f"--project-cache-dir={self.locs.gradle.resolve()}",
+        self.make_cmd(gradle, f"--project-cache-dir={self.locs.gradle.resolve()}",
                  *args)
         self.execute()
 

@@ -37,7 +37,7 @@ class FileListings(DelayedMixin, globber.DootEagerGlobber, FilerMixin, Commander
         report = self.output / f"{task['name']}.listing"
         task.update({
             "actions"  : [
-                self.cmd(["rg", "--no-ignore", "--files", fpath], save="listing"),
+                self.make_cmd(["rg", "--no-ignore", "--files", fpath], save="listing"),
                 (self.write_to, [report, "listing"]),
             ],
             "targets"  : [ report ],
@@ -61,7 +61,7 @@ class SimpleListing(tasker.DootTasker, CommanderMixin, FilerMixin):
         report = self.locs.build / f"{task['name']}.listing"
         task.update({
             "actions"  : [
-                self.cmd(["rg", "--no-ignore", "--sort", "path", "--files", self.focus], save="listing"),
+                self.make_cmd(["rg", "--no-ignore", "--sort", "path", "--files", self.focus], save="listing"),
                 (self.write_to, [report, "listing"]),
             ],
             "targets"  : [ report ],

@@ -76,7 +76,7 @@ class JekyllBuild(DootTasker, CommanderMixin, FilerMixin):
     def task_detail(self, task):
         task.update({
             "actions"  : [
-                self.cmd(self.cmd_builder),
+                self.make_cmd(self.cmd_builder),
             ],
             "file_dep" : [ self.jekyll_config ],
             "task_dep" : [ "web::tag" ],
@@ -110,8 +110,8 @@ class JekyllServe(DootTasker, CommanderMixin):
 
         task.update({
             "actions" : [
-                self.cmd("open", "http://127.0.0.1:4000"),
-                self.cmd(cmd_args),
+                self.make_cmd("open", "http://127.0.0.1:4000"),
+                self.make_cmd(cmd_args),
             ],
             "task_dep": [
                 "web::tag"

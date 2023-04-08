@@ -124,7 +124,7 @@ class LatexFirstPass(globber.DootEagerGlobber, FilerMixin, CommanderMixin):
             "file_dep" : [ fpath ],
             "actions"  : [
                 (self.log, ["Running Pass 1", logmod.INFO]),
-                self.cmd(self.compile_tex),
+                self.make_cmd(self.compile_tex),
                 (self.move_to, [first_pass_pdf, temp_pdf])
             ],
             "targets"  : [ self.locs.temp / fpath.with_suffix(".aux").name,
@@ -178,8 +178,8 @@ class LatexSecondPass(globber.DootEagerGlobber, CommanderMixin, FilerMixin):
             "clean"    : True,
             "actions" : [
                 (self.log, ["Running Pass 2", logmod.INFO]),
-                self.cmd(self.tex_cmd, fpath),
-	            self.cmd(self.tex_cmd, fpath),
+                self.make_cmd(self.tex_cmd, fpath),
+	            self.make_cmd(self.tex_cmd, fpath),
                 (self.move_to, [target_pdf, temp_pdf]),
             ]
         })
@@ -215,7 +215,7 @@ class BibtexBuildPass(globber.DootEagerGlobber, CommanderMixin):
             "actions" : [
                 (self.log, ["Running Bibtex Pass", logmod.INFO]),
                 (self.retarget_paths, [aux_file]),
-                self.cmd(self.maybe_run),
+                self.make_cmd(self.maybe_run),
             ]
         })
         return task

@@ -41,28 +41,28 @@ class PdfMixin:
 
     def pdf_get_info(self, fpath):
         assert(fpath.suffix == ".pdf")
-        cmd = self.cmd("pdftk", fpath, "dump_data_utf8")
+        cmd = self.make_cmd("pdftk", fpath, "dump_data_utf8")
         cmd.execute()
         return cmd.out
 
     def pdf_update_info(self, fpath:pl.Path, info:pl.Path, output=None):
         assert(fpath.suffix == ".pdf")
         output = output or fpath.with_suffix(".updated.pdf")
-        cmd    = self.cmd("pdftk", fpath, "update_info_utf8", info, "output", output)
+        cmd    = self.make_cmd("pdftk", fpath, "update_info_utf8", info, "output", output)
         cmd.execute()
         return cmd.out
 
     def pdf_attach_to(self, fpath, files:list, output=None):
         assert(fpath.suffix == ".pdf")
         output = output or fpath.with_suffix(".attached.pdf")
-        cmd = self.cmd("pdftk", fpath, "attach_files", *files, "output", output)
+        cmd = self.make_cmd("pdftk", fpath, "attach_files", *files, "output", output)
         cmd.execute()
         return output
 
     def pdf_extract_from(self, fpath, output=None):
         assert(fpath.suffix == ".pdf")
         output = output or fpath.parent / f"{fpath.name}_files"
-        cmd = self.cmd("pdftk", fpath, "upack_files", "output", output)
+        cmd = self.make_cmd("pdftk", fpath, "upack_files", "output", output)
         cmd.execute()
         return output
     def pdf_convert_to_text(self, files:list[pl.Path]):
@@ -80,7 +80,7 @@ class PdfMixin:
 
     def pdf_merge(self, files:list, output=None):
         output = output or self.locs.build / "merged.pdf"
-        cmd = self.cmd("pdftk", fpath, "upack_files", "output", output)
+        cmd = self.make_cmd("pdftk", fpath, "upack_files", "output", output)
         cmd.execute()
         return output
 
