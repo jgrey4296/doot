@@ -81,9 +81,9 @@ class FilerMixin:
                 case list() as v if sub_sep is None:
                     values += [str(x) for x in v]
                 case list() as v:
-                    values += sub_sep.join(str(x) for x in v)
+                    values.append(sub_sep.join(str(x) for x in v))
                 case _ as v:
-                    valuse.append(str(v))
+                    values.append(str(v))
 
         value = sep.join(values)
         fpath.expanduser().resolve().write_text(value)
@@ -113,7 +113,7 @@ class FilerMixin:
                 case list() as v:
                     values += sub_sep.join(str(x) for x in v)
                 case _ as v:
-                    valuse.append(str(v))
+                    values.append(str(v))
 
         value = sep.join(values)
         with open(fpath.expanduser().resolve(), 'a') as f:
@@ -156,6 +156,15 @@ class FilerMixin:
 
     def copy_to(self, fpath ,*args, fn=None):
         assert(fpath.parent.exists())
+        flat_args = []
+        for x in args:
+            match x:
+                case str():
+                    flat_args.append(x)
+                case list():
+                    flat_args += x
+
+
         overwrite = True
         match fn:
             case types.FunctionType() | types.MethodType() | types.LambdaType():
@@ -171,7 +180,7 @@ class FilerMixin:
                 overwrite = False
                 fn = lambda d, x: d / x.name
 
-        for x in args:
+        for x in flat_args:
             target_name = fn(fpath, x)
             if not overwrite and target_name.exists():
                 logging.warning("File Exists already: %s -> %s", x, target_name)
