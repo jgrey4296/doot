@@ -22,7 +22,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 
 from doit import loader as doit_loader
-from doit.cmd_base import NamespaceTaskLoader, opt_cwd, opt_seek_file
+from doit.cmd_base import NamespaceTaskLoader
 from doit.exceptions import InvalidDodoFile
 from doit.task import DelayedLoader
 
@@ -47,6 +47,7 @@ from doot.core.utils.task_namer import task_namer
 
 TASK_STRING = "task_"
 
+##-- loader cli params
 #### options related to dooter.py
 # select dodo file containing tasks
 opt_doot = {
@@ -60,7 +61,41 @@ opt_doot = {
     "help"    : "load task from doot FILE [default: %(default)s]"
 }
 
+opt_break = {
+    "section" : "task loader",
+    "name"    : "break",
+    "short"   : "b",
+    "long"    : "break",
+    "type"    : bool,
+    "default" : False,
+    "help"    : "Start a debugger before loading tasks, to set breakpoints"
+    }
 
+# cwd
+opt_cwd = {
+    'section': 'task loader',
+    'name': 'cwdPath',
+    'short': 'd',
+    'long': 'dir',
+    'type': str,
+    'default': None,
+    'help': ("set path to be used as cwd directory "
+             "(file paths on dodo file are relative to dodo.py location).")
+}
+
+# seek dodo file on parent folders
+opt_seek_file = {
+    'section': 'task loader',
+    'name': 'seek_file',
+    'short': 'k',
+    'long': 'seek-file',
+    'type': bool,
+    'default': False,
+    'env_var': 'DOIT_SEEK_FILE',
+    'help': ("seek dodo file on parent folders [default: %(default)s]")
+}
+
+##-- end loader cli params
 
 class DootLoader(NamespaceTaskLoader):
     """
@@ -69,7 +104,7 @@ class DootLoader(NamespaceTaskLoader):
     for later retrieval
     """
 
-    cmd_options : ClassVar[tuple]    = (opt_doot, opt_cwd, opt_seek_file)
+    cmd_options : ClassVar[tuple]    = (opt_doot, opt_cwd, opt_seek_file, opt_break)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -79,6 +114,9 @@ class DootLoader(NamespaceTaskLoader):
 
     def setup(self, opt_values):
         # lazily load namespace from dooter file per config parameters:
+        if opt_values['break']:
+            breakpoint()
+            pass
         try:
             self.namespace = dict(inspect.getmembers(doit_loader.get_module(
                 opt_values['dooter'],
