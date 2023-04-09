@@ -57,7 +57,8 @@ class BackupCollectorTask(tasker.DootTasker, CommanderMixin, FilerMixin):
         self.source_cache = self.locs.temp / f"{name}_source.cache"
         self.backup_cache = self.locs.temp / f"{name}_backup.cache"
         self.calc_cache   = self.locs.temp / f"{name}_calc.cache"
-        self.find_args    = [ "-path", "*__pycache__", "-prune", "-o", "-not", "-name", ".DS_Store", "-a", "-type", "f", "-printf", "%P %T@\n" ]
+        self.sep = "|:|"
+        self.find_args    = [ "-path", "*__pycache__", "-prune", "-o", "-not", "-name", ".DS_Store", "-a", "-type", "f", "-printf", f"%P {self.sep} %T@\n" ]
 
     def set_params(self):
         return [
@@ -100,8 +101,8 @@ class BackupCollectorTask(tasker.DootTasker, CommanderMixin, FilerMixin):
         return task
 
     def calculate_updates(self, task):
-        source_list = dict((x,float(y)) for line in task.values['source.find'].split("\n") if bool(line) for (x,y) in [line.split(" ")])
-        backup_list = dict((x,float(y)) for line in task.values['backup.find'].split("\n") if bool(line) for (x,y) in [line.split(" ")])
+        source_list = dict((x,float(y)) for line in task.values['source.find'].split("\n") if bool(line) for (x,y) in [line.split(self.sep)])
+        backup_list = dict((x,float(y)) for line in task.values['backup.find'].split("\n") if bool(line) for (x,y) in [line.split(self.sep)])
         logging.info("Calculating Updates: %s // %s", len(source_list), len(backup_list))
 
         source_keys      = list(source_list.keys())
