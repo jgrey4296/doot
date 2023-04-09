@@ -64,37 +64,39 @@ class CargoBuild(tasker.DootTasker, CommanderMixin, CargoMixin, FilerMixin):
     def set_params(self):
         return [
             *self.get_cargo_params(),
-            { "name": "lib", "type": bool, "short": "l", "default": False},
+            { "name": "lib", "type": bool, "short": "l", "default": targets_lib },
         ]
 
     def task_detail(self, task):
-        build_target = None
-        target_dir   = self.locs.build / "debug"
-        if self.args['profile'] != "dev":
-            target_dir   = self.locs.build / "release"
-
+        target_dir   = self.locs.build / ("debug" if self.args['profile'] == "dev" else "release")
 
         match self.args['lib'], sys.platform:
             case True, "darwin":
+                logging.info("Targeting Lib")
                 # libraries on mac need to be renamed:
-                self.locs.ensure("python", task=self.basename)
                 lib_file     =  f"lib{package_name}.dylib"
                 so_file      =  f"{package_name}.so"
-                build_target = target_dir / so_file
-                actions      = [ self.cargo_do("build", "--lib", profile=self.args['profile']),
-                                 (self.copy_to, [self.locs.python / "__data" / so_file, target_dir / lib_file ], {"fn": "file"}),
-                                ]
+                task['targets'].append(target_dir / so_file)
+                task['targets'].append(self.locs.temp / so_file)
+                task['actions'] = [
+                    self.cargo_do("build", "--lib", profile=self.args['profile']),
+                    (self.copy_to, [target_dir / so_file, target_dir / lib_file ],     {"fn": "file"}),
+                    (self.copy_to, [self.locs.temp / so_file, target_dir / lib_file ], {"fn": "file"}),
+                    ]
             case True, _:
-                build_target =  target_dir / f"lib{package_name}.dylib"
-                actions      = [ self.cargo_do("build", "--lib", profile=self.args['profile']) ]
+                lib_file     =  f"lib{package_name}.dylib"
+                task['targets'].append(target_dir / lib_file)
+                task['targets'].append(self.locs.temp / lib_file)
+                task['actions'] = [
+                    self.cargo_do("build", "--lib", profile=self.args['profile']),
+                    (self.copy_to, [self.locs.temp / lib_file, target_dir / lib_file ], {"fn": "file"}),
+                ]
             case False, _:
-                build_target = target_dir / self.args['target']
-                actions      = [ self.cargo_do("build", bin=self.args['target'], profile=self.args['profile']) ]
+                task['targets'].append(target_dir / self.args['target'])
+                task['actions'] = [
+                    self.cargo_do("build", bin=self.args['target'], profile=self.args['profile'])
+                ]
 
-        task.update({
-            "actions"  : actions,
-            "targets"  : [ build_target ],
-        })
         return task
 
 class CargoInstall(tasker.DootTasker, CommanderMixin, CargoMixin):
