@@ -47,6 +47,7 @@ import tomler
 import doot
 from doot.core.loaders.loader import DootLoader
 from doot.core.utils.log_filter import DootAnyFilter
+from doot.core.doot_main import DootMain
 
 def main():
     result  = 1
@@ -77,7 +78,7 @@ def main():
         ##-- end logging setup
 
         loader    = DootLoader()
-        doit_main = DoitMain(task_loader=loader, config_filenames=[doot.default_agnostic])
+        doit_main = DootMain(task_loader=loader, config_filenames=[doot.default_agnostic])
         result    = doit_main.run(sys.argv[1:])
 
         defaulted_locs = doot.DootLocData.report_defaulted()

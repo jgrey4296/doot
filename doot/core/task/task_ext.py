@@ -116,7 +116,6 @@ class DootCmdAction(CmdAction):
             assert self.STRING_FORMAT == 'both'
             return action_prepped.format(**subs_dict) % subs_dict
 
-
 class DootPyActionExt(PythonAction):
     """
     Python Action with a `build` static method instead of doit.action.create_action
@@ -250,6 +249,7 @@ class DootTaskExt(Task):
     making a task's `execute` a stack of actions instead of a list
     """
     action_builder = DootPyActionExt.build
+    name_splitter = re.compile(r":+|\.")
 
     def __init__(self, *args, **kwargs):
         pass
@@ -292,3 +292,20 @@ class DootTaskExt(Task):
                 case _:
                     self.result = action.result
                     self.values.update(action.values)
+
+    def name_parts(self):
+        return self.name_splitter.split(self.name)
+
+    def report(self, template, list_deps) -> str:
+        """print a single task"""
+        line_data = {'name': self.name, 'doc': self.doc}
+        results = []
+        results.append("\t" + template.format(**line_data))
+
+        if list_deps:
+            for dep in self.task_dep:
+                results.append(f"\t\t -(t)- {dep}")
+            for dep in self.file_dep:
+                results.append(f"\t\t -(f)- {dep}")
+
+        return "\n".join(results)
