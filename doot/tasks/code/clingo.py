@@ -21,14 +21,14 @@ from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
 from doot.mixins.commander import CommanderMixin
 
-src_ext      : Final = doot.config.on_fail(".lp", str).clingo.src_ext()
-out_ext      : Final = doot.config.on_fail(".lp_result", str).clingo.out_ext()
+src_ext      : Final[str] = doot.config.on_fail(".lp", str).clingo.src_ext()
+out_ext      : Final[str] = doot.config.on_fail(".lp_result", str).clingo.out_ext()
 
-vis_src_ext  : Final = doot.config.on_fail(".lp_vis", str).clingo.vis_src_ext()
-vis_in_ext   : Final = doot.config.on_fail(".json", str).clingo.vis_in_ext()
-vis_out_ext  : Final = doot.config.on_fail(".dot", str).clingo.vis_out_ext()
+vis_src_ext  : Final[str] = doot.config.on_fail(".lp_vis", str).clingo.vis_src_ext()
+vis_in_ext   : Final[str] = doot.config.on_fail(".json", str).clingo.vis_in_ext()
+vis_out_ext  : Final[str] = doot.config.on_fail(".dot", str).clingo.vis_out_ext()
 
-clingo_call  : Final = ["clingo"] + data.toml.on_fail([], list).clingo.options()
+clingo_call  : Final[list] = ["clingo"] + data.toml.on_fail([], list).clingo.options()
 
 class TODOClingoCheck:
     """

@@ -39,9 +39,9 @@ from bibtexparser.bparser import BibTexParser
 
 __all__ = ["BibLoadSaveMixin"]
 
-NEWLINE_RE     : Final = re.compile(r"\n+\s*")
-default_convert_exclusions = ["file", "url", "ID", "ENTRYTYPE", "_FROM_CROSSREF", "doi", "crossref", "tags", "look_in", "note", "reference_number", "see_also"]
-convert_exclusions = doot.config.on_fail(default_convert_exclusions, list).bibtex.convert_exclusions()
+NEWLINE_RE                 : Final[re.Pattern] = re.compile(r"\n+\s*")
+default_convert_exclusions : Final[list]       = ["file", "url", "ID", "ENTRYTYPE", "_FROM_CROSSREF", "doi", "crossref", "tags", "look_in", "note", "reference_number", "see_also"]
+convert_exclusions         : Final[list]       = doot.config.on_fail(default_convert_exclusions, list).bibtex.convert_exclusions()
 
 class OverrideDict(dict):
     """

@@ -22,16 +22,16 @@ from doot.mixins.targeted import TargetedMixin
 from doot.mixins.commander import CommanderMixin
 from doot.mixins.filer import FilerMixin
 
-lint_config     : Final = doot.config.on_fail("pylint.toml", str).python.lint.config()
-lint_exec       : Final = doot.config.on_fail("pylint", str).python.lint.exec()
-lint_fmt        : Final = doot.config.on_fail("text", str).python.lint.output_format()
-lint_out        : Final = doot.config.on_fail(f"report.lint", str).python.lint.output_name()
-lint_grouped    : Final = doot.config.on_fail(True, bool).python.lint.grouped()
-lint_error      : Final = doot.config.on_fail(False, bool).python.lint.error()
+lint_config     : Final[str]  = doot.config.on_fail("pylint.toml", str).python.lint.config()
+lint_exec       : Final[str]  = doot.config.on_fail("pylint", str).python.lint.exec()
+lint_fmt        : Final[str]  = doot.config.on_fail("text", str).python.lint.output_format()
+lint_out        : Final[str]  = doot.config.on_fail(f"report.lint", str).python.lint.output_name()
+lint_grouped    : Final[bool] = doot.config.on_fail(True, bool).python.lint.grouped()
+lint_error      : Final[bool] = doot.config.on_fail(False, bool).python.lint.error()
 
-py_test_dir_fmt : Final = doot.config.on_fail("__test", str).python.test.dir_fmt()
-py_test_args    : Final = doot.config.on_fail([], list).python.test.args()
-py_test_out     : Final = pl.Path(doot.config.on_fail("result.test", str).python.test())
+py_test_dir_fmt : Final[str]  = doot.config.on_fail("__test", str).python.test.dir_fmt()
+py_test_args    : Final[list] = doot.config.on_fail([], list).python.test.args()
+py_test_out     : Final[str]  = pl.Path(doot.config.on_fail("result.test", str).python.test())
 
 class InitPyGlobber(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin):
     """ ([src] -> src) add missing __init__.py's """

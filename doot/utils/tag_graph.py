@@ -23,9 +23,9 @@ logging = logmod.getLogger(__name__)
 
 IGNORE_REPLACEMENTS = ["TO_CHECK"]
 
-TAG_NORM    : Final = regex.compile(" +")
-ORG_PATTERN : str   = r"^\*\*\s+.+?\s+:(\S+):$"
-ORG_SEP     : str   = ":"
+TAG_NORM    : Final[re.Pattern] = regex.compile(" +")
+ORG_PATTERN : Final[str]        = r"^\*\*\s+.+?\s+:(\S+):$"
+ORG_SEP     : Final[str]        = ":"
 
 Tag : TypeAlias = str
 

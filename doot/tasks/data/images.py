@@ -29,16 +29,16 @@ import PIL
 from PIL import Image
 from sklearn.cluster import KMeans
 
-default_ocr_exts : Final = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".ppm"]
+default_ocr_exts : Final[list] = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".ppm"]
 
-default_pdf_exts : Final = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".ppm"]
+default_pdf_exts : Final[list] = [".GIF", ".JPG", ".PNG", ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".ppm"]
 
-ocr_exts         : Final = doot.config.on_fail(default_ocr_exts, list).images.ocr_exts()
-ocr_out_ext      : Final = doot.config.on_fail(".ocr", str).images.ocr_out()
+ocr_exts         : Final[list] = doot.config.on_fail(default_ocr_exts, list).images.ocr_exts()
+ocr_out_ext      : Final[str] = doot.config.on_fail(".ocr", str).images.ocr_out()
 
-framerate        : Final = doot.config.on_fail(10, int).images.framerate()
+framerate        : Final[int] = doot.config.on_fail(10, int).images.framerate()
 
-THUMB            : Final = (200,200)
+THUMB            : Final[tuple] = (200,200)
 
 HashImages = hashing.HashAllFiles
 

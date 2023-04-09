@@ -19,6 +19,8 @@ from doot.core.task.task_group import TaskGroup
 from doot.mixins.commander import CommanderMixin
 from doot.mixins.filer import FilerMixin
 
+cargo_p : Final[bool] = pl.Path("Cargo.toml").exists()
+
 class IncrementVersion(DootTasker):
     """
     Increment semver of package.

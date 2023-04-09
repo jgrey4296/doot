@@ -25,9 +25,9 @@ from doot.utils.twitter.tweet_graph import TwitterGraph
 
 logging = root_logger.getLogger(__name__)
 
-REPLY  : Final = 'in_reply_to_status_id_str'
-QUOTE  : Final = 'quoted_status_id_str'
-ID_STR : Final = 'id_str'
+REPLY  : Final[str] = 'in_reply_to_status_id_str'
+QUOTE  : Final[str] = 'quoted_status_id_str'
+ID_STR : Final[str] = 'id_str'
 
 # TODO could refactor output into template files, ie: jinja.
 

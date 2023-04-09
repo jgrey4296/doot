@@ -43,12 +43,12 @@ from doot.mixins.commander import CommanderMixin
 from doot.mixins.filer import FilerMixin
 
 
-android_base : Final = doot.config.on_fail("/storage/6331-3162", str).tools.doot.android.base(wrapper=pl.Path)
-timeout      : Final = doot.config.on_fail(5, int).tools.doot.android.timeout()
-port         : Final = doot.config.on_fail(37769, int).tools.doot.android.port()
-wait_time    : Final = doot.config.on_fail(10, int).tools.doot.android.wait()
+android_base : Final[str] = doot.config.on_fail("/storage/6331-3162", str).tools.doot.android.base(wrapper=pl.Path)
+timeout      : Final[int] = doot.config.on_fail(5, int).tools.doot.android.timeout()
+port         : Final[int] = doot.config.on_fail(37769, int).tools.doot.android.port()
+wait_time    : Final[int] = doot.config.on_fail(10, int).tools.doot.android.wait()
 
-NICE         : Final = ["nice", "-n", "10"]
+NICE         : Final[list] = ["nice", "-n", "10"]
 
 class ADBUpload(android.ADBMixin, BatchMixin, DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
     """

@@ -20,7 +20,7 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 TagSet : TypeAlias = set[str]
 ID     : TypeAlias = str
 
-tag_map : Final = lambda: defaultdict(list)
+tag_map : Final[Callable] = lambda: defaultdict(list)
 
 @dataclass
 class TweetTodoFile:

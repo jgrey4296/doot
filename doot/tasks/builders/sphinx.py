@@ -18,8 +18,8 @@ __all__ = [
 from doot.mixins.commander import CommanderMixin
 from doot.mixins.cleaning import CleanerMixin
 
-conf_builder     : Final = doot.config.on_fail("html", str).sphinx.builder()
-conf_verbosity   : Final = doot.config.on_fail(0, int).sphinx.verbosity()
+conf_builder     : Final[str] = doot.config.on_fail("html", str).sphinx.builder()
+conf_verbosity   : Final[int] = doot.config.on_fail(0, int).sphinx.verbosity()
 
 def task_browse() -> dict:
     """[build] Task definition """

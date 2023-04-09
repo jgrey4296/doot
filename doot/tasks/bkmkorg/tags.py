@@ -44,10 +44,10 @@ from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
 from doot.mixins.filer import FilerMixin
 
-empty_match     : Final = re.match("","")
-bib_tag_re      : Final = re.compile(r"^(\s+tags\s+=)\s+{(.+?)},$")
-org_tag_re      : Final = re.compile(r"^(\*\* .+?)\s+:(\S+):$")
-bookmark_tag_re : Final = re.compile(r"^(http.+?) : (.+)$")
+empty_match     : Final[re.Match]   = re.match("","")
+bib_tag_re      : Final[re.Pattern] = re.compile(r"^(\s+tags\s+=)\s+{(.+?)},$")
+org_tag_re      : Final[re.Pattern] = re.compile(r"^(\*\* .+?)\s+:(\S+):$")
+bookmark_tag_re : Final[re.Pattern] = re.compile(r"^(http.+?) : (.+)$")
 
 class TagsCleaner(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchMixin, FilerMixin):
     """

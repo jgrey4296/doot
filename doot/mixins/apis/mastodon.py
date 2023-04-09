@@ -18,11 +18,11 @@ import tomler
 
 logging = logmod.getLogger(__name__)
 
-toot_size            : Final = doot.config.on_fail(250, int).mastodon.toot_size()
-toot_image_size      : Final = doot.config.on_fail("8mb", str).mastodon.image_size()
-RESOLUTION_BLACKLIST : Final = doot.locs.image_blacklist
+toot_size            : Final[int]        = doot.config.on_fail(250, int).mastodon.toot_size()
+toot_image_size      : Final[str]        = doot.config.on_fail("8mb", str).mastodon.image_size()
+RESOLUTION_BLACKLIST : Final[list]       = doot.locs.image_blacklist
 
-RESOLUTION_RE        : Final = re.compile(r".*?([0-9]+x[0-9]+)")
+RESOLUTION_RE        : Final[re.Pattern] = re.compile(r".*?([0-9]+x[0-9]+)")
 
 class MastodonMixin:
 

@@ -44,15 +44,15 @@ from doot.mixins.delayed import DelayedMixin
 from doot.mixins.filer import FilerMixin
 from doot.mixins.targeted import TargetedMixin
 
-pl_expand           : Final = lambda x: pl.Path(x).expanduser().resolve()
+pl_expand           : Final[Callable] = lambda x: pl.Path(x).expanduser().resolve()
 
-MAX_ATTEMPTS       : Final = doot.config.on_fail(20, int).bibtex.max_attempts()
-tweet_size         : Final = doot.config.on_fail(250, int).twitter.tweet_size()
-toot_size          : Final = doot.config.on_fail(250, int).mastodon.toot_size()
+MAX_ATTEMPTS       : Final[int] = doot.config.on_fail(20, int).bibtex.max_attempts()
+tweet_size         : Final[int] = doot.config.on_fail(250, int).twitter.tweet_size()
+toot_size          : Final[int] = doot.config.on_fail(250, int).mastodon.toot_size()
 
-conversion_args     : Final = doot.config.on_fail(["-define", "jpeg:extent=4800KB"], list).photo.convert_args()
-required_keys       : Final = doot.config.on_fail(["year", "author", "title", "tags"], list).bibtex.required_keys()
-one_of_keys         : Final = doot.config.on_fail(["doi", "url", "isbn"], list).bibtex.one_of_keys()
+conversion_args     : Final[list] = doot.config.on_fail(["-define", "jpeg:extent=4800KB"], list).photo.convert_args()
+required_keys       : Final[list] = doot.config.on_fail(["year", "author", "title", "tags"], list).bibtex.required_keys()
+one_of_keys         : Final[list] = doot.config.on_fail(["doi", "url", "isbn"], list).bibtex.one_of_keys()
 
 class BibPoster(tasker.DootTasker, MastodonMixin, TwitterMixin, BibLoadSaveMixin, BibPathCleanMixin, BibFieldCleanMixin):
     """

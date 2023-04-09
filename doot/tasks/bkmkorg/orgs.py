@@ -44,12 +44,12 @@ from doot.mixins.batch import BatchMixin
 from doot.mixins.targeted import TargetedMixin
 from doot.tasker import DootTasker
 
-tweet_index_file : Final = doot.config.on_fail(".tweets", str).twitter.index()
-file_index_file  : Final = doot.config.on_fail(".files", str).twitter.file_index()
-link_index_file  : Final = doot.config.on_fail(".links", str).twitter.link_index()
-thread_file      : Final = doot.config.on_fail(".threads", str).twitter.thread_index()
+tweet_index_file : Final[str] = doot.config.on_fail(".tweets", str).twitter.index()
+file_index_file  : Final[str] = doot.config.on_fail(".files", str).twitter.file_index()
+link_index_file  : Final[str] = doot.config.on_fail(".links", str).twitter.link_index()
+thread_file      : Final[str] = doot.config.on_fail(".threads", str).twitter.thread_index()
 
-empty_match      : Final = re.match("","")
+empty_match      : Final[re.Match] = re.match("","")
 
 class TODOOrgCleaner(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
     """

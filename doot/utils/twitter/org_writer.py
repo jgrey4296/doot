@@ -25,7 +25,7 @@ from doot.utils.formats.org_builder import OrgStrBuilder
 
 logging = logmod.getLogger(__name__)
 
-media_dict : Final = lambda: defaultdict(list)
+media_dict : Final[Callable] = lambda: defaultdict(list)
 
 @dataclass
 class OrgThreadWriter:

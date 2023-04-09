@@ -16,11 +16,11 @@ from doot.mixins.human import HumanMixin
 from doot.mixins.commander import CommanderMixin
 from doot.mixins.filer import FilerMixin
 
-log_fmt     : Final = doot.config.on_fail(["%aI", "%h", "%al", "%s"], list).git.fmt()
-default_sep : Final = doot.config.on_fail(" :: ", str).git.sep()
-group_hours : Final = doot.config.on_fail(2, int).git.group_by_hours()
-bar_fmt     : Final = doot.config.on_fail("~", str).git.bar_fmt()
-bar_max     : Final = doot.config.on_fail(40, int).git.bar_max()
+log_fmt     : Final[list] = doot.config.on_fail(["%aI", "%h", "%al", "%s"], list).git.fmt()
+default_sep : Final[str]  = doot.config.on_fail(" :: ", str).git.sep()
+group_hours : Final[int]  = doot.config.on_fail(2, int).git.group_by_hours()
+bar_fmt     : Final[str]  = doot.config.on_fail("~", str).git.bar_fmt()
+bar_max     : Final[int]  = doot.config.on_fail(40, int).git.bar_max()
 
 
 class GitLogTask(DootTasker, CommanderMixin, FilerMixin):

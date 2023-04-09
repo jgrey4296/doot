@@ -24,15 +24,15 @@ import tomler
 import twitter as tw
 import tweepy
 
-tweet_size         : Final = doot.config.on_fail(250, int).twitter.tweet_size()
-tweet_img_types    : Final = doot.config.on_fail([".jpg", ".png", ".gif"], list).twitter.image_types()
-tweet_image_size   : Final = doot.config.on_fail(4_500_000, int).twitter.max_image()
-sleep_batch        : Final = doot.config.on_fail(2.0,   int|float).batch.sleep()
-twitter_batch_size : Final = doot.config.on_fail(100, int).twitter.batch_size()
+tweet_size         : Final[int] = doot.config.on_fail(250, int).twitter.tweet_size()
+tweet_img_types    : Final[list] = doot.config.on_fail([".jpg", ".png", ".gif"], list).twitter.image_types()
+tweet_image_size   : Final[int] = doot.config.on_fail(4_500_000, int).twitter.max_image()
+sleep_batch        : Final[int|float] = doot.config.on_fail(2.0,   int|float).batch.sleep()
+twitter_batch_size : Final[int] = doot.config.on_fail(100, int).twitter.batch_size()
 
-REPLY              : Final = 'in_reply_to_status_id_str'
-QUOTE              : Final = 'quoted_status_id_str'
-ID_STR             : Final = "id_str"
+REPLY              : Final[str] = 'in_reply_to_status_id_str'
+QUOTE              : Final[str] = 'quoted_status_id_str'
+ID_STR             : Final[str] = "id_str"
 
 class TwitterMixin:
 

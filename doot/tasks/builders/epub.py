@@ -51,7 +51,7 @@ from doot.mixins.filer import FilerMixin
 from doot.mixins.zipper import ZipperMixin
 from doot.mixins.commander import CommanderMixin
 
-ws : Final = re.compile("\s+")
+ws : Final[re.Pattern] = re.compile("\s+")
 
 class EbookGlobberBase(globber.DootEagerGlobber):
 

@@ -41,10 +41,10 @@ from doot.mixins.batch import BatchMixin
 from doot.mixins.filer import FilerMixin
 from doot.mixins.targeted import TargetedMixin
 
-android_base   : Final = doot.config.on_fail("/storage/6331-3162", str).tools.doot.android.base(wrapper=pl.Path)
-batch_sleep    : Final = doot.config.on_fail(2, int|float).subtask.sleep()
-pull_group_max : Final = doot.config.on_fail(100, int).android.pull.max_group()
-adb_path       : Final = shutil.which("adb")
+android_base   : Final[str]       = doot.config.on_fail("/storage/6331-3162", str).tools.doot.android.base(wrapper=pl.Path)
+batch_sleep    : Final[int|float] = doot.config.on_fail(2, int|float).subtask.sleep()
+pull_group_max : Final[int]       = doot.config.on_fail(100, int).android.pull.max_group()
+adb_path       : Final[str]       = shutil.which("adb")
 
 class ADBMixin:
     """

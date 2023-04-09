@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 ##-- end imports
 
 ##-- regexs
-FILE_RE : Final  = re.compile(r"^file(\d*)")
+FILE_RE : Final[re.Pattern]  = re.compile(r"^file(\d*)")
 ##-- end regexs
 
 logging = logmod.getLogger(__name__)

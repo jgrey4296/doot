@@ -37,8 +37,8 @@ from doot.mixins.apis.twitter import TwitterMixin
 from doot.mixins.commander import CommanderMixin
 from doot.mixins.filer import FilerMixin
 
-time_format : Final = doot.config.on_fail("%I:%M %p", str).notify.time_format()
-time_voice  : Final = doot.config.on_fail("Moira", str).notify.voice()
+time_format : Final[str] = doot.config.on_fail("%I:%M %p", str).notify.time_format()
+time_voice  : Final[str] = doot.config.on_fail("Moira", str).notify.voice()
 
 class TimeAnnounce(tasker.DootTasker, CommanderMixin):
 

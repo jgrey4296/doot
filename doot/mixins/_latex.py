@@ -45,9 +45,9 @@ TERM_BODY       = Template((tex_path / "term_body.tex").read_text())
 TRACE           = Template((tex_path / "trace.tex").read_text())
 ##-- end data
 
-BOLD  : Final =  r"\textbf"
-SOUT  : Final =  r"\sout"
-EMPTY : Final = [r"$\emptyset$"]
+BOLD  : Final[str] =  r"\textbf"
+SOUT  : Final[str] =  r"\sout"
+EMPTY : Final[list] = [r"$\emptyset$"]
 
 def macro_key(num):
     """

@@ -18,7 +18,7 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 
 logging = logmod.getLogger(__name__)
 
-TAG_NORM : Final = re.compile(" +")
+TAG_NORM : Final[re.Pattern] = re.compile(" +")
 
 @dataclass
 class TagFile:

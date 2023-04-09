@@ -36,7 +36,7 @@ logging = logmod.getLogger(__name__)
 
 # TODO chuck, tidal, supercollider repls
 
-prolog_ext : Final = doot.config.on_fail(".pl", str).doot.tool.repls.prolog.ext()
+prolog_ext : Final[str] = doot.config.on_fail(".pl", str).doot.tool.repls.prolog.ext()
 
 def task_pyrepl():
     return {

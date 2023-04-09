@@ -27,7 +27,7 @@ logging = logmod.getLogger(__name__)
 from doot.tasker import DootTasker
 from doot.mixins.subtask import SubMixin
 
-glob_ignores          : Final = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).globbing.ignores()
+glob_ignores          : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).globbing.ignores()
 
 class GlobControl(enum.Enum):
     """

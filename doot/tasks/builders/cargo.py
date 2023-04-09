@@ -6,7 +6,7 @@ import pathlib as pl
 import shutil
 import sys
 
-from doit.action import CmdAction
+import logging as logmod
 
 import doot
 from doot.core.task.task_group import TaskGroup
@@ -16,6 +16,10 @@ from doot import tasker
 ##-- end imports
 # https://doc.rust-lang.org/cargo/index.html
 
+##-- logging
+logging = logmod.getLogger(__name__)
+##-- end logging
+
 from doot.mixins.cargo import CargoMixin
 from doot.mixins.commander import CommanderMixin
 from doot.mixins.filer import FilerMixin
@@ -23,11 +27,12 @@ from doot.mixins.filer import FilerMixin
 cargo  = Tomler.load("Cargo.toml")
 config = Tomler.load("./.cargo/config.toml")
 
-build_path    : Final = config.on_fail(str(doot.locs.build)).build.target_dir()
-package_name  : Final = cargo.package.name
-profiles      : Final = ["release", "dev"] + cargo.on_fail([]).profile()
-binaries      : Final = [x.get('name') for x in  cargo.on_fail([], list).bin()]
-lib_path      : Final = cargo.on_fail(None, None|str).lib.path()
+build_path    : Final[str]  = config.on_fail(str(doot.locs.build)).build.target_dir()
+package_name  : Final[str]  = cargo.package.name
+profiles      : Final[list] = ["release", "dev"] + cargo.on_fail([]).profile()
+binaries      : Final[list] = [x.get('name') for x in  cargo.on_fail([], list).bin()]
+pyproject_p   : Final[bool] = pl.Path("pyproject.toml").exists()
+targets_lib   : Final[bool] = cargo.on_fail(False).lib() is not False
 
 def task_cargo_version():
     return {

@@ -40,8 +40,8 @@ from doot.mixins.filer import FilerMixin
 from doot.mixins.targeted import TargetedMixin
 from doot.tasker import DootTasker
 
-pl_expand     : Final = lambda x: pl.Path(x).expanduser().resolve()
-database_name : Final = doot.config.on_fail("places.sqlite", str).tools.doot.bookmarks.database_name()
+pl_expand     : Final[Callable] = lambda x: pl.Path(x).expanduser().resolve()
+database_name : Final[str]      = doot.config.on_fail("places.sqlite", str).tools.doot.bookmarks.database_name()
 
 class BookmarksUpdate(DootTasker, FilerMixin, CommanderMixin):
     """

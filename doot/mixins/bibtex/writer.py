@@ -21,12 +21,12 @@ if TYPE_CHECKING:
 import doot
 logging    = logmod.getLogger(__name__)
 
-head_line  : Final         = Template("@$entry{$id,")
-field_line : Final         = Template("$indent$field$eq_buffer= $value,")
-close_line : Final         = "}"
-default_field_sort : Final = ["author", "editor", "title", "subtitle", "short_parties", "year", "journal", "booktitle", "institution", "country", "tags"]
-field_sort : Final         = doot.config.on_fail(default_field_sort, list).bibtex.field_sort()
-indent_column : Final      = doot.config.on_fail(14, int).bibtex.indent_column()
+head_line  : Final[Template]     = Template("@$entry{$id,")
+field_line : Final[Template]     = Template("$indent$field$eq_buffer= $value,")
+close_line : Final[str]          = "}"
+default_field_sort : Final[list] = ["author", "editor", "title", "subtitle", "short_parties", "year", "journal", "booktitle", "institution", "country", "tags"]
+field_sort : Final[list]         = doot.config.on_fail(default_field_sort, list).bibtex.field_sort()
+indent_column : Final[int]       = doot.config.on_fail(14, int).bibtex.indent_column()
 
 class TODO_BibtexWriter_i:
     """ TODO replace bibtexparser writer with custom interface """

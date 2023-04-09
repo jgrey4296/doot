@@ -127,6 +127,15 @@ class FilerMixin:
         """
         # Set the naming strategy:
         assert(fpath.parent.exists())
+        flat_args = []
+        for x in args:
+            match x:
+                case str() | pl.Path():
+                    flat_args.append(x)
+                case list():
+                    flat_args += x
+
+
         overwrite = True
         match fn:
             case types.FunctionType() | types.MethodType() | types.LambdaType():
@@ -146,7 +155,7 @@ class FilerMixin:
                 fn        = lambda d, x: d / x.name
 
         # Then do the move
-        for x in args:
+        for x in flat_args:
             target_path = fn(fpath, x)
             if not overwrite and target_path.exists():
                  logging.warning("Not Moving: %s -> %s", x, target_path)
@@ -159,7 +168,7 @@ class FilerMixin:
         flat_args = []
         for x in args:
             match x:
-                case str():
+                case str() | pl.Path():
                     flat_args.append(x)
                 case list():
                     flat_args += x

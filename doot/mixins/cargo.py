@@ -40,11 +40,11 @@ rustup = shutil.which("rustup")
 cargo_config    = tomler.load("Cargo.toml")
 cargo_subconfig = tomler.load("./.cargo/config.toml")
 
-package_name  : Final = cargo_config.package.name
-build_path    : Final = cargo_subconfig.on_fail(str(doot.locs.build)).build.target_dir()
-profiles      : Final = ["release", "dev"] + cargo_config.on_fail([]).profile()
-binaries      : Final = [x.get('name') for x in  cargo_config.on_fail([], list).bin()]
-lib_path      : Final = cargo_config.on_fail(None, None|str).lib.path()
+package_name  : Final[str]      = cargo_config.package.name
+build_path    : Final[str]      = cargo_subconfig.on_fail(str(doot.locs.build), str).build.target_dir()
+profiles      : Final[list]     = ["release", "dev"] + cargo_config.on_fail([]).profile()
+binaries      : Final[list]     = [x.get('name') for x in  cargo_config.on_fail([], list).bin()]
+lib_path      : Final[None|str] = cargo_config.on_fail(None, None|str).lib.path()
 
 class CargoMixin:
 

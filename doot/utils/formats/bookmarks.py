@@ -19,7 +19,7 @@ import regex
 
 logging = logmod.getLogger(__name__)
 
-TAG_NORM : Final = regex.compile(" +")
+TAG_NORM : Final[re.Pattern] = regex.compile(" +")
 
 @dataclass
 class Bookmark:

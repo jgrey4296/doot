@@ -113,6 +113,7 @@ class DootTasker:
                      ("doc"      , self.doc),
                      ("uptodate" , [self.is_current]),
                      ("clean"    , [self.clean]),
+                     ("targets"  , []),
                      ])
 
     def default_meta(self) -> dict:

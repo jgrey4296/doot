@@ -47,11 +47,11 @@ from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
 from doot.mixins.filer import FilerMixin
 
-batch_size   : Final= doot.config.on_fail(10, int).batch.size()
+batch_size   : Final[int]= doot.config.on_fail(10, int).batch.size()
 
-hash_record  : Final = doot.config.on_fail(".hashes", str).files.hash.record()
-hash_concat  : Final = doot.config.on_fail(".all_hashes", str).files.hash.grouped()
-hash_dups    : Final = doot.config.on_fail(".dup_hashes", str).files.hash.duplicates()
+hash_record  : Final[str] = doot.config.on_fail(".hashes", str).files.hash.record()
+hash_concat  : Final[str] = doot.config.on_fail(".all_hashes", str).files.hash.grouped()
+hash_dups    : Final[str] = doot.config.on_fail(".dup_hashes", str).files.hash.duplicates()
 
 class HashAllFiles(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, BatchMixin):
     """

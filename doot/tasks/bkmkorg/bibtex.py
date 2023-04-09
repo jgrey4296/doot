@@ -50,12 +50,12 @@ logging = logmod.getLogger(__name__)
 logmod.getLogger('bibtexparser').setLevel(logmod.CRITICAL)
 ##-- end logging
 
-min_tag_timeline     : Final = doot.config.on_fail(10, int).bibtex.min_timeline()
-stub_exts            : Final = doot.config.on_fail([".pdf", ".epub", ".djvu", ".ps"], list).bibtex.stub_exts()
-clean_in_place       : Final = doot.config.on_fail(False, bool).bibtex.clean_in_place()
-wayback_wait         : Final = doot.config.on_fail(10, int).bibtex.wayback_wait()
-acceptible_responses : Final = doot.config.on_fail(["200"], list).bibtex.accept_wayback()
-ENT_const            : Final = 'ENTRYTYPE'
+min_tag_timeline     : Final[int] = doot.config.on_fail(10, int).bibtex.min_timeline()
+stub_exts            : Final[list] = doot.config.on_fail([".pdf", ".epub", ".djvu", ".ps"], list).bibtex.stub_exts()
+clean_in_place       : Final[bool] = doot.config.on_fail(False, bool).bibtex.clean_in_place()
+wayback_wait         : Final[int] = doot.config.on_fail(10, int).bibtex.wayback_wait()
+acceptible_responses : Final[list] = doot.config.on_fail(["200"], list).bibtex.accept_wayback()
+ENT_const            : Final[str] = 'ENTRYTYPE'
 
 class LibDirClean(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerMixin):
     """

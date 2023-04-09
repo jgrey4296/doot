@@ -29,15 +29,15 @@ __all__ = ["BibFieldCleanMixin", "BibPathCleanMixin"]
 
 from bibtexparser import customization as bib_customization
 
-STEM_CLEAN_RE  : Final = re.compile(r"[^a-zA-Z0-9_]+")
-UNDERSCORE_RE  : Final = re.compile(r"_+")
-NEWLINE_RE     : Final = re.compile(r"\n+\s*")
-AND_RE         : Final = re.compile(r"\ and\ ", flags=re.IGNORECASE)
-TAGSPLIT_RE    : Final = re.compile(r",|;")
-TITLESPLIT_RE  : Final = re.compile(r"^\s*(.+?): (.+)$")
-TITLE_CLEAN_RE : Final = re.compile("[^a-zA-Z0-9]")
+STEM_CLEAN_RE  : Final[re.Pattern] = re.compile(r"[^a-zA-Z0-9_]+")
+UNDERSCORE_RE  : Final[re.Pattern] = re.compile(r"_+")
+NEWLINE_RE     : Final[re.Pattern] = re.compile(r"\n+\s*")
+AND_RE         : Final[re.Pattern] = re.compile(r"\ and\ ", flags=re.IGNORECASE)
+TAGSPLIT_RE    : Final[re.Pattern] = re.compile(r",|;")
+TITLESPLIT_RE  : Final[re.Pattern] = re.compile(r"^\s*(.+?): (.+)$")
+TITLE_CLEAN_RE : Final[re.Pattern] = re.compile("[^a-zA-Z0-9]")
 
-empty_match : Final = re.match("","")
+empty_match : Final[re.Match] = re.match("","")
 
 class BibFieldCleanMixin:
     """
