@@ -45,7 +45,7 @@ class CommanderMixin:
         raise DeprecationWarning("use make_cmd")
 
     def make_cmd(self, cmd:str|list|callable, *args, shell=False, save=None, **kwargs):
-        logging.debug("Cmd: %s Args: %s kwargs: %s", cmd, args, kwargs)
+        logging.debug("Cmd: %s Args: %s kwargs: %s", cmd, args or [], kwargs or {})
         match cmd:
             case FunctionType() | MethodType():
                 action = (cmd, args, kwargs)
@@ -63,7 +63,7 @@ class CommanderMixin:
         raise DeprecationWarning("use make_force")
 
     def make_force(self, cmd:list|callable, *args, handler=None, shell=False, save=None, **kwargs):
-        logging.debug("Forcing Cmd: %s Args: %s kwargs: %s", cmd, args, kwargs)
+        logging.debug("Forcing Cmd: %s Args: %s kwargs: %s", cmd, args or [], kwargs or {})
         match cmd:
             case FunctionType() | MethodType():
                 action = (cmd, list(args), kwargs)

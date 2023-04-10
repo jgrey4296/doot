@@ -108,7 +108,7 @@ class PipBuild(DootTasker, CommanderMixin):
 
     def __init__(self, name="pip::build", locs=None):
         super().__init__(name, locs)
-        self.locs.ensure("wheel", "temp", "root", "python", task=name)
+        self.locs.ensure("wheel", "temp", "root", task=name)
 
     def task_detail(self, task):
         task.update({
@@ -119,6 +119,7 @@ class PipBuild(DootTasker, CommanderMixin):
         )
 
         if cargo_p:
+            self.locs.ensure("python")
             cargo_name = Tomler.load("Cargo.toml").package.name
             task['actions'].insert(0, (self.copy_to, [self.locs.python / "__data", self.locs.temp / f"{cargo_name}.so"]))
             task['file_dep'].append(self.locs.temp / f"{cargo_name}.so")

@@ -129,7 +129,7 @@ class RawXMLExporter:
 
     def maybe_create_soup(self, url:str):
         base_url = urlparse(url).netloc
-        if base_url in self.soups
+        if base_url in self.soups:
             return self.soups[base_url]
         soup_file = self.soup_file(base_url)
 

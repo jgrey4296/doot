@@ -66,11 +66,19 @@ class BackupCollectorTask(tasker.DootTasker, CommanderMixin, FilerMixin):
             {"name": "re-source", "long": "re-source", "type": bool, "default": False},
             {"name": "re-backup", "long": "re-backup", "type": bool, "default": False},
             {"name": "calc-only", "long": "calc-only", "type": bool, "default": False},
+            {"name": "reverse",   "long": "reverse",   "type": bool, "default": False},
         ]
 
     def task_detail(self, task):
         self.args['re-source'] = self.args['fresh'] or self.args['re-source'] or not self.source_cache.exists()
         self.args['re-backup'] = self.args['fresh'] or self.args['re-backup'] or not self.backup_cache.exists()
+        if self.args['reverse']:
+            logging.info("Reversing")
+            self.args['calc-only'] = True
+            source = self.source
+            self.source = self.backup
+            self.backup = source
+
         skip_calc = self.calc_cache.exists() and not (self.args['re-source'] or self.args['re-backup'])
 
         actions = [(self.log, [f"Processing: {self.source} : {self.backup}", logmod.INFO])]
@@ -86,7 +94,7 @@ class BackupCollectorTask(tasker.DootTasker, CommanderMixin, FilerMixin):
             actions += [ (self.log, ["Reading Backup Cache", logmod.INFO]), (self.read_from, [self.backup_cache, "backup.find"]) ]
 
         if skip_calc: # -> to_backup
-            actions  = [ (self.log, ["Reading Calculated Cache", logmod.INFO]), (self.read_from, [self.calc_cache, "to_backup"]) ]
+            actions  = [ (self.log, ["Reading Calculated Cache", logmod.INFO]), (self.read_from, [self.calc_cache, "to_backup"], {"fn":lambda x: x.split("\n")}) ]
         else:
             actions += [self.calculate_updates, (self.write_to, [self.calc_cache, "to_backup"], {"sub_sep":"\n"})]
 
@@ -119,7 +127,7 @@ class BackupCollectorTask(tasker.DootTasker, CommanderMixin, FilerMixin):
     def backup_files(self, task):
         src_abs         = self.source.resolve()
         backup_abs      = self.backup.resolve()
-        whitelist_files = [src_abs / x for x in task.values['to_backup']]
+        whitelist_files = [src_abs / x.strip() for x in task.values['to_backup']]
         whitelist_dirs  = [x for f in whitelist_files for x in f.parents if x.is_relative_to(src_abs)]
         whitelist       = set(str(x) for x in whitelist_files + whitelist_dirs)
         logging.debug("Whitelist: %s", whitelist)

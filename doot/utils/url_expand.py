@@ -45,7 +45,7 @@ def expander(current):
         else:
             expanded[current] = response.status_code
 
-        return "{} |%| {}".format(current, args.separator, expanded[current]))
+        return "{} |%| {}".format(current, args.separator, expanded[current])
     except Exception as err:
         cmd    = 'say -v Moira -r 50 "Error"'
         system(cmd)

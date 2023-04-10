@@ -200,5 +200,6 @@ class FilerMixin:
                 case False:
                     shutil.copytree(x, target_name, dirs_exist_ok=True)
 
-    def read_from(self, fpath, key):
-        return { key : fpath.read_text() }
+    def read_from(self, fpath, key, fn=None):
+        fn = fn or (lambda x: x)
+        return { key : fn(fpath.read_text()) }

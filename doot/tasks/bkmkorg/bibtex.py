@@ -98,6 +98,10 @@ class BibtexClean(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, bib_cle
             return self.control.discard
         return self.control.accept
 
+    @property
+    def clean_in_place(self):
+        return self.args['clean-in-place'] or self.args['move-files']
+
     def set_params(self):
         return [
             { "name": "move-files", "long": "move-files", "type": bool, "default": False },
@@ -117,7 +121,7 @@ class BibtexClean(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, bib_cle
         return task
 
     def subtask_detail(self, task, fpath):
-        target = fpath if self.args['clean-in-place'] else self.locs.temp / fpath.name
+        target = fpath if self.clean_in_place else self.locs.temp / fpath.name
         task.update({
             "actions" : [
                 (self.load_and_clean, [fpath]), # -> cleaned
@@ -205,15 +209,8 @@ class BibtexClean(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, bib_cle
 
         ##-- parent path cleanup
         for parent in orig_parents:
-            try:
-                should_rm = not bool(list(parent.iterdir()))
-                # if should_rm and self.args['move-files']:
-                #     parent.rmdir()
-                if should_rm:
-                    logging.info("Proposed Directory Cleanup: %s", parent)
-            except OSError as err:
-                if not err.args[0] == 66:
-                    logging.exception("Removing empty directories went bad: ", err)
+            if not bool(list(parent.iterdir())):
+                logging.info("Proposed Directory Cleanup: %s", parent)
             ##-- end parent path cleanup
 
 class BibtexReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerMixin, BatchMixin, BibLoadSaveMixin, bib_clean.BibFieldCleanMixin, bib_clean.BibPathCleanMixin):

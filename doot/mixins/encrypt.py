@@ -99,7 +99,7 @@ class EncryptMixin(CommanderMixin):
         add a new key to the keychain
         plus add a recoke certificate
         """
-        cmd = self.make_interactgpg, "--gen-key")
+        cmd = self.make_interact(gpg, "--gen-key")
         cmd.execute()
         print(cmd.result)
 
@@ -122,7 +122,7 @@ class EncryptMixin(CommanderMixin):
 
         recipients = [x for pair in zip(["-r"] * len(users), users) for x in pair]
 
-        cmd = self.make_interactgpg, "--sign", "--armor", "--batch",
+        cmd = self.make_interact(gpg, "--sign", "--armor", "--batch",
                        "-u", gpg_user,
                        *recipients,
                        "-o", fpath.with_suffix(fpath.suffix + ".gpg"),

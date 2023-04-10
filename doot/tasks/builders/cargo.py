@@ -27,12 +27,15 @@ from doot.mixins.filer import FilerMixin
 cargo  = Tomler.load("Cargo.toml")
 config = Tomler.load("./.cargo/config.toml")
 
-build_path    : Final[str]  = config.on_fail(str(doot.locs.build)).build.target_dir()
-package_name  : Final[str]  = cargo.package.name
-profiles      : Final[list] = ["release", "dev"] + cargo.on_fail([]).profile()
-binaries      : Final[list] = [x.get('name') for x in  cargo.on_fail([], list).bin()]
-pyproject_p   : Final[bool] = pl.Path("pyproject.toml").exists()
-targets_lib   : Final[bool] = cargo.on_fail(False).lib() is not False
+build_path    : Final[str]          = config.on_fail(str(doot.locs.build)).build.target_dir()
+package_name  : Final[str]          = cargo.package.name
+lib_file      : Final[str]          =  f"lib{package_name}.dylib"
+so_file       : Final[str]          =  f"{package_name}.so"
+profiles      : Final[list]         = ["release", "dev"] + cargo.on_fail([]).profile()
+binaries      : Final[list]         = [x.get('name') for x in  cargo.on_fail([], list).bin()]
+pyproject_p   : Final[bool]         = pl.Path("pyproject.toml").exists()
+targets_lib   : Final[bool]         = cargo.on_fail(False).lib() is not False
+install_lib   : Final[None|Pl.Path] = doot.config.on_fail(doot.locs.build).group.rust.lib_install(wrapper=lambda x: pl.Path(x).expanduser().resolve())
 
 def task_cargo_version():
     return {
@@ -70,27 +73,16 @@ class CargoBuild(tasker.DootTasker, CommanderMixin, CargoMixin, FilerMixin):
     def task_detail(self, task):
         target_dir   = self.locs.build / ("debug" if self.args['profile'] == "dev" else "release")
 
-        match self.args['lib'], sys.platform:
-            case True, "darwin":
-                logging.info("Targeting Lib")
+        match self.args['lib']:
+            case True:
                 # libraries on mac need to be renamed:
-                lib_file     =  f"lib{package_name}.dylib"
-                so_file      =  f"{package_name}.so"
                 task['targets'].append(target_dir / so_file)
                 task['targets'].append(self.locs.temp / so_file)
                 task['actions'] = [
                     self.cargo_do("build", "--lib", profile=self.args['profile']),
-                    (self.copy_to, [target_dir / so_file, target_dir / lib_file ],     {"fn": "file"}),
-                    (self.copy_to, [self.locs.temp / so_file, target_dir / lib_file ], {"fn": "file"}),
-                    ]
-            case True, _:
-                lib_file     =  f"lib{package_name}.dylib"
-                task['targets'].append(target_dir / lib_file)
-                task['targets'].append(self.locs.temp / lib_file)
-                task['actions'] = [
-                    self.cargo_do("build", "--lib", profile=self.args['profile']),
                     (self.copy_to, [self.locs.temp / lib_file, target_dir / lib_file ], {"fn": "file"}),
-                ]
+                    (self.copy_to, [self.locs.temp / so_file, target_dir / lib_file ],  {"fn": "file"}),
+                    ]
             case False, _:
                 task['targets'].append(target_dir / self.args['target'])
                 task['actions'] = [
@@ -99,18 +91,26 @@ class CargoBuild(tasker.DootTasker, CommanderMixin, CargoMixin, FilerMixin):
 
         return task
 
-class CargoInstall(tasker.DootTasker, CommanderMixin, CargoMixin):
+class CargoInstall(tasker.DootTasker, CommanderMixin, CargoMixin, FilerMixin):
 
     def __init__(self, name="cargo::install", locs=None):
         super().__init__(name, locs)
 
     def set_params(self):
-        return self.get_cargo_params()
+        return self.get_cargo_params() + [
+            { "name": "lib", "type": bool, "short": "l", "default": targets_lib },
+        ]
 
     def task_detail(self, task):
-        task.update({
-            "actions"  : [ self.make_cmd(self.binary_build) ],
-        })
+        if self.args['lib']:
+            task['task_dep'] = ["cargo::build"]
+            task["actions"] = [
+                (self.log, [f"Installing Module to: {install_lib}", logmod.INFO]),
+                (self.copy_to, [install_lib / so_file, self.locs.temp / so_file ], {"fn": "file"}),
+            ]
+        else:
+            task["actions"] =[ self.make_cmd(self.binary_build) ],
+
         return task
 
     def binary_build(self):

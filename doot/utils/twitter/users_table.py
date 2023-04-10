@@ -24,7 +24,7 @@ class TwitterUsersWriter:
         return self._path.expanduser().resolve()
 
     def start(self):
-        if self.path.exists()
+        if self.path.exists():
             return
 
         with open(self.path, 'a') as f:
