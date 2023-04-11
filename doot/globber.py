@@ -28,6 +28,7 @@ from doot.tasker import DootTasker
 from doot.mixins.subtask import SubMixin
 
 glob_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).globbing.ignores()
+glob_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).globbing.halts()
 
 class GlobControl(enum.Enum):
     """
@@ -115,6 +116,9 @@ class DootEagerGlobber(SubMixin, DootTasker):
             if check_fn(target):
                 yield target
 
+            if not target.is_dir():
+                return None
+
             for x in target.iterdir():
                 if check_fn(x):
                     yield x
@@ -128,6 +132,8 @@ class DootEagerGlobber(SubMixin, DootTasker):
             if not current.exists():
                 continue
             if current.name in glob_ignores:
+                continue
+            if current.is_dir() and any([(current / x).exists() for x in glob_halts]):
                 continue
             if bool(exts) and current.is_file() and current.suffix not in exts:
                 continue

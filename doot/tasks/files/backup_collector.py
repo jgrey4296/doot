@@ -66,7 +66,7 @@ class BackupCollectorTask(tasker.DootTasker, CommanderMixin, FilerMixin):
             {"name": "re-source", "long": "re-source", "type": bool, "default": False},
             {"name": "re-backup", "long": "re-backup", "type": bool, "default": False},
             {"name": "calc-only", "long": "calc-only", "type": bool, "default": False},
-            {"name": "reverse",   "long": "reverse",   "type": bool, "default": False},
+            {"name": "reverse",   "long": "reverse",   "type": bool, "default": False, "help": "only calc"},
         ]
 
     def task_detail(self, task):

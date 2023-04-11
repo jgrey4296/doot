@@ -130,7 +130,7 @@ class ListCmd(DoitCmdBase):
 
         # grouped tasks:
         grouped_tasks = defaultdict(lambda: defaultdict(lambda: []))
-        name_lens     = set()
+        name_lens     = set([0])
         for task in self.task_list:
             names = task.name_parts()
             match names:

@@ -25,7 +25,7 @@ from doot.mixins.filer import FilerMixin
 lint_config     : Final[str]  = doot.config.on_fail("pylint.toml", str).python.lint.config()
 lint_exec       : Final[str]  = doot.config.on_fail("pylint", str).python.lint.exec()
 lint_fmt        : Final[str]  = doot.config.on_fail("text", str).python.lint.output_format()
-lint_out        : Final[str]  = doot.config.on_fail(f"report.lint", str).python.lint.output_name()
+lint_report     : Final[str]  = doot.config.on_fail(f"report.lint", str).python.lint.output_name()
 lint_grouped    : Final[bool] = doot.config.on_fail(True, bool).python.lint.grouped()
 lint_error      : Final[bool] = doot.config.on_fail(False, bool).python.lint.error()
 
@@ -61,13 +61,13 @@ class PyLintTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Commande
 
     def set_params(self):
         return [
-            {"name": "grouped", "type": bool, "default": lint_grouped, "short": "g"},
+            {"name": "grouped", "type": bool, "default": lint_grouped, "long": "grouped", "short": "g", "inverse": "separate"},
         ] + self.target_params()
 
     def filter(self, fpath):
         if fpath.is_dir() and bool(list(fpath.glob("*.py"))):
-            return self.globc.accept
-        return self.globc.discard
+            return self.globc.yesAnd
+        return self.globc.noBut
 
 
     def setup_detail(self, task):
@@ -84,18 +84,17 @@ class PyLintTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Commande
         return task
 
     def subtask_detail(self, task, fpath=None):
-        if not self.args['grouped']:
-            target = (self.output / task['name']).with_suffix(".lint")
+        if self.args['grouped']:
+            target = self.output / lint_report
         else:
-            target = self.output / lint_out
+            target = (self.output / task['name']).with_suffix(".lint")
 
         task.update({
             "actions"   : [
-                (self.log, [f"Checking: {fpath}", logmod.INFO]),
+                (self.log, [f"Checking: {fpath} -> {target}", logmod.INFO]),
                 self.make_cmd(self.run_lint, fpath, save="lint"),
                 (self.write_lint_report, [target]),
             ],
-            "targets"   : [ target ],
             "clean"     : True,
         })
         return task
@@ -104,12 +103,13 @@ class PyLintTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Commande
         args = [lint_exec, "--rcfile", lint_config, "--output-format", lint_fmt,
                 "-E" if lint_error else None, "--exit-zero",
                 ]
-        lint_targets = self.glob_files(fpath, rec=lint_grouped)
+        lint_targets = self.glob_target(fpath, rec=self.args['grouped'], fn=lambda x: True)
         args += lint_targets
         return [x for x in args if x is not None]
 
     def write_lint_report(self, fpath, task):
-        if lint_grouped:
+        logging.info("(%s) Writing Report To: %s", self.args['grouped'], fpath)
+        if self.args['grouped']:
             with open(fpath, 'a') as f:
                 f.write("\n" + task.values['lint'])
 

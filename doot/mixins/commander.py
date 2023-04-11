@@ -53,7 +53,7 @@ class CommanderMixin:
                 action = [cmd, *args]
             case list():
                 assert(not bool(args))
-                action = cmd
+                action = [x for x in cmd if x is not None]
             case _:
                 raise TypeError("Unexpected action form: ", cmd)
 
@@ -70,7 +70,7 @@ class CommanderMixin:
             case list():
                 assert(not bool(args))
                 assert(not bool(kwargs))
-                action = cmd
+                action = [x for x in cmd if x is not None]
             case _:
                 raise TypeError("Unexpected action form: ", cmd)
 
@@ -94,7 +94,7 @@ class CommanderMixin:
             case list():
                 assert(not bool(args))
                 assert(not bool(kwargs))
-                action = cmd
+                action = [x for x in cmd if x is not None]
             case _:
                 raise TypeError("Unexpected action form: ", cmd)
         return Interactive(action, shell=False, save_out=save)
