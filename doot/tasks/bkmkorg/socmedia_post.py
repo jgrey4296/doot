@@ -147,9 +147,9 @@ class BibPoster(tasker.DootTasker, MastodonMixin, TwitterMixin, BibLoadSaveMixin
 
         people = []
         match entry:
-            case { "__authors" : [*authors]}:
+            case { "__author" : [*authors]}:
                 people += authors
-            case { "__editors" : [*editors]}:
+            case { "__editor" : [*editors]}:
                 people += editors
             case _:
                 raise Exception("No author or editor for entry: %s", entry)

@@ -200,7 +200,7 @@ class ZipperMixin:
 
 
     def zip_contains(self, fpath, *args) -> bool:
-        with zipfile.Zipfile(fpath, "r") as zipf:
+        with zipfile.ZipFile(fpath, "r") as zipf:
             contents = zipf.namelist()
 
         return all([x in contents for x in args])

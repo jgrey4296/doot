@@ -27,8 +27,9 @@ from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
 from doot.mixins.commander import CommanderMixin
 from doot.mixins.filer import FilerMixin
+from doot.mixins.xml import XMLMixin
 
-class XmlValidateTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
+class XmlValidateTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin, XMLMixin):
     """
     ([data]) Validate xml's by schemas
     """
@@ -40,69 +41,55 @@ class XmlValidateTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Com
             raise Exception("For Xml Validation you need to specify an xsd to validate against")
 
     def set_params(self):
-        return self.target_params()
+        return self.target_params() + [
+            {"name":"xsd", "long":"xsd", "type": pl.Path, "default": None}
+            ]
 
     def filter(self, fpath):
-        if fpath.is_dir() and any(x.suffix in self.exts for x in fpath.iterdir()):
-            return self.control.accept
-        return self.control.discard
+        if self.args['xsd'] is None:
+            return self.globc.no
+
+        if fpath.is_file() and fpath.suffix in self.exts:
+            return self.globc.yes
+
+        return self.globc.noBut
 
     def subtask_detail(self, task, fpath=None):
+        if self.args['xsd'] is None:
+            return None
+
         task.update({
-            "actions" : [ self.make_cmd(self.validate, fpath)]
+            "actions" : [ self.make_cmd(self.xml_validate, fpath, self.args['xsd'])]
         })
         return task
 
-    def validate(self, fpath):
-        args = ["xml", "val",
-                "-e",    # verbose errors
-                "--net", # net access
-                "--xsd"  # xsd schema
-                ]
-        args.append(self.xsd)
-        args += self.glob_target(fpath, fn=lambda x: x.is_file())
-        return args
 
-class XmlFormatTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
+class XmlFormatTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin, XMLMixin):
     """
     ([data] -> data) Basic Formatting with backup
     """
 
     def __init__(self, name="xml::format", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".xml", ".xhtml", ".html"], rec=rec)
+        self.locs.ensure("temp", task='xml::format')
 
     def set_params(self):
-        return self.target_params()
+        return self.target_params() + [
+            {"name": "in-place", "long": "in-place", "type": bool, "default": False}
+        ]
 
     def filter(self, fpath):
-        if fpath.is_dir() and any(x.suffix in self.exts for x in fpath.iterdir()):
-            return self.control.accept
-        return self.control.discard
+        if fpath.is_file() and fpath.suffix in self.exts:
+            return self.globc.yes
+        return self.globc.noBut
 
     def subtask_detail(self, task, fpath=None):
+        out_target = fpath if self.args['in-place'] else self.locs.temp / "xml_formatted" / fpath.name
+
         task.update({
-            'actions': [ (self.format_xmls, [fpath] )]
+            'actions': [
+                (self.cmd(self.xml_format, fpath, save="formatted"),
+                (self.write_to, [out_target, "formatted"]),
+            ]
         })
         return task
-
-    def format_xmls(self, fpath):
-        globbed  = self.glob_target(fpath, fn=lambda x: x.is_file())
-        for target in globbed:
-            backup = btarget.with_suffix(f"{btarget.suffix}.backup")
-            if not backup.exists():
-                backup.write_text(btarget.read_text())
-
-            args = ["xml" , "fo",
-                    "-s", "4",     # indent 4 spaces
-                    "-R",          # Recover
-                    "-N",          # remove redundant declarations
-                    "-e", "utf-8", # encode in utf-8
-                    ]
-            if target.suffix in [".html", ".xhtml", ".htm"]:
-                args.append("--html")
-
-            args.append(target)
-            # Format and save result:
-            cmd = self.make_cmd(args)
-            cmd.execute()
-            target.write_text(cmd.out)

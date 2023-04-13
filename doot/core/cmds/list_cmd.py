@@ -144,6 +144,9 @@ class ListCmd(DoitCmdBase):
                 case [x, y, *_]:
                     name_lens.add(len(task.name))
                     grouped_tasks[names[0]][y].append(task)
+                case _:
+                    name_lens.add(len(task.name))
+                    grouped_tasks["misc"][task.name].append(task)
 
         if quiet:
             self.outstream.write(f"Task Groups:\n")

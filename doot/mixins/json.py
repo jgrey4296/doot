@@ -23,6 +23,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     cast, final, overload, runtime_checkable)
 from uuid import UUID, uuid1
 from weakref import ref
+import json
 
 ##-- end imports
 
@@ -32,16 +33,20 @@ logging = logmod.getLogger(__name__)
 
 class JsonMixin:
 
+    def json_load(self, fpath):
+        return json.loads(fpath.read_text())
+
     def json_filter(self, target, filter_str="."):
         """
         outputs to process' stdout
         """
         return ["jq", "-M", "S", filter_str, target]
 
-    def json_schema(self, target, pckage="genJson", recursive=False):
+    def json_schema(self, target, package="genJson", recursive=False):
+        """ writes output to stdout """
         args = ["xsdata", "generate",
                 ("--recursive" if not self.rec else ""),
-                "-p", gen_package,
+                "-p", package,
                 "--relative-imports", "--postponed-annotations",
                 "--kw-only",
                 "--frozen",
@@ -51,7 +56,10 @@ class JsonMixin:
 
         return args
 
-    def json_plantuml(self, fpath, targets):
+    def json_plantuml(self, dst, src):
+        """
+        writes to dst
+        """
         header   = "@startjson\n"
         footer   = "\n@endjson\n"
 

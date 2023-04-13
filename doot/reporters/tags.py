@@ -53,7 +53,7 @@ class TagsReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, BatchMix
     (src -> build) Report on tags
     """
 
-    def __init__(self, name="tags::report", locs=None, roots=None, rec=True, exts=None):
+    def __init__(self, name="report::tags", locs=None, roots=None, rec=True, exts=None):
         super().__init__(name, locs, roots or [locs.tags], rec=rec, exts=exts or [".sub"])
         self.tags = SubstitutionFile()
         self.locs.ensure("build", "temp", task=name)

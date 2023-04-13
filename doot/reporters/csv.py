@@ -18,8 +18,9 @@ from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
 from doot.mixins.filer import FilerMixin
 from doot.mixins.commander import CommanderMixin
+from doot.mixins.csv import CSVMixin
 
-class CSVSummaryTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerMixn):
+class CSVSummaryTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerMixn, CSVMixin):
     """
     ([data] -> build) Summarise all found csv files,
     grouping those with the same headers,
@@ -27,9 +28,9 @@ class CSVSummaryTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, File
     # TODO actually load the csv
     """
 
-    def __init__(self, name="csv::summary", locs:DootLocData=None, roots=None, rec=True):
+    def __init__(self, name="report::csv", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".csv"], rec=rec)
-        self.report_name = self.locs.build / "csv.report"
+        self.output = self.locs.build / "csv.report"
 
     def set_params(self):
         return self.target_params()
@@ -38,27 +39,15 @@ class CSVSummaryTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, File
         task['actions']  = [ (self.rmfiles, [self.report_name]) ]
         return task
 
-    def task_detail(self, task):
-        task['teardown'] = [self.make_cmd("cat", self.report_name) ]
-        return task
-
-    def subtask_detail(self, task, fpath=None):
+    def subtask_detail(self, task, fpath):
         task.update({
             "clean"    : True,
             "actions" : [
-                (self.write_data, [fpath]),
+                (self.csv_summary, [fpath]), # -> report/rows/columsn/header
+                (self.append_to, [self.output, "report"]),
             ]
         })
         return task
-
-    def write_data(self, fpath, task):
-        text        = fpath.read_text().split("\n")
-        columns     = len(text[0].split(","))
-        with open(self.report_name, 'a') as f:
-            f.write(str(fpath), ": ")
-            f.write("Rows: ", len(text), " ")
-            f.write("Columns: ", columns, " ")
-            f.write("Header: ", text[0].strip(), "\n")
 
 class CSVSummaryXMLTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
     """
@@ -67,7 +56,7 @@ class CSVSummaryXMLTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, C
     and listing number of rows
     """
 
-    def __init__(self, name="csv::summary.xml", locs:DootLocData=None, roots=None, rec=True):
+    def __init__(self, name="report::csv.xml", locs:DootLocData=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".csv"], rec=rec)
         self.report_name = self.locs.build / "csv.xml"
 

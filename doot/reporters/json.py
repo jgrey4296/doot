@@ -30,17 +30,20 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from doot import globber
 from doot.mixins.commander import CommanderMixin
 from doot.mixins.filer import FilerMixin
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
+from doot.mixins.json import JsonMixin
+from doot.mixins.plantuml import PlantUMLMixin
 
-class JsonPythonSchema(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerMixin, CommanderMixin):
+class JsonPythonSchema(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerMixin, CommanderMixin, JsonMixin):
     """
     ([data] -> codegen) Use XSData to generate python bindings for a directory of json's
     """
 
-    def __init__(self, name="json::schema.python", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+    def __init__(self, name="report::json.schema.py", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".json"], rec=rec)
         self.locs.ensure("codegen", task=name)
 
@@ -56,50 +59,34 @@ class JsonPythonSchema(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Fi
         gen_package = str(self.locs.codegen / task['name'])
         task.update({
             "targets"  : [ gen_package ],
-            "task_dep" : [ "_xsdata::config" ],
             "clean"    : [ (self.rmdirs, [gen_package]) ],
-            "actions"  : [ self.make_cmd(self.generate_on_target, fpath, gen_package) ]
+            "actions"  : [
+                self.make_xsdata_config(),
+                self.make_cmd(self.json_schema, fpath, gen_package),
+            ]
         })
         return task
 
-    def generate_on_target(self, fpath, gen_package, task):
-        args = ["xsdata", "generate",
-                ("--recursive" if not self.rec else ""),
-                "-p", gen_package,
-                "--relative-imports", "--postponed-annotations",
-                "--kw-only",
-                "--frozen",
-                "--no-unnest-classes",
-                fpath
-                ]
-
-        return args
-
-class JsonVisualise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
+class JsonVisualise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, JsonMixin, PlantUMLMixin):
     """
     ([data] -> visual) Wrap json files with plantuml header and footer,
     ready for plantuml to visualise structure
     """
 
-    def __init__(self, name="json::schema.visual", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+    def __init__(self, name="report::json:.schema.img", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".json"], rec=rec)
-        self.locs.ensure("visual", task=name)
+        self.locs.ensure("build", "temp", task=name)
 
     def set_params(self):
-        return self.target_params()
+        return self.target_params() + self.plantuml_params()
 
-    def subtask_detail(self, task, fpath=None):
+    def subtask_detail(self, task, fpath):
+        dst = self.locs.temp / fpath.with_stem(task['name']).name
+        img = self.locs.build / "json" / fpath.stem
         task.update({
-            "targets"  : [ self.locs.visual / fpath.with_stem(task['name']).name ],
-            "actions"  : [ (self.write_plantuml, [fpath]) ]
+            "targets"  : [ img ],
+            "actions"  : [ (self.json_plantuml, [dst, fpath]),
+                          (self.plantuml_img, [img, dst]
+                        ]
             })
         return task
-
-    def write_plantuml(self, fpath, targets):
-        header   = "@startjson\n"
-        footer   = "\n@endjson\n"
-
-        with open(pl.Path(targets[0]), 'w') as f:
-            f.write(header)
-            f.write(fpath.read_text())
-            f.write(footer)

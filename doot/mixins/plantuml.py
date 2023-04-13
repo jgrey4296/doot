@@ -30,15 +30,24 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class GtagsMixin:
+import doot
 
-    def gtag_params(self):
+plant_ext    = doot.config.on_fail("png", str).plantuml.ext()
+
+class PlantUMLMixin:
+
+    def plantuml_params(self):
         return [
-            {"name": "gtags-init", "long": "gtags-init", "type": bool, "default": False}
-        ]
+            { "name" : "ext",    "type": str,   "short": "e", "default": plant_ext}
+            ]
 
-    def gtags_init(self, fpath):
-        return ["gtags", "-C", fpath, "."])],
+    def plantuml_img(self, dst, src, check=False) -> list:
+        if check:
+            return ["plantuml", "-checkonly", src]
 
-    def gtags_update(self, fpath):
-        return ["global", "-C", fpath, "-u" ]
+        return [
+            "plantuml", f"-t{self.args['ext']}",
+            "-output", dst.resovle().parent
+            "-filename", dst.stem,
+            src
+            ]

@@ -23,5 +23,4 @@ listings_out = "build/listing"
 lint_out     = "build/lint"
 
 [group.pip]
-[group.py]
 [group.python]

@@ -32,7 +32,12 @@ logging = logmod.getLogger(__name__)
 
 class XMLMixin:
 
-    xsdata_defaults = [ "--relative-imports", "--postponed-annotations", "--kw-only", "--frozen", "--no-unnest-clases"]
+    xsdata_defaults = [ "--relative-imports",
+                       "--postponed-annotations",
+                       "--kw-only",
+                       "--frozen",
+                       "--no-unnest-clases",
+                       "--output", "dataclasses"]
 
     def xml_elements(self, targets):
         """
@@ -42,30 +47,35 @@ class XMLMixin:
         """
         return ["xml", "el", "-u"] + targets
 
-    def xml_trang(self, fpath, targets:list):
+    def xml_trang(self, dst, targets:list):
         """
-        outputs to fpath
+        outputs to dst
         trang  : https://relaxng.org/jclark/ [-C catalogFileOrUri] [-I rng|rnc|dtd|xml] [-O rng|rnc|dtd|xsd] [-i input-param] [-o output-param] inputFileOrUri ... outputFile
         """
         assert(all([x.suffix == ".xml" for x in targets])), "Trang only accepts .xml files"
-        return ["trang"] + targets
+        return ["trang"] + targets + [dst]
 
-    def xml_xsd(self, fpath, targets):
+    def xml_xsd(self, dst, targets):
         """
-        generates to fpath
+        generates to dst
         xsd    : mono
         """
-        return ["xsd"] + targets + ["/o", fpath]
+        return ["xsd"] + targets + ["/o", dst]
 
-    def xml_xsdata(self, fpath, target, recursive=False, package_name="genxml"):
+    def make_xsdata_config(self):
+        if pl.Path(".xsdata.xml").exists():
+            return None
+        return self.cmd("xsdata", "init-config")
+
+    def xml_xsdata(self, dst, target):
         """
         generates to fpath
         xsdata : https://github.com/tefra/xsdata
         """
         xsdata_args = and_args or self.xsdata_defaults
-        return ["xsdata", "generate"] + xsdata_args
+        return ["xsdata", "generate"] + ["--package", dst] + xsdata_args + [target]
 
-    def xsml_plantuml(self, target):
+    def xml_plantuml(self, target):
         """
         outputs to process' stdout
         """
@@ -87,7 +97,7 @@ class XMLMixin:
         args.append(target)
         return args
 
-    def xml_validate(self, targets:list, xsd):
+    def xml_validate(self, targets:list, xsd:pl.Path):
         """
         outputs to process' stdout
         """

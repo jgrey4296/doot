@@ -45,7 +45,7 @@ class DotMixin:
             { "name" : "ext",    "type": str,   "short": "e", "default": dot_ext}
         ]
 
-    def dot_image(self, fpath, target):
+    def dot_image(self, src, dst) -> list:
         return [
             "dot", target,
             f"-T{self.args['ext']}",
@@ -54,14 +54,37 @@ class DotMixin:
             "-o", fpath
         ]
 
+    def dot_graph(self):
+        """
+        https://graphviz.org/doc/info/command.html
 
-    def dot_plantuml(self, fpath, target, check=False):
-        if check:
-            return ["plantuml", "-checkonly", target]
-
-        return [
-            "plantuml", f"-t{self.args['ext']}",
-            "-output", fpath.resovle().parent
-            "-filename", fpath.name,
-            target
-            ]
+        -c<n>         : cycle
+        -C<x,y>       : cylinder
+        -g[f]<h,w>    : grid (folded if f is used)
+        -G[f]<h,w>    : partial grid (folded if f is used)
+        -h<x>         : hypercube
+        -k<x>         : complete
+        -b<x,y>       : complete bipartite
+        -B<x,y>       : ball
+        -i<n>         : generate <n> random
+        -m<x>         : triangular mesh
+        -M<x,y>       : x by y Moebius strip
+        -n<prefix>    : use <prefix> in node names ("")
+        -N<name>      : use <name> for the graph ("")
+        -o<outfile>   : put output in <outfile> (stdout)
+        -p<x>         : path
+        -r<x>,<n>     : random graph
+        -R<n>         : random rooted tree on <n> vertices
+        -s<x>         : star
+        -S<x>         : 2D sierpinski
+        -S<x>,<d>     : <d>D sierpinski (<d> = 2,3)
+        -t<x>         : binary tree
+        -t<x>,<n>     : n-ary tree
+        -T<x,y>       : torus
+        -T<x,y,t1,t2> : twisted torus
+        -w<x>         : wheel
+        -d            : directed graph
+        -v            : verbose mode
+        -?            : print usage
+        """
+        return [ "gvgen" ]

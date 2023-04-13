@@ -24,6 +24,8 @@ from doot.mixins.delayed import DelayedMixin
 from doot.mixins.commander import CommanderMixin
 from doot.mixins.batch import BatchMixin
 from doot.mixins.filer import FilerMixin
+from doot.mixins.ocr import OCRMixin
+
 import numpy as np
 import PIL
 from PIL import Image
@@ -57,7 +59,7 @@ def norm_img(img):
     norm_c1 = [x/y for x,y in zip(histograms, sums)]
     return np.array(norm_c1).reshape((1,-1))
 
-class OCRGlobber(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, BatchMixin):
+class OCRGlobber(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, BatchMixin, OCRMixin):
     """
     ([data] -> data) Run tesseract on applicable files in each found directory
     to make dot txt files of ocr'd text from the image
@@ -132,17 +134,14 @@ class OCRGlobber(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Commande
         chunks  = self.chunk(self.glob_target(root=fpath, fn=self.ocr_filter))
         self.run_batches(*chunks)
 
-    def get_ocr_file_name(self, fpath):
-        return fpath.parent / f".{fpath.stem}{ocr_out_ext}"
-
     def batch(self, data):
         for name, fpath in data:
-            dst        = self.get_ocr_file_name(fpath)
-            ocr_cmd    = self.make_cmd("tesseract", fpath, dst.stem, "--psm", "1",  "-l", "eng")
-            mv_txt_cmd = self.make_cmd("mv", dst.with_suffix(".txt").name, dst)
+            ocr_cmd, mv_txt_cmd = self.make_ocr_cmds(fpath)
             ocr_cmd.execute()
             mv_txt_cmd.execute()
 
+
+##-- todo
 class TODOImages2PDF(TargetedMixin, tasker.DootTasker, CommanderMixin, BatchMixin):
     """
     Combine globbed images into a single pdf file using imagemagick
@@ -251,3 +250,5 @@ class TODOPDF2Images(globber.DootEagerGlobber, CommanderMixin, FilerMixin, Batch
         cmd.append(fpath)
         cmd.append(pl.Path(targets[0]) / "page_")
         return cmd
+
+##-- end todo

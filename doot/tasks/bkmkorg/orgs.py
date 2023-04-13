@@ -157,7 +157,7 @@ class OrgMultiThreadCount(DelayedMixin, TargetedMixin, globber.DootEagerGlobber,
     Count threads in files, make a thread file (default: .threads)
     """
 
-    def __init__(self, name="org::threadcount", locs=None, roots=None, rec=True):
+    def __init__(self, name="threads::count", locs=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".org"], rec=True)
         self.heading_re = re.compile(f"^\** ")
 
@@ -215,7 +215,7 @@ class ThreadOrganise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Batc
     move threads in multi thread files to their own separate count
     """
 
-    def __init__(self, name="thread::organise", locs=None, roots=None, rec=True):
+    def __init__(self, name="threads::organise", locs=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".org"], rec=rec)
         self.total_threads   = 0
         self.multi_threads   = set()

@@ -38,30 +38,52 @@ class DeleterTask(tasker.DootTasker, FilerMixin):
     Delete files listed in the target
     """
 
-    def __init__(self, name="file::deleter", locs=None):
+    def __init__(self, name="file::deleter", locs=None, target=None):
         super().__init__(name, locs)
+        self.deletion_list = []
+        self._target       = target
+        self.locs.ensure("temp", "build", task=name)
 
     def set_params(self):
         return [
-            {"name": "target", "short": "t", "type": pl.Path, "default": None},
+            {"name": "target", "short": "t",      "type": pl.Path, "default": self._target},
+            {"name": "backup", "long" : "backup", "type": bool, "default": True, "inverse": "no-backup"},
         ]
 
     def task_detail(self, task):
+        if self.args['target'] is None:
+            return None
+
         task.update({
-            "actions" : [ self.delete_files,],
+            "actions" : [
+                self.load_deletions,
+                self.delete_files,
+                (self.write_to, [self.locs.build / "deletion.log", "deletions"])
+            ],
         })
         return task
 
-    def delete_files(self):
-        target = self.args['target']
-        if target is None or not target.exists():
+    def load_deletions(self):
+        if not self.args['target'].exists():
             return False
-        text   = target.read_text()
-        paths  = [pl.Path(x.strip()) for x in text.split("\n") if bool(x.strip())]
 
-        logging.info("Got %s files to delete", len(paths))
-        for path in paths:
+        lines              = self.args['target'].read_text().split("\n")
+        self.deletion_list = [pl.Path(fname.strip()).expanduser().resolve() for fname in lines if bool(fname.strip())]
+
+    def delete_files(self):
+        logging.info("Got %s files to delete", len(self.deletion_list))
+        log = []
+        move_target : pl.Path = self.locs.build / "to_delete"
+        move_target.mkdir(exist_ok=True)
+
+        for path in self.deletion_list:
             assert(path.exists())
             if path.is_dir():
                 raise TypeError(f"Path is a directory: {path}")
-            path.unlink()
+            if self.args['backup']:
+                fpath.rename(move_target / fpath.name)
+            else:
+                path.unlink()
+            log.append(str(path))
+
+        return { "deletions" : "\n".join(log) }

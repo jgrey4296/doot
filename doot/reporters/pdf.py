@@ -57,7 +57,7 @@ class PdfLibSummary(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, PdfMi
     Compile the first n pages of each pdf in a decade together
     """
 
-    def __init__(self, name="pdflib::summary", locs=None, roots=None, output=None):
+    def __init__(self, name="report::pdflib", locs=None, roots=None, output=None):
         super().__init__(name, locs, roots or [locs.pdfs], rec=True)
         self.output = output or locs.pdf_summary
 

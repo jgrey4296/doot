@@ -30,13 +30,20 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+import doot
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.targeted import TargetedMixin
+from doot.mixins.filer import FilerMixin
+from doot import globber
+from doot.utils.formats import bookmarks as BC
+
 
 class BookmarksReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerMixin):
     """
     TODO Generate reports on bookmarks
     """
 
-    def __init__(self, name="bkmk::report", locs=None, roots=None, rec=False, exts=None):
+    def __init__(self, name="report::bookmarks", locs=None, roots=None, rec=False, exts=None):
         super().__init__(name, locs, roots or [locs.bookmarks], rec=rec, exts=exts or [".bookmarks"])
         self.bookmarks = BC.BookmarkCollection()
         self.output = locs.build

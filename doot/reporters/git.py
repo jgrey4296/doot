@@ -49,7 +49,7 @@ class GitLogTask(DootTasker, CommanderMixin, FilerMixin):
     see: https://git-scm.com/docs/git-log
     """
 
-    def __init__(self, name="git::logs", locs:DootLocData=None, fmt:list[str]=None, sep:str=default_sep):
+    def __init__(self, name="report::git.raw", locs:DootLocData=None, fmt:list[str]=None, sep:str=default_sep):
         super().__init__(name, locs)
         self.format = fmt or log_fmt
         self.sep    = sep
@@ -76,7 +76,7 @@ class GitLogAnalyseTask(DootTasker, HumanMixin):
     (temp -> build) separate the printed log
     """
 
-    def __init__(self, name="git::analysis", locs=None, sep=default_sep):
+    def __init__(self, name="report::git", locs=None, sep=default_sep):
         super().__init__(name, locs)
 
         # Data extracted from logs:

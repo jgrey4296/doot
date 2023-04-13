@@ -17,7 +17,7 @@ class LineReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
     Glob for all files in a target, and report on the amount of lines
     """
 
-    def __init__(self, name="report::linecount", locs=None, roots=None, exts=None, rec=False):
+    def __init__(self, name="report::lines", locs=None, roots=None, exts=None, rec=False):
         super().__init__(name, locs, roots or [locs.src], exts=exts, rec=rec)
         self.counts = []
         self.output = locs.build / "linecount.report"

@@ -35,7 +35,14 @@ class CSVMixin:
     def csv_summary(self, fpath) -> dict:
         text        = fpath.read_text().split("\n")
         columns     = len(text[0].split(","))
+        report = [
+            f"--- {fpath} : (Rows: {len(text)})",
+            "Header Line: {text[0].strip()}",
+            ""
+            ]
+
         return {
+            "report"  : "\n".join(report),
             "rows"    :  len(text),
             "columns" : , columns,
             "header"  : , text[0].strip(),

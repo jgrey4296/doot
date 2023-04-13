@@ -77,7 +77,7 @@ class DootEagerGlobber(SubMixin, DootTasker):
             try:
                 if not pl.Path(x).exists():
                     depth = len(set(self.__class__.mro()) - set(DootEagerGlobber.mro()))
-                    warnings.warn(f"Globber Missing Root: {x}", stacklevel=depth)
+                    logging.warn(f"Globber Missing Root: {x}", stacklevel=depth)
             except TypeError as err:
                 breakpoint()
                 pass

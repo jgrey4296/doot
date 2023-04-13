@@ -62,6 +62,15 @@ def macro_key(num):
 class LatexCompilerBase:
     _compiled_text = []
 
+    def latex_params(self):
+        return [
+            {
+             "name"   : "interaction", "short"  : "i", "type"    : str,
+             "choices" : [ ("batchmode", ""), ("nonstopmode", ""), ("scrollmode", ""), ("errorstopmode", ""),],
+             "default" : "nonstopmode",
+            },
+        ]
+
     def clear(self):
         self._compiled_text = []
 
@@ -82,6 +91,15 @@ class LatexCompilerBase:
         formatting it with kwargs.
         """
         self._compiled_text.append(self.expand(pattern, **kwargs))
+
+
+    def latex_check (self, fpath) -> list:
+        return ["pdflatex",
+                "-draftmode",
+                f"-interaction={self.args['interaction']}",
+                f"-output-directory={self.locs.temp}",
+                fpath.with_suffix(""),
+                ]
 
 class TODOGanttLatexMixin(LatexCompilerBase):
     """

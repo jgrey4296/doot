@@ -22,7 +22,7 @@ import doot
 from doot.mixins.commander import CommanderMixin
 
 CHECK_AMNT    : Final[int] = doot.config.on_fail(150, int).downloader.check_amnt()
-speak_confirm : Final = CommanderMixin.say(None, "Found a Large Group of Files, waiting for confirmation")
+speak_confirm : Final      = CommanderMixin.make_say(None, "Found a Large Group of Files, waiting for confirmation")
 
 class DownloaderMixin:
     """

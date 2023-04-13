@@ -10,20 +10,25 @@ from doot.mixins.commander import CommanderMixin
 
 ##-- end imports
 
-def task_tags_init(locs):
-    """([src]) initialise gtags """
-    return {
-        "basename" : "gtags::init",
-        "actions"  : [ CommanderMixin.cmd(None, ["gtags", "-C", locs.src, "."])],
-        "targets"  : [ locs.src / x for x in [ "GPATH", "GRTAGS", "GTAGS" ] ],
-        "clean"    : True,
-    }
+from doot.mixins.gatgs import GtagsMixin
+import doot
+from doot.tasker import DootTasker
+from doot.mixins.commander import CommanderMixin
 
+class GtagsTask(DootTasker, GtagsMixin):
 
-def task_tags(locs):
-    """([src]) update tag files """
-    return {
-        "basename" : "gtags::update",
-        "actions"  : [ CommanderMixin.cmd(None, ["global", "-C", locs.src, "-u" ])],
-        "file_dep" : [ locs.src / x for x in [ "GPATH", "GRTAGS", "GTAGS" ] ],
-    }
+    def __init__(self, name="gtags::run", locs=None):
+        super().__init__(name, locs)
+
+    def task_detail(self, task):
+        """([src]) initialise gtags """
+        cmd_fn = self.gtags_update
+        if self.args['gtags-init']
+            cmd_fn = self.gtags_init
+
+        task.update({
+            "actions"  : [ self.cmd(cmd_fn, [self.locs.root]) ],
+            "targets"  : [ self.locs.root / x for x in [ "GPATH", "GRTAGS", "GTAGS" ] ],
+            "clean"    : True,
+        })
+        return task

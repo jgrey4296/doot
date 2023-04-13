@@ -30,14 +30,21 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+import doot
+
+ocr_out_ext      : Final[str] = doot.config.on_fail(".ocr", str).images.ocr_out()
+
 class OCRMixin:
 
     def get_ocr_file_name(self, fpath):
         return fpath.parent / f".{fpath.stem}{ocr_out_ext}"
 
-    def ocr(self, fpath):
+    def make_ocr_cmds(self, fpath, dst=None):
         """
         outputs to cwd dst.txt
         """
-        dst        = self.get_ocr_file_name(fpath)
-        return ["tesseract", fpath, dst.stem, "--psm", "1",  "-l", "eng"]
+        dst = dst or self.get_ocr_file_name(fpath)
+        return [
+            self.make_cmd("tesseract", fpath, dst.stem, "--psm", "1",  "-l", "eng"),
+            self.make_cmd("mv", dst.with_suffix(".txt").name, dst)
+            ]

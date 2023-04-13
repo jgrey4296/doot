@@ -34,79 +34,75 @@ from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
 from doot.mixins.commander import CommanderMixin
 from doot.mixins.filer import FilerMixin
+from doot.mixins.xml import XMLMixin
+from doot.mixins.plantuml import PlantUMLMixin
 
-class XmlElementsTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
+class XmlElementsTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin, XMLMixin):
     """
     ([data] -> elements) xml element retrieval using xml starlet toolkit
     http://xmlstar.sourceforge.net/
     """
 
-    def __init__(self, name="xml::elements", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+    def __init__(self, name="report::xml.elements", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".xml"], rec=rec)
-        self.locs.ensure("elements", task=name)
+        self.locs.ensure("build", task=name)
 
     def set_params(self):
         return self.target_params()
 
     def filter(self, fpath):
         if fpath.is_dir() and any(x.suffix in self.exts for x in fpath.iterdir()):
-            return self.control.accept
-        return self.control.discard
+            return self.globc.yes
+        return self.globc.noBut
 
-    def subtask_detail(self, task, fpath:dict=None) -> dict:
+    def subtask_detail(self, task, fpath) -> dict:
+        dst     = self.locs.build / (task['name'] + ".elements")
+        targets = list(self.glob_target(fpath, rec=False, fn=lambda x: self.globc.yes, exts=self.exts))
+
         task.update({
-            "targets" : [ self.locs.elements / (task['name'] + ".elements")],
+            "targets" : [ dst ],
             "clean"   : True,
-            "actions" : [ self.make_cmd(self.generate_on_target, fpath, save="elements"),
-                          (self.write_to, [fpath, "elements"]),
-                         ]
+            "actions" : [
+                self.make_cmd(self.xml_elements, targets, save="elements"),
+                (self.write_to, [ dst, "elements" ]),
+            ]
         })
         return task
 
-    def generate_on_target(self, fpath, targets, task):
-        """
-        build an `xml el` command of all available xmls
-        """
-        globbed = self.glob_target(fpath, fn=lambda x: x.is_file())
-        return ["xml", "el", "-u", *globbed]
-
-class XmlSchemaTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
+class XmlSchemaTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin, XMLMixin):
     """
     ([data] -> schema) Generate .xsd's from directories of xml files using trang
     https://relaxng.org/jclark/
     """
 
-    def __init__(self, name="xml::schema", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+    def __init__(self, name="report::xml.trang", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".xml"], rec=rec)
-        self.locs.ensure("schema", task=name)
+        self.locs.ensure("build", task=name)
 
     def set_params(self):
         return self.target_params()
 
     def filter(self, fpath):
         if fpath.is_dir() and any(x.suffix in self.exts for x in fpath.iterdir()):
-            return self.control.accept
-        return self.control.discard
+            return self.globc.yes
+        return self.globc.noBut
 
-    def subtask_detail(self, task, fpath=None):
+    def subtask_detail(self, task, fpath):
+        dst     = self.locs.build / (task['name'] + ".xsd")
+        targets = list(self.glob_target(fpath, rec=False, fn=lambda x: self.globc.yes, exts=[".xml"]))
         task.update({
-            "targets"  : [ self.locs.schema / (task['name'] + ".xsd") ],
+            "targets"  : [dst],
             "clean"    : True,
-            "uptodate" : [True],
-            "actions"  : [self.make_cmd(self.generate_on_target, fpath)],
+            "actions"  : [self.make_cmd(self.xml_trang, dst, targets)],
             })
         return task
 
-    def generate_on_target(self, fpath, targets, task):
-        globbed = self.glob_target(fpath, fn=lambda x: x.is_file())
-        return ["trang", *globbed, *targets]
-
-class XmlPythonSchemaRaw(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
+class XmlPythonSchema(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
     """
     ([data] -> codegen) Generate Python Dataclass bindings based on raw XML data
     """
 
-    def __init__(self, name="xml::schema.python.raw", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
+    def __init__(self, name="report::xml.schema.py", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".xml"], rec=rec)
         self.locs.ensure("codegen", task=name)
 
@@ -115,95 +111,52 @@ class XmlPythonSchemaRaw(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, 
 
     def filter(self, fpath):
         if fpath.is_dir() and any(x.suffix in self.exts for x in fpath.iterdir()):
-            return self.control.accept
-        return self.control.discard
+            return self.globc.yes
+        return self.globc.noBut
 
     def subtask_detail(self, task, fpath=None):
         gen_package = str(self.locs.codegen / task['name'])
         task.update({
             "targets"  : [ gen_package ],
-            "task_dep" : [ "_xsdata::config"],
-            "actions"  : [ self.make_cmd(self.generate_on_target, fpath, gen_package) ],
+            "actions"  : [
+                self.make_xsdata_config(),
+                self.make_cmd(self.xml_xsdata, gen_package, fpath)
+                     ],
             })
         return task
 
-    def generate_on_target(self, fpath, gen_package, task):
-        args = ["xsdata", "generate",
-                ("--recursive" if not self.rec else ""),
-                "-p", gen_package,
-                "--relative-imports", "--postponed-annotations",
-                "--kw-only",
-                "--frozen",
-                "--no-unnest-classes",
-                fpath,
-                ]
-        return args
-
-class XmlPythonSchemaXSD(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
-    """
-    ([data] -> codegen) Generate python dataclass bindings from XSD's
-    """
-
-    def __init__(self, name="xml::schema.python.xsd", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
-        super().__init__(name, locs, roots or [locs.data], exts=[".xsd"], rec=rec)
-        self.locs.ensure("build", "codegen", task=name)
-
-    def set_params(self):
-        return self.target_params()
-
-    def filter(self, fpath):
-        if fpath.is_dir() and any(x.suffix in self.exts for x in fpath.iterdir()):
-            return self.control.accept
-        return self.control.discard
-
-    def subtask_detail(self, task, fpath=None):
-        gen_package = str(self.locs.codegen / task['name'])
-        task.update({
-            "targets"  : [ gen_package ],
-            "file_dep" : [ fpath ],
-            "task_dep" : [ "_xsdata::config"],
-            "actions"  : [self.make_cmd(self.gen_target, fpath, gen_package) ],
-            })
-        return task
-
-    def gen_target(self, fpath, gen_package, task):
-        args = ["xsdata", "generate",
-                ("--recursive" if not self.rec else ""),
-                "-p", gen_package,
-                "--relative-imports", "--postponed-annotations",
-                "--kw-only",
-                "--frozen",
-                "--no-unnest-classes",
-                fpath,
-                ]
-
-        return args
-
-class XmlSchemaVisualiseTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin):
+class XmlSchemaVisualiseTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, CommanderMixin, FilerMixin, PlantUMLMixin):
     """
     ([data] -> visual) Generate Plantuml files ready for plantuml to generate images
     """
 
     def __init__(self, name="xml::schema.plantuml", locs:DootLocData=None, roots:list[pl.Path]=None, rec=True):
         super().__init__(name, locs, roots or [locs.data], exts=[".xsd"], rec=rec)
-        self.locs.ensure("visual", task=name)
+        self.locs.ensure(build, task=name)
 
     def set_params(self):
-        return self.target_params()
+        return self.target_params() + self.plantuml_params()
 
     def filter(self, fpath):
         if fpath.is_dir() and any(x.suffix in self.exts for x in fpath.iterdir()):
-            return self.control.accept
-        return self.control.discard
+            return self.globc.yes
+        return self.globc.noBut
 
     def subtask_detail(self, task, fpath=None):
+        dst = self.locs.temp / "plantuml" / (task['name'] + ".plantuml")
+        dst.parent.mkdir(parents=True)
+        img = self.locs.build / "xml" / (task['name'] + ".plantuml")
+        img.parent.mkdir(parents=True)
+
         task.update({
-            "targets"  : [ self.locs.visual / (task['name'] + ".plantuml") ],
+            "targets"  : [ img ],
             "file_dep" : [ fpath ],
-            "task_dep" : [ "_xsdata::config" ],
-            "actions" : [self.make_cmd("xsdata", "generate", "-o", "plantuml", "-pp", fpath, save="result")
-                         (self.write_to, [fpath, "result"])
-                         ],
+            "actions" : [
+                self.make_xsdata_config(),
+                self.make_cmd(self.xml_plantuml, fpath, save="result"),
+                (self.write_to, [fpath, "result"]),
+                (self.plantuml_img, [ img, dst]
+            ],
             "clean"    : True,
             })
         return task

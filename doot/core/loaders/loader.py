@@ -170,7 +170,7 @@ class DootLoader(NamespaceTaskLoader):
         for task_name, ref in namespace.items():
             match task_name.startswith(TASK_STRING), ref:
                 case _, _ if task_name in command_names:
-                    logging.warning("doit_loader.Task can't be called '%s' because this is a command task_name.", task_name)
+                    logging.warning("doot_loader.Task can't be called '%s' because this is a command task_name.", task_name)
                     continue
                 case _, doit_loader.task_params:
                     # Do not solicit tasks from the @self.task_params decorator.
@@ -180,6 +180,9 @@ class DootLoader(NamespaceTaskLoader):
                     creators += [(getattr(x, "basename", task_name), x) for x in ref.tasks]
                 case _,  DootTasker():
                     creators += [(ref.basename, ref)]
+                case True, dict():
+                    logging.info("Got a basic task dict: %s", task_name)
+                    creators.append((task_name, ref))
                 case True, FunctionType() | MethodType():
                     # function is a task creator because of its task_name
                     # remove TASK_STRING prefix from task_name

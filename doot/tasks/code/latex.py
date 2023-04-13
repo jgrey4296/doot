@@ -37,6 +37,7 @@ logging = logmod.getLogger(__name__)
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
 from doot.mixins.commander import CommanderMixin
+from doot.mixins.latex import LatexMixin
 
 
 def task_latex_docs():
@@ -44,16 +45,10 @@ def task_latex_docs():
     return {
         "basename" : "tex::docs",
         "actions" : ["texdoc {package}"],
-        "params" : [ { "name" : "package",
-                       "long" : "package",
-                       "short" : "p",
-                       "type" : str,
-                       "default" : "--help",
-                       }
-                    ],
+        "params" : [ { "name" : "package", "long" : "package", "short" : "p", "type" : str, "default" : "--help",}],
     }
 
-class LatexCheckSweep(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
+class LatexCheckSweep(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, LatexMixin):
     """
     ([src] -> temp) Run a latex pass, but don't produce anything,
     just check the syntax
@@ -64,23 +59,11 @@ class LatexCheckSweep(DelayedMixin, TargetedMixin, globber.DootEagerGlobber):
         self.locs.ensure("temp", task=name)
 
     def set_params(self):
-        return [
-            { "name"   : "interaction", "short"  : "i", "type"    : str,
-              "choices" : [ ("batchmode", ""), ("nonstopmode", ""), ("scrollmode", ""), ("errorstopmode", ""),],
-              "default" : "nonstopmode",
-             },
-        ] + self.target_params()
+        return self.target_params() + self.latex_params()
 
     def subtask_detail(self, task, fpath=None):
-        task.update({"file_dep" : [ fpath ],
-                     "actions"  : [ self.make_cmd(self.build_draft_cmd, fpath) ]
-                     })
+        task.update({
+            "file_dep" : [ fpath ],
+            "actions"  : [ self.make_cmd(self.latex_check, fpath) ]
+        })
         return task
-
-    def build_draft_cmd(self, fpath):
-        return ["pdflatex",
-                "-draftmode",
-                f"-interaction={self.args['interaction']}",
-                f"-output-directory={self.locs.temp}",
-                fpath.with_suffix(""),
-                ]

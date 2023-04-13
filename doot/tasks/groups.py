@@ -44,10 +44,7 @@ __all__ = [ "defaults_group",
 
 defaults_group = TaskGroup("defaults", as_creator=False)
 try:
-    from doot.tasks.files import listing
-
-    defaults_group += listing.FileListings(locs=doot.locs)
-
+    pass
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     if doot.config.on_fail(False, bool).group.defaults.debug():
         print("To activate group, defaults needs: ", err)
@@ -305,12 +302,13 @@ hashing_group = TaskGroup("Hashing")
 try:
     doot.config.group.hashing
     from doot.tasks.files import hashing
+    from doot.tasks.files.deleter import DeleterTask
     hashing_group += hashing.HashAllFiles(locs=doot.locs)
     hashing_group += hashing.GroupHashes(locs=doot.locs)
-    hashing_group += hashing.RemoveMissingHashes(locs=doot.locs)
     hashing_group += hashing.DetectDuplicateHashes(locs=doot.locs)
-    hashing_group += hashing.DeleteDuplicates(locs=doot.locs)
-    hashing_group += hashing.RepeatDeletions(locs=doot.locs)
+    hashing_group += hashing.MarkDuplicates(locs=doot.locs, output=doot.locs.build / "to_delete")
+    hashing_group += DeleterTask(name="hash::delete.marked", locs=doot.locs, target=doot.locs.build / "to_delete")
+    # hashing_group += hashing.RepeatDeletions(locs=doot.locs)
 
 except (TomlAccessError, DootDirAbsent, FileNotFoundError) as err:
     if doot.config.on_fail(False, bool).group.hashing.debug():

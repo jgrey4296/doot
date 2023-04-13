@@ -51,14 +51,7 @@ ruby          = shutil.which("ruby")
 sphinix       = shutil.which("sphinix")
 trang         = shutil.which("trang")
 xml           = shutil.which("xml")
-xsdata        = shutil.which("xsdata")
 
-def task_xsdata_config():
-    return {
-        "basename" : "_xsdata::config",
-        "actions" : [ "xsdata init-config" ],
-        "targets" : [ ".xsdata.xml" ],
-    }
 
 
 def task_ebookconvert_version():

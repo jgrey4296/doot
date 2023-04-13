@@ -89,7 +89,7 @@ class TwitterMixin:
             logging.debug("Twitter Image Posted")
             return {"twitter_result": True }
         except Exception as err:
-            logging.warning("Twitter Post Failed: %s %s", str(err), msg, the_file)
+            logging.warning("Twitter Post Failed: %s %s %s", str(err), msg, the_file)
             return { "twitter_result": False }
 
     def tw_download_tweets(self, target_dir, missing_file, task):

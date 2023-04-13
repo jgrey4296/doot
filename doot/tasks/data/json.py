@@ -22,8 +22,9 @@ from doot.mixins.commander import CommanderMixin
 from doot.mixins.filer import FilerMixin
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
+from doot.mixins.json import JsonMixin
 
-class JsonFormatTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerMixin, CommanderMixin):
+class JsonFormatTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerMixin, CommanderMixin, JsonMixin):
     """
     ([data] -> data) Lint Json files with jq *inplace*
     """
@@ -35,29 +36,16 @@ class JsonFormatTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, File
         return self.target_params()
 
     def filter(self, fpath):
-        if any(x.suffix in self.exts for x in fpath.iterdir()):
-            return self.globc.accept
-        return self.globc.discard
+        if fpath.is_file() and fpath.suffix in self.exts:
+            return self.globc.yes
+        return self.globc.noBut
 
     def subtask_detail(self, task, fpath=None):
         task.update({
             "uptodate" : [False],
-            "actions" : [ (self.format_jsons_in_dir, [fpath]) ],
+            "actions" : [
+                self.make_cmd(self.json_filter, [fpath], save="formatted"),
+                (self.write_to, [fpath, "formatted"]),
+                ],
             })
         return task
-
-    def sub_filter(self, fpath):
-        if fpath.is_file() and fpath.suffix in self.exts:
-            return self.globc.accept
-        return self.globc.discard
-
-    def format_jsons_in_dir(self, fpath):
-        globbed  = self.glob_target(fpath, fn=self.sub_filter)
-        for target in globbed:
-            backup = target.with_suffix(f"{btarget.suffix}.backup")
-            if not backup.exists():
-                backup.write_text(btarget.read_text())
-            # Format
-            cmd = self.make_cmd("jq", "-M", "-S" , ".", target)
-            # and save
-            target.write_text(cmd.out)

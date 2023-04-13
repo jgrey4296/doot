@@ -23,7 +23,7 @@ class FileListings(DelayedMixin, globber.DootEagerGlobber, FilerMixin, Commander
     to the build_dir/allfiles.report
     """
 
-    def __init__(self, name="listing::files", locs=None, roots=None, rec=False, exts=None):
+    def __init__(self, name="report::files", locs=None, roots=None, rec=False, exts=None):
         list_these = [getattr(locs, x) for x in listing_roots]
         super().__init__(name, locs, roots or list_these , rec=rec, exts=exts)
         self.output = self.locs.temp

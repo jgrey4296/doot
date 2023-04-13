@@ -45,6 +45,23 @@ from doot.utils.formats.timelinefile import TimelineFile
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from collections import defaultdict
+
+import doot
+from doot import globber, tasker
+from doot.mixins.batch import BatchMixin
+from doot.mixins.bibtex import clean as bib_clean
+from doot.mixins.bibtex import utils as bib_utils
+from doot.mixins.bibtex.load_save import BibLoadSaveMixin
+from doot.mixins.commander import CommanderMixin
+from doot.mixins.delayed import DelayedMixin
+from doot.mixins.filer import FilerMixin
+from doot.mixins.pdf import PdfMixin
+from doot.mixins.targeted import TargetedMixin
+from doot.mixins.web import WebMixin
+from doot.tasker import DootTasker
+from doot.tasks.files.backup import BackupTask
+from doot.utils.formats.timelinefile import TimelineFile
 
 min_tag_timeline     : Final[int] = doot.config.on_fail(10, int).bibtex.min_timeline()
 stub_exts            : Final[list] = doot.config.on_fail([".pdf", ".epub", ".djvu", ".ps"], list).bibtex.stub_exts()
@@ -58,7 +75,7 @@ class BibtexReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerM
     (src -> build) produce reports on the bibs found
     """
 
-    def __init__(self, name="bibtex::report", locs=None, roots=None, rec=True):
+    def __init__(self, name="report::bibtex", locs=None, roots=None, rec=True):
         super().__init__(name, locs, roots or [locs.bibtex], rec=rec, exts=[".bib"])
         self.locs.update(timelines=self.locs.build / "timelines")
         self.locs.ensure("pdfs", "timelines", task=name)
@@ -167,10 +184,10 @@ class BibtexReport(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerM
         people = []
         target = None
         match entry:
-            case {"__authors": authors}:
+            case {"__author": authors}:
                 people = authors
                 target = self.authors
-            case {"__editors": editors}:
+            case {"__editor": editors}:
                 people = editors
                 target = self.editors
             case _:
