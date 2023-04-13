@@ -30,10 +30,13 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doot import tasker
+class CSVMixin:
 
-class CoqBuild(tasker.DootTasker):
-    """
-    Build and run coq files
-    """
-    pass
+    def csv_summary(self, fpath) -> dict:
+        text        = fpath.read_text().split("\n")
+        columns     = len(text[0].split(","))
+        return {
+            "rows"    :  len(text),
+            "columns" : , columns,
+            "header"  : , text[0].strip(),
+            }

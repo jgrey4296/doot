@@ -197,3 +197,10 @@ class ZipperMixin:
                 result = targ.testzip()
                 if result is not None:
                     logging.warning("Issue with %s : %s", zipf, targ)
+
+
+    def zip_contains(self, fpath, *args) -> bool:
+        with zipfile.Zipfile(fpath, "r") as zipf:
+            contents = zipf.namelist()
+
+        return all([x in contents for x in args])

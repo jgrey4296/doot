@@ -3,10 +3,6 @@
 
 """
 ##-- imports
-
-##-- end imports
-
-##-- default imports
 from __future__ import annotations
 
 import types
@@ -28,20 +24,20 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-##-- end default imports
+##-- end imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doot import tasker, globber
+class OCRMixin:
 
-# https://rebar3.org/docs/getting-started/
-# https://hex.pm/docs/usage
-# https://hexdocs.pm/mix/Mix.html
+    def get_ocr_file_name(self, fpath):
+        return fpath.parent / f".{fpath.stem}{ocr_out_ext}"
 
-class ErlangBuild(tasker.DootTasker):
-    pass
-
-class ElixirBuild(tasker.DootTasker):
-    pass
+    def ocr(self, fpath):
+        """
+        outputs to cwd dst.txt
+        """
+        dst        = self.get_ocr_file_name(fpath)
+        return ["tesseract", fpath, dst.stem, "--psm", "1",  "-l", "eng"]

@@ -138,7 +138,7 @@ class OCRGlobber(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Commande
     def batch(self, data):
         for name, fpath in data:
             dst        = self.get_ocr_file_name(fpath)
-            ocr_cmd    = self.make_cmd("tesseract", src, dst.stem, "--psm", "1",  "-l", "eng")
+            ocr_cmd    = self.make_cmd("tesseract", fpath, dst.stem, "--psm", "1",  "-l", "eng")
             mv_txt_cmd = self.make_cmd("mv", dst.with_suffix(".txt").name, dst)
             ocr_cmd.execute()
             mv_txt_cmd.execute()

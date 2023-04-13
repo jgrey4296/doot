@@ -3,10 +3,6 @@
 
 """
 ##-- imports
-
-##-- end imports
-
-##-- default imports
 from __future__ import annotations
 
 import types
@@ -28,15 +24,21 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-##-- end default imports
+##-- end imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-# https://python-poetry.org/docs/cli/
 
-from doot import tasker
+from matplotlib import pyplot
+import pandas
+import seaborn
 
-class PoetryBuild(tasker.DootTasker):
-    pass
+class ChartsMixin:
+
+    def bar_chart(self, fpath ,data):
+        pass
+
+    def scatter_chart(self, fpath, data):
+        pass

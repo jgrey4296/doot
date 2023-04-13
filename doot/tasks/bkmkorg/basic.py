@@ -40,22 +40,6 @@ from doot.mixins.filer import FilerMixin
 time_format : Final[str] = doot.config.on_fail("%I:%M %p", str).notify.time_format()
 time_voice  : Final[str] = doot.config.on_fail("Moira", str).notify.voice()
 
-class TimeAnnounce(tasker.DootTasker, CommanderMixin):
-
-    def __init__(self, name="say::time", locs=None):
-        super().__init__(name, locs)
-
-    def task_detail(self, task):
-        task.update({
-            "actions" : [self.make_cmd(self.speak_time)],
-        })
-        return task
-
-    def speak_time(self):
-        now     = datetime.datetime.now().strftime(time_format)
-        msg     = f"The Time is {now}"
-        return ["say", "-v", time_voice, "-r", "50", msg]
-
 class NoScriptMerge(tasker.DootTasker, CommanderMixin, FilerMixin):
     """
     merge noscript json files

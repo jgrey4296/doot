@@ -3,10 +3,6 @@
 
 """
 ##-- imports
-
-##-- end imports
-
-##-- default imports
 from __future__ import annotations
 
 import types
@@ -28,15 +24,16 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-##-- end default imports
+##-- end imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-# https://gruntjs.com/getting-started
+class GtagsMixin:
 
-from doot import tasker
+    def gtags_init(self, fpath):
+        return ["gtags", "-C", fpath, "."])],
 
-class GruntRun(tasker.DootTasker):
-    pass
+    def gtags_update(self, fpath):
+        return ["global", "-C", fpath, "-u" ]
