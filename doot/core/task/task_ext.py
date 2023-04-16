@@ -48,6 +48,9 @@ class DootCmdAction(CmdAction):
     (for a single call of `execute`)
     """
 
+    def __str__(self):
+        return f"Cmd: {self._action}"
+
     @property
     def action(self):
         match self._action:
