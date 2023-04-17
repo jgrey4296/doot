@@ -264,6 +264,8 @@ class CondaMaintain(DootTasker,CommanderMixin, FilerMixin):
                     "actions": [
                         self.make_cmd(conda, "--version", save="conda"),
                         (self.write_to, [self.locs.maintain / "conda.versions", ["conda"]]),
+                        self.make_shell("""conda list --json | jq .[].name | gsed -E 's/\"//g'""", save="pylibs"),
+                        (self.write_to, [self.locs.temp / "pylibs", "pylibs"]),
                      ],
         })
         return task

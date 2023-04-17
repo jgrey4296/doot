@@ -35,6 +35,8 @@ import random
 
 maybe_build_path = lambda x: pl.Path(x) if x is not None else None
 
+target_list_size = doot.config.on_fail(100, int).globbing.target_list()
+
 class TargetedMixin:
     """
     For Quickly making a task have cli args to control batching
@@ -56,16 +58,7 @@ class TargetedMixin:
 
         match self.args:
             case {'list': True}:
-                logging.info("Choices: ")
-                choices = {i:x for i,x in enumerate(sorted(super().glob_all()))}
-                for count, (name, fpath) in choices.items():
-                    rel_path = self.rel_path(fpath)
-                    logging.info(f"-- ({count}) {rel_path}")
-
-                selected = input("Choose Zips ids to Unzip: ")
-                for i in [int(x) for x in selected.split(" ")]:
-                    yield choices[i]
-
+                yield from self._list_options()
             case {'target': targ} if bool(targ) and targ.parts[0] == "~":
                 yield from ((y.name, y) for y in self.glob_target(targ.expanduser(), fn=fn, rec=rec))
             case {'target': targ} if bool(targ) and targ.is_absolute():
@@ -84,3 +77,14 @@ class TargetedMixin:
             case _:
                 logging.warning("%s : No Recognizable Target Specified", self.basename)
                 yield from []
+
+    def _list_options(self):
+        logging.info("Choices: ")
+        choices = [(i,x) for i,x in enumerate(sorted(super().glob_all()))]
+        for count, (name, fpath) in choices[:target_list_size]:
+            rel_path = self.rel_path(fpath)
+            logging.info(f"-- ({count}) {rel_path}")
+
+        selected = input("Choose Zips ids to Unzip: ")
+        for i in [int(x) for x in selected.split(" ")]:
+            yield choices[i][1]

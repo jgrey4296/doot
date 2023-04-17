@@ -38,14 +38,24 @@ class XMLMixin:
                        "--frozen",
                        "--no-unnest-clases",
                        "--output", "dataclasses"]
+    element_arg     = "-u"
 
-    def xml_elements(self, targets):
+    def xml_elements(self, *targets):
         """
         ouputs to process' stdout
         build an `xml el` command of all available xmls
         http://xmlstar.sourceforge.net/
         """
-        return ["xml", "el", "-u"] + targets
+        target_files = []
+        dir_glob = (lambda x: self.glob_target(x, fn=lambda x: x.is_file())) if hasattr(self, "glob_target") else lambda x: x.rglob("*.xml")
+        for fpath in targets:
+            match fpath.is_file():
+                case True:
+                    target_files.append(fpath)
+                case False:
+                    target_files += list(dir_glob(fpath))
+
+        return ["xml", "el", self.element_arg] + target_files
 
     def xml_trang(self, dst, targets:list):
         """
