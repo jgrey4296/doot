@@ -28,7 +28,7 @@ class GtagsTask(DootTasker, GtagsMixin):
 
         task.update({
             "actions"  : [ self.cmd(cmd_fn, [self.locs.root]) ],
-            "targets"  : [ self.locs.root / x for x in [ "GPATH", "GRTAGS", "GTAGS" ] ],
+            "targets"  : list(map(lambda x: self.locs.root / x, [ "GPATH", "GRTAGS", "GTAGS" ]))),
             "clean"    : True,
         })
         return task

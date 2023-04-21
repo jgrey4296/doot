@@ -57,7 +57,7 @@ class OrgStrBuilder(OrgBuilderBase):
         self.output.append("")
 
     def __str__(self):
-        return "\n".join([str(x) for x in self.output])
+        return "\n".join(map(str, self.output))
 
 @dataclass
 class OrgDrawerBuilder(OrgBuilderBase):
@@ -109,4 +109,4 @@ class OrgDrawerBuilder(OrgBuilderBase):
 
         output.append(self._end)
         output.append("")
-        return "\n".join([str(x) for x in output])
+        return "\n".join(map(str, output))

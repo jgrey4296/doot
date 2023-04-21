@@ -217,4 +217,4 @@ class ADBMixin:
                 self.make_cmd(mv_cmd).execute()
 
         finally:
-            (self.locs.temp / "deletions.log").write_text("\n".join(str(x) for x in deleted))
+            (self.locs.temp / "deletions.log").write_text("\n".join(map(str, deleted)))

@@ -266,7 +266,7 @@ class DootTaskExt(Task):
         """lazy creation of action instances"""
         if self._action_instances is None:
             builder = DootTaskExt.action_builder
-            self._action_instances = [ builder(a, self, 'actions') for a in self._actions ]
+            self._action_instances = list(map(lambda x: builder(x, self, 'actions'), self._actions))
         return self._action_instances
 
     def execute(self, stream):

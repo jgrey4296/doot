@@ -63,9 +63,9 @@ class MoveLogs(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, FilerMixin
         return task
 
     def move_logs(self, fpath):
-        logs = [ x for x in fpath.iterdir() if x.stem == "log" ]
+        logs = filter(lambda x: x.stem == "log", fpath.iterdir())
         self.move_to(self.output, *logs, fn="overwrite")
 
     def move_histories(self, fpath):
-        histories = [x for x in fpath.iterdir() if self.history_reg.match(x.name)]
+        histories = filter(lambda x: self.history_reg.match(x.name), fpath.iterdir())
         self.move_to(self.output, *histories, fn="overwrite")

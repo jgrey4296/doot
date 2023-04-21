@@ -80,11 +80,29 @@ class TargetedMixin:
 
     def _list_options(self):
         logging.info("Choices: ")
-        choices = [(i,x) for i,x in enumerate(sorted(super().glob_all()))]
-        for count, (name, fpath) in choices[:target_list_size]:
-            rel_path = self.rel_path(fpath)
-            logging.info(f"-- ({count}) {rel_path}")
+        choices = list(enumerate(sorted(super().glob_all())))
+        max_len = len(choices)
+        current_window = (0, target_list_size)
+        to_yield = []
+        loop = True
+        while loop:
+            for count, (name, fpath) in choices[current_window[0]:current_window[1]]:
+                rel_path = self.rel_path(fpath)
+                logging.info(f"-- ({count}) {rel_path}")
 
-        selected = input("Choose Zips ids to Unzip: ")
-        for i in [int(x) for x in selected.split(" ")]:
+            if current_window[1] < max_len:
+                print("There are more choices, type ? to list them")
+            print(f"Showing Choices: {current_window[0]} - {current_window[1]} of {max_len}")
+            print("Confirm and continue with ! on its own")
+            match input("Choose ids by number separated by spaces: ").strip():
+                case "!":
+                    loop = False
+                case "?":
+                    current_window = tuple(map(lambda x: x+target_list_size, current_window))
+                case _ as selected:
+                    to_yield += filter(lambda x: 0 <= x < max_len, map(int, selected.split(" ")))
+
+        print("Selected Options: ", " ".join(map(str, to_yield)))
+
+        for i in to_yield:
             yield choices[i][1]

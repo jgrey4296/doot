@@ -79,9 +79,9 @@ class FilerMixin:
                 case None:
                     pass
                 case list() as v if sub_sep is None:
-                    values += [str(x) for x in v]
+                    values += map(str, v)
                 case list() as v:
-                    values.append(sub_sep.join(str(x) for x in v))
+                    values.append(sub_sep.join(map(str, v)))
                 case _ as v:
                     values.append(str(v))
 
@@ -109,9 +109,9 @@ class FilerMixin:
                 case None:
                     pass
                 case list() as v if sub_sep is None:
-                    values += [str(x) for x in v]
+                    values += map(str, v)
                 case list() as v:
-                    values += sub_sep.join(str(x) for x in v)
+                    values += sub_sep.join(map(str, v))
                 case _ as v:
                     values.append(str(v))
 

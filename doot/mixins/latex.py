@@ -137,7 +137,7 @@ class TODOGanttLatexMixin(LatexCompilerBase):
         """
         body = ""
         if bool(term.params):
-            body = self.expand(TERM_BODY, body=",".join(str(x) for x in term.params))
+            body = self.expand(TERM_BODY, body=",".join(map(str, term.params)))
 
         match inst:
             case None:
@@ -265,7 +265,7 @@ class TODOStateTracerMixin(LatexCompilerBase):
         body = ""
         if bool(term.params):
             body = self.expand(TERM_BODY,
-                               body=",".join(str(x) for x in term.params))
+                               body=",".join(map(str, term.params)))
 
         match inst:
             case None:

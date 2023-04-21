@@ -67,7 +67,7 @@ class CleanerMixin:
                     logging.debug("%s - force removing tree '%s'" % (task.name, target))
                     shutil.rmtree(str(target))
                 else:
-                    contains = " ".join(str(x) for x in target.iterdir())
+                    contains = " ".join(map(str, target.iterdir()))
                     logging.debug("%s - not empty: %s : %s" % (task.name, target, contains))
             except OSError as err:
                 logging.warning(err)

@@ -117,7 +117,7 @@ class ADBUpload(android.ADBMixin, BatchMixin, DelayedMixin, TargetedMixin, globb
         report = []
         report.append("--------------------")
         report.append("Pushed: ")
-        report += [str(x) for x in self.report]
+        report += map(str, self.report)
 
         (self.locs.build / "adb_push.report").write_text("\n".join(report))
 
@@ -189,7 +189,7 @@ class ADBDownload(android.ADBMixin, DootTasker, CommanderMixin, FilerMixin, Batc
         if not bool(pull_set):
             return False
 
-        return { "pull_targets" : [str(x) for x in pull_set] }
+        return { "pull_targets" : list(map(str, pull_set)) }
 
     def write_report(self, task):
         report = []
@@ -214,7 +214,7 @@ class ADBDownload(android.ADBMixin, DootTasker, CommanderMixin, FilerMixin, Batc
     def read_cache(self):
         cache   = self.locs.build / "pull_cache.adb"
         targets = [x.strip() for x in cache.read_text().split("\n")]
-        return { 'remote_files': [x for x in targets if bool(x) ]}
+        return { 'remote_files': list(filter(bool, targets)) }
 
 class ADBDelete(android.ADBMixin, DootTasker, CommanderMixin, FilerMixin, BatchMixin):
     """

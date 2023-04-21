@@ -77,7 +77,7 @@ class TimelineFile:
     def __str__(self):
         results = []
         for entry_group in self:
-            results += [str(x) for x in entry_group]
+            results += map(str, entry_group)
 
         return "\n".join(results)
 

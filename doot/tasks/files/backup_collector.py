@@ -129,7 +129,7 @@ class BackupCollectorTask(tasker.DootTasker, CommanderMixin, FilerMixin):
         backup_abs      = self.backup.resolve()
         whitelist_files = [src_abs / x.strip() for x in task.values['to_backup']]
         whitelist_dirs  = [x for f in whitelist_files for x in f.parents if x.is_relative_to(src_abs)]
-        whitelist       = set(str(x) for x in whitelist_files + whitelist_dirs)
+        whitelist       = set(map(str, whitelist_files + whitelist_dirs))
         logging.debug("Whitelist: %s", whitelist)
 
         def ignore_fun(folder, files):

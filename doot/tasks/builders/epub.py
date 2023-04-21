@@ -297,12 +297,13 @@ class EbookRestructureTask(EbookGlobberBase, FilerMixin):
         self.locs.ensure("src", task=name)
 
     def subtask_detail(self, task, fpath=None):
-        targets = [ (fpath / x) for x in self.content_mapping.keys() ],
+        targets = list(map(lambda x: fpath / x, self.content_mapping.keys()))
         task.update({
             "targets" : targets,
-            'actions' : [ (self.mkdirs, task['targets']),
-                          self.move_files,
-                         ],
+            'actions' : [
+                (self.mkdirs, targets),
+                self.move_files,
+            ],
         })
 
 

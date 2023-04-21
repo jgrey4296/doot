@@ -216,7 +216,7 @@ class DetectDuplicateHashes(tasker.DootTasker, CommanderMixin, FilerMixin):
                     continue
                 case _:
                     # more than one file with the hash
-                    fnames_joined = " : ".join(sorted(str(x) for x in fpaths))
+                    fnames_joined = " : ".join(sorted(map(str, fpaths)))
                     dup_line      = f"{hash_key} : {fnames_joined}"
                     duplicates.append(dup_line)
 
@@ -378,4 +378,4 @@ class MarkDuplicates(tasker.DootTasker, FilerMixin):
                 self.delete_queue.append((delete_list, keeper))
 
     def write_deletion_queue(self):
-        self.output.write_text("\n".join([str(x) for x in self.delete_queue]))
+        self.output.write_text("\n".join(map(str, self.delete_queue)))
