@@ -8,7 +8,6 @@ numpy
 pandas
 pdfrw
 Pillow
-Pillow
 pony
 pylatexenc
 pypandoc
