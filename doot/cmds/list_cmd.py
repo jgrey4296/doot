@@ -31,7 +31,6 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doit.cmd_base import DoitCmdBase, check_tasks_exist, subtasks_iter
 from collections import defaultdict
 
 opt_listall = {

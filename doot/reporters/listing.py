@@ -8,7 +8,7 @@ import shutil
 ##-- end imports
 
 import doot
-from doot import tasker, globber
+from doot.control import tasker, globber
 from doot.mixins.filer import FilerMixin
 from doot.mixins.commander import CommanderMixin
 from doot.mixins.delayed import DelayedMixin

@@ -3,7 +3,6 @@
 Stub dooter file for task authoring
 
 """
-# https://pydoit.org/
 ##-- imports
 from __future__ import annotations
 
@@ -11,11 +10,6 @@ import logging as logmod
 import pathlib as pl
 
 import doot
-from doit import create_after
-from doit.action import CmdAction
-from doit.task import clean_targets
-from doit.tools import Interactive, PythonInteractiveAction, set_trace
-
 ##-- end imports
 
 ##-- logging

@@ -35,14 +35,14 @@ import importlib
 from importlib.metadata import entry_points
 import time
 import doot
-from doot.loc_data import DootLocData
-from doot.core.task.task_group import TaskGroup
+from doot._abstract.loader import TaskLoader_i, ConfigLoader_i, CommandLoader_i
+from doot.control.locations import DootLocData
+from doot.task.task import DootTask
+from doot.task.group import TaskGroup
 from doot.tasker import DootTasker
-from doot.core.utils.check_dirs import CheckDir
-from doot.core.utils.gen_toml import GenToml
-from doot.core.task.task_ext import DootTaskExt
-from doot.core.utils.task_namer import task_namer
-from doot.core._abstract.loader import TaskLoader_i, ConfigLoader_i, CommandLoader_i
+from doot.utils.check_dirs import CheckDir
+from doot.utils.gen_toml import GenToml
+from doot.utils.task_namer import task_namer
 
 TASK_STRING = "task_"
 

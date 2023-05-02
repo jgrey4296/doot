@@ -21,10 +21,6 @@ from weakref import ref
 import pathlib as pl
 import shutil
 
-
-if TYPE_CHECKING:
-    # tc only imports
-    pass
 ##-- end imports
 
 ##-- logging

@@ -32,8 +32,7 @@ logging = logmod.getLogger(__name__)
 
 from collections import defaultdict
 import doot
-from doot import tasker
-from doot.mixins.apis.twitter import TwitterMixin
+from doot.control import tasker
 from doot.mixins.commander import CommanderMixin
 from doot.mixins.filer import FilerMixin
 

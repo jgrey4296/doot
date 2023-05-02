@@ -31,7 +31,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 
-from doot.core.utils.task_namer import task_namer
+from doot.utils.task_namer import task_namer
 
 import sys
 

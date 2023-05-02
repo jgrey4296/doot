@@ -6,8 +6,8 @@ import logging as logmod
 import pathlib as pl
 from importlib import resources
 
-from doot.loc_data import DootLocData
-from doot.tasker import DootTasker
+from doot.control.locations import DootLocData
+from doot.control.tasker import DootTasker
 import tomler
 ##-- end imports
 

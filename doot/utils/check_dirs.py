@@ -1,5 +1,3 @@
-
-##-- imports
 from __future__ import annotations
 
 import logging as logmod
@@ -7,16 +5,15 @@ import pathlib as pl
 import shutil
 from typing import ClassVar
 
-from doot.core.task.task_group import TaskGroup
-from doot.tasker import DootTasker
+from doot.control.group import TaskGroup
+from doot.control.tasker import DootTasker
 from doot.mixins.cleaning import CleanerMixin
-##-- end imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doot.core.utils.task_namer import task_namer
+from doot.utils.task_namer import task_namer
 
 class CheckDir:
     """ Task for checking directories exist,

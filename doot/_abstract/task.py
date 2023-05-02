@@ -1,6 +1,7 @@
 
 """Tasks are the main abstractions managed by doot"""
-
+##-- imports
+from __future__ import annotations
 import os
 import sys
 import inspect

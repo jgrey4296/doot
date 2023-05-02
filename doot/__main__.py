@@ -40,14 +40,11 @@ logging.addHandler(file_handler)
 logging.addHandler(stream_handler)
 ##-- end logging
 
-from doit.action import CmdAction
-from doit.doit_cmd import DoitMain
-
 import tomler
 import doot
-from doot.core.loaders.loader import DootLoader
-from doot.core.utils.log_filter import DootAnyFilter
-from doot.core.doot_main import DootMain
+from doot.loaders.loader import DootLoader
+from doot.utils.log_filter import DootAnyFilter
+from doot.control.overlord import DootOverlord
 
 def main():
     result  = 1
@@ -78,8 +75,8 @@ def main():
         ##-- end logging setup
 
         loader    = DootLoader()
-        doit_main = DootMain(task_loader=loader, config_filenames=[doot.default_agnostic])
-        result    = doit_main.run(sys.argv[1:])
+        overlord  = DootOverlord(task_loader=loader, config_filenames=[doot.default_agnostic])
+        result    = overlord.run(sys.argv[1:])
 
         defaulted_locs = doot.DootLocData.report_defaulted()
         defaulted_toml = tomler.Tomler.report_defaulted()

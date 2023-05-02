@@ -30,12 +30,12 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doit.tools import Interactive
+from doot.actions.interactive_cmd_action import Interactive
 from types import FunctionType, MethodType
 import os
 import doot
-from doot.core.task.task_ext import DootCmdAction
-from doot.core.actions.force_cmd_action import ForceCmd
+from doot.actions.cmd_action import DootCmdAction
+from doot.actions.force_cmd_action import ForceCmd
 
 conda_exe        = os.environ['CONDA_EXE']
 

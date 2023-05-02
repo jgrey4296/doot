@@ -1,6 +1,5 @@
 beautifulsoup4
 bibtexparser
-doit
 itemadapter
 matplotlib
 networkx

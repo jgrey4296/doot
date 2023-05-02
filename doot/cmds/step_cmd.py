@@ -34,10 +34,8 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doit.cmd_run import Run
-from doit.control import TaskControl
 
-class StepCmd(Run):
+class StepCmd():
     """
     Standard doit run command, but step through tasks
     """

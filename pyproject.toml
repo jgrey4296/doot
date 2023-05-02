@@ -16,30 +16,7 @@ classifiers     = [
 
 dependencies   = [
     "tomler @ git+https://github.com/jgrey4296/tomler.git",
-    "beautifulsoup4",
-    "bibtexparser",
-    "doit",
     "itemadapter",
-    "matplotlib",
-    "networkx",
-    "numpy",
-    "pandas",
-    "pdfrw",
-    "Pillow",
-    "pony",
-    "pylatexenc",
-    "pypandoc",
-    "PyYAML",
-    "regex",
-    "Requests",
-    "scikit-learn",
-    "scrapy",
-    "seaborn",
-    "tweepy",
-    "w3lib",
-    "wordcloud",
-    "xsdata",
-    "mastodon.py"
 ]
 
 [project.optional-dependencies]

@@ -1,7 +1,0 @@
-name        = "$author"
-markdown    = "kramdown"
-permalink   = "/posts/:year/:month/:day/:title"
-source      = "$src"
-destination = "$dst"
-
-include     = $includes

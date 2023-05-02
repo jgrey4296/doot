@@ -1,16 +1,11 @@
+##-- imports
+from __future__ import annotations
 import inspect
 import sys
 from collections import deque
 from collections import defaultdict
 import textwrap
-
-from . import version
-from .cmdparse import CmdOption, CmdParse
-from .exceptions import InvalidCommand, InvalidDodoFile
-from .dependency import CHECKERS, DbmDB, JsonDB, SqliteDB, Dependency, JSONCodec
-from .action import CmdAction
-from .plugin import PluginDict
-from . import loader
+##-- end imports
 
 class DootCommand_i:
     """

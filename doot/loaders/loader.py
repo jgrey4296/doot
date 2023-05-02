@@ -21,11 +21,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     cast, final, overload, runtime_checkable)
 from uuid import UUID, uuid1
 
-from doit import loader as doit_loader
-from doit.cmd_base import NamespaceTaskLoader
-from doit.exceptions import InvalidDodoFile
-from doit.task import DelayedLoader
-
 ##-- end imports
 
 ##-- logging
@@ -37,13 +32,13 @@ logging = logmod.getLogger(__name__)
 
 import time
 import doot
-from doot.loc_data import DootLocData
-from doot.core.task.task_group import TaskGroup
-from doot.tasker import DootTasker
-from doot.core.utils.check_dirs import CheckDir
-from doot.core.utils.gen_toml import GenToml
-from doot.core.task.task_ext import DootTaskExt
-from doot.core.utils.task_namer import task_namer
+from doot.control.group import TaskGroup
+from doot.control.locations import DootLocData
+from doot.control.tasker import DootTasker
+from doot.task.task import DootTask
+from doot.utils.check_dirs import CheckDir
+from doot.utils.gen_toml import GenToml
+from doot.utils.task_namer import task_namer
 
 TASK_STRING = "task_"
 
@@ -97,7 +92,7 @@ opt_seek_file = {
 
 ##-- end loader cli params
 
-class DootLoader(NamespaceTaskLoader):
+class DootLoader(TaskLoader_i):
     """
     Customized doit_loader.Task loader that automatically
     retrieves directory checks, and stores all created tasks
@@ -130,7 +125,7 @@ class DootLoader(NamespaceTaskLoader):
             logging.error("LOCATION MISSING: %s", err.args[0])
             sys.exit(1)
 
-    def load_doit_config(self):
+    def load_config(self):
         self.config = doot.config.get_table()
         return self.config
 

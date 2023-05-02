@@ -1,14 +1,10 @@
-##-- imports
 from __future__ import annotations
 
 import pathlib as pl
 import shutil
 
 import doot
-from doot import globber
-
-##-- end imports
-
+from doot.control import globber
 from doot.mixins.delayed import DelayedMixin
 from doot.mixins.targeted import TargetedMixin
 
