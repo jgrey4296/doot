@@ -15,7 +15,7 @@ classifiers     = [
 ]
 
 dependencies   = [
-               "tomler @ git+https://github.com/jgrey4296/tomler"
+               "tomler @ git+https://github.com/jgrey4296/tomler.git"
 ]
 
 [project.optional-dependencies]
