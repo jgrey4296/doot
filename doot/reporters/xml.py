@@ -155,8 +155,8 @@ class XmlSchemaVisualiseTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobb
                 self.make_xsdata_config(),
                 self.make_cmd(self.xml_plantuml, fpath, save="result"),
                 (self.write_to, [fpath, "result"]),
-                (self.plantuml_img, [ img, dst]
-            ],
+                (self.plantuml_img, [img, dst]),
+                 ],
             "clean"    : True,
             })
         return task

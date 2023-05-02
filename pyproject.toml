@@ -14,7 +14,9 @@ classifiers     = [
   "Programming Language :: Python"
 ]
 
-dependencies   = ["doit-graph"]
+dependencies   = [
+               "tomler @ git+https://github.com/jgrey4296/tomler"
+]
 
 [project.optional-dependencies]
 test = [
@@ -65,7 +67,7 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 namespaces = true
-where = ["."]
+where = ["doot"]
 
 [tool.setuptools.package-data]
 

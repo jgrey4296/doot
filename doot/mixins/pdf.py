@@ -34,7 +34,6 @@ from pdfrw import IndirectPdfDict, PageMerge, PdfReader, PdfWriter
 import pypandoc as pandoc
 import subprocess
 import tempfile
-import fitz
 from bibtexparser.customization import splitname
 from doot.mixins.bibtex.writer import JGBibTexWriter
 from pdfrw import PdfName, PdfReader, PdfWriter
@@ -142,7 +141,7 @@ class PdfMetaDataMixin:
 
     def add_metadata(self, path:pl.Path, bib_entry:dict, bib_str:str):
         raise NotImplementedError()
-        # using fitz / pymupdf
+        # using pymupdf
         logging.info("Adding Metadata to %s", path)
         pdf = fitz.Document(path)
         metadata = pdf.metadata

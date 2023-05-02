@@ -86,7 +86,7 @@ class JsonVisualise(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, JsonM
         task.update({
             "targets"  : [ img ],
             "actions"  : [ (self.json_plantuml, [dst, fpath]),
-                          (self.plantuml_img, [img, dst]
-                        ]
+                          (self.plantuml_img, [img, dst]),
+                          ]
             })
         return task

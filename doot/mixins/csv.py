@@ -44,6 +44,6 @@ class CSVMixin:
         return {
             "report"  : "\n".join(report),
             "rows"    :  len(text),
-            "columns" : , columns,
-            "header"  : , text[0].strip(),
+            "columns" :  columns,
+            "header"  : text[0].strip(),
             }

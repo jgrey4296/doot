@@ -47,7 +47,7 @@ class PlantUMLMixin:
 
         return [
             "plantuml", f"-t{self.args['ext']}",
-            "-output", dst.resovle().parent
+            "-output", dst.resovle().parent,
             "-filename", dst.stem,
             src
             ]

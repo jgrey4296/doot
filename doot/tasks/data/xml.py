@@ -88,7 +88,7 @@ class XmlFormatTask(DelayedMixin, TargetedMixin, globber.DootEagerGlobber, Comma
 
         task.update({
             'actions': [
-                (self.cmd(self.xml_format, fpath, save="formatted"),
+                self.make_cmd(self.xml_format, fpath, save="formatted"),
                 (self.write_to, [out_target, "formatted"]),
             ]
         })

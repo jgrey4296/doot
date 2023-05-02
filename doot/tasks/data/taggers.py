@@ -23,12 +23,12 @@ class GtagsTask(DootTasker, GtagsMixin):
     def task_detail(self, task):
         """([src]) initialise gtags """
         cmd_fn = self.gtags_update
-        if self.args['gtags-init']
+        if self.args['gtags-init']:
             cmd_fn = self.gtags_init
 
         task.update({
             "actions"  : [ self.cmd(cmd_fn, [self.locs.root]) ],
-            "targets"  : list(map(lambda x: self.locs.root / x, [ "GPATH", "GRTAGS", "GTAGS" ]))),
+            "targets"  : list(map(lambda x: self.locs.root / x, [ "GPATH", "GRTAGS", "GTAGS" ])),
             "clean"    : True,
         })
         return task
