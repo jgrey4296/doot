@@ -34,7 +34,7 @@ class TweetTodoFile:
     remainder    : List[str]        = field(default_factory=list)
 
     @staticmethod
-    def read(p:pl.Path, id_regex=r"status/(\d+)\?"):
+    def read(p:pl.Path, id_regex=r"status/(\d+)\??"):
         obj   = TweetTodoFile()
         reg   = re.compile(id_regex)
         with open(p, 'r') as f:
