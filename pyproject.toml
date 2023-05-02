@@ -1,18 +1,18 @@
 [project]
 name            = "doot"
-version = "0.2.0"
+version         = "0.2.0"
 description     = ""
 readme          = "README.md"
 requires-python = ">=3.10"
 license         = {file = "LICENSE"}
 keywords        = []
 authors         = [
-  {email = "jgrey.n.plus.one@gmail.com"},
-  {name  = "jgrey"}
+  {email = "jgrey.n.plus.one@gmail.com", name  = "jgrey"}
 ]
 classifiers     = [
   "Programming Language :: Python"
 ]
+
 
 dependencies   = [
     "tomler @ git+https://github.com/jgrey4296/tomler.git",
@@ -50,32 +50,20 @@ dev = [
     "pipreqs"
 ]
 
+##-- urls
 [project.urls]
 homepage      = "https://github.com/jgrey4296/doot"
 documentation = "https://readthedocs.org/doot"
 repository    = "https://github.com/jgrey4296/doot"
 changelog     = "https://github.com//doot/blob/master/CHANGELOG.md"
 
+##-- end urls
+
 ##-- scripts
 [project.scripts]
 doot = "doot.__main__:main"
 
-[project.gui-scripts]
-# spam-gui      = "spam:main_gui"
-
-[project.entry-points."nothing"]
-# tomatoes      = "spam:main_tomatoes"
-
 ##-- end scripts
-
-##-- pytest
-[tool.pytest.ini_options]
-log_cli       = false
-log_level     = "INFO"
-log_cli_level = "WARN"
-log_format    = "%(levelname)s %(name)s : %(message)s"
-
-##-- end pytest
 
 ##-- build system
 [build-system]
@@ -100,9 +88,20 @@ include    = ["doot*"]
 
 ##-- end build system
 
+# Tools #######################################################################
+
+##-- pytest
+[tool.pytest.ini_options]
+log_cli       = false
+log_level     = "INFO"
+log_cli_level = "WARN"
+log_format    = "%(levelname)s %(name)s : %(message)s"
+
+##-- end pytest
+
 ##-- pyright
 [tool.pyright]
-# strict = acab.*
+# strict =
 verboseOutput               = true
 typeCheckingMode            = "strict"
 pythonVersion               = "3.10"
