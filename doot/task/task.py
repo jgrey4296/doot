@@ -39,13 +39,17 @@ import pdb
 import sys
 from io import StringIO
 
+import doot
+from doot._abstract.task import DootTask_i
+from doot.actions.py_cmd_action import DootPyAction
+
 
 class DootTask(DootTask_i):
     """
     Extension of doit.Task to allow returning an Action from an action,
     making a task's `execute` a stack of actions instead of a list
     """
-    action_builder = DootPyActionExt.build
+    action_builder = DootPyAction.build
     name_splitter = re.compile(r":+|\.")
 
     def __init__(self, *args, **kwargs):
@@ -59,7 +63,7 @@ class DootTask(DootTask_i):
     def actions(self):
         """lazy creation of action instances"""
         if self._action_instances is None:
-            builder = DootTaskExt.action_builder
+            builder = self.action_builder
             self._action_instances = list(map(lambda x: builder(x, self, 'actions'), self._actions))
         return self._action_instances
 

@@ -1,7 +1,61 @@
 
-from doot.actions.cmd_action import DootCmdAction
+##-- imports
+from __future__ import annotations
 
-class DootPyActionExt(DootCmdAction):
+# import abc
+# import datetime
+# import enum
+import functools as ftz
+import itertools as itz
+import logging as logmod
+import pathlib as pl
+import re
+import time
+import types
+# from copy import deepcopy
+# from dataclasses import InitVar, dataclass, field
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
+                    Iterable, Iterator, Mapping, Match, MutableMapping,
+                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
+                    cast, final, overload, runtime_checkable)
+# from uuid import UUID, uuid1
+# from weakref import ref
+
+# from bs4 import BeautifulSoup
+# import boltons
+# import construct as C
+# import dirty-equals as deq
+# import graphviz
+# import matplotlib.pyplot as plt
+# import more_itertools as itzplus
+# import networkx as nx
+# import numpy as np
+# import pandas
+# import pomegranate as pom
+# import pony import orm
+# import pronouncing
+# import pyparsing as pp
+# import rich
+# import seaborn as sns
+# import sklearn
+# import stackprinter # stackprinter.set_excepthook(style='darkbg2')
+# import sty
+# import sympy
+# import tomllib
+# import toolz
+# import tqdm
+# import validators
+# import z3
+# import spacy # nlp = spacy.load("en_core_web_sm")
+
+##-- end imports
+
+
+import doot
+from doot.errors import DootTaskError, DootTaskFailed
+from doot._abstract.action import DootAction_i
+
+class DootPyAction(DootAction_i):
     """
     Python Action with a `build` static method instead of doit.action.create_action
     and refactored `execute` to allow returning Actions from actions
@@ -72,7 +126,7 @@ class DootPyActionExt(DootCmdAction):
                 deb = pdb.Pdb(stdin=sys.__stdin__, stdout=sys.__stdout__)
                 deb.reset()
                 deb.interaction(None, sys.exc_info()[2])
-            return TaskError("PythonAction Error", exception)
+            return DootTaskError("PythonAction Error", exception)
         finally:
             # restore std streams /log captured streams
             if capture_io:
@@ -90,7 +144,7 @@ class DootPyActionExt(DootCmdAction):
         # if callable returns false. Task failed
         match value:
             case False:
-                return TaskFailed("Python Task failed: '%s' returned %s" % (called, value))
+                return DootTaskFailed("Python Task failed: '%s' returned %s" % (called, value))
             case True | None:
                 return None
             case str():
@@ -100,14 +154,14 @@ class DootPyActionExt(DootCmdAction):
                 self.result = value
             case BaseAction():
                 return value
-            case TaskFailed() | TaskError():
+            case DootTaskError():
                 return value
             case _:
-                return TaskError("Python Task error: '%s'. It must return:\n"
-                                "False for failed task.\n"
-                                "True, None, string or dict for successful task\n"
-                                "returned %s (%s)" %
-                                (called, value, type(value)))
+                return DootTaskError("Python Task error: '%s'. It must return:\n"
+                                     "False for failed task.\n"
+                                     "True, None, string or dict for successful task\n"
+                                     "returned %s (%s)" %
+                                     (called, value, type(value)))
 
     def _capture_io(self, out, err) -> tuple:
         # set std stream

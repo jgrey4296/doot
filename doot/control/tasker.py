@@ -5,45 +5,73 @@ Utility classes for building tasks with a bit of structure
 ##-- imports
 from __future__ import annotations
 
-import abc
-import itertools
+# import abc
+# import datetime
+# import enum
+import functools as ftz
+import itertools as itz
 import logging as logmod
 import pathlib as pl
-import sys
-from copy import deepcopy
-from dataclasses import InitVar, dataclass, field
-from re import Pattern
-from time import sleep
+import re
+import time
+import types
+# from copy import deepcopy
+# from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable)
-from uuid import UUID, uuid1
-from weakref import ref
+# from uuid import UUID, uuid1
+# from weakref import ref
 
-if TYPE_CHECKING:
-    # tc only imports
-    pass
+# from bs4 import BeautifulSoup
+# import boltons
+# import construct as C
+# import dirty-equals as deq
+# import graphviz
+# import matplotlib.pyplot as plt
+# import more_itertools as itzplus
+# import networkx as nx
+# import numpy as np
+# import pandas
+# import pomegranate as pom
+# import pony import orm
+# import pronouncing
+# import pyparsing as pp
+# import rich
+# import seaborn as sns
+# import sklearn
+# import stackprinter # stackprinter.set_excepthook(style='darkbg2')
+# import sty
+# import sympy
+# import tomllib
+# import toolz
+# import tqdm
+# import validators
+# import z3
+# import spacy # nlp = spacy.load("en_core_web_sm")
+
 ##-- end imports
+
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from types import LambdaType
 import datetime
 import fileinput
 import shutil
 import zipfile
 from random import randint
-from types import FunctionType, MethodType
 
+import doot
+from doot._abstract.tasker import DootTasker_i
+from doot._abstract.task import DootTask_i
 from doot.errors import DootDirAbsent
 from doot.actions.force_cmd_action import ForceCmd
-from doot.task.task_ext import DootTaskExt
 from doot.utils.task_namer import task_namer
 
-class DootTasker:
+class DootTasker(DootTasker_i):
     """ Util Class for building single tasks
 
     """
@@ -133,9 +161,9 @@ class DootTasker:
         match msg:
             case str():
                 lines.append(msg)
-            case LambdaType():
+            case types.LambdaType():
                 lines.append(msg())
-            case [LambdaType()]:
+            case [types.LambdaType()]:
                 lines += msg[0]()
             case list():
                 lines += msg
@@ -163,7 +191,7 @@ class DootTasker:
                 case dict() as val:
                     self.has_active_setup = True
                     val['actions'] = [x for x in val['actions'] if bool(x)]
-                    return DootTaskExt(**val)
+                    return self._make_task(**val)
                 case _ as val:
                     logging.warning("Setup Detail Returned an unexpected value: ", val)
         except DootDirAbsent:
@@ -179,7 +207,7 @@ class DootTasker:
             maybe_task['setup'] += [self.setup_name]
 
         maybe_task['actions'] = [x for x in maybe_task['actions'] if bool(x)]
-        full_task             = DootTaskExt(**maybe_task)
+        full_task             = self._make_task(**maybe_task)
         if not bool(full_task.doc):
             full_task.doc = self.doc
         return full_task

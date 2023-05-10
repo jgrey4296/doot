@@ -13,16 +13,16 @@ import pathlib as pl
 import shutil
 import warnings
 
-import doot
-from doot.errors import DootDirAbsent
-from doot.control.tasker import DootTasker
-from doot.mixins.subtask import SubMixin
 ##-- end imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+import doot
+from doot.errors import DootDirAbsent
+from doot.control.tasker import DootTasker
+from doot.mixins.subtask import SubMixin
 
 glob_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).globbing.ignores()
 glob_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).globbing.halts()

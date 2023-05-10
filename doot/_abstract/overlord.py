@@ -10,8 +10,7 @@ class DootOverlord_i:
     """
 
     def __init__(self, *, loaders:dict[str, Loader_i]=None
-                 task_loader:DootLoader_i=None,
-                 config_filenames:tuple=('doot.toml', 'pyproject.toml'),
+                 configs:tuple[pl.Path|str]=('doot.toml', 'pyproject.toml'),
                  extra_config:dict|Tomler=None,
                  args:list=None):
         pass

@@ -1,7 +1,3 @@
-#!/usr/bin/env python3
-"""
-
-"""
 ##-- imports
 from __future__ import annotations
 
@@ -53,43 +49,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 
 ##-- end imports
 
-##-- logging
-logging = logmod.getLogger(__name__)
-##-- end logging
-
-class TraceHelper:
-
-    def __init__(self):
-        self.frames = []
-        self.get_frames()
-
-    def __getitem__(self, val=None):
-        match val:
-            case None:
-                return self.to_tb()
-            case slice() | int():
-                return self.to_tb(self.frames[val])
-            case _:
-                raise TypeError("Bad value passed to TraceHelper")
-
-    def get_frames(self):
-        """ from https://stackoverflow.com/questions/27138440 """
-        tb    = None
-        depth = 0
-        while True:
-            try:
-                frame = sys._getframe(depth)
-                depth += 1
-            except ValueError as exc:
-                break
-
-            self.frames.append(frame)
-
-    def to_tb(self, frames=None):
-        top = None
-        frames = frames or self.frames
-        for frame in frames:
-            top = types.TracebackType(top, frame,
-                                     frame.f_lasti,
-                                     frame.f_lineno)
-        return top
+PLUGIN_TOML_PREFIX         : Final = "doot.plugins" # (project.entry-points."doot.plugins")
+FRONTEND_PLUGIN_TYPES      : Final = ['command', 'reporter']
+BACKEND_PLUGIN_TYPES       : Final = ['database', 'control', 'dispatch', 'runner', 'command_loader', 'task_loader', 'parser', 'action', 'tasker', 'task', 'group']

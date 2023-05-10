@@ -3,10 +3,6 @@
 
 """
 ##-- imports
-
-##-- end imports
-
-##-- default imports
 from __future__ import annotations
 
 import types
@@ -28,27 +24,19 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-##-- end default imports
+##-- end imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-import doot
-from doot._abstract.cmd import DootCommand_i
-
-class StepCmd(DootCommand_i):
+class DootArgParser_i:
     """
-    Standard doit run command, but step through tasks
+    A Single standard process point for turning the list of passed in args,
+    into a dict, into a tomler
     """
-    name            = 'step'
-    doc_purpose     = "Enter breakpoint just before execution of task"
-    doc_description = ""
-    doc_usage       = "[TASK ...]"
+    def __init__(self):
+        pass
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def _execute(self, *args, **kwargs):
-        breakpoint()
-        super()._execute(*args, **kwargs)
+    def parse(self, args) -> Tomler:
+        raise NotImplementedError()

@@ -30,7 +30,6 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doot.utils.task_namer import task_namer
 from time import sleep
 
 class DirGlobMixin:

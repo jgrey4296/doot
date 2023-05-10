@@ -6,14 +6,13 @@ import shutil
 from typing import ClassVar
 
 from doot.control.group import TaskGroup
-from doot.control.tasker import DootTasker
 from doot.mixins.cleaning import CleanerMixin
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doot.utils.task_namer import task_namer
+from doot.utils.task_namer import task_namer as namer
 
 class CheckDir:
     """ Task for checking directories exist,
@@ -27,7 +26,7 @@ class CheckDir:
         logging.debug("Building CheckDir Auto Tasks: %s", list(CheckDir._all_registered.keys()))
         return TaskGroup(CheckDir._checker_basename,
                          {
-                             "basename" : task_namer(CheckDir._checker_basename),
+                             "basename" : namer(CheckDir._checker_basename),
                              "doc"      : ":: Build all locations for all registered location checks",
                              "actions"  : [],
                              "task_dep" : [x for x in CheckDir._all_registered.keys()],
@@ -39,7 +38,7 @@ class CheckDir:
         self.base = CheckDir._checker_basename
         self.locs = locs
         self.name = name
-        CheckDir._all_registered[task_namer(self.base, self.name, private=True)] = self
+        CheckDir._all_registered[namer(self.base, self.name, private=True)] = self
 
     def is_current(self):
         return all([y.exists() for x,y in self.locs])

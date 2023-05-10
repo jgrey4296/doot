@@ -34,6 +34,7 @@ class DootTasker_i:
     """
     builds task descriptions
     """
+    task_type : DootTask_i
 
     def __init__(self, base:str|list, locs:DootLocData=None, output=None, subgroups=None):
         assert(base is not None)
@@ -95,3 +96,8 @@ class DootTasker_i:
 
     def build(self, **kwargs) -> GeneratorType:
         pass
+
+
+    @classmethod
+    def _make_task(cls, *arg, **kwargs):
+        return cls.task_type(*arg, **kwargs)

@@ -1,9 +1,12 @@
 ##-- imports
 from __future__ import annotations
 ##-- end imports
-from doot.actions.cmd_action import DootCmdAction
 
-class ForceCmd(DootCmdAction):
+import doot
+from doot.errors import DootTaskError
+from doot._abstract.action import DootAction_i
+
+class ForceCmd(DootAction_i):
     """
     A CmdAction that overrides failures
     useful if something (*cough* godot *cough*)
@@ -21,7 +24,7 @@ class ForceCmd(DootCmdAction):
     def execute(self, *args, **kwargs):
         result = super().execute(*args, **kwargs)
 
-        if isinstance(result, (TaskError, TaskFailed)):
+        if isinstance(result, DootTaskError):
             return self.handler(result)
 
         return result

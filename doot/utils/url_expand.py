@@ -2,7 +2,6 @@
 """
 
 """
-
 ##-- imports
 from __future__ import annotations
 
@@ -32,7 +31,6 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from time import sleep
-
 import requests
 
 # header = {'user-agent': args.agent}

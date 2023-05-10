@@ -1,7 +1,3 @@
-#!/usr/bin/env python3
-"""
-
-"""
 ##-- imports
 from __future__ import annotations
 
@@ -57,39 +53,34 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class TraceHelper:
+import tomler
+import doot
+from doot._abstract.parser import DootParser_i
+
+
+class DootArgParser(DootParser_i):
+    """
+    convert argv to tomler by:
+    parsing each arg as toml,
+    """
 
     def __init__(self):
-        self.frames = []
-        self.get_frames()
+        pass
 
-    def __getitem__(self, val=None):
-        match val:
-            case None:
-                return self.to_tb()
-            case slice() | int():
-                return self.to_tb(self.frames[val])
-            case _:
-                raise TypeError("Bad value passed to TraceHelper")
+    def setup_args(self):
+        return [
+            {"name": "target", "short": "t", "type": maybe_build_path, "default": None},
+            {"name": "all", "long": "all", "type": bool, "default": self.glob_all_as_default},
+            {"name": "some", "long": "some", "type": float, "default": -1.0 },
+            {"name" : "list", "long": "list", "short": "l", "type": bool, "default": False},
+        ]
 
-    def get_frames(self):
-        """ from https://stackoverflow.com/questions/27138440 """
-        tb    = None
-        depth = 0
-        while True:
-            try:
-                frame = sys._getframe(depth)
-                depth += 1
-            except ValueError as exc:
-                break
+    def parse(self, args:list):
+        logging.debug("Parsing args: %s", args)
+        data = {}
 
-            self.frames.append(frame)
+        for arg in args[1:]:
 
-    def to_tb(self, frames=None):
-        top = None
-        frames = frames or self.frames
-        for frame in frames:
-            top = types.TracebackType(top, frame,
-                                     frame.f_lasti,
-                                     frame.f_lineno)
-        return top
+
+
+        return tomler.Tomler(table=data)

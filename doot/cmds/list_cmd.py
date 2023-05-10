@@ -31,8 +31,11 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+import doot
+from doot._abstract.cmd import DootCommand_i
 from collections import defaultdict
 
+##-- parameters
 opt_listall = {
     'name': 'subtasks',
     'short': '',
@@ -88,7 +91,9 @@ opt_template = {
     'help': "display entries with template"
 }
 
-class ListCmd(DoitCmdBase):
+##-- end parameters
+
+class ListCmd(DootCommand_i):
     doc_purpose = "list tasks from dooter"
     doc_usage = "[TASK ...]"
     doc_description = None

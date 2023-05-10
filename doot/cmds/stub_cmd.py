@@ -34,11 +34,10 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doit.cmd_base import DoitCmdBase
-from doit.control import TaskControl
+import doot
+from doot._abstract.cmd import DootCommand_i
 
-
-class TaskStubber(DoitCmdBase):
+class TaskStubber(DootCommand_i):
     """
     Command to add a stubbed task to the dooter
     """

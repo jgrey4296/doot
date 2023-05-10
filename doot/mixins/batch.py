@@ -31,7 +31,6 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 from time import sleep
 import doot
-from doot.actions.cmd_action task import DootCmdAction
 
 batch_size       = doot.config.on_fail(10, int).batch.size()
 batches_max      = doot.config.on_fail(-1,    int).batch.max()

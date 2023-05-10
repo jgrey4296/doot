@@ -30,7 +30,7 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doot.utils.task_namer import task_namer
+from doot import namer
 from doot.errors import DootDirAbsent
 from time import sleep
 
@@ -46,14 +46,14 @@ class SubMixin:
 
     @property
     def subtask_regex(self):
-        return task_namer(self.fullname, "*", private=True)
+        return namer(self.fullname, "*", private=True)
 
     @property
     def subtask_base(self):
-        return task_namer(self.fullname, private=True)
+        return namer(self.fullname, private=True)
 
     def subtask_name(self, val):
-        return task_namer(self.fullname, val, private=True)
+        return namer(self.fullname, val, private=True)
 
     def _build_task(self) -> None|DoitTask:
         task = super()._build_task()
