@@ -5,21 +5,51 @@
 ##-- imports
 from __future__ import annotations
 
-import abc
-import inspect
+# import abc
+# import datetime
+# import enum
+import functools as ftz
+import itertools as itz
 import logging as logmod
 import pathlib as pl
-import sys
-from collections import OrderedDict
-from copy import copy, deepcopy
-from dataclasses import InitVar, dataclass, field
-from re import Pattern
-from types import FunctionType, GeneratorType, MethodType
+import re
+import time
+import types
+# from copy import deepcopy
+# from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable)
-from uuid import UUID, uuid1
+# from uuid import UUID, uuid1
+# from weakref import ref
+
+# from bs4 import BeautifulSoup
+# import boltons
+# import construct as C
+# import dirty-equals as deq
+# import graphviz
+# import matplotlib.pyplot as plt
+# import more_itertools as itzplus
+# import networkx as nx
+# import numpy as np
+# import pandas
+# import pomegranate as pom
+# import pony import orm
+# import pronouncing
+# import pyparsing as pp
+# import rich
+# import seaborn as sns
+# import sklearn
+# import stackprinter # stackprinter.set_excepthook(style='darkbg2')
+# import sty
+# import sympy
+# import tomllib
+# import toolz
+# import tqdm
+# import validators
+# import z3
+# import spacy # nlp = spacy.load("en_core_web_sm")
 
 ##-- end imports
 
@@ -30,11 +60,11 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-import time
+import tomler
 import doot
+from doot._abstract.tasker import DootTasker_i
 from doot.control.group import TaskGroup
 from doot.control.locations import DootLocData
-from doot.control.tasker import DootTasker
 from doot.task.task import DootTask
 from doot.utils.check_dirs import CheckDir
 from doot.utils.gen_toml import GenToml
@@ -92,7 +122,7 @@ opt_seek_file = {
 
 ##-- end loader cli params
 
-class DootLoader(TaskLoader_i):
+class DootTaskLoader(TaskLoader_i):
     """
     Customized doit_loader.Task loader that automatically
     retrieves directory checks, and stores all created tasks
@@ -101,14 +131,11 @@ class DootLoader(TaskLoader_i):
 
     cmd_options : ClassVar[tuple]    = (opt_doot, opt_cwd, opt_seek_file, opt_break)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+
+    def setup(self, plugins, opt_values):
         self._task_collection = {}
         self._build_failures  = []
         self._task_class      = DootTaskExt
-
-    def setup(self, opt_values):
-        # lazily load namespace from dooter file per config parameters:
         if opt_values['break']:
             breakpoint()
             pass
@@ -124,10 +151,6 @@ class DootLoader(TaskLoader_i):
         except doot.errors.DootDirAbsent as err:
             logging.error("LOCATION MISSING: %s", err.args[0])
             sys.exit(1)
-
-    def load_config(self):
-        self.config = doot.config.get_table()
-        return self.config
 
     def load_tasks(self, cmd, pos_args) -> list:
         start_time = time.perf_counter()
@@ -173,7 +196,7 @@ class DootLoader(TaskLoader_i):
                 case _, TaskGroup() if bool(ref):
                     logging.debug("Expanding TaskGroup: %s", ref)
                     creators += [(getattr(x, "basename", task_name), x) for x in ref.tasks]
-                case _,  DootTasker():
+                case _,  DootTasker_i():
                     creators += [(ref.basename, ref)]
                 case True, dict():
                     logging.info("Got a basic task dict: %s", task_name)
@@ -260,7 +283,7 @@ class DootLoader(TaskLoader_i):
                 # a task instance, just return it without any processing
                 logging.debug("Task is a Task Object, nothing to do: %s", gen_result.name)
                 new_task = gen_result
-            case DootTasker():
+            case DootTasker_i():
                 self._generate_tasks(func_name, gen_result.build(**creator_kwargs), creator_kwargs, param_spec, gen_doc)
             case FunctionType() | MethodType():
                 self._generate_tasks(func_name, gen_result(**creator_kwargs), param_spec, gen_doc)

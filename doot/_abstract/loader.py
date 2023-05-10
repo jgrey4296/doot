@@ -32,38 +32,29 @@ logging = logmod.getLogger(__name__)
 
 class Loader_i:
 
-    def setup(self, opt_values) -> None:
+    def setup(self, *args, **kwargs) -> None:
         raise NotImplementedError()
 
-    def load(self, cmd, pos_args) -> list:
+    def load(self, args:None|Tomler) -> Any:
         raise NotImplementedError()
+
+class PluginLoader_i(Loader_i):
+    """ Base for the first things loaded: plugins."""
+
+    def setup(self, extra_config:Tomler):
+        pass
+
+class CommandLoader_i(Loader_i):
+    """ Base for the second thing loaded: commands """
+
+    def setup(self, plugins:dict):
+        pass
 
 class TaskLoader_i(Loader_i):
-    cmd_options      : list
+    """ Base for the final thing loaded: user tasks """
     _task_collection : list
     _build_failures  : list
     _task_class      : type
 
-    @classmethod
-    def build(cls, config:Tomler):
-        return cls(config)
-
-    def __init__(self, config):
-        # list of command names, used to detect clash of task names and commands
-        self.cmd_names = []
-        self.config    = None   # reference to config object taken from Command
-        self.task_opts = None  # dict with task options (no need parsing, API usage)
-
-class ConfigLoader_i(Loader_i):
-    FRONTEND_PLUGIN_TYPES : Final = ['command', 'reporter', 'action', 'tasker', 'task', 'group' ]
-    BACKEND_PLUGIN_TYPES  : Final = ['database', 'control', 'dispatch', 'runner', 'loader', 'parser']
-
-    @classmethod
-    def build(cls, arg_list, extra, filenames):
-        return cls(arg_list, extra, filenames)
-
-class CommandLoader_i(Loader_i):
-
-    @classmethod
-    def build(cls, config:Tomler, cmds:list):
-        return cls(config, cmds)
+    def setup(self, plugins:dict):
+        pass

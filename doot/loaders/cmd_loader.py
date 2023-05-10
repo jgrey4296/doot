@@ -5,21 +5,53 @@
 ##-- imports
 from __future__ import annotations
 
-import abc
-import inspect
+# import abc
+# import datetime
+# import enum
+import functools as ftz
+import itertools as itz
 import logging as logmod
 import pathlib as pl
-import sys
-from collections import OrderedDict
-from copy import copy, deepcopy
-from dataclasses import InitVar, dataclass, field
-from re import Pattern
-from types import FunctionType, GeneratorType, MethodType
+import re
+import time
+import types
+import importlib
+from importlib.metadata import entry_points
+# from copy import deepcopy
+# from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable)
-from uuid import UUID, uuid1
+# from uuid import UUID, uuid1
+# from weakref import ref
+
+# from bs4 import BeautifulSoup
+# import boltons
+# import construct as C
+# import dirty-equals as deq
+# import graphviz
+# import matplotlib.pyplot as plt
+# import more_itertools as itzplus
+# import networkx as nx
+# import numpy as np
+# import pandas
+# import pomegranate as pom
+# import pony import orm
+# import pronouncing
+# import pyparsing as pp
+# import rich
+# import seaborn as sns
+# import sklearn
+# import stackprinter # stackprinter.set_excepthook(style='darkbg2')
+# import sty
+# import sympy
+# import tomllib
+# import toolz
+# import tqdm
+# import validators
+# import z3
+# import spacy # nlp = spacy.load("en_core_web_sm")
 
 ##-- end imports
 
@@ -30,20 +62,10 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-import importlib
-from importlib.metadata import entry_points
 import time
 import doot
-from doot._abstract.loader import TaskLoader_i, ConfigLoader_i, CommandLoader_i
-from doot.control.group import TaskGroup
-from doot.control.locations import DootLocData
-from doot.task.task import DootTask
-from doot.control.tasker import DootTasker
-from doot.utils.check_dirs import CheckDir
-from doot.utils.gen_toml import GenToml
-from doot.utils.task_namer import task_namer
-
-TASK_STRING = "task_"
+from doot._abstract.loader import CommandLoader_i
+from doot._abstract.cmd import DootCommand_i
 
 ##-- loader cli params
 #### options related to dooter.py
@@ -97,5 +119,8 @@ opt_seek_file = {
 
 class DootCommandLoader(CommandLoader_i):
 
-    def load(self) -> list:
-        pass
+    def setup(self, plugins):
+        self.plugins = plugins
+
+    def load(self, args:Tomler) -> DootCommand_i:
+        logging.debug("Loading Command")
