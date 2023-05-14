@@ -8,6 +8,7 @@ command_loader           = "default"
 task_loader              = "default"
 parser                   = "default"
 
+
 [plugins]
 command        = []
 reporter       = []

@@ -54,14 +54,13 @@ def main():
         if doot.config is None:
             doot.setup()
 
-        logging.debug("Basic Doot setup loaded")
         setup_logging(doot.config)
 
         overlord  = DootOverlord(loaders={"plugin": DootPluginLoader.build(sys.argv[:])},
-                                 config_filenames=[doot.default_agnostic],
+                                 config_filenames=[doot.constants.default_agnostic],
                                  args=sys.argv[:])
 
-        # --- Do whatever is asked
+        # --- Do whatever thats been triggered
         result    = overlord(sys.argv[:])
 
         # --- Shutdown

@@ -6,8 +6,9 @@ import logging as logmod
 import pathlib as pl
 from importlib import resources
 
+from doot import constants
 from doot.control.locations import DootLocData
-from doot.control.tasker import DootTasker
+from doot.task.tasker import DootTasker
 from doot.utils.task_namer import task_namer as namer
 import tomler
 ##-- end imports
@@ -22,18 +23,17 @@ toml_template   = data_path / "basic_toml"
 dooter_template = data_path / "dooter"
 ##-- end data
 
-__version__ = "0.2.0"
+# Global, single points of truth:
+__version__ : Final         = "0.2.0"
+config      : tomler.Tomler = None # doot config
+locs        : DootLocData   = None # registered locations
+args        : tomler.Tomler = None # parsed arg access
 
-default_load_targets = [pl.Path(x) for x in ["doot.toml", "pyproject.toml", "Cargo.toml", "./.cargo/config.toml"]]
-default_dooter       = pl.Path("dooter.py")
 
-config     : tomler.Tomler = None
-locs       : DootLocData   = None
-
-def setup(prefix=None, targets=None):
+def setup(targets=None, prefix=None) -> tupl[Tomler, DootLocData]:
     global config, locs
-    targets = target or default_load_targets
-    logging.debug("Setting up Doot, version: %s targets: %s", __version__, targets)
+    targets = targets or constants.default_load_targets
+    logging.debug("Loading Doot Config, version: %s targets: %s", __version__, targets)
     if config is not None:
         raise Exception("Setup called even though doot is already set up")
 
@@ -43,16 +43,15 @@ def setup(prefix=None, targets=None):
     if not any([x.exists() for x in targets]):
         raise FileNotFoundError("No Doot data found")
 
-    for target in [x for x in targets if pl.Path(x).exists()]:
-        config, locs = setup_agnostic()
+    config, locs = setup_agnostic(*targets)
 
     for x in prefix.split("."):
         config = getattr(config, x)
 
-    return config
+    return config, locs
 
-def setup_agnostic(path):
-    config = tomler.load(path)
+def setup_agnostic(*paths):
+    config = tomler.load(*paths)
     locs   = DootLocData(files=config.flatten_on().files(wrapper=dict),
                          **config.flatten_on().directories(wrapper=dict))
 
@@ -63,6 +62,7 @@ def setup_agnostic(path):
     return config, locs
 
 def setup_py(path):
+    raise DeprecationWarning()
     logging.debug("Found: pyproject.toml, using project.name as src location")
     pyproject = tomler.load(path)
     if config.any_of((None,)).directories.src() is None:

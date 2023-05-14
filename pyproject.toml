@@ -69,8 +69,8 @@ include    = ["doot*"]
 ##-- pytest
 [tool.pytest.ini_options]
 log_cli       = false
-log_level     = "INFO"
-log_cli_level = "WARN"
+log_level     = "DEBUG"
+log_cli_level = "INFO"
 log_format    = "%(levelname)s %(name)s : %(message)s"
 
 ##-- end pytest
