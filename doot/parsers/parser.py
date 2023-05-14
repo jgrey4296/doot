@@ -55,13 +55,17 @@ logging = logmod.getLogger(__name__)
 
 import tomler
 import doot
-from doot._abstract.parser import DootParser_i
+from doot._abstract.parser import DootArgParser_i
+from collections import ChainMap
 
 
-class DootArgParser(DootParser_i):
+class DootArgParser(DootArgParser_i):
     """
     convert argv to tomler by:
     parsing each arg as toml,
+
+    # doot {args} {cmd} {cmd_args}
+    # doot {args} [{task} {task_args}] - implicit do cmd
     """
 
     def __init__(self):
@@ -75,12 +79,68 @@ class DootArgParser(DootParser_i):
             {"name" : "list", "long": "list", "short": "l", "type": bool, "default": False},
         ]
 
-    def parse(self, args:list):
+
+    def parse(self, args:list, doot_specs:list, cmds:dict, tasks:dict):
         logging.debug("Parsing args: %s", args)
-        data = {}
+        head_arg     = args[0]
+        doot_args    = { x.name : x.default for x in doot_specs }
+
+        cmd          = None
+        cmd_name     = None
+        cmd_args     = {}
+
+        chosen_tasks = []
+        task_names   = []
+        task_args    = []
+
+        named_cmds    = list(cmds.keys())
+        named_tasks   = list(tasks.keys())
+        current_specs = doot_specs
+        focus         = "doot"
 
         for arg in args[1:]:
+            matching_specs = [x for x in current_specs if x == arg]
+            if len(matching_specs) > 1:
+                logging.warning("Multiple matching arg specs, use it's full name: %s : %s", arg, [x.name for x in matching_specs])
+                raise Exception()
+
+            match focus:
+                case "doot" if arg in named_cmds:
+                    focus         = "cmd"
+                    cmd           = cmds[arg]
+                    current_specs = cmd.param_specs
+                    cmd_name      = arg
+                    cmd_args      = { x.name : x.default for x in current_specs }
+                case "doot" | "cmd" | "task" if arg in task_names:
+                    raise Exception("Duplicated task")
+                case "doot" | "cmd" | "task" if arg in named_tasks:
+                    focus         = "task"
+                    chosen_tasks.append(tasks[arg])
+                    task_names.append(arg)
+                    current_specs = chosen_tasks[-1].param_specs
+                    new_task_args = { x.name : x.default for x in current_specs }
+                    task_args.append(new_task_args)
+                case "doot" if bool(matching_specs):
+                    spec = matching_specs[0]
+                    spec.add_value(doot_args, arg)
+                case "cmd" if bool(matching_specs):
+                    spec = matching_specs[0]
+                    spec.add_value(cmd_args, arg)
+                case "task" if bool(matching_specs):
+                    spec = matching_specs[0]
+                    spec.add_value(task_args[-1], arg)
+                case _ if not (bool(doot_specs) or bool(cmds) or bool(tasks)):
+                    pass
+                case _:
+                    raise Exception("Unrecognized Arg", arg)
 
 
+        data = {
+            "head" : {"name": head_arg,
+                      "args": doot_args },
+            "cmd" : {"name" : cmd_name or doot.constants.default_cli_cmd,
+                     "args" : cmd_args },
+            "tasks" : {name : args for name,args in zip(task_names, task_args)}
 
-        return tomler.Tomler(table=data)
+            }
+        return tomler.Tomler(data)

@@ -52,3 +52,17 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 PLUGIN_TOML_PREFIX         : Final = "doot.plugins" # (project.entry-points."doot.plugins")
 FRONTEND_PLUGIN_TYPES      : Final = ['command', 'reporter']
 BACKEND_PLUGIN_TYPES       : Final = ['database', 'control', 'dispatch', 'runner', 'command_loader', 'task_loader', 'parser', 'action', 'tasker', 'task', 'group']
+
+default_load_targets = [pl.Path(x) for x in ["doot.toml", "pyproject.toml", "Cargo.toml", "./.cargo/config.toml"]]
+default_dooter       = pl.Path("dooter.py")
+
+default_cmds = ["doot.cmds.help_cmd:HelpCmd",
+                "doot.cmds.run_cmd:RunCmd",
+                "doot.cmds.list_cmd:ListCmd",
+                "doot.cmds.clean_cmd:CleanCmd",
+                "doot.cmds.complete_cmd:CompleteCmd",
+                "doot.cmds.server_cmd:ServerCmd",
+                "doot.cmds.daemon_cmd:DaemonCmd"
+    ]
+
+default_cli_cmd = "run"
