@@ -69,7 +69,8 @@ class DootTasker_i:
     def doc(self):
         pass
 
-    def set_params(self) -> list:
+    @property
+    def param_specs(self) -> list:
         return []
 
     def default_task(self) -> dict:
@@ -96,7 +97,6 @@ class DootTasker_i:
 
     def build(self, **kwargs) -> GeneratorType:
         pass
-
 
     @classmethod
     def _make_task(cls, *arg, **kwargs):

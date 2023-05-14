@@ -18,7 +18,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-from doot.control.group import TaskGroup
+from doot.task.group import TaskGroup
 from doot.utils.check_dirs import CheckDir
 from doot.errors import DootDirAbsent
 from doot.utils.task_namer import task_namer

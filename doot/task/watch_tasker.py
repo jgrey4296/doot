@@ -52,5 +52,10 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 import doot
 from doot._abstract.tasker import DootTasker_i
 
-class DootWatcher(DootTasker_i):
+class DootWatchTasker(DootTasker_i):
+    """
+    Tasker that watches for conditions, *then*
+    generates tasks.
+    eg: a file watcher
+    """
     pass

@@ -120,7 +120,11 @@ opt_seek_file = {
 class DootCommandLoader(CommandLoader_i):
 
     def setup(self, plugins):
-        self.plugins = plugins
+        # get cmd plugins from plugins
+        self.cmd_plugins : list[EntryPoint] = plugins.get("command", [])
+        # add doot.constants.default_cmds
 
-    def load(self, args:Tomler) -> DootCommand_i:
-        logging.debug("Loading Command")
+    def load(self, args:Tomler) -> dict[str, DootCommand_i]:
+        logging.debug("Loading Commands")
+        # load the plugins
+        return []

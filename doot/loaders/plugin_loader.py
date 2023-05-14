@@ -133,7 +133,7 @@ class DootPluginLoader(PluginLoader_i):
             case tomler.Tomler():
                 self.extra_config = extra_config
 
-    def load(self):
+    def load(self) -> dict:
         """
         use entry_points(group="doot")
         add to the config tomler

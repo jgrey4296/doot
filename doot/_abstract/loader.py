@@ -35,7 +35,7 @@ class Loader_i:
     def setup(self, *args, **kwargs) -> None:
         raise NotImplementedError()
 
-    def load(self, args:None|Tomler) -> Any:
+    def load(self, args:None|Tomler) -> dict:
         raise NotImplementedError()
 
 class PluginLoader_i(Loader_i):

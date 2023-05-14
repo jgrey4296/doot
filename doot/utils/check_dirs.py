@@ -5,7 +5,7 @@ import pathlib as pl
 import shutil
 from typing import ClassVar
 
-from doot.control.group import TaskGroup
+from doot.task.group import TaskGroup
 from doot.mixins.cleaning import CleanerMixin
 
 ##-- logging

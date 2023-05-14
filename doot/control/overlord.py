@@ -69,48 +69,28 @@ from doot.loaders.plugin_loader import DootPluginLoader
 from doot.errors import DootParseError, DootInvalidConfig
 
 class DootOverlord(DootOverlord_i):
-    # core doot commands
-    # CMDS = (Help, Run, List, Clean, TabCompletion)
 
     def __init__(self, *, loaders:dict[str, Loader_i]=None, config_filenames:tuple=('doot.toml', 'pyproject.toml'), extra_config:dict|Tomler=None, args:list=None):
-        self.args                        = args or sys.argv[:]
-        self.BIN_NAME                    = self.args[0].split('/')[-1]
-        self.loaders                     = loaders
+        self.args           = args or sys.argv[:]
+        self.BIN_NAME       = self.args[0].split('/')[-1]
+        self.loaders        = loaders
+        self.doot_arg_specs = []
 
-        self.plugins     : dict                          = {}
-        self.parsed_args : None | Tomler                 = None
-        self.cmd         : DootCommand_i                 = None
-        self.tasks       : list[DootTask_i|DootTasker_i] = []
+        self.plugins     : dict               = {}
+        self.parsed_args : None | Tomler      = None
+        self.cmd         : DootCommand_i      = None
+        self.taskers     : list[DootTasker_i] = []
 
         self.load_plugins()
+        self.load_commands()
+        self.load_taskers()
         self.parse_args()
-        self.load_command()
-        self.load_tasks()
 
     def load_plugins(self):
         self.plugin_loader    = (self.loaders.get('plugin', None) or DootPluginLoader()).setup(extra_config)
         self.plugins : Tomler = self.plugin_loader.load()
 
-    def parse_args(self):
-        specified_parser = config.on_fail("default").parser()
-        match self.plugins.get("parser", [])):
-            case []:
-                raise KeyError("No parser found")
-            case [EntryPoint()] as l:
-                self.parser = l.load()()
-            case [*_] as loaders:
-                matching_parsers = [x for x in loaders if x.name == specified_parser]
-                if not bool(matching_parsers):
-                    raise KeyError("No Matching parser found: ", specified_parser)
-                loaded = matching_loaders[0].load()()
-                self.arg_parser = loaded
-
-        if not isinstance(self.arg_parser, DootArgParser_i):
-            raise TypeError("Improper argparser specified: ", self.arg_parser)
-
-        self.parsed_args = self.arg_parser.parse(self.args)
-
-    def load_command(self):
+    def load_commands(self):
         specified_cmd_loader = config.on_fail("default").command_loader()
         match (self.loaders.get("command", None), self.plugins.get("command_loader", [])):
             case None, []:
@@ -132,9 +112,9 @@ class DootOverlord(DootOverlord_i):
             raise TypeError("Attempted to use a non-Commandloader_i as a CommandLoader: " self.cmd_loader)
 
         self.cmd_loader.setup(self.plugins)
-        self.cmd = self.cmd_loader.load(self.parsed_args)
+        self.cmds = self.cmd_loader.load()
 
-    def load_tasks(self):
+    def load_taskers(self):
         specified_task_loader = config.on_fail("default").task_loader()
         match (self.loaders.get("task", None), self.plugins.get("task_loader", [])):
             case None, []:
@@ -156,7 +136,27 @@ class DootOverlord(DootOverlord_i):
             raise TypeError("Attempted to use a non-Commandloader_i as a CommandLoader: " self.cmd_loader)
 
         self.task_loader.setup(self.plugins)
-        self.tasks           = self.task_loader.load(self.parsed_args)
+        self.taskers = self.task_loader.load()
+
+    def parse_args(self):
+        specified_parser = config.on_fail("default").parser()
+        match self.plugins.get("parser", [])):
+            case []:
+                raise KeyError("No parser found")
+            case [EntryPoint()] as l:
+                self.parser = l.load()()
+            case [*_] as parsers:
+                matching_parsers = [x for x in parsers if x.name == specified_parser]
+                if not bool(matching_parsers):
+                    raise KeyError("No Matching parser found: ", specified_parser)
+                loaded = matching_loaders[0].load()()
+                self.arg_parser = loaded
+
+        if not isinstance(self.arg_parser, DootArgParser_i):
+            raise TypeError("Improper argparser specified: ", self.arg_parser)
+
+        self.parsed_args = self.arg_parser.parse(self.args, self.doot_arg_specs, self.cmds, self.tasks)
+        doot.args        = self.parsed_args
 
     @staticmethod
     def print_version():
@@ -164,18 +164,7 @@ class DootOverlord(DootOverlord_i):
         print(".".join([str(i) for i in VERSION]))
         print("lib @", os.path.dirname(os.path.abspath(__file__)))
 
-    def __call__(self, args):
-        """entry point for all commands
-
-        :param all_args: list of string arguments from command line
-
-        return codes:
-          0: tasks executed successfully
-          1: one or more tasks failed
-          2: error while executing a task
-          3: error before task execution starts,
-             in this case the Reporter is not used.
-             So be aware if you expect a different formatting (like JSON)
-             from the Reporter.
-        """
+    def __call__(self, cmd=None, cmd_args=None):
+        cmd = cmd or self.parsed_args.cmd
+        cmd(self.taskers, self.plugins)
         pass
