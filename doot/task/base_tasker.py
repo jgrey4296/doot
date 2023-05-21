@@ -53,7 +53,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 
 ##-- end imports
 
-
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
@@ -87,7 +86,6 @@ class DootTasker(DootTasker_i):
         assert(base is not None)
         assert(locs is not None or locs is False), locs
 
-        # Wrap in a lambda because MethodType does not behave as we need it to
         match base:
             case str():
                 self.basename         = base
@@ -103,29 +101,6 @@ class DootTasker(DootTasker_i):
         self._setup_name      = None
         self.has_active_setup = False
         self.output           = output
-
-    @property
-    def setup_name(self):
-        if self._setup_name is not None:
-            return self._setup_name
-
-        self._setup_name = task_namer(self.basename, "setup", private=True)
-        return self._setup_name
-
-    @property
-    def fullname(self):
-        return task_namer(self.basename, *self.subgroups)
-
-    @property
-    def doc(self):
-        try:
-            split_doc = [x for x in self.__class__.__doc__.split("\n") if bool(x)]
-            return ":: " + split_doc[0].strip() if bool(split_doc) else ""
-        except AttributeError:
-            return ":: "
-
-    def set_params(self) -> list:
-        return []
 
     def default_task(self) -> dict:
         return dict([("name"     , self.fullname),
@@ -143,35 +118,13 @@ class DootTasker(DootTasker_i):
         meta = dict()
         return meta
 
-    def is_current(self, task:DoitTask):
+    def is_current(self, task:DootTask):
         return False
 
-    def clean(self, task:DoitTask):
+    def clean(self, task:DootTask):
         return
 
-    def setup_detail(self, task:dict) -> None|dict:
-        return task
-
-    def task_detail(self, task:dict) -> dict:
-        return task
-
-    def log(self, msg, level=logmod.DEBUG, prefix=None):
-        prefix = prefix or ""
-        lines  = []
-        match msg:
-            case str():
-                lines.append(msg)
-            case types.LambdaType():
-                lines.append(msg())
-            case [types.LambdaType()]:
-                lines += msg[0]()
-            case list():
-                lines += msg
-
-        for line in lines:
-            logging.log(level, prefix + str(line))
-
-    def _build_setup(self) -> None|DoitTask:
+    def _build_setup(self) -> None|DootTask:
         """
         Build a pre-task that every subtask depends on
         """
@@ -197,7 +150,7 @@ class DootTasker(DootTasker_i):
         except DootDirAbsent:
             return None
 
-    def _build_task(self) -> None|DoitTask:
+    def _build_task(self) -> None|DootTask:
         logging.debug("Building Task for: %s", self.fullname)
         task                     = self.default_task()
         maybe_task : None | dict = self.task_detail(task)
@@ -212,7 +165,7 @@ class DootTasker(DootTasker_i):
             full_task.doc = self.doc
         return full_task
 
-    def build(self, **kwargs) -> Generator[DoitTask|dict]:
+    def build(self, **kwargs) -> Generator[DootTask|dict]:
         logging.debug("Building Tasker: %s", self.fullname)
         if bool(kwargs):
             logging.debug("Recieved kwargs: %s", kwargs)
