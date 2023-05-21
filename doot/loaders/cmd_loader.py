@@ -67,64 +67,24 @@ import doot
 from doot._abstract.loader import CommandLoader_i
 from doot._abstract.cmd import DootCommand_i
 
-##-- loader cli params
-#### options related to dooter.py
-# select dodo file containing tasks
-opt_doot = {
-    "section" : "task loader",
-    "name"    : "dooter",
-    "short"   : "f",
-    "long"    : "file",
-    "type"    : str,
-    "default" : str(doot.default_dooter),
-    "env_var" : "DOOT_FILE",
-    "help"    : "load task from doot FILE [default: %(default)s]"
-}
-
-opt_break = {
-    "section" : "task loader",
-    "name"    : "break",
-    "short"   : "b",
-    "long"    : "break",
-    "type"    : bool,
-    "default" : False,
-    "help"    : "Start a debugger before loading tasks, to set breakpoints"
-    }
-
-# cwd
-opt_cwd = {
-    'section': 'task loader',
-    'name': 'cwdPath',
-    'short': 'd',
-    'long': 'dir',
-    'type': str,
-    'default': None,
-    'help': ("set path to be used as cwd directory "
-             "(file paths on dodo file are relative to dodo.py location).")
-}
-
-# seek dodo file on parent folders
-opt_seek_file = {
-    'section': 'task loader',
-    'name': 'seek_file',
-    'short': 'k',
-    'long': 'seek-file',
-    'type': bool,
-    'default': False,
-    'env_var': 'DOIT_SEEK_FILE',
-    'help': ("seek dodo file on parent folders [default: %(default)s]")
-}
-
-##-- end loader cli params
-
 class DootCommandLoader(CommandLoader_i):
 
     def setup(self, plugins):
-        # get cmd plugins from plugins
         self.cmd_plugins : list[EntryPoint] = plugins.get("command", [])
-        # add doot.constants.default_cmds
 
     def load(self, args:Tomler) -> dict[str, DootCommand_i]:
         logging.debug("Loading Commands")
-        # load the plugins
+        cmds = {}
+        for cmd_point in self.cmd_plugins:
+            try:
+                # load the plugins
+                cmd = cmd_point.load()
+                if not isinstance(cmd, DootCommand_i):
+                    raise Exception()
+
+                cmds[cmd._name] = cmd()
+            except Exeption as err:
+                raise ResourceWarning(f"Attempted to load a non-command: {cmd_point}") from err
+
+
         return []

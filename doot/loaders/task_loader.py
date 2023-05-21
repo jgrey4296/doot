@@ -60,10 +60,13 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
+from collections import ChainMap
+import importlib
 import tomler
 import doot
+from doot.constants import default_task_group
 from doot._abstract.tasker import DootTasker_i
-from doot.control.group import TaskGroup
+from doot._abstract.loader import TaskLoader_i
 from doot.control.locations import DootLocData
 from doot.task.task import DootTask
 from doot.utils.check_dirs import CheckDir
@@ -72,71 +75,91 @@ from doot.utils.task_namer import task_namer
 
 TASK_STRING = "task_"
 
+task_specs = doot.config.on_fail([]).tasks()
+task_path  = doot.config.on_fail(".tasks").task_path(wrapper=pl.Path)
+allow_overloads = doot.config.on_fail(False, bool).allow_overloads()
+
 class DootTaskLoader(TaskLoader_i):
     """
-    Task loader that automatically
-    retrieves directory checks, and stores all created tasks
-    for later retrieval
     """
 
     def setup(self, plugins):
-        self.cmd_names = set(plugins.get("command", [])) # get from plugins
-        self.task_creators : dict[str, DootTasker_i] = {}
-        self._build_failures  = []
-        self._task_class      = DootTaskExt
-        try:
-            self.__doot_all_dirs   = DootLocData.as_taskgroup()
-            self.__doot_all_checks = CheckDir.as_taskgroup()
-        except doot.errors.DootDirAbsent as err:
-            logging.error("LOCATION MISSING: %s", err.args[0])
-            sys.exit(1)
+        self.cmd_names = set(map(lambda x: x._name, plugins.get("command", [])))
+        self.task_creators : dict[str, tuple(dict, DootTasker_i)] = {}
 
-    def load_tasks(self) -> dict:
+    def load(self, arg:Tomler) -> dict:
         start_time = time.perf_counter()
         logging.debug("---- Loading Tasks")
-        self._get_task_creators(self.namespace, self.cmd_names)
+        specs : list = self._get_task_specs(arg)
+        self._get_task_creators(specs, self.cmd_names)
 
         logging.debug("Task List Size: %s", len(self.task_creators))
         logging.debug("Task List Names: %s", list(self.task_creators.keys()))
-        if bool(self._build_failures):
-            logging.warning("%s task build failures", len(self._build_failures))
         logging.debug("---- Tasks Loaded in %s seconds", f"{time.perf_counter() - start_time:0.4f}")
         return self.task_creators
 
-    def _get_task_creators(self, namespace, command_names):
+    def _get_task_specs(self, extra) -> list:
+        specs     = None
+        raw_specs = []
+        match task_specs:
+            case list():
+                raw_specs += map(lambda x: (x.__setattr('group', x.get('group', default_task_group)), x)[1], task_specs)
+            case dict() | tomler.Tomler():
+                for key, val in task_specs.items():
+                    # sets 'group' for each task if it hasn't been set already
+                    raw_specs += map(lambda x: (x.__setitem__('group', x.get('group', key)), x)[1], val)
+
+        match extra:
+            case None:
+                pass
+            case dict() | tomler.Tomler():
+                for key, val in extra.get('tasks', {}).items():
+                    # sets 'group' for each task if it hasn't been set already
+                    raw_specs += map(lambda x: (x.__setitem__('group', x.get('group', key)), x)[1], val)
+
+        if not task_path.exists():
+            pass
+        elif task_path.is_dir():
+            logging.info("Loading Task Path: %s", task_path)
+            for key, val in tomler.load_dir(task_path).on_fail({}).tasks().items():
+                # sets 'group' for each task if it hasn't been set already
+                raw_specs += map(lambda x: (x.__setitem__('group', x.get('group', key)), x)[1], val)
+        elif task_path.is_file():
+            for key, val in tomler.load(task_path).on_fail({}).tasks().items():
+                # sets 'group' for each task if it hasn't been set already
+                raw_specs += map(lambda x: (x.__setitem__('group', x.get('group', key)), x)[1], val)
+
+        return raw_specs
+
+
+    def _get_task_creators(self, group_specs:list, command_names):
         """
-        get task creators defined in the namespace
+        get task creators defined in the config
 
         A task-creator is a function that:
-        - task_name starts with the string TASK_STRING
         - is a DootTasker
-
-        @return (list - func) task-creators
         """
         logging.debug("Getting Task Creators from namespace")
         prefix_len : int                = len(TASK_STRING)
 
-        for task_name, ref in namespace.items():
-            match task_name.startswith(TASK_STRING), ref:
-                case _, _ if task_name in command_names:
-                    logging.warning("doot_loader.Task can't be called '%s' because this is a command task_name.", task_name)
-                    continue
-                case _, _ if task_name in self.task_creators:
-                    logging.warning("Overloaded Task Name", task_name)
-                    continue
-                case _, TaskGroup() if bool(ref):
-                    logging.debug("Expanding TaskGroup: %s", ref)
-                    self.task_creators.update([(getattr(x, "basename", task_name), x) for x in ref.tasks])
-                case _,  DootTasker_i():
-                    self.task_creators.update([(ref.basename, ref)])
-                case True, dict():
-                    logging.info("Got a basic task dict: %s", task_name)
-                    self.task_craetors[task_name] = DictTasker(ref)
-                case True, FunctionType() | MethodType():
-                    # function is a task creator because of its task_name
-                    # remove TASK_STRING prefix from task_name
-                    self.task_creators[task_name[prefix_len:]] = FunctionTasker(ref)
-                case _, _:
-                    continue
+        for spec in group_specs:
+            match spec:
+                case {"name": task_name} if task_name in command_names:
+                    raise ResourceWarning(f"Task / Cmd name conflict: {task_name}")
+                case {"name": task_name} if task_name in self.task_creators and not allow_overloads:
+                    raise ResourceWarning(f"Task Name Overloaded: {task_name}")
+                case {"name": task_name, "class": task_class}:
+                    if task_name in self.task_creators:
+                        logging.warning("Overloading Task: %s : %s", task_name, task_class)
 
-        return creators
+                    try:
+                        mod_name, class_name = task_class.split("::")
+                        mod = importlib.import_module(mod_name)
+                        cls = getattr(mod, class_name)
+                        self.task_creators[task_name] = (spec, cls)
+                    except ModuleNotFoundError as err:
+                        raise ResourceWarning(f"Task Spec {task_name} Load Failure: Bad Module Name: {task_class}") from err
+                    except AttributeError as err:
+                        raise ResourceWarning(f"Task Spec {task_name} Load Failure: Bad Class Name: {task_class}") from err
+                case _:
+                    raise ResourceWarning("Task Spec needs, at least, a name and class: %s", spec)

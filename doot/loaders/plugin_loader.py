@@ -69,57 +69,10 @@ import doot
 import doot.constants
 from doot._abstract.loader import PluginLoader_i
 
-TASK_STRING = "task_"
-
-##-- loader cli params
-#### options related to dooter.py
-# select dodo file containing tasks
-opt_doot = {
-    "section" : "task loader",
-    "name"    : "dooter",
-    "short"   : "f",
-    "long"    : "file",
-    "type"    : str,
-    "default" : str(doot.default_dooter),
-    "env_var" : "DOOT_FILE",
-    "help"    : "load task from doot FILE [default: %(default)s]"
-}
-
-opt_break = {
-    "section" : "task loader",
-    "name"    : "break",
-    "short"   : "b",
-    "long"    : "break",
-    "type"    : bool,
-    "default" : False,
-    "help"    : "Start a debugger before loading tasks, to set breakpoints"
-    }
-
-# cwd
-opt_cwd = {
-    'section': 'task loader',
-    'name': 'cwdPath',
-    'short': 'd',
-    'long': 'dir',
-    'type': str,
-    'default': None,
-    'help': ("set path to be used as cwd directory "
-             "(file paths on dodo file are relative to dodo.py location).")
-}
-
-# seek dodo file on parent folders
-opt_seek_file = {
-    'section': 'task loader',
-    'name': 'seek_file',
-    'short': 'k',
-    'long': 'seek-file',
-    'type': bool,
-    'default': False,
-    'env_var': 'DOIT_SEEK_FILE',
-    'help': ("seek dodo file on parent folders [default: %(default)s]")
-}
-
-##-- end loader cli params
+skip_default_plugins = doot.config.on_fail(False).skip_default_plugins()
+skip_plugin_search   = doot.config.on_fail(False).skip_plugin_search()
+env_eps              = doot.config.on_fail({}).plugins(wrapper=dict)
+plugin_types         = set(doot.constants.FRONTEND_PLUGIN_TYPES + doot.constants.BACKEND_PLUGIN_TYPES)
 
 class DootPluginLoader(PluginLoader_i):
 
@@ -129,56 +82,57 @@ class DootPluginLoader(PluginLoader_i):
             case None:
                 self.extra_config = {}
             case dict():
-                self.extra_config = tomler.Tomler(table=extra_config)
+                self.extra_config = tomler.Tomler(extra_config)
             case tomler.Tomler():
                 self.extra_config = extra_config
 
-    def load(self) -> dict:
+    def load(self, arg) -> dict[str, list]:
         """
         use entry_points(group="doot")
         add to the config tomler
         """
         logging.debug("Loading Entry Points: %s", doot.constants.PLUGIN_TOML_PREFIX)
-        try:
-            env_eps      = config.on_fail({}).plugins(wrapper=dict)
-            extra_eps    = self.extra_config.on_fail({}).plugins(wrapper=dict)
-            plugin_types = set(doot.constants.FRONTEND_PLUGIN_TYPES + doot.constants.BACKEND_PLUGIN_TYPES)
-
-            if doot.config.on_fail(False).skip_plugin_search():
-                pass
-            else:
-                logging.info("Searching environment for plugins, skip with `skip_plugin_search` in config")
-                for plugin_type in plugin_types:
+        extra_eps    = self.extra_config.on_fail({}).plugins(wrapper=dict)
+        if skip_plugin_search:
+            pass
+        else:
+            logging.info("Searching environment for plugins, skip with `skip_plugin_search` in config")
+            for plugin_type in plugin_types:
+                try:
                     plugin_group = "{}.{}".format(doot.constants.PLUGIN_TOML_PREFIX, plugin_type)
                     # Load env wide entry points
                     for entry_point in entry_points(group=plugin_group):
                         self.plugins[plugin_type].append(entry_point)
+                except Exception as err:
+                    raise ResourceWarning(f"Plugin Failed to Load: {plugin_group} : {entry_point}") from err
 
-            # load config entry points
-            for k, v in env_eps.items():
-                if k not in plugin_types:
-                    logging.warning("Unknown plugin type found in config: %s", k)
-                    continue
-                ep = EntryPoint(name=v, value=v, group=k)
-                self.plugins[k].append(ep)
 
-            # load extra-config entry points
-            for k,v in extra_eps.items():
-                if k not in plugin_types:
-                    logging.warning("Unknown plugin type found in extra config: %s", k)
-                    continue
-                ep = EntryPoint(name=v, value=v, group=k)
-                self.plugins[k] = EntryPoint(name=k, value=v, group=doot.constants.PLUGIN_TOML_PREFIX)
+        # load config entry points
+        for k, v in env_eps.items():
+            if k not in plugin_types:
+                logging.warning("Unknown plugin type found in config: %s", k)
+                continue
+            ep = EntryPoint(name=v, value=v, group=k)
+            self.plugins[k].append(ep)
 
+        # load extra-config entry points
+        for k,v in extra_eps.items():
+            if k not in plugin_types:
+                logging.warning("Unknown plugin type found in extra config: %s", k)
+                continue
+            ep = EntryPoint(name=v, value=v, group=k)
+            self.plugins[k] = EntryPoint(name=k, value=v, group=doot.constants.PLUGIN_TOML_PREFIX)
+
+        try:
             self.append_defaults()
-            logging.debug("Found {len(self.plugins)} plugins")
-            return self.plugins
         except Exception as err:
-            logging.error("Plugin Failed to Load:")
+            raise ResourceWarning("Failed to load plugin defaults") from err
+        logging.debug("Found {len(self.plugins)} plugins")
+        return self.plugins
 
 
     def append_defaults(self):
-        if doot.config.on_fail(False).skip_default_plugins():
+        if skip_default_plugins:
             logging.info("Skipping Default Plugins")
             return
 
@@ -190,11 +144,10 @@ class DootPluginLoader(PluginLoader_i):
         self.plugins['command']  += []
         self.plugins['reporter'] += []
         self.plugins['database'] += []
-        self.plugins['control']  += []
-        self.plugins['dispatch'] += []
+        self.plugins['tracker']  += []
         self.plugins['runner']   += []
         self.plugins['parser']   += []
         self.plugins['action']   += []
-        self.plugins['tasker']   += []
+        # self.plugins['tasker'] += []
         self.plugins['task']     += []
-        self.plugins['group']    += []
+        # self.plugins['group']  += []
