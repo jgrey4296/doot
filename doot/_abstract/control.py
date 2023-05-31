@@ -30,17 +30,34 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class ExecutionResult(enum.Enum):
-    # execution result.
-    SUCCESS = enum.auto()
-    FAILURE = enum.auto()
-    ERROR   = enum.auto()
+from collections import deque
+
+class TaskStateEnum(enum.Enum):
+    SUCCESS  = enum.auto()
+    FAILURE  = enum.auto()
+    WAIT     = enum.auto()
+    READY    = enum.auto()
+    INIT     = enum.auto()
+    TEARDOWN = enum.auto()
+    DEFINED  = enum.auto()
+    DECLARED = enum.auto()
+
+class TaskOrdering_i:
+
+    @property
+    def name(self) -> str:
+        raise NotImplementedError
+
+    @property
+    def priors(self) -> list:
+        raise NotImplementedError()
+
+    @property
+    def posts(self) -> list:
+        raise NotImplementedError()
+
 
 class TaskStatus_i:
-    """Result object for Dependency.get_status.
-
-    @ivar status: (str) one of "run", "up-to-date" or "error"
-    """
 
     def __init__(self, get_log):
         self.get_log = get_log
@@ -58,15 +75,6 @@ class TaskStatus_i:
             self.reasons[reason].append(arg)
         return not self.get_log
 
-    def set_reason(self, reason, arg):
-        """sets state and reason for not being up-to-date
-        :return boolean: processing should be interrupted
-        """
-        self.status = 'run'
-        if self.get_log:
-            self.reasons[reason] = arg
-        return not self.get_log
-
     def get_error_message(self):
         '''return str with error message'''
         return self.error_reason
@@ -77,51 +85,59 @@ class TaskTracker_i:
     and have failed.
     Does not execute anything itself
     """
+    state_e = TaskStateEnum
 
-    def __init__(self, tasks, targets, selected_tasks):
-        self.tasks          = tasks
-        self.targets        = targets
-        self.selected_tasks = selected_tasks
+    def __init__(self):
+        self.tasks          = {}
 
-        self.nodes          = {}      # key task-name, value: _ExecNode
-                                      # queues
-        self.waiting        = set()   # of _ExecNode
-        self.ready          = deque() # of _ExecNode
+    def add_task(self, task:None|Tasker|Task):
+        raise NotImplementedError()
 
-    def build_dependencies(self):
-        pass
+    def update_task_state(self, task, state):
+        raise NotImplementedError()
 
-    def update_dependencies(self, info):
-        pass
+    def next_for(self, target:str) -> Tasker|Task:
+        raise NotImplementedError()
 
+    def __iter__(self) -> Generator:
+        raise NotImplementedError()
+
+    def __contains__(self, target:str) -> bool:
+        raise NotImplementedError()
+
+    def declared_set(self) -> set[str]:
+        raise NotImplementedError()
+
+    def defined_set(self) -> set[str]:
+        raise NotImplementedError()
 
 class TaskRunner_i:
     """
     Run tasks, actions, and taskers
     """
 
-    def __init__(self, reporter):
-        self.reporter       = reporter
+    def __init__(self, tracker, reporter):
+        self.tracker       = tracker
+        self.reporter      = reporter
         self.teardown_list = []  # list of tasks to be teardown
         self.final_result  = SUCCESS  # until something fails
         self._stop_running = False
 
+    def __call__(self, *tasks:str):
+        raise NotImplementedError()
 
     def execute_task(self, task):
         """execute task's actions"""
-        pass
+        raise NotImplementedError()
 
     def process_task_result(self, node, base_fail):
         """handles result"""
-        pass
-
-    def run_tasks(self, *tasks):
-        pass
+        raise NotImplementedError()
 
     def teardown(self):
         """run teardown from all tasks"""
-        pass
+        raise NotImplementedError()
 
     def finish(self):
         """finish running tasks"""
-        pass
+        raise NotImplementedError()
