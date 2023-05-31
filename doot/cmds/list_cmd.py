@@ -33,145 +33,31 @@ logging = logmod.getLogger(__name__)
 
 import doot
 from doot._abstract.cmd import DootCommand_i
+from doot._abstract.parser import DootParamSpec
 from collections import defaultdict
 
-##-- parameters
-opt_listall = {
-    'name': 'subtasks',
-    'short': '',
-    'long': 'all',
-    'type': bool,
-    'default': False,
-    'help': "list include all sub-tasks from dodo file"
-}
-
-opt_list_quiet = {
-    'name': 'quiet',
-    'short': 'q',
-    'long': 'quiet',
-    'type': bool,
-    'default': False,
-    'help': 'print just task name (less verbose than default)'
-}
-
-opt_list_status = {
-    'name': 'status',
-    'short': 's',
-    'long': 'status',
-    'type': bool,
-    'default': False,
-    'help': 'print task status (R)un, (U)p-to-date, (I)gnored'
-}
-
-opt_list_private = {
-    'name': 'private',
-    'short': 'p',
-    'long': 'private',
-    'type': bool,
-    'default': False,
-    'help': "print private tasks (start with '_')"
-}
-
-opt_list_dependencies = {
-    'name': 'list_deps',
-    'short': '',
-    'long': 'deps',
-    'type': bool,
-    'default': False,
-    'help': ("print list of dependencies "
-             "(file dependencies only)")
-}
-
-opt_template = {
-    'name': 'template',
-    'short': '',
-    'long': 'template',
-    'type': str,
-    'default': None,
-    'help': "display entries with template"
-}
-
-##-- end parameters
 
 class ListCmd(DootCommand_i):
-    doc_purpose = "list tasks from dooter"
-    doc_usage = "[TASK ...]"
-    doc_description = None
-
-    cmd_options = (opt_listall, opt_list_quiet, opt_list_status,
-                   opt_list_private, opt_list_dependencies, opt_template)
-
+    _name      = "list"
+    _help      = []
     STATUS_MAP = {'ignore': 'I', 'up-to-date': 'U', 'run': 'R', 'error': 'E'}
 
-    @classmethod
-    def get_name(cls):
-        return "list"
+    @property
+    def param_specs(self) -> list:
+        return [
+            DootParamSpec(name="all", default=True),
+            DootParamSpec(name="dependencies", default=False),
+            DootParamSpec(name="target", type=str, default=""),
 
-    def _print_task(self, template, task, status, list_deps, tasks):
-        """print a single task"""
-        line_data = {'name': task.name, 'doc': task.doc}
-        # FIXME group task status is never up-to-date
-        if status:
-            # FIXME: 'ignore' handling is ugly
-            if self.dep_manager.status_is_ignore(task):
-                task_status = 'ignore'
-            else:
-                task_status = self.dep_manager.get_status(task, tasks).status
-            line_data['status'] = self.STATUS_MAP[task_status]
+            ]
 
-        self.outstream.write(template.format(**line_data))
-
-        # print dependencies
-        if list_deps:
-            for dep in task.file_dep:
-                self.outstream.write(" -  %s\n" % dep)
-            self.outstream.write("\n")
-
-    def _execute(self, subtasks=False, quiet=True, status=False, private=False,
-                 list_deps=False, template=None, pos_args=None):
+    def __call__(self, tasks:dict, plugins:dict):
         """List task generators"""
-        filter_tasks = pos_args
+        logging.debug("Starting to List Taskers/Tasks")
+        if doot.args.cmd.args.all:
+            for key, tasker in tasks:
+                logging.info("%s : %s", key, tasker)
 
-        # grouped tasks:
-        grouped_tasks = defaultdict(lambda: defaultdict(lambda: []))
-        name_lens     = set([0])
-        for task in self.task_list:
-            names = task.name_parts()
-            match names:
-                case [x, *_] if bool(filter_tasks) and x.replace("_", "") not in filter_tasks:
-                    continue
-                case [x, *_] if x.startswith("_") and not private:
-                    continue
-                case [x, y, *_] if x.startswith("_"):
-                    name_lens.add(len(task.name))
-                    grouped_tasks[x[1:]][y].append(task)
-                case [x, y, *_]:
-                    name_lens.add(len(task.name))
-                    grouped_tasks[names[0]][y].append(task)
-                case _:
-                    name_lens.add(len(task.name))
-                    grouped_tasks["misc"][task.name].append(task)
-
-        if quiet:
-            self.outstream.write(f"Task Groups:\n")
-            for group_name in sorted(grouped_tasks.keys()):
-                self.outstream.write(f"\t{group_name}\n")
-            return 0
-
-        max_name_len = max(name_lens)
-        # set template
-        if template is None:
-            template = '{name:<' + str(max_name_len + 3) + '}'
-            if not quiet:
-                template += '{doc}'
-
-        for group_name in sorted(grouped_tasks.keys()):
-            self.outstream.write(f"{group_name}:\n")
-            reports = []
-            for sub in sorted(grouped_tasks[group_name].keys()):
-                reports += [x.report(template, list_deps) for x in grouped_tasks[group_name][sub]]
-
-            self.outstream.write("\n".join(sorted(reports)))
-            self.outstream.write("\n")
-
-        return 0
+        if doot.args.cmd.target != "":
+            # TODO expand the tasks of specified tasker
+            pass

@@ -8,7 +8,6 @@ from importlib import resources
 
 from doot import constants
 from doot.control.locations import DootLocData
-from doot.task.tasker import DootTasker
 from doot.utils.task_namer import task_namer as namer
 import tomler
 ##-- end imports
@@ -57,7 +56,6 @@ def setup_agnostic(*paths):
 
     # TODO move to config loader
     # # Done like this to avoid recursive imports
-    DootTasker.set_defaults(config)
     DootLocData.set_defaults(config)
     return config, locs
 

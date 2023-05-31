@@ -56,3 +56,35 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
+
+import doot
+from doot._abstract.cmd import DootCommand_i
+from doot._abstract.parser import DootParamSpec
+from collections import defaultdict
+
+
+class RunCmd(DootCommand_i):
+    _name      = "run"
+    _help      = []
+
+    @property
+    def param_specs(self) -> list:
+        return [
+            DootParamSpec(name="target", type=str, default=""),
+            DootParamSpec(name="step"),
+            ]
+
+    def __call__(self, tasks:dict, plugins:dict):
+        # TODO setup the dependency management system using correct plugins
+        # plugins.runner(task, action, tracker, runner, databse, reporter)
+
+        tracker = plugins.tracker()
+        for task in tasks.values():
+            tracker.add_task(task)
+
+        if doot.args.on_fail(None).cmd.target() in tracker:
+            tracker.build_dependencies_for(doot.args.cmd.target)
+            reporter = plugins.reporter()
+            runner = plugins.runner(tracker, plugins.reporter())
+            # TODO get the tasker, expand it, do it
+            runner(doot.args.cmd.target)

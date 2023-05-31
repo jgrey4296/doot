@@ -56,3 +56,27 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
+
+import doot
+from doot._abstract.cmd import DootCommand_i
+from doot._abstract.parser import DootParamSpec
+from collections import defaultdict
+
+
+class HelpCmd(DootCommand_i):
+    _name      = "help"
+    _help      = []
+
+    @property
+    def param_specs(self) -> list:
+        return [
+            DootParamSpec(name="target", type=str, default="")
+            ]
+
+    def __call__(self, tasks:dict, plugins:dict):
+        """List task generators"""
+        if doot.args.cmd.args.target != "":
+            # Print help of just the specified target
+            pass
+
+        # Else Print general help and list cmds

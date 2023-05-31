@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 """
-Cmd experiment based on doit-graph
+
 """
-##-- imports
-
-##-- end imports
-
 ##-- default imports
 from __future__ import annotations
 
@@ -36,34 +32,17 @@ logging = logmod.getLogger(__name__)
 
 import doot
 from doot._abstract.cmd import DootCommand_i
+from doot._abstract.parser import DootParamSpec
+from collections import defaultdict
 
-class TaskStubber(DootCommand_i):
-    """
-    Command to add a stubbed task to the dooter
-    """
-    name            = 'stub'
-    doc_purpose     = "Stub a New Task"
-    doc_description = ""
-    doc_usage       = "[TASK ...]"
-    cmd_options     = ()
+class StubCmd(DootCommand_i):
+    _name      = "stub"
+    _help      = []
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    @property
+    def param_specs(self) -> list:
+        return []
 
-    def _execute(self, pos_args=None):
-        # init
-        control       = TaskControl(self.task_list)
-        self.tasks    = control.tasks
-
-        # Check the name isnt taken
-
-        # Query for details:
-        ## Single or Multi Task
-        ## Mixins?
-        ## description
-        ## clean?
-        ## params?
-        ## setup?
-
-        ## Query for toml additions
-        ## dirs, files, values
+    def __call__(self, tasks:dict, plugins:dict):
+        # TODO interactively build a stub tasker
+        raise NotImplementedError()

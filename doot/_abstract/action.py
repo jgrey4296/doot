@@ -37,7 +37,7 @@ class DootAction_i:
 
     @staticmethod
     def _prepare_kwargs(task, func, args, kwargs):
-        pass
+        raise NotImplementedError()
 
     def __call__(self, *args, **kwargs):
-        pass
+        raise NotImplementedError()

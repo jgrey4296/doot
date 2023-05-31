@@ -63,16 +63,16 @@ class DootTaskBuilder:
     def __init__(self):
         self._task_collection = {}
 
-    def build_tasks(self, creators, allow_delayed=False, args=()):
+    def build_tasks(self, taskers:dict[str, tuple(dict, DootTasker_i)], args=()):
         """
         Run each task creator, or delay it
         """
-        for name, ref in creators:
+        for name, ref in taskers:
             # Parse command line arguments for task generator parameters
             delayed        = getattr(ref, "_build_delayed", None) or getattr(ref, 'doit_create_after', None)
 
             match delayed:
-                case True if allow_delayed:
+                case True:
                     delay_obj = DelayedLoader(None)
                     self._build_delayed(name, ref, delay_obj)
                     continue

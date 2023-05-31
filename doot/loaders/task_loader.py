@@ -81,6 +81,7 @@ allow_overloads = doot.config.on_fail(False, bool).allow_overloads()
 
 class DootTaskLoader(TaskLoader_i):
     """
+    load toml defined tasks
     """
 
     def setup(self, plugins):
@@ -90,15 +91,15 @@ class DootTaskLoader(TaskLoader_i):
     def load(self, arg:Tomler) -> dict:
         start_time = time.perf_counter()
         logging.debug("---- Loading Tasks")
-        specs : list = self._get_task_specs(arg)
-        self._get_task_creators(specs, self.cmd_names)
+        specs : list = self._load_task_specs(arg)
+        self._load_task_classes(specs, self.cmd_names)
 
         logging.debug("Task List Size: %s", len(self.task_creators))
         logging.debug("Task List Names: %s", list(self.task_creators.keys()))
         logging.debug("---- Tasks Loaded in %s seconds", f"{time.perf_counter() - start_time:0.4f}")
         return self.task_creators
 
-    def _get_task_specs(self, extra) -> list:
+    def _load_task_specs(self, extra) -> list:
         specs     = None
         raw_specs = []
         match task_specs:
@@ -132,7 +133,7 @@ class DootTaskLoader(TaskLoader_i):
         return raw_specs
 
 
-    def _get_task_creators(self, group_specs:list, command_names):
+    def _load_task_classes(self, group_specs:list, command_names):
         """
         get task creators defined in the config
 

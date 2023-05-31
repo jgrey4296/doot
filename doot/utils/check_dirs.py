@@ -5,7 +5,7 @@ import pathlib as pl
 import shutil
 from typing import ClassVar
 
-from doot.task.group import TaskGroup
+from doot.task.specialised_taskers import GroupTasker
 from doot.mixins.cleaning import CleanerMixin
 
 ##-- logging
@@ -22,9 +22,9 @@ class CheckDir:
     _checker_basename = "locs::build"
 
     @staticmethod
-    def as_taskgroup() -> TaskGroup:
+    def as_taskgroup() -> GroupTasker:
         logging.debug("Building CheckDir Auto Tasks: %s", list(CheckDir._all_registered.keys()))
-        return TaskGroup(CheckDir._checker_basename,
+        return GroupTasker(CheckDir._checker_basename,
                          {
                              "basename" : namer(CheckDir._checker_basename),
                              "doc"      : ":: Build all locations for all registered location checks",

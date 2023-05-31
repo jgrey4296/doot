@@ -42,13 +42,13 @@ class PluginLoader_i(Loader_i):
     """ Base for the first things loaded: plugins."""
 
     def setup(self, extra_config:Tomler):
-        pass
+        raise NotImplementedError()
 
 class CommandLoader_i(Loader_i):
     """ Base for the second thing loaded: commands """
 
     def setup(self, plugins:dict):
-        pass
+        raise NotImplementedError()
 
 class TaskLoader_i(Loader_i):
     """ Base for the final thing loaded: user tasks """
@@ -57,4 +57,4 @@ class TaskLoader_i(Loader_i):
     _task_class      : type
 
     def setup(self, plugins:dict):
-        pass
+        raise NotImplementedError()

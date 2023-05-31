@@ -18,7 +18,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-from doot.task.group import TaskGroup
+from doot.task.specialised_taskers import GroupTasker
 from doot.utils.check_dirs import CheckDir
 from doot.errors import DootDirAbsent
 from doot.utils.task_namer import task_namer
@@ -75,9 +75,9 @@ class DootLocData:
         DootLocData._default_locs = config.on_fail([], list).locs
 
     @staticmethod
-    def as_taskgroup() -> TaskGroup:
+    def as_taskgroup() -> GroupTasker:
         logging.debug("Building LocData Auto Tasks: %s", list(DootLocData._all_registered.keys()))
-        return TaskGroup(DootLocData._locs_report_name,
+        return GroupTasker(DootLocData._locs_report_name,
                          {
                              "basename" : task_namer(DootLocData._locs_report_name),
                              "doc"      : ":: Report All Registered Locations",

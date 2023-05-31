@@ -34,19 +34,19 @@ logging = logmod.getLogger(__name__)
 class DootDBManager_i:
 
     def set(self, task_id, dependency, value):
-        pass
+        raise NotImplementedError()
 
     def get(self, task_id, dependency):
-        pass
+        raise NotImplementedError()
 
     def in_(self, task_id):
-        pass
+        raise NotImplementedError()
 
     def dump(self):
-        pass
+        raise NotImplementedError()
 
     def remove(self, task_id):
-        pass
+        raise NotImplementedError()
 
     def remove_all(self):
-        pass
+        raise NotImplementedError()

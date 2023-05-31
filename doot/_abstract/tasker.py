@@ -30,26 +30,53 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class DootTasker_i:
+from tomler import Tomler
+from doot._abstract.control import TaskOrdering_i
+
+class StubTaskPartSpec:
+    "Describes a single part of a stub task in toml"
+    key     : str
+    type    : str
+
+    default : str
+    help    : str
+
+class StubTaskSpec:
+    "Stub Task Spec for description in toml"
+    name   : str
+    tasker : str
+    parts  : list[StubTaskPartSpec]
+
+    def to_toml(self):
+        raise NotImplementedError()
+
+class DootTasker_i(TaskOrdering_i):
     """
     builds task descriptions
     """
     task_type : DootTask_i
 
-    def __init__(self, base:str|list, locs:DootLocData=None, output=None, subgroups=None):
-        assert(base is not None)
+    @classmethod
+    def _make_task(cls, *arg, **kwargs):
+        return cls.task_type(*arg, **kwargs)
+
+    def __init__(self, spec:dict|Tomler, locs:DootLocData=None):
         assert(locs is not None or locs is False), locs
 
-        # Wrap in a lambda because MethodType does not behave as we need it to
-        match base:
-            case str():
-                self.basename         = base
-                self.subgroups        = subgroups or []
-            case [x, *xs]:
-                self.basename = x
-                self.subgroups = xs + (subgroups or [])
+        match spec:
+            case None:
+                raise TypeError("Task Spec cannot be None")
+            case dict():
+                self.spec = Tomler(spec)
+            case Tomler():
+                self.spec = spec
             case _:
-                raise TypeError("Bad base name provided to task: %s", base)
+                raise TypeError("Unrecognized Task Spec Type")
+
+        self.basename = self.spec.name
+        self.subgroups = self.spec.on_fail([], list).subgroups()
+        # TODO: wrap with importlib:
+        self.task_type = self.spec.on_fail(DootTask).task_type()
 
         self.locs             = locs
         self.args             = {}
@@ -59,45 +86,71 @@ class DootTasker_i:
 
     @property
     def setup_name(self):
-        pass
+        if self._setup_name is not None:
+            return self._setup_name
+
+        self._setup_name = task_namer(self.basename, "setup", private=True)
+        return self._setup_name
 
     @property
     def fullname(self):
-        pass
+        return task_namer(self.basename, *self.subgroups)
 
     @property
     def doc(self):
-        pass
+        try:
+            split_doc = [x for x in self.__class__.__doc__.split("\n") if bool(x)]
+            return ":: " + split_doc[0].strip() if bool(split_doc) else ""
+        except AttributeError:
+            return ":: "
 
     @property
-    def param_specs(self) -> list:
+    def param_specs(self) -> list[parser.DootParamSpec]:
         return []
 
     def default_task(self) -> dict:
-        return dict()
+        raise NotImplementedError()
 
     def default_meta(self) -> dict:
-        meta = dict()
-        return meta
+        raise NotImplementedError()
 
     def is_current(self, task:DootTask):
-        return False
+        raise NotImplementedError()
 
     def clean(self, task:DootTask):
-        return
+        raise NotImplementedError()
 
     def setup_detail(self, task:dict) -> None|dict:
-        return task
+        raise NotImplementedError()
 
     def task_detail(self, task:dict) -> dict:
-        return task
-
-    def log(self, msg, level=logmod.DEBUG, prefix=None):
-        pass
+        raise NotImplementedError()
 
     def build(self, **kwargs) -> GeneratorType:
-        pass
+        raise NotImplementedError()
 
-    @classmethod
-    def _make_task(cls, *arg, **kwargs):
-        return cls.task_type(*arg, **kwargs)
+    def stub_spec(self) -> StubTaskSpec:
+        """
+        Return a list of StubSpec's
+        to describe how this tasker is specified in toml
+        """
+        raise NotImplementedError()
+
+    def log(self, msg, level=logmod.DEBUG, prefix=None):
+        """
+        utility method to log a message, useful as tasks are running
+        """
+        prefix = prefix or ""
+        lines  = []
+        match msg:
+            case str():
+                lines.append(msg)
+            case types.LambdaType():
+                lines.append(msg())
+            case [types.LambdaType()]:
+                lines += msg[0]()
+            case list():
+                lines += msg
+
+        for line in lines:
+            logging.log(level, prefix + str(line))

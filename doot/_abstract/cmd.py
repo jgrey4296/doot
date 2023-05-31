@@ -12,7 +12,8 @@ class DootCommand_i:
     holds command information and performs it
     """
 
-    name = None # if not specified uses the class name
+    _name : None|str       = None # if not specified uses the class name
+    _help : None|list[str] = None
 
     def __init__(self, name=None):
         self._name = name
@@ -24,11 +25,14 @@ class DootCommand_i:
 
     @property
     def help(self) -> str:
-        return ""
+        return "\n".join(self._help)
 
     @property
     def param_specs(self) -> list:
+        """
+        Provide parameter specs for parsing into doot.args.cmd
+        """
         return []
 
     def __call__(self, taskers, plugins):
-        pass
+        raise NotImplementedError()

@@ -58,7 +58,6 @@ import doot
 from doot._abstract.parser import DootArgParser_i
 from collections import ChainMap
 
-
 class DootArgParser(DootArgParser_i):
     """
     convert argv to tomler by:
@@ -70,15 +69,6 @@ class DootArgParser(DootArgParser_i):
 
     def __init__(self):
         pass
-
-    def setup_args(self):
-        return [
-            {"name": "target", "short": "t", "type": maybe_build_path, "default": None},
-            {"name": "all", "long": "all", "type": bool, "default": self.glob_all_as_default},
-            {"name": "some", "long": "some", "type": float, "default": -1.0 },
-            {"name" : "list", "long": "list", "short": "l", "type": bool, "default": False},
-        ]
-
 
     def parse(self, args:list, doot_specs:list, cmds:dict, tasks:dict):
         logging.debug("Parsing args: %s", args)
@@ -133,7 +123,6 @@ class DootArgParser(DootArgParser_i):
                     pass
                 case _:
                     raise Exception("Unrecognized Arg", arg)
-
 
         data = {
             "head" : {"name": head_arg,

@@ -40,53 +40,53 @@ class Reporter_i:
         self.failure_verbosity = options.get('failure_verbosity', 0)
         self.outstream         = outstream
 
-    def write(self, text):
-        pass
+    def __str__(self):
+        raise NotImplementedError()
 
     def initialize(self, tasks, selected_tasks):
         """called just after tasks have been loaded before execution starts"""
-        pass
+        raise NotImplementedError()
 
     def get_status(self, task):
         """called when task is selected (check if up-to-date)"""
-        pass
+        raise NotImplementedError()
 
     def execute_task(self, task):
         """called when execution starts"""
         # ignore tasks that do not define actions
         # ignore private/hidden tasks (tasks that start with an underscore)
-        pass
+        raise NotImplementedError()
 
     def add_failure(self, task, fail: BaseFail):
         """called when execution finishes with a failure"""
-        pass
+        raise NotImplementedError()
 
     def add_success(self, task):
         """called when execution finishes successfully"""
-        pass
+        raise NotImplementedError()
 
     def skip_uptodate(self, task):
         """skipped up-to-date task"""
-        pass
+        raise NotImplementedError()
 
     def skip_ignore(self, task):
         """skipped ignored task"""
-        pass
+        raise NotImplementedError()
 
     def cleanup_error(self, exception):
         """error during cleanup"""
-        pass
+        raise NotImplementedError()
 
     def runtime_error(self, msg):
         """error from doot (not from a task execution)"""
         # saved so they are displayed after task failures messages
-        pass
+        raise NotImplementedError()
 
     def teardown_task(self, task):
         """called when starts the execution of teardown action"""
-        pass
+        raise NotImplementedError()
 
     def complete_run(self):
         """called when finished running all tasks"""
         # if test fails print output from failed task
-        pass
+        raise NotImplementedError()

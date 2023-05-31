@@ -56,3 +56,23 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
+
+import doot
+from doot._abstract.cmd import DootCommand_i
+from doot._abstract.parser import DootParamSpec
+from collections import defaultdict
+
+
+class CleanCmd(DootCommand_i):
+    _name      = "clean"
+    _help      = []
+
+    @property
+    def param_specs(self) -> list:
+        return [
+            DootParamSpec(name="target", type=str, default="")
+            ]
+
+    def __call__(self, tasks:dict, plugins:dict):
+        # TODO run either doot clean, or a task clean
+        raise NotImplementedError

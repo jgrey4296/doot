@@ -99,6 +99,8 @@ class TargetedMixin:
                     loop = False
                 case "?":
                     current_window = tuple(map(lambda x: x+target_list_size, current_window))
+                case "":
+                    print("Empty Response, try again, or end with !")
                 case _ as selected:
                     to_yield += filter(lambda x: 0 <= x < max_len, map(int, selected.split(" ")))
 

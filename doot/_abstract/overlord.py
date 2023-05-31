@@ -13,11 +13,11 @@ class DootOverlord_i:
                  configs:tuple[pl.Path|str]=('doot.toml', 'pyproject.toml'),
                  extra_config:dict|Tomler=None,
                  args:list=None):
-        pass
+        raise NotImplementedError()
 
     @staticmethod
     def print_version() -> str:
-        pass
+        raise NotImplementedError()
 
     def __call__(self, args):
         """entry point for all commands
@@ -33,4 +33,4 @@ class DootOverlord_i:
              So be aware if you expect a different formatting (like JSON)
              from the Reporter.
         """
-        pass
+        raise NotImplementedError()

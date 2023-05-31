@@ -97,7 +97,7 @@ class DootParamSpec:
             case _ if len(rest) == 1:
                 data[self.name] = self.type(rest[0])
             case _:
-                raise Exception("Can't understand passed in type", val)
+                raise Exception("Can't understand raise NotImplementedError()ed in type", val)
 
 
 class DootArgParser_i:

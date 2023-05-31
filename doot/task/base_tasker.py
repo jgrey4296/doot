@@ -82,19 +82,20 @@ class DootTasker(DootTasker_i):
         DootTasker.sleep_subtask = config.on_fail(2.0,   int|float).subtask.sleep()
         DootTasker.sleep_notify  = config.on_fail(False, bool).notify.sleep()
 
-    def __init__(self, base:str|list, locs:DootLocData=None, output=None, subgroups=None):
-        assert(base is not None)
+    def __init__(self, spec:dict|Tomler, locs:DootLocData=None):
         assert(locs is not None or locs is False), locs
 
-        match base:
-            case str():
-                self.basename         = base
-                self.subgroups        = subgroups or []
-            case [x, *xs]:
-                self.basename = x
-                self.subgroups = xs + (subgroups or [])
-            case _:
-                raise TypeError("Bad base name provided to task: %s", base)
+        self.spec = spec
+
+        # match base:
+        #     case str():
+        #         self.basename         = base
+        #         self.subgroups        = subgroups or []
+        #     case [x, *xs]:
+        #         self.basename = x
+        #         self.subgroups = xs + (subgroups or [])
+        #     case _:
+        #         raise TypeError("Bad base name provided to task: %s", base)
 
         self.locs             = locs
         self.args             = {}
