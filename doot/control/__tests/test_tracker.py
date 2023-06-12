@@ -22,7 +22,7 @@ with warnings.catch_warnings():
     pass
 ##-- end warnings
 
-from doot.control.runner import DootTracker, DootRunner
+from doot.control.tracker import DootTracker
 from doot._abstract.task import DootTask_i
 
 def make_mock_task(name, pre=None, post=None):
@@ -69,19 +69,34 @@ class TestTracker(unittest.TestCase):
         priors.assert_called()
         posts.assert_called()
 
-    def test_duplicate_add(self):
+    def test_duplicate_add_fail(self):
         task1, pre1, post1 = make_mock_task("task1")
         task2, pre2, post2 = make_mock_task("task1")
 
         tracker = DootTracker()
         tracker.add_task(task1)
-        tracker.add_task(task2)
+        with self.assertRaises(KeyError):
+            tracker.add_task(task2)
 
         self.assertTrue("task1" in tracker.tasks)
         pre1.assert_called()
         pre1.assert_called()
         pre2.assert_not_called()
         post2.assert_not_called()
+
+    def test_duplicate_add(self):
+        task1, pre1, post1 = make_mock_task("task1")
+        task2, pre2, post2 = make_mock_task("task1")
+
+        tracker = DootTracker(shadowing=True)
+        tracker.add_task(task1)
+        tracker.add_task(task2)
+
+        self.assertTrue("task1" in tracker.tasks)
+        pre1.assert_called()
+        pre1.assert_called()
+        pre2.assert_called()
+        post2.assert_called()
 
     def test_contains_defined(self):
         mock_task, _, _= make_mock_task("test_task")
@@ -126,7 +141,7 @@ class TestTracker(unittest.TestCase):
         tracker = DootTracker()
         tracker.add_task(mock_task)
         declared = tracker.declared_set()
-        self.assertEqual(declared, {"test_task", "subtask","sub2", "example", "blah"})
+        self.assertEqual(declared, {"__root", "test_task", "subtask","sub2", "example", "blah"})
 
     def test_defined_set(self):
         mock_task, *_ = make_mock_task("test_task", pre=["subtask", "sub2"], post=["example", "blah"])
@@ -155,7 +170,63 @@ class TestTracker(unittest.TestCase):
         next_task_3 = tracker.next_for()
         self.assertEqual(next_task_3.name, "task1")
 
+    def test_task_failure(self):
+        task1,    *_ = make_mock_task("task1", pre=["subtask"])
+        subtask,  *_ = make_mock_task("subtask", pre=["subsub"])
+        tracker = DootTracker()
+        tracker.add_task(task1)
+        tracker.update_task_state(task1, tracker.state_e.FAILURE)
 
+        next_task = tracker.next_for("task1")
+        self.assertIsNone(next_task)
+
+
+    def test_post_task_order(self):
+        task1,    *_ = make_mock_task("task1", pre=["subtask", "subtask2"])
+        subtask,  *_ = make_mock_task("subtask", pre=["subsub"], post=["sidesuper"])
+        sidesuper, *_ = make_mock_task("sidesuper")
+
+        tracker = DootTracker()
+        tracker.add_task(task1)
+        tracker.add_task(subtask)
+        tracker.add_task(sidesuper)
+
+        next_task = tracker.next_for("task1")
+        self.assertEqual(next_task.name, "subtask")
+        tracker.update_task_state(next_task, tracker.state_e.SUCCESS)
+        next_task_2 = tracker.next_for()
+        self.assertEqual(next_task_2.name, "sidesuper")
+        tracker.update_task_state(next_task_2, tracker.state_e.SUCCESS)
+        next_task_3 = tracker.next_for()
+        self.assertEqual(next_task_3.name, "task1")
+
+    def test_task_exact_artifact_dependency(self):
+        task1,    *_ = make_mock_task("task1", pre=[pl.Path("test.file")])
+        subtask,  *_ = make_mock_task("subtask", post=[pl.Path("blah.other")])
+        subtask2, *_ = make_mock_task("subtask2", post=[pl.Path("test.file")])
+
+        tracker = DootTracker()
+        tracker.add_task(task1)
+        tracker.add_task(subtask)
+        tracker.add_task(subtask2)
+        next_task = tracker.next_for("task1")
+        self.assertEqual(next_task.name, "subtask2")
+
+    def test_task_inexact_artifact_dependency(self):
+        task1,    *_ = make_mock_task("task1", pre=[pl.Path("*.file")])
+        subtask,  *_ = make_mock_task("subtask", post=[pl.Path("blah.other")])
+        subtask2, *_ = make_mock_task("subtask2", post=[pl.Path("test.file")])
+
+        tracker = DootTracker()
+        tracker.add_task(task1)
+        tracker.add_task(subtask)
+        tracker.add_task(subtask2)
+        tracker._fixup_artifact_edges()
+        next_task = tracker.next_for("task1")
+        self.assertEqual(next_task.name, "subtask2")
+
+    def test_task_artifact_exists(self):
+        pass
 
 ##-- ifmain
 if __name__ == '__main__':
