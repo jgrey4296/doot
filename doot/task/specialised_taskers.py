@@ -59,19 +59,16 @@ logging = logmod.getLogger(__name__)
 
 from doot.task.base_tasker import DootTasker
 
-clean_re = re.compile("\s+")
-
 class DictTasker(DootTasker):
+    """ Make a tasker from just a dict """
     pass
 
 class FunctionTasker(DootTasker):
+    """ Make a tasker from just a function """
     pass
 
 class GroupTasker(DootTasker):
-    """ A Group of task specs, none of which require params
-    Can contain: dicts, objects with a `_build_task` method,
-    objects with `create_doit_tasks`, and callables
-    """
+    """ A Group of task specs, none of which require params """
 
     def __init__(self, name, *args, as_creator=False):
         self.name       = name.replace(" ", "_")

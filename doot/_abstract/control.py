@@ -33,14 +33,16 @@ logging = logmod.getLogger(__name__)
 from collections import deque
 
 class TaskStateEnum(enum.Enum):
-    SUCCESS  = enum.auto()
-    FAILURE  = enum.auto()
-    WAIT     = enum.auto()
-    READY    = enum.auto()
-    INIT     = enum.auto()
-    TEARDOWN = enum.auto()
-    DEFINED  = enum.auto()
-    DECLARED = enum.auto()
+    SUCCESS         = enum.auto()
+    FAILURE         = enum.auto()
+    WAIT            = enum.auto()
+    READY           = enum.auto()
+    INIT            = enum.auto()
+    TEARDOWN        = enum.auto()
+    DEFINED         = enum.auto()
+    DECLARED        = enum.auto()
+    ARTIFACT        = enum.auto()
+    EXISTS          = enum.auto()
 
 class TaskOrdering_i:
 

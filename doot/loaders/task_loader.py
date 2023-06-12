@@ -136,9 +136,6 @@ class DootTaskLoader(TaskLoader_i):
     def _load_task_classes(self, group_specs:list, command_names):
         """
         get task creators defined in the config
-
-        A task-creator is a function that:
-        - is a DootTasker
         """
         logging.debug("Getting Task Creators from namespace")
         prefix_len : int                = len(TASK_STRING)

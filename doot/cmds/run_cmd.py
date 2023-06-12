@@ -83,7 +83,6 @@ class RunCmd(DootCommand_i):
             tracker.add_task(task)
 
         if doot.args.on_fail(None).cmd.target() in tracker:
-            tracker.build_dependencies_for(doot.args.cmd.target)
             reporter = plugins.reporter()
             runner = plugins.runner(tracker, plugins.reporter())
             # TODO get the tasker, expand it, do it

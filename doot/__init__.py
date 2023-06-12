@@ -42,7 +42,11 @@ def setup(targets=None, prefix=None) -> tupl[Tomler, DootLocData]:
     if not any([x.exists() for x in targets]):
         raise FileNotFoundError("No Doot data found")
 
-    config, locs = setup_agnostic(*targets)
+    existing_targets = [x for x in targets if x.exists()]
+    config, locs = setup_agnostic(*existing_targets)
+
+    if prefix is None:
+        return config, locs
 
     for x in prefix.split("."):
         config = getattr(config, x)
@@ -58,15 +62,3 @@ def setup_agnostic(*paths):
     # # Done like this to avoid recursive imports
     DootLocData.set_defaults(config)
     return config, locs
-
-def setup_py(path):
-    raise DeprecationWarning()
-    logging.debug("Found: pyproject.toml, using project.name as src location")
-    pyproject = tomler.load(path)
-    if config.any_of((None,)).directories.src() is None:
-        locs.update(src=pyproject.project.name)
-
-    if not pyproject.on_fail(None).tool.doot():
-        return None
-
-    return pyproject.tool.doot
