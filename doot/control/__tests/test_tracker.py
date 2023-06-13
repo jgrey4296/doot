@@ -107,6 +107,14 @@ class TestTracker(unittest.TestCase):
         # defined Task is contained
         self.assertIn("test_task", tracker)
 
+    def test_fail_fast(self):
+        task1,    *_ = make_mock_task("task1", pre=["subtask", "subtask2"])
+        tracker = DootTracker(fail_fast=True)
+        tracker.add_task(task1)
+
+        with self.assertRaises(RuntimeError):
+            tracker.next_for("task1")
+
     def test_not_contains_declared(self):
         mock_task, _, _= make_mock_task("test_task", pre=["example", "blah"])
 
@@ -148,8 +156,8 @@ class TestTracker(unittest.TestCase):
 
         tracker = DootTracker()
         tracker.add_task(mock_task)
-        declared = tracker.defined_set()
-        self.assertEqual(declared, {"test_task"})
+        defined = tracker.defined_set()
+        self.assertEqual(defined, {"test_task"})
 
     def test_task_order(self):
         task1,    *_ = make_mock_task("task1", pre=["subtask", "subtask2"])
@@ -170,20 +178,69 @@ class TestTracker(unittest.TestCase):
         next_task_3 = tracker.next_for()
         self.assertEqual(next_task_3.name, "task1")
 
+    def test_task_iter(self):
+        task1,    *_ = make_mock_task("task1", pre=["subtask", "subtask2", "subtask3"])
+        subtask,  *_ = make_mock_task("subtask", pre=["subsub"])
+        subtask2, *_ = make_mock_task("subtask2", pre=["subsub"])
+        subtask3, *_ = make_mock_task("subtask3", pre=["subsub"])
+
+        tracker = DootTracker()
+        tracker.add_task(task1)
+        tracker.add_task(subtask)
+        tracker.add_task(subtask2)
+        tracker.add_task(subtask3)
+
+        tasks = []
+        tracker.set_task("task1")
+        for x in tracker:
+            if x:
+                tasks.append(x.name)
+                tracker.update_task_state(x.name, tracker.state_e.SUCCESS)
+
+        self.assertEqual(len(tasks), 4)
+
+    def test_task_iter_state_changed(self):
+        task1,    *_ = make_mock_task("task1", pre=["subtask", "subtask2", "subtask3"])
+        subtask,  *_ = make_mock_task("subtask", pre=["subsub"])
+        subtask2, *_ = make_mock_task("subtask2", pre=["subsub"])
+        subtask3, *_ = make_mock_task("subtask3", pre=["subsub"])
+
+        tracker = DootTracker()
+        tracker.add_task(task1)
+        tracker.add_task(subtask)
+        tracker.add_task(subtask2)
+        tracker.add_task(subtask3)
+
+        tracker.update_task_state("subtask2", tracker.state_e.SUCCESS)
+        tasks = []
+        tracker.set_task("task1")
+        for x in tracker:
+            if x:
+                tasks.append(x.name)
+                tracker.update_task_state(x.name, tracker.state_e.SUCCESS)
+
+        self.assertNotIn("subtask2", tasks)
+        self.assertEqual(len(tasks), 3)
+
+
+
     def test_task_failure(self):
         task1,    *_ = make_mock_task("task1", pre=["subtask"])
         subtask,  *_ = make_mock_task("subtask", pre=["subsub"])
         tracker = DootTracker()
         tracker.add_task(task1)
-        tracker.update_task_state(task1, tracker.state_e.FAILURE)
+        tracker.add_task(subtask)
+        next_task = tracker.next_for("task1")
+        self.assertEqual(next_task, subtask)
+        tracker.update_task_state(subtask, tracker.state_e.FAILURE)
 
         next_task = tracker.next_for("task1")
         self.assertIsNone(next_task)
 
 
     def test_post_task_order(self):
-        task1,    *_ = make_mock_task("task1", pre=["subtask", "subtask2"])
-        subtask,  *_ = make_mock_task("subtask", pre=["subsub"], post=["sidesuper"])
+        task1,    *_  = make_mock_task("task1", pre=["subtask", "subtask2"])
+        subtask,  *_  = make_mock_task("subtask", pre=["subsub"], post=["sidesuper"])
         sidesuper, *_ = make_mock_task("sidesuper")
 
         tracker = DootTracker()
@@ -195,10 +252,10 @@ class TestTracker(unittest.TestCase):
         self.assertEqual(next_task.name, "subtask")
         tracker.update_task_state(next_task, tracker.state_e.SUCCESS)
         next_task_2 = tracker.next_for()
-        self.assertEqual(next_task_2.name, "sidesuper")
+        self.assertEqual(next_task_2.name, "task1")
         tracker.update_task_state(next_task_2, tracker.state_e.SUCCESS)
         next_task_3 = tracker.next_for()
-        self.assertEqual(next_task_3.name, "task1")
+        self.assertIsNone(next_task_3)
 
     def test_task_exact_artifact_dependency(self):
         task1,    *_ = make_mock_task("task1", pre=[pl.Path("test.file")])
@@ -221,12 +278,53 @@ class TestTracker(unittest.TestCase):
         tracker.add_task(task1)
         tracker.add_task(subtask)
         tracker.add_task(subtask2)
-        tracker._fixup_artifact_edges()
         next_task = tracker.next_for("task1")
         self.assertEqual(next_task.name, "subtask2")
 
-    def test_task_artifact_exists(self):
-        pass
+    @mock.patch.object(pl.Path, "exists", return_value=True)
+    def test_task_artifact_exists(self, mockmeth):
+        task1,    *_ = make_mock_task("task1", pre=[pl.Path("*.file")])
+        subtask,  *_ = make_mock_task("subtask", post=[pl.Path("blah.other")])
+        subtask2, *_ = make_mock_task("subtask2", post=[pl.Path("test.file")])
+
+        tracker = DootTracker()
+        tracker.add_task(task1)
+        tracker.add_task(subtask)
+        tracker.add_task(subtask2)
+
+        next_task = tracker.next_for("task1")
+        self.assertEqual(next_task, task1)
+
+    @mock.patch.object(pl.Path, "exists", return_value=False)
+    def test_task_artifact_doesnt_exists(self, mockmeth):
+        task1,    *_ = make_mock_task("task1", pre=[pl.Path("*.file")])
+        subtask,  *_ = make_mock_task("subtask", post=[pl.Path("blah.other")])
+        subtask2, *_ = make_mock_task("subtask2", post=[pl.Path("test.file")])
+
+        tracker = DootTracker()
+        tracker.add_task(task1)
+        tracker.add_task(subtask)
+        tracker.add_task(subtask2)
+
+        next_task = tracker.next_for("task1")
+        self.assertEqual(next_task, subtask2)
+
+    def test_task_artifact_partial_exists(self):
+        def temp_exists(self):
+            return not "*" in self.stem
+
+        with mock.patch.object(pl.Path, "exists", new=temp_exists):
+            task1,    *_ = make_mock_task("task1", pre=[pl.Path("*.file")])
+            subtask,  *_ = make_mock_task("subtask", post=[pl.Path("blah.other")])
+            subtask2, *_ = make_mock_task("subtask2", post=[pl.Path("test.file")])
+
+            tracker = DootTracker()
+            tracker.add_task(task1)
+            tracker.add_task(subtask)
+            tracker.add_task(subtask2)
+
+            next_task = tracker.next_for("task1")
+            self.assertEqual(next_task, task1)
 
 ##-- ifmain
 if __name__ == '__main__':

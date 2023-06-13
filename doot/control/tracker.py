@@ -85,20 +85,21 @@ class _TaskArtifact:
             case _:
                 return False
 
+    def __bool__(self):
+        return self.is_definite() and self._path.exists()
+
     def is_definite(self):
-        return self._path.stem not in "*?"
+        return self._path.stem not in "*?+"
 
     def matches(self, other):
+        """ match a definite artifact to its indefinite abstraction """
         match other:
-            case _TaskArtifact() if not (other.is_definite() and self.is_definite()):
+            case _TaskArtifact() if self.is_definite() and not other.is_definite():
                 parents_match = self._path.parent == other._path.parent
                 exts_match    = self._path.suffix == other._path.suffix
                 return parents_match and exts_match
             case _:
                 raise TypeError(other)
-
-    def exists(self):
-        return self._path.exists()
 
 class DootTracker(TaskTracker_i):
     """
@@ -115,40 +116,46 @@ class DootTracker(TaskTracker_i):
 
     """
 
-    def __init__(self, shadowing=False):
+    def __init__(self, shadowing=False, fail_fast=False):
         super().__init__() # tasks
-        self.artifacts       = {}
-        self.dep_graph       = nx.DiGraph()
-        self.produce_mapping = defaultdict(set)
-        self.queued_path     = []
-        self.execution_path  = []
-        self.shadowing       = shadowing
+        self.artifacts            = {}
+        self.indefinite_artifacts = {}
+        self.dep_graph            = nx.DiGraph()
+        self.produce_mapping      = defaultdict(set)
+        self.task_stack           = []
+        self.execution_path       = []
+        self.shadowing            = shadowing
+        self.fail_fast            = fail_fast
 
         self.dep_graph.add_node(ROOT, state=self.state_e.WAIT)
 
     def __iter__(self) -> Generator:
-        while bool(self.queued_path):
+        while bool(self.task_stack):
             yield self.next_for()
 
     def __contains__(self, target):
         return target in self.tasks
 
-    def _fixup_artifact_edges(self):
-        """ connect generalised file products to specific """
-        indefinite_nodes = [x for x in self.dep_graph.nodes if isinstance(x, _TaskArtifact) and not x.is_definite()]
-        for node in self.dep_graph.nodes:
-            match node:
-                case str():
-                    pass
-                case _TaskArtifact() if node.is_definite():
-                    for x in indefinite_nodes:
-                        if x.matches(node):
-                            self.dep_graph.add_edge(x, node)
+    def _add_artifact(self, path:pl.Path):
+        """ convert a path to an artifact, and connect it with matching artifacts """
+        artifact = _TaskArtifact(path)
+        match artifact:
+            case _ if artifact in self.dep_graph:
+                pass
+            case _TaskArtifact() if artifact.is_definite():
+                self.artifacts[str(artifact)] = artifact
+                self.dep_graph.add_node(artifact, state=self.state_e.ARTIFACT)
+                for x in self.indefinite_artifacts.values(): # connect definite to indefinites
+                    if artifact.matches(x):
+                        self.dep_graph.add_edge(x, artifact, type="artifact")
+            case _TaskArtifact():
+                self.indefinite_artifacts[str(artifact)] = artifact
+                self.dep_graph.add_node(artifact, state=self.state_e.ARTIFACT)
+                for x in self.artifacts.values(): # connect indefinite to definites
+                    if x.matches(artifact):
+                        self.dep_graph.add_edge(artifact, x, type="artifact")
 
-                case _TaskArtifact():
-                    pass
-                case _:
-                    raise TypeError(node)
+        return artifact
 
     def add_task(self, task:None|tuple|Tasker|Task, no_root_connection=False):
         """ add a task description into the tracker,
@@ -162,10 +169,12 @@ class DootTracker(TaskTracker_i):
             case (spec, cls):
                 task = cls(spec)
 
-        match task.name in self.tasks, self.shadowing:
-            case True, False:
+        match task.name in self.tasks, self.shadowing, self.tasks.get(task.name):
+            case True, _, False:
+                pass
+            case True, False, _:
                 raise KeyError("Task with Duplicate Name not added: ", task.name)
-            case True, True:
+            case True, True, _:
                 logging.warning("Task Shadowed by Duplicate Name: %s", task.name)
 
         self.tasks[task.name] = task
@@ -180,12 +189,8 @@ class DootTracker(TaskTracker_i):
                 case str() if pre not in self.dep_graph:
                     self.dep_graph.add_node(pre, state=self.state_e.DECLARED)
                 case pl.Path():
-                    pre = _TaskArtifact(pre)
+                    pre = self._add_artifact(pre)
                     edge_type = "artifact"
-                    if pre not in self.dep_graph:
-                        self.artifacts[str(pre)] = pre
-                        self.dep_graph.add_node(pre, state=self.state_e.ARTIFACT)
-                # TODO handle other artifacts?
 
             self.dep_graph.add_edge(task.name, pre, type=edge_type)
 
@@ -195,67 +200,70 @@ class DootTracker(TaskTracker_i):
                 case str() if post not in self.dep_graph:
                     self.dep_graph.add_node(post, state=self.state_e.DECLARED)
                 case pl.Path():
-                    post      = _TaskArtifact(post)
+                    post      = self._add_artifact(post)
                     edge_type = "artifact"
-                    if post not in self.dep_graph:
-                        self.artifacts[str(post)] = post
-                        self.dep_graph.add_node(post, state=self.state_e.ARTIFACT)
 
             self.dep_graph.add_edge(post, task.name, type=edge_type)
 
-        # TODO connect any specific paths to general paths
-        # eg: test.file -> *.file
+    def set_task(self, task:str):
+        if task not in self.tasks:
+            raise LookupError(task)
+        self.task_stack.append(task)
 
     def next_for(self, target:None|str=None) -> None|Tasker|Task:
         """ ask for the next task that should be performed """
-        if target and target not in self.queued_path:
-            self.queued_path.append(target)
+        if target and target not in self.task_stack:
+            self.task_stack.append(target)
 
         complete_states = {self.state_e.SUCCESS, self.state_e.EXISTS}
         focus             = None
         nodes             = self.dep_graph.nodes
         adj               = dict(self.dep_graph.adjacency())
-        while bool(self.queued_path):
-            focus        = self.queued_path[-1]
+        while bool(self.task_stack):
+            focus        = self.task_stack[-1]
+            logging.debug("Task: %s  State: %s, Stack: %s", focus, self.task_state(focus), self.task_stack)
             match self.task_state(focus):
                 case self.state_e.SUCCESS:
-                    self.queued_path.pop()
-                    self.queued_path += self.dep_graph.pred[focus]
+                    self.task_stack.pop()
                 case self.state_e.EXISTS:
-                    self.queued_path.pop()
+                    self.task_stack.pop()
                 case self.state_e.FAILURE:
-                    self.queued_path = []
+                    self.task_stack = []
                     return None
+                case self.state_e.READY if focus in self.execution_path and self.fail_fast:
+                    raise RuntimeError("Task Attempted to run twice", focus)
                 case self.state_e.READY if focus in self.execution_path:
                     logging.warning("Task %s attempted to be run twice", focus)
                     self.update_task_state(focus, self.state_e.FAILURE)
-
                 case self.state_e.READY:
                     self.execution_path.append(focus)
                     return self.tasks.get(focus, None)
-                case self.state_e.ARTIFACT if focus.is_definite() and focus.exists():
-                    self.queue_path.pop()
+                case self.state_e.ARTIFACT if bool(focus):
                     self.update_task_state(focus, self.state_e.EXISTS)
                 case self.state_e.ARTIFACT:
                     dependencies = list(adj[focus].keys())
                     incomplete   = list(filter(lambda x: self.task_state(x) not in complete_states, dependencies))
                     if bool(incomplete):
-                        self.queued_path += incomplete
+                        self.task_stack += incomplete
                     else:
                         self.update_task_state(focus, self.state_e.EXISTS)
                 case self.state_e.WAIT | self.state_e.DEFINED:
                     dependencies = list(adj[focus].keys())
                     incomplete   = list(filter(lambda x: self.task_state(x) not in complete_states, dependencies))
                     if bool(incomplete):
-                        self.queued_path += incomplete
+                        self.task_stack += incomplete
                     else:
                         self.update_task_state(focus, self.state_e.READY)
+                case self.state_e.DECLARED if self.fail_fast:
+                    raise RuntimeError("Task Declared but undefined", focus)
                 case self.state_e.DECLARED:
                     logging.warning("Undefined Task in dependency path: %s", focus)
                     self.execution_path.append(focus)
                     self.update_task_state(focus, self.state_e.SUCCESS)
                 case x:
                     raise TypeError("Unknown task state: ", x)
+
+        return None
 
     def validate(self) -> bool:
         """
@@ -275,13 +283,14 @@ class DootTracker(TaskTracker_i):
 
     def update_task_state(self, task, state):
         """ update the state of a task in the dependency graph """
+        logging.debug("Updating Task State: %s -> %s", task, state)
         match task, state:
-            case str(), self.state_e():
+            case str(), self.state_e() if task in self.dep_graph:
                 self.dep_graph.nodes[task]['state'] = state
-            case TaskOrdering_i(), self.state_e():
+            case TaskOrdering_i(), self.state_e() if task.name in self.dep_graph:
                 self.dep_graph.nodes[task.name]['state'] = state
-            case _TaskArtifact(), _:
-                pass
+            case _TaskArtifact(), self.state_e() if task in self.dep_graph:
+                self.dep_graph.nodes[task]['state'] = state
             case _, _:
                 raise TypeError("Bad task update state args", task, state)
 
