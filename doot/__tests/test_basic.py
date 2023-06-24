@@ -22,6 +22,9 @@ with warnings.catch_warnings():
     pass
 ##-- end warnings
 
+import doot
+import tomler
+
 class TestBasicDoot(unittest.TestCase):
     ##-- setup-teardown
     @classmethod
@@ -42,11 +45,11 @@ class TestBasicDoot(unittest.TestCase):
 
     ##-- end setup-teardown
 
+    @mock.patch.object(doot, "config", None)
     def test_initial(self):
-        import doot
         self.assertIsNone(doot.config)
         doot.setup()
-        self.assertIsNotNone(doot.config)
+        self.assertIsInstance(doot.config, tomler.Tomler)
 
 
 

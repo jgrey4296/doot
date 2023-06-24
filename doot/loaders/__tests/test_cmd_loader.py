@@ -17,6 +17,7 @@ from unittest import mock
 
 import tomler
 import doot
+from importlib.metadata import EntryPoint
 doot.config = tomler.Tomler({})
 from doot.loaders import cmd_loader
 logging = logmod.root
@@ -51,7 +52,37 @@ class TestCmdLoader(unittest.TestCase):
         basic = cmd_loader.DootCommandLoader()
         self.assertTrue(basic)
 
+    def test_load_basic(self):
+        basic = cmd_loader.DootCommandLoader()
+        basic.setup(tomler.Tomler({
+            "command" : [
+                EntryPoint(name="list", group="doot.command", value="doot.cmds.list_cmd:ListCmd")
 
+        ]}))
+        result = basic.load()
+        self.assertIn("list", result)
+
+    def test_load_multi(self):
+        basic = cmd_loader.DootCommandLoader()
+        basic.setup(tomler.Tomler({
+            "command" : [
+                EntryPoint(name="list", group="doot.command", value="doot.cmds.list_cmd:ListCmd"),
+                EntryPoint(name="run", group="doot.command", value="doot.cmds.run_cmd:RunCmd"),
+
+        ]}))
+        result = basic.load()
+        self.assertIn("list", result)
+        self.assertIn("run", result)
+
+    def test_load_fail(self):
+        basic = cmd_loader.DootCommandLoader()
+        basic.setup(tomler.Tomler({
+            "command" : [
+                EntryPoint(name="bad", group="doot.command", value="doot.cmds.bad:badcmd"),
+
+        ]}))
+        with self.assertRaises(ResourceWarning):
+            basic.load()
 
 ##-- ifmain
 if __name__ == '__main__':

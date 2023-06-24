@@ -62,29 +62,41 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
+import tomler
 import time
 import doot
 from doot._abstract.loader import CommandLoader_i
-from doot._abstract.cmd import DootCommand_i
+from doot._abstract.cmd import Command_i
 
 class DootCommandLoader(CommandLoader_i):
 
-    def setup(self, plugins):
+    def setup(self, plugins, extra=None):
         self.cmd_plugins : list[EntryPoint] = plugins.get("command", [])
+        self.cmds = {}
 
-    def load(self, args:Tomler) -> dict[str, DootCommand_i]:
-        logging.debug("Loading Commands")
-        cmds = {}
+        match extra:
+            case None:
+                self.extra = []
+            case list():
+                self.extra = extra
+            case dict():
+                self.extra = tomler.Tomler(extra).on_fail([]).tasks()
+            case tomler.Tomler():
+                self.extra = tomler.on_fail([]).tasks()
+
+    def load(self) -> Tomler:
+        logging.debug("---- Loading Commands")
         for cmd_point in self.cmd_plugins:
             try:
+                logging.debug("Loading Cmd: %s", cmd_point.name)
                 # load the plugins
                 cmd = cmd_point.load()
-                if not isinstance(cmd, DootCommand_i):
-                    raise Exception()
+                if not issubclass(cmd, Command_i):
+                    raise TypeError("Not a Command_i", cmd)
 
-                cmds[cmd._name] = cmd()
-            except Exeption as err:
+                self.cmds[cmd_point.name] = cmd()
+                self.cmds[cmd_point.name]._name = cmd_point.name
+            except Exception as err:
                 raise ResourceWarning(f"Attempted to load a non-command: {cmd_point}") from err
 
-
-        return []
+        return tomler.Tomler(self.cmds)

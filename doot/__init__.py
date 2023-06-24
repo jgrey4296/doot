@@ -55,8 +55,8 @@ def setup(targets=None, prefix=None) -> tupl[Tomler, DootLocData]:
 
 def setup_agnostic(*paths):
     config = tomler.load(*paths)
-    locs   = DootLocData(files=config.flatten_on().files(wrapper=dict),
-                         **config.flatten_on().directories(wrapper=dict))
+    locs   = DootLocData(files=config.flatten_on({}).files(wrapper=dict),
+                         **config.flatten_on({}).directories(wrapper=dict))
 
     # TODO move to config loader
     # # Done like this to avoid recursive imports

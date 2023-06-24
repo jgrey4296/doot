@@ -229,12 +229,13 @@ class TestArgParser(unittest.TestCase):
 
     def test_initial(self):
         parser = DootArgParser()
-        result = parser.parse([
+        parsed = parser.parse([
             "doot", "-v", "2", "blah"
                                ],
             [], {}, {})
 
-        self.assertEqual(result.on_fail(False).head.name(), "doot")
+        name = parsed.on_fail(False).head.name()
+        self.assertEqual(name, "doot")
 
     def test_cmd(self):
         cmd_mock = mock.MagicMock()

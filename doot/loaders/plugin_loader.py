@@ -69,30 +69,82 @@ import doot
 import doot.constants
 from doot._abstract.loader import PluginLoader_i
 
-skip_default_plugins = doot.config.on_fail(False).skip_default_plugins()
-skip_plugin_search   = doot.config.on_fail(False).skip_plugin_search()
-env_eps              = doot.config.on_fail({}).plugins(wrapper=dict)
-plugin_types         = set(doot.constants.FRONTEND_PLUGIN_TYPES + doot.constants.BACKEND_PLUGIN_TYPES)
+skip_default_plugins    = doot.config.on_fail(False).skip_default_plugins()
+skip_plugin_search      = doot.config.on_fail(False).skip_plugin_search()
+env_eps                 = doot.config.on_fail({}).plugins(wrapper=dict)
+plugin_types            = set(doot.constants.FRONTEND_PLUGIN_TYPES + doot.constants.BACKEND_PLUGIN_TYPES)
+cmd_loader_key  : Final = doot.constants.DEFAULT_COMMAND_LOADER_KEY
+task_loader_key : Final = doot.constants.DEFAULT_TASK_LOADER_KEY
+
+def make_ep (x, y, z):
+    if z not in plugin_types:
+        raise KeyError("Plugin Type Not Found: ", z, (x, y))
+    return EntryPoint(name=x, value=y, group="{}.{}".format(doot.constants.PLUGIN_TOML_PREFIX, z))
 
 class DootPluginLoader(PluginLoader_i):
+    """
+    Load doot plugins from the system, to choose from with doot.toml or cli args
+    """
 
     def setup(self, extra_config=None):
         self.plugins = defaultdict(list)
         match extra_config:
             case None:
-                self.extra_config = {}
+                self.extra_config = tomler.Tomler({})
             case dict():
                 self.extra_config = tomler.Tomler(extra_config)
             case tomler.Tomler():
                 self.extra_config = extra_config
 
-    def load(self, arg) -> dict[str, list]:
+    def load(self) -> Tomler:
         """
         use entry_points(group="doot")
         add to the config tomler
         """
-        logging.debug("Loading Entry Points: %s", doot.constants.PLUGIN_TOML_PREFIX)
+        logging.debug("---- Loading Plugins: %s", doot.constants.PLUGIN_TOML_PREFIX)
+        try:
+            self._load_system_plugins()
+        except Exception as err:
+            raise ResourceWarning("Failed to load system wide plugins") from err
+
+        try:
+            self._load_from_toml()
+        except Exception as err:
+            raise ResourceWarning("Failed to load toml specified plugins") from err
+
+        try:
+            self._load_extra_plugins()
+        except Exception as err:
+            raise ResourceWarning("Failed to load command line/dooter specified plugins") from err
+
+        try:
+            self._append_defaults()
+        except Exception as err:
+            raise ResourceWarning("Failed to load plugin defaults") from err
+
+        logging.debug("Found %s plugins", len(self.plugins))
+        return tomler.Tomler(self.plugins)
+
+    def _load_extra_plugins(self):
         extra_eps    = self.extra_config.on_fail({}).plugins(wrapper=dict)
+        # load extra-config entry points
+        for k,v in extra_eps.items():
+            if k not in plugin_types:
+                logging.warning("Unknown plugin type found in extra config: %s", k)
+                continue
+            ep = EntryPoint(name=v, value=v, group=k)
+            self.plugins[k] = EntryPoint(name=k, value=v, group=doot.constants.PLUGIN_TOML_PREFIX)
+
+    def _load_from_toml(self):
+        # load config entry points
+        for k, v in env_eps.items():
+            if k not in plugin_types:
+                logging.warning("Unknown plugin type found in config: %s", k)
+                continue
+            ep = EntryPoint(name=v, value=v, group=k)
+            self.plugins[k].append(ep)
+
+    def _load_system_plugins(self):
         if skip_plugin_search:
             pass
         else:
@@ -106,48 +158,14 @@ class DootPluginLoader(PluginLoader_i):
                 except Exception as err:
                     raise ResourceWarning(f"Plugin Failed to Load: {plugin_group} : {entry_point}") from err
 
-
-        # load config entry points
-        for k, v in env_eps.items():
-            if k not in plugin_types:
-                logging.warning("Unknown plugin type found in config: %s", k)
-                continue
-            ep = EntryPoint(name=v, value=v, group=k)
-            self.plugins[k].append(ep)
-
-        # load extra-config entry points
-        for k,v in extra_eps.items():
-            if k not in plugin_types:
-                logging.warning("Unknown plugin type found in extra config: %s", k)
-                continue
-            ep = EntryPoint(name=v, value=v, group=k)
-            self.plugins[k] = EntryPoint(name=k, value=v, group=doot.constants.PLUGIN_TOML_PREFIX)
-
-        try:
-            self.append_defaults()
-        except Exception as err:
-            raise ResourceWarning("Failed to load plugin defaults") from err
-        logging.debug("Found {len(self.plugins)} plugins")
-        return self.plugins
-
-
-    def append_defaults(self):
+    def _append_defaults(self):
         if skip_default_plugins:
             logging.info("Skipping Default Plugins")
             return
 
-        make_ep = lambda x, y, z: EntryPoint(name=x, value=y, group=z)
 
-        self.plugins["command_loader"].append(make_ep(doot.constants.DEFAULT_COMMAND_LOADER_KEY, "doot.loaders.cmd_loader:DootCommandLoader", "command_loader"))
-        self.plugins["task_loader"].append(make_ep(doot.constants.DEFAULT_TASK_LOADER_KEY, "doot.loaders.task_loader:DootTaskLoader", "task_loader"))
+        self.plugins[cmd_loader_key].append(make_ep(cmd_loader_key, "doot.loaders.cmd_loader:DootCommandLoader", cmd_loader_key))
+        self.plugins[task_loader_key].append(make_ep(task_loader_key, "doot.loaders.task_loader:DootTaskLoader", task_loader_key))
 
-        self.plugins['command']  += []
-        self.plugins['reporter'] += []
-        self.plugins['database'] += []
-        self.plugins['tracker']  += []
-        self.plugins['runner']   += []
-        self.plugins['parser']   += []
-        self.plugins['action']   += []
-        # self.plugins['tasker'] += []
-        self.plugins['task']     += []
-        # self.plugins['group']  += []
+        for group, vals in doot.constants.default_plugins.items():
+            self.plugins[group]  += [make_ep(x, y, group) for x,y in vals]

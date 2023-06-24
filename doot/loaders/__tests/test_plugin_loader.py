@@ -51,6 +51,15 @@ class TestPluginLoader(unittest.TestCase):
         basic = plugin_loader.DootPluginLoader()
         self.assertTrue(basic)
 
+    def test_loads_defaults(self):
+        basic = plugin_loader.DootPluginLoader()
+        basic.setup()
+        loaded = basic.load()
+
+        for key in {"command_loader", "task_loader", 'command', "reporter", "database", "tracker", "runner", "parser", "action", "task"}:
+            self.assertIn(key, loaded)
+
+
 ##-- ifmain
 if __name__ == '__main__':
     unittest.main()

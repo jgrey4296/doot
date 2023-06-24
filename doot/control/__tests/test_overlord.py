@@ -22,7 +22,10 @@ with warnings.catch_warnings():
     pass
 ##-- end warnings
 
+import sys
+import tomler
 import doot
+doot.config = tomler.Tomler({})
 from doot.control.overlord import DootOverlord
 
 class TestOverlord(unittest.TestCase):
@@ -45,8 +48,59 @@ class TestOverlord(unittest.TestCase):
 
     ##-- end setup-teardown
 
+    @mock.patch.object(sys, "argv", ["doot"])
     def test_initial(self):
-        pass
+        overlord = DootOverlord()
+        self.assertIsNotNone(overlord)
+        self.assertEqual(overlord.args, ["doot"])
+
+
+
+    @mock.patch.object(sys, "argv", ["doot"])
+    def test_plugins_loaded(self):
+        overlord = DootOverlord()
+        self.assertTrue(overlord.plugins)
+        self.assertTrue(all(x in overlord.plugins for x in doot.constants.default_plugins.keys()))
+
+    @mock.patch.object(sys, "argv", ["doot"])
+    def test_cmds_loaded(self):
+        overlord = DootOverlord()
+        self.assertTrue(overlord.cmds)
+        self.assertEqual(len(overlord.cmds), len(doot.constants.default_plugins['command']))
+
+
+    @mock.patch.object(sys, "argv", ["doot"])
+    def test_taskers_loaded(self):
+        overlord = DootOverlord(
+            extra_config={"tasks" : {"basic" : [{"name": "simple", "type": "basic"}]}}
+        )
+        self.assertTrue(overlord.taskers)
+
+
+    @mock.patch.object(sys, "argv", ["doot"])
+    def test_taskers_multi(self):
+        overlord = DootOverlord(extra_config={
+            "tasks" : {"basic": [
+                {"name": "simple", "type": "basic"},
+                {"name": "another", "type": "basic"}
+        ]}})
+        self.assertTrue(overlord.taskers)
+        self.assertEqual(len(overlord.taskers), 2)
+
+
+    @mock.patch.object(sys, "argv", ["doot"])
+    def test_taskers_name_conflict(self):
+        with self.assertRaises(ResourceWarning):
+            DootOverlord(extra_config={
+                "tasks" : {"basic" : [
+                    {"name": "simple", "type": "basic"},
+                    {"name": "simple", "type": "basic"}
+            ]}})
+
+    @mock.patch.object(sys, "argv", ["doot"])
+    def test_taskers_bad_type(self):
+        with self.assertRaises(ResourceWarning):
+            DootOverlord(extra_config={"tasks" : {"basic": [{"name": "simple", "type": "not_basic"}]}})
 
 
 ##-- ifmain

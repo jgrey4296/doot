@@ -15,6 +15,7 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 from unittest import mock
 ##-- end imports
 
+import importlib.metadata
 import tomler
 import doot
 doot.config = tomler.Tomler({})
@@ -52,25 +53,22 @@ class TestTaskLoader(unittest.TestCase):
         self.assertTrue(basic)
 
     def test_basic__internal_load(self):
-        specs = {"tasks": {
-                    "basic" : [{"name"  : "test", "class" : "doot.task.base_tasker::DootTasker"}
-                           ]}}
+        specs = {"tasks": { "basic" : []}}
+        specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_tasker::DootTasker"})
         basic = task_loader.DootTaskLoader()
         basic.setup({})
-        result = basic._get_task_specs(tomler.Tomler(specs))
+        result = basic._load_raw_specs(tomler.Tomler(specs).tasks)
 
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['name'], "test")
 
     def test_basic__load(self):
-        specs = {"tasks": {
-                    "basic" : [{
-                        "name"  : "test", "class" : "doot.task.base_tasker::DootTasker"}
-                           ]}}
+        specs = {"tasks": {"basic" : []}}
+        specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_tasker::DootTasker"})
         basic = task_loader.DootTaskLoader()
-        basic.setup({})
-        result = basic.load(tomler.Tomler(specs))
+        basic.setup({}, specs)
+        result = basic.load()
 
         self.assertIsInstance(result, dict)
         self.assertEqual(len(result), 1)
@@ -80,13 +78,12 @@ class TestTaskLoader(unittest.TestCase):
 
 
     def test_multi_load(self):
-        specs = {"tasks": {
-            "basic" : [{"name"  : "test", "class" : "doot.task.base_tasker::DootTasker"},
-                       {"name"  : "other", "class": "doot.task.base_tasker::DootTasker"}
-                           ]}}
+        specs = {"tasks": { "basic" : []}}
+        specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_tasker::DootTasker"})
+        specs['tasks']['basic'].append({"name"  : "other", "class": "doot.task.base_tasker::DootTasker"})
         basic = task_loader.DootTaskLoader()
-        basic.setup({})
-        result = basic.load(tomler.Tomler(specs))
+        basic.setup({}, specs)
+        result = basic.load()
 
         self.assertIsInstance(result, dict)
         self.assertEqual(len(result), 2)
@@ -94,76 +91,99 @@ class TestTaskLoader(unittest.TestCase):
         self.assertIn("other", result)
 
     def test_name_disallow_overload(self):
-        specs = {"tasks": {
-            "basic" : [{"name"  : "test", "class" : "doot.task.base_tasker::DootTasker"},
-                       {"name"  : "test", "class": "doot.task.base_tasker::DootTasker"}
-                           ]}}
+        specs = {"tasks": { "basic" : []}}
+        specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_tasker::DootTasker"})
+        specs['tasks']['basic'].append({"name"  : "test", "class": "doot.task.base_tasker::DootTasker"})
         basic = task_loader.DootTaskLoader()
-        basic.setup({})
+        basic.setup({}, specs)
         task_loader.allow_overloads = False
 
         with self.assertRaises(ResourceWarning):
-            basic.load(tomler.Tomler(specs))
+            basic.load()
 
     def test_name_allow_overload(self):
-        specs = {"tasks": {
-            "basic" : [{"name"  : "test", "class" : "doot.task.base_tasker::DootTasker"},
-                       {"name"  : "test", "class": "doot.task.base_tasker::DootTasker"}
-                           ]}}
+        specs = {"tasks": { "basic": []}}
+        specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_tasker::DootTasker"})
+        specs['tasks']['basic'].append({"name"  : "test", "class": "doot.task.base_tasker::DootTasker"})
         basic = task_loader.DootTaskLoader()
-        basic.setup({})
+        basic.setup({}, tomler.Tomler(specs))
         task_loader.allow_overloads = True
 
-        result = basic.load(tomler.Tomler(specs))
+        result = basic.load()
         self.assertIn("test", result)
 
     def test_cmd_name_conflict(self):
-        specs = {"tasks": {
-                    "basic" : [{
-                        "name"  : "test", "class" : "doot.task.base_tasker::DootTasker"}
-                           ]}}
+        specs = {"tasks": { "basic" : []}}
+        specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_tasker::DootTasker"})
         basic = task_loader.DootTaskLoader()
-        basic.setup({})
+        basic.setup({}, specs)
         basic.cmd_names = set(["test"])
 
         with self.assertRaises(ResourceWarning):
-            basic.load(tomler.Tomler(specs))
+            basic.load()
 
 
     def test_bad_task_class(self):
-        specs = {"tasks": {
-                    "basic" : [{
-                        "name"  : "test", "class" : "doot.task.base_tasker::DoesntExistTasker"}
-                           ]}}
+        specs = {"tasks": { "basic": []}}
+        specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_tasker::DoesntExistTasker"})
+
         basic = task_loader.DootTaskLoader()
-        basic.setup({})
+        basic.setup({}, specs)
 
         with self.assertRaises(ResourceWarning):
-            basic.load(tomler.Tomler(specs))
+            basic.load()
 
     def test_bad_task_module(self):
-        specs = {"tasks": {
-                    "basic" : [{
-                        "name"  : "test", "class" : "doot.task.doesnt_exist_module::DoesntExistTasker"}
-                           ]}}
+        specs = {"tasks": { "basic" : []}}
+        specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.doesnt_exist_module::DoesntExistTasker"})
         basic = task_loader.DootTaskLoader()
-        basic.setup({})
+        basic.setup({}, specs)
 
         with self.assertRaises(ResourceWarning):
-            basic.load(tomler.Tomler(specs))
+            basic.load()
 
 
     def test_bad_spec(self):
-        specs = {"tasks": {
-                    "basic" : [{
-                        "name"  : "test"
-                               }
-                           ]}}
+        specs = {"tasks": { "basic" : []}}
+        specs['tasks']['basic'].append({"name"  : "test"})
         basic = task_loader.DootTaskLoader()
-        basic.setup({})
+        basic.setup({}, specs)
 
         with self.assertRaises(ResourceWarning):
-            result = basic.load(tomler.Tomler(specs))
+            result = basic.load()
+
+    @mock.patch("importlib.metadata.EntryPoint")
+    def test_task_type(self, mock_class):
+        specs = {"tasks": {"basic": []}}
+        specs['tasks']['basic'].append({"name": "simple", "type": "basic"})
+
+        mock_ep      = importlib.metadata.EntryPoint()
+        mock_ep.name = "basic"
+        mock_ep.load = mock.MagicMock(return_value=True)
+
+        plugins      = tomler.Tomler({"task": [mock_ep]})
+        basic        = task_loader.DootTaskLoader()
+        basic.setup(plugins, tomler.Tomler(specs))
+
+        result = basic.load()
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result.simple, ({"name": "simple", "type": "basic", "group": "basic"}, True))
+
+    @mock.patch("importlib.metadata.EntryPoint")
+    def test_task_bad_type(self, mock_class):
+        specs = {"tasks": {"basic": []}}
+        specs['tasks']['basic'].append({"name": "simple", "type": "not_basic"})
+
+        mock_ep      = importlib.metadata.EntryPoint()
+        mock_ep.name = "basic"
+        mock_ep.load = mock.MagicMock(return_value=True)
+
+        plugins      = tomler.Tomler({"task": [mock_ep]})
+        basic        = task_loader.DootTaskLoader()
+        basic.setup(plugins, tomler.Tomler(specs))
+
+        with self.assertRaises(ResourceWarning):
+            basic.load()
 
 ##-- ifmain
 if __name__ == '__main__':
