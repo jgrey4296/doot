@@ -32,12 +32,13 @@ logging = logmod.getLogger(__name__)
 
 from flask import Flask, request
 import doot
-from doot._abstract.cmd import DootCommand_i
+from doot._abstract.cmd import Command_i
+from doot._abstract.parser import DootParamSpec
 
 app = Flask("basic")
 
 # From https://stackoverflow.com/questions/63902300
-class BasicServer(DootCommand_i):
+class BasicServer(Command_i):
     """
     a test doot command
     """

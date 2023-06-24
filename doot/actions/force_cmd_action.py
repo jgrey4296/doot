@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import doot
 from doot.errors import DootTaskError
-from doot._abstract.action import DootAction_i
+from doot._abstract.action import Action_i
 
-class ForceCmd(DootAction_i):
+class ForceCmd(Action_i):
     """
     A CmdAction that overrides failures
     useful if something (*cough* godot *cough*)

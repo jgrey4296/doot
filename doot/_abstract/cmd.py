@@ -7,7 +7,7 @@ from collections import defaultdict
 import textwrap
 ##-- end imports
 
-class DootCommand_i:
+class Command_i:
     """
     holds command information and performs it
     """

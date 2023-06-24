@@ -31,7 +31,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 
-class DootDBManager_i:
+class DBManager_i:
 
     def set(self, task_id, dependency, value):
         raise NotImplementedError()

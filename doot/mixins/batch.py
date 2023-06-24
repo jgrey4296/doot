@@ -106,6 +106,7 @@ class BatchMixin:
          grouper('ABCDEFG', 3, incomplete='strict') --> ABC DEF ValueError
          grouper('ABCDEFG', 3, incomplete='ignore') --> ABC DEF
         """
+        # TODO replace with more-itertools
         n    = n or batch_size
         args = [iter(iterable)] * n
         if incomplete == 'fill':

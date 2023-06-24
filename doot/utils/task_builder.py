@@ -57,13 +57,14 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from doot._abstract.tasker import Tasker_i
 
 class DootTaskBuilder:
 
     def __init__(self):
         self._task_collection = {}
 
-    def build_tasks(self, taskers:dict[str, tuple(dict, DootTasker_i)], args=()):
+    def build_tasks(self, taskers:dict[str, tuple(dict, Tasker_i)], args=()):
         """
         Run each task creator, or delay it
         """
@@ -125,7 +126,7 @@ class DootTaskBuilder:
                 # a task instance, just return it without any processing
                 logging.debug("Task is a Task Object, nothing to do: %s", gen_result.name)
                 new_task = gen_result
-            case DootTasker_i():
+            case Tasker_i():
                 self._generate_tasks(func_name, gen_result.build(), gen_doc)
             case FunctionType() | MethodType():
                 self._generate_tasks(func_name, gen_result(), gen_doc)

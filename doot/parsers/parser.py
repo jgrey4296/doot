@@ -55,10 +55,10 @@ logging = logmod.getLogger(__name__)
 
 import tomler
 import doot
-from doot._abstract.parser import DootArgParser_i
+from doot._abstract.parser import ArgParser_i, DootParamSpec
 from collections import ChainMap
 
-class DootArgParser(DootArgParser_i):
+class DootArgParser(ArgParser_i):
     """
     convert argv to tomler by:
     parsing each arg as toml,
@@ -67,10 +67,8 @@ class DootArgParser(DootArgParser_i):
     # doot {args} [{task} {task_args}] - implicit do cmd
     """
 
-    def __init__(self):
-        pass
 
-    def parse(self, args:list, doot_specs:list, cmds:dict, tasks:dict):
+    def parse(self, args:list, doot_specs:list[DootParamSpec], cmds:Tomler, tasks:Tomler) -> Tomler:
         logging.debug("Parsing args: %s", args)
         head_arg     = args[0]
         doot_args    = { x.name : x.default for x in doot_specs }
@@ -88,6 +86,7 @@ class DootArgParser(DootArgParser_i):
         current_specs = doot_specs
         focus         = "doot"
 
+        logging.debug("Registered Arg Specs: %s", current_specs)
         for arg in args[1:]:
             matching_specs = [x for x in current_specs if x == arg]
             if len(matching_specs) > 1:

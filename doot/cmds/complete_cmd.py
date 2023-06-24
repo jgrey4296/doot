@@ -56,3 +56,10 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
+
+import doot
+from doot._abstract.cmd import Command_i
+from doot._abstract.parser import DootParamSpec
+
+class CompleteCmd(Command_i):
+    pass

@@ -64,13 +64,13 @@ import zipfile
 from random import randint
 
 import doot
-from doot._abstract.tasker import DootTasker_i
-from doot._abstract.task import DootTask_i
+from doot._abstract.tasker import Tasker_i
+from doot._abstract.task import Task_i
 from doot.errors import DootDirAbsent
 from doot.actions.force_cmd_action import ForceCmd
 from doot.utils.task_namer import task_namer
 
-class DootTasker(DootTasker_i):
+class DootTasker(Tasker_i):
     """ Util Class for building single tasks
 
     """

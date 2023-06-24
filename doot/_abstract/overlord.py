@@ -4,12 +4,12 @@
 from __future__ import annotations
 import sys
 
-class DootOverlord_i:
+class Overlord_i:
     """
     Main entrypoint for doot
     """
 
-    def __init__(self, *, loaders:dict[str, Loader_i]=None
+    def __init__(self, *, loaders:dict[str, Loader_i]=None,
                  configs:tuple[pl.Path|str]=('doot.toml', 'pyproject.toml'),
                  extra_config:dict|Tomler=None,
                  args:list=None):

@@ -23,10 +23,10 @@ with warnings.catch_warnings():
 ##-- end warnings
 
 from doot.control.tracker import DootTracker
-from doot._abstract.task import DootTask_i
+from doot._abstract.task import Task_i
 
 def make_mock_task(name, pre=None, post=None):
-    mock_task              = mock.MagicMock(spec=DootTask_i)
+    mock_task              = mock.MagicMock(spec=Task_i)
     mock_task.name         = name
     priors                 = pre or mock.PropertyMock()
     posts                  = post or mock.PropertyMock()

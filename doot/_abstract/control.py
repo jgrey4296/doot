@@ -63,7 +63,7 @@ class TaskStatus_i:
 
     def __init__(self, get_log):
         self.get_log = get_log
-        self.status = 'up-to-date'
+        self.status = TaskStateEnum.WAIT
         # save reason task is not up-to-date
         self.reasons = defaultdict(list)
         self.error_reason = None

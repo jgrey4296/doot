@@ -100,7 +100,7 @@ class DootParamSpec:
                 raise Exception("Can't understand raise NotImplementedError()ed in type", val)
 
 
-class DootArgParser_i:
+class ArgParser_i:
     """
     A Single standard process point for turning the list of passed in args,
     into a dict, into a tomler,

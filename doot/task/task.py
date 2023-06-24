@@ -40,11 +40,11 @@ import sys
 from io import StringIO
 
 import doot
-from doot._abstract.task import DootTask_i
+from doot._abstract.task import Task_i
 from doot.actions.py_cmd_action import DootPyAction
 
 
-class DootTask(DootTask_i):
+class DootTask(Task_i):
     """
     Extension of doit.Task to allow returning an Action from an action,
     making a task's `execute` a stack of actions instead of a list
@@ -53,7 +53,6 @@ class DootTask(DootTask_i):
     name_splitter = re.compile(r":+|\.")
 
     def __init__(self, *args, **kwargs):
-        pass
         super().__init__(*args, **{x:y for x,y in kwargs.items() if x in Task.valid_attr or x == 'loader'})
         if self.meta is None:
             self.meta = dict()

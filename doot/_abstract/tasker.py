@@ -50,11 +50,11 @@ class StubTaskSpec:
     def to_toml(self):
         raise NotImplementedError()
 
-class DootTasker_i(TaskOrdering_i):
+class Tasker_i(TaskOrdering_i):
     """
     builds task descriptions
     """
-    task_type : DootTask_i
+    task_type : Task_i
 
     @classmethod
     def _make_task(cls, *arg, **kwargs):

@@ -30,7 +30,7 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class DootAction_i:
+class Action_i:
     """
     holds individual action information and state, and executes it
     """

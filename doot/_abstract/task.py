@@ -9,7 +9,7 @@ from collections.abc import Callable
 from pathlib import PurePath
 from doot._abstract.control import TaskOrdering_i
 
-class DootTask_i(TaskOrdering_i):
+class Task_i(TaskOrdering_i):
     """
     holds task information and state, and executes it
     """
@@ -32,8 +32,7 @@ class DootTask_i(TaskOrdering_i):
         raise NotImplementedError()
 
     def __call__(self, stream):
-        """Executes the task.
-        """
+        """Executes the task. """
         raise NotImplementedError()
 
     def teardown(self, stream):

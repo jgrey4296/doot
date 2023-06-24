@@ -21,15 +21,43 @@ BACKEND_PLUGIN_TYPES       : Final = ['database', 'tracker', 'runner', 'command_
 default_load_targets = [pl.Path(x) for x in ["doot.toml", "pyproject.toml", "Cargo.toml", "./.cargo/config.toml"]]
 default_dooter       = pl.Path("dooter.py")
 
-default_cmds = ["doot.cmds.help_cmd:HelpCmd",
-                "doot.cmds.run_cmd:RunCmd",
-                "doot.cmds.list_cmd:ListCmd",
-                "doot.cmds.clean_cmd:CleanCmd",
-                "doot.cmds.complete_cmd:CompleteCmd",
-                "doot.cmds.server_cmd:ServerCmd",
-                "doot.cmds.daemon_cmd:DaemonCmd"
-    ]
+# Loaded in doot.loaders.plugin_loader
+# as pairs (name, import_path)
+default_plugins = {}
 
-default_cli_cmd     = "run"
-default_task_prefix = "task_"
-default_task_group  = "default"
+default_plugins['command']  = [("help",     "doot.cmds.help_cmd:HelpCmd"),
+                               ("run",      "doot.cmds.run_cmd:RunCmd"),
+                               ("list",     "doot.cmds.list_cmd:ListCmd"),
+                               ("clean",    "doot.cmds.clean_cmd:CleanCmd"),
+                               ("complete", "doot.cmds.complete_cmd:CompleteCmd"),
+                               # ("serve",  "doot.cmds.server_cmd:ServerCmd"),
+                               ("daemon",   "doot.cmds.daemon_cmd:DaemonCmd"),
+                               ("stub",     "doot.cmds.stub_cmd:StubCmd"),
+                               ("step",     "doot.cmds.step_cmd:StepCmd"),
+                              ]
+
+default_plugins['reporter'] = [("basic", "doot.reporters.basic:BasicReporter")]
+default_plugins['database'] = []
+default_plugins['tracker']  = [("basic", "doot.control.tracker:DootTracker")]
+default_plugins['runner']   = [("basic", "doot.control.runner:DootRunner")]
+default_plugins['parser']   = [("basic", "doot.parsers.parser:DootArgParser")]
+default_plugins['action']   = [("cmd", "doot.actions.cmd_action:DootCmdAction"),
+                                ("force", "doot.actions.force_cmd_action:ForceCmd"),
+                                ("interactive", "doot.actions.interactive_cmd_action:InteractiveAction"),
+                                ("py", "doot.actions.py_cmd_action:DootPyAction")
+                                ]
+default_plugins['task']     = [("basic", "doot.task.base_tasker:DootTasker"),
+                               ("generaliser", "doot.task.generaliser:DootGeneraliser"),
+                               ("glob", "doot.task.globber:DootEagerGlobber"),
+                               ("dict", "doot.task.specialised_taskers:DictTasker"),
+                               ("group", "doot.task.specialised_taskers:GroupTasker")]
+
+
+
+default_cli_cmd            = "run"
+default_task_prefix        = "task_"
+default_task_group         = "default"
+
+DEFAULT_COMMAND_LOADER_KEY = "command_loader"
+DEFAULT_TASK_LOADER_KEY    = "task_loader"
+DEFAULT_PLUGIN_LOADER_KEY  = "plugin_loader"

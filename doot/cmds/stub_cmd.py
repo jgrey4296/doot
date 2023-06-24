@@ -31,11 +31,12 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import doot
-from doot._abstract.cmd import DootCommand_i
+from doot._abstract.cmd import Command_i
 from doot._abstract.parser import DootParamSpec
 from collections import defaultdict
 
-class StubCmd(DootCommand_i):
+class StubCmd(Command_i):
+    """ Called to interactively create a stub task definition """
     _name      = "stub"
     _help      = []
 
@@ -46,3 +47,7 @@ class StubCmd(DootCommand_i):
     def __call__(self, tasks:dict, plugins:dict):
         # TODO interactively build a stub tasker
         raise NotImplementedError()
+
+class StubConfigCmd(Command_i):
+    """ Called to stub a doot.toml """
+    pass

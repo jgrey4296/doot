@@ -58,12 +58,12 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import doot
-from doot._abstract.cmd import DootCommand_i
+from doot._abstract.cmd import Command_i
 from doot._abstract.parser import DootParamSpec
 from collections import defaultdict
 
 
-class HelpCmd(DootCommand_i):
+class HelpCmd(Command_i):
     _name      = "help"
     _help      = []
 

@@ -32,12 +32,12 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import doot
-from doot._abstract.cmd import DootCommand_i
+from doot._abstract.cmd import Command_i
 from doot._abstract.parser import DootParamSpec
 from collections import defaultdict
 
 
-class ListCmd(DootCommand_i):
+class ListCmd(Command_i):
     _name      = "list"
     _help      = []
     STATUS_MAP = {'ignore': 'I', 'up-to-date': 'U', 'run': 'R', 'error': 'E'}
