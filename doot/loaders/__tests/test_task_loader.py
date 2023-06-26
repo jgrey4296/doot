@@ -70,7 +70,7 @@ class TestTaskLoader(unittest.TestCase):
         basic.setup({}, specs)
         result = basic.load()
 
-        self.assertIsInstance(result, dict)
+        self.assertIsInstance(result, tomler.Tomler)
         self.assertEqual(len(result), 1)
         self.assertIn("test", result)
         self.assertIsInstance(result['test'][0], dict)
@@ -85,7 +85,7 @@ class TestTaskLoader(unittest.TestCase):
         basic.setup({}, specs)
         result = basic.load()
 
-        self.assertIsInstance(result, dict)
+        self.assertIsInstance(result, tomler.Tomler)
         self.assertEqual(len(result), 2)
         self.assertIn("test", result)
         self.assertIn("other", result)

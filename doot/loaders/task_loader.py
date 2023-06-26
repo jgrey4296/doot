@@ -94,6 +94,7 @@ class DootTaskLoader(TaskLoader_i):
 
     def setup(self, plugins, extra=None):
         self.cmd_names     = set(map(lambda x: x.name, plugins.get("command", [])))
+        self.taskers       = {}
         self.task_builders = {}
         for plugin in tomler.Tomler(plugins).on_fail([]).task():
             if plugin.name in self.task_builders:
