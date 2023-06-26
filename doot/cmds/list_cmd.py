@@ -32,6 +32,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import doot
+import doot.errors
 from doot._abstract.cmd import Command_i
 from doot._abstract.parser import DootParamSpec
 from collections import defaultdict
@@ -54,10 +55,26 @@ class ListCmd(Command_i):
     def __call__(self, tasks:dict, plugins:dict):
         """List task generators"""
         logging.debug("Starting to List Taskers/Tasks")
-        if doot.args.cmd.args.all:
+
+        if doot.args.cmd.target == "" and not doot.args.cmd.all:
+            raise ValueError("ListCmd Needs a target, or all")
+
+        # load reporter
+        if 'reporter' not in plugins:
+            raise doot.errors.DootPluginError("Missing Reporter Plugin")
+
+
+        if doot.args.cmd.args.all: # print all tasks
+            if not bool(tasks):
+
+                logging.warning("No Tasks Defined")
+                return
+
             for key, tasker in tasks:
                 logging.info("%s : %s", key, tasker)
 
-        if doot.args.cmd.target != "":
-            # TODO expand the tasks of specified tasker
-            pass
+            return
+
+        # print specific tasks
+        assert(doot.args.cmd.target != "")
+        logging.info("Tasks for Target: %s", doot.args.cmd.target)

@@ -74,7 +74,7 @@ class RunCmd(Command_i):
             DootParamSpec(name="step"),
             ]
 
-    def __call__(self, tasks:dict, plugins:dict):
+    def __call__(self, tasks:Tomler, plugins:Tomler):
         # TODO setup the dependency management system using correct plugins
         # plugins.runner(task, action, tracker, runner, databse, reporter)
 

@@ -62,43 +62,30 @@ def main():
 
         # --- Do whatever thats been triggered
         result    = overlord(sys.argv[:])
-
-        # --- Shutdown
-        defaulted_locs = doot.DootLocData.report_defaulted()
-        defaulted_toml = tomler.Tomler.report_defaulted()
-
-        with open(".doot_defaults.toml", 'w') as f:
-            f.write("# default values used:\n")
-            f.write("\n".join(defaulted_toml) + "\n\n")
-            f.write("[.directories]\n")
-            f.write("\n".join(defaulted_locs))
-
+        overlord.shutdown()
 
     except FileNotFoundError: # --- Handle missing files
-        if not doot.default_agnostic.exists():
+        if not doot.constants.default_load_targets[0].exists():
             if input("No toml config data found, create stub doot.toml? _/n ") != "n":
-                doot.default_agnostic.write_text(doot.toml_template.read_text())
-                logging.info("Stubbed")
-        if not doot.default_dooter.exists():
-            if input("No Dooter file found, create stub dooter.py? _/n ") != "n":
-                doot.default_dooter.write_text(doot.dooter_template.read_text())
+                doot.constants.default_load_targets[0].write_text(doot.constants.toml_template.read_text())
                 logging.info("Stubbed")
     except Exception as err: # --- Handle general errors
         logging.error("Error: %s", err)
         errored = True
     finally: # --- final shutdown
-        say_on_exit = False
-        voice       = "Moira"
+        announce_exit = doot.constants.announce_exit
+        announce_voice = doot.constants.announce_voice
         if doot.config is not None:
-            say_on_exit = doot.config.on_fail(False, bool|str).notify.say_on_exit()
-            voice       = doot.config.on_fail(voice, str).notify.voice()
+            say_on_exit = doot.config.on_fail(announce_exit, bool|str).notify.say_on_exit()
+            voice       = doot.config.on_fail(announce_voice, str).notify.voice()
+
         match errored, say_on_exit:
             case False, str() as say_text:
-                cmd = CmdAction(["say", "-v", voice, "-r", "50", say_text], shell=False)
+                cmd = sh.say("-v", voice, "-r", "50", say_text)
             case False, True:
-                cmd = CmdAction(["say", "-v", voice, "-r", "50", "Doot Has Finished"], shell=False)
+                cmd = sh.say("-v", voice, "-r", "50", "Doot Has Finished")
             case True, True|str():
-                cmd = CmdAction(["say", "-v", voice, "-r", "50", "Doot Encountered a problem"])
+                cmd = sh.say("-v", voice, "-r", "50", "Doot Encountered a problem")
             case _:
                 cmd = None
         if cmd is not None:

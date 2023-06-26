@@ -12,11 +12,16 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable)
+from importlib import resources
 ##-- end imports
 
 PLUGIN_TOML_PREFIX         : Final = "doot.plugins" # (project.entry-points."doot.plugins")
 FRONTEND_PLUGIN_TYPES      : Final = ['command', 'reporter']
 BACKEND_PLUGIN_TYPES       : Final = ['database', 'tracker', 'runner', 'command_loader', 'task_loader', 'parser', 'action', 'task']
+
+template_path   = resources.files("doot.__templates")
+toml_template   = template_path / "basic_toml"
+dooter_template = template_path / "dooter"
 
 default_load_targets = [pl.Path(x) for x in ["doot.toml", "pyproject.toml", "Cargo.toml", "./.cargo/config.toml"]]
 default_dooter       = pl.Path("dooter.py")
@@ -61,3 +66,7 @@ default_task_group         = "default"
 DEFAULT_COMMAND_LOADER_KEY = "command_loader"
 DEFAULT_TASK_LOADER_KEY    = "task_loader"
 DEFAULT_PLUGIN_LOADER_KEY  = "plugin_loader"
+
+
+announce_exit : Final[bool] = False
+announc_voice : Final[str] = "Moira"

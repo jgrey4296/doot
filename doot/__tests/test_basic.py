@@ -6,54 +6,22 @@
 from __future__ import annotations
 
 import logging as logmod
-import unittest
 import warnings
 import pathlib as pl
 from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
                     Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
                     TypeVar, cast)
-from unittest import mock
 ##-- end imports
 logging = logmod.root
 
-##-- warnings
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    pass
-##-- end warnings
-
+import pytest
 import doot
 import tomler
 
-class TestBasicDoot(unittest.TestCase):
-    ##-- setup-teardown
-    @classmethod
-    def setUpClass(cls):
-        LOGLEVEL      = logmod.DEBUG
-        LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
+class TestBasicDoot:
 
-        cls.file_h        = logmod.FileHandler(LOG_FILE_NAME, mode="w")
-        cls.file_h.setLevel(LOGLEVEL)
-
-        logging.setLevel(logmod.NOTSET)
-        logging.addHandler(cls.file_h)
-
-
-    @classmethod
-    def tearDownClass(cls):
-        logging.removeHandler(cls.file_h)
-
-    ##-- end setup-teardown
-
-    @mock.patch.object(doot, "config", None)
-    def test_initial(self):
-        self.assertIsNone(doot.config)
+    def test_initial(self, mocker):
+        mocker.patch.object(doot,  "config", None)
+        assert(doot.config is None)
         doot.setup()
-        self.assertIsInstance(doot.config, tomler.Tomler)
-
-
-
-##-- ifmain
-if __name__ == '__main__':
-    unittest.main()
-##-- end ifmain
+        assert(isinstance(doot.config, tomler.Tomler))

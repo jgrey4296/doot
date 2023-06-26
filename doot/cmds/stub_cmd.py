@@ -44,7 +44,7 @@ class StubCmd(Command_i):
     def param_specs(self) -> list:
         return []
 
-    def __call__(self, tasks:dict, plugins:dict):
+    def __call__(self, tasks:Tomler, plugins:Tomler):
         # TODO interactively build a stub tasker
         raise NotImplementedError()
 

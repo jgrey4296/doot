@@ -34,3 +34,6 @@ class DootInvalidConfig(DootError):
 
 class DootDirAbsent(AttributeError):
     pass
+
+class DootPluginError(ResourceWarning):
+    pass

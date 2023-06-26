@@ -34,3 +34,6 @@ class Overlord_i:
              from the Reporter.
         """
         raise NotImplementedError()
+
+    def shutdown(self):
+        raise NotImplementedError

@@ -87,9 +87,12 @@ class DootTaskLoader(TaskLoader_i):
     """
     load toml defined tasks
     """
+    taskers       : dict[str, tuple(dict, Tasker_i)] = {}
+    cmd_names     : set[str]                         = set()
+    task_builders : dict[str,Any]                    = dict()
+    extra : Tomler
 
     def setup(self, plugins, extra=None):
-        self.taskers : dict[str, tuple(dict, Tasker_i)] = {}
         self.cmd_names     = set(map(lambda x: x.name, plugins.get("command", [])))
         self.task_builders = {}
         for plugin in tomler.Tomler(plugins).on_fail([]).task():

@@ -82,6 +82,7 @@ preferred_cmd_loader  = doot.config.on_fail("default").loaders.command()
 preferred_task_loader = doot.config.on_fail("default").loaders.task()
 preferred_parser      = doot.config.on_fail("default").loaders.parser()
 
+defaulted_file = doot.config.on_fail(pl.Path(".doot_defaults.toml"), pl.Path).report.defaulted_file(pl.Path)
 
 class DootOverlord(Overlord_i):
     """
@@ -207,3 +208,14 @@ class DootOverlord(Overlord_i):
             return
 
         self.current_cmd(self.taskers, self.plugins)
+
+
+    def shutdown(self):
+        defaulted_locs = doot.DootLocData.report_defaulted()
+        defaulted_toml = tomler.Tomler.report_defaulted()
+
+        with open(defaulted_file, 'w') as f:
+            f.write("# default values used:\n")
+            f.write("\n".join(defaulted_toml) + "\n\n")
+            f.write("[.directories]\n")
+            f.write("\n".join(defaulted_locs))

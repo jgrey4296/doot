@@ -16,12 +16,6 @@ import tomler
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-##-- data
-data_path       = resources.files("doot.__templates")
-toml_template   = data_path / "basic_toml"
-dooter_template = data_path / "dooter"
-##-- end data
-
 # Global, single points of truth:
 __version__ : Final         = "0.2.0"
 config      : tomler.Tomler = None # doot config
@@ -55,8 +49,8 @@ def setup(targets=None, prefix=None) -> tupl[Tomler, DootLocData]:
 
 def setup_agnostic(*paths):
     config = tomler.load(*paths)
-    locs   = DootLocData(files=config.flatten_on({}).files(wrapper=dict),
-                         **config.flatten_on({}).directories(wrapper=dict))
+    locs   = DootLocData(files=config.flatten_on({}).files(),
+                         **config.flatten_on({}).directories())
 
     # TODO move to config loader
     # # Done like this to avoid recursive imports
