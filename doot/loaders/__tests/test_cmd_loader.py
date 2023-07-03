@@ -15,6 +15,7 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 from unittest import mock
 ##-- end imports
 
+import pytest
 import tomler
 import doot
 from importlib.metadata import EntryPoint
@@ -22,35 +23,11 @@ doot.config = tomler.Tomler({})
 from doot.loaders import cmd_loader
 logging = logmod.root
 
-##-- warnings
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    pass
-##-- end warnings
-
 class TestCmdLoader(unittest.TestCase):
-    ##-- setup-teardown
-    @classmethod
-    def setUpClass(cls):
-        LOGLEVEL      = logmod.DEBUG
-        LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
-
-        cls.file_h        = logmod.FileHandler(LOG_FILE_NAME, mode="w")
-        cls.file_h.setLevel(LOGLEVEL)
-
-        logging.setLevel(logmod.NOTSET)
-        logging.addHandler(cls.file_h)
-
-
-    @classmethod
-    def tearDownClass(cls):
-        logging.removeHandler(cls.file_h)
-
-    ##-- end setup-teardown
 
     def test_initial(self):
         basic = cmd_loader.DootCommandLoader()
-        self.assertTrue(basic)
+        assert(basic is not None)
 
     def test_load_basic(self):
         basic = cmd_loader.DootCommandLoader()
@@ -60,7 +37,7 @@ class TestCmdLoader(unittest.TestCase):
 
         ]}))
         result = basic.load()
-        self.assertIn("list", result)
+        assert("list" in result)
 
     def test_load_multi(self):
         basic = cmd_loader.DootCommandLoader()
@@ -71,8 +48,8 @@ class TestCmdLoader(unittest.TestCase):
 
         ]}))
         result = basic.load()
-        self.assertIn("list", result)
-        self.assertIn("run", result)
+        assert("list" in result)
+        assert("run" in result)
 
     def test_load_fail(self):
         basic = cmd_loader.DootCommandLoader()
@@ -81,10 +58,5 @@ class TestCmdLoader(unittest.TestCase):
                 EntryPoint(name="bad", group="doot.command", value="doot.cmds.bad:badcmd"),
 
         ]}))
-        with self.assertRaises(ResourceWarning):
+        with pytest.raises(ResourceWarning):
             basic.load()
-
-##-- ifmain
-if __name__ == '__main__':
-    unittest.main()
-##-- end ifmain

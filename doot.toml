@@ -10,13 +10,12 @@ parser                   = "default"
 
 
 [plugins]
-command        = []
-reporter       = []
+command        = {}
+reporter       = {}
 
-action         = []
-tasker         = []
-task           = []
-group          = []
+action         = {}
+tasker         = {}
+task           = {}
 
 
 [globbing]

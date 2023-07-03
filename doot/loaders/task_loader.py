@@ -92,7 +92,8 @@ class DootTaskLoader(TaskLoader_i):
     task_builders : dict[str,Any]                    = dict()
     extra : Tomler
 
-    def setup(self, plugins, extra=None):
+    def setup(self, plugins, extra=None) -> Self:
+        logging.debug("---- Registering Task Builders")
         self.cmd_names     = set(map(lambda x: x.name, plugins.get("command", [])))
         self.taskers       = {}
         self.task_builders = {}
@@ -109,7 +110,7 @@ class DootTaskLoader(TaskLoader_i):
             except ModuleNotFoundError as err:
                 logging.warning(f"Bad Task Builder Plugin Specified Plugin: %s", plugin)
         else:
-            logging.info("Registered Task Builders: %s", self.task_builders.keys())
+            logging.debug("Registered Task Builders: %s", self.task_builders.keys())
 
 
         match extra: # { group : [task_dicts] }
@@ -120,25 +121,27 @@ class DootTaskLoader(TaskLoader_i):
             case dict() | tomler.Tomler():
                 self.extra = tomler.Tomler(extra).on_fail({}).tasks()
         logging.debug("Task Loader Setup with %s extra tasks", len(self.extra))
+        return self
 
 
-    def load(self) -> Tomler:
+    def load(self) -> Tomler[tuple[dict, type]]:
         start_time = time.perf_counter()
         logging.debug("---- Loading Tasks")
-        raw_specs = []
-        raw_specs += self._load_raw_specs(task_specs)
+        raw_specs = self._load_raw_specs(task_specs)
         if self.extra:
             raw_specs += self._load_raw_specs(self.extra)
         raw_specs += self._load_spec_path(task_path)
         logging.debug("Loaded %s Task Specs", len(raw_specs))
-        self._build_task_classes(raw_specs, self.cmd_names)
+        if bool(self.taskers):
+            logging.warning("Task Loader is overwriting already loaded tasks")
+        self.taskers = self._build_task_classes(raw_specs, self.cmd_names)
 
         logging.debug("Task List Size: %s", len(self.taskers))
         logging.debug("Task List Names: %s", list(self.taskers.keys()))
         logging.debug("---- Tasks Loaded in %s seconds", f"{time.perf_counter() - start_time:0.4f}")
         return tomler.Tomler(self.taskers)
 
-    def _load_raw_specs(self, data):
+    def _load_raw_specs(self, data) -> list[dict]:
         raw_specs = []
         # Load from doot.toml task specs
         for group, data in data.items():
@@ -167,25 +170,26 @@ class DootTaskLoader(TaskLoader_i):
         return raw_specs
 
 
-    def _build_task_classes(self, group_specs:list, command_names):
+    def _build_task_classes(self, group_specs:list, command_names) -> dict[str, tuple[dict, type]]:
         """
         get task creators defined in the config
         """
+        task_descriptions = {}
         for spec in group_specs:
             match spec:
                 case {"name": task_name} if task_name in command_names:
                     raise ResourceWarning(f"Task / Cmd name conflict: {task_name}")
-                case {"name": task_name} if task_name in self.taskers and not allow_overloads:
+                case {"name": task_name} if task_name in task_descriptions and not allow_overloads:
                     raise ResourceWarning(f"Task Name Overloaded: {task_name}")
                 case {"name": task_name, "class": task_class}:
-                    if task_name in self.taskers:
+                    if task_name in task_descriptions:
                         logging.warning("Overloading Task: %s : %s", task_name, task_class)
 
                     try:
                         mod_name, class_name = task_class.split("::")
                         mod = importlib.import_module(mod_name)
                         cls = getattr(mod, class_name)
-                        self.taskers[task_name] = (spec, cls)
+                        task_descriptions[task_name] = (spec, cls)
                     except ModuleNotFoundError as err:
                         raise ResourceWarning(f"Task Spec {task_name} Load Failure: Bad Module Name: {task_class}") from err
                     except AttributeError as err:
@@ -194,6 +198,8 @@ class DootTaskLoader(TaskLoader_i):
                     raise ResourceWarning(f"Task Spec {task_name} Load Failure: Bad Type Name: {task_type}. Available: {self.task_builders.keys()}")
                 case {"name": task_name, "type": task_type}:
                     cls = self.task_builders[task_type]
-                    self.taskers[task_name] = (spec, cls)
+                    task_descriptions[task_name] = (spec, cls)
                 case _:
                     raise ResourceWarning("Task Spec needs, at least, a name and class or type: %s", spec)
+
+        return task_descriptions

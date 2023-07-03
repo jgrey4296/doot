@@ -86,7 +86,7 @@ class DootPluginLoader(PluginLoader_i):
     Load doot plugins from the system, to choose from with doot.toml or cli args
     """
 
-    def setup(self, extra_config=None):
+    def setup(self, extra_config=None) -> Self:
         self.plugins = defaultdict(list)
         match extra_config:
             case None:
@@ -95,6 +95,8 @@ class DootPluginLoader(PluginLoader_i):
                 self.extra_config = tomler.Tomler(extra_config)
             case tomler.Tomler():
                 self.extra_config = extra_config
+
+        return self
 
     def load(self) -> Tomler:
         """
@@ -105,22 +107,22 @@ class DootPluginLoader(PluginLoader_i):
         try:
             self._load_system_plugins()
         except Exception as err:
-            raise ResourceWarning("Failed to load system wide plugins") from err
+            raise ResourceWarning("Failed to load system wide plugins", err) from err
 
         try:
             self._load_from_toml()
         except Exception as err:
-            raise ResourceWarning("Failed to load toml specified plugins") from err
+            raise ResourceWarning("Failed to load toml specified plugins", err) from err
 
         try:
             self._load_extra_plugins()
         except Exception as err:
-            raise ResourceWarning("Failed to load command line/dooter specified plugins") from err
+            raise ResourceWarning("Failed to load command line/dooter specified plugins", err) from err
 
         try:
             self._append_defaults()
         except Exception as err:
-            raise ResourceWarning("Failed to load plugin defaults") from err
+            raise ResourceWarning("Failed to load plugin defaults", err) from err
 
         logging.debug("Found %s plugins", len(self.plugins))
         return tomler.Tomler(self.plugins)
@@ -132,17 +134,23 @@ class DootPluginLoader(PluginLoader_i):
             if k not in plugin_types:
                 logging.warning("Unknown plugin type found in extra config: %s", k)
                 continue
-            ep = EntryPoint(name=v, value=v, group=k)
-            self.plugins[k] = EntryPoint(name=k, value=v, group=doot.constants.PLUGIN_TOML_PREFIX)
+            ep = EntryPoint(name=k, value=v, group=doot.constants.PLUGIN_TOML_PREFIX)
+            logging.debug("Adding Plugin: %s", ep)
+            self.plugins[k].append(ep)
 
     def _load_from_toml(self):
         # load config entry points
-        for k, v in env_eps.items():
-            if k not in plugin_types:
+        for cmd_group, vals in env_eps.items():
+            if cmd_group not in plugin_types:
                 logging.warning("Unknown plugin type found in config: %s", k)
                 continue
-            ep = EntryPoint(name=v, value=v, group=k)
-            self.plugins[k].append(ep)
+            if not isinstance(vals, (tomler.Tomler, dict)):
+                logging.warning("Toml specified Plugins %s needs to be a dict of (cmdName : class) ", k)
+                continue
+
+            for name, cls in vals.items():
+                ep = EntryPoint(name=name, value=cls, group=cmd_group)
+                self.plugins[cmd_group].append(ep)
 
     def _load_system_plugins(self):
         if skip_plugin_search:

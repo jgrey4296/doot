@@ -70,7 +70,7 @@ from doot._abstract.cmd import Command_i
 
 class DootCommandLoader(CommandLoader_i):
 
-    def setup(self, plugins, extra=None):
+    def setup(self, plugins, extra=None) -> Self:
         self.cmd_plugins : list[EntryPoint] = plugins.get("command", [])
         self.cmds = {}
 
@@ -84,7 +84,9 @@ class DootCommandLoader(CommandLoader_i):
             case tomler.Tomler():
                 self.extra = tomler.on_fail([]).tasks()
 
-    def load(self) -> Tomler:
+        return self
+
+    def load(self) -> Tomler[Command_i]:
         logging.debug("---- Loading Commands")
         for cmd_point in self.cmd_plugins:
             try:

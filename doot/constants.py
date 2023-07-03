@@ -17,7 +17,11 @@ from importlib import resources
 
 PLUGIN_TOML_PREFIX         : Final = "doot.plugins" # (project.entry-points."doot.plugins")
 FRONTEND_PLUGIN_TYPES      : Final = ['command', 'reporter']
-BACKEND_PLUGIN_TYPES       : Final = ['database', 'tracker', 'runner', 'command_loader', 'task_loader', 'parser', 'action', 'task']
+BACKEND_PLUGIN_TYPES       : Final = [
+    'database', 'tracker', 'runner',
+    'command_loader', 'task_loader',
+    'parser', 'action', 'task', "tasker"
+    ]
 
 template_path   = resources.files("doot.__templates")
 toml_template   = template_path / "basic_toml"
@@ -51,11 +55,11 @@ default_plugins['action']   = [("cmd", "doot.actions.cmd_action:DootCmdAction"),
                                 ("interactive", "doot.actions.interactive_cmd_action:InteractiveAction"),
                                 ("py", "doot.actions.py_cmd_action:DootPyAction")
                                 ]
-default_plugins['task']     = [("basic", "doot.task.base_tasker:DootTasker"),
-                               ("generaliser", "doot.task.generaliser:DootGeneraliser"),
-                               ("glob", "doot.task.globber:DootEagerGlobber"),
-                               ("dict", "doot.task.specialised_taskers:DictTasker"),
-                               ("group", "doot.task.specialised_taskers:GroupTasker")]
+default_plugins['tasker']     = [("basic", "doot.task.base_tasker:DootTasker"),
+                                ("generaliser", "doot.task.generaliser:DootGeneraliser"),
+                                ("glob", "doot.task.globber:DootEagerGlobber"),
+                                ("dict", "doot.task.specialised_taskers:DictTasker"),
+                                ("group", "doot.task.specialised_taskers:GroupTasker")]
 
 
 
@@ -69,4 +73,4 @@ DEFAULT_PLUGIN_LOADER_KEY  = "plugin_loader"
 
 
 announce_exit : Final[bool] = False
-announc_voice : Final[str] = "Moira"
+announce_voice : Final[str] = "Moira"

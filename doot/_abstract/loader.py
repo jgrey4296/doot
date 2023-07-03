@@ -32,7 +32,7 @@ logging = logmod.getLogger(__name__)
 
 class Loader_i:
 
-    def setup(self, *args, **kwargs) -> None:
+    def setup(self, *args, **kwargs) -> Self:
         raise NotImplementedError()
 
     def load(self) -> Tomler:
@@ -41,13 +41,19 @@ class Loader_i:
 class PluginLoader_i(Loader_i):
     """ Base for the first things loaded: plugins."""
 
-    def setup(self, extra_config:Tomler):
+    def setup(self, extra_config:Tomler) -> Self:
+        raise NotImplementedError()
+
+    def load(self) -> Tomler[EntryPoint]:
         raise NotImplementedError()
 
 class CommandLoader_i(Loader_i):
     """ Base for the second thing loaded: commands """
 
-    def setup(self, plugins:dict):
+    def setup(self, plugins:Tomler) -> Self:
+        raise NotImplementedError()
+
+    def load(self) -> Tomler[Command_i]:
         raise NotImplementedError()
 
 class TaskLoader_i(Loader_i):
@@ -56,5 +62,8 @@ class TaskLoader_i(Loader_i):
     _build_failures  : list
     _task_class      : type
 
-    def setup(self, plugins:dict):
+    def setup(self, plugins:Tomler) -> Self:
+        raise NotImplementedError()
+
+    def load(self) -> Tomler[tuple[dict, Tasker_i]]:
         raise NotImplementedError()

@@ -7,6 +7,8 @@ from collections import defaultdict
 import textwrap
 ##-- end imports
 
+from doot._abstract.parser import DootParamSpec
+
 class Command_i:
     """
     holds command information and performs it
@@ -14,6 +16,10 @@ class Command_i:
 
     _name : None|str       = None # if not specified uses the class name
     _help : None|list[str] = None
+
+    @staticmethod
+    def make_param(*args, **kwargs) -> DootParamSpec:
+        return DootParamSpec(*args, **kwargs)
 
     def __init__(self, name=None):
         self._name = name
@@ -25,14 +31,30 @@ class Command_i:
 
     @property
     def help(self) -> str:
-        return "\n".join(self._help)
+        help_lines = ["", f"Command: {self.name}", ""]
+        help_lines += self._help
+
+        params = self.param_specs
+        if bool(params):
+            help_lines += ["", "Params:"]
+            help_lines += sorted(str(x) for x in self.param_specs)
+
+        return "\n".join(help_lines)
+
+    @property
+    def helpline(self) -> str:
+        if not bool(self._help):
+            return f" {self.name: <10} :"
+        return f" {self.name: <10} : {self._help[0]}"
 
     @property
     def param_specs(self) -> list:
         """
         Provide parameter specs for parsing into doot.args.cmd
         """
-        return []
+        return [
+            self.make_param(name="help", default=False, prefix="--")
+            ]
 
-    def __call__(self, taskers, plugins):
+    def __call__(self, taskers:Tomler, plugins:Tomler):
         raise NotImplementedError()

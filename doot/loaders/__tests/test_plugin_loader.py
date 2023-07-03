@@ -15,41 +15,18 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 from unittest import mock
 ##-- end imports
 
+import pytest
 import tomler
 import doot
 doot.config = tomler.Tomler({})
 from doot.loaders import plugin_loader
 logging = logmod.root
 
-##-- warnings
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    pass
-##-- end warnings
-
-class TestPluginLoader(unittest.TestCase):
-    ##-- setup-teardown
-
-    @classmethod
-    def setUpClass(cls):
-        LOGLEVEL      = logmod.DEBUG
-        LOG_FILE_NAME = "log.{}".format(pl.Path(__file__).stem)
-
-        cls.file_h        = logmod.FileHandler(LOG_FILE_NAME, mode="w")
-        cls.file_h.setLevel(LOGLEVEL)
-
-        logging.setLevel(logmod.NOTSET)
-        logging.addHandler(cls.file_h)
-
-    @classmethod
-    def tearDownClass(cls):
-        logging.removeHandler(cls.file_h)
-
-    ##-- end setup-teardown
+class TestPluginLoader:
 
     def test_initial(self):
         basic = plugin_loader.DootPluginLoader()
-        self.assertTrue(basic)
+        assert(basic is not None)
 
     def test_loads_defaults(self):
         basic = plugin_loader.DootPluginLoader()
@@ -57,10 +34,4 @@ class TestPluginLoader(unittest.TestCase):
         loaded = basic.load()
 
         for key in {"command_loader", "task_loader", 'command', "reporter", "database", "tracker", "runner", "parser", "action", "task"}:
-            self.assertIn(key, loaded)
-
-
-##-- ifmain
-if __name__ == '__main__':
-    unittest.main()
-##-- end ifmain
+            assert(key in loaded)

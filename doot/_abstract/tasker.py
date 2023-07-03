@@ -32,6 +32,7 @@ logging = logmod.getLogger(__name__)
 
 from tomler import Tomler
 from doot._abstract.control import TaskOrdering_i
+from doot._abstract.parser import DootParamSpec
 
 class StubTaskPartSpec:
     "Describes a single part of a stub task in toml"
@@ -59,6 +60,10 @@ class Tasker_i(TaskOrdering_i):
     @classmethod
     def _make_task(cls, *arg, **kwargs):
         return cls.task_type(*arg, **kwargs)
+
+    @staticmethod
+    def make_param(*args, **kwargs) -> DootParamSpec:
+        return DootParamSpec(*args, **kwargs)
 
     def __init__(self, spec:dict|Tomler, locs:DootLocData=None):
         assert(locs is not None or locs is False), locs
@@ -106,7 +111,9 @@ class Tasker_i(TaskOrdering_i):
 
     @property
     def param_specs(self) -> list[parser.DootParamSpec]:
-        return []
+        return [
+            self.make_param(name="help", default=False)
+            ]
 
     def default_task(self) -> dict:
         raise NotImplementedError()

@@ -4,6 +4,8 @@
 from __future__ import annotations
 import sys
 
+from doot._abstract.parser import DootParamSpec
+
 class Overlord_i:
     """
     Main entrypoint for doot
@@ -18,6 +20,10 @@ class Overlord_i:
     @staticmethod
     def print_version() -> str:
         raise NotImplementedError()
+
+    @staticmethod
+    def make_param(*args, **kwargs) -> DootParamSpec:
+        return DootParamSpec(*args, **kwargs)
 
     def __call__(self, args):
         """entry point for all commands

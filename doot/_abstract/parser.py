@@ -30,6 +30,7 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+PAD : Final[int] = 15
 
 @dataclass
 class _RegexEqual(str):
@@ -46,8 +47,11 @@ class _RegexEqual(str):
 
 @dataclass
 class DootParamSpec:
+    """ Describes a command line parameter to use in the parser """
     name        : str      = field()
     type        : callable = field(default=bool)
+
+    prefix      : str      = field(default="-")
     default     : Any      = field(default=False)
     desc        : str      = field(default="An undescribed parameter")
     constraints : list     = field(default_factory=list)
@@ -65,16 +69,35 @@ class DootParamSpec:
         return f"no-{self.name}"
 
     def _process_value(self, val):
-        val = val[1:] if val[0] == "-" else val
-        return val.split("=")
+        return val.removeprefix(self.prefix).split("=")
 
     def __eq__(self, val) -> bool:
         [head, *_] = self._process_value(val)
         return head == self.name or head == self.short or head == self.inverse
 
+    def __str__(self):
+        parts = [f"{self.prefix}[{self.name[0]}]{self.name[1:]}"]
+        parts.append(" " * (PAD-len(parts[0])))
+        match self.type:
+            case type() if self.type == bool:
+                parts.append(f"{'(bool)': <10}:")
+                parts.append(f"Defaults to: {self.default}")
+            case str if bool(self.default):
+                parts.append(f"{'(str)': <10}:")
+                parts.append(f"Defaults to: {self.default}")
+            case str:
+                parts.append(f"{'(str)': <10}:")
+
+
+        parts.append(self.desc)
+        if self.constraints:
+            parts.append("Constrained to: {self.constraints}")
+        return " ".join(parts)
+
+
     def add_value(self, data, val):
         [head, *rest] = self._process_value(val)
-        logging.info("Matching: %s : %s : %s", self.type.__name__, head, rest)
+        logging.debug("Matching: %s : %s : %s", self.type.__name__, head, rest)
         match self.type.__name__:
             case "bool" if bool(rest):
                 raise TypeError("Bool Arguments shouldn't have values", val)

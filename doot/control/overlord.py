@@ -55,6 +55,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 
 ##-- logging
 logging = logmod.getLogger(__name__)
+printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
 from importlib.metadata import EntryPoint
@@ -102,9 +103,7 @@ class DootOverlord(Overlord_i):
         self.args           = args or sys.argv[:]
         self.BIN_NAME       = self.args[0].split('/')[-1]
         self.loaders        = loaders or dict()
-        self.doot_arg_specs = [
-            DootParamSpec(name="version")
-        ]
+
 
         self.plugins     : None|Tomler = None
         self.cmds        : None|Tomler = None
@@ -117,6 +116,14 @@ class DootOverlord(Overlord_i):
         self.load_taskers(extra_config)
         self.parse_args()
         logging.debug("Core Overlord Initialisation complete")
+
+    @property
+    def param_specs(self) -> list[DootParamSpec]:
+        return [
+            self.make_param(name="version", prefix="--"),
+            self.make_param(name="help", prefix="--"),
+            self.make_param(name="verbose", prefix="--")
+        ]
 
     def load_plugins(self, extra_config:dict|Tomler=None):
         self.plugin_loader    = self.loaders.get(plugin_loader_key, DootPluginLoader())
@@ -193,11 +200,16 @@ class DootOverlord(Overlord_i):
         if not isinstance(self.parser, ArgParser_i):
             raise TypeError("Improper argparser specified: ", self.arg_parser)
 
-        doot.args = self.parser.parse(args or self.args, self.doot_arg_specs, self.cmds, self.taskers)
-
+        doot.args = self.parser.parse(args or self.args, self.param_specs, self.cmds, self.taskers)
 
     def __call__(self, cmd=None):
         logging.debug("Overlord Calling: %s", cmd or doot.args.cmd.name)
+
+        # perform head args
+        if self._adjust_by_cli_args():
+            return
+
+        # do the command
         target = (cmd
             or doot.args.on_fail(None).cmd.name()
             or doot.constants.default_cli_cmd)
@@ -208,6 +220,25 @@ class DootOverlord(Overlord_i):
             return
 
         self.current_cmd(self.taskers, self.plugins)
+
+    def _adjust_by_cli_args(self) -> bool:
+        if doot.args.head.args.verbose:
+            printer.info("TODO: increase verbosity")
+
+        if doot.args.head.args.version:
+            printer.info("\n\n----- Doot Version: %s\n\n", doot.__version__)
+
+        if doot.args.head.args.help:
+            printer.info("")
+            printer.info("TODO: Doot help")
+
+            printer.info("Available Commands: ")
+            cmd_names = sorted(x.helpline for x in self.cmds.values())
+            printer.info("%s", "\n".join(cmd_names))
+
+            return True
+
+        return False
 
 
     def shutdown(self):

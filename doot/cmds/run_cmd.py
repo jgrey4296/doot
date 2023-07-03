@@ -62,6 +62,7 @@ from doot._abstract.cmd import Command_i
 from doot._abstract.parser import DootParamSpec
 from collections import defaultdict
 
+printer = logmod.getLogger("doot._printer")
 
 class RunCmd(Command_i):
     _name      = "run"
@@ -78,12 +79,16 @@ class RunCmd(Command_i):
         # TODO setup the dependency management system using correct plugins
         # plugins.runner(task, action, tracker, runner, databse, reporter)
 
-        tracker = plugins.tracker()
+        tracker = plugins.tracker[0].load()()
         for task in tasks.values():
             tracker.add_task(task)
 
-        if doot.args.on_fail(None).cmd.target() in tracker:
-            reporter = plugins.reporter()
-            runner = plugins.runner(tracker, plugins.reporter())
+        target = doot.args.on_fail((None,)).cmd.args.target()
+        if target in tracker:
+            printer.info("Running Tasks: %s", target)
+            reporter = plugins.reporter[0].load()()
+            runner = plugins.runner(tracker, reporter)
             # TODO get the tasker, expand it, do it
-            runner(doot.args.cmd.target)
+            return runner(doot.args.cmd.target)
+
+        printer.info("No Run Target Specified")

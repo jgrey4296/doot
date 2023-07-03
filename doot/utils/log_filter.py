@@ -36,10 +36,12 @@ logging = logmod.getLogger(__name__)
 
 class DootAnyFilter:
 
-    def __init__(self, names=None):
-        self.names = names or []
-        self.name_re = re.compile("^({})".format("|".join(self.names)))
+    def __init__(self, names=None, reject=None):
+        self.names      = names or []
+        self.rejections = reject or []
+        self.name_re    = re.compile("^({})".format("|".join(self.names)))
 
     def __call__(self, record):
-        return (not bool(self.names)
-                or self.name_re.match(record.name))
+        return (record.name not in self.rejections) and (record.name == "root"
+                                                         or not bool(self.names)
+                                                    or self.name_re.match(record.name))
