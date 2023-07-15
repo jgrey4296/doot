@@ -43,6 +43,8 @@ class Reporter_i:
     def __str__(self):
         raise NotImplementedError()
 
+
+
     def initialize(self, tasks, selected_tasks):
         """called just after tasks have been loaded before execution starts"""
         raise NotImplementedError()

@@ -15,26 +15,29 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from importlib import resources
 ##-- end imports
 
+##-- plugin names and loaders
 PLUGIN_TOML_PREFIX         : Final = "doot.plugins" # (project.entry-points."doot.plugins")
 FRONTEND_PLUGIN_TYPES      : Final = ['command', 'reporter']
 BACKEND_PLUGIN_TYPES       : Final = [
     'database', 'tracker', 'runner',
     'command_loader', 'task_loader',
-    'parser', 'action', 'task', "tasker"
+    'parser', 'action', "tasker"
     ]
 
-template_path   = resources.files("doot.__templates")
-toml_template   = template_path / "basic_toml"
-dooter_template = template_path / "dooter"
+DEFAULT_COMMAND_LOADER_KEY = "command_loader"
 
-default_load_targets = [pl.Path(x) for x in ["doot.toml", "pyproject.toml", "Cargo.toml", "./.cargo/config.toml"]]
-default_dooter       = pl.Path("dooter.py")
+DEFAULT_TASK_LOADER_KEY    = "task_loader"
 
+DEFAULT_PLUGIN_LOADER_KEY  = "plugin_loader"
+##-- end plugin names and loaders
+
+##-- default plugins
 # Loaded in doot.loaders.plugin_loader
 # as pairs (name, import_path)
-default_plugins = {}
 
-default_plugins['command']  = [("help",     "doot.cmds.help_cmd:HelpCmd"),
+DEFAULT_PLUGINS = {}
+
+DEFAULT_PLUGINS['command']  = [("help",     "doot.cmds.help_cmd:HelpCmd"),
                                ("run",      "doot.cmds.run_cmd:RunCmd"),
                                ("list",     "doot.cmds.list_cmd:ListCmd"),
                                ("clean",    "doot.cmds.clean_cmd:CleanCmd"),
@@ -45,32 +48,48 @@ default_plugins['command']  = [("help",     "doot.cmds.help_cmd:HelpCmd"),
                                ("step",     "doot.cmds.step_cmd:StepCmd"),
                               ]
 
-default_plugins['reporter'] = [("basic", "doot.reporters.basic:BasicReporter")]
-default_plugins['database'] = []
-default_plugins['tracker']  = [("basic", "doot.control.tracker:DootTracker")]
-default_plugins['runner']   = [("basic", "doot.control.runner:DootRunner")]
-default_plugins['parser']   = [("basic", "doot.parsers.parser:DootArgParser")]
-default_plugins['action']   = [("cmd", "doot.actions.cmd_action:DootCmdAction"),
-                                ("force", "doot.actions.force_cmd_action:ForceCmd"),
-                                ("interactive", "doot.actions.interactive_cmd_action:InteractiveAction"),
-                                ("py", "doot.actions.py_cmd_action:DootPyAction")
-                                ]
-default_plugins['tasker']     = [("basic", "doot.task.base_tasker:DootTasker"),
-                                ("generaliser", "doot.task.generaliser:DootGeneraliser"),
-                                ("glob", "doot.task.globber:DootEagerGlobber"),
-                                ("dict", "doot.task.specialised_taskers:DictTasker"),
-                                ("group", "doot.task.specialised_taskers:GroupTasker")]
+DEFAULT_PLUGINS['reporter'] = [("basic", "doot.reporters.basic:BasicReporter")]
 
+DEFAULT_PLUGINS['database'] = []
 
+DEFAULT_PLUGINS['tracker']  = [("basic", "doot.control.tracker:DootTracker")]
 
-default_cli_cmd            = "run"
-default_task_prefix        = "task_"
-default_task_group         = "default"
+DEFAULT_PLUGINS['runner']   = [("basic", "doot.control.runner:DootRunner")]
 
-DEFAULT_COMMAND_LOADER_KEY = "command_loader"
-DEFAULT_TASK_LOADER_KEY    = "task_loader"
-DEFAULT_PLUGIN_LOADER_KEY  = "plugin_loader"
+DEFAULT_PLUGINS['parser']   = [("basic", "doot.parsers.parser:DootArgParser")]
 
+DEFAULT_PLUGINS['action']   = [("cmd", "doot.actions.cmd_action:DootCmdAction"),
+                               ("force", "doot.actions.force_cmd_action:ForceCmd"),
+                               ("interactive", "doot.actions.interactive_cmd_action:InteractiveAction"),
+                               ("py", "doot.actions.py_cmd_action:DootPyAction")
+                               ]
 
-announce_exit : Final[bool] = False
-announce_voice : Final[str] = "Moira"
+DEFAULT_PLUGINS['tasker']     = [("basic", "doot.task.base_tasker:DootTasker"),
+                                 ("generaliser", "doot.task.generaliser:DootGeneraliser"),
+                                 ("glob", "doot.task.globber:DootEagerGlobber"),
+                                 ("dict", "doot.task.specialised_taskers:DictTasker"),
+                                 ("group", "doot.task.specialised_taskers:GroupTasker")]
+
+##-- end default plugins
+
+##-- path and file names
+TEMPLATE_PATH        = resources.files("doot.__templates")
+TOML_TEMPLATE        = TEMPLATE_PATH / "basic_toml"
+DOOTER_TEMPLATE      = TEMPLATE_PATH / "dooter"
+
+DEFAULT_DOOTER       = pl.Path("dooter.py")
+
+DEFAULT_LOAD_TARGETS = [pl.Path(x) for x in ["doot.toml", "pyproject.toml", "Cargo.toml", "./.cargo/config.toml"]]
+
+##-- end path and file names
+
+DEFAULT_CLI_CMD     : Final[str]  = "run"
+
+DEFAULT_TASK_PREFIX : Final[str]  = "task_"
+
+DEFAULT_TASK_GROUP  : Final[str]  = "default"
+
+ANNOUNCE_EXIT       : Final[bool] = False
+ANNOUNCE_VOICE      : Final[str]  = "Moira"
+
+PRINTER_NAME        : Final[str]  = "doot._printer"

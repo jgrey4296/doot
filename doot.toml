@@ -15,14 +15,13 @@ reporter       = {}
 
 action         = {}
 tasker         = {}
-task           = {}
 
 
 [globbing]
 ignores  = ['.git', '.DS_Store', "__pycache__"]
 
 [logging]
-stream = { level = "INFO", format  = "{levelname:<8} : {message}", filters = ["doot"] }
+stream = { level = "WARN", format  = "{levelname:<8} : {message}", filters = ["doot"] }
 file   = { level = "DEBUG", format = "{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})", filters =  ["doot"] }
 
 [[directories]]
@@ -37,3 +36,7 @@ lint_out     = "build/lint"
 
 [group.pip]
 [group.python]
+
+[[tasks.simple]]
+name = "simple.test"
+class = "doot.task.base_tasker::DootTasker"

@@ -4,9 +4,9 @@
 from __future__ import annotations
 import sys
 
-from doot._abstract.parser import DootParamSpec
+from doot._abstract.parser import ParamSpecMaker_mixin
 
-class Overlord_i:
+class Overlord_i(ParamSpecMaker_mixin):
     """
     Main entrypoint for doot
     """
@@ -21,9 +21,6 @@ class Overlord_i:
     def print_version() -> str:
         raise NotImplementedError()
 
-    @staticmethod
-    def make_param(*args, **kwargs) -> DootParamSpec:
-        return DootParamSpec(*args, **kwargs)
 
     def __call__(self, args):
         """entry point for all commands

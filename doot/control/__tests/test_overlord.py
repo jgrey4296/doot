@@ -35,13 +35,13 @@ class TestOverlord:
     def test_plugins_loaded(self):
         overlord = DootOverlord()
         assert(bool(overlord.plugins))
-        assert(all(x in overlord.plugins for x in doot.constants.default_plugins.keys()))
+        assert(all(x in overlord.plugins for x in doot.constants.DEFAULT_PLUGINS.keys()))
 
     @mock.patch.object(sys, "argv", ["doot"])
     def test_cmds_loaded(self):
         overlord = DootOverlord()
         assert(bool(overlord.cmds))
-        assert(len(overlord.cmds) == len(doot.constants.default_plugins['command']))
+        assert(len(overlord.cmds) == len(doot.constants.DEFAULT_PLUGINS['command']))
 
     @mock.patch.object(sys, "argv", ["doot"])
     def test_taskers_loaded(self):

@@ -21,7 +21,7 @@ logging = logmod.getLogger(__name__)
 
 import doot
 from doot.errors import DootDirAbsent
-from doot.control.tasker import DootTasker
+from doot.task.base_tasker import DootTasker
 from doot.mixins.subtask import SubMixin
 
 glob_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).globbing.ignores()
@@ -64,13 +64,13 @@ class DootEagerGlobber(SubMixin, DootTasker):
     control = GlobControl
     globc   = GlobControl
 
-    def __init__(self, base:str, locs:DootLocData, roots:list[pl.Path], *, exts:list[str]=None,  rec=False, **kwargs):
-        super().__init__(base, locs, **kwargs)
-        self.exts           = {y for x in (exts or []) for y in [x.lower(), x.upper()]}
-        self.roots          = roots[:]
-        self.rec            = rec
+    def __init__(self, spec:dict|Tomler, locs:DootLocData=None):
+        super().__init__(spec, locs)
+        self.exts           = {y for x in spec.get('exts', []) for y in [x.lower(), x.upper()]}
+        self.roots          = spec.get("roots", [])
+        self.rec            = spec.get("rec", False)
         self.total_subtasks = 0
-        for x in roots:
+        for x in self.roots:
             try:
                 if not pl.Path(x).exists():
                     depth = len(set(self.__class__.mro()) - set(DootEagerGlobber.mro()))

@@ -167,7 +167,7 @@ class DootTracker(TaskTracker_i):
             case TaskOrdering_i():
                 pass
             case (spec, cls):
-                task = cls(spec)
+                task = cls(spec, doot.locs)
 
         match task.name in self.tasks, self.shadowing, self.tasks.get(task.name):
             case True, _, False:

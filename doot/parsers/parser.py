@@ -3,7 +3,7 @@ from __future__ import annotations
 
 # import abc
 # import datetime
-# import enum
+import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
@@ -67,68 +67,102 @@ class DootArgParser(ArgParser_i):
     # doot {args} [{task} {task_args}] - implicit do cmd
     """
 
+    class _ParseState(enum.Enum):
+        HEAD = enum.auto()
+        CMD  = enum.auto()
+        TASK = enum.auto()
 
-    def parse(self, args:list, doot_specs:list[DootParamSpec], cmds:Tomler, tasks:Tomler) -> Tomler:
+
+
+    def _build_defaults_dict(self, param_specs:list) -> dict:
+        return { x.name : x.default for x in param_specs }
+
+    def parse(self, args:list, doot_specs:list[DootParamSpec], cmds:Tomler, tasks:Tomler) -> None|Tomler:
         logging.debug("Parsing args: %s", args)
         head_arg     = args[0]
-        doot_args    = { x.name : x.default for x in doot_specs }
 
-        cmd          = None
-        cmd_name     = None
-        cmd_args     = {}
+        PS = DootArgParser._ParseState
+        ##-- results
+        doot_args       = self._build_defaults_dict(doot_specs)
+        cmd             = None
+        cmd_name        = None
+        cmd_args        = {}
+        mentioned_tasks = []
+        task_args       = []
+        ##-- end results
 
-        chosen_tasks = []
-        task_names   = []
-        task_args    = []
+        ##-- loop state
+        declared_cmds  = set(cmds.keys())
+        declared_tasks = set(tasks.keys())
+        current_specs  = doot_specs
+        focus          = PS.HEAD
+        ##-- end loop state
 
-        named_cmds    = list(cmds.keys())
-        named_tasks   = list(tasks.keys())
-        current_specs = doot_specs
-        focus         = "doot"
+        # Help is special, it overrides the cmd if its specified anywhere
+        default_help = DootParamSpec(name="help", default=False, prefix="--")
 
         logging.debug("Registered Arg Specs: %s", current_specs)
+        # loop through args as a state machine.
+        # starts in "doot" state, progresses to "cmd" then "task" before quitting
         for arg in args[1:]:
             matching_specs = [x for x in current_specs if x == arg]
-            if len(matching_specs) > 1:
-                logging.warning("Multiple matching arg specs, use it's full name: %s : %s", arg, [x.name for x in matching_specs])
-                raise Exception()
+            logging.debug("Handling: %s, State: %s, Specs: %s", arg, focus, matching_specs)
+
+            if len(matching_specs) > 1 and len(set([x.short for x in matching_specs])) == 1:
+                raise Exception("Multiple matching arg specs, use it's full name:", arg, [x.name for x in matching_specs])
 
             match focus:
-                case "doot" if arg in named_cmds:
-                    focus         = "cmd"
-                    cmd           = cmds[arg]
-                    current_specs = cmd.param_specs
-                    cmd_name      = arg
-                    cmd_args      = { x.name : x.default for x in current_specs }
-                case "doot" | "cmd" | "task" if arg in task_names:
-                    raise Exception("Duplicated task")
-                case "doot" | "cmd" | "task" if arg in named_tasks:
-                    focus         = "task"
-                    chosen_tasks.append(tasks[arg])
-                    task_names.append(arg)
-                    current_specs = chosen_tasks[-1].param_specs
-                    new_task_args = { x.name : x.default for x in current_specs }
+                case PS.HEAD if arg in declared_cmds:
+                    logging.debug("Switching to CMD context")
+                    focus          = PS.CMD
+                    cmd            = cmds[arg]
+                    current_specs  = cmd.param_specs
+                    matching_specs = []
+                    cmd_name       = arg
+                    cmd_args       = self._build_defaults_dict(current_specs)
+                case PS.CMD | PS.TASK if arg == default_help:
+                    logging.debug("Forcing HELP cmd")
+                    cmd_args       = self._build_defaults_dict(cmds["help"].param_specs)
+                    if cmd_name is not None:
+                        cmd_args['target'] = cmd_name
+                    cmd_name = "help"
+                case _ if arg in declared_tasks:
+                    logging.debug("Switching to TASK context")
+                    # handle switching to task context
+                    focus          = PS.TASK
+                    mentioned_tasks.append(arg)
+                    current_specs  = tasks[arg][-1].param_specs
+                    matching_specs = []
+                    new_task_args  = self._build_defaults_dict(current_specs)
                     task_args.append(new_task_args)
-                case "doot" if bool(matching_specs):
+                ##-- handle args for specific context
+                case PS.HEAD if bool(matching_specs):
                     spec = matching_specs[0]
                     spec.add_value(doot_args, arg)
-                case "cmd" if bool(matching_specs):
+                case PS.CMD if bool(matching_specs):
                     spec = matching_specs[0]
                     spec.add_value(cmd_args, arg)
-                case "task" if bool(matching_specs):
+                case PS.TASK if bool(matching_specs):
                     spec = matching_specs[0]
                     spec.add_value(task_args[-1], arg)
+                ##-- end handle args for specific context
                 case _ if not (bool(doot_specs) or bool(cmds) or bool(tasks)):
                     pass
                 case _:
-                    raise Exception("Unrecognized Arg", arg)
+                    raise Exception("Unrecognized Arg processing state", focus, arg, [repr(x) for x in current_specs])
+
+
+            if bool(matching_specs) and not matching_specs[0].repeatable:
+                current_specs.remove(matching_specs[0])
+
+        # TODO ensure dupliacted tasks have different args
 
         data = {
             "head" : {"name": head_arg,
                       "args": doot_args },
-            "cmd" : {"name" : cmd_name or doot.constants.default_cli_cmd,
+            "cmd" : {"name" : cmd_name or doot.constants.DEFAULT_CLI_CMD,
                      "args" : cmd_args },
-            "tasks" : {name : args for name,args in zip(task_names, task_args)}
+            "tasks" : {name : args for name,args in zip(mentioned_tasks, task_args)}
 
             }
         return tomler.Tomler(data)

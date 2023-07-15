@@ -76,6 +76,7 @@ class DootTasker(Tasker_i):
     """
     sleep_subtask : ClassVar[Final[float]]
     sleep_notify  : ClassVar[Final[bool]]
+    _help = ["A Basic Task Constructor"]
 
     @staticmethod
     def set_defaults(config:Tomler):
@@ -83,9 +84,14 @@ class DootTasker(Tasker_i):
         DootTasker.sleep_notify  = config.on_fail(False, bool).notify.sleep()
 
     def __init__(self, spec:dict|Tomler, locs:DootLocData=None):
-        assert(locs is not None or locs is False), locs
+        assert(spec is not None), "Spec is empty"
+        assert(locs is not None), "Locs is Empty"
 
-        self.spec = spec
+        self.spec             = spec
+        self.locs             = locs
+        self.args             = {}
+        self._setup_name      = None
+        self.has_active_setup = False
 
         # match base:
         #     case str():
@@ -96,12 +102,6 @@ class DootTasker(Tasker_i):
         #         self.subgroups = xs + (subgroups or [])
         #     case _:
         #         raise TypeError("Bad base name provided to task: %s", base)
-
-        self.locs             = locs
-        self.args             = {}
-        self._setup_name      = None
-        self.has_active_setup = False
-        self.output           = output
 
     def default_task(self) -> dict:
         return dict([("name"     , self.fullname),

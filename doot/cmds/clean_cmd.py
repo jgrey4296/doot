@@ -56,6 +56,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
+printer = logmod.getLogger("doot._printer")
 
 import doot
 from doot._abstract.cmd import Command_i
@@ -74,5 +75,6 @@ class CleanCmd(Command_i):
             ]
 
     def __call__(self, tasks:dict, plugins:dict):
+
         # TODO run either doot clean, or a task clean
         raise NotImplementedError

@@ -56,27 +56,78 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
+printer = logmod.getLogger("doot._printer")
 
 import doot
 from doot._abstract.cmd import Command_i
-from doot._abstract.parser import DootParamSpec
 from collections import defaultdict
 
 
 class HelpCmd(Command_i):
     _name      = "help"
-    _help      = []
+    _help      = ["Print info about the specified cmd or task"]
 
     @property
     def param_specs(self) -> list:
-        return [
-            DootParamSpec(name="target", type=str, default="")
+        return super().param_specs + [
+            # self.make_param(name="target", type=str, default=""),
+            self.make_param(name="target", type=str, positional=True, default="")
             ]
 
-    def __call__(self, tasks:dict, plugins:dict):
+    def __call__(self, tasks, plugins):
         """List task generators"""
-        if doot.args.cmd.args.target != "":
-            # Print help of just the specified target
-            pass
+        if doot.args.cmd.args.help:
+            printer.info(self.help)
+            return
 
-        # Else Print general help and list cmds
+        if doot.args.cmd.args.target == "" and not bool(doot.args.tasks):
+            # Print general help and list cmds
+            printer.info("No Target Specified")
+            printer.info("Available Command Targets: ")
+            for x in sorted(plugins.command, key=lambda x: x.name):
+                printer.info("-- %s", x.name)
+            return
+
+        task_targets = [tasks[x] for x in doot.args.tasks.keys()]
+        cmd_targets  = []
+
+        if doot.args.cmd.args.target:
+            # Print help of just the specified target
+            cmd_targets += [x for x in plugins.command if x.name == doot.args.cmd.args.target]
+            task_targets += [y for x,y in tasks.items() if doot.args.cmd.args.target in x ]
+
+        logging.debug("Matched %s commands", len(cmd_targets))
+        if len(cmd_targets) == 1:
+            printer.info(cmd_targets[0].load()().help)
+
+
+        for i, spec in enumerate(task_targets):
+            self.print_task_spec(i, spec)
+
+        printer.info("\n------------------------------")
+        printer.info("DOOT HELP END: %s Tasks Matched", len(task_targets))
+
+
+    def print_task_spec(self, count, spec):
+        spec_dict, tasker_cls = spec
+        lines = []
+        lines.append("")
+        lines.append("------------------------------")
+        lines.append(f"{count:4}: Task: {spec_dict['name']}")
+        lines.append("------------------------------")
+        lines.append(f"ver    : {spec_dict.get('ver','0.1')}")
+        lines.append(f"Group  : {spec_dict['group']}")
+        lines.append(f"Source : {spec_dict['source']}")
+
+        lines.append(tasker_cls.help)
+        match spec_dict.get('doc', None):
+            case None:
+                pass
+            case str():
+                lines.append("")
+                lines.append(f"--   {spec_dict['doc']}")
+            case list() as xs:
+                lines.append("")
+                lines.append("--  " + "\n--  ".join(xs))
+
+        printer.info("\n".join(lines))

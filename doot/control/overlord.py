@@ -89,21 +89,23 @@ class DootOverlord(Overlord_i):
     """
     Main control point for doot.
     prefers passed in loaders, then plugins it finds.
+
     default cmds are provided by the cmd loader
     """
+    _help = ["An opinionated rewrite of Doit"]
 
     @staticmethod
     def print_version():
-        """print doot version (includes path location)"""
+        """ print doot version (includes path location) """
         print("Doot Version: %s", doot.__version__)
         print("lib @", os.path.dirname(os.path.abspath(__file__)))
 
-    def __init__(self, *, loaders:dict[str, Loader_i]=None, config_filenames:tuple=('doot.toml', 'pyproject.toml'), extra_config:dict|Tomler=None, args:list=None):
+    def __init__(self, *, loaders:dict[str, Loader_i]=None, config_filenames:tuple=('doot.toml', 'pyproject.toml'), extra_config:dict|Tomler=None, args:list=None, log_config:None|DootLogConfig=None):
         logging.debug("Initialising Overlord")
         self.args           = args or sys.argv[:]
         self.BIN_NAME       = self.args[0].split('/')[-1]
         self.loaders        = loaders or dict()
-
+        self.log_config     = log_config
 
         self.plugins     : None|Tomler = None
         self.cmds        : None|Tomler = None
@@ -111,26 +113,45 @@ class DootOverlord(Overlord_i):
         self.current_cmd : Command_i      = None
         self.taskers     : list[Tasker_i] = []
 
-        self.load_plugins(extra_config)
-        self.load_commands(extra_config)
-        self.load_taskers(extra_config)
-        self.parse_args()
+        self._load_plugins(extra_config)
+        self._load_commands(extra_config)
+        self._load_taskers(extra_config)
+        self._parse_args()
         logging.debug("Core Overlord Initialisation complete")
 
     @property
     def param_specs(self) -> list[DootParamSpec]:
         return [
-            self.make_param(name="version", prefix="--"),
-            self.make_param(name="help", prefix="--"),
-            self.make_param(name="verbose", prefix="--")
+           self.make_param(name="version" , prefix="--"),
+           self.make_param(name="help"    , prefix="--"),
+           self.make_param(name="verbose" , prefix="--"),
+           self.make_param(name="debug", prefix="--")
         ]
 
-    def load_plugins(self, extra_config:dict|Tomler=None):
+    @property
+    def help(self) -> str:
+        help_lines = ["", f"Doot v{doot.__version__}", ""]
+        help_lines += self._help
+
+        params = self.param_specs
+        if bool(params):
+            help_lines += ["", "Params:"]
+            help_lines += sorted(str(x) for x in self.param_specs)
+
+        help_lines.append("")
+        help_lines.append("Commands: ")
+        help_lines +=sorted(x.helpline for x in self.cmds.values())
+
+        return "\n".join(help_lines)
+
+    def _load_plugins(self, extra_config:dict|Tomler=None):
+        """ Use a plugin loader to find all applicable `importlib.EntryPoint`s  """
         self.plugin_loader    = self.loaders.get(plugin_loader_key, DootPluginLoader())
         self.plugin_loader.setup(extra_config)
         self.plugins : Tomler = self.plugin_loader.load()
 
-    def load_commands(self, extra_config):
+    def _load_commands(self, extra_config):
+        """ Select Commands from the discovered plugins """
         match (self.loaders.get(command_loader_key, None) or self.plugins.on_fail([], list).command_loader()):
             case []:
                 self.cmd_loader = DootCommandLoader()
@@ -155,7 +176,8 @@ class DootOverlord(Overlord_i):
         self.cmd_loader.setup(self.plugins, extra_config)
         self.cmds = self.cmd_loader.load()
 
-    def load_taskers(self, extra_config):
+    def _load_taskers(self, extra_config):
+        """ Load task entry points """
         match (self.loaders.get(task_loader_key, None) or self.plugins.on_fail([], list).task_loader()):
             case []:
                 self.task_loader = DootTaskLoader()
@@ -180,7 +202,8 @@ class DootOverlord(Overlord_i):
         self.task_loader.setup(self.plugins, extra_config)
         self.taskers = self.task_loader.load()
 
-    def parse_args(self, args=None):
+    def _parse_args(self, args=None):
+        """ use the found task and command arguments to make sense of sys.argv """
         match (self.loaders.get("parser", None) or self.plugins.on_fail([], list).parser()):
             case []:
                 self.parser = DootArgParser()
@@ -202,46 +225,9 @@ class DootOverlord(Overlord_i):
 
         doot.args = self.parser.parse(args or self.args, self.param_specs, self.cmds, self.taskers)
 
-    def __call__(self, cmd=None):
-        logging.debug("Overlord Calling: %s", cmd or doot.args.cmd.name)
-
-        # perform head args
-        if self._adjust_by_cli_args():
-            return
-
-        # do the command
-        target = (cmd
-            or doot.args.on_fail(None).cmd.name()
-            or doot.constants.default_cli_cmd)
-
-        self.current_cmd = self.cmds.get(target, None)
-        if self.current_cmd is None:
-            logging.error("Specified Command Couldn't be Found: %s", target)
-            return
-
-        self.current_cmd(self.taskers, self.plugins)
-
-    def _adjust_by_cli_args(self) -> bool:
-        if doot.args.head.args.verbose:
-            printer.info("TODO: increase verbosity")
-
-        if doot.args.head.args.version:
-            printer.info("\n\n----- Doot Version: %s\n\n", doot.__version__)
-
-        if doot.args.head.args.help:
-            printer.info("")
-            printer.info("TODO: Doot help")
-
-            printer.info("Available Commands: ")
-            cmd_names = sorted(x.helpline for x in self.cmds.values())
-            printer.info("%s", "\n".join(cmd_names))
-
-            return True
-
-        return False
-
-
     def shutdown(self):
+        """ Doot has finished normally, so report on what was done """
+
         defaulted_locs = doot.DootLocData.report_defaulted()
         defaulted_toml = tomler.Tomler.report_defaulted()
 
@@ -250,3 +236,55 @@ class DootOverlord(Overlord_i):
             f.write("\n".join(defaulted_toml) + "\n\n")
             f.write("[.directories]\n")
             f.write("\n".join(defaulted_locs))
+
+    def _cli_arg_response(self) -> bool:
+        """ Overlord specific cli arg responses. modify verbosity,
+          print version, and help.
+        """
+        if doot.args.head.args.verbose and self.log_config:
+            printer.info("Switching to Verbose Output")
+            self.log_config.set_level("NOTSET")
+            pass
+
+        logging.info("CLI Args: %s", doot.args._table())
+        logging.info("Plugins: %s", dict(self.plugins))
+        logging.info("Taskers: %s", self.taskers.keys())
+
+        if doot.args.head.args.version:
+            printer.info("\n\n----- Doot Version: %s\n\n", doot.__version__)
+            return True
+
+        if doot.args.head.args.help:
+            printer.info(self.help)
+
+            return True
+
+        return False
+
+    def __call__(self, cmd=None):
+
+        if not doot.args.on_fail((None,)).cmd.args.suppress_header():
+            printer.info("----------------------------------------------")
+            printer.info("-------------------- Doot --------------------")
+            printer.info("----------------------------------------------")
+
+        if doot.args.head.args.debug:
+            breakpoint()
+            pass
+
+        # perform head args
+        if self._cli_arg_response():
+            return
+
+        logging.debug("Overlord Calling: %s", cmd or doot.args.cmd.name)
+        # do the command
+        target = (cmd
+            or doot.args.on_fail(None).cmd.name()
+            or doot.constants.DEFAULT_CLI_CMD)
+
+        self.current_cmd = self.cmds.get(target, None)
+        if self.current_cmd is None:
+            logging.error("Specified Command Couldn't be Found: %s", target)
+            return
+
+        self.current_cmd(self.taskers, self.plugins)

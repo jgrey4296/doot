@@ -33,6 +33,7 @@ from weakref import ref
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
+printer = logmod.getLogger("doot._printer")
 
 import doot
 from doot._abstract.cmd import Command_i
@@ -47,9 +48,7 @@ class StepCmd(Command_i):
     doc_description = ""
     doc_usage       = "[TASK ...]"
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
 
-    def _execute(self, *args, **kwargs):
-        breakpoint()
-        super()._execute(*args, **kwargs)
+    def __call__(self, tasks:Tomler, plugins:Tomler):
+
+        pass

@@ -127,31 +127,6 @@ class DootPluginLoader(PluginLoader_i):
         logging.debug("Found %s plugins", len(self.plugins))
         return tomler.Tomler(self.plugins)
 
-    def _load_extra_plugins(self):
-        extra_eps    = self.extra_config.on_fail({}).plugins(wrapper=dict)
-        # load extra-config entry points
-        for k,v in extra_eps.items():
-            if k not in plugin_types:
-                logging.warning("Unknown plugin type found in extra config: %s", k)
-                continue
-            ep = EntryPoint(name=k, value=v, group=doot.constants.PLUGIN_TOML_PREFIX)
-            logging.debug("Adding Plugin: %s", ep)
-            self.plugins[k].append(ep)
-
-    def _load_from_toml(self):
-        # load config entry points
-        for cmd_group, vals in env_eps.items():
-            if cmd_group not in plugin_types:
-                logging.warning("Unknown plugin type found in config: %s", k)
-                continue
-            if not isinstance(vals, (tomler.Tomler, dict)):
-                logging.warning("Toml specified Plugins %s needs to be a dict of (cmdName : class) ", k)
-                continue
-
-            for name, cls in vals.items():
-                ep = EntryPoint(name=name, value=cls, group=cmd_group)
-                self.plugins[cmd_group].append(ep)
-
     def _load_system_plugins(self):
         if skip_plugin_search:
             pass
@@ -166,14 +141,38 @@ class DootPluginLoader(PluginLoader_i):
                 except Exception as err:
                     raise ResourceWarning(f"Plugin Failed to Load: {plugin_group} : {entry_point}") from err
 
+    def _load_from_toml(self):
+        # load config entry points
+        for cmd_group, vals in env_eps.items():
+            if cmd_group not in plugin_types:
+                logging.warning("Unknown plugin type found in config: %s", cmd_group)
+                continue
+            if not isinstance(vals, (tomler.Tomler, dict)):
+                logging.warning("Toml specified Plugins %s needs to be a dict of (cmdName : class) ", cmd_group)
+                continue
+
+            for name, cls in vals.items():
+                ep = EntryPoint(name=name, value=cls, group=cmd_group)
+                self.plugins[cmd_group].append(ep)
+
+    def _load_extra_plugins(self):
+        extra_eps    = self.extra_config.on_fail({}).plugins(wrapper=dict)
+        # load extra-config entry points
+        for k,v in extra_eps.items():
+            if k not in plugin_types:
+                logging.warning("Unknown plugin type found in extra config: %s", k)
+                continue
+            ep = EntryPoint(name=k, value=v, group=doot.constants.PLUGIN_TOML_PREFIX)
+            logging.debug("Adding Plugin: %s", ep)
+            self.plugins[k].append(ep)
+
     def _append_defaults(self):
         if skip_default_plugins:
             logging.info("Skipping Default Plugins")
             return
 
-
         self.plugins[cmd_loader_key].append(make_ep(cmd_loader_key, "doot.loaders.cmd_loader:DootCommandLoader", cmd_loader_key))
         self.plugins[task_loader_key].append(make_ep(task_loader_key, "doot.loaders.task_loader:DootTaskLoader", task_loader_key))
 
-        for group, vals in doot.constants.default_plugins.items():
+        for group, vals in doot.constants.DEFAULT_PLUGINS.items():
             self.plugins[group]  += [make_ep(x, y, group) for x,y in vals]

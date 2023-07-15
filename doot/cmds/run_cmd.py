@@ -76,6 +76,7 @@ class RunCmd(Command_i):
             ]
 
     def __call__(self, tasks:Tomler, plugins:Tomler):
+
         # TODO setup the dependency management system using correct plugins
         # plugins.runner(task, action, tracker, runner, databse, reporter)
 

@@ -183,6 +183,35 @@ class TestParamSpec(unittest.TestCase):
         assert(example == "test")
         assert(data['test'] == 4)
 
+    def test_positional(self):
+        example = DootParamSpec.from_dict({
+            "name" : "test",
+            "type" : list,
+            "default" : [1,2,3],
+            "positional" : True
+            })
+        assert(example.positional is True)
+
+    def test_invisible_str(self):
+        example = DootParamSpec.from_dict({
+            "name" : "test",
+            "type" : list,
+            "default" : [1,2,3],
+            "invisible" : True,
+            })
+        assert(str(example) == "")
+
+    def test_not_invisible_str(self):
+        example = DootParamSpec.from_dict({
+            "name" : "test",
+            "type" : list,
+            "default" : [1,2,3],
+            "invisible" : False,
+            })
+        assert(str(example) != "")
+
+
+
 class TestArgParser(unittest.TestCase):
     ##-- setup-teardown
 
@@ -273,7 +302,7 @@ class TestArgParser(unittest.TestCase):
             )
         assert(result.on_fail(False).head.name() == "doot")
         assert(result.on_fail(False).cmd.name() == "list")
-        assert(bool(result.on_fail(False).tasks.blah()))
+        assert("blah" in result.tasks)
 
     def test_cmd_then_complex_task(self):
         cmd_mock            = mock.MagicMock()
@@ -293,20 +322,20 @@ class TestArgParser(unittest.TestCase):
             )
         assert(result.on_fail(False).head.name() == "doot")
         assert(result.on_fail(False).cmd.name() == "list")
-        assert(bool(result.on_fail(False).tasks["blah::bloo.blee"]()))
+        assert( "blah::bloo.blee" in result.tasks)
 
     def test_task_args(self):
-        cmd_mock            = mock.MagicMock()
-        type(cmd_mock).param_specs = mock.PropertyMock(return_value=[
+        task_mock            = mock.MagicMock()
+        type(task_mock).param_specs = mock.PropertyMock(return_value=[
             DootParamSpec(name="all")
             ])
-        type(cmd_mock).name = mock.PropertyMock(return_value="list")
+        type(task_mock).name = mock.PropertyMock(return_value="list")
 
         parser = DootArgParser()
         result = parser.parse([
             "doot", "list", "-all"
                                ],
-            [], {}, {"list": cmd_mock}
+            [], {}, {"list": [{}, task_mock]}
             )
         assert(result.on_fail(False).head.name() == "doot")
         assert(result.on_fail(False).cmd.name() == "run")
@@ -314,17 +343,17 @@ class TestArgParser(unittest.TestCase):
         assert(result.on_fail(False).tasks.list.all() == True)
 
     def test_task_args_default(self):
-        cmd_mock            = mock.MagicMock()
-        type(cmd_mock).param_specs = mock.PropertyMock(return_value=[
+        task_mock            = mock.MagicMock()
+        type(task_mock).param_specs = mock.PropertyMock(return_value=[
             DootParamSpec(name="all")
             ])
-        type(cmd_mock).name = mock.PropertyMock(return_value="list")
+        type(task_mock).name = mock.PropertyMock(return_value="list")
 
         parser = DootArgParser()
         result = parser.parse([
             "doot", "list", # no "-all"
                                ],
-            [], {}, {"list": cmd_mock}
+            [], {}, {"list": [{}, task_mock]}
             )
         assert(result.on_fail(False).head.name() == "doot")
         assert(bool(result.on_fail(False).tasks.list()))
@@ -344,3 +373,71 @@ class TestArgParser(unittest.TestCase):
                          ],
                 [], {}, {"list": cmd_mock}
             )
+
+
+    def test_positional_cmd_arg(self):
+        cmd_mock            = mock.MagicMock()
+        type(cmd_mock).param_specs = mock.PropertyMock(return_value=[
+            DootParamSpec(name="test", type=str, positional=True)
+            ])
+        type(cmd_mock).name = mock.PropertyMock(return_value="example")
+
+        parser = DootArgParser()
+        result = parser.parse([
+            "doot", "example", "blah"
+                        ],
+            [], {"example": cmd_mock}, {},
+            )
+        assert(result.cmd.name == "example")
+        assert(result.cmd.args.test == "blah")
+
+    def test_positional_cmd_arg_seq(self):
+        cmd_mock            = mock.MagicMock()
+        type(cmd_mock).param_specs = mock.PropertyMock(return_value=[
+            DootParamSpec(name="first", type=str, positional=True),
+            DootParamSpec(name="second", type=str, positional=True)
+            ])
+        type(cmd_mock).name = mock.PropertyMock(return_value="example")
+
+        parser = DootArgParser()
+        result = parser.parse([
+            "doot", "example", "blah", "bloo"
+                        ],
+            [], {"example": cmd_mock}, {}
+            )
+        assert(result.cmd.args.first == "blah")
+        assert(result.cmd.args.second == "bloo")
+
+
+    def test_positional_task_arg(self):
+        task_mock            = mock.MagicMock()
+        type(task_mock).param_specs = mock.PropertyMock(return_value=[
+            DootParamSpec(name="test", type=str, positional=True, default="")
+                                                        ])
+        type(task_mock).name = mock.PropertyMock(return_value="example")
+
+        parser = DootArgParser()
+        result = parser.parse([
+            "doot", "example", "blah"
+                        ],
+            [], {}, {"example": [{}, task_mock]}
+            )
+        assert("example" in result.tasks)
+        assert(result.tasks.example.test == "blah")
+
+    def test_positional_taskarg_seq(self):
+        task_mock            = mock.MagicMock()
+        type(task_mock).param_specs = mock.PropertyMock(return_value=[
+            DootParamSpec(name="first", type=str, positional=True),
+            DootParamSpec(name="second", type=str, positional=True)
+            ])
+        type(task_mock).name = mock.PropertyMock(return_value="example")
+
+        parser = DootArgParser()
+        result = parser.parse([
+            "doot", "example", "blah", "bloo"
+                        ],
+            [], {}, {"example": [{}, task_mock]},
+            )
+        assert(result.tasks.example.first == "blah")
+        assert(result.tasks.example.second == "bloo")

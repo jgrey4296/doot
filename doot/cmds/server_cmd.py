@@ -29,7 +29,7 @@ from weakref import ref
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
+printer = logmod.getLogger("doot._printer")
 from flask import Flask, request
 import doot
 from doot._abstract.cmd import Command_i
@@ -52,8 +52,9 @@ class BasicServer(Command_i):
         super().__init__(*args, **kwargs)
 
 
-    def _execute(self, pos_args=None):
-        app.run(port=8000, debug=True, ssl_context="adhoc")
+    def __call__(self, tasks:Tomler, plugins:Tomler):
+        pass
+        # app.run(port=8000, debug=True, ssl_context="adhoc")
 
 @app.route('/', methods=["GET", "POST"])
 def index():

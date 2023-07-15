@@ -17,15 +17,20 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Global, single points of truth:
-__version__ : Final         = "0.2.0"
-config      : tomler.Tomler = None # doot config
-locs        : DootLocData   = None # registered locations
-args        : tomler.Tomler = None # parsed arg access
-
+__version__          : Final         = "0.2.0"
+config               : tomler.Tomler = None # doot config
+locs                 : DootLocData   = None # registered locations
+args                 : tomler.Tomler = None # parsed arg access
+report               : Reporter_i    = None
+_configs_loaded_from : list[pl.Path] = []
 
 def setup(targets=None, prefix=None) -> tupl[Tomler, DootLocData]:
-    global config, locs
-    targets = targets or constants.default_load_targets
+    """
+      The core requirement to call before any other doot code is run.
+      loads the config files, so everything else can retrieve values when imported.
+    """
+    global config, locs, _configs_loaded_from
+    targets = targets or constants.DEFAULT_LOAD_TARGETS
     logging.debug("Loading Doot Config, version: %s targets: %s", __version__, targets)
     if config is not None:
         raise Exception("Setup called even though doot is already set up")
@@ -36,8 +41,9 @@ def setup(targets=None, prefix=None) -> tupl[Tomler, DootLocData]:
     if not any([x.exists() for x in targets]):
         raise FileNotFoundError("No Doot data found")
 
-    existing_targets = [x for x in targets if x.exists()]
-    config, locs = setup_agnostic(*existing_targets)
+    existing_targets     = [x for x in targets if x.exists()]
+    config, locs         = setup_agnostic(*existing_targets)
+    _configs_loaded_from = existing_targets
 
     if prefix is None:
         return config, locs

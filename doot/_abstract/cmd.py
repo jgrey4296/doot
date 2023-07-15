@@ -7,9 +7,9 @@ from collections import defaultdict
 import textwrap
 ##-- end imports
 
-from doot._abstract.parser import DootParamSpec
+from doot._abstract.parser import ParamSpecMaker_mixin
 
-class Command_i:
+class Command_i(ParamSpecMaker_mixin):
     """
     holds command information and performs it
     """
@@ -17,10 +17,7 @@ class Command_i:
     _name : None|str       = None # if not specified uses the class name
     _help : None|list[str] = None
 
-    @staticmethod
-    def make_param(*args, **kwargs) -> DootParamSpec:
-        return DootParamSpec(*args, **kwargs)
-
+    _version : str      = "0.1"
     def __init__(self, name=None):
         self._name = name
 
@@ -31,21 +28,22 @@ class Command_i:
 
     @property
     def help(self) -> str:
-        help_lines = ["", f"Command: {self.name}", ""]
+        help_lines = ["", f"Command: {self.name} v{self._version}", ""]
         help_lines += self._help
 
         params = self.param_specs
         if bool(params):
             help_lines += ["", "Params:"]
-            help_lines += sorted(str(x) for x in self.param_specs)
+            help_lines += filter(bool, (str(x) for x in self.param_specs))
 
         return "\n".join(help_lines)
 
     @property
     def helpline(self) -> str:
+        """ get just the first line of the help text """
         if not bool(self._help):
-            return f" {self.name: <10} :"
-        return f" {self.name: <10} : {self._help[0]}"
+            return f" {self.name: <10} v{self._version:>5} :"
+        return f" {self.name: <10} v{self._version:>5} : {self._help[0]}"
 
     @property
     def param_specs(self) -> list:
@@ -53,8 +51,9 @@ class Command_i:
         Provide parameter specs for parsing into doot.args.cmd
         """
         return [
-            self.make_param(name="help", default=False, prefix="--")
-            ]
+           self.make_param(name="help", default=False, prefix="--", invisible=True),
+           self.make_param(name="debug", default=False, prefix="--", invisible=True)
+           ]
 
     def __call__(self, taskers:Tomler, plugins:Tomler):
         raise NotImplementedError()

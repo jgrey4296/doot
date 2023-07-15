@@ -26,50 +26,31 @@ if TYPE_CHECKING:
     pass
 ##-- end imports
 
-##-- logging
 logging         = logmod.root
 printer         = logmod.getLogger("doot._printer")
-
-logging.setLevel(logmod.NOTSET)
-file_handler    = logmod.FileHandler(pl.Path() / "log.doot", mode='w')
-file_handler.setFormatter(logmod.Formatter("{levelname} : INIT : {message}", style="{"))
-
-stream_handler = logmod.StreamHandler(stdout)
-stream_handler.setLevel(logmod.WARNING)
-stream_handler.setFormatter(logmod.Formatter("{levelname}  : INIT : {message}", style="{"))
-
-logging.addHandler(file_handler)
-logging.addHandler(stream_handler)
-
-printer.propagate = False
-print_handler = logmod.StreamHandler(stdout)
-print_handler.setFormatter(logmod.Formatter("{message}", style="{"))
-printer.setLevel(logmod.NOTSET)
-printer.addHandler(print_handler)
-printer.addHandler(file_handler)
-##-- end logging
 
 import stackprinter
 import tomler
 import doot
+from doot.utils.log_config import DootLogConfig
 
 def main():
     result  = 1
     errored = False
     try:
+        log_config = DootLogConfig()
         # --- Setup
         if doot.config is None:
             doot.setup()
 
-        setup_logging(doot.config)
-        printer.info("----------------------------------------------")
-        printer.info("-------------------- Doot --------------------")
-        printer.info("----------------------------------------------")
+        log_config.setup()
+
         logging.info("Called with: %s", sys.argv)
         from doot.loaders.plugin_loader import DootPluginLoader
         from doot.control.overlord import DootOverlord
         overlord  = DootOverlord(loaders={"plugin": DootPluginLoader().setup(sys.argv[:]) },
-                                 config_filenames=[doot.constants.default_load_targets],
+                                 config_filenames=[doot.constants.DEFAULT_LOAD_TARGETS],
+                                 log_config=log_config,
                                  args=sys.argv[:])
 
         # --- Do whatever thats been triggered
@@ -77,17 +58,17 @@ def main():
         overlord.shutdown()
 
     except FileNotFoundError: # --- Handle missing files
-        if not doot.constants.default_load_targets[0].exists():
+        if not doot.constants.DEFAULT_LOAD_TARGETS[0].exists():
             if input("No toml config data found, create stub doot.toml? _/n ") != "n":
-                doot.constants.default_load_targets[0].write_text(doot.constants.toml_template.read_text())
+                doot.constants.DEFAULT_LOAD_TARGETS[0].write_text(doot.constants.TOML_TEMPLATE.read_text())
                 logging.info("Stubbed")
     except Exception as err: # --- Handle general errors
         errored = True
         logging.error(stackprinter.format())
         logging.error("Error: %s", err)
     finally: # --- final shutdown
-        announce_exit = doot.constants.announce_exit
-        announce_voice = doot.constants.announce_voice
+        announce_exit : bool = doot.constants.ANNOUNCE_EXIT
+        announce_voice : str = doot.constants.ANNOUNCE_VOICE
         if doot.config is not None:
             say_on_exit = doot.config.on_fail(announce_exit, bool|str).notify.say_on_exit()
             voice       = doot.config.on_fail(announce_voice, str).notify.voice()
@@ -105,28 +86,6 @@ def main():
             cmd.execute()
 
         sys.exit(result)
-
-
-def setup_logging(config:Tomler):
-    global file_handler, stream_handler, printer
-    from doot.utils.log_filter import DootAnyFilter
-    file_log_level    = config.on_fail("DEBUG", str|int).logging.file.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
-    file_log_format   = config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str).logging.file.format()
-    file_filter_names = config.on_fail([], list).logging.file.filters()
-
-    file_handler.setLevel(file_log_level)
-    file_handler.setFormatter(logmod.Formatter(file_log_format, style="{"))
-    if bool(file_filter_names):
-        file_handler.addFilter(DootAnyFilter(file_filter_names))
-
-    stream_log_level    = config.on_fail("DEBUG", str|int).logging.stream.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
-    stream_log_format   = config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str).logging.stream.format()
-    stream_filter_names = config.on_fail([], list).logging.stream.filters()
-
-    stream_handler.setLevel(stream_log_level)
-    stream_handler.setFormatter(logmod.Formatter(stream_log_format, style="{"))
-    if bool(stream_filter_names):
-        stream_handler.addFilter(DootAnyFilter(stream_filter_names))
 
 
 ##-- ifmain

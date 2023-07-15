@@ -47,22 +47,20 @@ class ListCmd(Command_i):
     @property
     def param_specs(self) -> list:
         return super().param_specs + [
-            self.make_param(name="all", default=True),
-            self.make_param(name="dependencies", default=False),
-            self.make_param(name="target", type=str, default=""),
+            self.make_param(name="all", default=False, desc="List all loaded tasks, by group"),
+            self.make_param(name="by-source", default=False, desc="List all loaded tasks, by source file"),
+            self.make_param(name="dependencies", default=False, desc="List task dependencies"),
+            self.make_param(name="target", type=str, default="", positional=True, desc="List tasks with a basic string pattern in the name")
             ]
-
-
 
     def __call__(self, tasks, plugins):
         """List task generators"""
         logging.debug("Starting to List Taskers/Tasks")
 
-        if doot.args.cmd.args.help:
-            printer.info(self.help)
-            return
-
-        if doot.args.cmd.args.target == "" and not doot.args.cmd.args.all:
+        if (doot.args.cmd.args.target == ""
+            and not doot.args.tasks
+            and not doot.args.cmd.args.by_source
+            and not doot.args.cmd.args.all):
             raise ValueError("ListCmd Needs a target, or all")
 
         # load reporter
@@ -73,20 +71,52 @@ class ListCmd(Command_i):
             printer.info("No Tasks Defined")
             return
 
+
         if doot.args.cmd.args.all: # print all tasks
+            self._print_all_by_group(tasks)
+            return
 
-            printer.info("Defined Task Generators:")
-            for key, (desc, cls) in tasks.items():
-                logging.info("%s (%s) : %s", key, cls, desc)
-
+        if doot.args.cmd.args.by_source:
+            self._print_all_by_source(tasks)
             return
 
         # print specific tasks
-        assert(doot.args.cmd.args.target != "")
+        if doot.args.cmd.args.target != "":
+            self._print_matches(tasks)
+
+    def _print_matches(self, tasks):
+        max_key = len(max(tasks.keys(), key=len))
+        fmt_str = f"%-{max_key}s :: %s.%-25s <%s>"
         target = doot.args.cmd.args.target
         matches = {x for x in tasks.keys() if target.lower() in x.lower()}
         printer.info("Tasks for Target: %s", target)
-        for x in matches:
-            (desc, cls) = tasks[x]
-            printer.info("%s (%s) : %s", x, cls, desc)
-        return
+        for key in matches:
+            (desc, cls) = tasks[key]
+            printer.info(fmt_str, key, cls.__module__, cls.__name__, desc['source'])
+
+
+    def _print_all_by_group(self, tasks):
+        printer.info("Defined Task Generators by Group:")
+        max_key = len(max(tasks.keys(), key=len))
+        fmt_str = f"    %-{max_key}s :: %s.%-25s <%s>"
+        groups = defaultdict(list)
+        for key, (desc, cls) in tasks.items():
+            groups[desc['group']].append((fmt_str, key, cls.__module__, cls.__name__, desc['source']))
+
+        for group, tasks in groups.items():
+            printer.info("::%s::", group)
+            for task in tasks:
+                printer.info(*task)
+
+    def _print_all_by_source(self, tasks):
+        printer.info("Defined Task Generators by Source File:")
+        max_key = len(max(tasks.keys(), key=len))
+        fmt_str = f"    %-{max_key}s :: %s.%-25s <%s>"
+        groups = defaultdict(list)
+        for key, (desc, cls) in tasks.items():
+            groups[desc['source']].append((fmt_str, key, cls.__module__, cls.__name__, desc['source']))
+
+        for group, tasks in groups.items():
+            printer.info("::%s::", group)
+            for task in tasks:
+                printer.info(*task)

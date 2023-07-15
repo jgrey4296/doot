@@ -32,7 +32,7 @@ logging = logmod.getLogger(__name__)
 
 from tomler import Tomler
 from doot._abstract.control import TaskOrdering_i
-from doot._abstract.parser import DootParamSpec
+from doot._abstract.parser import ParamSpecMaker_mixin
 
 class StubTaskPartSpec:
     "Describes a single part of a stub task in toml"
@@ -51,19 +51,17 @@ class StubTaskSpec:
     def to_toml(self):
         raise NotImplementedError()
 
-class Tasker_i(TaskOrdering_i):
+class Tasker_i(TaskOrdering_i, ParamSpecMaker_mixin):
     """
     builds task descriptions
     """
     task_type : Task_i
+    _version  : str = "0.1"
+    _help     : list[str] = []
 
     @classmethod
     def _make_task(cls, *arg, **kwargs):
         return cls.task_type(*arg, **kwargs)
-
-    @staticmethod
-    def make_param(*args, **kwargs) -> DootParamSpec:
-        return DootParamSpec(*args, **kwargs)
 
     def __init__(self, spec:dict|Tomler, locs:DootLocData=None):
         assert(locs is not None or locs is False), locs
@@ -109,11 +107,27 @@ class Tasker_i(TaskOrdering_i):
         except AttributeError:
             return ":: "
 
+
+    @classmethod
     @property
-    def param_specs(self) -> list[parser.DootParamSpec]:
+    def help(cls) -> str:
+        """ Tasker *class* help. """
+        help_lines = [f"Tasker : {cls.__qualname__} v{cls._version}", ""]
+        help_lines += cls._help
+
+        params = cls.param_specs
+        if bool([x for x in params if not x.invisible]):
+            help_lines += ["", "Params:"]
+            help_lines += [str(x) for x in cls.param_specs if not x.invisible]
+
+        return "\n".join(help_lines)
+    @classmethod
+    @property
+    def param_specs(cls) -> list[parser.DootParamSpec]:
         return [
-            self.make_param(name="help", default=False)
-            ]
+           cls.make_param(name="help", default=False, invisible=True),
+           cls.make_param(name="debug", default=False, invisible=True)
+           ]
 
     def default_task(self) -> dict:
         raise NotImplementedError()

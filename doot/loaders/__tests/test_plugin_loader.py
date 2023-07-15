@@ -33,5 +33,5 @@ class TestPluginLoader:
         basic.setup()
         loaded = basic.load()
 
-        for key in {"command_loader", "task_loader", 'command', "reporter", "database", "tracker", "runner", "parser", "action", "task"}:
-            assert(key in loaded)
+        for key in (doot.constants.FRONTEND_PLUGIN_TYPES + doot.constants.BACKEND_PLUGIN_TYPES):
+            assert(key in loaded), f"{key} missing"
