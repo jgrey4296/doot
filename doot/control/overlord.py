@@ -65,7 +65,7 @@ import doot.constants
 from doot._abstract.overlord import Overlord_i
 from doot._abstract.loader import CommandLoader_i, TaskLoader_i
 from doot._abstract.tasker import Tasker_i
-from doot._abstract.parser import ArgParser_i, DootParamSpec
+from doot._abstract.parser import ArgParser_i
 from doot._abstract.task import Task_i
 from doot._abstract.cmd import Command_i
 
@@ -125,7 +125,7 @@ class DootOverlord(Overlord_i):
            self.make_param(name="version" , prefix="--"),
            self.make_param(name="help"    , prefix="--"),
            self.make_param(name="verbose" , prefix="--"),
-           self.make_param(name="debug", prefix="--")
+           self.make_param(name="debug",    prefix="--")
         ]
 
     @property
@@ -140,7 +140,7 @@ class DootOverlord(Overlord_i):
 
         help_lines.append("")
         help_lines.append("Commands: ")
-        help_lines +=sorted(x.helpline for x in self.cmds.values())
+        help_lines += sorted(x.helpline for x in self.cmds.values())
 
         return "\n".join(help_lines)
 
@@ -225,18 +225,6 @@ class DootOverlord(Overlord_i):
 
         doot.args = self.parser.parse(args or self.args, self.param_specs, self.cmds, self.taskers)
 
-    def shutdown(self):
-        """ Doot has finished normally, so report on what was done """
-
-        defaulted_locs = doot.DootLocData.report_defaulted()
-        defaulted_toml = tomler.Tomler.report_defaulted()
-
-        with open(defaulted_file, 'w') as f:
-            f.write("# default values used:\n")
-            f.write("\n".join(defaulted_toml) + "\n\n")
-            f.write("[.directories]\n")
-            f.write("\n".join(defaulted_locs))
-
     def _cli_arg_response(self) -> bool:
         """ Overlord specific cli arg responses. modify verbosity,
           print version, and help.
@@ -276,15 +264,27 @@ class DootOverlord(Overlord_i):
         if self._cli_arg_response():
             return
 
-        logging.debug("Overlord Calling: %s", cmd or doot.args.cmd.name)
         # do the command
         target = (cmd
             or doot.args.on_fail(None).cmd.name()
             or doot.constants.DEFAULT_CLI_CMD)
 
+        logging.info("Overlord Calling: %s", cmd or doot.args.cmd.name)
         self.current_cmd = self.cmds.get(target, None)
         if self.current_cmd is None:
             logging.error("Specified Command Couldn't be Found: %s", target)
             return
 
         self.current_cmd(self.taskers, self.plugins)
+
+    def shutdown(self):
+        """ Doot has finished normally, so report on what was done """
+        logging.info("Shutting Doot Down Normally, reporting defaulted tomler values")
+        defaulted_locs = doot.DootLocData.report_defaulted()
+        defaulted_toml = tomler.Tomler.report_defaulted()
+
+        with open(defaulted_file, 'w') as f:
+            f.write("# default values used:\n")
+            f.write("\n".join(defaulted_toml) + "\n\n")
+            f.write("[.directories]\n")
+            f.write("\n".join(defaulted_locs))

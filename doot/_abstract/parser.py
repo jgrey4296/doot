@@ -30,7 +30,8 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-PAD : Final[int] = 15
+from doot.structs import DootParamSpec
+
 
 @dataclass
 class _RegexEqual(str):
@@ -44,126 +45,6 @@ class _RegexEqual(str):
 
     def __getitem__(self, group):
         return self.match[group]
-
-@dataclass
-class DootParamSpec:
-    """ Describes a command line parameter to use in the parser """
-    name        : str      = field()
-    type        : callable = field(default=bool)
-
-    prefix      : str      = field(default="-")
-
-    default     : Any      = field(default=False)
-    desc        : str      = field(default="An undescribed parameter")
-    constraints : list     = field(default_factory=list)
-    invisible   : bool     = field(default=False)
-    positional  : bool     = field(default=False)
-    _short       : None|str = field(default=None)
-
-    @classmethod
-    def from_dict(cls, data:dict) -> DootParamSpec:
-        return cls(**data)
-
-    @property
-    def short(self):
-        if self.positional:
-            return self.name
-
-        if self._short:
-            return self._short
-
-        return self.name[0]
-
-    @property
-    def inverse(self):
-        return f"no-{self.name}"
-
-    @property
-    def repeatable(self):
-        return self.type == list and not self.positonal
-
-    def _split_name_from_value(self, val):
-        match self.positional:
-            case False:
-                return val.removeprefix(self.prefix).split("=")
-            case True:
-                return (self.name, val)
-
-    def __eq__(self, val) -> bool:
-        match val, self.positional:
-            case DootParamSpec(), _:
-                return val is self
-            case str(), False:
-                [head, *_] = self._split_name_from_value(val)
-                return head == self.name or head == self.short or head == self.inverse
-            case str(), True:
-                return True
-
-    def __str__(self):
-        if self.invisible:
-            return ""
-
-        if self.positional:
-            parts = [self.name]
-        else:
-            parts = [f"{self.prefix}[{self.name[0]}]{self.name[1:]}"]
-
-        parts.append(" " * (PAD-len(parts[0])))
-        match self.type:
-            case type() if self.type == bool:
-                parts.append(f"{'(bool)': <10}:")
-            case str() if bool(self.default):
-                parts.append(f"{'(str)': <10}:")
-            case str():
-                parts.append(f"{'(str)': <10}:")
-
-        parts.append(f"{self.desc:<30}")
-        match self.default:
-            case None:
-                pass
-            case str():
-                parts.append(f': Defaults to: "{self.default}"')
-            case _:
-                parts.append(f": Defaults to: {self.default}")
-
-        if self.constraints:
-            parts.append(": Constrained to: {self.constraints}")
-        return " ".join(parts)
-
-    def __repr__(self):
-        if self.positional:
-            return f"<ParamSpec: {self.name}>"
-        return f"<ParamSpec: {self.prefix}{self.name}>"
-
-    def add_value(self, data, val):
-        """ if the given value is suitable, add it into the given data """
-        [head, *rest] = self._split_name_from_value(val)
-        logging.debug("Matching: %s : %s : %s", self.type.__name__, head, rest)
-        match self.type.__name__:
-            ##-- handle bools and inversion
-            case "bool" if bool(rest):
-                raise TypeError("Bool Arguments shouldn't have values", self, val)
-            case "bool" if head == self.inverse:
-                data[self.name] = False
-            case "bool":
-                data[self.name] = True
-            ##-- end handle bools and inversion
-            case _ if not bool(rest):
-                raise TypeError("non-Bool Arguments should have values", val)
-            case "list":
-                if self.name not in data:
-                    data[self.name] = []
-                data[self.name] += rest[0].split(",")
-            case "set":
-                if self.name not in data:
-                    data[self.name] = set()
-                data[self.name].update(rest[0].split(","))
-            case _ if data.get(self.name, self.default) != self.default:
-                raise Exception("Trying to re-set an arg already set", val)
-            case _ if len(rest) == 1:
-                data[self.name] = self.type(rest[0])
-            case _:
-                raise Exception("Can't understand value type", val)
 
 class ParamSpecMaker_mixin:
 

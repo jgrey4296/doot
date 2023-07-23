@@ -34,23 +34,6 @@ from tomler import Tomler
 from doot._abstract.control import TaskOrdering_i
 from doot._abstract.parser import ParamSpecMaker_mixin
 
-class StubTaskPartSpec:
-    "Describes a single part of a stub task in toml"
-    key     : str
-    type    : str
-
-    default : str
-    help    : str
-
-class StubTaskSpec:
-    "Stub Task Spec for description in toml"
-    name   : str
-    tasker : str
-    parts  : list[StubTaskPartSpec]
-
-    def to_toml(self):
-        raise NotImplementedError()
-
 class Tasker_i(TaskOrdering_i, ParamSpecMaker_mixin):
     """
     builds task descriptions
@@ -150,7 +133,7 @@ class Tasker_i(TaskOrdering_i, ParamSpecMaker_mixin):
     def build(self, **kwargs) -> GeneratorType:
         raise NotImplementedError()
 
-    def stub_spec(self) -> StubTaskSpec:
+    def stub_spec(self) -> DootTaskStub:
         """
         Return a list of StubSpec's
         to describe how this tasker is specified in toml

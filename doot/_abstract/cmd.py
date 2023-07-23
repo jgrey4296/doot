@@ -33,8 +33,11 @@ class Command_i(ParamSpecMaker_mixin):
 
         params = self.param_specs
         if bool(params):
+            key_func = params[0].key_func
             help_lines += ["", "Params:"]
-            help_lines += filter(bool, (str(x) for x in self.param_specs))
+            help_lines += map(str, sorted(filter(lambda x: not x.invisible,
+                                            self.param_specs),
+                                    key=key_func))
 
         return "\n".join(help_lines)
 

@@ -31,18 +31,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from collections import deque
-
-class TaskStateEnum(enum.Enum):
-    SUCCESS         = enum.auto()
-    FAILURE         = enum.auto()
-    WAIT            = enum.auto()
-    READY           = enum.auto()
-    INIT            = enum.auto()
-    TEARDOWN        = enum.auto()
-    DEFINED         = enum.auto()
-    DECLARED        = enum.auto()
-    ARTIFACT        = enum.auto()
-    EXISTS          = enum.auto()
+from doot.enums import TaskStateEnum
 
 class TaskOrdering_i:
 

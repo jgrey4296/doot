@@ -60,10 +60,13 @@ printer = logmod.getLogger("doot._printer")
 
 import doot
 from doot._abstract.cmd import Command_i
-from doot._abstract.parser import DootParamSpec
 
 
 class DaemonCmd(Command_i):
+
+    @property
+    def param_specs(self) -> list:
+        return super().param_specs + []
 
     def __call__(self, tasks, plugins):
         pass

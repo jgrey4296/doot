@@ -59,7 +59,6 @@ logging = logmod.getLogger(__name__)
 
 import doot
 from doot._abstract.cmd import Command_i
-from doot._abstract.parser import DootParamSpec
 from collections import defaultdict
 
 printer = logmod.getLogger("doot._printer")
@@ -70,16 +69,15 @@ class RunCmd(Command_i):
 
     @property
     def param_specs(self) -> list:
-        return [
-            DootParamSpec(name="target", type=str, default=""),
-            DootParamSpec(name="step"),
+        return super().param_specs + [
+            self.make_param(name="target", type=str, default=""),
+            self.make_param(name="step", default=False),
+            self.make_param(name="dry-run", default=False),
+            self.make_param
             ]
 
     def __call__(self, tasks:Tomler, plugins:Tomler):
-
-        # TODO setup the dependency management system using correct plugins
-        # plugins.runner(task, action, tracker, runner, databse, reporter)
-
+        raise NotImplementedError("Run Command")
         tracker = plugins.tracker[0].load()()
         for task in tasks.values():
             tracker.add_task(task)

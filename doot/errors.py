@@ -17,7 +17,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class DootError:
+class DootError(Exception):
     pass
 
 class DootTaskError(DootError):
@@ -32,8 +32,14 @@ class DootParseError(DootError):
 class DootInvalidConfig(DootError):
     pass
 
-class DootDirAbsent(AttributeError):
+class DootDirAbsent(DootError):
     pass
 
-class DootPluginError(ResourceWarning):
+class DootPluginError(DootError):
+    pass
+
+class DootCommandError(DootError):
+    pass
+
+class DootConfigError(DootError):
     pass

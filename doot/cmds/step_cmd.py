@@ -37,7 +37,6 @@ printer = logmod.getLogger("doot._printer")
 
 import doot
 from doot._abstract.cmd import Command_i
-from doot._abstract.parser import DootParamSpec
 
 class StepCmd(Command_i):
     """
@@ -47,6 +46,10 @@ class StepCmd(Command_i):
     doc_purpose     = "Enter breakpoint just before execution of task"
     doc_description = ""
     doc_usage       = "[TASK ...]"
+
+    @property
+    def param_specs(self) -> list:
+        return super().param_specs + []
 
 
     def __call__(self, tasks:Tomler, plugins:Tomler):

@@ -31,10 +31,16 @@ logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
+
 import doot
+import doot.constants
 from doot._abstract.cmd import Command_i
-from doot._abstract.parser import DootParamSpec
 from collections import defaultdict
+
+##-- data
+data_path = doot.constants.TOML_TEMPLATE
+##-- end data
+
 
 class StubCmd(Command_i):
     """ Called to interactively create a stub task definition
@@ -46,26 +52,56 @@ class StubCmd(Command_i):
     @property
     def param_specs(self) -> list:
         return super().param_specs + [
-            self.make_param("name", type=str, default="stub", desc="The Name of the new task"),
-            self.make_param("type", type=str, default="basic", desc="the short type name of the task generator"),
-            self.make_param("class", type=str, default="", desc="full class import name of the task generator"),
+            self.make_param("file-target", type=str,     default=""),
+            self.make_param("class",       type=str,     default="",        desc="Full class import name of the task generator"),
+            self.make_param("Config",                    default=False,     desc="Sub a doot.toml",                  prefix="--"),
+            self.make_param("Types",                     default=False,     desc="List the types of task available", prefix="--"),
             self.make_param("group", type=str, default="stubbed"),
-            self.make_param("file-target", type=str, default=""),
-            self.make_param("suppress-header", default=True, invisible=True)
+            self.make_param("name",        type=str,     default="stub",    desc="The Name of the new task",                   positional=True),
+            self.make_param("group",       type=str,     default="stubbed", desc="The group the stubbed task will be part of", positional=True),
+            self.make_param("type",        type=str,     default="basic",   desc="The short type name of the task generator",  positional=True),
+            self.make_param("suppress-header",           default=True, invisible=True)
             ]
 
     def __call__(self, tasks:Tomler, plugins:Tomler):
+        match dict(doot.args.cmd.args):
+            case {"Types": True}:
+                self._print_types(plugins)
+            case {"Config": True}:
+                self._stub_doot_toml()
+            case _:
+                self._stub_task_toml(tasks, plugins)
 
+    def _print_types(self, plugins):
+        printer.info("Available Tasker Types:")
+        for type in set(map(lambda x: x.name, plugins.tasker)):
+            printer.info(f"- {type}")
+
+    def _stub_doot_toml(self):
+        logging.info("Building Doot Toml Stub")
+        doot_toml = pl.Path("doot.toml")
+        if doot_toml.exists():
+            logging.error("Can't stub doot.toml, it already exists")
+            return
+
+        data_text = data_path.read_text()
+        with open(task_file, "a") as f:
+            f.write(data_text)
+
+        printer.info("doot.toml stubbed")
+
+    def _stub_task_toml(self, tasks, plugins):
+        logging.info("Building Task Toml Stub")
         task_type, task_class = None, None
         match dict(doot.args.cmd.args):
-            case { "type": x, "class": "" } if x in set(map(lambda x: x.name, plugins.tasker)):
+            case { "class": x } if bool(x):
+                task_class = x
+            case { "type": x } if x in set(map(lambda x: x.name, plugins.tasker)):
                 task_type = x
             case { "type": x, "class": "" }:
-                raise TypeError("Task 'type' needs to be one of: ", set(map(lambda x: x.name, plugins.tasker)))
-            case { "type": "", "class": x } if x != "":
-                task_class = x
+                raise doot.errors.DootParseError("Bad Task 'type': \"%s\". Should be one of: %s", x, set(map(lambda x: x.name, plugins.tasker)))
             case _:
-                raise TypeError("Task must have a type or class")
+                raise doot.errors.DootParseError("Task must have a type or class\n %s", dict(doot.args.cmd.args))
 
         stub_name = doot.args.cmd.args.name
         while stub_name in tasks:
@@ -75,7 +111,6 @@ class StubCmd(Command_i):
                             doot.args.cmd.args.group,
                             conflict,
                             stub_name)
-
         # Create stub toml
         stubbed = []
         stubbed.append(f"[[tasks.{doot.args.cmd.args.group}]] # TODO ")
@@ -91,7 +126,6 @@ class StubCmd(Command_i):
             printer.info("\n".join(stubbed))
             return
 
-
         task_file = pl.Path(doot.args.cmd.args.file_target)
         if task_file.is_dir():
             task_file /= "stub_tasks.toml"
@@ -99,8 +133,3 @@ class StubCmd(Command_i):
         with open(task_file, "a") as f:
             f.write("\n")
             f.write("\n".join(stubbed))
-
-
-class StubConfigCmd(Command_i):
-    """ Called to stub a doot.toml """
-    pass

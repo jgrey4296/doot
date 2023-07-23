@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-##-- imports
+##-- std imports
 from __future__ import annotations
 
 import logging as logmod
 import pathlib as pl
 from importlib import resources
+##-- end std imports
 
 from doot import constants
 from doot.control.locations import DootLocData
 from doot.utils.task_namer import task_namer as namer
+import doot.errors
 import tomler
-##-- end imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -39,7 +40,7 @@ def setup(targets=None, prefix=None) -> tupl[Tomler, DootLocData]:
         raise TypeError("Doot Config Targets should be pathlib.Path's")
 
     if not any([x.exists() for x in targets]):
-        raise FileNotFoundError("No Doot data found")
+        raise doot.errors.DootConfigError("No Doot data found")
 
     existing_targets     = [x for x in targets if x.exists()]
     config, locs         = setup_agnostic(*existing_targets)

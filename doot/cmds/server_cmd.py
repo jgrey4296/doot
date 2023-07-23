@@ -33,7 +33,6 @@ printer = logmod.getLogger("doot._printer")
 from flask import Flask, request
 import doot
 from doot._abstract.cmd import Command_i
-from doot._abstract.parser import DootParamSpec
 
 app = Flask("basic")
 
@@ -51,6 +50,9 @@ class BasicServer(Command_i):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    @property
+    def param_specs(self) -> list:
+        return super().param_specs + []
 
     def __call__(self, tasks:Tomler, plugins:Tomler):
         pass

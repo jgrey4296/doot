@@ -47,21 +47,23 @@ class ListCmd(Command_i):
     @property
     def param_specs(self) -> list:
         return super().param_specs + [
-            self.make_param(name="all", default=False, desc="List all loaded tasks, by group"),
-            self.make_param(name="by-source", default=False, desc="List all loaded tasks, by source file"),
-            self.make_param(name="dependencies", default=False, desc="List task dependencies"),
-            self.make_param(name="target", type=str, default="", positional=True, desc="List tasks with a basic string pattern in the name")
+            self.make_param(name="all",                     default=True,                   desc="List all loaded tasks, by group"),
+            self.make_param(name="dependencies",            default=False,                  desc="List task dependencies",                 prefix="--"),
+            self.make_param(name="dag",    _short="D",      default=False,                  desc="Output a DOT compatible graph of tasks", prefix="--"),
+            self.make_param(name="groups", type=bool,       default=False,                  desc="List just the groups tasks fall into",   prefix="--"),
+            self.make_param(name="by-source",               default=False,                  desc="List all loaded tasks, by source file",  prefix="--"),
+            self.make_param(name="pattern", type=str,       default="", positional=True,    desc="List tasks with a basic string pattern in the name"),
             ]
 
     def __call__(self, tasks, plugins):
         """List task generators"""
         logging.debug("Starting to List Taskers/Tasks")
 
-        if (doot.args.cmd.args.target == ""
+        if (doot.args.cmd.args.pattern == ""
             and not doot.args.tasks
             and not doot.args.cmd.args.by_source
             and not doot.args.cmd.args.all):
-            raise ValueError("ListCmd Needs a target, or all")
+            raise doot.errors.DootCommandError("ListCmd Needs a Matcher, or all")
 
         # load reporter
         if 'reporter' not in plugins or not bool(plugins['reporter']):
@@ -71,35 +73,51 @@ class ListCmd(Command_i):
             printer.info("No Tasks Defined")
             return
 
-
-        if doot.args.cmd.args.all: # print all tasks
-            self._print_all_by_group(tasks)
-            return
-
-        if doot.args.cmd.args.by_source:
-            self._print_all_by_source(tasks)
-            return
-
-        # print specific tasks
-        if doot.args.cmd.args.target != "":
-            self._print_matches(tasks)
+        match dict(doot.args.cmd.args):
+            case {"by_source": True}:
+                self._print_all_by_source(tasks)
+            case {"groups": True, "pattern": x} if bool(x):
+                self._print_group_matches(tasks)
+            case {"groups": True}:
+                self._print_just_groups(tasks)
+            case {"pattern": x} if bool(x):
+                self._print_matches(tasks)
+            case {"all": True}:
+                self._print_all_by_group(tasks)
+            case _:
+                raise doot.errors.DootCommandError("Bad args passed in")
 
     def _print_matches(self, tasks):
         max_key = len(max(tasks.keys(), key=len))
         fmt_str = f"%-{max_key}s :: %s.%-25s <%s>"
-        target = doot.args.cmd.args.target
-        matches = {x for x in tasks.keys() if target.lower() in x.lower()}
-        printer.info("Tasks for Target: %s", target)
+        pattern = doot.args.cmd.args.pattern.lower()
+        matches = {x for x in tasks.keys() if pattern in x.lower()}
+        printer.info("Tasks for Pattern: %s", pattern)
         for key in matches:
             (desc, cls) = tasks[key]
             printer.info(fmt_str, key, cls.__module__, cls.__name__, desc['source'])
 
+    def _print_group_matches(self, tasks):
+        max_key = len(max(tasks.keys(), key=len))
+        fmt_str = f"    %-{max_key}s :: %s.%-25s <%s>"
+        pattern  = doot.args.cmd.args.pattern.lower()
+        groups  = defaultdict(list)
+        for key, (desc, cls) in tasks.items():
+            if pattern not in desc['group']:
+                continue
+            groups[desc['group']].append((fmt_str, key, cls.__module__, cls.__name__, desc['source']))
+
+        printer.info("Tasks for Matching Groups: %s", pattern)
+        for group, tasks in groups.items():
+            printer.info("::%s::", group)
+            for task in tasks:
+                printer.info(*task)
 
     def _print_all_by_group(self, tasks):
         printer.info("Defined Task Generators by Group:")
         max_key = len(max(tasks.keys(), key=len))
         fmt_str = f"    %-{max_key}s :: %s.%-25s <%s>"
-        groups = defaultdict(list)
+        groups  = defaultdict(list)
         for key, (desc, cls) in tasks.items():
             groups[desc['group']].append((fmt_str, key, cls.__module__, cls.__name__, desc['source']))
 
@@ -120,3 +138,12 @@ class ListCmd(Command_i):
             printer.info("::%s::", group)
             for task in tasks:
                 printer.info(*task)
+
+
+    def _print_just_groups(self, tasks):
+        printer.info("Defined Task Groups:")
+        max_key = len(max(tasks.keys(), key=len))
+        fmt_str = f"    %-{max_key}s :: %s.%-25s <%s>"
+
+        for group in set(x[0]['group'] for x in tasks.values()):
+            printer.info("- %s", group)

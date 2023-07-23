@@ -59,50 +59,61 @@ logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 
 import doot
+from doot.structs import DootParamSpec
 from doot._abstract.cmd import Command_i
 from collections import defaultdict
 
 
 class HelpCmd(Command_i):
     _name      = "help"
-    _help      = ["Print info about the specified cmd or task"]
+    _help      = ["Print info about the specified cmd or task",
+                  "Can also be triggered by passing --help to any command or task"
+                  ]
 
     @property
     def param_specs(self) -> list:
         return super().param_specs + [
             # self.make_param(name="target", type=str, default=""),
-            self.make_param(name="target", type=str, positional=True, default="")
+            self.make_param(name="target", type=str, positional=True, default="", desc="The target to get help about. A command or task.")
             ]
 
     def __call__(self, tasks, plugins):
         """List task generators"""
-        if doot.args.cmd.args.help:
-            printer.info(self.help)
-            return
+        task_targets = []
+        cmd_targets  = []
+        match dict(doot.args.cmd.args):
+            case {"help": True}:
+                printer.info(self.help)
+                return
+            case {"target": ""} if not bool(doot.args.tasks):
+                pass
+            case {"target": ""}:
+                task_targets +=  [tasks[x] for x in doot.args.tasks.keys()]
+                cmd_targets  +=  [x for x in plugins.command if x.name == doot.args.cmd.args.target]
+            case {"target": target}:
+                # Print help of just the specified target(s)
+                task_targets +=  [y for x,y in tasks.items() if target in x ]
+                cmd_targets  +=  [x for x in plugins.command if x.name == doot.args.cmd.args.target]
 
-        if doot.args.cmd.args.target == "" and not bool(doot.args.tasks):
+
+        logging.debug("Matched %s commands, %s tasks", len(cmd_targets), len(task_targets))
+        if len(cmd_targets) == 1:
+            cmd_class = cmd_targets[0].load()()
+            printer.info(cmd_class.help)
+            if doot.args.non_default_values.cmd:
+                self._print_current_param_assignments(cmd_class.param_specs, doot.args.cmd.args)
+
+
+        elif bool(task_targets):
+            for i, spec in enumerate(task_targets):
+                self.print_task_spec(i, spec)
+
+        else:
             # Print general help and list cmds
-            printer.info("No Target Specified")
+            printer.info("Doot Help Command: No Target Specified/Matched")
             printer.info("Available Command Targets: ")
             for x in sorted(plugins.command, key=lambda x: x.name):
                 printer.info("-- %s", x.name)
-            return
-
-        task_targets = [tasks[x] for x in doot.args.tasks.keys()]
-        cmd_targets  = []
-
-        if doot.args.cmd.args.target:
-            # Print help of just the specified target
-            cmd_targets += [x for x in plugins.command if x.name == doot.args.cmd.args.target]
-            task_targets += [y for x,y in tasks.items() if doot.args.cmd.args.target in x ]
-
-        logging.debug("Matched %s commands", len(cmd_targets))
-        if len(cmd_targets) == 1:
-            printer.info(cmd_targets[0].load()().help)
-
-
-        for i, spec in enumerate(task_targets):
-            self.print_task_spec(i, spec)
 
         printer.info("\n------------------------------")
         printer.info("DOOT HELP END: %s Tasks Matched", len(task_targets))
@@ -110,10 +121,11 @@ class HelpCmd(Command_i):
 
     def print_task_spec(self, count, spec):
         spec_dict, tasker_cls = spec
+        task_name             = spec_dict['name']
         lines = []
         lines.append("")
         lines.append("------------------------------")
-        lines.append(f"{count:4}: Task: {spec_dict['name']}")
+        lines.append(f"{count:4}: Task: {task_name}")
         lines.append("------------------------------")
         lines.append(f"ver    : {spec_dict.get('ver','0.1')}")
         lines.append(f"Group  : {spec_dict['group']}")
@@ -131,3 +143,22 @@ class HelpCmd(Command_i):
                 lines.append("--  " + "\n--  ".join(xs))
 
         printer.info("\n".join(lines))
+
+        if task_name in doot.args.tasks and doot.args.non_default_values.task:
+            self._print_current_param_assignments(tasker_cls.param_specs, doot.args.tasks[task_name])
+
+    def _print_current_param_assignments(self, specs:list[DootParamSpec], args:Tomler):
+        if not bool(specs):
+            return
+
+        printer.info("")
+        printer.info("Current Param Assignments:")
+        results = []
+        max_param_len = 5 + ftz.reduce(max, map(len, map(lambda x: x.name, specs)), 0)
+        fmt_str = f"%-{max_param_len}s %s : %s"
+        for spec in sorted(specs, key=DootParamSpec.key_func):
+            if spec.invisible:
+                continue
+            value = args._table().get(spec.name, spec.default)
+            is_default = "   " if value == spec.default else "(*)"
+            printer.info(fmt_str, spec.name, is_default, value)

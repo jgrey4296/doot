@@ -2,12 +2,13 @@
 """
 
 """
-##-- imports
+
+##-- builtin imports
 from __future__ import annotations
 
 # import abc
-# import datetime
-# import enum
+import datetime
+import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
@@ -15,22 +16,24 @@ import pathlib as pl
 import re
 import time
 import types
+import weakref
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable)
-# from uuid import UUID, uuid1
-# from weakref import ref
+from uuid import UUID, uuid1
 
+##-- end builtin imports
+
+##-- lib imports
 # from bs4 import BeautifulSoup
-# import boltons
 # import construct as C
 # import dirty-equals as deq
 # import graphviz
 # import matplotlib.pyplot as plt
-# import more_itertools as itzplus
+import more_itertools as mitz
 # import networkx as nx
 # import numpy as np
 # import pandas
@@ -41,6 +44,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 # import rich
 # import seaborn as sns
 # import sklearn
+# import spacy # nlp = spacy.load("en_core_web_sm")
 # import stackprinter # stackprinter.set_excepthook(style='darkbg2')
 # import sty
 # import sympy
@@ -49,23 +53,20 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 # import tqdm
 # import validators
 # import z3
-# import spacy # nlp = spacy.load("en_core_web_sm")
-
-##-- end imports
+##-- end lib imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-printer = logmod.getLogger("doot._printer")
 
-import doot
-from doot._abstract.cmd import Command_i
-
-class CompleteCmd(Command_i):
-
-    @property
-    def param_specs(self) -> list:
-        return super().param_specs + []
-
-    def __call__(self, tasks, plugins):
-        pass
+class TaskStateEnum(enum.Enum):
+    SUCCESS         = enum.auto()
+    FAILURE         = enum.auto()
+    WAIT            = enum.auto()
+    READY           = enum.auto()
+    INIT            = enum.auto()
+    TEARDOWN        = enum.auto()
+    DEFINED         = enum.auto()
+    DECLARED        = enum.auto()
+    ARTIFACT        = enum.auto()
+    EXISTS          = enum.auto()

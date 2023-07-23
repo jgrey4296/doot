@@ -60,7 +60,6 @@ printer = logmod.getLogger("doot._printer")
 
 import doot
 from doot._abstract.cmd import Command_i
-from doot._abstract.parser import DootParamSpec
 from collections import defaultdict
 
 
@@ -70,8 +69,8 @@ class CleanCmd(Command_i):
 
     @property
     def param_specs(self) -> list:
-        return [
-            DootParamSpec(name="target", type=str, default="")
+        return super().param_specs + [
+            self.make_param(name="target", type=str, default="")
             ]
 
     def __call__(self, tasks:dict, plugins:dict):
