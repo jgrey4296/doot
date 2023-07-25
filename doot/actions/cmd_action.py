@@ -50,14 +50,14 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 ##-- end imports
 
 import doot
-from doot._abstract.action import Action_i
+from doot._abstract.action import Action_p
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
 
-class DootCmdAction(Action_i):
+class DootCmdAction(Action_p):
     """
     CmdAction that doesn't call it's python callable multiple times
     (for a single call of `execute`)

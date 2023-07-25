@@ -18,28 +18,41 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 class DootError(Exception):
+    general_msg = "Non-Specific Doot Error:"
+    pass
+
+class DootTaskLoadError(DootError):
+    general_msg = "Doot Task Load Failure:"
     pass
 
 class DootTaskError(DootError):
+    general_msg = "Doot Task Error:"
     pass
 
 class DootTaskFailed(DootTaskError):
+    general_msg = "Doot Task Failure:"
     pass
 
 class DootParseError(DootError):
+    general_msg = "Doot CLI Parsing Failure:"
     pass
 
 class DootInvalidConfig(DootError):
+    general_msg = "Invalid Doot Config:"
     pass
 
 class DootDirAbsent(DootError):
+    general_msg = "Missing Directory:"
     pass
 
 class DootPluginError(DootError):
+    general_msg = "Doot Plugin Error:"
     pass
 
 class DootCommandError(DootError):
+    general_msg = "Doot Command Error:"
     pass
 
 class DootConfigError(DootError):
+    general_msg = "Doot Config Error:"
     pass

@@ -64,19 +64,13 @@ import importlib
 import tomler
 import doot
 from doot.constants import DEFAULT_TASK_GROUP
-from doot._abstract.tasker import Tasker_i
 from doot._abstract.loader import TaskLoader_i
-from doot.control.locations import DootLocData
-from doot.task.task import DootTask
-from doot.utils.check_dirs import CheckDir
-from doot.utils.gen_toml import GenToml
-from doot.utils.task_namer import task_namer
 
 TASK_STRING : Final[str] = "task_"
 prefix_len  : Final[int] = len(TASK_STRING)
 
 
-task_path  = doot.config.on_fail(".tasks").task_path(wrapper=pl.Path)
+task_path       = doot.config.on_fail(".tasks").task_path(wrapper=pl.Path)
 allow_overloads = doot.config.on_fail(False, bool).allow_overloads()
 
 def apply_group_and_source(group, source, x):

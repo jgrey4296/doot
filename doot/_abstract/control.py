@@ -33,11 +33,13 @@ logging = logmod.getLogger(__name__)
 from collections import deque
 from doot.enums import TaskStateEnum
 
-class TaskOrdering_i:
+@runtime_checkable
+class TaskOrdering_p(Protocol):
+    """ Protocol for tasks that have pre- and post- tasks"""
 
     @property
     def name(self) -> str:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @property
     def priors(self) -> list:
@@ -47,8 +49,8 @@ class TaskOrdering_i:
     def posts(self) -> list:
         raise NotImplementedError()
 
-
 class TaskStatus_i:
+    """ Interface for describing a tasks's current status """
 
     def __init__(self, get_log):
         self.get_log = get_log
@@ -81,6 +83,12 @@ class TaskTracker_i:
     def __init__(self):
         self.tasks          = {}
 
+    def __iter__(self) -> Generator:
+        raise NotImplementedError()
+
+    def __contains__(self, target:str) -> bool:
+        raise NotImplementedError()
+
     def add_task(self, task:None|Tasker|Task):
         raise NotImplementedError()
 
@@ -88,12 +96,6 @@ class TaskTracker_i:
         raise NotImplementedError()
 
     def next_for(self, target:str) -> Tasker|Task:
-        raise NotImplementedError()
-
-    def __iter__(self) -> Generator:
-        raise NotImplementedError()
-
-    def __contains__(self, target:str) -> bool:
         raise NotImplementedError()
 
     def declared_set(self) -> set[str]:

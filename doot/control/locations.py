@@ -18,11 +18,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-from doot.task.specialised_taskers import GroupTasker
-from doot.utils.check_dirs import CheckDir
-from doot.errors import DootDirAbsent
-from doot.utils.task_namer import task_namer
-
 ##-- end imports
 
 ##-- logging
@@ -32,6 +27,10 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
+from doot.task.specialised_taskers import GroupTasker
+from doot.utils.check_dirs import CheckDir
+from doot.errors import DootDirAbsent
+from doot.utils.task_namer import task_namer
 
 class LocProxy:
 

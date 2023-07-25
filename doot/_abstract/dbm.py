@@ -31,7 +31,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 
-class DBManager_i:
+class DBManager_p:
 
     def set(self, task_id, dependency, value):
         raise NotImplementedError()

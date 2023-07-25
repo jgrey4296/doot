@@ -59,7 +59,7 @@ logging = logmod.getLogger(__name__)
 
 from collections import defaultdict
 import doot
-from doot._abstract.control import TaskTracker_i, TaskRunner_i, TaskOrdering_i
+from doot._abstract.control import TaskTracker_i, TaskRunner_i, TaskOrdering_p
 
 
 class DootRunner(TaskRunner_i):

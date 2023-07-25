@@ -1,7 +1,6 @@
-##-- imports
+##-- std imports
 from __future__ import annotations
 
-# import abc
 # import datetime
 # import enum
 import pathlib as pl
@@ -13,7 +12,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable)
 from importlib import resources
-##-- end imports
+##-- end std imports
 
 ##-- plugin names and loaders
 PLUGIN_TOML_PREFIX         : Final = "doot.plugins" # (project.entry-points."doot.plugins")
@@ -24,11 +23,11 @@ BACKEND_PLUGIN_TYPES       : Final = [
     'parser', 'action', "tasker"
     ]
 
-DEFAULT_COMMAND_LOADER_KEY = "command_loader"
+DEFAULT_COMMAND_LOADER_KEY  : Final[str] =  "command_loader"
 
-DEFAULT_TASK_LOADER_KEY    = "task_loader"
+DEFAULT_TASK_LOADER_KEY     : Final[str] =  "task_loader"
 
-DEFAULT_PLUGIN_LOADER_KEY  = "plugin_loader"
+DEFAULT_PLUGIN_LOADER_KEY   : Final[str] =  "plugin_loader"
 ##-- end plugin names and loaders
 
 ##-- default plugins
@@ -73,13 +72,13 @@ DEFAULT_PLUGINS['tasker']     = [("basic", "doot.task.base_tasker:DootTasker"),
 ##-- end default plugins
 
 ##-- path and file names
-TEMPLATE_PATH        = resources.files("doot.__templates")
-TOML_TEMPLATE        = TEMPLATE_PATH / "basic_toml"
-DOOTER_TEMPLATE      = TEMPLATE_PATH / "dooter"
+TEMPLATE_PATH         : Final[pl.Path]       =  resources.files("doot.__templates")
+TOML_TEMPLATE         : Final[pl.Path]       =  TEMPLATE_PATH / "basic_toml"
+DOOTER_TEMPLATE       : Final[pl.Path]       =  TEMPLATE_PATH / "dooter"
 
-DEFAULT_DOOTER       = pl.Path("dooter.py")
+DEFAULT_DOOTER        : Final[pl.Path]       =  pl.Path("dooter.py")
 
-DEFAULT_LOAD_TARGETS = [pl.Path(x) for x in ["doot.toml", "pyproject.toml", "Cargo.toml", "./.cargo/config.toml"]]
+DEFAULT_LOAD_TARGETS  : Final[list[pl.Path]] =  [pl.Path(x) for x in ["doot.toml", "pyproject.toml", "Cargo.toml", "./.cargo/config.toml"]]
 
 ##-- end path and file names
 
@@ -90,6 +89,7 @@ DEFAULT_TASK_PREFIX : Final[str]  = "task_"
 DEFAULT_TASK_GROUP  : Final[str]  = "default"
 
 ANNOUNCE_EXIT       : Final[bool] = False
+
 ANNOUNCE_VOICE      : Final[str]  = "Moira"
 
 PRINTER_NAME        : Final[str]  = "doot._printer"

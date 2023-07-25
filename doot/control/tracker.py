@@ -59,7 +59,7 @@ logging = logmod.getLogger(__name__)
 
 from collections import defaultdict
 import doot
-from doot._abstract.control import TaskTracker_i, TaskRunner_i, TaskOrdering_i
+from doot._abstract.control import TaskTracker_i, TaskRunner_i, TaskOrdering_p
 
 ROOT : Final[str] = "__root"
 
@@ -164,7 +164,7 @@ class DootTracker(TaskTracker_i):
         match task:
             case None:
                 return
-            case TaskOrdering_i():
+            case TaskOrdering_p():
                 pass
             case (spec, cls):
                 task = cls(spec, doot.locs)
@@ -287,7 +287,7 @@ class DootTracker(TaskTracker_i):
         match task, state:
             case str(), self.state_e() if task in self.dep_graph:
                 self.dep_graph.nodes[task]['state'] = state
-            case TaskOrdering_i(), self.state_e() if task.name in self.dep_graph:
+            case TaskOrdering_p(), self.state_e() if task.name in self.dep_graph:
                 self.dep_graph.nodes[task.name]['state'] = state
             case _TaskArtifact(), self.state_e() if task in self.dep_graph:
                 self.dep_graph.nodes[task]['state'] = state

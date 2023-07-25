@@ -62,7 +62,7 @@ from importlib.metadata import EntryPoint
 import tomler
 import doot
 import doot.constants
-from doot._abstract.overlord import Overlord_i
+from doot._abstract.overlord import Overlord_p
 from doot._abstract.loader import CommandLoader_i, TaskLoader_i
 from doot._abstract.tasker import Tasker_i
 from doot._abstract.parser import ArgParser_i
@@ -85,7 +85,7 @@ preferred_parser      = doot.config.on_fail("default").loaders.parser()
 
 defaulted_file = doot.config.on_fail(pl.Path(".doot_defaults.toml"), pl.Path).report.defaulted_file(pl.Path)
 
-class DootOverlord(Overlord_i):
+class DootOverlord(Overlord_p):
     """
     Main control point for doot.
     prefers passed in loaders, then plugins it finds.

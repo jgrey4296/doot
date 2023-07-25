@@ -30,15 +30,8 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class Loader_i:
 
-    def setup(self, *args, **kwargs) -> Self:
-        raise NotImplementedError()
-
-    def load(self) -> Tomler:
-        raise NotImplementedError()
-
-class PluginLoader_i(Loader_i):
+class PluginLoader_i:
     """ Base for the first things loaded: plugins."""
 
     def setup(self, extra_config:Tomler) -> Self:
@@ -47,7 +40,7 @@ class PluginLoader_i(Loader_i):
     def load(self) -> Tomler[EntryPoint]:
         raise NotImplementedError()
 
-class CommandLoader_i(Loader_i):
+class CommandLoader_i:
     """ Base for the second thing loaded: commands """
 
     def setup(self, plugins:Tomler) -> Self:
@@ -56,7 +49,7 @@ class CommandLoader_i(Loader_i):
     def load(self) -> Tomler[Command_i]:
         raise NotImplementedError()
 
-class TaskLoader_i(Loader_i):
+class TaskLoader_i:
     """ Base for the final thing loaded: user tasks """
     _task_collection : list
     _build_failures  : list

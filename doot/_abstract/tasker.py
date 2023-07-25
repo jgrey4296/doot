@@ -31,10 +31,10 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from tomler import Tomler
-from doot._abstract.control import TaskOrdering_i
-from doot._abstract.parser import ParamSpecMaker_mixin
+from doot._abstract.control import TaskOrdering_p
+from doot._abstract.parser import ParamSpecMaker_m
 
-class Tasker_i(TaskOrdering_i, ParamSpecMaker_mixin):
+class Tasker_i(TaskOrdering_p, ParamSpecMaker_m):
     """
     builds task descriptions
     """

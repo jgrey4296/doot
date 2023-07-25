@@ -7,9 +7,9 @@ import inspect
 from collections import OrderedDict
 from collections.abc import Callable
 from pathlib import PurePath
-from doot._abstract.control import TaskOrdering_i
+from doot._abstract.control import TaskOrdering_p
 
-class Task_i(TaskOrdering_i):
+class Task_i(TaskOrdering_p):
     """
     holds task information and state, and executes it
     """

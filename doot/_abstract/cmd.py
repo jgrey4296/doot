@@ -7,9 +7,9 @@ from collections import defaultdict
 import textwrap
 ##-- end imports
 
-from doot._abstract.parser import ParamSpecMaker_mixin
+from doot._abstract.parser import ParamSpecMaker_m
 
-class Command_i(ParamSpecMaker_mixin):
+class Command_i(ParamSpecMaker_m):
     """
     holds command information and performs it
     """

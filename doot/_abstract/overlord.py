@@ -4,21 +4,21 @@
 from __future__ import annotations
 import sys
 
-from doot._abstract.parser import ParamSpecMaker_mixin
+from doot._abstract.parser import ParamSpecMaker_m
 
-class Overlord_i(ParamSpecMaker_mixin):
+class Overlord_p(ParamSpecMaker_m):
     """
     Main entrypoint for doot
     """
+
+    @staticmethod
+    def print_version() -> str:
+        raise NotImplementedError()
 
     def __init__(self, *, loaders:dict[str, Loader_i]=None,
                  configs:tuple[pl.Path|str]=('doot.toml', 'pyproject.toml'),
                  extra_config:dict|Tomler=None,
                  args:list=None):
-        raise NotImplementedError()
-
-    @staticmethod
-    def print_version() -> str:
         raise NotImplementedError()
 
 

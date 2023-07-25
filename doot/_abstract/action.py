@@ -30,7 +30,7 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class Action_i:
+class Action_p:
     """
     holds individual action information and state, and executes it
     """

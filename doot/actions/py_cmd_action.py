@@ -53,9 +53,9 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
-from doot._abstract.action import Action_i
+from doot._abstract.action import Action_p
 
-class DootPyAction(Action_i):
+class DootPyAction(Action_p):
     """
     Python Action with a `build` static method instead of doit.action.create_action
     and refactored `execute` to allow returning Actions from actions

@@ -46,7 +46,7 @@ class _RegexEqual(str):
     def __getitem__(self, group):
         return self.match[group]
 
-class ParamSpecMaker_mixin:
+class ParamSpecMaker_m:
 
     @staticmethod
     def make_param(*args, **kwargs) -> DootParamSpec:
