@@ -39,21 +39,23 @@ class TestListCmd:
         names = [x.name for x in result]
         assert("all" in names)
         assert("dependencies"in names)
-        assert("target" in names)
+        assert("pattern" in names)
         assert("help" in names)
 
     def test_call_bad_cli_args(self, monkeypatch, mocker):
-        mocker.patch("doot.args")
-        doot.args.cmd.args.target = ""
-        doot.args.cmd.args.all = False
+        mock_obj                     = mocker.patch("doot.args")
+        doot.args.tasks              = []
+        doot.args.cmd.args.pattern   = ""
+        doot.args.cmd.args.all       = False
+        doot.args.cmd.args.by_source = False
         obj = ListCmd()
 
-        with pytest.raises(ValueError):
+        with pytest.raises(doot.errors.DootError):
             obj({}, {})
 
     def test_call_no_reporter(self, mocker):
         mocker.patch("doot.args")
-        doot.args.cmd.args.target = ""
+        doot.args.cmd.args.pattern = ""
         doot.args.cmd.args.all    = True
         obj = ListCmd()
 
@@ -62,7 +64,7 @@ class TestListCmd:
 
     def test_call_all_empty(self, caplog, mocker):
         mocker.patch("doot.args")
-        doot.args.cmd.args.target = ""
+        doot.args.cmd.args.pattern = ""
         doot.args.cmd.arg.all = True
         obj    = ListCmd()
         obj({}, {"reporter": [mocker.stub("Reporter Stub")]})
@@ -73,42 +75,52 @@ class TestListCmd:
 
     def test_call_all_not_empty(self, caplog, mocker):
         mocker.patch("doot.args")
-        doot.args.cmd.args.target = ""
-        doot.args.cmd.args.all = True
+        del doot.args.cmd.args.keys
+        doot.args.cmd.args.__iter__.return_value = iter([("pattern", ""), ("all", True)])
+        doot.args.cmd.args.pattern = ""
+        doot.args.cmd.args.all     = True
+
         obj = ListCmd()
         plugin_mock = {"reporter": [mocker.stub("Reporter Stub")]}
-        tasker_mock = { "simple" : ({}, type), "other": ({}, type) }
+        tasker_mock = { "simple" : ({"group": "blah", "source": ""}, type), "other": ({"group": "bloo", "source": ""}, type) }
         obj(tasker_mock, plugin_mock)
-        message_set : set[str] = {x.message for x in caplog.records}
+        message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
-        assert("Defined Task Generators:" in message_set)
-        assert("simple (<class 'type'>) : {}" in message_set)
-        assert("other (<class 'type'>) : {}" in message_set)
+        assert("defined task generators by group:" in message_set)
+        assert(any(x.startswith("simple :: builtins.type") for x in message_set) )
+        assert(any(x.startswith("other  :: builtins.type") for x in message_set) )
 
     def test_call_target_not_empty(self, caplog, mocker):
         mocker.patch("doot.args")
-        doot.args.cmd.args.target = "simple"
-        doot.args.cmd.args.all = False
+        del doot.args.cmd.args.keys
+        doot.args.cmd.args.__iter__.return_value = iter([("pattern", "simple"), ("all", False)])
+        doot.args.cmd.args.pattern = "simple"
+        doot.args.cmd.args.all     = False
         obj = ListCmd()
-        plugin_mock = {"reporter": [mocker.stub("Reporter Stub")]}
-        tasker_mock = { "simple" : ({}, type), "other": ({}, type) }
+        plugin_mock  = {"reporter": [mocker.stub("Reporter Stub")]}
+        tasker_mock = { "simple" : ({"group": "blah", "source": ""}, type), "other": ({"group": "bloo", "source": ""}, type) }
         result = obj(tasker_mock, plugin_mock)
-        message_set : set[str] = {x.message for x in caplog.records}
+        message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
-        assert("Tasks for Target: simple" in message_set)
-        assert("simple (<class 'type'>) : {}" in message_set)
+        assert("tasks for pattern: simple" in message_set)
+        assert( any(x.startswith("simple :: builtins.type") for x in message_set) )
 
 
     def test_call_partial_target_not_empty(self, caplog, mocker):
         mocker.patch("doot.args")
-        doot.args.cmd.args.target = "simp"
-        doot.args.cmd.args.all = False
+        del doot.args.cmd.args.keys
+        doot.args.cmd.args.__iter__.return_value = iter([("pattern", "simp"), ("all", False)])
+        doot.args.cmd.args.pattern = "simp"
+        doot.args.cmd.args.all     = False
         obj = ListCmd()
         plugin_mock = {"reporter": [mocker.stub("Reporter Stub")]}
-        tasker_mock = { "simple" : ({}, type), "other": ({}, type), "diffSimple": ({}, type) }
+        tasker_mock = { "simple" : ({"group": "blah", "source": ""}, type),
+                        "other": ({"group": "bloo", "source": ""}, type),
+                        "diffSimple": ({"group": "bloo", "source": ""}, type),
+                       }
         result = obj(tasker_mock, plugin_mock)
-        message_set : set[str] = {x.message for x in caplog.records}
+        message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
-        assert("Tasks for Target: simp" in message_set)
-        assert("simple (<class 'type'>) : {}" in message_set)
-        assert("diffSimple (<class 'type'>) : {}" in message_set)
+        assert("tasks for pattern: simp" in message_set)
+        assert( any(x.startswith("simple     :: builtins.type") for x in message_set) )
+        assert( any(x.startswith("diffsimple :: builtins.type") for x in message_set) )

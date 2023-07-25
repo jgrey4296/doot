@@ -60,7 +60,7 @@ class ListCmd(Command_i):
         logging.debug("Starting to List Taskers/Tasks")
 
         if (doot.args.cmd.args.pattern == ""
-            and not doot.args.tasks
+            and not bool(doot.args.tasks)
             and not doot.args.cmd.args.by_source
             and not doot.args.cmd.args.all):
             raise doot.errors.DootCommandError("ListCmd Needs a Matcher, or all")
@@ -85,7 +85,7 @@ class ListCmd(Command_i):
             case {"all": True}:
                 self._print_all_by_group(tasks)
             case _:
-                raise doot.errors.DootCommandError("Bad args passed in")
+                raise doot.errors.DootCommandError("Bad args passed in", doot.args.cmd.args)
 
     def _print_matches(self, tasks):
         max_key = len(max(tasks.keys(), key=len))

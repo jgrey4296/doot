@@ -17,6 +17,7 @@ from unittest import mock
 logging = logmod.root
 
 import pytest
+import doot.errors
 from doot.parsers.parser import DootArgParser
 from doot.structs import DootParamSpec
 
@@ -73,7 +74,7 @@ class TestParamSpec(unittest.TestCase):
           })
         assert(example == "test")
         data = {}
-        with pytest.raises(TypeError):
+        with pytest.raises(doot.errors.DootParseError):
             example.add_value(data, "-t=blah")
 
     def test_add_value_inverse_bool(self):

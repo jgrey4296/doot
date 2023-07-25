@@ -57,24 +57,30 @@ def main():
         result    = overlord()
         overlord.shutdown()
 
-    except doot.errors.DootConfigError as err: # --- Handle missing files
+    ##-- handle doot errors
+    except doot.errors.DootConfigError as err:
+        # Handle missing files
         if not doot.constants.DEFAULT_LOAD_TARGETS[0].exists():
             if input("No toml config data found, create stub doot.toml? _/n ") != "n":
                 doot.constants.DEFAULT_LOAD_TARGETS[0].write_text(doot.constants.TOML_TEMPLATE.read_text())
                 logging.info("Stubbed")
-    except doot.errors.DootParseError as err:
-        errored = True
-        printer.error("Parse Error: " + err.args[0], *err.args[1:])
+
     except doot.errors.DootError as err:
         errored = True
-        printer.error("General Doot Error: %s", err)
+        printer.error(err.general_msg)
+        printer.error(err.args[0], *err.args[1:])
+    ##-- end handle doot errors
+    ##-- handle todo errors
     except NotImplementedError as err:
         errored = True
         printer.error("Not Implemented: %s", err)
-    except Exception as err: # --- Handle general errors
+    ##-- end handle todo errors
+    ##-- handle general errors
+    except Exception as err:
         errored = True
         logging.error(stackprinter.format())
         # logging.error("Python Error: %s", err)
+    ##-- end handle general errors
     finally: # --- final shutdown
         announce_exit : bool = doot.constants.ANNOUNCE_EXIT
         announce_voice : str = doot.constants.ANNOUNCE_VOICE

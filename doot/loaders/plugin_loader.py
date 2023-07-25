@@ -78,7 +78,7 @@ task_loader_key : Final = doot.constants.DEFAULT_TASK_LOADER_KEY
 
 def make_ep (x, y, z):
     if z not in plugin_types:
-        raise KeyError("Plugin Type Not Found: ", z, (x, y))
+        raise doot.errors.DootPluginError("Plugin Type Not Found: %s : %s", z, (x, y))
     return EntryPoint(name=x, value=y, group="{}.{}".format(doot.constants.PLUGIN_TOML_PREFIX, z))
 
 class DootPluginLoader(PluginLoader_i):
@@ -107,22 +107,22 @@ class DootPluginLoader(PluginLoader_i):
         try:
             self._load_system_plugins()
         except Exception as err:
-            raise ResourceWarning("Failed to load system wide plugins", err) from err
+            raise doot.errors.DootPluginError("Failed to load system wide plugins: %s", err) from err
 
         try:
             self._load_from_toml()
         except Exception as err:
-            raise ResourceWarning("Failed to load toml specified plugins", err) from err
+            raise doot.errors.DootPluginError("Failed to load toml specified plugins: %s", err) from err
 
         try:
             self._load_extra_plugins()
         except Exception as err:
-            raise ResourceWarning("Failed to load command line/dooter specified plugins", err) from err
+            raise doot.errors.DootPluginError("Failed to load command line/dooter specified plugins: %s", err) from err
 
         try:
             self._append_defaults()
         except Exception as err:
-            raise ResourceWarning("Failed to load plugin defaults", err) from err
+            raise doot.errors.DootPluginError("Failed to load plugin defaults: %s", err) from err
 
         logging.debug("Found %s plugins", len(self.plugins))
         return tomler.Tomler(self.plugins)
@@ -139,7 +139,7 @@ class DootPluginLoader(PluginLoader_i):
                     for entry_point in entry_points(group=plugin_group):
                         self.plugins[plugin_type].append(entry_point)
                 except Exception as err:
-                    raise ResourceWarning(f"Plugin Failed to Load: {plugin_group} : {entry_point}") from err
+                    raise doot.errors.DootPluginError(f"Plugin Failed to Load: {plugin_group} : {entry_point}") from err
 
     def _load_from_toml(self):
         # load config entry points

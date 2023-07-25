@@ -19,10 +19,12 @@ logging = logmod.getLogger(__name__)
 
 # Global, single points of truth:
 __version__          : Final         = "0.2.0"
+
 config               : tomler.Tomler = None # doot config
 locs                 : DootLocData   = None # registered locations
 args                 : tomler.Tomler = None # parsed arg access
 report               : Reporter_i    = None
+
 _configs_loaded_from : list[pl.Path] = []
 
 def setup(targets=None, prefix=None) -> tupl[Tomler, DootLocData]:
@@ -59,7 +61,4 @@ def setup_agnostic(*paths):
     locs   = DootLocData(files=config.flatten_on({}).files(),
                          **config.flatten_on({}).directories())
 
-    # TODO move to config loader
-    # # Done like this to avoid recursive imports
-    DootLocData.set_defaults(config)
     return config, locs

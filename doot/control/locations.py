@@ -55,7 +55,7 @@ class LocProxy:
 class DootLocData:
     """
     Manage locations in a dict-like class, with attribute access,
-    that can build tasks for location checks
+    that builds tasks for location checks
 
     `.on_fail` provides a proxy to continue accessing,
     and when `__call__`ed, provides the real value, or a default
@@ -154,6 +154,16 @@ class DootLocData:
     def name(self):
         return task_namer(self._prefix, self._postfix, private=True)
 
+    @property
+    def root(self):
+        return self._root
+
+    @property
+    def checker(self) -> str:
+        if self._check_name is None:
+            self._check_name = CheckDir(self._postfix, locs=self).name
+        return task_namer(CheckDir._checker_basename, self._check_name, private=True)
+
     def extend(self, *, name=None, **kwargs):
         new_locs = DootLocData(name or self._postfix,
                                **self._dirs.copy())
@@ -180,18 +190,8 @@ class DootLocData:
                 case _:
                     continue
 
-    @property
-    def root(self):
-        return self._root
-
     def move_root(self, new_root:pl.Path):
         self._root = new_root
-
-    @property
-    def checker(self) -> str:
-        if self._check_name is None:
-            self._check_name = CheckDir(self._postfix, locs=self).name
-        return task_namer(CheckDir._checker_basename, self._check_name, private=True)
 
     def _build_report_task(self):
         max_postfix = max(len(x) for x in DootLocData._all_registered.keys())

@@ -130,6 +130,7 @@ class DootTaskLoader(TaskLoader_i):
         if self.extra:
             raw_specs += self._load_raw_specs(self.extra, "(extra)")
         raw_specs += self._load_spec_path(task_path)
+
         logging.debug("Loaded %s Task Specs", len(raw_specs))
         if bool(self.taskers):
             logging.warning("Task Loader is overwriting already loaded tasks")
@@ -182,13 +183,13 @@ class DootTaskLoader(TaskLoader_i):
             match spec:
                 ##-- failures
                 case {"name": task_name} if task_name in command_names:
-                    raise ResourceWarning(f"Task / Cmd name conflict: {task_name}")
+                    raise doot.errors.DootTaskLoadError("Task / Cmd name conflict: %s", task_name)
                 case {"name": task_name, "group": group} if (task_name in task_descriptions
                                                              and group == task_descriptions[task_name][0]['group']
                                                              and not allow_overloads):
-                    raise ResourceWarning(f"Task Name Overloaded: ", task_name, group)
+                    raise doot.errors.DootTaskLoadError("Task Name Overloaded: %s : %s", task_name, group)
                 case {"name": task_name, "type": task_type} if task_type not in self.task_builders:
-                    raise ResourceWarning(f"Task Spec '{task_name}' Load Failure: Bad Type Name: '{task_type}'. Source file: {spec['source']}. Available: {self.task_builders.keys()}")
+                    raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Type Name: '%s'. Source file: %s. Available: %s", task_name, task_type, spec['source'], list(self.task_builders.keys()))
                 ##-- end failures
                 case {"name": task_name, "class": task_class}:
                     if task_name in task_descriptions:
@@ -200,15 +201,15 @@ class DootTaskLoader(TaskLoader_i):
                         cls = getattr(mod, class_name)
                         task_descriptions[task_name] = (spec, cls)
                     except ModuleNotFoundError as err:
-                        raise ResourceWarning(f"Task Spec '{task_name}' Load Failure: Bad Module Name: '{task_class}'. Source File: {spec['source']}") from err
+                        raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Module Name: '%s'. Source File: %s", task_name, task_class, spec['source']) from err
                     except AttributeError as err:
-                        raise ResourceWarning(f"Task Spec '{task_name}' Load Failure: Bad Class Name: '{task_class}'. Source File: {spec['source']}") from err
+                        raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Class Name: '%s'. Source File: %s", task_name, task_class, spec['source']) from err
                     except ValueError as err:
-                        raise ResourceWarning(f"Task Spec '{task_name}' Load Failure: Module/Class Split failed on: '{task_class}'. Source File: {spec['source']}") from err
+                        raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Module/Class Split failed on: '%s'. Source File: %s", task_name, task_class, spec['source']) from err
                 case {"name": task_name, "type": task_type}:
                     cls = self.task_builders[task_type]
                     task_descriptions[task_name] = (spec, cls)
                 case _:
-                    raise ResourceWarning(f"Task Spec missing, at least, a name and class or type: {spec['source']}: {spec}")
+                    raise doot.errors.DootTaskLoadError("Task Spec missing, at least, a name and class or type: %s: %s", spec['source'], spec)
 
         return task_descriptions
