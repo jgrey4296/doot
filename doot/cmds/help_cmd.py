@@ -85,9 +85,9 @@ class HelpCmd(Command_i):
             case {"help": True}:
                 printer.info(self.help)
                 return
-            case {"target": ""} if not bool(doot.args.tasks):
+            case {"target": ""|None} if not bool(doot.args.tasks):
                 pass
-            case {"target": ""}:
+            case {"target": ""|None}:
                 task_targets +=  [tasks[x] for x in doot.args.tasks.keys()]
                 cmd_targets  +=  [x for x in plugins.command if x.name == doot.args.cmd.args.target]
             case {"target": target}:

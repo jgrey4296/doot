@@ -41,7 +41,7 @@ from io import StringIO
 
 import doot
 from doot._abstract.task import Task_i
-from doot.actions.py_cmd_action import DootPyAction
+from doot.actions.py_action import DootPyAction
 
 
 class DootTask(Task_i):

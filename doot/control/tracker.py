@@ -106,14 +106,7 @@ class DootTracker(TaskTracker_i):
     track dependencies in a networkx digraph,
     successors of a node are its dependencies,
 
-    Uses a simple dsl for dependencies:
-    file:(.+) -> specific file/path dependency
-    file:(.+)/(?).(ext) -> single file/path wildcard
-    file:(.+)/(+).(ext) -> multi-file/path un-grouped wildcard (n tasks for n files)
-    file:(.+)/(*).(ext) -> multi-file/path grouped wildcard (1 task for n files together)
-
-    (task:)?(.+) -> task dep
-
+    tracks definite and indefinite artifacts as products and dependencies of tasks as well.
     """
 
     def __init__(self, shadowing=False, fail_fast=False):
@@ -167,7 +160,7 @@ class DootTracker(TaskTracker_i):
             case TaskOrdering_p():
                 pass
             case (spec, cls):
-                task = cls(spec, doot.locs)
+                task = cls(spec)
 
         match task.name in self.tasks, self.shadowing, self.tasks.get(task.name):
             case True, _, False:

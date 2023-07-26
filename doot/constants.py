@@ -36,15 +36,15 @@ DEFAULT_PLUGIN_LOADER_KEY   : Final[str] =  "plugin_loader"
 
 DEFAULT_PLUGINS = {}
 
-DEFAULT_PLUGINS['command']  = [("help",     "doot.cmds.help_cmd:HelpCmd"),
-                               ("run",      "doot.cmds.run_cmd:RunCmd"),
-                               ("list",     "doot.cmds.list_cmd:ListCmd"),
-                               ("clean",    "doot.cmds.clean_cmd:CleanCmd"),
-                               ("complete", "doot.cmds.complete_cmd:CompleteCmd"),
-                               # ("serve",  "doot.cmds.server_cmd:ServerCmd"),
-                               ("daemon",   "doot.cmds.daemon_cmd:DaemonCmd"),
-                               ("stub",     "doot.cmds.stub_cmd:StubCmd"),
-                               ("step",     "doot.cmds.step_cmd:StepCmd"),
+DEFAULT_PLUGINS['command']  = [("help"      ,      "doot.cmds.help_cmd:HelpCmd")           ,
+                               ("run"       ,      "doot.cmds.run_cmd:RunCmd")             ,
+                               ("list"      ,      "doot.cmds.list_cmd:ListCmd")           ,
+                               ("clean"     ,      "doot.cmds.clean_cmd:CleanCmd")         ,
+                               ("complete"  ,      "doot.cmds.complete_cmd:CompleteCmd")   ,
+                               # ("serve"   ,      "doot.cmds.server_cmd:ServerCmd")       ,
+                               ("daemon"    ,      "doot.cmds.daemon_cmd:DaemonCmd")       ,
+                               ("stub"      ,      "doot.cmds.stub_cmd:StubCmd")           ,
+                               ("step"      ,      "doot.cmds.step_cmd:StepCmd")           ,
                               ]
 
 DEFAULT_PLUGINS['reporter'] = [("basic", "doot.reporters.basic:BasicReporter")]
@@ -57,17 +57,18 @@ DEFAULT_PLUGINS['runner']   = [("basic", "doot.control.runner:DootRunner")]
 
 DEFAULT_PLUGINS['parser']   = [("basic", "doot.parsers.parser:DootArgParser")]
 
-DEFAULT_PLUGINS['action']   = [("cmd", "doot.actions.cmd_action:DootCmdAction"),
-                               ("force", "doot.actions.force_cmd_action:ForceCmd"),
-                               ("interactive", "doot.actions.interactive_cmd_action:InteractiveAction"),
-                               ("py", "doot.actions.py_cmd_action:DootPyAction")
+DEFAULT_PLUGINS['action']   = [("shell"       , "doot.actions.shell_action:DootShellAction")                          ,
+                               ("discard"     , "doot.actions.discard_result_action:DootDiscardResultAction")         ,
+                               ("interactive" , "doot.actions.interactive_shell_action:DootInteractiveShellAction")   ,
+                               ("py"          , "doot.actions.py_action:DootPyAction")                                ,
                                ]
 
-DEFAULT_PLUGINS['tasker']     = [("basic", "doot.task.base_tasker:DootTasker"),
-                                 ("generaliser", "doot.task.generaliser:DootGeneraliser"),
-                                 ("glob", "doot.task.globber:DootEagerGlobber"),
-                                 ("dict", "doot.task.specialised_taskers:DictTasker"),
-                                 ("group", "doot.task.specialised_taskers:GroupTasker")]
+DEFAULT_PLUGINS['tasker']     = [("basic"          , "doot.task.base_tasker:DootTasker")             ,
+                                 ("generaliser"    , "doot.task.generaliser:DootGeneraliser")        ,
+                                 ("glob"           , "doot.task.globber:DootEagerGlobber")           ,
+                                 ("dict"           , "doot.task.specialised_taskers:DictTasker")     ,
+                                 ("group"          , "doot.task.specialised_taskers:GroupTasker")    ,
+                                 ]
 
 ##-- end default plugins
 

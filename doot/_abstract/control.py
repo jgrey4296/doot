@@ -39,15 +39,15 @@ class TaskOrdering_p(Protocol):
 
     @property
     def name(self) -> str:
-        raise NotImplementedError()
+        raise NotImplementedError(self.__class__, "name")
 
     @property
     def priors(self) -> list:
-        raise NotImplementedError()
+        raise NotImplementedError(self.__class__, "priors")
 
     @property
     def posts(self) -> list:
-        raise NotImplementedError()
+        raise NotImplementedError(self.__class__, "posts")
 
 class TaskStatus_i:
     """ Interface for describing a tasks's current status """
@@ -112,25 +112,9 @@ class TaskRunner_i:
     def __init__(self, tracker, reporter):
         self.tracker       = tracker
         self.reporter      = reporter
-        self.teardown_list = []  # list of tasks to be teardown
+        self.teardown_list = []  # list of tasks to teardown
         self.final_result  = SUCCESS  # until something fails
         self._stop_running = False
 
     def __call__(self, *tasks:str):
-        raise NotImplementedError()
-
-    def execute_task(self, task):
-        """execute task's actions"""
-        raise NotImplementedError()
-
-    def process_task_result(self, node, base_fail):
-        """handles result"""
-        raise NotImplementedError()
-
-    def teardown(self):
-        """run teardown from all tasks"""
-        raise NotImplementedError()
-
-    def finish(self):
-        """finish running tasks"""
         raise NotImplementedError()

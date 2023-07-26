@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 logging         = logmod.root
 printer         = logmod.getLogger("doot._printer")
 
+import sh
 import stackprinter
 import tomler
 import doot
@@ -73,6 +74,7 @@ def main():
     ##-- handle todo errors
     except NotImplementedError as err:
         errored = True
+        logging.error(stackprinter.format())
         printer.error("Not Implemented: %s", err)
     ##-- end handle todo errors
     ##-- handle general errors
@@ -82,6 +84,7 @@ def main():
         # logging.error("Python Error: %s", err)
     ##-- end handle general errors
     finally: # --- final shutdown
+        # TODO if not Mac, just exit
         announce_exit : bool = doot.constants.ANNOUNCE_EXIT
         announce_voice : str = doot.constants.ANNOUNCE_VOICE
         if doot.config is not None:

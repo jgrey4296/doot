@@ -326,6 +326,7 @@ class TestArgParser(unittest.TestCase):
         assert( "blah::bloo.blee" in result.tasks)
 
     def test_task_args(self):
+        """ check tasks can recieve args """
         task_mock            = mock.MagicMock()
         type(task_mock).param_specs = mock.PropertyMock(return_value=[
             DootParamSpec(name="all")
@@ -342,6 +343,24 @@ class TestArgParser(unittest.TestCase):
         assert(result.on_fail(False).cmd.name() == "run")
         assert(bool(result.on_fail(False).tasks.list()))
         assert(result.on_fail(False).tasks.list.all() == True)
+
+    def test_task_with_name_spaces(self):
+        task_mock            = mock.MagicMock()
+        type(task_mock).param_specs = mock.PropertyMock(return_value=[
+            DootParamSpec(name="all")
+            ])
+        type(task_mock).name = mock.PropertyMock(return_value="simple task")
+
+        parser = DootArgParser()
+        result = parser.parse([
+            "doot", "simple task", "-all"
+                               ],
+            [], {}, {"simple task": [{}, task_mock]}
+            )
+        assert(result.on_fail(False).head.name() == "doot")
+        assert(result.on_fail(False).cmd.name() == "run")
+        assert(bool(result.on_fail(False).tasks['simple task']()))
+        assert(result.on_fail(False).tasks['simple task'].all() == True)
 
     def test_task_args_default(self):
         task_mock            = mock.MagicMock()

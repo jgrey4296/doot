@@ -35,9 +35,5 @@ class Action_p:
     holds individual action information and state, and executes it
     """
 
-    @staticmethod
-    def _prepare_kwargs(task, func, args, kwargs):
-        raise NotImplementedError()
-
     def __call__(self, *args, **kwargs):
         raise NotImplementedError()

@@ -1,7 +1,4 @@
-#!/usr/bin/env python3
-"""
 
-"""
 ##-- imports
 from __future__ import annotations
 
@@ -53,41 +50,15 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 
 ##-- end imports
 
-##-- logging
-logging = logmod.getLogger(__name__)
-##-- end logging
-
 import doot
-from doot._abstract.cmd import Command_i
-from collections import defaultdict
+from doot.errors import DootTaskError, DootTaskFailed
+from doot._abstract.action import Action_p
 
-printer = logmod.getLogger("doot._printer")
+class DootPyAction(Action_p):
+    """
+    Python Action with a `build` static method instead of doit.action.create_action
+    and refactored `execute` to allow returning Actions from actions
+    """
 
-class RunCmd(Command_i):
-    _name      = "run"
-    _help      = []
-
-    @property
-    def param_specs(self) -> list:
-        return super().param_specs + [
-            self.make_param(name="target", type=str, default=""),
-            self.make_param(name="step", default=False),
-            self.make_param(name="dry-run", default=False),
-            self.make_param
-            ]
-
-    def __call__(self, tasks:Tomler, plugins:Tomler):
-        printer.info("Building Task Dependency Network")
-        tracker = plugins.tracker[0].load()()
-        for task in tasks.values():
-            tracker.add_task(task)
-
-        printer.info("Task Dependency Network Built")
-        target = doot.args.on_fail((None,)).cmd.args.target()
-        if target in tracker:
-            printer.info("Running Tasks: %s", target)
-            # reporter = plugins.reporter[0].load()()
-            # runner   = plugins.runner(tracker, reporter)
-            # return runner(doot.args.cmd.target)
-
-        printer.info("No Viable Run Target Specified")
+    def __call__(self, *args, **kwargs):
+        pass

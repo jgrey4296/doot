@@ -7,9 +7,9 @@ import inspect
 from collections import OrderedDict
 from collections.abc import Callable
 from pathlib import PurePath
-from doot._abstract.control import TaskOrdering_p
+from doot._abstract.control import TaskStatus_i
 
-class Task_i(TaskOrdering_p):
+class Task_i(TaskStatus_i):
     """
     holds task information and state, and executes it
     """
@@ -23,20 +23,12 @@ class Task_i(TaskOrdering_p):
     def __eq__(self, other):
         return self.name == other.name
 
-    def __lt__(self, other):
-        return self.name < other.name
 
     @property
-    def actions(self):
+    def actions(self) -> Generator:
         """lazy creation of action instances"""
         raise NotImplementedError()
 
-    def __call__(self, stream):
+    def __call__(self):
         """Executes the task. """
-        raise NotImplementedError()
-
-    def teardown(self, stream):
-        raise NotImplementedError()
-
-    def clean(self):
         raise NotImplementedError()

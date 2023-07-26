@@ -57,21 +57,17 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-import datetime
-import fileinput
-import shutil
-import zipfile
-from random import randint
 
 import doot
 from doot._abstract.tasker import Tasker_i
 from doot._abstract.task import Task_i
 from doot.errors import DootDirAbsent
-from doot.actions.force_cmd_action import ForceCmd
-from doot.utils.task_namer import task_namer
 
 class DootTasker(Tasker_i):
     """ Util Class for building single tasks
+      wraps with setup and teardown tasks,
+      manages cleaning,
+      and holds state
 
     """
     sleep_subtask : ClassVar[Final[float]]
@@ -83,12 +79,12 @@ class DootTasker(Tasker_i):
         DootTasker.sleep_subtask = config.on_fail(2.0,   int|float).subtask.sleep()
         DootTasker.sleep_notify  = config.on_fail(False, bool).notify.sleep()
 
-    def __init__(self, spec:dict|Tomler, locs:DootLocData=None):
+    def __init__(self, spec:dict|Tomler):
+        super(DootTasker, self).__init__(spec)
+
         assert(spec is not None), "Spec is empty"
-        assert(locs is not None), "Locs is Empty"
 
         self.spec             = spec
-        self.locs             = locs
         self.args             = {}
         self._setup_name      = None
         self.has_active_setup = False
@@ -103,27 +99,6 @@ class DootTasker(Tasker_i):
         #     case _:
         #         raise TypeError("Bad base name provided to task: %s", base)
 
-    def default_task(self) -> dict:
-        return dict([("name"     , self.fullname),
-                     ("meta"     , self.default_meta()),
-                     ("actions"  , list()),
-                     ("task_dep" , list()),
-                     ("setup"    , list()),
-                     ("doc"      , self.doc),
-                     ("uptodate" , [self.is_current]),
-                     ("clean"    , [self.clean]),
-                     ("targets"  , []),
-                     ])
-
-    def default_meta(self) -> dict:
-        meta = dict()
-        return meta
-
-    def is_current(self, task:DootTask):
-        return False
-
-    def clean(self, task:DootTask):
-        return
 
     def _build_setup(self) -> None|DootTask:
         """
@@ -133,8 +108,8 @@ class DootTasker(Tasker_i):
             task_spec         = self.default_task()
             task_spec['doc']  = ""
             task_spec['name'] = self.setup_name
-            if self.locs is not None and not isinstance(self.locs, bool):
-                task_spec['setup'] = [ self.locs.checker ]
+            # if self.locs is not None and not isinstance(self.locs, bool):
+            #     task_spec['setup'] = [ self.locs.checker ]
 
             match self.setup_detail(task_spec):
                 case None:
@@ -165,6 +140,36 @@ class DootTasker(Tasker_i):
         if not bool(full_task.doc):
             full_task.doc = self.doc
         return full_task
+
+    @property
+    def priors(self) -> list:
+        pass
+
+    @property
+    def posts(self) -> list:
+        pass
+
+    def default_task(self) -> dict:
+        return dict([("name"     , self.fullname),
+                     ("meta"     , self.default_meta()),
+                     ("actions"  , list()),
+                     ("task_dep" , list()),
+                     ("setup"    , list()),
+                     ("doc"      , self.doc),
+                     ("uptodate" , [self.is_current]),
+                     ("clean"    , [self.clean]),
+                     ("targets"  , []),
+                     ])
+
+    def default_meta(self) -> dict:
+        meta = dict()
+        return meta
+
+    def is_current(self, task:DootTask):
+        return False
+
+    def clean(self, task:DootTask):
+        return
 
     def build(self, **kwargs) -> Generator[DootTask|dict]:
         logging.debug("Building Tasker: %s", self.fullname)

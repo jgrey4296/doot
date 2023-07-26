@@ -49,7 +49,7 @@ class _RegexEqual(str):
 class ParamSpecMaker_m:
 
     @staticmethod
-    def make_param(*args, **kwargs) -> DootParamSpec:
+    def make_param(*args:Any, **kwargs:Any) -> DootParamSpec:
         """ Utility method for easily making paramspecs """
         return DootParamSpec(*args, **kwargs)
 

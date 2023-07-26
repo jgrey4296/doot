@@ -31,6 +31,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from tomler import Tomler
+import doot
 from doot._abstract.control import TaskOrdering_p
 from doot._abstract.parser import ParamSpecMaker_m
 
@@ -46,9 +47,7 @@ class Tasker_i(TaskOrdering_p, ParamSpecMaker_m):
     def _make_task(cls, *arg, **kwargs):
         return cls.task_type(*arg, **kwargs)
 
-    def __init__(self, spec:dict|Tomler, locs:DootLocData=None):
-        assert(locs is not None or locs is False), locs
-
+    def __init__(self, spec:dict|Tomler):
         match spec:
             case None:
                 raise TypeError("Task Spec cannot be None")
@@ -62,25 +61,23 @@ class Tasker_i(TaskOrdering_p, ParamSpecMaker_m):
         self.basename = self.spec.name
         self.subgroups = self.spec.on_fail([], list).subgroups()
         # TODO: wrap with importlib:
-        self.task_type = self.spec.on_fail(DootTask).task_type()
 
-        self.locs             = locs
         self.args             = {}
         self._setup_name      = None
         self.has_active_setup = False
-        self.output           = output
+        # self.output           = output
 
     @property
     def setup_name(self):
         if self._setup_name is not None:
             return self._setup_name
 
-        self._setup_name = task_namer(self.basename, "setup", private=True)
+        self._setup_name = doot.namer(self.basename, "setup", private=True)
         return self._setup_name
 
     @property
-    def fullname(self):
-        return task_namer(self.basename, *self.subgroups)
+    def name(self):
+        return doot.namer(self.basename, *self.subgroups)
 
     @property
     def doc(self):

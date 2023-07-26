@@ -5,7 +5,12 @@ import sys
 from collections import deque
 from collections import defaultdict
 import textwrap
+from typing import TYPE_CHECKING
 ##-- end imports
+
+if TYPE_CHECKING:
+    from doot.structs import DootParamSpec
+
 
 from doot._abstract.parser import ParamSpecMaker_m
 
@@ -49,7 +54,7 @@ class Command_i(ParamSpecMaker_m):
         return f" {self.name: <10} v{self._version:>5} : {self._help[0]}"
 
     @property
-    def param_specs(self) -> list:
+    def param_specs(self) -> list[DootParamSpec]:
         """
         Provide parameter specs for parsing into doot.args.cmd
         """

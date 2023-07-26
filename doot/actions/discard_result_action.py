@@ -6,23 +6,22 @@ import doot
 from doot.errors import DootTaskError
 from doot._abstract.action import Action_p
 
-class InteractiveAction(Action_p):
+class DootDiscardResultAction(Action_p):
     """
-    A CmdAction that overrides failures
+    An action that overrides failures,
     useful if something (*cough* godot *cough*)
     returns bad status codes
     """
 
     def __init__(self, *args, handler=None, **kwargs):
-        super().__init__(*args, **kwargs)
         self.handler = handler or self.default_handler
 
     def default_handler(self, result):
         logging.info("Task Failure Overriden: ", self.task.name)
         return None
 
-    def execute(self, *args, **kwargs):
-        result = super().execute(*args, **kwargs)
+    def __call__(self, *args, **kwargs):
+        result = None
 
         if isinstance(result, DootTaskError):
             return self.handler(result)

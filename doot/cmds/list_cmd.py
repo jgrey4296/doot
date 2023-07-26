@@ -25,6 +25,9 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
+if TYPE_CHECKING:
+    from doot.structs import DootParamSpec
+    from tomler import Tomler
 ##-- end imports
 
 ##-- logging
@@ -45,7 +48,7 @@ class ListCmd(Command_i):
     STATUS_MAP = {'ignore': 'I', 'up-to-date': 'U', 'run': 'R', 'error': 'E'}
 
     @property
-    def param_specs(self) -> list:
+    def param_specs(self) -> list[DootParamSpec]:
         return super().param_specs + [
             self.make_param(name="all",                     default=True,                   desc="List all loaded tasks, by group"),
             self.make_param(name="dependencies",            default=False,                  desc="List task dependencies",                 prefix="--"),
@@ -55,14 +58,15 @@ class ListCmd(Command_i):
             self.make_param(name="pattern", type=str,       default="", positional=True,    desc="List tasks with a basic string pattern in the name"),
             ]
 
-    def __call__(self, tasks, plugins):
+    def __call__(self, tasks:Tomler, plugins:Tomler):
         """List task generators"""
         logging.debug("Starting to List Taskers/Tasks")
 
-        if (doot.args.cmd.args.pattern == ""
-            and not bool(doot.args.tasks)
-            and not doot.args.cmd.args.by_source
-            and not doot.args.cmd.args.all):
+
+        if (doot.args.cmd.args.pattern == ""     # type: ignore
+            and not bool(doot.args.tasks)        # type: ignore
+            and not doot.args.cmd.args.by_source # type: ignore
+            and not doot.args.cmd.args.all):     # type: ignore
             raise doot.errors.DootCommandError("ListCmd Needs a Matcher, or all")
 
         # load reporter
@@ -73,7 +77,7 @@ class ListCmd(Command_i):
             printer.info("No Tasks Defined")
             return
 
-        match dict(doot.args.cmd.args):
+        match dict(doot.args.cmd.args): # type: ignore
             case {"by_source": True}:
                 self._print_all_by_source(tasks)
             case {"groups": True, "pattern": x} if bool(x):
@@ -142,8 +146,6 @@ class ListCmd(Command_i):
 
     def _print_just_groups(self, tasks):
         printer.info("Defined Task Groups:")
-        max_key = len(max(tasks.keys(), key=len))
-        fmt_str = f"    %-{max_key}s :: %s.%-25s <%s>"
 
         for group in set(x[0]['group'] for x in tasks.values()):
             printer.info("- %s", group)

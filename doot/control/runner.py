@@ -57,6 +57,8 @@ import networkx as nx
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+printer = logmod.getLogger("doot._printer")
+
 from collections import defaultdict
 import doot
 from doot._abstract.control import TaskTracker_i, TaskRunner_i, TaskOrdering_p
@@ -68,24 +70,39 @@ class DootRunner(TaskRunner_i):
         self.tracker       = tracker
         self.reporter      = reporter
         self.teardown_list = []  # list of tasks to be teardown
-        self.final_result  = SUCCESS  # until something fails
+        self.final_result  = "SUCCESS"  # until something fails
         self._stop_running = False
 
     def __call__(self, *tasks:str):
+        """ tasks are initial targets to run.
+          so loop on the tracker, getting the next task,
+          running its actions,
+          and repeating,
+          until done
+
+          if task is a tasker, it is expanded and added into the tracker
+          """
+
+
+
         raise NotImplementedError()
 
-    def execute_task(self, task):
+    def _execute_task(self, task):
         """execute task's actions"""
         raise NotImplementedError()
 
-    def process_task_result(self, node, base_fail):
+    def _process_task_result(self, node, base_fail):
         """handles result"""
         raise NotImplementedError()
 
-    def teardown(self):
+    def _execute_action(self, action):
+        """   """
+        raise NotImplementedError()
+
+    def _teardown(self):
         """run teardown from all tasks"""
         raise NotImplementedError()
 
-    def finish(self):
+    def _finish(self):
         """finish running tasks"""
         raise NotImplementedError()
