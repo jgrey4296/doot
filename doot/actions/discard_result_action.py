@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import doot
 from doot.errors import DootTaskError
-from doot._abstract.action import Action_p
+from doot._abstract import Action_p
 
 class DootDiscardResultAction(Action_p):
     """

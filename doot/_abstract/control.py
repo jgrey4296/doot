@@ -20,7 +20,7 @@ from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
+                    cast, final, overload, runtime_checkable, Generator, Literal)
 from uuid import UUID, uuid1
 from weakref import ref
 
@@ -30,22 +30,30 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from collections import deque
+from abc import abstractmethod
+from typing import Generator, NewType
+from collections import deque, defaultdict
+
 from doot.enums import TaskStateEnum
+from doot.structs import DootTaskArtifact
+from doot._abstract.reporter import Reporter_i
 
 @runtime_checkable
 class TaskOrdering_p(Protocol):
     """ Protocol for tasks that have pre- and post- tasks"""
 
     @property
+    @abstractmethod
     def name(self) -> str:
         raise NotImplementedError(self.__class__, "name")
 
     @property
+    @abstractmethod
     def priors(self) -> list:
         raise NotImplementedError(self.__class__, "priors")
 
     @property
+    @abstractmethod
     def posts(self) -> list:
         raise NotImplementedError(self.__class__, "posts")
 
@@ -78,29 +86,40 @@ class TaskTracker_i:
     and have failed.
     Does not execute anything itself
     """
-    state_e = TaskStateEnum
+    state_e : enum.Enum = TaskStateEnum
 
     def __init__(self):
         self.tasks          = {}
 
+    @abstractmethod
     def __iter__(self) -> Generator:
         raise NotImplementedError()
 
+    @abstractmethod
     def __contains__(self, target:str) -> bool:
         raise NotImplementedError()
 
-    def add_task(self, task:None|Tasker|Task):
+    @abstractmethod
+    def add_task(self, task:None|TaskOrdering_p):
         raise NotImplementedError()
 
-    def update_task_state(self, task, state):
+    @abstractmethod
+    def queue_task(self, task:str) -> None:
         raise NotImplementedError()
 
-    def next_for(self, target:str) -> Tasker|Task:
+    @abstractmethod
+    def update_task_state(self, task:str|TaskOrdering_p|DootTaskArtifact, state:TaskStateEnum) -> None:
         raise NotImplementedError()
 
+    @abstractmethod
+    def next_for(self, target:str) -> TaskOrdering_p|None:
+        raise NotImplementedError()
+
+    @abstractmethod
     def declared_set(self) -> set[str]:
         raise NotImplementedError()
 
+    @abstractmethod
     def defined_set(self) -> set[str]:
         raise NotImplementedError()
 
@@ -109,12 +128,13 @@ class TaskRunner_i:
     Run tasks, actions, and taskers
     """
 
-    def __init__(self, tracker, reporter):
+    def __init__(self, tracker:TaskTracker_i, reporter:Reporter_i):
         self.tracker       = tracker
         self.reporter      = reporter
-        self.teardown_list = []  # list of tasks to teardown
-        self.final_result  = SUCCESS  # until something fails
+        self.teardown_list = []                     # list of tasks to teardown
+        self.final_result  = TaskStateEnum.SUCCESS  # until something fails
         self._stop_running = False
 
-    def __call__(self, *tasks:str):
+    @abstractmethod
+    def __call__(self, *tasks:str) -> bool:
         raise NotImplementedError()

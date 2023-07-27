@@ -1,12 +1,7 @@
 
 """Tasks are the main abstractions managed by doot"""
 from __future__ import annotations
-import os
-import sys
-import inspect
-from collections import OrderedDict
-from collections.abc import Callable
-from pathlib import PurePath
+from typing import Generator
 from doot._abstract.control import TaskStatus_i
 
 class Task_i(TaskStatus_i):

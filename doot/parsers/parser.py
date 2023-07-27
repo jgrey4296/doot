@@ -55,7 +55,7 @@ logging = logmod.getLogger(__name__)
 
 import tomler
 import doot
-from doot._abstract.parser import ArgParser_i
+from doot._abstract import ArgParser_i
 from doot.structs import DootParamSpec
 from collections import ChainMap
 

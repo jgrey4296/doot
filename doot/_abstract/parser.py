@@ -30,6 +30,8 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from abc import abstractmethod
+from tomler import Tomler
 from doot.structs import DootParamSpec
 
 
@@ -66,5 +68,6 @@ class ArgParser_i:
     def add_param_specs(self, specs:list):
         self.specs += specs
 
-    def parse(self, args:list, doot_arg_specs:list, cmds:dict, tasks:dict) -> Tomler:
+    @abstractmethod
+    def parse(self, args:list[str], doot_arg_specs:list[DootParamSpec], cmds:Tomler, tasks:Tomler) -> Tomler:
         raise NotImplementedError()

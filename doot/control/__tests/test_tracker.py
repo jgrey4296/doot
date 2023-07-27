@@ -18,7 +18,7 @@ logging = logmod.root
 
 import pytest
 from doot.control.tracker import DootTracker
-from doot._abstract.task import Task_i
+from doot._abstract import Task_i
 
 def make_mock_task(mocker, name, pre=None, post=None):
     mock_task              = mocker.MagicMock(spec=Task_i)
@@ -170,7 +170,7 @@ class TestTracker:
         tracker.add_task(subtask3)
 
         tasks = []
-        tracker.set_task("task1")
+        tracker.queue_task("task1")
         for x in tracker:
             if x:
                 tasks.append(x.name)
@@ -192,7 +192,7 @@ class TestTracker:
 
         tracker.update_task_state("subtask2", tracker.state_e.SUCCESS)
         tasks = []
-        tracker.set_task("task1")
+        tracker.queue_task("task1")
         for x in tracker:
             if x:
                 tasks.append(x.name)

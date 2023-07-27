@@ -36,7 +36,7 @@ logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 
 import doot
-from doot._abstract.cmd import Command_i
+from doot._abstract import Command_i
 
 class StepCmd(Command_i):
     """

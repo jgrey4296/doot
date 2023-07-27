@@ -57,7 +57,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doot._abstract.reporter import Reporter_i
+from doot._abstract import Reporter_i
 
 class BasicReporter(Reporter_i):
     pass

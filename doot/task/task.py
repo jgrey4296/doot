@@ -40,7 +40,7 @@ import sys
 from io import StringIO
 
 import doot
-from doot._abstract.task import Task_i
+from doot._abstract import Task_i
 from doot.actions.py_action import DootPyAction
 
 

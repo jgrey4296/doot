@@ -5,7 +5,7 @@ from __future__ import annotations
 import sh
 import doot
 from doot.errors import DootTaskError
-from doot._abstract.action import Action_p
+from doot._abstract import Action_p
 
 class DootInteractiveShellAction(Action_p):
     """

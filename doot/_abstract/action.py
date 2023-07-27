@@ -30,10 +30,14 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class Action_p:
+from abc import abstractmethod
+
+@runtime_checkable
+class Action_p(Protocol):
     """
     holds individual action information and state, and executes it
     """
 
+    @abstractmethod
     def __call__(self, *args, **kwargs):
         raise NotImplementedError()

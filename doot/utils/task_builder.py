@@ -57,7 +57,8 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doot._abstract.tasker import Tasker_i
+from types import GeneratorType
+from doot._abstract import Tasker_i
 
 class DootTaskBuilder:
 

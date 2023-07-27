@@ -20,7 +20,7 @@ from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
+                    cast, final, overload, runtime_checkable, Generator)
 from uuid import UUID, uuid1
 from weakref import ref
 
@@ -30,10 +30,14 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from typing import NewType
 from tomler import Tomler
-import doot
+from doot.utils.task_namer import task_namer as namer
 from doot._abstract.control import TaskOrdering_p
+from doot._abstract.task import Task_i
 from doot._abstract.parser import ParamSpecMaker_m
+
+from doot.structs import DootParamSpec, DootTaskStub
 
 class Tasker_i(TaskOrdering_p, ParamSpecMaker_m):
     """
@@ -44,7 +48,7 @@ class Tasker_i(TaskOrdering_p, ParamSpecMaker_m):
     _help     : list[str] = []
 
     @classmethod
-    def _make_task(cls, *arg, **kwargs):
+    def _make_task(cls, *arg:Any, **kwargs:Any) -> Task_i:
         return cls.task_type(*arg, **kwargs)
 
     def __init__(self, spec:dict|Tomler):
@@ -58,17 +62,16 @@ class Tasker_i(TaskOrdering_p, ParamSpecMaker_m):
             case _:
                 raise TypeError("Unrecognized Task Spec Type")
 
-        self.basename = self.spec.name
-        self.subgroups = self.spec.on_fail([], list).subgroups()
+        self.basename : str   = self.spec.name
+        self.subgroups : list = self.spec.on_fail([], list).subgroups()
         # TODO: wrap with importlib:
 
-        self.args             = {}
-        self._setup_name      = None
-        self.has_active_setup = False
-        # self.output           = output
+        self.args             : dict             = {}
+        self._setup_name      : str              = None
+        self.has_active_setup : bool             = False
 
     @property
-    def setup_name(self):
+    def setup_name(self) -> str:
         if self._setup_name is not None:
             return self._setup_name
 
@@ -76,11 +79,11 @@ class Tasker_i(TaskOrdering_p, ParamSpecMaker_m):
         return self._setup_name
 
     @property
-    def name(self):
+    def name(self) -> str:
         return doot.namer(self.basename, *self.subgroups)
 
     @property
-    def doc(self):
+    def doc(self) -> str:
         try:
             split_doc = [x for x in self.__class__.__doc__.split("\n") if bool(x)]
             return ":: " + split_doc[0].strip() if bool(split_doc) else ""
@@ -103,7 +106,7 @@ class Tasker_i(TaskOrdering_p, ParamSpecMaker_m):
         return "\n".join(help_lines)
     @classmethod
     @property
-    def param_specs(cls) -> list[parser.DootParamSpec]:
+    def param_specs(cls) -> list[DootParamSpec]:
         return [
            cls.make_param(name="help", default=False, invisible=True),
            cls.make_param(name="debug", default=False, invisible=True)
@@ -115,10 +118,10 @@ class Tasker_i(TaskOrdering_p, ParamSpecMaker_m):
     def default_meta(self) -> dict:
         raise NotImplementedError()
 
-    def is_current(self, task:DootTask):
+    def is_current(self, task:Task_i) -> bool:
         raise NotImplementedError()
 
-    def clean(self, task:DootTask):
+    def clean(self, task:Task_i) -> None:
         raise NotImplementedError()
 
     def setup_detail(self, task:dict) -> None|dict:
@@ -127,7 +130,7 @@ class Tasker_i(TaskOrdering_p, ParamSpecMaker_m):
     def task_detail(self, task:dict) -> dict:
         raise NotImplementedError()
 
-    def build(self, **kwargs) -> GeneratorType:
+    def build(self, **kwargs) -> Generator:
         raise NotImplementedError()
 
     def stub_spec(self) -> DootTaskStub:
@@ -137,12 +140,12 @@ class Tasker_i(TaskOrdering_p, ParamSpecMaker_m):
         """
         raise NotImplementedError()
 
-    def log(self, msg, level=logmod.DEBUG, prefix=None):
+    def log(self, msg, level=logmod.DEBUG, prefix=None) -> None:
         """
         utility method to log a message, useful as tasks are running
         """
-        prefix = prefix or ""
-        lines  = []
+        prefix : str       = prefix or ""
+        lines  : list[str] = []
         match msg:
             case str():
                 lines.append(msg)

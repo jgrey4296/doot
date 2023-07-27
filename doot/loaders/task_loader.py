@@ -64,7 +64,7 @@ import importlib
 import tomler
 import doot
 from doot.constants import DEFAULT_TASK_GROUP
-from doot._abstract.loader import TaskLoader_i
+from doot._abstract import TaskLoader_p
 
 TASK_STRING : Final[str] = "task_"
 prefix_len  : Final[int] = len(TASK_STRING)
@@ -78,7 +78,7 @@ def apply_group_and_source(group, source, x):
     x['source'] = str(source)
     return x
 
-class DootTaskLoader(TaskLoader_i):
+class DootTaskLoader(TaskLoader_p):
     """
     load toml defined tasks
     """

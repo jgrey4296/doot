@@ -23,7 +23,7 @@ import io
 import contextlib
 import doot
 import doot.errors
-from doot._abstract.cmd import Command_i
+from doot._abstract import Command_i
 from doot.cmds.list_cmd import ListCmd
 
 class TestListCmd:

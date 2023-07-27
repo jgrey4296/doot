@@ -2,9 +2,14 @@
 
 """
 from __future__ import annotations
-import sys
+import pathlib as pl
+from abc import abstractmethod
+from typing import NewType, Any
 
+from tomler import Tomler
 from doot._abstract.parser import ParamSpecMaker_m
+from doot._abstract.loader import Loaders_p
+
 
 class Overlord_p(ParamSpecMaker_m):
     """
@@ -15,14 +20,15 @@ class Overlord_p(ParamSpecMaker_m):
     def print_version() -> str:
         raise NotImplementedError()
 
-    def __init__(self, *, loaders:dict[str, Loader_i]=None,
-                 configs:tuple[pl.Path|str]=('doot.toml', 'pyproject.toml'),
-                 extra_config:dict|Tomler=None,
-                 args:list=None):
+    @abstractmethod
+    def __init__(self, *, loaders:dict[str, Loaders_p]|None=None,
+               configs:tuple[pl.Path|str]=('doot.toml', 'pyproject.toml'),
+               extra_config:dict[str,Any]|Tomler|None=None,
+               args:list[str]|None=None):
         raise NotImplementedError()
 
 
-    def __call__(self, args):
+    def __call__(self, cmd:str|None=None) -> None:
         """entry point for all commands
 
         :param all_args: list of string arguments from command line
@@ -38,5 +44,5 @@ class Overlord_p(ParamSpecMaker_m):
         """
         raise NotImplementedError()
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         raise NotImplementedError

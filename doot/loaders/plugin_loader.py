@@ -67,7 +67,7 @@ from importlib.metadata import entry_points, EntryPoint
 import tomler
 import doot
 import doot.constants
-from doot._abstract.loader import PluginLoader_i
+from doot._abstract import PluginLoader_p
 
 skip_default_plugins    = doot.config.on_fail(False).skip_default_plugins()
 skip_plugin_search      = doot.config.on_fail(False).skip_plugin_search()
@@ -81,7 +81,7 @@ def make_ep (x, y, z):
         raise doot.errors.DootPluginError("Plugin Type Not Found: %s : %s", z, (x, y))
     return EntryPoint(name=x, value=y, group="{}.{}".format(doot.constants.PLUGIN_TOML_PREFIX, z))
 
-class DootPluginLoader(PluginLoader_i):
+class DootPluginLoader(PluginLoader_p):
     """
     Load doot plugins from the system, to choose from with doot.toml or cli args
     """

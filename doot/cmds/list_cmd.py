@@ -25,9 +25,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-if TYPE_CHECKING:
-    from doot.structs import DootParamSpec
-    from tomler import Tomler
 ##-- end imports
 
 ##-- logging
@@ -36,10 +33,12 @@ logging = logmod.getLogger(__name__)
 
 printer = logmod.getLogger("doot._printer")
 
+from collections import defaultdict
+from tomler import Tomler
 import doot
 import doot.errors
-from doot._abstract.cmd import Command_i
-from collections import defaultdict
+from doot._abstract import Command_i
+from doot.structs import DootParamSpec
 
 
 class ListCmd(Command_i):

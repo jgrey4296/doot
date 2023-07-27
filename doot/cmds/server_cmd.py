@@ -32,7 +32,7 @@ logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 from flask import Flask, request
 import doot
-from doot._abstract.cmd import Command_i
+from doot._abstract import Command_i
 
 app = Flask("basic")
 

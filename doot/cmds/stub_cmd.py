@@ -34,7 +34,7 @@ printer = logmod.getLogger("doot._printer")
 
 import doot
 import doot.constants
-from doot._abstract.cmd import Command_i
+from doot._abstract import Command_i
 from collections import defaultdict
 
 ##-- data

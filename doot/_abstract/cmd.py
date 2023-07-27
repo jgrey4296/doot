@@ -8,9 +8,9 @@ import textwrap
 from typing import TYPE_CHECKING
 ##-- end imports
 
-if TYPE_CHECKING:
-    from doot.structs import DootParamSpec
-
+from abc import abstractmethod
+from tomler import Tomler
+from doot.structs import DootParamSpec
 
 from doot._abstract.parser import ParamSpecMaker_m
 
@@ -63,5 +63,6 @@ class Command_i(ParamSpecMaker_m):
            self.make_param(name="debug", default=False, prefix="--", invisible=True)
            ]
 
+    @abstractmethod
     def __call__(self, taskers:Tomler, plugins:Tomler):
         raise NotImplementedError()

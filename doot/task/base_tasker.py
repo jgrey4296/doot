@@ -20,7 +20,7 @@ import types
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
+                    cast, final, overload, runtime_checkable, Generator)
 # from uuid import UUID, uuid1
 # from weakref import ref
 
@@ -59,8 +59,8 @@ logging = logmod.getLogger(__name__)
 
 
 import doot
-from doot._abstract.tasker import Tasker_i
-from doot._abstract.task import Task_i
+from tomler import Tomler
+from doot._abstract import Tasker_i, Task_i
 from doot.errors import DootDirAbsent
 
 class DootTasker(Tasker_i):
@@ -70,8 +70,8 @@ class DootTasker(Tasker_i):
       and holds state
 
     """
-    sleep_subtask : ClassVar[Final[float]]
-    sleep_notify  : ClassVar[Final[bool]]
+    sleep_subtask : ClassVar[float]
+    sleep_notify  : ClassVar[bool]
     _help = ["A Basic Task Constructor"]
 
     @staticmethod
@@ -100,7 +100,7 @@ class DootTasker(Tasker_i):
         #         raise TypeError("Bad base name provided to task: %s", base)
 
 
-    def _build_setup(self) -> None|DootTask:
+    def _build_setup(self) -> None|Task_i:
         """
         Build a pre-task that every subtask depends on
         """
@@ -126,7 +126,7 @@ class DootTasker(Tasker_i):
         except DootDirAbsent:
             return None
 
-    def _build_task(self) -> None|DootTask:
+    def _build_task(self) -> None|Task_i:
         logging.debug("Building Task for: %s", self.fullname)
         task                     = self.default_task()
         maybe_task : None | dict = self.task_detail(task)
@@ -165,13 +165,13 @@ class DootTasker(Tasker_i):
         meta = dict()
         return meta
 
-    def is_current(self, task:DootTask):
+    def is_current(self, task:Task_i):
         return False
 
-    def clean(self, task:DootTask):
+    def clean(self, task:Task_i):
         return
 
-    def build(self, **kwargs) -> Generator[DootTask|dict]:
+    def build(self, **kwargs) -> Generator[Task_i|dict]:
         logging.debug("Building Tasker: %s", self.fullname)
         if bool(kwargs):
             logging.debug("Recieved kwargs: %s", kwargs)

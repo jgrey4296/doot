@@ -27,8 +27,6 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-from doot.task.specialised_taskers import GroupTasker
-from doot.utils.check_dirs import CheckDir
 from doot.errors import DootDirAbsent
 from doot.utils.task_namer import task_namer
 
@@ -73,18 +71,18 @@ class DootLocData:
     def set_defaults(config:Tomler):
         DootLocData._default_locs = config.on_fail([], list).locs
 
-    @staticmethod
-    def as_taskgroup() -> GroupTasker:
-        logging.debug("Building LocData Auto Tasks: %s", list(DootLocData._all_registered.keys()))
-        return GroupTasker(DootLocData._locs_report_name,
-                         {
-                             "basename" : task_namer(DootLocData._locs_report_name),
-                             "doc"      : ":: Report All Registered Locations",
-                             "actions"  : [],
-                             "task_dep" : [x for x in DootLocData._all_registered.keys()],
-                         },
-                         *[x._build_report_task() for x in DootLocData._all_registered.values()],
-                         )
+    # @staticmethod
+    # def as_taskgroup() -> GroupTasker:
+    #     logging.debug("Building LocData Auto Tasks: %s", list(DootLocData._all_registered.keys()))
+    #     return GroupTasker(DootLocData._locs_report_name,
+    #                      {
+    #                          "basename" : task_namer(DootLocData._locs_report_name),
+    #                          "doc"      : ":: Report All Registered Locations",
+    #                          "actions"  : [],
+    #                          "task_dep" : [x for x in DootLocData._all_registered.keys()],
+    #                      },
+    #                      *[x._build_report_task() for x in DootLocData._all_registered.values()],
+    #                      )
 
     @staticmethod
     def report_defaulted() -> list[str]:
@@ -160,9 +158,10 @@ class DootLocData:
 
     @property
     def checker(self) -> str:
-        if self._check_name is None:
-            self._check_name = CheckDir(self._postfix, locs=self).name
-        return task_namer(CheckDir._checker_basename, self._check_name, private=True)
+        # if self._check_name is None:
+        #     self._check_name = CheckDir(self._postfix, locs=self).name
+        # return task_namer(CheckDir._checker_basename, self._check_name, private=True)
+        return "TODO"
 
     def extend(self, *, name=None, **kwargs):
         new_locs = DootLocData(name or self._postfix,

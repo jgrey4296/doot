@@ -20,7 +20,7 @@ from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
+                    cast, final, overload, runtime_checkable, Generator)
 from uuid import UUID, uuid1
 from weakref import ref
 
@@ -97,6 +97,6 @@ class SubMixin:
         except DootDirAbsent:
             return None
 
-    def build(self, **kwargs) -> GeneratorType:
+    def build(self, **kwargs) -> Generator:
         yield from super().build(**kwargs)
         yield from self._build_subs()

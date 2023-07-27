@@ -1,24 +1,31 @@
 #!/usr/bin/env python3
+"""
+Doot : An Opinionated refactor of the Doit Task Runner.
+
+
+
+"""
 ##-- std imports
 from __future__ import annotations
 
 import logging as logmod
 import pathlib as pl
-from importlib import resources
+from typing import Final, Any
 ##-- end std imports
 
+import tomler
+import doot.errors
 from doot import constants
 from doot.control.locations import DootLocData
 from doot.utils.task_namer import task_namer as namer
-import doot.errors
-import tomler
+from doot._abstract.reporter import Reporter_i
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Global, single points of truth:
-__version__          : Final         = "0.2.0"
+__version__          : Final[str]      = "0.2.0"
 
 config               : tomler.Tomler = None # doot config
 locs                 : DootLocData   = None # registered locations
@@ -27,13 +34,13 @@ report               : Reporter_i    = None
 
 _configs_loaded_from : list[pl.Path] = []
 
-def setup(targets=None, prefix=None) -> tupl[Tomler, DootLocData]:
+def setup(targets:list[str|pl.Path]|None=None, prefix:str|None=None) -> tuple[tomler.Tomler, DootLocData]:
     """
       The core requirement to call before any other doot code is run.
       loads the config files, so everything else can retrieve values when imported.
     """
     global config, locs, _configs_loaded_from
-    targets = targets or constants.DEFAULT_LOAD_TARGETS
+    targets : list[str|pl.Path] = targets or constants.DEFAULT_LOAD_TARGETS
     logging.debug("Loading Doot Config, version: %s targets: %s", __version__, targets)
     if config is not None:
         raise Exception("Setup called even though doot is already set up")
@@ -56,7 +63,7 @@ def setup(targets=None, prefix=None) -> tupl[Tomler, DootLocData]:
 
     return config, locs
 
-def setup_agnostic(*paths):
+def setup_agnostic(*paths:pl.Path) -> tuple(tomler.Tomler, DootLocData):
     config = tomler.load(*paths)
     locs   = DootLocData(files=config.flatten_on({}).files(),
                          **config.flatten_on({}).directories())

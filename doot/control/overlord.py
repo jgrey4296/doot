@@ -12,15 +12,16 @@ import itertools as itz
 import logging as logmod
 import pathlib as pl
 import re
+import sys
 import time
 import types
-import sys
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable)
+
 # from uuid import UUID, uuid1
 # from weakref import ref
 
@@ -59,21 +60,18 @@ printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
 from importlib.metadata import EntryPoint
-import tomler
+
 import doot
 import doot.constants
-from doot._abstract.overlord import Overlord_p
-from doot._abstract.loader import CommandLoader_i, TaskLoader_i
-from doot._abstract.tasker import Tasker_i
-from doot._abstract.parser import ArgParser_i
-from doot._abstract.task import Task_i
-from doot._abstract.cmd import Command_i
+import tomler
+from doot._abstract import (ArgParser_i, Command_i, CommandLoader_p,
+                            Overlord_p, Task_i, Tasker_i, TaskLoader_p)
 
-from doot.loaders.plugin_loader import DootPluginLoader
+from doot.errors import DootInvalidConfig, DootParseError
 from doot.loaders.cmd_loader import DootCommandLoader
+from doot.loaders.plugin_loader import DootPluginLoader
 from doot.loaders.task_loader import DootTaskLoader
 from doot.parsers.parser import DootArgParser
-from doot.errors import DootParseError, DootInvalidConfig
 
 plugin_loader_key  : Final = doot.constants.DEFAULT_PLUGIN_LOADER_KEY
 command_loader_key : Final = doot.constants.DEFAULT_COMMAND_LOADER_KEY
@@ -155,7 +153,7 @@ class DootOverlord(Overlord_p):
         match (self.loaders.get(command_loader_key, None) or self.plugins.on_fail([], list).command_loader()):
             case []:
                 self.cmd_loader = DootCommandLoader()
-            case CommandLoader_i() as l:
+            case CommandLoader_p() as l:
                 self.cmd_loader = l
             case [EntryPoint() as l]:
                 self.cmd_loader = l.load()()
@@ -170,8 +168,8 @@ class DootOverlord(Overlord_p):
 
         if self.cmd_loader is None:
             raise TypeError("Command Loader is not initialised")
-        if not isinstance(self.cmd_loader, CommandLoader_i):
-            raise TypeError("Attempted to use a non-CommandLoader_i as a CommandLoader: ", self.cmd_loader)
+        if not isinstance(self.cmd_loader, CommandLoader_p):
+            raise TypeError("Attempted to use a non-CommandLoader_p as a CommandLoader: ", self.cmd_loader)
 
         self.cmd_loader.setup(self.plugins, extra_config)
         self.cmds = self.cmd_loader.load()
@@ -181,7 +179,7 @@ class DootOverlord(Overlord_p):
         match (self.loaders.get(task_loader_key, None) or self.plugins.on_fail([], list).task_loader()):
             case []:
                 self.task_loader = DootTaskLoader()
-            case TaskLoader_i() as l:
+            case TaskLoader_p() as l:
                 self.task_loader = l
             case [EntryPoint() as l]:
                 self.task_loader = l.load()()
@@ -196,7 +194,7 @@ class DootOverlord(Overlord_p):
 
         if self.task_loader is None:
             raise TypeError("Task Loader is not initialised")
-        if not isinstance(self.task_loader, TaskLoader_i):
+        if not isinstance(self.task_loader, TaskLoader_p):
             raise TypeError("Attempted to use a non-Commandloader_i as a CommandLoader: ", self.cmd_loader)
 
         self.task_loader.setup(self.plugins, extra_config)

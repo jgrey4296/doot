@@ -65,10 +65,9 @@ logging = logmod.getLogger(__name__)
 import tomler
 import time
 import doot
-from doot._abstract.loader import CommandLoader_i
-from doot._abstract.cmd import Command_i
+from doot._abstract import CommandLoader_p, Command_i
 
-class DootCommandLoader(CommandLoader_i):
+class DootCommandLoader(CommandLoader_p):
 
     def setup(self, plugins, extra=None) -> Self:
         self.cmd_plugins : list[EntryPoint] = plugins.get("command", [])
@@ -99,6 +98,6 @@ class DootCommandLoader(CommandLoader_i):
                 self.cmds[cmd_point.name] = cmd()
                 self.cmds[cmd_point.name]._name = cmd_point.name
             except Exception as err:
-                raise ResourceWarning(f"Attempted to load a non-command: {cmd_point}") from err
+                raise doot.errors.DootPluginError(f"Attempted to load a non-command: {cmd_point}") from err
 
         return tomler.Tomler(self.cmds)

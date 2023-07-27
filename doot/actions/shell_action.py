@@ -51,7 +51,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 
 import sh
 import doot
-from doot._abstract.action import Action_p
+from doot._abstract import Action_p
 
 ##-- logging
 logging = logmod.getLogger(__name__)

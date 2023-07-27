@@ -196,14 +196,14 @@ class DootParamSpec:
 @dataclass
 class DootLoadedTaskSpec:
     data : Any
-    type : Type
+    type : type
 
 @dataclass
 class DootTaskStub:
     "Stub Task Spec for description in toml"
     name   : str
     tasker : str
-    parts  : list[StubTaskPartSpec]
+    parts  : list[DootTaskStubPart]
 
     def to_toml(self):
         raise NotImplementedError()
@@ -215,3 +215,44 @@ class DootTaskStubPart:
     type    : str
     default : str
     help    : str
+
+class DootTaskArtifact:
+    """ Describes an artifact a task can produce or consume.
+    Artifacts can be Definite (concrete path) or indefinite (glob path)
+    """
+
+    def __init__(self, path:pl.Path):
+        self._path = path
+
+    def __hash__(self):
+        return hash(self._path)
+
+    def __repr__(self):
+        type = "Definite" if self.is_definite() else "Indefinite"
+        return f"<{type} TaskArtifact: {self._path.name}>"
+
+    def __str__(self):
+        return str(self._path)
+
+    def __eq__(self, other:DootTaskArtifact|Any):
+        match other:
+            case DootTaskArtifact():
+                return self._path == other._path
+            case _:
+                return False
+
+    def __bool__(self):
+        return self.is_definite() and self._path.exists()
+
+    def is_definite(self):
+        return self._path.stem not in "*?+"
+
+    def matches(self, other):
+        """ match a definite artifact to its indefinite abstraction """
+        match other:
+            case DootTaskArtifact() if self.is_definite() and not other.is_definite():
+                parents_match = self._path.parent == other._path.parent
+                exts_match    = self._path.suffix == other._path.suffix
+                return parents_match and exts_match
+            case _:
+                raise TypeError(other)

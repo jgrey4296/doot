@@ -30,23 +30,31 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from abc import abstractmethod
 
-class DBManager_p:
+@runtime_checkable
+class DBManager_p(Protocol):
 
+    @abstractmethod
     def set(self, task_id, dependency, value):
         raise NotImplementedError()
 
+    @abstractmethod
     def get(self, task_id, dependency):
         raise NotImplementedError()
 
+    @abstractmethod
     def in_(self, task_id):
         raise NotImplementedError()
 
+    @abstractmethod
     def dump(self):
         raise NotImplementedError()
 
+    @abstractmethod
     def remove(self, task_id):
         raise NotImplementedError()
 
+    @abstractmethod
     def remove_all(self):
         raise NotImplementedError()

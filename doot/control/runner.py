@@ -57,11 +57,14 @@ import networkx as nx
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+
 printer = logmod.getLogger("doot._printer")
 
 from collections import defaultdict
 import doot
-from doot._abstract.control import TaskTracker_i, TaskRunner_i, TaskOrdering_p
+from doot.enums import TaskStateEnum
+from doot._abstract import Tasker_i, Task_i
+from doot._abstract import TaskTracker_i, TaskRunner_i, TaskOrdering_p
 
 
 class DootRunner(TaskRunner_i):
@@ -82,14 +85,20 @@ class DootRunner(TaskRunner_i):
 
           if task is a tasker, it is expanded and added into the tracker
           """
+        for task in iter(self.tracker):
+            # Do Task
+            self._execute_task(task)
+            # Update it's status
+            self.tracker.update_task_state(task, TaskStateEnum.SUCCESS)
 
 
 
         raise NotImplementedError()
 
-    def _execute_task(self, task):
+    def _execute_task(self, task:Tasker_i|Task_i):
         """execute task's actions"""
-        raise NotImplementedError()
+
+
 
     def _process_task_result(self, node, base_fail):
         """handles result"""
