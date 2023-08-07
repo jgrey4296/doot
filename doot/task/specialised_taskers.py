@@ -57,16 +57,20 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+import doot
 from doot.task.base_tasker import DootTasker
 
+@doot.check_protocol
 class DictTasker(DootTasker):
     """ Make a tasker from just a dict """
     pass
 
+@doot.check_protocol
 class FunctionTasker(DootTasker):
     """ Make a tasker from just a function """
     pass
 
+@doot.check_protocol
 class GroupTasker(DootTasker):
     """ A Group of task specs, none of which require params """
 
@@ -94,6 +98,7 @@ class GroupTasker(DootTasker):
         for x in other:
             self.tasks.append(other)
 
+@doot.check_protocol
 class WatchTasker(DootTasker):
     """
     Tasker that watches for conditions, *then*

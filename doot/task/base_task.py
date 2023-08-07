@@ -34,25 +34,19 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-import functools
-import pdb
-import sys
-from io import StringIO
-
 import doot
-from doot._abstract import Task_i
+import doot.errors
+from doot._abstract import Task_i, Tasker_i, Action_p
+from doot.structs import DootTaskComplexName
 from doot.actions.py_action import DootPyAction
 
-
+@doot.check_protocol
 class DootTask(Task_i):
     """
-    Extension of doit.Task to allow returning an Action from an action,
-    making a task's `execute` a stack of actions instead of a list
     """
-    action_builder = DootPyAction.build
-    name_splitter = re.compile(r":+|\.")
+    action_ctor = DootPyAction
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, name:DootTaskComplexName, tasker:Tasker_i, *args, **kwargs):
         super().__init__(*args, **{x:y for x,y in kwargs.items() if x in Task.valid_attr or x == 'loader'})
         if self.meta is None:
             self.meta = dict()
@@ -62,9 +56,13 @@ class DootTask(Task_i):
     def actions(self):
         """lazy creation of action instances"""
         if self._action_instances is None:
-            builder = self.action_builder
+            builder = self.action_ctor
             self._action_instances = list(map(lambda x: builder(x, self, 'actions'), self._actions))
         return self._action_instances
+
+    @property
+    def is_stale(self):
+        return False
 
     def execute(self, stream):
         """Executes the task.
@@ -93,8 +91,6 @@ class DootTask(Task_i):
                     self.result = action.result
                     self.values.update(action.values)
 
-    def name_parts(self):
-        return self.name_splitter.split(self.name)
 
     def report(self, template, list_deps) -> str:
         """print a single task"""

@@ -41,6 +41,9 @@ from doot._abstract import Command_i
 from doot.structs import DootParamSpec
 
 
+INDENT : Final[str] = " "*8
+
+@doot.check_protocol
 class ListCmd(Command_i):
     _name      = "list"
     _help      = ["A simple command to list all loaded task heads."]
@@ -60,7 +63,6 @@ class ListCmd(Command_i):
     def __call__(self, tasks:Tomler, plugins:Tomler):
         """List task generators"""
         logging.debug("Starting to List Taskers/Tasks")
-
 
         if (doot.args.cmd.args.pattern == ""     # type: ignore
             and not bool(doot.args.tasks)        # type: ignore
@@ -92,59 +94,74 @@ class ListCmd(Command_i):
 
     def _print_matches(self, tasks):
         max_key = len(max(tasks.keys(), key=len))
-        fmt_str = f"%-{max_key}s :: %s.%-25s <%s>"
+        fmt_str = f"%-{max_key}s :: %-25s <%s>"
         pattern = doot.args.cmd.args.pattern.lower()
         matches = {x for x in tasks.keys() if pattern in x.lower()}
         printer.info("Tasks for Pattern: %s", pattern)
         for key in matches:
-            (desc, cls) = tasks[key]
-            printer.info(fmt_str, key, cls.__module__, cls.__name__, desc['source'])
+            spec = tasks[key]
+            printer.info(fmt_str,
+                         spec.name,
+                         spec.ctor_name,
+                         spec.source)
 
     def _print_group_matches(self, tasks):
         max_key = len(max(tasks.keys(), key=len))
-        fmt_str = f"    %-{max_key}s :: %s.%-25s <%s>"
+        fmt_str = f"    %-{max_key}s :: %-25s <%s>"
         pattern  = doot.args.cmd.args.pattern.lower()
         groups  = defaultdict(list)
-        for key, (desc, cls) in tasks.items():
-            if pattern not in desc['group']:
+        for name, spec in tasks.items():
+            if pattern not in name:
                 continue
-            groups[desc['group']].append((fmt_str, key, cls.__module__, cls.__name__, desc['source']))
+            groups[spec.name.group_str()].append((spec.name.task_str(),
+                                                  spec.ctor.__module__,
+                                                  spec.ctor.__name__,
+                                                  spec.source))
 
         printer.info("Tasks for Matching Groups: %s", pattern)
         for group, tasks in groups.items():
-            printer.info("::%s::", group)
+            printer.info("*   %s::", group)
             for task in tasks:
-                printer.info(*task)
+                printer.info(fmt_str, *task)
 
     def _print_all_by_group(self, tasks):
         printer.info("Defined Task Generators by Group:")
         max_key = len(max(tasks.keys(), key=len))
-        fmt_str = f"    %-{max_key}s :: %s.%-25s <%s>"
+        fmt_str = f"{INDENT}%-{max_key}s :: %-25s <%s>"
         groups  = defaultdict(list)
-        for key, (desc, cls) in tasks.items():
-            groups[desc['group']].append((fmt_str, key, cls.__module__, cls.__name__, desc['source']))
+        for spec in tasks.values():
+            groups[spec.name.group_str()].append((spec.name.task_str(),
+                                                  spec.ctor_name,
+                                                  spec.source))
 
         for group, tasks in groups.items():
-            printer.info("::%s::", group)
+            printer.info("*   %s::", group)
             for task in tasks:
-                printer.info(*task)
+                printer.info(fmt_str, *task)
+
+        printer.info("")
+        printer.info("Full Task Name: {group}::{task}")
 
     def _print_all_by_source(self, tasks):
         printer.info("Defined Task Generators by Source File:")
         max_key = len(max(tasks.keys(), key=len))
-        fmt_str = f"    %-{max_key}s :: %s.%-25s <%s>"
-        groups = defaultdict(list)
+        fmt_str = f"{INDENT}%-{max_key}s :: %s.%-25s <%s>"
+        sources = defaultdict(list)
         for key, (desc, cls) in tasks.items():
-            groups[desc['source']].append((fmt_str, key, cls.__module__, cls.__name__, desc['source']))
+            sources[desc['source']].append((spec.name.task_str(),
+                                            spec.ctor.__module__,
+                                            spec.ctor.__name__,
+                                            spec.source))
 
-        for group, tasks in groups.items():
-            printer.info("::%s::", group)
+        for source, tasks in sources.items():
+            printer.info("::%s::", source)
             for task in tasks:
-                printer.info(*task)
+                printer.info(fmt_str, *task)
 
 
     def _print_just_groups(self, tasks):
         printer.info("Defined Task Groups:")
 
-        for group in set(x[0]['group'] for x in tasks.values()):
+        group_set = set(spec.name.group_str() for spec in tasks.values())
+        for group in group_set:
             printer.info("- %s", group)

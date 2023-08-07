@@ -28,7 +28,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from doot.errors import DootDirAbsent
-from doot.utils.task_namer import task_namer
+from doot.structs import DootTaskComplexName
 
 class LocProxy:
 
@@ -90,8 +90,7 @@ class DootLocData:
 
     def __init__(self, name="base", files:dict=None, **kwargs):
         self._root    : pl.Path() = pl.Path()
-        self._postfix             = name
-        self._prefix              = DootLocData._locs_report_name
+        self._name  = DootTaskComplexName(DootLocData._locs_report_name, name, private=True)
         self._check_name          = None
         self._dirs                = {}
         if bool(kwargs):
@@ -124,7 +123,7 @@ class DootLocData:
             case "/" | "~", _: # absolute path or home
                 return pl.Path(val).expanduser()
             case _, (solo,) | [solo]: # with postfix
-                return self.root / solo / self._postfix or ""
+                return self.root / solo / self._name.task[0] or ""
             case _, _: # normal
                 return self.root / val
 
@@ -150,7 +149,7 @@ class DootLocData:
 
     @property
     def name(self):
-        return task_namer(self._prefix, self._postfix, private=True)
+        return str(self._name)
 
     @property
     def root(self):
@@ -164,7 +163,7 @@ class DootLocData:
         return "TODO"
 
     def extend(self, *, name=None, **kwargs):
-        new_locs = DootLocData(name or self._postfix,
+        new_locs = DootLocData(name or self._name.task[0],
                                **self._dirs.copy())
         new_locs.update(kwargs)
         return new_locs
@@ -196,10 +195,10 @@ class DootLocData:
         max_postfix = max(len(x) for x in DootLocData._all_registered.keys())
         task = {
             "basename" : self._locs_report_name,
-            "name"     : self._postfix,
+            "name"     : self._name.task[0],
             "actions"  : [
-                lambda: print(f"{self._postfix:<{max_postfix}} Dirs : {self._dir_str()}"),
-                lambda: print(f"{self._postfix:<{max_postfix}} Files: {self._file_str()}") if bool(self._files) else "",
+                lambda: print(f"{self._name.task[0]:<{max_postfix}} Dirs : {self._dir_str()}"),
+                lambda: print(f"{self._name.task[0]:<{max_postfix}} Files: {self._file_str()}") if bool(self._files) else "",
             ],
             "uptodate" : [False],
             "verbosity" : 2,

@@ -94,8 +94,18 @@ logging = logmod.getLogger(__name__)
 from sys import stdout, stderr
 import doot
 import doot.constants
-from doot.utils.log_filter import DootAnyFilter
 
+class _DootAnyFilter:
+
+    def __init__(self, names=None, reject=None):
+        self.names      = names or []
+        self.rejections = reject or []
+        self.name_re    = re.compile("^({})".format("|".join(self.names)))
+
+    def __call__(self, record):
+        return (record.name not in self.rejections) and (record.name == "root"
+                                                         or not bool(self.names)
+                                                    or self.name_re.match(record.name))
 
 class DootLogConfig:
     """ Utility class to setup [stdout, stderr, file] logging. """
@@ -138,7 +148,7 @@ class DootLogConfig:
         self.file_handler.setLevel(file_log_level)
         self.file_handler.setFormatter(logmod.Formatter(file_log_format, style="{"))
         if bool(file_filter_names):
-            self.file_handler.addFilter(DootAnyFilter(file_filter_names))
+            self.file_handler.addFilter(_DootAnyFilter(file_filter_names))
 
         stream_log_level    = doot.config.on_fail("WARNING", str|int).logging.stream.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
         stream_log_format   = doot.config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str).logging.stream.format()
@@ -147,7 +157,7 @@ class DootLogConfig:
         self.stream_handler.setLevel(stream_log_level)
         self.stream_handler.setFormatter(logmod.Formatter(stream_log_format, style="{"))
         if bool(stream_filter_names):
-            self.stream_handler.addFilter(DootAnyFilter(stream_filter_names))
+            self.stream_handler.addFilter(_DootAnyFilter(stream_filter_names))
 
     def set_level(self, level):
         self.stream_handler.setLevel(level)

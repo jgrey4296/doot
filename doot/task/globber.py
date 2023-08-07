@@ -27,7 +27,7 @@ from doot.mixins.subtask import SubMixin
 glob_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).globbing.ignores()
 glob_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).globbing.halts()
 
-class GlobControl(enum.Enum):
+class _GlobControl(enum.Enum):
     """
     accept  : is a result, and descend if recursive
     keep    : is a result, don't descend
@@ -47,6 +47,8 @@ class GlobControl(enum.Enum):
     no      = enum.auto()
 
 
+
+@doot.check_protocol
 class DootEagerGlobber(SubMixin, DootTasker):
     """
     Base task for file based *on load* globbing.
@@ -61,8 +63,8 @@ class DootEagerGlobber(SubMixin, DootTasker):
     .{top/subtask/setup/teardown}_actions : for controlling task actions
     .default_task : the basic task definition that everything customises
     """
-    control = GlobControl
-    globc   = GlobControl
+    control = _GlobControl
+    globc   = _GlobControl
 
     def __init__(self, spec:dict|Tomler, locs:DootLocData=None):
         super().__init__(spec, locs)
@@ -79,7 +81,7 @@ class DootEagerGlobber(SubMixin, DootTasker):
                 breakpoint()
                 pass
 
-    def filter(self, target:pl.Path) -> bool | GlobControl:
+    def filter(self, target:pl.Path) -> bool | _GlobControl:
         """ filter function called on each prospective glob result
         override in subclasses as necessary
         """
@@ -106,7 +108,7 @@ class DootEagerGlobber(SubMixin, DootTasker):
             return None
 
         if not (bool(rec) or rec is None and self.rec):
-            check_fn = lambda x: (filter_fn(x) not in [None, False, GlobControl.reject, GlobControl.discard]
+            check_fn = lambda x: (filter_fn(x) not in [None, False, _GlobControl.reject, _GlobControl.discard]
                                   and x.name not in glob_ignores
                                   and (not bool(exts) or (x.is_file() and x.suffix in exts)))
 
@@ -135,19 +137,19 @@ class DootEagerGlobber(SubMixin, DootTasker):
             if bool(exts) and current.is_file() and current.suffix not in exts:
                 continue
             match filter_fn(current):
-                case GlobControl.keep | GlobControl.yes:
+                case _GlobControl.keep | _GlobControl.yes:
                     yield current
-                case False | GlobControl.discard | GlobControl.noBut if current.is_dir():
+                case False | _GlobControl.discard | _GlobControl.noBut if current.is_dir():
                     queue += sorted(current.iterdir())
-                case True | GlobControl.accept | GlobControl.yesAnd:
+                case True | _GlobControl.accept | _GlobControl.yesAnd:
                     yield current
                     if current.is_dir():
                         queue += sorted(current.iterdir())
                 case None | False:
                     continue
-                case GlobControl.reject | GlobControl.discard:
+                case _GlobControl.reject | _GlobControl.discard:
                     continue
-                case GlobControl.no | GlobControl.noBut:
+                case _GlobControl.no | _GlobControl.noBut:
                     continue
                 case _ as x:
                     raise TypeError("Unexpected glob filter value", x)

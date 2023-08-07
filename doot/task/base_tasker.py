@@ -57,12 +57,13 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-
-import doot
 from tomler import Tomler
+import doot
+from doot.structs import DootTaskSpec
 from doot._abstract import Tasker_i, Task_i
 from doot.errors import DootDirAbsent
 
+@doot.check_protocol
 class DootTasker(Tasker_i):
     """ Util Class for building single tasks
       wraps with setup and teardown tasks,
@@ -70,64 +71,14 @@ class DootTasker(Tasker_i):
       and holds state
 
     """
-    sleep_subtask : ClassVar[float]
-    sleep_notify  : ClassVar[bool]
     _help = ["A Basic Task Constructor"]
 
-    @staticmethod
-    def set_defaults(config:Tomler):
-        DootTasker.sleep_subtask = config.on_fail(2.0,   int|float).subtask.sleep()
-        DootTasker.sleep_notify  = config.on_fail(False, bool).notify.sleep()
-
-    def __init__(self, spec:dict|Tomler):
+    def __init__(self, spec:doottaskspec):
         super(DootTasker, self).__init__(spec)
-
         assert(spec is not None), "Spec is empty"
 
-        self.spec             = spec
-        self.args             = {}
-        self._setup_name      = None
-        self.has_active_setup = False
-
-        # match base:
-        #     case str():
-        #         self.basename         = base
-        #         self.subgroups        = subgroups or []
-        #     case [x, *xs]:
-        #         self.basename = x
-        #         self.subgroups = xs + (subgroups or [])
-        #     case _:
-        #         raise TypeError("Bad base name provided to task: %s", base)
-
-
-    def _build_setup(self) -> None|Task_i:
-        """
-        Build a pre-task that every subtask depends on
-        """
-        try:
-            task_spec         = self.default_task()
-            task_spec['doc']  = ""
-            task_spec['name'] = self.setup_name
-            # if self.locs is not None and not isinstance(self.locs, bool):
-            #     task_spec['setup'] = [ self.locs.checker ]
-
-            match self.setup_detail(task_spec):
-                case None:
-                    return None
-                case str() as sname:
-                    self._setup_name = sname
-                    return None
-                case dict() as val:
-                    self.has_active_setup = True
-                    val['actions'] = [x for x in val['actions'] if bool(x)]
-                    return self._make_task(**val)
-                case _ as val:
-                    logging.warning("Setup Detail Returned an unexpected value: ", val)
-        except DootDirAbsent:
-            return None
-
     def _build_task(self) -> None|Task_i:
-        logging.debug("Building Task for: %s", self.fullname)
+        logging.debug("Building Task for: %s", self.name)
         task                     = self.default_task()
         maybe_task : None | dict = self.task_detail(task)
         if maybe_task is None:
@@ -136,7 +87,8 @@ class DootTasker(Tasker_i):
             maybe_task['setup'] += [self.setup_name]
 
         maybe_task['actions'] = [x for x in maybe_task['actions'] if bool(x)]
-        full_task             = self._make_task(**maybe_task)
+
+        full_task : Task_i    = self._make_task(**maybe_task)
         if not bool(full_task.doc):
             full_task.doc = self.doc
         return full_task
@@ -149,40 +101,28 @@ class DootTasker(Tasker_i):
     def posts(self) -> list:
         pass
 
-    def default_task(self) -> dict:
-        return dict([("name"     , self.fullname),
-                     ("meta"     , self.default_meta()),
-                     ("actions"  , list()),
-                     ("task_dep" , list()),
-                     ("setup"    , list()),
-                     ("doc"      , self.doc),
-                     ("uptodate" , [self.is_current]),
-                     ("clean"    , [self.clean]),
-                     ("targets"  , []),
-                     ])
+    def default_task(self) -> DootTaskSpec:
+        return DootTaskSpec(name=self.name)
 
-    def default_meta(self) -> dict:
-        meta = dict()
-        return meta
-
-    def is_current(self, task:Task_i):
+    def is_stale(self, task:Task_i):
         return False
 
-    def clean(self, task:Task_i):
-        return
-
-    def build(self, **kwargs) -> Generator[Task_i|dict]:
-        logging.debug("Building Tasker: %s", self.fullname)
+    def build(self, **kwargs) -> generator[task_i|dict]:
+        logging.debug("-- tasker %s expanding tasks", self.name)
         if bool(kwargs):
-            logging.debug("Recieved kwargs: %s", kwargs)
+            logging.debug("recieved kwargs: %s", kwargs)
         self.args.update(kwargs)
-        setup_task = self._build_setup()
         task       = self._build_task()
 
-        if task is not None:
+        if task is not none:
             yield task
         else:
-            return None
+            return none
 
-        if setup_task is not None:
-            yield setup_task
+    def is_stale(self):
+        pass
+
+    def specialize_task(self, task): ...
+
+    def toml_stub(self):
+        pass

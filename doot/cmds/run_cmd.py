@@ -57,7 +57,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-import tomler
+from tomler import Tomler
 
 import doot
 from doot._abstract import Reporter_i, TaskRunner_i
@@ -66,6 +66,7 @@ from collections import defaultdict
 
 printer = logmod.getLogger("doot._printer")
 
+@doot.check_protocol
 class RunCmd(Command_i):
     _name      = "run"
     _help      = []
@@ -78,11 +79,13 @@ class RunCmd(Command_i):
             self.make_param(name="target", type=list[str], default=[], positional=True),
             ]
 
-    def __call__(self, tasks:Tomler, plugins:tomler.Tomler):
+    def __call__(self, tasks:Tomler, plugins:Tomler):
         printer.info("Building Task Dependency Network")
         tracker = plugins.tracker[0].load()()
         for task in tasks.values():
             tracker.add_task(task)
+
+        # TODO add a check task for locations
 
 
         printer.info("Task Dependency Network Built")
@@ -92,7 +95,8 @@ class RunCmd(Command_i):
             else:
                 tracker.queue_task(target)
 
-        printer.info("Running Tasks: %s", target)
+        printer.info("Tasks Queued: %s", tracker.task_stack)
         reporter : Reporter_i     = plugins.reporter[0].load()()
         runner   : TaskRunner_i   = plugins.runner[0](tracker, reporter)
-        # return runner(doot.args.cmd.target)
+        printer.info("running tasks")
+        runner()

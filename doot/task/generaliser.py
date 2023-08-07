@@ -23,6 +23,7 @@ import doot
 from doot.errors import DootDirAbsent
 from doot.task.globber import DootEagerGlobber
 
+@doot.check_protocol
 class DootGeneraliser(DootEagerGlobber):
     """
     generaliser = DootGeneraliser("task::general.cat",

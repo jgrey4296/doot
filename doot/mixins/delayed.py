@@ -31,7 +31,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 
-from doot import namer
+from doot.structs import DootTaskComplexName
 
 import sys
 
@@ -48,15 +48,15 @@ class DelayedMixin:
 
     @property
     def delayed_name(self):
-        return namer("delayed", self.fullname, private=True)
+        return DootTaskComplexName("delayed", self.fullname, private=True)
 
     @property
     def calc_dep_taskname(self):
-        return namer(self.delayed_name, "calc_delayed_tasks", private=True)
+        return DootTaskComplexName(self.delayed_name, "calc_delayed_tasks", private=True)
 
     @property
     def delayed_subtask_name(self):
-        return namer(self.delayed_name, "subtask_gen", private=True)
+        return DootTaskComplexName(self.delayed_name, "subtask_gen", private=True)
 
     def _build_task(self):
         """
@@ -105,7 +105,7 @@ class DelayedMixin:
         logging.info("%s : Building Delayed Subtasks", self.fullname)
         self._delayed_task_names = []
         for task in super(DelayedMixin, self)._build_subs():
-            task['basename'] = namer(self.delayed_name, task["name"])
+            task['basename'] = DootTaskComplexName(self.delayed_name, task["name"])
             del task['name']
             self._delayed_task_names.append(task['basename'])
             yield task

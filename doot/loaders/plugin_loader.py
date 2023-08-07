@@ -81,6 +81,8 @@ def make_ep (x, y, z):
         raise doot.errors.DootPluginError("Plugin Type Not Found: %s : %s", z, (x, y))
     return EntryPoint(name=x, value=y, group="{}.{}".format(doot.constants.PLUGIN_TOML_PREFIX, z))
 
+
+@doot.check_protocol
 class DootPluginLoader(PluginLoader_p):
     """
     Load doot plugins from the system, to choose from with doot.toml or cli args
@@ -98,7 +100,7 @@ class DootPluginLoader(PluginLoader_p):
 
         return self
 
-    def load(self) -> Tomler:
+    def load(self) -> Tomler[EntryPoint]:
         """
         use entry_points(group="doot")
         add to the config tomler

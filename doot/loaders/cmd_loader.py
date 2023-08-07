@@ -67,6 +67,7 @@ import time
 import doot
 from doot._abstract import CommandLoader_p, Command_i
 
+@doot.check_protocol
 class DootCommandLoader(CommandLoader_p):
 
     def setup(self, plugins, extra=None) -> Self:

@@ -83,6 +83,7 @@ preferred_parser      = doot.config.on_fail("default").loaders.parser()
 
 defaulted_file = doot.config.on_fail(pl.Path(".doot_defaults.toml"), pl.Path).report.defaulted_file(pl.Path)
 
+@doot.check_protocol
 class DootOverlord(Overlord_p):
     """
     Main control point for doot.
@@ -221,7 +222,7 @@ class DootOverlord(Overlord_p):
         if not isinstance(self.parser, ArgParser_i):
             raise TypeError("Improper argparser specified: ", self.arg_parser)
 
-        doot.args = self.parser.parse(args or self.args, self.param_specs, self.cmds, self.taskers)
+        doot.args = self.parser.parse(args or self.args, doot_specs=self.param_specs, cmds=self.cmds, tasks=self.taskers)
 
     def _cli_arg_response(self) -> bool:
         """ Overlord specific cli arg responses. modify verbosity,

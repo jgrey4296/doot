@@ -59,6 +59,7 @@ from doot._abstract import ArgParser_i
 from doot.structs import DootParamSpec
 from collections import ChainMap
 
+@doot.check_protocol
 class DootArgParser(ArgParser_i):
     """
     convert argv to tomler by:
@@ -78,7 +79,7 @@ class DootArgParser(ArgParser_i):
     def _build_defaults_dict(self, param_specs:list) -> dict:
         return { x.name : x.default for x in param_specs }
 
-    def parse(self, args:list, doot_specs:list[DootParamSpec], cmds:Tomler, tasks:Tomler) -> None|Tomler:
+    def parse(self, args:list, *, doot_specs:list[DootParamSpec], cmds:Tomler, tasks:Tomler) -> None|Tomler:
         logging.debug("Parsing args: %s", args)
         head_arg     = args[0]
 
@@ -105,7 +106,7 @@ class DootArgParser(ArgParser_i):
         # Help is special, it overrides the cmd if its specified anywhere
         default_help = DootParamSpec(name="help", default=False, prefix="--")
 
-        logging.info("Registered Arg Specs: %s", current_specs)
+        logging.info("Initial Arg Specs: %s", current_specs)
         # loop through args as a state machine.
         # starts in "doot" state, progresses to "cmd" then "task" before quitting
         for arg in args[1:]:
@@ -122,6 +123,7 @@ class DootArgParser(ArgParser_i):
                     focus          = PS.CMD
                     cmd            = cmds[arg]
                     current_specs  = list(sorted(cmd.param_specs, key=DootParamSpec.key_func))
+                    logging.info("Updated Specs to: %s", current_specs)
                     matching_specs = []
                     cmd_name       = arg
                     cmd_args       = self._build_defaults_dict(current_specs)
@@ -133,7 +135,8 @@ class DootArgParser(ArgParser_i):
                     # handle switching to task context
                     focus          = PS.TASK
                     mentioned_tasks.append(arg)
-                    current_specs  = list(sorted(tasks[arg][-1].param_specs, key=DootParamSpec.key_func))
+                    current_specs  = list(sorted(tasks[arg].ctor.param_specs, key=DootParamSpec.key_func))
+                    logging.info("Updated Specs to: %s", current_specs)
 
                     matching_specs = []
                     new_task_args  = self._build_defaults_dict(current_specs)
@@ -155,7 +158,7 @@ class DootArgParser(ArgParser_i):
                 case _ if not (bool(doot_specs) or bool(cmds) or bool(tasks)):
                     pass
                 case _:
-                    raise doot.errors.DootParseError(f"Unrecognized %s Parameter: %s. Available Parameters: %s", focus.name, arg, [repr(x) for x in current_specs])
+                    raise doot.errors.DootParseError("Unrecognized {} Parameter: {}. Available Parameters: {}".format(focus.name, arg, [repr(x) for x in current_specs]))
 
 
             if bool(matching_specs) and not matching_specs[0].repeatable:

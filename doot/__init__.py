@@ -10,15 +10,15 @@ from __future__ import annotations
 
 import logging as logmod
 import pathlib as pl
-from typing import Final, Any
+from typing import Final, Any, assert_type
 ##-- end std imports
 
 import tomler
 import doot.errors
 from doot import constants
 from doot.control.locations import DootLocData
-from doot.utils.task_namer import task_namer as namer
 from doot._abstract.reporter import Reporter_i
+from doot.utils.check_protocol import check_protocol
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -27,20 +27,20 @@ logging = logmod.getLogger(__name__)
 # Global, single points of truth:
 __version__          : Final[str]      = "0.2.0"
 
-config               : tomler.Tomler = None # doot config
-locs                 : DootLocData   = None # registered locations
-args                 : tomler.Tomler = None # parsed arg access
-report               : Reporter_i    = None
+config               : tomler.Tomler   = None # doot config
+locs                 : DootLocData     = None # registered locations
+args                 : tomler.Tomler   = None # parsed arg access
+report               : Reporter_i      = None
 
 _configs_loaded_from : list[pl.Path] = []
 
-def setup(targets:list[str|pl.Path]|None=None, prefix:str|None=None) -> tuple[tomler.Tomler, DootLocData]:
+def setup(targets:list[pl.Path]|None=None, prefix:str|None=None) -> tuple[tomler.Tomler, DootLocData]:
     """
       The core requirement to call before any other doot code is run.
       loads the config files, so everything else can retrieve values when imported.
     """
     global config, locs, _configs_loaded_from
-    targets : list[str|pl.Path] = targets or constants.DEFAULT_LOAD_TARGETS
+    targets : list[pl.Path] = targets or constants.DEFAULT_LOAD_TARGETS
     logging.debug("Loading Doot Config, version: %s targets: %s", __version__, targets)
     if config is not None:
         raise Exception("Setup called even though doot is already set up")
@@ -51,21 +51,18 @@ def setup(targets:list[str|pl.Path]|None=None, prefix:str|None=None) -> tuple[to
     if not any([x.exists() for x in targets]):
         raise doot.errors.DootConfigError("No Doot data found")
 
-    existing_targets     = [x for x in targets if x.exists()]
-    config, locs         = setup_agnostic(*existing_targets)
-    _configs_loaded_from = existing_targets
+    existing_targets       = [x for x in targets if x.exists()]
 
-    if prefix is None:
-        return config, locs
+    config = tomler.load(*existing_targets)
+    locs   = DootLocData(files=config.flatten_on({}).files(), **config.flatten_on({}).directories())
 
-    for x in prefix.split("."):
-        config = getattr(config, x)
+    _configs_loaded_from   = existing_targets
 
-    return config, locs
-
-def setup_agnostic(*paths:pl.Path) -> tuple(tomler.Tomler, DootLocData):
-    config = tomler.load(*paths)
-    locs   = DootLocData(files=config.flatten_on({}).files(),
-                         **config.flatten_on({}).directories())
+    match prefix:
+        case None:
+            return config, locs
+        case str():
+            for x in prefix.split("."):
+                config = config[x]
 
     return config, locs

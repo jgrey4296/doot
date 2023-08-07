@@ -33,9 +33,9 @@ logging = logmod.getLogger(__name__)
 from time import sleep
 import requests
 
-# header = {'user-agent': args.agent}
 
 def expander(current):
+    # header = {'user-agent': args.agent}
     try:
         response = requests.head(current, allow_redirects=True, timeout=2, headers=header)
         if response.ok:
