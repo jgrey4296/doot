@@ -57,39 +57,44 @@ import networkx as nx
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-
 from collections import defaultdict
 import doot
+import doot.errors
 from doot.enums import TaskStateEnum
-from doot._abstract import Tasker_i, Task_i
-from doot.structs import DootTaskArtifact
-from doot._abstract import TaskTracker_i, TaskRunner_i, TaskOrdering_p
+from doot._abstract import Tasker_i, Task_i, FailPolicy_p
+from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskComplexName
+from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i
 
-ROOT : Final[str] = "__root"
+ROOT  : Final[str] = "__root" # Root node of dependency graph
+STATE : Final[str] = "state"  # Node attribute name
+
+class _TrackerEdgeType(enum.Enum):
+    TASK     = enum.auto()
+    ARTIFACT = enum.auto()
 
 
+@doot.check_protocol
 class DootTracker(TaskTracker_i):
     """
     track dependencies in a networkx digraph,
-    successors of a node are its dependencies,
+    successors of a node are its dependencies.
+      ie: ROOT -> Task -> Dependency -> SubDependency
 
     tracks definite and indefinite artifacts as products and dependencies of tasks as well.
     """
 
-    def __init__(self, shadowing:bool=False, fail_fast:bool=False):
-        super().__init__() # tasks
-        self.artifacts            = {}
-        self.indefinite_artifacts = {}
-        self.dep_graph            = nx.DiGraph()
-        self.produce_mapping      = defaultdict(set)
-        self.task_stack           = []
-        self.execution_path       = []
-        self.shadowing            = shadowing
-        self.fail_fast            = fail_fast
+    def __init__(self, shadowing:bool=False, *, policy=None):
+        super().__init__(policy=policy) # self.tasks
+        self.artifacts            : dict[str, DootTaskArtifact]                       = {}
+        self.indefinite_artifacts : dict[str, DootTaskArtifact]                       = {}
+        self.dep_graph            : nx.DiGraph                                        = nx.DiGraph()
+        self.task_stack           : list[str|DootTaskComplexName|DootTaskArtifact]    = []
+        self.execution_path       : list[str]                                         = []
+        self.shadowing            : bool                                              = shadowing
 
         self.dep_graph.add_node(ROOT, state=self.state_e.WAIT)
 
-    def __iter__(self) -> Generator:
+    def __iter__(self) -> Generator[Any,Any,Any]:
         while bool(self.task_stack):
             yield self.next_for()
 
@@ -103,72 +108,68 @@ class DootTracker(TaskTracker_i):
         match artifact:
             case _ if artifact in self.dep_graph:
                 pass
-            case DootTaskArtifact() if artifact.is_definite():
+            case DootTaskArtifact() if artifact.is_definite:
                 self.artifacts[str(artifact)] = artifact
                 self.dep_graph.add_node(artifact, state=self.state_e.ARTIFACT)
                 for x in self.indefinite_artifacts.values(): # connect definite to indefinites
                     if artifact.matches(x):
-                        self.dep_graph.add_edge(x, artifact, type="artifact")
+                        self.dep_graph.add_edge(x, artifact, type=_TrackerEdgeType.ARTIFACT)
             case DootTaskArtifact():
                 self.indefinite_artifacts[str(artifact)] = artifact
                 self.dep_graph.add_node(artifact, state=self.state_e.ARTIFACT)
                 for x in self.artifacts.values(): # connect indefinite to definites
                     if x.matches(artifact):
-                        self.dep_graph.add_edge(artifact, x, type="artifact")
+                        self.dep_graph.add_edge(artifact, x, type=_TrackerEdgeType.ARTIFACT)
 
         return artifact
 
-    def add_task(self, task:None|tuple|Tasker_i|Task_i, no_root_connection=False) -> None:
-        """ add a task description into the tracker,
+    def add_task(self, task:DootTaskSpec|TaskBase_i, *, no_root_connection=False) -> None:
+        """ add a task description into the tracker, but don't queue it
         connecting it with its dependencies and tasks that depend on it
         """
-        match task:
-            case None:
-                return
-            case TaskOrdering_p():
-                pass
-            case (spec, cls):
-                task = cls(spec)
+        # Build the Task if necessary
+        if isinstance(task, DootTaskSpec):
+            task : TaskBase_i = task.ctor(task)
 
         match task.name in self.tasks, self.shadowing, self.tasks.get(task.name): # type: ignore
             case True, _, False:
                 pass
             case True, False, _:
-                raise KeyError("Task with Duplicate Name not added: ", task.name)
+                raise doot.errors.DootTaskTrackingError("Task with Duplicate Name not added: ", task.name)
             case True, True, _:
                 logging.warning("Task Shadowed by Duplicate Name: %s", task.name)
 
         self.tasks[task.name] = task
-        task_state = self.state_e.READY if not bool(task.priors) else self.state_e.DEFINED
+        task_state = self.state_e.READY if not bool(task.depends_on) else self.state_e.DEFINED
         self.dep_graph.add_node(task.name, state=task_state)
         if not no_root_connection:
             self.dep_graph.add_edge(ROOT, task.name)
 
-        for pre in task.priors:
-            edge_type = "task"
+        for pre in task.depends_on:
+            edge_type = _TrackerEdgeType.TASK
             match pre:
                 case str() if pre not in self.dep_graph:
                     self.dep_graph.add_node(pre, state=self.state_e.DECLARED)
                 case pl.Path():
                     pre = self._add_artifact(pre)
-                    edge_type = "artifact"
+                    edge_type = _TrackerEdgeType.ARTIFACT
 
             self.dep_graph.add_edge(task.name, pre, type=edge_type)
 
-        for post in task.posts:
-            edge_type = "task"
+        for post in task.enables:
+            edge_type = _TrackerEdgeType.TASK
             match post:
                 case str() if post not in self.dep_graph:
                     self.dep_graph.add_node(post, state=self.state_e.DECLARED)
                 case pl.Path():
                     post      = self._add_artifact(post)
-                    edge_type = "artifact"
+                    edge_type = _TrackerEdgeType.ARTIFACT
 
             self.dep_graph.add_edge(post, task.name, type=edge_type)
 
-    def queue_task(self, task:str) -> None:
+    def queue_task(self, task:str|DootTaskComplexName) -> None:
         if task not in self.tasks:
-            raise LookupError(task)
+            raise doot.errors.DootTaskTrackingError("Can't queue a task that isn't loaded in the tracker", task)
         self.task_stack.append(task)
 
     def next_for(self, target:None|str=None) -> None|Tasker_i|Task_i:
@@ -176,55 +177,55 @@ class DootTracker(TaskTracker_i):
         if target and target not in self.task_stack:
             self.task_stack.append(target)
 
-        complete_states = {self.state_e.SUCCESS, self.state_e.EXISTS}
-        focus             = None
-        adj               = dict(self.dep_graph.adjacency())
+        complete_states                       = {self.state_e.SUCCESS, self.state_e.EXISTS}
+        focus : str | DootTaskArtifact | None = None
+        adj                                   = dict(self.dep_graph.adjacency())
         while bool(self.task_stack):
             focus        = self.task_stack[-1]
             logging.debug("Task: %s  State: %s, Stack: %s", focus, self.task_state(focus), self.task_stack)
             match self.task_state(focus):
-                case self.state_e.SUCCESS:
+                case self.state_e.SUCCESS: # remove task on completion
                     self.task_stack.pop()
-                case self.state_e.EXISTS:
+                case self.state_e.EXISTS:  # remove artifact when it exists
                     self.task_stack.pop()
-                case self.state_e.FAILURE:
+                case self.state_e.HALTED:  # remove and propagate halted status
+                    # anything that depends on a halted task in turn gets halted
+                    for pred in self.dep_graph.pred[focus].keys():
+                        self.update_state(pred, self.state_e.HALTED)
+                    # And remove the halted task from the task_stack
+                    self.task_stack.pop()
+                case self.state_e.FAILED:  # stop when a task fails, and clear any queued tasks
                     self.task_stack = []
                     return None
-                case self.state_e.READY if focus in self.execution_path and self.fail_fast:
-                    raise RuntimeError("Task Attempted to run twice", focus)
-                case self.state_e.READY if focus in self.execution_path:
-                    logging.warning("Task %s attempted to be run twice", focus)
-                    self.update_task_state(focus, self.state_e.FAILURE)
-                case self.state_e.READY:
+                case self.state_e.READY if focus in self.execution_path: # error on running the same task twice
+                    raise doot.errors.DootTaskTrackingError("Task Attempted to run twice", focus)
+                case self.state_e.READY:   # return the task if its ready
                     self.execution_path.append(focus)
                     return self.tasks.get(focus, None)
-                case self.state_e.ARTIFACT if bool(focus):
-                    self.update_task_state(focus, self.state_e.EXISTS)
-                case self.state_e.ARTIFACT:
+                case self.state_e.ARTIFACT if bool(focus): # if an artifact exists, mark it so
+                    self.update_state(focus, self.state_e.EXISTS)
+                case self.state_e.ARTIFACT: # Add dependencies of an artifact to the stack
                     dependencies = list(adj[focus].keys())
                     incomplete   = list(filter(lambda x: self.task_state(x) not in complete_states, dependencies))
                     if bool(incomplete):
                         self.task_stack += incomplete
                     else:
-                        self.update_task_state(focus, self.state_e.EXISTS)
-                case self.state_e.WAIT | self.state_e.DEFINED:
+                        self.update_state(focus, self.state_e.EXISTS)
+                case self.state_e.WAIT | self.state_e.DEFINED: # Add dependencies of a task to the stack
                     dependencies = list(adj[focus].keys())
                     incomplete   = list(filter(lambda x: self.task_state(x) not in complete_states, dependencies))
                     if bool(incomplete):
                         self.task_stack += incomplete
                     else:
-                        self.update_task_state(focus, self.state_e.READY)
-                case self.state_e.DECLARED if self.fail_fast:
-                    raise RuntimeError("Task Declared but undefined", focus)
-                case self.state_e.DECLARED:
-                    logging.warning("Undefined Task in dependency path: %s", focus)
-                    self.execution_path.append(focus)
-                    self.update_task_state(focus, self.state_e.SUCCESS)
-                case x:
-                    raise TypeError("Unknown task state: ", x)
+                        self.update_state(focus, self.state_e.READY)
+                case self.state_e.DECLARED: # warn on undefined tasks
+                    logging.warning("Tried to Schedule a Declared but Undefined Task: %s", focus)
+                    self.task_stack.pop()
+                    self.update_state(focus, self.state_e.SUCCESS)
+                case _: # Error otherwise
+                    raise doot.errors.DootTaskTrackingError("Unknown task state: ", x)
 
         return None
-
 
     def validate(self) -> bool:
         """
@@ -242,27 +243,27 @@ class DootTracker(TaskTracker_i):
         """ get the set of tasks which are explicitly defined """
         return set(self.tasks.keys())
 
-    def update_task_state(self, task:str|TaskOrdering_p|DootTaskArtifact, state:TaskStateEnum):
+    def update_state(self, task:str|TaskBase_i|DootTaskArtifact, state:TaskStateEnum):
         """ update the state of a task in the dependency graph """
         logging.debug("Updating Task State: %s -> %s", task, state)
         match task, state:
             case str(), self.state_e() if task in self.dep_graph:
                 self.dep_graph.nodes[task]['state'] = state
-            case TaskOrdering_p(), self.state_e() if task.name in self.dep_graph:
+            case TaskBase_i(), self.state_e() if task.name in self.dep_graph:
                 self.dep_graph.nodes[task.name]['state'] = state
             case DootTaskArtifact(), self.state_e() if task in self.dep_graph:
                 self.dep_graph.nodes[task]['state'] = state
             case _, _:
-                raise TypeError("Bad task update state args", task, state)
+                raise doot.errors.DootTaskTrackingError("Bad task update state args", task, state)
 
     def task_state(self, task:str) -> TaskStateEnum:
         """ Get the state of a task """
-        return self.dep_graph.nodes[task]['state']
+        return self.dep_graph.nodes[task][STATE]
 
     def all_states(self) -> dict:
         """ Get a dict of all tasks, and their current state """
         nodes = self.dep_graph.nodes
-        return {x: y['state'] for x,y in nodes.items()}
+        return {x: y[STATE] for x,y in nodes.items()}
 
     def write(self, target:pl.Path) -> None:
         """ Write the dependency graph to a file """
