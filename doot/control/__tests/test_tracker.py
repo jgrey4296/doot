@@ -15,19 +15,19 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 ##-- end imports
 logging = logmod.root
 
-
 import pytest
+import doot.errors
 from doot.control.tracker import DootTracker
 from doot._abstract import Task_i
 
 def make_mock_task(mocker, name, pre=None, post=None):
-    mock_task              = mocker.MagicMock(spec=Task_i)
-    mock_task.name         = name
-    priors                 = pre or mocker.PropertyMock()
-    posts                  = post or mocker.PropertyMock()
-    type(mock_task).priors = priors
-    type(mock_task).posts  = posts
-    return mock_task, priors, posts
+    mock_task                  = mocker.MagicMock(spec=Task_i)
+    mock_task.name             = name
+    depends_on                 = pre or mocker.PropertyMock()
+    enables                    = post or mocker.PropertyMock()
+    type(mock_task).depends_on = depends_on
+    type(mock_task).enables    = enables
+    return mock_task, depends_on, enables
 
 class TestTracker:
 
@@ -36,15 +36,15 @@ class TestTracker:
         assert(tracker is not None)
 
     def test_add_task(self, mocker):
-        mock_task, priors, posts = make_mock_task(mocker, "test_task")
+        mock_task, depends_on, enables = make_mock_task(mocker, "test_task")
 
         tracker = DootTracker()
         tracker.add_task(mock_task)
 
         assert("test_task" in tracker.tasks)
         assert(tracker.dep_graph.nodes['test_task']['state'] == tracker.state_e.DEFINED)
-        priors.assert_called()
-        posts.assert_called()
+        depends_on.assert_called()
+        enables.assert_called()
 
     def test_duplicate_add_fail(self, mocker):
         task1, pre1, post1 = make_mock_task(mocker, "task1")
@@ -52,15 +52,14 @@ class TestTracker:
 
         tracker = DootTracker()
         tracker.add_task(task1)
-        with pytest.raises(KeyError):
+        with pytest.raises(doot.errors.DootTaskTrackingError):
             tracker.add_task(task2)
 
         assert("task1" in tracker.tasks)
         pre1.assert_called()
         pre1.assert_called()
-        # Only Called once because of runtime_checkable protcol test:
-        pre2.assert_called_once()
-        post2.assert_called_once()
+        pre2.assert_not_called()
+        post2.assert_not_called()
 
     def test_duplicate_add(self, mocker):
         task1, pre1, post1 = make_mock_task(mocker, "task1")
@@ -78,20 +77,25 @@ class TestTracker:
 
     def test_contains_defined(self, mocker):
         mock_task, _, _= make_mock_task(mocker, "test_task")
-        mock_task.priors = ["example", "blah"]
+        mock_task.depends_on = ["example", "blah"]
 
         tracker = DootTracker()
         tracker.add_task(mock_task)
         # defined Task is contained
         assert("test_task" in tracker)
 
-    def test_fail_fast(self, mocker):
+
+    def test_warn_on_undefined(self, mocker, caplog):
+        """ create a task with undefined dependencies, it should just warn not error """
         task1,    *_ = make_mock_task(mocker, "task1", pre=["subtask", "subtask2"])
-        tracker = DootTracker(fail_fast=True)
+        tracker = DootTracker()
         tracker.add_task(task1)
 
-        with pytest.raises(RuntimeError):
-            tracker.next_for("task1")
+        assert(tracker.next_for("task1").name is "task1")
+
+        assert(bool([x for x in caplog.records if x.levelname == "WARNING"]))
+        assert("Tried to Schedule a Declared but Undefined Task: subtask" in caplog.messages)
+        assert("Tried to Schedule a Declared but Undefined Task: subtask2" in caplog.messages)
 
     def test_not_contains_declared(self, mocker):
         mock_task, _, _= make_mock_task(mocker, "test_task", pre=["example", "blah"])
@@ -150,10 +154,10 @@ class TestTracker:
 
         next_task = tracker.next_for("task1")
         assert(next_task.name in {"subtask", "subtask2"})
-        tracker.update_task_state(next_task, tracker.state_e.SUCCESS)
+        tracker.update_state(next_task, tracker.state_e.SUCCESS)
         next_task_2 = tracker.next_for()
         assert(next_task_2.name in {"subtask", "subtask2"} - {next_task.name})
-        tracker.update_task_state(next_task_2, tracker.state_e.SUCCESS)
+        tracker.update_state(next_task_2, tracker.state_e.SUCCESS)
         next_task_3 = tracker.next_for()
         assert(next_task_3.name in "task1")
 
@@ -174,7 +178,7 @@ class TestTracker:
         for x in tracker:
             if x:
                 tasks.append(x.name)
-                tracker.update_task_state(x.name, tracker.state_e.SUCCESS)
+                tracker.update_state(x.name, tracker.state_e.SUCCESS)
 
         assert(len(tasks) == 4)
 
@@ -190,48 +194,56 @@ class TestTracker:
         tracker.add_task(subtask2)
         tracker.add_task(subtask3)
 
-        tracker.update_task_state("subtask2", tracker.state_e.SUCCESS)
+        tracker.update_state("subtask2", tracker.state_e.SUCCESS)
         tasks = []
         tracker.queue_task("task1")
         for x in tracker:
             if x:
                 tasks.append(x.name)
-                tracker.update_task_state(x.name, tracker.state_e.SUCCESS)
+                tracker.update_state(x.name, tracker.state_e.SUCCESS)
 
         assert("subtask2" not in tasks)
         assert(len(tasks) == 3)
 
-    def test_task_failure(self, mocker):
+    def test_task_failure(self, mocker, caplog):
         task1,    *_ = make_mock_task(mocker, "task1", pre=["subtask"])
         subtask,  *_ = make_mock_task(mocker, "subtask", pre=["subsub"])
         tracker = DootTracker()
         tracker.add_task(task1)
         tracker.add_task(subtask)
-        next_task = tracker.next_for("task1")
-        assert(next_task == subtask)
-        tracker.update_task_state(subtask, tracker.state_e.FAILURE)
 
-        next_task = tracker.next_for("task1")
-        assert(next_task is None)
+        result = tracker.next_for("task1")
+        assert(result.name == "subtask")
+        tracker.update_state(result, tracker.state_e.SUCCESS)
+        assert(tracker.next_for().name == "task1")
+        assert("Tried to Schedule a Declared but Undefined Task: subsub" in caplog.messages)
+
 
     def test_post_task_order(self, mocker):
         task1,    *_  = make_mock_task(mocker, "task1", pre=["subtask", "subtask2"])
         subtask,  *_  = make_mock_task(mocker, "subtask", pre=["subsub"], post=["sidesuper"])
         sidesuper, *_ = make_mock_task(mocker, "sidesuper")
+        subtask2 , *_ = make_mock_task(mocker, "subtask2")
+        subsub   , *_ = make_mock_task(mocker, "subsub")
 
         tracker = DootTracker()
         tracker.add_task(task1)
         tracker.add_task(subtask)
         tracker.add_task(sidesuper)
+        tracker.add_task(subtask2)
+        tracker.add_task(subsub)
 
         next_task = tracker.next_for("task1")
-        assert(next_task.name == "subtask")
-        tracker.update_task_state(next_task, tracker.state_e.SUCCESS)
+        assert(next_task.name == "subtask2")
+        tracker.update_state(next_task, tracker.state_e.SUCCESS)
         next_task_2 = tracker.next_for()
-        assert(next_task_2.name == "task1")
-        tracker.update_task_state(next_task_2, tracker.state_e.SUCCESS)
+        assert(next_task_2.name == "subsub")
+        tracker.update_state(next_task_2, tracker.state_e.SUCCESS)
         next_task_3 = tracker.next_for()
-        assert(next_task_3 is None)
+        assert(next_task_3.name == "subtask")
+        tracker.update_state(next_task_3, tracker.state_e.SUCCESS)
+        next_task_4 = tracker.next_for()
+        assert(next_task_4.name == "task1" )
 
     def test_task_exact_artifact_dependency(self, mocker):
         task1,    *_ = make_mock_task(mocker, "task1", pre=[pl.Path("test.file")])
@@ -286,6 +298,7 @@ class TestTracker:
         assert(next_task.name == subtask2.name)
 
     def test_task_artifact_partial_exists(self, mocker):
+
         def temp_exists(self):
             return not "*" in self.stem
 

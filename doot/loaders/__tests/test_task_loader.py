@@ -18,6 +18,8 @@ import pytest
 import importlib.metadata
 import tomler
 import doot
+from doot.structs import DootTaskSpec
+
 doot.config = tomler.Tomler({})
 from doot.loaders import task_loader
 logging = logmod.root
@@ -51,9 +53,8 @@ class TestTaskLoader:
 
         assert(isinstance(result, tomler.Tomler))
         assert(len(result) == 1)
-        assert("test" in result)
-        assert(isinstance(result['test'][0], dict))
-        assert(isinstance(result['test'][1], type))
+        assert("basic::test" in result)
+        assert(isinstance(result['basic::test'], DootTaskSpec))
 
     def test_multi_load(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_path")
@@ -68,10 +69,10 @@ class TestTaskLoader:
 
         assert(isinstance(result, tomler.Tomler))
         assert(len(result) == 2)
-        assert("test" in result)
-        assert("other" in result)
+        assert("basic::test" in result)
+        assert("basic::other" in result)
 
-    def test_name_disallow_overload(self, mocker):
+    def test_name_warn_on_overload(self, mocker, caplog):
         mocker.patch("doot.loaders.task_loader.task_path")
         mocker.patch("doot._configs_loaded_from")
 
@@ -82,22 +83,9 @@ class TestTaskLoader:
         basic.setup({}, specs)
         task_loader.allow_overloads = False
 
-        with pytest.raises(doot.errors.DootTaskLoadError):
-            basic.load()
+        basic.load()
 
-    def test_name_allow_overload(self, mocker):
-        mocker.patch("doot.loaders.task_loader.task_path")
-        mocker.patch("doot._configs_loaded_from")
-
-        specs = {"tasks": { "basic": []}}
-        specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_tasker::DootTasker"})
-        specs['tasks']['basic'].append({"name"  : "test", "class": "doot.task.base_tasker::DootTasker"})
-        basic = task_loader.DootTaskLoader()
-        basic.setup({}, tomler.Tomler(specs))
-        task_loader.allow_overloads = True
-
-        result = basic.load()
-        assert("test" in result)
+        assert("Overloading Task: basic::test : doot.task.base_tasker::DootTasker" in caplog.messages)
 
     def test_cmd_name_conflict(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_path")
@@ -156,18 +144,25 @@ class TestTaskLoader:
         specs = {"tasks": {"basic": []}}
         specs['tasks']['basic'].append({"name": "simple", "type": "basic"})
 
+        mock_ctor = mocker.Mock()
+        type(mock_ctor).name = mocker.PropertyMock(return_value="APretendClass")
+        mock_ctor.__module__        = "pretend"
+        mock_ctor.__name__          = "APretendClass"
+
         mock_ep      = importlib.metadata.EntryPoint()
         mock_ep.name = "basic"
-        mock_ep.load = mocker.MagicMock(return_value=True)
+        mock_ep.load.return_value = mock_ctor
 
         plugins      = tomler.Tomler({"tasker": [mock_ep]})
         basic        = task_loader.DootTaskLoader()
         basic.setup(plugins, tomler.Tomler(specs))
 
-        result = basic.load()
-        assert(len(result) == 1)
-        assert(result.simple == ({"name": "simple", "type": "basic", "group": "basic", "source": "(extra)"}, True))
+        result    = basic.load()
 
+        assert(len(result) == 1)
+        task_spec = result['basic::simple']
+        assert(str(task_spec.ctor_name) == "pretend::APretendClass")
+        assert(task_spec.ctor.name == "APretendClass")
 
     def test_task_bad_type(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_path")

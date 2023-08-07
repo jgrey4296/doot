@@ -24,6 +24,7 @@ import contextlib
 import doot
 import doot.errors
 from doot._abstract import Command_i
+from doot.structs import DootTaskSpec
 from doot.cmds.list_cmd import ListCmd
 
 class TestListCmd:
@@ -65,7 +66,7 @@ class TestListCmd:
     def test_call_all_empty(self, caplog, mocker):
         mocker.patch("doot.args")
         doot.args.cmd.args.pattern = ""
-        doot.args.cmd.arg.all = True
+        doot.args.cmd.arg.all      = True
         obj    = ListCmd()
         obj({}, {"reporter": [mocker.stub("Reporter Stub")]})
 
@@ -81,14 +82,23 @@ class TestListCmd:
         doot.args.cmd.args.all     = True
 
         obj = ListCmd()
+        mock_class1 = mocker.MagicMock(type)
+        mock_class1.__module__ = "builtins"
+        mock_class1.__name__   = "type"
+        mock_class2 = mocker.MagicMock(type)
+        mock_class2.__module__ = "builtins"
+        mock_class2.__name__   = "other.type"
         plugin_mock = {"reporter": [mocker.stub("Reporter Stub")]}
-        tasker_mock = { "simple" : ({"group": "blah", "source": ""}, type), "other": ({"group": "bloo", "source": ""}, type) }
+        tasker_mock = {
+            "simple" : DootTaskSpec.from_dict({"group": "blah", "name": "simple"}, ctor=mock_class1),
+            "other"  : DootTaskSpec.from_dict({"group": "bloo", "name": "other"}, ctor=mock_class2)
+            }
         obj(tasker_mock, plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
         assert("defined task generators by group:" in message_set)
-        assert(any(x.startswith("simple :: builtins.type") for x in message_set) )
-        assert(any(x.startswith("other  :: builtins.type") for x in message_set) )
+        assert(any(x.startswith("simple :: builtins::type") for x in message_set) )
+        assert(any(x.startswith("other  :: builtins::other.type") for x in message_set) )
 
     def test_call_target_not_empty(self, caplog, mocker):
         mocker.patch("doot.args")
@@ -98,12 +108,15 @@ class TestListCmd:
         doot.args.cmd.args.all     = False
         obj = ListCmd()
         plugin_mock  = {"reporter": [mocker.stub("Reporter Stub")]}
-        tasker_mock = { "simple" : ({"group": "blah", "source": ""}, type), "other": ({"group": "bloo", "source": ""}, type) }
+        tasker_mock = {
+                       "simple" : DootTaskSpec.from_dict({"group": "blah", "name": "simple"}),
+                       "other"  : DootTaskSpec.from_dict({"group": "bloo", "name": "other"}),
+            }
         result = obj(tasker_mock, plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
         assert("tasks for pattern: simple" in message_set)
-        assert( any(x.startswith("simple :: builtins.type") for x in message_set) )
+        assert( any(x.startswith("blah::simple :: doot.builtins::task") for x in message_set) )
 
 
     def test_call_partial_target_not_empty(self, caplog, mocker):
@@ -114,13 +127,13 @@ class TestListCmd:
         doot.args.cmd.args.all     = False
         obj = ListCmd()
         plugin_mock = {"reporter": [mocker.stub("Reporter Stub")]}
-        tasker_mock = { "simple" : ({"group": "blah", "source": ""}, type),
-                        "other": ({"group": "bloo", "source": ""}, type),
-                        "diffSimple": ({"group": "bloo", "source": ""}, type),
+        tasker_mock = { "blah::simple" : DootTaskSpec.from_dict({"group": "blah", "name": "simple"}),
+                        "bloo::other": DootTaskSpec.from_dict({"group": "bloo", "name": "other"}),
+                        "bloo::diffSimple": DootTaskSpec.from_dict({"group": "bloo", "name": "diffSimple"}),
                        }
         result = obj(tasker_mock, plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
         assert("tasks for pattern: simp" in message_set)
-        assert( any(x.startswith("simple     :: builtins.type") for x in message_set) )
-        assert( any(x.startswith("diffsimple :: builtins.type") for x in message_set) )
+        assert( any(x.startswith("blah::simple     :: doot.builtins::task") for x in message_set) )
+        assert( any(x.startswith("bloo::diffsimple :: doot.builtins::task") for x in message_set) )

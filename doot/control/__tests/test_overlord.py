@@ -62,14 +62,16 @@ class TestOverlord:
         assert(bool(overlord.taskers))
         assert(len(overlord.taskers) == 2), len(overlord.taskers)
 
-    def test_taskers_name_conflict(self, mocker):
+    def test_taskers_name_conflict(self, mocker, caplog):
         mocker.patch("sys.argv", ["doot"])
-        with pytest.raises(doot.errors.DootTaskLoadError):
-            DootOverlord(extra_config={
-                "tasks" : {"basic" : [
-                    {"name": "simple", "type": "basic"},
-                    {"name": "simple", "type": "basic"}
-            ]}})
+        DootOverlord(extra_config={
+            "tasks" : {"basic" : [
+                {"name": "simple", "type": "basic"},
+                {"name": "simple", "type": "basic"}
+                ]}})
+
+        assert("Overloading Task: basic::simple : basic" in caplog.messages)
+
 
     def test_taskers_bad_type(self, mocker):
         mocker.patch("sys.argv", ["doot"])
