@@ -35,61 +35,21 @@ from typing import Generator, NewType
 from collections import deque, defaultdict
 
 from doot.enums import TaskStateEnum
-from doot.structs import DootTaskArtifact
+from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskComplexName
 from doot._abstract.reporter import Reporter_i
-
-@runtime_checkable
-class TaskOrdering_p(Protocol):
-    """ Protocol for tasks that have pre- and post- tasks"""
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        raise NotImplementedError(self.__class__, "name")
-
-    @property
-    @abstractmethod
-    def priors(self) -> list:
-        raise NotImplementedError(self.__class__, "priors")
-
-    @property
-    @abstractmethod
-    def posts(self) -> list:
-        raise NotImplementedError(self.__class__, "posts")
-
-class TaskStatus_i:
-    """ Interface for describing a tasks's current status """
-
-    def __init__(self, get_log):
-        self.get_log = get_log
-        self.status = TaskStateEnum.WAIT
-        # save reason task is not up-to-date
-        self.reasons = defaultdict(list)
-        self.error_reason = None
-
-    def add_reason(self, reason, arg, status='run'):
-        """sets state and append reason for not being up-to-date
-        :return boolean: processing should be interrupted
-        """
-        self.status = status
-        if self.get_log:
-            self.reasons[reason].append(arg)
-        return not self.get_log
-
-    def get_error_message(self):
-        '''return str with error message'''
-        return self.error_reason
-
+from doot._abstract.policy import FailPolicy_p
+from doot._abstract.task import TaskBase_i
 class TaskTracker_i:
     """
     Track tasks that have run, need to run, are running,
     and have failed.
     Does not execute anything itself
     """
-    state_e : enum.Enum = TaskStateEnum
+    state_e : TypeAlias = TaskStateEnum
 
-    def __init__(self):
-        self.tasks          = {}
+    def __init__(self, *, policy:FailPolicy_p|None=None):
+        self.tasks : dict[str, TaskBase_i]  = {}
+        self.policy = policy
 
     @abstractmethod
     def __iter__(self) -> Generator:
@@ -100,7 +60,7 @@ class TaskTracker_i:
         raise NotImplementedError()
 
     @abstractmethod
-    def add_task(self, task:None|TaskOrdering_p):
+    def add_task(self, task:DootTaskSpec|TaskBase_i):
         raise NotImplementedError()
 
     @abstractmethod
@@ -108,11 +68,11 @@ class TaskTracker_i:
         raise NotImplementedError()
 
     @abstractmethod
-    def update_task_state(self, task:str|TaskOrdering_p|DootTaskArtifact, state:TaskStateEnum) -> None:
-        raise NotImplementedError()
+    def update_state(self, task:str|doottaskcomplexname|doottaskspec|taskbase_i|doottaskartifact, state:taskstateenum) -> none:
+        raise notimplementederror()
 
     @abstractmethod
-    def next_for(self, target:str) -> TaskOrdering_p|None:
+    def next_for(self, target:str) -> TaskBase_i|None:
         raise NotImplementedError()
 
     @abstractmethod
@@ -128,12 +88,13 @@ class TaskRunner_i:
     Run tasks, actions, and taskers
     """
 
-    def __init__(self, tracker:TaskTracker_i, reporter:Reporter_i):
+    def __init__(self, tracker:TaskTracker_i, reporter:Reporter_i, *, policy:FailPolicy_p|None=None):
         self.tracker       = tracker
         self.reporter      = reporter
         self.teardown_list = []                     # list of tasks to teardown
         self.final_result  = TaskStateEnum.SUCCESS  # until something fails
         self._stop_running = False
+        self.policy       = policy
 
     @abstractmethod
     def __call__(self, *tasks:str) -> bool:

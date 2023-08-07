@@ -30,78 +30,15 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from abc import abstractmethod
 from tomler import Tomler
+from doot.enums import ReportPositionEnum
+from doot.structs import DootTraceRecord
 
 class Reporter_i:
+    """
+    Reporters, like loggers, are stacked, and each takes the flags and data and maybe runs.
+    """
 
-    def __init__(self, options:Tomler|None=None):
-        # save non-successful result information (include task errors)
-        self.failures          = []
-        self.runtime_errors    = []
-        self.failure_verbosity = options.get('failure_verbosity', 0)
-
-    @abstractmethod
-    def __str__(self) -> str:
-        raise NotImplementedError()
-
-
-    @abstractmethod
-    def initialize(self, tasks, selected_tasks):
-        """called just after tasks have been loaded before execution starts"""
-        raise NotImplementedError()
-
-    @abstractmethod
-    def get_status(self, task):
-        """called when task is selected (check if up-to-date)"""
-        raise NotImplementedError()
-
-    @abstractmethod
-    def execute_task(self, task):
-        """called when execution starts"""
-        # ignore tasks that do not @abstractmethod
-        # define actions
-        # ignore private/hidden tasks (tasks that start with an underscore)
-        raise NotImplementedError()
-
-    @abstractmethod
-    def add_failure(self, task, fail):
-        """called when execution finishes with a failure"""
-        raise NotImplementedError()
-
-    @abstractmethod
-    def add_success(self, task):
-        """called when execution finishes successfully"""
-        raise NotImplementedError()
-
-    @abstractmethod
-    def skip_uptodate(self, task):
-        """skipped up-to-date task"""
-        raise NotImplementedError()
-
-    @abstractmethod
-    def skip_ignore(self, task):
-        """skipped ignored task"""
-        raise NotImplementedError()
-
-    @abstractmethod
-    def cleanup_error(self, exception):
-        """error during cleanup"""
-        raise NotImplementedError()
-
-    @abstractmethod
-    def runtime_error(self, msg):
-        """error from doot (not from a task execution)"""
-        # saved so they are displayed after task failures messages
-        raise NotImplementedError()
-
-    @abstractmethod
-    def teardown_task(self, task):
-        """called when starts the execution of teardown action"""
-        raise NotImplementedError()
-
-    @abstractmethod
-    def complete_run(self):
-        """called when finished running all tasks"""
-        # if test fails print output from failed task
-        raise NotImplementedError()
+    @abc.abstractmethod
+    def report(self, flags:ReportPositionEnum, *args) -> DootTraceRecord:
+        raise NotImplementedError(self.__class__, "report")

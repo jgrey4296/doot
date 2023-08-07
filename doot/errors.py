@@ -19,20 +19,29 @@ logging = logmod.getLogger(__name__)
 
 class DootError(Exception):
     general_msg = "Non-Specific Doot Error:"
-    pass
 
-class DootTaskLoadError(DootError):
-    general_msg = "Doot Task Load Failure:"
-    pass
+    def __str__(self):
+        return self.args[0] % self.args[1:]
+
 
 class DootTaskError(DootError):
     general_msg = "Doot Task Error:"
+    pass
+
+class DootTaskLoadError(DootTaskError):
+    general_msg = "Doot Task Load Failure:"
     pass
 
 class DootTaskFailed(DootTaskError):
     general_msg = "Doot Task Failure:"
     pass
 
+class DootTaskTrackingError(DootTaskError):
+    general_msg = "Doot Tracking Failure:"
+    pass
+
+class DootTaskInterrupt(DootTaskError):
+    pass
 class DootParseError(DootError):
     general_msg = "Doot CLI Parsing Failure:"
     pass

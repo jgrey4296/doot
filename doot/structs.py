@@ -59,9 +59,13 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from tomler import Tomler
 import doot.errors
+from doot.enums import TaskFlags, ReportPositionEnum
 
 PAD : Final[int] = 15
+
+TaskFlagNames = [x.name for x in TaskFlags]
 
 @dataclass
 class DootParamSpec:
@@ -69,7 +73,7 @@ class DootParamSpec:
       When `positional`, will not match against a string starting with `prefix`
     """
     name        : str      = field()
-    type        : callable = field(default=bool)
+    type        : type     = field(default=bool)
 
     prefix      : str      = field(default="-")
 
@@ -83,7 +87,6 @@ class DootParamSpec:
     @classmethod
     def from_dict(cls, data:dict) -> DootParamSpec:
         return cls(**data)
-
 
     @staticmethod
     def key_func(x):
@@ -105,7 +108,7 @@ class DootParamSpec:
 
     @property
     def repeatable(self):
-        return self.type == list and not self.positonal
+        return self.type == list and not self.positional
 
     def _split_name_from_value(self, val):
         match self.positional:
@@ -120,9 +123,11 @@ class DootParamSpec:
                 return val is self
             case str(), False:
                 [head, *_] = self._split_name_from_value(val)
-                return head == self.name or head == self.short or head == self.inverse
+                return head in [self.name, self.short, self.inverse]
             case str(), True:
                 return not val.startswith(self.prefix)
+            case _, _:
+                return False
 
     def __str__(self):
         if self.invisible:
@@ -141,6 +146,8 @@ class DootParamSpec:
                 parts.append(f"{'(str)': <10}:")
             case str():
                 parts.append(f"{'(str)': <10}:")
+            case _:
+                pass
 
         parts.append(f"{self.desc:<30}")
         pad = " "*max(0, (85 - (len(parts)+sum(map(len, parts)))))
@@ -194,9 +201,144 @@ class DootParamSpec:
         return data[self.name] != self.default
 
 @dataclass
-class DootLoadedTaskSpec:
-    data : Any
-    type : type
+class DootTaskComplexName:
+    """ complex names of the form ".".join(group)::".".join(task) """
+    group           : list[str]     = field(default_factory=list)
+    task            : list[str]     = field(default_factory=list)
+
+    private         : bool          = field(default=False, kw_only=True)
+    # maybe: tasker : bool          = field(default=False, kw_only=True) -> add '*' at head or tail
+
+    separator       : ClassVar[str] = "::"
+    subseparator    : ClassVar[str] = "."
+
+    def __post_init__(self):
+        match self.group:
+            case list():
+                self.group = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(DootTaskComplexName.subseparator), self.group))
+            case str():
+                self.group = self.group.split(DootTaskComplexName.subseparator)
+
+        match self.task:
+            case list():
+                self.task = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(DootTaskComplexName.subseparator), self.task))
+            case str():
+                self.task = self.task.split(DootTaskComplexName.subseparator)
+
+    def __str__(self) -> str:
+        return "{}{}{}".format(self.group_str(),
+                               DootTaskComplexName.separator,
+                               self.task_str())
+
+    def __hash__(self):
+        return hash(str(self))
+
+    def task_str(self):
+        return DootTaskComplexName.subseparator.join(self.task)
+
+    def group_str(self):
+        return DootTaskComplexName.subseparator.join(self.group)
+
+    def subtask(self, *subtasks, subgroups:list[str]|None=None):
+        return DootTaskComplexName(self.group + (subgroups or []),
+                                   self.task + list(subtasks),
+                                   private=self.private
+                                   )
+
+    @staticmethod
+    def from_str(name:str):
+        groupHead, taskHead = name.split(DootTaskComplexName.separator)
+        return DootTaskComplexName(groupHead, taskHead)
+
+@dataclass
+class DootTaskSpec:
+    """ The information needed to describe a generic task """
+    name           : DootTaskComplexName           = field()
+    doc            : str|None                      = field(default=None)
+    source         : str|DootTaskComplexName|None  = field(default=None)
+    actions        : list[Any]                     = field(default_factory=list)
+    use_artifacts  : list[DootTaskArtifact]        = field(default_factory=list)
+    make_artifacts : list[DootTaskArtifact]        = field(default_factory=list)
+    after_tasks    : list[str|DootTaskComplexName] = field(default_factory=list)
+    enables_tasks  : list[str|DootTaskComplexName] = field(default_factory=list)
+    tasker_updates : list[str]                     = field(default_factory=list)
+    ctor_name      : DootTaskComplexName           = field(default=None)
+    ctor           : type|None                     = field(default=None)
+    # Any additional information:
+    extra          : Tomler                        = field(default_factory=Tomler)
+    flags          : TaskFlags                     = field(default=TaskFlags.TASK)
+
+    @staticmethod
+    def from_dict(data:dict, *, ctor:type=None, ctor_name=None):
+        normal_keys = list(DootTaskSpec.__dataclass_fields__.keys())
+        normal_data = {x:data[x] for x in normal_keys if x in data}
+        extra       = {x:data[x] for x in data.keys() if x not in normal_keys and x not in ["name", "group"]}
+
+        normal_data['name']  = DootTaskComplexName(data['group'], data['name'])
+        normal_data['flags'] = ftz.reduce(lambda x,y: x|y, filter(lambda x: x in TaskFlagNames, normal_data.get('flags', ["TASK"])))
+
+        normal_data['ctor']           = ctor
+        if ctor_name is not None:
+            normal_data['ctor_name']      = DootTaskComplexName.from_str(ctor_name)
+        elif ctor is not None:
+            normal_data['ctor_name']      = DootTaskComplexName(ctor.__module__, ctor.__name__)
+        else:
+            normal_data['ctor_name']      = DootTaskComplexName.from_str("doot.builtins::task")
+
+        return DootTaskSpec(**normal_data, extra=Tomler(extra))
+
+    def __hash__(self):
+        return hash(str(self.name))
+
+@dataclass
+class DootTaskArtifact:
+    """ Describes an artifact a task can produce or consume.
+    Artifacts can be Definite (concrete path) or indefinite (glob path)
+    """
+    path : pl.Path = field()
+
+    def __hash__(self):
+        return hash(self.path)
+
+    def __repr__(self):
+        type = "Definite" if self.is_definite else "Indefinite"
+        return f"<{type} TaskArtifact: {self.path.name}>"
+
+    def __str__(self):
+        return str(self.path)
+
+    def __eq__(self, other:DootTaskArtifact|Any):
+        match other:
+            case DootTaskArtifact():
+                return self.path == other.path
+            case _:
+                return False
+
+    def __bool__(self):
+        return self.exists
+
+    @property
+    def exists(self):
+        return self.is_definite and self.path.exists()
+
+    @property
+    def is_definite(self):
+        return self.path.stem not in "*?+"
+
+    @property
+    def is_stale(self) -> bool:
+        """ whether the artifact itself is stale """
+        return False
+
+    def matches(self, other):
+        """ match a definite artifact to its indefinite abstraction """
+        match other:
+            case DootTaskArtifact() if self.is_definite and not other.is_definite:
+                parents_match = self.path.parent == other.path.parent
+                exts_match    = self.path.suffix == other.path.suffix
+                return parents_match and exts_match
+            case _:
+                raise TypeError(other)
 
 @dataclass
 class DootTaskStub:
@@ -213,46 +355,24 @@ class DootTaskStubPart:
     "Describes a single part of a stub task in toml"
     key     : str
     type    : str
+
     default : str
     help    : str
 
-class DootTaskArtifact:
-    """ Describes an artifact a task can produce or consume.
-    Artifacts can be Definite (concrete path) or indefinite (glob path)
-    """
-
-    def __init__(self, path:pl.Path):
-        self._path = path
-
-    def __hash__(self):
-        return hash(self._path)
-
-    def __repr__(self):
-        type = "Definite" if self.is_definite() else "Indefinite"
-        return f"<{type} TaskArtifact: {self._path.name}>"
+@dataclass
+class DootTraceRecord:
+    flags : ReportPositionEnum = field()
+    message : str              = field()
+    args    : list[Any]        = field()
 
     def __str__(self):
-        return str(self._path)
+        return self.message.format(*args)
 
-    def __eq__(self, other:DootTaskArtifact|Any):
-        match other:
-            case DootTaskArtifact():
-                return self._path == other._path
-            case _:
-                return False
+    def __contains__(self, other:ReportPositionEnum) -> bool:
+        return all([x in self.flags for x in other])
 
-    def __bool__(self):
-        return self.is_definite() and self._path.exists()
+    def __eq__(self, other:ReportPositionEnum) -> bool:
+        return self.flags == other
 
-    def is_definite(self):
-        return self._path.stem not in "*?+"
-
-    def matches(self, other):
-        """ match a definite artifact to its indefinite abstraction """
-        match other:
-            case DootTaskArtifact() if self.is_definite() and not other.is_definite():
-                parents_match = self._path.parent == other._path.parent
-                exts_match    = self._path.suffix == other._path.suffix
-                return parents_match and exts_match
-            case _:
-                raise TypeError(other)
+    def some(self, other:reportPositionEnum) -> bool:
+        return any([x in self.flags for x in other])

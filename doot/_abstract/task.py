@@ -1,29 +1,226 @@
+"""TASKS ARE THE MAIN ABSTRACTIONS MANAGED BY DOOT
 
-"""Tasks are the main abstractions managed by doot"""
+  - TASKERS ARE ABSTRACTIONS OF TASKS WITHOUT HAVING DONE THE WORK TO DESCRIBE THEM FULLY.
+  (SAVING TIME AT CLI FOR LARGE GLOBS ETC)
+  - TASKS ARE REIFIED BY TASKERS, TO SPECIFY THE CORE INFORMATION NEEDED TO DO A TASK.
+  - Actions are individual atomic steps of a task, given the detailed information necessary to perform the step.
+
+Taskers, as they can control refication order, can add setup and teardown tasks.
+This can allow interleaving, or grouping.
+
+  Communication:
+  Tasker -> Task : by creation
+  Task -> Action : by creation
+  Action -> Task : by return value
+  Task -> Tasker : by reference
+
+  Task -> Task     = Task -> Tasker -> Task
+  Action -> Action = Action -> Task -> Action
+
+"""
 from __future__ import annotations
-from typing import Generator
-from doot._abstract.control import TaskStatus_i
 
-class Task_i(TaskStatus_i):
+import logging as logmod
+import abc
+import types
+from typing import Generator, NewType, Protocol, Any, runtime_checkable
+
+from tomler import Tomler
+import doot.errors
+
+from doot.enums import TaskFlags
+from doot._abstract.parser import ParamSpecMaker_m
+from doot.structs import DootParamSpec, DootTaskStub, DootTaskSpec, DootTaskComplexName
+
+##-- logging
+logging = logmod.getLogger(__name__)
+##-- end logging
+
+@runtime_checkable
+class Action_p(Protocol):
     """
-    holds task information and state, and executes it
+    holds individual action information and state, and executes it
     """
 
-    def __init__(self, name, *args, **kwargs):
+    @abc.abstractmethod
+    def __call__(self, args:dict) -> dict|bool|None:
         raise NotImplementedError()
+
+class TaskBase_i:
+    """ Core Interface for Tasks """
+
+    def __init__(self, spec:DootTaskSpec):
+        self.spec       : DootTaskSpec        = spec
+        self.status     : TaskStateEnum       = TaskStateEnum.WAIT
+        self.properties : TaskFlags           = TaskFlags.TASKER
+        self._records   : list[Any]           = []
+
+    @property
+    def name(self) -> str:
+        return str(self.spec.name)
+
+    @property
+    def fullname(self) -> DootTaskComplexName:
+        return self.spec.name
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __lt__(self, other:TaskBase_i) -> bool:
+        """ Task A < Task B iff A ∈ B.depends_on   """
+        return (other.name in self.spec.use_artifacts
+                or other.name in self.spec.after_tasks)
+
+    def __eq__(self, other):
+        match other:
+            case str():
+                return self.name == other
+            case TaskBase_i():
+                return self.name == other.name
+            case _:
+                return False
+
+    @property
+    def short_doc(self) -> str:
+        """ Generate Tasker Class 1 line help string """
+        try:
+            split_doc = [x for x in self.__class__.__doc__.split("\n") if bool(x)]
+            return ":: " + split_doc[0].strip() if bool(split_doc) else ""
+        except AttributeError:
+            return ":: "
+
+    @property
+    def doc(self) -> str:
+        self.spec.doc or self.__class__.help
+
+    @classmethod
+    @property
+    def help(cls) -> str:
+        """ Tasker *class* help. """
+        help_lines = [f"Tasker : {cls.__qualname__} v{cls._version}", ""]
+        help_lines += cls._help
+
+        params = cls.param_specs
+        if bool([x for x in params if not x.invisible]):
+            help_lines += ["", "Params:"]
+            help_lines += [str(x) for x in cls.param_specs if not x.invisible]
+
+        return "\n".join(help_lines)
+
+    def log(self, msg, level=logmod.DEBUG, prefix=None) -> None:
+        """
+        utility method to log a message, useful as tasks are running
+        """
+        prefix : str       = prefix or ""
+        lines  : list[str] = []
+        match msg:
+            case str():
+                lines.append(msg)
+            case types.LambdaType():
+                lines.append(msg())
+            case [types.LambdaType()]:
+                lines += msg[0]()
+            case list():
+                lines += msg
+
+        for line in lines:
+            logging.log(level, prefix + str(line))
+
+    def add_execution_record(self, arg):
+        """ Record some execution record information for display or debugging """
+        self._records.append(arg)
+
+    @abc.abstractmethod
+    def toml_stub(self) -> DootTaskStub:
+        """
+        Return a list of StubSpec's
+        to describe how this tasker is specified in toml
+        """
+        raise NotImplementedError()
+
+    @property
+    def depends_on(self) -> abc.Generator[str|DootTaskComplexName]:
+        for x in self.spec.use_artifacts:
+            yield x
+        for x in self.spec.after_tasks:
+            yield x
+
+    @property
+    def enables(self) -> abc.Generator[str|DootTaskComplexName]:
+        for x in self.spec.make_artifacts:
+            yield x
+        for x in self.spec.enables_tasks:
+            yield x
+
+    @property
+    @abc.abstractmethod
+    def is_stale(self) -> bool:
+        """ Query whether the task's artifacts have become stale and need to be rebuilt"""
+        raise NotImplementedError()
+
+class Task_i(TaskBase_i):
+    """
+    holds task information and state, produces actions to execute.
+
+    """
+    action_ctor : type[Action_p]
+
+    def __init__(self, spec:DootTaskSpec, tasker:Tasker_i, *, properties:TaskFlags=TaskFlags.TASK,**kwargs):
+        super().__init__(spec)
+        self.tasker     = tasker
+        self.state      = {}
+        self.properties = properties
+        self.state.update(kwargs)
 
     def __repr__(self):
         return f"<Task: {self.name}>"
 
-    def __eq__(self, other):
-        return self.name == other.name
-
+    def maybe_more_tasks(self) -> Generator[Task_i]:
+        return None
 
     @property
-    def actions(self) -> Generator:
+    @abc.abstractmethod
+    def actions(self) -> Generator[Action_p]:
         """lazy creation of action instances"""
         raise NotImplementedError()
 
-    def __call__(self):
-        """Executes the task. """
+class Tasker_i(TaskBase_i, ParamSpecMaker_m):
+    """
+    builds task descriptions, produces no actions
+    """
+    task_ctor : type[Task_i]
+    _version         : str = "0.1"
+    _help            : list[str] = []
+
+    @classmethod
+    def _make_task(cls, *arg:Any, **kwargs:Any) -> Task_i:
+        return cls.task_ctor(*arg, **kwargs)
+
+    def __init__(self, spec:DootTaskSpec):
+        super().__init__(spec)
+        self.args       : dict                 = {}
+
+    @classmethod
+    @property
+    def param_specs(cls) -> list[DootParamSpec]:
+        """  make class parameter specs  """
+        return [
+           cls.make_param(name="help", default=False, invisible=True),
+           cls.make_param(name="debug", default=False, invisible=True)
+           ]
+
+    @abc.abstractmethod
+    def default_task(self) -> DootTaskSpec:
+        raise NotImplementedError(self.__class__, "default_task")
+
+    @abc.abstractmethod
+    def is_stale(self) -> bool:
+        raise NotImplementedError(self.__class__, "is_stale")
+
+    @abc.abstractmethod
+    def specialize_task(self, task:dict) -> dict|DootTaskSpec:
+        raise NotImplementedError(self.__class__, "specialize_task")
+
+    @abc.abstractmethod
+    def build(self, **kwargs) -> abc.Generator[Task_i]:
         raise NotImplementedError()

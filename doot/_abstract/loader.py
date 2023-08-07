@@ -35,8 +35,9 @@ from abc import abstractmethod
 from tomler import Tomler
 from importlib.metadata import EntryPoint
 
+from doot.structs import DootTaskSpec
 from doot._abstract.cmd import Command_i
-from doot._abstract.tasker import Tasker_i
+from doot._abstract.task import Tasker_i
 
 
 @runtime_checkable
@@ -75,7 +76,7 @@ class TaskLoader_p(Protocol):
         raise NotImplementedError()
 
     @abstractmethod
-    def load(self) -> Tomler[tuple[dict, Tasker_i]]:
+    def load(self) -> Tomler[DootTaskSpec]:
         raise NotImplementedError()
 
 
