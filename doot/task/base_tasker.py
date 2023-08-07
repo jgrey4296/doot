@@ -73,14 +73,14 @@ class DootTasker(Tasker_i):
     """
     _help = ["A Basic Task Constructor"]
 
-    def __init__(self, spec:doottaskspec):
+    def __init__(self, spec:DootTaskSpec):
         super(DootTasker, self).__init__(spec)
         assert(spec is not None), "Spec is empty"
 
     def _build_task(self) -> None|Task_i:
         logging.debug("Building Task for: %s", self.name)
         task                     = self.default_task()
-        maybe_task : None | dict = self.task_detail(task)
+        maybe_task : None | dict = self.specialize_task(task)
         if maybe_task is None:
             return None
         if self.has_active_setup:
@@ -107,17 +107,17 @@ class DootTasker(Tasker_i):
     def is_stale(self, task:Task_i):
         return False
 
-    def build(self, **kwargs) -> generator[task_i|dict]:
+    def build(self, **kwargs) -> Generator[Task_i|dict]:
         logging.debug("-- tasker %s expanding tasks", self.name)
         if bool(kwargs):
             logging.debug("recieved kwargs: %s", kwargs)
         self.args.update(kwargs)
         task       = self._build_task()
 
-        if task is not none:
+        if task is not None:
             yield task
         else:
-            return none
+            return None
 
     def is_stale(self):
         pass

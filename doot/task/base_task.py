@@ -46,11 +46,8 @@ class DootTask(Task_i):
     """
     action_ctor = DootPyAction
 
-    def __init__(self, name:DootTaskComplexName, tasker:Tasker_i, *args, **kwargs):
-        super().__init__(*args, **{x:y for x,y in kwargs.items() if x in Task.valid_attr or x == 'loader'})
-        if self.meta is None:
-            self.meta = dict()
-        self.meta.update({x:y for x,y in kwargs.items() if x not in Task.valid_attr})
+    def __init__(self, spec:DootTaskSpec, tasker:Tasker_i, *args, **kwargs):
+        super().__init__(spec, tasker)
 
     @property
     def actions(self):
