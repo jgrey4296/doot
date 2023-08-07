@@ -76,36 +76,3 @@ log_cli_level = "INFO"
 log_format    = "%(levelname)s %(name)s : %(message)s"
 
 ##-- end pytest
-
-##-- pyright
-[tool.pyright]
-# strict =
-verboseOutput               = true
-typeCheckingMode            = "strict"
-pythonVersion               = "3.10"
-
-reportUnusedImport          = false
-reportAssertAlwaysTrue      = "information"
-reportMissingParameterType  = "warning"
-reportMissingTypeArgument   = "warning"
-reportMissingTypeStubs      = "warning"
-reportUnknownMemberType     = "warning"
-reportUnknownParameterType  = "information"
-reportUnknownVariableType   = "warning"
-reportUnnecessaryCast       = "information"
-reportUnnecessaryIsInstance = "warning"
-
-##-- end pyright
-
-##-- mypy
-# https://mypy.readthedocs.io/en/stable/config_file.html#config-file
-[mypy]
-python_version      = 3.10
-warn_return_any     = true
-warn_unused_configs = true
-
-# Per-module options:
-
-[mypy-pyparsing]
-ignore_missing_imports = true
-##-- end mypy
