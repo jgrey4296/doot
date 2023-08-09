@@ -28,9 +28,9 @@ from typing import Generator, NewType, Protocol, Any, runtime_checkable
 from tomler import Tomler
 import doot.errors
 
-from doot.enums import TaskFlags
+from doot.enums import TaskFlags, TaskStateEnum
 from doot._abstract.parser import ParamSpecMaker_m
-from doot.structs import DootParamSpec, DootTaskStub, DootTaskSpec, DootTaskComplexName
+from doot.structs import DootParamSpec, TaskStub, DootTaskSpec, DootTaskComplexName
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -49,10 +49,13 @@ class Action_p(Protocol):
 class TaskBase_i:
     """ Core Interface for Tasks """
 
+    _version         : str       = "0.1"
+    _help            : list[str] = []
+
     def __init__(self, spec:DootTaskSpec):
         self.spec       : DootTaskSpec        = spec
         self.status     : TaskStateEnum       = TaskStateEnum.WAIT
-        self.properties : TaskFlags           = TaskFlags.TASKER
+        self.flags      : TaskFlags           = TaskFlags.TASKER
         self._records   : list[Any]           = []
 
     @property
@@ -90,22 +93,26 @@ class TaskBase_i:
             return ":: "
 
     @property
-    def doc(self) -> str:
-        self.spec.doc or self.__class__.help
+    def doc(self) -> list[str]:
+        return self.spec.doc or self._help
 
-    @classmethod
     @property
-    def help(cls) -> str:
-        """ Tasker *class* help. """
-        help_lines = [f"Tasker : {cls.__qualname__} v{cls._version}", ""]
-        help_lines += cls._help
+    def depends_on(self) -> abc.Generator[str|DootTaskComplexName]:
+        for x in self.spec.use_artifacts:
+            yield x
+        for x in self.spec.after_tasks:
+            yield x
 
-        params = cls.param_specs
-        if bool([x for x in params if not x.invisible]):
-            help_lines += ["", "Params:"]
-            help_lines += [str(x) for x in cls.param_specs if not x.invisible]
+    @property
+    def enables(self) -> abc.Generator[str|DootTaskComplexName]:
+        for x in self.spec.make_artifacts:
+            yield x
+        for x in self.spec.enables_tasks:
+            yield x
 
-        return "\n".join(help_lines)
+    def add_execution_record(self, arg):
+        """ Record some execution record information for display or debugging """
+        self._records.append(arg)
 
     def log(self, msg, level=logmod.DEBUG, prefix=None) -> None:
         """
@@ -126,31 +133,23 @@ class TaskBase_i:
         for line in lines:
             logging.log(level, prefix + str(line))
 
-    def add_execution_record(self, arg):
-        """ Record some execution record information for display or debugging """
-        self._records.append(arg)
-
+    @classmethod
     @abc.abstractmethod
-    def toml_stub(self) -> DootTaskStub:
+    def class_help(cls) -> str:
+        raise NotImplementedError(cls, "help")
+
+    @classmethod
+    @abc.abstractmethod
+    def stub_class(cls) -> TaskStub:
         """
         Return a list of StubSpec's
         to describe how this tasker is specified in toml
         """
-        raise NotImplementedError()
+        raise NotImplementedError(cls, "stub_class")
 
-    @property
-    def depends_on(self) -> abc.Generator[str|DootTaskComplexName]:
-        for x in self.spec.use_artifacts:
-            yield x
-        for x in self.spec.after_tasks:
-            yield x
-
-    @property
-    def enables(self) -> abc.Generator[str|DootTaskComplexName]:
-        for x in self.spec.make_artifacts:
-            yield x
-        for x in self.spec.enables_tasks:
-            yield x
+    @abc.abstractmethod
+    def stub_instance(self) -> TaskStub:
+        raise NotImplementedError(self.__class__, "stub_instance")
 
     @property
     @abc.abstractmethod
@@ -163,13 +162,12 @@ class Task_i(TaskBase_i):
     holds task information and state, produces actions to execute.
 
     """
-    action_ctor : type[Action_p]
 
-    def __init__(self, spec:DootTaskSpec, tasker:Tasker_i, *, properties:TaskFlags=TaskFlags.TASK,**kwargs):
+    def __init__(self, spec:DootTaskSpec, tasker:Tasker_i, *, flags:TaskFlags=TaskFlags.TASK,**kwargs):
         super().__init__(spec)
         self.tasker     = tasker
         self.state      = {}
-        self.properties = properties
+        self.flags      = TaskFlags.TASK | flags
         self.state.update(kwargs)
 
     def __repr__(self):
@@ -177,6 +175,14 @@ class Task_i(TaskBase_i):
 
     def maybe_more_tasks(self) -> Generator[Task_i]:
         return None
+
+    @classmethod
+    def class_help(cls):
+        """ Task *class* help. """
+        help_lines = [f"Tasker : {cls.__qualname__} v{cls._version}", ""]
+        help_lines += cls._help
+
+        return "\n".join(help_lines)
 
     @property
     @abc.abstractmethod
@@ -188,17 +194,23 @@ class Tasker_i(TaskBase_i, ParamSpecMaker_m):
     """
     builds task descriptions, produces no actions
     """
-    task_ctor : type[Task_i]
-    _version         : str = "0.1"
-    _help            : list[str] = []
-
-    @classmethod
-    def _make_task(cls, *arg:Any, **kwargs:Any) -> Task_i:
-        return cls.task_ctor(*arg, **kwargs)
 
     def __init__(self, spec:DootTaskSpec):
         super().__init__(spec)
         self.args       : dict                 = {}
+
+    @classmethod
+    def class_help(cls) -> str:
+        """ Tasker *class* help. """
+        help_lines = [f"Tasker : {cls.__qualname__} v{cls._version}", ""]
+        help_lines += cls._help
+
+        params = cls.param_specs
+        if bool([x for x in params if not x.invisible]):
+            help_lines += ["", "Params:"]
+            help_lines += [str(x) for x in cls.param_specs if not x.invisible]
+
+        return "\n".join(help_lines)
 
     @classmethod
     @property
@@ -214,11 +226,7 @@ class Tasker_i(TaskBase_i, ParamSpecMaker_m):
         raise NotImplementedError(self.__class__, "default_task")
 
     @abc.abstractmethod
-    def is_stale(self) -> bool:
-        raise NotImplementedError(self.__class__, "is_stale")
-
-    @abc.abstractmethod
-    def specialize_task(self, task:dict) -> dict|DootTaskSpec:
+    def specialize_task(self, task:dict) -> dict|DootTaskSpec|Task_i|None:
         raise NotImplementedError(self.__class__, "specialize_task")
 
     @abc.abstractmethod

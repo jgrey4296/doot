@@ -46,7 +46,7 @@ class TestTaskLoader:
         mocker.patch("doot._configs_loaded_from")
 
         specs = {"tasks": {"basic" : []}}
-        specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_tasker::DootTasker"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.base_tasker::DootTasker"})
         basic = task_loader.DootTaskLoader()
         basic.setup({}, specs)
         result = basic.load()
@@ -61,8 +61,8 @@ class TestTaskLoader:
         mocker.patch("doot._configs_loaded_from")
 
         specs = {"tasks": { "basic" : []}}
-        specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_tasker::DootTasker"})
-        specs['tasks']['basic'].append({"name"  : "other", "class": "doot.task.base_tasker::DootTasker"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.base_tasker::DootTasker"})
+        specs['tasks']['basic'].append({"name"  : "other", "ctor": "doot.task.base_tasker::DootTasker"})
         basic = task_loader.DootTaskLoader()
         basic.setup({}, specs)
         result = basic.load()
@@ -77,8 +77,8 @@ class TestTaskLoader:
         mocker.patch("doot._configs_loaded_from")
 
         specs = {"tasks": { "basic" : []}}
-        specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_tasker::DootTasker"})
-        specs['tasks']['basic'].append({"name"  : "test", "class": "doot.task.base_tasker::DootTasker"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.base_tasker::DootTasker"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor": "doot.task.base_tasker::DootTasker"})
         basic = task_loader.DootTaskLoader()
         basic.setup({}, specs)
         task_loader.allow_overloads = False
@@ -92,7 +92,7 @@ class TestTaskLoader:
         mocker.patch("doot._configs_loaded_from")
 
         specs = {"tasks": { "basic" : []}}
-        specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_tasker::DootTasker"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.base_tasker::DootTasker"})
         basic = task_loader.DootTaskLoader()
         basic.setup({}, specs)
         basic.cmd_names = set(["test"])
@@ -105,7 +105,7 @@ class TestTaskLoader:
         mocker.patch("doot._configs_loaded_from")
 
         specs = {"tasks": { "basic": []}}
-        specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_tasker::DoesntExistTasker"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.base_tasker::DoesntExistTasker"})
 
         basic = task_loader.DootTaskLoader()
         basic.setup({}, specs)
@@ -118,7 +118,7 @@ class TestTaskLoader:
         mocker.patch("doot._configs_loaded_from")
 
         specs = {"tasks": { "basic" : []}}
-        specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.doesnt_exist_module::DoesntExistTasker"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.doesnt_exist_module::DoesntExistTasker"})
         basic = task_loader.DootTaskLoader()
         basic.setup({}, specs)
 
@@ -142,7 +142,7 @@ class TestTaskLoader:
         mocker.patch("doot._configs_loaded_from")
         mocker.patch("importlib.metadata.EntryPoint")
         specs = {"tasks": {"basic": []}}
-        specs['tasks']['basic'].append({"name": "simple", "type": "basic"})
+        specs['tasks']['basic'].append({"name": "simple", "ctor": "basic"})
 
         mock_ctor = mocker.Mock()
         type(mock_ctor).name = mocker.PropertyMock(return_value="APretendClass")

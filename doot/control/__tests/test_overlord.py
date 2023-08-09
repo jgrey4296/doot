@@ -46,7 +46,7 @@ class TestOverlord:
         mocker.patch("sys.argv", ["doot"])
         mocker.patch("doot.loaders.task_loader.task_path")
         overlord = DootOverlord(
-            extra_config={"tasks" : {"basic" : [{"name": "simple", "type": "basic"}]}}
+            extra_config={"tasks" : {"basic" : [{"name": "simple", "ctor": "basic"}]}}
         )
         assert(bool(overlord.taskers))
 
@@ -56,8 +56,8 @@ class TestOverlord:
         mocker.patch("doot._configs_loaded_from")
         overlord = DootOverlord(extra_config={
             "tasks" : {"basic": [
-                {"name": "simple", "type": "basic"},
-                {"name": "another", "type": "basic"}
+                {"name": "simple", "ctor": "basic"},
+                {"name": "another", "ctor": "basic"}
         ]}})
         assert(bool(overlord.taskers))
         assert(len(overlord.taskers) == 2), len(overlord.taskers)
@@ -66,8 +66,8 @@ class TestOverlord:
         mocker.patch("sys.argv", ["doot"])
         DootOverlord(extra_config={
             "tasks" : {"basic" : [
-                {"name": "simple", "type": "basic"},
-                {"name": "simple", "type": "basic"}
+                {"name": "simple", "ctor": "basic"},
+                {"name": "simple", "ctor": "basic"}
                 ]}})
 
         assert("Overloading Task: basic::simple : basic" in caplog.messages)
@@ -76,4 +76,4 @@ class TestOverlord:
     def test_taskers_bad_type(self, mocker):
         mocker.patch("sys.argv", ["doot"])
         with pytest.raises(doot.errors.DootTaskLoadError):
-            DootOverlord(extra_config={"tasks" : {"basic": [{"name": "simple", "type": "not_basic"}]}})
+            DootOverlord(extra_config={"tasks" : {"basic": [{"name": "simple", "ctor": "not_basic"}]}})

@@ -120,9 +120,9 @@ class HelpCmd(Command_i):
 
 
     def print_task_spec(self, count, spec):
-        spec_dict, tasker_cls = spec
-        task_name             = spec_dict['name']
-        lines = []
+        spec_dict = spec
+        task_name = spec_dict.name
+        lines     = []
         lines.append("")
         lines.append("------------------------------")
         lines.append(f"{count:4}: Task: {task_name}")

@@ -59,7 +59,8 @@ logging = logmod.getLogger(__name__)
 
 from tomler import Tomler
 import doot
-from doot.structs import DootTaskSpec
+from doot.enums import TaskFlags
+from doot.structs import DootTaskSpec, TaskStub, TaskStubPart
 from doot._abstract import Tasker_i, Task_i
 from doot.errors import DootDirAbsent
 
@@ -72,6 +73,7 @@ class DootTasker(Tasker_i):
 
     """
     _help = ["A Basic Task Constructor"]
+    _default_flags = TaskFlags.TASKER
 
     def __init__(self, spec:DootTaskSpec):
         super(DootTasker, self).__init__(spec)
@@ -79,27 +81,17 @@ class DootTasker(Tasker_i):
 
     def _build_task(self) -> None|Task_i:
         logging.debug("Building Task for: %s", self.name)
-        task                     = self.default_task()
-        maybe_task : None | dict = self.specialize_task(task)
-        if maybe_task is None:
-            return None
-        if self.has_active_setup:
-            maybe_task['setup'] += [self.setup_name]
+        task                             = self.default_task()
+        maybe_task : None | DootTaskSpec = self.specialize_task(task)
 
-        maybe_task['actions'] = [x for x in maybe_task['actions'] if bool(x)]
-
-        full_task : Task_i    = self._make_task(**maybe_task)
-        if not bool(full_task.doc):
-            full_task.doc = self.doc
-        return full_task
-
-    @property
-    def priors(self) -> list:
-        pass
-
-    @property
-    def posts(self) -> list:
-        pass
+        match maybe_task:
+            case None:
+                return None
+            case _ if not bool(maybe_task.doc):
+                maybe_task.doc = self.doc
+                return maybe_task
+            case _:
+                return maybe_task
 
     def default_task(self) -> DootTaskSpec:
         return DootTaskSpec(name=self.name)
@@ -119,10 +111,20 @@ class DootTasker(Tasker_i):
         else:
             return None
 
-    def is_stale(self):
-        pass
+    def specialize_task(self, task):
+        return task
 
-    def specialize_task(self, task): ...
+    @classmethod
+    def stub_class(cls):
+        stub = TaskStub(ctor=cls.__class__)
+        stub['doc'].default   = [f"\"{x}\"" for x  in cls.class_help().split("\n")]
+        stub['flags'].default = cls._default_flags
+        return stub
 
-    def toml_stub(self):
-        pass
+    def stub_instance(self):
+        stub                      = self.__class__.stub_class()
+        stub['name'].default      = self.fullname
+        if bool(self.doc):
+            stub['doc'].default   = [f"\"{x}\"" for x in self.doc]
+        stub['flags'].default     = self.spec.flags
+        return stub

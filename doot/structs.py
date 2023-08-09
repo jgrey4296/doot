@@ -247,35 +247,58 @@ class DootTaskComplexName:
 
     @staticmethod
     def from_str(name:str):
-        groupHead, taskHead = name.split(DootTaskComplexName.separator)
+        if DootTaskComplexName.separator in name:
+            groupHead, taskHead = name.split(DootTaskComplexName.separator)
+        else:
+            groupHead = ""
+            taskHead  = name
         return DootTaskComplexName(groupHead, taskHead)
 
 @dataclass
 class DootTaskSpec:
     """ The information needed to describe a generic task """
-    name           : DootTaskComplexName           = field()
-    doc            : str|None                      = field(default=None)
-    source         : str|DootTaskComplexName|None  = field(default=None)
-    actions        : list[Any]                     = field(default_factory=list)
-    use_artifacts  : list[DootTaskArtifact]        = field(default_factory=list)
-    make_artifacts : list[DootTaskArtifact]        = field(default_factory=list)
-    after_tasks    : list[str|DootTaskComplexName] = field(default_factory=list)
-    enables_tasks  : list[str|DootTaskComplexName] = field(default_factory=list)
-    tasker_updates : list[str]                     = field(default_factory=list)
-    ctor_name      : DootTaskComplexName           = field(default=None)
-    ctor           : type|None                     = field(default=None)
+    name              : DootTaskComplexName               = field()
+    doc               : list[str]                         = field(default_factory=list)
+    source            : DootTaskComplexName|str|None      = field(default=None)
+    actions           : list[Any]                         = field(default_factory=list)
+
+    before_artifacts  : list[DootTaskArtifact|str]        = field(default_factory=list)
+    after_artifacts   : list[DootTaskArtifact|str]        = field(default_factory=list)
+    after_tasks       : list[DootTaskComplexName|str]     = field(default_factory=list)
+    before_tasks      : list[DootTaskComplexName|str]     = field(default_factory=list)
+
+    tasker_updates    : list[str]                         = field(default_factory=list)
+    ctor_name         : DootTaskComplexName               = field(default=None)
+    ctor              : type|None                         = field(default=None)
     # Any additional information:
-    extra          : Tomler                        = field(default_factory=Tomler)
-    flags          : TaskFlags                     = field(default=TaskFlags.TASK)
+    task_ctor         : type|str|None                     = field(default=None)
+    action_ctor       : type|str|None                     = field(default=None)
+    version           : str                               = field(default="0.1")
+    flags             : TaskFlags                         = field(default=TaskFlags.TASK)
+
+    extra             : Tomler                            = field(default_factory=Tomler)
+
 
     @staticmethod
     def from_dict(data:dict, *, ctor:type=None, ctor_name=None):
+        """ builds a task spec from a raw dict
+          able to handle a name:str = "group::task" form,
+          able to convert TaskFlag str's into an or'd enum value
+          """
         normal_keys = list(DootTaskSpec.__dataclass_fields__.keys())
         normal_data = {x:data[x] for x in normal_keys if x in data}
         extra       = {x:data[x] for x in data.keys() if x not in normal_keys and x not in ["name", "group"]}
 
-        normal_data['name']  = DootTaskComplexName(data['group'], data['name'])
-        normal_data['flags'] = ftz.reduce(lambda x,y: x|y, filter(lambda x: x in TaskFlagNames, normal_data.get('flags', ["TASK"])))
+        match data:
+            case {"group": group, "name": name}:
+                normal_data['name']  = DootTaskComplexName(data['group'], data['name'])
+            case {"name": name}:
+                normal_data['name'] = DootTaskComplexName.from_str(name)
+
+        if 'flags' in data and any(x not in TaskFlagNames for x in data.get('flags', [])):
+            logging.warning("Unknown Task Flag used, check the spec for %s in %s", normal_data['name'], data.get('source', ''))
+
+        normal_data['flags'] = ftz.reduce(lambda x,y: x|y, map(lambda x: TaskFlags[x],  filter(lambda x: x in TaskFlagNames, normal_data.get('flags', ["TASK"]))), [])
 
         normal_data['ctor']           = ctor
         if ctor_name is not None:
@@ -286,6 +309,7 @@ class DootTaskSpec:
             normal_data['ctor_name']      = DootTaskComplexName.from_str("doot.builtins::task")
 
         return DootTaskSpec(**normal_data, extra=Tomler(extra))
+
 
     def __hash__(self):
         return hash(str(self.name))
@@ -341,23 +365,115 @@ class DootTaskArtifact:
                 raise TypeError(other)
 
 @dataclass
-class DootTaskStub:
+class TaskStub:
     "Stub Task Spec for description in toml"
-    name   : str
-    tasker : str
-    parts  : list[DootTaskStubPart]
+    ctor       : str|type                     = field(default="doot.task.base_tasker::DootTasker")
+    parts      : dict[str, TaskStubPart]      = field(default_factory=dict, kw_only=True)
 
-    def to_toml(self):
-        raise NotImplementedError()
+    skip_parts : ClassVar[set[str]]          = set(["name", "extra", "ctor", "ctor_name", "source", "version"])
+
+    def __post_init__(self):
+        self['name'].default     = DootTaskComplexName.from_str("tasks.stub::stub")
+        self['version'].default = "0.1"
+        for key, type in DootTaskSpec.__annotations__.items():
+            if key in TaskStub.skip_parts:
+                continue
+
+            self.parts[key] = TaskStubPart(key=key, type=type)
+
+    def to_toml(self) -> str:
+        parts = []
+        parts.append(self.parts['name'])
+        parts.append(self.parts['version'])
+        if 'ctor' in self.parts:
+            parts.append(self.parts['ctor'])
+        else:
+            parts.append(TaskStubPart("ctor", type="type", default=f"\"{self.ctor.__module__}::{self.ctor.__name__}\""))
+
+        for key, part in self.parts.items():
+            if key in ["name", "version", "ctor"]:
+                continue
+            parts.append(part)
+
+        return "\n".join(map(str, parts))
+
+    def __getitem__(self, key):
+        if key not in self.parts:
+            self.parts[key] = TaskStubPart(key)
+        return self.parts[key]
+
+
+    def __iadd__(self, other):
+        match other:
+            case [head, val] if head in self.parts:
+                self.parts[head].default = val
+            case [head, val]:
+                self.parts[head] = TaskStubPart(head, default=val)
+            case { "name" : name, "type": type, "default": default, "doc": doc, }:
+                pass
+            case { "name" : name, "default": default }:
+                pass
+            case dict():
+                part = TaskStubPart(**other)
+            case Tomler():
+                pass
+            case TaskStubPart() if other.key not in self.parts:
+                self.parts[other.key] = other
+            case _:
+                raise TypeError("Unrecognized Toml Stub component")
+
+
 
 @dataclass
-class DootTaskStubPart:
+class TaskStubPart:
     "Describes a single part of a stub task in toml"
-    key     : str
-    type    : str
+    key     : str      = field()
+    type    : str      = field(default="str")
+    default : Any      = field(default="")
+    comment : str      = field(default="")
 
-    default : str
-    help    : str
+    def __str__(self) -> str:
+        # shortcut on being the name:
+        if isinstance(self.default, DootTaskComplexName) and self.key == "name":
+            return f"[[{self.default.group_str()}]]\n{'name':<20} = \"{self.default.task_str()}\""
+
+        key_str     = f"{self.key:<20}"
+        type_str    = f"<{self.type}>"
+        comment_str = f"{self.comment}"
+        val_str     = None
+
+        match self.default:
+            case TaskFlags():
+                parts = [x.name for x in TaskFlags if x in self.default]
+                joined = ", ".join(map(lambda x: f"\"{x}\"", parts))
+                val_str = f"[ {joined} ]"
+            case str() if self.type == "type":
+                val_str = self.default
+            case list() if "Flags" in self.type:
+                parts = ", ".join([f"\"{x}\"" for x in self.default])
+                val_str = f"[{parts}]"
+            case list():
+                def_str = ", ".join(str(x) for x in self.default)
+                val_str = f"[{def_str}]"
+            case dict():
+                val_str = f"{{{self.default}}}"
+            case _ if "list" in self.type:
+                def_str = ", ".join(str(x) for x in self.default)
+                val_str = f"[{def_str}]"
+            case _ if "dict" in self.type:
+                val_str = f"{{{self.default}}}"
+            case int() | float():
+                val_str = f"{self.default}"
+            case str() if "\n" in self.default:
+                flat = self.default.replace("\n", "\\n")
+                val_str = f"\"{flat}\""
+            case str():
+                val_str = f"\"{self.default}\""
+
+        if val_str is None:
+            raise TypeError("Unknown stub part reduction:", self)
+
+        return f"{key_str} = {val_str:<20} # {type_str:<20} {comment_str}"
 
 @dataclass
 class DootTraceRecord:

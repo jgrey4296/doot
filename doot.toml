@@ -39,4 +39,4 @@ lint_out     = "build/lint"
 
 [[tasks.simple]]
 name = "simple.test"
-class = "doot.task.base_tasker::DootTasker"
+ctor = "doot.task.base_tasker::DootTasker"

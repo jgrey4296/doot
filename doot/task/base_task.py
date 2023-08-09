@@ -36,8 +36,10 @@ logging = logmod.getLogger(__name__)
 
 import doot
 import doot.errors
+import tomler
 from doot._abstract import Task_i, Tasker_i, Action_p
-from doot.structs import DootTaskComplexName
+from doot.enums import TaskFlags
+from doot.structs import DootTaskComplexName, TaskStub, TaskStubPart
 from doot.actions.py_action import DootPyAction
 
 @doot.check_protocol
@@ -45,6 +47,7 @@ class DootTask(Task_i):
     """
     """
     action_ctor = DootPyAction
+    _default_flags = TaskFlags.TASKER
 
     def __init__(self, spec:DootTaskSpec, tasker:Tasker_i, *args, **kwargs):
         super().__init__(spec, tasker)
@@ -102,3 +105,19 @@ class DootTask(Task_i):
                 results.append(f"\t\t -(f)- {dep}")
 
         return "\n".join(results)
+
+    @classmethod
+    def stub_class(cls) -> str:
+        stub = TaskStub(ctor=cls.__class__)
+        stub['doc'].default   = [f"\"{x}\"" for x in cls.class_help().split("\n") if bool(x)]
+        stub['flags'].default = cls._default_flags
+        return stub
+
+    def stub_instance(self) -> str:
+        stub                      = self.__class__.stub_class()
+        stub['name'].default      = self.fullname
+        if bool(self.doc):
+            stub['doc'].default   = [f"\"{x}\"" for x in self.doc]
+        stub['flags'].default     = self.spec.flags
+
+        return stub

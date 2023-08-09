@@ -54,6 +54,7 @@ import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
 
+@doot.check_protocol
 class DootPyAction(Action_p):
     """
     Python Action with a `build` static method instead of doit.action.create_action
