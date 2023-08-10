@@ -70,7 +70,7 @@ class TestOverlord:
                 {"name": "simple", "ctor": "basic"}
                 ]}})
 
-        assert("Overloading Task: basic::simple : basic" in caplog.messages)
+        assert("Overloading Task: tasks.basic::simple : basic" in caplog.messages)
 
 
     def test_taskers_bad_type(self, mocker):

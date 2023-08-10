@@ -39,7 +39,7 @@ import doot.errors
 import tomler
 from doot._abstract import Task_i, Tasker_i, Action_p
 from doot.enums import TaskFlags
-from doot.structs import DootTaskComplexName, TaskStub, TaskStubPart
+from doot.structs import DootStructuredName, TaskStub, TaskStubPart
 from doot.actions.py_action import DootPyAction
 
 @doot.check_protocol
@@ -107,13 +107,15 @@ class DootTask(Task_i):
         return "\n".join(results)
 
     @classmethod
-    def stub_class(cls) -> str:
+    def stub_class(cls) -> TaskStub:
+        """ Create a basic toml stub for this task"""
         stub = TaskStub(ctor=cls.__class__)
         stub['doc'].default   = [f"\"{x}\"" for x in cls.class_help().split("\n") if bool(x)]
         stub['flags'].default = cls._default_flags
         return stub
 
-    def stub_instance(self) -> str:
+    def stub_instance(self) -> TaskStub:
+        """ extend the class toml stub with  """
         stub                      = self.__class__.stub_class()
         stub['name'].default      = self.fullname
         if bool(self.doc):

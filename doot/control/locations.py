@@ -28,7 +28,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from doot.errors import DootDirAbsent
-from doot.structs import DootTaskComplexName
+from doot.structs import DootStructuredName
 
 class LocProxy:
 
@@ -90,7 +90,7 @@ class DootLocData:
 
     def __init__(self, name="base", files:dict=None, **kwargs):
         self._root    : pl.Path() = pl.Path()
-        self._name  = DootTaskComplexName(DootLocData._locs_report_name, name, private=True)
+        self._name  = DootStructuredName(DootLocData._locs_report_name, name, private=True)
         self._check_name          = None
         self._dirs                = {}
         if bool(kwargs):

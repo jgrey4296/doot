@@ -30,7 +30,7 @@ import doot.errors
 
 from doot.enums import TaskFlags, TaskStateEnum
 from doot._abstract.parser import ParamSpecMaker_m
-from doot.structs import DootParamSpec, TaskStub, DootTaskSpec, DootTaskComplexName
+from doot.structs import DootParamSpec, TaskStub, DootTaskSpec, DootStructuredName
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -63,7 +63,7 @@ class TaskBase_i:
         return str(self.spec.name)
 
     @property
-    def fullname(self) -> DootTaskComplexName:
+    def fullname(self) -> DootStructuredName:
         return self.spec.name
 
     def __hash__(self):
@@ -97,14 +97,14 @@ class TaskBase_i:
         return self.spec.doc or self._help
 
     @property
-    def depends_on(self) -> abc.Generator[str|DootTaskComplexName]:
+    def depends_on(self) -> abc.Generator[str|DootStructuredName]:
         for x in self.spec.use_artifacts:
             yield x
         for x in self.spec.after_tasks:
             yield x
 
     @property
-    def enables(self) -> abc.Generator[str|DootTaskComplexName]:
+    def enables(self) -> abc.Generator[str|DootStructuredName]:
         for x in self.spec.make_artifacts:
             yield x
         for x in self.spec.enables_tasks:

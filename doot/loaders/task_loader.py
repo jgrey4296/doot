@@ -22,7 +22,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable)
 
-from doot.structs import DootTaskComplexName
+from doot.structs import DootStructuredName
 # from uuid import UUID, uuid1
 # from weakref import ref
 
@@ -146,7 +146,10 @@ class DootTaskLoader(TaskLoader_p):
         logging.debug("---- Tasks Loaded in %s seconds", f"{time.perf_counter() - start_time:0.4f}")
         return tomler.Tomler(self.taskers)
 
-    def _load_raw_specs(self, data, source) -> list[dict]:
+    def _load_raw_specs(self, data:dict, source:pl.Path|Literal['(extra)']) -> list[dict]:
+        """ extract raw task descriptions from a toplevel tasks dict, with not format checking
+          expects the dict to be { group_key : [ task_dict ]  }
+          """
         raw_specs = []
         # Load from doot.toml task specs
         for group, data in data.items():
@@ -159,6 +162,7 @@ class DootTaskLoader(TaskLoader_p):
         return raw_specs
 
     def _load_specs_from_path(self, path) -> list[dict]:
+        """ load a config file defined task_path of tasks """
         raw_specs = []
         # Load task spec path
         if not path.exists():
@@ -179,9 +183,10 @@ class DootTaskLoader(TaskLoader_p):
         return raw_specs
 
 
-    def _build_task_specs(self, group_specs:list, command_names) -> list[DootTaskSpec]:
+    def _build_task_specs(self, group_specs:list[dict], command_names) -> list[DootTaskSpec]:
         """
-        get task creators defined in the config
+        convert raw dicts into DootTaskSpec objects,
+          checking nothing tries to shadow a command name or other task name
         """
         task_descriptions : dict[str, DootTaskSpec] = {}
         for spec in group_specs:
@@ -201,7 +206,7 @@ class DootTaskLoader(TaskLoader_p):
                         task_descriptions[str(task_spec.name)] = task_spec
                     case {"name": task_name, "ctor": task_type}:
                         logging.info("Building Tasker from class name: %s : %s", task_name, task_type)
-                        mod_name, class_name = task_type.split("::")
+                        mod_name, class_name = task_type.split(":")
                         mod                  = importlib.import_module(mod_name)
                         cls                  = getattr(mod, class_name)
 

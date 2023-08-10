@@ -81,6 +81,8 @@ DEFAULT_DOOTER        : Final[pl.Path]       =  pl.Path("dooter.py")
 
 DEFAULT_LOAD_TARGETS  : Final[list[pl.Path]] =  [pl.Path(x) for x in ["doot.toml", "pyproject.toml", "Cargo.toml", "./.cargo/config.toml"]]
 
+DEFAULT_STUB_TASK_NAME : Final[str] = "stub::stub"
+
 ##-- end path and file names
 
 DEFAULT_CLI_CMD     : Final[str]  = "run"

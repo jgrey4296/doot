@@ -110,3 +110,7 @@ class ReportPositionEnum(enum.Flag):
     TASKER   = enum.auto()
     ACTION   = enum.auto()
     CONFIG   = enum.auto()
+
+class StructuredNameEnum(enum.Enum):
+    TASK  = enum.auto()
+    CLASS = enum.auto()

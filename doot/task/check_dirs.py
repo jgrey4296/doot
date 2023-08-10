@@ -5,7 +5,7 @@ import pathlib as pl
 import shutil
 from typing import ClassVar
 
-from doot.structs import DootTaskComplexName, DootTaskSpec
+from doot.structs import DootStructuredName, DootTaskSpec
 from doot._abstract import Tasker_i
 from doot.task.specialised_taskers import GroupTasker
 from doot.mixins.cleaning import CleanerMixin
@@ -28,7 +28,7 @@ class CheckDir(Tasker_i):
         logging.debug("Building CheckDir Auto Tasks: %s", list(CheckDir._all_registered.keys()))
         return GroupTasker(CheckDir._checker_basename,
                          {
-                             "basename" : DootTaskComplexName.from_str(CheckDir._checker_basename),
+                             "basename" : DootStructuredName.from_str(CheckDir._checker_basename),
                              "doc"      : ":: Build all locations for all registered location checks",
                              "actions"  : [],
                              "task_dep" : [x for x in CheckDir._all_registered.keys()],
@@ -40,7 +40,7 @@ class CheckDir(Tasker_i):
         self.base = CheckDir._checker_basename
         self.locs = locs
         self.name = name
-        CheckDir._all_registered[DootTaskComplexName.from_str(self.base, self.name, private=True)] = self
+        CheckDir._all_registered[DootStructuredName.from_str(self.base, self.name, private=True)] = self
 
     def is_stale(self):
         return all([y.exists() for x,y in self.locs])

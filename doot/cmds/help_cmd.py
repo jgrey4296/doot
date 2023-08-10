@@ -59,7 +59,7 @@ logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 
 import doot
-from doot.structs import DootParamSpec
+from doot.structs import DootParamSpec, DootTaskSpec
 from doot._abstract import Command_i
 from collections import defaultdict
 
@@ -119,33 +119,33 @@ class HelpCmd(Command_i):
         printer.info("DOOT HELP END: %s Tasks Matched", len(task_targets))
 
 
-    def print_task_spec(self, count, spec):
-        spec_dict = spec
-        task_name = spec_dict.name
+    def print_task_spec(self, count, spec:DootTaskSpec):
+        task_name = spec.name
         lines     = []
         lines.append("")
         lines.append("------------------------------")
         lines.append(f"{count:4}: Task: {task_name}")
         lines.append("------------------------------")
-        lines.append(f"ver    : {spec_dict.get('ver','0.1')}")
-        lines.append(f"Group  : {spec_dict['group']}")
-        lines.append(f"Source : {spec_dict['source']}")
+        lines.append(f"ver    : {spec.version}")
+        lines.append(f"Group  : {spec.name.group_str()}")
+        lines.append(f"Source : {spec.source}")
 
-        lines.append(tasker_cls.help)
-        match spec_dict.get('doc', None):
+        if spec.ctor is not None:
+            lines.append(spec.ctor.class_help())
+        match spec.doc:
             case None:
                 pass
             case str():
                 lines.append("")
-                lines.append(f"--   {spec_dict['doc']}")
+                lines.append(f"--   {spec.doc}")
             case list() as xs:
                 lines.append("")
                 lines.append("--  " + "\n--  ".join(xs))
 
         printer.info("\n".join(lines))
 
-        if task_name in doot.args.tasks and doot.args.non_default_values.task:
-            self._print_current_param_assignments(tasker_cls.param_specs, doot.args.tasks[task_name])
+        if task_name in doot.args.tasks and doot.args.non_default_values.task and spec.ctor is not None:
+            self._print_current_param_assignments(spec.ctor.param_specs, doot.args.tasks[task_name])
 
     def _print_current_param_assignments(self, specs:list[DootParamSpec], args:Tomler):
         if not bool(specs):

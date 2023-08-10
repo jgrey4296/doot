@@ -62,7 +62,7 @@ import doot
 import doot.errors
 from doot.enums import TaskStateEnum
 from doot._abstract import Tasker_i, Task_i, FailPolicy_p
-from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskComplexName
+from doot.structs import DootTaskArtifact, DootTaskSpec, DootStructuredName
 from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i
 
 ROOT  : Final[str] = "__root" # Root node of dependency graph
@@ -88,7 +88,7 @@ class DootTracker(TaskTracker_i):
         self.artifacts            : dict[str, DootTaskArtifact]                       = {}
         self.indefinite_artifacts : dict[str, DootTaskArtifact]                       = {}
         self.dep_graph            : nx.DiGraph                                        = nx.DiGraph()
-        self.task_stack           : list[str|DootTaskComplexName|DootTaskArtifact]    = []
+        self.task_stack           : list[str|DootStructuredName|DootTaskArtifact]    = []
         self.execution_path       : list[str]                                         = []
         self.shadowing            : bool                                              = shadowing
 
@@ -167,7 +167,7 @@ class DootTracker(TaskTracker_i):
 
             self.dep_graph.add_edge(post, task.name, type=edge_type)
 
-    def queue_task(self, task:str|DootTaskComplexName) -> None:
+    def queue_task(self, task:str|DootStructuredName) -> None:
         if task not in self.tasks:
             raise doot.errors.DootTaskTrackingError("Can't queue a task that isn't loaded in the tracker", task)
         self.task_stack.append(task)

@@ -35,7 +35,7 @@ printer = logmod.getLogger("doot._printer")
 import doot
 import doot.constants
 from doot._abstract import Command_i
-from doot.structs import TaskStub, DootTaskComplexName
+from doot.structs import TaskStub, DootStructuredName
 from doot.task.base_tasker import DootTasker
 from collections import defaultdict
 
@@ -58,7 +58,7 @@ class StubCmd(Command_i):
             self.make_param("ctor",       type=str,      default="",        desc="Full class import name of the task generator"),
             self.make_param("Config",                    default=False,     desc="Sub a doot.toml",                  prefix="--"),
             self.make_param("Types",                     default=False,     desc="List the types of task available", prefix="--"),
-            self.make_param("name",        type=str,     default="stub",    desc="The Name of the new task",                   positional=True),
+            self.make_param("name",        type=str,     default="stub::stub",    desc="The Name of the new task",                   positional=True),
             self.make_param("ctor",        type=str,     default="basic",   desc="The short type name of the task generator",  positional=True),
             self.make_param("suppress-header",           default=True, invisible=True)
             ]
@@ -95,7 +95,7 @@ class StubCmd(Command_i):
 
         # Create stub toml
         stub = TaskStub()
-        stub['name'].default = DootTaskComplexName.from_str(doot.args.cmd.args.name)
+        stub['name'].default = DootStructuredName.from_str(doot.args.cmd.args.name)
         stub['ctor'].default = doot.args.on_fail("basic").cmd.args.ctor()
 
         original_name = stub['name'].default.task_str()

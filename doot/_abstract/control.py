@@ -35,7 +35,7 @@ from typing import Generator, NewType
 from collections import deque, defaultdict
 
 from doot.enums import TaskStateEnum
-from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskComplexName
+from doot.structs import DootTaskArtifact, DootTaskSpec, DootStructuredName
 from doot._abstract.reporter import Reporter_i
 from doot._abstract.policy import FailPolicy_p
 from doot._abstract.task import TaskBase_i
@@ -68,7 +68,7 @@ class TaskTracker_i:
         raise NotImplementedError()
 
     @abstractmethod
-    def update_state(self, task:str|doottaskcomplexname|doottaskspec|taskbase_i|doottaskartifact, state:taskstateenum) -> none:
+    def update_state(self, task:str|DootStructuredName|DootTaskSpec|TaskBase_i|DootTaskArtifact, state:TaskStateEnum) -> None:
         raise notimplementederror()
 
     @abstractmethod

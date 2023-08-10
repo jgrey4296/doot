@@ -16,6 +16,7 @@ logging = logmod.root
 
 import tomler
 from doot import structs
+import doot.constants
 
 # caplog
 # mocker.patch | patch.object | patch.multiple | patch.dict | stopall | stop | spy | stub
@@ -26,7 +27,7 @@ from doot import structs
 # with pytest.raises
 # with pytest.warns(warntype)
 
-class TestDootStructs:
+class TestDootStructuredName:
 
     @pytest.fixture(scope="function")
     def setup(self):
@@ -38,107 +39,163 @@ class TestDootStructs:
         pass
 
     def test_complex_name(self):
-        simple = structs.DootTaskComplexName("basic", "task")
+        simple = structs.DootStructuredName("basic", "task")
+        assert(simple.group == [ "basic"])
+        assert(simple.task == ["task"])
+
+
+    def test_name_with_leading_tasks(self):
+        simple = structs.DootStructuredName.from_str("tasks.basic::task")
         assert(simple.group == [ "basic"])
         assert(simple.task == ["task"])
 
     def test_cn_with_subgroups_str(self):
-        simple = structs.DootTaskComplexName("basic.blah.bloo", "task")
+        simple = structs.DootStructuredName("basic.blah.bloo", "task")
         assert(simple.group == [ "basic", "blah", "bloo"])
         assert(simple.task == ["task"])
 
     def test_cn_with_mixed_subgroups(self):
-        simple = structs.DootTaskComplexName(["basic", "blah.bloo"], "task")
+        simple = structs.DootStructuredName(["basic", "blah.bloo"], "task")
         assert(simple.group == [ "basic", "blah", "bloo"])
         assert(simple.task == ["task"])
 
     def test_cn_with_subtasks_str(self):
-        simple = structs.DootTaskComplexName("basic", "task.blah.bloo")
+        simple = structs.DootStructuredName("basic", "task.blah.bloo")
         assert(simple.group == [ "basic"])
         assert(simple.task == ["task", "blah", "bloo"])
 
     def test_cn_with_mixed_subtasks(self):
-        simple = structs.DootTaskComplexName("basic", ["task", "blah.bloo"])
+        simple = structs.DootStructuredName("basic", ["task", "blah.bloo"])
         assert(simple.group == [ "basic"])
         assert(simple.task == ["task", "blah", "bloo"])
 
     def test_cn_comparison(self):
-        simple = structs.DootTaskComplexName("basic", "task")
-        simple2 = structs.DootTaskComplexName("basic", "task")
+        simple = structs.DootStructuredName("basic", "task")
+        simple2 = structs.DootStructuredName("basic", "task")
         assert(simple is not simple2)
         assert(simple == simple2)
 
     def test_cn_comparison_fail(self):
-        simple = structs.DootTaskComplexName("basic", "task")
-        simple2 = structs.DootTaskComplexName("basic", "bloo")
+        simple = structs.DootStructuredName("basic", "task")
+        simple2 = structs.DootStructuredName("basic", "bloo")
         assert(simple is not simple2)
         assert(simple != simple2)
 
     def test_cn_comparison_subgroups(self):
         """ where the names have subgrouping """
-        simple  = structs.DootTaskComplexName(["basic", "blah"], "task")
-        simple2 = structs.DootTaskComplexName(["basic", "blah"], "task")
+        simple  = structs.DootStructuredName(["basic", "blah"], "task")
+        simple2 = structs.DootStructuredName(["basic", "blah"], "task")
         assert(simple is not simple2)
         assert(simple == simple2)
 
     def test_cn_comparison_subgroup_fail(self):
         """ where the names only differ in subgrouping """
-        simple = structs.DootTaskComplexName(["basic", "blah"], "task")
-        simple2 = structs.DootTaskComplexName(["basic", "bloo"], "task")
+        simple = structs.DootStructuredName(["basic", "blah"], "task")
+        simple2 = structs.DootStructuredName(["basic", "bloo"], "task")
         assert(simple is not simple2)
         assert(simple != simple2)
 
     def test_cn_comparison_subtasks(self):
         """ where the names have subtasks"""
-        simple = structs.DootTaskComplexName(["basic", "blah"], "task")
-        simple2 = structs.DootTaskComplexName(["basic", "blah"], "task")
+        simple = structs.DootStructuredName(["basic", "blah"], "task")
+        simple2 = structs.DootStructuredName(["basic", "blah"], "task")
         assert(simple is not simple2)
         assert(simple == simple2)
 
     def test_cn_comparison_subtask_fail(self):
         """ where the names have different subtasks"""
-        simple = structs.DootTaskComplexName(["basic", "blah"], "task")
-        simple2 = structs.DootTaskComplexName(["basic", "bloo"], "task")
+        simple = structs.DootStructuredName(["basic", "blah"], "task")
+        simple2 = structs.DootStructuredName(["basic", "bloo"], "task")
         assert(simple is not simple2)
         assert(simple != simple2)
 
     def test_complex_name_with_dots(self):
-        simple = structs.DootTaskComplexName("basic.blah", "task.bloo")
+        simple = structs.DootStructuredName("basic.blah", "task.bloo")
         assert(simple.group == ["basic", "blah"])
         assert(simple.task == ["task", "bloo"])
 
     def test_cn_to_str(self):
-        simple = structs.DootTaskComplexName("basic", "task")
-        assert(str(simple) == "basic::task")
+        simple = structs.DootStructuredName("basic", "task")
+        assert(str(simple) == "tasks.basic::task")
 
     def test_cn_to_str_cmp(self):
-        simple  = structs.DootTaskComplexName("basic", "task")
-        simple2 = structs.DootTaskComplexName("basic", "task")
+        simple  = structs.DootStructuredName("basic", "task")
+        simple2 = structs.DootStructuredName("basic", "task")
         assert(simple is not simple2)
         assert(str(simple) == str(simple2))
 
     def test_cn_with_subgroups(self):
-        simple = structs.DootTaskComplexName(["basic", "sub", "test"], "task")
+        simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
         assert(simple.group == ["basic", "sub", "test"])
 
     def test_cn_with_subgroups_str(self):
-        simple = structs.DootTaskComplexName(["basic", "sub", "test"], "task")
-        assert(str(simple) == "basic.sub.test::task")
+        simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
+        assert(str(simple) == "tasks.\"basic.sub.test\"::task")
 
     def test_cn_subtask(self):
-        simple = structs.DootTaskComplexName(["basic", "sub", "test"], "task")
-        assert(str(simple) == "basic.sub.test::task")
+        simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
+        assert(str(simple) == "tasks.\"basic.sub.test\"::task")
         sub    = simple.subtask("blah")
-        assert(str(sub) == "basic.sub.test::task.blah")
+        assert(str(sub) == "tasks.\"basic.sub.test\"::task.blah")
 
     def test_cn_subtask_with_more_groups(self):
-        simple = structs.DootTaskComplexName(["basic", "sub", "test"], "task")
-        assert(str(simple) == "basic.sub.test::task")
+        simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
+        assert(str(simple) == "tasks.\"basic.sub.test\"::task")
         sub    = simple.subtask("blah", subgroups=["another", "subgroup"])
-        assert(str(sub) == "basic.sub.test.another.subgroup::task.blah")
+        assert(str(sub) == "tasks.\"basic.sub.test.another.subgroup\"::task.blah")
 
 class TestDootTaskSpec:
-    pass
+
+    def test_initial(self):
+        obj = structs.DootTaskSpec.from_dict({})
+        assert(isinstance(obj, structs.DootTaskSpec))
+        assert(obj.name.group_str() == "tasks.default")
+        assert(obj.name.task_str() == "default")
+        assert(str(obj.ctor_name) == doot.constants.DEFAULT_PLUGINS['tasker'][0][1])
+        assert(obj.version == "0.1")
+
+
+    def test_version_change(self):
+        obj = structs.DootTaskSpec.from_dict({"version" : "0.5"})
+        assert(isinstance(obj, structs.DootTaskSpec))
+        assert(obj.name.group_str() == "tasks.default")
+        assert(obj.name.task_str() == "default")
+        assert(str(obj.ctor_name) == doot.constants.DEFAULT_PLUGINS['tasker'][0][1])
+        assert(obj.version == "0.5")
+
+
+    def test_basic_name(self):
+        obj = structs.DootTaskSpec.from_dict({"name": "agroup::atask"})
+        assert(isinstance(obj, structs.DootTaskSpec))
+        assert(obj.name.group_str() == "tasks.agroup")
+        assert(obj.name.task_str() == "atask")
+
+
+    def test_groupless_name(self):
+        obj = structs.DootTaskSpec.from_dict({"name": "atask"})
+        assert(isinstance(obj, structs.DootTaskSpec))
+        assert(obj.name.group_str() == "tasks.default")
+        assert(obj.name.task_str() == "atask")
+
+
+    def test_with_extra_data(self):
+        obj = structs.DootTaskSpec.from_dict({"name": "atask", "blah": "bloo", "something": [1,2,3,4]})
+        assert(isinstance(obj, structs.DootTaskSpec))
+        assert(obj.name.group_str() == "tasks.default")
+        assert(obj.name.task_str() == "atask")
+        assert("blah" in obj.extra)
+        assert("something" in obj.extra)
+
+
+    def test_separate_group_and_task(self):
+        obj = structs.DootTaskSpec.from_dict({"name": "atask", "group": "agroup"})
+        assert(isinstance(obj, structs.DootTaskSpec))
+        assert(obj.name.group_str() == "tasks.agroup")
+        assert(obj.name.task_str() == "atask")
+
+
+
+
 
 class TestTaskStub:
 
@@ -177,7 +234,6 @@ class TestTaskStub:
         as_str = obj.to_toml()
         loaded = tomler.read(as_str)
         spec   = structs.DootTaskSpec.from_dict(loaded.tasks.stub[0]._table())
-        breakpoint()
         pass
 
 
@@ -194,9 +250,9 @@ class TestTaskStubPart:
 
 
     def test_name_reduce(self):
-        obj = structs.TaskStubPart("name", default=structs.DootTaskComplexName.from_str("blah::bloo"))
+        obj = structs.TaskStubPart("name", default=structs.DootStructuredName.from_str("blah::bloo"))
         res_s = str(obj).split("\n")
-        assert(res_s[0] == "[[blah]]")
+        assert(res_s[0] == "[[tasks.blah]]")
         assert(res_s[1] == f"{'name':<20} = \"bloo\"")
 
 

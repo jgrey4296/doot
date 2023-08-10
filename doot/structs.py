@@ -61,7 +61,8 @@ logging = logmod.getLogger(__name__)
 
 from tomler import Tomler
 import doot.errors
-from doot.enums import TaskFlags, ReportPositionEnum
+import doot.constants
+from doot.enums import TaskFlags, ReportPositionEnum, StructuredNameEnum
 
 PAD : Final[int] = 15
 
@@ -201,74 +202,96 @@ class DootParamSpec:
         return data[self.name] != self.default
 
 @dataclass
-class DootTaskComplexName:
+class DootStructuredName:
     """ complex names of the form ".".join(group)::".".join(task) """
-    group           : list[str]     = field(default_factory=list)
-    task            : list[str]     = field(default_factory=list)
+    group           : list[str]          = field(default_factory=list)
+    task            : list[str]          = field(default_factory=list)
 
-    private         : bool          = field(default=False, kw_only=True)
-    # maybe: tasker : bool          = field(default=False, kw_only=True) -> add '*' at head or tail
+    private         : bool               = field(default=False, kw_only=True)
+    # maybe: tasker : bool               = field(default=False, kw_only=True) -> add '*' at head or tail
 
-    separator       : ClassVar[str] = "::"
+    form            : StructuredNameEnum = field(default=StructuredNameEnum.TASK, kw_only=True)
+    task_separator  : ClassVar[str] = "::"
+    class_separator : ClassVar[str] = ":"
     subseparator    : ClassVar[str] = "."
 
     def __post_init__(self):
         match self.group:
+            case ["tasks", x] if x.startswith('"') and x.endswith('"'):
+                self.group = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(DootStructuredName.subseparator), x[1:-1]))
+            case ["tasks", *xs]:
+                self.group = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(DootStructuredName.subseparator), xs))
             case list():
-                self.group = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(DootTaskComplexName.subseparator), self.group))
+                self.group = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(DootStructuredName.subseparator), self.group))
             case str():
-                self.group = self.group.split(DootTaskComplexName.subseparator)
+                self.group = self.group.split(DootStructuredName.subseparator)
+            case None | []:
+                self.group = ["default"]
 
         match self.task:
             case list():
-                self.task = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(DootTaskComplexName.subseparator), self.task))
+                self.task = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(DootStructuredName.subseparator), self.task))
             case str():
-                self.task = self.task.split(DootTaskComplexName.subseparator)
+                self.task = self.task.split(DootStructuredName.subseparator)
+            case None | []:
+                self.task = ["default"]
 
     def __str__(self) -> str:
-        return "{}{}{}".format(self.group_str(),
-                               DootTaskComplexName.separator,
-                               self.task_str())
+        sep = DootStructuredName.task_separator if self.form is StructuredNameEnum.TASK else DootStructuredName.class_separator
+        return "{}{}{}".format(self.group_str(), sep, self.task_str())
 
     def __hash__(self):
         return hash(str(self))
 
     def task_str(self):
-        return DootTaskComplexName.subseparator.join(self.task)
+        return DootStructuredName.subseparator.join(self.task)
 
     def group_str(self):
-        return DootTaskComplexName.subseparator.join(self.group)
+        match self.form:
+            case StructuredNameEnum.TASK if len(self.group) > 1:
+                fmt = "tasks.\"{}\""
+            case StructuredNameEnum.TASK:
+                fmt = "tasks.{}"
+            case StructuredNameEnum.CLASS:
+                fmt = "{}"
+
+        base = DootStructuredName.subseparator.join(self.group)
+        return fmt.format(base)
+
 
     def subtask(self, *subtasks, subgroups:list[str]|None=None):
-        return DootTaskComplexName(self.group + (subgroups or []),
+        return DootStructuredName(self.group + (subgroups or []),
                                    self.task + list(subtasks),
                                    private=self.private
                                    )
 
     @staticmethod
-    def from_str(name:str):
-        if DootTaskComplexName.separator in name:
-            groupHead, taskHead = name.split(DootTaskComplexName.separator)
+    def from_str(name:str, form:StructuredNameEnum=StructuredNameEnum.TASK):
+        sep = DootStructuredName.task_separator if form is StructuredNameEnum.TASK else DootStructuredName.class_separator
+        if sep in name:
+            groupHead_r, taskHead_r = name.split(sep)
+            groupHead = groupHead_r.split(DootStructuredName.subseparator)
+            taskHead = taskHead_r.split(DootStructuredName.subseparator)
         else:
-            groupHead = ""
+            groupHead = None
             taskHead  = name
-        return DootTaskComplexName(groupHead, taskHead)
+        return DootStructuredName(groupHead, taskHead, form=form)
 
 @dataclass
 class DootTaskSpec:
     """ The information needed to describe a generic task """
-    name              : DootTaskComplexName               = field()
+    name              : DootStructuredName               = field()
     doc               : list[str]                         = field(default_factory=list)
-    source            : DootTaskComplexName|str|None      = field(default=None)
+    source            : DootStructuredName|str|None      = field(default=None)
     actions           : list[Any]                         = field(default_factory=list)
 
     before_artifacts  : list[DootTaskArtifact|str]        = field(default_factory=list)
     after_artifacts   : list[DootTaskArtifact|str]        = field(default_factory=list)
-    after_tasks       : list[DootTaskComplexName|str]     = field(default_factory=list)
-    before_tasks      : list[DootTaskComplexName|str]     = field(default_factory=list)
+    after_tasks       : list[DootStructuredName|str]     = field(default_factory=list)
+    before_tasks      : list[DootStructuredName|str]     = field(default_factory=list)
 
     tasker_updates    : list[str]                         = field(default_factory=list)
-    ctor_name         : DootTaskComplexName               = field(default=None)
+    ctor_name         : DootStructuredName               = field(default=None)
     ctor              : type|None                         = field(default=None)
     # Any additional information:
     task_ctor         : type|str|None                     = field(default=None)
@@ -285,30 +308,38 @@ class DootTaskSpec:
           able to handle a name:str = "group::task" form,
           able to convert TaskFlag str's into an or'd enum value
           """
-        normal_keys = list(DootTaskSpec.__dataclass_fields__.keys())
-        normal_data = {x:data[x] for x in normal_keys if x in data}
-        extra       = {x:data[x] for x in data.keys() if x not in normal_keys and x not in ["name", "group"]}
+        core_keys = list(DootTaskSpec.__dataclass_fields__.keys())
+        core_data   = {}
+        extra_data  = {}
+
+        for key, val in data.items():
+            if key in core_keys:
+                core_data[key] = val
+            elif key not in ['name', 'group']:
+                extra_data[key] = val
 
         match data:
             case {"group": group, "name": name}:
-                normal_data['name']  = DootTaskComplexName(data['group'], data['name'])
+                core_data['name']  = DootStructuredName(data['group'], data['name'])
             case {"name": name}:
-                normal_data['name'] = DootTaskComplexName.from_str(name)
+                core_data['name'] = DootStructuredName.from_str(name)
+            case _:
+                core_data['name'] = DootStructuredName(None, None)
 
         if 'flags' in data and any(x not in TaskFlagNames for x in data.get('flags', [])):
-            logging.warning("Unknown Task Flag used, check the spec for %s in %s", normal_data['name'], data.get('source', ''))
+            logging.warning("Unknown Task Flag used, check the spec for %s in %s", core_data['name'], data.get('source', ''))
 
-        normal_data['flags'] = ftz.reduce(lambda x,y: x|y, map(lambda x: TaskFlags[x],  filter(lambda x: x in TaskFlagNames, normal_data.get('flags', ["TASK"]))), [])
+        core_data['flags'] = ftz.reduce(lambda x,y: x|y, map(lambda x: TaskFlags[x],  filter(lambda x: x in TaskFlagNames, core_data.get('flags', ["TASK"]))))
 
-        normal_data['ctor']           = ctor
+        core_data['ctor']           = ctor
         if ctor_name is not None:
-            normal_data['ctor_name']      = DootTaskComplexName.from_str(ctor_name)
+            core_data['ctor_name']      = DootStructuredName.from_str(ctor_name, form=StructuredNameEnum.CLASS)
         elif ctor is not None:
-            normal_data['ctor_name']      = DootTaskComplexName(ctor.__module__, ctor.__name__)
+            core_data['ctor_name']      = DootStructuredName(ctor.__module__, ctor.__name__, form=StructuredNameEnum.CLASS)
         else:
-            normal_data['ctor_name']      = DootTaskComplexName.from_str("doot.builtins::task")
+            core_data['ctor_name']      = DootStructuredName.from_str(doot.constants.DEFAULT_PLUGINS['tasker'][0][1], form=StructuredNameEnum.CLASS)
 
-        return DootTaskSpec(**normal_data, extra=Tomler(extra))
+        return DootTaskSpec(**core_data, extra=Tomler(extra_data))
 
 
     def __hash__(self):
@@ -370,11 +401,13 @@ class TaskStub:
     ctor       : str|type                     = field(default="doot.task.base_tasker::DootTasker")
     parts      : dict[str, TaskStubPart]      = field(default_factory=dict, kw_only=True)
 
+    # Don't copy these from DootTaskSpec blindly
     skip_parts : ClassVar[set[str]]          = set(["name", "extra", "ctor", "ctor_name", "source", "version"])
 
     def __post_init__(self):
-        self['name'].default     = DootTaskComplexName.from_str("tasks.stub::stub")
+        self['name'].default     = DootStructuredName.from_str(doot.constants.DEFAULT_STUB_TASK_NAME)
         self['version'].default = "0.1"
+        # Auto populate the stub with what fields are defined in a TaskSpec:
         for key, type in DootTaskSpec.__annotations__.items():
             if key in TaskStub.skip_parts:
                 continue
@@ -434,7 +467,7 @@ class TaskStubPart:
 
     def __str__(self) -> str:
         # shortcut on being the name:
-        if isinstance(self.default, DootTaskComplexName) and self.key == "name":
+        if isinstance(self.default, DootStructuredName) and self.key == "name":
             return f"[[{self.default.group_str()}]]\n{'name':<20} = \"{self.default.task_str()}\""
 
         key_str     = f"{self.key:<20}"
@@ -447,6 +480,8 @@ class TaskStubPart:
                 parts = [x.name for x in TaskFlags if x in self.default]
                 joined = ", ".join(map(lambda x: f"\"{x}\"", parts))
                 val_str = f"[ {joined} ]"
+            case "" if self.type == "TaskFlags":
+                val_str = f"[ \"{TaskFlags.TASK.name}\" ]"
             case str() if self.type == "type":
                 val_str = self.default
             case list() if "Flags" in self.type:
