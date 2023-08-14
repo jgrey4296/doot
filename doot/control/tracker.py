@@ -140,12 +140,12 @@ class DootTracker(TaskTracker_i):
                 logging.warning("Task Shadowed by Duplicate Name: %s", task.name)
 
         self.tasks[task.name] = task
-        task_state = self.state_e.READY if not bool(task.depends_on) else self.state_e.DEFINED
+        task_state = self.state_e.READY if not bool(task.runs_after) else self.state_e.DEFINED
         self.dep_graph.add_node(task.name, state=task_state)
         if not no_root_connection:
             self.dep_graph.add_edge(ROOT, task.name)
 
-        for pre in task.depends_on:
+        for pre in task.runs_after:
             edge_type = _TrackerEdgeType.TASK
             match pre:
                 case str() if pre not in self.dep_graph:
@@ -156,7 +156,7 @@ class DootTracker(TaskTracker_i):
 
             self.dep_graph.add_edge(task.name, pre, type=edge_type)
 
-        for post in task.enables:
+        for post in task.runs_before:
             edge_type = _TrackerEdgeType.TASK
             match post:
                 case str() if post not in self.dep_graph:
@@ -198,7 +198,7 @@ class DootTracker(TaskTracker_i):
                     self.task_stack = []
                     return None
                 case self.state_e.READY if focus in self.execution_path: # error on running the same task twice
-                    raise doot.errors.DootTaskTrackingError("Task Attempted to run twice", focus)
+                    raise doot.errors.DootTaskTrackingError("Task Attempted to run twice: %s", focus)
                 case self.state_e.READY:   # return the task if its ready
                     self.execution_path.append(focus)
                     return self.tasks.get(focus, None)

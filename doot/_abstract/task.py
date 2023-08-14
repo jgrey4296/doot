@@ -42,15 +42,27 @@ class Action_p(Protocol):
     holds individual action information and state, and executes it
     """
 
+    def __init__(self, spec:Any):
+        self.spec = spec
+
     @abc.abstractmethod
-    def __call__(self, args:dict) -> dict|bool|None:
+    def __call__(self, task_state_copy:dict) -> dict|bool|None:
         raise NotImplementedError()
 
-class TaskBase_i:
+class TaskBase_i(ParamSpecMaker_m):
     """ Core Interface for Tasks """
 
     _version         : str       = "0.1"
     _help            : list[str] = []
+
+    @classmethod
+    @property
+    def param_specs(cls) -> list[DootParamSpec]:
+        """  make class parameter specs  """
+        return [
+           cls.make_param(name="help", default=False, invisible=True),
+           cls.make_param(name="debug", default=False, invisible=True)
+           ]
 
     def __init__(self, spec:DootTaskSpec):
         self.spec       : DootTaskSpec        = spec
@@ -70,9 +82,9 @@ class TaskBase_i:
         return hash(self.name)
 
     def __lt__(self, other:TaskBase_i) -> bool:
-        """ Task A < Task B iff A ∈ B.depends_on   """
-        return (other.name in self.spec.use_artifacts
-                or other.name in self.spec.after_tasks)
+        """ Task A < Task B iff A ∈ B.run_after   """
+        return (other.name in self.spec.after_artifacts
+                or other.name in self.spec.runs_after)
 
     def __eq__(self, other):
         match other:
@@ -97,17 +109,13 @@ class TaskBase_i:
         return self.spec.doc or self._help
 
     @property
-    def depends_on(self) -> abc.Generator[str|DootStructuredName]:
-        for x in self.spec.use_artifacts:
-            yield x
-        for x in self.spec.after_tasks:
+    def runs_after(self) -> abc.Generator[str|DootStructuredName]:
+        for x in self.spec.runs_after:
             yield x
 
     @property
-    def enables(self) -> abc.Generator[str|DootStructuredName]:
-        for x in self.spec.make_artifacts:
-            yield x
-        for x in self.spec.enables_tasks:
+    def runs_before(self) -> abc.Generator[str|DootStructuredName]:
+        for x in self.spec.runs_before:
             yield x
 
     def add_execution_record(self, arg):
@@ -163,23 +171,22 @@ class Task_i(TaskBase_i):
 
     """
 
-    def __init__(self, spec:DootTaskSpec, tasker:Tasker_i, *, flags:TaskFlags=TaskFlags.TASK,**kwargs):
+    def __init__(self, spec:DootTaskSpec, *, tasker:Tasker_i=None, **kwargs):
         super().__init__(spec)
         self.tasker     = tasker
         self.state      = {}
-        self.flags      = TaskFlags.TASK | flags
         self.state.update(kwargs)
 
     def __repr__(self):
         return f"<Task: {self.name}>"
 
     def maybe_more_tasks(self) -> Generator[Task_i]:
-        return None
+        return iter([])
 
     @classmethod
     def class_help(cls):
         """ Task *class* help. """
-        help_lines = [f"Tasker : {cls.__qualname__} v{cls._version}", ""]
+        help_lines = [f"Task   : {cls.__qualname__} v{cls._version}", ""]
         help_lines += cls._help
 
         return "\n".join(help_lines)
@@ -190,7 +197,7 @@ class Task_i(TaskBase_i):
         """lazy creation of action instances"""
         raise NotImplementedError()
 
-class Tasker_i(TaskBase_i, ParamSpecMaker_m):
+class Tasker_i(TaskBase_i):
     """
     builds task descriptions, produces no actions
     """
@@ -211,15 +218,6 @@ class Tasker_i(TaskBase_i, ParamSpecMaker_m):
             help_lines += [str(x) for x in cls.param_specs if not x.invisible]
 
         return "\n".join(help_lines)
-
-    @classmethod
-    @property
-    def param_specs(cls) -> list[DootParamSpec]:
-        """  make class parameter specs  """
-        return [
-           cls.make_param(name="help", default=False, invisible=True),
-           cls.make_param(name="debug", default=False, invisible=True)
-           ]
 
     @abc.abstractmethod
     def default_task(self) -> DootTaskSpec:

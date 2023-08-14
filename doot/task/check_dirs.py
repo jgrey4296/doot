@@ -36,7 +36,8 @@ class CheckDir(Tasker_i):
                          *[x.build for x in CheckDir._all_registered.values()],
                          )
 
-    def __init__(self, name="default", locs=None, private=True):
+    def __init__(self, spec:DootTaskSpec):
+        super().__init__(spec)
         self.base = CheckDir._checker_basename
         self.locs = locs
         self.name = name

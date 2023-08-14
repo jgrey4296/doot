@@ -27,15 +27,15 @@ from doot.task.globber import DootEagerGlobber
 class DootGeneraliser(DootEagerGlobber):
     """
     generaliser = DootGeneraliser("task::general.cat",
-                                  locs=doot.locs,
-                                  [doot.locs.src],
-                                  taskers=[DootSingleFileCat])
+                                    locs=doot.locs,
+                                    [doot.locs.src],
+                                    taskers=[DootSingleFileCat])
 
     """
 
-    def __init__(self, base:str, locs:DootLocData, roots:list[pl.Path], *, exts:list[str]=None,  rec=False, tasks=None, **kwargs):
-        super().__init__(base, locs, roots, exts=exts, rec=rec, **kwargs)
-        self.tasks = [] or tasks
+    def __init__(self, spec:DootTaskSpec):
+        super().__init__(spec)
+        self.tasks = []
 
     def _build_subtask(self, index, name, fpath) -> Generator[Task]:
         pass

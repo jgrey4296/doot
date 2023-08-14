@@ -72,13 +72,13 @@ class SignalHandler:
 
     @staticmethod
     def install(sig=signal.SIGINT):
-        printer.info("Installing Task Loop handler for: %s", signal.strsignal(sig))
+        printer.debug("Installing Task Loop handler for: %s", signal.strsignal(sig))
         # Install handler for Interrupt signal
         signal.signal(sig, SignalHandler.handle)
 
     @staticmethod
     def uninstall(sig=signal.SIGINT):
-        printer.info("Uninstalling Task Loop handler for: %s", signal.strsignal(sig))
+        printer.debug("Uninstalling Task Loop handler for: %s", signal.strsignal(sig))
         signal.signal(sig, signal.SIG_DFL)
 
     @staticmethod

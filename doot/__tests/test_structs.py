@@ -116,7 +116,7 @@ class TestDootStructuredName:
 
     def test_cn_to_str(self):
         simple = structs.DootStructuredName("basic", "task")
-        assert(str(simple) == "tasks.basic::task")
+        assert(str(simple) == "basic::task")
 
     def test_cn_to_str_cmp(self):
         simple  = structs.DootStructuredName("basic", "task")
@@ -130,26 +130,26 @@ class TestDootStructuredName:
 
     def test_cn_with_subgroups_str(self):
         simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
-        assert(str(simple) == "tasks.\"basic.sub.test\"::task")
+        assert(str(simple) == "\"basic.sub.test\"::task")
 
     def test_cn_subtask(self):
         simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
-        assert(str(simple) == "tasks.\"basic.sub.test\"::task")
+        assert(str(simple) == "\"basic.sub.test\"::task")
         sub    = simple.subtask("blah")
-        assert(str(sub) == "tasks.\"basic.sub.test\"::task.blah")
+        assert(str(sub) == "\"basic.sub.test\"::task.blah")
 
     def test_cn_subtask_with_more_groups(self):
         simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
-        assert(str(simple) == "tasks.\"basic.sub.test\"::task")
+        assert(str(simple) == "\"basic.sub.test\"::task")
         sub    = simple.subtask("blah", subgroups=["another", "subgroup"])
-        assert(str(sub) == "tasks.\"basic.sub.test.another.subgroup\"::task.blah")
+        assert(str(sub) == "\"basic.sub.test.another.subgroup\"::task.blah")
 
 class TestDootTaskSpec:
 
     def test_initial(self):
         obj = structs.DootTaskSpec.from_dict({})
         assert(isinstance(obj, structs.DootTaskSpec))
-        assert(obj.name.group_str() == "tasks.default")
+        assert(obj.name.group_str() == "default")
         assert(obj.name.task_str() == "default")
         assert(str(obj.ctor_name) == doot.constants.DEFAULT_PLUGINS['tasker'][0][1])
         assert(obj.version == "0.1")
@@ -158,7 +158,7 @@ class TestDootTaskSpec:
     def test_version_change(self):
         obj = structs.DootTaskSpec.from_dict({"version" : "0.5"})
         assert(isinstance(obj, structs.DootTaskSpec))
-        assert(obj.name.group_str() == "tasks.default")
+        assert(obj.name.group_str() == "default")
         assert(obj.name.task_str() == "default")
         assert(str(obj.ctor_name) == doot.constants.DEFAULT_PLUGINS['tasker'][0][1])
         assert(obj.version == "0.5")
@@ -167,21 +167,21 @@ class TestDootTaskSpec:
     def test_basic_name(self):
         obj = structs.DootTaskSpec.from_dict({"name": "agroup::atask"})
         assert(isinstance(obj, structs.DootTaskSpec))
-        assert(obj.name.group_str() == "tasks.agroup")
+        assert(obj.name.group_str() == "agroup")
         assert(obj.name.task_str() == "atask")
 
 
     def test_groupless_name(self):
         obj = structs.DootTaskSpec.from_dict({"name": "atask"})
         assert(isinstance(obj, structs.DootTaskSpec))
-        assert(obj.name.group_str() == "tasks.default")
+        assert(obj.name.group_str() == "default")
         assert(obj.name.task_str() == "atask")
 
 
     def test_with_extra_data(self):
         obj = structs.DootTaskSpec.from_dict({"name": "atask", "blah": "bloo", "something": [1,2,3,4]})
         assert(isinstance(obj, structs.DootTaskSpec))
-        assert(obj.name.group_str() == "tasks.default")
+        assert(obj.name.group_str() == "default")
         assert(obj.name.task_str() == "atask")
         assert("blah" in obj.extra)
         assert("something" in obj.extra)
@@ -190,7 +190,7 @@ class TestDootTaskSpec:
     def test_separate_group_and_task(self):
         obj = structs.DootTaskSpec.from_dict({"name": "atask", "group": "agroup"})
         assert(isinstance(obj, structs.DootTaskSpec))
-        assert(obj.name.group_str() == "tasks.agroup")
+        assert(obj.name.group_str() == "agroup")
         assert(obj.name.task_str() == "atask")
 
 
@@ -203,7 +203,7 @@ class TestTaskStub:
         obj = structs.TaskStub(dict)
         assert(isinstance(obj, structs.TaskStub))
         assert(obj.ctor == dict)
-        assert(str(obj['name'].default) == "tasks.stub::stub")
+        assert(str(obj['name'].default) == "stub::stub")
 
     def test_default_keys(self):
         """ check a stub has the default components of a TaskSpec  """
@@ -238,7 +238,6 @@ class TestTaskStub:
 
 
 class TestTaskStubPart:
-
 
     def test_stub_initial(self):
         obj = structs.TaskStubPart("test", type="list", default=[1,2,3], comment="a simple stub part")

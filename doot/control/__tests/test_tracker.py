@@ -21,13 +21,13 @@ from doot.control.tracker import DootTracker
 from doot._abstract import Task_i
 
 def make_mock_task(mocker, name, pre=None, post=None):
-    mock_task                  = mocker.MagicMock(spec=Task_i)
-    mock_task.name             = name
-    depends_on                 = pre or mocker.PropertyMock()
-    enables                    = post or mocker.PropertyMock()
-    type(mock_task).depends_on = depends_on
-    type(mock_task).enables    = enables
-    return mock_task, depends_on, enables
+    mock_task                      = mocker.MagicMock(spec=Task_i)
+    mock_task.name                 = name
+    runs_after                     = pre or mocker.PropertyMock()
+    runs_before                    = post or mocker.PropertyMock()
+    type(mock_task).runs_after     = runs_after
+    type(mock_task).runs_before    = runs_before
+    return mock_task, runs_after, runs_before
 
 class TestTracker:
 
@@ -36,15 +36,15 @@ class TestTracker:
         assert(tracker is not None)
 
     def test_add_task(self, mocker):
-        mock_task, depends_on, enables = make_mock_task(mocker, "test_task")
+        mock_task, runs_after, runs_before = make_mock_task(mocker, "test_task")
 
         tracker = DootTracker()
         tracker.add_task(mock_task)
 
         assert("test_task" in tracker.tasks)
         assert(tracker.dep_graph.nodes['test_task']['state'] == tracker.state_e.DEFINED)
-        depends_on.assert_called()
-        enables.assert_called()
+        runs_after.assert_called()
+        runs_before.assert_called()
 
     def test_duplicate_add_fail(self, mocker):
         task1, pre1, post1 = make_mock_task(mocker, "task1")
@@ -77,7 +77,7 @@ class TestTracker:
 
     def test_contains_defined(self, mocker):
         mock_task, _, _= make_mock_task(mocker, "test_task")
-        mock_task.depends_on = ["example", "blah"]
+        mock_task.runs_after = ["example", "blah"]
 
         tracker = DootTracker()
         tracker.add_task(mock_task)

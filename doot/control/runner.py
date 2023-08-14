@@ -87,11 +87,13 @@ class DootRunner(TaskRunner_i):
         # for threaded tasks: replace expand_tasker/execute_task/execute_action with twisted?
 
         with SignalHandler():
+            printer.info("---------- Task Loop Starting ----------")
             for task in iter(self.tracker):
                 if task is None:
                     continue
 
                 try:
+                    printer.setLevel(task.spec.print_level)
                     match task:
                         case Tasker_i():
                             self._expand_tasker(task)
@@ -106,21 +108,28 @@ class DootRunner(TaskRunner_i):
                 except doot.errors.DootTaskTrackingError as err:
                     pass
                 except doot.errors.DootTaskFailed as err:
-                    self.tracker.update_state(task, TaskStateEnum.Failed)
+                    printer.warning("Task Failed: %s", task.name)
+                    self.tracker.update_state(task, TaskStateEnum.FAILED)
                 except doot.errors.DootTaskError as err:
-                    pass
+                    printer.warning("Task Error : %s : %s", task.name, err)
+                    self.tracker.update_state(task, TaskStateEnum.FAILED)
                 except doot.errors.DootError as err:
-                    self.tracker.update_state(task, TaskStateEnum.Failed)
+                    printer.warning("Doot Error : %s", task.name)
+                    self.tracker.update_state(task, TaskStateEnum.FAILED)
                 else:
                     printer.info("Sleeping")
                     time.sleep(0.2)
+
+            printer.setLevel("NOTSET")
+            printer.info("---------- Task Loop Finished ----------")
 
 
         self._finish()
 
     def _expand_tasker(self, tasker:Tasker_i) -> None:
         """ turn a tasker into all of its tasks, including teardowns """
-        logging.debug("-- Expanding Tasker: %s", tasker.name)
+        logmod.debug("-- Expanding Tasker: %s", tasker.name)
+        printer.info("-- %s", tasker.name)
         count = 0
         for task in tasker.build():
             match task:
@@ -133,11 +142,12 @@ class DootRunner(TaskRunner_i):
                     raise doot.errors.DootTaskError("Tasker Built a Bad Value", task)
             count += 1
 
-        logging.debug("-- Tasker %s Expansion produced: %s tasks", tasker.name, count)
+        logmod.debug("-- Tasker %s Expansion produced: %s tasks", tasker.name, count)
 
     def _execute_task(self, task:Task_i) -> None:
         """ execute a single task's actions """
-        logging.debug("---- Executing Task: %s", task.name)
+        logmod.debug("---- Executing Task: %s", task.name)
+        printer.info("---- %s", task.name)
         # TODO <-- in the future, where DB checks for staleness, thread safety, etc will occur
 
         for action in task.actions:
@@ -147,6 +157,7 @@ class DootRunner(TaskRunner_i):
                 case _:
                     raise doot.errors.DootTaskError("Task produced a bad action", action)
 
+        printer.info("---- Actions Complete")
         # Get Any resulting tasks
         count = 0
         for new_task in task.maybe_more_tasks():
@@ -158,11 +169,12 @@ class DootRunner(TaskRunner_i):
                     raise doot.errors.DootTaskError("Task provided a bad additional task", new_task)
 
 
-        logging.debug("---- Task Execution Completed: %s, adding %s additional tasks", task.name, count)
+        logmod.debug("---- Task Execution Completed: %s, adding %s additional tasks", task.name, count)
 
     def _execute_action(self, action, task) -> None:
         """ Run the given action of a specific task  """
-        logging.debug("------ Executing Action: %s for %s", action, task.name)
+        logmod.debug("------ Executing Action: %s for %s", action, task.name)
+        printer.info("------ %s", action.spec)
         result = action(task.state.copy())
         match result:
             case None:
@@ -171,7 +183,7 @@ class DootRunner(TaskRunner_i):
                 pass
             case dict():
                 task.state.update(result)
-        logging.debug("------ Action Execution Complete: %s for %s", action, task.name)
+        logmod.debug("------ Action Execution Complete: %s for %s", action, task.name)
 
     def _finish(self):
         """finish running tasks"""

@@ -15,8 +15,8 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 logging = logmod.root
 
 import pytest
-import doot
 import tomler
+import doot
 
 class TestBasicDoot:
 
@@ -25,3 +25,14 @@ class TestBasicDoot:
         assert(doot.config is None)
         doot.setup()
         assert(isinstance(doot.config, tomler.Tomler))
+
+
+    def test_initial2(self, mocker):
+        mocker.patch.object(doot,  "config", None)
+        assert(doot.config is None)
+        doot.setup()
+        assert(isinstance(doot.config, tomler.Tomler))
+
+    def test_overlord(self, mocker):
+        mocker.patch
+        from doot.control.overlord import DootOverlord

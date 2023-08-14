@@ -54,7 +54,7 @@ def setup(targets:list[pl.Path]|None=None, prefix:str|None=None) -> tuple[tomler
     existing_targets       = [x for x in targets if x.exists()]
 
     config = tomler.load(*existing_targets)
-    locs   = DootLocData(files=config.flatten_on({}).files(), **config.flatten_on({}).directories())
+    # locs   = DootLocData(files=config.flatten_on({}).files(), **config.flatten_on({}).directories())
 
     _configs_loaded_from   = existing_targets
 

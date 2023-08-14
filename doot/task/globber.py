@@ -66,11 +66,11 @@ class DootEagerGlobber(SubMixin, DootTasker):
     control = _GlobControl
     globc   = _GlobControl
 
-    def __init__(self, spec:dict|Tomler, locs:DootLocData=None):
-        super().__init__(spec, locs)
-        self.exts           = {y for x in spec.get('exts', []) for y in [x.lower(), x.upper()]}
-        self.roots          = spec.get("roots", [])
-        self.rec            = spec.get("rec", False)
+    def __init__(self, spec:DootTaskSpec):
+        super().__init__(spec)
+        self.exts           = {y for x in spec.extra.on_fail([]).exts() for y in [x.lower(), x.upper()]}
+        self.roots          = spec.extra.on_fail([]).roots()
+        self.rec            = spec.extra.on_fail(False).rec()
         self.total_subtasks = 0
         for x in self.roots:
             try:

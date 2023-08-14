@@ -249,9 +249,11 @@ class DootStructuredName:
     def group_str(self):
         match self.form:
             case StructuredNameEnum.TASK if len(self.group) > 1:
-                fmt = "tasks.\"{}\""
+                # fmt = "tasks.\"{}\""
+                fmt = '"{}"'
             case StructuredNameEnum.TASK:
-                fmt = "tasks.{}"
+                # fmt = "tasks.{}"
+                fmt = "{}"
             case StructuredNameEnum.CLASS:
                 fmt = "{}"
 
@@ -280,23 +282,19 @@ class DootStructuredName:
 @dataclass
 class DootTaskSpec:
     """ The information needed to describe a generic task """
-    name              : DootStructuredName               = field()
+    name              : DootStructuredName                = field()
     doc               : list[str]                         = field(default_factory=list)
-    source            : DootStructuredName|str|None      = field(default=None)
+    source            : DootStructuredName|str|None       = field(default=None)
     actions           : list[Any]                         = field(default_factory=list)
 
-    before_artifacts  : list[DootTaskArtifact|str]        = field(default_factory=list)
-    after_artifacts   : list[DootTaskArtifact|str]        = field(default_factory=list)
-    after_tasks       : list[DootStructuredName|str]     = field(default_factory=list)
-    before_tasks      : list[DootStructuredName|str]     = field(default_factory=list)
-
+    runs_before       : list[DootTaskArtifact|str]        = field(default_factory=list)
+    runs_after        : list[DootTaskArtifact|str]        = field(default_factory=list)
     tasker_updates    : list[str]                         = field(default_factory=list)
-    ctor_name         : DootStructuredName               = field(default=None)
+    ctor_name         : DootStructuredName                = field(default=None)
     ctor              : type|None                         = field(default=None)
     # Any additional information:
-    task_ctor         : type|str|None                     = field(default=None)
-    action_ctor       : type|str|None                     = field(default=None)
     version           : str                               = field(default="0.1")
+    print_level       : str                               = field(default="INFO")
     flags             : TaskFlags                         = field(default=TaskFlags.TASK)
 
     extra             : Tomler                            = field(default_factory=Tomler)
@@ -315,6 +313,8 @@ class DootTaskSpec:
         for key, val in data.items():
             if key in core_keys:
                 core_data[key] = val
+            elif key.replace("-", "_") in core_keys:
+                core_data[key.replace("-", "_")] = val
             elif key not in ['name', 'group']:
                 extra_data[key] = val
 
@@ -468,7 +468,7 @@ class TaskStubPart:
     def __str__(self) -> str:
         # shortcut on being the name:
         if isinstance(self.default, DootStructuredName) and self.key == "name":
-            return f"[[{self.default.group_str()}]]\n{'name':<20} = \"{self.default.task_str()}\""
+            return f"[[tasks.{self.default.group_str()}]]\n{'name':<20} = \"{self.default.task_str()}\""
 
         key_str     = f"{self.key:<20}"
         type_str    = f"<{self.type}>"

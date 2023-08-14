@@ -34,77 +34,35 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+printer = logmod.getLogger("doot._printer")
+
 import doot
 import doot.errors
 import tomler
 from doot._abstract import Task_i, Tasker_i, Action_p
 from doot.enums import TaskFlags
 from doot.structs import DootStructuredName, TaskStub, TaskStubPart
-from doot.actions.py_action import DootPyAction
+from doot.actions.base_action import DootBaseAction
 
 @doot.check_protocol
 class DootTask(Task_i):
     """
+      The simplest task
     """
-    action_ctor = DootPyAction
+    action_ctor    = DootBaseAction
     _default_flags = TaskFlags.TASKER
-
-    def __init__(self, spec:DootTaskSpec, tasker:Tasker_i, *args, **kwargs):
-        super().__init__(spec, tasker)
+    _help          = ["The Simplest Task"]
 
     @property
     def actions(self):
         """lazy creation of action instances"""
-        if self._action_instances is None:
-            builder = self.action_ctor
-            self._action_instances = list(map(lambda x: builder(x, self, 'actions'), self._actions))
-        return self._action_instances
+        action_ctor = self.spec.extra.on_fail(DootTask.action_ctor).action_ctor()
+        for action in self.spec.actions:
+            yield action_ctor(action)
 
     @property
     def is_stale(self):
         return False
-
-    def execute(self, stream):
-        """Executes the task.
-        @return failure: see CmdAction.execute
-        """
-        logging.debug("Executing Task: %s", self.name)
-        self.executed = True
-        self.init_options()
-        task_stdout, task_stderr = stream._get_out_err(self.verbosity)
-        actions = self.actions[:]
-        actions.reverse()
-        while bool(actions):
-            action = actions.pop()
-            logging.debug("%s Task Action: %s", self.name, action)
-            if action.task is None:
-                action.task = self
-            action_return = action.execute(task_stdout, task_stderr)
-            match action_return:
-                case BaseFail():
-                    return action_return
-                case BaseAction():
-                    actions.append(action_return)
-                case [*args] if all(isinstance(x, BaseAction) for x in args):
-                    actions += args
-                case _:
-                    self.result = action.result
-                    self.values.update(action.values)
-
-
-    def report(self, template, list_deps) -> str:
-        """print a single task"""
-        line_data = {'name': self.name, 'doc': self.doc}
-        results = []
-        results.append("\t" + template.format(**line_data))
-
-        if list_deps:
-            for dep in self.task_dep:
-                results.append(f"\t\t -(t)- {dep}")
-            for dep in self.file_dep:
-                results.append(f"\t\t -(f)- {dep}")
-
-        return "\n".join(results)
 
     @classmethod
     def stub_class(cls) -> TaskStub:

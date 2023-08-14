@@ -116,7 +116,7 @@ class TestListCmd:
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
         assert("tasks for pattern: simple" in message_set)
-        assert( any(x.startswith("tasks.blah::simple :: doot.task.base_tasker:doottasker") for x in message_set) )
+        assert( any(x.startswith("blah::simple :: doot.task.base_tasker:doottasker") for x in message_set) )
 
 
     def test_call_partial_target_not_empty(self, caplog, mocker):
@@ -135,5 +135,5 @@ class TestListCmd:
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
         assert("tasks for pattern: simp" in message_set)
-        assert( any(x.startswith("tasks.blah::simple :: doot.task.base_tasker:doottasker") for x in message_set) )
-        assert( any(x.startswith("tasks.bloo::diffsimple :: doot.task.base_tasker:doottasker") for x in message_set) )
+        assert( any(x.startswith("blah::simple     :: doot.task.base_tasker:doottasker") for x in message_set) )
+        assert( any(x.startswith("bloo::diffsimple :: doot.task.base_tasker:doottasker") for x in message_set) )

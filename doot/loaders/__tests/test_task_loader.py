@@ -53,8 +53,8 @@ class TestTaskLoader:
 
         assert(isinstance(result, tomler.Tomler))
         assert(len(result) == 1)
-        assert("tasks.basic::test" in result)
-        assert(isinstance(result['tasks.basic::test'], DootTaskSpec))
+        assert("basic::test" in result)
+        assert(isinstance(result['basic::test'], DootTaskSpec))
 
     def test_multi_load(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_path")
@@ -69,8 +69,8 @@ class TestTaskLoader:
 
         assert(isinstance(result, tomler.Tomler))
         assert(len(result) == 2)
-        assert("tasks.basic::test" in result)
-        assert("tasks.basic::other" in result)
+        assert("basic::test" in result)
+        assert("basic::other" in result)
 
     def test_name_warn_on_overload(self, mocker, caplog):
         mocker.patch("doot.loaders.task_loader.task_path")
@@ -85,7 +85,7 @@ class TestTaskLoader:
 
         basic.load()
 
-        assert("Overloading Task: tasks.basic::test : doot.task.base_tasker:DootTasker" in caplog.messages)
+        assert("Overloading Task: basic::test : doot.task.base_tasker:DootTasker" in caplog.messages)
 
     def test_cmd_name_conflict(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_path")
@@ -160,7 +160,7 @@ class TestTaskLoader:
         result    = basic.load()
 
         assert(len(result) == 1)
-        task_spec = result['tasks.basic::simple']
+        task_spec = result['basic::simple']
         assert(str(task_spec.ctor_name) == "pretend:APretendClass")
         assert(task_spec.ctor.name == "APretendClass")
 

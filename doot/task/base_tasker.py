@@ -79,7 +79,7 @@ class DootTasker(Tasker_i):
         super(DootTasker, self).__init__(spec)
         assert(spec is not None), "Spec is empty"
 
-    def _build_task(self) -> None|Task_i:
+    def _build_task(self) -> None|Task_i|DootTaskSpec:
         logging.debug("Building Task for: %s", self.name)
         task                             = self.default_task()
         maybe_task : None | DootTaskSpec = self.specialize_task(task)

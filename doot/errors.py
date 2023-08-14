@@ -21,7 +21,10 @@ class DootError(Exception):
     general_msg = "Non-Specific Doot Error:"
 
     def __str__(self):
-        return self.args[0] % self.args[1:]
+        try:
+            return self.args[0] % self.args[1:]
+        except TypeError:
+            return str(self.args)
 
 
 class DootTaskError(DootError):

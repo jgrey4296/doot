@@ -74,7 +74,8 @@ class FunctionTasker(DootTasker):
 class GroupTasker(DootTasker):
     """ A Group of task specs, none of which require params """
 
-    def __init__(self, name, *args, as_creator=False):
+    def __init__(self, spec:DootTaskSpec):
+        super().__init__(spec)
         self.name       = name.replace(" ", "_")
         self.tasks      = list(args)
         self.as_creator = as_creator

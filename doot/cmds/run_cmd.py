@@ -95,8 +95,14 @@ class RunCmd(Command_i):
             else:
                 tracker.queue_task(target)
 
-        printer.info("Tasks Queued: %s", tracker.task_stack)
+        for target in doot.args.tasks.keys():
+            if target not in tracker:
+                printer.info("%s specified as run target, but it doesn't exist")
+            else:
+                tracker.queue_task(target)
+
+        printer.info("- %s Tasks Queued: %s", len(tracker.task_stack), " ".join(tracker.task_stack))
         reporter : Reporter_i     = plugins.reporter[0].load()()
-        runner   : TaskRunner_i   = plugins.runner[0](tracker, reporter)
-        printer.info("running tasks")
+        runner   : TaskRunner_i   = plugins.runner[0].load()(tracker, reporter)
+        printer.info("Running Tasks")
         runner()
