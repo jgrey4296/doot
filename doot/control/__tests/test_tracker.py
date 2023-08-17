@@ -17,12 +17,16 @@ logging = logmod.root
 
 import pytest
 import doot.errors
+import doot.structs
 from doot.control.tracker import DootTracker
 from doot._abstract import Task_i
 
 def make_mock_task(mocker, name, pre=None, post=None):
     mock_task                      = mocker.MagicMock(spec=Task_i)
     mock_task.name                 = name
+    mock_task.spec                 = mocker.MagicMock(spec=doot.structs.DootTaskSpec)
+    mock_task.spec.priority        = 0
+
     runs_after                     = pre or mocker.PropertyMock()
     runs_before                    = post or mocker.PropertyMock()
     type(mock_task).runs_after     = runs_after
@@ -167,6 +171,9 @@ class TestTracker:
         subtask2, *_ = make_mock_task(mocker, "subtask2", pre=["subsub"])
         subtask3, *_ = make_mock_task(mocker, "subtask3", pre=["subsub"])
 
+        task1.spec = mocker.Mock()
+        task1.spec.priority = 0
+
         tracker = DootTracker()
         tracker.add_task(task1)
         tracker.add_task(subtask)
@@ -246,8 +253,8 @@ class TestTracker:
         assert(next_task_4.name == "task1" )
 
     def test_task_exact_artifact_dependency(self, mocker):
-        task1,    *_ = make_mock_task(mocker, "task1", pre=[pl.Path("test.file")])
-        subtask,  *_ = make_mock_task(mocker, "subtask", post=[pl.Path("blah.other")])
+        task1,    *_ = make_mock_task(mocker, "task1",    pre=[pl.Path("test.file")])
+        subtask,  *_ = make_mock_task(mocker, "subtask",  post=[pl.Path("blah.other")])
         subtask2, *_ = make_mock_task(mocker, "subtask2", post=[pl.Path("test.file")])
 
         tracker = DootTracker()
