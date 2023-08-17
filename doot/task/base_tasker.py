@@ -59,6 +59,7 @@ logging = logmod.getLogger(__name__)
 
 from tomler import Tomler
 import doot
+import doot.errors
 from doot.enums import TaskFlags
 from doot.structs import DootTaskSpec, TaskStub, TaskStubPart
 from doot._abstract import Tasker_i, Task_i

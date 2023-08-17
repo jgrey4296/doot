@@ -26,7 +26,6 @@ class DootError(Exception):
         except TypeError:
             return str(self.args)
 
-
 class DootTaskError(DootError):
     general_msg = "Doot Task Error:"
     pass
@@ -45,6 +44,7 @@ class DootTaskTrackingError(DootTaskError):
 
 class DootTaskInterrupt(DootTaskError):
     pass
+
 class DootParseError(DootError):
     general_msg = "Doot CLI Parsing Failure:"
     pass

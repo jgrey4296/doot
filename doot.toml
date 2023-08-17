@@ -33,10 +33,3 @@ docs         = "docs"
 data         = "data"
 listings_out = "build/listing"
 lint_out     = "build/lint"
-
-[group.pip]
-[group.python]
-
-[[tasks.simple]]
-name = "simple.test"
-ctor = "doot.task.base_tasker:DootTasker"

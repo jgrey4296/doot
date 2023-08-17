@@ -138,6 +138,9 @@ class DootRunner(TaskRunner_i):
                 case Task_i():
                     self.tracker.add_task(task, no_root_connection=True)
                     self.tracker.queue_task(task.name)
+                case DootTaskSpec():
+                    self.tracker.add_task(task, no_root_connection=True)
+                    self.tracker.queue_task(task.name)
                 case _:
                     raise doot.errors.DootTaskError("Tasker Built a Bad Value", task)
             count += 1

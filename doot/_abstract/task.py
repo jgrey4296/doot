@@ -224,9 +224,14 @@ class Tasker_i(TaskBase_i):
         raise NotImplementedError(self.__class__, "default_task")
 
     @abc.abstractmethod
-    def specialize_task(self, task:dict) -> dict|DootTaskSpec|Task_i|None:
+    def specialize_task(self, task:DootTaskSpec) -> DootTaskSpec|None:
         raise NotImplementedError(self.__class__, "specialize_task")
 
     @abc.abstractmethod
     def build(self, **kwargs) -> abc.Generator[Task_i]:
+        raise NotImplementedError()
+
+
+    @abc.abstractmethod
+    def _build_head(self) -> DootTaskSpec:
         raise NotImplementedError()

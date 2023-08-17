@@ -64,14 +64,16 @@ import doot.errors
 import doot.constants
 from doot.enums import TaskFlags, ReportPositionEnum, StructuredNameEnum
 
-PAD : Final[int] = 15
-
-TaskFlagNames = [x.name for x in TaskFlags]
+PAD           : Final[int] = 15
+TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
 
 @dataclass
 class DootParamSpec:
     """ Describes a command line parameter to use in the parser
       When `positional`, will not match against a string starting with `prefix`
+      consumed in doot._abstract.parser.ArgParser_i's
+      produced using doot._abstract.parser.ParamSpecMaker_m classes,
+      like tasks, and taskers
     """
     name        : str      = field()
     type        : type     = field(default=bool)
@@ -282,22 +284,23 @@ class DootStructuredName:
 @dataclass
 class DootTaskSpec:
     """ The information needed to describe a generic task """
-    name              : DootStructuredName                = field()
-    doc               : list[str]                         = field(default_factory=list)
-    source            : DootStructuredName|str|None       = field(default=None)
-    actions           : list[Any]                         = field(default_factory=list)
+    name              : DootStructuredName                         = field()
+    doc               : list[str]                                  = field(default_factory=list)
+    source            : DootStructuredName|str|None                = field(default=None)
+    actions           : list[Any]                                  = field(default_factory=list)
 
-    runs_before       : list[DootTaskArtifact|str]        = field(default_factory=list)
-    runs_after        : list[DootTaskArtifact|str]        = field(default_factory=list)
-    tasker_updates    : list[str]                         = field(default_factory=list)
-    ctor_name         : DootStructuredName                = field(default=None)
-    ctor              : type|None                         = field(default=None)
+    runs_before       : list[DootTaskArtifact|pl.Path|str]         = field(default_factory=list)
+    runs_after        : list[DootTaskArtifact|pl.Path|str]         = field(default_factory=list)
+    priority          : int                                        = field(default=0)
+    tasker_updates    : list[str]                                  = field(default_factory=list)
+    ctor_name         : DootStructuredName                         = field(default=None)
+    ctor              : type|Callable|None                         = field(default=None)
     # Any additional information:
-    version           : str                               = field(default="0.1")
-    print_level       : str                               = field(default="INFO")
-    flags             : TaskFlags                         = field(default=TaskFlags.TASK)
+    version           : str                                        = field(default="0.1")
+    print_level       : str                                        = field(default="INFO")
+    flags             : TaskFlags                                  = field(default=TaskFlags.TASK)
 
-    extra             : Tomler                            = field(default_factory=Tomler)
+    extra             : Tomler                                     = field(default_factory=Tomler)
 
 
     @staticmethod

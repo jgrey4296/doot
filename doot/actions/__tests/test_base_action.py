@@ -10,9 +10,11 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
                     Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
                     TypeVar, cast)
 import warnings
+import os
+
+logging = logmod.root
 
 import pytest
-logging = logmod.root
 
 import tomler
 import doot
@@ -20,8 +22,7 @@ import doot._abstract
 import doot.structs
 import doot.constants
 from doot.task.base_task import DootTask
-
-
+from doot.actions.base_action import DootBaseAction
 
 # caplog
 # mocker.patch | patch.object | patch.multiple | patch.dict | stopall | stop | spy | stub
@@ -35,25 +36,23 @@ from doot.task.base_task import DootTask
 class TestBaseAction:
 
     @pytest.fixture(scope="function")
-    def setup(self):
-        pass
+    def setup(self, wrap_tmp):
+        logging.info("Setting up basic doot dir")
+
+        return wrap_tmp
 
     @pytest.fixture(scope="function")
     def cleanup(self):
         pass
 
     def test_initial(self):
-        ##-- setup
+        action = DootBaseAction("example-spec")
+        assert(isinstance(action, DootBaseAction))
+        assert(action.spec == "example-spec")
 
-        ##-- end setup
-
-        ##-- pre-check
-
-        ##-- end pre-check
-
-        # Run:
-
-        ##-- check
-
-        ##-- end check
-        pass
+    def test_call_action(self, caplog):
+        action = DootBaseAction("example-spec")
+        state  = { "count" : 0  }
+        result = action(state)
+        assert(result['count'] == 1)
+        assert("Action Spec: example-spec" in caplog.messages)
