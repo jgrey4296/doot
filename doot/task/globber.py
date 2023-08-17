@@ -177,7 +177,7 @@ class DootEagerGlobber(SubMixin, DootTasker):
 
         logging.debug("Globbed : %s", globbed_count)
 
-    def _build_subs(self) -> Generator[dict]:
+    def _build_subs(self) -> Generator[DootTaskSpec]:
         self.total_subtasks = 0
         logging.debug("%s : Building Globber SubTasks", self.basename)
         for i, (uname, fpath) in enumerate(self.glob_all()):
@@ -189,3 +189,14 @@ class DootEagerGlobber(SubMixin, DootTasker):
                     yield subtask
                 case _:
                     raise TypeError("Unexpected type for subtask: %s", type(subtask))
+
+
+    def build(self, **kwargs):
+        self.args.update(kwargs)
+        head = self._build_head()
+
+        for sub in self._build_subs():
+            head.runs_after(sub.fullname)
+            yield sub
+
+        yield head

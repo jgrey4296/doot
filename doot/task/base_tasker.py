@@ -80,37 +80,33 @@ class DootTasker(Tasker_i):
         super(DootTasker, self).__init__(spec)
         assert(spec is not None), "Spec is empty"
 
-    def _build_task(self) -> None|Task_i|DootTaskSpec:
+    def default_task(self) -> DootTaskSpec:
+        return DootTaskSpec(name=self.fullname.subtask("head"))
+
+    def is_stale(self, task:Task_i):
+        return False
+
+    def build(self, **kwargs) -> Generator[DootTaskSpec]:
+        logging.debug("-- tasker %s expanding tasks", self.name)
+        if bool(kwargs):
+            logging.debug("recieved kwargs: %s", kwargs)
+            self.args.update(kwargs)
+
+        yield self._build_head()
+
+    def _build_head(self) -> DootTaskSpec:
         logging.debug("Building Task for: %s", self.name)
         task                             = self.default_task()
-        maybe_task : None | DootTaskSpec = self.specialize_task(task)
+        maybe_task : DootTaskSpec | None = self.specialize_task(task)
 
         match maybe_task:
             case None:
-                return None
+                raise DootTaskError("Task Failed to specialize the head task: %s", self.name)
             case _ if not bool(maybe_task.doc):
                 maybe_task.doc = self.doc
                 return maybe_task
             case _:
                 return maybe_task
-
-    def default_task(self) -> DootTaskSpec:
-        return DootTaskSpec(name=self.name)
-
-    def is_stale(self, task:Task_i):
-        return False
-
-    def build(self, **kwargs) -> Generator[Task_i|dict]:
-        logging.debug("-- tasker %s expanding tasks", self.name)
-        if bool(kwargs):
-            logging.debug("recieved kwargs: %s", kwargs)
-        self.args.update(kwargs)
-        task       = self._build_task()
-
-        if task is not None:
-            yield task
-        else:
-            return None
 
     def specialize_task(self, task):
         return task

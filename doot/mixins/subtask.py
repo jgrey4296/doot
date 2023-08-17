@@ -36,67 +36,29 @@ from time import sleep
 
 class SubMixin:
 
-    def subtask_detail(self, task, **kwargs) -> None|dict:
-        return task
+    @abc.abstractmethod
+    def _build_subs(self) -> Generator[DootTaskSpec]:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def build(self, **kwargs) -> Generator:
+        raise NotImplementedError()
 
     def _sleep_subtask(self):
         if self.sleep_notify:
             logging.info("Sleep Subtask")
         sleep(self.sleep_subtask)
 
-    @property
-    def subtask_regex(self):
-        return DootStructuredName(self.fullname, "*", private=True)
-
-    @property
-    def subtask_base(self):
-        return DootStructuredName(self.fullname, private=True)
-
-    def subtask_name(self, val):
-        return DootStructuredName(self.fullname, val, private=True)
-
-    def _build_task(self) -> None|DoitTask:
-        task = super()._build_task()
+    def _build_subtask(self, n:int, uname, **kwargs) -> DootTaskSpec:
+        task_spec = self.default_task()
+        task      = self.specialize_subtask(task_spec, **kwargs)
         if task is None:
-            return None
+            return
 
-        updates =  { "task_dep" : [self.subtask_regex] }
-        task.update_deps(updates)
-        task.has_subtask = True
         return task
 
-    def _build_subs(self):
-        raise NotImplementedError()
+    def subtask_name(self, val):
+        return self.fullname.subtask(val)
 
-    def _build_subtask(self, n:int, uname, **kwargs) -> dict:
-        try:
-            spec_doc  = self.doc + f" : {kwargs}"
-            task_spec = self.default_task()
-            task_spec.update({
-                "basename" : self.subtask_base,
-                "name"     : str(uname),
-                "doc"      : spec_doc,
-            })
-            task_spec['meta'].update({ "n" : n })
-
-            task = self.subtask_detail(task_spec, **kwargs)
-            if task is None:
-                return
-
-            if not task_spec.get("private", True):
-                task_spec['basename'] = task_spec['basename'][1:]
-
-            if self.has_active_setup:
-                task['setup'] += [self.setup_name]
-
-            if bool(self.sleep_subtask):
-                task['actions'].append(self._sleep_subtask)
-
-            task['actions'] = [x for x in task['actions'] if bool(x)]
-            return task
-        except DootDirAbsent:
-            return None
-
-    def build(self, **kwargs) -> Generator:
-        yield from super().build(**kwargs)
-        yield from self._build_subs()
+    def specialize_subtask(self, task, **kwargs) -> None|dict:
+        return task
