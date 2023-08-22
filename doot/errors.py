@@ -18,6 +18,10 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 class DootError(Exception):
+    """
+      The base class for all Doot Errors
+      will try to % format the first argument with remaining args in str()
+    """
     general_msg = "Non-Specific Doot Error:"
 
     def __str__(self):
@@ -28,7 +32,11 @@ class DootError(Exception):
 
 class DootTaskError(DootError):
     general_msg = "Doot Task Error:"
-    pass
+
+    def __init__(self, msg, *args, task=None):
+        super().__init__(msg, *args)
+        self.task = task
+
 
 class DootTaskLoadError(DootTaskError):
     general_msg = "Doot Task Load Failure:"

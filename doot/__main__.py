@@ -65,7 +65,7 @@ def main():
     except doot.errors.DootError as err:
         errored = True
         printer.error(err.general_msg)
-        printer.error(err.args[0], *err.args[1:])
+        printer.error(str(err))
     ##-- end handle doot errors
     ##-- handle todo errors
     except NotImplementedError as err:
