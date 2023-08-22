@@ -61,7 +61,7 @@ from tomler import Tomler
 import doot
 import doot.errors
 from doot.enums import TaskFlags
-from doot.structs import DootTaskSpec, TaskStub, TaskStubPart
+from doot.structs import DootTaskSpec, TaskStub, TaskStubPart, DootStructuredName
 from doot._abstract import Tasker_i, Task_i
 from doot.errors import DootDirAbsent
 
@@ -77,11 +77,20 @@ class DootTasker(Tasker_i):
     _default_flags = TaskFlags.TASKER
 
     def __init__(self, spec:DootTaskSpec):
-        super(DootTasker, self).__init__(spec)
         assert(spec is not None), "Spec is empty"
+        super(DootTasker, self).__init__(spec)
 
-    def default_task(self) -> DootTaskSpec:
-        return DootTaskSpec(name=self.fullname.subtask("head"))
+    def default_task(self, name:str|DootStructuredName|None) -> DootTaskSpec:
+        match name:
+            case None:
+                return DootTaskSpec(name=self.fullname.subtask("head"))
+            case str():
+                return DootTaskSpec(name=self.fullname.subtask(name))
+            case DootStructuredName():
+                return DootTaskSpec(name=name)
+            case _:
+                raise doot.errors.DootTaskError("Bad value used to make a subtask in %s : %s", self.name, name)
+
 
     def is_stale(self, task:Task_i):
         return False
@@ -96,7 +105,7 @@ class DootTasker(Tasker_i):
 
     def _build_head(self) -> DootTaskSpec:
         logging.debug("Building Task for: %s", self.name)
-        task                             = self.default_task()
+        task                             = self.default_task("head")
         maybe_task : DootTaskSpec | None = self.specialize_task(task)
 
         match maybe_task:

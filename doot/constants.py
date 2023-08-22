@@ -63,11 +63,13 @@ DEFAULT_PLUGINS['action']   = [("shell"       , "doot.actions.shell_action:DootS
                                ("py"          , "doot.actions.py_action:DootPyAction")                                ,
                                ]
 
-DEFAULT_PLUGINS['tasker']     = [("basic"          , "doot.task.base_tasker:DootTasker")             ,
-                                 ("generaliser"    , "doot.task.generaliser:DootGeneraliser")        ,
-                                 ("glob"           , "doot.task.globber:DootEagerGlobber")           ,
-                                 ("dict"           , "doot.task.specialised_taskers:DictTasker")     ,
-                                 ("group"          , "doot.task.specialised_taskers:GroupTasker")    ,
+DEFAULT_PLUGINS['tasker']     = [("tasker"          , "doot.task.base_tasker:DootTasker")             ,
+                                 ("generaliser"     , "doot.task.generaliser:DootGeneraliser")        ,
+                                 ("globber"            , "doot.task.globber:DootEagerGlobber")           ,
+                                 ("dict"            , "doot.task.specialised_taskers:DictTasker")     ,
+                                 ("group"           , "doot.task.specialised_taskers:GroupTasker")    ,
+
+                                 ("task"            , "doot.task.base_task:DootTask")             ,
                                  ]
 
 ##-- end default plugins

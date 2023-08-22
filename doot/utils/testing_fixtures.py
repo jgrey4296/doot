@@ -41,7 +41,7 @@ def wrap_tmp(tmp_path):
       """
     logging.debug("Moving to temp dir")
     orig     = pl.Path().cwd()
-    new_base = tmp_path / "base"
+    new_base = tmp_path / "test_root"
     new_base.mkdir()
     os.chdir(new_base)
     yield new_base

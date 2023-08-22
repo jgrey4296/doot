@@ -30,7 +30,7 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doot.errors import DootDirAbsent
+from doot.errors import DootDirAbsent, DootTaskError
 from doot.structs import DootStructuredName
 from time import sleep
 
@@ -50,10 +50,13 @@ class SubMixin:
         sleep(self.sleep_subtask)
 
     def _build_subtask(self, n:int, uname, **kwargs) -> DootTaskSpec:
-        task_spec = self.default_task()
+        task_spec = self.default_task(uname)
         task      = self.specialize_subtask(task_spec, **kwargs)
         if task is None:
             return
+
+        if not (self.fullname < task.name):
+            raise DootTaskError("Subtasks must be part of their parents name: %s : %s", self.name, task.name)
 
         return task
 

@@ -60,8 +60,9 @@ class TaskBase_i(ParamSpecMaker_m):
     def param_specs(cls) -> list[DootParamSpec]:
         """  make class parameter specs  """
         return [
-           cls.make_param(name="help", default=False, invisible=True),
-           cls.make_param(name="debug", default=False, invisible=True)
+            cls.make_param(name="help", default=False, invisible=True),
+            cls.make_param(name="debug", default=False, invisible=True),
+            cls.make_param(name="verbose", default=0, type=int, invisible=True)
            ]
 
     def __init__(self, spec:DootTaskSpec):
@@ -209,7 +210,7 @@ class Tasker_i(TaskBase_i):
     @classmethod
     def class_help(cls) -> str:
         """ Tasker *class* help. """
-        help_lines = [f"Tasker : {cls.__qualname__} v{cls._version}", ""]
+        help_lines = [f"Tasker : {cls.__qualname__} v{cls._version}    ({cls.__module__}:{cls.__qualname__})", ""]
         help_lines += cls._help
 
         params = cls.param_specs
@@ -220,7 +221,7 @@ class Tasker_i(TaskBase_i):
         return "\n".join(help_lines)
 
     @abc.abstractmethod
-    def default_task(self) -> DootTaskSpec:
+    def default_task(self, name:str|DootStructuredName|None) -> DootTaskSpec:
         raise NotImplementedError(self.__class__, "default_task")
 
     @abc.abstractmethod
