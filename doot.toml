@@ -24,12 +24,12 @@ ignores  = ['.git', '.DS_Store', "__pycache__"]
 stream = { level = "WARN", format  = "{levelname:<8} : {message}", filters = ["doot"] }
 file   = { level = "DEBUG", format = "{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})", filters =  ["doot"] }
 
-[[directories]]
-src          = "doot"
-codegen      = "doot/_codegen"
+[[locations]]
 temp         = ".temp"
+src          = "doot"
 build        = "build"
 docs         = "docs"
 data         = "data"
-listings_out = "build/listing"
-lint_out     = "build/lint"
+codegen      = "{src}/_codegen"
+listings_out = "{build}/listing"
+lint_out     = "{build}/lint"

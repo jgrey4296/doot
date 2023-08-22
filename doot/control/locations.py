@@ -27,198 +27,108 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-from doot.errors import DootDirAbsent
+import re
+import tomler
+from doot.errors import DootDirAbsent, DootLocationExpansionError
 from doot.structs import DootStructuredName
 
-class LocProxy:
+KEY_PAT        = re.compile("{(.+?)}")
+MAX_EXPANSIONS = 10
 
-    def __init__(self, locs, val):
-        self.locs = locs
-        self.val = val
-
-    def __getattr__(self, attr):
-        try:
-            return LocProxy(self.locs, getattr(self.locs, attr))
-        except Exception:
-            DootLocData._defaulted.append(f"{attr} = \"{self.val}\"")
-            return self
-
-    def __call__(self):
-        match self.val:
-            case str():
-                return self.locs._calc_path(self.val)
-            case pl.Path():
-                return self.val
-
-class DootLocData:
+class DootLocations:
     """
-    Manage locations in a dict-like class, with attribute access,
-    that builds tasks for location checks
+    A Single point of truth for locations tasks use.
+    entries in [[locations]] toml blocks are integrated into it.
 
-    `.on_fail` provides a proxy to continue accessing,
-    and when `__call__`ed, provides the real value, or a default
+    it expands relative paths according to cwd(),
+    but can be used as a context manager to expand from a temp different root
 
-    The proxy also reports values that fallback to the default
-    to the LocData to then add to `_doot_defaults.toml`
+    location designations are of the form:
+    key = "location/directory"
+
+    If a location value has "loc/{key}/somewhere",
+    then for key = "blah", it will be expanded upon access to "loc/blah/somewhere"
     """
 
-    _all_registered : ClassVar[dict[str, DootLocData]] = {}
-    _locs_report_name  = "locs::report"
+    def __init__(self, root:Pl.Path):
+        self._root : pl.Path()    = root.expanduser().absolute()
+        self._data : Tomler       = tomler.Tomler()
 
-    _defaulted : ClassVar[list[str]] =   []
-
-    @staticmethod
-    def set_defaults(config:Tomler):
-        DootLocData._default_locs = config.on_fail([], list).locs
-
-    # @staticmethod
-    # def as_taskgroup() -> GroupTasker:
-    #     logging.debug("Building LocData Auto Tasks: %s", list(DootLocData._all_registered.keys()))
-    #     return GroupTasker(DootLocData._locs_report_name,
-    #                      {
-    #                          "basename" : task_namer(DootLocData._locs_report_name),
-    #                          "doc"      : ":: Report All Registered Locations",
-    #                          "actions"  : [],
-    #                          "task_dep" : [x for x in DootLocData._all_registered.keys()],
-    #                      },
-    #                      *[x._build_report_task() for x in DootLocData._all_registered.values()],
-    #                      )
-
-    @staticmethod
-    def report_defaulted() -> list[str]:
-        return DootLocData._defaulted[:]
-
-    def __init__(self, name="base", files:dict=None, **kwargs):
-        self._root    : pl.Path() = pl.Path()
-        self._name  = DootStructuredName(DootLocData._locs_report_name, name, private=True)
-        self._check_name          = None
-        self._dirs                = {}
-        if bool(kwargs):
-            self._dirs.update({x:y for x,y in kwargs.items() if y is not None})
-
-        self._files = {x:y for x,y in (files or {}).items() if y is not None}
-
-        intersect = set(self._dirs.keys()) & set(self._files.keys())
-        if bool(intersect):
-            raise ValueError(f"Directory and File Sets can't intersect: {intersect}")
-        if not (self.name not in DootLocData._all_registered):
-            raise ValueError(f"Conflicting LocData Name: {self.name}")
-
-        DootLocData._all_registered[self.name] = self
-        self.checker
-
-    def __getattr__(self, val):
-        match val in self._dirs, val in self._files:
-            case True, False:
-                target = self._dirs[val]
-            case False, True:
-                target =  self._files[val]
-            case _:
-                raise DootDirAbsent(f"{val} is not a location in {self.name}")
-
-        return self._calc_path(target)
-
-    def _calc_path(self, val) -> pl.Path:
-        match str(val)[0], val:
-            case "/" | "~", _: # absolute path or home
-                return pl.Path(val).expanduser()
-            case _, (solo,) | [solo]: # with postfix
-                return self.root / solo / self._name.task[0] or ""
-            case _, _: # normal
-                return self.root / val
-
-    def __contains__(self, val):
-        return val in self._dirs
-
-    def __iter__(self):
-        for x,y in self._dirs.items():
-            if y is not None:
-                yield (x, getattr(self, x))
-
-    def __str__(self):
-        return "  ".join(f"[{x}: ./{y}]" for x,y in self)
 
     def __repr__(self):
-        return f"{self.name} : ({self})"
+        keys = ", ".join(iter(self))
+        return f"<DootLocations : {str(self._root)} : ({keys})>"
 
-    def get(self, val):
+    def __getattr__(self, val) -> pl.Path:
+        """
+          get a location by name from loaded toml
+        """
+        return self._calc_path(val, self._data[val])
+
+    def __getitem__(self, val) -> pl.Path:
         return self.__getattr__(val)
 
-    def on_fail(self, val):
-        return LocProxy(self, val)
+    def __contains__(self, val):
+        return val in self._data
 
-    @property
-    def name(self):
-        return str(self._name)
+    def __iter__(self):
+        return iter(self._data.keys())
+
+    def _calc_path(self, key, val) -> pl.Path:
+        base      = val
+        count     = 0
+        while m := re.search(KEY_PAT, base):
+            if count > MAX_EXPANSIONS:
+                raise DootLocationExpansionError("Root key: %s, original: %s, last expansion: %s", key, val, base)
+            count += 1
+            wr_key  = m[0]
+            sub_val = self._data[m[1]]
+            base = re.sub(wr_key, sub_val, base)
+
+        match str(base)[0]:
+            case "~":  # absolute path or home
+                return pl.Path(base).expanduser().absolute()
+            case "/":
+                return pl.Path(base).absolute()
+            case _:
+                return self.root / base
+
+    def get(self, val, default=None):
+        try:
+            return self.__getattr__(val)
+        except tomler.TomlAccessError as err:
+            if default is not None:
+                return self._calc_path(val, default)
+            raise err
+
 
     @property
     def root(self):
         return self._root
 
-    @property
-    def checker(self) -> str:
-        # if self._check_name is None:
-        #     self._check_name = CheckDir(self._postfix, locs=self).name
-        # return task_namer(CheckDir._checker_basename, self._check_name, private=True)
-        return "TODO"
-
-    def extend(self, *, name=None, **kwargs):
-        new_locs = DootLocData(name or self._name.task[0],
-                               **self._dirs.copy())
-        new_locs.update(kwargs)
-        return new_locs
-
-    def update(self, extra:dict[str,str|pl.Path]=None, **kwargs):
-        if extra is not None:
-            self._dirs.update((x, y) for x,y in extra.items() if y is not None)
-        if bool(kwargs):
-            self._dirs.update((x,y) for x,y in kwargs.items() if y is not None)
+    def update(self, extra:dict|Tomler|DootLocations):
+        match extra:
+            case dict() | tomler.Tomler():
+                self._data = tomler.Tomler.merge(self._data, extra)
+            case DootLocations():
+                self._data = tomler.Tomler.merge(self._data, extra._data)
+            case _:
+                raise TypeError("Bad type passed to DootLocations for updating: %s", type(extra))
 
         return self
 
-    def auto_subdirs(self, *args):
-        for x in self._dirs:
-            match self._dirs[x]:
-                case (val,) if x in args:
-                    continue
-                case (val,):
-                    self._dirs[x] = val
-                case val if x in args:
-                    self._dirs[x] = (val,)
-                case _:
-                    continue
+    def ensure(self, *values, task="doot"):
+        missing = set(x for x in values if x not in self)
 
-    def move_root(self, new_root:pl.Path):
-        self._root = new_root
+        if bool(missing):
+            raise DootDirAbsent("Ensured Locations are missing for %s : %s", task, missing)
 
-    def _build_report_task(self):
-        max_postfix = max(len(x) for x in DootLocData._all_registered.keys())
-        task = {
-            "basename" : self._locs_report_name,
-            "name"     : self._name.task[0],
-            "actions"  : [
-                lambda: print(f"{self._name.task[0]:<{max_postfix}} Dirs : {self._dir_str()}"),
-                lambda: print(f"{self._name.task[0]:<{max_postfix}} Files: {self._file_str()}") if bool(self._files) else "",
-            ],
-            "uptodate" : [False],
-            "verbosity" : 2,
-            "meta" : {
-                "checker" : self.checker
-            }
-        }
-        return task
+    def __call__(self, new_root) -> Self:
+        new_obj = DootLocations(new_root)
+        return new_obj.update(self)
 
-    def _dir_str(self):
-        return "  ".join(f"{{{x}: {getattr(self, x)}}}" for x,y in sorted(self._dirs.items()))
+    def __enter__(self) -> Any:
+        return self
 
-    def _file_str(self):
-        return " ".join(f"{{{x}: {getattr(self, x)}}}" for x,y in sorted(self._files.items()))
-
-    def ensure(self, *values, task=None):
-        try:
-            for val in values:
-                getattr(self, val)
-        except AttributeError as err:
-            if task:
-                logging.warning("Missing Location Data: %s", task)
-            raise err
+    def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
+        return False

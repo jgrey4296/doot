@@ -122,3 +122,6 @@ class StubCmd(Command_i):
         with open(task_file, "a") as f:
             f.write("\n")
             f.write(stub.to_toml())
+
+    def _stub_locations(self, tasks, plugins):
+        raise NotImplementedError()

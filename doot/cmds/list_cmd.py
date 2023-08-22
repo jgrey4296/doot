@@ -52,12 +52,13 @@ class ListCmd(Command_i):
     @property
     def param_specs(self) -> list[DootParamSpec]:
         return super().param_specs + [
-            self.make_param(name="all",                     default=True,                   desc="List all loaded tasks, by group"),
-            self.make_param(name="dependencies",            default=False,                  desc="List task dependencies",                 prefix="--"),
-            self.make_param(name="dag",    _short="D",      default=False,                  desc="Output a DOT compatible graph of tasks", prefix="--"),
-            self.make_param(name="groups", type=bool,       default=False,                  desc="List just the groups tasks fall into",   prefix="--"),
-            self.make_param(name="by-source",               default=False,                  desc="List all loaded tasks, by source file",  prefix="--"),
-            self.make_param(name="pattern", type=str,       default="", positional=True,    desc="List tasks with a basic string pattern in the name"),
+            self.make_param(name="all",                                          default=True,                   desc="List all loaded tasks, by group"),
+            self.make_param(name="dependencies",                                 default=False,                  desc="List task dependencies",                 prefix="--"),
+            self.make_param(name="dag",       _short="D",                        default=False,                  desc="Output a DOT compatible graph of tasks", prefix="--"),
+            self.make_param(name="groups",                   type=bool,          default=False,                  desc="List just the groups tasks fall into",   prefix="--"),
+            self.make_param(name="by-source",                                    default=False,                  desc="List all loaded tasks, by source file",  prefix="--"),
+            self.make_param(name="pattern",                  type=str,           default="", positional=True,    desc="List tasks with a basic string pattern in the name"),
+            self.make_param(name="locations", _short="l",    type=bool,          default=False,                  desc="List all Loaded Locations")
             ]
 
     def __call__(self, tasks:Tomler, plugins:Tomler):
@@ -79,7 +80,9 @@ class ListCmd(Command_i):
             return
 
         match dict(doot.args.cmd.args): # type: ignore
-            case {"by_source": True}:
+            case {"locations": True}:
+                self._print_locations()
+            case {"by-source": True}:
                 self._print_all_by_source(tasks)
             case {"groups": True, "pattern": x} if bool(x):
                 self._print_group_matches(tasks)
@@ -165,3 +168,10 @@ class ListCmd(Command_i):
         group_set = set(spec.name.group_str() for spec in tasks.values())
         for group in group_set:
             printer.info("- %s", group)
+
+
+    def _print_locations(self):
+        printer.info("Defined Locations: ")
+
+        for x in sorted(doot.locs):
+            printer.info("-- %-25s : %s", x, doot.locs.get(x))

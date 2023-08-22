@@ -53,9 +53,14 @@ class DootInvalidConfig(DootError):
     general_msg = "Invalid Doot Config:"
     pass
 
+class DootLocationError(DootError):
+    general_msg = "Location Error:"
+
+class DootLocationExpansionError(DootLocationError):
+    general_msg = "Expansion of Location hit max value:"
+
 class DootDirAbsent(DootError):
     general_msg = "Missing Directory:"
-    pass
 
 class DootPluginError(DootError):
     general_msg = "Doot Plugin Error:"

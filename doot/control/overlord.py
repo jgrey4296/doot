@@ -279,11 +279,11 @@ class DootOverlord(Overlord_p):
     def shutdown(self):
         """ Doot has finished normally, so report on what was done """
         logging.info("Shutting Doot Down Normally, reporting defaulted tomler values")
-        defaulted_locs = doot.DootLocData.report_defaulted()
+        # defaulted_locs = doot.DootLocData.report_defaulted()
         defaulted_toml = tomler.Tomler.report_defaulted()
 
         with open(defaulted_file, 'w') as f:
             f.write("# default values used:\n")
             f.write("\n".join(defaulted_toml) + "\n\n")
-            f.write("[.directories]\n")
-            f.write("\n".join(defaulted_locs))
+            # f.write("[.directories]\n")
+            # f.write("\n".join(defaulted_locs))

@@ -16,7 +16,7 @@ from typing import Final, Any, assert_type
 import tomler
 import doot.errors
 from doot import constants
-from doot.control.locations import DootLocData
+from doot.control.locations import DootLocations
 from doot._abstract.reporter import Reporter_i
 from doot.utils.check_protocol import check_protocol
 
@@ -27,9 +27,9 @@ logging = logmod.getLogger(__name__)
 # Global, single points of truth:
 __version__          : Final[str]      = "0.2.0"
 
-config               : tomler.Tomler   = None # doot config
-locs                 : DootLocData     = None # registered locations
-args                 : tomler.Tomler   = None # parsed arg access
+config               : tomler.Tomler   = tomler.Tomler() # doot config
+locs                 : DootLocData     = DootLocations(pl.Path()) # registered locations
+args                 : tomler.Tomler   = tomler.Tomler() # parsed arg access
 report               : Reporter_i      = None
 
 _configs_loaded_from : list[pl.Path] = []
@@ -54,7 +54,10 @@ def setup(targets:list[pl.Path]|None=None, prefix:str|None=None) -> tuple[tomler
     existing_targets       = [x for x in targets if x.exists()]
 
     config = tomler.load(*existing_targets)
-    # locs   = DootLocData(files=config.flatten_on({}).files(), **config.flatten_on({}).directories())
+    locs   = DootLocations(pl.Path.cwd())
+
+    for loc in config.locations:
+        locs.update(loc)
 
     _configs_loaded_from   = existing_targets
 
