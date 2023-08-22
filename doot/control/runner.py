@@ -191,3 +191,4 @@ class DootRunner(TaskRunner_i):
     def _finish(self):
         """finish running tasks"""
         printer.info("Task Running Completed")
+        # TODO print report

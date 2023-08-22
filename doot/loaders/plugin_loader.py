@@ -141,7 +141,7 @@ class DootPluginLoader(PluginLoader_p):
                     for entry_point in entry_points(group=plugin_group):
                         self.plugins[plugin_type].append(entry_point)
                 except Exception as err:
-                    raise doot.errors.DootPluginError(f"Plugin Failed to Load: {plugin_group} : {entry_point}") from err
+                    raise doot.errors.DootPluginError("Plugin Failed to Load: %s : %s : %s", plugin_group, entry_point, err) from err
 
     def _load_from_toml(self):
         # load config entry points

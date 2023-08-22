@@ -148,16 +148,16 @@ class ListCmd(Command_i):
     def _print_all_by_source(self, tasks):
         printer.info("Defined Task Generators by Source File:")
         max_key = len(max(tasks.keys(), key=len))
-        fmt_str = f"{INDENT}%-{max_key}s :: %s.%-25s <%s>"
+        fmt_str = f"{INDENT}%-{max_key}s :: %s.%-25s"
         sources = defaultdict(list)
-        for key, (desc, cls) in tasks.items():
-            sources[desc['source']].append((spec.name.task_str(),
-                                            spec.ctor.__module__,
-                                            spec.ctor.__name__,
-                                            spec.source))
+        for key, spec in tasks.items():
+            sources[spec.source].append((spec.name.task_str(),
+                                         spec.ctor.__module__,
+                                         spec.ctor.__name__,
+                                        ))
 
         for source, tasks in sources.items():
-            printer.info("::%s::", source)
+            printer.info(":: %s ::", source)
             for task in tasks:
                 printer.info(fmt_str, *task)
 

@@ -42,7 +42,7 @@ class TestBaseTasker:
         tasker = DootTasker(DootTaskSpec.from_dict({"name": "basic::example"}))
         param_specs = tasker.param_specs
         assert(isinstance(param_specs, list))
-        assert(len(param_specs) == 2)
+        assert(len(param_specs) == 3)
 
 
     def test_spec(self):

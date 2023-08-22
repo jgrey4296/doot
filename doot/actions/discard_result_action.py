@@ -2,6 +2,7 @@
 from __future__ import annotations
 ##-- end imports
 
+import sh
 import doot
 from doot.errors import DootTaskError
 from doot._abstract import Action_p
@@ -23,7 +24,10 @@ class DootDiscardResultAction(Action_p):
     def __call__(self, *args, **kwargs):
         result = None
 
-        if isinstance(result, DootTaskError):
-            return self.handler(result)
+        try:
+            cmd = getattr(sh, args[0])
+            cmd(*args[1:])
+        except sh.ErrorReturnCode as err:
+            result = self.handler(result)
 
         return result

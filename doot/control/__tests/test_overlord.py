@@ -22,6 +22,8 @@ import doot
 doot.config = tomler.Tomler({})
 from doot.control.overlord import DootOverlord
 
+BASIC_TASKER_NAME = "tasker"
+
 class TestOverlord:
 
     def test_initial(self, mocker):
@@ -46,7 +48,7 @@ class TestOverlord:
         mocker.patch("sys.argv", ["doot"])
         mocker.patch("doot.loaders.task_loader.task_path")
         overlord = DootOverlord(
-            extra_config={"tasks" : {"basic" : [{"name": "simple", "ctor": "basic"}]}}
+            extra_config={"tasks" : {"basic" : [{"name": "simple", "ctor": BASIC_TASKER_NAME}]}}
         )
         assert(bool(overlord.taskers))
 
@@ -56,8 +58,8 @@ class TestOverlord:
         mocker.patch("doot._configs_loaded_from")
         overlord = DootOverlord(extra_config={
             "tasks" : {"basic": [
-                {"name": "simple", "ctor": "basic"},
-                {"name": "another", "ctor": "basic"}
+                {"name": "simple", "ctor": BASIC_TASKER_NAME},
+                {"name": "another", "ctor": BASIC_TASKER_NAME}
         ]}})
         assert(bool(overlord.taskers))
         assert(len(overlord.taskers) == 2), len(overlord.taskers)
@@ -66,11 +68,11 @@ class TestOverlord:
         mocker.patch("sys.argv", ["doot"])
         DootOverlord(extra_config={
             "tasks" : {"basic" : [
-                {"name": "simple", "ctor": "basic"},
-                {"name": "simple", "ctor": "basic"}
+                {"name": "simple", "ctor": BASIC_TASKER_NAME},
+                {"name": "simple", "ctor": BASIC_TASKER_NAME}
                 ]}})
 
-        assert("Overloading Task: basic::simple : basic" in caplog.messages)
+        assert(f"Overloading Task: basic::simple : {BASIC_TASKER_NAME}" in caplog.messages)
 
 
     def test_taskers_bad_type(self, mocker):

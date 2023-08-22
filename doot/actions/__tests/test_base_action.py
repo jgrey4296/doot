@@ -24,6 +24,7 @@ import doot.constants
 from doot.task.base_task import DootTask
 from doot.actions.base_action import DootBaseAction
 
+##-- pytest reminder
 # caplog
 # mocker.patch | patch.object | patch.multiple | patch.dict | stopall | stop | spy | stub
 # pytest.mark.filterwarnings
@@ -33,17 +34,9 @@ from doot.actions.base_action import DootBaseAction
 # with pytest.raises
 # with pytest.warns(warntype)
 
+##-- end pytest reminder
+
 class TestBaseAction:
-
-    @pytest.fixture(scope="function")
-    def setup(self, wrap_tmp):
-        logging.info("Setting up basic doot dir")
-
-        return wrap_tmp
-
-    @pytest.fixture(scope="function")
-    def cleanup(self):
-        pass
 
     def test_initial(self):
         action = DootBaseAction("example-spec")

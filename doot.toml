@@ -1,13 +1,11 @@
 verbosity                = 2
 default_tasks            = ["locs::report"]
-action_string_formatting = "new"
 subtask                  = { sleep = 1 }
 batch                    = { sleep = 1 }
 notify                   = { say-on-exit = false }
 command_loader           = "default"
 task_loader              = "default"
 parser                   = "default"
-
 
 [plugins]
 command        = {}

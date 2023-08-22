@@ -192,6 +192,8 @@ class DootTaskLoader(TaskLoader_p):
         for spec in group_specs:
             try:
                 match spec:
+                    case {"name": task_name, "disable" : True}:
+                        logging.info("Spec is disabled: %s", task_name)
                     case {"name": task_name} if task_name in command_names:
                         raise doot.errors.DootTaskLoadError("Task / Cmd name conflict: %s", task_name)
                     case {"name": task_name, "group": group} if (task_name in task_descriptions and group == task_descriptions[task_name][0]['group'] and not allow_overloads):

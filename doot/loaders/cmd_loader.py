@@ -99,6 +99,6 @@ class DootCommandLoader(CommandLoader_p):
                 self.cmds[cmd_point.name] = cmd()
                 self.cmds[cmd_point.name]._name = cmd_point.name
             except Exception as err:
-                raise doot.errors.DootPluginError(f"Attempted to load a non-command: {cmd_point}") from err
+                raise doot.errors.DootPluginError("Attempted to load a non-command: %s : %s", cmd_point, err) from err
 
         return tomler.Tomler(self.cmds)

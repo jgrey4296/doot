@@ -87,7 +87,6 @@ class RunCmd(Command_i):
 
         # TODO add a check task for locations
 
-
         printer.info("Task Dependency Network Built")
         for target in doot.args.on_fail([], list).cmd.args.target():
             if target not in tracker:
@@ -101,7 +100,7 @@ class RunCmd(Command_i):
             else:
                 tracker.queue_task(target)
 
-        printer.info("- %s Tasks Queued: %s", len(tracker.task_stack), " ".join(tracker.task_stack))
+        printer.info("- %s Tasks Queued: %s", len(tracker.active_set), " ".join(tracker.active_set))
         reporter : Reporter_i     = plugins.reporter[0].load()()
         runner   : TaskRunner_i   = plugins.runner[0].load()(tracker, reporter)
         printer.info("Running Tasks")

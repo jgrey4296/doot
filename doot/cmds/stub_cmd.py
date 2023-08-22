@@ -56,7 +56,7 @@ class StubCmd(Command_i):
         return super().param_specs + [
             self.make_param("file-target", type=str,     default=""),
             self.make_param("ctor",       type=str,      default="",        desc="Full class import name of the task generator"),
-            self.make_param("Config",                    default=False,     desc="Sub a doot.toml",                  prefix="--"),
+            self.make_param("Config",                    default=False,     desc="Stub a doot.toml",                  prefix="--"),
             self.make_param("Types",                     default=False,     desc="List the types of task available", prefix="--"),
             self.make_param("name",        type=str,     default="stub::stub",    desc="The Name of the new task",                   positional=True),
             self.make_param("ctor",        type=str,     default="basic",   desc="The short type name of the task generator",  positional=True),
