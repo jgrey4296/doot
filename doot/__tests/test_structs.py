@@ -144,6 +144,37 @@ class TestDootStructuredName:
         sub    = simple.subtask("blah", subgroups=["another", "subgroup"])
         assert(str(sub) == "\"basic.sub.test.another.subgroup\"::task.blah")
 
+
+    def test_lt_comparison_equal(self):
+        simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
+        simple2 = structs.DootStructuredName(["basic", "sub", "test"], "task")
+        assert(simple < simple2)
+
+
+    def test_lt_comparison_fail(self):
+        simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
+        simple2 = structs.DootStructuredName(["basic", "sub", "test"], "task2")
+        assert(not (simple < simple2))
+
+
+    def test_lt_sub_pass(self):
+        simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
+        simple2 = structs.DootStructuredName(["basic", "sub", "test"], ["task", "sub"])
+        assert(simple < simple2)
+
+
+    def test_lt_group_pass(self):
+        simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
+        simple2 = structs.DootStructuredName(["basic", "sub", "test", "another"], ["task", "sub"])
+        assert(simple < simple2)
+
+
+    def test_lt_group_fail(self):
+        simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
+        simple2 = structs.DootStructuredName(["basic", "test"], ["task", "sub"])
+        assert(not (simple < simple2))
+
+
 class TestDootTaskSpec:
 
     def test_initial(self):

@@ -145,15 +145,15 @@ class DootArgParser(ArgParser_i):
                 case PS.HEAD if bool(matching_specs):
                     spec = matching_specs[0]
                     logging.info("Setting HEAD : arg(%s) = %s", spec.name, arg)
-                    spec.add_value(doot_args, arg)
+                    spec.add_value_to(doot_args, arg)
                 case PS.CMD if bool(matching_specs):
                     spec = matching_specs[0]
                     logging.info("Setting Cmd(%s): arg(%s) = %s", cmd_name, spec.name, arg)
-                    non_default_cmd_arg |= spec.add_value(cmd_args, arg)
+                    non_default_cmd_arg |= spec.add_value_to(cmd_args, arg)
                 case PS.TASK if bool(matching_specs):
                     spec = matching_specs[0]
                     logging.info("Setting Task(%s) : arg(%s) = %s", mentioned_tasks[-1],spec.name, arg)
-                    non_default_task_arg |= spec.add_value(task_args[-1], arg)
+                    non_default_task_arg |= spec.add_value_to(task_args[-1], arg)
                 ##-- end handle args for specific context
                 case _ if not (bool(doot_specs) or bool(cmds) or bool(tasks)):
                     pass

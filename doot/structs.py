@@ -87,6 +87,8 @@ class DootParamSpec:
     positional  : bool     = field(default=False)
     _short       : None|str = field(default=None)
 
+    _repeatable_types : ClassVar[list[Any]] = [list, int]
+
     @classmethod
     def from_dict(cls, data:dict) -> DootParamSpec:
         return cls(**data)
@@ -111,7 +113,7 @@ class DootParamSpec:
 
     @property
     def repeatable(self):
-        return self.type == list and not self.positional
+        return self.type in DootParamSpec._repeatable_types and not self.positional
 
     def _split_name_from_value(self, val):
         match self.positional:
@@ -171,7 +173,7 @@ class DootParamSpec:
             return f"<ParamSpec: {self.name}>"
         return f"<ParamSpec: {self.prefix}{self.name}>"
 
-    def add_value(self, data, val) -> bool:
+    def add_value_to(self, data, val) -> bool:
         """ if the given value is suitable, add it into the given data """
         [head, *rest] = self._split_name_from_value(val)
         logging.debug("Matching: %s : %s : %s", self.type.__name__, head, rest)
@@ -244,6 +246,29 @@ class DootStructuredName:
 
     def __hash__(self):
         return hash(str(self))
+
+    def __lt__(self, other) -> bool:
+        """ Compare two names, return true if other is a subname of this name
+        eg: a.b.c < a.b.c.d
+        """
+        match other:
+            case str():
+                other = DootStructuredName.from_str(other)
+            case DootStructuredName():
+                pass
+            case _:
+                return False
+
+        for x,y in zip(self.group, other.group):
+            if x != y:
+                return False
+
+        for x,y in zip(self.task, other.task):
+            if x != y:
+                return False
+
+        return True
+
 
     def task_str(self):
         return DootStructuredName.subseparator.join(self.task)
