@@ -138,7 +138,7 @@ class DootTracker(TaskTracker_i):
         """
         # Build the Task if necessary
         match task:
-            case DootTaskSpec() if issubclass(task.ctor, TaskBase_i):
+            case DootTaskSpec(ctor=TaskBase_i() as ctor):
                 task : TaskBase_i = task.ctor(task)
             case DootTaskSpec():
                 task : TaskBase_i = DootTask(task)

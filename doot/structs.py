@@ -59,6 +59,7 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+import importlib
 from tomler import Tomler
 import doot.errors
 import doot.constants
@@ -274,6 +275,7 @@ class DootStructuredName:
         return DootStructuredName.subseparator.join(self.task)
 
     def group_str(self):
+        fmt = "{}"
         match self.form:
             case StructuredNameEnum.TASK if len(self.group) > 1:
                 # fmt = "tasks.\"{}\""
@@ -281,7 +283,7 @@ class DootStructuredName:
             case StructuredNameEnum.TASK:
                 # fmt = "tasks.{}"
                 fmt = "{}"
-            case StructuredNameEnum.CLASS:
+            case StructuredNameEnum.CLASS | StructuredNameEnum.CALLABLE:
                 fmt = "{}"
 
         base = DootStructuredName.subseparator.join(self.group)
@@ -305,6 +307,17 @@ class DootStructuredName:
             groupHead = None
             taskHead  = name
         return DootStructuredName(groupHead, taskHead, form=form)
+
+    def try_import(self) -> Any:
+        try:
+            mod = importlib.import_module(self.group_str())
+            curr = mod
+            for name in self.task:
+                curr = getattr(curr, name)
+
+            return curr
+        except AttributeError as err:
+            raise ImportError("Attempted to import %s but failed", str(self)) from err
 
 @dataclass
 class DootTaskSpec:
@@ -347,10 +360,12 @@ class DootTaskSpec:
                 extra_data[key] = val
 
         match data:
-            case {"group": group, "name": name}:
+            case {"group": group, "name": str() as name}:
                 core_data['name']  = DootStructuredName(data['group'], data['name'])
-            case {"name": name}:
+            case {"name": str() as name}:
                 core_data['name'] = DootStructuredName.from_str(name)
+            case {"name": DootStructuredName() as name}:
+                core_data['name'] = name
             case _:
                 core_data['name'] = DootStructuredName(None, None)
 

@@ -10,6 +10,7 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
                     Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
                     TypeVar, cast)
 import warnings
+import functools as ftz
 
 import pytest
 logging = logmod.root
@@ -21,6 +22,7 @@ from doot.structs import DootTaskSpec
 from doot.task.base_task import DootTask
 import doot._abstract
 
+##-- reminder
 # caplog
 # mocker.patch | patch.object | patch.multiple | patch.dict | stopall | stop | spy | stub
 # pytest.mark.filterwarnings
@@ -30,19 +32,42 @@ import doot._abstract
 # with pytest.raises
 # with pytest.warns(warntype)
 
+##-- end reminder
+
+basic_action = lambda x: ftz.partial(lambda val, state: logging.info("Got: %s : %s", val, state), x)
+
 class TestBaseTask:
-
-    @pytest.fixture(scope="function")
-    def setup(self):
-        pass
-
-    @pytest.fixture(scope="function")
-    def cleanup(self):
-        pass
 
     def test_initial(self):
         task = DootTask(DootTaskSpec(name="basic::example"), tasker=None)
         assert(isinstance(task, doot._abstract.Task_i))
+
+
+    def test_lambda_action(self):
+        task         = DootTask(DootTaskSpec.from_dict({"name":"basic::example", "action_ctor":basic_action}), tasker=None)
+        assert(isinstance(task, doot._abstract.Task_i))
+
+
+    def test_expand_lamdba_action(self):
+        task                = DootTask(DootTaskSpec.from_dict({"name":"basic::example", "action_ctor":basic_action, "actions": ["blah"]}), tasker=None)
+        actions             = list(task.actions)
+        assert(len(actions) == 1)
+
+
+    def test_run_lambda_action(self, caplog):
+        task         = DootTask(DootTaskSpec.from_dict({"name":"basic::example", "action_ctor":basic_action, "actions": ["blah"]}), tasker=None)
+        actions      = list(task.actions)
+        result       = actions[0]({"example": "state"})
+        assert(result is None)
+        assert("Got: blah : {'example': 'state'}" in caplog.messages)
+
+
+    def test_expand_action_str(self, caplog):
+        task         = DootTask(DootTaskSpec.from_dict({"name":"basic::example", "action_ctor": "test_base_task:basic_action", "actions": ["blah"]}), tasker=None)
+        actions      = list(task.actions)
+        result       = actions[0]({"example": "state"})
+        assert(result is None)
+        assert("Got: blah : {'example': 'state'}" in caplog.messages)
 
     def test_toml_class_stub(self):
         """ build the simplest stub from the class itself """

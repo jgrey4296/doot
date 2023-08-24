@@ -182,10 +182,12 @@ class DootRunner(TaskRunner_i):
         match result:
             case None:
                 pass
-            case bool():
-                pass
             case dict():
                 task.state.update(result)
+            case True:
+                pass
+            case False:
+                raise doot.error.DootTaskError("Task Action Failed: %s", task.name)
         logmod.debug("------ Action Execution Complete: %s for %s", action, task.name)
 
     def _finish(self):

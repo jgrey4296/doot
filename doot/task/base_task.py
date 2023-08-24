@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 """
-Extension to Doit's Task and Actions,
-To allow:
-1) returning an Action from an Action and using it
-2) only calling a CmdAction's python callable once
-3) putting any extraneous kwargs in a task dict into the `meta` dict automatically
 """
 ##-- imports
 from __future__ import annotations
@@ -36,13 +31,15 @@ logging = logmod.getLogger(__name__)
 
 printer = logmod.getLogger("doot._printer")
 
+import importlib
 import doot
 import doot.errors
 import tomler
 from doot._abstract import Task_i, Tasker_i, Action_p
-from doot.enums import TaskFlags
+from doot.enums import TaskFlags, StructuredNameEnum
 from doot.structs import DootStructuredName, TaskStub, TaskStubPart
 from doot.actions.base_action import DootBaseAction
+
 
 @doot.check_protocol
 class DootTask(Task_i):
@@ -50,13 +47,26 @@ class DootTask(Task_i):
       The simplest task
     """
     action_ctor    = DootBaseAction
-    _default_flags = TaskFlags.TASKER
+    _default_flags = TaskFlags.TASK
     _help          = ["The Simplest Task"]
 
     @property
     def actions(self):
         """lazy creation of action instances"""
-        action_ctor = self.spec.extra.on_fail(DootTask.action_ctor).action_ctor()
+        action_ctor = self.spec.extra.on_fail(self.action_ctor).action_ctor()
+        match action_ctor:
+            case str():
+                as_structured = DootStructuredName.from_str(action_ctor, StructuredNameEnum.CALLABLE)
+                action_ctor = as_structured.try_import()
+            case DootStructuredName():
+                action_ctor = action_ctor.try_import()
+            case Action_p():
+                pass
+            case _ if callable(action_ctor):
+                pass
+            case _:
+                raise doot.errors.DootTaskError("Couldn't get something callable from: %s", action_ctor)
+
         for action in self.spec.actions:
             yield action_ctor(action)
 
