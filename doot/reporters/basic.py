@@ -58,6 +58,14 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from doot._abstract import Reporter_i
+from doot.structs   import DootTraceRecord
+from doot.enums     import ReportEnum
 
 class BasicReporter(Reporter_i):
-    pass
+
+    def __init__(self):
+        self._trace: list[DootTraceRecord] = []
+
+    def report(self, flags:ReportEnum, *args):
+        record = DootTraceRecord(flags,list(args))
+        self._trace.append(record)

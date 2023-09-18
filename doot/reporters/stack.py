@@ -59,6 +59,8 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from doot.structs import DootTraceRecord
+
 class DootReporterStack:
     """
     A Stack of Reporters to try using.
@@ -68,7 +70,7 @@ class DootReporterStack:
     def __init__(self):
         self._trace: list[DootTraceRecord] = []
 
-    def report(self, flags:ReportPositionEnum, *args) -> bool:
+    def report(self, flags:ReportPositionEnum, *args):
         pass
 
     def select_eq(self, flags:ReportPositionEnum) -> Generator[DootTraceRecord]:

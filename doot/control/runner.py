@@ -62,11 +62,12 @@ printer = logmod.getLogger("doot._printer")
 from collections import defaultdict
 import doot
 import doot.errors
-from doot.enums import TaskStateEnum
+from doot.enums import TaskStateEnum, ReportEnum
 from doot._abstract import Tasker_i, Task_i, FailPolicy_p
 from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i, Reporter_i, Action_p
 from doot.utils.signal_handler import SignalHandler
 
+dry_run = doot.args.on_fail(False).cmd.args.dry_run()
 
 @doot.check_protocol
 class DootRunner(TaskRunner_i):
@@ -130,11 +131,13 @@ class DootRunner(TaskRunner_i):
         """ turn a tasker into all of its tasks, including teardowns """
         logmod.debug("-- Expanding Tasker: %s", tasker.name)
         printer.info("-- %s", tasker.name)
+        self.reporter.report(ReportEnum.TASKER | ReportEnum.INIT, tasker.spec)
+        ## todo reporter.report(tasker)
         count = 0
         for task in tasker.build():
             match task:
                 case Tasker_i():
-                    raise doot.errors.DootTaskError("Taskers can't build taskers")
+                    raise doot.errors.DootTaskError("Taskers can't build taskers: %s", tasker.name)
                 case Task_i():
                     self.tracker.add_task(task, no_root_connection=True)
                     self.tracker.queue_task(task.name)
@@ -142,7 +145,7 @@ class DootRunner(TaskRunner_i):
                     self.tracker.add_task(task, no_root_connection=True)
                     self.tracker.queue_task(task.name)
                 case _:
-                    raise doot.errors.DootTaskError("Tasker Built a Bad Value", task)
+                    raise doot.errors.DootTaskError("Tasker %s Built a Bad Value: %s", tasker.name, task)
             count += 1
 
         logmod.debug("-- Tasker %s Expansion produced: %s tasks", tasker.name, count)
@@ -155,21 +158,26 @@ class DootRunner(TaskRunner_i):
 
         for action in task.actions:
             match action:
-                case Action_p():
+                case _ if dry_run:
+                    logging.info("Dry Run: Not executing action: %s : %s", task.name, action)
+                case Action_p() | Callable():
                     self._execute_action(action, task)
                 case _:
-                    raise doot.errors.DootTaskError("Task produced a bad action", action)
+                    raise doot.errors.DootTaskError("Task %s Failed: Produced a bad action: %s", task.name, action)
 
         printer.info("---- Actions Complete")
         # Get Any resulting tasks
         count = 0
         for new_task in task.maybe_more_tasks():
             match new_task:
+                case DootTaskSpec():
+                    self.tracker.add_task(new_task, no_root_connection=True)
+                    count += 1
                 case Task_i():
                     self.tracker.add_task(new_task, no_root_connection=True)
                     count += 1
                 case _:
-                    raise doot.errors.DootTaskError("Task provided a bad additional task", new_task)
+                    raise doot.errors.DootTaskError("Task %s Failed: Provided a bad additional task: %s", task.name, new_task)
 
 
         logmod.debug("---- Task Execution Completed: %s, adding %s additional tasks", task.name, count)
@@ -187,7 +195,9 @@ class DootRunner(TaskRunner_i):
             case True:
                 pass
             case False:
-                raise doot.error.DootTaskError("Task Action Failed: %s", task.name)
+                raise doot.error.DootTaskError("Task %s Action Failed: %s", task.name, action)
+            case _:
+                raise doot.error.DootTaskError("Task %s Action %s Failed: Returned an unrecognizable value: %s", task.name, action, result)
         logmod.debug("------ Action Execution Complete: %s for %s", action, task.name)
 
     def _finish(self):

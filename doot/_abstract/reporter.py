@@ -31,7 +31,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from tomler import Tomler
-from doot.enums import ReportPositionEnum
+from doot.enums import ReportEnum
 from doot.structs import DootTraceRecord
 
 class Reporter_i:
@@ -40,5 +40,5 @@ class Reporter_i:
     """
 
     @abc.abstractmethod
-    def report(self, flags:ReportPositionEnum, *args) -> DootTraceRecord:
+    def report(self, flags:ReportEnum, *args):
         raise NotImplementedError(self.__class__, "report")

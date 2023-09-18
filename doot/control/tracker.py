@@ -201,6 +201,8 @@ class DootTracker(TaskTracker_i):
     def queue_task(self, *tasks:str|DootStructuredName|tuple) -> None:
         for task in tasks:
             match task:
+                case str() | DootStructuredName() | DootTaskArtifact() if str(task) in self.active_set:
+                    logging.warning("Trying to queue an already active task: %s", task)
                 case str() | DootStructuredName() | DootTaskArtifact() if str(task) in self.dep_graph.nodes:
                     self.active_set.add(str(task))
                     self.task_queue.add(str(task), self.dep_graph.nodes[str(task)][PRIORITY])

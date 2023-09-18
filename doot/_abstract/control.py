@@ -39,6 +39,7 @@ from doot.structs import DootTaskArtifact, DootTaskSpec, DootStructuredName
 from doot._abstract.reporter import Reporter_i
 from doot._abstract.policy import FailPolicy_p
 from doot._abstract.task import TaskBase_i
+
 class TaskTracker_i:
     """
     Track tasks that have run, need to run, are running,

@@ -63,7 +63,7 @@ import importlib
 from tomler import Tomler
 import doot.errors
 import doot.constants
-from doot.enums import TaskFlags, ReportPositionEnum, StructuredNameEnum
+from doot.enums import TaskFlags, ReportEnum, StructuredNameEnum
 
 PAD           : Final[int] = 15
 TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
@@ -555,17 +555,17 @@ class TaskStubPart:
 
 @dataclass
 class DootTraceRecord:
-    flags : ReportPositionEnum = field()
+    flags : ReportEnum = field()
     message : str              = field()
     args    : list[Any]        = field()
 
     def __str__(self):
         return self.message.format(*args)
 
-    def __contains__(self, other:ReportPositionEnum) -> bool:
+    def __contains__(self, other:ReportEnum) -> bool:
         return all([x in self.flags for x in other])
 
-    def __eq__(self, other:ReportPositionEnum) -> bool:
+    def __eq__(self, other:ReportEnum) -> bool:
         return self.flags == other
 
     def some(self, other:reportPositionEnum) -> bool:
