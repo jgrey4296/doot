@@ -57,19 +57,26 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from tomler import Tomler
-
-import doot
-from doot._abstract import Reporter_i, TaskRunner_i
-from doot._abstract import Command_i
 from collections import defaultdict
+from tomler import Tomler
+import doot
+from doot._abstract import ReportLine_i, TaskRunner_i, Reporter_i, Command_i
+from doot.utils.plugin_selector import plugin_selector
 
-printer = logmod.getLogger("doot._printer")
+printer                  = logmod.getLogger("doot._printer")
+
+tracker_target           = doot.config.on_fail("default", str).commands.run.tracker()
+runner_target            = doot.config.on_fail("default", str).commands.run.runner()
+reporter_target          = doot.config.on_fail("default", str).commands.run.reporter()
+report_line_targets      = doot.config.on_fail([], list).commands.run.report_lines()
 
 @doot.check_protocol
 class RunCmd(Command_i):
     _name      = "run"
-    _help      = []
+    _help      = ["Will perform the tasks/taskers targeted.",
+                  "Can be parameterized in a commands.run block with:",
+                  "tracker(str), runner(str), reporter(str), report_lines(str)",
+                  ]
 
     @property
     def param_specs(self) -> list:
@@ -80,14 +87,20 @@ class RunCmd(Command_i):
             ]
 
     def __call__(self, tasks:Tomler, plugins:Tomler):
+        # Note the final parens to construct:
+        available_reporters    = plugins.on_fail([], list).report_line()
+        report_lines           = [plugin_selector(available_reporters, target=x)() for x in report_line_targets]
+        reporter               = plugin_selector(plugins.on_fail([], list).reporter(), target=reporter_target)(report_lines)
+        tracker                = plugin_selector(plugins.on_fail([], list).tracker(), target=tracker_target)()
+        runner                 = plugin_selector(plugins.on_fail([], list).runner(), target=runner_target)(tracker=tracker, reporter=reporter)
+
         printer.info("Building Task Dependency Network")
-        tracker = plugins.tracker[0].load()()
         for task in tasks.values():
             tracker.add_task(task)
 
+        printer.info("Task Dependency Network Built")
         # TODO add a check task for locations
 
-        printer.info("Task Dependency Network Built")
         for target in doot.args.on_fail([], list).cmd.args.target():
             if target not in tracker:
                 printer.info("%s specified as run target, but it doesn't exist")
@@ -101,7 +114,5 @@ class RunCmd(Command_i):
                 tracker.queue_task(target)
 
         printer.info("- %s Tasks Queued: %s", len(tracker.active_set), " ".join(tracker.active_set))
-        reporter : Reporter_i     = plugins.reporter[0].load()()
-        runner   : TaskRunner_i   = plugins.runner[0].load()(tracker, reporter)
         printer.info("Running Tasks")
         runner()

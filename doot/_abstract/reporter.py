@@ -36,9 +36,27 @@ from doot.structs import DootTraceRecord
 
 class Reporter_i:
     """
+      Holds ReportLine_i's, and stores DootTraceRecords
+    """
+
+    def __init__(self, reporters:list[ReportLine_i]=None):
+        self._full_trace     : list[DootTraceRecord]       = []
+        self._reporters      : list[ReportLine_i] = list(reporters or [self._default_formatter])
+
+    def _default_formatter(self, trace:DootTraceRecord) -> str:
+        return str(trace)
+
+    def __str__(self):
+        raise NotImplementedError()
+
+    def trace(self, msg, *args, flags=None):
+        self._full_trace.append(DootTraceRecord(msg, flags, args))
+
+
+class ReportLine_i:
+    """
     Reporters, like loggers, are stacked, and each takes the flags and data and maybe runs.
     """
 
-    @abc.abstractmethod
-    def report(self, flags:ReportEnum, *args):
-        raise NotImplementedError(self.__class__, "report")
+    def __call__(self, trace:DootTraceRecord) -> None|str:
+        raise NotImplementedError(self.__class__, "call")

@@ -555,12 +555,17 @@ class TaskStubPart:
 
 @dataclass
 class DootTraceRecord:
-    flags : ReportEnum = field()
-    message : str              = field()
-    args    : list[Any]        = field()
+    message : str                      = field()
+    flags   : None|ReportEnum          = field()
+    args    : list[Any]                = field(default_factory=list)
+    time    : datetime.datetime        = field(default_factory=datetime.datetime.now)
 
     def __str__(self):
-        return self.message.format(*args)
+        match self.message:
+            case str():
+                return self.message.format(*self.args)
+            case DootTaskSpec():
+                return str(self.message.name)
 
     def __contains__(self, other:ReportEnum) -> bool:
         return all([x in self.flags for x in other])

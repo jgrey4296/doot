@@ -37,7 +37,7 @@ def main():
     try:
         log_config = DootLogConfig()
         # --- Setup
-        if doot.config is None:
+        if not bool(doot.config):
             doot.setup()
 
         log_config.setup()

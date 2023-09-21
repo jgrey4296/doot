@@ -42,7 +42,7 @@ def setup(targets:list[pl.Path]|None=None, prefix:str|None=None) -> tuple[tomler
     global config, locs, _configs_loaded_from
     targets : list[pl.Path] = targets or constants.DEFAULT_LOAD_TARGETS
     logging.debug("Loading Doot Config, version: %s targets: %s", __version__, targets)
-    if config is not None:
+    if bool(config):
         raise Exception("Setup called even though doot is already set up")
 
     if not all([isinstance(x, pl.Path) for x in targets]):

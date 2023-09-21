@@ -36,7 +36,7 @@ from collections import deque, defaultdict
 
 from doot.enums import TaskStateEnum
 from doot.structs import DootTaskArtifact, DootTaskSpec, DootStructuredName
-from doot._abstract.reporter import Reporter_i
+from doot._abstract.reporter import ReportLine_i, Reporter_i
 from doot._abstract.policy import FailPolicy_p
 from doot._abstract.task import TaskBase_i
 
@@ -89,13 +89,13 @@ class TaskRunner_i:
     Run tasks, actions, and taskers
     """
 
-    def __init__(self, tracker:TaskTracker_i, reporter:Reporter_i, *, policy:FailPolicy_p|None=None):
-        self.tracker       = tracker
-        self.reporter      = reporter
-        self.teardown_list = []                     # list of tasks to teardown
-        self.final_result  = TaskStateEnum.SUCCESS  # until something fails
-        self._stop_running = False
-        self.policy       = policy
+    def __init__(self, *, tracker:TaskTracker_i, reporter:Reporter_i, policy:FailPolicy_p|None=None):
+        self.tracker        = tracker
+        self.reporter       = reporter
+        self.teardown_list  = []                     # list of tasks to teardown
+        self.final_result   = TaskStateEnum.SUCCESS  # until something fails
+        self._stop_running  = False
+        self.policy         = policy
 
     @abstractmethod
     def __call__(self, *tasks:str) -> bool:

@@ -3,17 +3,18 @@ default_tasks            = ["locs::report"]
 subtask                  = { sleep = 1 }
 batch                    = { sleep = 1 }
 notify                   = { say-on-exit = false }
-command_loader           = "default"
-task_loader              = "default"
-parser                   = "default"
+loaders                  = {commands = "default", task = "default", "parser" = "default"}
 
 [plugins]
 command        = {}
 reporter       = {}
+report_line    = {}
 
 action         = {}
 tasker         = {}
 
+[commands]
+run = { tracker = "default", runner = "default", reporter= "default", report_lines = []}
 
 [globbing]
 ignores  = ['.git', '.DS_Store', "__pycache__"]

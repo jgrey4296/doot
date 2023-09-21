@@ -17,7 +17,7 @@ from doot.enums import TaskStateEnum
 from doot.control.runner import DootRunner
 from doot.control.tracker import DootTracker
 from doot.structs import DootTaskSpec
-from doot._abstract import Tasker_i, Task_i, TaskTracker_i, TaskRunner_i, Reporter_i, Action_p
+from doot._abstract import Tasker_i, Task_i, TaskTracker_i, TaskRunner_i, ReportLine_i, Action_p, Reporter_i
 
 logging = logmod.root
 
@@ -31,21 +31,11 @@ logging = logmod.root
 # with pytest.warns(warntype)
 
 class TestRunner:
-
-    @pytest.fixture(scope="function")
-    def setup(self):
-        pass
-
-    @pytest.fixture(scope="function")
-    def cleanup(self):
-        yield
-        pass
-
     def test_initial(self, mocker):
         ##-- setup
         tracker_m  = mocker.MagicMock(spec=TaskTracker_i)
-        reporter_m = mocker.MagicMock(spec=Reporter_i)
-        runner     = DootRunner(tracker_m, reporter_m)
+        reporter_m = mocker.MagicMock(spec=ReportLine_i)
+        runner     = DootRunner(tracker=tracker_m, reporter=reporter_m)
         ##-- end setup
 
         # Check:
@@ -55,7 +45,7 @@ class TestRunner:
         ##-- setup
         tracker_m                       = mocker.MagicMock(spec=TaskTracker_i)
         reporter_m                      = mocker.MagicMock(spec=Reporter_i)
-        runner                          = DootRunner(tracker_m, reporter_m)
+        runner                          = DootRunner(tracker=tracker_m, reporter=reporter_m)
 
         task1_m                          = mocker.MagicMock(spec=Task_i)
         task1_m.name                     = "first"
@@ -102,25 +92,25 @@ class TestRunner:
 
     def test_taskers_expand(self, mocker):
         ##-- setup
-        tracker_m                       = mocker.MagicMock(spec=TaskTracker_i)
-        reporter_m                      = mocker.MagicMock(spec=Reporter_i)
-        runner                          = DootRunner(tracker_m, reporter_m)
+        tracker_m                            = mocker.MagicMock(spec=TaskTracker_i)
+        reporter_m                           = mocker.MagicMock(spec=Reporter_i)
+        runner                               = DootRunner(tracker=tracker_m, reporter=reporter_m)
 
-        tasker1_m                          = mocker.MagicMock(spec=Tasker_i)
+        tasker1_m                            = mocker.MagicMock(spec=Tasker_i)
         tasker1_m.spec                       = mocker.MagicMock(spec=DootTaskSpec)
         tasker1_m.spec.print_level           = "WARN"
-        tasker2_m                          = mocker.MagicMock(spec=Tasker_i)
+        tasker2_m                            = mocker.MagicMock(spec=Tasker_i)
         tasker2_m.spec                       = mocker.MagicMock(spec=DootTaskSpec)
         tasker2_m.spec.print_level           = "WARN"
-        tasker3_m                          = mocker.MagicMock(spec=Tasker_i)
+        tasker3_m                            = mocker.MagicMock(spec=Tasker_i)
         tasker3_m.spec                       = mocker.MagicMock(spec=DootTaskSpec)
         tasker3_m.spec.print_level           = "WARN"
 
-        tracker_m.__iter__.return_value    = [tasker1_m, tasker2_m, tasker3_m]
+        tracker_m.__iter__.return_value      = [tasker1_m, tasker2_m, tasker3_m]
 
-        expand_tasker  = mocker.spy(runner, "_expand_tasker")
-        execute_task   = mocker.spy(runner, "_execute_task")
-        execute_action = mocker.spy(runner, "_execute_action")
+        expand_tasker                        = mocker.spy(runner, "_expand_tasker")
+        execute_task                         = mocker.spy(runner, "_execute_task")
+        execute_action                       = mocker.spy(runner, "_execute_action")
         ##-- end setup
 
         ##-- pre-check
@@ -145,7 +135,7 @@ class TestRunner:
         ##-- setup
         tracker_m                          = mocker.MagicMock(spec=TaskTracker_i)
         reporter_m                         = mocker.MagicMock(spec=Reporter_i)
-        runner                             = DootRunner(tracker_m, reporter_m)
+        runner                             = DootRunner(tracker=tracker_m, reporter=reporter_m)
 
         spec_m                             = mocker.MagicMock(spec=DootTaskSpec)
         spec_m.print_level                 = "WARN"
@@ -192,7 +182,7 @@ class TestRunner:
         ##-- setup
         tracker_m                       = mocker.MagicMock(spec=TaskTracker_i)
         reporter_m                      = mocker.MagicMock(spec=Reporter_i)
-        runner                          = DootRunner(tracker_m, reporter_m)
+        runner                          = DootRunner(tracker=tracker_m, reporter=reporter_m)
         spec_m                          = mocker.MagicMock(spec=DootTaskSpec)
         spec_m.print_level              = "WARN"
 

@@ -161,6 +161,7 @@ class DootTracker(TaskTracker_i):
 
         # Store it
         self.tasks[task.name] = task
+        assert(self.tasks[task.name] is not None)
 
         # Insert into dependency graph
         task_state = self.state_e.READY if not bool(task.runs_after) else self.state_e.DEFINED
@@ -198,11 +199,12 @@ class DootTracker(TaskTracker_i):
                     raise doot.errors.DootTaskTrackingError("Unknown post task attempted to be added: %s", post)
 
 
-    def queue_task(self, *tasks:str|DootStructuredName|tuple) -> None:
+    def queue_task(self, *tasks:str|DootStructuredName|tuple, silent=False) -> None:
         for task in tasks:
             match task:
                 case str() | DootStructuredName() | DootTaskArtifact() if str(task) in self.active_set:
-                    logging.warning("Trying to queue an already active task: %s", task)
+                    if not silent:
+                        logging.warning("Trying to queue an already active task: %s", task)
                 case str() | DootStructuredName() | DootTaskArtifact() if str(task) in self.dep_graph.nodes:
                     self.active_set.add(str(task))
                     self.task_queue.add(str(task), self.dep_graph.nodes[str(task)][PRIORITY])
@@ -215,7 +217,7 @@ class DootTracker(TaskTracker_i):
     def next_for(self, target:None|str=None) -> None|Tasker_i|Task_i:
         """ ask for the next task that can be performed """
         if target and target not in self.active_set:
-            self.queue_task(target)
+            self.queue_task(target, silent=True)
 
         focus : str | DootTaskArtifact | None = None
         adj                                   = dict(self.dep_graph.adjacency())
@@ -223,7 +225,7 @@ class DootTracker(TaskTracker_i):
             focus : str = self.task_queue.peek()
             logging.debug("Task: %s  State: %s, Stack: %s", focus, self.task_state(focus), self.active_set)
             if focus in self.dep_graph and self.dep_graph.nodes[focus][PRIORITY] < MIN_PRIORITY:
-                logging.warning("Task reached minimum priority while waiting, and has been cancelled: %s", self.focus)
+                logging.warning("Task reached minimum priority while waiting, and has been cancelled: %s", focus)
                 self.update_state(focus, self.state_e.FAILED)
 
             match self.task_state(focus):
@@ -256,6 +258,7 @@ class DootTracker(TaskTracker_i):
                     if bool(incomplete):
                         self.task_queue.pop()
                         self.dep_graph.nodes[focus][PRIORITY] -= 1
+                        self.active_set.remove(focus)
                         self.queue_task(focus, *incomplete)
                     else:
                         self.update_state(focus, self.state_e.EXISTS)
@@ -264,8 +267,10 @@ class DootTracker(TaskTracker_i):
                     incomplete   = list(filter(lambda x: self.task_state(x) not in complete_states, dependencies))
                     if bool(incomplete):
                         self.dep_graph.nodes[focus][PRIORITY] -= 1
+                        logging.info("Setting %s priority to: %s", focus, self.dep_graph.nodes[focus][PRIORITY])
                         self.task_queue.pop()
-                        self.queue_task(focus, *incomplete)
+                        self.active_set.remove(focus)
+                        self.queue_task(focus, *incomplete, silent=True)
                     else:
                         self.update_state(focus, self.state_e.READY)
                 case self.state_e.DECLARED: # warn on undefined tasks
@@ -275,6 +280,7 @@ class DootTracker(TaskTracker_i):
                     self.update_state(focus, self.state_e.SUCCESS)
                 case _: # Error otherwise
                     raise doot.errors.DootTaskTrackingError("Unknown task state: ", x)
+
 
         return None
 

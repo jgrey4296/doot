@@ -67,6 +67,7 @@ import tomler
 from doot._abstract import (ArgParser_i, Command_i, CommandLoader_p,
                             Overlord_p, Task_i, Tasker_i, TaskLoader_p)
 
+from doot.utils.plugin_selector import plugin_selector
 from doot.errors import DootInvalidConfig, DootParseError
 from doot.loaders.cmd_loader import DootCommandLoader
 from doot.loaders.plugin_loader import DootPluginLoader
@@ -151,21 +152,10 @@ class DootOverlord(Overlord_p):
 
     def _load_commands(self, extra_config):
         """ Select Commands from the discovered plugins """
-        match (self.loaders.get(command_loader_key, None) or self.plugins.on_fail([], list).command_loader()):
-            case []:
-                self.cmd_loader = DootCommandLoader()
-            case CommandLoader_p() as l:
-                self.cmd_loader = l
-            case [EntryPoint() as l]:
-                self.cmd_loader = l.load()()
-            case [EntryPoint() as l, *_] if preferred_cmd_loader == "default":
-                self.cmd_loader = l.load()()
-            case [*_] as loaders:
-                matching_loaders = [x for x in loaders if x.name == preferred_cmd_loader]
-                if not bool(matching_loaders):
-                    raise KeyError("No Matching Command Loader found: ", preferred_cmd_loader, loaders)
-                loaded = matching_loaders[0].load()
-                self.cmd_loader = loaded()
+
+        self.cmd_loader = plugin_selector(self.loaders.get(command_loader_key, None) or self.plugins.on_fail([], list).command_loader(),
+                                          target=preferred_cmd_loader,
+                                          fallback=DootCommandLoader)()
 
         if self.cmd_loader is None:
             raise TypeError("Command Loader is not initialised")
@@ -177,21 +167,10 @@ class DootOverlord(Overlord_p):
 
     def _load_taskers(self, extra_config):
         """ Load task entry points """
-        match (self.loaders.get(task_loader_key, None) or self.plugins.on_fail([], list).task_loader()):
-            case []:
-                self.task_loader = DootTaskLoader()
-            case TaskLoader_p() as l:
-                self.task_loader = l
-            case [EntryPoint() as l]:
-                self.task_loader = l.load()()
-            case [EntryPoint() as l, *_] if preferred_task_loader == "default":
-                self.task_loader = l.load()()
-            case [*_] as loaders:
-                matching_loaders = [x for x in loaders if x.name == preferred_task_loader]
-                if not bool(matching_loaders):
-                    raise KeyError("No Matching Task Loader found: ", preferred_task_loader, loaders)
-                loaded = matching_loaders[0].load()
-                self.task_loader = loaded()
+
+        self.task_loader = plugin_selector(self.loaders.get(task_loader_key, None) or self.plugins.on_fail([], list).task_loader(),
+                                            target=preferred_task_loader,
+                                            fallback=DootTaskLoader)()
 
         if self.task_loader is None:
             raise TypeError("Task Loader is not initialised")
@@ -203,21 +182,9 @@ class DootOverlord(Overlord_p):
 
     def _parse_args(self, args=None):
         """ use the found task and command arguments to make sense of sys.argv """
-        match (self.loaders.get("parser", None) or self.plugins.on_fail([], list).parser()):
-            case []:
-                self.parser = DootArgParser()
-            case ArgParser_i() as l:
-                self.parser = l
-            case [EntryPoint() as l]:
-                self.parser = l.load()()
-            case [EntryPoint() as l, *_] if preferred_parser == "default":
-                self.parser = l.load()()
-            case [*_] as parsers:
-                matching_parsers = [x for x in parsers if x.name == preferred_parser]
-                if not bool(matching_parsers):
-                    raise KeyError("No Matching parser found: ", preferred_parser, parsers)
-                loaded = matching_loaders[0].load()
-                self.parser = loaded()
+        self.parser = plugin_selector(self.loaders.get("parser", None) or self.plugins.on_fail([], list).parser(),
+                                     target=preferred_parser,
+                                     fallback=DootArgParser)()
 
         if not isinstance(self.parser, ArgParser_i):
             raise TypeError("Improper argparser specified: ", self.arg_parser)
@@ -279,7 +246,6 @@ class DootOverlord(Overlord_p):
     def shutdown(self):
         """ Doot has finished normally, so report on what was done """
         logging.info("Shutting Doot Down Normally, reporting defaulted tomler values")
-        # defaulted_locs = doot.DootLocData.report_defaulted()
         defaulted_toml = tomler.Tomler.report_defaulted()
 
         with open(defaulted_file, 'w') as f:

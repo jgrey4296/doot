@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 
+See EOF for license/metadata/notes as applicable
 """
 
 ##-- builtin imports
@@ -59,34 +60,55 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from doot._abstract import Reporter_i, ReportLine_i
 from doot.structs import DootTraceRecord
+from doot.enums import ReportEnum
 
-class DootReporterStack:
+class DootReportManagerSummary(Reporter_i):
     """
     A Stack of Reporters to try using.
     The First one that returns a DootTrace is used.
     """
 
-    def __init__(self):
-        self._trace: list[DootTraceRecord] = []
+    def __init__(self, reporters:list=None):
+        super().__init__(reporters)
 
-    def report(self, flags:ReportPositionEnum, *args):
-        pass
+    def __str__(self):
+        result = {
+            "tasks" :   {"success": set(), "fail": set()},
+            "actions" : {"success": set(), "fail": set()},
+            "taskers" : {"success": set(), "fail": set()},
+            }
 
-    def select_eq(self, flags:ReportPositionEnum) -> Generator[DootTraceRecord]:
-        """ get traces that match the flags specified """
-        for x in self._trace:
-            if x == flags:
-                yield x
+        for trace in self._full_trace:
+            category = None
+            ended   = None
+            if ReportEnum.TASKER in trace.flags:
+                category = "taskers"
+            elif ReportEnum.ACTION in trace.flags:
+                category = "actions"
+            elif ReportEnum.TASK in trace.flags:
+                category = "tasks"
 
-    def select_in(self, flags:ReportPositionEnum) -> Generator[DootTraceRecord]:
-        """ get traces that contain all the flags specified """
-        for x in self._trace:
-            if flags in x:
-                yield x
+            if ReportEnum.FAIL in trace.flags:
+                ended = "fail"
+            elif ReportEnum.SUCCEED in trace.flags:
+                ended = "success"
 
-    def select_some(self, flags:ReportPositionEnum) -> Generator[DootTraceRecord]:
-        """ get traces that contain at least one of the flags specified """
-        for x in self._trace:
-            if x.some(flags):
-                yield x
+            if category and ended:
+                result[category][ended].add(str(trace))
+
+        output = [
+            "    - Taskers: {}/{}".format(len(result['taskers']['success']),len(result['taskers']['fail'])),
+            "    - Tasks  : {}/{}".format(len(result['tasks']['success']), len(result['tasks']['fail'])),
+            "    - Actions: {}/{}".format(len(result['actions']['success']), len(result['actions']['fail']))
+        ]
+        return "\n".join(output)
+
+
+
+
+
+"""
+
+"""

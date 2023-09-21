@@ -54,15 +54,6 @@ class TestListCmd:
         with pytest.raises(doot.errors.DootError):
             obj({}, {})
 
-    def test_call_no_reporter(self, mocker):
-        mocker.patch("doot.args")
-        doot.args.cmd.args.pattern = ""
-        doot.args.cmd.args.all    = True
-        obj = ListCmd()
-
-        with pytest.raises(doot.errors.DootPluginError):
-            obj({}, {})
-
     def test_call_all_empty(self, caplog, mocker):
         mocker.patch("doot.args")
         doot.args.cmd.args.pattern = ""

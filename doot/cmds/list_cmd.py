@@ -71,10 +71,6 @@ class ListCmd(Command_i):
             and not doot.args.cmd.args.all):     # type: ignore
             raise doot.errors.DootCommandError("ListCmd Needs a Matcher, or all")
 
-        # load reporter
-        if 'reporter' not in plugins or not bool(plugins['reporter']):
-            raise doot.errors.DootPluginError("Missing Reporter Plugin")
-
         if not bool(tasks):
             printer.info("No Tasks Defined")
             return

@@ -69,12 +69,12 @@ import doot
 import doot.constants
 from doot._abstract import PluginLoader_p
 
-skip_default_plugins    = doot.config.on_fail(False).skip_default_plugins()
-skip_plugin_search      = doot.config.on_fail(False).skip_plugin_search()
-env_eps                 = doot.config.on_fail({}).plugins(wrapper=dict)
-plugin_types            = set(doot.constants.FRONTEND_PLUGIN_TYPES + doot.constants.BACKEND_PLUGIN_TYPES)
-cmd_loader_key  : Final = doot.constants.DEFAULT_COMMAND_LOADER_KEY
-task_loader_key : Final = doot.constants.DEFAULT_TASK_LOADER_KEY
+skip_default_plugins        = doot.config.on_fail(False).skip_default_plugins()
+skip_plugin_search          = doot.config.on_fail(False).skip_plugin_search()
+env_plugins                 = doot.config.on_fail({}).plugins(wrapper=dict)
+plugin_types                = set(doot.constants.FRONTEND_PLUGIN_TYPES + doot.constants.BACKEND_PLUGIN_TYPES)
+cmd_loader_key  : Final     = doot.constants.DEFAULT_COMMAND_LOADER_KEY
+task_loader_key : Final     = doot.constants.DEFAULT_TASK_LOADER_KEY
 
 def make_ep (x, y, z):
     if z not in plugin_types:
@@ -145,7 +145,7 @@ class DootPluginLoader(PluginLoader_p):
 
     def _load_from_toml(self):
         # load config entry points
-        for cmd_group, vals in env_eps.items():
+        for cmd_group, vals in env_plugins.items():
             if cmd_group not in plugin_types:
                 logging.warning("Unknown plugin type found in config: %s", cmd_group)
                 continue

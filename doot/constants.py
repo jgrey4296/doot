@@ -16,7 +16,7 @@ from importlib import resources
 
 ##-- plugin names and loaders
 PLUGIN_TOML_PREFIX         : Final = "doot.plugins" # (project.entry-points."doot.plugins")
-FRONTEND_PLUGIN_TYPES      : Final = ['command', 'reporter']
+FRONTEND_PLUGIN_TYPES      : Final = ['command', 'reporter', 'report_line']
 BACKEND_PLUGIN_TYPES       : Final = [
     'database', 'tracker', 'runner',
     'command_loader', 'task_loader',
@@ -47,8 +47,14 @@ DEFAULT_PLUGINS['command']  = [("help"      ,      "doot.cmds.help_cmd:HelpCmd")
                                ("step"      ,      "doot.cmds.step_cmd:StepCmd")           ,
                               ]
 
-DEFAULT_PLUGINS['reporter'] = [("basic", "doot.reporters.basic:BasicReporter")]
-
+DEFAULT_PLUGINS['reporter'] = [
+    ("summary", "doot.reporters.summary_manager:DootReportManagerSummary"),
+    ("stack",   "doot.reporters.stack_manager:DootReportManagerStack")
+    ]
+DEFAULT_PLUGINS['report_line'] = [
+    ("basic", "doot.reporters.basic_reporters:DootAlwaysReport"),
+    ("time", "doot.reporters.basic_reporters:TimerReporter")
+    ]
 DEFAULT_PLUGINS['database'] = []
 
 DEFAULT_PLUGINS['tracker']  = [("basic", "doot.control.tracker:DootTracker")]
@@ -63,13 +69,13 @@ DEFAULT_PLUGINS['action']   = [("shell"       , "doot.actions.shell_action:DootS
                                ("py"          , "doot.actions.py_action:DootPyAction")                                ,
                                ]
 
-DEFAULT_PLUGINS['tasker']     = [("tasker"          , "doot.task.base_tasker:DootTasker")             ,
-                                 ("generaliser"     , "doot.task.generaliser:DootGeneraliser")        ,
+DEFAULT_PLUGINS['tasker']     = [("tasker"             , "doot.task.base_tasker:DootTasker")             ,
+                                 ("generaliser"        , "doot.task.generaliser:DootGeneraliser")        ,
                                  ("globber"            , "doot.task.globber:DootEagerGlobber")           ,
-                                 ("dict"            , "doot.task.specialised_taskers:DictTasker")     ,
-                                 ("group"           , "doot.task.specialised_taskers:GroupTasker")    ,
+                                 ("dict"               , "doot.task.specialised_taskers:DictTasker")     ,
+                                 ("group"              , "doot.task.specialised_taskers:GroupTasker")    ,
 
-                                 ("task"            , "doot.task.base_task:DootTask")             ,
+                                 ("task"               , "doot.task.base_task:DootTask")             ,
                                  ]
 
 ##-- end default plugins

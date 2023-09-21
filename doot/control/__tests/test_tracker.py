@@ -288,7 +288,7 @@ class TestTracker:
         tracker.add_task(subtask2)
 
         next_task = tracker.next_for("task1")
-        assert(next_task == task1)
+        assert(next_task.name == task1.name)
 
     def test_task_artifact_doesnt_exists(self, mocker):
         mocker.patch.object(pl.Path, "exists", return_value=False)
