@@ -68,7 +68,7 @@ printer                  = logmod.getLogger("doot._printer")
 tracker_target           = doot.config.on_fail("default", str).commands.run.tracker()
 runner_target            = doot.config.on_fail("default", str).commands.run.runner()
 reporter_target          = doot.config.on_fail("default", str).commands.run.reporter()
-report_line_targets      = doot.config.on_fail([], list).commands.run.report_lines()
+report_line_targets      = doot.config.on_fail([]).commands.run.report_line(wrapper=list)
 
 @doot.check_protocol
 class RunCmd(Command_i):

@@ -16,18 +16,18 @@ from importlib import resources
 
 ##-- plugin names and loaders
 PLUGIN_TOML_PREFIX         : Final = "doot.plugins" # (project.entry-points."doot.plugins")
-FRONTEND_PLUGIN_TYPES      : Final = ['command', 'reporter', 'report_line']
+FRONTEND_PLUGIN_TYPES      : Final = ['command', 'reporter', 'report-line']
 BACKEND_PLUGIN_TYPES       : Final = [
     'database', 'tracker', 'runner',
-    'command_loader', 'task_loader',
+    'command-loader', 'task-loader',
     'parser', 'action', "tasker"
     ]
 
-DEFAULT_COMMAND_LOADER_KEY  : Final[str] =  "command_loader"
+DEFAULT_COMMAND_LOADER_KEY  : Final[str] =  "command-loader"
 
-DEFAULT_TASK_LOADER_KEY     : Final[str] =  "task_loader"
+DEFAULT_TASK_LOADER_KEY     : Final[str] =  "task-loader"
 
-DEFAULT_PLUGIN_LOADER_KEY   : Final[str] =  "plugin_loader"
+DEFAULT_PLUGIN_LOADER_KEY   : Final[str] =  "plugin-loader"
 ##-- end plugin names and loaders
 
 ##-- default plugins
@@ -45,13 +45,14 @@ DEFAULT_PLUGINS['command']  = [("help"      ,      "doot.cmds.help_cmd:HelpCmd")
                                ("daemon"    ,      "doot.cmds.daemon_cmd:DaemonCmd")       ,
                                ("stub"      ,      "doot.cmds.stub_cmd:StubCmd")           ,
                                ("step"      ,      "doot.cmds.step_cmd:StepCmd")           ,
+                               ("plugins"   ,      "doot.cmds.plugins_cmd:PluginsCmd")     ,
                               ]
 
 DEFAULT_PLUGINS['reporter'] = [
     ("summary", "doot.reporters.summary_manager:DootReportManagerSummary"),
     ("stack",   "doot.reporters.stack_manager:DootReportManagerStack")
     ]
-DEFAULT_PLUGINS['report_line'] = [
+DEFAULT_PLUGINS['report-line'] = [
     ("basic", "doot.reporters.basic_reporters:DootAlwaysReport"),
     ("time", "doot.reporters.basic_reporters:TimerReporter")
     ]

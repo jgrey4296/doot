@@ -150,7 +150,7 @@ class DootPluginLoader(PluginLoader_p):
                 logging.warning("Unknown plugin type found in config: %s", cmd_group)
                 continue
             if not isinstance(vals, (tomler.Tomler, dict)):
-                logging.warning("Toml specified Plugins %s needs to be a dict of (cmdName : class) ", cmd_group)
+                logging.warning("Toml specified plugins need to be a dict of (cmdName : class): %s ", cmd_group)
                 continue
 
             for name, cls in vals.items():
