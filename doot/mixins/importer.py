@@ -31,10 +31,20 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import importlib
+from doot.constants import IMPORT_SEP
+import doot.errors
 
 class ImporterMixin:
 
     def import_class(self, pathname:str):
-        module_name, cls_name = pathname.split(":")
-        module = importlib.import_module(module_name)
-        return getattr(module, cls_name)
+        try:
+            logging.info("Importing: %s", pathname)
+            module_name, cls_name = pathname.split(IMPORT_SEP)
+            module = importlib.import_module(module_name)
+            return getattr(module, cls_name)
+        except ImportError as err:
+            raise doot.errors.DootTaskLoadError("Import Failed: %s", module_name, task=self.spec) from err
+        except (AttributeError, KeyError) as err:
+            raise doot.errors.DootTaskLoadError("Import Failed: Module %s has no: %s", module_name, cls_name, task=self.spec) from err
+        except ValueError as err:
+            raise doot.errors.DootTaskLoadError("Import Failed: Can't split %s", pathname, task=self.spec) from err

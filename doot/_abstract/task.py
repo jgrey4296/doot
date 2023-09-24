@@ -11,8 +11,8 @@ This can allow interleaving, or grouping.
   Communication:
   Tasker -> Task : by creation
   Task -> Action : by creation
-  Action -> Task : by return value
-  Task -> Tasker : by reference
+  Action -> Task : by return value, updating task state dict
+  Task -> Tasker : by reference to the tasker
 
   Task -> Task     = Task -> Tasker -> Task
   Action -> Action = Action -> Task -> Action
@@ -42,8 +42,8 @@ class Action_p(Protocol):
     holds individual action information and state, and executes it
     """
 
-    def __init__(self, spec:Any):
-        self.spec = spec
+    def __init__(self, spec:Tomler):
+        self.spec : Tomler = spec
 
     @abc.abstractmethod
     def __call__(self, task_state_copy:dict) -> dict|bool|None:
@@ -180,6 +180,7 @@ class Task_i(TaskBase_i):
 
     def __repr__(self):
         return f"<Task: {self.name}>"
+
 
     def maybe_more_tasks(self) -> Generator[Task_i]:
         return iter([])

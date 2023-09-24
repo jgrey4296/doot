@@ -1,67 +1,47 @@
 ##-- imports
 from __future__ import annotations
-
-# import abc
-# import datetime
-# import enum
-import functools as ftz
-import itertools as itz
 import logging as logmod
-import pathlib as pl
-import re
-import time
-import types
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
-# from uuid import UUID, uuid1
-# from weakref import ref
-
-# from bs4 import BeautifulSoup
-# import boltons
-# import construct as C
-# import dirty-equals as deq
-# import graphviz
-# import matplotlib.pyplot as plt
-# import more_itertools as itzplus
-# import networkx as nx
-# import numpy as np
-# import pandas
-# import pomegranate as pom
-# import pony import orm
-# import pronouncing
-# import pyparsing as pp
-# import rich
-# import seaborn as sns
-# import sklearn
-# import stackprinter # stackprinter.set_excepthook(style='darkbg2')
-# import sty
-# import sympy
-# import tomllib
-# import toolz
-# import tqdm
-# import validators
-# import z3
-# import spacy # nlp = spacy.load("en_core_web_sm")
-
 ##-- end imports
-
-import sh
-import doot
-from doot._abstract import Action_p
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+printer = logmod.getLogger("doot._printer")
+
+import sh
+import doot
+from doot.errors import DootTaskError
+from doot._abstract import Action_p
+
 
 class DootShellAction(Action_p):
     """
-      Action in a subshell without interactivity
+    For actions in subshells.
+    all other arguments are passed directly to the program, using `sh`
+
+    The arguments of the action are held in self.spec
+    __call__ is passed a *copy* of the task's state dictionary
+
+
+    TODO : handle shell output redirection, and error code ignoring (use action spec dict)
     """
 
-    def __call_-(self, *args, **kwargs):
-        pass
+    def __str__(self):
+        return f"Shell Action: {self.spec.args[0]}, Args: {self.spec.args[1:]}"
+
+    def __call__(self, task_state_copy:dict) -> dict|bool|None:
+        try:
+            cmd    = getattr(sh, self.spec.args[0])
+            # TODO if args contains "{varname}", then replace with that varname from task_state_copy
+            result = cmd(*self.spec.args[1:], _return_cmd=True, _bg=self.spec.on_fail(False, bool).background())
+            assert(result.exit_code == 0)
+            printer.info("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, self.spec.args[0], self.spec.args[1:])
+            printer.info("%s", result, extra={"colour":"reset"})
+            return True
+        except sh.CommandNotFound as err:
+            printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], self.spec.args)
+            return False
+        except sh.ErrorReturnCode:
+            printer.error("Shell Command '%s' exited with code: %s for args: %s", self.spec[0], result.exit_code, self.spec.args)
+            return False

@@ -218,9 +218,9 @@ class DootOverlord(Overlord_p):
     def __call__(self, cmd=None):
 
         if not doot.args.on_fail((None,)).cmd.args.suppress_header():
-            printer.info("----------------------------------------------")
-            printer.info("-------------------- Doot --------------------")
-            printer.info("----------------------------------------------")
+            printer.info("----------------------------------------------", extra={"colour" : "green"})
+            printer.info("-------------------- Doot --------------------", extra={"colour" : "yellow"})
+            printer.info("----------------------------------------------", extra={"colour": "green"})
 
         if doot.args.head.args.debug:
             breakpoint()
@@ -238,8 +238,7 @@ class DootOverlord(Overlord_p):
         logging.info("Overlord Calling: %s", cmd or doot.args.cmd.name)
         self.current_cmd = self.cmds.get(target, None)
         if self.current_cmd is None:
-            logging.error("Specified Command Couldn't be Found: %s", target)
-            return
+            raise DootParseError("Specified Command Couldn't be Found: %s", target)
 
         self.current_cmd(self.taskers, self.plugins)
 

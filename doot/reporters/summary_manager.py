@@ -66,8 +66,8 @@ from doot.enums import ReportEnum
 
 class DootReportManagerSummary(Reporter_i):
     """
-    A Stack of Reporters to try using.
-    The First one that returns a DootTrace is used.
+    Groups tasker,task,action success and failures, returns information on them
+
     """
 
     def __init__(self, reporters:list=None):
@@ -95,8 +95,10 @@ class DootReportManagerSummary(Reporter_i):
             elif ReportEnum.SUCCEED in trace.flags:
                 ended = "success"
 
-            if category and ended:
-                result[category][ended].add(str(trace))
+            if category is None or ended is None:
+                continue
+
+            result[category][ended].add(str(trace))
 
         output = [
             "    - Taskers: {}/{}".format(len(result['taskers']['success']),len(result['taskers']['fail'])),

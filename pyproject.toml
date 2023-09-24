@@ -17,7 +17,7 @@ classifiers     = [
 dependencies   = [
     "tomler @ git+https://github.com/jgrey4296/tomler.git",
     "networkx > 3.0",
-    "sh > 2.0",
+    "sh >= 2.0.6",
 ]
 
 [project.optional-dependencies]

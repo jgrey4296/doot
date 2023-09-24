@@ -61,33 +61,6 @@ logging = logmod.getLogger(__name__)
 
 from doot._abstract import FailPolicy_p
 
-class TaskPolicyEnum(enum.Flag):
-    """
-      Combinable Policy Types:
-      breaker  : fails fast
-      bulkhead : limits extent of problem and continues
-      retry    : trys to do the action again to see if its resolved
-      timeout  : waits then fails
-      cache    : reuses old results
-      fallback : uses defined alternatives
-      cleanup  : uses defined cleanup actions
-      debug    : triggers pdb
-      pretend  : pretend everything went fine
-      accept   : accept the failure
-
-      breaker will overrule bulkhead
-    """
-    BREAKER  = enum.auto()
-    BULKHEAD = enum.auto()
-    RETRY    = enum.auto()
-    TIMEOUT  = enum.auto()
-    CACHE    = enum.auto()
-    FALLBACK = enum.auto()
-    CLEANUP  = enum.auto()
-    DEBUG    = enum.auto()
-    PRETEND  = enum.auto()
-    ACCEPT   = enum.auto()
-
 class BreakerPolicy(FailPolicy_p):
     pass
 

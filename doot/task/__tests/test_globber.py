@@ -83,6 +83,25 @@ class TestGlobber:
         assert(count == 3)
 
 
+    def test_only_matching_extensions(self, wrap_tmp):
+        (wrap_tmp / "first").mkdir()
+        (wrap_tmp / "first" / "blah.txt").touch()
+        (wrap_tmp / "first" / "bad.ext").touch()
+        (wrap_tmp / "second").mkdir()
+        (wrap_tmp / "second" / "bloo.txt").touch()
+        (wrap_tmp / "second" / "bibble.blib").touch()
+
+        obj = DootEagerGlobber(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "rec": True}))
+
+        count = 0
+        for sub in obj.build():
+            count += 1
+            assert(isinstance(sub, DootTaskSpec))
+            assert(str(sub.name) not in ["default::basic.bad", "default::basic.bibble"])
+
+        assert(count == 3)
+
+
     def test_test_no_rec(self, wrap_tmp):
         (wrap_tmp / "first").mkdir()
         (wrap_tmp / "first" / "blah.txt").touch()

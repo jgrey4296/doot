@@ -94,6 +94,9 @@ DEFAULT_STUB_TASK_NAME : Final[str] = "stub::stub"
 
 ##-- end path and file names
 
+TASK_SEP   = "::"
+IMPORT_SEP = ":"
+
 DEFAULT_CLI_CMD     : Final[str]  = "run"
 
 DEFAULT_TASK_PREFIX : Final[str]  = "task_"

@@ -55,17 +55,22 @@ def main():
         overlord.shutdown()
 
     ##-- handle doot errors
-    except doot.errors.DootConfigError as err:
+    except doot.errors.DootMissingConfigError as err:
         # Handle missing files
         if not doot.constants.DEFAULT_LOAD_TARGETS[0].exists():
             if input("No toml config data found, create stub doot.toml? _/n ") != "n":
                 doot.constants.DEFAULT_LOAD_TARGETS[0].write_text(doot.constants.TOML_TEMPLATE.read_text())
                 logging.info("Stubbed")
 
+    except doot.errors.DootTaskError as err:
+        errored = True
+        printer.error("%s : %s", err.general_msg, err.task_name)
+        printer.error("---- Source: %s", err.task_source)
+        printer.error("---- %s", err)
     except doot.errors.DootError as err:
         errored = True
-        printer.error(err.general_msg)
-        printer.error(str(err))
+        printer.error("%s", err.general_msg)
+        printer.error("---- %s", err)
     ##-- end handle doot errors
     ##-- handle todo errors
     except NotImplementedError as err:

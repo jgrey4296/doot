@@ -75,6 +75,21 @@ class DootRunner(TaskRunner_i):
 
     def __init__(self:Self, *, tracker:TaskTracker_i, reporter:Reporter_i, policy=None):
         super().__init__(tracker=tracker, reporter=reporter, policy=policy)
+        self.step = 0
+
+
+    def __enter__(self) -> Any:
+        printer.info("---------- Task Loop Starting ----------", extra={"colour" : "green"})
+        return
+
+
+    def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
+        printer.setLevel("NOTSET")
+        printer.info("")
+        printer.info("---------- Task Loop Finished ----------", extra={"colour":"green"})
+        self._finish()
+        return
+
 
     def __call__(self, *tasks:str):
         """ tasks are initial targets to run.
@@ -88,7 +103,7 @@ class DootRunner(TaskRunner_i):
         # for threaded tasks: replace expand_tasker/execute_task/execute_action with twisted?
 
         with SignalHandler():
-            printer.info("---------- Task Loop Starting ----------")
+            # printer.info("---------- Task Loop Starting ----------", extra={"colour" : "green"})
             for task in iter(self.tracker):
                 if task is None:
                     continue
@@ -102,46 +117,44 @@ class DootRunner(TaskRunner_i):
                             self._execute_task(task)
 
                     self.tracker.update_state(task, TaskStateEnum.SUCCESS)
+                    printer.debug("Sleeping...", extra={"colour":"white"})
+                    time.sleep(0.2)
+                    self.step += 1
                 # Handle problems:
                 except doot.errors.DootTaskInterrupt as err:
                     breakpoint()
-                    self.reporter.trace(task.spec, flags=ReportEnum.FAIL)
-                    pass
                 except doot.errors.DootTaskTrackingError as err:
                     self.reporter.trace(task.spec, flags=ReportEnum.FAIL)
                     pass
                 except doot.errors.DootTaskFailed as err:
                     printer.warning("Task Failed: %s", task.name)
-                    self.reporter.trace(task.spec, flags=ReportEnum.FAIL)
                     self.tracker.update_state(task, TaskStateEnum.FAILED)
                 except doot.errors.DootTaskError as err:
-                    printer.warning("Task Error : %s : %s", task.name, err)
-                    self.reporter.trace(task.spec, flags=ReportEnum.FAIL)
+                    printer.warning("Error : %s", err, task.name)
                     self.tracker.update_state(task, TaskStateEnum.FAILED)
                 except doot.errors.DootError as err:
                     printer.warning("Doot Error : %s", task.name)
-                    self.reporter.trace(task.spec, flags=ReportEnum.FAIL)
                     self.tracker.update_state(task, TaskStateEnum.FAILED)
-                else:
-                    printer.info("Sleeping")
-                    time.sleep(0.2)
+                except Exception as err:
+                    self.reporter.trace(task.spec, flags = ReportEnum.TASK | ReportEnum.FAIL)
+                    raise err
 
-            printer.setLevel("NOTSET")
-            printer.info("---------- Task Loop Finished ----------")
+            # printer.setLevel("NOTSET")
+            # printer.info("---------- Task Loop Finished ----------", extra={"colour":"green"})
 
 
-        self._finish()
 
     def _expand_tasker(self, tasker:Tasker_i) -> None:
         """ turn a tasker into all of its tasks, including teardowns """
-        logmod.debug("-- Expanding Tasker: %s", tasker.name)
-        printer.info("-- %s", tasker.name)
+        logmod.debug("-- Expanding Tasker %s: %s", self.step, tasker.name)
+        printer.warning("-- Tasker %s: %s", self.step, tasker.name, extra={"colour":"magenta"})
         self.reporter.trace(tasker.spec, flags=ReportEnum.TASKER | ReportEnum.INIT)
         count = 0
         for task in tasker.build():
             match task:
                 case Tasker_i():
-                    raise doot.errors.DootTaskError("Taskers can't build taskers: %s", tasker.name)
+                    self.reporter.trace(tasker.spec, flags=ReportEnum.FAIL | ReportEnum.TASKER)
+                    raise doot.errors.DootTaskError("Taskers can't build taskers: %s", task.name, task=tasker.spec)
                 case Task_i():
                     self.tracker.add_task(task, no_root_connection=True)
                     self.tracker.queue_task(task.name)
@@ -149,7 +162,8 @@ class DootRunner(TaskRunner_i):
                     self.tracker.add_task(task, no_root_connection=True)
                     self.tracker.queue_task(task.name)
                 case _:
-                    raise doot.errors.DootTaskError("Tasker %s Built a Bad Value: %s", tasker.name, task)
+                    self.reporter.trace(tasker.spec, flags=ReportEnum.FAIL | ReportEnum.TASKER)
+                    raise doot.errors.DootTaskError("Tasker %s Built a Bad Value: %s", tasker.name, task, task=tasker.spec)
 
             count += 1
 
@@ -158,22 +172,26 @@ class DootRunner(TaskRunner_i):
 
     def _execute_task(self, task:Task_i) -> None:
         """ execute a single task's actions """
-        logmod.debug("---- Executing Task: %s", task.name)
-        printer.info("---- %s", task.name)
+        logmod.debug("---- Executing Task %s: %s", self.step, task.name)
+        printer.warning("---- Task %s: %s", self.step, task.name, extra={"colour":"magenta"})
         self.reporter.trace(task.spec, flags=ReportEnum.TASK | ReportEnum.INIT)
         # TODO <-- in the future, where DB checks for staleness, thread safety, etc will occur
 
+        action_count = 0
         for action in task.actions:
             match action:
                 case _ if dry_run:
-                    logging.info("Dry Run: Not executing action: %s : %s", task.name, action)
+                    logging.info("Dry Run: Not executing action: %s : %s", task.name, action, extra={"colour":"cyan"})
                     self.reporter.trace(task.spec, flags=ReportEnum.ACTION | ReportEnum.SKIP)
                 case Action_p() | Callable():
-                    self._execute_action(action, task)
+                    self._execute_action(action_count, action, task)
                 case _:
-                    raise doot.errors.DootTaskError("Task %s Failed: Produced a bad action: %s", task.name, action)
+                    self.reporter.trace(task.spec, flags=ReportEnum.FAIL | ReportEnum.TASK)
+                    raise doot.errors.DootTaskError("Task %s Failed: Produced a bad action: %s", task.name, action, task=task.spec)
+            action_count += 1
 
-        printer.info("---- Actions Complete")
+        printer.info("")
+        printer.debug("------ Task %s: Actions Complete", task.name, extra={"colour":"cyan"})
         self.reporter.trace(task.spec, flags=ReportEnum.TASK | ReportEnum.SUCCEED)
         # Get Any resulting tasks
         count = 0
@@ -186,15 +204,16 @@ class DootRunner(TaskRunner_i):
                     self.tracker.add_task(new_task, no_root_connection=True)
                     count += 1
                 case _:
-                    raise doot.errors.DootTaskError("Task %s Failed: Provided a bad additional task: %s", task.name, new_task)
+                    self.reporter.trace(task.spec, flags=ReportEnum.FAIL | ReportEnum.TASK)
+                    raise doot.errors.DootTaskError("Task %s Failed: Provided a bad additional task: %s", task.name, new_task, task=task.spec)
 
 
         logmod.debug("---- Task Execution Completed: %s, adding %s additional tasks", task.name, count)
 
-    def _execute_action(self, action, task) -> None:
+    def _execute_action(self, count, action, task) -> None:
         """ Run the given action of a specific task  """
-        logmod.debug("------ Executing Action: %s for %s", action, task.name)
-        printer.info("------ %s", action.spec)
+        logmod.debug("------ Executing Action %s: %s for %s", count, action, task.name)
+        printer.warning("------ Action %s.%s: %s", self.step, count, str(action), extra={"colour":"cyan"})
         self.reporter.trace(action.spec, flags=ReportEnum.ACTION | ReportEnum.INIT)
 
         result = action(task.state.copy())
@@ -206,9 +225,11 @@ class DootRunner(TaskRunner_i):
             case True:
                 pass
             case False:
-                raise doot.errors.DootTaskError("Task %s Action Failed: %s", task.name, action)
+                self.reporter.trace(action.spec, flags=ReportEnum.FAIL | ReportEnum.ACTION)
+                raise doot.errors.DootTaskFailed("Task %s Action Failed: %s", task.name, action, task=task.spec)
             case _:
-                raise doot.errors.DootTaskError("Task %s Action %s Failed: Returned an unrecognizable value: %s", task.name, action, result)
+                self.reporter.trace(action.spec, flags=ReportEnum.FAIL | ReportEnum.ACTION)
+                raise doot.errors.DootTaskError("Task %s Action %s Failed: Returned an unplanned for value: %s", task.name, action, result, task=task.spec)
 
         logmod.debug("------ Action Execution Complete: %s for %s", action, task.name)
         self.reporter.trace(action.spec, flags=ReportEnum.ACTION | ReportEnum.SUCCEED)
@@ -217,4 +238,4 @@ class DootRunner(TaskRunner_i):
         """finish running tasks"""
         logging.info("Task Running Completed")
         printer.info("Final Summary: ")
-        printer.info(str(self.reporter))
+        printer.info(str(self.reporter), extra={"colour":"magenta"})

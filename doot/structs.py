@@ -216,8 +216,8 @@ class DootStructuredName:
     # maybe: tasker : bool               = field(default=False, kw_only=True) -> add '*' at head or tail
 
     form            : StructuredNameEnum = field(default=StructuredNameEnum.TASK, kw_only=True)
-    task_separator  : ClassVar[str] = "::"
-    class_separator : ClassVar[str] = ":"
+    task_separator  : ClassVar[str] = doot.constants.TASK_SEP
+    class_separator : ClassVar[str] = doot.constants.IMPORT_SEP
     subseparator    : ClassVar[str] = "."
 
     def __post_init__(self):
@@ -321,7 +321,10 @@ class DootStructuredName:
 
 @dataclass
 class DootTaskSpec:
-    """ The information needed to describe a generic task """
+    """ The information needed to describe a generic task
+
+    actions : list[ [args] | {ctor, [args]} | {fn, [args]} ]
+    """
     name              : DootStructuredName                         = field()
     doc               : list[str]                                  = field(default_factory=list)
     source            : DootStructuredName|str|None                = field(default=None)
@@ -566,6 +569,8 @@ class DootTraceRecord:
                 return self.message.format(*self.args)
             case DootTaskSpec():
                 return str(self.message.name)
+            case _:
+                return str(self.message)
 
     def __contains__(self, other:ReportEnum) -> bool:
         return all([x in self.flags for x in other])

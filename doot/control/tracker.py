@@ -99,6 +99,9 @@ class DootTracker(TaskTracker_i):
 
         self.dep_graph.add_node(ROOT, state=self.state_e.WAIT)
 
+    def __len__(self):
+        return len(self.tasks)
+
     def __iter__(self) -> Generator[Any,Any,Any]:
         while bool(self.task_queue):
             yield self.next_for()
@@ -244,6 +247,7 @@ class DootTracker(TaskTracker_i):
                     self.task_queue.pop()
                 case self.state_e.FAILED:  # stop when a task fails, and clear any queued tasks
                     self.active_set.clear()
+                    self.task_queue.pop()
                     return None
                 case self.state_e.READY if focus in self.execution_path: # error on running the same task twice
                     raise doot.errors.DootTaskTrackingError("Task Attempted to run twice: %s", focus)

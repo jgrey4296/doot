@@ -39,36 +39,44 @@ from doot._abstract import Task_i, Tasker_i, Action_p
 from doot.enums import TaskFlags, StructuredNameEnum
 from doot.structs import DootStructuredName, TaskStub, TaskStubPart
 from doot.actions.base_action import DootBaseAction
+from doot.errors import DootTaskLoadError
 
+from doot.mixins.importer import ImporterMixin
 
 @doot.check_protocol
-class DootTask(Task_i):
+class DootTask(Task_i, ImporterMixin):
     """
-      The simplest task
+      The simplest task, which can import action classes.
+      eg:
+      actions = [ {ctor = "doot.actions.shell_action:DootShellAction", args = ["echo", "this is a test"] } ]
     """
     action_ctor    = DootBaseAction
     _default_flags = TaskFlags.TASK
     _help          = ["The Simplest Task"]
 
+    def __init__(self, spec, *, tasker=None, **kwargs):
+        super().__init__(spec, tasker=tasker, **kwargs)
+        self._action_lookup = {}
+        self.prepare_actions()
+
     @property
     def actions(self):
         """lazy creation of action instances"""
-        action_ctor = self.spec.extra.on_fail(self.action_ctor).action_ctor()
-        match action_ctor:
-            case str():
-                as_structured = DootStructuredName.from_str(action_ctor, StructuredNameEnum.CALLABLE)
-                action_ctor = as_structured.try_import()
-            case DootStructuredName():
-                action_ctor = action_ctor.try_import()
-            case Action_p():
-                pass
-            case _ if callable(action_ctor):
-                pass
-            case _:
-                raise doot.errors.DootTaskError("Couldn't get something callable from: %s", action_ctor)
-
-        for action in self.spec.actions:
-            yield action_ctor(action)
+        for action_spec in self.spec.actions:
+            match action_spec:
+                case list() as args:
+                    yield self.action_ctor(tomler.Tomler({"args": args}))
+                case { "ctor" : str() as ctor_name, "args" : list() }:
+                    ctor = self._action_lookup[ctor_name]
+                    yield ctor(tomler.Tomler(action_spec))
+                case { "fun"  : str() as fun_name,  "args" : list() }:
+                    fun = self._action_name(fun_name)
+                    yield ftz.partial(fun, tomler.Tomler(action_spec))
+                case { "fun"  : str() as fun_name,  "args" : list() }:
+                    fun = self._action_name(fun_name)
+                    yield ftz.partial(fun, tomlerTomler(action_spec))
+                case _:
+                    raise DootTaskError("Bad Action Spec", self.name, action)
 
     @property
     def is_stale(self):
@@ -91,3 +99,23 @@ class DootTask(Task_i):
         stub['flags'].default     = self.spec.flags
 
         return stub
+
+    def prepare_actions(self):
+        """ if the task spec requires particular action ctors, load them """
+        logging.info("Preparing Actions: %s", self.name)
+        for action_spec in self.spec.actions:
+            match action_spec:
+                case list():
+                    pass
+                case { "ctor" : str() as ctor_name, "args" : list() } if ctor_name not in self._action_lookup:
+                    ctor = self.import_class(ctor_name)
+                    self._action_lookup[ctor_name] = ctor
+                    pass
+                case { "fun"  : str() as fun_name,  "args" : list()} if fun_name not in self._action_lookup:
+                    fun = self.import_class(fun_name)
+                    self._action_lookup[fun_name] = fun
+                    pass
+                case { "ctor" : str() } | { "fun"  : str() }:
+                    pass
+                case _:
+                    raise DootTaskLoadError("Bad Action Spec", self.name, action_spec)

@@ -72,7 +72,7 @@ class ListCmd(Command_i):
             raise doot.errors.DootCommandError("ListCmd Needs a Matcher, or all")
 
         if not bool(tasks):
-            printer.info("No Tasks Defined")
+            printer.info("No Tasks Defined", extra={"colour": "red"})
             return
 
         match dict(doot.args.cmd.args): # type: ignore
@@ -117,14 +117,14 @@ class ListCmd(Command_i):
                                                   spec.ctor.__name__,
                                                   spec.source))
 
-        printer.info("Tasks for Matching Groups: %s", pattern)
+        printer.info("Tasks for Matching Groups: %s", pattern, extra={"colour":"cyan"})
         for group, tasks in groups.items():
             printer.info("*   %s::", group)
             for task in tasks:
                 printer.info(fmt_str, *task)
 
     def _print_all_by_group(self, tasks):
-        printer.info("Defined Task Generators by Group:")
+        printer.info("Defined Task Generators by Group:", extra={"colour":"cyan"})
         max_key = len(max(tasks.keys(), key=len))
         fmt_str = f"{INDENT}%-{max_key}s :: %-25s <%s>"
         groups  = defaultdict(list)
@@ -134,15 +134,15 @@ class ListCmd(Command_i):
                                                   spec.source))
 
         for group, tasks in groups.items():
-            printer.info("*   %s::", group)
+            printer.info("*   %s::", group, extra={"colour":"magenta"})
             for task in tasks:
                 printer.info(fmt_str, *task)
 
         printer.info("")
-        printer.info("Full Task Name: {group}::{task}")
+        printer.info("Full Task Name: {group}::{task}", extra={"colour":"cyan"})
 
     def _print_all_by_source(self, tasks):
-        printer.info("Defined Task Generators by Source File:")
+        printer.info("Defined Task Generators by Source File:", extra={"colour":"cyan"})
         max_key = len(max(tasks.keys(), key=len))
         fmt_str = f"{INDENT}%-{max_key}s :: %s.%-25s"
         sources = defaultdict(list)
@@ -153,13 +153,13 @@ class ListCmd(Command_i):
                                         ))
 
         for source, tasks in sources.items():
-            printer.info(":: %s ::", source)
+            printer.info(":: %s ::", source, extra={"colour":"red"})
             for task in tasks:
                 printer.info(fmt_str, *task)
 
 
     def _print_just_groups(self, tasks):
-        printer.info("Defined Task Groups:")
+        printer.info("Defined Task Groups:", extra={"colour":"cyan"})
 
         group_set = set(spec.name.group_str() for spec in tasks.values())
         for group in group_set:

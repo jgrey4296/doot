@@ -19,8 +19,9 @@ run = { tracker = "default", runner = "default", reporter= "default", report-lin
 ignores  = ['.git', '.DS_Store', "__pycache__"]
 
 [logging]
-stream = { level = "WARN", format  = "{levelname:<8} : {message}", filters = ["doot"] }
-file   = { level = "DEBUG", format = "{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})", filters =  ["doot"] }
+stream  = { level = "WARN", format  = "{levelname:<8} : {message}", filters = ["doot"] }
+file    = { level = "DEBUG", format = "{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})", filters =  ["doot"] }
+printer = { colour = true }
 
 [[locations]]
 temp         = ".temp"

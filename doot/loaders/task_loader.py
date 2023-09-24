@@ -66,7 +66,7 @@ import importlib
 import tomler
 import doot
 from doot.structs import DootTaskSpec
-from doot.constants import DEFAULT_TASK_GROUP
+from doot.constants import DEFAULT_TASK_GROUP, IMPORT_SEP
 from doot._abstract import TaskLoader_p, Tasker_i, Task_i
 
 TASK_STRING : Final[str] = "task_"
@@ -208,7 +208,7 @@ class DootTaskLoader(TaskLoader_p):
                         task_descriptions[str(task_spec.name)] = task_spec
                     case {"name": task_name, "ctor": task_type}:
                         logging.info("Building Tasker from class name: %s : %s", task_name, task_type)
-                        mod_name, class_name = task_type.split(":")
+                        mod_name, class_name = task_type.split(IMPORT_SEP)
                         mod                  = importlib.import_module(mod_name)
                         cls                  = getattr(mod, class_name)
 

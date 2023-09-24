@@ -53,6 +53,10 @@ class TaskTracker_i:
         self.policy = policy
 
     @abstractmethod
+    def __len__(self) -> int:
+        raise NotImplementedError()
+
+    @abstractmethod
     def __iter__(self) -> Generator:
         raise NotImplementedError()
 

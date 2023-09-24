@@ -1,4 +1,4 @@
-
+## base_action.py -*- mode: Py -*-
 ##-- imports
 from __future__ import annotations
 
@@ -59,11 +59,16 @@ from doot._abstract import Action_p
 @doot.check_protocol
 class DootBaseAction(Action_p):
     """
-    Python Action with a `build` static method instead of doit.action.create_action
-    and refactored `execute` to allow returning Actions from actions
+    The basic action, which just prints that the action was called
+    Subclass this and override __call__ for your own actions.
+    The arguments of the action are held in self.spec
+    __call__ is passed a *copy* of the task's state dictionary
     """
 
+    def __str__(self):
+        return f"Base Action: {self.spec.args}"
+
     def __call__(self, task_state_copy:dict) -> dict|bool|None:
-        printer.info("Base Action Called: %s", task_state_copy.get("count", 0))
-        printer.info("Action Spec: %s", self.spec)
+        printer.debug("Base Action Called: %s", task_state_copy.get("count", 0), dict(self.spec))
+        printer.info(" ".join(self.spec.args))
         return { "count" : task_state_copy.get("count", 0) + 1 }

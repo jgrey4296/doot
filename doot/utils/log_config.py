@@ -94,6 +94,7 @@ logging = logmod.getLogger(__name__)
 from sys import stdout, stderr
 import doot
 import doot.constants
+from doot.utils.log_colour import DootColourFormatter, DootColourStripFormatter
 
 class _DootAnyFilter:
 
@@ -114,10 +115,10 @@ class DootLogConfig:
         # Root Logger for everything
         self.root    = logmod.root
         # EXCEPT this, which replaces 'print(x)'
-        self.printer = logmod.getLogger(doot.constants.PRINTER_NAME)
+        self.printer               = logmod.getLogger(doot.constants.PRINTER_NAME)
 
-        self.file_handler   = logmod.FileHandler(pl.Path() / "log.doot", mode='w')
-        self.stream_handler = logmod.StreamHandler(stdout)
+        self.file_handler          = logmod.FileHandler(pl.Path() / "log.doot", mode='w')
+        self.stream_handler        = logmod.StreamHandler(stdout)
         self.print_stream_handler  = logmod.StreamHandler(stdout)
 
         self._setup()
@@ -125,7 +126,7 @@ class DootLogConfig:
     def _setup(self):
         """ a basic, config-less setup """
         self.root.setLevel(logmod.NOTSET)
-        self.file_handler.setFormatter(logmod.Formatter("{levelname} : INIT : {message}", style="{"))
+        self.file_handler.setFormatter(DootColourStripFormatter(fmt="{levelname} : INIT : {message}"))
 
         self.stream_handler.setLevel(logmod.WARNING)
         self.stream_handler.setFormatter(logmod.Formatter("{levelname}  : INIT : {message}", style="{"))
@@ -141,23 +142,46 @@ class DootLogConfig:
 
     def setup(self):
         """ a setup that uses config values """
+        assert(doot.config is not None)
+        self._setup_file_logging()
+        self._setup_stream_logging()
+        self._setup_print_logging()
+
+    def _setup_file_logging(self):
         file_log_level    = doot.config.on_fail("DEBUG", str|int).logging.file.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
         file_log_format   = doot.config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str).logging.file.format()
         file_filter_names = doot.config.on_fail([], list).logging.file.filters()
 
         self.file_handler.setLevel(file_log_level)
-        self.file_handler.setFormatter(logmod.Formatter(file_log_format, style="{"))
+        self.file_handler.setFormatter(DootColourStripFormatter(fmt=file_log_format))
         if bool(file_filter_names):
             self.file_handler.addFilter(_DootAnyFilter(file_filter_names))
 
+    def _setup_stream_logging(self):
         stream_log_level    = doot.config.on_fail("WARNING", str|int).logging.stream.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
         stream_log_format   = doot.config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str).logging.stream.format()
         stream_filter_names = doot.config.on_fail([], list).logging.stream.filters()
 
         self.stream_handler.setLevel(stream_log_level)
-        self.stream_handler.setFormatter(logmod.Formatter(stream_log_format, style="{"))
+        if doot.config.on_fail(False, bool).logging.stream.colour():
+            self.stream_handler.setFormatter(DootColourFormatter(fmt=stream_log_format))
+        else:
+            self.stream_handler.setFormatter(logmod.Formatter(stream_log_format, style="{"))
+
         if bool(stream_filter_names):
             self.stream_handler.addFilter(_DootAnyFilter(stream_filter_names))
+
+    def _setup_print_logging(self):
+        printer_log_level    = doot.config.on_fail("INFO", str|int).logging.printer.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
+        printer_log_format   = doot.config.on_fail("{message}", str).logging.printer.format()
+
+        self.print_stream_handler.setLevel(printer_log_level)
+
+        if doot.config.on_fail(False, bool).logging.printer.colour():
+            self.print_stream_handler.setFormatter(DootColourFormatter(fmt=printer_log_format))
+        else:
+            self.print_stream_handler.setFormatter(logmod.Formatter(printer_log_format, style="{"))
+
 
     def set_level(self, level):
         self.stream_handler.setLevel(level)

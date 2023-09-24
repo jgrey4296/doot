@@ -49,7 +49,7 @@ def setup(targets:list[pl.Path]|None=None, prefix:str|None=None) -> tuple[tomler
         raise TypeError("Doot Config Targets should be pathlib.Path's")
 
     if not any([x.exists() for x in targets]):
-        raise doot.errors.DootConfigError("No Doot data found")
+        raise doot.errors.DootMissingConfigError("No Doot data found")
 
     existing_targets       = [x for x in targets if x.exists()]
 

@@ -17,6 +17,10 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+__all__ = ["DootError", "DootTaskError", "DootTaskLoadError", "DootTaskFailed", "DootTaskTrackingError", "DootTaskInterrupt"
+           "DootParseError", "DootInvalidConfig", "DootLocationError", "DootLocationExpansionError", "DootDirAbsent",
+           "DootPluginError", "DootCommandError", "DootConfigError"]
+
 class DootError(Exception):
     """
       The base class for all Doot Errors
@@ -37,6 +41,17 @@ class DootTaskError(DootError):
         super().__init__(msg, *args)
         self.task = task
 
+    @property
+    def task_name(self):
+        if not self.task:
+            return ""
+        return str(self.task.name)
+
+    @property
+    def task_source(self):
+        if not self.task:
+            return ""
+        return self.task.source
 
 class DootTaskLoadError(DootTaskError):
     general_msg = "Doot Task Load Failure:"
@@ -79,5 +94,9 @@ class DootCommandError(DootError):
     pass
 
 class DootConfigError(DootError):
+    general_msg = "Doot Config Error:"
+    pass
+
+class DootMissingConfigError(DootError):
     general_msg = "Doot Config Error:"
     pass
