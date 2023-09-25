@@ -141,8 +141,17 @@ class DootTracker(TaskTracker_i):
         """
         # Build the Task if necessary
         match task:
-            case DootTaskSpec(ctor=TaskBase_i() as ctor):
+            case DootTaskSpec(ctor=ctor) if isinstance(ctor, type) and issubclass(ctor, TaskBase_i):
                 task : TaskBase_i = task.ctor(task)
+            case DootTaskSpec(ctor=None, ctor_name=ctor_name) if str(ctor_name) in self.tasks:
+                # specialize a loaded task
+                base_spec   = self.tasks.get(str(ctor_name)).spec
+                specialized = base_spec.specialize_from(task)
+                if specialized.ctor is not None:
+                    self.add_task(specialized, no_root_connection=no_root_connection)
+                    return
+                else:
+                    raise doot.errors.DootTaskTrackingError("Attempt to specialize task failed: %s", task.name)
             case DootTaskSpec():
                 task : TaskBase_i = DootTask(task)
             case TaskBase_i():

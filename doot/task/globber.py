@@ -19,6 +19,8 @@ import warnings
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+printer = logmod.getLogger("doot._printer")
+
 import doot
 from doot.errors import DootDirAbsent
 from doot.task.base_tasker import DootTasker
@@ -47,8 +49,6 @@ class _GlobControl(enum.Enum):
     reject  = enum.auto()
     no      = enum.auto()
 
-
-
 @doot.check_protocol
 class DootEagerGlobber(SubMixin, DootTasker):
     """
@@ -71,7 +71,7 @@ class DootEagerGlobber(SubMixin, DootTasker):
         super().__init__(spec)
         self.exts           = {y for x in spec.extra.on_fail([]).exts() for y in [x.lower(), x.upper()]}
         self.roots          = [pl.Path(x) for x in spec.extra.on_fail([pl.Path()]).roots()]
-        self.rec            = spec.extra.on_fail(False).rec()
+        self.rec            = spec.extra.on_fail(False).recursive()
         self.total_subtasks = 0
         for x in self.roots:
             depth = len(set(self.__class__.mro()) - set(DootEagerGlobber.mro()))
@@ -102,7 +102,7 @@ class DootEagerGlobber(SubMixin, DootTasker):
         rec       = bool(rec) or rec is None and self.rec
         exts      = exts or self.exts or []
         filter_fn = fn or self.filter
-        logging.debug("Globbing on Target: %s : rec=%s, exts=%s", target, rec, exts)
+        printer.debug("Globbing on Target: %s : rec=%s, exts=%s", target, rec, exts)
 
         if not target.exists():
             return None
@@ -143,22 +143,6 @@ class DootEagerGlobber(SubMixin, DootTasker):
                 case _ as x:
                     raise TypeError("Unexpected glob filter value", x)
 
-    def _non_recursive_glob(self, target, filter_fn, exts):
-        check_fn = lambda x: (filter_fn(x) not in [None, False, _GlobControl.reject, _GlobControl.discard]
-                                and x.name not in glob_ignores
-                                and (not bool(exts) or (x.is_file() and x.suffix in exts)))
-
-        if check_fn(target):
-            yield target
-
-        if not target.is_dir():
-            return None
-
-        for x in target.iterdir():
-            if check_fn(x):
-                yield x
-
-
     def glob_all(self, rec=None, fn=None) -> Generator[tuple(str, pl.Path)]:
         """
         Glob all available files,
@@ -181,6 +165,16 @@ class DootEagerGlobber(SubMixin, DootTasker):
 
         logging.debug("Globbed : %s", len(globbed_names))
 
+    def build(self, **kwargs) -> Generator[DootTaskSpec]:
+        self.args.update(kwargs)
+        head = self._build_head()
+
+        for sub in self._build_subs():
+            head.runs_after.append(sub.name)
+            yield sub
+
+        yield head
+
     def _build_subs(self) -> Generator[DootTaskSpec]:
         self.total_subtasks = 0
         logging.debug("%s : Building Globber SubTasks", self.name)
@@ -194,13 +188,17 @@ class DootEagerGlobber(SubMixin, DootTasker):
                 case _ as subtask:
                     raise TypeError("Unexpected type for subtask: %s", type(subtask))
 
+    def _non_recursive_glob(self, target, filter_fn, exts):
+        check_fn = lambda x: (filter_fn(x) not in [None, False, _GlobControl.reject, _GlobControl.discard]
+                                and x.name not in glob_ignores
+                                and (not bool(exts) or (x.is_file() and x.suffix in exts)))
 
-    def build(self, **kwargs):
-        self.args.update(kwargs)
-        head = self._build_head()
+        if check_fn(target):
+            yield target
 
-        for sub in self._build_subs():
-            head.runs_after.append(sub.name)
-            yield sub
+        if not target.is_dir():
+            return None
 
-        yield head
+        for x in target.iterdir():
+            if check_fn(x):
+                yield x

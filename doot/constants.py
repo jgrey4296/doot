@@ -64,17 +64,12 @@ DEFAULT_PLUGINS['runner']   = [("basic", "doot.control.runner:DootRunner")]
 
 DEFAULT_PLUGINS['parser']   = [("basic", "doot.parsers.parser:DootArgParser")]
 
-DEFAULT_PLUGINS['action']   = [("shell"       , "doot.actions.shell_action:DootShellAction")                          ,
-                               ("discard"     , "doot.actions.discard_result_action:DootDiscardResultAction")         ,
-                               ("interactive" , "doot.actions.interactive_shell_action:DootInteractiveShellAction")   ,
-                               ("py"          , "doot.actions.py_action:DootPyAction")                                ,
+DEFAULT_PLUGINS['action']   = [("base"          , "doot.actions.base_action:DootBaseAction"),
+                               ("shell"         , "doot.actions.shell_action:DootShellAction"),
                                ]
 
 DEFAULT_PLUGINS['tasker']     = [("tasker"             , "doot.task.base_tasker:DootTasker")             ,
-                                 ("generaliser"        , "doot.task.generaliser:DootGeneraliser")        ,
                                  ("globber"            , "doot.task.globber:DootEagerGlobber")           ,
-                                 ("dict"               , "doot.task.specialised_taskers:DictTasker")     ,
-                                 ("group"              , "doot.task.specialised_taskers:GroupTasker")    ,
 
                                  ("task"               , "doot.task.base_task:DootTask")             ,
                                  ]
@@ -96,6 +91,7 @@ DEFAULT_STUB_TASK_NAME : Final[str] = "stub::stub"
 
 TASK_SEP   = "::"
 IMPORT_SEP = ":"
+SUBTASKED_HEAD = "$head$"
 
 DEFAULT_CLI_CMD     : Final[str]  = "run"
 

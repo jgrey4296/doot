@@ -18,7 +18,7 @@ import time
 import types
 import weakref
 # from copy import deepcopy
-from dataclasses import InitVar, dataclass, field
+from dataclasses import InitVar, dataclass, field, _MISSING_TYPE
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
@@ -355,7 +355,9 @@ class DootTaskSpec:
         extra_data  = {}
 
         for key, val in data.items():
-            if key in core_keys:
+            if key == "extra":
+                extra_data.update(dict(val))
+            elif key in core_keys:
                 core_data[key] = val
             elif key.replace("-", "_") in core_keys:
                 core_data[key.replace("-", "_")] = val
@@ -377,7 +379,7 @@ class DootTaskSpec:
 
         core_data['flags'] = ftz.reduce(lambda x,y: x|y, map(lambda x: TaskFlags[x],  filter(lambda x: x in TaskFlagNames, core_data.get('flags', ["TASK"]))))
 
-        core_data['ctor']           = ctor
+        core_data['ctor']  = ctor or core_data.get('ctor', None)
         if ctor_name is not None:
             core_data['ctor_name']      = DootStructuredName.from_str(ctor_name, form=StructuredNameEnum.CLASS)
         elif ctor is not None:
@@ -386,6 +388,23 @@ class DootTaskSpec:
             core_data['ctor_name']      = DootStructuredName.from_str(doot.constants.DEFAULT_PLUGINS['tasker'][0][1], form=StructuredNameEnum.CLASS)
 
         return DootTaskSpec(**core_data, extra=Tomler(extra_data))
+
+
+    def specialize_from(self, data:DootTaskSpec) -> DootTaskSpec:
+        specialized = {}
+        for field in DootTaskSpec.__annotations__.keys():
+            match field:
+                case "name":
+                    specialized[field] = data.name
+                case _:
+                    default_val = DootTaskSpec.__dataclass_fields__.get(field, None)
+                    value = getattr(data, field)
+                    if value == default_val or ((not isinstance(value, bool)) and (not bool(value))):
+                        value = getattr(self, field)
+
+                    specialized[field] = value
+
+        return DootTaskSpec(**specialized)
 
 
     def __hash__(self):

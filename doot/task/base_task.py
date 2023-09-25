@@ -35,13 +35,15 @@ import importlib
 import doot
 import doot.errors
 import tomler
-from doot._abstract import Task_i, Tasker_i, Action_p
+from doot._abstract import Task_i, Tasker_i, Action_p, PluginLoader_p
 from doot.enums import TaskFlags, StructuredNameEnum
 from doot.structs import DootStructuredName, TaskStub, TaskStubPart
 from doot.actions.base_action import DootBaseAction
 from doot.errors import DootTaskLoadError
 
 from doot.mixins.importer import ImporterMixin
+
+ACTION_CTORS = {x.name : x.load() for x in PluginLoader_p.loaded.action}
 
 @doot.check_protocol
 class DootTask(Task_i, ImporterMixin):
@@ -56,24 +58,25 @@ class DootTask(Task_i, ImporterMixin):
 
     def __init__(self, spec, *, tasker=None, **kwargs):
         super().__init__(spec, tasker=tasker, **kwargs)
-        self._action_lookup = {}
         self.prepare_actions()
 
     @property
     def actions(self):
-        """lazy creation of action instances"""
+        """lazy creation of action instances,
+          `prepare_actions` has already ensured all ctors can be found
+        """
         for action_spec in self.spec.actions:
             match action_spec:
                 case list() as args:
                     yield self.action_ctor(tomler.Tomler({"args": args}))
                 case { "ctor" : str() as ctor_name, "args" : list() }:
-                    ctor = self._action_lookup[ctor_name]
+                    ctor = ACTION_CTORS[ctor_name]
                     yield ctor(tomler.Tomler(action_spec))
                 case { "fun"  : str() as fun_name,  "args" : list() }:
-                    fun = self._action_name(fun_name)
+                    fun = ACTION_CTORS[fun_name]
                     yield ftz.partial(fun, tomler.Tomler(action_spec))
                 case { "fun"  : str() as fun_name,  "args" : list() }:
-                    fun = self._action_name(fun_name)
+                    fun = ACTION_CTORS(fun_name)
                     yield ftz.partial(fun, tomlerTomler(action_spec))
                 case _:
                     raise DootTaskError("Bad Action Spec", self.name, action)
@@ -107,14 +110,12 @@ class DootTask(Task_i, ImporterMixin):
             match action_spec:
                 case list():
                     pass
-                case { "ctor" : str() as ctor_name, "args" : list() } if ctor_name not in self._action_lookup:
+                case { "ctor" : str() as ctor_name, "args" : list() } if ctor_name not in ACTION_CTORS:
                     ctor = self.import_class(ctor_name)
-                    self._action_lookup[ctor_name] = ctor
-                    pass
-                case { "fun"  : str() as fun_name,  "args" : list()} if fun_name not in self._action_lookup:
+                    ACTION_CTORS[ctor_name] = ctor
+                case { "fun"  : str() as fun_name,  "args" : list()} if fun_name not in ACTION_CTORS:
                     fun = self.import_class(fun_name)
-                    self._action_lookup[fun_name] = fun
-                    pass
+                    ACTION_CTORS[fun_name] = fun
                 case { "ctor" : str() } | { "fun"  : str() }:
                     pass
                 case _:

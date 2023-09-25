@@ -66,6 +66,7 @@ from doot.enums import TaskStateEnum, ReportEnum
 from doot._abstract import Tasker_i, Task_i, FailPolicy_p
 from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i, ReportLine_i, Action_p, Reporter_i
 from doot.utils.signal_handler import SignalHandler
+from doot.structs import DootTaskSpec
 
 dry_run = doot.args.on_fail(False).cmd.args.dry_run()
 
@@ -75,6 +76,7 @@ class DootRunner(TaskRunner_i):
 
     def __init__(self:Self, *, tracker:TaskTracker_i, reporter:Reporter_i, policy=None):
         super().__init__(tracker=tracker, reporter=reporter, policy=policy)
+        self.original_print_level = printer.level
         self.step = 0
 
 
@@ -84,7 +86,7 @@ class DootRunner(TaskRunner_i):
 
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
-        printer.setLevel("NOTSET")
+        printer.setLevel(self.original_print_level)
         printer.info("")
         printer.info("---------- Task Loop Finished ----------", extra={"colour":"green"})
         self._finish()
@@ -102,8 +104,8 @@ class DootRunner(TaskRunner_i):
           """
         # for threaded tasks: replace expand_tasker/execute_task/execute_action with twisted?
 
+        self.original_print_level = printer.level
         with SignalHandler():
-            # printer.info("---------- Task Loop Starting ----------", extra={"colour" : "green"})
             for task in iter(self.tracker):
                 if task is None:
                     continue
@@ -139,8 +141,7 @@ class DootRunner(TaskRunner_i):
                     self.reporter.trace(task.spec, flags = ReportEnum.TASK | ReportEnum.FAIL)
                     raise err
 
-            # printer.setLevel("NOTSET")
-            # printer.info("---------- Task Loop Finished ----------", extra={"colour":"green"})
+            printer.setLevel(self.original_print_level)
 
 
 

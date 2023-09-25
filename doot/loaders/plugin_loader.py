@@ -127,7 +127,8 @@ class DootPluginLoader(PluginLoader_p):
             raise doot.errors.DootPluginError("Failed to load plugin defaults: %s", err) from err
 
         logging.debug("Found %s plugins", len(self.plugins))
-        return tomler.Tomler(self.plugins)
+        PluginLoader_p.loaded = tomler.Tomler(self.plugins)
+        return PluginLoader_p.loaded
 
     def _load_system_plugins(self):
         if skip_plugin_search:

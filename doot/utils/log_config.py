@@ -172,7 +172,7 @@ class DootLogConfig:
             self.stream_handler.addFilter(_DootAnyFilter(stream_filter_names))
 
     def _setup_print_logging(self):
-        printer_log_level    = doot.config.on_fail("INFO", str|int).logging.printer.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
+        printer_log_level    = doot.config.on_fail("NOTSET", str|int).logging.printer.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
         printer_log_format   = doot.config.on_fail("{message}", str).logging.printer.format()
 
         self.print_stream_handler.setLevel(printer_log_level)

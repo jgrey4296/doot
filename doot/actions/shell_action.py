@@ -12,10 +12,10 @@ printer = logmod.getLogger("doot._printer")
 import sh
 import doot
 from doot.errors import DootTaskError
-from doot._abstract import Action_p
+# from doot._abstract import Action_p
+from doot.actions.base_action import DootBaseAction
 
-
-class DootShellAction(Action_p):
+class DootShellAction(DootBaseAction):
     """
     For actions in subshells.
     all other arguments are passed directly to the program, using `sh`
@@ -33,8 +33,9 @@ class DootShellAction(Action_p):
     def __call__(self, task_state_copy:dict) -> dict|bool|None:
         try:
             cmd    = getattr(sh, self.spec.args[0])
+            expanded = [self.expand_str(x, task_state_copy) for x in self.spec.args[1:]]
             # TODO if args contains "{varname}", then replace with that varname from task_state_copy
-            result = cmd(*self.spec.args[1:], _return_cmd=True, _bg=self.spec.on_fail(False, bool).background())
+            result = cmd(*expanded, _return_cmd=True, _bg=self.spec.on_fail(False, bool).background())
             assert(result.exit_code == 0)
             printer.info("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, self.spec.args[0], self.spec.args[1:])
             printer.info("%s", result, extra={"colour":"reset"})

@@ -43,6 +43,7 @@ from doot._abstract.task import Tasker_i
 @runtime_checkable
 class PluginLoader_p(Protocol):
     """ Base for the first things loaded: plugins."""
+    loaded : ClassVar[Tomler] = None
 
     @abstractmethod
     def setup(self, extra_config:Tomler) -> Self:

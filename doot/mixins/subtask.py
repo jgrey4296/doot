@@ -31,10 +31,17 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from doot.errors import DootDirAbsent, DootTaskError
-from doot.structs import DootStructuredName
+from doot.structs import DootStructuredName, DootTaskSpec
 from time import sleep
 
 class SubMixin:
+    """
+    Mixin methods for building subtasks.
+    The public method is `build`,
+    privately, `_build_subtask` will use `default_task`
+    and use the builders `extra.task` value as its ctor if that exists.
+    before calling `specialize_subtask` on the built spec
+    """
 
     @abc.abstractmethod
     def _build_subs(self) -> Generator[DootTaskSpec]:
@@ -50,8 +57,13 @@ class SubMixin:
         sleep(self.sleep_subtask)
 
     def _build_subtask(self, n:int, uname, **kwargs) -> DootTaskSpec:
-        task_spec = self.default_task(uname)
-        task      = self.specialize_subtask(task_spec, **kwargs)
+        task_spec = self.default_task(uname, extra=kwargs)
+
+        task_ref = self.spec.extra.on_fail(None, None|str).subtask()
+        if task_ref is not None:
+            task_spec.ctor_name = DootStructuredName.from_str(task_ref)
+
+        task      = self.specialize_subtask(task_spec)
         if task is None:
             return
 
@@ -63,5 +75,5 @@ class SubMixin:
     def subtask_name(self, val):
         return self.fullname.subtask(val)
 
-    def specialize_subtask(self, task, **kwargs) -> None|dict:
+    def specialize_subtask(self, task) -> None|dict|DootTaskSpec:
         return task

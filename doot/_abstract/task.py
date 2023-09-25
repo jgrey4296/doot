@@ -175,12 +175,11 @@ class Task_i(TaskBase_i):
     def __init__(self, spec:DootTaskSpec, *, tasker:Tasker_i=None, **kwargs):
         super().__init__(spec)
         self.tasker     = tasker
-        self.state      = {}
+        self.state      = dict(spec.extra)
         self.state.update(kwargs)
 
     def __repr__(self):
         return f"<Task: {self.name}>"
-
 
     def maybe_more_tasks(self) -> Generator[Task_i]:
         return iter([])
@@ -222,7 +221,7 @@ class Tasker_i(TaskBase_i):
         return "\n".join(help_lines)
 
     @abc.abstractmethod
-    def default_task(self, name:str|DootStructuredName|None) -> DootTaskSpec:
+    def default_task(self, name:str|DootStructuredName|None, extra:None|dict|Tomler) -> DootTaskSpec:
         raise NotImplementedError(self.__class__, "default_task")
 
     @abc.abstractmethod
@@ -232,7 +231,6 @@ class Tasker_i(TaskBase_i):
     @abc.abstractmethod
     def build(self, **kwargs) -> abc.Generator[Task_i]:
         raise NotImplementedError()
-
 
     @abc.abstractmethod
     def _build_head(self) -> DootTaskSpec:

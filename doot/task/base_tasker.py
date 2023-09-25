@@ -60,6 +60,7 @@ logging = logmod.getLogger(__name__)
 from tomler import Tomler
 import doot
 import doot.errors
+from doot.constants import SUBTASKED_HEAD
 from doot.enums import TaskFlags
 from doot.structs import DootTaskSpec, TaskStub, TaskStubPart, DootStructuredName
 from doot._abstract import Tasker_i, Task_i
@@ -80,17 +81,20 @@ class DootTasker(Tasker_i):
         assert(spec is not None), "Spec is empty"
         super(DootTasker, self).__init__(spec)
 
-    def default_task(self, name:str|DootStructuredName|None) -> DootTaskSpec:
+    def default_task(self, name:str|DootStructuredName|None, extra:None|dict|Tomler) -> DootTaskSpec:
+        task_name = None
         match name:
             case None:
-                return DootTaskSpec(name=self.fullname.subtask("head"))
+                task_name = self.fullname.subtask(SUBTASKED_HEAD)
             case str():
-                return DootTaskSpec(name=self.fullname.subtask(name))
+                task_name = self.fullname.subtask(name)
             case DootStructuredName():
-                return DootTaskSpec(name=name)
+                task_name = name
             case _:
                 raise doot.errors.DootTaskError("Bad value used to make a subtask in %s : %s", self.name, name)
 
+        assert(task_name is not None)
+        return DootTaskSpec(name=task_name, extra=Tomler(extra))
 
     def is_stale(self, task:Task_i):
         return False
@@ -98,24 +102,10 @@ class DootTasker(Tasker_i):
     def build(self, **kwargs) -> Generator[DootTaskSpec]:
         logging.debug("-- tasker %s expanding tasks", self.name)
         if bool(kwargs):
-            logging.debug("recieved kwargs: %s", kwargs)
+            logging.debug("received kwargs: %s", kwargs)
             self.args.update(kwargs)
 
         yield self._build_head()
-
-    def _build_head(self) -> DootTaskSpec:
-        logging.debug("Building Task for: %s", self.name)
-        task                             = self.default_task("head")
-        maybe_task : DootTaskSpec | None = self.specialize_task(task)
-
-        match maybe_task:
-            case None:
-                raise DootTaskError("Task Failed to specialize the head task: %s", self.name)
-            case _ if not bool(maybe_task.doc):
-                maybe_task.doc = self.doc
-                return maybe_task
-            case _:
-                return maybe_task
 
     def specialize_task(self, task):
         return task
@@ -134,3 +124,22 @@ class DootTasker(Tasker_i):
             stub['doc'].default   = [f"\"{x}\"" for x in self.doc]
         stub['flags'].default     = self.spec.flags
         return stub
+
+    def _build_head(self) -> DootTaskSpec:
+        logging.debug("Building Head Task for: %s", self.name)
+        task_spec                             = self.default_task(None, None)
+
+        task_ref = self.spec.extra.on_fail(None, None|str).head_task()
+        if task_ref is not None:
+            task_spec.ctor_name = DootStructuredName.from_str(task_ref)
+
+        maybe_task : DootTaskSpec | None = self.specialize_task(task_spec)
+
+        match maybe_task:
+            case None:
+                raise DootTaskError("Task Failed to specialize the head task: %s", self.name)
+            case _ if not bool(maybe_task.doc):
+                maybe_task.doc = self.doc
+                return maybe_task
+            case _:
+                return maybe_task
