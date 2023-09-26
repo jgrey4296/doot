@@ -31,7 +31,6 @@ logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
-
 import doot
 import doot.constants
 from doot._abstract import Command_i
@@ -42,7 +41,6 @@ from collections import defaultdict
 ##-- data
 data_path = doot.constants.TOML_TEMPLATE
 ##-- end data
-
 
 class StubCmd(Command_i):
     """ Called to interactively create a stub task definition
@@ -55,9 +53,10 @@ class StubCmd(Command_i):
     def param_specs(self) -> list:
         return super().param_specs + [
             self.make_param("file-target", type=str,     default=""),
-            self.make_param("ctor",       type=str,      default="",        desc="Full class import name of the task generator"),
             self.make_param("Config",                    default=False,     desc="Stub a doot.toml",                  prefix="--"),
             self.make_param("Types",                     default=False,     desc="List the types of task available", prefix="--"),
+            self.make_param("Actions",                   default=False,     desc="Help Stub Actions", prefix="--"),
+            self.make_param("Flags",                     default=False,     desc="Help Stub Task Flags", prefix="--"),
             self.make_param("name",        type=str,     default="stub::stub",    desc="The Name of the new task",                   positional=True),
             self.make_param("ctor",        type=str,     default="basic",   desc="The short type name of the task generator",  positional=True),
             self.make_param("suppress-header",           default=True, invisible=True)
@@ -69,6 +68,10 @@ class StubCmd(Command_i):
                 self._print_types(plugins)
             case {"Config": True}:
                 self._stub_doot_toml()
+            case {"Actions": True}:
+                self._stub_actions()
+            case {"Flags": True}:
+                self._stub_flags()
             case _:
                 self._stub_task_toml(tasks, plugins)
 
@@ -97,6 +100,10 @@ class StubCmd(Command_i):
         stub = TaskStub()
         stub['name'].default = DootStructuredName.from_str(doot.args.cmd.args.name)
         stub['ctor'].default = doot.args.on_fail("basic").cmd.args.ctor()
+        # TODO check the ctor exists
+
+        # TODO add ctor specific fields,
+        # such as for globber: roots [], exts [], recursive bool, subtask "", head_task ""
 
         original_name = stub['name'].default.task_str()
         while str(stub['name'].default) in tasks:
@@ -124,4 +131,10 @@ class StubCmd(Command_i):
             f.write(stub.to_toml())
 
     def _stub_locations(self, tasks, plugins):
+        raise NotImplementedError()
+
+    def _stub_actions(self):
+        raise NotImplementedError()
+
+    def _stub_flags(self):
         raise NotImplementedError()

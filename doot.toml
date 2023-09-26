@@ -6,7 +6,8 @@ notify                   = { say-on-exit = false }
 loaders                  = {commands = "default", task = "default", parser = "default"}
 
 [plugins]
-command        = {}
+# Allows for defining shorthands
+command        = { other-run = "doot.cmds.run_cmd:RunCmd" }
 report-line    = {}
 reporter       = {}
 action         = {}
@@ -24,6 +25,7 @@ file    = { level = "DEBUG", format = "{levelname:<8} : {message:<20} :|: ({modu
 printer = { colour = true }
 
 [[locations]]
+tasks        = ".tasks"
 temp         = ".temp"
 src          = "doot"
 build        = "build"

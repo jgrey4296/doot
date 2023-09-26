@@ -44,9 +44,8 @@ INDENT : Final[str] = " "*8
 
 @doot.check_protocol
 class PluginsCmd(Command_i):
-    _name      = "list"
-    _help      = ["A simple command to list all loaded task heads."]
-    STATUS_MAP = {'ignore': 'I', 'up-to-date': 'U', 'run': 'R', 'error': 'E'}
+    _name      = "plugins"
+    _help      = ["A simple command to list all loaded plugins."]
 
     @property
     def param_specs(self) -> list[DootParamSpec]:
@@ -100,7 +99,7 @@ class PluginsCmd(Command_i):
                 printer.info(fmt_str, *task)
 
     def _print_all_by_group(self, plugins):
-        printer.info("Defined Plugins by Group:")
+        printer.info("Defined Plugins by Group:", extra={"colour":"cyan"})
         max_key = len(max(plugins.keys(), key=len))
         fmt_str = f"{INDENT}%-{max_key}s :: %-25s"
         groups  = defaultdict(list)
@@ -109,7 +108,7 @@ class PluginsCmd(Command_i):
             groups[group_str] += [(spec.name, spec.value) for spec in specs]
 
         for group, plugins in groups.items():
-            printer.info("*   %s::", group)
+            printer.info("*   %s::", group, extra={"colour":"magenta"})
             for plugin in plugins:
                 printer.info(fmt_str, *plugin)
 

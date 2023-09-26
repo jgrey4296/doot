@@ -148,7 +148,7 @@ class DootRunner(TaskRunner_i):
     def _expand_tasker(self, tasker:Tasker_i) -> None:
         """ turn a tasker into all of its tasks, including teardowns """
         logmod.debug("-- Expanding Tasker %s: %s", self.step, tasker.name)
-        printer.warning("-- Tasker %s: %s", self.step, tasker.name, extra={"colour":"magenta"})
+        printer.info("-- Tasker %s: %s", self.step, tasker.name, extra={"colour":"magenta"})
         self.reporter.trace(tasker.spec, flags=ReportEnum.TASKER | ReportEnum.INIT)
         count = 0
         for task in tasker.build():
@@ -174,7 +174,7 @@ class DootRunner(TaskRunner_i):
     def _execute_task(self, task:Task_i) -> None:
         """ execute a single task's actions """
         logmod.debug("---- Executing Task %s: %s", self.step, task.name)
-        printer.warning("---- Task %s: %s", self.step, task.name, extra={"colour":"magenta"})
+        printer.info("---- Task %s: %s", self.step, task.name, extra={"colour":"magenta"})
         self.reporter.trace(task.spec, flags=ReportEnum.TASK | ReportEnum.INIT)
         # TODO <-- in the future, where DB checks for staleness, thread safety, etc will occur
 
@@ -214,7 +214,7 @@ class DootRunner(TaskRunner_i):
     def _execute_action(self, count, action, task) -> None:
         """ Run the given action of a specific task  """
         logmod.debug("------ Executing Action %s: %s for %s", count, action, task.name)
-        printer.warning("------ Action %s.%s: %s", self.step, count, str(action), extra={"colour":"cyan"})
+        printer.info("------ Action %s.%s: %s", self.step, count, str(action), extra={"colour":"cyan"})
         self.reporter.trace(action.spec, flags=ReportEnum.ACTION | ReportEnum.INIT)
 
         result = action(task.state.copy())

@@ -70,8 +70,9 @@ class DootEagerGlobber(SubMixin, DootTasker):
     def __init__(self, spec:DootTaskSpec):
         super().__init__(spec)
         self.exts           = {y for x in spec.extra.on_fail([]).exts() for y in [x.lower(), x.upper()]}
+        # TODO expand roots based on doot.locs
         self.roots          = [pl.Path(x) for x in spec.extra.on_fail([pl.Path()]).roots()]
-        self.rec            = spec.extra.on_fail(False).recursive()
+        self.rec            = spec.extra.on_fail(False, bool).recursive()
         self.total_subtasks = 0
         for x in self.roots:
             depth = len(set(self.__class__.mro()) - set(DootEagerGlobber.mro()))

@@ -37,7 +37,7 @@ class DootShellAction(DootBaseAction):
             # TODO if args contains "{varname}", then replace with that varname from task_state_copy
             result = cmd(*expanded, _return_cmd=True, _bg=self.spec.on_fail(False, bool).background())
             assert(result.exit_code == 0)
-            printer.info("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, self.spec.args[0], self.spec.args[1:])
+            printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, self.spec.args[0], self.spec.args[1:])
             printer.info("%s", result, extra={"colour":"reset"})
             return True
         except sh.CommandNotFound as err:

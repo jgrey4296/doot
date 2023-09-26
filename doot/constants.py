@@ -46,16 +46,15 @@ DEFAULT_PLUGINS['command']  = [("help"      ,      "doot.cmds.help_cmd:HelpCmd")
                                ("stub"      ,      "doot.cmds.stub_cmd:StubCmd")           ,
                                ("step"      ,      "doot.cmds.step_cmd:StepCmd")           ,
                                ("plugins"   ,      "doot.cmds.plugins_cmd:PluginsCmd")     ,
+                               ("locs"      ,      "doot.cmds.locs_cmd:LocsCmd")     ,
                               ]
 
-DEFAULT_PLUGINS['reporter'] = [
-    ("summary", "doot.reporters.summary_manager:DootReportManagerSummary"),
-    ("stack",   "doot.reporters.stack_manager:DootReportManagerStack")
-    ]
-DEFAULT_PLUGINS['report-line'] = [
-    ("basic", "doot.reporters.basic_reporters:DootAlwaysReport"),
-    ("time", "doot.reporters.basic_reporters:TimerReporter")
-    ]
+DEFAULT_PLUGINS['reporter'] = [("summary", "doot.reporters.summary_manager:DootReportManagerSummary"),
+                               ("stack",   "doot.reporters.stack_manager:DootReportManagerStack")
+        ]
+DEFAULT_PLUGINS['report-line'] = [("basic", "doot.reporters.basic_reporters:DootAlwaysReport"),
+                                  ("time", "doot.reporters.basic_reporters:TimerReporter")
+        ]
 DEFAULT_PLUGINS['database'] = []
 
 DEFAULT_PLUGINS['tracker']  = [("basic", "doot.control.tracker:DootTracker")]
@@ -64,14 +63,13 @@ DEFAULT_PLUGINS['runner']   = [("basic", "doot.control.runner:DootRunner")]
 
 DEFAULT_PLUGINS['parser']   = [("basic", "doot.parsers.parser:DootArgParser")]
 
-DEFAULT_PLUGINS['action']   = [("base"          , "doot.actions.base_action:DootBaseAction"),
-                               ("shell"         , "doot.actions.shell_action:DootShellAction"),
-                               ]
+DEFAULT_PLUGINS['action']   = [("basic"  , "doot.actions.base_action:DootBaseAction"),
+                               ("shell" , "doot.actions.shell_action:DootShellAction"),
+                              ]
 
-DEFAULT_PLUGINS['tasker']     = [("tasker"             , "doot.task.base_tasker:DootTasker")             ,
-                                 ("globber"            , "doot.task.globber:DootEagerGlobber")           ,
-
-                                 ("task"               , "doot.task.base_task:DootTask")             ,
+DEFAULT_PLUGINS['tasker']     = [("tasker"  , "doot.task.base_tasker:DootTasker"),
+                                 ("globber" , "doot.task.globber:DootEagerGlobber"),
+                                 ("task"    , "doot.task.base_task:DootTask"),
                                  ]
 
 ##-- end default plugins
@@ -89,9 +87,9 @@ DEFAULT_STUB_TASK_NAME : Final[str] = "stub::stub"
 
 ##-- end path and file names
 
-TASK_SEP   = "::"
-IMPORT_SEP = ":"
-SUBTASKED_HEAD = "$head$"
+TASK_SEP                          = "::"
+IMPORT_SEP                        = ":"
+SUBTASKED_HEAD                    = "$head$"
 
 DEFAULT_CLI_CMD     : Final[str]  = "run"
 
