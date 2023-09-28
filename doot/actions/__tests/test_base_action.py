@@ -44,8 +44,8 @@ class TestBaseAction:
         assert(action.spec == "example-spec")
 
     def test_call_action(self, caplog):
-        action = DootBaseAction("example-spec")
+        action = DootBaseAction(tomler.Tomler({"ctor": "basic", "args":["example-spec"]}))
         state  = { "count" : 0  }
         result = action(state)
         assert(result['count'] == 1)
-        assert("Action Spec: example-spec" in caplog.messages)
+        assert("Base Action Called: 0" in caplog.messages)

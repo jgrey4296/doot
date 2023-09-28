@@ -75,7 +75,7 @@ class TestSubtasks:
         tasks = list(obj.build())
         assert(len(tasks) == 3)
         names = [str(x.name) for x in tasks]
-        assert("default::simple.head" in names)
+        assert("default::simple.$head$" in names)
         assert("default::simple.first" in names)
         assert("default::simple.second" in names)
 
@@ -85,7 +85,7 @@ class TestSubtasks:
         tasks = list(obj.build())
         assert(len(tasks) == 5)
         names = [str(x.name) for x in tasks]
-        assert("default::simple.head" in names)
+        assert("default::simple.$head$" in names)
         assert("default::simple.setup" in names)
         assert("default::simple.teardown" in names)
         assert("default::simple.first" in names)

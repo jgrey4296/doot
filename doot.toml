@@ -7,7 +7,7 @@ loaders                  = {commands = "default", task = "default", parser = "de
 
 [plugins]
 # Allows for defining shorthands
-command        = { other-run = "doot.cmds.run_cmd:RunCmd" }
+command        = { other-run = "doot.cmds.run_cmd:RunCmd", tasks = "doot.cmds.list_cmd:ListCmd" }
 report-line    = {}
 reporter       = {}
 action         = {}

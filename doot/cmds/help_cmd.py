@@ -116,7 +116,7 @@ class HelpCmd(Command_i):
                 printer.info("-- %s", x.name)
 
         printer.info("\n------------------------------")
-        printer.info("DOOT HELP END: %s Tasks Matched", len(task_targets))
+        printer.info("Call a command by doing 'doot [cmd] [args]'. Eg: doot list --help")
 
 
     def print_task_spec(self, count, spec:DootTaskSpec):

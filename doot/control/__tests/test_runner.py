@@ -188,6 +188,7 @@ class TestRunner:
 
         action_m                        = mocker.MagicMock(spec=Action_p)
         action_m.spec                   = "blah"
+        type(action_m).__call__         = mocker.MagicMock(return_value=True)
         task1_m                         = mocker.MagicMock(spec=Task_i)
         task1_m.name                    = "firstTask"
         task1_m.spec                    = spec_m
@@ -222,4 +223,4 @@ class TestRunner:
 
         execute_task.assert_called()
         execute_action.assert_called()
-        action_m.assert_called()
+        action_m.__call__.assert_called()

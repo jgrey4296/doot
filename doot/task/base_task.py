@@ -43,7 +43,10 @@ from doot.errors import DootTaskLoadError
 
 from doot.mixins.importer import ImporterMixin
 
-ACTION_CTORS = {x.name : x.load() for x in PluginLoader_p.loaded.action}
+if PluginLoader_p.loaded:
+    ACTION_CTORS = {x.name : x.load() for x in PluginLoader_p.loaded.action}
+else:
+    ACTION_CTORS = {}
 
 @doot.check_protocol
 class DootTask(Task_i, ImporterMixin):

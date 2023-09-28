@@ -75,14 +75,14 @@ class TestCheckDirTask:
 
 
     def test_expand_actions(self):
-        obj = CheckDirTask(DootTaskSpec.from_dict({"name": "basic", "actions": [pl.Path()]}))
+        obj = CheckDirTask(DootTaskSpec.from_dict({"name": "basic", "actions": [[pl.Path()]]}))
         actions = list(obj.actions)
         assert(len(actions) == 1)
         assert(callable(actions[0]))
 
 
     def test_expand_multi_actions(self):
-        obj = CheckDirTask(DootTaskSpec.from_dict({"name": "basic", "actions": [pl.Path(), pl.Path("blah")]}))
+        obj = CheckDirTask(DootTaskSpec.from_dict({"name": "basic", "actions": [[pl.Path()], [pl.Path("blah")]]}))
         actions = list(obj.actions)
         assert(len(actions) == 2)
         assert(callable(actions[0]))
@@ -90,7 +90,7 @@ class TestCheckDirTask:
 
 
     def test_run_action(self):
-        obj = CheckDirTask(DootTaskSpec.from_dict({"name": "basic", "actions": [pl.Path()]}))
+        obj = CheckDirTask(DootTaskSpec.from_dict({"name": "basic", "actions": [[pl.Path()]]}))
         actions = list(obj.actions)
         assert(len(actions) == 1)
         result = actions[0]({})
@@ -98,7 +98,7 @@ class TestCheckDirTask:
 
 
     def test_run_action_nonexistent_target(self):
-        obj = CheckDirTask(DootTaskSpec.from_dict({"name": "basic", "actions": [pl.Path("blah")]}))
+        obj = CheckDirTask(DootTaskSpec.from_dict({"name": "basic", "actions": [[pl.Path("blah")]]}))
         actions = list(obj.actions)
         assert(len(actions) == 1)
         result = actions[0]({})

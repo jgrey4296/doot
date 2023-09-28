@@ -129,7 +129,7 @@ class DootTasker(Tasker_i):
         logging.debug("Building Head Task for: %s", self.name)
         task_spec                             = self.default_task(None, None)
 
-        task_ref = self.spec.extra.on_fail(None, None|str).head_task()
+        task_ref = self.spec.extra.on_fail((None,), None|str).head_task()
         if task_ref is not None:
             task_spec.ctor_name = DootStructuredName.from_str(task_ref)
 
