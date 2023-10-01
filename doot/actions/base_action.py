@@ -54,6 +54,7 @@ printer = logmod.getLogger("doot._printer")
 
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
+from doot.structs import DootActionSpec
 from doot._abstract import Action_p
 
 @doot.check_protocol
@@ -66,11 +67,11 @@ class DootBaseAction(Action_p):
     """
 
     def __str__(self):
-        return f"Base Action: {self.spec.args}"
+        return f"Base Action"
 
-    def __call__(self, task_state_copy:dict) -> dict|bool|None:
+    def __call__(self, spec:DootCallableAction, task_state_copy:dict) -> dict|bool|None:
         printer.debug("Base Action Called: %s", task_state_copy.get("count", 0))
-        printer.info(" ".join(self.expand_str(x, task_state_copy) for x in self.spec.args))
+        printer.info(" ".join(self.expand_str(x, task_state_copy) for x in spec.args))
         return { "count" : task_state_copy.get("count", 0) + 1 }
 
     def expand_str(self, val, state):

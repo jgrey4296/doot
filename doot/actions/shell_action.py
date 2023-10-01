@@ -9,6 +9,7 @@ logging = logmod.getLogger(__name__)
 
 printer = logmod.getLogger("doot._printer")
 
+import sys
 import sh
 import doot
 from doot.errors import DootTaskError
@@ -20,29 +21,70 @@ class DootShellAction(DootBaseAction):
     For actions in subshells.
     all other arguments are passed directly to the program, using `sh`
 
-    The arguments of the action are held in self.spec
-    __call__ is passed a *copy* of the task's state dictionary
+    The arguments of the action are held in spec
+    __call__ is passed the action spec, and a *copy* of the task's state dictionary
 
 
     TODO : handle shell output redirection, and error code ignoring (use action spec dict)
     """
 
     def __str__(self):
-        return f"Shell Action: {self.spec.args[0]}, Args: {self.spec.args[1:]}"
+        return "Shell Action"
 
-    def __call__(self, task_state_copy:dict) -> dict|bool|None:
+    def __call__(self, spec, task_state_copy:dict) -> dict|bool|None:
         try:
-            cmd    = getattr(sh, self.spec.args[0])
-            expanded = [self.expand_str(x, task_state_copy) for x in self.spec.args[1:]]
+            cmd    = getattr(sh, spec.args[0])
+            expanded = [self.expand_str(x, task_state_copy) for x in spec.args[1:]]
             # TODO if args contains "{varname}", then replace with that varname from task_state_copy
-            result = cmd(*expanded, _return_cmd=True, _bg=self.spec.on_fail(False, bool).background())
+            result = cmd(*expanded, _return_cmd=True, _bg=spec.kwargs.on_fail(False, bool).background())
             assert(result.exit_code == 0)
-            printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, self.spec.args[0], self.spec.args[1:])
+            printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, spec.args[0], spec.args[1:])
             printer.info("%s", result, extra={"colour":"reset"})
             return True
         except sh.CommandNotFound as err:
-            printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], self.spec.args)
+            printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], spec.args)
             return False
         except sh.ErrorReturnCode:
-            printer.error("Shell Command '%s' exited with code: %s for args: %s", self.spec[0], result.exit_code, self.spec.args)
+            printer.error("Shell Command '%s' exited with code: %s for args: %s", spec[0], result.exit_code, spec.args)
             return False
+
+class DootInteractiveAction(DootBaseAction):
+    aggregated = ""
+    prompt     = ">>> "
+    cont       = "... "
+
+    def __call__(self, task_state_copy:dict) -> dict|bool|None:
+        try:
+            cmd    = getattr(sh, spec.args[0])
+            expanded = [self.expand_str(x, task_state_copy) for x in spec.args[1:]]
+            # TODO if args contains "{varname}", then replace with that varname from task_state_copy
+            result = cmd(*expanded, _return_cmd=True, _bg=spec.kwargs.on_fail(False, bool).background(), _out=self.interact, _out_bufsize=0, _tty_in=True, _unify_ttys=True)
+            assert(result.exit_code == 0)
+            printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, spec.args[0], spec.args[1:])
+            printer.info("%s", result, extra={"colour":"reset"})
+            return True
+        except sh.CommandNotFound as err:
+            printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], spec.args)
+            return False
+        except sh.ErrorReturnCode:
+            printer.error("Shell Command '%s' exited with code: %s for args: %s", spec[0], result.exit_code, spec.args)
+            return False
+
+
+    def interact(self, char, stdin):
+        # TODO possibly add a custom interupt handler
+        self.aggregated += char
+        if self.aggregated.endswith("\n"):
+            printer.info(self.aggregated.strip())
+            self.aggregated = ""
+
+        if self.aggregated.startswith(self.prompt) :
+            self.aggregated = ""
+            stdin.put(input(self.prompt) + "\n")
+        elif self.aggregated.startswith(self.cont):
+            self.aggregated = ""
+            val = input(self.cont)
+            if bool(val):
+                stdin.put("    " + input(self.cont) + "\n")
+            else:
+                stdin.put(input(self.cont) + "\n")

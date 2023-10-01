@@ -65,6 +65,7 @@ from collections import ChainMap
 import importlib
 import tomler
 import doot
+import doot.errors
 from doot.structs import DootTaskSpec
 from doot.constants import DEFAULT_TASK_GROUP, IMPORT_SEP
 from doot._abstract import TaskLoader_p, Tasker_i, Task_i
@@ -220,7 +221,8 @@ class DootTaskLoader(TaskLoader_p):
 
                     case _:
                         raise doot.errors.DootTaskLoadError("Task Spec missing, at least, a name and ctor: %s: %s", spec['source'], spec)
-
+            except doot.errors.DootLocationError as err:
+                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Missing Location: '%s'. Source File: %s", task_name, str(err), spec['source']) from err
             except ModuleNotFoundError as err:
                 raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Module Name: '%s'. Source File: %s", task_name, task_type, spec['source']) from err
             except AttributeError as err:

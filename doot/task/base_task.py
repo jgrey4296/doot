@@ -31,22 +31,16 @@ logging = logmod.getLogger(__name__)
 
 printer = logmod.getLogger("doot._printer")
 
-import importlib
 import doot
 import doot.errors
 import tomler
 from doot._abstract import Task_i, Tasker_i, Action_p, PluginLoader_p
 from doot.enums import TaskFlags, StructuredNameEnum
-from doot.structs import DootStructuredName, TaskStub, TaskStubPart
+from doot.structs import DootStructuredName, TaskStub, TaskStubPart, DootActionSpec
 from doot.actions.base_action import DootBaseAction
-from doot.errors import DootTaskLoadError
+from doot.errors import DootTaskLoadError, DootTaskError
 
 from doot.mixins.importer import ImporterMixin
-
-if PluginLoader_p.loaded:
-    ACTION_CTORS = {x.name : x.load() for x in PluginLoader_p.loaded.action}
-else:
-    ACTION_CTORS = {}
 
 @doot.check_protocol
 class DootTask(Task_i, ImporterMixin):
@@ -68,21 +62,7 @@ class DootTask(Task_i, ImporterMixin):
         """lazy creation of action instances,
           `prepare_actions` has already ensured all ctors can be found
         """
-        for action_spec in self.spec.actions:
-            match action_spec:
-                case list() as args:
-                    yield self.action_ctor(tomler.Tomler({"args": args}))
-                case { "ctor" : str() as ctor_name, "args" : list() }:
-                    ctor = ACTION_CTORS[ctor_name]
-                    yield ctor(tomler.Tomler(action_spec))
-                case { "fun"  : str() as fun_name,  "args" : list() }:
-                    fun = ACTION_CTORS[fun_name]
-                    yield ftz.partial(fun, tomler.Tomler(action_spec))
-                case { "fun"  : str() as fun_name,  "args" : list() }:
-                    fun = ACTION_CTORS(fun_name)
-                    yield ftz.partial(fun, tomlerTomler(action_spec))
-                case _:
-                    raise DootTaskError("Bad Action Spec", self.name, action)
+        yield from iter(self.spec.actions)
 
     @property
     def is_stale(self):
@@ -110,16 +90,10 @@ class DootTask(Task_i, ImporterMixin):
         """ if the task spec requires particular action ctors, load them """
         logging.info("Preparing Actions: %s", self.name)
         for action_spec in self.spec.actions:
-            match action_spec:
-                case list():
-                    pass
-                case { "ctor" : str() as ctor_name, "args" : list() } if ctor_name not in ACTION_CTORS:
-                    ctor = self.import_class(ctor_name)
-                    ACTION_CTORS[ctor_name] = ctor
-                case { "fun"  : str() as fun_name,  "args" : list()} if fun_name not in ACTION_CTORS:
-                    fun = self.import_class(fun_name)
-                    ACTION_CTORS[fun_name] = fun
-                case { "ctor" : str() } | { "fun"  : str() }:
-                    pass
-                case _:
-                    raise DootTaskLoadError("Bad Action Spec", self.name, action_spec)
+            assert(isinstance(action_spec, DootActionSpec))
+            if action_spec.fun is not None:
+                continue
+
+            assert(action_spec.ctor is not None), action_spec
+            ctor_name = action_spec.ctor
+            action_spec.set_function(self.import_class(ctor_name))

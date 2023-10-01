@@ -29,7 +29,7 @@ logging = logmod.getLogger(__name__)
 
 import re
 import tomler
-from doot.errors import DootDirAbsent, DootLocationExpansionError
+from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
 from doot.structs import DootStructuredName
 
 KEY_PAT        = re.compile("{(.+?)}")
@@ -63,7 +63,10 @@ class DootLocations:
         """
           get a location by name from loaded toml
         """
-        return self._calc_path(val, self._data[val])
+        try:
+            return self._calc_path(val, self._data[val])
+        except tomler.TomlAccessError as err:
+            raise DootLocationError("Missing Location: %s",  str(err)) from err
 
     def __getitem__(self, val) -> pl.Path:
         return self.__getattr__(val)

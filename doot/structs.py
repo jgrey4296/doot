@@ -320,6 +320,69 @@ class DootStructuredName:
             raise ImportError("Attempted to import %s but failed", str(self)) from err
 
 @dataclass
+class DootActionSpec:
+    """
+      TODO rename to DootActionSpec
+      When an action isn't a full blown class, it gets wrapped in this,
+      which passes the action spec to the callable
+    """
+    ctor       : None|str                = field(default=None)
+    args       : list[Any]               = field(default_factory=list)
+    kwargs     : Tomler                  = field(default_factory=Tomler)
+    inState    : set[str]                = field(default_factory=set)
+    outState   : set[str]                = field(default_factory=set)
+    fun        : None|Callable           = field(default=None)
+
+
+    def __call__(self, task_state_copy:dict):
+        return self.fun(self, task_state_copy)
+
+    def set_function(self, fun:Action_p|Callable):
+        # if the function/class has an inState/outState attribute, add those to the spec's fields
+        if hasattr(fun, 'inState') and isinstance(getattr(fun, 'inState'), list):
+            self.inState.update(getattr(fun, 'inState'))
+
+        if hasattr(fun, 'outState') and isinstance(getattr(fun, 'outState'), list):
+            self.outState.update(getattr(fun, 'outState'))
+
+        if isinstance(fun, type):
+            self.fun = fun()
+        elif callable(fun):
+            self.fun = fun
+        else:
+            raise doot.errors.DootActionError("Action Spec Given a non-callable fun: %s", fun)
+
+
+    def verify(self, state:dict, *, fields=None):
+        pos = "Output"
+        if fields is None:
+            pos = "Input"
+            fields = self.inState
+        if all(x in state for x in fields):
+            return
+
+        raise doot.errors.DootActionStateError("%s Fields Missing: %s", pos, [x for x in fields if x not in state])
+
+    def verify_out(self, state:dict):
+        self.verify(state, fields=self.outState)
+
+    @staticmethod
+    def from_dict(data:dict, *, fun=None) -> DootActionSpec:
+        kwargs = Tomler({x:y for x,y in data.items() if x not in DootActionSpec.__dataclass_fields__.keys()})
+
+        action_spec = DootActionSpec(
+            ctor=data['ctor'],
+            args=data.get('args',[]),
+            kwargs=kwargs,
+            inState=set(data.get('inState', set())),
+            outState=set(data.get('outState', set())),
+            )
+        if callable(fun):
+            action_spec.set_function(fun)
+
+        return action_spec
+
+@dataclass
 class DootTaskSpec:
     """ The information needed to describe a generic task
 
@@ -354,6 +417,7 @@ class DootTaskSpec:
         core_data   = {}
         extra_data  = {}
 
+        # Integrate extras, normalize keys
         for key, val in data.items():
             if key == "extra":
                 extra_data.update(dict(val))
@@ -364,6 +428,7 @@ class DootTaskSpec:
             elif key not in ['name', 'group']:
                 extra_data[key] = val
 
+        # Construct group and name
         match data:
             case {"group": group, "name": str() as name}:
                 core_data['name']  = DootStructuredName(data['group'], data['name'])
@@ -374,11 +439,13 @@ class DootTaskSpec:
             case _:
                 core_data['name'] = DootStructuredName(None, None)
 
+        # Check flags are valid
         if 'flags' in data and any(x not in TaskFlagNames for x in data.get('flags', [])):
             logging.warning("Unknown Task Flag used, check the spec for %s in %s", core_data['name'], data.get('source', ''))
 
         core_data['flags'] = ftz.reduce(lambda x,y: x|y, map(lambda x: TaskFlags[x],  filter(lambda x: x in TaskFlagNames, core_data.get('flags', ["TASK"]))))
 
+        # Prepare constructor name
         core_data['ctor']  = ctor or core_data.get('ctor', None)
         if ctor_name is not None:
             core_data['ctor_name']      = DootStructuredName.from_str(ctor_name, form=StructuredNameEnum.CLASS)
@@ -387,10 +454,17 @@ class DootTaskSpec:
         else:
             core_data['ctor_name']      = DootStructuredName.from_str(doot.constants.DEFAULT_PLUGINS['tasker'][0][1], form=StructuredNameEnum.CLASS)
 
+
+        # prep actions
+        core_data['actions'] = [DootActionSpec.from_dict(x) for x in core_data.get('actions', [])]
+
         return DootTaskSpec(**core_data, extra=Tomler(extra_data))
 
 
     def specialize_from(self, data:DootTaskSpec) -> DootTaskSpec:
+        """
+          Specialize an existing task spec, with additional data
+        """
         specialized = {}
         for field in DootTaskSpec.__annotations__.keys():
             match field:

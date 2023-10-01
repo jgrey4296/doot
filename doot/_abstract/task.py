@@ -42,11 +42,8 @@ class Action_p(Protocol):
     holds individual action information and state, and executes it
     """
 
-    def __init__(self, spec:Tomler):
-        self.spec : Tomler = spec
-
     @abc.abstractmethod
-    def __call__(self, task_state_copy:dict) -> dict|bool|None:
+    def __call__(self, spec, task_state_copy:dict) -> dict|bool|None:
         raise NotImplementedError()
 
 class TaskBase_i(ParamSpecMaker_m):
@@ -177,6 +174,8 @@ class Task_i(TaskBase_i):
         self.tasker     = tasker
         self.state      = dict(spec.extra)
         self.state.update(kwargs)
+        self.state['_task_name']   = self.name
+        self.state['_action_step'] = 0
 
     def __repr__(self):
         return f"<Task: {self.name}>"

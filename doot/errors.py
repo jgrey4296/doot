@@ -68,6 +68,14 @@ class DootTaskTrackingError(DootTaskError):
 class DootTaskInterrupt(DootTaskError):
     pass
 
+class DootActionError(DootTaskError):
+    general_msg = "Doot Action Failure:"
+    pass
+
+class DootActionStateError(DootActionError):
+    general_msg = "Doot Action State Fields Missing:"
+    pass
+
 class DootParseError(DootError):
     general_msg = "Doot CLI Parsing Failure:"
     pass

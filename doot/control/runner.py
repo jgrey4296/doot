@@ -66,7 +66,7 @@ from doot.enums import TaskStateEnum, ReportEnum
 from doot._abstract import Tasker_i, Task_i, FailPolicy_p
 from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i, ReportLine_i, Action_p, Reporter_i
 from doot.utils.signal_handler import SignalHandler
-from doot.structs import DootTaskSpec
+from doot.structs import DootTaskSpec, DootActionSpec
 
 dry_run = doot.args.on_fail(False).cmd.args.dry_run()
 
@@ -129,13 +129,13 @@ class DootRunner(TaskRunner_i):
                     self.reporter.trace(task.spec, flags=ReportEnum.FAIL)
                     pass
                 except doot.errors.DootTaskFailed as err:
-                    printer.warning("Task Failed: %s", task.name)
+                    printer.warning("Task Failed: %s : %s", task.name, err)
                     self.tracker.update_state(task, TaskStateEnum.FAILED)
                 except doot.errors.DootTaskError as err:
-                    printer.warning("Error : %s", err, task.name)
+                    printer.warning("Error : %s : %s", task.name, err)
                     self.tracker.update_state(task, TaskStateEnum.FAILED)
                 except doot.errors.DootError as err:
-                    printer.warning("Doot Error : %s", task.name)
+                    printer.warning("Doot Error : %s : %s", task.name, err)
                     self.tracker.update_state(task, TaskStateEnum.FAILED)
                 except Exception as err:
                     self.reporter.trace(task.spec, flags = ReportEnum.TASK | ReportEnum.FAIL)
@@ -154,8 +154,9 @@ class DootRunner(TaskRunner_i):
         for task in tasker.build():
             match task:
                 case Tasker_i():
-                    self.reporter.trace(tasker.spec, flags=ReportEnum.FAIL | ReportEnum.TASKER)
-                    raise doot.errors.DootTaskError("Taskers can't build taskers: %s", task.name, task=tasker.spec)
+                    printer.warning("Taskers probably shouldn't build taskers: %s : %s", tasker.name, task.name)
+                    self.tracker.add_task(task, no_root_connection=True)
+                    self.tracker.queue_task(task.name)
                 case Task_i():
                     self.tracker.add_task(task, no_root_connection=True)
                     self.tracker.queue_task(task.name)
@@ -184,7 +185,10 @@ class DootRunner(TaskRunner_i):
                 case _ if dry_run:
                     logging.info("Dry Run: Not executing action: %s : %s", task.name, action, extra={"colour":"cyan"})
                     self.reporter.trace(task.spec, flags=ReportEnum.ACTION | ReportEnum.SKIP)
-                case Action_p() | Callable():
+                case DootActionSpec() if action.fun is None:
+                    self.reporter.trace(task.spec, flags=ReportEnum.FAIL | ReportEnum.TASK)
+                    raise doot.errors.DootTaskError("Task %s Failed: Produced an action with no callable: %s", task.name, action, task=task.spec)
+                case DootActionSpec():
                     self._execute_action(action_count, action, task)
                 case _:
                     self.reporter.trace(task.spec, flags=ReportEnum.FAIL | ReportEnum.TASK)
@@ -215,7 +219,9 @@ class DootRunner(TaskRunner_i):
         """ Run the given action of a specific task  """
         logmod.debug("------ Executing Action %s: %s for %s", count, action, task.name)
         printer.info("------ Action %s.%s: %s", self.step, count, str(action), extra={"colour":"cyan"})
-        self.reporter.trace(action.spec, flags=ReportEnum.ACTION | ReportEnum.INIT)
+        self.reporter.trace(action, flags=ReportEnum.ACTION | ReportEnum.INIT)
+        task.state['_action_step'] = count
+        action.verify(task.state)
 
         result = action(task.state.copy())
         match result:
@@ -226,14 +232,16 @@ class DootRunner(TaskRunner_i):
             case True:
                 pass
             case False:
-                self.reporter.trace(action.spec, flags=ReportEnum.FAIL | ReportEnum.ACTION)
+                self.reporter.trace(action, flags=ReportEnum.FAIL | ReportEnum.ACTION)
                 raise doot.errors.DootTaskFailed("Task %s Action Failed: %s", task.name, action, task=task.spec)
             case _:
-                self.reporter.trace(action.spec, flags=ReportEnum.FAIL | ReportEnum.ACTION)
+                self.reporter.trace(action, flags=ReportEnum.FAIL | ReportEnum.ACTION)
                 raise doot.errors.DootTaskError("Task %s Action %s Failed: Returned an unplanned for value: %s", task.name, action, result, task=task.spec)
 
+        action.verify_out(task.state)
+
         logmod.debug("------ Action Execution Complete: %s for %s", action, task.name)
-        self.reporter.trace(action.spec, flags=ReportEnum.ACTION | ReportEnum.SUCCEED)
+        self.reporter.trace(action, flags=ReportEnum.ACTION | ReportEnum.SUCCEED)
 
     def _finish(self):
         """finish running tasks"""
