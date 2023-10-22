@@ -53,8 +53,10 @@ class DootTask(Task_i, ImporterMixin):
     _default_flags = TaskFlags.TASK
     _help          = ["The Simplest Task"]
 
-    def __init__(self, spec, *, tasker=None, **kwargs):
+    def __init__(self, spec, *, tasker=None, action_ctor=None, **kwargs):
         super().__init__(spec, tasker=tasker, **kwargs)
+        if action_ctor:
+            self.action_ctor = action_ctor
         self.prepare_actions()
 
     @property
@@ -87,13 +89,18 @@ class DootTask(Task_i, ImporterMixin):
         return stub
 
     def prepare_actions(self):
-        """ if the task spec requires particular action ctors, load them """
+        """ if the task/action spec requires particular action ctors, load them.
+          if the action spec doesn't have a ctor, use the task's action_ctor
+        """
         logging.info("Preparing Actions: %s", self.name)
         for action_spec in self.spec.actions:
             assert(isinstance(action_spec, DootActionSpec))
             if action_spec.fun is not None:
                 continue
+            if action_spec.ctor is not None:
+                ctor_name = action_spec.ctor
+                action_spec.set_function(self.import_class(ctor_name))
+                continue
 
-            assert(action_spec.ctor is not None), action_spec
-            ctor_name = action_spec.ctor
-            action_spec.set_function(self.import_class(ctor_name))
+            assert(action_spec.ctor is None), action_spec
+            action_spec.set_function(self.action_ctor)

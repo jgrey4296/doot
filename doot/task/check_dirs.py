@@ -23,11 +23,10 @@ class CheckDirTask(DootTask):
     """ A Task for checking a single location exists """
 
     def __init__(self, spec):
-        super().__init__(spec)
-        self.action_ctor = lambda x: partial(self.checkdir, x)
+        super().__init__(spec, action_ctor=self.checkdir)
 
-    def checkdir(self, target, task_state_copy):
-        return target.exists()
+    def checkdir(self, spec, task_state_copy):
+        return spec.args[0].exists()
 
 
 @doot.check_protocol
@@ -38,6 +37,7 @@ class CheckDirTasker(DootTasker):
         if isinstance(locs, DootTaskSpec):
             raise doot.errors.DootTaskError("CheckDirTasker has no need for a task spec")
         super().__init__(DootTaskSpec.from_dict({"name": "_locations::check"}))
+
         self.locs = locs or doot.locs
 
     def build(self, **kwargs) -> Generator[TaskBase_i]:
@@ -46,7 +46,7 @@ class CheckDirTasker(DootTasker):
             loc = self.locs[x]
             sub = DootTaskSpec.from_dict({
                 "name"    : self.fullname.subtask(x),
-                "actions" : [loc],
+                "actions" : [[loc]],
                 "ctor"    : CheckDirTask
                                          })
             head.runs_after.append(sub.name)

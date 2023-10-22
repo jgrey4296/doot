@@ -208,7 +208,11 @@ class DootParamSpec:
 
 @dataclass
 class DootStructuredName:
-    """ complex names of the form ".".join(group)::".".join(task) """
+    """ A Complex name class for identifying tasks and classes.
+      Classes are the standard form using in importlib: doot.structs:DootStucturedName
+      Tasks use a double colon to separate group from task name: tasks.globGroup::GlobTask
+
+    """
     group           : list[str]          = field(default_factory=list)
     task            : list[str]          = field(default_factory=list)
 
@@ -322,9 +326,13 @@ class DootStructuredName:
 @dataclass
 class DootActionSpec:
     """
-      TODO rename to DootActionSpec
       When an action isn't a full blown class, it gets wrapped in this,
-      which passes the action spec to the callable
+      which passes the action spec to the callable.
+
+      TODO: recogise arg prefixs and convert to correct type.
+      eg: path:a/relative/path  -> Path(./a/relative/path)
+      path:/usr/bin/python  -> Path(/usr/bin/python)
+
     """
     ctor       : None|str                = field(default=None)
     args       : list[Any]               = field(default_factory=list)
@@ -338,6 +346,12 @@ class DootActionSpec:
         return self.fun(self, task_state_copy)
 
     def set_function(self, fun:Action_p|Callable):
+        """
+          Sets the function of the action spec.
+          if given a class, the class it built,
+          if given a callable, that is used directly.
+
+        """
         # if the function/class has an inState/outState attribute, add those to the spec's fields
         if hasattr(fun, 'inState') and isinstance(getattr(fun, 'inState'), list):
             self.inState.update(getattr(fun, 'inState'))
@@ -347,9 +361,10 @@ class DootActionSpec:
 
         if isinstance(fun, type):
             self.fun = fun()
-        elif callable(fun):
-            self.fun = fun
         else:
+            self.fun = fun
+
+        if not callable(self.fun):
             raise doot.errors.DootActionError("Action Spec Given a non-callable fun: %s", fun)
 
 
@@ -367,20 +382,30 @@ class DootActionSpec:
         self.verify(state, fields=self.outState)
 
     @staticmethod
-    def from_dict(data:dict, *, fun=None) -> DootActionSpec:
-        kwargs = Tomler({x:y for x,y in data.items() if x not in DootActionSpec.__dataclass_fields__.keys()})
+    def from_data(data:dict|list, *, fun=None) -> DootActionSpec:
+        match data:
+            case list():
+                action_spec = DootActionSpec(
+                    args=data,
+                    fun=fun if callable(fun) else None
+                    )
+                return action_spec
 
-        action_spec = DootActionSpec(
-            ctor=data['ctor'],
-            args=data.get('args',[]),
-            kwargs=kwargs,
-            inState=set(data.get('inState', set())),
-            outState=set(data.get('outState', set())),
-            )
-        if callable(fun):
-            action_spec.set_function(fun)
+            case dict():
+                kwargs = Tomler({x:y for x,y in data.items() if x not in DootActionSpec.__dataclass_fields__.keys()})
+                action_spec = DootActionSpec(
+                    ctor=data['ctor'],
+                    args=data.get('args',[]),
+                    kwargs=kwargs,
+                    inState=set(data.get('inState', set())),
+                    outState=set(data.get('outState', set())),
+                    fun=fun if callable(fun) else None
+                    )
+                return action_spec
+            case _:
+                raise doot.errors.DootActionError("Unrecognized specification data", data)
 
-        return action_spec
+
 
 @dataclass
 class DootTaskSpec:
@@ -456,7 +481,7 @@ class DootTaskSpec:
 
 
         # prep actions
-        core_data['actions'] = [DootActionSpec.from_dict(x) for x in core_data.get('actions', [])]
+        core_data['actions'] = [DootActionSpec.from_data(x) for x in core_data.get('actions', [])]
 
         return DootTaskSpec(**core_data, extra=Tomler(extra_data))
 

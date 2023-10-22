@@ -9,6 +9,7 @@ import pathlib as pl
 from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
                     Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
                     TypeVar, cast)
+from dataclasses import fields
 import warnings
 import os
 
@@ -39,13 +40,14 @@ from doot.actions.base_action import DootBaseAction
 class TestBaseAction:
 
     def test_initial(self):
-        action = DootBaseAction("example-spec")
+        action = DootBaseAction()
         assert(isinstance(action, DootBaseAction))
-        assert(action.spec == "example-spec")
 
-    def test_call_action(self, caplog):
-        action = DootBaseAction(tomler.Tomler({"ctor": "basic", "args":["example-spec"]}))
+    def test_call_action(self, caplog, mocker):
+        action = DootBaseAction()
         state  = { "count" : 0  }
-        result = action(state)
+        spec   = mocker.Mock(spec=doot.structs.DootActionSpec)
+        spec.args = []
+        result = action(spec, state)
         assert(result['count'] == 1)
         assert("Base Action Called: 0" in caplog.messages)
