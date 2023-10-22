@@ -99,7 +99,7 @@ class DootLocations:
     def get(self, val, default=None):
         try:
             return self.__getattr__(val)
-        except tomler.TomlAccessError as err:
+        except DootLocationError as err:
             if default is not None:
                 return self._calc_path(val, default)
             raise err

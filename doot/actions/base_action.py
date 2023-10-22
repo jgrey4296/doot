@@ -62,14 +62,14 @@ class DootBaseAction(Action_p):
     """
     The basic action, which just prints that the action was called
     Subclass this and override __call__ for your own actions.
-    The arguments of the action are held in self.spec
+    The arguments of the action are held in the passed in spec
     __call__ is passed a *copy* of the task's state dictionary
     """
 
     def __str__(self):
         return f"Base Action"
 
-    def __call__(self, spec:DootCallableAction, task_state_copy:dict) -> dict|bool|None:
+    def __call__(self, spec:DootActionSpec, task_state_copy:dict) -> dict|bool|None:
         printer.debug("Base Action Called: %s", task_state_copy.get("count", 0))
         printer.info(" ".join(self.expand_str(x, task_state_copy) for x in spec.args))
         return { "count" : task_state_copy.get("count", 0) + 1 }

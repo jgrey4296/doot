@@ -14,7 +14,7 @@ import warnings
 import pytest
 
 import tomler
-from doot.errors import DootDirAbsent, DootLocationExpansionError
+from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
 from doot.control.locations import DootLocations
 
 logging = logmod.root
@@ -100,7 +100,7 @@ class TestLocations:
         simple.update({"a": "blah"})
         assert(bool(simple._data))
 
-        with pytest.raises(tomler.TomlAccessError):
+        with pytest.raises(DootLocationError):
             simple.b
 
     def test_ensure_succeed(self):
