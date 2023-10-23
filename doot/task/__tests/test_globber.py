@@ -54,7 +54,6 @@ class TestGlobber:
     def test_basic_glob(self, wrap_tmp):
         (wrap_tmp / "first").mkdir()
         (wrap_tmp / "second").mkdir()
-
         obj = DootEagerGlobber(DootTaskSpec.from_dict({"name" : "basic"}))
 
         count = 0
@@ -148,7 +147,6 @@ class TestGlobber:
             "recursive"   : False,
             "roots"       : [pl.Path() / "aweg" ],
                                                       }))
-
         count = 0
         for sub in obj.build():
             count += 1

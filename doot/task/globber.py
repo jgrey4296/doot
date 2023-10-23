@@ -70,16 +70,16 @@ class DootEagerGlobber(SubMixin, DootTasker):
     def __init__(self, spec:DootTaskSpec):
         super().__init__(spec)
         self.exts           = {y for x in spec.extra.on_fail([]).exts() for y in [x.lower(), x.upper()]}
-        # TODO expand roots based on doot.locs
-        self.roots          = [pl.Path(x) for x in spec.extra.on_fail([pl.Path()]).roots()]
+        # expand roots based on doot.locs
+        self.roots          = [doot.locs.get(x, fallback=pl.Path()) for x in spec.extra.on_fail([pl.Path()]).roots()]
         self.rec            = spec.extra.on_fail(False, bool).recursive()
         self.total_subtasks = 0
         for x in self.roots:
             depth = len(set(self.__class__.mro()) - set(DootEagerGlobber.mro()))
             if not x.exists():
-                logging.warning(f"Globber Missing Root: {x}", stacklevel=depth)
+                logging.warning(f"Globber Missing Root: {x.name}", stacklevel=depth)
             if not x.is_dir():
-                 logging.warning(f"Globber Root is a file: {x}", stacklevel=depth)
+                 logging.warning(f"Globber Root is a file: {x.name}", stacklevel=depth)
 
     def filter(self, target:pl.Path) -> bool | _GlobControl:
         """ filter function called on each prospective glob result

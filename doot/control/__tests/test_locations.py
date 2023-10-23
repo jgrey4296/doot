@@ -76,6 +76,36 @@ class TestLocations:
         assert(isinstance(simple.a, pl.Path))
 
 
+    def test_expansion_simple(self):
+        simple = DootLocations(pl.Path.cwd())
+        assert(not bool(simple._data))
+        simple.update({"a": "{other}", "other": "bloo"})
+        assert(bool(simple._data))
+
+        assert(simple.a == pl.Path("bloo").absolute())
+        assert(isinstance(simple.a, pl.Path))
+
+
+    def test_expansion_item(self):
+        simple = DootLocations(pl.Path.cwd())
+        assert(not bool(simple._data))
+        simple.update({"a": "{other}", "other": "bloo"})
+        assert(bool(simple._data))
+
+        assert(simple['a'] == pl.Path("bloo").absolute())
+        assert(isinstance(simple['a'], pl.Path))
+
+
+    def test_expansion_in_item(self):
+        simple = DootLocations(pl.Path.cwd())
+        assert(not bool(simple._data))
+        simple.update({"other": "bloo"})
+        assert(bool(simple._data))
+
+        assert(simple['{other}'] == pl.Path("bloo").absolute())
+        assert(isinstance(simple['{other}'], pl.Path))
+
+
     def test_access_nested_expansion(self):
         simple = DootLocations(pl.Path.cwd())
         assert(not bool(simple._data))

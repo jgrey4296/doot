@@ -57,16 +57,13 @@ class DootLocations:
 
     def __repr__(self):
         keys = ", ".join(iter(self))
-        return f"<DootLocations : {str(self._root)} : ({keys})>"
+        return f"<DootLocations : {str(self.root)} : ({keys})>"
 
-    def __getattr__(self, val) -> pl.Path:
+    def __getattr__(self, key) -> pl.Path:
         """
           get a location by name from loaded toml
         """
-        try:
-            return self._calc_path(val, self._data[val])
-        except tomler.TomlAccessError as err:
-            raise DootLocationError("Missing Location: %s",  str(err)) from err
+        return self._calc_path(key)
 
     def __getitem__(self, val) -> pl.Path:
         return self.__getattr__(val)
@@ -77,17 +74,36 @@ class DootLocations:
     def __iter__(self):
         return iter(self._data.keys())
 
-    def _calc_path(self, key, val) -> pl.Path:
-        base      = val
+    def _calc_path(self, key, *, fallback=None) -> pl.Path:
+        match key:
+            case pl.Path():
+                base = str(key)
+            case str() if key in self._data:
+                base = self._data[key]
+            case _:
+                base = key
+
+        # Expand keys in the base of "{akey}/{anotherKey}..."
         count     = 0
         while m := re.search(KEY_PAT, base):
             if count > MAX_EXPANSIONS:
-                raise DootLocationExpansionError("Root key: %s, original: %s, last expansion: %s", key, val, base)
+                raise DootLocationExpansionError("Root key: %s, last expansion: %s", key, base)
             count += 1
             wr_key  = m[0]
-            sub_val = self._data[m[1]]
+            try:
+                sub_val = self._data[m[1]]
+            except tomler.TomlAccessError as err:
+                raise DootLocationError("Missing Location: %s",  str(err)) from err
             base = re.sub(wr_key, sub_val, base)
 
+        # If nothing has been found, and theres no fallback, complain
+        if base == key and fallback is None:
+            raise DootLocationError("Missing Location: %s", key)
+
+        if base == key and fallback is not None:
+            base = fallback
+
+        # Expand as a path
         match str(base)[0]:
             case "~":  # absolute path or home
                 return pl.Path(base).expanduser().absolute()
@@ -96,13 +112,8 @@ class DootLocations:
             case _:
                 return self.root / base
 
-    def get(self, val, default=None):
-        try:
-            return self.__getattr__(val)
-        except DootLocationError as err:
-            if default is not None:
-                return self._calc_path(val, default)
-            raise err
+    def get(self, key, fallback=None):
+            return self._calc_path(key, fallback=fallback)
 
 
     @property
