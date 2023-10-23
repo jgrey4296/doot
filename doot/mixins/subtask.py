@@ -77,3 +77,10 @@ class SubMixin:
 
     def specialize_subtask(self, task) -> None|dict|DootTaskSpec:
         return task
+
+
+    @classmethod
+    def stub_class(cls, stub):
+        stub['subtask'].type = "task_iden"
+        stub['subtask'].default = "TODO"
+        del stub.parts['actions']

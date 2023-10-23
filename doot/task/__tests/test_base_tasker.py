@@ -85,5 +85,6 @@ class TestBaseTasker:
 
 
     def test_class_stub(self):
-        stub = DootTasker.stub_class()
+        stub_obj = TaskStub(ctor=DootTasker)
+        stub = DootTasker.stub_class(stub_obj)
         assert(isinstance(stub, TaskStub))

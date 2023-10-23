@@ -35,16 +35,16 @@ from doot.constants import IMPORT_SEP
 from doot._abstract.loader import PluginLoader_p
 import doot.errors
 
+ACTION_CTORS = {}
+
 if PluginLoader_p.loaded:
     ACTION_CTORS = {x.name : x.load() for x in PluginLoader_p.loaded.action}
-else:
-    ACTION_CTORS = {}
 
 class ImporterMixin:
 
-    def import_class(self, pathname:str):
+    def import_class(self, pathname:str, *, is_task_ctor=False):
         try:
-            if pathname in ACTION_CTORS:
+            if not is_task_ctor and pathname in ACTION_CTORS:
                 return ACTION_CTORS[pathname]
 
             logging.info("Importing: %s", pathname)

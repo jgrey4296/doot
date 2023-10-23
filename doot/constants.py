@@ -87,18 +87,19 @@ DEFAULT_STUB_TASK_NAME : Final[str] = "stub::stub"
 
 ##-- end path and file names
 
-TASK_SEP                          = "::"
-IMPORT_SEP                        = ":"
-SUBTASKED_HEAD                    = "$head$"
+TASK_SEP            : FINAL[str]      = "::"
+IMPORT_SEP          : FINAL[str]      = ":"
+SUBTASKED_HEAD      : FINAL[str]      = "$head$"
+CONFLICTED_ADD      : FINAL[str]      = "$conflict$"
 
-DEFAULT_CLI_CMD     : Final[str]  = "run"
+DEFAULT_CLI_CMD     : Final[str]      = "run"
 
-DEFAULT_TASK_PREFIX : Final[str]  = "task_"
+DEFAULT_TASK_PREFIX : Final[str]      = "task_"
 
-DEFAULT_TASK_GROUP  : Final[str]  = "default"
+DEFAULT_TASK_GROUP  : Final[str]      = "default"
 
-ANNOUNCE_EXIT       : Final[bool] = False
+ANNOUNCE_EXIT       : Final[bool]     = False
 
-ANNOUNCE_VOICE      : Final[str]  = "Moira"
+ANNOUNCE_VOICE      : Final[str]      = "Moira"
 
-PRINTER_NAME        : Final[str]  = "doot._printer"
+PRINTER_NAME        : Final[str]      = "doot._printer"

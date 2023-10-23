@@ -421,7 +421,6 @@ class DootTaskSpec:
     runs_before       : list[DootTaskArtifact|pl.Path|str]         = field(default_factory=list)
     runs_after        : list[DootTaskArtifact|pl.Path|str]         = field(default_factory=list)
     priority          : int                                        = field(default=0)
-    tasker_updates    : list[str]                                  = field(default_factory=list)
     ctor_name         : DootStructuredName                         = field(default=None)
     ctor              : type|Callable|None                         = field(default=None)
     # Any additional information:
@@ -561,7 +560,9 @@ class DootTaskArtifact:
 
 @dataclass
 class TaskStub:
-    "Stub Task Spec for description in toml"
+    """ Stub Task Spec for description in toml
+    Automatically Adds default keys from DootTaskSpec
+    """
     ctor       : str|type                     = field(default="doot.task.base_tasker::DootTasker")
     parts      : dict[str, TaskStubPart]      = field(default_factory=dict, kw_only=True)
 
@@ -570,7 +571,7 @@ class TaskStub:
 
     def __post_init__(self):
         self['name'].default     = DootStructuredName.from_str(doot.constants.DEFAULT_STUB_TASK_NAME)
-        self['version'].default = "0.1"
+        self['version'].default  = "0.1"
         # Auto populate the stub with what fields are defined in a TaskSpec:
         for key, type in DootTaskSpec.__annotations__.items():
             if key in TaskStub.skip_parts:
@@ -584,8 +585,10 @@ class TaskStub:
         parts.append(self.parts['version'])
         if 'ctor' in self.parts:
             parts.append(self.parts['ctor'])
-        else:
+        elif isinstance(self.ctor, type):
             parts.append(TaskStubPart("ctor", type="type", default=f"\"{self.ctor.__module__}::{self.ctor.__name__}\""))
+        else:
+            parts.append(TaskStubPart("ctor", type="type", default=f"\"{self.ctor}\""))
 
         for key, part in self.parts.items():
             if key in ["name", "version", "ctor"]:
@@ -623,7 +626,7 @@ class TaskStub:
 
 @dataclass
 class TaskStubPart:
-    "Describes a single part of a stub task in toml"
+    """ Describes a single part of a stub task in toml """
     key     : str      = field()
     type    : str      = field(default="str")
     default : Any      = field(default="")

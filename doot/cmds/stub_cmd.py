@@ -31,11 +31,14 @@ logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
+import importlib
 import doot
+import doot.errors
 import doot.constants
-from doot._abstract import Command_i
+from doot._abstract import Command_i, PluginLoader_p
 from doot.structs import TaskStub, DootStructuredName
 from doot.task.base_tasker import DootTasker
+from doot.task.base_task import DootTask
 from collections import defaultdict
 
 ##-- data
@@ -58,7 +61,7 @@ class StubCmd(Command_i):
             self.make_param("Actions",                   default=False,     desc="Help Stub Actions", prefix="--"),
             self.make_param("Flags",                     default=False,     desc="Help Stub Task Flags", prefix="--"),
             self.make_param("name",        type=str,     default="stub::stub",    desc="The Name of the new task",                   positional=True),
-            self.make_param("ctor",        type=str,     default="basic",   desc="The short type name of the task generator",  positional=True),
+            self.make_param("ctor",        type=str,     default="task",   desc="The short type name of the task generator",  positional=True),
             self.make_param("suppress-header",           default=True, invisible=True)
             ]
 
@@ -93,23 +96,41 @@ class StubCmd(Command_i):
 
         printer.info("doot.toml stub")
 
+
+    def _import_task_class(self, ctor_name):
+        try:
+            module_name, cls_name = ctor_name.split(doot.constants.IMPORT_SEP)
+            module = importlib.import_module(module_name)
+            return getattr(module, cls_name)
+        except ImportError as err:
+            raise doot.errors.DootTaskLoadError(ctor_name)
+
+
     def _stub_task_toml(self, tasks, plugins):
         logging.info("Building Task Toml Stub")
+        task_iden                   : str    = doot.args.on_fail("task").cmd.args.ctor()
+        task_import_path            : str    = PluginLoader_p.get_loaded("tasker", task_iden) or task_iden
+        task_type                   : type   = self._import_task_class(task_import_path)
 
         # Create stub toml
-        stub = TaskStub()
+        stub = TaskStub(ctor=task_iden)
+        stub['print_level'].default = "INFO"
+        stub['priority'].default = 10
         stub['name'].default = DootStructuredName.from_str(doot.args.cmd.args.name)
-        stub['ctor'].default = doot.args.on_fail("basic").cmd.args.ctor()
-        # TODO check the ctor exists
 
-        # TODO add ctor specific fields,
+        # add ctor specific fields,
         # such as for globber: roots [], exts [], recursive bool, subtask "", head_task ""
+        for cls in reversed(task_type.mro()):
+            try:
+                cls.stub_class(stub)
+            except NotImplementedError:
+                pass
+            except AttributeError:
+                pass
 
         original_name = stub['name'].default.task_str()
         while str(stub['name'].default) in tasks:
-            stub['name'].default.task.append("conflicted")
-        else:
-            pass
+            stub['name'].default.task.append("$conflicted$")
 
         if original_name != stub['name'].default.task_str():
             logging.warning("Group %s: Name %s already defined, trying to modify name to: %s",
@@ -117,7 +138,7 @@ class StubCmd(Command_i):
                             original_name,
                             stub['name'].default.task_str())
 
-        # Output to printer, or file
+        # Output to printer/stdout, or file
         if doot.args.cmd.args.file_target == "":
             printer.info(stub.to_toml())
             return

@@ -111,14 +111,17 @@ class DootTasker(Tasker_i):
         return task
 
     @classmethod
-    def stub_class(cls):
-        stub = TaskStub(ctor=cls.__class__)
+    def stub_class(cls, stub) -> TaskStub:
+        stub.ctor             = cls
+        stub['version'].default   = cls._version
         stub['doc'].default   = [f"\"{x}\"" for x  in cls.class_help().split("\n")]
         stub['flags'].default = cls._default_flags
+        stub['head_task'].type = "task_iden"
+        stub['head_task'].default = "TODO"
         return stub
 
-    def stub_instance(self):
-        stub                      = self.__class__.stub_class()
+    def stub_instance(self, stub) -> TaskStub:
+        stub                      = self.__class__.stub_class(stub)
         stub['name'].default      = self.fullname
         if bool(self.doc):
             stub['doc'].default   = [f"\"{x}\"" for x in self.doc]

@@ -69,6 +69,7 @@ from doot.utils.signal_handler import SignalHandler
 from doot.structs import DootTaskSpec, DootActionSpec
 
 dry_run = doot.args.on_fail(False).cmd.args.dry_run()
+SLEEP_LENGTH = doot.config.on_fail(0.2, int|float).settings.general.task.sleep()
 
 @doot.check_protocol
 class DootRunner(TaskRunner_i):
@@ -120,7 +121,7 @@ class DootRunner(TaskRunner_i):
 
                     self.tracker.update_state(task, TaskStateEnum.SUCCESS)
                     printer.debug("Sleeping...", extra={"colour":"white"})
-                    time.sleep(0.2)
+                    time.sleep(SLEEP_LENGTH)
                     self.step += 1
                 # Handle problems:
                 except doot.errors.DootTaskInterrupt as err:

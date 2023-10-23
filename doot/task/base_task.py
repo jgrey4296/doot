@@ -71,16 +71,16 @@ class DootTask(Task_i, ImporterMixin):
         return False
 
     @classmethod
-    def stub_class(cls) -> TaskStub:
+    def stub_class(cls, stub) -> TaskStub:
         """ Create a basic toml stub for this task"""
-        stub = TaskStub(ctor=cls.__class__)
-        stub['doc'].default   = [f"\"{x}\"" for x in cls.class_help().split("\n") if bool(x)]
-        stub['flags'].default = cls._default_flags
+        stub.ctor               = cls
+        stub['version'].default = cls._version
+        stub['doc'].default     = [f"\"{x}\"" for x in cls.class_help().split("\n") if bool(x)]
+        stub['flags'].default   = cls._default_flags
         return stub
 
-    def stub_instance(self) -> TaskStub:
-        """ extend the class toml stub with  """
-        stub                      = self.__class__.stub_class()
+    def stub_instance(self, stub) -> TaskStub:
+        """ extend the class toml stub with details from this instance """
         stub['name'].default      = self.fullname
         if bool(self.doc):
             stub['doc'].default   = [f"\"{x}\"" for x in self.doc]

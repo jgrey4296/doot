@@ -146,15 +146,17 @@ class TaskBase_i(ParamSpecMaker_m):
 
     @classmethod
     @abc.abstractmethod
-    def stub_class(cls) -> TaskStub:
+    def stub_class(cls, TaskStub) -> TaskStub:
         """
-        Return a list of StubSpec's
-        to describe how this tasker is specified in toml
+        Specialize a TaskStub to describe this class
         """
         raise NotImplementedError(cls, "stub_class")
 
     @abc.abstractmethod
-    def stub_instance(self) -> TaskStub:
+    def stub_instance(self, TaskStub) -> TaskStub:
+        """
+          Specialize a TaskStub with the settings of this specific instance
+        """
         raise NotImplementedError(self.__class__, "stub_instance")
 
     @property

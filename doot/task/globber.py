@@ -203,3 +203,17 @@ class DootEagerGlobber(SubMixin, DootTasker):
         for x in target.iterdir():
             if check_fn(x):
                 yield x
+
+
+    @classmethod
+    def stub_class(cls, stub):
+        stub.ctor                 = cls
+        stub['version'].default   = cls._version
+        stub['exts'].type         = "list[str]"
+        stub['exts'].default      = []
+        stub['roots'].type        = "list[str|pl.Path]"
+        stub['roots'].default     = ["\".\""]
+        stub['roots'].comment     = "Places the globber will start"
+        stub['recursive'].type    = "bool"
+        stub['recursive'].default = False
+        return stub

@@ -45,6 +45,18 @@ class PluginLoader_p(Protocol):
     """ Base for the first things loaded: plugins."""
     loaded : ClassVar[Tomler] = None
 
+    @staticmethod
+    def get_loaded(group:str, name:str) -> None|str:
+        if PluginLoader_p.loaded is None:
+            return None
+        if group not in PluginLoader_p.loaded:
+            return None
+        matches = [x.value for x in PluginLoader_p.loaded[group] if x.name == name]
+        if bool(matches):
+            return matches[0]
+
+        return None
+
     @abstractmethod
     def setup(self, extra_config:Tomler) -> Self:
         raise NotImplementedError()
