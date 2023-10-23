@@ -133,7 +133,7 @@ class DootRunner(TaskRunner_i):
                     printer.warning("Task Failed: %s : %s", task.name, err)
                     self.tracker.update_state(task, TaskStateEnum.FAILED)
                 except doot.errors.DootTaskError as err:
-                    printer.warning("Error : %s : %s", task.name, err)
+                    printer.warning("Task Error : %s : %s", task.name, err)
                     self.tracker.update_state(task, TaskStateEnum.FAILED)
                 except doot.errors.DootError as err:
                     printer.warning("Doot Error : %s : %s", task.name, err)

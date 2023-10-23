@@ -103,7 +103,7 @@ class DootTracker(TaskTracker_i):
         return len(self.tasks)
 
     def __iter__(self) -> Generator[Any,Any,Any]:
-        while bool(self.task_queue):
+        while bool(self.active_set):
             yield self.next_for()
 
     def __contains__(self, target:str) -> bool:
@@ -236,6 +236,7 @@ class DootTracker(TaskTracker_i):
         while bool(self.task_queue):
             focus : str = self.task_queue.peek()
             logging.debug("Task: %s  State: %s, Stack: %s", focus, self.task_state(focus), self.active_set)
+
             if focus in self.dep_graph and self.dep_graph.nodes[focus][PRIORITY] < MIN_PRIORITY:
                 logging.warning("Task reached minimum priority while waiting, and has been cancelled: %s", focus)
                 self.update_state(focus, self.state_e.FAILED)
