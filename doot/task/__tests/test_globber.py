@@ -62,7 +62,7 @@ class TestGlobber:
             logging.debug("Built Subtask: %s", sub.name)
             count += 1
             assert(isinstance(sub, DootTaskSpec))
-            assert(str(sub.name) in ["default::basic.first", "default::basic.second", "default::basic.head", "default::basic.test_root"])
+            assert(str(sub.name) in ["default::basic.first", "default::basic.second", "default::basic.$head$", "default::basic.test_root"])
 
         assert(count == 4)
 
@@ -72,13 +72,13 @@ class TestGlobber:
         (wrap_tmp / "second").mkdir()
         (wrap_tmp / "second" / "bloo.txt").touch()
 
-        obj = DootEagerGlobber(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "rec": True}))
+        obj = DootEagerGlobber(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": True}))
 
         count = 0
         for sub in obj.build():
             count += 1
             assert(isinstance(sub, DootTaskSpec))
-            assert(str(sub.name) in ["default::basic.blah", "default::basic.bloo", "default::basic.head"])
+            assert(str(sub.name) in ["default::basic.blah", "default::basic.bloo", "default::basic.$head$"])
 
         assert(count == 3)
 
@@ -91,7 +91,7 @@ class TestGlobber:
         (wrap_tmp / "second" / "bloo.txt").touch()
         (wrap_tmp / "second" / "bibble.blib").touch()
 
-        obj = DootEagerGlobber(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "rec": True}))
+        obj = DootEagerGlobber(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": True}))
 
         count = 0
         for sub in obj.build():
@@ -108,13 +108,13 @@ class TestGlobber:
         (wrap_tmp / "second").mkdir()
         (wrap_tmp / "second" / "bloo.txt").touch()
 
-        obj = DootEagerGlobber(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "rec": False}))
+        obj = DootEagerGlobber(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": False}))
 
         count = 0
         for sub in obj.build():
             count += 1
             assert(isinstance(sub, DootTaskSpec))
-            assert(str(sub.name) in ["default::basic.head"])
+            assert(str(sub.name) in ["default::basic.$head$"])
 
         assert(count == 1)
 
@@ -125,13 +125,13 @@ class TestGlobber:
         (wrap_tmp / "second").mkdir()
         (wrap_tmp / "second" / "bloo.txt").touch()
 
-        obj = DootEagerGlobber(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "rec": False}))
+        obj = DootEagerGlobber(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": False}))
 
         count = 0
         for sub in obj.build():
             count += 1
             assert(isinstance(sub, DootTaskSpec))
-            assert(str(sub.name) in ["default::basic.head"])
+            assert(str(sub.name) in ["default::basic.$head$"])
 
         assert(count == 1)
 
@@ -143,17 +143,17 @@ class TestGlobber:
         (wrap_tmp / "second" / "bloo.txt").touch()
 
         obj = DootEagerGlobber(DootTaskSpec.from_dict({
-            "name"  : "basic",
-            "exts"  : [".txt"],
-            "rec"   : False,
-            "roots" : [pl.Path() / "aweg" ],
+            "name"        : "basic",
+            "exts"        : [".txt"],
+            "recursive"   : False,
+            "roots"       : [pl.Path() / "aweg" ],
                                                       }))
 
         count = 0
         for sub in obj.build():
             count += 1
             assert(isinstance(sub, DootTaskSpec))
-            assert(str(sub.name) in ["default::basic.head"])
+            assert(str(sub.name) in ["default::basic.$head$"])
 
         assert(count == 1)
         assert("Globber Missing Root: aweg" in caplog.messages)

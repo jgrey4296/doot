@@ -100,6 +100,7 @@ class DootTask(Task_i, ImporterMixin):
             if action_spec.ctor is not None:
                 ctor_name = action_spec.ctor
                 action_spec.set_function(self.import_class(ctor_name))
+                continue
 
             assert(action_spec.ctor is None), action_spec
             action_spec.set_function(self.action_ctor)

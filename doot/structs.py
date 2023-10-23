@@ -208,7 +208,11 @@ class DootParamSpec:
 
 @dataclass
 class DootStructuredName:
-    """ complex names of the form ".".join(group)::".".join(task) """
+    """ A Complex name class for identifying tasks and classes.
+      Classes are the standard form using in importlib: doot.structs:DootStucturedName
+      Tasks use a double colon to separate group from task name: tasks.globGroup::GlobTask
+
+    """
     group           : list[str]          = field(default_factory=list)
     task            : list[str]          = field(default_factory=list)
 
@@ -323,7 +327,12 @@ class DootStructuredName:
 class DootActionSpec:
     """
       When an action isn't a full blown class, it gets wrapped in this,
-      which passes the action spec to the callable
+      which passes the action spec to the callable.
+
+      TODO: recogise arg prefixs and convert to correct type.
+      eg: path:a/relative/path  -> Path(./a/relative/path)
+      path:/usr/bin/python  -> Path(/usr/bin/python)
+
     """
     ctor       : None|str                = field(default=None)
     args       : list[Any]               = field(default_factory=list)
@@ -378,7 +387,7 @@ class DootActionSpec:
             case list():
                 action_spec = DootActionSpec(
                     args=data,
-                    fun=fu if callable(fun) else None
+                    fun=fun if callable(fun) else None
                     )
                 return action_spec
 

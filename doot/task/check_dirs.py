@@ -25,8 +25,8 @@ class CheckDirTask(DootTask):
     def __init__(self, spec):
         super().__init__(spec, action_ctor=self.checkdir)
 
-    def checkdir(self, target, task_state_copy):
-        return target.exists()
+    def checkdir(self, spec, task_state_copy):
+        return spec.args[0].exists()
 
 
 @doot.check_protocol
@@ -46,7 +46,7 @@ class CheckDirTasker(DootTasker):
             loc = self.locs[x]
             sub = DootTaskSpec.from_dict({
                 "name"    : self.fullname.subtask(x),
-                "actions" : [loc],
+                "actions" : [[loc]],
                 "ctor"    : CheckDirTask
                                          })
             head.runs_after.append(sub.name)
