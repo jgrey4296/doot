@@ -64,16 +64,21 @@ from collections import defaultdict
 
 
 class CleanCmd(Command_i):
+    """
+      Runs either a general clean command, or a specific task clean command
+    """
     _name      = "clean"
     _help      = []
 
     @property
     def param_specs(self) -> list:
         return super().param_specs + [
-            self.make_param(name="target", type=str, default="")
+            self.make_param(name="target", type=str, default=""),
+            self.make_param(name="recursive", type=bool, default=False)
             ]
 
     def __call__(self, tasks:dict, plugins:dict):
-
-        # TODO run either doot clean, or a task clean
-        raise NotImplementedError
+        if bool(doot.args.on_fail(None).cmd.args.target()):
+            printer.info("TODO: Clean targeting %s", doot.args.on_fail.cmd.args.target)
+        else:
+            printer.info("TODO: General Clean")

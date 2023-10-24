@@ -33,10 +33,9 @@ class DootShellAction(DootBaseAction):
 
     def __call__(self, spec, task_state_copy:dict) -> dict|bool|None:
         try:
-            cmd    = getattr(sh, spec.args[0])
+            cmd      = getattr(sh, spec.args[0])
             expanded = [self.expand_str(x, task_state_copy) for x in spec.args[1:]]
-            # TODO if args contains "{varname}", then replace with that varname from task_state_copy
-            result = cmd(*expanded, _return_cmd=True, _bg=spec.kwargs.on_fail(False, bool).background())
+            result   = cmd(*expanded, _return_cmd=True, _bg=spec.kwargs.on_fail(False, bool).background())
             assert(result.exit_code == 0)
             printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, spec.args[0], spec.args[1:])
             printer.info("%s", result, extra={"colour":"reset"})
@@ -49,16 +48,18 @@ class DootShellAction(DootBaseAction):
             return False
 
 class DootInteractiveAction(DootBaseAction):
+    """
+      An interactive command, which uses the self.interact method as a callback for sh.
+    """
     aggregated = ""
     prompt     = ">>> "
     cont       = "... "
 
     def __call__(self, task_state_copy:dict) -> dict|bool|None:
         try:
-            cmd    = getattr(sh, spec.args[0])
+            cmd      = getattr(sh, spec.args[0])
             expanded = [self.expand_str(x, task_state_copy) for x in spec.args[1:]]
-            # TODO if args contains "{varname}", then replace with that varname from task_state_copy
-            result = cmd(*expanded, _return_cmd=True, _bg=spec.kwargs.on_fail(False, bool).background(), _out=self.interact, _out_bufsize=0, _tty_in=True, _unify_ttys=True)
+            result   = cmd(*expanded, _return_cmd=True, _bg=spec.kwargs.on_fail(False, bool).background(), _out=self.interact, _out_bufsize=0, _tty_in=True, _unify_ttys=True)
             assert(result.exit_code == 0)
             printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, spec.args[0], spec.args[1:])
             printer.info("%s", result, extra={"colour":"reset"})

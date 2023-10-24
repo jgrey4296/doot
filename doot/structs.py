@@ -174,7 +174,7 @@ class DootParamSpec:
             return f"<ParamSpec: {self.name}>"
         return f"<ParamSpec: {self.prefix}{self.name}>"
 
-    def add_value_to(self, data, val) -> bool:
+    def add_value_to(self, data:dict, val:str) -> bool:
         """ if the given value is suitable, add it into the given data """
         [head, *rest] = self._split_name_from_value(val)
         logging.debug("Matching: %s : %s : %s", self.type.__name__, head, rest)
@@ -209,6 +209,7 @@ class DootParamSpec:
 @dataclass
 class DootStructuredName:
     """ A Complex name class for identifying tasks and classes.
+
       Classes are the standard form using in importlib: doot.structs:DootStucturedName
       Tasks use a double colon to separate group from task name: tasks.globGroup::GlobTask
 
@@ -221,6 +222,7 @@ class DootStructuredName:
 
     form            : StructuredNameEnum = field(default=StructuredNameEnum.TASK, kw_only=True)
     task_separator  : ClassVar[str] = doot.constants.TASK_SEP
+
     class_separator : ClassVar[str] = doot.constants.IMPORT_SEP
     subseparator    : ClassVar[str] = "."
 
@@ -274,7 +276,6 @@ class DootStructuredName:
 
         return True
 
-
     def task_str(self):
         return DootStructuredName.subseparator.join(self.task)
 
@@ -292,7 +293,6 @@ class DootStructuredName:
 
         base = DootStructuredName.subseparator.join(self.group)
         return fmt.format(base)
-
 
     def subtask(self, *subtasks, subgroups:list[str]|None=None):
         return DootStructuredName(self.group + (subgroups or []),
@@ -341,6 +341,28 @@ class DootActionSpec:
     outState   : set[str]                = field(default_factory=set)
     fun        : None|Callable           = field(default=None)
 
+    def __str__(self):
+        result = []
+        if self.ctor and hasattr(self.ctor, '__qualname__'):
+            result.append(f"Ctor={self.ctor.__qualname__}")
+        elif self.ctor:
+            result.append(f"Ctor={self.ctor.__class__.__qualname__}")
+
+        if self.args:
+            result.append(f"args={[str(x) for x in self.args]}")
+        if self.kwargs:
+            result.append(f"kwargs={self.kwargs}")
+        if self.inState:
+            result.append(f"inState={self.inState}")
+        if self.outState:
+            result.append(f"outState={self.outState}")
+
+        if self.fun and hasattr(self.fun, '__qualname__'):
+            result.append(f"calling={self.fun.__qualname__}")
+        elif self.fun:
+            result.append(f"calling={self.fun.__class__.__qualname__}")
+
+        return f"<ActionSpec: {' '.join(result)} >"
 
     def __call__(self, task_state_copy:dict):
         return self.fun(self, task_state_copy)
@@ -366,7 +388,6 @@ class DootActionSpec:
 
         if not callable(self.fun):
             raise doot.errors.DootActionError("Action Spec Given a non-callable fun: %s", fun)
-
 
     def verify(self, state:dict, *, fields=None):
         pos = "Output"
@@ -405,8 +426,6 @@ class DootActionSpec:
             case _:
                 raise doot.errors.DootActionError("Unrecognized specification data", data)
 
-
-
 @dataclass
 class DootTaskSpec:
     """ The information needed to describe a generic task
@@ -429,7 +448,6 @@ class DootTaskSpec:
     flags             : TaskFlags                                  = field(default=TaskFlags.TASK)
 
     extra             : Tomler                                     = field(default_factory=Tomler)
-
 
     @staticmethod
     def from_dict(data:dict, *, ctor:type=None, ctor_name=None):
@@ -478,12 +496,10 @@ class DootTaskSpec:
         else:
             core_data['ctor_name']      = DootStructuredName.from_str(doot.constants.DEFAULT_PLUGINS['tasker'][0][1], form=StructuredNameEnum.CLASS)
 
-
         # prep actions
         core_data['actions'] = [DootActionSpec.from_data(x) for x in core_data.get('actions', [])]
 
         return DootTaskSpec(**core_data, extra=Tomler(extra_data))
-
 
     def specialize_from(self, data:DootTaskSpec) -> DootTaskSpec:
         """
@@ -495,6 +511,7 @@ class DootTaskSpec:
                 case "name":
                     specialized[field] = data.name
                 case _:
+
                     default_val = DootTaskSpec.__dataclass_fields__.get(field, None)
                     value = getattr(data, field)
                     if value == default_val or ((not isinstance(value, bool)) and (not bool(value))):
@@ -503,7 +520,6 @@ class DootTaskSpec:
                     specialized[field] = value
 
         return DootTaskSpec(**specialized)
-
 
     def __hash__(self):
         return hash(str(self.name))
@@ -602,7 +618,6 @@ class TaskStub:
             self.parts[key] = TaskStubPart(key)
         return self.parts[key]
 
-
     def __iadd__(self, other):
         match other:
             case [head, val] if head in self.parts:
@@ -622,13 +637,12 @@ class TaskStub:
             case _:
                 raise TypeError("Unrecognized Toml Stub component")
 
-
-
 @dataclass
 class TaskStubPart:
     """ Describes a single part of a stub task in toml """
     key     : str      = field()
     type    : str      = field(default="str")
+
     default : Any      = field(default="")
     comment : str      = field(default="")
 
@@ -655,11 +669,13 @@ class TaskStubPart:
                 parts = ", ".join([f"\"{x}\"" for x in self.default])
                 val_str = f"[{parts}]"
             case list():
+
                 def_str = ", ".join(str(x) for x in self.default)
                 val_str = f"[{def_str}]"
             case dict():
                 val_str = f"{{{self.default}}}"
             case _ if "list" in self.type:
+
                 def_str = ", ".join(str(x) for x in self.default)
                 val_str = f"[{def_str}]"
             case _ if "dict" in self.type:

@@ -23,6 +23,7 @@ from doot.utils.check_protocol import check_protocol
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
+printer         = logmod.getLogger("doot._printer")
 
 # Global, single points of truth:
 __version__          : Final[str]      = "0.2.0"

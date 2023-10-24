@@ -38,10 +38,26 @@ class TestLocations:
         assert(isinstance(simple, DootLocations))
         assert(not bool(simple._data))
 
+    def test_update(self):
+        simple = DootLocations(pl.Path.cwd())
+        assert(not bool(simple._data))
+        simple.update({"blah": "bloo"})
+        assert(bool(simple._data))
+
+    def test_update_conflict(self):
+        simple = DootLocations(pl.Path.cwd())
+        simple.update({"blah": "bloo"})
+
+        with pytest.raises(KeyError):
+            simple.update({"blah": "blah"})
+
+
     def test_empty_repr(self):
         simple = DootLocations(pl.Path.cwd())
         repr_str = repr(simple)
         assert(repr_str == f"<DootLocations : {str(pl.Path.cwd())} : ()>")
+
+
 
     def test_non_empty_repr(self):
         simple = DootLocations(pl.Path.cwd())
@@ -106,6 +122,17 @@ class TestLocations:
         assert(isinstance(simple['{other}'], pl.Path))
 
 
+    def test_expansion_failure(self):
+        simple = DootLocations(pl.Path.cwd())
+        assert(not bool(simple._data))
+        simple.update({"other": "bloo"})
+        assert(bool(simple._data))
+
+        with pytest.raises(DootLocationError):
+            simple['{aweg}']
+
+
+
     def test_access_nested_expansion(self):
         simple = DootLocations(pl.Path.cwd())
         assert(not bool(simple._data))
@@ -124,14 +151,12 @@ class TestLocations:
         with pytest.raises(DootLocationExpansionError):
             simple.a
 
-    def test_access_fail(self):
+    def test_access_non_existing_path(self):
         simple = DootLocations(pl.Path.cwd())
         assert(not bool(simple._data))
         simple.update({"a": "blah"})
         assert(bool(simple._data))
-
-        with pytest.raises(DootLocationError):
-            simple.b
+        assert(isinstance(simple.b, pl.Path))
 
     def test_ensure_succeed(self):
         simple = DootLocations(pl.Path.cwd())

@@ -74,12 +74,13 @@ class DootArgParser(ArgParser_i):
         CMD  = enum.auto()
         TASK = enum.auto()
 
-
-
     def _build_defaults_dict(self, param_specs:list) -> dict:
         return { x.name : x.default for x in param_specs }
 
     def parse(self, args:list, *, doot_specs:list[DootParamSpec], cmds:Tomler, tasks:Tomler) -> None|Tomler:
+        """
+          Parses the list of arguments against available registered parameter specs, cmds, and tasks.
+        """
         logging.debug("Parsing args: %s", args)
         head_arg     = args[0]
 
@@ -104,6 +105,7 @@ class DootArgParser(ArgParser_i):
         ##-- end loop state
 
         # Help is special, it overrides the cmd if its specified anywhere
+
         default_help = DootParamSpec(name="help", default=False, prefix="--")
 
         logging.info("Initial Arg Specs: %s", current_specs)
@@ -159,7 +161,6 @@ class DootArgParser(ArgParser_i):
                     pass
                 case _:
                     raise doot.errors.DootParseError("Unrecognized {} Parameter: {}. Available Parameters: {}".format(focus.name, arg, [repr(x) for x in current_specs]))
-
 
             if bool(matching_specs) and not matching_specs[0].repeatable:
                 current_specs.remove(matching_specs[0])

@@ -18,46 +18,29 @@ from doot.task.base_task import DootTask
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+make_missing = doot.config.on_fail(False).location_check.make_missing()
+check_level  = doot.config.on_fail("WARN").location_check.print_level()
+
 @doot.check_protocol
 class CheckDirTask(DootTask):
     """ A Task for checking a single location exists """
+    task_name = "_locations::check"
 
-    def __init__(self, spec):
+    def __init__(self, spec=None):
+        locations = [[doot.locs[x]] for x in doot.locs]
+        spec      = DootTaskSpec.from_dict({
+            "name"        : CheckDirTask.task_name,
+            "actions"     : locations,
+                                           })
         super().__init__(spec, action_ctor=self.checkdir)
 
     def checkdir(self, spec, task_state_copy):
-        return spec.args[0].exists()
-
-
-@doot.check_protocol
-class CheckDirTasker(DootTasker):
-    """ Tasker for checking locations declared in toml exist """
-
-    def __init__(self, locs:DootLocData|None=None):
-        if isinstance(locs, DootTaskSpec):
-            raise doot.errors.DootTaskError("CheckDirTasker has no need for a task spec")
-        super().__init__(DootTaskSpec.from_dict({"name": "_locations::check"}))
-
-        self.locs = locs or doot.locs
-
-    def build(self, **kwargs) -> Generator[TaskBase_i]:
-        head = self._build_head()
-        for x in self.locs:
-            loc = self.locs[x]
-            sub = DootTaskSpec.from_dict({
-                "name"    : self.fullname.subtask(x),
-                "actions" : [[loc]],
-                "ctor"    : CheckDirTask
-                                         })
-            head.runs_after.append(sub.name)
-            yield sub
-
-        yield head
-
-    def mkdir(self):
-        for _,x in self.locs:
-            try:
-                x.mkdir(parents=True)
-                logging.info("Built Missing Location: %s", x)
-            except FileExistsError:
-                pass
+        exists_p = spec.args[0].exists()
+        if exists_p:
+            doot.printer.info("Base Location Exists : %s", spec.args[0])
+        else:
+            doot.printer.warning("Base Location Missing: %s", spec.args[0])
+            if make_missing:
+                doot.printer.info("Making Directory: %s", spec.args[0])
+                spec.args[0].mkdir(parents=True)
+        return

@@ -68,13 +68,23 @@ class DootLocations:
     def __getitem__(self, val) -> pl.Path:
         return self.__getattr__(val)
 
-    def __contains__(self, val):
-        return val in self._data
+    def __contains__(self, key):
+        """ Test whether a key is a registered location """
+        return key in self._data
 
     def __iter__(self):
+        """ Iterate over the registered location names """
         return iter(self._data.keys())
 
-    def _calc_path(self, key, *, fallback=None) -> pl.Path:
+    def _calc_path(self, key:str, *, fallback=None) -> pl.Path:
+        """
+          Expands a string or key according to registered locations into a path.
+          so if locs = {"base": "~/Desktop", "bloo": "bloo/sub/dir"}
+          then:
+          _calc_path("base") -> "~/Desktop"
+          _calc_path("{base}/blah") -> "~/Desktop/blah"
+          _calc_path("{base}/{bloo}") -> "~/Desktop/bloo/sub/dir"
+        """
         match key:
             case pl.Path():
                 base = str(key)
@@ -90,15 +100,11 @@ class DootLocations:
                 raise DootLocationExpansionError("Root key: %s, last expansion: %s", key, base)
             count += 1
             wr_key  = m[0]
-            try:
-                sub_val = self._data[m[1]]
-            except tomler.TomlAccessError as err:
-                raise DootLocationError("Missing Location: %s",  str(err)) from err
+            if m[1] not in self._data:
+                raise DootLocationError("Missing Location Key: %s", key)
+            sub_val = self._data[m[1]]
             base = re.sub(wr_key, sub_val, base)
 
-        # If nothing has been found, and theres no fallback, complain
-        if base == key and fallback is None:
-            raise DootLocationError("Missing Location: %s", key)
 
         if base == key and fallback is not None:
             base = fallback
@@ -113,14 +119,21 @@ class DootLocations:
                 return self.root / base
 
     def get(self, key, fallback=None):
-            return self._calc_path(key, fallback=fallback)
+        return self._calc_path(key, fallback=fallback)
 
 
     @property
     def root(self):
+        """
+          the registered root location
+        """
         return self._root
 
     def update(self, extra:dict|Tomler|DootLocations):
+        """
+          Update the registered locations with a dict, tomler, or other dootlocations obj.
+          The update process itself is tomler.tomler.merge
+        """
         match extra:
             case dict() | tomler.Tomler():
                 self._data = tomler.Tomler.merge(self._data, extra)
@@ -132,12 +145,16 @@ class DootLocations:
         return self
 
     def ensure(self, *values, task="doot"):
+        """ Ensure the values passed in are registered locations,
+          error with DootDirAbsent if they aren't
+        """
         missing = set(x for x in values if x not in self)
 
         if bool(missing):
             raise DootDirAbsent("Ensured Locations are missing for %s : %s", task, missing)
 
     def __call__(self, new_root) -> Self:
+        """ Create a copied locations object, with a different root """
         new_obj = DootLocations(new_root)
         return new_obj.update(self)
 

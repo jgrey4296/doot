@@ -68,7 +68,7 @@ from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i, ReportLine_i
 from doot.utils.signal_handler import SignalHandler
 from doot.structs import DootTaskSpec, DootActionSpec
 
-dry_run = doot.args.on_fail(False).cmd.args.dry_run()
+dry_run      = doot.args.on_fail(False).cmd.args.dry_run()
 SLEEP_LENGTH = doot.config.on_fail(0.2, int|float).settings.general.task.sleep()
 
 @doot.check_protocol
