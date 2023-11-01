@@ -33,25 +33,69 @@ from weakref import ref
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-printer = logmod.getLogger("doot._printer")
 
+from collections import defaultdict
+from tomler import Tomler
 import doot
-from doot._abstract import Command_i
+from doot._abstract import ReportLine_i, TaskRunner_i, Reporter_i, Command_i
+from doot.utils.plugin_selector import plugin_selector
+from doot.task.check_dirs import CheckDirTask
+
+printer                  = logmod.getLogger("doot._printer")
+
+tracker_target           = doot.config.on_fail("default", str).commands.run.tracker()
+reporter_target          = doot.config.on_fail("default", str).commands.run.reporter()
+report_line_targets      = doot.config.on_fail([]).commands.run.report_line(wrapper=list)
 
 class StepCmd(Command_i):
     """
     Standard doit run command, but step through tasks
     """
-    name            = 'step'
-    doc_purpose     = "Enter breakpoint just before execution of task"
-    doc_description = ""
-    doc_usage       = "[TASK ...]"
+    _name            = 'step'
+    _help            = ["Behaves like Run, but allows user confirmation before tasker/task/action performance"]
 
     @property
     def param_specs(self) -> list:
-        return super().param_specs + []
-
+        return super().param_specs + [
+            self.make_param(name="dry-run", default=False),
+            self.make_param(name="type", type=str, default="all"),
+            self.make_param(name="target", type=list[str], default=[], positional=True),
+            ]
 
     def __call__(self, tasks:Tomler, plugins:Tomler):
+        # Note the final parens to construct:
+        available_reporters    = plugins.on_fail([], list).report_line()
+        report_lines           = [plugin_selector(available_reporters, target=x)() for x in report_line_targets]
+        reporter               = plugin_selector(plugins.on_fail([], list).reporter(), target=reporter_target)(report_lines)
+        tracker                = plugin_selector(plugins.on_fail([], list).tracker(), target=tracker_target)()
+        runner                 = plugin_selector(plugins.on_fail([], list).runner(), target="step")(tracker=tracker, reporter=reporter)
 
-        pass
+        assert(hasattr(runner, 'set_confirm_type')), "A Step Runner needs to have a confirm_type"
+        runner.set_confirm_type(doot.args.cmd.args.type)
+
+        printer.info("- Building Task Dependency Network")
+        for task in tasks.values():
+            tracker.add_task(task)
+        tracker.add_task(CheckDirTask())
+
+        printer.info("- Task Dependency Network Built")
+
+        for target in doot.args.on_fail([], list).cmd.args.target():
+            if target not in tracker:
+                printer.warn("- %s specified as run target, but it doesn't exist")
+            else:
+                tracker.queue_task(target)
+
+        for target in doot.args.tasks.keys():
+            if target not in tracker:
+                printer.warn(- "%s specified as run target, but it doesn't exist")
+            else:
+                tracker.queue_task(target)
+
+        tracker.queue_task(CheckDirTask.task_name)
+
+        printer.info("- %s Tasks Queued: %s", len(tracker.active_set), " ".join(tracker.active_set))
+        printer.info("- Running Tasks")
+
+        with runner:
+            runner()

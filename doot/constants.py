@@ -59,7 +59,9 @@ DEFAULT_PLUGINS['database'] = []
 
 DEFAULT_PLUGINS['tracker']  = [("basic", "doot.control.tracker:DootTracker")]
 
-DEFAULT_PLUGINS['runner']   = [("basic", "doot.control.runner:DootRunner")]
+DEFAULT_PLUGINS['runner']   = [("basic", "doot.control.runner:DootRunner"),
+                               ("step",  "doot.control.step_runner:DootStepRunner")
+                               ]
 
 DEFAULT_PLUGINS['parser']   = [("basic", "doot.parsers.parser:DootArgParser")]
 
