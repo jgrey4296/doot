@@ -150,7 +150,7 @@ class DootLogConfig:
     def _setup_file_logging(self):
         file_log_level    = doot.config.on_fail("DEBUG", str|int).logging.file.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
         file_log_format   = doot.config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str).logging.file.format()
-        file_filter_names = doot.config.on_fail([], list).logging.file.filters()
+        file_filter_names = doot.config.on_fail([], list).logging.file.allow()
 
         self.file_handler.setLevel(file_log_level)
         self.file_handler.setFormatter(DootColourStripFormatter(fmt=file_log_format))
@@ -160,7 +160,7 @@ class DootLogConfig:
     def _setup_stream_logging(self):
         stream_log_level    = doot.config.on_fail("WARNING", str|int).logging.stream.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
         stream_log_format   = doot.config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str).logging.stream.format()
-        stream_filter_names = doot.config.on_fail([], list).logging.stream.filters()
+        stream_filter_names = doot.config.on_fail([], list).logging.stream.allow()
 
         self.stream_handler.setLevel(stream_log_level)
         if doot.config.on_fail(False, bool).logging.stream.colour():

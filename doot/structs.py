@@ -602,7 +602,7 @@ class TaskStub:
         if 'ctor' in self.parts:
             parts.append(self.parts['ctor'])
         elif isinstance(self.ctor, type):
-            parts.append(TaskStubPart("ctor", type="type", default=f"\"{self.ctor.__module__}::{self.ctor.__name__}\""))
+            parts.append(TaskStubPart("ctor", type="type", default=f"\"{self.ctor.__module__}{doot.constants.IMPORT_SEP}{self.ctor.__name__}\""))
         else:
             parts.append(TaskStubPart("ctor", type="type", default=f"\"{self.ctor}\""))
 
