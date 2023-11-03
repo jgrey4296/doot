@@ -103,7 +103,7 @@ class DootRunner(TaskRunner_i):
 
           if task is a tasker, it is expanded and added into the tracker
           """
-        # for threaded tasks: replace expand_tasker/execute_task/execute_action with twisted?
+        # TODO for threaded tasks: replace expand_tasker/execute_task/execute_action with twisted?
 
         self.original_print_level = printer.level
         with SignalHandler():

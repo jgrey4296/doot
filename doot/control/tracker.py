@@ -226,6 +226,10 @@ class DootTracker(TaskTracker_i):
                     raise doot.errors.DootTaskTrackingError("Unknown type tried to be queued: %s", task)
 
 
+    def clear_queue(self) -> None:
+        self.active_set =     set()
+        self.task_queue = boltons.queueutils.HeapPriorityQueue()
+
     def next_for(self, target:None|str=None) -> None|Tasker_i|Task_i:
         """ ask for the next task that can be performed """
         if target and target not in self.active_set:

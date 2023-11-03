@@ -43,8 +43,9 @@ from doot.task.check_dirs import CheckDirTask
 
 printer                  = logmod.getLogger("doot._printer")
 
-tracker_target           = doot.config.on_fail("default", str).commands.run.tracker()
-reporter_target          = doot.config.on_fail("default", str).commands.run.reporter()
+runner_target            = doot.config.on_fail("step", str).commands.step.runner()
+tracker_target           = doot.config.on_fail("default", str).commands.step.tracker()
+reporter_target          = doot.config.on_fail("default", str).commands.step.reporter()
 report_line_targets      = doot.config.on_fail([]).commands.run.report_line(wrapper=list)
 
 class StepCmd(Command_i):
@@ -58,7 +59,7 @@ class StepCmd(Command_i):
     def param_specs(self) -> list:
         return super().param_specs + [
             self.make_param(name="dry-run", default=False),
-            self.make_param(name="type", type=str, default="all"),
+            self.make_param(name="type", type=str, default="task"),
             self.make_param(name="target", type=list[str], default=[], positional=True),
             ]
 
@@ -68,7 +69,7 @@ class StepCmd(Command_i):
         report_lines           = [plugin_selector(available_reporters, target=x)() for x in report_line_targets]
         reporter               = plugin_selector(plugins.on_fail([], list).reporter(), target=reporter_target)(report_lines)
         tracker                = plugin_selector(plugins.on_fail([], list).tracker(), target=tracker_target)()
-        runner                 = plugin_selector(plugins.on_fail([], list).runner(), target="step")(tracker=tracker, reporter=reporter)
+        runner                 = plugin_selector(plugins.on_fail([], list).runner(), target=runner_target)(tracker=tracker, reporter=reporter)
 
         assert(hasattr(runner, 'set_confirm_type')), "A Step Runner needs to have a confirm_type"
         runner.set_confirm_type(doot.args.cmd.args.type)
