@@ -30,7 +30,7 @@ import doot.errors
 
 from doot.enums import TaskFlags, TaskStateEnum
 from doot._abstract.parser import ParamSpecMaker_m
-from doot.structs import DootParamSpec, TaskStub, DootTaskSpec, DootStructuredName
+from doot.structs import DootParamSpec, TaskStub, DootTaskSpec, DootStructuredName, DootActionSpec
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -43,7 +43,7 @@ class Action_p(Protocol):
     """
 
     @abc.abstractmethod
-    def __call__(self, spec, task_state_copy:dict) -> dict|bool|None:
+    def __call__(self, spec:DootActionSpec, task_state_copy:dict) -> dict|bool|None:
         raise NotImplementedError()
 
 class TaskBase_i(ParamSpecMaker_m):
@@ -176,7 +176,7 @@ class Task_i(TaskBase_i):
         self.tasker     = tasker
         self.state      = dict(spec.extra)
         self.state.update(kwargs)
-        self.state['_task_name']   = self.name
+        self.state['_task_name']   = self.spec.name
         self.state['_action_step'] = 0
 
     def __repr__(self):

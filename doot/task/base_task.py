@@ -40,7 +40,7 @@ from doot.structs import DootStructuredName, TaskStub, TaskStubPart, DootActionS
 from doot.actions.base_action import DootBaseAction
 from doot.errors import DootTaskLoadError, DootTaskError
 
-from doot.mixins.importer import ImporterMixin
+from doot.mixins.task.importer import ImporterMixin
 
 @doot.check_protocol
 class DootTask(Task_i, ImporterMixin):

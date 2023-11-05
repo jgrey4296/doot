@@ -24,7 +24,7 @@ printer = logmod.getLogger("doot._printer")
 import doot
 from doot.errors import DootDirAbsent
 from doot.task.base_tasker import DootTasker
-from doot.mixins.subtask import SubMixin
+from doot.mixins.tasker.subtask import SubMixin
 from doot.structs import DootTaskSpec
 
 glob_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).globbing.ignores()

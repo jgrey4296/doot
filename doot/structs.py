@@ -300,6 +300,12 @@ class DootStructuredName:
                                    private=self.private
                                    )
 
+
+    def root(self):
+        if self.form in [StructuredNameEnum.CLASS, StructuredNameEnum.CALLABLE]:
+            raise TypeError("Getting the root of a class or callable doesn't make sense")
+        return f"{self.group_str()}{DootStructuredName.task_separator}{self.task[0]}"
+
     @staticmethod
     def from_str(name:str, form:StructuredNameEnum=StructuredNameEnum.TASK):
         sep = DootStructuredName.task_separator if form is StructuredNameEnum.TASK else DootStructuredName.class_separator

@@ -224,6 +224,7 @@ class DootRunner(TaskRunner_i):
         task.state['_action_step'] = count
         action.verify(task.state)
 
+        # TODO possibly just use the dict, not a copy
         result = action(task.state.copy())
         match result:
             case None:

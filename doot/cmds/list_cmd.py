@@ -57,8 +57,9 @@ class ListCmd(Command_i):
             self.make_param(name="dag",       _short="D",                        default=False,                  desc="Output a DOT compatible graph of tasks", prefix="--"),
             self.make_param(name="groups",                   type=bool,          default=False,                  desc="List just the groups tasks fall into",   prefix="--"),
             self.make_param(name="by-source",                                    default=False,                  desc="List all loaded tasks, by source file",  prefix="--"),
+            self.make_param(name="locations", _short="l",    type=bool,          default=False,                  desc="List all Loaded Locations"),
+            self.make_param(name="internal",  _short="i",    type=bool,          default=False,                  desc="Include internal tasks (ie: prefixed with an underscore)"),
             self.make_param(name="pattern",                  type=str,           default="", positional=True,    desc="List tasks with a basic string pattern in the name"),
-            self.make_param(name="locations", _short="l",    type=bool,          default=False,                  desc="List all Loaded Locations")
             ]
 
     def __call__(self, tasks:Tomler, plugins:Tomler):
@@ -99,6 +100,9 @@ class ListCmd(Command_i):
         printer.info("Tasks for Pattern: %s", pattern)
         for key in matches:
             spec = tasks[key]
+            if spec.name.task_str().startswith(doot.constants.INTERNAL_TASK_PREFIX) and not doot.args.cmd.args.internal:
+                continue
+
             printer.info(fmt_str,
                          spec.name,
                          spec.ctor_name,
@@ -112,6 +116,9 @@ class ListCmd(Command_i):
         for name, spec in tasks.items():
             if pattern not in name:
                 continue
+            if spec.name.task_str().startswith(doot.constants.INTERNAL_TASK_PREFIX) and not doot.args.cmd.args.internal:
+                continue
+
             groups[spec.name.group_str()].append((spec.name.task_str(),
                                                   spec.ctor.__module__,
                                                   spec.ctor.__name__,
@@ -129,6 +136,8 @@ class ListCmd(Command_i):
         fmt_str = f"{INDENT}%-{max_key}s :: %-25s <%s>"
         groups  = defaultdict(list)
         for spec in tasks.values():
+            if spec.name.task_str().startswith(doot.constants.INTERNAL_TASK_PREFIX) and not doot.args.cmd.args.internal:
+                continue
             groups[spec.name.group_str()].append((spec.name.task_str(),
                                                   spec.ctor_name,
                                                   spec.source))
@@ -147,6 +156,8 @@ class ListCmd(Command_i):
         fmt_str = f"{INDENT}%-{max_key}s :: %s.%-25s"
         sources = defaultdict(list)
         for key, spec in tasks.items():
+            if spec.name.task_str().startswith(doot.constants.INTERNAL_TASK_PREFIX) and not doot.args.cmd.args.internal:
+                continue
             sources[spec.source].append((spec.name.task_str(),
                                          spec.ctor.__module__,
                                          spec.ctor.__name__,
