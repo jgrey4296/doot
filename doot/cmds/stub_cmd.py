@@ -182,6 +182,10 @@ class StubCmd(Command_i):
         else:
             printer.info("{ ctor=\"action name/import path\", args=[], inState=[], outState=[] } # plus any kwargs a specific action uses")
 
+        printer.info("")
+        printer.info("For Custom Python Actions, implement the following in the .tasks director ")
+        printer.info("def custom_action(spec:DootActionSpec, task_state:dict) -> None|bool|dict:...")
+
     def _list_flags(self):
         printer.info("Task Flags: ")
         for x in sorted(doot.enums.TaskFlags, key=lambda x: x.name):
