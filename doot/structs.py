@@ -653,6 +653,11 @@ class TaskStubPart:
     comment : str      = field(default="")
 
     def __str__(self) -> str:
+        """
+          the main conversion method of a stub part -> toml string
+          the match statement handles the logic of different types.
+          eg: lowercasing the python bool from False to false for toml
+        """
         # shortcut on being the name:
         if isinstance(self.default, DootStructuredName) and self.key == "name":
             return f"[[tasks.{self.default.group_str()}]]\n{'name':<20} = \"{self.default.task_str()}\""
@@ -669,19 +674,19 @@ class TaskStubPart:
                 val_str = f"[ {joined} ]"
             case "" if self.type == "TaskFlags":
                 val_str = f"[ \"{TaskFlags.TASK.name}\" ]"
+            case bool():
+                val_str = str(self.default).lower()
             case str() if self.type == "type":
                 val_str = self.default
             case list() if "Flags" in self.type:
                 parts = ", ".join([f"\"{x}\"" for x in self.default])
                 val_str = f"[{parts}]"
             case list():
-
                 def_str = ", ".join(str(x) for x in self.default)
                 val_str = f"[{def_str}]"
             case dict():
                 val_str = f"{{{self.default}}}"
             case _ if "list" in self.type:
-
                 def_str = ", ".join(str(x) for x in self.default)
                 val_str = f"[{def_str}]"
             case _ if "dict" in self.type:

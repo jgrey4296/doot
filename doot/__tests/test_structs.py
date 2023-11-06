@@ -309,3 +309,10 @@ class TestTaskStubPart:
         result_str     = str(obj)
         result_tomler  = tomler.read(result_str)
         assert(result_tomler.test == "test")
+
+
+    def test_stub_part_bool_reduce(self):
+        obj = structs.TaskStubPart("test", type="bool", default=False, comment="a simple stub part")
+        result_str     = str(obj)
+        result_tomler  = tomler.read(result_str)
+        assert(result_tomler.test == False)
