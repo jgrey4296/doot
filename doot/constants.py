@@ -63,10 +63,18 @@ DEFAULT_PLUGINS['runner']   = [("basic", "doot.control.runner:DootRunner"),
                                ("step",  "doot.control.step_runner:DootStepRunner")
                                ]
 
-DEFAULT_PLUGINS['parser']   = [("basic", "doot.parsers.parser:DootArgParser")]
+DEFAULT_PLUGINS['parser']   = [("basic",     "doot.parsers.parser:DootArgParser")]
 
-DEFAULT_PLUGINS['action']   = [("basic"  , "doot.actions.base_action:DootBaseAction"),
-                               ("shell" , "doot.actions.shell_action:DootShellAction"),
+DEFAULT_PLUGINS['action']   = [("basic"  ,   "doot.actions.base_action:DootBaseAction"),
+                               ("shell" ,    "doot.actions.shell_action:DootShellAction"),
+                               ("interact",  "doot.actions.shell_action:DootInteractiveAction"),
+                               ("read"  ,    "doot.actions.io:ReadAction"),
+                               ("write" ,    "doot.actions.io:WriteAction"),
+                               ("copy"  ,    "doot.actions.io:CopyAction"),
+                               ("putPost",   "doot.actions.postbox:PutPostAction"),
+                               ("getPost",   "doot.actions.postbox:GetPostAction"),
+                               ("addState",  "doot.actions.state:AddStateAction"),
+                               ("time",      "doot.actions.time_action:TimeAction"),
                               ]
 
 DEFAULT_PLUGINS['tasker']     = [("tasker"  , "doot.task.base_tasker:DootTasker"),

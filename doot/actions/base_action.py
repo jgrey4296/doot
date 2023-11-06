@@ -69,10 +69,10 @@ class DootBaseAction(Action_p):
     def __str__(self):
         return f"Base Action"
 
-    def __call__(self, spec:DootActionSpec, task_state_copy:dict) -> dict|bool|None:
-        printer.debug("Base Action Called: %s", task_state_copy.get("count", 0))
-        printer.info(" ".join(self.expand_str(x, task_state_copy) for x in spec.args))
-        return { "count" : task_state_copy.get("count", 0) + 1 }
+    def __call__(self, spec:DootActionSpec, task_state:dict) -> dict|bool|None:
+        printer.debug("Base Action Called: %s", task_state.get("count", 0))
+        printer.info(" ".join(self.expand_str(x, task_state) for x in spec.args))
+        return { "count" : task_state.get("count", 0) + 1 }
 
     def expand_str(self, val, state):
         return val.format_map(state)

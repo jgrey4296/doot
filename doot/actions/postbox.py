@@ -38,7 +38,7 @@ printer = logmod.getLogger("doot._printer")
 
 class DootPostBox:
 
-    boxes : ClassVar[dict[str,set[Any]]]] = defaultdict(set)
+    boxes : ClassVar[dict[str,set[Any]]] = defaultdict(set)
 
     @staticmethod
     def put(key, val):
@@ -53,8 +53,6 @@ class PutPostAction(Action_p):
     """
       push data to the inter-task postbox of this task tree
       The arguments of the action are held in self.spec
-    __call__ is passed a *copy* of the task's state dictionary
-
     """
 
     def __str__(self):
@@ -71,9 +69,8 @@ class GetPostAction(Action_p):
     """
       Read data from the inter-task postbox of a task tree
       The arguments of the action are held in self.spec
-    __call__ is passed a *copy* of the task's state dictionary
-
     """
+    _toml_kwargs = ["source", "target"]
 
     def __str__(self):
         return f"Postbox Get Action: {self.spec.args}"
@@ -81,7 +78,7 @@ class GetPostAction(Action_p):
     def expand_str(self, val, state):
         return val.format_map(state)
 
-    def __call__(self, spec, task_state_copy:dict) -> dict|bool|None:
+    def __call__(self, spec, task_state:dict) -> dict|bool|None:
         return {spec.kwargs.target : DootPostBox.get(spec.kwargs.source) }
 
 @doot.check_protocol
@@ -89,9 +86,8 @@ class SummarizePostAction(Action_p):
     """
       print a summary of this task tree's postbox
       The arguments of the action are held in self.spec
-    __call__ is passed a *copy* of the task's state dictionary
-
     """
+    _toml_kwargs = ["source"]
 
     def __str__(self):
         return f"Postbox Summary Action: {self.spec.args}"
@@ -99,6 +95,6 @@ class SummarizePostAction(Action_p):
     def expand_str(self, val, state):
         return val.format_map(state)
 
-    def __call__(self, spec, task_state_copy:dict) -> dict|bool|None:
+    def __call__(self, spec, task_state:dict) -> dict|bool|None:
         data = DootPostBox.get(spec.kwargs.source)
         printer.info("Postbox %s Contents: %s", spec.kwargs.source, data)

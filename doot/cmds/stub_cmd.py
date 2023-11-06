@@ -33,6 +33,7 @@ printer = logmod.getLogger("doot._printer")
 
 import importlib
 import doot
+import doot.enums
 import doot.errors
 import doot.constants
 from doot._abstract import Command_i, PluginLoader_p
@@ -56,32 +57,35 @@ class StubCmd(Command_i):
     def param_specs(self) -> list:
         return super().param_specs + [
             self.make_param("file-target", type=str,     default=""),
-            self.make_param("Config",                    default=False,     desc="Stub a doot.toml",                  prefix="--"),
-            self.make_param("Types",                     default=False,     desc="List the types of task available", prefix="--"),
-            self.make_param("Actions",                   default=False,     desc="Help Stub Actions", prefix="--"),
-            self.make_param("Flags",                     default=False,     desc="Help Stub Task Flags", prefix="--"),
+            self.make_param("Config",                    default=False,           desc="Stub a doot.toml",                  prefix="--"),
+            self.make_param("Tasks",                     default=False,           desc="List the types of task available",  prefix="--"),
+            self.make_param("Actions",                   default=False,           desc="Help Stub Actions",                 prefix="--"),
+            self.make_param("Flags",                     default=False,           desc="Help Stub Task Flags",              prefix="--"),
             self.make_param("name",        type=str,     default="stub::stub",    desc="The Name of the new task",                   positional=True),
-            self.make_param("ctor",        type=str,     default="task",   desc="The short type name of the task generator",  positional=True),
+            self.make_param("ctor",        type=str,     default="task",          desc="The short type name of the task generator",         positional=True),
             self.make_param("suppress-header",           default=True, invisible=True)
             ]
 
+    def _import_task_class(self, ctor_name):
+        try:
+            module_name, cls_name = ctor_name.split(doot.constants.IMPORT_SEP)
+            module = importlib.import_module(module_name)
+            return getattr(module, cls_name)
+        except ImportError as err:
+            raise doot.errors.DootTaskLoadError(ctor_name)
+
     def __call__(self, tasks:Tomler, plugins:Tomler):
         match dict(doot.args.cmd.args):
-            case {"Types": True}:
-                self._print_types(plugins)
+            case {"Tasks": True}:
+                self._list_task_types(plugins)
             case {"Config": True}:
                 self._stub_doot_toml()
             case {"Actions": True}:
-                self._stub_actions()
+                self._stub_actions(plugins)
             case {"Flags": True}:
-                self._stub_flags()
+                self._list_flags()
             case _:
                 self._stub_task_toml(tasks, plugins)
-
-    def _print_types(self, plugins):
-        printer.info("Available Tasker Types:")
-        for type in set(map(lambda x: x.name, plugins.tasker)):
-            printer.info(f"- {type}")
 
     def _stub_doot_toml(self):
         logging.info("Building Doot Toml Stub")
@@ -95,16 +99,6 @@ class StubCmd(Command_i):
             f.write(data_text)
 
         printer.info("doot.toml stub")
-
-
-    def _import_task_class(self, ctor_name):
-        try:
-            module_name, cls_name = ctor_name.split(doot.constants.IMPORT_SEP)
-            module = importlib.import_module(module_name)
-            return getattr(module, cls_name)
-        except ImportError as err:
-            raise doot.errors.DootTaskLoadError(ctor_name)
-
 
     def _stub_task_toml(self, tasks, plugins):
         logging.info("Building Task Toml Stub")
@@ -151,11 +145,44 @@ class StubCmd(Command_i):
             f.write("\n")
             f.write(stub.to_toml())
 
-    def _stub_locations(self, tasks, plugins):
-        raise NotImplementedError()
+    def _list_task_types(self, plugins):
+        printer.info("Available Tasker Types:")
+        for plug in plugins.tasker:
+            printer.info("- %10s : %s", plug.name, plug.value)
 
-    def _stub_actions(self):
-        raise NotImplementedError()
+    def _stub_actions(self, plugins):
+        matched = [x for x in plugins.action if x.name == doot.args.cmd.args.name or x.value == doot.args.cmd.args.name]
+        if bool(matched):
+            loaded = matched[0].load()
+            printer.info("Action %s : %s", matched[0].name, matched[0].value)
+            match getattr(loaded, "_toml_help", []):
+                case []:
+                    pass
+                case [*xs]:
+                    for x in xs:
+                        printer.info(x)
 
-    def _stub_flags(self):
-        raise NotImplementedError()
+            match getattr(loaded, "_toml_kwargs", []):
+                case []:
+                    printer.info("No Declared Kwargs")
+                case [*xs]:
+                    printer.info("Declared kwargs for action: ")
+                    for x in sorted(xs):
+                        printer.info("-- %s", x)
+
+        else:
+            printer.info("Available Actions:")
+            for action in sorted(plugins.action, key=lambda x: x.name):
+                printer.info("-- %10s : %s", action.name, action.value)
+
+        printer.info("")
+        printer.info("Toml Form: ")
+        if bool(matched):
+            printer.info("{ ctor=\"%s\", args=[], inState=[], outState=[] } # plus any kwargs a specific action uses", matched[0].name)
+        else:
+            printer.info("{ ctor=\"action name/import path\", args=[], inState=[], outState=[] } # plus any kwargs a specific action uses")
+
+    def _list_flags(self):
+        printer.info("Task Flags: ")
+        for x in sorted(doot.enums.TaskFlags, key=lambda x: x.name):
+            printer.info("-- %s", x.name)

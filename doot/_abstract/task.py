@@ -41,9 +41,10 @@ class Action_p(Protocol):
     """
     holds individual action information and state, and executes it
     """
+    _toml_kwargs : ClassVar[list[str]] = []
 
     @abc.abstractmethod
-    def __call__(self, spec:DootActionSpec, task_state_copy:dict) -> dict|bool|None:
+    def __call__(self, spec:DootActionSpec, task_state:dict) -> dict|bool|None:
         raise NotImplementedError()
 
 class TaskBase_i(ParamSpecMaker_m):

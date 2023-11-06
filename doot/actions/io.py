@@ -62,12 +62,11 @@ from doot._abstract import Action_p
 @doot.check_protocol
 class WriteAction(Action_p):
     """
-      Writes data from the task_state_copy to a file, accessed throug the
+      Writes data from the task_state to a file, accessed throug the
       doot.locs object
     The arguments of the action are held in self.spec
-    __call__ is passed a *copy* of the task's state dictionary
-
     """
+    _toml_kwargs = ["fname", "target", "data" ]
 
     def __str__(self):
         return f"Base Action: {self.spec.args}"
@@ -106,14 +105,13 @@ class ReadAction(Action_p):
     """
       Reads data from the doot.locs location to  return for the task_state
       The arguments of the action are held in self.spec
-      __call__ is passed a *copy* of the task's state dictionary
-
     """
+    _toml_kwargs = ["target", "data", "type"]
 
     def __str__(self):
         return f"Base Action: {self.spec.args}"
 
-    def __call__(self, spec, task_state_copy:dict) -> dict|bool|None:
+    def __call__(self, spec, task_state:dict) -> dict|bool|None:
         target_key = spec.kwargs.target
         data_key   = spec.kwargs.data
         if target_key in task_state:
@@ -138,28 +136,28 @@ class CopyAction(Action_p):
     """
       copy a file somewhere
       The arguments of the action are held in self.spec
-      __call__ is passed a *copy* of the task's state dictionary
-
     """
+    _toml_kwargs = ["source", "dest"]
 
     def __str__(self):
         return f"Base Action: {self.spec.args}"
 
-    def __call__(self, spec, task_state_copy:dict) -> dict|bool|None:
-        target_key = spec.kwargs.target
+    def __call__(self, spec, task_state:dict) -> dict|bool|None:
         source_key = spec.kwargs.source
-
-        if target_key in task_state:
-            target = task_state.get(target_key)
-        else:
-            target = target_key
+        dest_key = spec.kwargs.dest
 
         if source_key in task_state:
             source = task_state.get(source_key)
         else:
             source = source_key
 
+        if dest_key in task_state:
+            dest = task_state.get(dest_key)
+        else:
+            dest = target_key
+
+
         source_loc = doot.locs[source]
-        target_loc = doot.locs[target]
-        printer.info("Copying from %s to %s", source_loc, target_loc)
-        shutil.copy2(source_loc,target_loc)
+        dest_loc = doot.locs[dest]
+        printer.info("Copying from %s to %s", source_loc, dest_loc)
+        shutil.copy2(source_loc,dest_loc)

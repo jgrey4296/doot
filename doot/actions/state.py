@@ -60,10 +60,11 @@ from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
 
 @doot.check_protocol
-class AddState(Action_p):
+class AddStateAction(Action_p):
     """
       add to task state in the task description toml
     """
+    _toml_kwargs = ["<Any>"]
 
     def __str__(self):
         return f"Base Action: {self.spec.args}"
