@@ -1,3 +1,4 @@
+[settings.general]
 subtask                  = { sleep = 1 }
 batch                    = { sleep = 1 }
 notify                   = { say-on-exit = false }

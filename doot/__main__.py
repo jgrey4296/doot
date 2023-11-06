@@ -92,8 +92,8 @@ def main():
                 announce_exit : bool = doot.constants.ANNOUNCE_EXIT
                 announce_voice : str = doot.constants.ANNOUNCE_VOICE
                 if doot.config is not None:
-                    announce_exit        = doot.config.on_fail(announce_exit, bool|str).notify.say_on_exit()
-                    announce_voice       = doot.config.on_fail(announce_voice, str).notify.announce_voice()
+                    announce_exit        = doot.config.on_fail(announce_exit, bool|str).settings.general.notify.say_on_exit()
+                    announce_voice       = doot.config.on_fail(announce_voice, str).setttings.general.notify.announce_voice()
 
                 match errored, announce_exit:
                     case False, str() as say_text:

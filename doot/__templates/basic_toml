@@ -1,17 +1,31 @@
 # -*- mode:conf-toml; -*-
-loaders                  = {commands="default", task="default", parser="default"}
+[settings.general]
+task                     = { sleep = 0.2 }
 subtask                  = { sleep = 1 }
 batch                    = { sleep = 1 }
 notify                   = { say-on-exit = false }
-location_check           = { make_missing=false }
+loaders                  = {commands = "default", task = "default", parser = "default"}
+location_check           = { make_missing = true, print_level = "INFO"}
+
+[plugins]
+# Allows for defining shorthands
+command        = { other-run = "doot.cmds.run_cmd:RunCmd", tasks = "doot.cmds.list_cmd:ListCmd" }
+report-line    = {}
+reporter       = {}
+action         = {}
+tasker         = {}
+
+[commands]
+run = { tracker = "default", runner = "default", reporter= "default", report-line = []}
+
+[globbing]
+ignores  = ['.git', '.DS_Store', "__pycache__"]
 
 [logging]
 stream  = { level="WARN",  allow=["doot"], format="{levelname:<8} : {message}", colour=true }
 file    = { level="DEBUG", allow=["doot"], format="{levelname:<8} : {message:<20} :|: (module:{module} line:{lineno} fn:{funcName})" }
-printer = { level="INFO" }
+printer = { level="INFO", colour=true}
 
-[globbing]
-ignores  = ['.git', '.DS_Store', "__pycache__"]
 
 [[locations]]
 src     = "src"
