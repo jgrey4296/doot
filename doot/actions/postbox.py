@@ -21,14 +21,14 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 
 ##-- end imports
 
-printer = logmod.getLogger("doot._printer")
-
+from collections import defaultdict
 from time import sleep
 import sh
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
 
+printer = logmod.getLogger("doot._printer")
 """
   Postbox: Each Task Tree gets one, as a set[Any]
   Each Task can put something in its own postbox.
@@ -36,6 +36,17 @@ from doot._abstract import Action_p
 
 """
 
+class DootPostBox:
+
+    boxes : ClassVar[dict[str,set[Any]]]] = defaultdict(set)
+
+    @staticmethod
+    def put(key, val):
+        DootPostBox.boxes[key].add(val)
+
+    @staticmethod
+    def get(key):
+        return DootPostBox.boxes[key]
 
 @doot.check_protocol
 class PutPostAction(Action_p):
@@ -52,8 +63,8 @@ class PutPostAction(Action_p):
     def expand_str(self, val, state):
         return val.format_map(state)
 
-    def __call__(self, spec, task_state_copy:dict) -> dict|bool|None:
-        raise NotImplementedError("TODO")
+    def __call__(self, spec, task_state:dict) -> dict|bool|None:
+        DootPostBox.put(task_state['_task_name'].root(), task_state.get(spec.args[0]))
 
 @doot.check_protocol
 class GetPostAction(Action_p):
@@ -71,8 +82,7 @@ class GetPostAction(Action_p):
         return val.format_map(state)
 
     def __call__(self, spec, task_state_copy:dict) -> dict|bool|None:
-        raise NotImplementedError("TODO")
-
+        return {spec.kwargs.target : DootPostBox.get(spec.kwargs.source) }
 
 @doot.check_protocol
 class SummarizePostAction(Action_p):
@@ -84,10 +94,11 @@ class SummarizePostAction(Action_p):
     """
 
     def __str__(self):
-        return f"Postbox Put Action: {self.spec.args}"
+        return f"Postbox Summary Action: {self.spec.args}"
 
     def expand_str(self, val, state):
         return val.format_map(state)
 
     def __call__(self, spec, task_state_copy:dict) -> dict|bool|None:
-        raise NotImplementedError("TODO")
+        data = DootPostBox.get(spec.kwargs.source)
+        printer.info("Postbox %s Contents: %s", spec.kwargs.source, data)

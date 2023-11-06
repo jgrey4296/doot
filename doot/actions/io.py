@@ -54,6 +54,7 @@ printer = logmod.getLogger("doot._printer")
 
 from time import sleep
 import sh
+import shutil
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
@@ -74,8 +75,31 @@ class WriteAction(Action_p):
     def expand_str(self, val, state):
         return val.format_map(state)
 
-    def __call__(self, spec, task_state_copy:dict) -> dict|bool|None:
-        raise NotImplementedError("TODO")
+    def __call__(self, spec, task_state:dict) -> dict|bool|None:
+        fname = spec.kwargs.on_fail((None,)).fname()
+        if fname is not None:
+            fname = self.expand_str(fname, task_state)
+
+        target_key = spec.kwargs.target
+        data_key   = spec.kwargs.data
+        if target_key in task_state:
+            target = task_state.get(target_key)
+        else:
+            target = target_key
+
+        if data_key in task_state:
+            data = task_state.get(data_key)
+        else:
+            data = data_key
+
+
+        loc = doot.locs[target]
+        if fname is not None:
+            loc = loc / fname
+        printer.info("Writing to %s", loc)
+        with open(loc, 'w') as f:
+            f.write(data)
+
 
 @doot.check_protocol
 class ReadAction(Action_p):
@@ -89,11 +113,25 @@ class ReadAction(Action_p):
     def __str__(self):
         return f"Base Action: {self.spec.args}"
 
-    def expand_str(self, val, state):
-        return val.format_map(state)
-
     def __call__(self, spec, task_state_copy:dict) -> dict|bool|None:
-        raise NotImplementedError("TODO")
+        target_key = spec.kwargs.target
+        data_key   = spec.kwargs.data
+        if target_key in task_state:
+            target = task_state.get(target_key)
+        else:
+            target = target_key
+
+        loc = doot.locs[target]
+        printer.info("Reading from %s into %s", loc, data_key)
+        with open(loc, 'r') as f:
+            match spec.kwargs.on_fail("read").type():
+                case "read":
+                    return { data_key : f.read() }
+                case "lines":
+                    return { data_key : f.readlines() }
+                case unk:
+                    raise TypeError("Unknown read type", unk)
+
 
 @doot.check_protocol
 class CopyAction(Action_p):
@@ -107,8 +145,21 @@ class CopyAction(Action_p):
     def __str__(self):
         return f"Base Action: {self.spec.args}"
 
-    def expand_str(self, val, state):
-        return val.format_map(state)
-
     def __call__(self, spec, task_state_copy:dict) -> dict|bool|None:
-        raise NotImplementedError("TODO")
+        target_key = spec.kwargs.target
+        source_key = spec.kwargs.source
+
+        if target_key in task_state:
+            target = task_state.get(target_key)
+        else:
+            target = target_key
+
+        if source_key in task_state:
+            source = task_state.get(source_key)
+        else:
+            source = source_key
+
+        source_loc = doot.locs[source]
+        target_loc = doot.locs[target]
+        printer.info("Copying from %s to %s", source_loc, target_loc)
+        shutil.copy2(source_loc,target_loc)
