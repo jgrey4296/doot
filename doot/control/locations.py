@@ -44,7 +44,7 @@ class DootLocations:
     but can be used as a context manager to expand from a temp different root
 
     location designations are of the form:
-    key = "location/directory"
+    key = "location/subdirectory/file"
 
     If a location value has "loc/{key}/somewhere",
     then for key = "blah", it will be expanded upon access to "loc/blah/somewhere"
@@ -62,10 +62,15 @@ class DootLocations:
     def __getattr__(self, key) -> pl.Path:
         """
           get a location by name from loaded toml
+          eg: locs.temp
         """
         return self._calc_path(key)
 
     def __getitem__(self, val) -> pl.Path:
+        """
+          Get a location using item access for extending a stored path.
+          eg: locs["{temp}/imgs/blah.jpg"]
+        """
         return self.__getattr__(val)
 
     def __contains__(self, key):
@@ -119,6 +124,9 @@ class DootLocations:
                 return self.root / base
 
     def get(self, key, fallback=None):
+        """
+          Get an expanded path key, but if it fails, return the fallback value
+        """
         return self._calc_path(key, fallback=fallback)
 
 

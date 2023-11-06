@@ -234,5 +234,5 @@ class Tasker_i(TaskBase_i):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def _build_head(self) -> DootTaskSpec:
+    def _build_head(self, **kwargs) -> DootTaskSpec:
         raise NotImplementedError()

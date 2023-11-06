@@ -121,7 +121,8 @@ class DootRunner(TaskRunner_i):
 
                     self.tracker.update_state(task, TaskStateEnum.SUCCESS)
                     printer.debug("Sleeping...", extra={"colour":"white"})
-                    time.sleep(SLEEP_LENGTH)
+                    sleep_len = task.spec.extra.on_fail(SLEEP_LENGTH, int|float).sleep()
+                    time.sleep(sleep_len)
                     self.step += 1
                 # Handle problems:
                 except doot.errors.DootTaskInterrupt as err:
