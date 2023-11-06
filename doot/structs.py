@@ -349,7 +349,9 @@ class DootActionSpec:
 
     def __str__(self):
         result = []
-        if self.ctor and hasattr(self.ctor, '__qualname__'):
+        if isinstance(self.ctor, str):
+            result.append(f"Ctor={self.ctor}")
+        elif self.ctor and hasattr(self.ctor, '__qualname__'):
             result.append(f"Ctor={self.ctor.__qualname__}")
         elif self.ctor:
             result.append(f"Ctor={self.ctor.__class__.__qualname__}")
@@ -516,6 +518,8 @@ class DootTaskSpec:
             match field:
                 case "name":
                     specialized[field] = data.name
+                case "extra":
+                    specialized[field] = Tomler.merge(self.extra, data.extra)
                 case _:
 
                     default_val = DootTaskSpec.__dataclass_fields__.get(field, None)
@@ -534,6 +538,7 @@ class DootTaskSpec:
 class DootTaskArtifact:
     """ Describes an artifact a task can produce or consume.
     Artifacts can be Definite (concrete path) or indefinite (glob path)
+      TODO: make indefinite pattern paths
     """
     path : pl.Path = field()
 
