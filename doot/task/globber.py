@@ -167,7 +167,6 @@ class DootEagerGlobber(SubMixin, DootTasker):
         logging.debug("Globbed : %s", len(globbed_names))
 
     def build(self, **kwargs) -> Generator[DootTaskSpec]:
-        self.args.update(kwargs)
         head = self._build_head()
 
         for sub in self._build_subs():
@@ -180,7 +179,7 @@ class DootEagerGlobber(SubMixin, DootTasker):
         self.total_subtasks = 0
         logging.debug("%s : Building Globber SubTasks", self.name)
         for i, (uname, fpath) in enumerate(self.glob_all()):
-            match self._build_subtask(i, uname, fpath=fpath):
+            match self._build_subtask(i, uname, fpath=fpath, fstem=fpath.stem):
                 case None:
                     pass
                 case DootTaskSpec() as subtask:

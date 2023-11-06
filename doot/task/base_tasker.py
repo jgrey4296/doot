@@ -128,9 +128,9 @@ class DootTasker(Tasker_i):
         stub['flags'].default     = self.spec.flags
         return stub
 
-    def _build_head(self) -> DootTaskSpec:
+    def _build_head(self, **kwargs) -> DootTaskSpec:
         logging.debug("Building Head Task for: %s", self.name)
-        task_spec                             = self.default_task(None, None)
+        task_spec                             = self.default_task(None, Tomler(kwargs))
 
         task_ref = self.spec.extra.on_fail((None,), None|str).head_task()
         if task_ref is not None:
