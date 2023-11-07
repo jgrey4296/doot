@@ -518,14 +518,19 @@ class DootTaskSpec:
             match field:
                 case "name":
                     specialized[field] = data.name
+                # case "print_level":
+                #     specialized[field] = logmod.getLevelName(max(map(logmod.getLevelName, [self.print_level, data.print_level])))
+                # case "action_level":
+                #     specialized[field] = logmod.getLevelName(max(map(logmod.getLevelName, [self.action_level, data.action_level])))
                 case "extra":
                     specialized[field] = Tomler.merge(self.extra, data.extra)
                 case _:
-
-                    default_val = DootTaskSpec.__dataclass_fields__.get(field, None)
-                    value = getattr(data, field)
-                    if value == default_val or ((not isinstance(value, bool)) and (not bool(value))):
-                        value = getattr(self, field)
+                    # prefer the newest data, then the unspecialized data, then the default
+                    field_data         = DootTaskSpec.__dataclass_fields__.get(field, None)
+                    field_default      = field_data.default if (field_data is not None and field_data.default != _MISSING_TYPE) else None
+                    value              = getattr(data, field)
+                    if value == field_default:
+                        value          = getattr(self, field)
 
                     specialized[field] = value
 
