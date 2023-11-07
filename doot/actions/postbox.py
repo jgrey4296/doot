@@ -46,8 +46,16 @@ class DootPostBox:
         DootPostBox.boxes[key].add(val)
 
     @staticmethod
+    def put_from(state, val):
+        """
+        utility to add to a postbox using the state, instead of calculating the root yourself
+        """
+        DootPostBox.boxes[state['_task_name'].root()].add(val)
+
+    @staticmethod
     def get(key):
         return DootPostBox.boxes[key]
+
 
 @doot.check_protocol
 class PutPostAction(Action_p):

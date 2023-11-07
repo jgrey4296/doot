@@ -20,18 +20,7 @@ import doot.errors
 import doot.structs
 from doot.control.tracker import DootTracker
 from doot._abstract import Task_i
-
-def make_mock_task(mocker, name, pre=None, post=None):
-    mock_task                      = mocker.MagicMock(spec=Task_i)
-    mock_task.name                 = name
-    mock_task.spec                 = mocker.MagicMock(spec=doot.structs.DootTaskSpec)
-    mock_task.spec.priority        = 0
-
-    runs_after                     = pre or mocker.PropertyMock()
-    runs_before                    = post or mocker.PropertyMock()
-    type(mock_task).runs_after     = runs_after
-    type(mock_task).runs_before    = runs_before
-    return mock_task, runs_after, runs_before
+from doot.utils import mock_gen
 
 class TestTracker:
 
@@ -40,7 +29,7 @@ class TestTracker:
         assert(tracker is not None)
 
     def test_add_task(self, mocker):
-        mock_task, runs_after, runs_before = make_mock_task(mocker, "test_task")
+        mock_task, runs_after, runs_before = mock_gen.mock_task(mocker, "test_task")
 
         tracker = DootTracker()
         tracker.add_task(mock_task)
@@ -51,8 +40,8 @@ class TestTracker:
         runs_before.assert_called()
 
     def test_duplicate_add_fail(self, mocker):
-        task1, pre1, post1 = make_mock_task(mocker, "task1")
-        task2, pre2, post2 = make_mock_task(mocker, "task1")
+        task1, pre1, post1 = mock_gen.mock_task(mocker, "task1")
+        task2, pre2, post2 = mock_gen.mock_task(mocker, "task1")
 
         tracker = DootTracker()
         tracker.add_task(task1)
@@ -66,8 +55,8 @@ class TestTracker:
         post2.assert_not_called()
 
     def test_duplicate_add(self, mocker):
-        task1, pre1, post1 = make_mock_task(mocker, "task1")
-        task2, pre2, post2 = make_mock_task(mocker, "task1")
+        task1, pre1, post1 = mock_gen.mock_task(mocker, "task1")
+        task2, pre2, post2 = mock_gen.mock_task(mocker, "task1")
 
         tracker = DootTracker(shadowing=True)
         tracker.add_task(task1)
@@ -80,7 +69,7 @@ class TestTracker:
         post2.assert_called()
 
     def test_contains_defined(self, mocker):
-        mock_task, _, _= make_mock_task(mocker, "test_task")
+        mock_task, _, _= mock_gen.mock_task(mocker, "test_task")
         mock_task.runs_after = ["example", "blah"]
 
         tracker = DootTracker()
@@ -91,7 +80,7 @@ class TestTracker:
 
     def test_warn_on_undefined(self, mocker, caplog):
         """ create a task with undefined dependencies, it should just warn not error """
-        task1,    *_ = make_mock_task(mocker, "task1", pre=["subtask", "subtask2"])
+        task1,    *_ = mock_gen.mock_task(mocker, "task1", pre=["subtask", "subtask2"])
         tracker = DootTracker()
         tracker.add_task(task1)
 
@@ -102,7 +91,7 @@ class TestTracker:
         assert("Tried to Schedule a Declared but Undefined Task: subtask2" in caplog.messages)
 
     def test_not_contains_declared(self, mocker):
-        mock_task, _, _= make_mock_task(mocker, "test_task", pre=["example", "blah"])
+        mock_task, _, _= mock_gen.mock_task(mocker, "test_task", pre=["example", "blah"])
 
         tracker = DootTracker()
         tracker.add_task(mock_task)
@@ -110,7 +99,7 @@ class TestTracker:
         assert("blah" not in tracker)
 
     def test_task_prior_registration(self, mocker):
-        mock_task, pre, post = make_mock_task(mocker, "test_task", pre=["example", "blah"])
+        mock_task, pre, post = mock_gen.mock_task(mocker, "test_task", pre=["example", "blah"])
 
         tracker = DootTracker()
         tracker.add_task(mock_task)
@@ -120,7 +109,7 @@ class TestTracker:
         assert("blah" in tracker.dep_graph)
 
     def test_task_post_registration(self, mocker):
-        mock_task, *_ = make_mock_task(mocker, "test_task", post=["example", "blah"])
+        mock_task, *_ = mock_gen.mock_task(mocker, "test_task", post=["example", "blah"])
 
         tracker = DootTracker()
         tracker.add_task(mock_task)
@@ -130,7 +119,7 @@ class TestTracker:
         assert("blah" in tracker.dep_graph)
 
     def test_declared_set(self, mocker):
-        mock_task, *_ = make_mock_task(mocker, "test_task", pre=["subtask", "sub2"], post=["example", "blah"])
+        mock_task, *_ = mock_gen.mock_task(mocker, "test_task", pre=["subtask", "sub2"], post=["example", "blah"])
 
         tracker = DootTracker()
         tracker.add_task(mock_task)
@@ -138,7 +127,7 @@ class TestTracker:
         assert(declared == {"__root", "test_task", "subtask","sub2", "example", "blah"})
 
     def test_defined_set(self, mocker):
-        mock_task, *_ = make_mock_task(mocker, "test_task", pre=["subtask", "sub2"], post=["example", "blah"])
+        mock_task, *_ = mock_gen.mock_task(mocker, "test_task", pre=["subtask", "sub2"], post=["example", "blah"])
 
         tracker = DootTracker()
         tracker.add_task(mock_task)
@@ -147,9 +136,9 @@ class TestTracker:
         assert(defined == {"test_task"})
 
     def test_task_order(self, mocker):
-        task1,    *_ = make_mock_task(mocker, "task1", pre=["subtask", "subtask2"])
-        subtask,  *_ = make_mock_task(mocker, "subtask", pre=["subsub"])
-        subtask2, *_ = make_mock_task(mocker, "subtask2", pre=["subsub"])
+        task1,    *_ = mock_gen.mock_task(mocker, "task1", pre=["subtask", "subtask2"])
+        subtask,  *_ = mock_gen.mock_task(mocker, "subtask", pre=["subsub"])
+        subtask2, *_ = mock_gen.mock_task(mocker, "subtask2", pre=["subsub"])
 
         tracker = DootTracker()
         tracker.add_task(task1)
@@ -166,10 +155,10 @@ class TestTracker:
         assert(next_task_3.name in "task1")
 
     def test_task_iter(self, mocker):
-        task1,    *_ = make_mock_task(mocker, "task1", pre=["subtask", "subtask2", "subtask3"])
-        subtask,  *_ = make_mock_task(mocker, "subtask", pre=["subsub"])
-        subtask2, *_ = make_mock_task(mocker, "subtask2", pre=["subsub"])
-        subtask3, *_ = make_mock_task(mocker, "subtask3", pre=["subsub"])
+        task1,    *_ = mock_gen.mock_task(mocker, "task1", pre=["subtask", "subtask2", "subtask3"])
+        subtask,  *_ = mock_gen.mock_task(mocker, "subtask", pre=["subsub"])
+        subtask2, *_ = mock_gen.mock_task(mocker, "subtask2", pre=["subsub"])
+        subtask3, *_ = mock_gen.mock_task(mocker, "subtask3", pre=["subsub"])
 
         task1.spec = mocker.Mock()
         task1.spec.priority = 0
@@ -190,10 +179,10 @@ class TestTracker:
         assert(len(tasks) == 4)
 
     def test_task_iter_state_changed(self, mocker):
-        task1,    *_ = make_mock_task(mocker, "task1", pre=["subtask", "subtask2", "subtask3"])
-        subtask,  *_ = make_mock_task(mocker, "subtask", pre=["subsub"])
-        subtask2, *_ = make_mock_task(mocker, "subtask2", pre=["subsub"])
-        subtask3, *_ = make_mock_task(mocker, "subtask3", pre=["subsub"])
+        task1,    *_ = mock_gen.mock_task(mocker, "task1", pre=["subtask", "subtask2", "subtask3"])
+        subtask,  *_ = mock_gen.mock_task(mocker, "subtask", pre=["subsub"])
+        subtask2, *_ = mock_gen.mock_task(mocker, "subtask2", pre=["subsub"])
+        subtask3, *_ = mock_gen.mock_task(mocker, "subtask3", pre=["subsub"])
 
         tracker = DootTracker()
         tracker.add_task(task1)
@@ -213,8 +202,8 @@ class TestTracker:
         assert(len(tasks) == 3)
 
     def test_task_failure(self, mocker, caplog):
-        task1,    *_ = make_mock_task(mocker, "task1", pre=["subtask"])
-        subtask,  *_ = make_mock_task(mocker, "subtask", pre=["subsub"])
+        task1,    *_ = mock_gen.mock_task(mocker, "task1", pre=["subtask"])
+        subtask,  *_ = mock_gen.mock_task(mocker, "subtask", pre=["subsub"])
         tracker = DootTracker()
         tracker.add_task(task1)
         tracker.add_task(subtask)
@@ -227,11 +216,11 @@ class TestTracker:
 
 
     def test_post_task_order(self, mocker):
-        task1,    *_  = make_mock_task(mocker, "task1", pre=["subtask", "subtask2"])
-        subtask,  *_  = make_mock_task(mocker, "subtask", pre=["subsub"], post=["sidesuper"])
-        sidesuper, *_ = make_mock_task(mocker, "sidesuper")
-        subtask2 , *_ = make_mock_task(mocker, "subtask2")
-        subsub   , *_ = make_mock_task(mocker, "subsub")
+        task1,    *_  = mock_gen.mock_task(mocker, "task1", pre=["subtask", "subtask2"])
+        subtask,  *_  = mock_gen.mock_task(mocker, "subtask", pre=["subsub"], post=["sidesuper"])
+        sidesuper, *_ = mock_gen.mock_task(mocker, "sidesuper")
+        subtask2 , *_ = mock_gen.mock_task(mocker, "subtask2")
+        subsub   , *_ = mock_gen.mock_task(mocker, "subsub")
 
         tracker = DootTracker()
         tracker.add_task(task1)
@@ -253,9 +242,9 @@ class TestTracker:
         assert(next_task_4.name == "task1" )
 
     def test_task_exact_artifact_dependency(self, mocker):
-        task1,    *_ = make_mock_task(mocker, "task1",    pre=[pl.Path("test.file")])
-        subtask,  *_ = make_mock_task(mocker, "subtask",  post=[pl.Path("blah.other")])
-        subtask2, *_ = make_mock_task(mocker, "subtask2", post=[pl.Path("test.file")])
+        task1,    *_ = mock_gen.mock_task(mocker, "task1",    pre=[pl.Path("test.file")])
+        subtask,  *_ = mock_gen.mock_task(mocker, "subtask",  post=[pl.Path("blah.other")])
+        subtask2, *_ = mock_gen.mock_task(mocker, "subtask2", post=[pl.Path("test.file")])
 
         tracker = DootTracker()
         tracker.add_task(task1)
@@ -265,9 +254,9 @@ class TestTracker:
         assert(next_task.name == "subtask2")
 
     def test_task_inexact_artifact_dependency(self, mocker):
-        task1,    *_ = make_mock_task(mocker, "task1", pre=[pl.Path("*.file")])
-        subtask,  *_ = make_mock_task(mocker, "subtask", post=[pl.Path("blah.other")])
-        subtask2, *_ = make_mock_task(mocker, "subtask2", post=[pl.Path("test.file")])
+        task1,    *_ = mock_gen.mock_task(mocker, "task1", pre=[pl.Path("*.file")])
+        subtask,  *_ = mock_gen.mock_task(mocker, "subtask", post=[pl.Path("blah.other")])
+        subtask2, *_ = mock_gen.mock_task(mocker, "subtask2", post=[pl.Path("test.file")])
 
         tracker = DootTracker()
         tracker.add_task(task1)
@@ -278,9 +267,9 @@ class TestTracker:
 
     def test_task_artifact_exists(self, mocker):
         mocker.patch.object(pl.Path, "exists", return_value=True)
-        task1,    *_ = make_mock_task(mocker, "task1", pre=[pl.Path("*.file")])
-        subtask,  *_ = make_mock_task(mocker, "subtask", post=[pl.Path("blah.other")])
-        subtask2, *_ = make_mock_task(mocker, "subtask2", post=[pl.Path("test.file")])
+        task1,    *_ = mock_gen.mock_task(mocker, "task1", pre=[pl.Path("*.file")])
+        subtask,  *_ = mock_gen.mock_task(mocker, "subtask", post=[pl.Path("blah.other")])
+        subtask2, *_ = mock_gen.mock_task(mocker, "subtask2", post=[pl.Path("test.file")])
 
         tracker = DootTracker()
         tracker.add_task(task1)
@@ -292,9 +281,9 @@ class TestTracker:
 
     def test_task_artifact_doesnt_exists(self, mocker):
         mocker.patch.object(pl.Path, "exists", return_value=False)
-        task1,    *_ = make_mock_task(mocker, "task1", pre=[pl.Path("*.file")])
-        subtask,  *_ = make_mock_task(mocker, "subtask", post=[pl.Path("blah.other")])
-        subtask2, *_ = make_mock_task(mocker, "subtask2", post=[pl.Path("test.file")])
+        task1,    *_ = mock_gen.mock_task(mocker, "task1", pre=[pl.Path("*.file")])
+        subtask,  *_ = mock_gen.mock_task(mocker, "subtask", post=[pl.Path("blah.other")])
+        subtask2, *_ = mock_gen.mock_task(mocker, "subtask2", post=[pl.Path("test.file")])
 
         tracker = DootTracker()
         tracker.add_task(task1)
@@ -311,9 +300,9 @@ class TestTracker:
 
         mocker.patch.object(pl.Path, "exists", new=temp_exists)
 
-        task1,    *_ = make_mock_task(mocker, "task1", pre=[pl.Path("*.file")])
-        subtask,  *_ = make_mock_task(mocker, "subtask", post=[pl.Path("blah.other")])
-        subtask2, *_ = make_mock_task(mocker, "subtask2", post=[pl.Path("test.file")])
+        task1,    *_ = mock_gen.mock_task(mocker, "task1", pre=[pl.Path("*.file")])
+        subtask,  *_ = mock_gen.mock_task(mocker, "subtask", post=[pl.Path("blah.other")])
+        subtask2, *_ = mock_gen.mock_task(mocker, "subtask2", post=[pl.Path("test.file")])
 
         tracker = DootTracker()
         tracker.add_task(task1)

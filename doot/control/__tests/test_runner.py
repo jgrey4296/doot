@@ -14,6 +14,7 @@ import warnings
 import pytest
 
 import tomler
+import doot
 from doot.enums import TaskStateEnum
 from doot.control.runner import DootRunner
 from doot.control.tracker import DootTracker
@@ -32,7 +33,18 @@ logging = logmod.root
 # with pytest.warns(warntype)
 
 class TestRunner:
-    def test_initial(self, mocker):
+
+    @pytest.fixture(scope="function")
+    def setup(self, mocker):
+        min_sleep = {"sleep": 0.0}
+        config_dict = {"settings": {"general" : {"task" : min_sleep, "subtask" : min_sleep, "batch": min_sleep}}}
+        doot.config = tomler.Tomler(config_dict)
+
+    @pytest.fixture(scope="function")
+    def cleanup(self):
+        pass
+
+    def test_initial(self, mocker, setup):
         ##-- setup
         tracker_m  = mocker.MagicMock(spec=TaskTracker_i)
         reporter_m = mocker.MagicMock(spec=ReportLine_i)
@@ -42,7 +54,7 @@ class TestRunner:
         # Check:
         assert(isinstance(runner, TaskRunner_i))
 
-    def test_tasks_execute(self, mocker):
+    def test_tasks_execute(self, mocker, setup):
         ##-- setup
         tracker_m                       = mocker.MagicMock(spec=TaskTracker_i)
         reporter_m                      = mocker.MagicMock(spec=Reporter_i)
@@ -94,7 +106,7 @@ class TestRunner:
             assert(call.args[0].name in ["first", "second", "third"])
         ##-- end check result
 
-    def test_taskers_expand(self, mocker):
+    def test_taskers_expand(self, mocker, setup):
         ##-- setup
         tracker_m                            = mocker.MagicMock(spec=TaskTracker_i)
         reporter_m                           = mocker.MagicMock(spec=Reporter_i)
@@ -138,7 +150,7 @@ class TestRunner:
         execute_task.assert_not_called()
         ##-- end check
 
-    def test_taskers_add_tasks(self, mocker):
+    def test_taskers_add_tasks(self, mocker, setup):
         ##-- setup
         tracker_m                          = mocker.MagicMock(spec=TaskTracker_i)
         reporter_m                         = mocker.MagicMock(spec=Reporter_i)
@@ -187,36 +199,37 @@ class TestRunner:
         execute_action.assert_not_called()
         execute_task.assert_not_called()
 
-    def test_tasks_execute_actions(self, mocker):
+    def test_tasks_execute_actions(self, mocker, setup):
         ##-- setup
-        tracker_m                            = mocker.MagicMock(spec=TaskTracker_i)
-        reporter_m                           = mocker.MagicMock(spec=Reporter_i)
-        runner                               = DootRunner(tracker=tracker_m, reporter=reporter_m)
+        tracker_m                                  = mocker.MagicMock(spec=TaskTracker_i)
+        reporter_m                                 = mocker.MagicMock(spec=Reporter_i)
+        runner                                     = DootRunner(tracker=tracker_m, reporter=reporter_m)
 
-        task_spec_m                          = mocker.MagicMock(spec=DootTaskSpec)
-        type(task_spec_m).extra             = mocker.MagicMock(spec=tomler.Tomler)
-        task_spec_m.print_level              = "WARN"
+        task_spec_m                                = mocker.MagicMock(spec=DootTaskSpec)
+        type(task_spec_m).extra                    = mocker.MagicMock(spec=tomler.Tomler)
+        type(task_spec_m).print_level              = "WARN"
+        type(task_spec_m).action_level             = "WARN"
 
-        action_spec_m                        = mocker.MagicMock(spec=DootActionSpec)
-        type(action_spec_m).__call__         = mocker.MagicMock(return_value=None)
+        action_spec_m                              = mocker.MagicMock(spec=DootActionSpec)
+        type(action_spec_m).__call__               = mocker.MagicMock(return_value=None)
 
-        task1_m                              = mocker.MagicMock(spec=Task_i)
-        task1_m.name                         = "firstTask"
-        task1_m.spec                         = task_spec_m
-        task1_m.state                        = {}
-        type(task1_m).actions                = mocker.PropertyMock(return_value=[action_spec_m])
-        task2_m                              = mocker.MagicMock(spec=Task_i)
-        task2_m.name                         = "secondTask"
-        task2_m.spec                         = task_spec_m
-        task3_m                              = mocker.MagicMock(spec=Task_i)
-        task3_m.name                         = "thirdTask"
-        task3_m.spec                         = task_spec_m
+        task1_m                                    = mocker.MagicMock(spec=Task_i)
+        task1_m.name                               = "firstTask"
+        task1_m.spec                               = task_spec_m
+        task1_m.state                              = {}
+        type(task1_m).actions                      = mocker.PropertyMock(return_value=[action_spec_m])
+        task2_m                                    = mocker.MagicMock(spec=Task_i)
+        task2_m.name                               = "secondTask"
+        task2_m.spec                               = task_spec_m
+        task3_m                                    = mocker.MagicMock(spec=Task_i)
+        task3_m.name                               = "thirdTask"
+        task3_m.spec                               = task_spec_m
 
-        tracker_m.__iter__.return_value      = [task1_m, task2_m, task3_m]
+        tracker_m.__iter__.return_value            = [task1_m, task2_m, task3_m]
 
-        expand_tasker                        = mocker.spy(runner, "_expand_tasker")
-        execute_task                         = mocker.spy(runner, "_execute_task")
-        execute_action                       = mocker.spy(runner, "_execute_action")
+        expand_tasker                              = mocker.spy(runner, "_expand_tasker")
+        execute_task                               = mocker.spy(runner, "_execute_task")
+        execute_action                             = mocker.spy(runner, "_execute_action")
         ##-- end setup
 
         ##-- pre-check
