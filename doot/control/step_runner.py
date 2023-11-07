@@ -50,8 +50,7 @@ from doot.utils.signal_handler import SignalHandler
 dry_run      = doot.args.on_fail(False).cmd.args.dry_run()
 SLEEP_LENGTH = doot.config.on_fail(0.2, int|float).settings.general.task.sleep()
 
-@doot.check_protocol
-class DootStepRunner(DootRunner):
+@doot.check_protocol class DootStepRunner(DootRunner):
     """ A runner with step control """
     _conf_prompt  = "::- Command? (? for help): "
     _cmd_prefix   = "_do_"
@@ -64,12 +63,15 @@ class DootStepRunner(DootRunner):
                      "u"  : "up",
                      "q"  : "quit",
                      "?"  : "help",
+                     "I"  : "print_info",
+                     "W"  : "print_warn",
+                     "D"  : "print_debug",
                      }
 
     def __init__(self:Self, *, tracker:abstract.TaskTracker_i, reporter:abstract.Reporter_i, policy=None):
         super().__init__(tracker=tracker, reporter=reporter, policy=policy)
         self._conf_types = []
-
+        self._override_level = "INFO"
 
 
 
@@ -195,6 +197,29 @@ class DootStepRunner(DootRunner):
                 pass
 
         printer.info("Stepping at: %s", self._conf_types)
+
+
+
+    def _do_print_info(self, *args):
+        self._override_level = "INFO"
+        printer.warning("Overring Printer to: %s", self._override_level)
+        self._set_print_level(self._override_level)
+
+    def _do_print_warn(self, *args):
+        self._override_level = "WARN"
+        printer.warning("Overring Printer to: %s", self._override_level)
+        self._set_print_level(self._override_level)
+
+    def _do_print_debug(self, *args):
+        self._override_level = "DEBUG"
+        printer.warning("Overring Printer to: %s", self._override_level)
+        self._set_print_level(self._override_level)
+
+    def _set_print_level(self, level=None):
+        if level:
+            super()._set_print_level(self._override_level)
+        else:
+            super()._set_print_level()
 
 
     def set_confirm_type(self, val):

@@ -90,27 +90,32 @@ class StubCmd(Command_i):
     def _stub_doot_toml(self):
         logging.info("Building Doot Toml Stub")
         doot_toml = pl.Path("doot.toml")
+        data_text = data_path.read_text()
         if doot_toml.exists():
-            logging.error("Can't stub doot.toml, it already exists")
+            printer.info(data_text)
+            printer.warning("doot.toml it already exists, printed to stdout instead")
             return
 
-        data_text = data_path.read_text()
         with open(task_file, "a") as f:
             f.write(data_text)
 
         printer.info("doot.toml stub")
 
     def _stub_task_toml(self, tasks, plugins):
+        """
+        This creates a toml stub using default values, as best it can
+        """
         logging.info("Building Task Toml Stub")
         task_iden                   : str    = doot.args.on_fail("task").cmd.args.ctor()
         task_import_path            : str    = PluginLoader_p.get_loaded("tasker", task_iden) or task_iden
         task_type                   : type   = self._import_task_class(task_import_path)
 
-        # Create stub toml
-        stub = TaskStub(ctor=task_iden)
-        stub['print_level'].default = "INFO"
-        stub['priority'].default = 10
-        stub['name'].default = DootStructuredName.from_str(doot.args.cmd.args.name)
+        # Create stub toml, with some basic information
+        stub                         = TaskStub(ctor=task_iden)
+        stub['print_level'].default  = "INFO"
+        stub['action_level'].default = "INFO"
+        stub['priority'].default     = 10
+        stub['name'].default         = DootStructuredName.from_str(doot.args.cmd.args.name)
 
         # add ctor specific fields,
         # such as for globber: roots [], exts [], recursive bool, subtask "", head_task ""
@@ -122,6 +127,7 @@ class StubCmd(Command_i):
             except AttributeError:
                 pass
 
+        # extend the name if there are already tasks with that name
         original_name = stub['name'].default.task_str()
         while str(stub['name'].default) in tasks:
             stub['name'].default.task.append("$conflicted$")

@@ -453,6 +453,7 @@ class DootTaskSpec:
     # Any additional information:
     version           : str                                        = field(default="0.1")
     print_level       : str                                        = field(default="INFO")
+    action_level      : str                                        = field(default="INFO")
     flags             : TaskFlags                                  = field(default=TaskFlags.TASK)
 
     extra             : Tomler                                     = field(default_factory=Tomler)
@@ -594,6 +595,14 @@ class DootTaskArtifact:
 class TaskStub:
     """ Stub Task Spec for description in toml
     Automatically Adds default keys from DootTaskSpec
+
+    This essentially wraps a dict, adding toml stubs parts as you access keys.
+    eg:
+    obj = TaskStub()
+    ob["blah"].type = "int"
+
+    # str(obj) -> will now generate toml, including a "blah" key
+
     """
     ctor       : str|type                     = field(default="doot.task.base_tasker::DootTasker")
     parts      : dict[str, TaskStubPart]      = field(default_factory=dict, kw_only=True)

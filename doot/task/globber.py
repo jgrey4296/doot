@@ -179,11 +179,12 @@ class DootEagerGlobber(SubMixin, DootTasker):
         self.total_subtasks = 0
         logging.debug("%s : Building Globber SubTasks", self.name)
         for i, (uname, fpath) in enumerate(self.glob_all()):
-            match self._build_subtask(i, uname, fpath=fpath, fstem=fpath.stem):
+            match self._build_subtask(i, uname, fpath=fpath, fstem=fpath.stem, fname=fpath.name, lpath=self.rel_path(fpath)):
                 case None:
                     pass
                 case DootTaskSpec() as subtask:
                     self.total_subtasks += 1
+                    subtask.print_level = self.spec.extra.on_fail(subtask.print_level).sub_print_level()
                     yield subtask
                 case _ as subtask:
                     raise TypeError("Unexpected type for subtask: %s", type(subtask))
@@ -215,4 +216,6 @@ class DootEagerGlobber(SubMixin, DootTasker):
         stub['roots'].comment     = "Places the globber will start"
         stub['recursive'].type    = "bool"
         stub['recursive'].default = False
+        stub['sub_print_level'].type = "str"
+        stub['sub_print_level'].default = "WARN"
         return stub
