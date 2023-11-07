@@ -58,6 +58,7 @@ import sh
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
+from doot.utils.string_expand import expand_str
 
 @doot.check_protocol
 class TimeAction(Action_p):
@@ -74,9 +75,6 @@ class TimeAction(Action_p):
 
     def __str__(self):
         return f"Base Action: {self.spec.args}"
-
-    def expand_str(self, val, state):
-        return val.format_map(state)
 
     def _current_time(self) -> str:
         now = datetime.datetime.now()

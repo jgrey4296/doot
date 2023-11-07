@@ -15,6 +15,7 @@ import doot
 from doot.errors import DootTaskError
 # from doot._abstract import Action_p
 from doot.actions.base_action import DootBaseAction
+from doot.utils.string_expand import expand_str
 
 class DootShellAction(DootBaseAction):
     """
@@ -32,9 +33,10 @@ class DootShellAction(DootBaseAction):
         return "Shell Action"
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
+        result = None
         try:
             cmd      = getattr(sh, spec.args[0])
-            expanded = [self.expand_str(x, task_state) for x in spec.args[1:]]
+            expanded = [expand_str(x, spec, task_state) for x in spec.args[1:]]
             result   = cmd(*expanded, _return_cmd=True, _bg=spec.kwargs.on_fail(False, bool).background())
             assert(result.exit_code == 0)
             printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, spec.args[0], spec.args[1:])
@@ -44,7 +46,7 @@ class DootShellAction(DootBaseAction):
             printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], spec.args)
             return False
         except sh.ErrorReturnCode:
-            printer.error("Shell Command '%s' exited with code: %s for args: %s", spec[0], result.exit_code, spec.args)
+            printer.error("Shell Command '%s' exited with code: %s for args: %s", spec.args[0], result.exit_code, spec.args)
             return False
 
 class DootInteractiveAction(DootBaseAction):
@@ -59,7 +61,7 @@ class DootInteractiveAction(DootBaseAction):
     def __call__(self, task_state:dict) -> dict|bool|None:
         try:
             cmd      = getattr(sh, spec.args[0])
-            expanded = [self.expand_str(x, task_state) for x in spec.args[1:]]
+            expanded = [expand_str(x, spec, task_state) for x in spec.args[1:]]
             result   = cmd(*expanded, _return_cmd=True, _bg=spec.kwargs.on_fail(False, bool).background(), _out=self.interact, _out_bufsize=0, _tty_in=True, _unify_ttys=True)
             assert(result.exit_code == 0)
             printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, spec.args[0], spec.args[1:])

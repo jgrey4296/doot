@@ -27,6 +27,7 @@ import sh
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
+from doot.utils.string_expand import expand_str
 
 printer = logmod.getLogger("doot._printer")
 """
@@ -58,8 +59,6 @@ class PutPostAction(Action_p):
     def __str__(self):
         return f"Postbox Put Action: {self.spec.args}"
 
-    def expand_str(self, val, state):
-        return val.format_map(state)
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
         DootPostBox.put(task_state['_task_name'].root(), task_state.get(spec.args[0]))
@@ -75,8 +74,6 @@ class GetPostAction(Action_p):
     def __str__(self):
         return f"Postbox Get Action: {self.spec.args}"
 
-    def expand_str(self, val, state):
-        return val.format_map(state)
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
         return {spec.kwargs.target : DootPostBox.get(spec.kwargs.source) }
@@ -92,9 +89,7 @@ class SummarizePostAction(Action_p):
     def __str__(self):
         return f"Postbox Summary Action: {self.spec.args}"
 
-    def expand_str(self, val, state):
-        return val.format_map(state)
-
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        data = DootPostBox.get(spec.kwargs.source)
-        printer.info("Postbox %s Contents: %s", spec.kwargs.source, data)
+        target = spec.kwargs.on_fail(task_state['_task_name'].root()).source()
+        data   = DootPostBox.get(target)
+        printer.info("Postbox %s: Contents: %s", target, data)

@@ -56,6 +56,7 @@ import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot.structs import DootActionSpec
 from doot._abstract import Action_p
+from doot.utils.string_expand import expand_str
 
 @doot.check_protocol
 class DootBaseAction(Action_p):
@@ -71,8 +72,5 @@ class DootBaseAction(Action_p):
 
     def __call__(self, spec:DootActionSpec, task_state:dict) -> dict|bool|None:
         printer.debug("Base Action Called: %s", task_state.get("count", 0))
-        printer.info(" ".join(self.expand_str(x, task_state) for x in spec.args))
+        printer.info(" ".join(expand_str(x, spec, task_state) for x in spec.args))
         return { "count" : task_state.get("count", 0) + 1 }
-
-    def expand_str(self, val, state):
-        return val.format_map(state)
