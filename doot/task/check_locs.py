@@ -22,20 +22,22 @@ make_missing = doot.config.on_fail(False).settings.general.location_check.make_m
 check_level  = doot.config.on_fail("WARN").settings.general.location_check.print_level()
 
 @doot.check_protocol
-class CheckDirTask(DootTask):
+class CheckLocsTask(DootTask):
     """ A Task for checking a single location exists """
     task_name = "_locations::check"
 
     def __init__(self, spec=None):
         locations = [[doot.locs[x]] for x in doot.locs]
         spec      = DootTaskSpec.from_dict({
-            "name"        : CheckDirTask.task_name,
+            "name"        : CheckLocsTask.task_name,
             "actions"     : locations,
             "print_level" : check_level,
+            "action_level": check_level,
+            "priority" : 100,
                                            })
-        super().__init__(spec, action_ctor=self.checkdir)
+        super().__init__(spec, action_ctor=self.checklocs)
 
-    def checkdir(self, spec, task_state_copy):
+    def checklocs(self, spec, task_state_copy):
         exists_p = spec.args[0].exists()
         if exists_p:
             doot.printer.info("Base Location Exists : %s", spec.args[0])

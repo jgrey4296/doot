@@ -15,7 +15,7 @@ import pytest
 
 import doot
 import doot._abstract
-from doot.task.check_dirs import CheckDirTask
+from doot.task.check_locs import CheckLocsTask
 from doot.control.locations import DootLocations
 from doot.structs import DootTaskSpec
 from doot.utils.testing_fixtures import wrap_tmp
@@ -35,17 +35,17 @@ logging = logmod.root
 
 ##-- end pytest reminder
 
-class TestCheckDirTask:
+class TestCheckLocsTask:
 
     def test_initial(self):
-        obj = CheckDirTask(DootTaskSpec.from_dict({"name": "basic"}))
+        obj = CheckLocsTask(DootTaskSpec.from_dict({"name": "basic"}))
         assert(isinstance(obj, doot._abstract.Task_i))
 
 
 
     def test_expand_actions(self):
         pytest.skip("todo")
-        obj = CheckDirTask()
+        obj = CheckLocsTask()
         actions = list(obj.actions)
         assert(len(actions) > 1)
         assert(callable(actions[0]))
@@ -53,7 +53,7 @@ class TestCheckDirTask:
 
     def test_expand_multi_actions(self):
         pytest.skip("todo")
-        obj = CheckDirTask()
+        obj = CheckLocsTask()
         actions = list(obj.actions)
         assert(len(actions) == 2)
         assert(callable(actions[0]))
@@ -62,7 +62,7 @@ class TestCheckDirTask:
 
     def test_run_action(self):
         pytest.skip("todo")
-        obj = CheckDirTask()
+        obj = CheckLocsTask()
         actions = list(obj.actions)
         assert(len(actions) == 1)
         result = actions[0]({})
@@ -71,7 +71,7 @@ class TestCheckDirTask:
 
     def test_run_action_nonexistent_target(self):
         pytest.skip("todo")
-        obj = CheckDirTask()
+        obj = CheckLocsTask()
         actions = list(obj.actions)
         assert(len(actions) == 1)
         result = actions[0]({})
