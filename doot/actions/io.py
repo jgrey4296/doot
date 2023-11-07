@@ -160,3 +160,40 @@ class CopyAction(Action_p):
         dest_loc   = expand_str(dest, spec, task_state)
         printer.info("Copying from %s to %s", source_loc, dest_loc)
         shutil.copy2(source_loc,dest_loc)
+
+
+@doot.check_protocol
+class BackupAction(Action_p):
+    """
+      copy a file somewhere, but only if it doesn't exist at the dest, or is newer than the dest
+      The arguments of the action are held in self.spec
+    """
+    _toml_kwargs = ["source", "dest"]
+
+    def __str__(self):
+        return f"Base Action: {self.spec.args}"
+
+    def __call__(self, spec, task_state:dict) -> dict|bool|None:
+        source_key = spec.kwargs.source
+        dest_key   = spec.kwargs.dest
+
+        if source_key in task_state:
+            source = task_state.get(source_key)
+        else:
+            source = source_key
+
+        if dest_key in task_state:
+            dest = task_state.get(dest_key)
+        else:
+            dest   = dest_key
+
+
+        source_loc = expand_str(source, spec, task_state)
+        dest_loc   = expand_str(dest, spec, task_state)
+
+        if dest_loc.exists() and source_loc.stat().st_mtime_ns <= dest_loc.stat().st_mtime_ns:
+            return True
+
+        printer.warning("Backing up %s to %s", source_loc, dest_loc)
+        DootPostBox.put_from(task_state, dest_loc)
+        shutil.copy2(source_loc,dest_loc)

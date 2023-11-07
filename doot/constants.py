@@ -71,6 +71,7 @@ DEFAULT_PLUGINS['action']   = [("basic"  ,   "doot.actions.base_action:DootBaseA
                                ("read"  ,    "doot.actions.io:ReadAction"),
                                ("write" ,    "doot.actions.io:WriteAction"),
                                ("copy"  ,    "doot.actions.io:CopyAction"),
+                               ("backup",    "doot.actions.io:BackupAction"),
                                ("putPost",   "doot.actions.postbox:PutPostAction"),
                                ("getPost",   "doot.actions.postbox:GetPostAction"),
                                ("addState",  "doot.actions.state:AddStateAction"),
@@ -96,6 +97,7 @@ DEFAULT_LOAD_TARGETS  : Final[list[pl.Path]] =  [pl.Path(x) for x in ["doot.toml
 DEFAULT_STUB_TASK_NAME : Final[str] = "stub::stub"
 
 ##-- end path and file names
+
 
 TASK_SEP             : Final[str]      = "::"
 IMPORT_SEP           : Final[str]      = ":"
