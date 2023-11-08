@@ -64,10 +64,11 @@ from doot.constants import SUBTASKED_HEAD
 from doot.enums import TaskFlags
 from doot.structs import DootTaskSpec, TaskStub, TaskStubPart, DootStructuredName
 from doot._abstract import Tasker_i, Task_i
+from doot.mixins.importer import ImporterMixin
 from doot.errors import DootDirAbsent
 
 @doot.check_protocol
-class DootTasker(Tasker_i):
+class DootTasker(Tasker_i, ImporterMixin):
     """ Util Class for building single tasks
       wraps with setup and teardown tasks,
       manages cleaning,
@@ -112,12 +113,14 @@ class DootTasker(Tasker_i):
 
     @classmethod
     def stub_class(cls, stub) -> TaskStub:
-        stub.ctor             = cls
+        stub.ctor                 = cls
         stub['version'].default   = cls._version
-        stub['doc'].default   = [f"\"{x}\"" for x  in cls.class_help().split("\n")]
-        stub['flags'].default = cls._default_flags
-        stub['head_task'].type = "task_iden"
-        stub['head_task'].default = "TODO"
+        stub['doc'].default       = [f"\"{x}\"" for x  in cls.class_help().split("\n")]
+        stub['flags'].default     = cls._default_flags
+        stub['flags'].prefix      = "# "
+        stub['head_task'].type    = "task_iden"
+        stub['head_task'].default = ""
+        stub['head_task'].prefix  = "# "
         return stub
 
     def stub_instance(self, stub) -> TaskStub:

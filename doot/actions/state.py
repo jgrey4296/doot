@@ -21,33 +21,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 # from uuid import UUID, uuid1
 # from weakref import ref
 
-# from bs4 import BeautifulSoup
-# import boltons
-# import construct as C
-# import dirty-equals as deq
-# import graphviz
-# import matplotlib.pyplot as plt
-# import more_itertools as itzplus
-# import networkx as nx
-# import numpy as np
-# import pandas
-# import pomegranate as pom
-# import pony import orm
-# import pronouncing
-# import pyparsing as pp
-# import rich
-# import seaborn as sns
-# import sklearn
-# import stackprinter # stackprinter.set_excepthook(style='darkbg2')
-# import sty
-# import sympy
-# import tomllib
-# import toolz
-# import tqdm
-# import validators
-# import z3
-# import spacy # nlp = spacy.load("en_core_web_sm")
-
 ##-- end imports
 
 printer = logmod.getLogger("doot._printer")
@@ -58,6 +31,7 @@ import shutil
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
+from doot.mixins.importer import ImporterMixin
 
 @doot.check_protocol
 class AddStateAction(Action_p):
@@ -71,3 +45,15 @@ class AddStateAction(Action_p):
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
         return dict(spec.kwargs)
+
+
+@doot.check_protocol
+class AddStateFn(Action_p, ImporterMixin):
+
+    def __call__(self, spec, task_state:dict) -> dict|bool|None:
+        result = {}
+        for kwarg, val in spec.kwargs:
+            result[kwarg] = self.import_class(val)
+
+            pass
+        return result

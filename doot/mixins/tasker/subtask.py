@@ -59,7 +59,7 @@ class SubMixin:
     def _build_subtask(self, n:int, uname, **kwargs) -> DootTaskSpec:
         task_spec = self.default_task(uname, extra=kwargs)
 
-        task_ref = self.spec.extra.on_fail((None,), None|str).subtask()
+        task_ref = self.spec.extra.on_fail((None,), None|str).sub_task()
         if task_ref is not None:
             task_spec.ctor_name = DootStructuredName.from_str(task_ref)
 
@@ -81,6 +81,7 @@ class SubMixin:
 
     @classmethod
     def stub_class(cls, stub):
-        stub['subtask'].type = "task_iden"
-        stub['subtask'].default = "TODO"
+        stub['sub_task'].type = "task_iden"
+        stub['sub_task'].default = ""
+        stub['sub_task'].prefix = "# "
         del stub.parts['actions']

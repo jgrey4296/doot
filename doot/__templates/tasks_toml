@@ -1,6 +1,6 @@
 # -*- mode:conf-toml; -*-
 [reminder]
-action = [{ctor = "basic", args=[], inState=[], outState=[] }]
+action = [{do= "basic", args=[], inState=[], outState=[] }]
 
 [[directories]]
 src     = "src"

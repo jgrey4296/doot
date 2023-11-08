@@ -68,6 +68,8 @@ def expand_str(s, spec=None, task_state=None):
             case set():
                 val = " ".join(str(x) for x in replacement)
                 curr = re.sub(f"{{{x}}}", val, curr)
+            case pl.Path():
+                curr = re.sub(f"{{{x}}}", str(replacement), curr)
             case _:
                 curr = re.sub(f"{{{x}}}", replacement, curr)
 

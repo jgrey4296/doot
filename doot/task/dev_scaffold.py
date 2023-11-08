@@ -23,7 +23,6 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 make_missing = doot.config.on_fail(False).settings.general.location_check.make_missing()
-check_level  = doot.config.on_fail("WARN").settings.general.location_check.print_level()
 
 @doot.check_protocol
 class DevScaffold(DootTasker):

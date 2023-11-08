@@ -112,8 +112,8 @@ class StubCmd(Command_i):
 
         # Create stub toml, with some basic information
         stub                         = TaskStub(ctor=task_iden)
-        stub['print_level'].default  = "INFO"
-        stub['action_level'].default = "INFO"
+        stub['print_levels'].default  = dict()
+        stub['print_levels'].type     = f"Dict: {doot.constants.PRINT_LOCATIONS}"
         stub['priority'].default     = 10
         stub['name'].default         = DootStructuredName.from_str(doot.args.cmd.args.name)
 
@@ -160,7 +160,7 @@ class StubCmd(Command_i):
         matched = [x for x in plugins.action if x.name == doot.args.cmd.args.name or x.value == doot.args.cmd.args.name]
         if bool(matched):
             loaded = matched[0].load()
-            printer.info("Action %s : %s", matched[0].name, matched[0].value)
+            printer.info("- Action %s : %s", matched[0].name, matched[0].value)
             match getattr(loaded, "_toml_help", []):
                 case []:
                     pass
@@ -170,11 +170,9 @@ class StubCmd(Command_i):
 
             match getattr(loaded, "_toml_kwargs", []):
                 case []:
-                    printer.info("No Declared Kwargs")
+                    printer.info("-- No Declared Kwargs")
                 case [*xs]:
-                    printer.info("Declared kwargs for action: ")
-                    for x in sorted(xs):
-                        printer.info("-- %s", x)
+                    printer.info("-- Declared kwargs for action: %s", sorted(xs))
 
         else:
             printer.info("Available Actions:")
@@ -182,14 +180,14 @@ class StubCmd(Command_i):
                 printer.info("-- %10s : %s", action.name, action.value)
 
         printer.info("")
-        printer.info("Toml Form: ")
+        printer.info("-- Toml Form: ")
         if bool(matched):
-            printer.info("{ ctor=\"%s\", args=[], inState=[], outState=[] } # plus any kwargs a specific action uses", matched[0].name)
+            printer.info("{ do=\"%s\", args=[], inState=[], outState=[] } # plus any kwargs a specific action uses", matched[0].name)
         else:
-            printer.info("{ ctor=\"action name/import path\", args=[], inState=[], outState=[] } # plus any kwargs a specific action uses")
+            printer.info("{ do=\"action name/import path\", args=[], inState=[], outState=[] } # plus any kwargs a specific action uses")
 
         printer.info("")
-        printer.info("For Custom Python Actions, implement the following in the .tasks director ")
+        printer.info("- For Custom Python Actions, implement the following in the .tasks director ")
         printer.info("def custom_action(spec:DootActionSpec, task_state:dict) -> None|bool|dict:...")
 
     def _list_flags(self):

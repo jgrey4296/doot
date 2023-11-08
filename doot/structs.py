@@ -340,7 +340,7 @@ class DootActionSpec:
       path:/usr/bin/python  -> Path(/usr/bin/python)
 
     """
-    ctor       : None|str                = field(default=None)
+    do         : None|str                = field(default=None)
     args       : list[Any]               = field(default_factory=list)
     kwargs     : Tomler                  = field(default_factory=Tomler)
     inState    : set[str]                = field(default_factory=set)
@@ -349,12 +349,12 @@ class DootActionSpec:
 
     def __str__(self):
         result = []
-        if isinstance(self.ctor, str):
-            result.append(f"Ctor={self.ctor}")
-        elif self.ctor and hasattr(self.ctor, '__qualname__'):
-            result.append(f"Ctor={self.ctor.__qualname__}")
-        elif self.ctor:
-            result.append(f"Ctor={self.ctor.__class__.__qualname__}")
+        if isinstance(self.do, str):
+            result.append(f"do={self.do}")
+        elif self.do and hasattr(self.do, '__qualname__'):
+            result.append(f"do={self.do.__qualname__}")
+        elif self.do:
+            result.append(f"do={self.do.__class__.__qualname__}")
 
         if self.args:
             result.append(f"args={[str(x) for x in self.args]}")
@@ -372,8 +372,8 @@ class DootActionSpec:
 
         return f"<ActionSpec: {' '.join(result)} >"
 
-    def __call__(self, task_state_copy:dict):
-        return self.fun(self, task_state_copy)
+    def __call__(self, task_state:dict):
+        return self.fun(self, task_state)
 
     def set_function(self, fun:Action_p|Callable):
         """
@@ -423,7 +423,7 @@ class DootActionSpec:
             case dict():
                 kwargs = Tomler({x:y for x,y in data.items() if x not in DootActionSpec.__dataclass_fields__.keys()})
                 action_spec = DootActionSpec(
-                    ctor=data['ctor'],
+                    do=data['do'],
                     args=data.get('args',[]),
                     kwargs=kwargs,
                     inState=set(data.get('inState', set())),
@@ -438,7 +438,7 @@ class DootActionSpec:
 class DootTaskSpec:
     """ The information needed to describe a generic task
 
-    actions : list[ [args] | {ctor, [args]} | {fn, [args]} ]
+    actions : list[ [args] | {do="", args=[], **kwargs} ]
     """
     name              : DootStructuredName                         = field()
     doc               : list[str]                                  = field(default_factory=list)
@@ -451,12 +451,11 @@ class DootTaskSpec:
     ctor_name         : DootStructuredName                         = field(default=None)
     ctor              : type|Callable|None                         = field(default=None)
     # Any additional information:
-    version           : str                                        = field(default="0.1")
-    print_level       : str                                        = field(default="INFO")
-    action_level      : str                                        = field(default="INFO")
-    flags             : TaskFlags                                  = field(default=TaskFlags.TASK)
+    version            : str                                         = field(default="0.1")
+    print_levels       : Tomler                                      = field(default_factory=Tomler)
+    flags              : TaskFlags                                   = field(default=TaskFlags.TASK)
 
-    extra             : Tomler                                     = field(default_factory=Tomler)
+    extra              : Tomler                                      = field(default_factory=Tomler)
 
     @staticmethod
     def from_dict(data:dict, *, ctor:type=None, ctor_name=None):
@@ -470,14 +469,17 @@ class DootTaskSpec:
 
         # Integrate extras, normalize keys
         for key, val in data.items():
-            if key == "extra":
-                extra_data.update(dict(val))
-            elif key in core_keys:
-                core_data[key] = val
-            elif key.replace("-", "_") in core_keys:
-                core_data[key.replace("-", "_")] = val
-            elif key not in ['name', 'group']:
-                extra_data[key] = val
+            match key:
+                case "extra":
+                    extra_data.update(dict(val))
+                case "print_levels":
+                    core_data[key] = Tomler(val)
+                case x if x in core_keys:
+                    core_data[x] = val
+                case x if x.replace("-", "_") in core_keys:
+                    core_data[x.replace("-", "_")] = val
+                case x if x not in ["name", "group"]:
+                    extra_data[key] = val
 
         # Construct group and name
         match data:
@@ -519,22 +521,30 @@ class DootTaskSpec:
             match field:
                 case "name":
                     specialized[field] = data.name
-                # case "print_level":
-                #     specialized[field] = logmod.getLevelName(max(map(logmod.getLevelName, [self.print_level, data.print_level])))
-                # case "action_level":
-                #     specialized[field] = logmod.getLevelName(max(map(logmod.getLevelName, [self.action_level, data.action_level])))
                 case "extra":
-                    specialized[field] = Tomler.merge(self.extra, data.extra)
+                   specialized[field] = Tomler.merge(data.extra, self.extra, shadow=True)
                 case _:
                     # prefer the newest data, then the unspecialized data, then the default
-                    field_data         = DootTaskSpec.__dataclass_fields__.get(field, None)
-                    field_default      = field_data.default if (field_data is not None and field_data.default != _MISSING_TYPE) else None
-                    value              = getattr(data, field)
-                    if value == field_default:
-                        value          = getattr(self, field)
+                    field_data         = DootTaskSpec.__dataclass_fields__.get(field)
+                    match getattr(data,field), field_data.default, field_data.default_factory:
+                        case x, _MISSING_TYPE(), y if y == Tomler:
+                            value = Tomler.merge(getattr(data,field), getattr(self, field), shadow=True)
+                        case x, _MISSING_TYPE(), _MISSING_TYPE():
+                            value = x or getattr(self, field)
+                        case x, y, _MISSING_TYPE() if x == y:
+                            value = getattr(self, field)
+                        case x, _, _MISSING_TYPE():
+                            value = x
+                        case x, _MISSING_TYPE(), _ if bool(x):
+                            value = x
+                        case x, _MISSING_TYPE(), _:
+                            value = getattr(self, field)
+                        case x, y, z:
+                            raise TypeError("Unknown Task Spec Specialization field types", field, x, y, z)
 
                     specialized[field] = value
 
+        logging.debug("Specialized Task: %s on top of: %s", data.name, self.name)
         return DootTaskSpec(**specialized)
 
     def __hash__(self):
@@ -667,6 +677,7 @@ class TaskStubPart:
     """ Describes a single part of a stub task in toml """
     key     : str      = field()
     type    : str      = field(default="str")
+    prefix  : str      = field(default="")
 
     default : Any      = field(default="")
     comment : str      = field(default="")
@@ -704,7 +715,7 @@ class TaskStubPart:
                 def_str = ", ".join(str(x) for x in self.default)
                 val_str = f"[{def_str}]"
             case dict():
-                val_str = f"{{{self.default}}}"
+                val_str = "{}"
             case _ if "list" in self.type:
                 def_str = ", ".join(str(x) for x in self.default)
                 val_str = f"[{def_str}]"
@@ -721,7 +732,7 @@ class TaskStubPart:
         if val_str is None:
             raise TypeError("Unknown stub part reduction:", self)
 
-        return f"{key_str} = {val_str:<20} # {type_str:<20} {comment_str}"
+        return f"{self.prefix}{key_str} = {val_str:<20} # {type_str:<20} {comment_str}"
 
 @dataclass
 class DootTraceRecord:

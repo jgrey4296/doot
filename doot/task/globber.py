@@ -27,8 +27,8 @@ from doot.task.base_tasker import DootTasker
 from doot.mixins.tasker.subtask import SubMixin
 from doot.structs import DootTaskSpec
 
-glob_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).globbing.ignores()
-glob_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).globbing.halts()
+glob_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.globbing.ignores()
+glob_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).setting.globbing.halts()
 
 class _GlobControl(enum.Enum):
     """
@@ -52,7 +52,7 @@ class _GlobControl(enum.Enum):
 @doot.check_protocol
 class DootEagerGlobber(SubMixin, DootTasker):
     """
-    Base task for file based *on load* globbing.
+    Base tasker for file based globbing.
     Generates a new subtask for each file found.
 
     Each File found is a separate subtask
@@ -178,19 +178,19 @@ class DootEagerGlobber(SubMixin, DootTasker):
     def _build_subs(self) -> Generator[DootTaskSpec]:
         self.total_subtasks = 0
         logging.debug("%s : Building Globber SubTasks", self.name)
-        for i, (uname, fpath) in enumerate(self.glob_all()):
+        filter_fn = self.import_class(self.spec.extra.on_fail((None,)).filter_fn())
+        for i, (uname, fpath) in enumerate(self.glob_all(fn=filter_fn)):
             match self._build_subtask(i, uname, fpath=fpath, fstem=fpath.stem, fname=fpath.name, lpath=self.rel_path(fpath)):
                 case None:
                     pass
                 case DootTaskSpec() as subtask:
                     self.total_subtasks += 1
-                    subtask.print_level = self.spec.extra.on_fail(subtask.print_level).sub_print_level()
                     yield subtask
                 case _ as subtask:
                     raise TypeError("Unexpected type for subtask: %s", type(subtask))
 
     def _non_recursive_glob(self, target, filter_fn, exts):
-        check_fn = lambda x: (filter_fn(x) not in [None, False, _GlobControl.reject, _GlobControl.discard]
+        check_fn = lambda x: (filter_fn(x) not in [None, False, _GlobControl.reject, _GlobControl.discard, _GlobControl.no, _GlobControl.noBut]
                                 and x.name not in glob_ignores
                                 and (not bool(exts) or (x.is_file() and x.suffix in exts)))
 
@@ -211,11 +211,14 @@ class DootEagerGlobber(SubMixin, DootTasker):
         stub['version'].default   = cls._version
         stub['exts'].type         = "list[str]"
         stub['exts'].default      = []
+        stub['exts'].prefix = "# "
         stub['roots'].type        = "list[str|pl.Path]"
         stub['roots'].default     = ["\".\""]
         stub['roots'].comment     = "Places the globber will start"
         stub['recursive'].type    = "bool"
         stub['recursive'].default = False
-        stub['sub_print_level'].type = "str"
-        stub['sub_print_level'].default = "WARN"
+        stub['recursive'].prefix = "# "
+        stub["filter_fn"].type = "callable"
+        stub["filter_fn"].default = ""
+        stub['filter_fn'].prefix = "# "
         return stub

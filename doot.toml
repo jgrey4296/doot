@@ -3,7 +3,7 @@ subtask                  = { sleep = 1 }
 batch                    = { sleep = 1 }
 notify                   = { say-on-exit = false }
 loaders                  = {commands = "default", task = "default", parser = "default"}
-location_check           = { make_missing = true, print_level = "INFO"}
+location_check           = { make_missing = true }
 
 [plugins]
 # Allows for defining shorthands

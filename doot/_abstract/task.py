@@ -28,9 +28,10 @@ from typing import Generator, NewType, Protocol, Any, runtime_checkable
 from tomler import Tomler
 import doot.errors
 
-from doot.enums import TaskFlags, TaskStateEnum
+from doot.enums import TaskFlags, TaskStateEnum, ActionResponseEnum
 from doot._abstract.parser import ParamSpecMaker_m
 from doot.structs import DootParamSpec, TaskStub, DootTaskSpec, DootStructuredName, DootActionSpec
+
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -44,7 +45,7 @@ class Action_p(Protocol):
     _toml_kwargs : ClassVar[list[str]] = []
 
     @abc.abstractmethod
-    def __call__(self, spec:DootActionSpec, task_state:dict) -> dict|bool|None:
+    def __call__(self, spec:DootActionSpec, task_state:dict) -> dict|bool|ActionResponseEnum|None:
         raise NotImplementedError()
 
 class TaskBase_i(ParamSpecMaker_m):

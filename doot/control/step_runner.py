@@ -50,7 +50,8 @@ from doot.utils.signal_handler import SignalHandler
 dry_run      = doot.args.on_fail(False).cmd.args.dry_run()
 SLEEP_LENGTH = doot.config.on_fail(0.2, int|float).settings.general.task.sleep()
 
-@doot.check_protocol class DootStepRunner(DootRunner):
+@doot.check_protocol
+class DootStepRunner(DootRunner):
     """ A runner with step control """
     _conf_prompt  = "::- Command? (? for help): "
     _cmd_prefix   = "_do_"
@@ -90,7 +91,7 @@ SLEEP_LENGTH = doot.config.on_fail(0.2, int|float).settings.general.task.sleep()
 
     def _execute_action(self, count, action, task) -> None:
         if self._pause(action, step=f"{self.step}.{count}"):
-            super()._execute_action(count, action, task)
+            return super()._execute_action(count, action, task)
         else:
             printer.info("::- ...")
 
@@ -223,6 +224,7 @@ SLEEP_LENGTH = doot.config.on_fail(0.2, int|float).settings.general.task.sleep()
 
 
     def set_confirm_type(self, val):
+        """ Sets the runners `breakpoints` """
         match val:
             case "tasker":
                 self._conf_types = [abstract.Tasker_i]

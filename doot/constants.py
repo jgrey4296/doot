@@ -12,6 +12,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable)
 from importlib import resources
+from tomler import Tomler
 ##-- end std imports
 
 ##-- plugin names and loaders
@@ -75,6 +76,9 @@ DEFAULT_PLUGINS['action']   = [("basic"  ,   "doot.actions.base_action:DootBaseA
                                ("putPost",   "doot.actions.postbox:PutPostAction"),
                                ("getPost",   "doot.actions.postbox:GetPostAction"),
                                ("addState",  "doot.actions.state:AddStateAction"),
+                               ("addFn",     "doot.actions.state:AddStateFn"),
+                               ("log",       "doot.actions.control_flow:LogAction"),
+                               ("pred",      "doot.actions.control_flow:CancelOnPredicateAction"),
                                ("time",      "doot.actions.time_action:TimeAction"),
                               ]
 
@@ -99,20 +103,27 @@ DEFAULT_STUB_TASK_NAME : Final[str] = "stub::stub"
 ##-- end path and file names
 
 
-TASK_SEP             : Final[str]      = "::"
-IMPORT_SEP           : Final[str]      = ":"
-SUBTASKED_HEAD       : Final[str]      = "$head$"
-CONFLICTED_ADD       : Final[str]      = "$conflict$"
-INTERNAL_TASK_PREFIX : Final[str]      = "_"
+TASK_SEP                : Final[str]      = "::"
+IMPORT_SEP              : Final[str]      = ":"
+SUBTASKED_HEAD          : Final[str]      = "$head$"
+CONFLICTED_ADD          : Final[str]      = "$conflict$"
+INTERNAL_TASK_PREFIX    : Final[str]      = "_"
 
-DEFAULT_CLI_CMD      : Final[str]      = "run"
+DEFAULT_CLI_CMD         : Final[str]      = "run"
 
-DEFAULT_TASK_PREFIX  : Final[str]      = "task_"
+DEFAULT_TASK_PREFIX     : Final[str]      = "task_"
 
-DEFAULT_TASK_GROUP   : Final[str]      = "default"
+DEFAULT_TASK_GROUP      : Final[str]      = "default"
 
-ANNOUNCE_EXIT        : Final[bool]     = False
+ANNOUNCE_EXIT           : Final[bool]     = False
 
-ANNOUNCE_VOICE       : Final[str]      = "Moira"
+ANNOUNCE_VOICE          : Final[str]      = "Moira"
 
-PRINTER_NAME         : Final[str]      = "doot._printer"
+PRINTER_NAME            : Final[str]      = "doot._printer"
+
+PRINT_LOCATIONS         : Final[set] = {"head", "build", "action", "sleep", "execute" }
+DEFAULT_HEAD_LEVEL      : Final[str] = "INFO"
+DEFAULT_BUILD_LEVEL     : Final[str] = "WARN"
+DEFAULT_ACTION_LEVEL    : Final[str] = "INFO"
+DEFAULT_SLEEP_LEVEL     : Final[str] = "WARN"
+DEFAULT_EXECUTE_LEVEL   : Final[str] = "INFO"

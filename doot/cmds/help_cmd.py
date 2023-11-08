@@ -132,6 +132,7 @@ class HelpCmd(Command_i):
 
         if spec.ctor is not None:
             lines.append(spec.ctor.class_help())
+
         match spec.doc:
             case None:
                 pass
@@ -144,6 +145,20 @@ class HelpCmd(Command_i):
 
         printer.info("\n".join(lines))
 
+        if bool(spec.extra):
+            printer.info("")
+            printer.info("Toml Parameters:")
+            for kwarg,val in spec.extra:
+                printer.info("-- %-20s : %s", kwarg, val)
+
+        if bool(spec.actions):
+            printer.info("")
+            printer.info("Task Actions: ")
+            for action in spec.actions:
+                printer.info("-- %-20s : Args=%-20s Kwargs=%s", action.do, action.args, dict(action.kwargs) )
+
+
+        # TODO fix this to work with --help flag
         if task_name in doot.args.tasks and doot.args.non_default_values.task and spec.ctor is not None:
             self._print_current_param_assignments(spec.ctor.param_specs, doot.args.tasks[task_name])
 

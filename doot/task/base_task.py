@@ -40,14 +40,14 @@ from doot.structs import DootStructuredName, TaskStub, TaskStubPart, DootActionS
 from doot.actions.base_action import DootBaseAction
 from doot.errors import DootTaskLoadError, DootTaskError
 
-from doot.mixins.task.importer import ImporterMixin
+from doot.mixins.importer import ImporterMixin
 
 @doot.check_protocol
 class DootTask(Task_i, ImporterMixin):
     """
       The simplest task, which can import action classes.
       eg:
-      actions = [ {ctor = "doot.actions.shell_action:DootShellAction", args = ["echo", "this is a test"] } ]
+      actions = [ {do = "doot.actions.shell_action:DootShellAction", args = ["echo", "this is a test"] } ]
     """
     action_ctor    = DootBaseAction
     _default_flags = TaskFlags.TASK
@@ -97,10 +97,10 @@ class DootTask(Task_i, ImporterMixin):
             assert(isinstance(action_spec, DootActionSpec))
             if action_spec.fun is not None:
                 continue
-            if action_spec.ctor is not None:
-                ctor_name = action_spec.ctor
-                action_spec.set_function(self.import_class(ctor_name))
+            if action_spec.do  is not None:
+                action_id = action_spec.do
+                action_spec.set_function(self.import_class(action_id))
                 continue
 
-            assert(action_spec.ctor is None), action_spec
+            assert(action_spec.do is None), action_spec
             action_spec.set_function(self.action_ctor)
