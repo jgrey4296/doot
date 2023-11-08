@@ -39,7 +39,7 @@ sleep_notify     = doot.config.on_fail(False, bool).notify.sleep()
 
 class BatchMixin:
     """
-    A Mixin to enable running batches of processing with
+    A Mixin to enable running batches of *subtasks* with
     some sleep time
 
     'run_batches' controls batching bookkeeping,

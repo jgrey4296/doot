@@ -78,9 +78,9 @@ plugin_loader_key  : Final = doot.constants.DEFAULT_PLUGIN_LOADER_KEY
 command_loader_key : Final = doot.constants.DEFAULT_COMMAND_LOADER_KEY
 task_loader_key    : Final = doot.constants.DEFAULT_TASK_LOADER_KEY
 
-preferred_cmd_loader  = doot.config.on_fail("default").loaders.command()
-preferred_task_loader = doot.config.on_fail("default").loaders.task()
-preferred_parser      = doot.config.on_fail("default").loaders.parser()
+preferred_cmd_loader  = doot.config.on_fail("default").settings.general.loaders.command()
+preferred_task_loader = doot.config.on_fail("default").settings.general.loaders.task()
+preferred_parser      = doot.config.on_fail("default").settings.general.loaders.parser()
 
 defaulted_file = doot.config.on_fail(pl.Path(".doot_defaults.toml"), pl.Path).report.defaulted_file(pl.Path)
 

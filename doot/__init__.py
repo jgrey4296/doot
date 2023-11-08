@@ -13,6 +13,7 @@ import pathlib as pl
 from typing import Final, Any, assert_type
 ##-- end std imports
 
+import sys
 import tomler
 import doot.errors
 from doot import constants
@@ -23,6 +24,7 @@ from doot.utils.check_protocol import check_protocol
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
+printer         = logmod.getLogger("doot._printer")
 
 # Global, single points of truth:
 __version__          : Final[str]      = "0.2.0"
@@ -63,9 +65,14 @@ def setup(targets:list[pl.Path]|None=None, prefix:str|None=None) -> tuple[tomler
 
     match prefix:
         case None:
-            return config, locs
+            pass
         case str():
             for x in prefix.split("."):
                 config = config[x]
+
+    tasks_dir = config.on_fail(".tasks").task_path(wrapper=pl.Path).expanduser().absolute()
+    logging.debug("Adding tasks dir to Import Path: %s", tasks_dir)
+    if tasks_dir.exists():
+        sys.path.append(str(tasks_dir))
 
     return config, locs

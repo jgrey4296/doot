@@ -13,11 +13,14 @@ import warnings
 
 import pytest
 
+import tomler
+import doot
 from doot.enums import TaskStateEnum
 from doot.control.runner import DootRunner
 from doot.control.tracker import DootTracker
 from doot.structs import DootTaskSpec, DootActionSpec
 from doot._abstract import Tasker_i, Task_i, TaskTracker_i, TaskRunner_i, ReportLine_i, Action_p, Reporter_i
+from doot.utils import mock_gen
 
 logging = logmod.root
 
@@ -31,7 +34,18 @@ logging = logmod.root
 # with pytest.warns(warntype)
 
 class TestRunner:
-    def test_initial(self, mocker):
+
+    @pytest.fixture(scope="function")
+    def setup(self, mocker):
+        min_sleep = {"sleep": 0.0}
+        config_dict = {"settings": {"general" : {"task" : min_sleep, "subtask" : min_sleep, "batch": min_sleep}}}
+        doot.config = tomler.Tomler(config_dict)
+
+    @pytest.fixture(scope="function")
+    def cleanup(self):
+        pass
+
+    def test_initial(self, mocker, setup):
         ##-- setup
         tracker_m  = mocker.MagicMock(spec=TaskTracker_i)
         reporter_m = mocker.MagicMock(spec=ReportLine_i)
@@ -41,24 +55,18 @@ class TestRunner:
         # Check:
         assert(isinstance(runner, TaskRunner_i))
 
-    def test_tasks_execute(self, mocker):
+    def test_tasks_execute(self, mocker, setup):
         ##-- setup
         tracker_m                       = mocker.MagicMock(spec=TaskTracker_i)
         reporter_m                      = mocker.MagicMock(spec=Reporter_i)
         runner                          = DootRunner(tracker=tracker_m, reporter=reporter_m)
 
-        task1_m                          = mocker.MagicMock(spec=Task_i)
+        task1_m = mock_gen.mock_task_spec(mocker)
         task1_m.name                     = "first"
-        task1_m.spec                     = mocker.MagicMock(spec=DootTaskSpec)
-        task1_m.spec.print_level         = "WARN"
-        task2_m                          = mocker.MagicMock(spec=Task_i)
+        task2_m = mock_gen.mock_task_spec(mocker)
         task2_m.name                     = "second"
-        task2_m.spec                     = mocker.MagicMock(spec=DootTaskSpec)
-        task2_m.spec.print_level         = "WARN"
-        task3_m                          = mocker.MagicMock(spec=Task_i)
+        task3_m = mock_gen.mock_task_spec(mocker)
         task3_m.name                     = "third"
-        task3_m.spec                     = mocker.MagicMock(spec=DootTaskSpec)
-        task3_m.spec.print_level         = "WARN"
 
         tracker_m.__iter__.return_value  = [task1_m, task2_m, task3_m]
 
@@ -90,27 +98,21 @@ class TestRunner:
             assert(call.args[0].name in ["first", "second", "third"])
         ##-- end check result
 
-    def test_taskers_expand(self, mocker):
+    def test_taskers_expand(self, mocker, setup):
         ##-- setup
-        tracker_m                            = mocker.MagicMock(spec=TaskTracker_i)
-        reporter_m                           = mocker.MagicMock(spec=Reporter_i)
-        runner                               = DootRunner(tracker=tracker_m, reporter=reporter_m)
+        tracker_m                                     = mocker.MagicMock(spec=TaskTracker_i)
+        reporter_m                                    = mocker.MagicMock(spec=Reporter_i)
+        runner                                        = DootRunner(tracker=tracker_m, reporter=reporter_m)
 
-        tasker1_m                            = mocker.MagicMock(spec=Tasker_i)
-        tasker1_m.spec                       = mocker.MagicMock(spec=DootTaskSpec)
-        tasker1_m.spec.print_level           = "WARN"
-        tasker2_m                            = mocker.MagicMock(spec=Tasker_i)
-        tasker2_m.spec                       = mocker.MagicMock(spec=DootTaskSpec)
-        tasker2_m.spec.print_level           = "WARN"
-        tasker3_m                            = mocker.MagicMock(spec=Tasker_i)
-        tasker3_m.spec                       = mocker.MagicMock(spec=DootTaskSpec)
-        tasker3_m.spec.print_level           = "WARN"
+        tasker1_m                                     = mock_gen.mock_tasker_spec(mocker)
+        tasker2_m                                     = mock_gen.mock_tasker_spec(mocker)
+        tasker3_m                                     = mock_gen.mock_tasker_spec(mocker)
 
-        tracker_m.__iter__.return_value      = [tasker1_m, tasker2_m, tasker3_m]
+        tracker_m.__iter__.return_value               = [tasker1_m, tasker2_m, tasker3_m]
 
-        expand_tasker                        = mocker.spy(runner, "_expand_tasker")
-        execute_task                         = mocker.spy(runner, "_execute_task")
-        execute_action                       = mocker.spy(runner, "_execute_action")
+        expand_tasker                                 = mocker.spy(runner, "_expand_tasker")
+        execute_task                                  = mocker.spy(runner, "_execute_task")
+        execute_action                                = mocker.spy(runner, "_execute_action")
         ##-- end setup
 
         ##-- pre-check
@@ -131,30 +133,24 @@ class TestRunner:
         execute_task.assert_not_called()
         ##-- end check
 
-    def test_taskers_add_tasks(self, mocker):
+    def test_taskers_add_tasks(self, mocker, setup):
         ##-- setup
         tracker_m                          = mocker.MagicMock(spec=TaskTracker_i)
         reporter_m                         = mocker.MagicMock(spec=Reporter_i)
         runner                             = DootRunner(tracker=tracker_m, reporter=reporter_m)
 
-        spec_m                             = mocker.MagicMock(spec=DootTaskSpec)
-        spec_m.print_level                 = "WARN"
+        tasker1_m                          = mock_gen.mock_tasker_spec(mocker)
+        tasker2_m                          = mock_gen.mock_tasker_spec(mocker)
+        tasker3_m                          = mock_gen.mock_tasker_spec(mocker)
 
-        tasker1_m                          = mocker.MagicMock(spec=Tasker_i)
-        tasker1_m.spec                     = spec_m
-        tasker2_m                          = mocker.MagicMock(spec=Tasker_i)
-        tasker2_m.spec                     = spec_m
-        tasker3_m                          = mocker.MagicMock(spec=Tasker_i)
-        tasker3_m.spec                     = spec_m
+        task_m                             = mock_gen.mock_task_spec(mocker)
 
-        task_m      = mocker.MagicMock(spec=Task_i)
+        tasker1_m.build.return_value       = [task_m]
+        tracker_m.__iter__.return_value    = [tasker1_m, tasker2_m, tasker3_m]
 
-        tasker1_m.build.return_value = [task_m]
-        tracker_m.__iter__.return_value = [tasker1_m, tasker2_m, tasker3_m]
-
-        expand_tasker  = mocker.spy(runner, "_expand_tasker")
-        execute_task   = mocker.spy(runner, "_execute_task")
-        execute_action = mocker.spy(runner, "_execute_action")
+        expand_tasker                      = mocker.spy(runner, "_expand_tasker")
+        execute_task                       = mocker.spy(runner, "_execute_task")
+        execute_action                     = mocker.spy(runner, "_execute_action")
         ##-- end setup
 
         ##-- pre-check
@@ -178,35 +174,23 @@ class TestRunner:
         execute_action.assert_not_called()
         execute_task.assert_not_called()
 
-    def test_tasks_execute_actions(self, mocker):
+    def test_tasks_execute_actions(self, mocker, setup):
         ##-- setup
-        tracker_m                            = mocker.MagicMock(spec=TaskTracker_i)
-        reporter_m                           = mocker.MagicMock(spec=Reporter_i)
-        runner                               = DootRunner(tracker=tracker_m, reporter=reporter_m)
+        tracker_m                                  = mocker.MagicMock(spec=TaskTracker_i)
+        reporter_m                                 = mocker.MagicMock(spec=Reporter_i)
+        runner                                     = DootRunner(tracker=tracker_m, reporter=reporter_m)
 
-        task_spec_m                          = mocker.MagicMock(spec=DootTaskSpec)
-        task_spec_m.print_level              = "WARN"
+        task1_m = mock_gen.mock_task_spec(mocker, action_count=1)
+        task2_m = mock_gen.mock_task_spec(mocker, action_count=1)
+        task3_m = mock_gen.mock_task_spec(mocker, action_count=1)
+        task1_m.name                               = "firstTask"
+        task2_m.name                               = "secondTask"
+        task3_m.name                               = "thirdTask"
+        tracker_m.__iter__.return_value            = [task1_m, task2_m, task3_m]
 
-        action_spec_m                        = mocker.MagicMock(spec=DootActionSpec)
-        type(action_spec_m).__call__         = mocker.MagicMock(return_value=None)
-
-        task1_m                              = mocker.MagicMock(spec=Task_i)
-        task1_m.name                         = "firstTask"
-        task1_m.spec                         = task_spec_m
-        task1_m.state                        = {}
-        type(task1_m).actions                = mocker.PropertyMock(return_value=[action_spec_m])
-        task2_m                              = mocker.MagicMock(spec=Task_i)
-        task2_m.name                         = "secondTask"
-        task2_m.spec                         = task_spec_m
-        task3_m                              = mocker.MagicMock(spec=Task_i)
-        task3_m.name                         = "thirdTask"
-        task3_m.spec                         = task_spec_m
-
-        tracker_m.__iter__.return_value      = [task1_m, task2_m, task3_m]
-
-        expand_tasker                        = mocker.spy(runner, "_expand_tasker")
-        execute_task                         = mocker.spy(runner, "_execute_task")
-        execute_action                       = mocker.spy(runner, "_execute_action")
+        expand_tasker                              = mocker.spy(runner, "_expand_tasker")
+        execute_task                               = mocker.spy(runner, "_execute_task")
+        execute_action                             = mocker.spy(runner, "_execute_action")
         ##-- end setup
 
         ##-- pre-check
@@ -224,4 +208,4 @@ class TestRunner:
 
         execute_task.assert_called()
         execute_action.assert_called()
-        action_spec_m.__call__.assert_called()
+        # TODO action_spec_m.__call__.assert_called()

@@ -31,21 +31,23 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import importlib
+import doot.errors
 from doot.constants import IMPORT_SEP
 from doot._abstract.loader import PluginLoader_p
-import doot.errors
+
+ACTION_CTORS = {}
 
 if PluginLoader_p.loaded:
-    ACTION_CTORS = {x.name : x.load() for x in PluginLoader_p.loaded.action}
-else:
-    ACTION_CTORS = {}
+    ACTION_CTORS = {x.name : x for x in PluginLoader_p.loaded.action}
 
 class ImporterMixin:
 
-    def import_class(self, pathname:str):
+    def import_class(self, pathname:None|str, *, is_task_ctor=False):
+        if pathname is None:
+            return None
         try:
-            if pathname in ACTION_CTORS:
-                return ACTION_CTORS[pathname]
+            if not is_task_ctor and pathname in ACTION_CTORS:
+                return ACTION_CTORS[pathname].load()
 
             logging.info("Importing: %s", pathname)
             module_name, cls_name = pathname.split(IMPORT_SEP)

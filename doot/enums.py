@@ -107,3 +107,9 @@ class TaskPolicyEnum(enum.Flag):
     DEBUG    = enum.auto()
     PRETEND  = enum.auto()
     ACCEPT   = enum.auto()
+
+
+class ActionResponseEnum(enum.Enum):
+    SUCCESS  = enum.auto()
+    FAIL     = enum.auto()
+    SKIP     = enum.auto()

@@ -27,7 +27,7 @@ import doot
 from doot.enums import TaskFlags
 from doot.structs import DootTaskSpec, TaskStub
 from doot.task.base_tasker import DootTasker
-from doot.mixins.subtask import SubMixin
+from doot.mixins.tasker.subtask import SubMixin
 import doot._abstract
 
 class SimpleSubTasker(SubMixin, DootTasker):

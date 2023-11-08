@@ -33,6 +33,7 @@ logging = logmod.getLogger(__name__)
 
 import pytest
 import os
+import doot
 
 @pytest.fixture
 def wrap_tmp(tmp_path):
@@ -44,6 +45,8 @@ def wrap_tmp(tmp_path):
     new_base = tmp_path / "test_root"
     new_base.mkdir()
     os.chdir(new_base)
+    doot.locs._root = new_base
     yield new_base
     logging.debug("Returning to original dir")
     os.chdir(orig)
+    doot.locs._root = orig

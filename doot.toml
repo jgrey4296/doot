@@ -1,9 +1,9 @@
-verbosity                = 2
-default_tasks            = ["locs::report"]
+[settings.general]
 subtask                  = { sleep = 1 }
 batch                    = { sleep = 1 }
 notify                   = { say-on-exit = false }
 loaders                  = {commands = "default", task = "default", parser = "default"}
+location_check           = { make_missing = true }
 
 [plugins]
 # Allows for defining shorthands
@@ -28,9 +28,9 @@ printer = { colour = true }
 tasks        = ".tasks"
 temp         = ".temp"
 src          = "doot"
-build        = "build"
-docs         = "docs"
-data         = "data"
-codegen      = "{src}/_codegen"
-listings_out = "{build}/listing"
-lint_out     = "{build}/lint"
+# build        = "build"
+# docs         = "docs"
+# data         = "data"
+# codegen      = "{src}/_codegen"
+# listings_out = "{build}/listing"
+# lint_out     = "{build}/lint"

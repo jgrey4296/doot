@@ -47,7 +47,7 @@ class DootTask(Task_i, ImporterMixin):
     """
       The simplest task, which can import action classes.
       eg:
-      actions = [ {ctor = "doot.actions.shell_action:DootShellAction", args = ["echo", "this is a test"] } ]
+      actions = [ {do = "doot.actions.shell_action:DootShellAction", args = ["echo", "this is a test"] } ]
     """
     action_ctor    = DootBaseAction
     _default_flags = TaskFlags.TASK
@@ -71,16 +71,16 @@ class DootTask(Task_i, ImporterMixin):
         return False
 
     @classmethod
-    def stub_class(cls) -> TaskStub:
+    def stub_class(cls, stub) -> TaskStub:
         """ Create a basic toml stub for this task"""
-        stub = TaskStub(ctor=cls.__class__)
-        stub['doc'].default   = [f"\"{x}\"" for x in cls.class_help().split("\n") if bool(x)]
-        stub['flags'].default = cls._default_flags
+        stub.ctor               = cls
+        stub['version'].default = cls._version
+        stub['doc'].default     = [f"\"{x}\"" for x in cls.class_help().split("\n") if bool(x)]
+        stub['flags'].default   = cls._default_flags
         return stub
 
-    def stub_instance(self) -> TaskStub:
-        """ extend the class toml stub with  """
-        stub                      = self.__class__.stub_class()
+    def stub_instance(self, stub) -> TaskStub:
+        """ extend the class toml stub with details from this instance """
         stub['name'].default      = self.fullname
         if bool(self.doc):
             stub['doc'].default   = [f"\"{x}\"" for x in self.doc]
@@ -97,10 +97,10 @@ class DootTask(Task_i, ImporterMixin):
             assert(isinstance(action_spec, DootActionSpec))
             if action_spec.fun is not None:
                 continue
-            if action_spec.ctor is not None:
-                ctor_name = action_spec.ctor
-                action_spec.set_function(self.import_class(ctor_name))
+            if action_spec.do  is not None:
+                action_id = action_spec.do
+                action_spec.set_function(self.import_class(action_id))
                 continue
 
-            assert(action_spec.ctor is None), action_spec
+            assert(action_spec.do is None), action_spec
             action_spec.set_function(self.action_ctor)

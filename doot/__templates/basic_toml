@@ -1,21 +1,35 @@
 # -*- mode:conf-toml; -*-
-verbosity                = 2
-default_tasks            = ["locs::report"]
+[settings.general]
+task                     = { sleep = 0.2 }
 subtask                  = { sleep = 1 }
 batch                    = { sleep = 1 }
 notify                   = { say-on-exit = false }
-loaders                  = {commands = "default", task = "default", "parser" = "default"}
+loaders                  = {commands = "default", task = "default", parser = "default"}
+location_check           = { make_missing = true }
 
-[logging]
-stream = { level = "INFO", format  = "{levelname:<8} : {message}", filters = ["doot"] }
-file   = { level = "DEBUG", format = "{levelname:<8} : {message:<20} :|: (module:{module} line:{lineno} fn:{funcName})", filters =  ["doot"] }
+[plugins]
+# Allows for defining shorthands
+command        = { other-run = "doot.cmds.run_cmd:RunCmd", tasks = "doot.cmds.list_cmd:ListCmd" }
+report-line    = {}
+reporter       = {}
+action         = {}
+tasker         = {}
+
+[commands]
+run = { tracker = "default", runner = "default", reporter= "default", report-line = []}
 
 [globbing]
 ignores  = ['.git', '.DS_Store', "__pycache__"]
 
-[[directories]]
+[logging]
+stream  = { level="WARN",  allow=["doot"], format="{levelname:<8} : {message}", colour=true }
+file    = { level="DEBUG", allow=["doot"], format="{levelname:<8} : {message:<20} :|: (module:{module} line:{lineno} fn:{funcName})" }
+printer = { level="INFO", colour=true}
+
+
+[[locations]]
 src     = "src"
-codegen = "_codegen"
+codegen = "{src}/_codegen"
 temp    = ".temp"
 build   = "build"
 docs    = "docs"

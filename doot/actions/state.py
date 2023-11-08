@@ -1,9 +1,9 @@
-## base_action.py -*- mode: Py -*-
+## base_action.py -*- mode: python -*-
 ##-- imports
 from __future__ import annotations
 
 # import abc
-# import datetime
+import datetime
 # import enum
 import functools as ftz
 import itertools as itz
@@ -25,25 +25,35 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 
 printer = logmod.getLogger("doot._printer")
 
+from time import sleep
+import sh
+import shutil
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
-from doot.structs import DootActionSpec
 from doot._abstract import Action_p
-from doot.utils.string_expand import expand_str
+from doot.mixins.importer import ImporterMixin
 
 @doot.check_protocol
-class DootBaseAction(Action_p):
+class AddStateAction(Action_p):
     """
-    The basic action, which just prints that the action was called
-    Subclass this and override __call__ for your own actions.
-    The arguments of the action are held in the passed in spec
-    __call__ is passed a *copy* of the task's state dictionary
+      add to task state in the task description toml
     """
+    _toml_kwargs = ["<Any>"]
 
     def __str__(self):
-        return f"Base Action"
+        return f"Base Action: {self.spec.args}"
 
-    def __call__(self, spec:DootActionSpec, task_state:dict) -> dict|bool|None:
-        printer.debug("Base Action Called: %s", task_state.get("count", 0))
-        printer.info(" ".join(expand_str(x, spec, task_state) for x in spec.args))
-        return { "count" : task_state.get("count", 0) + 1 }
+    def __call__(self, spec, task_state:dict) -> dict|bool|None:
+        return dict(spec.kwargs)
+
+
+@doot.check_protocol
+class AddStateFn(Action_p, ImporterMixin):
+
+    def __call__(self, spec, task_state:dict) -> dict|bool|None:
+        result = {}
+        for kwarg, val in spec.kwargs:
+            result[kwarg] = self.import_class(val)
+
+            pass
+        return result

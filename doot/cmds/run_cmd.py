@@ -62,6 +62,7 @@ from tomler import Tomler
 import doot
 from doot._abstract import ReportLine_i, TaskRunner_i, Reporter_i, Command_i
 from doot.utils.plugin_selector import plugin_selector
+from doot.task.check_locs import CheckLocsTask
 
 printer                  = logmod.getLogger("doot._printer")
 
@@ -97,9 +98,9 @@ class RunCmd(Command_i):
         printer.info("- Building Task Dependency Network")
         for task in tasks.values():
             tracker.add_task(task)
+        tracker.add_task(CheckLocsTask())
 
         printer.info("- Task Dependency Network Built")
-        # TODO add a check task for locations
 
         for target in doot.args.on_fail([], list).cmd.args.target():
             if target not in tracker:
@@ -112,6 +113,8 @@ class RunCmd(Command_i):
                 printer.warn(- "%s specified as run target, but it doesn't exist")
             else:
                 tracker.queue_task(target)
+
+        tracker.queue_task(CheckLocsTask.task_name)
 
         printer.info("- %s Tasks Queued: %s", len(tracker.active_set), " ".join(tracker.active_set))
         printer.info("- Running Tasks")

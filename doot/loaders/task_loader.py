@@ -130,8 +130,10 @@ class DootTaskLoader(TaskLoader_p):
         logging.debug("---- Loading Tasks")
         raw_specs : list[dict] = []
         for source in doot._configs_loaded_from:
-            task_specs = tomler.load(source).on_fail({}).tasks()
+            source_data : Tomler = tomler.load(source)
+            task_specs = source_data.on_fail({}).tasks()
             raw_specs += self._load_raw_specs(task_specs, source)
+
 
         if self.extra:
             raw_specs += self._load_raw_specs(self.extra, "(extra)")
@@ -169,12 +171,14 @@ class DootTaskLoader(TaskLoader_p):
         if not path.exists():
             pass
         elif path.is_dir():
-
             for task_file, data in [(x, tomler.load(x)) for x in path.iterdir() if x.suffix == ".toml"]:
                 for group, val in data.on_fail({}).tasks().items():
                     # sets 'group' for each task if it hasn't been set already
                     raw_specs += map(ftz.partial(apply_group_and_source, group, task_file), val)
                 logging.info("Loaded Tasks from: %s", task_file)
+                if 'locations' in data:
+                    self._load_location_updates(data.locations, task_file)
+
         elif path.is_file():
             for group, val in tomler.load(path).on_fail({}).tasks().items():
                 # sets 'group' for each task if it hasn't been set already
@@ -231,3 +235,11 @@ class DootTaskLoader(TaskLoader_p):
                 raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Module/Class Split failed on: '%s'. Source File: %s", task_name, task_type, spec['source']) from err
 
         return task_descriptions
+
+    def _load_location_updates(self, data:list[Tomler], source):
+        logmod.debug("Loading Location Updates: %s", source)
+        for group in data:
+            try:
+                doot.locs.update(group)
+            except KeyError as err:
+                doot.printer.warning("Locations Already Defined: %s : %s", err.args[1], source)

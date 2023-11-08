@@ -225,8 +225,45 @@ class TestDootTaskSpec:
         assert(obj.name.task_str() == "atask")
 
 
+    def test_specialize_from(self):
+        base_task     = structs.DootTaskSpec.from_dict({"name": "atask", "group": "agroup", "extra": {"a": 0}})
+        override_task = structs.DootTaskSpec.from_dict({"name": "atask", "group": "agroup", "extra": {"b": 2}})
+
+        specialized = base_task.specialize_from(override_task)
+        assert(specialized is not base_task)
+        assert(specialized is not override_task)
+        assert("a" in specialized.extra)
+        assert("b" in specialized.extra)
 
 
+    def test_specialize_actions_from(self):
+        base_task     = structs.DootTaskSpec.from_dict({"name": "atask", "group": "agroup", "extra": {"a": 0}, "actions":[{"do":"blah"}]})
+        override_task = structs.DootTaskSpec.from_dict({"name": "atask", "group": "agroup", "extra": {"b": 2}})
+
+        specialized = base_task.specialize_from(override_task)
+        assert(specialized is not base_task)
+        assert(specialized is not override_task)
+        assert(bool(specialized.actions))
+
+
+    def test_specialize_actions_from_inverse(self):
+        base_task     = structs.DootTaskSpec.from_dict({"name": "atask", "group": "agroup", "extra": {"a": 0}})
+        override_task = structs.DootTaskSpec.from_dict({"name": "atask", "group": "agroup", "extra": {"b": 2}, "actions":[{"do":"blah"}]})
+
+        specialized = base_task.specialize_from(override_task)
+        assert(specialized is not base_task)
+        assert(specialized is not override_task)
+        assert(bool(specialized.actions))
+
+
+    def test_specialize_print_levels(self):
+        base_task     = structs.DootTaskSpec.from_dict({"name": "atask", "group": "agroup", "extra": {"a": 0}, "print_levels": {"head":"DEBUG"}})
+        override_task = structs.DootTaskSpec.from_dict({"name": "atask", "group": "agroup", "extra": {"b": 2}, "print_levels": {"head":"WARNING"}})
+
+        specialized = base_task.specialize_from(override_task)
+        assert(specialized is not base_task)
+        assert(specialized is not override_task)
+        assert(specialized.print_levels.head == "WARNING")
 
 class TestTaskStub:
 
@@ -309,3 +346,25 @@ class TestTaskStubPart:
         result_str     = str(obj)
         result_tomler  = tomler.read(result_str)
         assert(result_tomler.test == "test")
+
+
+    def test_stub_part_bool_reduce(self):
+        obj = structs.TaskStubPart("test", type="bool", default=False, comment="a simple stub part")
+        result_str     = str(obj)
+        result_tomler  = tomler.read(result_str)
+        assert(result_tomler.test == False)
+
+
+class TestActionSpec:
+
+    def test_initial(self):
+        obj = structs.DootActionSpec()
+        assert(isinstance(obj, structs.DootActionSpec))
+
+
+    def test_call(self, mocker):
+        fun_mock = mocker.Mock()
+        obj = structs.DootActionSpec(fun=fun_mock)
+
+        obj({})
+        fun_mock.assert_called_once()

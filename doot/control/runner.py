@@ -61,14 +61,20 @@ printer = logmod.getLogger("doot._printer")
 
 from collections import defaultdict
 import doot
+import doot.constants
 import doot.errors
-from doot.enums import TaskStateEnum, ReportEnum
+from doot.enums import TaskStateEnum, ReportEnum, ActionResponseEnum as ActRE
 from doot._abstract import Tasker_i, Task_i, FailPolicy_p
 from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i, ReportLine_i, Action_p, Reporter_i
 from doot.utils.signal_handler import SignalHandler
 from doot.structs import DootTaskSpec, DootActionSpec
 
-dry_run = doot.args.on_fail(False).cmd.args.dry_run()
+dry_run                    = doot.args.on_fail(False).cmd.args.dry_run()
+head_level    : Final[str] = doot.constants.DEFAULT_HEAD_LEVEL
+build_level   : Final[str] = doot.constants.DEFAULT_BUILD_LEVEL
+action_level  : Final[str] = doot.constants.DEFAULT_ACTION_LEVEL
+sleep_level   : Final[str] = doot.constants.DEFAULT_SLEEP_LEVEL
+execute_level : Final[str] = doot.constants.DEFAULT_EXECUTE_LEVEL
 
 @doot.check_protocol
 class DootRunner(TaskRunner_i):
@@ -76,9 +82,9 @@ class DootRunner(TaskRunner_i):
 
     def __init__(self:Self, *, tracker:TaskTracker_i, reporter:Reporter_i, policy=None):
         super().__init__(tracker=tracker, reporter=reporter, policy=policy)
-        self.original_print_level = printer.level
-        self.step = 0
-
+        self._printer_level_stack = []
+        self.step                 = 0
+        self.default_SLEEP_LENGTH = doot.config.on_fail(0.2, int|float).settings.general.task.sleep()
 
     def __enter__(self) -> Any:
         printer.info("---------- Task Loop Starting ----------", extra={"colour" : "green"})
@@ -86,7 +92,7 @@ class DootRunner(TaskRunner_i):
 
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
-        printer.setLevel(self.original_print_level)
+        self._set_print_level("INFO")
         printer.info("")
         printer.info("---------- Task Loop Finished ----------", extra={"colour":"green"})
         self._finish()
@@ -102,25 +108,30 @@ class DootRunner(TaskRunner_i):
 
           if task is a tasker, it is expanded and added into the tracker
           """
-        # for threaded tasks: replace expand_tasker/execute_task/execute_action with twisted?
+        # TODO for threaded tasks: replace expand_tasker/execute_task/execute_action with twisted?
 
-        self.original_print_level = printer.level
         with SignalHandler():
             for task in iter(self.tracker):
+                self._set_print_level("INFO")
                 if task is None:
                     continue
 
                 try:
-                    printer.setLevel(task.spec.print_level)
                     match task:
                         case Tasker_i():
                             self._expand_tasker(task)
                         case Task_i():
                             self._execute_task(task)
 
+                    self._set_print_level(task.spec.print_levels.on_fail(sleep_level).sleep())
                     self.tracker.update_state(task, TaskStateEnum.SUCCESS)
-                    printer.debug("Sleeping...", extra={"colour":"white"})
-                    time.sleep(0.2)
+                    sleep_len = task.spec.extra.on_fail(int|float).sleep()
+                    if isinstance(sleep_len, int|float):
+                        printer.info("[Sleeping (%s)...]", sleep_len, extra={"colour":"white"})
+                        time.sleep(sleep_len)
+                    else:
+                        printer.info("[Sleeping (%s)...]", self.default_SLEEP_LENGTH, extra={"colour":"white"})
+                        time.sleep(self.default_SLEEP_LENGTH)
                     self.step += 1
                 # Handle problems:
                 except doot.errors.DootTaskInterrupt as err:
@@ -132,7 +143,7 @@ class DootRunner(TaskRunner_i):
                     printer.warning("Task Failed: %s : %s", task.name, err)
                     self.tracker.update_state(task, TaskStateEnum.FAILED)
                 except doot.errors.DootTaskError as err:
-                    printer.warning("Error : %s : %s", task.name, err)
+                    printer.warning("Task Error : %s : %s", task.name, err)
                     self.tracker.update_state(task, TaskStateEnum.FAILED)
                 except doot.errors.DootError as err:
                     printer.warning("Doot Error : %s : %s", task.name, err)
@@ -141,16 +152,18 @@ class DootRunner(TaskRunner_i):
                     self.reporter.trace(task.spec, flags = ReportEnum.TASK | ReportEnum.FAIL)
                     raise err
 
-            printer.setLevel(self.original_print_level)
-
 
 
     def _expand_tasker(self, tasker:Tasker_i) -> None:
         """ turn a tasker into all of its tasks, including teardowns """
         logmod.debug("-- Expanding Tasker %s: %s", self.step, tasker.name)
-        printer.info("-- Tasker %s: %s", self.step, tasker.name, extra={"colour":"magenta"})
+        self._set_print_level(tasker.spec.print_levels.on_fail(head_level).head())
+        printer.info("---- Tasker %s: %s", self.step, tasker.name, extra={"colour":"magenta"})
+        if bool(tasker.spec.actions):
+            printer.warning("-- Tasker %s: Actions were found in tasker spec, but taskers don't run actions")
         self.reporter.trace(tasker.spec, flags=ReportEnum.TASKER | ReportEnum.INIT)
         count = 0
+        self._set_print_level(tasker.spec.print_levels.on_fail(build_level).build())
         for task in tasker.build():
             match task:
                 case Tasker_i():
@@ -175,11 +188,14 @@ class DootRunner(TaskRunner_i):
     def _execute_task(self, task:Task_i) -> None:
         """ execute a single task's actions """
         logmod.debug("---- Executing Task %s: %s", self.step, task.name)
+        self._set_print_level(task.spec.print_levels.on_fail(head_level).head())
         printer.info("---- Task %s: %s", self.step, task.name, extra={"colour":"magenta"})
         self.reporter.trace(task.spec, flags=ReportEnum.TASK | ReportEnum.INIT)
         # TODO <-- in the future, where DB checks for staleness, thread safety, etc will occur
 
         action_count = 0
+        action_result = ActRE.SUCCESS
+        self._set_print_level(task.spec.print_levels.on_fail(build_level).build())
         for action in task.actions:
             match action:
                 case _ if dry_run:
@@ -189,49 +205,62 @@ class DootRunner(TaskRunner_i):
                     self.reporter.trace(task.spec, flags=ReportEnum.FAIL | ReportEnum.TASK)
                     raise doot.errors.DootTaskError("Task %s Failed: Produced an action with no callable: %s", task.name, action, task=task.spec)
                 case DootActionSpec():
-                    self._execute_action(action_count, action, task)
+                    action_result = self._execute_action(action_count, action, task)
                 case _:
                     self.reporter.trace(task.spec, flags=ReportEnum.FAIL | ReportEnum.TASK)
                     raise doot.errors.DootTaskError("Task %s Failed: Produced a bad action: %s", task.name, action, task=task.spec)
+
+            self._set_print_level(task.spec.print_levels.on_fail(build_level).build())
             action_count += 1
+            if action_result is ActRE.SKIP:
+                printer.info("------ Remaining Task Actions skipped by Action Instruction")
+                break
+        else: # Only try to add more tasks if the actions completed successfully, and weren't skipped
+            self._set_print_level(task.spec.print_levels.on_fail(build_level).build())
+            printer.info("")
+            printer.debug("------ Task %s: Actions Complete", task.name, extra={"colour":"cyan"})
+            self.reporter.trace(task.spec, flags=ReportEnum.TASK | ReportEnum.SUCCEED)
+            # Get Any resulting tasks
+            count = 0
+            for new_task in task.maybe_more_tasks():
+                match new_task:
+                    case DootTaskSpec():
+                        self.tracker.add_task(new_task, no_root_connection=True)
+                        count += 1
+                    case Task_i():
+                        self.tracker.add_task(new_task, no_root_connection=True)
+                        count += 1
+                    case _:
+                        self.reporter.trace(task.spec, flags=ReportEnum.FAIL | ReportEnum.TASK)
+                        raise doot.errors.DootTaskError("Task %s Failed: Provided a bad additional task: %s", task.name, new_task, task=task.spec)
+            else:
+                logmod.debug("------ Task Execution Completed: %s, adding %s additional tasks", task.name, count)
 
-        printer.info("")
-        printer.debug("------ Task %s: Actions Complete", task.name, extra={"colour":"cyan"})
-        self.reporter.trace(task.spec, flags=ReportEnum.TASK | ReportEnum.SUCCEED)
-        # Get Any resulting tasks
-        count = 0
-        for new_task in task.maybe_more_tasks():
-            match new_task:
-                case DootTaskSpec():
-                    self.tracker.add_task(new_task, no_root_connection=True)
-                    count += 1
-                case Task_i():
-                    self.tracker.add_task(new_task, no_root_connection=True)
-                    count += 1
-                case _:
-                    self.reporter.trace(task.spec, flags=ReportEnum.FAIL | ReportEnum.TASK)
-                    raise doot.errors.DootTaskError("Task %s Failed: Provided a bad additional task: %s", task.name, new_task, task=task.spec)
+        printer.debug("------ Task Executed %s Actions", action_count)
 
-
-        logmod.debug("---- Task Execution Completed: %s, adding %s additional tasks", task.name, count)
-
-    def _execute_action(self, count, action, task) -> None:
+    def _execute_action(self, count, action, task) -> ActRE:
         """ Run the given action of a specific task  """
         logmod.debug("------ Executing Action %s: %s for %s", count, action, task.name)
-        printer.info("------ Action %s.%s: %s", self.step, count, str(action), extra={"colour":"cyan"})
+        self._set_print_level(task.spec.print_levels.on_fail(action_level).action())
         self.reporter.trace(action, flags=ReportEnum.ACTION | ReportEnum.INIT)
         task.state['_action_step'] = count
+        printer.info("------ Action %s.%s: %s", self.step, count, action.do, extra={"colour":"cyan"})
+        printer.debug("------ Action %s.%s: args=%s kwargs=%s. state keys = %s", self.step, count, action.args, dict(action.kwargs), list(task.state.keys()))
         action.verify(task.state)
 
-        result = action(task.state.copy())
+        self._set_print_level(task.spec.print_levels.on_fail(execute_level).execute())
+        result = action(task.state)
+        self._set_print_level(task.spec.print_levels.on_fail(action_level).action())
+        printer.debug("-- Action Result: %s", result)
         match result:
-            case None:
+            case ActRE.SKIP:
                 pass
+            case None | True:
+                result = ActRE.SUCCESS
             case dict():
                 task.state.update(result)
-            case True:
-                pass
-            case False:
+                result = ActRE.SUCCESS
+            case False | ActRE.FAIL:
                 self.reporter.trace(action, flags=ReportEnum.FAIL | ReportEnum.ACTION)
                 raise doot.errors.DootTaskFailed("Task %s Action Failed: %s", task.name, action, task=task.spec)
             case _:
@@ -242,9 +271,19 @@ class DootRunner(TaskRunner_i):
 
         logmod.debug("------ Action Execution Complete: %s for %s", action, task.name)
         self.reporter.trace(action, flags=ReportEnum.ACTION | ReportEnum.SUCCEED)
+        return result
 
     def _finish(self):
-        """finish running tasks"""
+        """finish running tasks, summarizing results"""
         logging.info("Task Running Completed")
         printer.info("Final Summary: ")
         printer.info(str(self.reporter), extra={"colour":"magenta"})
+
+
+    def _set_print_level(self, level=None):
+        """
+        Utility to set the print level, or reset it if no level is specified.
+        the Step Runner subclass overrides this to allow interactive control of the print level
+        """
+        if level:
+            printer.setLevel(level)

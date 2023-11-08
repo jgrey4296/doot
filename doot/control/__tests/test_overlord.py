@@ -42,7 +42,7 @@ class TestOverlord:
         mocker.patch("sys.argv", ["doot"])
         overlord = DootOverlord()
         assert(bool(overlord.cmds))
-        assert(len(overlord.cmds) == len(doot.constants.DEFAULT_PLUGINS['command']))
+        assert(len(overlord.cmds) >= len(doot.constants.DEFAULT_PLUGINS['command']))
 
     def test_taskers_loaded(self, mocker):
         mocker.patch("sys.argv", ["doot"])

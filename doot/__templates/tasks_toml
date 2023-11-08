@@ -1,0 +1,21 @@
+# -*- mode:conf-toml; -*-
+[reminder]
+action = [{do= "basic", args=[], inState=[], outState=[] }]
+
+[[directories]]
+src     = "src"
+codegen = "_codegen"
+temp    = ".temp"
+build   = "build"
+docs    = "docs"
+data    = "data"
+
+[tasks]
+
+[[tasks.group]]
+name        = ""
+print_level = "INFO"
+ctor        = "task"
+doc         = []
+runs-after  = []
+actions     = []

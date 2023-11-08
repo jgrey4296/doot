@@ -85,24 +85,27 @@ def main():
         # logging.error("Python Error: %s", err)
     ##-- end handle general errors
     finally: # --- final shutdown
-        # TODO if not Mac, just exit
-        announce_exit : bool = doot.constants.ANNOUNCE_EXIT
-        announce_voice : str = doot.constants.ANNOUNCE_VOICE
-        if doot.config is not None:
-            announce_exit        = doot.config.on_fail(announce_exit, bool|str).notify.say_on_exit()
-            announce_voice       = doot.config.on_fail(announce_voice, str).notify.announce_voice()
+        match sys.platform:
+            case "linux":
+                pass
+            case "darwin":
+                announce_exit : bool = doot.constants.ANNOUNCE_EXIT
+                announce_voice : str = doot.constants.ANNOUNCE_VOICE
+                if doot.config is not None:
+                    announce_exit        = doot.config.on_fail(announce_exit, bool|str).settings.general.notify.say_on_exit()
+                    announce_voice       = doot.config.on_fail(announce_voice, str).setttings.general.notify.announce_voice()
 
-        match errored, announce_exit:
-            case False, str() as say_text:
-                cmd = sh.say("-v", announce_voice, "-r", "50", say_text)
-            case False, True:
-                cmd = sh.say("-v", announce_voice, "-r", "50", "Doot Has Finished")
-            case True, True|str():
-                cmd = sh.say("-v", announce_voice, "-r", "50", "Doot Encountered a problem")
-            case _:
-                cmd = None
-        if cmd is not None:
-            cmd.execute()
+                match errored, announce_exit:
+                    case False, str() as say_text:
+                        cmd = sh.say("-v", announce_voice, "-r", "50", say_text)
+                    case False, True:
+                        cmd = sh.say("-v", announce_voice, "-r", "50", "Doot Has Finished")
+                    case True, True|str():
+                        cmd = sh.say("-v", announce_voice, "-r", "50", "Doot Encountered a problem")
+                    case _:
+                        cmd = None
+                if cmd is not None:
+                    cmd.execute()
 
         sys.exit(result)
 

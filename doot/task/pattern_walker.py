@@ -27,46 +27,17 @@ from doot.task.base_tasker import DootTasker
 from doot.mixins.tasker.subtask import SubMixin
 from doot.structs import DootTaskSpec
 
-glob_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.globbing.ignores()
+glob_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).setting.globbing.ignores()
 glob_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).setting.globbing.halts()
 
-class _GlobControl(enum.Enum):
-    """
-    accept  : is a result, and descend if recursive
-    keep    : is a result, don't descend
-    discard : not a result, descend
-    reject  : not a result, don't descend
-    """
-    accept  = enum.auto()
-    yesAnd  = enum.auto()
-
-    keep    = enum.auto()
-    yes     = enum.auto()
-
-    discard = enum.auto()
-    noBut   = enum.auto()
-
-    reject  = enum.auto()
-    no      = enum.auto()
-
 @doot.check_protocol
-class DootEagerGlobber(SubMixin, DootTasker):
+class DootPatternWalker(SubMixin, DootTasker):
     """
-    Base tasker for file based globbing.
+    Base tasker for file based directory walking.
+      Instead of globbing, uses regex matching.
+    Generates a new subtask for each file found.
+
     Each File found is a separate subtask
-
-    Uses the toml key `sub_task` to spec each task,
-    and `head_task` for a final task to run after all subtasks finish
-
-    Each Subtask gets keys added to its state: [fpath, fstem. fname, lpath]
-    `exts` filters by extension (py-style, so eg: '.bib')
-    `roots` defines starting locations.
-    `recursive` controls if just the specified location is searched, or subdirs.
-    `filter_fn` allows an import path of a callable: lambda(pl.Path) -> _GlobControl
-
-    Config files can specify:
-    settings.globbing.ignores = []
-    settings.globbing.halts   = []
 
     Override as necessary:
     .filter : for controlling glob results
@@ -86,7 +57,7 @@ class DootEagerGlobber(SubMixin, DootTasker):
         self.rec            = spec.extra.on_fail(False, bool).recursive()
         self.total_subtasks = 0
         for x in self.roots:
-            depth = len(set(self.__class__.mro()) - set(DootEagerGlobber.mro()))
+            depth = len(set(self.__class__.mro()) - set(DootPatternWalker.mro()))
             if not x.exists():
                 logging.warning(f"Globber Missing Root: {x.name}", stacklevel=depth)
             if not x.is_dir():
@@ -189,8 +160,7 @@ class DootEagerGlobber(SubMixin, DootTasker):
     def _build_subs(self) -> Generator[DootTaskSpec]:
         self.total_subtasks = 0
         logging.debug("%s : Building Globber SubTasks", self.name)
-        filter_fn = self.import_class(self.spec.extra.on_fail((None,)).filter_fn())
-        for i, (uname, fpath) in enumerate(self.glob_all(fn=filter_fn)):
+        for i, (uname, fpath) in enumerate(self.glob_all()):
             match self._build_subtask(i, uname, fpath=fpath, fstem=fpath.stem, fname=fpath.name, lpath=self.rel_path(fpath)):
                 case None:
                     pass
@@ -201,7 +171,7 @@ class DootEagerGlobber(SubMixin, DootTasker):
                     raise TypeError("Unexpected type for subtask: %s", type(subtask))
 
     def _non_recursive_glob(self, target, filter_fn, exts):
-        check_fn = lambda x: (filter_fn(x) not in [None, False, _GlobControl.reject, _GlobControl.discard, _GlobControl.no, _GlobControl.noBut]
+        check_fn = lambda x: (filter_fn(x) not in [None, False, _GlobControl.reject, _GlobControl.discard]
                                 and x.name not in glob_ignores
                                 and (not bool(exts) or (x.is_file() and x.suffix in exts)))
 
@@ -222,14 +192,9 @@ class DootEagerGlobber(SubMixin, DootTasker):
         stub['version'].default   = cls._version
         stub['exts'].type         = "list[str]"
         stub['exts'].default      = []
-        stub['exts'].prefix = "# "
         stub['roots'].type        = "list[str|pl.Path]"
         stub['roots'].default     = ["\".\""]
         stub['roots'].comment     = "Places the globber will start"
         stub['recursive'].type    = "bool"
         stub['recursive'].default = False
-        stub['recursive'].prefix = "# "
-        stub["filter_fn"].type = "callable"
-        stub["filter_fn"].default = ""
-        stub['filter_fn'].prefix = "# "
         return stub
