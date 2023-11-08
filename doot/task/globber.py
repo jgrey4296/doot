@@ -53,9 +53,20 @@ class _GlobControl(enum.Enum):
 class DootEagerGlobber(SubMixin, DootTasker):
     """
     Base tasker for file based globbing.
-    Generates a new subtask for each file found.
-
     Each File found is a separate subtask
+
+    Uses the toml key `sub_task` to spec each task,
+    and `head_task` for a final task to run after all subtasks finish
+
+    Each Subtask gets keys added to its state: [fpath, fstem. fname, lpath]
+    `exts` filters by extension (py-style, so eg: '.bib')
+    `roots` defines starting locations.
+    `recursive` controls if just the specified location is searched, or subdirs.
+    `filter_fn` allows an import path of a callable: lambda(pl.Path) -> _GlobControl
+
+    Config files can specify:
+    settings.globbing.ignores = []
+    settings.globbing.halts   = []
 
     Override as necessary:
     .filter : for controlling glob results

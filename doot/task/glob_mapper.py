@@ -23,33 +23,30 @@ printer = logmod.getLogger("doot._printer")
 
 import doot
 from doot.errors import DootDirAbsent
+from doot.task.base_tasker import DootTasker
+from doot.mixins.tasker.subtask import SubMixin
 from doot.structs import DootTaskSpec
-from doot.task.globber import DootEagerGlobber
+from doot.task.globber import DootEagerGlobber, _GlobControl
 
-glob_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).setting.globbing.ignores()
+glob_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.globbing.ignores()
 glob_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).setting.globbing.halts()
 
+
 @doot.check_protocol
-class DootTreeShadower(DootEagerGlobber):
+class DootGlobMapper(DootEagerGlobber):
     """
-      Glob a directory tree,
-      but in addition to the subtask keys [`fpath`, `fstem`, `fname`, and `lpath`],
-      the key `shadow_path` is added.
+      A Customized Globber which uses the `sub_task` key as a default subtask,
+      and specializes subtasks uses a `sub_map` dictionary.
 
-      The config key `shadow_root` is where a shadowed tree will start.
-      eg:
-      shadow_root : {data}/unpacked
+      sub_map = {
+      ".bib"  :  "files::bib",
+      ".json" :  "files::json",
+      }
 
-      `shadow_path` is a path built onto the `shadow_root`, of the file's relation to its own glob root.
-      eg:
-      root        : {data}/packed
-      fpath       : {data}/packed/bg2/raw/data/Scripts.bif
-      lpath       : bg2/raw/data/Scripts.bif
-      shadow_path : {shadow_root}/bg2/raw/data/Scripts.bif -> {data}/unpacked/bg2/raw/data/Scripts.bif
+       so {data}/1252.bib -> files::bib
+          {data}/blah.json -> files::json
+       but {data}/scripts.bif -> {sub_task}
 
-      To allow for easy saving of modified files, in a structure that mirrors the source data
-
-      automatically includes `shadow_root` as a clean target
     """
     control = _GlobControl
     globc   = _GlobControl
@@ -70,17 +67,22 @@ class DootTreeShadower(DootEagerGlobber):
 
     def _build_subs(self) -> Generator[DootTaskSpec]:
         self.total_subtasks = 0
-        logging.debug("%s : Building Shadow SubTasks", self.name)
-        for i, (uname, fpath) in enumerate(self.glob_all()):
+        logging.debug("%s : Building Globber SubTasks", self.name)
+        filter_fn = self.import_class(self.spec.extra.on_fail((None,)).filter_fn())
+        for i, (uname, fpath) in enumerate(self.glob_all(fn=filter_fn)):
             match self._build_subtask(i, uname, fpath=fpath, fstem=fpath.stem, fname=fpath.name, lpath=self.rel_path(fpath)):
                 case None:
                     pass
                 case DootTaskSpec() as subtask:
                     self.total_subtasks += 1
-                    subtask.print_level = self.spec.extra.on_fail(subtask.print_level).sub_print_level()
                     yield subtask
                 case _ as subtask:
                     raise TypeError("Unexpected type for subtask: %s", type(subtask))
+
+    def specialize_subtask(self, task) -> None|dict|DootTaskSpec:
+        # lookup using spec keys
+        # task_spec.ctor_name = DootStructuredName.from_str(val)
+        return task
 
     @classmethod
     def stub_class(cls, stub):
@@ -88,12 +90,14 @@ class DootTreeShadower(DootEagerGlobber):
         stub['version'].default   = cls._version
         stub['exts'].type         = "list[str]"
         stub['exts'].default      = []
+        stub['exts'].prefix = "# "
         stub['roots'].type        = "list[str|pl.Path]"
         stub['roots'].default     = ["\".\""]
         stub['roots'].comment     = "Places the globber will start"
         stub['recursive'].type    = "bool"
         stub['recursive'].default = False
-        stub['sub_print_level'].type = "str"
-        stub['sub_print_level'].default = "WARN"
-
+        stub['recursive'].prefix = "# "
+        stub["filter_fn"].type = "callable"
+        stub["filter_fn"].default = ""
+        stub['filter_fn'].prefix = "# "
         return stub
