@@ -66,3 +66,38 @@ class LogAction(Action_p):
         level = logmod.getLevelName(spec.kwargs.on_fail("INFO", str).level())
         msg = expand_str(spec.kwargs.msg, spec, task_state)
         printer.log(level, "%s", msg)
+
+@doot.check_protocol
+class StalenessCheck(Action_p):
+    _toml_kwargs = ["old", "new"]
+    inState      = ["old", "new"]
+
+    def __call__(self, spec, task_state:dict) -> dict|bool|None:
+        old_key    = spec.kwargs.old
+        new_key    = spec.kwargs.new
+
+        if old_key in task_state:
+            old = task_state.get(old_key)
+        else:
+            old = old_key
+
+        if new_key in task_state:
+            new = task_state.get(new_key)
+        else:
+            new    = new_key
+
+        old_loc    = expand_str(old, spec, task_state)
+        new_loc    = expand_str(new, spec, task_state)
+
+        if new_loc.exists() and old_loc.stat().st_mtime_ns <= new_loc.stat().st_mtime_ns:
+            return ActRE.SKIP
+
+@doot.check_protocol
+class EnsureInstalled:
+    """
+    Easily check a program can be found and used
+    """
+    _toml_kwargs = ["prog", "version"]
+
+    def __call__(self, spec, task_state:dict) -> dict|bool|None:
+        return ActRE.FAIL
