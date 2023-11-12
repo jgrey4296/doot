@@ -15,7 +15,7 @@ import pytest
 
 import doot
 from doot.utils.testing_fixtures import wrap_tmp
-from doot.task.globber import DootEagerGlobber
+from doot.task.dir_walker import DootDirWalker
 from doot.structs import DootTaskSpec
 from doot._abstract import TaskBase_i
 
@@ -33,7 +33,7 @@ logging = logmod.root
 
 ##-- end pytest reminder
 
-class TestGlobber:
+class TestWalker:
 
 
     def test_temp_dir_check(self, wrap_tmp):
@@ -48,13 +48,13 @@ class TestGlobber:
         assert("second" in contents)
 
     def test_initial(self):
-        obj = DootEagerGlobber(DootTaskSpec.from_dict({"name" : "basic"}))
+        obj = DootDirWalker(DootTaskSpec.from_dict({"name" : "basic"}))
         assert(isinstance(obj, TaskBase_i))
 
     def test_basic_glob(self, wrap_tmp):
         (wrap_tmp / "first").mkdir()
         (wrap_tmp / "second").mkdir()
-        obj = DootEagerGlobber(DootTaskSpec.from_dict({"name" : "basic"}))
+        obj = DootDirWalker(DootTaskSpec.from_dict({"name" : "basic"}))
 
         count = 0
         for sub in obj.build():
@@ -71,7 +71,7 @@ class TestGlobber:
         (wrap_tmp / "second").mkdir()
         (wrap_tmp / "second" / "bloo.txt").touch()
 
-        obj = DootEagerGlobber(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": True}))
+        obj = DootDirWalker(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": True}))
 
         count = 0
         for sub in obj.build():
@@ -90,7 +90,7 @@ class TestGlobber:
         (wrap_tmp / "second" / "bloo.txt").touch()
         (wrap_tmp / "second" / "bibble.blib").touch()
 
-        obj = DootEagerGlobber(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": True}))
+        obj = DootDirWalker(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": True}))
 
         count = 0
         for sub in obj.build():
@@ -107,7 +107,7 @@ class TestGlobber:
         (wrap_tmp / "second").mkdir()
         (wrap_tmp / "second" / "bloo.txt").touch()
 
-        obj = DootEagerGlobber(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": False}))
+        obj = DootDirWalker(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": False}))
 
         count = 0
         for sub in obj.build():
@@ -124,7 +124,7 @@ class TestGlobber:
         (wrap_tmp / "second").mkdir()
         (wrap_tmp / "second" / "bloo.txt").touch()
 
-        obj = DootEagerGlobber(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": False}))
+        obj = DootDirWalker(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": False}))
 
         count = 0
         for sub in obj.build():
@@ -141,7 +141,7 @@ class TestGlobber:
         (wrap_tmp / "second").mkdir()
         (wrap_tmp / "second" / "bloo.txt").touch()
 
-        obj = DootEagerGlobber(DootTaskSpec.from_dict({
+        obj = DootDirWalker(DootTaskSpec.from_dict({
             "name"        : "basic",
             "exts"        : [".txt"],
             "recursive"   : False,
@@ -154,4 +154,4 @@ class TestGlobber:
             assert(str(sub.name) in ["default::basic.$head$"])
 
         assert(count == 1)
-        assert("Globber Missing Root: aweg" in caplog.messages)
+        assert("Walker Missing Root: aweg" in caplog.messages)

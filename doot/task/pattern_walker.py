@@ -59,9 +59,9 @@ class DootPatternWalker(SubMixin, DootTasker):
         for x in self.roots:
             depth = len(set(self.__class__.mro()) - set(DootPatternWalker.mro()))
             if not x.exists():
-                logging.warning(f"Globber Missing Root: {x.name}", stacklevel=depth)
+                logging.warning(f"Walker Missing Root: {x.name}", stacklevel=depth)
             if not x.is_dir():
-                 logging.warning(f"Globber Root is a file: {x.name}", stacklevel=depth)
+                 logging.warning(f"Walker Root is a file: {x.name}", stacklevel=depth)
 
     def filter(self, target:pl.Path) -> bool | _GlobControl:
         """ filter function called on each prospective glob result
@@ -159,7 +159,7 @@ class DootPatternWalker(SubMixin, DootTasker):
 
     def _build_subs(self) -> Generator[DootTaskSpec]:
         self.total_subtasks = 0
-        logging.debug("%s : Building Globber SubTasks", self.name)
+        logging.debug("%s : Building Walker SubTasks", self.name)
         for i, (uname, fpath) in enumerate(self.glob_all()):
             match self._build_subtask(i, uname, fpath=fpath, fstem=fpath.stem, fname=fpath.name, lpath=self.rel_path(fpath)):
                 case None:
@@ -194,7 +194,7 @@ class DootPatternWalker(SubMixin, DootTasker):
         stub['exts'].default      = []
         stub['roots'].type        = "list[str|pl.Path]"
         stub['roots'].default     = ["\".\""]
-        stub['roots'].comment     = "Places the globber will start"
+        stub['roots'].comment     = "Places the walker will start"
         stub['recursive'].type    = "bool"
         stub['recursive'].default = False
         return stub

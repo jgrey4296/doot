@@ -118,7 +118,7 @@ class StubCmd(Command_i):
         stub['name'].default         = DootStructuredName.from_str(doot.args.cmd.args.name)
 
         # add ctor specific fields,
-        # such as for globber: roots [], exts [], recursive bool, subtask "", head_task ""
+        # such as for dir_walker: roots [], exts [], recursive bool, subtask "", head_task ""
         for cls in reversed(task_type.mro()):
             try:
                 cls.stub_class(stub)

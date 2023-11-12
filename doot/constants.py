@@ -58,33 +58,42 @@ DEFAULT_PLUGINS['report-line'] = [("basic", "doot.reporters.basic_reporters:Doot
         ]
 DEFAULT_PLUGINS['database'] = []
 
-DEFAULT_PLUGINS['tracker']  = [("basic", "doot.control.tracker:DootTracker")]
+DEFAULT_PLUGINS['tracker']  = [("basic",      "doot.control.tracker:DootTracker")]
 
-DEFAULT_PLUGINS['runner']   = [("basic", "doot.control.runner:DootRunner"),
-                               ("step",  "doot.control.step_runner:DootStepRunner")
+DEFAULT_PLUGINS['runner']   = [("basic",      "doot.control.runner:DootRunner"),
+                               ("step",       "doot.control.step_runner:DootStepRunner")
                                ]
 
-DEFAULT_PLUGINS['parser']   = [("basic",     "doot.parsers.parser:DootArgParser")]
+DEFAULT_PLUGINS['parser']   = [("basic",      "doot.parsers.parser:DootArgParser")]
 
-DEFAULT_PLUGINS['action']   = [("basic"  ,   "doot.actions.base_action:DootBaseAction"),
-                               ("shell" ,    "doot.actions.shell_action:DootShellAction"),
-                               ("interact",  "doot.actions.shell_action:DootInteractiveAction"),
-                               ("read"  ,    "doot.actions.io:ReadAction"),
-                               ("write" ,    "doot.actions.io:WriteAction"),
-                               ("copy"  ,    "doot.actions.io:CopyAction"),
-                               ("backup",    "doot.actions.io:BackupAction"),
-                               ("putPost",   "doot.actions.postbox:PutPostAction"),
-                               ("getPost",   "doot.actions.postbox:GetPostAction"),
-                               ("addState",  "doot.actions.state:AddStateAction"),
-                               ("addFn",     "doot.actions.state:AddStateFn"),
-                               ("log",       "doot.actions.control_flow:LogAction"),
-                               ("pred",      "doot.actions.control_flow:CancelOnPredicateAction"),
-                               ("time",      "doot.actions.time_action:TimeAction"),
+DEFAULT_PLUGINS['action']   = [("basic"  ,    "doot.actions.base_action:DootBaseAction"),
+
+                               ("shell" ,     "doot.actions.shell:DootShellAction"),
+                               ("interact",   "doot.actions.shell:DootInteractiveAction"),
+
+                               ("read"  ,     "doot.actions.io:ReadAction"),
+                               ("readJson",   "doot.actions.io:ReadJson"),
+                               ("copy"  ,     "doot.actions.io:CopyAction"),
+                               ("backup!",    "doot.actions.io:BackupAction"),
+                               ("write!" ,    "doot.actions.io:WriteAction"),
+                               ("dir!",       "doot.actions.io:EnsureDirectory"),
+
+                               ("putPost",    "doot.actions.postbox:PutPostAction"),
+                               ("getPost",    "doot.actions.postbox:GetPostAction"),
+                               ("addState",   "doot.actions.state:AddStateAction"),
+                               ("addFn",      "doot.actions.state:AddStateFn"),
+
+                               ("sayTime",    "doot.actions.speak:SpeakTimeAction"),
+
+                               ("log",        "doot.actions.control_flow:LogAction"),
+                               ("pred?",      "doot.actions.control_flow:CancelOnPredicateAction"),
+                               ("installed?", "doot.actions.control_flow:AssertInstalled"),
                               ]
 
 DEFAULT_PLUGINS['tasker']     = [("tasker"  , "doot.task.base_tasker:DootTasker"),
-                                 ("globber" , "doot.task.globber:DootEagerGlobber"),
+                                 ("walker" ,  "doot.task.dir_walker:DootDirWalker"),
                                  ("task"    , "doot.task.base_task:DootTask"),
+                                 ("shadow"  , "doot.task.tree_shadower:DootTreeShadower"),
                                  ]
 
 ##-- end default plugins
