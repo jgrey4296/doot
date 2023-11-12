@@ -31,7 +31,7 @@ from doot._abstract import Action_p
 from doot.utils.string_expand import expand_str
 
 @doot.check_protocol
-class TimeAction(Action_p):
+class SpeakTimeAction(Action_p):
     """
     A Simple Action that announces the time
     Subclass this and override __call__ for your own actions.

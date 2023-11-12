@@ -13,11 +13,12 @@ import sys
 import sh
 import doot
 from doot.errors import DootTaskError
-# from doot._abstract import Action_p
+from doot._abstract import Action_p
 from doot.actions.base_action import DootBaseAction
 from doot.utils.string_expand import expand_str
 
-class DootShellAction(DootBaseAction):
+@doot.check_protocol
+class DootShellAction(Action_p):
     """
     For actions in subshells.
     all other arguments are passed directly to the program, using `sh`
@@ -49,7 +50,9 @@ class DootShellAction(DootBaseAction):
             printer.error("Shell Command '%s' exited with code: %s for args: %s", spec.args[0], result.exit_code, spec.args)
             return False
 
-class DootInteractiveAction(DootBaseAction):
+
+@doot.check_protocol
+class DootInteractiveAction(Action_p):
     """
       An interactive command, which uses the self.interact method as a callback for sh.
     """
