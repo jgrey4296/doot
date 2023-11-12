@@ -26,10 +26,13 @@ make_missing = doot.config.on_fail(False).settings.general.location_check.make_m
 
 @doot.check_protocol
 class DevScaffold(DootTasker):
-    """ When Authoring a task, scaffold it with test data, run it, test the results, and cleanup """
+    """ When Authoring a task, scaffold it with test data, run it, test the results, and cleanup
+
+
+    """
 
     def __init__(self, spec:DootTaskSpec):
         super().__init__(spec)
 
     def build(self, **kwargs):
-        pass
+        raise NotImplementedError("TODO")

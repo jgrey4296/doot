@@ -93,7 +93,7 @@ class StalenessCheck(Action_p):
             return ActRE.SKIP
 
 @doot.check_protocol
-class EnsureInstalled:
+class AssertInstalled:
     """
     Easily check a program can be found and used
     """

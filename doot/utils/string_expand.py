@@ -40,7 +40,7 @@ logging = logmod.getLogger(__name__)
 import doot
 PATTERN = re.compile("{(.+?)}")
 
-def expand_str(s, spec=None, task_state=None):
+def expand_str(s, spec=None, task_state=None, as_path=False):
     """
     expand {keywords} in a string that are in the spec.kwargs or task_state
     but don't complain about other keywords, which can be expanded by doot.locs
@@ -73,7 +73,7 @@ def expand_str(s, spec=None, task_state=None):
             case _:
                 curr = re.sub(f"{{{x}}}", replacement, curr)
 
-    if cast_to_path:
+    if as_path or cast_to_path:
         return doot.locs[curr]
     else:
         return curr

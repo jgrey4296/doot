@@ -49,6 +49,7 @@ class AddStateAction(Action_p):
 
 @doot.check_protocol
 class AddStateFn(Action_p, ImporterMixin):
+    """ for each toml kwarg, import its value and set the task_state[kwarg] = val """
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
         result = {}
@@ -57,3 +58,24 @@ class AddStateFn(Action_p, ImporterMixin):
 
             pass
         return result
+
+
+
+@doot.check_protocol
+class PushState(Action_p):
+    """
+      task_state[target] += [task_state[x] for x in spec.args]
+    """
+    _toml_kwargs = ["target"]
+
+    def __call__(self, spec, task_state) -> dict|bool|None:
+        data = list(task_state.get(spec.kwargs.target, []))
+
+        for arg in spec.args:
+            match task_state[arg]:
+                case list() as x:
+                    data += x
+                case _:
+                    data.append(x)
+
+        return { spec.kwargs.target : data }

@@ -12,6 +12,7 @@ import pathlib as pl
 import re
 import time
 import types
+import json
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
@@ -28,11 +29,30 @@ printer = logmod.getLogger("doot._printer")
 from time import sleep
 import sh
 import shutil
+import tomler
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
 from doot.utils.string_expand import expand_str
 from doot.actions.postbox import DootPostBox
+
+# TODO using doot.config.settings.general.protect to disallow write/delete/backup/copy
+
+@doot.check_protocol
+class AppendAction(Action_p):
+    """
+      Append data from the task_state to a file
+    """
+    sep = "\n--------------------\n"
+    _toml_kwargs = ["sep", "target"]
+    def __call__(self, spec, state):
+        sep = spec.kwargs.on_fail(AppendAction.sep, str).sep()
+        loc = expand_str(spec.kwargs.target, spec, state, as_path=True)
+        args = [expand_str(x, spec, state) for x in spec.args]
+        with open(loc, 'a') as f:
+            for arg in args:
+                f.write(sep)
+                f.write(value)
 
 @doot.check_protocol
 class WriteAction(Action_p):
@@ -136,6 +156,16 @@ class CopyAction(Action_p):
 
 
 @doot.check_protocol
+class DeleteAction(Action_p):
+    """
+      delete a file / directory specified in spec.args
+    """
+    _toml_kwargs = ["recursive"]
+    def __call__(self, spec, task):
+        raise NotImplementedError("TODO")
+
+
+@doot.check_protocol
 class BackupAction(Action_p):
     """
       copy a file somewhere, but only if it doesn't exist at the dest, or is newer than the dest
@@ -161,8 +191,8 @@ class BackupAction(Action_p):
             dest   = dest_key
 
 
-        source_loc = expand_str(source, spec, task_state)
-        dest_loc   = expand_str(dest, spec, task_state)
+        source_loc = expand_str(source, spec, task_state, as_path=True)
+        dest_loc   = expand_str(dest, spec, task_state, as_path=True)
 
         if dest_loc.exists() and source_loc.stat().st_mtime_ns <= dest_loc.stat().st_mtime_ns:
             return True
@@ -170,3 +200,30 @@ class BackupAction(Action_p):
         printer.warning("Backing up %s to %s", source_loc, dest_loc)
         DootPostBox.put_from(task_state, dest_loc)
         shutil.copy2(source_loc,dest_loc)
+
+
+@doot.check_protocol
+class EnsureDirectory(Action_p):
+    """
+      ensure the directories passed as arguments exist
+      if they don't, build them
+    """
+
+    def __call__(self, spec, task_state:dict):
+        printer.debug("Ensuring Directories: %s", spec.args)
+        for arg in spec.args:
+            loc = expand_str(arg, spec, task_state, as_path=True)
+            loc.mkdir(parents=True, exist_ok=True)
+
+
+@doot.check_protocol
+class ReadJson(Action_p):
+    """
+      Read a json file `and add it to the task state as task_state[`data`] = Tomler(json_data)
+    """
+    _toml_kwargs = ["target", "data"]
+
+    def __call__(self, spec, task_state:dict):
+        fpath = expand_str(spec.kwargs.target, spec, task_state, as_path=True)
+        data = json.load(fpath)
+        return {spec.kwargs.data : tomler.Tomler(data)}

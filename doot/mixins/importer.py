@@ -42,6 +42,12 @@ if PluginLoader_p.loaded:
 
 class ImporterMixin:
 
+    def import_ctor(self, pathname:None|str):
+        raise NotImplementedError("TODO")
+
+    def import_function(self, pathname:None|str):
+        raise NotImplementedError("TODO")
+
     def import_class(self, pathname:None|str, *, is_task_ctor=False):
         if pathname is None:
             return None
@@ -54,8 +60,10 @@ class ImporterMixin:
             module = importlib.import_module(module_name)
             return getattr(module, cls_name)
         except ImportError as err:
-            raise doot.errors.DootTaskLoadError("Import Failed: %s", module_name, task=self.spec) from err
+            breakpoint()
+            pass
+            raise doot.errors.DootTaskLoadError("Import Failed: %s", pathname, task=self.spec) from err
         except (AttributeError, KeyError) as err:
-            raise doot.errors.DootTaskLoadError("Import Failed: Module %s has no: %s", module_name, cls_name, task=self.spec) from err
+            raise doot.errors.DootTaskLoadError("Import Failed: Module has missing attritbue/key: %s", pathname, task=self.spec) from err
         except ValueError as err:
             raise doot.errors.DootTaskLoadError("Import Failed: Can't split %s", pathname, task=self.spec) from err

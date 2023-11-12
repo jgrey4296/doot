@@ -276,6 +276,9 @@ class DootStructuredName:
 
         return True
 
+    def __contains__(self, other:str):
+        return other in str(self)
+
     def task_str(self):
         return DootStructuredName.subseparator.join(self.task)
 
