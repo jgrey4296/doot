@@ -23,15 +23,14 @@ printer = logmod.getLogger("doot._printer")
 
 import doot
 from doot.errors import DootDirAbsent
-from doot.task.base_tasker import DootTasker
-from doot.mixins.tasker.subtask import SubMixin
+from doot.task.dir_walker import DootDirWalker, _WalkControl
 from doot.structs import DootTaskSpec
 
 glob_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).setting.globbing.ignores()
 glob_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).setting.globbing.halts()
 
 @doot.check_protocol
-class DootPatternWalker(SubMixin, DootTasker):
+class DootPatternWalker(DootDirWalker):
     """
     Base tasker for file based directory walking.
       Instead of globbing, uses regex matching.
@@ -39,151 +38,16 @@ class DootPatternWalker(SubMixin, DootTasker):
 
     Each File found is a separate subtask
 
-    Override as necessary:
-    .filter : for controlling glob results
-    .glob_target : for what is globbed
-    .{top/subtask/setup/teardown}_detail : for controlling task definition
-    .{top/subtask/setup/teardown}_actions : for controlling task actions
-    .default_task : the basic task definition that everything customises
     """
-    control = _GlobControl
-    globc   = _GlobControl
+    control = _WalkControl
+    globc   = _WalkControl
 
-    def __init__(self, spec:DootTaskSpec):
-        super().__init__(spec)
-        self.exts           = {y for x in spec.extra.on_fail([]).exts() for y in [x.lower(), x.upper()]}
-        # expand roots based on doot.locs
-        self.roots          = [doot.locs.get(x, fallback=pl.Path()) for x in spec.extra.on_fail([pl.Path()]).roots()]
-        self.rec            = spec.extra.on_fail(False, bool).recursive()
-        self.total_subtasks = 0
-        for x in self.roots:
-            depth = len(set(self.__class__.mro()) - set(DootPatternWalker.mro()))
-            if not x.exists():
-                logging.warning(f"Walker Missing Root: {x.name}", stacklevel=depth)
-            if not x.is_dir():
-                 logging.warning(f"Walker Root is a file: {x.name}", stacklevel=depth)
-
-    def filter(self, target:pl.Path) -> bool | _GlobControl:
-        """ filter function called on each prospective glob result
-        override in subclasses as necessary
+    def specialize_subtask(self, task) -> None|dict|DootTaskSpec:
         """
-        return True
-
-    def rel_path(self, fpath) -> pl.Path:
+          use the task's data to look up a different task name to use, and modify the spec's ctor
         """
-        make the path relative to the appropriate root
-        """
-        for root in self.roots:
-            try:
-                return fpath.relative_to(root)
-            except ValueError:
-                continue
+        raise NotImplementedError("TODO")
 
-        raise ValueError(f"{fpath} is not able to be made relative")
-
-    def glob_target(self, target, rec=None, fn=None, exts=None) -> Generator[pl.Path]:
-        rec       = bool(rec) or rec is None and self.rec
-        exts      = exts or self.exts or []
-        filter_fn = fn or self.filter
-        printer.debug("Globbing on Target: %s : rec=%s, exts=%s", target, rec, exts)
-
-        if not target.exists():
-            return None
-
-        if not rec:
-            yield from self._non_recursive_glob(target, filter_fn, exts)
-            return None
-
-        assert(rec)
-        queue = [target]
-        while bool(queue):
-            current = queue.pop()
-            if not current.exists():
-                continue
-            if current.name in glob_ignores:
-                continue
-            if current.is_dir() and any([(current / x).exists() for x in glob_halts]):
-                continue
-            if bool(exts) and current.is_file() and current.suffix not in exts:
-                continue
-            match filter_fn(current):
-                case _GlobControl.keep | _GlobControl.yes:
-                    yield current
-                case True if current.is_dir() and bool(exts):
-                    queue += sorted(current.iterdir())
-                case True | _GlobControl.accept | _GlobControl.yesAnd:
-                    yield current
-                    if current.is_dir():
-                        queue += sorted(current.iterdir())
-                case False | _GlobControl.discard | _GlobControl.noBut if current.is_dir():
-                    queue += sorted(current.iterdir())
-                case None | False:
-                    continue
-                case _GlobControl.reject | _GlobControl.discard:
-                    continue
-                case _GlobControl.no | _GlobControl.noBut:
-                    continue
-                case _ as x:
-                    raise TypeError("Unexpected glob filter value", x)
-
-    def glob_all(self, rec=None, fn=None) -> Generator[tuple(str, pl.Path)]:
-        """
-        Glob all available files,
-        and generate unique names for them
-        """
-        base_name = self.fullname
-        globbed_names = set()
-        for root in self.roots:
-            for fpath in self.glob_target(root, rec=rec, fn=fn):
-                # ensure unique task names
-                curr = fpath.absolute()
-                name = base_name.subtask(curr.stem)
-                logging.debug("Building Unique name for: %s : %s", name, fpath)
-                while name in globbed_names:
-                    curr = curr.parent
-                    name = name.subtask(curr.stem)
-
-                globbed_names.add(name)
-                yield name, fpath
-
-        logging.debug("Globbed : %s", len(globbed_names))
-
-    def build(self, **kwargs) -> Generator[DootTaskSpec]:
-        head = self._build_head()
-
-        for sub in self._build_subs():
-            head.runs_after.append(sub.name)
-            yield sub
-
-        yield head
-
-    def _build_subs(self) -> Generator[DootTaskSpec]:
-        self.total_subtasks = 0
-        logging.debug("%s : Building Walker SubTasks", self.name)
-        for i, (uname, fpath) in enumerate(self.glob_all()):
-            match self._build_subtask(i, uname, fpath=fpath, fstem=fpath.stem, fname=fpath.name, lpath=self.rel_path(fpath)):
-                case None:
-                    pass
-                case DootTaskSpec() as subtask:
-                    self.total_subtasks += 1
-                    yield subtask
-                case _ as subtask:
-                    raise TypeError("Unexpected type for subtask: %s", type(subtask))
-
-    def _non_recursive_glob(self, target, filter_fn, exts):
-        check_fn = lambda x: (filter_fn(x) not in [None, False, _GlobControl.reject, _GlobControl.discard]
-                                and x.name not in glob_ignores
-                                and (not bool(exts) or (x.is_file() and x.suffix in exts)))
-
-        if check_fn(target):
-            yield target
-
-        if not target.is_dir():
-            return None
-
-        for x in target.iterdir():
-            if check_fn(x):
-                yield x
 
 
     @classmethod

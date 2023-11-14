@@ -62,6 +62,7 @@ printer = logmod.getLogger("doot._printer")
 from importlib.metadata import EntryPoint
 
 import doot
+import doot.errors
 import doot.constants
 import tomler
 from doot._abstract import (ArgParser_i, Command_i, CommandLoader_p,
@@ -102,16 +103,19 @@ class DootOverlord(Overlord_p):
 
     def __init__(self, *, loaders:dict[str, Loader_i]=None, config_filenames:tuple=('doot.toml', 'pyproject.toml'), extra_config:dict|Tomler=None, args:list=None, log_config:None|DootLogConfig=None):
         logging.debug("Initialising Overlord")
-        self.args           = args or sys.argv[:]
-        self.BIN_NAME       = self.args[0].split('/')[-1]
-        self.loaders        = loaders or dict()
-        self.log_config     = log_config
+        self.args                          = args or sys.argv[:]
+        self.BIN_NAME                      = self.args[0].split('/')[-1]
+        self.loaders                       = loaders or dict()
+        self.log_config                    = log_config
 
-        self.plugins     : None|Tomler = None
-        self.cmds        : None|Tomler = None
-        self.taskers     : None|Tomler = None
-        self.current_cmd : Command_i      = None
-        self.taskers     : list[Tasker_i] = []
+        self.plugins      : None|Tomler    = None
+        self.cmds         : None|Tomler    = None
+        self.taskers      : None|Tomler    = None
+        self.current_cmd  : Command_i      = None
+        self.taskers      : list[Tasker_i] = []
+
+        self._errored     : None|DootError = None
+        self._current_cmd : None|str       = None
 
         self._load_plugins(extra_config)
         self._load_commands(extra_config)
@@ -230,25 +234,44 @@ class DootOverlord(Overlord_p):
         if self._cli_arg_response():
             return
 
-        # do the command
-        target = (cmd
-            or doot.args.on_fail(None).cmd.name()
-            or doot.constants.DEFAULT_CLI_CMD)
-
+        # Do the cmd
         logging.info("Overlord Calling: %s", cmd or doot.args.cmd.name)
+        try:
+            cmd = self._get_cmd(cmd)
+            cmd(self.taskers, self.plugins)
+        except doot.errors.DootError as err:
+            self._errored = err
+            raise err from err
+
+    def _get_cmd(self, cmd=None):
+        if self.current_cmd is not None:
+            return self.current_cmd
+
+        target = cmd or doot.args.on_fail(None).cmd.name() or doot.constants.DEFAULT_CLI_CMD
+
         self.current_cmd = self.cmds.get(target, None)
         if self.current_cmd is None:
-            raise DootParseError("Specified Command Couldn't be Found: %s", target)
+            self._errored = DootParseError("Specified Command Couldn't be Found: %s", target)
+            raise self._errored
 
-        self.current_cmd(self.taskers, self.plugins)
+        return self.current_cmd
+
+
 
     def shutdown(self):
         """ Doot has finished normally, so report on what was done """
-        logging.info("Shutting Doot Down Normally, reporting defaulted tomler values")
-        defaulted_toml = tomler.Tomler.report_defaulted()
+        if self.current_cmd is not None and hasattr(self.current_cmd, "shutdown"):
+            self.current_cmd.shutdown(self._errored, self.taskers, self.plugins)
 
-        with open(defaulted_file, 'w') as f:
-            f.write("# default values used:\n")
-            f.write("\n".join(defaulted_toml) + "\n\n")
-            # f.write("[.directories]\n")
-            # f.write("\n".join(defaulted_locs))
+        match self._errored:
+            case doot.errors.DootError():
+                pass
+            case None:
+                logging.info("Shutting Doot Down Normally, reporting defaulted tomler values")
+                defaulted_toml = tomler.Tomler.report_defaulted()
+
+                with open(defaulted_file, 'w') as f:
+                    f.write("# default values used:\n")
+                    f.write("\n".join(defaulted_toml) + "\n\n")
+                    # f.write("[.directories]\n")
+                    # f.write("\n".join(defaulted_locs))

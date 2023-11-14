@@ -20,6 +20,7 @@ logging = logmod.getLogger(__name__)
 
 printer = logmod.getLogger("doot._printer")
 
+import sh
 import doot
 from doot.errors import DootDirAbsent
 from doot.task.base_tasker import DootTasker
@@ -82,7 +83,6 @@ class DootExternalWalker(SubMixin, DootTasker):
         self.exts           = {y for x in spec.extra.on_fail([]).exts() for y in [x.lower(), x.upper()]}
         # expand roots based on doot.locs
         self.roots          = [doot.locs.get(x, fallback=pl.Path()) for x in spec.extra.on_fail([pl.Path()]).roots()]
-        self.rec            = spec.extra.on_fail(False, bool).recursive()
         self.total_subtasks = 0
         for x in self.roots:
             depth = len(set(self.__class__.mro()) - set(DootExternalWalker.mro()))
@@ -122,6 +122,7 @@ class DootExternalWalker(SubMixin, DootTasker):
         self.total_subtasks = 0
         logging.debug("%s : Building Walker SubTasks", self.name)
         filter_fn = self.import_class(self.spec.extra.on_fail((None,)).filter_fn())
+
         for i, (uname, fpath) in enumerate(self.glob_all(fn=filter_fn)):
             match self._build_subtask(i, uname, fpath=fpath, fstem=fpath.stem, fname=fpath.name, lpath=self.rel_path(fpath)):
                 case None:
@@ -131,6 +132,29 @@ class DootExternalWalker(SubMixin, DootTasker):
                     yield subtask
                 case _ as subtask:
                     raise TypeError("Unexpected type for subtask: %s", type(subtask))
+
+    def glob_all(self, fn=None) -> Generator[tuple(str, pl.Path)]:
+        """
+          run the spec's `cmd`, expanded with `exts`, for each entry in `roots`
+          combine, and return
+        """
+        base_name     = self.fullname
+        globbed_names = set()
+        cmd           = sh.Command(self.spec.extra.cmd)
+        baked         = cmd.bake(*self.spec.extra.cmd_args)
+        for root in self.roots:
+            results = baked(root)
+            for fpath in results:
+                # ensure unique task names
+                curr = fpath.absolute()
+                name = base_name.subtask(curr.stem)
+                logging.debug("Building Unique name for: %s : %s", name, fpath)
+                while name in globbed_names:
+                    curr = curr.parent
+                    name = name.subtask(curr.stem)
+
+                globbed_names.add(name)
+                yield name, fpath
 
     @classmethod
     def stub_class(cls, stub):
@@ -142,9 +166,10 @@ class DootExternalWalker(SubMixin, DootTasker):
         stub['exts'].type         = "list[str]"
         stub['exts'].default      = []
         stub['exts'].prefix       = "# "
-        stub['recursive'].type    = "bool"
-        stub['recursive'].default = False
-        stub['recursive'].prefix  = "# "
         stub["filter_fn"].type    = "callable"
         stub['filter_fn'].prefix  = "# "
+        stub['cmd'].type          = "string"
+        stub['cmd'].default       = "fdfind"
+        stub['cmd_args'].type     = "list[str]"
+        stub['cmd_args'].default  = ['--color', 'never']
         return stub

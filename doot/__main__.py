@@ -34,6 +34,7 @@ from doot.utils.log_config import DootLogConfig
 def main():
     result  = 1
     errored = False
+    overlord = None
     try:
         log_config = DootLogConfig()
         # --- Setup
@@ -52,7 +53,6 @@ def main():
 
         # --- Do whatever thats been triggered
         result    = overlord()
-        overlord.shutdown()
 
     ##-- handle doot errors
     except doot.errors.DootMissingConfigError as err:
@@ -85,6 +85,8 @@ def main():
         # logging.error("Python Error: %s", err)
     ##-- end handle general errors
     finally: # --- final shutdown
+        if overlord:
+            overlord.shutdown()
         match sys.platform:
             case "linux":
                 pass

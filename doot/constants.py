@@ -71,6 +71,7 @@ DEFAULT_PLUGINS['action']   = [("basic"  ,    "doot.actions.base_action:DootBase
                                ("shell" ,     "doot.actions.shell:DootShellAction"),
                                ("interact",   "doot.actions.shell:DootInteractiveAction"),
 
+                               ("user",       "doot.actions.io:UserInput"),
                                ("read"  ,     "doot.actions.io:ReadAction"),
                                ("readJson",   "doot.actions.io:ReadJson"),
                                ("copy"  ,     "doot.actions.io:CopyAction"),

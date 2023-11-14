@@ -61,8 +61,11 @@ class DootInteractiveAction(Action_p):
     prompt     = ">>> "
     cont       = "... "
 
-    def __call__(self, task_state:dict) -> dict|bool|None:
+    def __call__(self, spec, task_state:dict) -> dict|bool|None:
         try:
+            self.prompt = spec.kwargs.on_fail(DootInteractiveAction.prompt, str).prompt()
+            self.cont   = spec.kwargs.on_fail(DootInteractiveAction.cont, str).cont()
+
             cmd      = getattr(sh, spec.args[0])
             expanded = [expand_str(x, spec, task_state) for x in spec.args[1:]]
             result   = cmd(*expanded, _return_cmd=True, _bg=spec.kwargs.on_fail(False, bool).background(), _out=self.interact, _out_bufsize=0, _tty_in=True, _unify_ttys=True)
@@ -80,14 +83,15 @@ class DootInteractiveAction(Action_p):
 
     def interact(self, char, stdin):
         # TODO possibly add a custom interupt handler
-        self.aggregated += char
+        self.aggregated += str(char)
         if self.aggregated.endswith("\n"):
             printer.info(self.aggregated.strip())
             self.aggregated = ""
 
         if self.aggregated.startswith(self.prompt) :
+            prompt = self.aggregated[:] + ": "
             self.aggregated = ""
-            stdin.put(input(self.prompt) + "\n")
+            stdin.put(input(prompt) + "\n")
         elif self.aggregated.startswith(self.cont):
             self.aggregated = ""
             val = input(self.cont)

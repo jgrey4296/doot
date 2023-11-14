@@ -71,20 +71,8 @@ class WriteAction(Action_p):
         if fname is not None:
             fname = expand_str(fname, spec, task_state)
 
-        target_key = spec.kwargs.target
-        data_key   = spec.kwargs.data
-        if target_key in task_state:
-            target = task_state.get(target_key)
-        else:
-            target = target_key
-
-        if data_key in task_state:
-            data = task_state.get(data_key)
-        else:
-            data = data_key
-
-
-        loc = expand_str(target, spec, task_state)
+        data      = expand_str(spec.kwargs.data, spec, task_state)
+        loc       = expand_str(spec.kwargs.target, spec, task_state, as_path=True)
         if fname is not None:
             loc = loc / fname
         printer.info("Writing to %s", loc)
@@ -227,3 +215,15 @@ class ReadJson(Action_p):
         fpath = expand_str(spec.kwargs.target, spec, task_state, as_path=True)
         data = json.load(fpath)
         return {spec.kwargs.data : tomler.Tomler(data)}
+
+
+@doot.check_protocol
+class UserInput(Action_p):
+
+    _toml_kwargs = ["target", "prompt"]
+
+    def __call__(self, spec, state):
+        prompt = spec.kwargs.on_fail("?::- ").prompt()
+        target = spec.kwargs.target
+        result = input(prompt)
+        return { target : result }

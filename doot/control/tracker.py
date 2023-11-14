@@ -260,6 +260,7 @@ class DootTracker(TaskTracker_i):
                     self.active_set.remove(focus)
                     self.task_queue.pop()
                 case self.state_e.FAILED:  # stop when a task fails, and clear any queued tasks
+                    # TODO queue the task's failure/cleanup task
                     self.active_set.clear()
                     self.task_queue.pop()
                     return None
@@ -281,6 +282,7 @@ class DootTracker(TaskTracker_i):
                     else:
                         self.update_state(focus, self.state_e.EXISTS)
                 case self.state_e.WAIT | self.state_e.DEFINED: # Add dependencies of a task to the stack
+                    # TODO queue the task's setup task if it exists / hasn't been executed already
                     dependencies = list(adj[focus].keys())
                     incomplete   = list(filter(lambda x: self.task_state(x) not in complete_states, dependencies))
                     if bool(incomplete):
