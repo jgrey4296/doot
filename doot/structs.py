@@ -90,6 +90,8 @@ class DootParamSpec:
 
     _repeatable_types : ClassVar[list[Any]] = [list, int]
 
+    separator   : str      = field(default="=")
+
     @classmethod
     def from_dict(cls, data:dict) -> DootParamSpec:
         return cls(**data)
@@ -119,7 +121,7 @@ class DootParamSpec:
     def _split_name_from_value(self, val):
         match self.positional:
             case False:
-                return val.removeprefix(self.prefix).split("=")
+                return val.removeprefix(self.prefix).split(self.separator)
             case True:
                 return (self.name, val)
 
@@ -205,6 +207,70 @@ class DootParamSpec:
                 raise doot.errors.DootParseError("Can't understand value: %s : %s", self.name, val)
 
         return data[self.name] != self.default
+
+
+
+    def maybe_consume(self, args:list[str], data:dict) -> bool:
+        """
+          Given a list of args, possibly add a value to the data.
+          operates in place.
+          return True if consumed a value
+
+          handles ["--arg=val"], ["-a", "val"], and, if positional, ["val"]
+        """
+        if not bool(args) or data is None:
+            return False
+        if args[0] != self:
+            return False
+
+        focus = args.pop(0)
+        prefixed = focus.startswith(self.prefix)
+        is_joint = self.separator in focus
+        key, val = None, None
+
+
+        match prefixed, is_joint:
+            case True, True: # --key=val
+                key, val = focus.split(self.separator)
+                key = key.removeprefix(self.prefix)
+                pass
+            case True, False if self.type.__name__ != "bool" and not bool(args):
+                raise doot.errors.DootParseError("key lacks a following value", focus, self.type.__name__)
+            case True, False if self.type.__name__ != "bool": # [--key, val]
+                key = focus.removeprefix(self.prefix)
+                val = args.pop(0)
+                pass
+            case False, False if self.positional: # [val]
+                val = focus
+            case _, _: # Nonsense
+                key = focus.removeprefix(self.prefix)
+
+
+        match self.type.__name__:
+            ## handle bools and inversion
+            case "bool" if val is not None:
+                raise doot.errors.DootParseError("Bool Arguments shouldn't have values: %s : %s", self.name, val)
+            case "bool" if key == self.inverse:
+                data[self.name] = False
+            case "bool":
+                data[self.name] = True
+            case _ if val is None:
+                raise doot.errors.DootParseError("Non-Bool Arguments should have values: %s : %s", self.name, val)
+            ## lists
+            case "list" if not isinstance(data[self.name], list):
+                raise doot.errors.DootParseError("List param doesn't have a list entry in data dict", self.name)
+            case "list":
+                data[self.name] += val.split(",")
+            case "set" if not isinstance(data[self.name], set):
+                raise doot.errors.DootParseError("Set param doesn't have a set entry in data dict", self.name)
+            case "set":
+                data[self.name].update(val.split(","))
+            case _ if data.get(self.name, self.default) != self.default:
+                raise doot.errors.DootParseError("Trying to re-set an arg already set: %s : %s", self.name, val)
+            case _:
+                data[self.name] = self.type(val)
+
+        return True
 
 @dataclass
 class DootStructuredName:
@@ -443,16 +509,16 @@ class DootTaskSpec:
 
     actions : list[ [args] | {do="", args=[], **kwargs} ]
     """
-    name              : DootStructuredName                         = field()
-    doc               : list[str]                                  = field(default_factory=list)
-    source            : DootStructuredName|str|None                = field(default=None)
-    actions           : list[Any]                                  = field(default_factory=list)
+    name              : DootStructuredName                           = field()
+    doc               : list[str]                                    = field(default_factory=list)
+    source            : DootStructuredName|str|None                  = field(default=None)
+    actions           : list[Any]                                    = field(default_factory=list)
 
-    runs_before       : list[DootTaskArtifact|pl.Path|str]         = field(default_factory=list)
-    runs_after        : list[DootTaskArtifact|pl.Path|str]         = field(default_factory=list)
-    priority          : int                                        = field(default=0)
-    ctor_name         : DootStructuredName                         = field(default=None)
-    ctor              : type|Callable|None                         = field(default=None)
+    runs_before       : list[DootTaskArtifact|pl.Path|str]           = field(default_factory=list)
+    runs_after        : list[DootTaskArtifact|pl.Path|str]           = field(default_factory=list)
+    priority          : int                                          = field(default=0)
+    ctor_name         : DootStructuredName                           = field(default=None)
+    ctor              : type|Callable|None                           = field(default=None)
     # Any additional information:
     version            : str                                         = field(default="0.1")
     print_levels       : Tomler                                      = field(default_factory=Tomler)
@@ -460,6 +526,7 @@ class DootTaskSpec:
 
     extra              : Tomler                                      = field(default_factory=Tomler)
 
+    inject             : list[str]                                   = field(default_factory=list) # For taskers
     @staticmethod
     def from_dict(data:dict, *, ctor:type=None, ctor_name=None):
         """ builds a task spec from a raw dict

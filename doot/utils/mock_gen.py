@@ -91,3 +91,16 @@ def mock_task(mocker, name, pre=None, post=None):
 
 
 """
+
+
+def mock_parse_cmd(mocker, params=None):
+    params                     = params or []
+    cmd_mock                   = mocker.MagicMock()
+    type(cmd_mock).param_specs = mocker.PropertyMock(return_value=params)
+    return cmd_mock
+
+def mock_parse_task(mocker, params=None):
+    params                      = params or []
+    task_mock                   = mocker.MagicMock()
+    type(task_mock).param_specs = mocker.PropertyMock(return_value=params)
+    return task_mock
