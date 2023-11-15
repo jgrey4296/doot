@@ -60,7 +60,7 @@ class ImporterMixin:
             module = importlib.import_module(module_name)
             return getattr(module, cls_name)
         except ImportError as err:
-            raise doot.errors.DootTaskLoadError("Import Failed: %s", pathname, task=self.spec) from err
+            raise doot.errors.DootTaskLoadError("Import Failed: %s : %s", pathname, err.msg, task=self.spec) from err
         except (AttributeError, KeyError) as err:
             raise doot.errors.DootTaskLoadError("Import Failed: Module has missing attritbue/key: %s", pathname, task=self.spec) from err
         except ValueError as err:

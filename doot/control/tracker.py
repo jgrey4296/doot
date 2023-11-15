@@ -104,6 +104,7 @@ class DootTracker(TaskTracker_i):
 
     def __iter__(self) -> Generator[Any,Any,Any]:
         while bool(self.active_set):
+            logging.info("Tracker Queue: %s", self.active_set)
             yield self.next_for()
 
     def __contains__(self, target:str) -> bool:
@@ -227,7 +228,7 @@ class DootTracker(TaskTracker_i):
 
 
     def clear_queue(self) -> None:
-        self.active_set =     set()
+        self.active_set =  set()
         self.task_queue = boltons.queueutils.HeapPriorityQueue()
 
     def next_for(self, target:None|str=None) -> None|Tasker_i|Task_i:
