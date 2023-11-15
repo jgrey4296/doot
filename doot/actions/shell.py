@@ -30,9 +30,6 @@ class DootShellAction(Action_p):
     """
     _toml_kwargs = ["background"]
 
-    def __str__(self):
-        return "Shell Action"
-
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
         result = None
         try:

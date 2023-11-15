@@ -78,6 +78,7 @@ DEFAULT_PLUGINS['action']   = [("basic"  ,    "doot.actions.base_action:DootBase
                                ("backup!",    "doot.actions.io:BackupAction"),
                                ("write!" ,    "doot.actions.io:WriteAction"),
                                ("dir!",       "doot.actions.io:EnsureDirectory"),
+                               ("delete!",    "doot.actions.io:DeleteAction"),
 
                                ("putPost",    "doot.actions.postbox:PutPostAction"),
                                ("getPost",    "doot.actions.postbox:GetPostAction"),

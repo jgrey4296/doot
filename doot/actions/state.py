@@ -26,22 +26,22 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 printer = logmod.getLogger("doot._printer")
 
 from time import sleep
+import datetime
 import sh
 import shutil
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
 from doot.mixins.importer import ImporterMixin
+from doot.utils.string_expand import expand_str, expand_key
 
 @doot.check_protocol
 class AddStateAction(Action_p):
     """
-      add to task state in the task description toml
+      add to task state in the task description toml,
+      adds kwargs directly, without expansion
     """
     _toml_kwargs = ["<Any>"]
-
-    def __str__(self):
-        return f"Base Action: {self.spec.args}"
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
         return dict(spec.kwargs)
@@ -49,14 +49,16 @@ class AddStateAction(Action_p):
 
 @doot.check_protocol
 class AddStateFn(Action_p, ImporterMixin):
-    """ for each toml kwarg, import its value and set the task_state[kwarg] = val """
+    """ for each toml kwarg, import its value and set the task_state[kwarg] = val
+      with expansion
+    """
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
         result = {}
         for kwarg, val in spec.kwargs:
-            result[kwarg] = self.import_class(val)
+            path_str = expand_str(val, spec, task_state)
+            result[kwarg] = self.import_class(path_str)
 
-            pass
         return result
 
 
@@ -64,18 +66,31 @@ class AddStateFn(Action_p, ImporterMixin):
 @doot.check_protocol
 class PushState(Action_p):
     """
-      task_state[target] += [task_state[x] for x in spec.args]
+      task_state[update_] += [task_state[x] for x in spec.args]
     """
-    _toml_kwargs = ["target"]
+    _toml_kwargs = ["update_"]
 
     def __call__(self, spec, task_state) -> dict|bool|None:
-        data = list(task_state.get(spec.kwargs.target, []))
+        data_key = expand_str(spec.kwargs.update_, spec, task_state)
+        data = list(task_state.get(data_key, []))
 
         for arg in spec.args:
             match task_state[arg]:
                 case list() as x:
                     data += x
                 case _:
-                    data.append(x)
+                    data.append(expand_str(x, spec, task_state))
 
-        return { spec.kwargs.target : data }
+        return { data_key : data }
+
+
+@doot.check_protocol
+class AddNow(Action_p):
+
+    _toml_kwargs = ["format", "update_"]
+
+    def __call__(self, spec, state):
+        data_key = spec.kwargs.on_fail("_date").update_()
+        format = expand_key(spec.kwargs.on_fail("format").format_(), spec, state)
+        now = datetime.datetime.now()
+        return { data_key : now.strftime(format) }

@@ -43,9 +43,6 @@ class SpeakTimeAction(Action_p):
     linux_announce_args = ["The Time Is "]
     time_format   = "%H:%M"
 
-    def __str__(self):
-        return f"Base Action: {self.spec.args}"
-
     def _current_time(self) -> str:
         now = datetime.datetime.now()
         return now.strftime(self.time_format)
