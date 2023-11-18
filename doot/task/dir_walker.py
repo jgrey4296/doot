@@ -30,7 +30,7 @@ from doot.structs import DootTaskSpec
 glob_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.globbing.ignores()
 glob_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).setting.globbing.halts()
 
-class _GlobControl(enum.Enum):
+class _WalkControl(enum.Enum):
     """
     accept  : is a result, and descend if recursive
     keep    : is a result, don't descend
@@ -50,7 +50,7 @@ class _GlobControl(enum.Enum):
     no      = enum.auto()
 
 @doot.check_protocol
-class DootEagerGlobber(SubMixin, DootTasker):
+class DootDirWalker(SubMixin, DootTasker):
     """
     Base tasker for file based globbing.
     Each File found is a separate subtask
@@ -62,7 +62,7 @@ class DootEagerGlobber(SubMixin, DootTasker):
     `exts` filters by extension (py-style, so eg: '.bib')
     `roots` defines starting locations.
     `recursive` controls if just the specified location is searched, or subdirs.
-    `filter_fn` allows an import path of a callable: lambda(pl.Path) -> _GlobControl
+    `filter_fn` allows an import path of a callable: lambda(pl.Path) -> _WalkControl
 
     Config files can specify:
     settings.globbing.ignores = []
@@ -75,8 +75,8 @@ class DootEagerGlobber(SubMixin, DootTasker):
     .{top/subtask/setup/teardown}_actions : for controlling task actions
     .default_task : the basic task definition that everything customises
     """
-    control = _GlobControl
-    globc   = _GlobControl
+    control = _WalkControl
+    globc   = _WalkControl
 
     def __init__(self, spec:DootTaskSpec):
         super().__init__(spec)
@@ -86,13 +86,13 @@ class DootEagerGlobber(SubMixin, DootTasker):
         self.rec            = spec.extra.on_fail(False, bool).recursive()
         self.total_subtasks = 0
         for x in self.roots:
-            depth = len(set(self.__class__.mro()) - set(DootEagerGlobber.mro()))
+            depth = len(set(self.__class__.mro()) - set(DootDirWalker.mro()))
             if not x.exists():
-                logging.warning(f"Globber Missing Root: {x.name}", stacklevel=depth)
+                logging.warning(f"Walker Missing Root: {x.name}", stacklevel=depth)
             if not x.is_dir():
-                 logging.warning(f"Globber Root is a file: {x.name}", stacklevel=depth)
+                 logging.warning(f"Walker Root is a file: {x.name}", stacklevel=depth)
 
-    def filter(self, target:pl.Path) -> bool | _GlobControl:
+    def filter(self, target:pl.Path) -> bool | _WalkControl:
         """ filter function called on each prospective glob result
         override in subclasses as necessary
         """
@@ -136,21 +136,21 @@ class DootEagerGlobber(SubMixin, DootTasker):
             if bool(exts) and current.is_file() and current.suffix not in exts:
                 continue
             match filter_fn(current):
-                case _GlobControl.keep | _GlobControl.yes:
+                case _WalkControl.keep | _WalkControl.yes:
                     yield current
                 case True if current.is_dir() and bool(exts):
                     queue += sorted(current.iterdir())
-                case True | _GlobControl.accept | _GlobControl.yesAnd:
+                case True | _WalkControl.accept | _WalkControl.yesAnd:
                     yield current
                     if current.is_dir():
                         queue += sorted(current.iterdir())
-                case False | _GlobControl.discard | _GlobControl.noBut if current.is_dir():
+                case False | _WalkControl.discard | _WalkControl.noBut if current.is_dir():
                     queue += sorted(current.iterdir())
                 case None | False:
                     continue
-                case _GlobControl.reject | _GlobControl.discard:
+                case _WalkControl.reject | _WalkControl.discard:
                     continue
-                case _GlobControl.no | _GlobControl.noBut:
+                case _WalkControl.no | _WalkControl.noBut:
                     continue
                 case _ as x:
                     raise TypeError("Unexpected glob filter value", x)
@@ -188,7 +188,7 @@ class DootEagerGlobber(SubMixin, DootTasker):
 
     def _build_subs(self) -> Generator[DootTaskSpec]:
         self.total_subtasks = 0
-        logging.debug("%s : Building Globber SubTasks", self.name)
+        logging.debug("%s : Building Walker SubTasks", self.name)
         filter_fn = self.import_class(self.spec.extra.on_fail((None,)).filter_fn())
         for i, (uname, fpath) in enumerate(self.glob_all(fn=filter_fn)):
             match self._build_subtask(i, uname, fpath=fpath, fstem=fpath.stem, fname=fpath.name, lpath=self.rel_path(fpath)):
@@ -201,7 +201,7 @@ class DootEagerGlobber(SubMixin, DootTasker):
                     raise TypeError("Unexpected type for subtask: %s", type(subtask))
 
     def _non_recursive_glob(self, target, filter_fn, exts):
-        check_fn = lambda x: (filter_fn(x) not in [None, False, _GlobControl.reject, _GlobControl.discard, _GlobControl.no, _GlobControl.noBut]
+        check_fn = lambda x: (filter_fn(x) not in [None, False, _WalkControl.reject, _WalkControl.discard, _WalkControl.no, _WalkControl.noBut]
                                 and x.name not in glob_ignores
                                 and (not bool(exts) or (x.is_file() and x.suffix in exts)))
 
@@ -220,16 +220,15 @@ class DootEagerGlobber(SubMixin, DootTasker):
     def stub_class(cls, stub):
         stub.ctor                 = cls
         stub['version'].default   = cls._version
-        stub['exts'].type         = "list[str]"
-        stub['exts'].default      = []
-        stub['exts'].prefix = "# "
         stub['roots'].type        = "list[str|pl.Path]"
         stub['roots'].default     = ["\".\""]
-        stub['roots'].comment     = "Places the globber will start"
+        stub['roots'].comment     = "Places the walker will start"
+        stub['exts'].type         = "list[str]"
+        stub['exts'].default      = []
+        stub['exts'].prefix       = "# "
         stub['recursive'].type    = "bool"
         stub['recursive'].default = False
-        stub['recursive'].prefix = "# "
-        stub["filter_fn"].type = "callable"
-        stub["filter_fn"].default = ""
-        stub['filter_fn'].prefix = "# "
+        stub['recursive'].prefix  = "# "
+        stub["filter_fn"].type    = "callable"
+        stub['filter_fn'].prefix  = "# "
         return stub

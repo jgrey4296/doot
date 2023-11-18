@@ -37,7 +37,7 @@ from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
 from doot.mixins.importer import ImporterMixin
 from doot.enums import ActionResponseEnum as ActRE
-from doot.utils.string_expand import expand_str
+from doot.utils.string_expand import expand_str, expand_key
 
 @doot.check_protocol
 class CancelOnPredicateAction(Action_p, ImporterMixin):
@@ -63,37 +63,24 @@ class LogAction(Action_p):
     _toml_kwargs = ["msg", "level"]
 
     def __call__(self, spec, task_state):
-        level = logmod.getLevelName(spec.kwargs.on_fail("INFO", str).level())
-        msg = expand_str(spec.kwargs.msg, spec, task_state)
+        level   = logmod.getLevelName(spec.kwargs.on_fail("INFO", str).level())
+        msg     = expand_key(spec.kwargs.on_fail("msg").msg_(), spec, task_state)
         printer.log(level, "%s", msg)
 
 @doot.check_protocol
 class StalenessCheck(Action_p):
-    _toml_kwargs = ["old", "new"]
+    _toml_kwargs = ["old_", "new_"]
     inState      = ["old", "new"]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        old_key    = spec.kwargs.old
-        new_key    = spec.kwargs.new
-
-        if old_key in task_state:
-            old = task_state.get(old_key)
-        else:
-            old = old_key
-
-        if new_key in task_state:
-            new = task_state.get(new_key)
-        else:
-            new    = new_key
-
-        old_loc    = expand_str(old, spec, task_state)
-        new_loc    = expand_str(new, spec, task_state)
+        old_loc = expand_key(spec.kwargs.on_fail("old").old_(), spec, task_state, as_path=True)
+        new_loc = expand_key(spec.kwargs.on_fail("new").new_(), spec, task_state, as_path=True)
 
         if new_loc.exists() and old_loc.stat().st_mtime_ns <= new_loc.stat().st_mtime_ns:
             return ActRE.SKIP
 
 @doot.check_protocol
-class EnsureInstalled:
+class AssertInstalled:
     """
     Easily check a program can be found and used
     """

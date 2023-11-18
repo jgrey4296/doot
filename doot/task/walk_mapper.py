@@ -26,16 +26,16 @@ from doot.errors import DootDirAbsent
 from doot.task.base_tasker import DootTasker
 from doot.mixins.tasker.subtask import SubMixin
 from doot.structs import DootTaskSpec
-from doot.task.globber import DootEagerGlobber, _GlobControl
+from doot.task.dir_walker import DootDirWalker, _WalkControl
 
 glob_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.globbing.ignores()
 glob_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).setting.globbing.halts()
 
 
 @doot.check_protocol
-class DootGlobMapper(DootEagerGlobber):
+class DootWalkMapper(DootDirWalker):
     """
-      A Customized Globber which uses the `sub_task` key as a default subtask,
+      A Customized walker which uses the `sub_task` key as a default subtask,
       and specializes subtasks uses a `sub_map` dictionary.
 
       sub_map = {
@@ -48,8 +48,8 @@ class DootGlobMapper(DootEagerGlobber):
        but {data}/scripts.bif -> {sub_task}
 
     """
-    control = _GlobControl
-    globc   = _GlobControl
+    control = _WalkControl
+    globc   = _WalkControl
 
     def __init__(self, spec:DootTaskSpec):
         super().__init__(spec)
@@ -59,15 +59,15 @@ class DootGlobMapper(DootEagerGlobber):
         self.rec            = spec.extra.on_fail(False, bool).recursive()
         self.total_subtasks = 0
         for x in self.roots:
-            depth = len(set(self.__class__.mro()) - set(DootEagerGlobber.mro()))
+            depth = len(set(self.__class__.mro()) - set(DootDirWalker.mro()))
             if not x.exists():
-                logging.warning(f"Globber Missing Root: {x.name}", stacklevel=depth)
+                logging.warning(f"Walker Missing Root: {x.name}", stacklevel=depth)
             if not x.is_dir():
-                 logging.warning(f"Globber Root is a file: {x.name}", stacklevel=depth)
+                 logging.warning(f"Walker Root is a file: {x.name}", stacklevel=depth)
 
     def _build_subs(self) -> Generator[DootTaskSpec]:
         self.total_subtasks = 0
-        logging.debug("%s : Building Globber SubTasks", self.name)
+        logging.debug("%s : Building Walker SubTasks", self.name)
         filter_fn = self.import_class(self.spec.extra.on_fail((None,)).filter_fn())
         for i, (uname, fpath) in enumerate(self.glob_all(fn=filter_fn)):
             match self._build_subtask(i, uname, fpath=fpath, fstem=fpath.stem, fname=fpath.name, lpath=self.rel_path(fpath)):
@@ -93,7 +93,7 @@ class DootGlobMapper(DootEagerGlobber):
         stub['exts'].prefix = "# "
         stub['roots'].type        = "list[str|pl.Path]"
         stub['roots'].default     = ["\".\""]
-        stub['roots'].comment     = "Places the globber will start"
+        stub['roots'].comment     = "Places the walker will start"
         stub['recursive'].type    = "bool"
         stub['recursive'].default = False
         stub['recursive'].prefix = "# "

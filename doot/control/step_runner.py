@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 See EOF for license/metadata/notes as applicable
 """
 
@@ -67,14 +66,14 @@ class DootStepRunner(DootRunner):
                      "I"  : "print_info",
                      "W"  : "print_warn",
                      "D"  : "print_debug",
+                     "s"  : "print_state"
                      }
 
     def __init__(self:Self, *, tracker:abstract.TaskTracker_i, reporter:abstract.Reporter_i, policy=None):
         super().__init__(tracker=tracker, reporter=reporter, policy=policy)
         self._conf_types = []
         self._override_level = "INFO"
-
-
+        self._has_quit = False
 
     def _expand_tasker(self, tasker:abstract.Tasker_i) -> None:
         if self._pause(tasker):
@@ -88,19 +87,20 @@ class DootStepRunner(DootRunner):
         else:
             printer.info("::- ...")
 
-
     def _execute_action(self, count, action, task) -> None:
-        if self._pause(action, step=f"{self.step}.{count}"):
+        if self._pause(action, task, step=f"{self.step}.{count}"):
             return super()._execute_action(count, action, task)
         else:
             printer.info("::- ...")
 
+    def _pause(self, *args, step=None) -> bool:
+        if self._has_quit:
+            return False
 
-    def _pause(self, target, step=None) -> bool:
-        # TODO add step control to step in, cancel, or pause on completion, and jump to pdb
         if not bool(self._conf_types):
             return True
 
+        target = args[0]
         match target:
             case _ if True in self._conf_types:
                 pass
@@ -117,11 +117,11 @@ class DootStepRunner(DootRunner):
         while not isinstance(result, bool):
             response = input(self._conf_prompt)
             if hasattr(self, f"{self._cmd_prefix}{response}"):
-                result = getattr(self, self._cmd_prefix + response)()
+                result = getattr(self, self._cmd_prefix + response)(*args)
             elif response in self._aliases:
-                result = getattr(self, self._cmd_prefix + self._aliases[response])()
+                result = getattr(self, self._cmd_prefix + self._aliases[response])(*args)
             else:
-                result = self._do_default()
+                result = self._do_default(*args)
 
         return result
 
@@ -156,6 +156,8 @@ class DootStepRunner(DootRunner):
     def _do_quit(self, *args):
         printer.info("::- Quitting Doot")
         self.tracker.clear_queue()
+        printer.info("Tracker Queue: %s", self.tracker.active_set)
+        self._has_quit = True
         return False
 
     def _do_list(self, *args):
@@ -169,7 +171,9 @@ class DootStepRunner(DootRunner):
 
     def _do_break(self, *args):
         printer.info("::- Break")
-        raise doot.errors.DootTaskInterrupt("User Interrupt")
+        breakpoint()
+        pass
+        # raise doot.errors.DootTaskInterrupt("User Interrupt")
 
     def _do_down(self, *args):
         printer.info("::- Down")
@@ -181,6 +185,7 @@ class DootStepRunner(DootRunner):
             case [abstract.Task_i]:
                 self.set_confirm_type("action")
             case [structs.DootActionSpec]:
+                self.set_confirm_type("all")
                 pass
 
         printer.info("::- Stepping at: %s", self._conf_types)
@@ -199,8 +204,6 @@ class DootStepRunner(DootRunner):
 
         printer.info("Stepping at: %s", self._conf_types)
 
-
-
     def _do_print_info(self, *args):
         self._override_level = "INFO"
         printer.warning("Overring Printer to: %s", self._override_level)
@@ -216,12 +219,25 @@ class DootStepRunner(DootRunner):
         printer.warning("Overring Printer to: %s", self._override_level)
         self._set_print_level(self._override_level)
 
+    def _do_print_state(self, *args):
+        printer.info("Current State:")
+        printer.info("%20s : %s", "CLI Args", dict(doot.args))
+        for arg in args:
+            match arg:
+                case structs.DootActionSpec():
+                    printer.info("%20s : %s", "Action", str(arg.do))
+                    printer.info("%20s : %s", "Action Spec kwargs", dict(arg.kwargs))
+                case abstract.Task_i():
+                    printer.info("%20s : %s", "Task Name", str(arg.name))
+                    printer.info("%20s : %s", "Task State", arg.state)
+                case abstract.Tasker_i():
+                    printer.info("%20s : %s", "Tasker Args", arg.args)
+
     def _set_print_level(self, level=None):
         if level:
             super()._set_print_level(self._override_level)
         else:
             super()._set_print_level()
-
 
     def set_confirm_type(self, val):
         """ Sets the runners `breakpoints` """
@@ -235,6 +251,5 @@ class DootStepRunner(DootRunner):
             case "all":
                 self._conf_types = [True]
 """
-
 
 """

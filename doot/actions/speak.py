@@ -31,7 +31,7 @@ from doot._abstract import Action_p
 from doot.utils.string_expand import expand_str
 
 @doot.check_protocol
-class TimeAction(Action_p):
+class SpeakTimeAction(Action_p):
     """
     A Simple Action that announces the time
     Subclass this and override __call__ for your own actions.
@@ -42,9 +42,6 @@ class TimeAction(Action_p):
     mac_announce_args = ["-v", "Moira", "-r", "50", "The Time Is "]
     linux_announce_args = ["The Time Is "]
     time_format   = "%H:%M"
-
-    def __str__(self):
-        return f"Base Action: {self.spec.args}"
 
     def _current_time(self) -> str:
         now = datetime.datetime.now()

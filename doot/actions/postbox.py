@@ -27,7 +27,7 @@ import sh
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
-from doot.utils.string_expand import expand_str
+from doot.utils.string_expand import expand_str, expand_key, expand_to_obj
 
 printer = logmod.getLogger("doot._printer")
 """
@@ -37,24 +37,29 @@ printer = logmod.getLogger("doot._printer")
 
 """
 
-class DootPostBox:
+class _DootPostBox:
+    """
+      Internal Postbox class.
+      holds a static variable of `boxes`, which maps task roots -> unique postbox
+      Postboxes are lists, values are appended to it
+    """
 
-    boxes : ClassVar[dict[str,set[Any]]] = defaultdict(set)
+    boxes : ClassVar[dict[str,list[Any]]] = defaultdict(list)
 
     @staticmethod
     def put(key, val):
-        DootPostBox.boxes[key].add(val)
+        _DootPostBox.boxes[key].append(val)
 
     @staticmethod
     def put_from(state, val):
         """
         utility to add to a postbox using the state, instead of calculating the root yourself
         """
-        DootPostBox.boxes[state['_task_name'].root()].add(val)
+        _DootPostBox.boxes[state['_task_name'].root()].add(val)
 
     @staticmethod
-    def get(key):
-        return DootPostBox.boxes[key]
+    def get(key) -> list:
+        return _DootPostBox.boxes[key]
 
 
 @doot.check_protocol
@@ -64,12 +69,10 @@ class PutPostAction(Action_p):
       The arguments of the action are held in self.spec
     """
 
-    def __str__(self):
-        return f"Postbox Put Action: {self.spec.args}"
-
-
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        DootPostBox.put(task_state['_task_name'].root(), task_state.get(spec.args[0]))
+        for arg in spec.args:
+            data = expand_key(arg, spec, task_state)
+            _DootPostBox.put(task_state['_task_name'].root(), data)
 
 @doot.check_protocol
 class GetPostAction(Action_p):
@@ -77,14 +80,16 @@ class GetPostAction(Action_p):
       Read data from the inter-task postbox of a task tree
       The arguments of the action are held in self.spec
     """
-    _toml_kwargs = ["source", "target"]
-
-    def __str__(self):
-        return f"Postbox Get Action: {self.spec.args}"
-
+    _toml_kwargs = ["from_task", "update_"]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        return {spec.kwargs.target : DootPostBox.get(spec.kwargs.source) }
+        if "from_task" in spec.kwargs or "from_task_" in spec.kwargs:
+            from_task = expand_key(spec.kwargs.on_fail("from_task").from_task_(), spec, task_state)
+        else:
+            from_task = task_state['_task_name'].root()
+
+        data_key  = expand_str(spec.kwargs.update_, spec, task_state)
+        return { data_key : _DootPostBox.get(from_task) }
 
 @doot.check_protocol
 class SummarizePostAction(Action_p):
@@ -92,12 +97,11 @@ class SummarizePostAction(Action_p):
       print a summary of this task tree's postbox
       The arguments of the action are held in self.spec
     """
-    _toml_kwargs = ["source"]
-
-    def __str__(self):
-        return f"Postbox Summary Action: {self.spec.args}"
+    _toml_kwargs = ["from_"]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        target = spec.kwargs.on_fail(task_state['_task_name'].root()).source()
-        data   = DootPostBox.get(target)
+        from_task = expand_key(spec.kwargs.on_fail(task_state['_task_name'].root()).from_task(),
+                               spec, task_state)
+
+        data   = _DootPostBox.get(from_task)
         printer.info("Postbox %s: Contents: %s", target, data)

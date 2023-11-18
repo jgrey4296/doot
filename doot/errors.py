@@ -80,6 +80,9 @@ class DootParseError(DootError):
     general_msg = "Doot CLI Parsing Failure:"
     pass
 
+class DootParseResetError(DootParseError):
+    pass
+
 class DootInvalidConfig(DootError):
     general_msg = "Invalid Doot Config:"
     pass

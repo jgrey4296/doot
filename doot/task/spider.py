@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Base classes for making tasks which glob over files / directories and make a subtask for each
-matching thing
+  For running a web spider using scrapy
+
 """
 ##-- imports
 from __future__ import annotations

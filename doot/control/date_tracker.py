@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 # import abc
-# import datetime
+import datetime
 import enum
 import functools as ftz
 import itertools as itz
@@ -26,37 +26,14 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 
 # from bs4 import BeautifulSoup
 import boltons.queueutils
-# import construct as C
-# import dirty-equals as deq
-# import graphviz
-# import matplotlib.pyplot as plt
-# import more_itertools as itzplus
 import networkx as nx
-# import numpy as np
-# import pandas
-# import pomegranate as pom
-# import pony import orm
-# import pronouncing
-# import pyparsing as pp
-# import rich
-# import seaborn as sns
-# import sklearn
-# import stackprinter # stackprinter.set_excepthook(style='darkbg2')
-# import sty
-# import sympy
-# import tomllib
-# import toolz
-# import tqdm
-# import validators
-# import z3
-# import spacy # nlp = spacy.load("en_core_web_sm")
-
 ##-- end imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+import hashlib
 from collections import defaultdict
 import doot
 import doot.errors
@@ -73,15 +50,18 @@ DECLARE_PRIORITY : Final[int]                  = 10
 MIN_PRIORITY     : Final[int]                  = -10
 complete_states  : Final[set[TaskStateEnum]]   = {TaskStateEnum.SUCCESS, TaskStateEnum.EXISTS}
 
+
 class _TrackerEdgeType(enum.Enum):
     TASK     = enum.auto()
     ARTIFACT = enum.auto()
 
 
 @doot.check_protocol
-class DootTracker(TaskTracker_i):
+class DootExecutionDateTracker(TaskTracker_i):
     """
     track dependencies in a networkx digraph,
+      not executing dependencies that were run before the last time the task was run
+
     successors of a node are its dependencies.
       ie: ROOT -> Task -> Dependency -> SubDependency
 
@@ -97,6 +77,11 @@ class DootTracker(TaskTracker_i):
         self.execution_path         : list[str]                                         = []
         self.shadowing              : bool                                              = shadowing
 
+        tracker_path_str       : str                                               = doot.config.on_fail("{temp}/tasks.dates").general.settings.tracker_filer()
+        self.tracker_path           : pl.Path                                           = doot.locs[tracker_path_str]
+        # Record the last successful run
+        self.last_ran               : dict[str, DateTime]                               = dict()
+
         self.dep_graph.add_node(ROOT, state=self.state_e.WAIT)
 
     def __len__(self):
@@ -104,7 +89,6 @@ class DootTracker(TaskTracker_i):
 
     def __iter__(self) -> Generator[Any,Any,Any]:
         while bool(self.active_set):
-            logging.info("Tracker Queue: %s", self.active_set)
             yield self.next_for()
 
     def __contains__(self, target:str) -> bool:
@@ -139,6 +123,7 @@ class DootTracker(TaskTracker_i):
     def add_task(self, task:DootTaskSpec|TaskBase_i, *, no_root_connection=False) -> None:
         """ add a task description into the tracker, but don't queue it
         connecting it with its dependencies and tasks that depend on it
+
         """
         # Build the Task if necessary
         match task:
@@ -228,7 +213,7 @@ class DootTracker(TaskTracker_i):
 
 
     def clear_queue(self) -> None:
-        self.active_set =  set()
+        self.active_set =     set()
         self.task_queue = boltons.queueutils.HeapPriorityQueue()
 
     def next_for(self, target:None|str=None) -> None|Tasker_i|Task_i:
@@ -250,6 +235,7 @@ class DootTracker(TaskTracker_i):
                 case self.state_e.SUCCESS: # remove task on completion
                     self.active_set.remove(focus)
                     self.task_queue.pop()
+                    # TODO set task hash
                 case self.state_e.EXISTS:  # remove artifact when it exists
                     self.active_set.remove(focus)
                     self.task_queue.pop()
@@ -261,7 +247,6 @@ class DootTracker(TaskTracker_i):
                     self.active_set.remove(focus)
                     self.task_queue.pop()
                 case self.state_e.FAILED:  # stop when a task fails, and clear any queued tasks
-                    # TODO queue the task's failure/cleanup task
                     self.active_set.clear()
                     self.task_queue.pop()
                     return None
@@ -274,7 +259,7 @@ class DootTracker(TaskTracker_i):
                     self.update_state(focus, self.state_e.EXISTS)
                 case self.state_e.ARTIFACT: # Add dependencies of an artifact to the stack
                     dependencies = list(adj[focus].keys())
-                    incomplete   = list(filter(lambda x: self.task_state(x) not in complete_states, dependencies))
+                    incomplete   = list(filter(lambda x: self.task_state(x, query_from=focus) not in complete_states, dependencies))
                     if bool(incomplete):
                         self.task_queue.pop()
                         self.dep_graph.nodes[focus][PRIORITY] -= 1
@@ -283,9 +268,8 @@ class DootTracker(TaskTracker_i):
                     else:
                         self.update_state(focus, self.state_e.EXISTS)
                 case self.state_e.WAIT | self.state_e.DEFINED: # Add dependencies of a task to the stack
-                    # TODO queue the task's setup task if it exists / hasn't been executed already
                     dependencies = list(adj[focus].keys())
-                    incomplete   = list(filter(lambda x: self.task_state(x) not in complete_states, dependencies))
+                    incomplete   = list(filter(lambda x: self.task_state(x, query_from=focus) not in complete_states, dependencies))
                     if bool(incomplete):
                         self.dep_graph.nodes[focus][PRIORITY] -= 1
                         logging.info("Setting %s priority to: %s", focus, self.dep_graph.nodes[focus][PRIORITY])
@@ -326,16 +310,30 @@ class DootTracker(TaskTracker_i):
         logging.debug("Updating Task State: %s -> %s", task, state)
         match task, state:
             case str(), self.state_e() if task in self.dep_graph:
-                self.dep_graph.nodes[task]['state'] = state
+                task_id = task
             case TaskBase_i(), self.state_e() if task.name in self.dep_graph:
-                self.dep_graph.nodes[task.name]['state'] = state
+                task_id = task.name
             case DootTaskArtifact(), self.state_e() if task in self.dep_graph:
-                self.dep_graph.nodes[task]['state'] = state
+                task_id = task
             case _, _:
                 raise doot.errors.DootTaskTrackingError("Bad task update state args", task, state)
 
-    def task_state(self, task:str|DootStructuredName|pl.Path) -> TaskStateEnum:
+        self.dep_graph.nodes[task_id]['state'] = state
+        # If the task succeeded, update its execution date
+        if state == TaskStateEnum.SUCCESS:
+            self.last_ran[task_id] = datetime.datetime.now()
+
+
+    def task_state(self, task:str|DootStructuredName|pl.Path, query_from=None) -> TaskStateEnum:
         """ Get the state of a task """
+        if query_from is not None:
+            query_date = self.last_ran.get(query_from, datetime.datetime.now())
+            task_date  = self.last_ran.get(str(task), None)
+            if task_date and query_date <= task_date:
+                self.update_state(task, TaskStateEnum.DEFINED)
+            elif task_date and task_date <= query_date:
+                self.update_state(task, TaskStateEnum.SUCCESS)
+
         if str(task) in self.dep_graph.nodes:
             return self.dep_graph.nodes[str(task)][STATE]
         else:
@@ -348,9 +346,13 @@ class DootTracker(TaskTracker_i):
         return {x: y[STATE] for x,y in nodes.items()}
 
     def write(self, target:pl.Path) -> None:
-        """ Write the dependency graph to a file """
-        raise NotImplementedError()
+        """ write information to the tracker path """
+        pre_format = {x: y.isoformat() for x,y in self.last_ran.items() }
+        json.dump(pre_format, tracker_path, indent=4)
+
+
 
     def read(self, target:pl.Path) -> None:
-        """ Read the dependency graph from a file """
-        raise NotImplementedError()
+        """ initialize information from the tracker path """
+        pre_format = json.load(tracker_path)
+        self.last_ran = {x : datetime.datetime.fromisoformat(y) for x,y in pre_format.items()}

@@ -51,13 +51,10 @@ class TestLocations:
         with pytest.raises(KeyError):
             simple.update({"blah": "blah"})
 
-
     def test_empty_repr(self):
         simple = DootLocations(pl.Path.cwd())
         repr_str = repr(simple)
         assert(repr_str == f"<DootLocations : {str(pl.Path.cwd())} : ()>")
-
-
 
     def test_non_empty_repr(self):
         simple = DootLocations(pl.Path.cwd())
@@ -81,7 +78,6 @@ class TestLocations:
         assert(simple.a == pl.Path("blah").absolute())
         assert(isinstance(simple.a, pl.Path))
 
-
     def test_access_expansion(self):
         simple = DootLocations(pl.Path.cwd())
         assert(not bool(simple._data))
@@ -92,6 +88,14 @@ class TestLocations:
         assert(isinstance(simple.a, pl.Path))
 
 
+    def test_input_key_expansion(self):
+        simple = DootLocations(pl.Path.cwd())
+        assert(not bool(simple._data))
+        simple.update({"a": "{other}/blah", "other": "bloo"})
+        assert(bool(simple._data))
+
+        assert(simple['{a}'] == pl.Path("bloo/blah").absolute())
+
     def test_expansion_simple(self):
         simple = DootLocations(pl.Path.cwd())
         assert(not bool(simple._data))
@@ -100,7 +104,6 @@ class TestLocations:
 
         assert(simple.a == pl.Path("bloo").absolute())
         assert(isinstance(simple.a, pl.Path))
-
 
     def test_expansion_item(self):
         simple = DootLocations(pl.Path.cwd())
@@ -111,7 +114,6 @@ class TestLocations:
         assert(simple['a'] == pl.Path("bloo").absolute())
         assert(isinstance(simple['a'], pl.Path))
 
-
     def test_expansion_in_item(self):
         simple = DootLocations(pl.Path.cwd())
         assert(not bool(simple._data))
@@ -120,7 +122,6 @@ class TestLocations:
 
         assert(simple['{other}'] == pl.Path("bloo").absolute())
         assert(isinstance(simple['{other}'], pl.Path))
-
 
     def test_expansion_failure(self):
         simple = DootLocations(pl.Path.cwd())
@@ -131,8 +132,6 @@ class TestLocations:
         with pytest.raises(DootLocationError):
             simple['{aweg}']
 
-
-
     def test_access_nested_expansion(self):
         simple = DootLocations(pl.Path.cwd())
         assert(not bool(simple._data))
@@ -141,7 +140,6 @@ class TestLocations:
 
         assert(simple.a == pl.Path("first/bloo/second/blah").absolute())
         assert(isinstance(simple.a, pl.Path))
-
 
     def test_access_expansion_overload(self):
         simple = DootLocations(pl.Path.cwd())

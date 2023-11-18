@@ -69,6 +69,11 @@ from doot._abstract import CommandLoader_p, Command_i
 
 @doot.check_protocol
 class DootCommandLoader(CommandLoader_p):
+    """
+      Default Command loaded. using the loaded plugins,
+      selects "command", calls load on each entry point, and if the obj returned is a subclass of Command_i,
+      instantiates it
+    """
 
     def setup(self, plugins, extra=None) -> Self:
         self.cmd_plugins : list[EntryPoint] = plugins.get("command", [])

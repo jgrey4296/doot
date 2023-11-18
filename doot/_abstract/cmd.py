@@ -66,3 +66,10 @@ class Command_i(ParamSpecMaker_m):
     @abstractmethod
     def __call__(self, taskers:Tomler, plugins:Tomler):
         raise NotImplementedError()
+
+
+    def shutdown(self, tasks, plugins, errored=None):
+        """
+          A Handler called on doot shutting down. only the triggered cmd's shutdown gets called
+        """
+        pass
