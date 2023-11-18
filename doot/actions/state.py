@@ -57,7 +57,7 @@ class AddStateFn(Action_p, ImporterMixin):
         result = {}
         for kwarg, val in spec.kwargs:
             path_str = expand_str(val, spec, task_state)
-            result[kwarg] = self.import_class(path_str)
+            result[kwarg] = self.import_callable(path_str)
 
         return result
 

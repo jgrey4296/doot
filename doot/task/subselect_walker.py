@@ -26,6 +26,7 @@ import doot
 from doot.errors import DootDirAbsent
 from doot.task.dir_walker import DootDirWalker, _WalkControl
 from doot.structs import DootTaskSpec
+from doot.utils.string_expand import expand_key
 
 glob_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).setting.globbing.ignores()
 glob_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).setting.globbing.halts()
@@ -42,6 +43,11 @@ class DootSubselectWalker(DootDirWalker):
     control = _WalkControl
     globc   = _WalkControl
 
+    def __init__(self, spec):
+        super().__init__(spec)
+        self.filter_fn  = self.import_callable(self.spec.extra.on_fail((None,)).filter_fn())
+        self.select_fn  = self.import_callable(self.spec.extra.on_fail((None,)).sect_fn())
+
     def specialize_subtask(self, task) -> None|dict|DootTaskSpec:
         """
           use the task's data to look up a different task name to use, and modify the spec's ctor
@@ -49,17 +55,26 @@ class DootSubselectWalker(DootDirWalker):
         raise NotImplementedError("TODO")
 
     def _build_subs(self) -> Generator[DootTaskSpec]:
-        self.total_subtasks = 0
         logging.debug("%s : Building Subselection Walker SubTasks", self.name)
-        filter_fn = self.import_class(self.spec.extra.on_fail((None,)).filter_fn())
-        match_amnt = self.spec.extra.on_fail(0, int).select_num(int)
-        matching = list(self.glob_all(fn=filter_fn))
+        self.total_subtasks = 0
+        # Find
+        matching   = list(self.glob_all(fn=self.filter_fn))
+
+        # Select
         match spec.extra.on_fail("random", str).select_method():
             case "random":
+                match_amnt = self.spec.extra.on_fail(1, int).select_num(int)
+                if match_ammnt < 1:
+                    raise doot.errors.DootTaskError("Can't subselect a non-positive amount")
                 subselection = random.sample(matching, match_amnt)
+            case "fn":
+                if self.select_fn is None:
+                    raise doot.errors.DootTaskError("Subselect specified a fn, but no function was loaded")
+                subselection = self.select_fn(matching)
             case _:
                 raise doot.errors.DootTaskError("Bad Select Method specified")
 
+        # Build
         for i, (uname, fpath) in enumerate(subselection):
             match self._build_subtask(i, uname, fpath=fpath, fstem=fpath.stem, fname=fpath.name, lpath=self.rel_path(fpath)):
                 case None:
@@ -73,17 +88,19 @@ class DootSubselectWalker(DootDirWalker):
 
     @classmethod
     def stub_class(cls, stub):
-        stub.ctor                   = cls
-        stub['version'].default     = cls._version
-        stub['exts'].type           = "list[str]"
-        stub['exts'].default        = []
-        stub['roots'].type          = "list[str|pl.Path]"
-        stub['roots'].default       = ["\".\""]
-        stub['roots'].comment       = "Places the walker will start"
-        stub['recursive'].type      = "bool"
-        stub['recursive'].default   = False
-        stub['select_num'].type     = "int"
-        stub['select_num'].default  = 1
-        stub['select_type'].type    = "str"
-        stub['select_type'].default = "random"
+        stub.ctor                     = cls
+        stub['version'].default       = cls._version
+        stub['exts'].type             = "list[str]"
+        stub['exts'].default          = []
+        stub['roots'].type            = "list[str|pl.Path]"
+        stub['roots'].default         = ["\".\""]
+        stub['roots'].comment         = "Places the walker will start"
+        stub['recursive'].type        = "bool"
+        stub['recursive'].default     = False
+        stub['select_num'].type       = "int"
+        stub['select_num'].default    = 1
+        stub['select_method'].type    = "str"
+        stub['select_method'].default = "random"
+        stub['select_fn'].type        = "str"
+        stub['select_fn'].prefix      = "# "
         return stub

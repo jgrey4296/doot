@@ -78,7 +78,11 @@ class GetPostAction(Action_p):
     _toml_kwargs = ["from_task", "update_"]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        from_task = expand_key(spec.kwargs.on_fail("from_task").from_task_(), spec, task_state)
+        if "from_task" in spec.kwargs or "from_task_" in spec.kwargs:
+            from_task = expand_key(spec.kwargs.on_fail("from_task").from_task_(), spec, task_state)
+        else:
+            from_task = task_state['_task_name'].root()
+
         data_key  = expand_str(spec.kwargs.update_, spec, task_state)
         return { data_key : DootPostBox.get(from_task) }
 

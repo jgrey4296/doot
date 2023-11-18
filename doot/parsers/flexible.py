@@ -117,7 +117,7 @@ class DootFlexibleParser(ArgParser_i):
             }
         return Tomler(data)
 
-    def process_head(self, args):
+    def process_head(self, args) -> list[str]:
         logging.debug("Head Parsing: %s", args)
         head = args[0]
         while bool(args) and args[0] not in self.registered_cmds and args[0] not in self.registered_tasks:
@@ -131,7 +131,7 @@ class DootFlexibleParser(ArgParser_i):
 
         return args
 
-    def process_cmd(self, args):
+    def process_cmd(self, args) -> list[str]:
         logging.debug("Cmd Parsing: %s", args)
         head                     = args[0]
         cmd                      = self.registered_cmds.get(head, None)
@@ -156,13 +156,15 @@ class DootFlexibleParser(ArgParser_i):
                     raise doot.errors.DootParseError("Unrecognized cmd arg", head, args[0])
                 case [x]:
                     x.maybe_consume(args, self.cmd_args)
-                case [*xs]:
+                case [*xs] if all(y.positional for y in xs):
+                    self._consume_next_positional(args, self.cmd_args, xs)
+                case [*xs] if len(y for y in xs if not y.positional):
                     raise doot.errors.DootParseError("Multiple possible cmd args", head, args[0])
 
 
         return args
 
-    def process_task(self, args):
+    def process_task(self, args) -> list[str]:
         logging.debug("Task Parsing: %s", args)
         if args[0] not in self.registered_tasks:
             task                     = self.registered_tasks[default_task]
@@ -189,6 +191,8 @@ class DootFlexibleParser(ArgParser_i):
                         raise doot.errors.DootParseError("Unrecognized task arg", task_name, args[0])
                     case [x]:
                         x.maybe_consume(args, task_args)
+                    case [*xs] if all(y.positional for y in xs):
+                        self._consume_next_positional(args, task_args, xs)
                     case [*xs]:
                         raise doot.errors.DootParseError("Multiple possible task args", task_name, args[0])
 
@@ -198,6 +202,20 @@ class DootFlexibleParser(ArgParser_i):
 
         return args
 
-    def process_extra(self, args):
+    def process_extra(self, args) -> None:
         logging.debug("Extra Parsing: %s", args)
-        return []
+        return None
+
+
+    def _consume_next_positional(self, args, arg_dict, params:list):
+        """
+          try each positional param until success
+        """
+        for param in params:
+            try:
+                if param.maybe_consume(args, arg_dict):
+                    return
+            except doot.errors.DootParseResetError:
+                continue
+
+        raise doot.errors.DootParseError("No positional argument succeeded")

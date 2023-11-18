@@ -223,10 +223,11 @@ class DootParamSpec:
         if args[0] != self:
             return False
 
-        focus = args.pop(0)
-        prefixed = focus.startswith(self.prefix)
-        is_joint = self.separator in focus
-        key, val = None, None
+        pop_count = 1
+        focus     = args[0]
+        prefixed  = focus.startswith(self.prefix)
+        is_joint  = self.separator in focus
+        key, val  = None, None
 
 
         match prefixed, is_joint:
@@ -238,7 +239,8 @@ class DootParamSpec:
                 raise doot.errors.DootParseError("key lacks a following value", focus, self.type.__name__)
             case True, False if self.type.__name__ != "bool": # [--key, val]
                 key = focus.removeprefix(self.prefix)
-                val = args.pop(0)
+                val = args[1]
+                pop_count = 2
                 pass
             case False, False if self.positional: # [val]
                 val = focus
@@ -266,9 +268,13 @@ class DootParamSpec:
             case "set":
                 data[self.name].update(val.split(","))
             case _ if data.get(self.name, self.default) != self.default:
-                raise doot.errors.DootParseError("Trying to re-set an arg already set: %s : %s", self.name, val)
+                raise doot.errors.DootParseResetError("Trying to re-set an arg already set: %s : %s", self.name, val)
             case _:
                 data[self.name] = self.type(val)
+
+
+        for x in range(pop_count):
+            args.pop(0)
 
         return True
 

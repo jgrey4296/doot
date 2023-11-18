@@ -45,10 +45,32 @@ class ImporterMixin:
     def import_ctor(self, pathname:None|str):
         raise NotImplementedError("TODO")
 
-    def import_function(self, pathname:None|str):
-        raise NotImplementedError("TODO")
+    def import_callable(self, pathname:None|str) -> None|callable[Any]:
+        """
+          given a path in the form `package.sub.sub:function`, import the package, and return the named function.
+        """
+        if pathname is None:
+            return None
+        try:
+            logging.info("Importing: %s", pathname)
+            module_name, fun_name = pathname.split(IMPORT_SEP)
+            module                = importlib.import_module(module_name)
+            fun                   = getattr(module, fun_name)
+            assert(callable(fun))
+            return fun
+        except ImportError as err:
+            raise doot.errors.DootTaskLoadError("Import Failed: %s : %s", pathname, err.msg, task=self.spec) from err
+        except (AttributeError, KeyError) as err:
+            raise doot.errors.DootTaskLoadError("Import Failed: Module has missing attritbue/key: %s", pathname, task=self.spec) from err
+        except ValueError as err:
+            raise doot.errors.DootTaskLoadError("Import Failed: Can't split %s", pathname, task=self.spec) from err
 
-    def import_class(self, pathname:None|str, *, is_task_ctor=False):
+
+
+    def import_class(self, pathname:None|str, *, is_task_ctor=False) -> None|type[Any]:
+        """
+          given a path in the form `package.sub.sub:Class`, import the package, and return the named class.
+        """
         if pathname is None:
             return None
         try:
