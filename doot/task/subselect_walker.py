@@ -52,7 +52,7 @@ class DootSubselectWalker(DootDirWalker):
         """
           use the task's data to look up a different task name to use, and modify the spec's ctor
         """
-        raise NotImplementedError("TODO")
+        return task
 
     def _build_subs(self) -> Generator[DootTaskSpec]:
         logging.debug("%s : Building Subselection Walker SubTasks", self.name)
@@ -61,10 +61,10 @@ class DootSubselectWalker(DootDirWalker):
         matching   = list(self.glob_all(fn=self.filter_fn))
 
         # Select
-        match spec.extra.on_fail("random", str).select_method():
+        match self.spec.extra.on_fail("random", str).select_method():
             case "random":
                 match_amnt = self.spec.extra.on_fail(1, int).select_num(int)
-                if match_ammnt < 1:
+                if match_amnt < 1:
                     raise doot.errors.DootTaskError("Can't subselect a non-positive amount")
                 subselection = random.sample(matching, match_amnt)
             case "fn":

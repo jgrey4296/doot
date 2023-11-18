@@ -37,24 +37,29 @@ printer = logmod.getLogger("doot._printer")
 
 """
 
-class DootPostBox:
+class _DootPostBox:
+    """
+      Internal Postbox class.
+      holds a static variable of `boxes`, which maps task roots -> unique postbox
+      Postboxes are lists, values are appended to it
+    """
 
-    boxes : ClassVar[dict[str,set[Any]]] = defaultdict(set)
+    boxes : ClassVar[dict[str,list[Any]]] = defaultdict(list)
 
     @staticmethod
     def put(key, val):
-        DootPostBox.boxes[key].add(val)
+        _DootPostBox.boxes[key].append(val)
 
     @staticmethod
     def put_from(state, val):
         """
         utility to add to a postbox using the state, instead of calculating the root yourself
         """
-        DootPostBox.boxes[state['_task_name'].root()].add(val)
+        _DootPostBox.boxes[state['_task_name'].root()].add(val)
 
     @staticmethod
-    def get(key):
-        return DootPostBox.boxes[key]
+    def get(key) -> list:
+        return _DootPostBox.boxes[key]
 
 
 @doot.check_protocol
@@ -66,8 +71,8 @@ class PutPostAction(Action_p):
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
         for arg in spec.args:
-            data = expand_to_obj(arg, spec, task_state)
-            DootPostBox.put(task_state['_task_name'].root(), data)
+            data = expand_key(arg, spec, task_state)
+            _DootPostBox.put(task_state['_task_name'].root(), data)
 
 @doot.check_protocol
 class GetPostAction(Action_p):
@@ -84,7 +89,7 @@ class GetPostAction(Action_p):
             from_task = task_state['_task_name'].root()
 
         data_key  = expand_str(spec.kwargs.update_, spec, task_state)
-        return { data_key : DootPostBox.get(from_task) }
+        return { data_key : _DootPostBox.get(from_task) }
 
 @doot.check_protocol
 class SummarizePostAction(Action_p):
@@ -98,5 +103,5 @@ class SummarizePostAction(Action_p):
         from_task = expand_key(spec.kwargs.on_fail(task_state['_task_name'].root()).from_task(),
                                spec, task_state)
 
-        data   = DootPostBox.get(from_task)
+        data   = _DootPostBox.get(from_task)
         printer.info("Postbox %s: Contents: %s", target, data)

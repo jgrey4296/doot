@@ -34,7 +34,7 @@ import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
 from doot.utils.string_expand import expand_str, expand_set, expand_key
-from doot.actions.postbox import DootPostBox
+from doot.actions.postbox import _DootPostBox
 
 # TODO using doot.config.settings.general.protect to disallow write/delete/backup/copy
 
@@ -174,7 +174,7 @@ class BackupAction(Action_p):
             return True
 
         printer.warning("Backing up %s to %s", source_loc, dest_loc)
-        DootPostBox.put_from(task_state, dest_loc)
+        _DootPostBox.put_from(task_state, dest_loc)
         shutil.copy2(source_loc,dest_loc)
 
 

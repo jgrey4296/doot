@@ -46,7 +46,7 @@ def expand_key(s, spec, task_state, as_path=False):
       expand_key("aKey", spec("aKey": "blah")...) -> expand_str("{blah}"..)
     """
     expanded_key = expand_str(s, spec, task_state, as_key=True)
-    return expand_obj(expanded_key, spec, task_state, as_path=as_path)
+    return expand_to_obj(expanded_key, spec, task_state, as_path=as_path)
 
 def expand_str(s, spec=None, task_state=None, as_path=False, as_key=False):
     """
