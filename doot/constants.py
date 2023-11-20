@@ -48,6 +48,7 @@ DEFAULT_PLUGINS['command']  = [("help"      ,      "doot.cmds.help_cmd:HelpCmd")
                                ("step"      ,      "doot.cmds.step_cmd:StepCmd")           ,
                                ("plugins"   ,      "doot.cmds.plugins_cmd:PluginsCmd")     ,
                                ("locs"      ,      "doot.cmds.locs_cmd:LocsCmd")     ,
+                               ("graph"     ,      "doot.cmds.graph_cmd:GraphCmd"),
                               ]
 
 DEFAULT_PLUGINS['reporter'] = [("summary", "doot.reporters.summary_manager:DootReportManagerSummary"),

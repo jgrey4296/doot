@@ -86,6 +86,8 @@ class DootTracker(TaskTracker_i):
       ie: ROOT -> Task -> Dependency -> SubDependency
 
     tracks definite and indefinite artifacts as products and dependencies of tasks as well.
+
+    the `dep_graph` stores nodes as full names of tasks
     """
 
     def __init__(self, shadowing:bool=False, *, policy=None):
@@ -96,6 +98,7 @@ class DootTracker(TaskTracker_i):
         self.task_queue                                                                 = boltons.queueutils.HeapPriorityQueue()
         self.execution_path         : list[str]                                         = []
         self.shadowing              : bool                                              = shadowing
+        self._root_name             : str = ROOT
 
         self.dep_graph.add_node(ROOT, state=self.state_e.WAIT)
 
