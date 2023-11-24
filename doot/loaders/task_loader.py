@@ -70,11 +70,11 @@ from doot.structs import DootTaskSpec
 from doot.constants import DEFAULT_TASK_GROUP, IMPORT_SEP
 from doot._abstract import TaskLoader_p, Tasker_i, Task_i
 
-TASK_STRING : Final[str] = "task_"
-prefix_len  : Final[int] = len(TASK_STRING)
+TASK_STRING : Final[str]  = "task_"
+prefix_len  : Final[int]  = len(TASK_STRING)
 
-task_path       = doot.config.on_fail(".tasks").task_path(wrapper=pl.Path)
-allow_overloads = doot.config.on_fail(False, bool).allow_overloads()
+task_sources              = doot.config.on_fail([".tasks"], list).settings.general.task.sources(wrapper=lambda x: [doot.locs[y] for y in x])
+allow_overloads           = doot.config.on_fail(False, bool).allow_overloads()
 
 def apply_group_and_source(group, source, x):
     x['group']  = x.get('group', group)
@@ -129,6 +129,7 @@ class DootTaskLoader(TaskLoader_p):
         start_time = time.perf_counter()
         logging.debug("---- Loading Tasks")
         raw_specs : list[dict] = []
+        logging.debug("Loading Tasks from Config")
         for source in doot._configs_loaded_from:
             source_data : Tomler = tomler.load(source)
             task_specs = source_data.on_fail({}).tasks()
@@ -136,8 +137,12 @@ class DootTaskLoader(TaskLoader_p):
 
 
         if self.extra:
+            logging.debug("Loading Tasks from extra values")
             raw_specs += self._load_raw_specs(self.extra, "(extra)")
-        raw_specs += self._load_specs_from_path(task_path)
+
+        logging.debug("Loading tasks from sources: %s", [str(x) for x in task_sources])
+        for path in task_sources:
+            raw_specs += self._load_specs_from_path(path)
 
         logging.debug("Loaded %s Task Specs", len(raw_specs))
         if bool(self.taskers):
@@ -165,7 +170,7 @@ class DootTaskLoader(TaskLoader_p):
         return raw_specs
 
     def _load_specs_from_path(self, path) -> list[dict]:
-        """ load a config file defined task_path of tasks """
+        """ load a config file defined task_sources of tasks """
         raw_specs = []
         # Load task spec path
         if not path.exists():

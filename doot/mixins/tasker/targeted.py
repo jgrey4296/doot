@@ -35,7 +35,7 @@ import random
 
 maybe_build_path = lambda x: pl.Path(x) if x is not None else None
 
-target_list_size = doot.config.on_fail(100, int).globbing.target_list()
+target_list_size = doot.config.on_fail(100, int).settings.walking.target_size()
 
 class TargetedMixin:
     """

@@ -67,12 +67,15 @@ def setup(targets:list[pl.Path]|None=None, prefix:str|None=None) -> tuple[tomler
         case None:
             pass
         case str():
+            logging.debug("Removing prefix from config data: %s", prefix)
             for x in prefix.split("."):
                 config = config[x]
 
-    tasks_dir = config.on_fail(".tasks").task_path(wrapper=pl.Path).expanduser().absolute()
-    logging.debug("Adding tasks dir to Import Path: %s", tasks_dir)
-    if tasks_dir.exists():
-        sys.path.append(str(tasks_dir))
+    task_sources       = config.on_fail([".tasks"], list).settings.general.tasks.sources(wrapper=lambda x: [locs[y] for y in x])
+    task_code          = config.on_fail([".tasks"], list).settings.general.tasks.code(wrapper=lambda x: [locs[y] for y in x])
+    for source in set(task_sources + task_code):
+        if source.exists() and source.is_dir():
+            logging.debug("Adding task code directory to Import Path: %s", source)
+            sys.path.append(str(source))
 
     return config, locs

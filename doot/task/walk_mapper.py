@@ -28,8 +28,8 @@ from doot.mixins.tasker.subtask import SubMixin
 from doot.structs import DootTaskSpec
 from doot.task.dir_walker import DootDirWalker, _WalkControl
 
-glob_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.globbing.ignores()
-glob_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).setting.globbing.halts()
+walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
+walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).settings.walking.halts()
 
 
 @doot.check_protocol

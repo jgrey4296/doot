@@ -27,8 +27,8 @@ from doot.task.base_tasker import DootTasker
 from doot.mixins.tasker.subtask import SubMixin
 from doot.structs import DootTaskSpec
 
-glob_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.globbing.ignores()
-glob_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).setting.globbing.halts()
+walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
+walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).settings.walking.halts()
 
 class _WalkControl(enum.Enum):
     """
@@ -129,9 +129,9 @@ class DootDirWalker(SubMixin, DootTasker):
             current = queue.pop()
             if not current.exists():
                 continue
-            if current.name in glob_ignores:
+            if current.name in walk_ignores:
                 continue
-            if current.is_dir() and any([(current / x).exists() for x in glob_halts]):
+            if current.is_dir() and any([(current / x).exists() for x in walk_halts]):
                 continue
             if bool(exts) and current.is_file() and current.suffix not in exts:
                 continue
@@ -202,7 +202,7 @@ class DootDirWalker(SubMixin, DootTasker):
 
     def _non_recursive_glob(self, target, filter_fn, exts):
         check_fn = lambda x: (filter_fn(x) not in [None, False, _WalkControl.reject, _WalkControl.discard, _WalkControl.no, _WalkControl.noBut]
-                                and x.name not in glob_ignores
+                                and x.name not in walk_ignores
                                 and (not bool(exts) or (x.is_file() and x.suffix in exts)))
 
         if check_fn(target):
