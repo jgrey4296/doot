@@ -75,9 +75,9 @@ class DootReportManagerSummary(Reporter_i):
 
     def __str__(self):
         result = {
-            "tasks" :   {"success": 0, "fail": 0},
-            "actions" : {"success": 0, "fail": 0},
-            "taskers" : {"success": 0, "fail": 0},
+            "tasks" :   {"success": 0, "fail": 0, "total": 0},
+            "actions" : {"success": 0, "fail": 0, "total": 0},
+            "taskers" : {"success": 0, "fail": 0, "total": 0},
             }
 
         for trace in self._full_trace:
@@ -99,11 +99,14 @@ class DootReportManagerSummary(Reporter_i):
                 continue
 
             result[category][ended] += 1
+            result[category]["total"] += 1
 
         output = [
-            "    - Taskers: {}/{}".format(result['taskers']['success'],result['taskers']['fail']),
-            "    - Tasks  : {}/{}".format(result['tasks']['success'], result['tasks']['fail']),
-            "    - Actions: {}/{}".format(result['actions']['success'], result['actions']['fail'])
+            "    - Totals : Taskers: {}, Tasks: {}, Actions: {}".format(result['taskers']['total'], result['tasks']['total'], result['actions']['total']),
+            "    - Success/Failures:",
+            "    -- Taskers: {}/{}".format(result['taskers']['success'],result['taskers']['fail']),
+            "    -- Tasks  : {}/{}".format(result['tasks']['success'], result['tasks']['fail']),
+            "    -- Actions: {}/{}".format(result['actions']['success'], result['actions']['fail']),
         ]
         return "\n".join(output)
 

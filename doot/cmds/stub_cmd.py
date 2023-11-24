@@ -61,7 +61,7 @@ class StubCmd(Command_i):
             self.make_param("Tasks",                     default=False,           desc="List the types of task available",  prefix="--"),
             self.make_param("Actions",                   default=False,           desc="Help Stub Actions",                 prefix="--"),
             self.make_param("Flags",                     default=False,           desc="Help Stub Task Flags",              prefix="--"),
-            self.make_param("name",        type=str,     default="stub::stub",    desc="The Name of the new task",                   positional=True),
+            self.make_param("name",        type=str,     default="stub::stub",    desc="The Name of the new task",                          positional=True),
             self.make_param("ctor",        type=str,     default="task",          desc="The short type name of the task generator",         positional=True),
             self.make_param("suppress-header",           default=True, invisible=True)
             ]

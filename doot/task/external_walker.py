@@ -85,7 +85,7 @@ class DootExternalWalker(SubMixin, DootTasker):
         self.roots          = [doot.locs.get(x, fallback=pl.Path()) for x in spec.extra.on_fail([pl.Path()]).roots()]
         self.total_subtasks = 0
         for x in self.roots:
-            depth = len(set(self.__class__.mro()) - set(DootExternalWalker.mro()))
+            depth = len(set(self.__class__.mro()) - set(super().__class__.mro()))
             if not x.exists():
                 logging.warning(f"Walker Missing Root: {x.name}", stacklevel=depth)
             if not x.is_dir():

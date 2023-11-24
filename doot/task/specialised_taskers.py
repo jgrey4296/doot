@@ -60,15 +60,6 @@ logging = logmod.getLogger(__name__)
 import doot
 from doot.task.base_tasker import DootTasker
 
-@doot.check_protocol
-class DictTasker(DootTasker):
-    """ Make a tasker from just a dict """
-    pass
-
-@doot.check_protocol
-class FunctionTasker(DootTasker):
-    """ Make a tasker from just a function """
-    pass
 
 @doot.check_protocol
 class GroupTasker(DootTasker):

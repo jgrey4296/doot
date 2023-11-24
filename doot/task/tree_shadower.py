@@ -65,7 +65,7 @@ class DootTreeShadower(DootDirWalker):
         self.rec            = spec.extra.on_fail(False, bool).recursive()
         self.total_subtasks = 0
         for x in self.roots:
-            depth = len(set(self.__class__.mro()) - set(DootDirWalker.mro()))
+            depth = len(set(self.__class__.mro()) - set(super().__class__.mro()))
             if not x.exists():
                 logging.warning(f"Walker Missing Root: {x.name}", stacklevel=depth)
             if not x.is_dir():
