@@ -46,7 +46,10 @@ def expand_key(s, spec, task_state, as_path=False):
       expand_key("aKey", spec("aKey": "blah")...) -> expand_str("{blah}"..)
     """
     expanded_key = expand_str(s, spec, task_state, as_key=True)
-    return expand_to_obj(expanded_key, spec, task_state, as_path=as_path)
+    if as_path:
+        return expand_str(expanded_key, spec, task_state, as_path=True)
+
+    return expand_to_obj(expanded_key, spec, task_state)
 
 def expand_str(s, spec=None, task_state=None, as_path=False, as_key=False):
     """
@@ -73,6 +76,8 @@ def expand_str(s, spec=None, task_state=None, as_path=False, as_key=False):
     cast_to_path = False
     for x in matched:
         replacement = task_state.get(x, None) or kwargs.get(x, None)
+        if isinstance(replacement, str) and PATTERN.search(replacement):
+            replacement = expand_str(replacement, spec, task_state)
 
         if x in doot.locs:
             cast_to_path = True
@@ -147,7 +152,7 @@ def expand_set(s, spec=None, task_state=None, as_path=False) -> list:
     else:
         return result
 
-def expand_to_obj(s, spec=None, task_state=None, as_path=False):
+def expand_to_obj(s, spec=None, task_state=None):
     """
     expand {keywords} in a string that are in the spec.kwargs or task_state
     but don't complain about other keywords, that found in doot.locs
