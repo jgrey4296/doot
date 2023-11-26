@@ -87,7 +87,7 @@ class TestRunner:
         assert(tracker_m.update_state.call_count == 3)
         for call in tracker_m.update_state.call_args_list:
             assert(call.args[0].name in ["first", "second", "third"])
-            assert(call.args[1] is TaskStateEnum.SUCCESS)
+            assert(call.args[1] is tracker_m.state_e.SUCCESS)
 
         expand_tasker.assert_not_called()
         execute_action.assert_not_called()

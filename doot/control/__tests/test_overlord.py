@@ -46,7 +46,7 @@ class TestOverlord:
 
     def test_taskers_loaded(self, mocker):
         mocker.patch("sys.argv", ["doot"])
-        mocker.patch("doot.loaders.task_loader.task_path")
+        mocker.patch("doot.loaders.task_loader.task_sources")
         overlord = DootOverlord(
             extra_config={"tasks" : {"basic" : [{"name": "simple", "ctor": BASIC_TASKER_NAME}]}}
         )
@@ -54,7 +54,7 @@ class TestOverlord:
 
     def test_taskers_multi(self, mocker):
         mocker.patch("sys.argv", ["doot"])
-        mocker.patch("doot.loaders.task_loader.task_path")
+        mocker.patch("doot.loaders.task_loader.task_sources")
         mocker.patch("doot._configs_loaded_from")
         overlord = DootOverlord(extra_config={
             "tasks" : {"basic": [
