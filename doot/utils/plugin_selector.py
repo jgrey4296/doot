@@ -70,6 +70,20 @@ import doot.errors
 def plugin_selector(plugins:Tomler, *, target="default", fallback=None) -> type:
     """ Selects and loads plugins from a tomler, based on a target,
     with an available fallback constructor """
+    logging.debug("Selecting plugin for target: %s", target)
+
+    if target != "default":
+        try:
+            name = DootStructuredName.from_str(target, form=StructuredNameEnum.CLASS)
+            module = importlib.import_module(name.group_str())
+            return getattr(module, name.task_str())
+        except ImportError as err:
+            # raise doot.errors.DootInvalidConfig("Import Failed: %s : %s", target, err.msg) from err
+            pass
+        except (AttributeError, KeyError) as err:
+            # raise doot.errors.DootInvalidConfig("Import Failed: Module has missing attritbue/key: %s", target) from err
+            pass
+
     match plugins:
         case x if not isinstance(x, list):
             return x
@@ -86,14 +100,6 @@ def plugin_selector(plugins:Tomler, *, target="default", fallback=None) -> type:
             if bool(matching):
                 return matching[0].load()
 
-    try:
-        name = DootStructuredName.from_str(target, form=StructuredNameEnum.CLASS)
-        module = importlib.import_module(name.group_str())
-        return getattr(module, name.task_str())
-    except ImportError as err:
-        raise doot.errors.DootInvalidConfig("Import Failed: %s : %s", target, err.msg) from err
-    except (AttributeError, KeyError) as err:
-        raise doot.errors.DootInvalidConfig("Import Failed: Module has missing attritbue/key: %s", target) from err
 
 
 """
