@@ -25,15 +25,18 @@ import doot
 from doot.errors import DootDirAbsent, DootLocationError
 from doot.structs import DootTaskSpec
 from doot.task.dir_walker import DootDirWalker, _WalkControl
+from doot.task.tree_shadower import DootTreeShadower
 
 walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
 walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).settings.walking.halts()
 
 @doot.check_protocol
-class DootTreeShadower(DootDirWalker):
+class DootLazyShadower(DootTreeShadower):
     """
-      Glob a directory tree,
-      but in addition to the subtask keys [`fpath`, `fstem`, `fname`, and `lpath`],
+      Walk a directory tree, lazily.
+      If the shadow target exists and is newer, don't generate a task
+
+      in addition to the subtask keys [`fpath`, `fstem`, `fname`, and `lpath`],
       the key `shadow_path` is added.
       Combining `shadow_path` with `fname` gives a full file path
 
@@ -54,27 +57,16 @@ class DootTreeShadower(DootDirWalker):
 
       automatically includes `shadow_root` as a clean target
     """
-    control = _WalkControl
-    globc   = _WalkControl
-
-    def __init__(self, spec:DootTaskSpec):
-        super().__init__(spec)
-        self.exts           = {y for x in spec.extra.on_fail([]).exts() for y in [x.lower(), x.upper()]}
-        # expand roots based on doot.locs
-        self.roots          = [doot.locs.get(x, fallback=pl.Path()) for x in spec.extra.on_fail([pl.Path()]).roots()]
-        self.rec            = spec.extra.on_fail(False, bool).recursive()
-        self.total_subtasks = 0
-        for x in self.roots:
-            depth = len(set(self.__class__.mro()) - set(super().__class__.mro()))
-            if not x.exists():
-                logging.warning(f"Walker Missing Root: {x.name}", stacklevel=depth)
-            if not x.is_dir():
-                 logging.warning(f"Walker Root is a file: {x.name}", stacklevel=depth)
 
     def _build_subs(self) -> Generator[DootTaskSpec]:
         self.total_subtasks = 0
         logging.debug("%s : Building Shadow SubTasks", self.name)
         for i, (uname, fpath) in enumerate(self.glob_all()):
+            shadow_loc = self._shadow_path(fpath)
+
+            if shadow_loc.exists() and fpath.stat().st_mtime_ns <= shadow_loc.stat().st_mtime_ns:
+                continue
+
             match self._build_subtask(i, uname,
                                       fpath=fpath,
                                       fstem=fpath.stem,
