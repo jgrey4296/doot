@@ -42,8 +42,27 @@ if PluginLoader_p.loaded:
 
 class ImporterMixin:
 
-    def import_ctor(self, pathname:None|str):
-        raise NotImplementedError("TODO")
+    def import_task(self, pathname:None|str):
+        """
+          given a path in the form `package.sub.sub:Class`, import the package, and return the named class.
+        """
+        if pathname is None:
+            return None
+        try:
+            if pathname in ACTION_CTORS:
+                return ACTION_CTORS[pathname].load()
+
+            logging.info("Importing: %s", pathname)
+            module_name, cls_name = pathname.split(IMPORT_SEP)
+            module = importlib.import_module(module_name)
+            return getattr(module, cls_name)
+        except ImportError as err:
+            raise doot.errors.DootTaskLoadError("Import Failed: %s : %s", pathname, err.msg, task=self.spec) from err
+        except (AttributeError, KeyError) as err:
+            raise doot.errors.DootTaskLoadError("Import Failed: Module has missing attribute/key: %s", pathname, task=self.spec) from err
+        except ValueError as err:
+            raise doot.errors.DootTaskLoadError("Import Failed: Can't split %s", pathname, task=self.spec) from err
+
 
     def import_callable(self, pathname:None|str) -> None|callable[Any]:
         """
@@ -61,7 +80,7 @@ class ImporterMixin:
         except ImportError as err:
             raise doot.errors.DootTaskLoadError("Import Failed: %s : %s", pathname, err.msg, task=self.spec) from err
         except (AttributeError, KeyError) as err:
-            raise doot.errors.DootTaskLoadError("Import Failed: Module has missing attritbue/key: %s", pathname, task=self.spec) from err
+            raise doot.errors.DootTaskLoadError("Import Failed: Module has missing attribute/key: %s", pathname, task=self.spec) from err
         except ValueError as err:
             raise doot.errors.DootTaskLoadError("Import Failed: Can't split %s", pathname, task=self.spec) from err
 
@@ -80,8 +99,8 @@ class ImporterMixin:
             module = importlib.import_module(module_name)
             return getattr(module, cls_name)
         except ImportError as err:
-            raise doot.errors.DootTaskLoadError("Import Failed: %s : %s", pathname, err.msg, task=self.spec) from err
+            raise doot.errors.DootInvalidConfig("Import Failed: %s : %s", pathname, err.msg) from err
         except (AttributeError, KeyError) as err:
-            raise doot.errors.DootTaskLoadError("Import Failed: Module has missing attritbue/key: %s", pathname, task=self.spec) from err
+            raise doot.errors.DootInvalidConfig("Import Failed: Module has missing attribute/key: %s", pathname) from err
         except ValueError as err:
-            raise doot.errors.DootTaskLoadError("Import Failed: Can't split %s", pathname, task=self.spec) from err
+            raise doot.errors.DootInvalidConfig("Import Failed: Can't split %s", pathname) from err
