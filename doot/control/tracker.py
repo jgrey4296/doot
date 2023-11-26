@@ -89,6 +89,7 @@ class DootTracker(TaskTracker_i):
 
     the `dep_graph` stores nodes as full names of tasks
     """
+    state_e = TaskStateEnum
 
     def __init__(self, shadowing:bool=False, *, policy=None):
         super().__init__(policy=policy) # self.tasks
@@ -324,7 +325,7 @@ class DootTracker(TaskTracker_i):
         """ get the set of tasks which are explicitly defined """
         return set(self.tasks.keys())
 
-    def update_state(self, task:str|TaskBase_i|DootTaskArtifact, state:TaskStateEnum):
+    def update_state(self, task:str|TaskBase_i|DootTaskArtifact, state:self.state_e):
         """ update the state of a task in the dependency graph """
         logging.debug("Updating Task State: %s -> %s", task, state)
         match task, state:
@@ -337,7 +338,7 @@ class DootTracker(TaskTracker_i):
             case _, _:
                 raise doot.errors.DootTaskTrackingError("Bad task update state args", task, state)
 
-    def task_state(self, task:str|DootStructuredName|pl.Path) -> TaskStateEnum:
+    def task_state(self, task:str|DootStructuredName|pl.Path) -> self.state_e:
         """ Get the state of a task """
         if str(task) in self.dep_graph.nodes:
             return self.dep_graph.nodes[str(task)][STATE]

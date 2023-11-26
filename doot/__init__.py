@@ -71,8 +71,8 @@ def setup(targets:list[pl.Path]|None=None, prefix:str|None=None) -> tuple[tomler
             for x in prefix.split("."):
                 config = config[x]
 
-    task_sources       = config.on_fail([".tasks"], list).settings.general.tasks.sources(wrapper=lambda x: [locs[y] for y in x])
-    task_code          = config.on_fail([".tasks"], list).settings.general.tasks.code(wrapper=lambda x: [locs[y] for y in x])
+    task_sources       = config.on_fail([".tasks"], list).settings.tasks.sources(wrapper=lambda x: [locs[y] for y in x])
+    task_code          = config.on_fail([".tasks"], list).settings.tasks.code(wrapper=lambda x: [locs[y] for y in x])
     for source in set(task_sources + task_code):
         if source.exists() and source.is_dir():
             logging.debug("Adding task code directory to Import Path: %s", source)

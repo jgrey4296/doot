@@ -94,7 +94,6 @@ class RunCmd(Command_i):
         reporter               = plugin_selector(plugins.on_fail([], list).reporter(), target=reporter_target)(report_lines)
         tracker                = plugin_selector(plugins.on_fail([], list).tracker(), target=tracker_target)()
         runner                 = plugin_selector(plugins.on_fail([], list).runner(), target=runner_target)(tracker=tracker, reporter=reporter)
-
         printer.info("- Building Task Dependency Network")
         for task in tasks.values():
             tracker.add_task(task)

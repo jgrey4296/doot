@@ -55,7 +55,7 @@ class _DootPostBox:
         """
         utility to add to a postbox using the state, instead of calculating the root yourself
         """
-        _DootPostBox.boxes[state['_task_name'].root()].add(val)
+        _DootPostBox.boxes[state['_task_name'].root()].append(val)
 
     @staticmethod
     def get(key) -> list:
@@ -97,11 +97,14 @@ class SummarizePostAction(Action_p):
       print a summary of this task tree's postbox
       The arguments of the action are held in self.spec
     """
-    _toml_kwargs = ["from_"]
+    _toml_kwargs = ["from_", "full"]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        from_task = expand_key(spec.kwargs.on_fail(task_state['_task_name'].root()).from_task(),
-                               spec, task_state)
+        from_task = expand_str(spec.kwargs.on_fail(task_state['_task_name'].root()).from_task(), spec, task_state)
 
         data   = _DootPostBox.get(from_task)
-        printer.info("Postbox %s: Contents: %s", target, data)
+        if spec.kwargs.on_fail(False, bool).full():
+            for x in data:
+                printer.info("Postbox %s: Item: %s", from_task, str(x))
+
+        printer.info("Postbox %s: Size: %s", from_task, len(data))

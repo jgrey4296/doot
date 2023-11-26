@@ -173,7 +173,8 @@ class BackupAction(Action_p):
         if dest_loc.exists() and source_loc.stat().st_mtime_ns <= dest_loc.stat().st_mtime_ns:
             return True
 
-        printer.warning("Backing up %s to %s", source_loc, dest_loc)
+        printer.warning("Backing up : %s", source_loc)
+        printer.warning("Destination: %s", dest_loc)
         _DootPostBox.put_from(task_state, dest_loc)
         shutil.copy2(source_loc,dest_loc)
 

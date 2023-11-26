@@ -63,7 +63,7 @@ from collections import defaultdict
 import doot
 import doot.constants
 import doot.errors
-from doot.enums import TaskStateEnum, ReportEnum, ActionResponseEnum as ActRE
+from doot.enums import ReportEnum, ActionResponseEnum as ActRE
 from doot._abstract import Tasker_i, Task_i, FailPolicy_p
 from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i, ReportLine_i, Action_p, Reporter_i
 from doot.utils.signal_handler import SignalHandler
@@ -84,7 +84,7 @@ class DootRunner(TaskRunner_i):
         super().__init__(tracker=tracker, reporter=reporter, policy=policy)
         self._printer_level_stack = []
         self.step                 = 0
-        self.default_SLEEP_LENGTH = doot.config.on_fail(0.2, int|float).settings.general.task.sleep()
+        self.default_SLEEP_LENGTH = doot.config.on_fail(0.2, int|float).settings.tasks.sleep()
 
     def __enter__(self) -> Any:
         printer.info("---------- Task Loop Starting ----------", extra={"colour" : "green"})
@@ -124,7 +124,7 @@ class DootRunner(TaskRunner_i):
                             self._execute_task(task)
 
                     self._set_print_level(task.spec.print_levels.on_fail(sleep_level).sleep())
-                    self.tracker.update_state(task, TaskStateEnum.SUCCESS)
+                    self.tracker.update_state(task, self.tracker.state_e.SUCCESS)
                     sleep_len = task.spec.extra.on_fail(int|float).sleep()
                     if isinstance(sleep_len, int|float):
                         printer.info("[Sleeping (%s)...]", sleep_len, extra={"colour":"white"})
@@ -141,13 +141,13 @@ class DootRunner(TaskRunner_i):
                     pass
                 except doot.errors.DootTaskFailed as err:
                     printer.warning("Task Failed: %s : %s", task.name, err)
-                    self.tracker.update_state(task, TaskStateEnum.FAILED)
+                    self.tracker.update_state(task, self.tracker.state_e.FAILED)
                 except doot.errors.DootTaskError as err:
                     printer.warning("Task Error : %s : %s", task.name, err)
-                    self.tracker.update_state(task, TaskStateEnum.FAILED)
+                    self.tracker.update_state(task, self.tracker.state_e.FAILED)
                 except doot.errors.DootError as err:
                     printer.warning("Doot Error : %s : %s", task.name, err)
-                    self.tracker.update_state(task, TaskStateEnum.FAILED)
+                    self.tracker.update_state(task, self.tracker.state_e.FAILED)
                 except Exception as err:
                     self.reporter.trace(task.spec, flags = ReportEnum.TASK | ReportEnum.FAIL)
                     raise err
