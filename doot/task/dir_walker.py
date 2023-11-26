@@ -114,7 +114,7 @@ class DootDirWalker(SubMixin, DootTasker):
         rec       = bool(rec) or rec is None and self.rec
         exts      = exts or self.exts or []
         filter_fn = fn or self.filter
-        printer.debug("Globbing on Target: %s : rec=%s, exts=%s", target, rec, exts)
+        printer.info("Walking Target: %s : rec=%s, exts=%s", target, rec, exts)
 
         if not target.exists():
             return None
@@ -138,7 +138,7 @@ class DootDirWalker(SubMixin, DootTasker):
             match filter_fn(current):
                 case _WalkControl.keep | _WalkControl.yes:
                     yield current
-                case True if current.is_dir() and bool(exts):
+                case True if current.is_dir():
                     queue += sorted(current.iterdir())
                 case True | _WalkControl.accept | _WalkControl.yesAnd:
                     yield current
