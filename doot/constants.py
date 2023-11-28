@@ -12,6 +12,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable)
 from importlib import resources
+import re
 from tomler import Tomler
 ##-- end std imports
 
@@ -114,6 +115,8 @@ DEFAULT_STUB_TASK_NAME : Final[str] = "stub::stub"
 
 ##-- end path and file names
 
+KEY_PATTERN                                       = re.compile("{(.+?)}")
+MAX_KEY_EXPANSIONS                                = 10
 
 TASK_SEP                : Final[str]              = "::"
 IMPORT_SEP              : Final[str]              = ":"

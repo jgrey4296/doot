@@ -30,10 +30,12 @@ logging = logmod.getLogger(__name__)
 import re
 import tomler
 from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
-from doot.structs import DootStructuredName
+from doot.structs import DootStructuredName, DootTaskArtifact
+from doot.constants import KEY_PATTERN, MAX_KEY_EXPANSIONS
+from doot.utils.expansion import expand_path_part
 
-KEY_PAT        = re.compile("{(.+?)}")
-MAX_EXPANSIONS = 10
+KEY_PAT        = KEY_PATTERN
+MAX_EXPANSIONS = MAX_KEY_EXPANSIONS
 
 class DootLocations:
     """
@@ -64,14 +66,20 @@ class DootLocations:
           get a location by name from loaded toml
           eg: locs.temp
         """
-        return self._calc_path(key)
+        return self.get(key)
 
-    def __getitem__(self, val) -> pl.Path:
+    def __getitem__(self, val:str|pl.Path|DootTaskArtifact) -> pl.Path:
         """
           Get a location using item access for extending a stored path.
           eg: locs["{temp}/imgs/blah.jpg"]
         """
-        return self.__getattr__(val)
+        match val:
+            case str() | pl.Path():
+                return self.get(val)
+            case DootTaskArtifact():
+                return self.get(val.path)
+            case _:
+                raise DootLocationExpansionError("Unrecognized location expansion argument", val)
 
     def __contains__(self, key):
         """ Test whether a key is a registered location """
@@ -81,7 +89,7 @@ class DootLocations:
         """ Iterate over the registered location names """
         return iter(self._data.keys())
 
-    def _calc_path(self, key:str, *, fallback=None) -> pl.Path:
+    def _calc_path(self, base:path, *, fallback:pl.Path|None=None) -> pl.Path:
         """
           Expands a string or key according to registered locations into a path.
           so if locs = {"base": "~/Desktop", "bloo": "bloo/sub/dir"}
@@ -90,44 +98,44 @@ class DootLocations:
           _calc_path("{base}/blah") -> "~/Desktop/blah"
           _calc_path("{base}/{bloo}") -> "~/Desktop/bloo/sub/dir"
         """
-        match key:
-            case pl.Path():
-                base = str(key)
-            case str() if key in self._data:
-                base = self._data[key]
+        expansion = pl.Path()
+
+        # Expand each part:
+        try:
+            for part in base.parts:
+                expanded_part = expand_path_part(part.strip(), self._data)
+                # build the total expansion from the parts
+                logging.debug("Expanded %s -> %s", part, expanded_part)
+                expansion /= expanded_part
+        except (DootLocationExpansionError, DootLocationError) as err:
+            if fallback is not None:
+                logging.debug("Expansion failed, using fallback: %s -> %s", base, fallback)
+                expansion = pl.Path(fallback)
+            else:
+                raise err
+
+        logging.debug("Expansion Result: %s", expansion)
+        # Force the path to be absolute
+        match expansion.parts:
+            case []:
+                return self.root
+            case ["~", *_]:  # absolute path or home
+                return expansion.expanduser().absolute()
+            case ["/", *_]:
+                return expansion.absolute()
             case _:
-                base = key
-
-        # Expand keys in the base of "{akey}/{anotherKey}..."
-        count     = 0
-        while m := re.search(KEY_PAT, base):
-            if count > MAX_EXPANSIONS:
-                raise DootLocationExpansionError("Root key: %s, last expansion: %s", key, base)
-            count += 1
-            wr_key  = m[0]
-            if m[1] not in self._data:
-                raise DootLocationError("Missing Location Key: %s", key)
-            sub_val = self._data[m[1]]
-            base = re.sub(wr_key, sub_val, base)
-
-
-        if base == key and fallback is not None:
-            base = fallback
-
-        # Expand as a path
-        match str(base)[0]:
-            case "~":  # absolute path or home
-                return pl.Path(base).expanduser().absolute()
-            case "/":
-                return pl.Path(base).absolute()
-            case _:
-                return self.root / base
+                return self.root / expansion
 
     def get(self, key, fallback=None):
         """
           Get an expanded path key, but if it fails, return the fallback value
         """
-        return self._calc_path(key, fallback=fallback)
+        assert(isinstance(fallback, None|pl.Path))
+        if key in self._data:
+            logging.info("Accessing %s -> %s", key, self._data[key])
+            return self._calc_path(pl.Path(self._data[key]), fallback=fallback)
+        else:
+            return self._calc_path(pl.Path(key), fallback=fallback)
 
 
     @property

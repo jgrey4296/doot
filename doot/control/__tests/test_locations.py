@@ -210,7 +210,7 @@ class TestLocations:
         simple.update({"a": "blah"})
         assert(bool(simple._data))
 
-        assert(simple.get("a", "bloo") == pl.Path("blah").absolute())
+        assert(simple.get("a", pl.Path( "bloo")) == pl.Path("blah").absolute())
 
     def test_get_default(self):
         simple = DootLocations(pl.Path.cwd())
@@ -218,7 +218,7 @@ class TestLocations:
         simple.update({"a": "blah"})
         assert(bool(simple._data))
 
-        assert(simple.get("b", "bloo") == pl.Path("bloo").absolute())
+        assert(simple.get("{b}", pl.Path("bloo")) == pl.Path("bloo").absolute())
 
     def test_get_returns_path(self):
         simple = DootLocations(pl.Path.cwd())
@@ -226,7 +226,7 @@ class TestLocations:
         simple.update({"a": "blah"})
         assert(bool(simple._data))
 
-        assert(isinstance(simple.get("b", "bloo"), pl.Path))
+        assert(isinstance(simple.get("b", pl.Path("bloo")), pl.Path))
 
     def test_context_manager(self):
         simple = DootLocations(pl.Path.cwd())
