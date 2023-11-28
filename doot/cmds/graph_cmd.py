@@ -102,7 +102,7 @@ class GraphCmd(Command_i):
 
             case {"as-dot": True}:
                 dot_obj = self.to_dot(graph)
-                printer.info(str(dot_text))
+                printer.info(str(dot_obj))
 
     def draw_pyplot(self, graph, loc):
         wrapped = self._relabel_node_names(graph)
