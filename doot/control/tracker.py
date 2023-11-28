@@ -60,6 +60,7 @@ logging = logmod.getLogger(__name__)
 from collections import defaultdict
 import doot
 import doot.errors
+import doot.constants as const
 from doot.enums import TaskStateEnum
 from doot._abstract import Tasker_i, Task_i, FailPolicy_p
 from doot.structs import DootTaskArtifact, DootTaskSpec, DootStructuredName
@@ -190,15 +191,19 @@ class DootTracker(TaskTracker_i):
 
         for pre in task.runs_after:
             match pre:
+                case str() if pre.startswith(const.FILE_DEP_PREFIX):
+                    pre = doot.locs[pre.removeprefix(const.FILE_DEP_PREFIX)]
+                    edge_type = _TrackerEdgeType.ARTIFACT
+                    self.dep_graph.add_edge(task.name, pre, type=_TrackerEdgeType.ARTIFACT)
+                case pl.Path():
+                    pre = self._add_artifact(pre)
+                    edge_type = _TrackerEdgeType.ARTIFACT
+                    self.dep_graph.add_edge(task.name, pre, type=_TrackerEdgeType.ARTIFACT)
                 case str() | DootStructuredName() if str(pre) in self.dep_graph:
                     self.dep_graph.add_edge(task.name, str(pre), type=_TrackerEdgeType.TASK)
                 case str() | DootStructuredName():
                     self.dep_graph.add_node(str(pre), state=self.state_e.DECLARED, priority=DECLARE_PRIORITY)
                     self.dep_graph.add_edge(task.name, str(pre), type=_TrackerEdgeType.TASK)
-                case pl.Path():
-                    pre = self._add_artifact(pre)
-                    edge_type = _TrackerEdgeType.ARTIFACT
-                    self.dep_graph.add_edge(task.name, pre, type=_TrackerEdgeType.ARTIFACT)
                 case _:
                     raise doot.errors.DootTaskTrackingError("Unknown pre-task attempted to be added: %s", pre)
 
@@ -234,6 +239,56 @@ class DootTracker(TaskTracker_i):
     def clear_queue(self) -> None:
         self.active_set =  set()
         self.task_queue = boltons.queueutils.HeapPriorityQueue()
+
+    def validate(self) -> bool:
+        """
+        run tests to check the dependency graph is acceptable
+        """
+        return all([nx.is_directed_acyclic_graph(self.dep_graph),
+                    self.declared_set() == self.defined_set()
+                   ])
+
+    def declared_set(self) -> set[str]:
+        """ Get the set of tasks which have been declared, directly or indirectly """
+        return set(self.dep_graph.nodes)
+
+    def defined_set(self) -> set[str]:
+        """ get the set of tasks which are explicitly defined """
+        return set(self.tasks.keys())
+
+    def update_state(self, task:str|TaskBase_i|DootTaskArtifact, state:self.state_e):
+        """ update the state of a task in the dependency graph """
+        logging.debug("Updating Task State: %s -> %s", task, state)
+        match task, state:
+            case str(), self.state_e() if task in self.dep_graph:
+                self.dep_graph.nodes[task]['state'] = state
+            case TaskBase_i(), self.state_e() if task.name in self.dep_graph:
+                self.dep_graph.nodes[task.name]['state'] = state
+            case DootTaskArtifact(), self.state_e() if task in self.dep_graph:
+                self.dep_graph.nodes[task]['state'] = state
+            case _, _:
+                raise doot.errors.DootTaskTrackingError("Bad task update state args", task, state)
+
+    def task_state(self, task:str|DootStructuredName|pl.Path) -> self.state_e:
+        """ Get the state of a task """
+        if str(task) in self.dep_graph.nodes:
+            return self.dep_graph.nodes[str(task)][STATE]
+        else:
+            raise doot.errors.DootTaskTrackingError("Unknown Task state requested: %s", task)
+
+
+    def all_states(self) -> dict:
+        """ Get a dict of all tasks, and their current state """
+        nodes = self.dep_graph.nodes
+        return {x: y[STATE] for x,y in nodes.items()}
+
+    def write(self, target:pl.Path) -> None:
+        """ Write the dependency graph to a file """
+        raise NotImplementedError()
+
+    def read(self, target:pl.Path) -> None:
+        """ Read the dependency graph from a file """
+        raise NotImplementedError()
 
     def next_for(self, target:None|str=None) -> None|Tasker_i|Task_i:
         """ ask for the next task that can be performed """
@@ -308,53 +363,3 @@ class DootTracker(TaskTracker_i):
 
 
         return None
-
-    def validate(self) -> bool:
-        """
-        run tests to check the dependency graph is acceptable
-        """
-        return all([nx.is_directed_acyclic_graph(self.dep_graph),
-                    self.declared_set() == self.defined_set()
-                   ])
-
-    def declared_set(self) -> set[str]:
-        """ Get the set of tasks which have been declared, directly or indirectly """
-        return set(self.dep_graph.nodes)
-
-    def defined_set(self) -> set[str]:
-        """ get the set of tasks which are explicitly defined """
-        return set(self.tasks.keys())
-
-    def update_state(self, task:str|TaskBase_i|DootTaskArtifact, state:self.state_e):
-        """ update the state of a task in the dependency graph """
-        logging.debug("Updating Task State: %s -> %s", task, state)
-        match task, state:
-            case str(), self.state_e() if task in self.dep_graph:
-                self.dep_graph.nodes[task]['state'] = state
-            case TaskBase_i(), self.state_e() if task.name in self.dep_graph:
-                self.dep_graph.nodes[task.name]['state'] = state
-            case DootTaskArtifact(), self.state_e() if task in self.dep_graph:
-                self.dep_graph.nodes[task]['state'] = state
-            case _, _:
-                raise doot.errors.DootTaskTrackingError("Bad task update state args", task, state)
-
-    def task_state(self, task:str|DootStructuredName|pl.Path) -> self.state_e:
-        """ Get the state of a task """
-        if str(task) in self.dep_graph.nodes:
-            return self.dep_graph.nodes[str(task)][STATE]
-        else:
-            raise doot.errors.DootTaskTrackingError("Unknown Task state requested: %s", task)
-
-
-    def all_states(self) -> dict:
-        """ Get a dict of all tasks, and their current state """
-        nodes = self.dep_graph.nodes
-        return {x: y[STATE] for x,y in nodes.items()}
-
-    def write(self, target:pl.Path) -> None:
-        """ Write the dependency graph to a file """
-        raise NotImplementedError()
-
-    def read(self, target:pl.Path) -> None:
-        """ Read the dependency graph from a file """
-        raise NotImplementedError()

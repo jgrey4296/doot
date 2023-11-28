@@ -65,8 +65,8 @@ class DootExternalWalker(SubMixin, DootTasker):
     `filter_fn` allows an import path of a callable: lambda(pl.Path) -> _GlobControl
 
     Config files can specify:
-    settings.globbing.ignores = []
-    settings.globbing.halts   = []
+    settings.walking.ignores = []
+    settings.walking.halts   = []
 
     Override as necessary:
     .filter : for controlling glob results
