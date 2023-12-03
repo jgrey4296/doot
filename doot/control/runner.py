@@ -84,7 +84,7 @@ class DootRunner(TaskRunner_i):
         super().__init__(tracker=tracker, reporter=reporter, policy=policy)
         self._printer_level_stack = []
         self.step                 = 0
-        self.default_SLEEP_LENGTH = doot.config.on_fail(0.2, int|float).settings.tasks.sleep()
+        self.default_SLEEP_LENGTH = doot.config.on_fail(0.2, int|float).settings.tasks.sleep.tasks()
 
     def __enter__(self) -> Any:
         printer.info("---------- Task Loop Starting ----------", extra={"colour" : "green"})
