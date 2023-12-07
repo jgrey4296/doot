@@ -38,6 +38,7 @@ logging = logmod.getLogger(__name__)
 
 import importlib
 from tomler import Tomler
+import doot
 import doot.errors
 import doot.constants
 from doot.enums import TaskFlags, ReportEnum, StructuredNameEnum
@@ -53,6 +54,12 @@ class DootTaskArtifact:
     """
     path : pl.Path = field()
 
+    _basic_str : str = field(init=False)
+
+    def __post_init__(self):
+        self._basic_str = str(self.path)
+        self.path = doot.locs[self.path]
+
     def __hash__(self):
         return hash(self.path)
 
@@ -61,7 +68,7 @@ class DootTaskArtifact:
         return f"<{type} TaskArtifact: {self.path.name}>"
 
     def __str__(self):
-        return str(self.path)
+        return self._basic_str
 
     def __eq__(self, other:DootTaskArtifact|Any):
         match other:
@@ -75,27 +82,42 @@ class DootTaskArtifact:
 
     @property
     def exists(self):
-        return self.is_definite and self.path.exists()
+        return self.path.exists() or not self.is_definite
 
     @property
     def is_definite(self):
-        return self.path.stem not in "*?+"
+        return "*" not in str(self.path)
+
+    @property
+    def _dstem(self):
+        return "*" not in self.path.stem
+
+    @property
+    def _dsuffix(self):
+        return "*" not in self.path.suffix
 
     @property
     def is_stale(self) -> bool:
         """ whether the artifact itself is stale """
-        return False
+        raise NotImplementedError('TODO')
 
-    def matches(self, other):
-        """ match a definite artifact to its indefinite abstraction """
-        match other:
-            case DootTaskArtifact() if self.is_definite and not other.is_definite:
-                parents_match = self.path.parent == other.path.parent
-                exts_match    = self.path.suffix == other.path.suffix
-                return parents_match and exts_match
-            case _:
-                raise TypeError(other)
+    def __contains__(self, other):
+        """ whether a definite artifact is matched by self, an indefinite artifact
+          a/b/c.py ∈ a/b/*.py
+          ________ ∈ a/*/c.py
+          ________ ∈ a/b/c.*
+          ________ ∈ a/*/c.*
+          ________ ∈ **/c.py
 
-"""
+        """
+        for x,y in zip(self.path.parent.parts, other.path.parent.parts):
+            if x == "**" or y == "**":
+                break
+            if x == "*" or y == "*":
+                continue
+            if x != y:
+                return False
 
-"""
+        suffix      = (not self._dsuffix) or self.path.suffix == other.path.suffix
+        stem        = (not self._dstem)    or self.path.stem == other.path.stem
+        return  suffix and stem
