@@ -49,7 +49,10 @@ from doot._structs.artifact import DootTaskArtifact
 PAD           : Final[int] = 15
 TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
 
-def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|str]:
+def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|DootStructuredName]:
+    """
+      Prepares dependencies, converting from strings to Artifacts (ie:files), or Task Names
+    """
     if deps is None:
         return []
 
@@ -77,8 +80,8 @@ class DootTaskSpec:
     source            : DootStructuredName|str|None                  = field(default=None)
     actions           : list[Any]                                    = field(default_factory=list)
 
-    runs_before       : list[DootTaskArtifact|str]                   = field(default_factory=list)
-    runs_after        : list[DootTaskArtifact|str]                   = field(default_factory=list)
+    required_for      : list[DootTaskArtifact]                       = field(default_factory=list)
+    depends_on        : list[DootTaskArtifact]                       = field(default_factory=list)
     priority          : int                                          = field(default=10)
     ctor_name         : DootStructuredName                           = field(default=None)
     ctor              : type|Callable|None                           = field(default=None)
@@ -107,9 +110,9 @@ class DootTaskSpec:
                     extra_data.update(dict(val))
                 case "print_levels":
                     core_data[key] = Tomler(val)
-                case "runs_before" | "runs_after":
+                case "required_for" | "depends_on" | "required-for" | "depends-on":
                     processed = _prepare_deps(val)
-                    core_data[key] = processed
+                    core_data[key.replace("-","_")] = processed
                 case x if x in core_keys:
                     core_data[x] = val
                 case x if x.replace("-", "_") in core_keys:
