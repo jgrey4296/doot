@@ -78,11 +78,17 @@ class DootReportManagerSummary(Reporter_i):
             "tasks" :   {"success": 0, "fail": 0, "total": 0},
             "actions" : {"success": 0, "fail": 0, "total": 0},
             "taskers" : {"success": 0, "fail": 0, "total": 0},
+            "artifacts" : 0
             }
 
         for trace in self._full_trace:
+            if ReportEnum.ARTIFACT in trace.flags:
+                result['artifacts'] += 1
+                continue
+
             category = None
             ended   = None
+
             if ReportEnum.TASKER in trace.flags:
                 category = "taskers"
             elif ReportEnum.ACTION in trace.flags:
@@ -104,9 +110,10 @@ class DootReportManagerSummary(Reporter_i):
         output = [
             "    - Totals : Taskers: {}, Tasks: {}, Actions: {}".format(result['taskers']['total'], result['tasks']['total'], result['actions']['total']),
             "    - Success/Failures:",
-            "    -- Taskers: {}/{}".format(result['taskers']['success'],result['taskers']['fail']),
-            "    -- Tasks  : {}/{}".format(result['tasks']['success'], result['tasks']['fail']),
-            "    -- Actions: {}/{}".format(result['actions']['success'], result['actions']['fail']),
+            "    -- Taskers   : {}/{}".format(result['taskers']['success'],result['taskers']['fail']),
+            "    -- Tasks     : {}/{}".format(result['tasks']['success'], result['tasks']['fail']),
+            "    -- Actions   : {}/{}".format(result['actions']['success'], result['actions']['fail']),
+            "    -- Artifacts : {}".format(result['artifacts']),
         ]
         return "\n".join(output)
 

@@ -111,3 +111,6 @@ class DootConfigError(DootError):
 class DootMissingConfigError(DootError):
     general_msg = "Doot Config Error:"
     pass
+
+class DootEarlyExit(Exception):
+    pass

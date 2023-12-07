@@ -181,7 +181,7 @@ class DootDirWalker(SubMixin, DootTasker):
         head = self._build_head()
 
         for sub in self._build_subs():
-            head.runs_after.append(sub.name)
+            head.depends_on.append(sub.name)
             yield sub
 
         yield head

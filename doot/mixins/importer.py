@@ -70,6 +70,10 @@ class ImporterMixin:
         """
         if pathname is None:
             return None
+
+        if pathname in ACTION_CTORS:
+            return ACTION_CTORS[pathname].load()
+
         try:
             logging.info("Importing: %s", pathname)
             module_name, fun_name = pathname.split(IMPORT_SEP)

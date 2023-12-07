@@ -74,16 +74,16 @@ def mock_tracker_and_reporter(mocker):
     pass
 
 def mock_task(mocker, name, pre=None, post=None):
-    mock_task                      = mocker.MagicMock(spec=Task_i)
-    mock_task.name                 = name
-    mock_task.spec                 = mocker.MagicMock(spec=structs.DootTaskSpec)
-    mock_task.spec.priority        = 0
+    mock_task                       = mocker.MagicMock(spec=Task_i)
+    mock_task.name                  = name
+    mock_task.spec                  = mocker.MagicMock(spec=structs.DootTaskSpec)
+    mock_task.spec.priority         = 0
 
-    runs_after                     = pre or mocker.PropertyMock()
-    runs_before                    = post or mocker.PropertyMock()
-    type(mock_task).runs_after     = runs_after
-    type(mock_task).runs_before    = runs_before
-    return mock_task, runs_after, runs_before
+    depends_on                      = pre or mocker.PropertyMock()
+    required_for                    = post or mocker.PropertyMock()
+    type(mock_task).depends_on      = depends_on
+    type(mock_task).required_for    = required_for
+    return mock_task, depends_on, required_for
 
 
 

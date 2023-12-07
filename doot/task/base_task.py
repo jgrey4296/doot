@@ -99,7 +99,7 @@ class DootTask(Task_i, ImporterMixin):
                 continue
             if action_spec.do  is not None:
                 action_id = action_spec.do
-                action_spec.set_function(self.import_class(action_id))
+                action_spec.set_function(self.import_callable(action_id))
                 continue
 
             assert(action_spec.do is None), action_spec

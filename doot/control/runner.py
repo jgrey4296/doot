@@ -66,6 +66,7 @@ import doot.errors
 from doot.enums import ReportEnum, ActionResponseEnum as ActRE
 from doot._abstract import Tasker_i, Task_i, FailPolicy_p
 from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i, ReportLine_i, Action_p, Reporter_i
+from doot.structs import DootTaskArtifact
 from doot.utils.signal_handler import SignalHandler
 from doot.structs import DootTaskSpec, DootActionSpec
 
@@ -84,7 +85,7 @@ class DootRunner(TaskRunner_i):
         super().__init__(tracker=tracker, reporter=reporter, policy=policy)
         self._printer_level_stack = []
         self.step                 = 0
-        self.default_SLEEP_LENGTH = doot.config.on_fail(0.2, int|float).settings.tasks.sleep.tasks()
+        self.default_SLEEP_LENGTH = doot.config.on_fail(0.2, int|float).settings.tasks.sleep.task()
 
     def __enter__(self) -> Any:
         printer.info("---------- Task Loop Starting ----------", extra={"colour" : "green"})
@@ -111,13 +112,16 @@ class DootRunner(TaskRunner_i):
         # TODO for threaded tasks: replace expand_tasker/execute_task/execute_action with twisted?
 
         with SignalHandler():
+            self._set_print_level("INFO")
             for task in iter(self.tracker):
-                self._set_print_level("INFO")
                 if task is None:
                     continue
 
                 try:
                     match task:
+                        case DootTaskArtifact():
+                            self._notify_artifact(task)
+                            continue
                         case Tasker_i():
                             self._expand_tasker(task)
                         case Task_i():
@@ -125,13 +129,9 @@ class DootRunner(TaskRunner_i):
 
                     self._set_print_level(task.spec.print_levels.on_fail(sleep_level).sleep())
                     self.tracker.update_state(task, self.tracker.state_e.SUCCESS)
-                    sleep_len = task.spec.extra.on_fail(int|float).sleep()
-                    if isinstance(sleep_len, int|float):
-                        printer.info("[Sleeping (%s)...]", sleep_len, extra={"colour":"white"})
-                        time.sleep(sleep_len)
-                    else:
-                        printer.info("[Sleeping (%s)...]", self.default_SLEEP_LENGTH, extra={"colour":"white"})
-                        time.sleep(self.default_SLEEP_LENGTH)
+                    sleep_len = task.spec.extra.on_fail(self.default_SLEEP_LENGTH, int|float).sleep()
+                    printer.info("[Sleeping (%s)...]", sleep_len, extra={"colour":"white"})
+                    time.sleep(sleep_len)
                     self.step += 1
                 # Handle problems:
                 except doot.errors.DootTaskInterrupt as err:
@@ -148,11 +148,12 @@ class DootRunner(TaskRunner_i):
                 except doot.errors.DootError as err:
                     printer.warning("Doot Error : %s : %s", task.name, err)
                     self.tracker.update_state(task, self.tracker.state_e.FAILED)
-                except Exception as err:
-                    self.reporter.trace(task.spec, flags = ReportEnum.TASK | ReportEnum.FAIL)
-                    raise err
 
+                self._set_print_level("INFO")
 
+    def _notify_artifact(self, art:DootTaskArtifact) -> None:
+        printer.info("---- Artifact: %s", art)
+        self.reporter.trace(art, flags=ReportEnum.ARTIFACT)
 
     def _expand_tasker(self, tasker:Tasker_i) -> None:
         """ turn a tasker into all of its tasks, including teardowns """

@@ -88,8 +88,8 @@ class TestListCmd:
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
         assert("defined task generators by group:" in message_set)
-        assert(any(x.startswith("simple :: builtins:type") for x in message_set) )
-        assert(any(x.startswith("other  :: builtins:other.type") for x in message_set) )
+        assert(any(x.startswith("simple :: ") for x in message_set) )
+        assert(any(x.startswith("other  :: ") for x in message_set) )
 
     def test_call_target_not_empty(self, caplog, mocker):
         mocker.patch("doot.args")

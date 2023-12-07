@@ -84,7 +84,7 @@ class TaskBase_i(ParamSpecMaker_m):
     def __lt__(self, other:TaskBase_i) -> bool:
         """ Task A < Task B iff A ∈ B.run_after   """
         return (other.name in self.spec.after_artifacts
-                or other.name in self.spec.runs_after)
+                or other.name in self.spec.depends_on)
 
     def __eq__(self, other):
         match other:
@@ -109,13 +109,13 @@ class TaskBase_i(ParamSpecMaker_m):
         return self.spec.doc or self._help
 
     @property
-    def runs_after(self) -> abc.Generator[str|DootStructuredName]:
-        for x in self.spec.runs_after:
+    def depends_on(self) -> abc.Generator[str|DootStructuredName]:
+        for x in self.spec.depends_on:
             yield x
 
     @property
-    def runs_before(self) -> abc.Generator[str|DootStructuredName]:
-        for x in self.spec.runs_before:
+    def required_for(self) -> abc.Generator[str|DootStructuredName]:
+        for x in self.spec.required_for:
             yield x
 
     def add_execution_record(self, arg):

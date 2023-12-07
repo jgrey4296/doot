@@ -29,6 +29,7 @@ import sh
 import stackprinter
 import tomler
 import doot
+from bdb import BdbQuit
 from doot.utils.log_config import DootLogConfig
 
 def main():
@@ -55,6 +56,8 @@ def main():
         result    = overlord()
 
     ##-- handle doot errors
+    except (doot.errors.DootEarlyExit, BdbQuit):
+        printer.warning("Early Exit Triggered")
     except doot.errors.DootMissingConfigError as err:
         # Handle missing files
         if not doot.constants.DEFAULT_LOAD_TARGETS[0].exists():

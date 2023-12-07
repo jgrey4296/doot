@@ -37,8 +37,8 @@ class TestRunner:
 
     @pytest.fixture(scope="function")
     def setup(self, mocker):
-        min_sleep = {"sleep": 0.0}
-        config_dict = {"settings": {"task" : min_sleep, "subtask" : min_sleep, "batch": min_sleep}}
+        min_sleep   = 0.0
+        config_dict = {"settings": {"tasks": {"sleep": {"task" : min_sleep, "subtask" : min_sleep, "batch": min_sleep}}}}
         doot.config = tomler.Tomler(config_dict)
 
     @pytest.fixture(scope="function")

@@ -150,6 +150,7 @@ class DootLocations:
           Update the registered locations with a dict, tomler, or other dootlocations obj.
           The update process itself is tomler.tomler.merge
         """
+        current_keys = set(self._data.keys())
         match extra:
             case dict() | tomler.Tomler():
                 self._data = tomler.Tomler.merge(self._data, extra)
@@ -157,6 +158,9 @@ class DootLocations:
                 self._data = tomler.Tomler.merge(self._data, extra._data)
             case _:
                 raise TypeError("Bad type passed to DootLocations for updating: %s", type(extra))
+
+        new_keys = set(self._data.keys()) - current_keys
+        logging.debug("Registered New Locations: %s", ", ".join(new_keys))
 
         return self
 

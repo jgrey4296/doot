@@ -58,7 +58,7 @@ class DootStructuredName:
     group           : list[str]          = field(default_factory=list)
     task            : list[str]          = field(default_factory=list)
 
-    private         : bool               = field(default=False, kw_only=True)
+    internal        : bool               = field(default=False, kw_only=True)
     # maybe: tasker : bool               = field(default=False, kw_only=True) -> add '*' at head or tail
 
     form            : StructuredNameEnum = field(default=StructuredNameEnum.TASK, kw_only=True)
@@ -87,6 +87,8 @@ class DootStructuredName:
                 self.task = self.task.split(DootStructuredName.subseparator)
             case None | []:
                 self.task = ["default"]
+
+        self.internal = self.task[0].startswith(doot.constants.INTERNAL_TASK_PREFIX) or self.internal
 
     def __str__(self) -> str:
         sep = DootStructuredName.task_separator if self.form is StructuredNameEnum.TASK else DootStructuredName.class_separator
@@ -141,7 +143,7 @@ class DootStructuredName:
     def subtask(self, *subtasks, subgroups:list[str]|None=None):
         return DootStructuredName(self.group + (subgroups or []),
                                    self.task + list(subtasks),
-                                   private=self.private
+                                   internal=self.internal
                                    )
 
 

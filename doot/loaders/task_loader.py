@@ -185,10 +185,13 @@ class DootTaskLoader(TaskLoader_p):
                     self._load_location_updates(data.locations, task_file)
 
         elif path.is_file():
-            for group, val in tomler.load(path).on_fail({}).tasks().items():
+            data = tomler.load(path)
+            for group, val in data.on_fail({}).tasks().items():
                 # sets 'group' for each task if it hasn't been set already
                 raw_specs += map(ftz.partial(apply_group_and_source, group, path), val)
             logging.info("Loaded Tasks from: %s", path)
+            if 'locations' in data:
+                self._load_location_updates(data.locations, path)
 
         return raw_specs
 
@@ -205,7 +208,7 @@ class DootTaskLoader(TaskLoader_p):
                     case {"name": task_name, "disable" : True}:
                         logging.info("Spec is disabled: %s", task_name)
                     case {"name": task_name} if task_name in command_names:
-                        raise doot.errors.DootTaskLoadError("Task / Cmd name conflict: %s", task_name)
+                        raise doot.errors.DootTaskLoadError("Name conflict: %s is already a Command", task_name)
                     case {"name": task_name, "group": group} if (task_name in task_descriptions and group == task_descriptions[task_name][0]['group'] and not allow_overloads):
                         raise doot.errors.DootTaskLoadError("Task Name Overloaded: %s : %s", task_name, group)
                     case {"name": task_name, "ctor": task_type} if task_type in self.task_builders:
@@ -242,7 +245,7 @@ class DootTaskLoader(TaskLoader_p):
         return task_descriptions
 
     def _load_location_updates(self, data:list[Tomler], source):
-        logmod.debug("Loading Location Updates: %s", source)
+        logging.debug("Loading Location Updates: %s", source)
         for group in data:
             try:
                 doot.locs.update(group)
