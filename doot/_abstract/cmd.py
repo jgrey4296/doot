@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 ##-- end imports
 
 from abc import abstractmethod
-from tomler import Tomler
+from tomlguard import TomlGuard
 from doot.structs import DootParamSpec
 
 from doot._abstract.parser import ParamSpecMaker_m
@@ -64,7 +64,7 @@ class Command_i(ParamSpecMaker_m):
            ]
 
     @abstractmethod
-    def __call__(self, taskers:Tomler, plugins:Tomler):
+    def __call__(self, taskers:TomlGuard, plugins:TomlGuard):
         raise NotImplementedError()
 
 

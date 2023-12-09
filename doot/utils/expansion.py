@@ -37,7 +37,7 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from tomler import Tomler
+from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.constants import KEY_PATTERN, MAX_KEY_EXPANSIONS
@@ -189,7 +189,7 @@ def expand_to_obj(s, spec=None, task_state=None):
 """
 
 
-def expand_path_part(part:str, data:Tomler):
+def expand_path_part(part:str, data:TomlGuard):
     """ Given a part of a path, expand any keys found"""
     count         = 0
     expanded_part = part

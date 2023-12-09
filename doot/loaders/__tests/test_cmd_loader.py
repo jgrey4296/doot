@@ -16,10 +16,10 @@ from unittest import mock
 ##-- end imports
 
 import pytest
-import tomler
+import tomlguard
 import doot
 from importlib.metadata import EntryPoint
-doot.config = tomler.Tomler({})
+doot.config = tomlguard.TomlGuard({})
 from doot.loaders import cmd_loader
 logging = logmod.root
 
@@ -31,7 +31,7 @@ class TestCmdLoader(unittest.TestCase):
 
     def test_load_basic(self):
         basic = cmd_loader.DootCommandLoader()
-        basic.setup(tomler.Tomler({
+        basic.setup(tomlguard.TomlGuard({
             "command" : [
                 EntryPoint(name="list", group="doot.command", value="doot.cmds.list_cmd:ListCmd")
 
@@ -41,7 +41,7 @@ class TestCmdLoader(unittest.TestCase):
 
     def test_load_multi(self):
         basic = cmd_loader.DootCommandLoader()
-        basic.setup(tomler.Tomler({
+        basic.setup(tomlguard.TomlGuard({
             "command" : [
                 EntryPoint(name="list", group="doot.command", value="doot.cmds.list_cmd:ListCmd"),
                 EntryPoint(name="run", group="doot.command", value="doot.cmds.run_cmd:RunCmd"),
@@ -53,7 +53,7 @@ class TestCmdLoader(unittest.TestCase):
 
     def test_load_fail(self):
         basic = cmd_loader.DootCommandLoader()
-        basic.setup(tomler.Tomler({
+        basic.setup(tomlguard.TomlGuard({
             "command" : [
                 EntryPoint(name="bad", group="doot.command", value="doot.cmds.bad:badcmd"),
 

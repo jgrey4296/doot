@@ -67,8 +67,8 @@ from doot.structs import DootStructuredName
 from doot.enums import StructuredNameEnum
 import doot.errors
 
-def plugin_selector(plugins:Tomler, *, target="default", fallback=None) -> type:
-    """ Selects and loads plugins from a tomler, based on a target,
+def plugin_selector(plugins:TomlGuard, *, target="default", fallback=None) -> type:
+    """ Selects and loads plugins from a tomlguard, based on a target,
     with an available fallback constructor """
     logging.debug("Selecting plugin for target: %s", target)
 

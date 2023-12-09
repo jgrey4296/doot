@@ -57,7 +57,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from tomler import Tomler
+from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.constants import SUBTASKED_HEAD
@@ -82,7 +82,7 @@ class DootTasker(Tasker_i, ImporterMixin):
         assert(spec is not None), "Spec is empty"
         super(DootTasker, self).__init__(spec)
 
-    def default_task(self, name:str|DootStructuredName|None, extra:None|dict|Tomler) -> DootTaskSpec:
+    def default_task(self, name:str|DootStructuredName|None, extra:None|dict|TomlGuard) -> DootTaskSpec:
         task_name = None
         match name:
             case None:
@@ -95,7 +95,7 @@ class DootTasker(Tasker_i, ImporterMixin):
                 raise doot.errors.DootTaskError("Bad value used to make a subtask in %s : %s", self.name, name)
 
         assert(task_name is not None)
-        return DootTaskSpec(name=task_name, extra=Tomler(extra))
+        return DootTaskSpec(name=task_name, extra=TomlGuard(extra))
 
     def is_stale(self, task:Task_i):
         return False
@@ -133,7 +133,7 @@ class DootTasker(Tasker_i, ImporterMixin):
 
     def _build_head(self, **kwargs) -> DootTaskSpec:
         logging.debug("Building Head Task for: %s", self.name)
-        task_spec                             = self.default_task(None, Tomler(kwargs))
+        task_spec                             = self.default_task(None, TomlGuard(kwargs))
 
         task_ref = self.spec.extra.on_fail((None,), None|str).head_task()
         if task_ref is not None:

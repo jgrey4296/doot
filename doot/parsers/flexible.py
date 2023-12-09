@@ -26,7 +26,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from tomler import Tomler
+from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot._abstract import ArgParser_i
@@ -41,7 +41,7 @@ default_cmd  : Final[str] = doot.config.on_fail("run", str).general.settings.def
 @doot.check_protocol
 class DootFlexibleParser(ArgParser_i):
     """
-    convert argv to tomler by:
+    convert argv to tomlguard by:
     parsing each arg as toml,
 
     # doot {args} {cmd} {cmd_args}
@@ -76,7 +76,7 @@ class DootFlexibleParser(ArgParser_i):
     def _build_defaults_dict(self, param_specs:list) -> dict:
         return { x.name : x.default for x in param_specs }
 
-    def parse(self, args:list, *, doot_specs:list[DootParamSpec], cmds:Tomler, tasks:Tomler) -> None|Tomler:
+    def parse(self, args:list, *, doot_specs:list[DootParamSpec], cmds:TomlGuard, tasks:TomlGuard) -> None|TomlGuard:
         """
           Parses the list of arguments against available registered parameter specs, cmds, and tasks.
         """
@@ -115,7 +115,7 @@ class DootFlexibleParser(ArgParser_i):
             "tasks"  : { name : args for name,args in self.tasks_args  },
             "extras" : self.extras
             }
-        return Tomler(data)
+        return TomlGuard(data)
 
     def process_head(self, args) -> list[str]:
         logging.debug("Head Parsing: %s", args)

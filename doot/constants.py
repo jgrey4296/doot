@@ -13,7 +13,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     cast, final, overload, runtime_checkable)
 from importlib import resources
 import re
-from tomler import Tomler
+from tomlguard import TomlGuard
 ##-- end std imports
 from doot._default_plugins import *
 

@@ -58,7 +58,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from collections import defaultdict
-from tomler import Tomler
+from tomlguard import TomlGuard
 import doot
 from doot._abstract import ReportLine_i, TaskRunner_i, Reporter_i, Command_i
 from doot.utils.plugin_selector import plugin_selector
@@ -87,7 +87,7 @@ class RunCmd(Command_i):
             self.make_param(name="target", type=list[str], default=[], positional=True),
             ]
 
-    def __call__(self, tasks:Tomler, plugins:Tomler):
+    def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
         # Note the final parens to construct:
         available_reporters    = plugins.on_fail([], list).report_line()
         report_lines           = [plugin_selector(available_reporters, target=x)() for x in report_line_targets]

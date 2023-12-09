@@ -34,7 +34,7 @@ logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 
 from collections import defaultdict
-from tomler import Tomler
+from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot._abstract import Command_i
@@ -62,7 +62,7 @@ class LastCmd(Command_i):
             self.make_param(name="pattern",                  type=str,           default="", positional=True,    desc="List tasks with a basic string pattern in the name"),
             ]
 
-    def __call__(self, tasks:Tomler, plugins:Tomler):
+    def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
         """List task generators"""
         logging.debug("Starting to List Taskers/Tasks")
 

@@ -27,7 +27,7 @@ printer         = logmod.getLogger("doot._printer")
 
 import sh
 import stackprinter
-import tomler
+import tomlguard as TG
 import doot
 from bdb import BdbQuit
 from doot.utils.log_config import DootLogConfig

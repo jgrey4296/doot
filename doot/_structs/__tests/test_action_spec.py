@@ -14,7 +14,7 @@ import warnings
 import pytest
 logging = logmod.root
 
-import tomler
+import tomlguard
 from doot import structs
 import doot.constants
 

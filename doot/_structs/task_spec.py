@@ -38,7 +38,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import importlib
-from tomler import Tomler
+from tomlguard import TomlGuard
 import doot.errors
 import doot.constants as consts
 from doot.enums import TaskFlags, ReportEnum, StructuredNameEnum
@@ -87,10 +87,10 @@ class DootTaskSpec:
     ctor              : type|Callable|None                           = field(default=None)
     # Any additional information:
     version            : str                                         = field(default="0.1")
-    print_levels       : Tomler                                      = field(default_factory=Tomler)
+    print_levels       : TomlGuard                                      = field(default_factory=TomlGuard)
     flags              : TaskFlags                                   = field(default=TaskFlags.TASK)
 
-    extra              : Tomler                                      = field(default_factory=Tomler)
+    extra              : TomlGuard                                      = field(default_factory=TomlGuard)
 
     inject             : list[str]                                   = field(default_factory=list) # For taskers
     @staticmethod
@@ -109,7 +109,7 @@ class DootTaskSpec:
                 case "extra":
                     extra_data.update(dict(val))
                 case "print_levels":
-                    core_data[key] = Tomler(val)
+                    core_data[key] = TomlGuard(val)
                 case "required_for" | "depends_on" | "required-for" | "depends-on":
                     processed = _prepare_deps(val)
                     core_data[key.replace("-","_")] = processed
@@ -152,7 +152,7 @@ class DootTaskSpec:
         # prep dependencies:
 
 
-        return DootTaskSpec(**core_data, extra=Tomler(extra_data))
+        return DootTaskSpec(**core_data, extra=TomlGuard(extra_data))
 
     def specialize_from(self, data:DootTaskSpec) -> DootTaskSpec:
         """
@@ -164,13 +164,13 @@ class DootTaskSpec:
                 case "name":
                     specialized[field] = data.name
                 case "extra":
-                   specialized[field] = Tomler.merge(data.extra, self.extra, shadow=True)
+                   specialized[field] = TomlGuard.merge(data.extra, self.extra, shadow=True)
                 case _:
                     # prefer the newest data, then the unspecialized data, then the default
                     field_data         = DootTaskSpec.__dataclass_fields__.get(field)
                     match getattr(data,field), field_data.default, field_data.default_factory:
-                        case x, _MISSING_TYPE(), y if y == Tomler:
-                            value = Tomler.merge(getattr(data,field), getattr(self, field), shadow=True)
+                        case x, _MISSING_TYPE(), y if y == TomlGuard:
+                            value = TomlGuard.merge(getattr(data,field), getattr(self, field), shadow=True)
                         case x, _MISSING_TYPE(), _MISSING_TYPE():
                             value = x or getattr(self, field)
                         case x, y, _MISSING_TYPE() if x == y:

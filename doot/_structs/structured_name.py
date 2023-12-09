@@ -38,7 +38,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import importlib
-from tomler import Tomler
+from tomlguard import TomlGuard
 import doot.errors
 import doot.constants
 from doot.enums import TaskFlags, ReportEnum, StructuredNameEnum

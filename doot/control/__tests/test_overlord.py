@@ -17,9 +17,9 @@ logging = logmod.root
 
 import pytest
 import sys
-import tomler
+import tomlguard
 import doot
-doot.config = tomler.Tomler({})
+doot.config = tomlguard.TomlGuard({})
 from doot.control.overlord import DootOverlord
 
 BASIC_TASKER_NAME = "tasker"

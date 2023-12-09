@@ -63,7 +63,7 @@ logging = logmod.getLogger(__name__)
 
 from collections import ChainMap
 import importlib
-import tomler
+import tomlguard
 import doot
 import doot.errors
 from doot.structs import DootTaskSpec
@@ -90,14 +90,14 @@ class DootTaskLoader(TaskLoader_p):
     taskers       : dict[str, tuple(dict, Tasker_i)] = {}
     cmd_names     : set[str]                         = set()
     task_builders : dict[str,Any]                    = dict()
-    extra : Tomler
+    extra : TomlGuard
 
     def setup(self, plugins, extra=None) -> Self:
         logging.debug("---- Registering Task Builders")
         self.cmd_names     = set(map(lambda x: x.name, plugins.get("command", [])))
         self.taskers       = {}
         self.task_builders = {}
-        for plugin in tomler.Tomler(plugins).on_fail([]).tasker():
+        for plugin in tomlguard.TomlGuard(plugins).on_fail([]).tasker():
             if plugin.name in self.task_builders:
                 logging.warning("Conflicting Task Builder Type Name: %s: %s / %s",
                                 plugin.name,
@@ -119,19 +119,19 @@ class DootTaskLoader(TaskLoader_p):
                 self.extra = {}
             case list():
                 self.extra = {"_": extra}
-            case dict() | tomler.Tomler():
-                self.extra = tomler.Tomler(extra).on_fail({}).tasks()
+            case dict() | tomlguard.TomlGuard():
+                self.extra = tomlguard.TomlGuard(extra).on_fail({}).tasks()
         logging.debug("Task Loader Setup with %s extra tasks", len(self.extra))
         return self
 
 
-    def load(self) -> Tomler[tuple[dict, type[Task_i|Tasker_i]]]:
+    def load(self) -> TomlGuard[tuple[dict, type[Task_i|Tasker_i]]]:
         start_time = time.perf_counter()
         logging.debug("---- Loading Tasks")
         raw_specs : list[dict] = []
         logging.debug("Loading Tasks from Config")
         for source in doot._configs_loaded_from:
-            source_data : Tomler = tomler.load(source)
+            source_data : TomlGuard = tomlguard.load(source)
             task_specs = source_data.on_fail({}).tasks()
             raw_specs += self._load_raw_specs(task_specs, source)
 
@@ -152,7 +152,7 @@ class DootTaskLoader(TaskLoader_p):
         logging.debug("Task List Size: %s", len(self.taskers))
         logging.debug("Task List Names: %s", list(self.taskers.keys()))
         logging.debug("---- Tasks Loaded in %s seconds", f"{time.perf_counter() - start_time:0.4f}")
-        return tomler.Tomler(self.taskers)
+        return tomlguard.TomlGuard(self.taskers)
 
     def _load_raw_specs(self, data:dict, source:pl.Path|Literal['(extra)']) -> list[dict]:
         """ extract raw task descriptions from a toplevel tasks dict, with not format checking
@@ -176,7 +176,7 @@ class DootTaskLoader(TaskLoader_p):
         if not path.exists():
             pass
         elif path.is_dir():
-            for task_file, data in [(x, tomler.load(x)) for x in path.iterdir() if x.suffix == ".toml"]:
+            for task_file, data in [(x, tomlguard.load(x)) for x in path.iterdir() if x.suffix == ".toml"]:
                 for group, val in data.on_fail({}).tasks().items():
                     # sets 'group' for each task if it hasn't been set already
                     raw_specs += map(ftz.partial(apply_group_and_source, group, task_file), val)
@@ -185,7 +185,7 @@ class DootTaskLoader(TaskLoader_p):
                     self._load_location_updates(data.locations, task_file)
 
         elif path.is_file():
-            data = tomler.load(path)
+            data = tomlguard.load(path)
             for group, val in data.on_fail({}).tasks().items():
                 # sets 'group' for each task if it hasn't been set already
                 raw_specs += map(ftz.partial(apply_group_and_source, group, path), val)
@@ -244,7 +244,7 @@ class DootTaskLoader(TaskLoader_p):
 
         return task_descriptions
 
-    def _load_location_updates(self, data:list[Tomler], source):
+    def _load_location_updates(self, data:list[TomlGuard], source):
         logging.debug("Loading Location Updates: %s", source)
         for group in data:
             try:

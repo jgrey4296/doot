@@ -14,7 +14,7 @@ from typing import Final, Any, assert_type
 ##-- end std imports
 
 import sys
-import tomler
+import tomlguard as TG
 import doot.errors
 from doot import constants
 from doot.control.locations import DootLocations
@@ -29,14 +29,14 @@ printer         = logmod.getLogger("doot._printer")
 # Global, single points of truth:
 __version__          : Final[str]      = "0.2.0"
 
-config               : tomler.Tomler   = tomler.Tomler() # doot config
+config               : TG.TomlGuard       = TG.TomlGuard() # doot config
 locs                 : DootLocData     = DootLocations(pl.Path()) # registered locations
-args                 : tomler.Tomler   = tomler.Tomler() # parsed arg access
+args                 : TG.TomlGuard       = TG.TomlGuard() # parsed arg access
 report               : Reporter_i      = None
 
-_configs_loaded_from : list[pl.Path] = []
+_configs_loaded_from : list[pl.Path]   = []
 
-def setup(targets:list[pl.Path]|None=None, prefix:str|None=None) -> tuple[tomler.Tomler, DootLocData]:
+def setup(targets:list[pl.Path]|None=None, prefix:str|None=None) -> tuple[TG.TomlGuard, DootLocData]:
     """
       The core requirement to call before any other doot code is run.
       loads the config files, so everything else can retrieve values when imported.
@@ -55,7 +55,7 @@ def setup(targets:list[pl.Path]|None=None, prefix:str|None=None) -> tuple[tomler
 
     existing_targets       = [x for x in targets if x.exists()]
 
-    config = tomler.load(*existing_targets)
+    config = TG.load(*existing_targets)
     locs   = DootLocations(pl.Path.cwd())
 
     for loc in config.locations:

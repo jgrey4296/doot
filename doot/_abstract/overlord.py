@@ -6,7 +6,7 @@ import pathlib as pl
 from abc import abstractmethod
 from typing import NewType, Any
 
-from tomler import Tomler
+from tomlguard import TomlGuard
 from doot._abstract.parser import ParamSpecMaker_m
 from doot._abstract.loader import Loaders_p
 
@@ -23,7 +23,7 @@ class Overlord_p(ParamSpecMaker_m):
     @abstractmethod
     def __init__(self, *, loaders:dict[str, Loaders_p]|None=None,
                configs:tuple[pl.Path|str]=('doot.toml', 'pyproject.toml'),
-               extra_config:dict[str,Any]|Tomler|None=None,
+               extra_config:dict[str,Any]|TomlGuard|None=None,
                args:list[str]|None=None):
         raise NotImplementedError()
 

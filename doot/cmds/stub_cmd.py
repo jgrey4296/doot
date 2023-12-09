@@ -74,7 +74,7 @@ class StubCmd(Command_i):
         except ImportError as err:
             raise doot.errors.DootTaskLoadError(ctor_name)
 
-    def __call__(self, tasks:Tomler, plugins:Tomler):
+    def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
         match dict(doot.args.cmd.args):
             case {"Tasks": True}:
                 self._list_task_types(plugins)

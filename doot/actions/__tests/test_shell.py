@@ -17,7 +17,6 @@ logging = logmod.root
 
 import pytest
 
-import tomler
 import doot
 import doot._abstract
 import doot.structs

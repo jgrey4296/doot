@@ -28,7 +28,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import re
-import tomler
+import tomlguard
 from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
 from doot.structs import DootStructuredName, DootTaskArtifact
 from doot.constants import KEY_PATTERN, MAX_KEY_EXPANSIONS
@@ -54,7 +54,7 @@ class DootLocations:
 
     def __init__(self, root:Pl.Path):
         self._root : pl.Path()    = root.expanduser().absolute()
-        self._data : Tomler       = tomler.Tomler()
+        self._data : TomlGuard       = tomlguard.TomlGuard()
 
 
     def __repr__(self):
@@ -145,17 +145,17 @@ class DootLocations:
         """
         return self._root
 
-    def update(self, extra:dict|Tomler|DootLocations):
+    def update(self, extra:dict|TomlGuard|DootLocations):
         """
-          Update the registered locations with a dict, tomler, or other dootlocations obj.
-          The update process itself is tomler.tomler.merge
+          Update the registered locations with a dict, tomlguard, or other dootlocations obj.
+          The update process itself is tomlguard.tomlguard.merge
         """
         current_keys = set(self._data.keys())
         match extra:
-            case dict() | tomler.Tomler():
-                self._data = tomler.Tomler.merge(self._data, extra)
+            case dict() | tomlguard.TomlGuard():
+                self._data = tomlguard.TomlGuard.merge(self._data, extra)
             case DootLocations():
-                self._data = tomler.Tomler.merge(self._data, extra._data)
+                self._data = tomlguard.TomlGuard.merge(self._data, extra._data)
             case _:
                 raise TypeError("Bad type passed to DootLocations for updating: %s", type(extra))
 

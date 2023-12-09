@@ -64,7 +64,7 @@ from importlib.metadata import EntryPoint
 import doot
 import doot.errors
 import doot.constants
-import tomler
+import tomlguard
 from doot._abstract import (ArgParser_i, Command_i, CommandLoader_p,
                             Overlord_p, Task_i, Tasker_i, TaskLoader_p)
 
@@ -101,16 +101,16 @@ class DootOverlord(Overlord_p):
         print("Doot Version: %s", doot.__version__)
         print("lib @", os.path.dirname(os.path.abspath(__file__)))
 
-    def __init__(self, *, loaders:dict[str, Loader_i]=None, config_filenames:tuple=('doot.toml', 'pyproject.toml'), extra_config:dict|Tomler=None, args:list=None, log_config:None|DootLogConfig=None):
+    def __init__(self, *, loaders:dict[str, Loader_i]=None, config_filenames:tuple=('doot.toml', 'pyproject.toml'), extra_config:dict|TomlGuard=None, args:list=None, log_config:None|DootLogConfig=None):
         logging.debug("Initialising Overlord")
         self.args                          = args or sys.argv[:]
         self.BIN_NAME                      = self.args[0].split('/')[-1]
         self.loaders                       = loaders or dict()
         self.log_config                    = log_config
 
-        self.plugins      : None|Tomler    = None
-        self.cmds         : None|Tomler    = None
-        self.taskers      : None|Tomler    = None
+        self.plugins      : None|TomlGuard    = None
+        self.cmds         : None|TomlGuard    = None
+        self.taskers      : None|TomlGuard    = None
         self.current_cmd  : Command_i      = None
         self.taskers      : list[Tasker_i] = []
 
@@ -148,11 +148,11 @@ class DootOverlord(Overlord_p):
 
         return "\n".join(help_lines)
 
-    def _load_plugins(self, extra_config:dict|Tomler=None):
+    def _load_plugins(self, extra_config:dict|TomlGuard=None):
         """ Use a plugin loader to find all applicable `importlib.EntryPoint`s  """
         self.plugin_loader    = self.loaders.get(plugin_loader_key, DootPluginLoader())
         self.plugin_loader.setup(extra_config)
-        self.plugins : Tomler = self.plugin_loader.load()
+        self.plugins : TomlGuard = self.plugin_loader.load()
 
     def _load_commands(self, extra_config):
         """ Select Commands from the discovered plugins """
@@ -267,8 +267,8 @@ class DootOverlord(Overlord_p):
             case doot.errors.DootError():
                 pass
             case None:
-                logging.info("Shutting Doot Down Normally, reporting defaulted tomler values")
-                defaulted_toml = tomler.Tomler.report_defaulted()
+                logging.info("Shutting Doot Down Normally, reporting defaulted tomlguard values")
+                defaulted_toml = tomlguard.TomlGuard.report_defaulted()
 
                 with open(defaulted_file, 'w') as f:
                     f.write("# default values used:\n")

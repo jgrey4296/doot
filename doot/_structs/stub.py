@@ -37,7 +37,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import importlib
-from tomler import Tomler
+from tomlguard import TomlGuard
 import doot.errors
 import doot.constants
 from doot.enums import TaskFlags, ReportEnum, StructuredNameEnum
@@ -111,7 +111,7 @@ class TaskStub:
                 pass
             case dict():
                 part = TaskStubPart(**other)
-            case Tomler():
+            case TomlGuard():
                 pass
             case TaskStubPart() if other.key not in self.parts:
                 self.parts[other.key] = other

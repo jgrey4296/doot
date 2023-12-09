@@ -45,11 +45,11 @@ import doot.errors
 def action_debugger(spec, state):
     def pstate():
         printer.info("Printing State:")
-        printer.info(spec)
+        printer.info(state)
 
     def pspec():
         printer.info("Printing Spec:")
-        printer.info(state)
+        printer.info(spec)
 
     printer.info("* Entering breakpoint *")
     printer.info("* Call pspec() and pstate() to inspect the spec and state *")

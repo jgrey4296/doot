@@ -31,7 +31,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from abc import abstractmethod
-from tomler import Tomler
+from tomlguard import TomlGuard
 from doot.structs import DootParamSpec
 
 
@@ -58,7 +58,7 @@ class ParamSpecMaker_m:
 class ArgParser_i:
     """
     A Single standard process point for turning the list of passed in args,
-    into a dict, into a tomler,
+    into a dict, into a tomlguard,
     along the way it determines the cmds and tasks that have been chosne
     """
 
@@ -69,5 +69,5 @@ class ArgParser_i:
         self.specs += specs
 
     @abstractmethod
-    def parse(self, args:list[str], doot_arg_specs:list[DootParamSpec], cmds:Tomler, tasks:Tomler) -> Tomler:
+    def parse(self, args:list[str], doot_arg_specs:list[DootParamSpec], cmds:TomlGuard, tasks:TomlGuard) -> TomlGuard:
         raise NotImplementedError()

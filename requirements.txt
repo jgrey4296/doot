@@ -16,7 +16,7 @@ Requests
 scikit-learn
 scrapy
 seaborn
-tomler
+tomlguard
 tweepy
 w3lib
 wordcloud

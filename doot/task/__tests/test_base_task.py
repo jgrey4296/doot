@@ -15,7 +15,7 @@ import functools as ftz
 import pytest
 logging = logmod.root
 
-import tomler
+import tomlguard
 import doot
 import doot.constants
 from doot.structs import DootTaskSpec, TaskStub
@@ -92,7 +92,7 @@ class TestBaseTask:
         task   = DootTask(DootTaskSpec.from_dict({"name" : "basic::example", "flags" : ["TASK", "IDEMPOTENT"]}), tasker=None)
         stub   = task.stub_instance(stub_obj)
         as_str = stub.to_toml()
-        loaded = tomler.read(as_str)
+        loaded = tomlguard.read(as_str)
         as_dict  = dict(loaded.tasks.basic[0])
         as_dict['group'] = "basic"
         new_spec = DootTaskSpec.from_dict(as_dict)

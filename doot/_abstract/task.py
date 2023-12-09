@@ -25,7 +25,7 @@ import abc
 import types
 from typing import Generator, NewType, Protocol, Any, runtime_checkable
 
-from tomler import Tomler
+from tomlguard import TomlGuard
 import doot.errors
 
 from doot.enums import TaskFlags, TaskStateEnum, ActionResponseEnum
@@ -224,7 +224,7 @@ class Tasker_i(TaskBase_i):
         return "\n".join(help_lines)
 
     @abc.abstractmethod
-    def default_task(self, name:str|DootStructuredName|None, extra:None|dict|Tomler) -> DootTaskSpec:
+    def default_task(self, name:str|DootStructuredName|None, extra:None|dict|TomlGuard) -> DootTaskSpec:
         raise NotImplementedError(self.__class__, "default_task")
 
     @abc.abstractmethod

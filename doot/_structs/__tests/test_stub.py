@@ -14,7 +14,7 @@ import warnings
 import pytest
 logging = logmod.root
 
-import tomler
+import tomlguard
 from doot import structs
 import doot.constants
 
@@ -55,14 +55,14 @@ class TestTaskStub:
         """ check a stub has the default components of a TaskSpec  """
         obj = structs.TaskStub(dict)
         as_str = obj.to_toml()
-        loaded = tomler.read(as_str)
+        loaded = tomlguard.read(as_str)
 
 
     def test_toml_reparse_to_spec(self):
         """ check a stub has the default components of a TaskSpec  """
         obj    = structs.TaskStub(dict)
         as_str = obj.to_toml()
-        loaded = tomler.read(as_str)
+        loaded = tomlguard.read(as_str)
         spec   = structs.DootTaskSpec.from_dict(loaded.tasks.stub[0]._table())
         pass
 
@@ -88,8 +88,8 @@ class TestTaskStubPart:
     def test_num_reduce(self):
         obj = structs.TaskStubPart("amount", default=10, type="int")
         result_str     = str(obj)
-        result_tomler  = tomler.read(result_str)
-        assert(result_tomler.amount == 10)
+        result_tomlguard  = tomlguard.read(result_str)
+        assert(result_tomlguard.amount == 10)
 
     def test_str_reduce_with_comment(self):
         obj = structs.TaskStubPart("blah", default="a test", comment="a simple comment")
@@ -99,19 +99,19 @@ class TestTaskStubPart:
     def test_stub_part_list_reduce(self):
         obj = structs.TaskStubPart("test", type="list", default=[1,2,3], comment="a simple stub part")
         result_str     = str(obj)
-        result_tomler  = tomler.read(result_str)
+        result_tomlguard  = tomlguard.read(result_str)
 
-        assert(result_tomler.test == [1,2,3])
+        assert(result_tomlguard.test == [1,2,3])
 
     def test_stub_part_str_reduce(self):
         obj = structs.TaskStubPart("test", type="str", default="test", comment="a simple stub part")
         result_str     = str(obj)
-        result_tomler  = tomler.read(result_str)
-        assert(result_tomler.test == "test")
+        result_tomlguard  = tomlguard.read(result_str)
+        assert(result_tomlguard.test == "test")
 
 
     def test_stub_part_bool_reduce(self):
         obj = structs.TaskStubPart("test", type="bool", default=False, comment="a simple stub part")
         result_str     = str(obj)
-        result_tomler  = tomler.read(result_str)
-        assert(result_tomler.test == False)
+        result_tomlguard  = tomlguard.read(result_str)
+        assert(result_tomlguard.test == False)

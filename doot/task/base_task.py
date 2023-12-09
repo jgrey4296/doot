@@ -33,7 +33,7 @@ printer = logmod.getLogger("doot._printer")
 
 import doot
 import doot.errors
-import tomler
+import tomlguard
 from doot._abstract import Task_i, Tasker_i, Action_p, PluginLoader_p
 from doot.enums import TaskFlags, StructuredNameEnum
 from doot.structs import DootStructuredName, TaskStub, TaskStubPart, DootActionSpec

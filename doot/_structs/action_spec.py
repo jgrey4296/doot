@@ -39,7 +39,7 @@ logging = logmod.getLogger(__name__)
 
 
 import importlib
-from tomler import Tomler
+from tomlguard import TomlGuard
 import doot.errors
 import doot.constants
 from doot.enums import TaskFlags, ReportEnum, StructuredNameEnum
@@ -60,7 +60,7 @@ class DootActionSpec:
     """
     do         : None|str                = field(default=None)
     args       : list[Any]               = field(default_factory=list)
-    kwargs     : Tomler                  = field(default_factory=Tomler)
+    kwargs     : TomlGuard                  = field(default_factory=TomlGuard)
     inState    : set[str]                = field(default_factory=set)
     outState   : set[str]                = field(default_factory=set)
     fun        : None|Callable           = field(default=None)
@@ -139,7 +139,7 @@ class DootActionSpec:
                 return action_spec
 
             case dict():
-                kwargs = Tomler({x:y for x,y in data.items() if x not in DootActionSpec.__dataclass_fields__.keys()})
+                kwargs = TomlGuard({x:y for x,y in data.items() if x not in DootActionSpec.__dataclass_fields__.keys()})
                 action_spec = DootActionSpec(
                     do=data['do'],
                     args=data.get('args',[]),

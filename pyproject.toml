@@ -15,7 +15,7 @@ classifiers     = [
 
 
 dependencies   = [
-    "tomler @ git+https://github.com/jgrey4296/tomler.git",
+    "tomlguard @ git+https://github.com/jgrey4296/tomlguard.git",
     "networkx > 3.0",
     "sh >= 2.0.6",
     "stackprinter >= 0.2.10",

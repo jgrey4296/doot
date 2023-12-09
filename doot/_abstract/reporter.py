@@ -30,7 +30,7 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from tomler import Tomler
+from tomlguard import TomlGuard
 from doot.enums import ReportEnum
 from doot.structs import DootTraceRecord
 

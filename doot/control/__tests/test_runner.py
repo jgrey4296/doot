@@ -13,7 +13,7 @@ import warnings
 
 import pytest
 
-import tomler
+import tomlguard
 import doot
 from doot.enums import TaskStateEnum
 from doot.control.runner import DootRunner
@@ -39,7 +39,7 @@ class TestRunner:
     def setup(self, mocker):
         min_sleep   = 0.0
         config_dict = {"settings": {"tasks": {"sleep": {"task" : min_sleep, "subtask" : min_sleep, "batch": min_sleep}}}}
-        doot.config = tomler.Tomler(config_dict)
+        doot.config = tomlguard.TomlGuard(config_dict)
 
     @pytest.fixture(scope="function")
     def cleanup(self):

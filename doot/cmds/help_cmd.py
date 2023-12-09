@@ -162,7 +162,7 @@ class HelpCmd(Command_i):
         if task_name in doot.args.tasks and doot.args.non_default_values.task and spec.ctor is not None:
             self._print_current_param_assignments(spec.ctor.param_specs, doot.args.tasks[task_name])
 
-    def _print_current_param_assignments(self, specs:list[DootParamSpec], args:Tomler):
+    def _print_current_param_assignments(self, specs:list[DootParamSpec], args:TomlGuard):
         if not bool(specs):
             return
 

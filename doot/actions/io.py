@@ -29,7 +29,7 @@ printer = logmod.getLogger("doot._printer")
 from time import sleep
 import sh
 import shutil
-import tomler
+import tomlguard as TG
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
@@ -196,7 +196,7 @@ class EnsureDirectory(Action_p):
 @doot.check_protocol
 class ReadJson(Action_p):
     """
-      Read a json file `and add it to the task state as task_state[`data`] = Tomler(json_data)
+        Read a json file `and add it to the task state as task_state[`data`] = TomlGuard(json_data)
     """
     _toml_kwargs = ["_from", "update_"]
 
@@ -204,7 +204,7 @@ class ReadJson(Action_p):
         data_key = expand_str(spec.kwargs.update_, spec, task_state)
         fpath    = expand_key(spec.kwargs.on_fail("_from").from_(), spec, task_state, as_path=True)
         data     = json.load(fpath)
-        return { data_key : tomler.Tomler(data) }
+        return { data_key : TG.TomlGuard(data) }
 
 
 @doot.check_protocol

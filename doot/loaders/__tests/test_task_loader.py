@@ -16,11 +16,11 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 
 import pytest
 import importlib.metadata
-import tomler
+import tomlguard
 import doot
 from doot.structs import DootTaskSpec
 
-doot.config = tomler.Tomler({})
+doot.config = tomlguard.TomlGuard({})
 from doot.loaders import task_loader
 logging = logmod.root
 
@@ -35,7 +35,7 @@ class TestTaskLoader:
         specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_tasker::DootTasker"})
         basic = task_loader.DootTaskLoader()
         basic.setup({})
-        result = basic._load_raw_specs(tomler.Tomler(specs).tasks, "test_file")
+        result = basic._load_raw_specs(tomlguard.TomlGuard(specs).tasks, "test_file")
 
         assert(isinstance(result, list))
         assert(len(result) == 1)
@@ -51,7 +51,7 @@ class TestTaskLoader:
         basic.setup({}, specs)
         result = basic.load()
 
-        assert(isinstance(result, tomler.Tomler))
+        assert(isinstance(result, tomlguard.TomlGuard))
         assert(len(result) == 1)
         assert("basic::test" in result)
         assert(isinstance(result['basic::test'], DootTaskSpec))
@@ -67,7 +67,7 @@ class TestTaskLoader:
         basic.setup({}, specs)
         result = basic.load()
 
-        assert(isinstance(result, tomler.Tomler))
+        assert(isinstance(result, tomlguard.TomlGuard))
         assert(len(result) == 2)
         assert("basic::test" in result)
         assert("basic::other" in result)
@@ -153,9 +153,9 @@ class TestTaskLoader:
         mock_ep.name = "basic"
         mock_ep.load.return_value = mock_ctor
 
-        plugins      = tomler.Tomler({"tasker": [mock_ep]})
+        plugins      = tomlguard.TomlGuard({"tasker": [mock_ep]})
         basic        = task_loader.DootTaskLoader()
-        basic.setup(plugins, tomler.Tomler(specs))
+        basic.setup(plugins, tomlguard.TomlGuard(specs))
 
         result    = basic.load()
 
@@ -175,9 +175,9 @@ class TestTaskLoader:
         mock_ep.name = "basic"
         mock_ep.load = mocker.MagicMock(return_value=True)
 
-        plugins      = tomler.Tomler({"task": [mock_ep]})
+        plugins      = tomlguard.TomlGuard({"task": [mock_ep]})
         basic        = task_loader.DootTaskLoader()
-        basic.setup(plugins, tomler.Tomler(specs))
+        basic.setup(plugins, tomlguard.TomlGuard(specs))
 
         with pytest.raises(doot.errors.DootTaskLoadError):
             basic.load()

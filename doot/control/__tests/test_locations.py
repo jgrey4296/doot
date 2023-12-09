@@ -13,7 +13,7 @@ import warnings
 
 import pytest
 
-import tomler
+import tomlguard
 from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
 from doot.control.locations import DootLocations
 
