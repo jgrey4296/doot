@@ -27,6 +27,7 @@ dependencies   = [
 [project.optional-dependencies]
 test = [
   "pytest < 5.0.0",
+  "pytest-mock",
 ]
 dev = [
     "pipreqs", "sphinx"
