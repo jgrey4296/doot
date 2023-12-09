@@ -97,6 +97,9 @@ import doot.constants
 from doot.utils.log_colour import DootColourFormatter, DootColourStripFormatter
 
 class _DootAnyFilter:
+    """
+
+    """
 
     def __init__(self, names=None, reject=None):
         self.names      = names or []

@@ -77,7 +77,7 @@ class TaskTracker_i:
         raise notimplementederror()
 
     @abstractmethod
-    def next_for(self, target:str) -> TaskBase_i|None:
+    def next_for(self, target:str) -> TaskBase_i|DootTaskArtifact|None:
         raise NotImplementedError()
 
     @abstractmethod

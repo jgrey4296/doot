@@ -73,6 +73,7 @@ class ReportEnum(enum.Flag):
     TASKER   = enum.auto()
     ACTION   = enum.auto()
     CONFIG   = enum.auto()
+    ARTIFACT = enum.auto()
 
 class StructuredNameEnum(enum.Enum):
     """ What a structured name describes """

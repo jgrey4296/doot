@@ -29,15 +29,15 @@ class TestTracker:
         assert(tracker is not None)
 
     def test_add_task(self, mocker):
-        mock_task, runs_after, runs_before = mock_gen.mock_task(mocker, "test_task")
+        mock_task, depends_on, required_for = mock_gen.mock_task(mocker, "test_task")
 
         tracker = DootTracker()
         tracker.add_task(mock_task)
 
         assert("test_task" in tracker.tasks)
-        assert(tracker.dep_graph.nodes['test_task']['state'] == tracker.state_e.DEFINED)
-        runs_after.assert_called()
-        runs_before.assert_called()
+        assert(tracker.task_graph.nodes['test_task']['state'] == tracker.state_e.DEFINED)
+        depends_on.assert_called()
+        required_for.assert_called()
 
     def test_duplicate_add_fail(self, mocker):
         task1, pre1, post1 = mock_gen.mock_task(mocker, "task1")
@@ -70,7 +70,7 @@ class TestTracker:
 
     def test_contains_defined(self, mocker):
         mock_task, _, _= mock_gen.mock_task(mocker, "test_task")
-        mock_task.runs_after = ["example", "blah"]
+        mock_task.depends_on = ["example", "blah"]
 
         tracker = DootTracker()
         tracker.add_task(mock_task)
@@ -103,20 +103,20 @@ class TestTracker:
 
         tracker = DootTracker()
         tracker.add_task(mock_task)
-        assert(tracker.dep_graph.nodes['example']['state'] == tracker.state_e.DECLARED)
-        assert(tracker.dep_graph.nodes['blah']['state'] == tracker.state_e.DECLARED)
-        assert("example" in tracker.dep_graph)
-        assert("blah" in tracker.dep_graph)
+        assert(tracker.task_graph.nodes['example']['state'] == tracker.state_e.DECLARED)
+        assert(tracker.task_graph.nodes['blah']['state'] == tracker.state_e.DECLARED)
+        assert("example" in tracker.task_graph)
+        assert("blah" in tracker.task_graph)
 
     def test_task_post_registration(self, mocker):
         mock_task, *_ = mock_gen.mock_task(mocker, "test_task", post=["example", "blah"])
 
         tracker = DootTracker()
         tracker.add_task(mock_task)
-        assert(tracker.dep_graph.nodes['example']['state'] == tracker.state_e.DECLARED)
-        assert(tracker.dep_graph.nodes['blah']['state'] == tracker.state_e.DECLARED)
-        assert("example" in tracker.dep_graph)
-        assert("blah" in tracker.dep_graph)
+        assert(tracker.task_graph.nodes['example']['state'] == tracker.state_e.DECLARED)
+        assert(tracker.task_graph.nodes['blah']['state'] == tracker.state_e.DECLARED)
+        assert("example" in tracker.task_graph)
+        assert("blah" in tracker.task_graph)
 
     def test_declared_set(self, mocker):
         mock_task, *_ = mock_gen.mock_task(mocker, "test_task", pre=["subtask", "sub2"], post=["example", "blah"])
@@ -263,12 +263,15 @@ class TestTracker:
         tracker.add_task(subtask)
         tracker.add_task(subtask2)
         next_task = tracker.next_for("task1")
-        assert(next_task.name == "subtask2")
+        assert(isinstance(next_task, doot.structs.DootTaskArtifact))
 
     def test_task_artifact_exists(self, mocker):
+        """
+          check that if artifacts exist, tasks that generate them aren't queued
+        """
         mocker.patch.object(pl.Path, "exists", return_value=True)
-        task1,    *_ = mock_gen.mock_task(mocker, "task1", pre=[pl.Path("*.file")])
-        subtask,  *_ = mock_gen.mock_task(mocker, "subtask", post=[pl.Path("blah.other")])
+        task1,    *_ = mock_gen.mock_task(mocker, "task1",    pre=[pl.Path("*.file")])
+        subtask,  *_ = mock_gen.mock_task(mocker, "subtask",  post=[pl.Path("blah.other")])
         subtask2, *_ = mock_gen.mock_task(mocker, "subtask2", post=[pl.Path("test.file")])
 
         tracker = DootTracker()
@@ -277,7 +280,7 @@ class TestTracker:
         tracker.add_task(subtask2)
 
         next_task = tracker.next_for("task1")
-        assert(next_task.name == task1.name)
+        assert(isinstance(next_task, doot.structs.DootTaskArtifact))
 
     def test_task_artifact_doesnt_exists(self, mocker):
         mocker.patch.object(pl.Path, "exists", return_value=False)
@@ -291,7 +294,7 @@ class TestTracker:
         tracker.add_task(subtask2)
 
         next_task = tracker.next_for("task1")
-        assert(next_task.name == subtask2.name)
+        assert(isinstance(next_task, doot.structs.DootTaskArtifact))
 
     def test_task_artifact_partial_exists(self, mocker):
 
@@ -310,4 +313,4 @@ class TestTracker:
         tracker.add_task(subtask2)
 
         next_task = tracker.next_for("task1")
-        assert(next_task == task1)
+        assert(isinstance(next_task, doot.structs.DootTaskArtifact))

@@ -26,8 +26,8 @@ from doot.errors import DootDirAbsent
 from doot.task.dir_walker import DootDirWalker, _WalkControl
 from doot.structs import DootTaskSpec
 
-glob_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).setting.globbing.ignores()
-glob_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).setting.globbing.halts()
+walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
+walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).settings.walking.halts()
 
 @doot.check_protocol
 class DootPatternWalker(DootDirWalker):

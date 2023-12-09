@@ -34,7 +34,7 @@ logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 
 from collections import defaultdict
-from tomler import Tomler
+from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot._abstract import Command_i
@@ -47,7 +47,6 @@ INDENT : Final[str] = " "*8
 class ListCmd(Command_i):
     _name      = "list"
     _help      = ["A simple command to list all loaded task heads."]
-    STATUS_MAP = {'ignore': 'I', 'up-to-date': 'U', 'run': 'R', 'error': 'E'}
 
     @property
     def param_specs(self) -> list[DootParamSpec]:
@@ -62,7 +61,7 @@ class ListCmd(Command_i):
             self.make_param(name="pattern",                  type=str,           default="", positional=True,    desc="List tasks with a basic string pattern in the name"),
             ]
 
-    def __call__(self, tasks:Tomler, plugins:Tomler):
+    def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
         """List task generators"""
         logging.debug("Starting to List Taskers/Tasks")
 
@@ -100,7 +99,7 @@ class ListCmd(Command_i):
         printer.info("Tasks for Pattern: %s", pattern)
         for key in matches:
             spec = tasks[key]
-            if spec.name.task_str().startswith(doot.constants.INTERNAL_TASK_PREFIX) and not doot.args.cmd.args.internal:
+            if spec.name.internal and not doot.args.cmd.args.internal:
                 continue
 
             printer.info(fmt_str,
@@ -116,7 +115,7 @@ class ListCmd(Command_i):
         for name, spec in tasks.items():
             if pattern not in name:
                 continue
-            if spec.name.task_str().startswith(doot.constants.INTERNAL_TASK_PREFIX) and not doot.args.cmd.args.internal:
+            if spec.name.internal and not doot.args.cmd.args.internal:
                 continue
 
             groups[spec.name.group_str()].append((spec.name.task_str(),
@@ -133,13 +132,13 @@ class ListCmd(Command_i):
     def _print_all_by_group(self, tasks):
         printer.info("Defined Task Generators by Group:", extra={"colour":"cyan"})
         max_key = len(max(tasks.keys(), key=len))
-        fmt_str = f"{INDENT}%-{max_key}s :: %-25s <%s>"
+        fmt_str = f"{INDENT}%-{max_key}s :: %-60s :: <Source: %s>"
         groups  = defaultdict(list)
         for spec in tasks.values():
-            if spec.name.task_str().startswith(doot.constants.INTERNAL_TASK_PREFIX) and not doot.args.cmd.args.internal:
+            if spec.name.internal and not doot.args.cmd.args.internal:
                 continue
             groups[spec.name.group_str()].append((spec.name.task_str(),
-                                                  spec.ctor_name,
+                                                  (spec.doc[0] if bool(spec.doc) else "")[:60],
                                                   spec.source))
 
         for group, tasks in groups.items():
@@ -156,7 +155,7 @@ class ListCmd(Command_i):
         fmt_str = f"{INDENT}%-{max_key}s :: %s.%-25s"
         sources = defaultdict(list)
         for key, spec in tasks.items():
-            if spec.name.task_str().startswith(doot.constants.INTERNAL_TASK_PREFIX) and not doot.args.cmd.args.internal:
+            if spec.name.internal and not doot.args.cmd.args.internal:
                 continue
             sources[spec.source].append((spec.name.task_str(),
                                          spec.ctor.__module__,

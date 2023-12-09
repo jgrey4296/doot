@@ -11,7 +11,7 @@
     ".pytest_cache"
   ],
   "extraPaths": [
-    "/Volumes/documents/github/python/tomler/"
+    "/Volumes/documents/github/python/tomlguard/"
   ],
   "ignore": [],
   "include": [

@@ -32,7 +32,7 @@ logging = logmod.getLogger(__name__)
 
 from typing import Self
 from abc import abstractmethod
-from tomler import Tomler
+from tomlguard import TomlGuard
 from importlib.metadata import EntryPoint
 
 from doot.structs import DootTaskSpec
@@ -43,7 +43,7 @@ from doot._abstract.task import Tasker_i
 @runtime_checkable
 class PluginLoader_p(Protocol):
     """ Base for the first things loaded: plugins."""
-    loaded : ClassVar[Tomler] = None
+    loaded : ClassVar[TomlGuard] = None
 
     @staticmethod
     def get_loaded(group:str, name:str) -> None|str:
@@ -58,11 +58,11 @@ class PluginLoader_p(Protocol):
         return None
 
     @abstractmethod
-    def setup(self, extra_config:Tomler) -> Self:
+    def setup(self, extra_config:TomlGuard) -> Self:
         raise NotImplementedError()
 
     @abstractmethod
-    def load(self) -> Tomler[EntryPoint]:
+    def load(self) -> TomlGuard[EntryPoint]:
         raise NotImplementedError()
 
 @runtime_checkable
@@ -70,11 +70,11 @@ class CommandLoader_p(Protocol):
     """ Base for the second thing loaded: commands """
 
     @abstractmethod
-    def setup(self, plugins:Tomler) -> Self:
+    def setup(self, plugins:TomlGuard) -> Self:
         raise NotImplementedError()
 
     @abstractmethod
-    def load(self) -> Tomler[Command_i]:
+    def load(self) -> TomlGuard[Command_i]:
         raise NotImplementedError()
 
 @runtime_checkable
@@ -85,11 +85,11 @@ class TaskLoader_p(Protocol):
     _task_class      : type
 
     @abstractmethod
-    def setup(self, plugins:Tomler) -> Self:
+    def setup(self, plugins:TomlGuard) -> Self:
         raise NotImplementedError()
 
     @abstractmethod
-    def load(self) -> Tomler[DootTaskSpec]:
+    def load(self) -> TomlGuard[DootTaskSpec]:
         raise NotImplementedError()
 
 

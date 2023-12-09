@@ -13,7 +13,7 @@ import warnings
 
 import pytest
 
-import tomler
+import tomlguard
 import doot
 from doot.enums import TaskStateEnum
 from doot.control.runner import DootRunner
@@ -37,9 +37,9 @@ class TestRunner:
 
     @pytest.fixture(scope="function")
     def setup(self, mocker):
-        min_sleep = {"sleep": 0.0}
-        config_dict = {"settings": {"general" : {"task" : min_sleep, "subtask" : min_sleep, "batch": min_sleep}}}
-        doot.config = tomler.Tomler(config_dict)
+        min_sleep   = 0.0
+        config_dict = {"settings": {"tasks": {"sleep": {"task" : min_sleep, "subtask" : min_sleep, "batch": min_sleep}}}}
+        doot.config = tomlguard.TomlGuard(config_dict)
 
     @pytest.fixture(scope="function")
     def cleanup(self):
@@ -87,7 +87,7 @@ class TestRunner:
         assert(tracker_m.update_state.call_count == 3)
         for call in tracker_m.update_state.call_args_list:
             assert(call.args[0].name in ["first", "second", "third"])
-            assert(call.args[1] is TaskStateEnum.SUCCESS)
+            assert(call.args[1] is tracker_m.state_e.SUCCESS)
 
         expand_tasker.assert_not_called()
         execute_action.assert_not_called()

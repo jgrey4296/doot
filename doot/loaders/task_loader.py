@@ -63,18 +63,18 @@ logging = logmod.getLogger(__name__)
 
 from collections import ChainMap
 import importlib
-import tomler
+import tomlguard
 import doot
 import doot.errors
 from doot.structs import DootTaskSpec
 from doot.constants import DEFAULT_TASK_GROUP, IMPORT_SEP
 from doot._abstract import TaskLoader_p, Tasker_i, Task_i
 
-TASK_STRING : Final[str] = "task_"
-prefix_len  : Final[int] = len(TASK_STRING)
+TASK_STRING : Final[str]  = "task_"
+prefix_len  : Final[int]  = len(TASK_STRING)
 
-task_path       = doot.config.on_fail(".tasks").task_path(wrapper=pl.Path)
-allow_overloads = doot.config.on_fail(False, bool).allow_overloads()
+task_sources              = doot.config.on_fail([".tasks"], list).settings.tasks.sources(wrapper=lambda x: [doot.locs[y] for y in x])
+allow_overloads           = doot.config.on_fail(False, bool).allow_overloads()
 
 def apply_group_and_source(group, source, x):
     x['group']  = x.get('group', group)
@@ -90,14 +90,14 @@ class DootTaskLoader(TaskLoader_p):
     taskers       : dict[str, tuple(dict, Tasker_i)] = {}
     cmd_names     : set[str]                         = set()
     task_builders : dict[str,Any]                    = dict()
-    extra : Tomler
+    extra : TomlGuard
 
     def setup(self, plugins, extra=None) -> Self:
         logging.debug("---- Registering Task Builders")
         self.cmd_names     = set(map(lambda x: x.name, plugins.get("command", [])))
         self.taskers       = {}
         self.task_builders = {}
-        for plugin in tomler.Tomler(plugins).on_fail([]).tasker():
+        for plugin in tomlguard.TomlGuard(plugins).on_fail([]).tasker():
             if plugin.name in self.task_builders:
                 logging.warning("Conflicting Task Builder Type Name: %s: %s / %s",
                                 plugin.name,
@@ -119,25 +119,30 @@ class DootTaskLoader(TaskLoader_p):
                 self.extra = {}
             case list():
                 self.extra = {"_": extra}
-            case dict() | tomler.Tomler():
-                self.extra = tomler.Tomler(extra).on_fail({}).tasks()
+            case dict() | tomlguard.TomlGuard():
+                self.extra = tomlguard.TomlGuard(extra).on_fail({}).tasks()
         logging.debug("Task Loader Setup with %s extra tasks", len(self.extra))
         return self
 
 
-    def load(self) -> Tomler[tuple[dict, type[Task_i|Tasker_i]]]:
+    def load(self) -> TomlGuard[tuple[dict, type[Task_i|Tasker_i]]]:
         start_time = time.perf_counter()
         logging.debug("---- Loading Tasks")
         raw_specs : list[dict] = []
+        logging.debug("Loading Tasks from Config")
         for source in doot._configs_loaded_from:
-            source_data : Tomler = tomler.load(source)
+            source_data : TomlGuard = tomlguard.load(source)
             task_specs = source_data.on_fail({}).tasks()
             raw_specs += self._load_raw_specs(task_specs, source)
 
 
         if self.extra:
+            logging.debug("Loading Tasks from extra values")
             raw_specs += self._load_raw_specs(self.extra, "(extra)")
-        raw_specs += self._load_specs_from_path(task_path)
+
+        logging.debug("Loading tasks from sources: %s", [str(x) for x in task_sources])
+        for path in task_sources:
+            raw_specs += self._load_specs_from_path(path)
 
         logging.debug("Loaded %s Task Specs", len(raw_specs))
         if bool(self.taskers):
@@ -147,7 +152,7 @@ class DootTaskLoader(TaskLoader_p):
         logging.debug("Task List Size: %s", len(self.taskers))
         logging.debug("Task List Names: %s", list(self.taskers.keys()))
         logging.debug("---- Tasks Loaded in %s seconds", f"{time.perf_counter() - start_time:0.4f}")
-        return tomler.Tomler(self.taskers)
+        return tomlguard.TomlGuard(self.taskers)
 
     def _load_raw_specs(self, data:dict, source:pl.Path|Literal['(extra)']) -> list[dict]:
         """ extract raw task descriptions from a toplevel tasks dict, with not format checking
@@ -165,13 +170,13 @@ class DootTaskLoader(TaskLoader_p):
         return raw_specs
 
     def _load_specs_from_path(self, path) -> list[dict]:
-        """ load a config file defined task_path of tasks """
+        """ load a config file defined task_sources of tasks """
         raw_specs = []
         # Load task spec path
         if not path.exists():
             pass
         elif path.is_dir():
-            for task_file, data in [(x, tomler.load(x)) for x in path.iterdir() if x.suffix == ".toml"]:
+            for task_file, data in [(x, tomlguard.load(x)) for x in path.iterdir() if x.suffix == ".toml"]:
                 for group, val in data.on_fail({}).tasks().items():
                     # sets 'group' for each task if it hasn't been set already
                     raw_specs += map(ftz.partial(apply_group_and_source, group, task_file), val)
@@ -180,10 +185,13 @@ class DootTaskLoader(TaskLoader_p):
                     self._load_location_updates(data.locations, task_file)
 
         elif path.is_file():
-            for group, val in tomler.load(path).on_fail({}).tasks().items():
+            data = tomlguard.load(path)
+            for group, val in data.on_fail({}).tasks().items():
                 # sets 'group' for each task if it hasn't been set already
                 raw_specs += map(ftz.partial(apply_group_and_source, group, path), val)
             logging.info("Loaded Tasks from: %s", path)
+            if 'locations' in data:
+                self._load_location_updates(data.locations, path)
 
         return raw_specs
 
@@ -200,7 +208,7 @@ class DootTaskLoader(TaskLoader_p):
                     case {"name": task_name, "disable" : True}:
                         logging.info("Spec is disabled: %s", task_name)
                     case {"name": task_name} if task_name in command_names:
-                        raise doot.errors.DootTaskLoadError("Task / Cmd name conflict: %s", task_name)
+                        raise doot.errors.DootTaskLoadError("Name conflict: %s is already a Command", task_name)
                     case {"name": task_name, "group": group} if (task_name in task_descriptions and group == task_descriptions[task_name][0]['group'] and not allow_overloads):
                         raise doot.errors.DootTaskLoadError("Task Name Overloaded: %s : %s", task_name, group)
                     case {"name": task_name, "ctor": task_type} if task_type in self.task_builders:
@@ -230,14 +238,14 @@ class DootTaskLoader(TaskLoader_p):
             except ModuleNotFoundError as err:
                 raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Module Name: '%s'. Source File: %s", task_name, task_type, spec['source']) from err
             except AttributeError as err:
-                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Class Name: '%s'. Source File: %s", task_name, task_type, spec['source']) from err
+                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Class Name: '%s'. Source File: %s", task_name, task_type, spec['source'], err.args) from err
             except ValueError as err:
                 raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Module/Class Split failed on: '%s'. Source File: %s", task_name, task_type, spec['source']) from err
 
         return task_descriptions
 
-    def _load_location_updates(self, data:list[Tomler], source):
-        logmod.debug("Loading Location Updates: %s", source)
+    def _load_location_updates(self, data:list[TomlGuard], source):
+        logging.debug("Loading Location Updates: %s", source)
         for group in data:
             try:
                 doot.locs.update(group)

@@ -63,9 +63,10 @@ class LogAction(Action_p):
     _toml_kwargs = ["msg", "level"]
 
     def __call__(self, spec, task_state):
-        level   = logmod.getLevelName(spec.kwargs.on_fail("INFO", str).level())
-        msg     = expand_key(spec.kwargs.on_fail("msg").msg_(), spec, task_state)
-        printer.log(level, "%s", msg)
+        level        = logmod.getLevelName(spec.kwargs.on_fail("INFO", str).level())
+        msg          = expand_key(spec.kwargs.on_fail("msg").msg_(), spec, task_state)
+        expanded_msg = expand_str(msg, spec, task_state)
+        printer.log(level, "%s", expanded_msg)
 
 @doot.check_protocol
 class StalenessCheck(Action_p):

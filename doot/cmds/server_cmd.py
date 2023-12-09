@@ -54,7 +54,7 @@ class BasicServer(Command_i):
     def param_specs(self) -> list:
         return super().param_specs + []
 
-    def __call__(self, tasks:Tomler, plugins:Tomler):
+    def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
         pass
         # app.run(port=8000, debug=True, ssl_context="adhoc")
 

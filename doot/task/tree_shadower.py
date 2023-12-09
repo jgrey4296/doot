@@ -26,8 +26,8 @@ from doot.errors import DootDirAbsent, DootLocationError
 from doot.structs import DootTaskSpec
 from doot.task.dir_walker import DootDirWalker, _WalkControl
 
-glob_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).setting.globbing.ignores()
-glob_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).setting.globbing.halts()
+walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
+walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).settings.walking.halts()
 
 @doot.check_protocol
 class DootTreeShadower(DootDirWalker):
@@ -65,7 +65,7 @@ class DootTreeShadower(DootDirWalker):
         self.rec            = spec.extra.on_fail(False, bool).recursive()
         self.total_subtasks = 0
         for x in self.roots:
-            depth = len(set(self.__class__.mro()) - set(DootDirWalker.mro()))
+            depth = len(set(self.__class__.mro()) - set(super().__class__.mro()))
             if not x.exists():
                 logging.warning(f"Walker Missing Root: {x.name}", stacklevel=depth)
             if not x.is_dir():
@@ -75,8 +75,12 @@ class DootTreeShadower(DootDirWalker):
         self.total_subtasks = 0
         logging.debug("%s : Building Shadow SubTasks", self.name)
         for i, (uname, fpath) in enumerate(self.glob_all()):
-
-            match self._build_subtask(i, uname, fpath=fpath, fstem=fpath.stem, fname=fpath.name, lpath=self.rel_path(fpath), shadow_path=self._shadow_path(fpath)):
+            match self._build_subtask(i, uname,
+                                      fpath=fpath,
+                                      fstem=fpath.stem,
+                                      fname=fpath.name,
+                                      lpath=self.rel_path(fpath),
+                                      shadow_path=self._shadow_path(fpath)):
                 case None:
                     pass
                 case DootTaskSpec() as subtask:

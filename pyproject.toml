@@ -15,14 +15,19 @@ classifiers     = [
 
 
 dependencies   = [
-    "tomler @ git+https://github.com/jgrey4296/tomler.git",
+    "tomlguard @ git+https://github.com/jgrey4296/tomlguard.git",
     "networkx > 3.0",
     "sh >= 2.0.6",
+    "stackprinter >= 0.2.10",
+    "matplotlib",
+    "sty",
+    "boltons",
 ]
 
 [project.optional-dependencies]
 test = [
   "pytest < 5.0.0",
+  "pytest-mock",
 ]
 dev = [
     "pipreqs", "sphinx"

@@ -61,11 +61,29 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+import importlib
 from importlib.metadata import EntryPoint
+from doot.structs import DootStructuredName
+from doot.enums import StructuredNameEnum
+import doot.errors
 
-def plugin_selector(plugins:Tomler, *, target="default", fallback=None) -> type:
-    """ Selects and loads plugins from a tomler, based on a target,
+def plugin_selector(plugins:TomlGuard, *, target="default", fallback=None) -> type:
+    """ Selects and loads plugins from a tomlguard, based on a target,
     with an available fallback constructor """
+    logging.debug("Selecting plugin for target: %s", target)
+
+    if target != "default":
+        try:
+            name = DootStructuredName.from_str(target, form=StructuredNameEnum.CLASS)
+            module = importlib.import_module(name.group_str())
+            return getattr(module, name.task_str())
+        except ImportError as err:
+            # raise doot.errors.DootInvalidConfig("Import Failed: %s : %s", target, err.msg) from err
+            pass
+        except (AttributeError, KeyError) as err:
+            # raise doot.errors.DootInvalidConfig("Import Failed: Module has missing attritbue/key: %s", target) from err
+            pass
+
     match plugins:
         case x if not isinstance(x, list):
             return x
@@ -79,9 +97,8 @@ def plugin_selector(plugins:Tomler, *, target="default", fallback=None) -> type:
             return l.load()
         case [*_] as loaders: # Otherwise, use the loader that matches the preferred's name
             matching = [x for x in loaders if x.name == target]
-            if not bool(matching):
-                raise KeyError("No Matching Plugin found: ", preferred_cmd_loader, loaders)
-            return matching[0].load()
+            if bool(matching):
+                return matching[0].load()
 
 
 

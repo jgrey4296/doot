@@ -47,7 +47,7 @@ from doot.control.runner import DootRunner
 from doot.utils.signal_handler import SignalHandler
 
 dry_run      = doot.args.on_fail(False).cmd.args.dry_run()
-SLEEP_LENGTH = doot.config.on_fail(0.2, int|float).settings.general.task.sleep()
+SLEEP_LENGTH = doot.config.on_fail(0.2, int|float).settings.tasks.sleep.task()
 
 @doot.check_protocol
 class DootStepRunner(DootRunner):

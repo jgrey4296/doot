@@ -35,7 +35,7 @@ class SimpleSubTasker(SubMixin, DootTasker):
     def build(self, **kwargs):
         head = self._build_head()
         for sub in self._build_subs():
-            head.runs_after.append(sub.name)
+            head.depends_on.append(sub.name)
             yield sub
 
         yield head
@@ -50,12 +50,12 @@ class SetupTearDownTasker(SimpleSubTasker):
         head     = self._build_head()
         setup    = DootTaskSpec(name=self.fullname.subtask("setup"))
         teardown = DootTaskSpec(name=self.fullname.subtask("teardown"))
-        head.runs_after.append(teardown)
-        head.runs_after.append(setup)
+        head.depends_on.append(teardown)
+        head.depends_on.append(setup)
 
         for sub in super()._build_subs():
-            sub.runs_after.append(setup.name)
-            teardown.runs_after.append(sub.name)
+            sub.depends_on.append(setup.name)
+            teardown.depends_on.append(sub.name)
             yield sub
 
         yield setup

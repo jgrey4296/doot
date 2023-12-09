@@ -32,10 +32,10 @@ logging = logmod.getLogger(__name__)
 from time import sleep
 import doot
 
-batch_size       = doot.config.on_fail(10, int).batch.size()
-batches_max      = doot.config.on_fail(-1,    int).batch.max()
-sleep_batch      = doot.config.on_fail(2.0,   int|float).batch.sleep()
-sleep_notify     = doot.config.on_fail(False, bool).notify.sleep()
+batch_size       = doot.config.on_fail(10, int).settings.tasks.batch.size()
+batches_max      = doot.config.on_fail(-1,    int).settings.tasks.batch.max()
+sleep_batch      = doot.config.on_fail(2.0,   int|float).settings.tasks.sleep.batch()
+sleep_notify     = doot.config.on_fail(False, bool).settings.general.notify.sleep()
 
 class BatchMixin:
     """

@@ -62,7 +62,7 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-import tomler
+import tomlguard
 import time
 import doot
 from doot._abstract import CommandLoader_p, Command_i
@@ -85,13 +85,13 @@ class DootCommandLoader(CommandLoader_p):
             case list():
                 self.extra = extra
             case dict():
-                self.extra = tomler.Tomler(extra).on_fail([]).tasks()
-            case tomler.Tomler():
-                self.extra = tomler.on_fail([]).tasks()
+                self.extra = tomlguard.TomlGuard(extra).on_fail([]).tasks()
+            case tomlguard.TomlGuard():
+                self.extra = tomlguard.on_fail([]).tasks()
 
         return self
 
-    def load(self) -> Tomler[Command_i]:
+    def load(self) -> TomlGuard[Command_i]:
         logging.debug("---- Loading Commands")
         for cmd_point in self.cmd_plugins:
             try:
@@ -106,4 +106,4 @@ class DootCommandLoader(CommandLoader_p):
             except Exception as err:
                 raise doot.errors.DootPluginError("Attempted to load a non-command: %s : %s", cmd_point, err) from err
 
-        return tomler.Tomler(self.cmds)
+        return tomlguard.TomlGuard(self.cmds)

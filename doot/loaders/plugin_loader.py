@@ -64,7 +64,7 @@ logging = logmod.getLogger(__name__)
 
 from collections import defaultdict
 from importlib.metadata import entry_points, EntryPoint
-import tomler
+import tomlguard
 import doot
 import doot.constants
 from doot._abstract import PluginLoader_p
@@ -92,18 +92,18 @@ class DootPluginLoader(PluginLoader_p):
         self.plugins = defaultdict(list)
         match extra_config:
             case None:
-                self.extra_config = tomler.Tomler({})
+                self.extra_config = tomlguard.TomlGuard({})
             case dict():
-                self.extra_config = tomler.Tomler(extra_config)
-            case tomler.Tomler():
+                self.extra_config = tomlguard.TomlGuard(extra_config)
+            case tomlguard.TomlGuard():
                 self.extra_config = extra_config
 
         return self
 
-    def load(self) -> Tomler[EntryPoint]:
+    def load(self) -> TomlGuard[EntryPoint]:
         """
         use entry_points(group="doot")
-        add to the config tomler
+        add to the config tomlguard
         """
         logging.debug("---- Loading Plugins: %s", doot.constants.PLUGIN_TOML_PREFIX)
         try:
@@ -127,7 +127,7 @@ class DootPluginLoader(PluginLoader_p):
             raise doot.errors.DootPluginError("Failed to load plugin defaults: %s", err) from err
 
         logging.debug("Found %s plugins", len(self.plugins))
-        PluginLoader_p.loaded = tomler.Tomler(self.plugins)
+        PluginLoader_p.loaded = tomlguard.TomlGuard(self.plugins)
         return PluginLoader_p.loaded
 
     def _load_system_plugins(self):
@@ -150,7 +150,7 @@ class DootPluginLoader(PluginLoader_p):
             if cmd_group not in plugin_types:
                 logging.warning("Unknown plugin type found in config: %s", cmd_group)
                 continue
-            if not isinstance(vals, (tomler.Tomler, dict)):
+            if not isinstance(vals, (tomlguard.TomlGuard, dict)):
                 logging.warning("Toml specified plugins need to be a dict of (cmdName : class): %s ", cmd_group)
                 continue
 

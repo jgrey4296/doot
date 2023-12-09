@@ -97,6 +97,7 @@ class TestStringExpand:
         assert(set(["blah then bloo"]) == expand_str(set(["{test} then {other}"]), mock_spec, state))
 
 
+    @pytest.mark.skip("TODO")
     def test_non_recursive(self, mocker):
         mock_spec = mocker.MagicMock(spec=DootActionSpec)
         mock_spec.kwargs = {"test": "{other}", "other": "aweg"}

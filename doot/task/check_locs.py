@@ -6,7 +6,7 @@ import shutil
 from typing import ClassVar
 from functools import partial
 
-from tomler import Tomler
+from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.structs import DootStructuredName, DootTaskSpec
@@ -20,7 +20,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 make_missing = doot.config.on_fail(False).settings.general.location_check.make_missing()
-print_levels = doot.config.on_fail(Tomler(), Tomler).settings.general.location_check.print_levels(Tomler)
+print_levels = doot.config.on_fail(TomlGuard(), TomlGuard).settings.general.location_check.print_levels(TomlGuard)
 
 @doot.check_protocol
 class CheckLocsTask(DootTask):

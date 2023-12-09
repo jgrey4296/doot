@@ -17,5 +17,5 @@ name        = ""
 print_level = "INFO"
 ctor        = "task"
 doc         = []
-runs-after  = []
+depends-on  = []
 actions     = []

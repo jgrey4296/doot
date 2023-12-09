@@ -27,8 +27,8 @@ from doot.task.base_tasker import DootTasker
 from doot.mixins.tasker.subtask import SubMixin
 from doot.structs import DootTaskSpec
 
-glob_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.globbing.ignores()
-glob_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).setting.globbing.halts()
+walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
+walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).settings.walking.halts()
 
 class _WalkControl(enum.Enum):
     """
@@ -65,8 +65,8 @@ class DootDirWalker(SubMixin, DootTasker):
     `filter_fn` allows an import path of a callable: lambda(pl.Path) -> _WalkControl
 
     Config files can specify:
-    settings.globbing.ignores = []
-    settings.globbing.halts   = []
+    settings.walking.ignores = []
+    settings.walking.halts   = []
 
     Override as necessary:
     .filter : for controlling glob results
@@ -86,7 +86,7 @@ class DootDirWalker(SubMixin, DootTasker):
         self.rec            = spec.extra.on_fail(False, bool).recursive()
         self.total_subtasks = 0
         for x in self.roots:
-            depth = len(set(self.__class__.mro()) - set(DootDirWalker.mro()))
+            depth = len(set(self.__class__.mro()) - set(super().__class__.mro()))
             if not x.exists():
                 logging.warning(f"Walker Missing Root: {x.name}", stacklevel=depth)
             if not x.is_dir():
@@ -114,7 +114,7 @@ class DootDirWalker(SubMixin, DootTasker):
         rec       = bool(rec) or rec is None and self.rec
         exts      = exts or self.exts or []
         filter_fn = fn or self.filter
-        printer.debug("Globbing on Target: %s : rec=%s, exts=%s", target, rec, exts)
+        printer.info("Walking Target: %s : rec=%s, exts=%s", target, rec, exts)
 
         if not target.exists():
             return None
@@ -129,16 +129,16 @@ class DootDirWalker(SubMixin, DootTasker):
             current = queue.pop()
             if not current.exists():
                 continue
-            if current.name in glob_ignores:
+            if current.name in walk_ignores:
                 continue
-            if current.is_dir() and any([(current / x).exists() for x in glob_halts]):
+            if current.is_dir() and any([(current / x).exists() for x in walk_halts]):
                 continue
             if bool(exts) and current.is_file() and current.suffix not in exts:
                 continue
             match filter_fn(current):
                 case _WalkControl.keep | _WalkControl.yes:
                     yield current
-                case True if current.is_dir() and bool(exts):
+                case True if current.is_dir():
                     queue += sorted(current.iterdir())
                 case True | _WalkControl.accept | _WalkControl.yesAnd:
                     yield current
@@ -181,7 +181,7 @@ class DootDirWalker(SubMixin, DootTasker):
         head = self._build_head()
 
         for sub in self._build_subs():
-            head.runs_after.append(sub.name)
+            head.depends_on.append(sub.name)
             yield sub
 
         yield head
@@ -202,7 +202,7 @@ class DootDirWalker(SubMixin, DootTasker):
 
     def _non_recursive_glob(self, target, filter_fn, exts):
         check_fn = lambda x: (filter_fn(x) not in [None, False, _WalkControl.reject, _WalkControl.discard, _WalkControl.no, _WalkControl.noBut]
-                                and x.name not in glob_ignores
+                                and x.name not in walk_ignores
                                 and (not bool(exts) or (x.is_file() and x.suffix in exts)))
 
         if check_fn(target):
