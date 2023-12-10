@@ -27,7 +27,7 @@ logging = logmod.getLogger(__name__)
 printer         = logmod.getLogger("doot._printer")
 
 # Global, single points of truth:
-__version__          : Final[str]         = "0.2.2"
+__version__          : Final[str]         = "0.2.3"
 
 config               : TG.TomlGuard       = TG.TomlGuard() # doot config
 locs                 : DootLocData        = DootLocations(pl.Path()) # registered locations

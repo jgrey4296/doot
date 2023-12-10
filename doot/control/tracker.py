@@ -128,7 +128,8 @@ class DootTracker(TaskTracker_i):
                 if specialized.ctor is None:
                     raise doot.errors.DootTaskTrackingError("Attempt to specialize task failed: %s", task.name)
 
-                return specialized
+                task = specialized.ctor(task)
+                return task
             case DootTaskSpec():
                 task : TaskBase_i = DootTask(task)
             case TaskBase_i():
