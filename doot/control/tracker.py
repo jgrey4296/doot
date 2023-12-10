@@ -125,11 +125,10 @@ class DootTracker(TaskTracker_i):
                 # specialize a loaded task
                 base_spec   = self.tasks.get(str(ctor_name)).spec
                 specialized = base_spec.specialize_from(task)
-                if specialized.ctor is not None:
-                    self.add_task(specialized, no_root_connection=no_root_connection)
-                    return
-                else:
+                if specialized.ctor is None:
                     raise doot.errors.DootTaskTrackingError("Attempt to specialize task failed: %s", task.name)
+
+                return specialized
             case DootTaskSpec():
                 task : TaskBase_i = DootTask(task)
             case TaskBase_i():
