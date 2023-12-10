@@ -15,7 +15,7 @@ classifiers     = [
 
 
 dependencies   = [
-    "tomlguard @ git+https://github.com/jgrey4296/tomlguard.git",
+    "tomlguard",
     "networkx > 3.0",
     "sh >= 2.0.6",
     "stackprinter >= 0.2.10",
@@ -36,7 +36,7 @@ dev = [
 ##-- urls
 [project.urls]
 homepage      = "https://github.com/jgrey4296/doot"
-documentation = "https://readthedocs.org/doot"
+documentation = "https://github.com/jgrey4296/doot/wiki"
 repository    = "https://github.com/jgrey4296/doot"
 changelog     = "https://github.com//doot/blob/master/CHANGELOG.md"
 
