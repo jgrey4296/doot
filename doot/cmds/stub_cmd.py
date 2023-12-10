@@ -187,7 +187,7 @@ class StubCmd(Command_i):
             printer.info("{ do=\"action name/import path\", args=[], inState=[], outState=[] } # plus any kwargs a specific action uses")
 
         printer.info("")
-        printer.info("- For Custom Python Actions, implement the following in the .tasks director ")
+        printer.info("- For Custom Python Actions, implement the following in the .tasks directory")
         printer.info("def custom_action(spec:DootActionSpec, task_state:dict) -> None|bool|dict:...")
 
     def _list_flags(self):

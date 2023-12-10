@@ -1,16 +1,19 @@
 [project]
 name            = "doot"
 version         = "0.2.0"
-description     = ""
+description     = "An opinionated, TOML based task runner"
 readme          = "README.md"
 requires-python = ">=3.11"
 license         = {file = "LICENSE"}
-keywords        = []
+keywords        = ["toml","taskrunner"]
 authors         = [
   {email = "jgrey.n.plus.one@gmail.com", name  = "jgrey"}
 ]
 classifiers     = [
-  "Programming Language :: Python"
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.11",
+  "Development Status :: 3 - Alpha",
+  "Topic :: Utilities",
 ]
 
 
