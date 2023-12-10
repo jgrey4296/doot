@@ -1,6 +1,6 @@
 [project]
 name            = "doot"
-version         = "0.2.0"
+version         = "0.2.1"
 description     = "An opinionated, TOML based task runner"
 readme          = "README.md"
 requires-python = ">=3.11"
@@ -25,6 +25,7 @@ dependencies   = [
     "matplotlib",
     "sty",
     "boltons",
+    "more_itertools"
 ]
 
 [project.optional-dependencies]
