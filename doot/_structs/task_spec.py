@@ -86,13 +86,13 @@ class DootTaskSpec:
     ctor_name         : DootStructuredName                           = field(default=None)
     ctor              : type|Callable|None                           = field(default=None)
     # Any additional information:
-    version            : str                                         = field(default="0.1")
+    version            : str                                            = field(default="0.1")
     print_levels       : TomlGuard                                      = field(default_factory=TomlGuard)
-    flags              : TaskFlags                                   = field(default=TaskFlags.TASK)
+    flags              : TaskFlags                                      = field(default=TaskFlags.TASK)
 
     extra              : TomlGuard                                      = field(default_factory=TomlGuard)
 
-    inject             : list[str]                                   = field(default_factory=list) # For taskers
+    inject             : list[str]                                      = field(default_factory=list) # For taskers
     @staticmethod
     def from_dict(data:dict, *, ctor:type=None, ctor_name=None):
         """ builds a task spec from a raw dict

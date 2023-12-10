@@ -27,14 +27,14 @@ logging = logmod.getLogger(__name__)
 printer         = logmod.getLogger("doot._printer")
 
 # Global, single points of truth:
-__version__          : Final[str]      = "0.2.0"
+__version__          : Final[str]         = "0.2.4"
 
 config               : TG.TomlGuard       = TG.TomlGuard() # doot config
-locs                 : DootLocData     = DootLocations(pl.Path()) # registered locations
+locs                 : DootLocData        = DootLocations(pl.Path()) # registered locations
 args                 : TG.TomlGuard       = TG.TomlGuard() # parsed arg access
-report               : Reporter_i      = None
+report               : Reporter_i         = None
 
-_configs_loaded_from : list[pl.Path]   = []
+_configs_loaded_from : list[pl.Path]      = []
 
 def setup(targets:list[pl.Path]|None=None, prefix:str|None=None) -> tuple[TG.TomlGuard, DootLocData]:
     """
