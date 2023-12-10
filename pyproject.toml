@@ -1,6 +1,6 @@
 [project]
 name            = "doot"
-version         = "0.2.1"
+version         = "0.2.2"
 description     = "An opinionated, TOML based task runner"
 readme          = "README.md"
 requires-python = ">=3.11"
@@ -85,3 +85,17 @@ log_cli_level = "INFO"
 log_format    = "%(levelname)s %(name)s : %(message)s"
 
 ##-- end pytest
+
+##-- bumpver
+[tool.bumpver]
+current_version = "0.2.2"
+version_pattern = "MAJOR.MINOR.PATCH"
+
+[tool.bumpver.file_patterns]
+"pyproject.toml"   = [
+                   '^version         = "{version}"$',
+                   '^current_version = "{version}"$'
+]
+"doot/__init__.py" = ['^__version__          : Final\[str\]         = "{version}"']
+
+                   ##-- end bumpver
