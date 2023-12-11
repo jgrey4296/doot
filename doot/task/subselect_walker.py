@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Base classes for making tasks which glob over files / directories and make a subtask for each
+Base classes for making tasks which walk over files / directories and make a subtask for each
 matching thing
 """
 ##-- imports
@@ -41,7 +41,6 @@ class DootSubselectWalker(DootDirWalker):
 
     """
     control = _WalkControl
-    globc   = _WalkControl
 
     def __init__(self, spec):
         super().__init__(spec)
@@ -58,7 +57,7 @@ class DootSubselectWalker(DootDirWalker):
         logging.debug("%s : Building Subselection Walker SubTasks", self.name)
         self.total_subtasks = 0
         # Find
-        matching   = list(self.glob_all(fn=self.filter_fn))
+        matching   = list(self.walk_all(fn=self.filter_fn))
 
         # Select
         match self.spec.extra.on_fail("random", str).select_method():

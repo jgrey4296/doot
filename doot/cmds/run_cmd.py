@@ -89,7 +89,5 @@ class RunCmd(Command_i):
         tracker.queue_task(CheckLocsTask.task_name)
 
         printer.info("- %s Tasks Queued: %s", len(tracker.active_set), " ".join(tracker.active_set))
-        printer.info("- Running Tasks")
-
         with runner:
             runner()

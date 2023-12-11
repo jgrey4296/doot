@@ -37,7 +37,7 @@ import doot.enums
 import doot.errors
 import doot.constants
 from doot._abstract import Command_i, PluginLoader_p
-from doot.structs import TaskStub, DootStructuredName
+from doot.structs import TaskStub, DootTaskName, DootCodeReference
 from doot.task.base_tasker import DootTasker
 from doot.task.base_task import DootTask
 from collections import defaultdict
@@ -68,9 +68,8 @@ class StubCmd(Command_i):
 
     def _import_task_class(self, ctor_name):
         try:
-            module_name, cls_name = ctor_name.split(doot.constants.IMPORT_SEP)
-            module = importlib.import_module(module_name)
-            return getattr(module, cls_name)
+            code_ref = DootCodeReference.from_str(ctor_name)
+            return code_ref.try_import()
         except ImportError as err:
             raise doot.errors.DootTaskLoadError(ctor_name)
 
@@ -115,7 +114,7 @@ class StubCmd(Command_i):
         stub['print_levels'].default  = dict()
         stub['print_levels'].type     = f"Dict: {doot.constants.PRINT_LOCATIONS}"
         stub['priority'].default     = 10
-        stub['name'].default         = DootStructuredName.from_str(doot.args.cmd.args.name)
+        stub['name'].default         = DootTaskName.from_str(doot.args.cmd.args.name)
 
         # add ctor specific fields,
         # such as for dir_walker: roots [], exts [], recursive bool, subtask "", head_task ""

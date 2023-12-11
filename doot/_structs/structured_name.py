@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 See EOF for license/metadata/notes as applicable
 """
 
@@ -41,58 +40,50 @@ import importlib
 from tomlguard import TomlGuard
 import doot.errors
 import doot.constants
-from doot.enums import TaskFlags, ReportEnum, StructuredNameEnum
+from doot.enums import TaskFlags, ReportEnum
 
 PAD           : Final[int] = 15
 TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
 
+# class StructuredNameEnum(enum.Enum):
 
 @dataclass
 class DootStructuredName:
     """ A Complex name class for identifying tasks and classes.
 
       Classes are the standard form using in importlib: doot.structs:DootStucturedName
-      Tasks use a double colon to separate group from task name: tasks.globGroup::GlobTask
+      Tasks use a double colon to separate head from tail name: tasks.globGroup::GlobTask
 
     """
-    group           : list[str]          = field(default_factory=list)
-    task            : list[str]          = field(default_factory=list)
+    head            : list[str]          = field(default_factory=list)
+    tail            : list[str]          = field(default_factory=list)
 
     internal        : bool               = field(default=False, kw_only=True)
     # maybe: tasker : bool               = field(default=False, kw_only=True) -> add '*' at head or tail
 
-    form            : StructuredNameEnum = field(default=StructuredNameEnum.TASK, kw_only=True)
-    task_separator  : ClassVar[str] = doot.constants.TASK_SEP
-
-    class_separator : ClassVar[str] = doot.constants.IMPORT_SEP
-    subseparator    : ClassVar[str] = "."
+    separator       : str                = field(default=doot.constants.TASK_SEP, kw_only=True)
+    subseparator    : str                = field(default=".", kw_only=True)
 
     def __post_init__(self):
-        match self.group:
+        match self.head:
             case ["tasks", x] if x.startswith('"') and x.endswith('"'):
-                self.group = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(DootStructuredName.subseparator), x[1:-1]))
+                self.head = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(self.subseparator), x[1:-1]))
             case ["tasks", *xs]:
-                self.group = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(DootStructuredName.subseparator), xs))
+                self.head = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(self.subseparator), xs))
             case list():
-                self.group = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(DootStructuredName.subseparator), self.group))
+                self.head = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(self.subseparator), self.head))
             case str():
-                self.group = self.group.split(DootStructuredName.subseparator)
+                self.head = self.head.split(self.subseparator)
             case None | []:
-                self.group = ["default"]
+                self.head = ["default"]
 
-        match self.task:
+        match self.tail:
             case list():
-                self.task = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(DootStructuredName.subseparator), self.task))
+                self.tail = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(self.subseparator), self.tail))
             case str():
-                self.task = self.task.split(DootStructuredName.subseparator)
+                self.tail = self.tail.split(self.subseparator)
             case None | []:
-                self.task = ["default"]
-
-        self.internal = self.task[0].startswith(doot.constants.INTERNAL_TASK_PREFIX) or self.internal
-
-    def __str__(self) -> str:
-        sep = DootStructuredName.task_separator if self.form is StructuredNameEnum.TASK else DootStructuredName.class_separator
-        return "{}{}{}".format(self.group_str(), sep, self.task_str())
+                self.tail = ["default"]
 
     def __hash__(self):
         return hash(str(self))
@@ -109,11 +100,11 @@ class DootStructuredName:
             case _:
                 return False
 
-        for x,y in zip(self.group, other.group):
+        for x,y in zip(self.head, other.head):
             if x != y:
                 return False
 
-        for x,y in zip(self.task, other.task):
+        for x,y in zip(self.tail, other.tail):
             if x != y:
                 return False
 
@@ -122,62 +113,116 @@ class DootStructuredName:
     def __contains__(self, other:str):
         return other in str(self)
 
-    def task_str(self):
-        return DootStructuredName.subseparator.join(self.task)
+    def tail_str(self):
+        return self.subseparator.join(self.tail)
 
-    def group_str(self):
-        fmt = "{}"
-        match self.form:
-            case StructuredNameEnum.TASK if len(self.group) > 1:
-                # fmt = "tasks.\"{}\""
-                fmt = '"{}"'
-            case StructuredNameEnum.TASK:
-                # fmt = "tasks.{}"
-                fmt = "{}"
-            case StructuredNameEnum.CLASS | StructuredNameEnum.CALLABLE:
-                fmt = "{}"
+    def head_str(self):
+        return self.subseparator.join(self.head)
 
-        base = DootStructuredName.subseparator.join(self.group)
-        return fmt.format(base)
-
-    def subtask(self, *subtasks, subgroups:list[str]|None=None):
-        return DootStructuredName(self.group + (subgroups or []),
-                                   self.task + list(subtasks),
-                                   internal=self.internal
-                                   )
-
-
-    def root(self):
-        if self.form in [StructuredNameEnum.CLASS, StructuredNameEnum.CALLABLE]:
-            raise TypeError("Getting the root of a class or callable doesn't make sense")
-        return f"{self.group_str()}{DootStructuredName.task_separator}{self.task[0]}"
-
-    @staticmethod
-    def from_str(name:str, form:StructuredNameEnum=StructuredNameEnum.TASK):
-        sep = DootStructuredName.task_separator if form is StructuredNameEnum.TASK else DootStructuredName.class_separator
-        if sep in name:
-            groupHead_r, taskHead_r = name.split(sep)
-            groupHead = groupHead_r.split(DootStructuredName.subseparator)
-            taskHead = taskHead_r.split(DootStructuredName.subseparator)
-        else:
-            groupHead = None
-            taskHead  = name
-        return DootStructuredName(groupHead, taskHead, form=form)
+@dataclass
+class DootCodeReference(DootStructuredName):
+    separator : str = field(default=doot.constants.IMPORT_SEP, kw_only=True)
 
     def try_import(self) -> Any:
         try:
-            mod = importlib.import_module(self.group_str())
+            mod = importlib.import_module(self.head_str())
             curr = mod
-            for name in self.task:
+            for name in self.tail:
                 curr = getattr(curr, name)
 
             return curr
         except AttributeError as err:
             raise ImportError("Attempted to import %s but failed", str(self)) from err
 
+    def __str__(self) -> str:
+        return "{}{}{}".format(self.module, self.separator, self.value)
 
+    def __hash__(self):
+        return hash(str(self))
 
-"""
+    @classmethod
+    def from_str(cls, name:str):
+        if ":" in name:
+            groupHead_r, taskHead_r = name.split(":")
+            groupHead = groupHead_r.split(".")
+            taskHead = taskHead_r.split(".")
+        else:
+            groupHead = None
+            taskHead  = name
+        return DootCodeReference(groupHead, taskHead)
 
+    @property
+    def module(self):
+        return self.subseparator.join(self.head)
 
-"""
+    @property
+    def value(self):
+        return self.subseparator.join(self.tail)
+
+@dataclass
+class DootTaskName(DootStructuredName):
+
+    separator  : str = field(default=doot.constants.TASK_SEP, kw_only=True)
+
+    def __post_init__(self):
+        match self.head:
+            case ["tasks", x] if x.startswith('"') and x.endswith('"'):
+                self.head = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(self.subseparator), x[1:-1]))
+            case ["tasks", *xs]:
+                self.head = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(self.subseparator), xs))
+            case list():
+                self.head = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(self.subseparator), self.head))
+            case str():
+                self.head = self.head.split(self.subseparator)
+            case None | []:
+                self.head = ["default"]
+
+        match self.tail:
+            case list():
+                self.tail = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(self.subseparator), self.tail))
+            case str():
+                self.tail = self.tail.split(self.subseparator)
+            case None | []:
+                self.tail = ["default"]
+
+        self.internal = self.tail[0].startswith(doot.constants.INTERNAL_TASK_PREFIX) or self.internal
+
+    def subtask(self, *subtasks, subgroups:list[str]|None=None):
+        return DootTaskName(self.head + (subgroups or []),
+                                   self.tail + list(subtasks),
+                                   internal=self.internal
+                                   )
+
+    def __str__(self) -> str:
+        return "{}{}{}".format(self.group, self.separator, self.task)
+
+    def __hash__(self):
+        return hash(str(self))
+
+    def root(self):
+        if self.form in [StructuredNameEnum.CLASS, StructuredNameEnum.CALLABLE]:
+            raise TypeError("Getting the root of a class or callable doesn't make sense")
+        return f"{self.head_str()}{DootStructuredName.task_separator}{self.tail[0]}"
+
+    @property
+    def group(self):
+        fmt = "{}"
+        if len(self.head) > 1:
+            # fmt = "tasks.\"{}\""
+            fmt = '"{}"'
+        return fmt.format(self.head_str())
+
+    @property
+    def task(self):
+        return self.tail_str()
+
+    @classmethod
+    def from_str(cls, name:str):
+        if ":" in name:
+            groupHead_r, taskHead_r = name.split("::")
+            groupHead = groupHead_r.split(".")
+            taskHead = taskHead_r.split(".")
+        else:
+            groupHead = None
+            taskHead  = name
+        return DootTaskName(groupHead, taskHead)

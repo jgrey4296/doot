@@ -51,7 +51,7 @@ class TestWalker:
         obj = DootDirWalker(DootTaskSpec.from_dict({"name" : "basic"}))
         assert(isinstance(obj, TaskBase_i))
 
-    def test_basic_glob(self, wrap_tmp):
+    def test_basic_walk(self, wrap_tmp):
         (wrap_tmp / "first").mkdir()
         (wrap_tmp / "second").mkdir()
         obj = DootDirWalker(DootTaskSpec.from_dict({"name" : "basic"}))
@@ -65,7 +65,7 @@ class TestWalker:
 
         assert(count == 4)
 
-    def test_test_file_glob(self, wrap_tmp):
+    def test_test_file_walk(self, wrap_tmp):
         (wrap_tmp / "first").mkdir()
         (wrap_tmp / "first" / "blah.txt").touch()
         (wrap_tmp / "second").mkdir()

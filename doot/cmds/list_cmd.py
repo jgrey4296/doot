@@ -118,7 +118,7 @@ class ListCmd(Command_i):
             if spec.name.internal and not doot.args.cmd.args.internal:
                 continue
 
-            groups[spec.name.group_str()].append((spec.name.task_str(),
+            groups[spec.name.group].append((spec.name.task,
                                                   spec.ctor.__module__,
                                                   spec.ctor.__name__,
                                                   spec.source))
@@ -137,7 +137,7 @@ class ListCmd(Command_i):
         for spec in tasks.values():
             if spec.name.internal and not doot.args.cmd.args.internal:
                 continue
-            groups[spec.name.group_str()].append((spec.name.task_str(),
+            groups[spec.name.group].append((spec.name.task,
                                                   (spec.doc[0] if bool(spec.doc) else "")[:60],
                                                   spec.source))
 
@@ -157,7 +157,7 @@ class ListCmd(Command_i):
         for key, spec in tasks.items():
             if spec.name.internal and not doot.args.cmd.args.internal:
                 continue
-            sources[spec.source].append((spec.name.task_str(),
+            sources[spec.source].append((spec.name.task,
                                          spec.ctor.__module__,
                                          spec.ctor.__name__,
                                         ))
@@ -171,7 +171,7 @@ class ListCmd(Command_i):
     def _print_just_groups(self, tasks):
         printer.info("Defined Task Groups:", extra={"colour":"cyan"})
 
-        group_set = set(spec.name.group_str() for spec in tasks.values())
+        group_set = set(spec.name.group for spec in tasks.values())
         for group in group_set:
             printer.info("- %s", group)
 

@@ -27,7 +27,7 @@ import doot.constants
 # with pytest.raises
 # with pytest.warns(warntype)
 
-class TestDootStructuredName:
+class TestDootTaskName:
 
     @pytest.fixture(scope="function")
     def setup(self):
@@ -39,137 +39,143 @@ class TestDootStructuredName:
         pass
 
     def test_complex_name(self):
-        simple = structs.DootStructuredName("basic", "task")
-        assert(simple.group == [ "basic"])
-        assert(simple.task == ["task"])
+        simple = structs.DootTaskName("basic", "tail")
+        assert(simple.head == [ "basic"])
+        assert(simple.tail == ["tail"])
 
 
     def test_name_with_leading_tasks(self):
-        simple = structs.DootStructuredName.from_str("tasks.basic::task")
-        assert(simple.group == [ "basic"])
-        assert(simple.task == ["task"])
+        simple = structs.DootTaskName.from_str("tasks.basic::tail")
+        assert(simple.head == [ "basic"])
+        assert(simple.tail == ["tail"])
 
     def test_cn_with_subgroups_str(self):
-        simple = structs.DootStructuredName("basic.blah.bloo", "task")
-        assert(simple.group == [ "basic", "blah", "bloo"])
-        assert(simple.task == ["task"])
+        simple = structs.DootTaskName("basic.blah.bloo", "tail")
+        assert(simple.head == [ "basic", "blah", "bloo"])
+        assert(simple.tail == ["tail"])
 
     def test_cn_with_mixed_subgroups(self):
-        simple = structs.DootStructuredName(["basic", "blah.bloo"], "task")
-        assert(simple.group == [ "basic", "blah", "bloo"])
-        assert(simple.task == ["task"])
+        simple = structs.DootTaskName(["basic", "blah.bloo"], "tail")
+        assert(simple.head == [ "basic", "blah", "bloo"])
+        assert(simple.tail == ["tail"])
 
     def test_cn_with_subtasks_str(self):
-        simple = structs.DootStructuredName("basic", "task.blah.bloo")
-        assert(simple.group == [ "basic"])
-        assert(simple.task == ["task", "blah", "bloo"])
+        simple = structs.DootTaskName("basic", "tail.blah.bloo")
+        assert(simple.head == [ "basic"])
+        assert(simple.tail == ["tail", "blah", "bloo"])
 
     def test_cn_with_mixed_subtasks(self):
-        simple = structs.DootStructuredName("basic", ["task", "blah.bloo"])
-        assert(simple.group == [ "basic"])
-        assert(simple.task == ["task", "blah", "bloo"])
+        simple = structs.DootTaskName("basic", ["tail", "blah.bloo"])
+        assert(simple.head == [ "basic"])
+        assert(simple.tail == ["tail", "blah", "bloo"])
 
     def test_cn_comparison(self):
-        simple = structs.DootStructuredName("basic", "task")
-        simple2 = structs.DootStructuredName("basic", "task")
+        simple = structs.DootTaskName("basic", "tail")
+        simple2 = structs.DootTaskName("basic", "tail")
         assert(simple is not simple2)
         assert(simple == simple2)
 
     def test_cn_comparison_fail(self):
-        simple = structs.DootStructuredName("basic", "task")
-        simple2 = structs.DootStructuredName("basic", "bloo")
+        simple = structs.DootTaskName("basic", "tail")
+        simple2 = structs.DootTaskName("basic", "bloo")
         assert(simple is not simple2)
         assert(simple != simple2)
 
     def test_cn_comparison_subgroups(self):
         """ where the names have subgrouping """
-        simple  = structs.DootStructuredName(["basic", "blah"], "task")
-        simple2 = structs.DootStructuredName(["basic", "blah"], "task")
+        simple  = structs.DootTaskName(["basic", "blah"], "tail")
+        simple2 = structs.DootTaskName(["basic", "blah"], "tail")
         assert(simple is not simple2)
         assert(simple == simple2)
 
     def test_cn_comparison_subgroup_fail(self):
         """ where the names only differ in subgrouping """
-        simple = structs.DootStructuredName(["basic", "blah"], "task")
-        simple2 = structs.DootStructuredName(["basic", "bloo"], "task")
+        simple = structs.DootTaskName(["basic", "blah"], "tail")
+        simple2 = structs.DootTaskName(["basic", "bloo"], "tail")
         assert(simple is not simple2)
         assert(simple != simple2)
 
     def test_cn_comparison_subtasks(self):
         """ where the names have subtasks"""
-        simple = structs.DootStructuredName(["basic", "blah"], "task")
-        simple2 = structs.DootStructuredName(["basic", "blah"], "task")
+        simple = structs.DootTaskName(["basic", "blah"], "tail")
+        simple2 = structs.DootTaskName(["basic", "blah"], "tail")
         assert(simple is not simple2)
         assert(simple == simple2)
 
     def test_cn_comparison_subtask_fail(self):
         """ where the names have different subtasks"""
-        simple = structs.DootStructuredName(["basic", "blah"], "task")
-        simple2 = structs.DootStructuredName(["basic", "bloo"], "task")
+        simple = structs.DootTaskName(["basic", "blah"], "tail")
+        simple2 = structs.DootTaskName(["basic", "bloo"], "tail")
         assert(simple is not simple2)
         assert(simple != simple2)
 
     def test_complex_name_with_dots(self):
-        simple = structs.DootStructuredName("basic.blah", "task.bloo")
-        assert(simple.group == ["basic", "blah"])
-        assert(simple.task == ["task", "bloo"])
+        simple = structs.DootTaskName("basic.blah", "tail.bloo")
+        assert(simple.head == ["basic", "blah"])
+        assert(simple.tail == ["tail", "bloo"])
 
     def test_cn_to_str(self):
-        simple = structs.DootStructuredName("basic", "task")
-        assert(str(simple) == "basic::task")
+        simple = structs.DootTaskName("basic", "tail")
+        assert(str(simple) == "basic::tail")
 
     def test_cn_to_str_cmp(self):
-        simple  = structs.DootStructuredName("basic", "task")
-        simple2 = structs.DootStructuredName("basic", "task")
+        simple  = structs.DootTaskName("basic", "tail")
+        simple2 = structs.DootTaskName("basic", "tail")
         assert(simple is not simple2)
         assert(str(simple) == str(simple2))
 
     def test_cn_with_subgroups(self):
-        simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
-        assert(simple.group == ["basic", "sub", "test"])
+        simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
+        assert(simple.head == ["basic", "sub", "test"])
 
     def test_cn_with_subgroups_str(self):
-        simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
-        assert(str(simple) == "\"basic.sub.test\"::task")
+        simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
+        assert(str(simple) == "\"basic.sub.test\"::tail")
 
     def test_cn_subtask(self):
-        simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
-        assert(str(simple) == "\"basic.sub.test\"::task")
+        simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
+        assert(str(simple) == "\"basic.sub.test\"::tail")
         sub    = simple.subtask("blah")
-        assert(str(sub) == "\"basic.sub.test\"::task.blah")
+        assert(str(sub) == "\"basic.sub.test\"::tail.blah")
 
     def test_cn_subtask_with_more_groups(self):
-        simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
-        assert(str(simple) == "\"basic.sub.test\"::task")
+        simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
+        assert(str(simple) == "\"basic.sub.test\"::tail")
         sub    = simple.subtask("blah", subgroups=["another", "subgroup"])
-        assert(str(sub) == "\"basic.sub.test.another.subgroup\"::task.blah")
+        assert(str(sub) == "\"basic.sub.test.another.subgroup\"::tail.blah")
 
 
     def test_lt_comparison_equal(self):
-        simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
-        simple2 = structs.DootStructuredName(["basic", "sub", "test"], "task")
+        simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
+        simple2 = structs.DootTaskName(["basic", "sub", "test"], "tail")
         assert(simple < simple2)
 
 
     def test_lt_comparison_fail(self):
-        simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
-        simple2 = structs.DootStructuredName(["basic", "sub", "test"], "task2")
+        simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
+        simple2 = structs.DootTaskName(["basic", "sub", "test"], "task2")
         assert(not (simple < simple2))
 
 
     def test_lt_sub_pass(self):
-        simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
-        simple2 = structs.DootStructuredName(["basic", "sub", "test"], ["task", "sub"])
+        simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
+        simple2 = structs.DootTaskName(["basic", "sub", "test"], ["tail", "sub"])
         assert(simple < simple2)
 
 
     def test_lt_group_pass(self):
-        simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
-        simple2 = structs.DootStructuredName(["basic", "sub", "test", "another"], ["task", "sub"])
+        simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
+        simple2 = structs.DootTaskName(["basic", "sub", "test", "another"], ["tail", "sub"])
         assert(simple < simple2)
 
 
     def test_lt_group_fail(self):
-        simple = structs.DootStructuredName(["basic", "sub", "test"], "task")
-        simple2 = structs.DootStructuredName(["basic", "test"], ["task", "sub"])
+        simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
+        simple2 = structs.DootTaskName(["basic", "test"], ["tail", "sub"])
         assert(not (simple < simple2))
+
+
+
+
+class TestDootCodeReference:
+    pass

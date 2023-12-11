@@ -30,7 +30,7 @@ import doot.errors
 
 from doot.enums import TaskFlags, TaskStateEnum, ActionResponseEnum
 from doot._abstract.parser import ParamSpecMaker_m
-from doot.structs import DootParamSpec, TaskStub, DootTaskSpec, DootStructuredName, DootActionSpec
+from doot.structs import DootParamSpec, TaskStub, DootTaskSpec, DootTaskName, DootActionSpec
 
 
 ##-- logging
@@ -75,7 +75,7 @@ class TaskBase_i(ParamSpecMaker_m):
         return str(self.spec.name)
 
     @property
-    def fullname(self) -> DootStructuredName:
+    def fullname(self) -> DootTaskName:
         return self.spec.name
 
     def __hash__(self):
@@ -109,12 +109,12 @@ class TaskBase_i(ParamSpecMaker_m):
         return self.spec.doc or self._help
 
     @property
-    def depends_on(self) -> abc.Generator[str|DootStructuredName]:
+    def depends_on(self) -> abc.Generator[str|DootTaskName]:
         for x in self.spec.depends_on:
             yield x
 
     @property
-    def required_for(self) -> abc.Generator[str|DootStructuredName]:
+    def required_for(self) -> abc.Generator[str|DootTaskName]:
         for x in self.spec.required_for:
             yield x
 
@@ -224,7 +224,7 @@ class Tasker_i(TaskBase_i):
         return "\n".join(help_lines)
 
     @abc.abstractmethod
-    def default_task(self, name:str|DootStructuredName|None, extra:None|dict|TomlGuard) -> DootTaskSpec:
+    def default_task(self, name:str|DootTaskName|None, extra:None|dict|TomlGuard) -> DootTaskSpec:
         raise NotImplementedError(self.__class__, "default_task")
 
     @abc.abstractmethod

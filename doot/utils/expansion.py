@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 See EOF for license/metadata/notes as applicable
 """
 
@@ -43,7 +42,7 @@ import doot.errors
 from doot.constants import KEY_PATTERN, MAX_KEY_EXPANSIONS
 PATTERN = re.compile("{(.+?)}")
 
-def expand_key(s, spec, task_state, as_path=False):
+def expand_key(s, spec, task_state, as_path=False) -> Any:
     """
       Expansion, with a level of indirection
       expand_key("aKey", spec("aKey": "blah")...) -> expand_str("{blah}"..)
@@ -54,7 +53,7 @@ def expand_key(s, spec, task_state, as_path=False):
 
     return expand_to_obj(expanded_key, spec, task_state)
 
-def expand_str(s, spec=None, task_state=None, as_path=False, as_key=False):
+def expand_str(s, spec=None, task_state=None, as_path=False, as_key=False) -> str|pl.Path:
     """
     expand {keywords} in a string that are in the spec.kwargs or task_state
     but don't complain about other keywords, that found in doot.locs
@@ -105,7 +104,6 @@ def expand_str(s, spec=None, task_state=None, as_path=False, as_key=False):
 
     return curr
 
-
 def expand_set(s, spec=None, task_state=None, as_path=False) -> list:
     """
     expand {keywords} in a string that are in the spec.kwargs or task_state
@@ -155,7 +153,7 @@ def expand_set(s, spec=None, task_state=None, as_path=False) -> list:
     else:
         return result
 
-def expand_to_obj(s, spec=None, task_state=None):
+def expand_to_obj(s, spec=None, task_state=None) -> Any:
     """
     expand {keywords} in a string that are in the spec.kwargs or task_state
     but don't complain about other keywords, that found in doot.locs
@@ -181,15 +179,7 @@ def expand_to_obj(s, spec=None, task_state=None):
 
     return replacement
 
-
-
-"""
-
-
-"""
-
-
-def expand_path_part(part:str, data:TomlGuard):
+def expand_path_part(part:str, data:TomlGuard) -> str:
     """ Given a part of a path, expand any keys found"""
     count         = 0
     expanded_part = part

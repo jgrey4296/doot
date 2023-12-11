@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Base classes for making tasks which glob over files / directories and make a subtask for each
+Base classes for making tasks which walk over files / directories and make a subtask for each
 matching thing
 """
 ##-- imports
@@ -33,14 +33,13 @@ walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).setting
 class DootPatternWalker(DootDirWalker):
     """
     Base tasker for file based directory walking.
-      Instead of globbing, uses regex matching.
+      Instead of walking, uses regex matching.
     Generates a new subtask for each file found.
 
     Each File found is a separate subtask
 
     """
     control = _WalkControl
-    globc   = _WalkControl
 
     def specialize_subtask(self, task) -> None|dict|DootTaskSpec:
         """

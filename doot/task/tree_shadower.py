@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Base classes for making tasks which glob over files / directories and make a subtask for each
+Base classes for making tasks which walk over files / directories and make a subtask for each
 matching thing
 """
 ##-- imports
@@ -32,7 +32,7 @@ walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).setting
 @doot.check_protocol
 class DootTreeShadower(DootDirWalker):
     """
-      Glob a directory tree,
+      Walk a directory tree,
       but in addition to the subtask keys [`fpath`, `fstem`, `fname`, and `lpath`],
       the key `shadow_path` is added.
       Combining `shadow_path` with `fname` gives a full file path
@@ -43,7 +43,7 @@ class DootTreeShadower(DootDirWalker):
       eg:
       shadow_root : {data}/unpacked
 
-      `shadow_path` is a path built onto the `shadow_root`, of the file's relation to its own glob root.
+      `shadow_path` is a path built onto the `shadow_root`, of the file's relation to its own walk root.
       eg:
       root        : {data}/packed
       fpath       : {data}/packed/bg2/raw/data/Scripts.bif
@@ -55,7 +55,6 @@ class DootTreeShadower(DootDirWalker):
       automatically includes `shadow_root` as a clean target
     """
     control = _WalkControl
-    globc   = _WalkControl
 
     def __init__(self, spec:DootTaskSpec):
         super().__init__(spec)
@@ -74,7 +73,7 @@ class DootTreeShadower(DootDirWalker):
     def _build_subs(self) -> Generator[DootTaskSpec]:
         self.total_subtasks = 0
         logging.debug("%s : Building Shadow SubTasks", self.name)
-        for i, (uname, fpath) in enumerate(self.glob_all()):
+        for i, (uname, fpath) in enumerate(self.walk_all()):
             match self._build_subtask(i, uname,
                                       fpath=fpath,
                                       fstem=fpath.stem,

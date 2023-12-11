@@ -40,8 +40,8 @@ import importlib
 from tomlguard import TomlGuard
 import doot.errors
 import doot.constants
-from doot.enums import TaskFlags, ReportEnum, StructuredNameEnum
-from doot._structs.structured_name import DootStructuredName
+from doot.enums import TaskFlags, ReportEnum
+from doot._structs.structured_name import DootTaskName
 from doot._structs.task_spec import DootTaskSpec
 
 PAD           : Final[int] = 15
@@ -67,7 +67,7 @@ class TaskStub:
     skip_parts : ClassVar[set[str]]          = set(["name", "extra", "ctor", "ctor_name", "source", "version"])
 
     def __post_init__(self):
-        self['name'].default     = DootStructuredName.from_str(doot.constants.DEFAULT_STUB_TASK_NAME)
+        self['name'].default     = DootTaskName.from_str(doot.constants.DEFAULT_STUB_TASK_NAME)
         self['version'].default  = "0.1"
         # Auto populate the stub with what fields are defined in a TaskSpec:
         for key, type in DootTaskSpec.__annotations__.items():
@@ -135,8 +135,8 @@ class TaskStubPart:
           eg: lowercasing the python bool from False to false for toml
         """
         # shortcut on being the name:
-        if isinstance(self.default, DootStructuredName) and self.key == "name":
-            return f"[[tasks.{self.default.group_str()}]]\n{'name':<20} = \"{self.default.task_str()}\""
+        if isinstance(self.default, DootTaskName) and self.key == "name":
+            return f"[[tasks.{self.default.group}]]\n{'name':<20} = \"{self.default.task}\""
 
         key_str     = f"{self.key:<20}"
         type_str    = f"<{self.type}>"

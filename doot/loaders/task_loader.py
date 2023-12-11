@@ -22,7 +22,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable)
 
-from doot.structs import DootStructuredName
 # from uuid import UUID, uuid1
 # from weakref import ref
 

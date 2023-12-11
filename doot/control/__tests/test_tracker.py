@@ -160,7 +160,6 @@ class TestTracker:
         subtask2, *_ = mock_gen.mock_task(mocker, "subtask2", pre=["subsub"])
         subtask3, *_ = mock_gen.mock_task(mocker, "subtask3", pre=["subsub"])
 
-        task1.spec = mocker.Mock()
         task1.spec.priority = 0
 
         tracker = DootTracker()

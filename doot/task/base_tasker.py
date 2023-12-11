@@ -35,7 +35,7 @@ import doot
 import doot.errors
 from doot.constants import SUBTASKED_HEAD
 from doot.enums import TaskFlags
-from doot.structs import DootTaskSpec, TaskStub, TaskStubPart, DootStructuredName
+from doot.structs import DootTaskSpec, TaskStub, TaskStubPart, DootTaskName
 from doot._abstract import Tasker_i, Task_i
 from doot.mixins.importer import ImporterMixin
 from doot.errors import DootDirAbsent
@@ -55,14 +55,14 @@ class DootTasker(Tasker_i, ImporterMixin):
         assert(spec is not None), "Spec is empty"
         super(DootTasker, self).__init__(spec)
 
-    def default_task(self, name:str|DootStructuredName|None, extra:None|dict|TomlGuard) -> DootTaskSpec:
+    def default_task(self, name:str|DootTaskName|None, extra:None|dict|TomlGuard) -> DootTaskSpec:
         task_name = None
         match name:
             case None:
                 task_name = self.fullname.subtask(SUBTASKED_HEAD)
             case str():
                 task_name = self.fullname.subtask(name)
-            case DootStructuredName():
+            case DootTaskName():
                 task_name = name
             case _:
                 raise doot.errors.DootTaskError("Bad value used to make a subtask in %s : %s", self.name, name)
@@ -110,7 +110,7 @@ class DootTasker(Tasker_i, ImporterMixin):
 
         task_ref = self.spec.extra.on_fail((None,), None|str).head_task()
         if task_ref is not None:
-            task_spec.ctor_name = DootStructuredName.from_str(task_ref)
+            task_spec.ctor_name = DootTaskName.from_str(task_ref)
 
         maybe_task : DootTaskSpec | None = self.specialize_task(task_spec)
 

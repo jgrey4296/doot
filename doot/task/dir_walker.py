@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Base classes for making tasks which glob over files / directories and make a subtask for each
+Base classes for making tasks which walk over files / directories and make a subtask for each
 matching thing
 """
 ##-- imports
@@ -22,6 +22,7 @@ logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 
 import doot
+import doot.constants
 from doot.errors import DootDirAbsent
 from doot.task.base_tasker import DootTasker
 from doot.mixins.tasker.subtask import SubMixin
@@ -52,7 +53,7 @@ class _WalkControl(enum.Enum):
 @doot.check_protocol
 class DootDirWalker(SubMixin, DootTasker):
     """
-    Base tasker for file based globbing.
+    Base tasker for file based walking.
     Each File found is a separate subtask
 
     Uses the toml key `sub_task` to spec each task,
@@ -69,14 +70,14 @@ class DootDirWalker(SubMixin, DootTasker):
     settings.walking.halts   = []
 
     Override as necessary:
-    .filter : for controlling glob results
-    .glob_target : for what is globbed
+    .filter : for controlling results
+    .walk_target : for what is walked
     .{top/subtask/setup/teardown}_detail : for controlling task definition
     .{top/subtask/setup/teardown}_actions : for controlling task actions
     .default_task : the basic task definition that everything customises
     """
     control = _WalkControl
-    globc   = _WalkControl
+    _default_subtask_injections = ["fpath","fstem","fname","lpath"]
 
     def __init__(self, spec:DootTaskSpec):
         super().__init__(spec)
@@ -93,7 +94,7 @@ class DootDirWalker(SubMixin, DootTasker):
                  logging.warning(f"Walker Root is a file: {x.name}", stacklevel=depth)
 
     def filter(self, target:pl.Path) -> bool | _WalkControl:
-        """ filter function called on each prospective glob result
+        """ filter function called on each prospective walk result
         override in subclasses as necessary
         """
         return True
@@ -110,7 +111,7 @@ class DootDirWalker(SubMixin, DootTasker):
 
         raise ValueError(f"{fpath} is not able to be made relative")
 
-    def glob_target(self, target, rec=None, fn=None, exts=None) -> Generator[pl.Path]:
+    def walk_target(self, target, rec=None, fn=None, exts=None) -> Generator[pl.Path]:
         rec       = bool(rec) or rec is None and self.rec
         exts      = exts or self.exts or []
         filter_fn = fn or self.filter
@@ -120,7 +121,7 @@ class DootDirWalker(SubMixin, DootTasker):
             return None
 
         if not rec:
-            yield from self._non_recursive_glob(target, filter_fn, exts)
+            yield from self._single_directory_walk(target, filter_fn, exts)
             return None
 
         assert(rec)
@@ -153,54 +154,9 @@ class DootDirWalker(SubMixin, DootTasker):
                 case _WalkControl.no | _WalkControl.noBut:
                     continue
                 case _ as x:
-                    raise TypeError("Unexpected glob filter value", x)
+                    raise TypeError("Unexpected filter value", x)
 
-    def glob_all(self, rec=None, fn=None) -> Generator[tuple(str, pl.Path)]:
-        """
-        Glob all available files,
-        and generate unique names for them
-        """
-        base_name = self.fullname
-        globbed_names = set()
-        for root in self.roots:
-            for fpath in self.glob_target(root, rec=rec, fn=fn):
-                # ensure unique task names
-                curr = fpath.absolute()
-                name = base_name.subtask(curr.stem)
-                logging.debug("Building Unique name for: %s : %s", name, fpath)
-                while name in globbed_names:
-                    curr = curr.parent
-                    name = name.subtask(curr.stem)
-
-                globbed_names.add(name)
-                yield name, fpath
-
-        logging.debug("Globbed : %s", len(globbed_names))
-
-    def build(self, **kwargs) -> Generator[DootTaskSpec]:
-        head = self._build_head()
-
-        for sub in self._build_subs():
-            head.depends_on.append(sub.name)
-            yield sub
-
-        yield head
-
-    def _build_subs(self) -> Generator[DootTaskSpec]:
-        self.total_subtasks = 0
-        logging.debug("%s : Building Walker SubTasks", self.name)
-        filter_fn = self.import_class(self.spec.extra.on_fail((None,)).filter_fn())
-        for i, (uname, fpath) in enumerate(self.glob_all(fn=filter_fn)):
-            match self._build_subtask(i, uname, fpath=fpath, fstem=fpath.stem, fname=fpath.name, lpath=self.rel_path(fpath)):
-                case None:
-                    pass
-                case DootTaskSpec() as subtask:
-                    self.total_subtasks += 1
-                    yield subtask
-                case _ as subtask:
-                    raise TypeError("Unexpected type for subtask: %s", type(subtask))
-
-    def _non_recursive_glob(self, target, filter_fn, exts):
+    def _single_directory_walk(self, target, filter_fn, exts):
         check_fn = lambda x: (filter_fn(x) not in [None, False, _WalkControl.reject, _WalkControl.discard, _WalkControl.no, _WalkControl.noBut]
                                 and x.name not in walk_ignores
                                 and (not bool(exts) or (x.is_file() and x.suffix in exts)))
@@ -216,9 +172,61 @@ class DootDirWalker(SubMixin, DootTasker):
                 yield x
 
 
+    def walk_all(self, rec=None, fn=None) -> Generator[tuple(str, pl.Path)]:
+        """
+        walk all available targets,
+        and generate unique names for them
+        """
+        base_name = self.fullname
+        found_names = set()
+        for root in self.roots:
+            for fpath in self.walk_target(root, rec=rec, fn=fn):
+                # ensure unique task names
+                curr = fpath.absolute()
+                name = base_name.subtask(curr.stem)
+                logging.debug("Building Unique name for: %s : %s", name, fpath)
+                while name in found_names:
+                    curr = curr.parent
+                    name = name.subtask(curr.stem)
+
+                found_names.add(name)
+                yield name, fpath
+
+        logging.debug("Walked: %s", len(found_names))
+
+    def build(self, **kwargs) -> Generator[DootTaskSpec]:
+        head = self._build_head()
+
+        for sub in self._build_subs():
+            head.depends_on.append(sub.name)
+            yield sub
+
+        yield head
+
+    def _build_subs(self) -> Generator[DootTaskSpec]:
+        self.total_subtasks = 0
+        logging.debug("%s : Building Walker SubTasks", self.name)
+        filter_fn   = self.import_callable(self.spec.extra.on_fail((None,)).filter_fn())
+        inject_keys = set(self.spec.inject).difference(self._default_subtask_injections)
+        inject_dict = {k: self.spec.extra[k] for k in inject_keys}
+
+        for i, (uname, fpath) in enumerate(self.walk_all(fn=filter_fn)):
+            match self._build_subtask(i, uname, fpath=fpath, fstem=fpath.stem, fname=fpath.name, lpath=self.rel_path(fpath), **inject_dict):
+                case None:
+                    pass
+                case DootTaskSpec() as subtask:
+                    self.total_subtasks += 1
+                    yield subtask
+                case _ as subtask:
+                    raise TypeError("Unexpected type for subtask: %s", type(subtask))
+
+
     @classmethod
     def stub_class(cls, stub):
-        stub.ctor                 = cls
+        if bool(list(filter(lambda x: x[0] == "walker", doot.constants.DEFAULT_PLUGINS['tasker']))):
+            stub.ctor = "walker"
+        else:
+            stub.ctor                  = cls
         stub['version'].default   = cls._version
         stub['roots'].type        = "list[str|pl.Path]"
         stub['roots'].default     = ["\".\""]
@@ -231,4 +239,33 @@ class DootDirWalker(SubMixin, DootTasker):
         stub['recursive'].prefix  = "# "
         stub["filter_fn"].type    = "callable"
         stub['filter_fn'].prefix  = "# "
+        stub['inject'].type       = "list",
+        stub['default'].default   = cls._default_subtask_injections
         return stub
+
+
+
+
+@doot.check_protocol
+class DootMiniWalker(DootDirWalker):
+    """
+      A Walker that applies actions from its spec onto subtasks,
+      instead of referencing a separate subtask,
+      and uses head_actions instead of a head task
+      subtasks are autoqueued
+    """
+
+    def specialize_subtask(self, task) -> DootTaskSpec:
+        actions         = self.spec.actions
+        task.actions    = actions[:]
+        task.queue_behaviour = "auto"
+        return task
+
+
+    def _build_head(self, **kwargs) -> DootTaskSpec:
+        head = self.default_task(None, TomlGuard(kwargs))
+
+        spec_head_actions = self.spec.extra.on_fail([],list).head_actions()
+        head.actions = spec_head_actions
+
+        return head

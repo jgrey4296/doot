@@ -51,7 +51,7 @@ class DootExternalWalker(SubMixin, DootTasker):
                  logging.warning(f"Walker Root is a file: {x.name}", stacklevel=depth)
 
     def filter(self, target:pl.Path) -> bool:
-        """ filter function called on each prospective glob result
+        """ filter function called on each prospective walk result
         override in subclasses as necessary
         """
         return True
@@ -82,7 +82,7 @@ class DootExternalWalker(SubMixin, DootTasker):
         logging.debug("%s : Building Walker SubTasks", self.name)
         filter_fn = self.import_class(self.spec.extra.on_fail((None,)).filter_fn())
 
-        for i, (uname, fpath) in enumerate(self.glob_all(fn=filter_fn)):
+        for i, (uname, fpath) in enumerate(self.walk_all(fn=filter_fn)):
             match self._build_subtask(i, uname, fpath=fpath, fstem=fpath.stem, fname=fpath.name, lpath=self.rel_path(fpath)):
                 case None:
                     pass
@@ -92,13 +92,13 @@ class DootExternalWalker(SubMixin, DootTasker):
                 case _ as subtask:
                     raise TypeError("Unexpected type for subtask: %s", type(subtask))
 
-    def glob_all(self, fn=None) -> Generator[tuple(str, pl.Path)]:
+    def walk_all(self, fn=None) -> Generator[tuple(str, pl.Path)]:
         """
           run the spec's `cmd`, expanded with `exts`, for each entry in `roots`
           combine, and return
         """
         base_name     = self.fullname
-        globbed_names = set()
+        found_names = set()
         cmd           = sh.Command(self.spec.extra.cmd)
         baked         = cmd.bake(*self.spec.extra.cmd_args)
         for root in self.roots:
@@ -108,11 +108,11 @@ class DootExternalWalker(SubMixin, DootTasker):
                 curr = fpath.absolute()
                 name = base_name.subtask(curr.stem)
                 logging.debug("Building Unique name for: %s : %s", name, fpath)
-                while name in globbed_names:
+                while name in found_names:
                     curr = curr.parent
                     name = name.subtask(curr.stem)
 
-                globbed_names.add(name)
+                found_names.add(name)
                 yield name, fpath
 
     @classmethod

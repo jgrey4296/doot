@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Base classes for making tasks which glob over files / directories and make a subtask for each
+Base classes for making tasks which walk over files / directories and make a subtask for each
 matching thing
 """
 ##-- imports
@@ -46,7 +46,7 @@ class DootLazyShadower(DootTreeShadower):
       eg:
       shadow_root : {data}/unpacked
 
-      `shadow_path` is a path built onto the `shadow_root`, of the file's relation to its own glob root.
+      `shadow_path` is a path built onto the `shadow_root`, of the file's relation to its own walk root.
       eg:
       root        : {data}/packed
       fpath       : {data}/packed/bg2/raw/data/Scripts.bif
@@ -61,7 +61,7 @@ class DootLazyShadower(DootTreeShadower):
     def _build_subs(self) -> Generator[DootTaskSpec]:
         self.total_subtasks = 0
         logging.debug("%s : Building Shadow SubTasks", self.name)
-        for i, (uname, fpath) in enumerate(self.glob_all()):
+        for i, (uname, fpath) in enumerate(self.walk_all()):
             shadow_loc = self._shadow_path(fpath)
 
             if shadow_loc.exists() and fpath.stat().st_mtime_ns <= shadow_loc.stat().st_mtime_ns:

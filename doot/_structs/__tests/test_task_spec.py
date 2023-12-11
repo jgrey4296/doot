@@ -32,8 +32,8 @@ class TestDootTaskSpec:
     def test_initial(self):
         obj = structs.DootTaskSpec.from_dict({})
         assert(isinstance(obj, structs.DootTaskSpec))
-        assert(obj.name.group_str() == "default")
-        assert(obj.name.task_str() == "default")
+        assert(obj.name.group == "default")
+        assert(obj.name.task == "default")
         assert(str(obj.ctor_name) == doot.constants.DEFAULT_PLUGINS['tasker'][0][1])
         assert(obj.version == "0.1")
 
@@ -41,8 +41,8 @@ class TestDootTaskSpec:
     def test_version_change(self):
         obj = structs.DootTaskSpec.from_dict({"version" : "0.5"})
         assert(isinstance(obj, structs.DootTaskSpec))
-        assert(obj.name.group_str() == "default")
-        assert(obj.name.task_str() == "default")
+        assert(obj.name.group == "default")
+        assert(obj.name.task == "default")
         assert(str(obj.ctor_name) == doot.constants.DEFAULT_PLUGINS['tasker'][0][1])
         assert(obj.version == "0.5")
 
@@ -50,22 +50,22 @@ class TestDootTaskSpec:
     def test_basic_name(self):
         obj = structs.DootTaskSpec.from_dict({"name": "agroup::atask"})
         assert(isinstance(obj, structs.DootTaskSpec))
-        assert(obj.name.group_str() == "agroup")
-        assert(obj.name.task_str() == "atask")
+        assert(obj.name.group == "agroup")
+        assert(obj.name.task == "atask")
 
 
     def test_groupless_name(self):
         obj = structs.DootTaskSpec.from_dict({"name": "atask"})
         assert(isinstance(obj, structs.DootTaskSpec))
-        assert(obj.name.group_str() == "default")
-        assert(obj.name.task_str() == "atask")
+        assert(obj.name.group == "default")
+        assert(obj.name.task == "atask")
 
 
     def test_with_extra_data(self):
         obj = structs.DootTaskSpec.from_dict({"name": "atask", "blah": "bloo", "something": [1,2,3,4]})
         assert(isinstance(obj, structs.DootTaskSpec))
-        assert(obj.name.group_str() == "default")
-        assert(obj.name.task_str() == "atask")
+        assert(obj.name.group == "default")
+        assert(obj.name.task == "atask")
         assert("blah" in obj.extra)
         assert("something" in obj.extra)
 
@@ -73,8 +73,8 @@ class TestDootTaskSpec:
     def test_separate_group_and_task(self):
         obj = structs.DootTaskSpec.from_dict({"name": "atask", "group": "agroup"})
         assert(isinstance(obj, structs.DootTaskSpec))
-        assert(obj.name.group_str() == "agroup")
-        assert(obj.name.task_str() == "atask")
+        assert(obj.name.group == "agroup")
+        assert(obj.name.task == "atask")
 
 
     def test_specialize_from(self):

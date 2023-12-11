@@ -79,7 +79,7 @@ class TestTaskStubPart:
 
 
     def test_name_reduce(self):
-        obj = structs.TaskStubPart("name", default=structs.DootStructuredName.from_str("blah::bloo"))
+        obj = structs.TaskStubPart("name", default=structs.DootTaskName.from_str("blah::bloo"))
         res_s = str(obj).split("\n")
         assert(res_s[0] == "[[tasks.blah]]")
         assert(res_s[1] == f"{'name':<20} = \"bloo\"")

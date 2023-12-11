@@ -34,9 +34,10 @@ printer = logmod.getLogger("doot._printer")
 import doot
 import doot.errors
 import tomlguard
+import doot.constants
 from doot._abstract import Task_i, Tasker_i, Action_p, PluginLoader_p
-from doot.enums import TaskFlags, StructuredNameEnum
-from doot.structs import DootStructuredName, TaskStub, TaskStubPart, DootActionSpec
+from doot.enums import TaskFlags
+from doot.structs import TaskStub, TaskStubPart, DootActionSpec
 from doot.actions.base_action import DootBaseAction
 from doot.errors import DootTaskLoadError, DootTaskError
 
@@ -73,10 +74,15 @@ class DootTask(Task_i, ImporterMixin):
     @classmethod
     def stub_class(cls, stub) -> TaskStub:
         """ Create a basic toml stub for this task"""
-        stub.ctor               = cls
-        stub['version'].default = cls._version
-        stub['doc'].default     = [f"\"{x}\"" for x in cls.class_help().split("\n") if bool(x)]
-        stub['flags'].default   = cls._default_flags
+        if bool(list(filter(lambda x: x[0] == "task", doot.constants.DEFAULT_PLUGINS['tasker']))):
+            stub.ctor = "task"
+        else:
+            stub.ctor                  = cls
+        stub['version'].default    = cls._version
+        stub['doc'].default        = [f"\"{x}\"" for x in cls.class_help().split("\n") if bool(x)]
+        stub['flags'].default      = cls._default_flags
+        stub['queue_behaviour'].default = "default"
+        stub['queue_behaviour'].comment = "default | auto | reactive"
         return stub
 
     def stub_instance(self, stub) -> TaskStub:

@@ -31,7 +31,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from doot.errors import DootDirAbsent, DootTaskError
-from doot.structs import DootStructuredName, DootTaskSpec
+from doot.structs import DootTaskSpec, DootTaskName
 from time import sleep
 
 class SubMixin:
@@ -61,14 +61,20 @@ class SubMixin:
 
         task_ref = self.spec.extra.on_fail((None,), None|str).sub_task()
         if task_ref is not None:
-            task_spec.ctor_name = DootStructuredName.from_str(task_ref)
+            task_spec.ctor_name = DootTaskName.from_str(task_ref)
 
         task      = self.specialize_subtask(task_spec)
-        if task is None:
-            return
-
-        if not (self.fullname < task.name):
-            raise DootTaskError("Subtasks must be part of their parents name: %s : %s", self.name, task.name)
+        match task:
+            case None:
+                return
+            case dict():
+                return DootTaskSpec.from_dict(task)
+            case DootTaskSpec() if not (self.fullname < task.name):
+                raise DootTaskError("Subtasks must be part of their parents name: %s : %s", self.name, task.name)
+            case DootTaskSpec():
+                pass
+            case _:
+                raise DootTaskError("Unrecognized subtask generated")
 
         return task
 

@@ -39,8 +39,7 @@ logging = logmod.getLogger(__name__)
 
 import importlib
 from importlib.metadata import EntryPoint
-from doot.structs import DootStructuredName
-from doot.enums import StructuredNameEnum
+from doot.structs import DootCodeReference
 import doot.errors
 
 def plugin_selector(plugins:TomlGuard, *, target="default", fallback=None) -> type:
@@ -50,7 +49,7 @@ def plugin_selector(plugins:TomlGuard, *, target="default", fallback=None) -> ty
 
     if target != "default":
         try:
-            name = DootStructuredName.from_str(target, form=StructuredNameEnum.CLASS)
+            name = DootCodeReference.from_str(target)
             module = importlib.import_module(name.group_str())
             return getattr(module, name.task_str())
         except ImportError as err:
