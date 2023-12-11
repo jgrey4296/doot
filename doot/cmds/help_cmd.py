@@ -100,7 +100,7 @@ class HelpCmd(Command_i):
         lines.append(f"{count:4}: Task: {task_name}")
         lines.append("------------------------------")
         lines.append(f"ver    : {spec.version}")
-        lines.append(f"Group  : {spec.name.group_str()}")
+        lines.append(f"Group  : {spec.name.group}")
         lines.append(f"Source : {spec.source}")
 
         if spec.ctor is not None:

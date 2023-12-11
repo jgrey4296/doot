@@ -127,15 +127,15 @@ class StubCmd(Command_i):
                 pass
 
         # extend the name if there are already tasks with that name
-        original_name = stub['name'].default.task_str()
+        original_name = stub['name'].default.task
         while str(stub['name'].default) in tasks:
             stub['name'].default.task.append("$conflicted$")
 
-        if original_name != stub['name'].default.task_str():
+        if original_name != stub['name'].default.task:
             logging.warning("Group %s: Name %s already defined, trying to modify name to: %s",
-                            stub['name'].default.group_str(),
+                            stub['name'].default.group,
                             original_name,
-                            stub['name'].default.task_str())
+                            stub['name'].default.task)
 
         # Output to printer/stdout, or file
         if doot.args.cmd.args.file_target == "":

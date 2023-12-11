@@ -87,7 +87,7 @@ class PluginsCmd(Command_i):
         for name, spec in plugins.items():
             if pattern not in name:
                 continue
-            groups[spec.name.group_str()].append((spec.name.task_str(),
+            groups[spec.name.group].append((spec.name.task,
                                                   spec.ctor.__module__,
                                                   spec.ctor.__name__,
                                                   spec.source))
