@@ -62,9 +62,10 @@ class DootRunner(TaskRunner_i):
         self.default_SLEEP_LENGTH = doot.config.on_fail(0.2, int|float).settings.tasks.sleep.task()
 
     def __enter__(self) -> Any:
+        printer.info("- Validating Task Network, building remaining abstract tasks")
+        self.tracker.validate()
         printer.info("---------- Task Loop Starting ----------", extra={"colour" : "green"})
         return
-
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
         self._set_print_level("INFO")
@@ -134,7 +135,7 @@ class DootRunner(TaskRunner_i):
         logmod.debug("-- Expanding Tasker %s: %s", self.step, tasker.name)
         self._set_print_level(tasker.spec.print_levels.on_fail(head_level).head())
         printer.info("---- Tasker %s: %s", self.step, tasker.name, extra={"colour":"magenta"})
-        if bool(tasker.spec.actions):
+        if bool(tasker.spec.actions): # and tasker != mini...
             printer.warning("-- Tasker %s: Actions were found in tasker spec, but taskers don't run actions")
         self.reporter.trace(tasker.spec, flags=ReportEnum.TASKER | ReportEnum.INIT)
         count = 0
@@ -144,13 +145,10 @@ class DootRunner(TaskRunner_i):
                 case Tasker_i():
                     printer.warning("Taskers probably shouldn't build taskers: %s : %s", tasker.name, task.name)
                     self.tracker.add_task(task, no_root_connection=True)
-                    self.tracker.queue_task(task.name)
                 case Task_i():
                     self.tracker.add_task(task, no_root_connection=True)
-                    self.tracker.queue_task(task.name)
                 case DootTaskSpec():
                     self.tracker.add_task(task, no_root_connection=True)
-                    self.tracker.queue_task(task.name)
                 case _:
                     self.reporter.trace(tasker.spec, flags=ReportEnum.FAIL | ReportEnum.TASKER)
                     raise doot.errors.DootTaskError("Tasker %s Built a Bad Value: %s", tasker.name, task, task=tasker.spec)
