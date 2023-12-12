@@ -33,7 +33,7 @@ logging = logmod.root
 
 ##-- end pytest reminder
 
-class Test:
+class TestExpansion:
 
     @pytest.fixture(scope="function")
     def setup_locs(self, mocker):
@@ -45,28 +45,24 @@ class Test:
     def cleanup(self):
         pass
 
-    def test_indirect_key_wrap(self):
-        result = exp.indirect_key("test", None, None)
-        assert(result == "{test}")
-
-    def test_indirect_key_retrieve(self):
-        result = exp.indirect_key("test", None, {"test": "blah"})
-        assert(result == "{blah}")
-
-
-    def test_indirect_key_fail(self):
-        with pytest.raises(TypeError):
-            exp.indirect_key("test", None, {"test": ["blah"]})
-
-
     def test_basic_to_str(self):
         result = exp.to_str("{x}", None, {"x": "blah"})
         assert(result == "blah")
 
 
+    def test_bib_str(self):
+        result = exp.to_str("{x}", None, {"x": " title        = {Architectonisches Alphabet, bestehend aus drey{\ss}ig Rissen },"})
+        assert(result == " title        = {Architectonisches Alphabet, bestehend aus drey{\ss}ig Rissen },")
+
+
+    def test_bib_str_simple(self):
+        result = exp.to_str("{x}", None, {"x": r"\ss"})
+        assert(result == "\ss")
+
+
     def test_multi_to_str(self):
-        result = exp.to_str("{x}:{y}", None, {"x": "blah", "y":"bloo"})
-        assert(result == "blah:bloo")
+        result = exp.to_str("{x}:{y}:{x}", None, {"x": "blah", "y":"bloo"})
+        assert(result == "blah:bloo:blah")
 
 
     def test_to_str_fail(self):

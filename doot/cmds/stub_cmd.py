@@ -110,11 +110,11 @@ class StubCmd(Command_i):
         task_type                   : type   = self._import_task_class(task_import_path)
 
         # Create stub toml, with some basic information
-        stub                         = TaskStub(ctor=task_iden)
-        stub['print_levels'].default  = dict()
+        stub                          = TaskStub(ctor=task_iden)
+        stub['print_levels'].default  = {"head":"INFO","build":"INFO","sleep":"INFO","action":"INFO", "execute":"INFO"}
         stub['print_levels'].type     = f"Dict: {doot.constants.PRINT_LOCATIONS}"
-        stub['priority'].default     = 10
-        stub['name'].default         = DootTaskName.from_str(doot.args.cmd.args.name)
+        stub['priority'].default      = 10
+        stub['name'].default          = DootTaskName.from_str(doot.args.cmd.args.name)
 
         # add ctor specific fields,
         # such as for dir_walker: roots [], exts [], recursive bool, subtask "", head_task ""
@@ -129,7 +129,7 @@ class StubCmd(Command_i):
         # extend the name if there are already tasks with that name
         original_name = stub['name'].default.task
         while str(stub['name'].default) in tasks:
-            stub['name'].default.task.append("$conflicted$")
+            stub['name'].default.tail.append("$conflicted$")
 
         if original_name != stub['name'].default.task:
             logging.warning("Group %s: Name %s already defined, trying to modify name to: %s",

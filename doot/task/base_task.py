@@ -37,11 +37,12 @@ import tomlguard
 import doot.constants
 from doot._abstract import Task_i, Tasker_i, Action_p, PluginLoader_p
 from doot.enums import TaskFlags
-from doot.structs import TaskStub, TaskStubPart, DootActionSpec
+from doot.structs import TaskStub, TaskStubPart, DootActionSpec, DootCodeReference
 from doot.actions.base_action import DootBaseAction
 from doot.errors import DootTaskLoadError, DootTaskError
 
 from doot.mixins.importer import ImporterMixin
+
 
 @doot.check_protocol
 class DootTask(Task_i, ImporterMixin):
@@ -100,12 +101,12 @@ class DootTask(Task_i, ImporterMixin):
         """
         logging.info("Preparing Actions: %s", self.name)
         for action_spec in self.spec.actions:
-            assert(isinstance(action_spec, DootActionSpec))
+            assert(isinstance(action_spec, DootActionSpec)), action_spec
             if action_spec.fun is not None:
                 continue
             if action_spec.do  is not None:
-                action_id = action_spec.do
-                action_spec.set_function(self.import_callable(action_id))
+                action_ref = self.import_callable(action_spec.do)
+                action_spec.set_function(action_ref)
                 continue
 
             assert(action_spec.do is None), action_spec

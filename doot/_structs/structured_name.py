@@ -45,7 +45,6 @@ from doot.enums import TaskFlags, ReportEnum
 PAD           : Final[int] = 15
 TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
 
-# class StructuredNameEnum(enum.Enum):
 
 @dataclass
 class DootStructuredName:
@@ -125,12 +124,14 @@ class DootCodeReference(DootStructuredName):
 
     def try_import(self) -> Any:
         try:
-            mod = importlib.import_module(self.head_str())
+            mod = importlib.import_module(self.value)
             curr = mod
             for name in self.tail:
                 curr = getattr(curr, name)
 
             return curr
+        except ModuleNotFoundError as err:
+            raise ImportError("Module can't be found", str(self))
         except AttributeError as err:
             raise ImportError("Attempted to import %s but failed", str(self)) from err
 

@@ -94,6 +94,8 @@ class DootTasker(Tasker_i, ImporterMixin):
         stub['head_task'].type    = "task_iden"
         stub['head_task'].default = ""
         stub['head_task'].prefix  = "# "
+        stub['queue_behaviour'].default = "default"
+        stub['queue_behaviour'].comment = "default | auto | reactive"
         return stub
 
     def stub_instance(self, stub) -> TaskStub:

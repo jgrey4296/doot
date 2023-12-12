@@ -68,7 +68,7 @@ class WriteAction(Action_p):
     _toml_kwargs = ["from_", "to" ]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        data              = exp.to_str(spec.kwargs.on_fail("from_").from_(), spec, task_state, indirect=True)
+        data              = exp.to_str(spec.kwargs.from_, spec, task_state, indirect=True)
         loc               = exp.to_path(spec.kwargs.on_fail("to").to_(), spec, task_state, indirect=True)
         printer.info("Writing %s chars to %s", len(data), loc)
         with open(loc, 'w') as f:

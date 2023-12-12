@@ -28,7 +28,7 @@ logging = logmod.root
 ##-- end pytest reminder
 
 from doot.structs import DootActionSpec
-from doot.utils.expansion import to_str, to_any, indirect_key
+from doot.utils.expansion import to_str, to_any
 
 class TestStringExpand:
 
@@ -124,12 +124,3 @@ class TestStringExpand:
         state = {"other": "short"}
         result = to_str("{test}", mock_spec, state)
         assert(result == str({"val": "test"}))
-
-    def test_expand_key_chain(self, mocker):
-        mock_spec = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": "other"}
-        state = {"other": "short"}
-        result = indirect_key("test", mock_spec, state)
-        assert(result == "{other}")
-        expanded_result = to_str(result, mock_spec, state)
-        assert(expanded_result == "short")

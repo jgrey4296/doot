@@ -53,7 +53,7 @@ class DootLocations:
     """
 
     def __init__(self, root:Pl.Path):
-        self._root : pl.Path()    = root.expanduser().absolute()
+        self._root : pl.Path()       = root.expanduser().absolute()
         self._data : TomlGuard       = tomlguard.TomlGuard()
 
 

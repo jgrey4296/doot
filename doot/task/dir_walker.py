@@ -21,12 +21,13 @@ logging = logmod.getLogger(__name__)
 
 printer = logmod.getLogger("doot._printer")
 
+from tomlguard import TomlGuard
 import doot
 import doot.constants
 from doot.errors import DootDirAbsent
 from doot.task.base_tasker import DootTasker
 from doot.mixins.tasker.subtask import SubMixin
-from doot.structs import DootTaskSpec
+from doot.structs import DootTaskSpec, DootActionSpec
 
 walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
 walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).settings.walking.halts()
@@ -240,7 +241,7 @@ class DootDirWalker(SubMixin, DootTasker):
         stub["filter_fn"].type    = "callable"
         stub['filter_fn'].prefix  = "# "
         stub['inject'].type       = "list",
-        stub['default'].default   = cls._default_subtask_injections
+        stub['inject'].default   = list(map(lambda x: f'"{x}"', cls._default_subtask_injections))
         return stub
 
 
@@ -256,16 +257,28 @@ class DootMiniWalker(DootDirWalker):
     """
 
     def specialize_subtask(self, task) -> DootTaskSpec:
-        actions         = self.spec.actions
-        task.actions    = actions[:]
+        task.actions         = [DootActionSpec.from_data(x) for x in self.spec.extra.sub_actions]
+        task.print_levels    = self.spec.print_levels
         task.queue_behaviour = "auto"
         return task
 
 
     def _build_head(self, **kwargs) -> DootTaskSpec:
         head = self.default_task(None, TomlGuard(kwargs))
-
-        spec_head_actions = self.spec.extra.on_fail([],list).head_actions()
+        spec_head_actions = self.spec.extra.on_fail([], list).head_actions()
         head.actions = spec_head_actions
 
         return head
+
+    @classmethod
+    def stub_class(cls, stub):
+        stub.ctor                  = cls
+        if 'sub_task' in stub.parts:
+            del stub.parts['sub_task']
+
+        if 'head_task' in stub.parts:
+            del stub.parts['head_task']
+
+        stub['sub_actions'].default  = list()
+        stub['head_actions'].default = list()
+        return stub
