@@ -26,7 +26,6 @@ import doot
 from doot.errors import DootDirAbsent
 from doot.task.dir_walker import DootDirWalker, _WalkControl
 from doot.structs import DootTaskSpec
-from doot.utils.string_expand import expand_key
 
 walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
 walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).settings.walking.halts()

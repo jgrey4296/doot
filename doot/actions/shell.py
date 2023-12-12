@@ -15,7 +15,7 @@ import doot
 from doot.errors import DootTaskError
 from doot._abstract import Action_p
 from doot.actions.base_action import DootBaseAction
-from doot.utils.string_expand import expand_str
+import doot.utils.expansion as exp
 
 @doot.check_protocol
 class DootShellAction(Action_p):
@@ -34,7 +34,7 @@ class DootShellAction(Action_p):
         result = None
         try:
             cmd      = getattr(sh, spec.args[0])
-            expanded = [expand_str(x, spec, task_state) for x in spec.args[1:]]
+            expanded = [exp.to_str(x, spec, task_state) for x in spec.args[1:]]
             result   = cmd(*expanded, _return_cmd=True, _bg=spec.kwargs.on_fail(False, bool).background())
             assert(result.exit_code == 0)
             printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, spec.args[0], spec.args[1:])
@@ -64,7 +64,7 @@ class DootInteractiveAction(Action_p):
             self.cont   = spec.kwargs.on_fail(DootInteractiveAction.cont, str).cont()
 
             cmd      = getattr(sh, spec.args[0])
-            expanded = [expand_str(x, spec, task_state) for x in spec.args[1:]]
+            expanded = [exp.to_str(x, spec, task_state) for x in spec.args[1:]]
             result   = cmd(*expanded, _return_cmd=True, _bg=spec.kwargs.on_fail(False, bool).background(), _out=self.interact, _out_bufsize=0, _tty_in=True, _unify_ttys=True)
             assert(result.exit_code == 0)
             printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, spec.args[0], spec.args[1:])

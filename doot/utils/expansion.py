@@ -40,144 +40,88 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.constants import KEY_PATTERN, MAX_KEY_EXPANSIONS
-PATTERN = re.compile("{(.+?)}")
 
-def expand_key(s, spec, task_state, as_path=False) -> Any:
+PATTERN : Final[re.Pattern] = re.compile("{(.+?)}")
+Key     : TypeAlias = str
+
+def has_expansions(key) -> bool:
+    return bool(PATTERN.search(key))
+
+def indirect_key(key:str, spec:DootActionSpec, state:dict) -> Key:
     """
-      Expansion, with a level of indirection
-      expand_key("aKey", spec("aKey": "blah")...) -> expand_str("{blah}"..)
+      retrieve a key 'x', {x:"blah"} (without it being wrapped in {}),
+      and return it as an expansion key '{blah}'
     """
-    expanded_key = expand_str(s, spec, task_state, as_key=True)
-    if as_path:
-        return expand_str(expanded_key, spec, task_state, as_path=True)
+    state        = state or {}
+    kwargs       = spec.kwargs if spec is not None else {}
 
-    return expand_to_obj(expanded_key, spec, task_state)
+    replacement = state.get(key, None) or kwargs.get(key, None)
 
-def expand_str(s, spec=None, task_state=None, as_path=False, as_key=False) -> str|pl.Path:
-    """
-    expand {keywords} in a string that are in the spec.kwargs or task_state
-    but don't complain about other keywords, that found in doot.locs
+    if replacement is None:
+        return "{"+key+"}"
 
-    if as_path, then doot.locs expands those kwargs last, returning a path
-    """
-    match s:
-        case pl.Path():
-            logging.warning("Tried to expand_str a path: %s", s)
-            return s
-        case list():
-            logging.debug("Tried to expand_str a list, sub-expanding: %s", s)
-            return [expand_str(x, spec, task_state, as_path=as_path, as_key=as_key) for x in s]
-        case set():
-            logging.debug("Tried to expand_str a set, sub-expanding: %s", s)
-            return set(expand_str(x, spec, task_state, as_path=as_path, as_key=as_key) for x in s)
+    if not isinstance(replacement, str):
+        raise TypeError("Indirect key isn't a string", key, replacement)
 
-    curr       = s
-    task_state = task_state or {}
-    kwargs     = spec.kwargs if spec is not None else {}
-    matched    = set(PATTERN.findall(curr))
-    cast_to_path = False
+    return "{"+replacement+"}"
+
+def to_str(key:Key, spec, state, indirect=False) -> str:
+    if indirect:
+        key = indirect_key(key, spec, state)
+
+    state             = state or {}
+    kwargs            = spec.kwargs if spec is not None else {}
+    expanded : str    = key
+    matched           = set(PATTERN.findall(key))
     for x in matched:
-        replacement = task_state.get(x, None) or kwargs.get(x, None)
-        if isinstance(replacement, str) and PATTERN.search(replacement):
-            replacement = expand_str(replacement, spec, task_state)
-
-        if x in doot.locs:
-            cast_to_path = True
+        replacement = state.get(x, None) or kwargs.get(x, None)
 
         match replacement:
             case None:
-                pass
+                continue
+            case str() if PATTERN.search(replacement):
+                raise TypeError("Key Replacement is a key as well", key, replacement)
             case list():
-                val = " ".join(str(x) for x in replacement)
-                curr = re.sub(f"{{{x}}}", val, curr)
+                raise TypeError("Key Replacement is a list", key, replacement)
             case pl.Path():
-                curr = re.sub(f"{{{x}}}", str(replacement), curr)
+                raise TypeError("Key Replacement is a path", key, replacement)
             case str():
-                curr = re.sub(f"{{{x}}}", replacement, curr)
+                expanded = re.sub(f"{{{x}}}", replacement, expanded)
             case _:
-                curr = re.sub(f"{{{x}}}", str(replacement), curr)
+                raise TypeError("Key Replacement isnt a str", key, replacement)
 
-    if as_path or cast_to_path:
-        return doot.locs[curr]
-    if as_key:
-        return "{"+curr+"}"
+    return expanded
 
-    return curr
 
-def expand_set(s, spec=None, task_state=None, as_path=False) -> list:
-    """
-    expand {keywords} in a string that are in the spec.kwargs or task_state
-    but don't complain about other keywords, that found in doot.locs
+def to_path(key, spec, state, indirect=False) -> pl.Path:
+    if indirect:
+        key = indirect_key(key, spec, state)
+    expanded = to_str(key, spec, state)
+    return doot.locs[expanded]
 
-    if as_path, then doot.locs expands those kwargs last, returning a path
-    """
-    match s:
-        case pl.Path():
-            logging.warning("Tried to expand_str a path: %s", s)
-            return set([s])
-        case list() | set():
-            logging.debug("Tried to expand_str a list, sub-expanding: %s", s)
-            result = set()
-            for x in s:
-                result.update(expand_set(x, spec, task_state, as_path=as_path))
-            return result
 
-    curr         = s
-    task_state   = task_state or {}
-    kwargs       = spec.kwargs if spec is not None else {}
-    matched      = set(PATTERN.findall(curr))
-    cast_to_path = False
-    result       = set()
+def to_any(key, spec, state, indirect=False) -> Any:
+    if indirect:
+        key = indirect_key(key, spec, state)
+
+    state             = state or {}
+    kwargs            = spec.kwargs if spec is not None else {}
+    expanded : str    = key
+    matched           = list(PATTERN.findall(key))
     if not bool(matched):
-        return set([s])
-
-    for x in matched:
-        match x:
-            case None:
-                pass
-            case list() | set():
-                logging.debug("Adding: %s", x)
-                result.update(x)
-            case str() if x in spec.kwargs or x in task_state:
-                match expand_to_obj("{"+x+"}", spec, task_state):
-                    case list() | set() as y:
-                        result.update(y)
-                    case _ as y:
-                        result.add(y)
-            case _:
-                logging.debug("Adding: %s", x)
-                result.add(x)
-
-    if as_path:
-        return set(doot.locs[x] for x in result)
-    else:
-        return result
-
-def expand_to_obj(s, spec=None, task_state=None) -> Any:
-    """
-    expand {keywords} in a string that are in the spec.kwargs or task_state
-    but don't complain about other keywords, that found in doot.locs
-
-    if as_path, then doot.locs expands those kwargs last, returning a path
-    """
-    if not isinstance(s, str):
-        return s
-
-    curr       = s
-    task_state = task_state or {}
-    kwargs     = spec.kwargs if spec is not None else {}
-    matched    = PATTERN.findall(curr)
-    if not bool(matched):
-        raise KeyError("No Key Matched", s)
+        return key
     if len(matched) > 1:
-        raise KeyError("Can only expand to a single obj", s)
+        raise TypeError("Expansion to anything can't handle multiple keys", key)
 
-    replacement = task_state.get(matched[0], None) or kwargs.get(matched[0], None)
+    target = matched.pop()
+    replacement = state.get(target, None) or kwargs.get(target, None)
 
-    if replacement is None:
-        raise KeyError("No Key Found in State", matched)
+    match replacement:
+        case None:
+            return key
+        case _:
+            return replacement
 
-    return replacement
 
 def expand_path_part(part:str, data:TomlGuard) -> str:
     """ Given a part of a path, expand any keys found"""

@@ -33,7 +33,7 @@ import tomlguard as TG
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
-from doot.utils.string_expand import expand_str, expand_set, expand_key
+import doot.utils.expansion as exp
 from doot.actions.postbox import _DootPostBox
 
 # TODO using doot.config.settings.general.protect to disallow write/delete/backup/copy
@@ -48,19 +48,18 @@ class AppendAction(Action_p):
 
     def __call__(self, spec, state):
         sep     = spec.kwargs.on_fail(AppendAction.sep, str).sep()
-        loc     = expand_key(spec.kwargs.on_fail("to").to_(), spec, state, as_path=True)
-        args    = [expand_str(x, spec, state) for x in spec.args]
+        loc     = exp.to_path(spec.kwargs.on_fail("to").to_(), spec, state, indirect=True)
+        args    = [exp.to_str(x, spec, state) for x in spec.args]
         with open(loc, 'a') as f:
             for arg in args:
-                value = expand_str(arg, spec, state)
                 printer.info("Appending %s chars to %s", len(value), loc)
                 f.write(sep)
-                f.write(value)
+                f.write(arg)
 
 @doot.check_protocol
 class WriteAction(Action_p):
     """
-      Writes data _from the task_state to a file, accessed throug the
+      Writes data _from the task_state to a file, accessed through the
       doot.locs object
     The arguments of the action are held in self.spec
 
@@ -69,9 +68,8 @@ class WriteAction(Action_p):
     _toml_kwargs = ["from_", "to" ]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        data              = expand_key(spec.kwargs.on_fail("from_").from_(), spec, task_state)
-        loc_key           = expand_key(spec.kwargs.on_fail("to").to_(), spec, task_state)
-        loc               = expand_str(loc_key, spec, task_state, as_path=True)
+        data              = exp.to_str(spec.kwargs.on_fail("from_").from_(), spec, task_state, indirect=True)
+        loc               = exp.to_path(spec.kwargs.on_fail("to").to_(), spec, task_state, indirect=True)
         printer.info("Writing %s chars to %s", len(data), loc)
         with open(loc, 'w') as f:
             f.write(data)
@@ -86,8 +84,8 @@ class ReadAction(Action_p):
     _toml_kwargs = ["_from", "update_", "type", "as_bytes"]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        data_key   = expand_str(spec.kwargs.update_, spec, task_state)
-        loc        = expand_key(spec.kwargs.on_fail("_from").from_(), spec, task_state, as_path=True)
+        data_key   = exp.to_str(spec.kwargs.update_, spec, task_state)
+        loc        = exp.to_path(spec.kwargs.on_fail("_from").from_(), spec, task_state, indirect=True)
         read_type  = "rb" if spec.kwargs.on_fail(False).as_bytes() else "r"
 
         printer.info("Reading _from %s into %s", loc, data_key)
@@ -116,10 +114,10 @@ class CopyAction(Action_p):
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
         sources = []
-        dest_loc   = expand_key(spec.kwargs.on_fail("to").to_(), spec, task_state, as_path=True)
+        dest_loc   = exp.to_path(spec.kwargs.on_fail("to").to_(), spec, task_state, indirect=True)
         if bool(spec.args) and not spec.kwargs.on_fail(False)._from():
             printer.info("Copying into directory %s: %s", spec.args, dest_loc)
-            expanded = expand_set(spec.args, spec, task_state, as_path=True)
+            expanded = list(map(lambda x: exp.to_path(x, spec, task_state), spec.args))
             if any(not x.exists() for x in expanded):
                 raise doot.errors.DootActionError("Tried to copy a file that doesn't exist")
             if any((dest_loc/x.name).exists() for x in expanded):
@@ -131,7 +129,7 @@ class CopyAction(Action_p):
                 shutil.copy2(arg, dest_loc)
 
         elif spec.kwargs.on_fail(False)._from():
-            expanded = expand_set(spec.kwargs._from, spec, task_state, as_path=True)
+            expanded = list(map(lambda x: exp.to_path(x, spec, task_state), spec.kwargs._from))
             if any(not x.exists() for x in expanded):
                 raise doot.errors.DootActionError("Tried to copy a file that doesn't exist")
             if any((dest_loc/x.name).exists() for x in expanded):
@@ -150,7 +148,7 @@ class DeleteAction(Action_p):
     _toml_kwargs = ["recursive", "lax"]
     def __call__(self, spec, task):
         for arg in spec.args:
-            loc = expand_str(arg, spec, task, as_path=True)
+            loc = exp.to_path(arg, spec, task)
             printer.info("Deleting %s", loc)
             if loc.is_dir() and spec.kwargs.on_fail(False).recursive():
                 shutil.rmtree(loc)
@@ -167,8 +165,8 @@ class BackupAction(Action_p):
     _toml_kwargs = ["_from", "to"]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        source_loc = expand_key(spec.kwargs.on_fail("_from").from_(), spec, task_state, as_path=True)
-        dest_loc   = expand_key(spec.kwargs.on_fail("to").to_(), spec, task_state, as_path=True)
+        source_loc = exp.to_path(spec.kwargs.on_fail("_from").from_(), spec, task_state, indirect=True)
+        dest_loc   = exp.to_path(spec.kwargs.on_fail("to").to_(), spec, task_state, indirect=True)
 
         if dest_loc.exists() and source_loc.stat().st_mtime_ns <= dest_loc.stat().st_mtime_ns:
             return True
@@ -188,7 +186,7 @@ class EnsureDirectory(Action_p):
 
     def __call__(self, spec, task_state:dict):
         for arg in spec.args:
-            loc = expand_str(arg, spec, task_state, as_path=True)
+            loc = exp.to_path(arg, spec, task_state)
             printer.debug("Building Directory: %s", loc)
             loc.mkdir(parents=True, exist_ok=True)
 
@@ -201,8 +199,8 @@ class ReadJson(Action_p):
     _toml_kwargs = ["_from", "update_"]
 
     def __call__(self, spec, task_state:dict):
-        data_key = expand_str(spec.kwargs.update_, spec, task_state)
-        fpath    = expand_key(spec.kwargs.on_fail("_from").from_(), spec, task_state, as_path=True)
+        data_key = exp.to_str(spec.kwargs.update_, spec, task_state)
+        fpath    = exp.to_path(spec.kwargs.on_fail("_from").from_(), spec, task_state, indirect=True)
         data     = json.load(fpath)
         return { data_key : TG.TomlGuard(data) }
 
@@ -213,8 +211,8 @@ class UserInput(Action_p):
     _toml_kwargs = ["update_", "prompt"]
 
     def __call__(self, spec, state):
-        prompt = expand_str(spec.kwargs.on_fail("?::- ").prompt(), spec, state)
-        target = expand_str(spec.kwargs.update_, spec, state)
+        prompt = exp.to_str(spec.kwargs.on_fail("?::- ").prompt(), spec, state)
+        target = exp.to_str(spec.kwargs.update_, spec, state)
         result = input(prompt)
         return { target : result }
 
@@ -228,9 +226,9 @@ class SimpleFind(Action_p):
     _toml_kwargs = ["_from", "pattern_", "rec", "update_"]
 
     def __call__(self, spec, task):
-        from_loc     = expand_key(spec.kwargs.on_fail("_from").from_(), spec, task, as_path=True)
-        pattern      = expand_key(spec.kwargs.on_fail("pattern").pattern_(), spec, task)
-        data_key     = expand_str(spec.kwargs.update_, spec, task)
+        from_loc     = exp.to_path(spec.kwargs.on_fail("_from").from_(), spec, task, indirect=True)
+        pattern      = exp.to_str(spec.kwargs.on_fail("pattern").pattern_(), spec, task, indirect=True)
+        data_key     = exp.to_str(spec.kwargs.update_, spec, task)
         match spec.kwargs.on_fail(False).rec():
             case True:
                 return { data_key : list(from_loc.rglob(pattern)) }

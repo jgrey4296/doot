@@ -27,7 +27,7 @@ import sh
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
-from doot.utils.string_expand import expand_str, expand_key, expand_to_obj
+import doot.utils.expansion as exp
 
 printer = logmod.getLogger("doot._printer")
 """
@@ -71,7 +71,7 @@ class PutPostAction(Action_p):
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
         for arg in spec.args:
-            data = expand_key(arg, spec, task_state)
+            data = exp.indirect_key(arg, spec, task_state)
             _DootPostBox.put(task_state['_task_name'].root(), data)
 
 @doot.check_protocol
@@ -80,15 +80,15 @@ class GetPostAction(Action_p):
       Read data from the inter-task postbox of a task tree
       The arguments of the action are held in self.spec
     """
-    _toml_kwargs = ["from_task", "update_"]
+    _toml_kwargs = ["from_", "update_"]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
         if "from_task" in spec.kwargs or "from_task_" in spec.kwargs:
-            from_task = expand_key(spec.kwargs.on_fail("from_task").from_task_(), spec, task_state)
+            from_task = exp.to_str(spec.kwargs.on_fail("from_task").from_(), spec, task_state)
         else:
             from_task = task_state['_task_name'].root()
 
-        data_key  = expand_str(spec.kwargs.update_, spec, task_state)
+        data_key  = exp.to_str(spec.kwargs.update_, spec, task_state)
         return { data_key : _DootPostBox.get(from_task) }
 
 @doot.check_protocol
@@ -100,7 +100,7 @@ class SummarizePostAction(Action_p):
     _toml_kwargs = ["from_", "full"]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        from_task = expand_str(spec.kwargs.on_fail(task_state['_task_name'].root()).from_task(), spec, task_state)
+        from_task = exp.to_str(spec.kwargs.on_fail(task_state['_task_name'].root()).from_(), spec, task_state)
 
         data   = _DootPostBox.get(from_task)
         if spec.kwargs.on_fail(False, bool).full():
