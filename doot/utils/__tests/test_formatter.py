@@ -43,13 +43,13 @@ class TestDootFormatter:
     def test_initial(self):
         fmt = exp.DootFormatter()
         spec = DootActionSpec(kwargs={"a":"blah"})
-        result = fmt.format("{a}", spec=spec, state={})
+        result = fmt.format("{a}", _spec=spec, _state={})
         assert(result == "blah")
 
     def test_missing(self):
         fmt = exp.DootFormatter()
         spec = DootActionSpec(kwargs={"a":"blah"})
-        result = fmt.format("{b}", spec=spec, state={})
+        result = fmt.format("{b}", _spec=spec, _state={})
         assert(result == "{b}")
 
 
@@ -57,7 +57,7 @@ class TestDootFormatter:
         fmt = exp.DootFormatter()
         spec = DootActionSpec(kwargs={"a":"blah"})
         state = {"b": "aweg"}
-        result = fmt.format("{a}:{b}", spec=spec, state=state)
+        result = fmt.format("{a}:{b}", _spec=spec, _state=state)
         assert(result == "blah:aweg")
 
 
@@ -65,7 +65,7 @@ class TestDootFormatter:
         fmt = exp.DootFormatter()
         spec = DootActionSpec(kwargs={"a":"blah"})
         state = {"b": "aweg"}
-        result = fmt.format("a", spec=spec, state=state, indirect=True)
+        result = fmt.format("{a}", _spec=spec, _state=state)
         assert(result == "blah")
 
 
@@ -73,7 +73,7 @@ class TestDootFormatter:
         fmt = exp.DootFormatter()
         spec = DootActionSpec(kwargs={"a":"this is a {b}"})
         state = {"b": "aweg {c}", "c": "blah"}
-        result = fmt.format("{a}", spec=spec, state=state, recursive=True)
+        result = fmt.format("{a}", _spec=spec, _state=state, _rec=True)
         assert(result == "this is a aweg blah")
 
 
@@ -81,7 +81,7 @@ class TestDootFormatter:
         fmt = exp.DootFormatter()
         spec = DootActionSpec(kwargs={"a":"this is a {b}"})
         state = {"b": "aweg {c}", "c": "blah {d}"}
-        result = fmt.format("{a}", spec=spec, state=state, recursive=True)
+        result = fmt.format("{a}", _spec=spec, _state=state, _rec=True)
         assert(result == "this is a aweg blah {d}")
 
 
@@ -90,13 +90,13 @@ class TestDootFormatter:
         spec = DootActionSpec(kwargs={"a":"this is a {b}"})
         state = {"b": "aweg {c}", "c": [1,2,3]}
         with pytest.raises(TypeError):
-            fmt.format("{a}", spec=spec, state=state, recursive=True)
+            fmt.format("{a}", _spec=spec, _state=state, _rec=True)
 
 
     def test_path_expansion(self, setup_locs):
         fmt = exp.DootFormatter()
         spec = DootActionSpec(kwargs={"a":"blah"})
-        result = fmt.format("{p1}/{a}", spec=spec, state={}, as_path=True)
+        result = fmt.format("{p1}/{a}", _spec=spec, _state={}, _as_path=True)
         assert(isinstance(result, pl.Path))
         assert(result.stem == "blah")
         assert(result.parent.stem == "test1")

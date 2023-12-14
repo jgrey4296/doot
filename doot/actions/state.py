@@ -36,6 +36,12 @@ from doot.mixins.importer import ImporterMixin
 from doot.structs import DootCodeReference
 import doot.utils.expansion as exp
 
+##-- expansion keys
+UPDATE : Final[exp.DootKey] = exp.DootKey("update_")
+FORMAT : Final[exp.DootKey] = exp.DootKey("format")
+
+##-- end expansion keys
+
 @doot.check_protocol
 class AddStateAction(Action_p):
     """
@@ -69,18 +75,20 @@ class PushState(Action_p):
     """
       task_state[update_] += [task_state[x] for x in spec.args]
     """
-    _toml_kwargs = ["update_"]
+    _toml_kwargs = [UPDATE]
 
     def __call__(self, spec, task_state) -> dict|bool|None:
-        data_key = exp.to_str(spec.kwargs.update_, spec, task_state)
-        data = list(task_state.get(data_key, []))
+        data_key = UPDATE.redirect(spec)
+        data     = data_key.to_any(spec, task_state, type_=list|set|None) or []
 
-        for arg in spec.args:
-            match task_state[arg]:
-                case list() as x:
-                    data += x
-                case _:
-                    data.append(exp.to_str(x, spec, task_state))
+        to_add   = map(lambda x: x if isinstance(x, list) else [x],
+                     filter(lambda x: x is not None,
+                            exp.to_any(arg, spec, task_state) for arg in spec.args))
+        match data:
+            case set():
+                list(map(lambda x: data.update(x), to_add))
+            case list():
+                list(map(lambda x: data.extend(x), to_add))
 
         return { data_key : data }
 
@@ -91,10 +99,10 @@ class AddNow(Action_p):
       Add the current date, as a string, to the state
     """
 
-    _toml_kwargs = ["format", "update_"]
+    _toml_kwargs = [FORMAT, UPDATE]
 
     def __call__(self, spec, state):
-        data_key = spec.kwargs.on_fail("_date").update_()
-        format   = exp.to_str(spec.kwargs.on_fail("format").format_(), spec, state, indirect=True)
+        data_key = UPDATE.redirect(spec)
+        format   = FORMAT.expand(spec, state)
         now      = datetime.datetime.now()
         return { data_key : now.strftime(format) }

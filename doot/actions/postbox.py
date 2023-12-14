@@ -1,4 +1,10 @@
 ## base_action.py -*- mode: python -*-
+"""
+  Postbox: Each Task Tree gets one, as a set[Any]
+  Each Task can put something in its own postbox.
+  And can read any other task tree's postbox, but not modify it.
+
+"""
 ##-- imports
 from __future__ import annotations
 
@@ -30,12 +36,12 @@ from doot._abstract import Action_p
 import doot.utils.expansion as exp
 
 printer = logmod.getLogger("doot._printer")
-"""
-  Postbox: Each Task Tree gets one, as a set[Any]
-  Each Task can put something in its own postbox.
-  And can read any other task tree's postbox, but not modify it.
 
-"""
+##-- expansion keys
+FROM_KEY    : Final[exp.DootKey] = exp.DootKey("from")
+UPDATE      : Final[exp.DootKey] = exp.DootKey("update_")
+TASK_NAME   : Final[exp.DootKey] = exp.DootKey("_task_name")
+##-- end expansion keys
 
 class _DootPostBox:
     """
@@ -71,8 +77,14 @@ class PutPostAction(Action_p):
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
         for arg in spec.args:
-            data = exp.indirect_key(arg, spec, task_state)
-            _DootPostBox.put(task_state['_task_name'].root(), data)
+            data = exp.to_any(arg, spec, task_state)
+            match data:
+                case None:
+                    pass
+                case []:
+                    pass
+                case _:
+                    _DootPostBox.put(task_state['_task_name'].root(), data)
 
 @doot.check_protocol
 class GetPostAction(Action_p):
@@ -80,15 +92,11 @@ class GetPostAction(Action_p):
       Read data from the inter-task postbox of a task tree
       The arguments of the action are held in self.spec
     """
-    _toml_kwargs = ["from_", "update_"]
+    _toml_kwargs = [FROM_KEY, UPDATE]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        if "from_task" in spec.kwargs or "from_task_" in spec.kwargs:
-            from_task = exp.to_str(spec.kwargs.on_fail("from_task").from_(), spec, task_state)
-        else:
-            from_task = task_state['_task_name'].root()
-
-        data_key  = exp.to_str(spec.kwargs.update_, spec, task_state)
+        from_task = FROM_KEY.to_type(spec, task_state, type_=str|None) or task_state[TASK_NAME].root()
+        data_key  = UPDATE.redirect(spec)
         return { data_key : _DootPostBox.get(from_task) }
 
 @doot.check_protocol
@@ -97,11 +105,10 @@ class SummarizePostAction(Action_p):
       print a summary of this task tree's postbox
       The arguments of the action are held in self.spec
     """
-    _toml_kwargs = ["from_", "full"]
+    _toml_kwargs = [FROM_KEY, "full"]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        from_task = exp.to_str(spec.kwargs.on_fail(task_state['_task_name'].root()).from_(), spec, task_state)
-
+        from_task = FROM_KEY.to_type(spec, task_state, type_=str|None) or task_state[TASK_NAME].root()
         data   = _DootPostBox.get(from_task)
         if spec.kwargs.on_fail(False, bool).full():
             for x in data:

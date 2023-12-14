@@ -36,6 +36,7 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from collections import UserString
 import string
 from tomlguard import TomlGuard
 import doot
@@ -43,62 +44,30 @@ import doot.errors
 from doot.constants import KEY_PATTERN, MAX_KEY_EXPANSIONS
 
 PATTERN : Final[re.Pattern] = re.compile("{(.+?)}")
-Key     : TypeAlias = str
 
-def to_any(key, spec, state, indirect=False) -> Any:
-    if indirect:
-        key = "{"+key+"}"
+def to_key(key, spec, state) -> DootKey:
+    return DootKey.make(key)
 
-    state             = state or {}
-    kwargs            = spec.kwargs if spec is not None else {}
-    expanded : str    = key
-    matched           = list(PATTERN.findall(key))
-    if not bool(matched):
-        return key
-    if len(matched) > 1:
-        raise TypeError("Expansion to anything can't handle multiple keys", key)
+def to_any(key, spec, state, type_=Any) -> Any:
+    key = DootKey.make(key)
+    return key.to_type(spec, state, type_=type_)
 
-    target = matched.pop()
-    replacement = state.get(target, None) or kwargs.get(target, None)
+def to_str(key, spec, state, rec=False) -> str:
+    match DootKey.make(key):
+        case DootKey() as k:
+            return k.expand(spec, state, rec=rec)
+        case str() as k:
+            fmt = DootFormatter()
+            return fmt.format(k, _spec=spec, _state=state, _rec=rec)
 
-    match replacement:
-        case None:
-            return key
-        case _:
-            return replacement
-
-def to_str(key:Key, spec, state, indirect=False) -> str:
-    if indirect:
-        key = "{" + key + "}"
-
-    state             = state or {}
-    kwargs            = spec.kwargs if spec is not None else {}
-    expanded : str    = key
-    for matched in PATTERN.finditer(expanded):
-        replacement = state.get(matched[1], None) or kwargs.get(matched[1], None)
-
-        match replacement:
-            case None:
-                continue
-            case list():
-                raise TypeError("Key Replacement is a list", key, replacement)
-            case pl.Path():
-                return replacement
-            case str():
-                try:
-                    expanded = re.sub(matched[0], replacement, expanded, count=1)
-                except re.error as err:
-                    expanded = expanded[:matched.start(0)] + replacement + expanded[matched.end(0):]
-            case _:
-                raise TypeError("Key Replacement isnt a str", key, replacement)
-
-    return expanded
-
-def to_path(key, spec, state, indirect=False) -> pl.Path:
-    expanded  = to_str(key, spec, state, indirect=indirect)
-    flattened = to_str(expanded, spec, state)
-    return doot.locs[flattened]
-
+def to_path(key, spec, state) -> pl.Path:
+    match key:
+        case str():
+            key = DootKey.make(key)
+            return key.to_path(spec, state)
+        case pl.Path():
+            fmt = DootFormatter()
+            return fmt.format(key, _spec=spec, _state=state, _as_path=True)
 
 def expand_path_part(part:str, data:TomlGuard) -> str:
     """ Given a part of a path, expand any keys found"""
@@ -118,15 +87,26 @@ def expand_path_part(part:str, data:TomlGuard) -> str:
     return expanded_part
 
 class DootFormatter(string.Formatter):
+    """
+      A Formatter for expanding arguments based on both action spec kwargs,
+      and task state
+    """
 
-    def format(self, fmt, /, *args, indirect=False, as_path=False, **kwargs) -> str:
+    def format(self, fmt, /, *args, _as_path=False, **kwargs) -> str|pl.Path:
         self._depth = 0
-        if indirect:
-            fmt = "{"+fmt+"}"
-        result = self.vformat(fmt, args, kwargs)
-        if as_path:
-            return doot.locs[result]
+        match fmt:
+            case DootKey():
+                fmt = fmt.form
+                result = self.vformat(fmt, args, kwargs)
+            case str():
+                result = self.vformat(fmt, args, kwargs)
+            case pl.Path():
+                result = ftz.reduce(pl.Path.joinpath, [self.vformat(x, args, kwargs) for x in fmt.parts], pl.Path())
+            case _:
+                raise TypeError("Unrecognized expansion type", fmt)
 
+        if _as_path:
+            return doot.locs[result]
         return result
 
     def get_value(self, key, args, kwargs):
@@ -134,12 +114,141 @@ class DootFormatter(string.Formatter):
         if isinstance(key, int):
             return args[key]
 
-        state             = kwargs.get('state')
-        spec              = kwargs.get('spec').kwargs
+        state             = kwargs.get('_state')
+        spec              = kwargs.get('_spec').kwargs
         replacement       = state.get(key, None) or spec.get(key, None)
-        logging.debug("Expanded to: %s", replacement)
-        if replacement and kwargs.get("recursive", False) and self._depth < MAX_KEY_EXPANSIONS:
-            self._depth += 1
-            return self.vformat(replacement, args, kwargs)
+        match replacement:
+            case None:
+                return DootKey(key).form
+            case DootKey() if self._depth < MAX_KEY_EXPANSIONS:
+                self._depth += 1
+                return self.vformat(replacement.form, args, kwargs)
+            case str() if kwargs.get("_rec", False) and self._depth < MAX_KEY_EXPANSIONS:
+                self._depth += 1
+                return self.vformat(str(replacement), args, kwargs)
+            case str():
+                return replacement
+            case pl.Path() if self._depth < MAX_KEY_EXPANSIONS:
+                self._depth += 1
+                return ftz.reduce(pl.Path.joinpath, map(lambda x: self.vformat(x, args, kwargs), replacement.parts), pl.Path())
+            case _:
+                raise TypeError("Replacement Value isn't a string")
 
-        return replacement or "{"+key+"}"
+class DootKey(str):
+    """
+      To simplify argument expansion, a str subclass.
+      DootKeys are strings, that implicitly are wrapped in {}.
+      so DootKey.make("blah") -> DootKey("blah") -> str=="{blah}"
+
+    """
+
+    @staticmethod
+    def make(s):
+        match s:
+            case DootKey():
+                return s
+            case str() if s[0] == "{" and s[-1] == "}":
+                return DootKey(s[1:-1])
+            case str() if re.search("{|}", s):
+                return s
+            case str():
+                return DootKey(s)
+            case _:
+                raise TypeError("Bad Type to build a Doot Key Out of", s)
+
+    def __repr__(self):
+        return "<DootKey: {}>".format(str(self))
+
+    def __hash__(self):
+        return super().__hash__()
+
+    def __eq__(self, other):
+        match other:
+            case DootKey():
+                return str(self) == str(other)
+            case str():
+                return str(self) == str(other)
+
+    def within(self, other:str|dict|TomlGuard):
+        match other:
+            case str():
+                return self.form in other
+            case dict() | TomlGuard():
+                return self in other
+            case _:
+                raise TypeError("Uknown DootKey target for within", other)
+
+    @property
+    def indirect(self):
+        if not self.is_indirect:
+            return DootKey("{}_".format(super().__str__()))
+        return self
+
+    @property
+    def is_indirect(self):
+        return str(self).endswith("_")
+
+    @property
+    def form(self):
+        return "{{{}}}".format(str(self))
+
+    def expand(self, spec, state, rec=False) -> str:
+        key = self.redirect(spec)
+        fmt = DootFormatter()
+        return fmt.format(key, _spec=spec, _state=state, _rec=rec)
+
+    def redirect(self, spec, chain=None) -> DootKey:
+        """
+          If the indirect form of the key is found in the spec, use that instead
+        """
+        if self.indirect in spec.kwargs:
+            return DootKey.make(spec.kwargs[self.indirect])
+        if self.is_indirect and self in spec.kwargs:
+            return DootKey.make(spec.kwargs[self])
+        if chain:
+            return chain
+
+        return self
+
+    def to_path(self, spec, state, chain=None) -> pl.Path:
+        fmt       = DootFormatter()
+        try:
+            key       = self.redirect(spec)
+            expanded  = fmt.format(key, _spec=spec, _state=state)
+            finalised = fmt.format(expanded, _spec=spec, _state=state, _as_path=True)
+            return finalised
+        except doot.errors.DootLocationExpansionError as err:
+            match chain:
+                case None:
+                    raise err
+                case DootKey():
+                    return chain.to_path(spec, state)
+
+    def to_type(self, spec, state, type_=Any, chain:DootKey=None) -> Any:
+        target            = self.redirect(spec)
+        kwargs            = spec.kwargs
+        replacement       = state.get(target, None) or kwargs.get(target, None)
+
+        match replacement:
+            case None if chain:
+                return chain.to_type(spec, state, type_=type)
+            case None if type_ is Any or type_ is None:
+                return None
+            case _ if type_ is Any:
+                return replacement
+            case _ if type_ and isinstance(replacement, type_):
+                return replacement
+            case _:
+                raise TypeError("Unexpected Type for replacement", type, replacement, self)
+
+class DootMultiKey(DootKey):
+    """ A string of multiple keys """
+
+    def keys(self):
+        pass
+
+    def expand(self, spec, state):
+        pass
+
+class DootKeyChain(DootKey):
+    pass
