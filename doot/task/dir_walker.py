@@ -259,14 +259,14 @@ class DootMiniWalker(DootDirWalker):
     def specialize_subtask(self, task) -> DootTaskSpec:
         task.actions         = [DootActionSpec.from_data(x) for x in self.spec.extra.sub_actions]
         task.print_levels    = self.spec.print_levels
-        task.queue_behaviour = "auto"
         return task
 
 
     def _build_head(self, **kwargs) -> DootTaskSpec:
         head = self.default_task(None, TomlGuard(kwargs))
-        spec_head_actions = self.spec.extra.on_fail([], list).head_actions()
+        spec_head_actions = [DootActionSpec.from_data(x) for x in self.spec.extra.on_fail([], list).head_actions()]
         head.actions = spec_head_actions
+        head.queue_behaviour = "auto"
 
         return head
 

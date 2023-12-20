@@ -124,7 +124,7 @@ class DootCodeReference(DootStructuredName):
 
     def try_import(self) -> Any:
         try:
-            mod = importlib.import_module(self.value)
+            mod = importlib.import_module(self.module)
             curr = mod
             for name in self.tail:
                 curr = getattr(curr, name)

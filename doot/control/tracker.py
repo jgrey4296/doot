@@ -395,7 +395,7 @@ class DootTracker(TaskTracker_i):
                 case self.state_e.HALTED:  # remove and propagate halted status
                     # anything that depends on a halted task in turn gets halted
                     halting = list(self.task_graph.succ[focus].keys())
-                    printer.warning("Propagating Halt from: %s to:", focus, halting)
+                    printer.warning("Propagating Halt from: %s to: %s", focus, halting)
                     for pred in halting:
                         self.update_state(pred, self.state_e.HALTED)
                     # And remove the halted task from the active_set

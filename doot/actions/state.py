@@ -82,8 +82,8 @@ class PushState(Action_p):
         data     = data_key.to_any(spec, task_state, type_=list|set|None) or []
 
         to_add   = map(lambda x: x if isinstance(x, list) else [x],
-                     filter(lambda x: x is not None,
-                            exp.to_any(arg, spec, task_state) for arg in spec.args))
+                       filter(lambda x: x is not None,
+                              (exp.to_any(arg, spec, task_state) for arg in spec.args)))
         match data:
             case set():
                 list(map(lambda x: data.update(x), to_add))
