@@ -71,7 +71,7 @@ class LogAction(Action_p):
     _toml_kwargs = [MSG, LEVEL]
 
     def __call__(self, spec, task_state):
-        level_name   = LEVEL.to_type(spec, task_states, type_=str|None) or "INFO"
+        level_name   = LEVEL.to_type(spec, task_state, type_=str|None) or "INFO"
         level        = logmod.getLevelName(level_name)
         msg          = MSG.expand(spec, task_state)
         printer.log(level, "%s", msg)
