@@ -96,4 +96,5 @@ DEFAULT_PLUGINS['tasker']      = [("tasker"  , "doot.task.base_tasker:DootTasker
                                   ("walker" ,  "doot.task.dir_walker:DootDirWalker"),
                                   ("task"    , "doot.task.base_task:DootTask"),
                                   ("shadow"  , "doot.task.tree_shadower:DootTreeShadower"),
+                                  ("miniwalk", "doot.task.dir_walker:DootMiniWalker"),
                                   ]
