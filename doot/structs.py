@@ -34,3 +34,4 @@ from doot._structs.task_spec import DootTaskSpec
 from doot._structs.artifact import DootTaskArtifact
 from doot._structs.stub import TaskStub, TaskStubPart
 from doot._structs.trace import DootTraceRecord
+from doot._structs.key import DootKey
