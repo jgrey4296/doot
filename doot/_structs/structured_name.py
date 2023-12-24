@@ -201,9 +201,7 @@ class DootTaskName(DootStructuredName):
         return hash(str(self))
 
     def root(self):
-        if self.form in [StructuredNameEnum.CLASS, StructuredNameEnum.CALLABLE]:
-            raise TypeError("Getting the root of a class or callable doesn't make sense")
-        return f"{self.head_str()}{DootStructuredName.task_separator}{self.tail[0]}"
+        return f"{self.head_str()}{self.separator}{self.tail[0]}"
 
     @property
     def group(self):
