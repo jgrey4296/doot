@@ -73,7 +73,7 @@ class LogAction(Action_p):
     def __call__(self, spec, task_state):
         level_name   = LEVEL.to_type(spec, task_state, type_=str|None) or "INFO"
         level        = logmod.getLevelName(level_name)
-        msg          = MSG.expand(spec, task_state)
+        msg          = MSG.expand(spec, task_state, rec=True)
         printer.log(level, "%s", msg)
 
 @doot.check_protocol
