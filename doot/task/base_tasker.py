@@ -35,7 +35,7 @@ import doot
 import doot.errors
 from doot.constants import SUBTASKED_HEAD
 from doot.enums import TaskFlags
-from doot.structs import DootTaskSpec, TaskStub, TaskStubPart, DootTaskName
+from doot.structs import DootTaskSpec, TaskStub, TaskStubPart, DootTaskName, DootCodeReference
 from doot._abstract import Tasker_i, Task_i
 from doot.mixins.importer import ImporterMixin
 from doot.errors import DootDirAbsent
@@ -112,7 +112,7 @@ class DootTasker(Tasker_i, ImporterMixin):
 
         task_ref = self.spec.extra.on_fail((None,), None|str).head_task()
         if task_ref is not None:
-            task_spec.ctor_name = DootTaskName.from_str(task_ref)
+            task_spec.ctor = DootCodeReference.from_str(task_ref)
 
         maybe_task : DootTaskSpec | None = self.specialize_task(task_spec)
 

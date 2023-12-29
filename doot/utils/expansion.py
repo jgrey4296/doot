@@ -43,7 +43,7 @@ import doot
 import doot.errors
 from doot.constants import KEY_PATTERN, MAX_KEY_EXPANSIONS
 
-from doot.structs import DootKey
+from doot._structs.key import DootFormatter, DootKey
 
 PATTERN : Final[re.Pattern] = re.compile("{(.+?)}")
 

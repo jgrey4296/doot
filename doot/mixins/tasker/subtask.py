@@ -61,7 +61,7 @@ class SubMixin:
 
         task_ref = self.spec.extra.on_fail((None,), None|str).sub_task()
         if task_ref is not None:
-            task_spec.ctor_name = DootTaskName.from_str(task_ref)
+            task_spec.ctor = DootTaskName.from_str(task_ref)
 
         task      = self.specialize_subtask(task_spec)
         match task:

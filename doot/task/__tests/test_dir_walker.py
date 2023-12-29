@@ -16,7 +16,7 @@ import pytest
 import doot
 from doot.utils.testing_fixtures import wrap_tmp
 from doot.task.dir_walker import DootDirWalker
-from doot.structs import DootTaskSpec
+from doot.structs import DootTaskSpec, DootCodeReference
 from doot._abstract import TaskBase_i
 
 logging = logmod.root

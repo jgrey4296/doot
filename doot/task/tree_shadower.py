@@ -21,6 +21,7 @@ logging = logmod.getLogger(__name__)
 
 printer = logmod.getLogger("doot._printer")
 
+from tomlguard import TomlGuard
 import doot
 from doot.errors import DootDirAbsent, DootLocationError
 from doot.structs import DootTaskSpec
@@ -53,6 +54,8 @@ class DootTreeShadower(DootDirWalker):
       To allow for easy saving of modified files, in a structure that mirrors the source data
 
       automatically includes `shadow_root` as a clean target
+
+      can use 'sub_task' and 'head_task', or 'sub_actions', 'head_actions'
     """
     control = _WalkControl
 
@@ -98,9 +101,32 @@ class DootTreeShadower(DootDirWalker):
         return result.parent
 
 
+
+    def specialize_subtask(self, task) -> DootTaskSpec:
+        if "sub_actions" not in self.spec.extra:
+            return task
+
+        task.actions         = [DootActionSpec.from_data(x) for x in self.spec.extra.sub_actions]
+        task.print_levels    = self.spec.print_levels
+        return task
+
+
+    def _build_head(self, **kwargs) -> DootTaskSpec:
+        head = self.default_task(None, TomlGuard(kwargs))
+        if "head_actions" not in self.spec.extra:
+            return head
+
+        spec_head_actions = [DootActionSpec.from_data(x) for x in self.spec.extra.on_fail([], list).head_actions()]
+        head.actions = spec_head_actions
+        head.queue_behaviour = "auto"
+
+        return head
+
     @classmethod
     def stub_class(cls, stub):
-        stub.ctor = cls
-        stub['shadow_root'].type = "Path"
-        stub['shadow_root'].default = ""
+        stub.ctor                    = cls
+        stub['shadow_root'].type     = "Path"
+        stub['shadow_root'].default  = ""
+        stub['sub_actions'].default  = list()
+        stub['head_actions'].default = list()
         return stub

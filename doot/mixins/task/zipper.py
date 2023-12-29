@@ -35,7 +35,7 @@ import doot
 
 zip_default_name = doot.config.on_fail("default", str).zip.name()
 zip_overwrite    = doot.config.on_fail(False, bool).zip.overwrite()
-zip_compression  = doot.config.on_fail("ZIP_DEFLATED", str).zip.compression(wrapper=lambda x: getattr(zipfile, x))
+zip_compression  = getattr(zipfile, doot.config.on_fail("ZIP_DEFLATED", str).zip.compression())
 zip_level        = doot.config.on_fail(4, int).zip.level()
 
 zip_choices = [("none", "No compression"), ("zip", "Default Zip Compression"), ("bzip2", "bzip2 Compression"), ("lzma", "lzma compression")]
@@ -170,12 +170,13 @@ class ZipperMixin:
 
         for zipf in zips:
             logging.debug("Extracting: %s (%s) to %s", zipf, fn, fpath)
-            self.mkdirs(fpath / zipf.stem)
+            (fpath / zipf.stem).mkdir(parents=True, exist_ok=True)
             with zipfile.ZipFile(zipf) as targ:
                 subset = [x for x in targ.namelist() if fn(x)]
                 targ.extractall(fpath / zipf.stem, members=subset)
 
     def zip_unzip_concat(self, fpath:pl.Path, *zips:pl.Path, member=None, header=b"\n\n#------\n\n", footer=b"\n\n#------\n\n"):
+        """ Unzip and concatenate an fpath within multiple zip files, into a single file """
         with open(fpath, "ab") as out:
             for zipf in zips:
                 try:

@@ -80,7 +80,6 @@ class DootWalkMapper(DootDirWalker):
 
     def specialize_subtask(self, task) -> None|dict|DootTaskSpec:
         # lookup using spec keys
-        # task_spec.ctor_name = DootStructuredName.from_str(val)
         return task
 
     @classmethod

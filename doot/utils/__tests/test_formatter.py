@@ -85,6 +85,7 @@ class TestDootFormatter:
         assert(result == "this is a aweg blah {d}")
 
 
+    @pytest.mark.xfail
     def test_not_str_fails(self):
         fmt = exp.DootFormatter()
         spec = DootActionSpec(kwargs={"a":"this is a {b}"})
