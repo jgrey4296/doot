@@ -29,8 +29,9 @@ logging = logmod.getLogger(__name__)
 from tomlguard import TomlGuard
 import doot
 import doot.errors
+from doot.constants import PARAM_ASSIGN_PREFIX
 from doot._abstract import ArgParser_i
-from doot.structs import DootParamSpec
+from doot.structs import DootParamSpec, DootTaskSpec
 from collections import ChainMap
 
 SEP : Final[str] = "--"
@@ -62,13 +63,13 @@ class DootFlexibleParser(ArgParser_i):
         self.default_help     = DootParamSpec(name="help", default=False, prefix="--")
 
         ## -- results
-        self.head_call                         = None
-        self.head_args                         = None
-        self.cmd_name                          = None
-        self.cmd_args                          = {}
+        self.head_call                          = None
+        self.head_args                          = None
+        self.cmd_name                           = None
+        self.cmd_args                           = {}
         self.tasks_args                         = []
-        self.extras                            = {}
-        self.force_help                        = False
+        self.extras                             = {}
+        self.force_help                         = False
 
         ## -- loop state
         self.focus                             = self.PS.HEAD
@@ -148,9 +149,10 @@ class DootFlexibleParser(ArgParser_i):
 
         args.pop(0)
         while bool(args) and args[0] not in self.registered_tasks:
-            if args[0] == SEP:
+            if args[0] == SEP: # hit SEP, the forced separator
+                # eg: doot list a b c -- something else
                 args.pop(0)
-                return args
+                break
             match [x for x in current_specs if x == args[0]]:
                 case []:
                     raise doot.errors.DootParseError("Unrecognized cmd arg", head, args[0])
@@ -168,8 +170,11 @@ class DootFlexibleParser(ArgParser_i):
         logging.debug("Task Parsing: %s", args)
         if args[0] not in self.registered_tasks:
             task                     = self.registered_tasks[default_task]
+            assert(isinstance(task, DootTaskSpec))
             task_name                = default_task
-            current_specs            = list(sorted(task.param_specs, key=DootParamSpec.key_func))
+            spec_params = [DootParamSpec.from_dict(x) for x in task.extra.on_fail([], list).cli()]
+            ctor_params = task.ctor.try_import().param_specs()
+            current_specs            = list(sorted(spec_params + ctor_params, key=DootParamSpec.key_func))
             task_args                = self._build_defaults_dict(current_specs)
             self.tasks_args.append((task_name, task_args))
             return args
@@ -178,7 +183,10 @@ class DootFlexibleParser(ArgParser_i):
         while bool(args) and args[0] in self.registered_tasks:
             task_name                 = args.pop(0)
             task                      = self.registered_tasks[task_name]
-            current_specs             = list(sorted(task.param_specs, key=DootParamSpec.key_func))
+            assert(isinstance(task, DootTaskSpec))
+            spec_params               = [DootParamSpec.from_dict(x) for x in task.extra.on_fail([], list).cli()]
+            ctor_params               = task.ctor.try_import().param_specs()
+            current_specs             = list(sorted(spec_params + ctor_params, key=DootParamSpec.key_func))
             task_args                 = self._build_defaults_dict(current_specs)
             logging.debug("Parsing Task args for: %s: Available: %s", task_name, task_args.keys())
 
@@ -186,15 +194,22 @@ class DootFlexibleParser(ArgParser_i):
                 if args[0] == SEP:
                     args.pop(0)
                     break
+
                 match [x for x in current_specs if x == args[0]]:
-                    case []:
-                        raise doot.errors.DootParseError("Unrecognized task arg", task_name, args[0])
+                    case [] if args[0].startswith(PARAM_ASSIGN_PREFIX):
+                        try:
+                            key, *values     = args[0].split("=")
+                            task_args[key.removeprefix("--")] = value
+                            args.pop(0)
+                        except ValueError:
+                            raise doot.errors.DootParseError("Arg failed to split into key=value", args[0])
                     case [x]:
                         x.maybe_consume(args, task_args)
                     case [*xs] if all(y.positional for y in xs):
                         self._consume_next_positional(args, task_args, xs)
                     case [*xs]:
                         raise doot.errors.DootParseError("Multiple possible task args", task_name, args[0])
+
 
             if task_name in [x[0] for x in self.tasks_args]:
                 raise doot.errors.DootParseError("a single task was specified twice")

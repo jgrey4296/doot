@@ -39,7 +39,7 @@ logging = logmod.getLogger(__name__)
 
 import tomlguard
 from doot import structs
-from doot._abstract import Task_i, Tasker_i
+from doot._abstract import Task_i, Tasker_i, TaskBase_i
 
 def mock_tasker_spec(mocker):
     tasker_m                                     = mocker.MagicMock(spec=Tasker_i)
@@ -59,7 +59,6 @@ def mock_task_spec(mocker, action_count=0):
     task_m.state                               = {}
     type(task_m).actions                       = mocker.PropertyMock(return_value=mock_action_spec(mocker, num=action_count))
     return task_m
-
 
 def mock_action_spec(mocker, num=1) -> list:
     results = []
@@ -90,21 +89,25 @@ def mock_task(mocker, name, pre=None, post=None):
     return mock_task, depends_on, required_for
 
 
-
-"""
-
-
-"""
-
-
 def mock_parse_cmd(mocker, params=None):
+    """ Build a mock command with cli params """
     params                     = params or []
     cmd_mock                   = mocker.MagicMock()
     type(cmd_mock).param_specs = mocker.PropertyMock(return_value=params)
     return cmd_mock
 
-def mock_parse_task(mocker, params=None):
-    params                      = params or []
-    task_mock                   = mocker.MagicMock()
-    type(task_mock).param_specs = mocker.PropertyMock(return_value=params)
+def mock_parse_task(mocker, params=None, ctor_params=None):
+    """ Build a mock Task Spec, with spec defined cli params, and ctor defined cli params  """
+    params                                      = params or []
+    ctor_params                                 = ctor_params or []
+    task_mock                                   = mocker.MagicMock(spec=structs.DootTaskSpec)
+    task_mock.extra                             = tomlguard.TomlGuard({"cli": params})
+
+    task_ctor_mock                              = mocker.Mock(spec=TaskBase_i)
+    task_ctor_mock.param_specs.return_value     = ctor_params
+    task_ctor_ref_mock                          = mocker.Mock(spec=structs.DootCodeReference)
+    task_ctor_ref_mock.try_import.return_value  = task_ctor_mock
+
+    task_mock.ctor                              = task_ctor_ref_mock
+
     return task_mock

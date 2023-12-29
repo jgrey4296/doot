@@ -110,7 +110,10 @@ class DootArgParser(ArgParser_i):
                     # handle switching to task context
                     focus          = PS.TASK
                     mentioned_tasks.append(arg)
-                    current_specs  = list(sorted(tasks[arg].ctor.param_specs, key=DootParamSpec.key_func))
+                    task = tasks[arg]
+                    spec_params               = [DootParamSpec.from_dict(x) for x in task.extra.on_fail([], list).cli()]
+                    ctor_params               = task.ctor.try_import().param_specs()
+                    current_specs             = list(sorted(spec_params + ctor_params, key=DootParamSpec.key_func))
                     logging.info("Updated Specs to: %s", current_specs)
 
                     matching_specs = []
@@ -120,15 +123,15 @@ class DootArgParser(ArgParser_i):
                 case PS.HEAD if bool(matching_specs):
                     spec = matching_specs[0]
                     logging.info("Setting HEAD : arg(%s) = %s", spec.name, arg)
-                    spec.add_value_to(doot_args, arg)
+                    spec.add_value_to(doot_args, key=arg)
                 case PS.CMD if bool(matching_specs):
                     spec = matching_specs[0]
                     logging.info("Setting Cmd(%s): arg(%s) = %s", cmd_name, spec.name, arg)
-                    non_default_cmd_arg |= spec.add_value_to(cmd_args, arg)
+                    non_default_cmd_arg |= spec.add_value_to(cmd_args, key=arg)
                 case PS.TASK if bool(matching_specs):
                     spec = matching_specs[0]
                     logging.info("Setting Task(%s) : arg(%s) = %s", mentioned_tasks[-1],spec.name, arg)
-                    non_default_task_arg |= spec.add_value_to(task_args[-1], arg)
+                    non_default_task_arg |= spec.add_value_to(task_args[-1], key=arg)
                 ##-- end handle args for specific context
                 case _ if not (bool(doot_specs) or bool(cmds) or bool(tasks)):
                     pass
