@@ -17,6 +17,7 @@ logging = logmod.root
 import tomlguard
 from doot import structs
 import doot.constants
+from doot.task.base_task import DootTask
 
 # caplog
 # mocker.patch | patch.object | patch.multiple | patch.dict | stopall | stop | spy | stub
@@ -42,7 +43,6 @@ class TestDootTaskName:
         simple = structs.DootTaskName("basic", "tail")
         assert(simple.head == [ "basic"])
         assert(simple.tail == ["tail"])
-
 
     def test_name_with_leading_tasks(self):
         simple = structs.DootTaskName.from_str("tasks.basic::tail")
@@ -144,38 +144,63 @@ class TestDootTaskName:
         sub    = simple.subtask("blah", subgroups=["another", "subgroup"])
         assert(str(sub) == "\"basic.sub.test.another.subgroup\"::tail.blah")
 
-
     def test_lt_comparison_equal(self):
         simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
         simple2 = structs.DootTaskName(["basic", "sub", "test"], "tail")
         assert(simple < simple2)
-
 
     def test_lt_comparison_fail(self):
         simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
         simple2 = structs.DootTaskName(["basic", "sub", "test"], "task2")
         assert(not (simple < simple2))
 
-
     def test_lt_sub_pass(self):
         simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
         simple2 = structs.DootTaskName(["basic", "sub", "test"], ["tail", "sub"])
         assert(simple < simple2)
-
 
     def test_lt_group_pass(self):
         simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
         simple2 = structs.DootTaskName(["basic", "sub", "test", "another"], ["tail", "sub"])
         assert(simple < simple2)
 
-
     def test_lt_group_fail(self):
         simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
         simple2 = structs.DootTaskName(["basic", "test"], ["tail", "sub"])
         assert(not (simple < simple2))
 
-
-
-
 class TestDootCodeReference:
-    pass
+
+    def test_basic(self):
+        ref = structs.DootCodeReference.from_str("doot.task.base_task:DootTask")
+        assert(isinstance(ref, structs.DootCodeReference))
+
+    def test_import(self):
+        ref = structs.DootCodeReference.from_str("doot.task.base_task:DootTask")
+        imported = ref.try_import()
+        assert(isinstance(imported, type))
+        assert(imported == DootTask)
+
+    def test_import_module_fail(self):
+        ref = structs.DootCodeReference.from_str("doot.taskSSSSS.base_task:DootTask")
+        with pytest.raises(ImportError):
+            imported = ref.try_import()
+
+    def test_import_class_fail(self):
+        ref = structs.DootCodeReference.from_str("doot.task.base_task:DootTaskSSSSSS")
+        with pytest.raises(ImportError):
+            imported = ref.try_import()
+
+    def test_add_mixin(self):
+        ref = structs.DootCodeReference.from_str("doot.task.base_task:DootTask")
+        assert(not bool(ref._mixins))
+        ref.add_mixins("doot.mixins.tasker.mini_builder:MiniBuilderMixin")
+        assert(bool(ref._mixins))
+
+
+    def test_build_mixin(self):
+        ref = structs.DootCodeReference.from_str("doot.task.base_task:DootTask")
+        ref.add_mixins("doot.mixins.tasker.mini_builder:MiniBuilderMixin")
+        result = ref.try_import()
+        assert(result != DootTask)
+        assert(DootTask in result.mro())

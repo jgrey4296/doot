@@ -120,14 +120,45 @@ class DootStructuredName:
 
 @dataclass
 class DootCodeReference(DootStructuredName):
-    separator : str = field(default=doot.constants.IMPORT_SEP, kw_only=True)
+    separator : str                              = field(default=doot.constants.IMPORT_SEP, kw_only=True)
+    _mixins   : list[DootCodeReference]          = field(init=False, default_factory=list, kw_only=True)
+    _type     : None|type                        = field(default=None, kw_only=True)
 
-    def try_import(self) -> Any:
+    def add_mixins(self, *mixins:str|type):
+        for mix in mixins:
+            match mix:
+                case str():
+                    ref = DootCodeReference.from_str(mix)
+                case DootCodeReference():
+                    ref = mix
+                case type():
+                    ref = DootCodeReference.from_type(mix)
+                case _:
+                    raise TypeError("Unrecognised mixin type", mix)
+            self._mixins.append(ref)
+
+    def try_import(self, ensure:type=Any) -> Any:
         try:
-            mod = importlib.import_module(self.module)
-            curr = mod
-            for name in self.tail:
-                curr = getattr(curr, name)
+            if self._type is not None:
+                curr = self._type
+            else:
+                mod = importlib.import_module(self.module)
+                curr = mod
+                for name in self.tail:
+                    curr = getattr(curr, name)
+
+            if bool(self._mixins):
+                mixins = []
+                for mix in self._mixins:
+                    match mix:
+                        case DootCodeReference():
+                            mixins.append(mix.try_import())
+                        case type():
+                            mixins.append(mix)
+                curr = type(f"DootGenerated:{curr.__name__}", tuple(mixins + [curr]), {})
+
+            if ensure is not Any and not (isinstance(curr, ensure) or issubclass(curr, ensure)):
+                raise ImportError("Imported Code Reference is not of correct type", self, ensure)
 
             return curr
         except ModuleNotFoundError as err:
@@ -151,6 +182,13 @@ class DootCodeReference(DootStructuredName):
             groupHead = None
             taskHead  = name
         return DootCodeReference(groupHead, taskHead)
+
+    @staticmethod
+    def from_type(_type:type):
+        groupHead = _type.__module__
+        codeHead  = _type.__name__
+        ref = DootCodeReference(groupHead, codeHead, _type=_type)
+        return ref
 
     @property
     def module(self):
