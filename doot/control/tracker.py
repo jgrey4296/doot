@@ -40,7 +40,7 @@ import doot.errors
 import doot.constants as const
 from doot.enums import TaskStateEnum
 from doot._abstract import Tasker_i, Task_i, FailPolicy_p
-from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskName
+from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskName, DootCodeReference
 from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i
 from doot.task.base_task import DootTask
 
@@ -121,16 +121,16 @@ class DootTracker(TaskTracker_i):
         """ Internal utility method to convert task identifier into actual task """
         # Build the Task if necessary
         match task:
-            case DootTaskSpec(ctor=ctor) if isinstance(ctor, type) and issubclass(ctor, TaskBase_i):
-                task : TaskBase_i = task.ctor(task)
-            case DootTaskSpec(ctor=None, ctor_name=ctor_name) if str(ctor_name) in self.tasks:
+            case DootTaskSpec(ctor=DootTaskName() as ctor) if str(ctor) in self.tasks:
                 # specialize a loaded task
-                base_spec   = self.tasks.get(str(ctor_name)).spec
+                base_spec   = self.tasks.get(str(ctor)).spec
                 specialized = base_spec.specialize_from(task)
                 if specialized.ctor is None:
                     raise doot.errors.DootTaskTrackingError("Attempt to specialize task failed: %s", task.name)
 
-                return specialized.ctor(specialized)
+                return specialized.build()
+            case DootTaskSpec(ctor=DootCodeReference() as ctor) if ctor.check(ensure=TaskBase_i):
+                task : TaskBase_i = task.build()
             case DootTaskSpec():
                 task : TaskBase_i = DootTask(task)
             case TaskBase_i():
@@ -192,16 +192,18 @@ class DootTracker(TaskTracker_i):
             match pre:
                 case {"task": taskname}:
                     if taskname in self.tasks:
-                        base_task        = self.tasks[taskname]
+                        base_task                 = self.tasks[taskname]
                         pre['name']               = task.spec.name.subtask("$specialized$", "${}$".format(uuid1().hex))
-                        pre['required_for'] = [task.name]
-                        pre_spec         = DootTaskSpec.from_dict(pre, ctor_name=DootTaskName.from_str(taskname))
+                        pre['required_for']       = [task.name]
+                        pre['ctor']               = DootTaskName.from_str(taskname)
+                        pre_spec                  = DootTaskSpec.from_dict(pre)
                         self.add_task(pre_spec)
                     else:
                         assert(str(pre) not in self.task_graph.nodes)
                         pre['name']               = task.spec.name.subtask("$specialized$", "$late:{}$".format(uuid1().hex))
                         pre['required_for']       = [task.name]
-                        pre_spec                  = DootTaskSpec.from_dict(pre, ctor_name=DootTaskName.from_str(taskname))
+                        pre['ctor']               = DootTaskName.from_str(taskname)
+                        pre_spec                  = DootTaskSpec.from_dict(pre)
                         self._build_late.append(pre_spec)
                 case pl.Path():
                     pre = self._prep_artifact(DootTaskArtifact(pre))
@@ -224,16 +226,18 @@ class DootTracker(TaskTracker_i):
             match post:
                 case {"task": taskname}:
                     if taskname in self.tasks:
-                        base_task                 = self.tasks[taskname]
+                        base_task                  = self.tasks[taskname]
                         post['name']               = task.spec.name.subtask("$specialized$", "${}$".format(uuid1().hex))
-                        post['depends-on']        = []
-                        post_spec                 = DootTaskSpec.from_dict(post, ctor_name=DootTasName.from_str(taskname))
+                        post['depends-on']         = []
+                        post['ctor']               = DootTasName.from_str(taskname)
+                        post_spec                  = DootTaskSpec.from_dict(post)
                         self.add_task(post_spec)
                     else:
                         assert(str(post) not in self.task_graph.nodes)
                         post['name']               = task.spec.name.subtask("$specialized$", "$late:{}$".format(uuid1().hex))
                         post['depends-on']         = [task.spec.name]
-                        post_spec                  = DootTaskSpec.from_dict(post, ctor_name=DootTaskName.from_str(taskname))
+                        post['ctor']               = DootTaskName.from_str(taskname)
+                        post_spec                  = DootTaskSpec.from_dict(post)
                         self.tasks[post_spec.name] = post_spec
                         self._build_late.append(post_spec)
                 case pl.Path():

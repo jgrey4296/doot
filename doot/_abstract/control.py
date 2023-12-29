@@ -35,7 +35,8 @@ from typing import Generator, NewType
 from collections import deque, defaultdict
 
 from doot.enums import TaskStateEnum
-from doot.structs import DootTaskArtifact, DootTaskSpec
+from doot._structs.artifact import DootTaskArtifact
+from doot._structs.task_spec import DootTaskSpec
 from doot._abstract.reporter import ReportLine_i, Reporter_i
 from doot._abstract.policy import FailPolicy_p
 from doot._abstract.task import TaskBase_i

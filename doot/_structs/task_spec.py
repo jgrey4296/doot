@@ -38,6 +38,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import importlib
+from importlib.metadata import EntryPoint
 from tomlguard import TomlGuard
 import doot.errors
 import doot.constants as consts
@@ -78,17 +79,16 @@ class DootTaskSpec:
 
     actions                      : list[ [args] | {do="", args=[], **kwargs} ]
     """
-    name                         : DootTaskName                                   = field()
+    name                         : DootTaskName                                    = field()
     doc                          : list[str]                                       = field(default_factory=list)
-    source                       : DootTaskName|str|None                          = field(default=None)
+    source                       : DootTaskName|str|None                           = field(default=None)
     actions                      : list[Any]                                       = field(default_factory=list)
 
     active_when                  : list[DootTaskArtifact|callable]                 = field(default_factory=list)
     required_for                 : list[DootTaskArtifact]                          = field(default_factory=list)
     depends_on                   : list[DootTaskArtifact]                          = field(default_factory=list)
     priority                     : int                                             = field(default=10)
-    ctor_name                    : DootTaskName|DootCodeReference                  = field(default=None)
-    ctor                         : type|Callable|None                              = field(default=None)
+    ctor                         : DootTaskName|DootCodeReference                  = field(default=None)
     # Any additional information:
     version                      : str                                             = field(default="0.1")
     print_levels                 : TomlGuard                                       = field(default_factory=TomlGuard)
@@ -99,12 +99,12 @@ class DootTaskSpec:
     inject                       : list[str]                                       = field(default_factory=list) # For taskers
     queue_behaviour              : str                                             = field(default="default")
     @staticmethod
-    def from_dict(data:dict, *, ctor:type=None, ctor_name=None):
+    def from_dict(data:TomlGuard|dict):
         """ builds a task spec from a raw dict
           able to handle a name:str = "group::task" form,
           able to convert TaskFlag str's into an or'd enum value
           """
-        core_keys = list(DootTaskSpec.__dataclass_fields__.keys())
+        core_keys   = list(DootTaskSpec.__dataclass_fields__.keys())
         core_data   = {}
         extra_data  = {}
 
@@ -148,17 +148,28 @@ class DootTaskSpec:
 
         core_data['flags'] = ftz.reduce(lambda x,y: x|y, map(lambda x: TaskFlags[x],  filter(lambda x: x in TaskFlagNames, core_data.get('flags', ["TASK"]))))
 
-        # Prepare constructor name
-        core_data['ctor']  = ctor or core_data.get('ctor', None)
-        match ctor_name:
-            case None if core_data['ctor'] is None:
-                core_data['ctor_name']      = DootCodeReference.from_str(doot.constants.DEFAULT_PLUGINS['tasker'][0][1])
-            case str():
-                core_data['ctor_name']      = DootCodeReference.from_str(ctor_name)
-            case DootTaskName() | DootCodeReference():
-                core_data['ctor_name']      = ctor_name
-            case _ if ctor is not None:
-                core_data['ctor_name']      = DootCodeReference(ctor.__module__, ctor.__name__)
+        # Prepare constructor
+
+        match data:
+            case {"ctor": EntryPoint() as ctor }:
+                loaded = ctor.load()
+                cor_data['ctor'] = DootCodeReference.from_type(loaded)
+            case {"ctor": DootTaskName() }:
+                if "mixins" in extra_data:
+                    raise TypeError("Task name ctor can't take mixins")
+            case { "ctor": DootCodeReference() as ctor }:
+                pass
+            case { "ctor": type() as ctor }:
+                core_data['ctor'] = DootCodeReference.from_type(ctor)
+            case { "ctor" : str() as ctor }:
+                core_data['ctor'] = DootCodeReference.from_str(ctor)
+            case { "ctor": _ as ctor }:
+                core_data['ctor'] = DootCodeReference.from_type(ctor)
+            case {} if 'ctor' not in data:
+                core_data['ctor'] = DootCodeReference.from_str(doot.constants.DEFAULT_PLUGINS['tasker'][0][1])
+
+        if isinstance(core_data['ctor'], DootCodeReference) and 'mixins' in extra_data:
+            core_data['ctor'].add_mixins(*extra_data['mixins'])
 
         # prep actions
         core_data['actions'] = [DootActionSpec.from_data(x) for x in core_data.get('actions', [])]
@@ -199,6 +210,13 @@ class DootTaskSpec:
 
         logging.debug("Specialized Task: %s on top of: %s", data.name, self.name)
         return DootTaskSpec(**specialized)
+
+    def build(self, ensure=Any):
+        task_ctor = self.ctor.try_import(ensure=ensure)
+        return task_ctor(self)
+
+    def check(self, ensure=Any):
+        self.ctor.try_import(ensure=ensure)
 
     def __hash__(self):
         return hash(str(self.name))

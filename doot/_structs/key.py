@@ -139,7 +139,12 @@ class DootKey(str):
     def to_type(self, spec, state, type_=Any, chain:DootKey=None) -> Any:
         target            = self.redirect(spec)
         kwargs            = spec.kwargs
-        replacement       = state.get(target, None) or kwargs.get(target, None)
+        cli               = doot.args.on_fail({}).tasks[str(state.get('_task_name', None))]()
+        replacement       = cli.get(target, None)
+        if replacement is None:
+            replacement = state.get(target, None)
+        if replacement is None:
+            replacement = kwargs.get(target, None)
 
         match replacement:
             case None if chain:
@@ -202,7 +207,8 @@ class DootFormatter(string.Formatter):
 
         state             = kwargs.get('_state')
         spec              = kwargs.get('_spec').kwargs
-        replacement       = state.get(key, None) or spec.get(key, None)
+        cli               = doot.args.on_fail({}).tasks[str(state.get('_task_name', None))]()
+        replacement       = cli.get(key, None) or state.get(key, None) or spec.get(key, None)
         match replacement:
             case None:
                 return DootKey(key).form

@@ -60,11 +60,11 @@ class TaskStub:
     # str(obj) -> will now generate toml, including a "blah" key
 
     """
-    ctor       : str|type                     = field(default="doot.task.base_tasker::DootTasker")
+    ctor       : str|type                     = field(default="doot.task.base_tasker:DootTasker")
     parts      : dict[str, TaskStubPart]      = field(default_factory=dict, kw_only=True)
 
     # Don't copy these from DootTaskSpec blindly
-    skip_parts : ClassVar[set[str]]          = set(["name", "extra", "ctor", "ctor_name", "source", "version"])
+    skip_parts : ClassVar[set[str]]          = set(["name", "extra", "ctor", "source", "version"])
 
     def __post_init__(self):
         self['name'].default     = DootTaskName.from_str(doot.constants.DEFAULT_STUB_TASK_NAME)

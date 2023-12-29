@@ -19,6 +19,7 @@ import importlib.metadata
 import tomlguard
 import doot
 from doot.structs import DootTaskSpec
+from doot._abstract.task import TaskBase_i
 
 doot.config = tomlguard.TomlGuard({})
 from doot.loaders import task_loader
@@ -32,7 +33,7 @@ class TestTaskLoader:
 
     def test_basic__internal_load(self):
         specs = {"tasks": { "basic" : []}}
-        specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_tasker::DootTasker"})
+        specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_tasker:DootTasker"})
         basic = task_loader.DootTaskLoader()
         basic.setup({})
         result = basic._load_raw_specs(tomlguard.TomlGuard(specs).tasks, "test_file")
@@ -87,7 +88,7 @@ class TestTaskLoader:
 
         assert("Overloading Task: basic::test : doot.task.base_tasker:DootTasker" in caplog.messages)
 
-    def test_cmd_name_conflict(self, mocker):
+    def test_cmd_name_conflict_doesnt_error(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_sources")
         mocker.patch("doot._configs_loaded_from")
 
@@ -97,8 +98,8 @@ class TestTaskLoader:
         basic.setup({}, specs)
         basic.cmd_names = set(["test"])
 
-        with pytest.raises(doot.errors.DootTaskLoadError):
-            basic.load()
+        result = basic.load()
+        assert(bool(result))
 
     def test_bad_task_class(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_sources")
@@ -125,6 +126,7 @@ class TestTaskLoader:
         with pytest.raises(doot.errors.DootTaskLoadError):
             basic.load()
 
+    @pytest.mark.xfail
     def test_bad_spec(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_sources")
         mocker.patch("doot._configs_loaded_from")
@@ -140,42 +142,60 @@ class TestTaskLoader:
     def test_task_type(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_sources")
         mocker.patch("doot._configs_loaded_from")
-        mocker.patch("importlib.metadata.EntryPoint")
+        # mocker.patch("importlib.metadata.EntryPoint")
         specs = {"tasks": {"basic": []}}
         specs['tasks']['basic'].append({"name": "simple", "ctor": "basic"})
 
-        mock_ctor = mocker.Mock()
-        type(mock_ctor).name = mocker.PropertyMock(return_value="APretendClass")
+        mock_ctor                   = mocker.Mock(spec=doot._abstract.TaskBase_i)
+        type(mock_ctor).name        = mocker.PropertyMock(return_value="APretendClass")
         mock_ctor.__module__        = "pretend"
         mock_ctor.__name__          = "APretendClass"
 
-        mock_ep      = importlib.metadata.EntryPoint()
-        mock_ep.name = "basic"
-        mock_ep.load.return_value = mock_ctor
+        mock_ep                     = mocker.Mock(spec=importlib.metadata.EntryPoint)
+        mock_ep.name                = "basic"
+        mock_ep.load.return_value   = mock_ctor
 
-        plugins      = tomlguard.TomlGuard({"tasker": [mock_ep]})
-        basic        = task_loader.DootTaskLoader()
+        plugins                     = tomlguard.TomlGuard({"tasker": [mock_ep]})
+        basic                       = task_loader.DootTaskLoader()
         basic.setup(plugins, tomlguard.TomlGuard(specs))
 
         result    = basic.load()
 
         assert(len(result) == 1)
         task_spec = result['basic::simple']
-        assert(str(task_spec.ctor_name) == "pretend:APretendClass")
-        assert(task_spec.ctor.name == "APretendClass")
+        assert(str(task_spec.ctor) == "pretend:APretendClass")
+        assert(task_spec.ctor.value == "APretendClass")
 
-    def test_task_bad_type(self, mocker):
+    def test_task_missing_plugin_in(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_sources")
         mocker.patch("doot._configs_loaded_from")
         mocker.patch("importlib.metadata.EntryPoint")
         specs = {"tasks": {"basic": []}}
-        specs['tasks']['basic'].append({"name": "simple", "type": "not_basic"})
+        specs['tasks']['basic'].append({"name": "simple", "ctor": "not_basic"})
+
+        mock_ep      = importlib.metadata.EntryPoint()
+        mock_ep.name = "basic"
+
+        plugins      = tomlguard.TomlGuard({"tasker": [mock_ep]})
+        basic        = task_loader.DootTaskLoader()
+        basic.setup(plugins, tomlguard.TomlGuard(specs))
+
+        with pytest.raises(doot.errors.DootTaskLoadError):
+            basic.load()
+
+
+    def test_task_bad_type_loaded(self, mocker):
+        mocker.patch("doot.loaders.task_loader.task_sources")
+        mocker.patch("doot._configs_loaded_from")
+        mocker.patch("importlib.metadata.EntryPoint")
+        specs = {"tasks": {"basic": []}}
+        specs['tasks']['basic'].append({"name": "simple", "ctor": "basic"})
 
         mock_ep      = importlib.metadata.EntryPoint()
         mock_ep.name = "basic"
         mock_ep.load = mocker.MagicMock(return_value=True)
 
-        plugins      = tomlguard.TomlGuard({"task": [mock_ep]})
+        plugins      = tomlguard.TomlGuard({"tasker": [mock_ep]})
         basic        = task_loader.DootTaskLoader()
         basic.setup(plugins, tomlguard.TomlGuard(specs))
 

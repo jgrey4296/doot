@@ -55,6 +55,7 @@ SUBTASKED_HEAD          : Final[str]              = "$head$"
 CONFLICTED_ADD          : Final[str]              = "$conflict$"
 INTERNAL_TASK_PREFIX    : Final[str]              = "_"
 FILE_DEP_PREFIX         : Final[str]              = "file://"
+PARAM_ASSIGN_PREFIX     : Final[str]              = "--"
 
 DEFAULT_CLI_CMD         : Final[str]              = "run"
 

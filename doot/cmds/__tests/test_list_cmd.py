@@ -81,8 +81,8 @@ class TestListCmd:
         mock_class2.__name__   = "other.type"
         plugin_mock = {"reporter": [mocker.stub("Reporter Stub")]}
         tasker_mock = {
-            "simple" : DootTaskSpec.from_dict({"group": "blah", "name": "simple"}, ctor=mock_class1),
-            "other"  : DootTaskSpec.from_dict({"group": "bloo", "name": "other"}, ctor=mock_class2)
+            "simple" : DootTaskSpec.from_dict({"group": "blah", "name": "simple", "ctor": mock_class1}),
+            "other"  : DootTaskSpec.from_dict({"group": "bloo", "name": "other", "ctor": mock_class2})
             }
         obj(tasker_mock, plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}

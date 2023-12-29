@@ -166,7 +166,9 @@ class DootOverlord(Overlord_p):
         if not isinstance(self.parser, ArgParser_i):
             raise TypeError("Improper argparser specified: ", self.arg_parser)
 
-        doot.args = self.parser.parse(args or self.args, doot_specs=self.param_specs, cmds=self.cmds, tasks=self.taskers)
+        doot.args = self.parser.parse(args or self.args, doot_specs=self.param_specs,
+            cmds=self.cmds,
+            tasks=self.taskers)
 
     def _cli_arg_response(self) -> bool:
         """ Overlord specific cli arg responses. modify verbosity,

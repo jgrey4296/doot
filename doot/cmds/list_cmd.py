@@ -104,7 +104,7 @@ class ListCmd(Command_i):
 
             printer.info(fmt_str,
                          spec.name,
-                         spec.ctor_name,
+                         spec.ctor,
                          spec.source)
 
     def _print_group_matches(self, tasks):

@@ -34,7 +34,7 @@ class TestDootTaskSpec:
         assert(isinstance(obj, structs.DootTaskSpec))
         assert(obj.name.group == "default")
         assert(obj.name.task == "default")
-        assert(str(obj.ctor_name) == doot.constants.DEFAULT_PLUGINS['tasker'][0][1])
+        assert(str(obj.ctor) == doot.constants.DEFAULT_PLUGINS['tasker'][0][1])
         assert(obj.version == "0.1")
 
 
@@ -43,7 +43,7 @@ class TestDootTaskSpec:
         assert(isinstance(obj, structs.DootTaskSpec))
         assert(obj.name.group == "default")
         assert(obj.name.task == "default")
-        assert(str(obj.ctor_name) == doot.constants.DEFAULT_PLUGINS['tasker'][0][1])
+        assert(str(obj.ctor) == doot.constants.DEFAULT_PLUGINS['tasker'][0][1])
         assert(obj.version == "0.5")
 
 

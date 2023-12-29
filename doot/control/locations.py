@@ -30,7 +30,7 @@ logging = logmod.getLogger(__name__)
 import re
 import tomlguard
 from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
-from doot.structs import DootTaskArtifact
+from doot._structs.artifact import DootTaskArtifact
 from doot.constants import KEY_PATTERN, MAX_KEY_EXPANSIONS
 from doot.utils.expansion import expand_path_part
 
