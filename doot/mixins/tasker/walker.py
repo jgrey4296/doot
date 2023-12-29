@@ -1,31 +1,48 @@
 #!/usr/bin/env python3
 """
-Base classes for making tasks which walk over files / directories and make a subtask for each
-matching thing
+
+
+See EOF for license/metadata/notes as applicable
 """
-##-- imports
+
+##-- builtin imports
 from __future__ import annotations
 
-from typing import Final
+# import abc
+import datetime
 import enum
+import functools as ftz
+import itertools as itz
 import logging as logmod
 import pathlib as pl
-import shutil
-import warnings
+import re
+import time
+import types
+import weakref
+# from copy import deepcopy
+# from dataclasses import InitVar, dataclass, field
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
+                    Iterable, Iterator, Mapping, Match, MutableMapping,
+                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
+                    cast, final, overload, runtime_checkable, Generator)
+from uuid import UUID, uuid1
 
-##-- end imports
+##-- end builtin imports
+
+##-- lib imports
+import more_itertools as mitz
+##-- end lib imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-printer = logmod.getLogger("doot._printer")
+import sh
 
 from tomlguard import TomlGuard
 import doot
 import doot.constants
 from doot.errors import DootDirAbsent
-from doot.task.base_tasker import DootTasker
 from doot.mixins.tasker.subtask import SubMixin
 from doot.structs import DootTaskSpec, DootActionSpec
 
@@ -39,20 +56,12 @@ class _WalkControl(enum.Enum):
     discard : not a result, descend
     reject  : not a result, don't descend
     """
-    accept  = enum.auto()
     yesAnd  = enum.auto()
-
-    keep    = enum.auto()
     yes     = enum.auto()
-
-    discard = enum.auto()
     noBut   = enum.auto()
-
-    reject  = enum.auto()
     no      = enum.auto()
 
-@doot.check_protocol
-class DootDirWalker(SubMixin, DootTasker):
+class WalkerMixin(SubMixin):
     """
     Base tasker for file based walking.
     Each File found is a separate subtask
@@ -138,19 +147,17 @@ class DootDirWalker(SubMixin, DootTasker):
             if bool(exts) and current.is_file() and current.suffix not in exts:
                 continue
             match filter_fn(current):
-                case _WalkControl.keep | _WalkControl.yes:
+                case _WalkControl.yes:
                     yield current
                 case True if current.is_dir():
                     queue += sorted(current.iterdir())
-                case True | _WalkControl.accept | _WalkControl.yesAnd:
+                case True | _WalkControl.yesAnd:
                     yield current
                     if current.is_dir():
                         queue += sorted(current.iterdir())
-                case False | _WalkControl.discard | _WalkControl.noBut if current.is_dir():
+                case False | _WalkControl.noBut if current.is_dir():
                     queue += sorted(current.iterdir())
                 case None | False:
-                    continue
-                case _WalkControl.reject | _WalkControl.discard:
                     continue
                 case _WalkControl.no | _WalkControl.noBut:
                     continue
@@ -158,7 +165,7 @@ class DootDirWalker(SubMixin, DootTasker):
                     raise TypeError("Unexpected filter value", x)
 
     def _single_directory_walk(self, target, filter_fn, exts):
-        check_fn = lambda x: (filter_fn(x) not in [None, False, _WalkControl.reject, _WalkControl.discard, _WalkControl.no, _WalkControl.noBut]
+        check_fn = lambda x: (filter_fn(x) not in [None, False, _WalkControl.no, _WalkControl.noBut]
                                 and x.name not in walk_ignores
                                 and (not bool(exts) or (x.is_file() and x.suffix in exts)))
 
@@ -245,40 +252,36 @@ class DootDirWalker(SubMixin, DootTasker):
         return stub
 
 
+class WalkerExternalMixin(WalkerMixin):
 
+    def walk_all(self, fn=None) -> Generator[tuple(str, pl.Path)]:
+        """
+          run the spec's `cmd`, expanded with `exts`, for each entry in `roots`
+          combine, and return
+        """
+        base_name     = self.fullname
+        found_names = set()
+        cmd           = sh.Command(self.spec.extra.cmd)
+        baked         = cmd.bake(*self.spec.extra.cmd_args)
+        for root in self.roots:
+            results = baked(root)
+            for fpath in results:
+                # ensure unique task names
+                curr = fpath.absolute()
+                name = base_name.subtask(curr.stem)
+                logging.debug("Building Unique name for: %s : %s", name, fpath)
+                while name in found_names:
+                    curr = curr.parent
+                    name = name.subtask(curr.stem)
 
-@doot.check_protocol
-class DootMiniWalker(DootDirWalker):
-    """
-      A Walker that applies actions from its spec onto subtasks,
-      instead of referencing a separate subtask,
-      and uses head_actions instead of a head task
-      subtasks are autoqueued
-    """
-
-    def specialize_subtask(self, task) -> DootTaskSpec:
-        task.actions         = [DootActionSpec.from_data(x) for x in self.spec.extra.sub_actions]
-        task.print_levels    = self.spec.print_levels
-        return task
-
-
-    def _build_head(self, **kwargs) -> DootTaskSpec:
-        head = self.default_task(None, TomlGuard(kwargs))
-        spec_head_actions = [DootActionSpec.from_data(x) for x in self.spec.extra.on_fail([], list).head_actions()]
-        head.actions = spec_head_actions
-        head.queue_behaviour = "auto"
-
-        return head
+                found_names.add(name)
+                yield name, fpath
 
     @classmethod
     def stub_class(cls, stub):
-        stub.ctor                  = cls
-        if 'sub_task' in stub.parts:
-            del stub.parts['sub_task']
-
-        if 'head_task' in stub.parts:
-            del stub.parts['head_task']
-
-        stub['sub_actions'].default  = list()
-        stub['head_actions'].default = list()
+        stub.ctor                 = cls
+        stub['cmd'].type          = "string"
+        stub['cmd'].default       = "fdfind"
+        stub['cmd_args'].type     = "list[str]"
+        stub['cmd_args'].default  = ['--color', 'never']
         return stub

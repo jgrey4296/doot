@@ -188,27 +188,10 @@ class DootRunner(TaskRunner_i):
             if action_result is ActRE.SKIP:
                 printer.info("------ Remaining Task Actions skipped by Action Instruction")
                 break
-        else: # Only try to add more tasks if the actions completed successfully, and weren't skipped
-            self._set_print_level(task.spec.print_levels.on_fail(build_level).build())
-            printer.info("")
-            printer.debug("------ Task %s: Actions Complete", task.name, extra={"colour":"cyan"})
-            self.reporter.trace(task.spec, flags=ReportEnum.TASK | ReportEnum.SUCCEED)
-            # Get Any resulting tasks
-            count = 0
-            for new_task in task.maybe_more_tasks():
-                match new_task:
-                    case DootTaskSpec():
-                        self.tracker.add_task(new_task, no_root_connection=True)
-                        count += 1
-                    case Task_i():
-                        self.tracker.add_task(new_task, no_root_connection=True)
-                        count += 1
-                    case _:
-                        self.reporter.trace(task.spec, flags=ReportEnum.FAIL | ReportEnum.TASK)
-                        raise doot.errors.DootTaskError("Task %s Failed: Provided a bad additional task: %s", task.name, new_task, task=task.spec)
-            else:
-                logmod.debug("------ Task Execution Completed: %s, adding %s additional tasks", task.name, count)
 
+        self._set_print_level(task.spec.print_levels.on_fail(build_level).build())
+        printer.debug("------ Task %s: Actions Complete", task.name, extra={"colour":"cyan"})
+        self.reporter.trace(task.spec, flags=ReportEnum.TASK | ReportEnum.SUCCEED)
         printer.debug("------ Task Executed %s Actions", action_count)
 
     def _execute_action(self, count, action, task) -> ActRE:
