@@ -171,7 +171,7 @@ class TestTaskLoader:
         mocker.patch("doot._configs_loaded_from")
         mocker.patch("importlib.metadata.EntryPoint")
         specs = {"tasks": {"basic": []}}
-        specs['tasks']['basic'].append({"name": "simple", "ctor": "not_basic"})
+        specs['tasks']['basic'].append({"name": "simple", "ctor": "bad:not_basic"})
 
         mock_ep      = importlib.metadata.EntryPoint()
         mock_ep.name = "basic"

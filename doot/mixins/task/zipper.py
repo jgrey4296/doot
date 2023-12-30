@@ -41,17 +41,15 @@ zip_level        = doot.config.on_fail(4, int).zip.level()
 zip_choices = [("none", "No compression"), ("zip", "Default Zip Compression"), ("bzip2", "bzip2 Compression"), ("lzma", "lzma compression")]
 
 class ZipperMixin:
+    """
+    Add methods for manipulating zip files.
+    Can set a self.zip_root path, where added files with be relative to
+    """
     zip_name                    = zip_default_name
     zip_overwrite               = zip_overwrite
     zip_root                    = None
     _zip_default_compression    = zip_compression
     _zip_default_compress_level = zip_level
-
-    def zip_params(self):
-        return [
-            {"name": "compression", "short": "c", "type": str, "default": self._zip_default_compression, "choices": zip_choices },
-            {"name": "level", "short": "l", "type": int, "default": self._zip_default_compress_level}
-        ]
 
     def _zip_get_compression_settings(self) -> tuple[int, int]:
         match self.args:

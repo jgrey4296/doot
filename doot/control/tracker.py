@@ -229,7 +229,7 @@ class DootTracker(TaskTracker_i):
                         base_task                  = self.tasks[taskname]
                         post['name']               = task.spec.name.subtask("$specialized$", "${}$".format(uuid1().hex))
                         post['depends-on']         = []
-                        post['ctor']               = DootTasName.from_str(taskname)
+                        post['ctor']               = DootTaskName.from_str(taskname)
                         post_spec                  = DootTaskSpec.from_dict(post)
                         self.add_task(post_spec)
                     else:

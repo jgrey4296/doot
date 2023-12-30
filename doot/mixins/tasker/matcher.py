@@ -41,12 +41,15 @@ import doot
 import doot.errors
 from doot.structs import DootCodeReference
 
-class WalkMatcherMixin:
+class MatcherMixin:
+    """
+
+    """
 
     def __init__(self, spec):
         super().__init__(spec)
-        self.filter_fn  = self.spec.extra.on_fail((None,)).filter_fn(wrap=DootCodeReference.from_str)
-        self.select_fn  = self.spec.extra.on_fail((None,)).sect_fn(wrap=DootCodeReference.from_str)
+        self.filter_fn  = self.spec.extra.on_fail("null:fn").filter_fn(wrapper=DootCodeReference.from_str)
+        self.select_fn  = self.spec.extra.on_fail("null:fn").sect_fn(wrapper=DootCodeReference.from_str)
 
     def specialize_subtask(self, task) -> None|dict|DootTaskSpec:
         """
@@ -106,7 +109,10 @@ class WalkMatcherMixin:
         return stub
 
 
-class WalkPatternMatcherMixin:
+class PatternMatcherMixin:
+    """
+
+    """
 
     def __init__(self, spec:DootTaskSpec):
         super().__init__(spec)

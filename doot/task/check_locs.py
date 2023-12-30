@@ -1,3 +1,8 @@
+"""
+
+"""
+
+##-- std imports
 from __future__ import annotations
 
 import logging as logmod
@@ -5,6 +10,8 @@ import pathlib as pl
 import shutil
 from typing import ClassVar
 from functools import partial
+
+##-- end std imports
 
 from tomlguard import TomlGuard
 import doot
@@ -17,6 +24,7 @@ from doot.task.base_task import DootTask
 
 ##-- logging
 logging = logmod.getLogger(__name__)
+printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
 make_missing = doot.config.on_fail(False).settings.general.location_check.make_missing()
@@ -40,10 +48,10 @@ class CheckLocsTask(DootTask):
     def checklocs(self, spec, task_state_copy):
         exists_p = spec.args[0].exists()
         if exists_p:
-            doot.printer.info("Base Location Exists : %s", spec.args[0])
+            printer.info("Base Location Exists : %s", spec.args[0])
         else:
-            doot.printer.warning("Base Location Missing: %s", spec.args[0])
+            printer.warning("Base Location Missing: %s", spec.args[0])
             if make_missing:
-                doot.printer.info("Making Directory: %s", spec.args[0])
+                printer.info("Making Directory: %s", spec.args[0])
                 spec.args[0].mkdir(parents=True)
         return

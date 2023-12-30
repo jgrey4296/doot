@@ -41,7 +41,7 @@ from tomlguard import TomlGuard
 import doot.errors
 import doot.constants
 from doot.enums import TaskFlags, ReportEnum
-from doot._structs.structured_name import DootTaskName
+from doot._structs.sname import DootTaskName
 from doot._structs.task_spec import DootTaskSpec
 
 PAD           : Final[int] = 15

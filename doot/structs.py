@@ -28,7 +28,7 @@ from uuid import UUID, uuid1
 ##-- end builtin imports
 
 from doot._structs.param_spec import DootParamSpec
-from doot._structs.structured_name import DootCodeReference, DootTaskName
+from doot._structs.sname import DootCodeReference, DootTaskName, DootStructuredName
 from doot._structs.action_spec import DootActionSpec
 from doot._structs.task_spec import DootTaskSpec
 from doot._structs.artifact import DootTaskArtifact
