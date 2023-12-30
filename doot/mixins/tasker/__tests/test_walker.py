@@ -15,7 +15,6 @@ import pytest
 
 import doot
 from doot.utils.testing_fixtures import wrap_tmp
-from doot.task.dir_walker import DootDirWalker
 from doot.structs import DootTaskSpec, DootCodeReference
 from doot._abstract import TaskBase_i
 
@@ -33,6 +32,9 @@ logging = logmod.root
 
 ##-- end pytest reminder
 
+walker_ref = DootCodeReference.from_str("doot.task.base_tasker:DootTasker").add_mixins("doot.mixins.tasker.walker:WalkerMixin")
+Walker     = walker_ref.try_import()
+
 class TestWalker:
 
 
@@ -48,13 +50,13 @@ class TestWalker:
         assert("second" in contents)
 
     def test_initial(self):
-        obj = DootDirWalker(DootTaskSpec.from_dict({"name" : "basic"}))
+        obj = Walker(DootTaskSpec.from_dict({"name" : "basic"}))
         assert(isinstance(obj, TaskBase_i))
 
     def test_basic_walk(self, wrap_tmp):
         (wrap_tmp / "first").mkdir()
         (wrap_tmp / "second").mkdir()
-        obj = DootDirWalker(DootTaskSpec.from_dict({"name" : "basic"}))
+        obj = Walker(DootTaskSpec.from_dict({"name" : "basic"}))
 
         count = 0
         for sub in obj.build():
@@ -71,7 +73,7 @@ class TestWalker:
         (wrap_tmp / "second").mkdir()
         (wrap_tmp / "second" / "bloo.txt").touch()
 
-        obj = DootDirWalker(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": True}))
+        obj = Walker(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": True}))
 
         count = 0
         for sub in obj.build():
@@ -90,7 +92,7 @@ class TestWalker:
         (wrap_tmp / "second" / "bloo.txt").touch()
         (wrap_tmp / "second" / "bibble.blib").touch()
 
-        obj = DootDirWalker(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": True}))
+        obj = Walker(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": True}))
 
         count = 0
         for sub in obj.build():
@@ -107,7 +109,7 @@ class TestWalker:
         (wrap_tmp / "second").mkdir()
         (wrap_tmp / "second" / "bloo.txt").touch()
 
-        obj = DootDirWalker(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": False}))
+        obj = Walker(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": False}))
 
         count = 0
         for sub in obj.build():
@@ -124,7 +126,7 @@ class TestWalker:
         (wrap_tmp / "second").mkdir()
         (wrap_tmp / "second" / "bloo.txt").touch()
 
-        obj = DootDirWalker(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": False}))
+        obj = Walker(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": False}))
 
         count = 0
         for sub in obj.build():
@@ -141,7 +143,7 @@ class TestWalker:
         (wrap_tmp / "second").mkdir()
         (wrap_tmp / "second" / "bloo.txt").touch()
 
-        obj = DootDirWalker(DootTaskSpec.from_dict({
+        obj = Walker(DootTaskSpec.from_dict({
             "name"        : "basic",
             "exts"        : [".txt"],
             "recursive"   : False,

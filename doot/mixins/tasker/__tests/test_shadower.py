@@ -16,8 +16,7 @@ import pytest
 import doot
 import doot.errors
 from doot.utils.testing_fixtures import wrap_tmp
-from doot.task.tree_shadower import DootTreeShadower
-from doot.structs import DootTaskSpec
+from doot.structs import DootTaskSpec, DootCodeReference
 from doot._abstract import TaskBase_i
 
 logging = logmod.root
@@ -33,6 +32,9 @@ logging = logmod.root
 # with pytest.warns(warntype)
 
 ##-- end pytest reminder
+
+walker_ref = DootCodeReference.from_str("doot.task.base_tasker:DootTasker").add_mixins("doot.mixins.tasker.shadower:WalkShadowerMixin")
+Walker     = walker_ref.try_import()
 
 class TestTreeShadower:
 
@@ -55,12 +57,12 @@ class TestTreeShadower:
         assert("second" in contents)
 
     def test_initial(self):
-        obj = DootTreeShadower(DootTaskSpec.from_dict({"name" : "basic"}))
+        obj = Walker(DootTaskSpec.from_dict({"name" : "basic"}))
         assert(isinstance(obj, TaskBase_i))
 
 
     def test_simple(self, subtree):
-        obj = DootTreeShadower(DootTaskSpec.from_dict(
+        obj = Walker(DootTaskSpec.from_dict(
             {"name"  : "basic",
              "roots" : [ subtree / "subdir" ],
              "exts"  : [".bib"],
@@ -78,7 +80,7 @@ class TestTreeShadower:
 
 
     def test_different_shadow(self, subtree):
-        obj = DootTreeShadower(DootTaskSpec.from_dict(
+        obj = Walker(DootTaskSpec.from_dict(
             {"name"  : "basic",
              "roots" : [ subtree / "subdir" ],
              "exts"  : [".bib"],
@@ -96,7 +98,7 @@ class TestTreeShadower:
 
 
     def test_error_if_shadowed_is_same_as_root(self, subtree):
-        obj = DootTreeShadower(DootTaskSpec.from_dict(
+        obj = Walker(DootTaskSpec.from_dict(
             {"name"  : "basic",
              "roots" : [ subtree / "subdir" ],
              "exts"  : [".bib"],

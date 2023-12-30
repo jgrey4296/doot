@@ -43,7 +43,7 @@ from tomlguard import TomlGuard
 import doot.errors
 import doot.constants as consts
 from doot.enums import TaskFlags, ReportEnum
-from doot._structs.structured_name import DootTaskName, DootCodeReference
+from doot._structs.sname import DootTaskName, DootCodeReference
 from doot._structs.action_spec import DootActionSpec
 from doot._structs.artifact import DootTaskArtifact
 
@@ -75,7 +75,8 @@ def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|Doo
 
 @dataclass
 class DootTaskSpec:
-    """ The information needed to describe a generic task
+    """ The information needed to describe a generic task.
+    Optional things are shoved into 'extra', so things can use .on_fail on the tomlguard
 
     actions                      : list[ [args] | {do="", args=[], **kwargs} ]
     """
@@ -150,26 +151,25 @@ class DootTaskSpec:
 
         # Prepare constructor
 
+        mixins = extra_data.get("mixins", [])
         match data:
             case {"ctor": EntryPoint() as ctor }:
                 loaded = ctor.load()
-                cor_data['ctor'] = DootCodeReference.from_type(loaded)
+                cor_data['ctor'] = DootCodeReference.from_type(loaded).add_mixins(*mixins)
             case {"ctor": DootTaskName() }:
                 if "mixins" in extra_data:
                     raise TypeError("Task name ctor can't take mixins")
             case { "ctor": DootCodeReference() as ctor }:
-                pass
+                core_data['ctor'] = core_data['ctor'].add_mixins(*mixins)
             case { "ctor": type() as ctor }:
-                core_data['ctor'] = DootCodeReference.from_type(ctor)
+                core_data['ctor'] = DootCodeReference.from_type(ctor).add_mixins(*mixins)
             case { "ctor" : str() as ctor }:
-                core_data['ctor'] = DootCodeReference.from_str(ctor)
+                core_data['ctor'] = DootCodeReference.from_str(ctor).add_mixins(*mixins)
             case { "ctor": _ as ctor }:
-                core_data['ctor'] = DootCodeReference.from_type(ctor)
+                core_data['ctor'] = DootCodeReference.from_type(ctor).add_mixins(*mixins)
             case {} if 'ctor' not in data:
-                core_data['ctor'] = DootCodeReference.from_str(doot.constants.DEFAULT_PLUGINS['tasker'][0][1])
+                core_data['ctor'] = DootCodeReference.from_str(doot.constants.DEFAULT_PLUGINS['tasker'][0][1]).add_mixins(*mixins)
 
-        if isinstance(core_data['ctor'], DootCodeReference) and 'mixins' in extra_data:
-            core_data['ctor'].add_mixins(*extra_data['mixins'])
 
         # prep actions
         core_data['actions'] = [DootActionSpec.from_data(x) for x in core_data.get('actions', [])]
@@ -216,6 +216,8 @@ class DootTaskSpec:
         return task_ctor(self)
 
     def check(self, ensure=Any):
+        if self.ctor.module == "default":
+            return
         self.ctor.try_import(ensure=ensure)
 
     def __hash__(self):

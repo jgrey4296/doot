@@ -35,7 +35,9 @@ import more_itertools as mitz
 
 ##-- logging
 logging = logmod.getLogger(__name__)
+printer = logmod.getLogger("doot._printer")
 ##-- end logging
+
 
 import sh
 
@@ -164,21 +166,6 @@ class WalkerMixin(SubMixin):
                 case _ as x:
                     raise TypeError("Unexpected filter value", x)
 
-    def _single_directory_walk(self, target, filter_fn, exts):
-        check_fn = lambda x: (filter_fn(x) not in [None, False, _WalkControl.no, _WalkControl.noBut]
-                                and x.name not in walk_ignores
-                                and (not bool(exts) or (x.is_file() and x.suffix in exts)))
-
-        if check_fn(target):
-            yield target
-
-        if not target.is_dir():
-            return None
-
-        for x in target.iterdir():
-            if check_fn(x):
-                yield x
-
 
     def walk_all(self, rec=None, fn=None) -> Generator[tuple(str, pl.Path)]:
         """
@@ -202,14 +189,6 @@ class WalkerMixin(SubMixin):
 
         logging.debug("Walked: %s", len(found_names))
 
-    def build(self, **kwargs) -> Generator[DootTaskSpec]:
-        head = self._build_head()
-
-        for sub in self._build_subs():
-            head.depends_on.append(sub.name)
-            yield sub
-
-        yield head
 
     def _build_subs(self) -> Generator[DootTaskSpec]:
         self.total_subtasks = 0
@@ -227,6 +206,22 @@ class WalkerMixin(SubMixin):
                     yield subtask
                 case _ as subtask:
                     raise TypeError("Unexpected type for subtask: %s", type(subtask))
+
+
+    def _single_directory_walk(self, target, filter_fn, exts):
+        check_fn = lambda x: (filter_fn(x) not in [None, False, _WalkControl.no, _WalkControl.noBut]
+                                and x.name not in walk_ignores
+                                and (not bool(exts) or (x.is_file() and x.suffix in exts)))
+
+        if check_fn(target):
+            yield target
+
+        if not target.is_dir():
+            return None
+
+        for x in target.iterdir():
+            if check_fn(x):
+                yield x
 
 
     @classmethod
@@ -250,6 +245,7 @@ class WalkerMixin(SubMixin):
         stub['inject'].type       = "list",
         stub['inject'].default   = list(map(lambda x: f'"{x}"', cls._default_subtask_injections))
         return stub
+
 
 
 class WalkerExternalMixin(WalkerMixin):

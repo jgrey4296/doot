@@ -36,10 +36,14 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+import doot
+import doot.errors
+from doot.mixins.tasker.walker import WalkerMixin
+
 walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
 walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).settings.walking.halts()
 
-class WalkShadowerMixin:
+class WalkShadowerMixin(WalkerMixin):
     """
         Walk a directory tree,
         but in addition to the subtask keys [`fpath`, `fstem`, `fname`, and `lpath`],
@@ -66,44 +70,16 @@ class WalkShadowerMixin:
         can use 'sub_task' and 'head_task', or 'sub_actions', 'head_actions'
     """
 
-    def __init__(self, spec:DootTaskSpec):
-        super().__init__(spec)
-        self.exts           = {y for x in spec.extra.on_fail([]).exts() for y in [x.lower(), x.upper()]}
-        # expand roots based on doot.locs
-        self.roots          = [doot.locs.get(x, fallback=pl.Path()) for x in spec.extra.on_fail([pl.Path()]).roots()]
-        self.rec            = spec.extra.on_fail(False, bool).recursive()
-        self.total_subtasks = 0
-        for x in self.roots:
-            depth = len(set(self.__class__.mro()) - set(super().__class__.mro()))
-            if not x.exists():
-                logging.warning(f"Walker Missing Root: {x.name}", stacklevel=depth)
-            if not x.is_dir():
-                 logging.warning(f"Walker Root is a file: {x.name}", stacklevel=depth)
-
-    def _build_subs(self) -> Generator[DootTaskSpec]:
-        self.total_subtasks = 0
-        logging.debug("%s : Building Shadow SubTasks", self.name)
-        for i, (uname, fpath) in enumerate(self.walk_all()):
-            match self._build_subtask(i, uname,
-                                      fpath=fpath,
-                                      fstem=fpath.stem,
-                                      fname=fpath.name,
-                                      lpath=self.rel_path(fpath),
-                                      shadow_path=self._shadow_path(fpath)):
-                case None:
-                    pass
-                case DootTaskSpec() as subtask:
-                    self.total_subtasks += 1
-                    yield subtask
-                case _ as subtask:
-                    raise TypeError("Unexpected type for subtask: %s", type(subtask))
+    def _build_subtask(self, n:int, uname, **kwargs) -> DootTaskSpec:
+        return super()._build_subtask(n, uname, **kwargs,
+                                      shadow_path=self._shadow_path(kwargs['fpath']))
 
     def _shadow_path(self, fpath:pl.Path) -> pl.Path:
         shadow_root = doot.locs[self.spec.extra.shadow_root]
         rel_path    = self.rel_path(fpath)
         result      = shadow_root / rel_path
         if result == fpath:
-            raise DootLocationError("Shadowed Path is same as original", fpath)
+            raise doot.errors.DootLocationError("Shadowed Path is same as original", fpath)
 
         return result.parent
 
