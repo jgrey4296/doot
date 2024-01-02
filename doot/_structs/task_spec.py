@@ -80,16 +80,16 @@ class DootTaskSpec:
 
     actions                      : list[ [args] | {do="", args=[], **kwargs} ]
     """
-    name                         : DootTaskName                                    = field()
-    doc                          : list[str]                                       = field(default_factory=list)
-    source                       : DootTaskName|str|None                           = field(default=None)
-    actions                      : list[Any]                                       = field(default_factory=list)
+    name                         : DootTaskName                                                 = field()
+    doc                          : list[str]                                                    = field(default_factory=list)
+    source                       : DootTaskName|str|None                                        = field(default=None)
+    actions                      : list[Any]                                                    = field(default_factory=list)
 
-    active_when                  : list[DootTaskArtifact|callable]                 = field(default_factory=list)
-    required_for                 : list[DootTaskArtifact]                          = field(default_factory=list)
-    depends_on                   : list[DootTaskArtifact]                          = field(default_factory=list)
-    priority                     : int                                             = field(default=10)
-    ctor                         : DootTaskName|DootCodeReference                  = field(default=None)
+    active_when                  : list[DootTaskArtifact|callable]                              = field(default_factory=list)
+    required_for                 : list[DootTaskName|DootTaskArtifact]                          = field(default_factory=list)
+    depends_on                   : list[DootTaskName|DootTaskArtifact]                          = field(default_factory=list)
+    priority                     : int                                                          = field(default=10)
+    ctor                         : DootTaskName|DootCodeReference                               = field(default=None)
     # Any additional information:
     version                      : str                                             = field(default="0.1")
     print_levels                 : TomlGuard                                       = field(default_factory=TomlGuard)
@@ -150,7 +150,6 @@ class DootTaskSpec:
         core_data['flags'] = ftz.reduce(lambda x,y: x|y, map(lambda x: TaskFlags[x],  filter(lambda x: x in TaskFlagNames, core_data.get('flags', ["TASK"]))))
 
         # Prepare constructor
-
         mixins = extra_data.get("mixins", [])
         match data:
             case {"ctor": EntryPoint() as ctor }:
@@ -159,8 +158,10 @@ class DootTaskSpec:
             case {"ctor": DootTaskName() }:
                 if "mixins" in extra_data:
                     raise TypeError("Task name ctor can't take mixins")
+            case { "ctor": DootCodeReference() as ctor } if bool(mixins) and not bool(ctor._mixins):
+                core_data['ctor'] = ctor.add_mixins(*mixins)
             case { "ctor": DootCodeReference() as ctor }:
-                core_data['ctor'] = core_data['ctor'].add_mixins(*mixins)
+                core_data['ctor'] = ctor
             case { "ctor": type() as ctor }:
                 core_data['ctor'] = DootCodeReference.from_type(ctor).add_mixins(*mixins)
             case { "ctor" : str() as ctor }:

@@ -147,6 +147,7 @@ class DootCodeReference(DootStructuredName):
         else:
             groupHead = None
             taskHead  = name
+
         return DootCodeReference(groupHead, taskHead)
 
     @staticmethod
@@ -162,6 +163,8 @@ class DootCodeReference(DootStructuredName):
     def __hash__(self):
         return hash(str(self))
 
+    def __iter__(self):
+        return iter(self._mixins)
     @property
     def module(self):
         return self.subseparator.join(self.head)
@@ -170,10 +173,12 @@ class DootCodeReference(DootStructuredName):
     def value(self):
         return self.subseparator.join(self.tail)
 
-    def add_mixins(self, *mixins:str|type) -> DootCodeReference:
-        to_add = []
+    def add_mixins(self, *mixins:str|DootCodeReference|type, plugins:TomlGuard=None) -> DootCodeReference:
+        to_add = self._mixins[:]
         for mix in mixins:
             match mix:
+                case str() if plugins is not None:
+                    ref = DootCodeReference.from_alias(mix, "mixins", plugins)
                 case str():
                     ref = DootCodeReference.from_str(mix)
                 case DootCodeReference():
@@ -182,7 +187,9 @@ class DootCodeReference(DootStructuredName):
                     ref = DootCodeReference.from_type(mix)
                 case _:
                     raise TypeError("Unrecognised mixin type", mix)
-            to_add.append(ref)
+
+            if ref not in to_add:
+                to_add.append(ref)
 
         new_ref = DootCodeReference(head=self.head[:], tail=self.tail[:], _mixins=to_add, _type=self._type)
         return new_ref
@@ -215,6 +222,42 @@ class DootCodeReference(DootStructuredName):
             raise ImportError("Module can't be found", str(self))
         except AttributeError as err:
             raise ImportError("Attempted to import %s but failed", str(self)) from err
+
+    @staticmethod
+    def from_alias(alias:str, group:str, plugins:TomlGuard) -> DootCodeReference:
+        if group not in plugins:
+            return DootCodeReference.from_str(alias)
+        match [x for x in plugins[group] if x.name == alias]:
+            case [x, *xs]:
+                return DootCodeReference.from_str(x.value)
+            case _:
+                return DootCodeReference.from_str(alias)
+
+    def to_aliases(self, group:str, plugins:TomlGuard) -> tuple[str, list[str]]:
+        base_alias = str(self)
+        match [x for x in plugins[group] if x.value == base_alias]:
+            case [x, *xs]:
+                base_alias = x.name
+
+        if group != "mixins":
+            mixins = [x.to_aliases("mixins", plugins)[0] for x in  self._calculate_minimal_mixins(plugins)]
+        else:
+            mixins = []
+
+        return base_alias, mixins
+
+
+    def _calculate_minimal_mixins(self, plugins:TomlGuard) -> list[DootCodeReference]:
+        found          = set()
+        minimal_mixins = []
+        for mixin in reversed(sorted(map(lambda x: x.try_import(), self), key=lambda x:  len(x.mro()))):
+            if mixin in found:
+                continue
+
+            found.update(mixin.mro())
+            minimal_mixins.append(mixin)
+
+        return [DootCodeReference.from_type(x) for x in minimal_mixins]
 
 @dataclass
 class DootTaskName(DootStructuredName):

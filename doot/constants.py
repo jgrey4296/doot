@@ -80,3 +80,5 @@ DEFAULT_ACTION_LEVEL    : Final[str]              = "INFO"
 DEFAULT_SLEEP_LEVEL     : Final[str]              = "WARN"
 
 DEFAULT_EXECUTE_LEVEL   : Final[str]              = "INFO"
+
+NON_DEFAULT_KEY         : Final[str]              = "_non_default"
