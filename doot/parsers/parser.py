@@ -112,7 +112,7 @@ class DootArgParser(ArgParser_i):
                     mentioned_tasks.append(arg)
                     task = tasks[arg]
                     spec_params               = [DootParamSpec.from_dict(x) for x in task.extra.on_fail([], list).cli()]
-                    ctor_params               = task.ctor.try_import().param_specs()
+                    ctor_params               = task.ctor.try_import().param_specs
                     current_specs             = list(sorted(spec_params + ctor_params, key=DootParamSpec.key_func))
                     logging.info("Updated Specs to: %s", current_specs)
 
