@@ -29,7 +29,7 @@ logging = logmod.getLogger(__name__)
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.constants import PARAM_ASSIGN_PREFIX
+from doot.constants import PARAM_ASSIGN_PREFIX, NON_DEFAULT_KEY
 from doot._abstract import ArgParser_i
 from doot.structs import DootParamSpec, DootTaskSpec
 from collections import ChainMap
@@ -67,6 +67,7 @@ class DootFlexibleParser(ArgParser_i):
         self.head_args                          = None
         self.cmd_name                           = None
         self.cmd_args                           = {}
+        self.non_default_cmd_args               = []
         self.tasks_args                         = []
         self.extras                             = {}
         self.force_help                         = False
@@ -105,14 +106,17 @@ class DootFlexibleParser(ArgParser_i):
                     remaining = self.process_extra(remaining)
 
 
-        if self.force_help:
-            cmd_args['target'] = cmd_name
-            cmd_name           = "help"
+        if self.cmd_args['help']:
+            self.cmd_args['target']      = self.cmd_name
+            self.cmd_name                = "help"
+        elif any(bool(x[1]['help']) for x in self.tasks_args if (target:=x[0])):
+            self.cmd_args['target'] = target
+            self.cmd_name = "help"
 
         # TODO ensure duplicated tasks have different args
         data = {
             "head"   : {"name": self.head_call, "args": self.head_args },
-            "cmd"    : {"name" : self.cmd_name, "args" : self.cmd_args },
+            "cmd"    : {"name" : self.cmd_name, "args" : self.cmd_args, NON_DEFAULT_KEY: self.non_default_cmd_args },
             "tasks"  : { name : args for name,args in self.tasks_args  },
             "extras" : self.extras
             }
@@ -164,6 +168,8 @@ class DootFlexibleParser(ArgParser_i):
                     raise doot.errors.DootParseError("Multiple possible cmd args", head, args[0])
 
 
+
+        self.non_default_cmd_args = self._calc_non_default(self._build_defaults_dict(current_specs), self.cmd_args)
         return args
 
     def process_task(self, args) -> list[str]:
@@ -171,11 +177,12 @@ class DootFlexibleParser(ArgParser_i):
         if args[0] not in self.registered_tasks:
             task                     = self.registered_tasks[default_task]
             assert(isinstance(task, DootTaskSpec))
-            task_name                = default_task
-            spec_params = [DootParamSpec.from_dict(x) for x in task.extra.on_fail([], list).cli()]
-            ctor_params = task.ctor.try_import().param_specs()
-            current_specs            = list(sorted(spec_params + ctor_params, key=DootParamSpec.key_func))
-            task_args                = self._build_defaults_dict(current_specs)
+            task_name                 = default_task
+            spec_params               = [DootParamSpec.from_dict(x) for x in task.extra.on_fail([], list).cli()]
+            ctor_params               = task.ctor.try_import().param_specs
+            current_specs             = list(sorted(spec_params + ctor_params, key=DootParamSpec.key_func))
+            task_args                 = self._build_defaults_dict(current_specs)
+            task_args[NON_DEFAULT_KEY] = []
             self.tasks_args.append((task_name, task_args))
             return args
 
@@ -185,9 +192,10 @@ class DootFlexibleParser(ArgParser_i):
             task                      = self.registered_tasks[task_name]
             assert(isinstance(task, DootTaskSpec))
             spec_params               = [DootParamSpec.from_dict(x) for x in task.extra.on_fail([], list).cli()]
-            ctor_params               = task.ctor.try_import().param_specs()
+            ctor_params               = task.ctor.try_import().param_specs
             current_specs             = list(sorted(spec_params + ctor_params, key=DootParamSpec.key_func))
             task_args                 = self._build_defaults_dict(current_specs)
+            default_args              = task_args.copy()
             logging.debug("Parsing Task args for: %s: Available: %s", task_name, task_args.keys())
 
             while bool(args) and args[0] not in self.registered_tasks:
@@ -199,7 +207,7 @@ class DootFlexibleParser(ArgParser_i):
                     case [] if args[0].startswith(PARAM_ASSIGN_PREFIX):
                         try:
                             key, *values     = args[0].split("=")
-                            task_args[key.removeprefix("--")] = value
+                            task_args[key.removeprefix("--")] = values
                             args.pop(0)
                         except ValueError:
                             raise doot.errors.DootParseError("Arg failed to split into key=value", args[0])
@@ -213,6 +221,8 @@ class DootFlexibleParser(ArgParser_i):
 
             if task_name in [x[0] for x in self.tasks_args]:
                 raise doot.errors.DootParseError("a single task was specified twice")
+
+            task_args[NON_DEFAULT_KEY] = self._calc_non_default(default_args, task_args)
             self.tasks_args.append((task_name, task_args))
 
         return args
@@ -234,3 +244,6 @@ class DootFlexibleParser(ArgParser_i):
                 continue
 
         raise doot.errors.DootParseError("No positional argument succeeded")
+
+    def _calc_non_default(self, defaults, actual) -> list:
+        return [x for x,y in actual.items() if x not in defaults or defaults[x] != y]
