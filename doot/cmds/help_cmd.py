@@ -28,12 +28,13 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-##-- end logging
 printer = logmod.getLogger("doot._printer")
+##-- end logging
 
 import doot
 from doot.structs import DootParamSpec, DootTaskSpec
 from doot._abstract import Command_i
+from doot.constants import NON_DEFAULT_KEY
 from collections import defaultdict
 
 
@@ -55,9 +56,6 @@ class HelpCmd(Command_i):
         task_targets = []
         cmd_targets  = []
         match dict(doot.args.cmd.args):
-            case {"help": True}:
-                printer.info(self.help)
-                return
             case {"target": ""|None} if not bool(doot.args.tasks):
                 pass
             case {"target": ""|None}:
@@ -67,13 +65,16 @@ class HelpCmd(Command_i):
                 # Print help of just the specified target(s)
                 task_targets +=  [y for x,y in tasks.items() if target in x ]
                 cmd_targets  +=  [x for x in plugins.command if x.name == doot.args.cmd.args.target]
+            case {"help": True}:
+                printer.info(self.help)
+                return
 
 
         logging.debug("Matched %s commands, %s tasks", len(cmd_targets), len(task_targets))
         if len(cmd_targets) == 1:
             cmd_class = cmd_targets[0].load()()
             printer.info(cmd_class.help)
-            if doot.args.non_default_values.cmd:
+            if bool(doot.args.cmd[NON_DEFAULT_KEY]):
                 self._print_current_param_assignments(cmd_class.param_specs, doot.args.cmd.args)
 
 
@@ -104,7 +105,7 @@ class HelpCmd(Command_i):
         lines.append(f"Source : {spec.source}")
 
         if spec.ctor is not None:
-            lines.append(spec.ctor.class_help())
+            lines.append(spec.ctor.try_import().class_help())
 
         match spec.doc:
             case None:
@@ -132,7 +133,7 @@ class HelpCmd(Command_i):
 
 
         # TODO fix this to work with --help flag
-        if task_name in doot.args.tasks and doot.args.non_default_values.task and spec.ctor is not None:
+        if task_name in doot.args.tasks and bool(doot.args.task[task_name][NON_DEFAULT_KEY]) and spec.ctor is not None:
             self._print_current_param_assignments(spec.ctor.param_specs, doot.args.tasks[task_name])
 
     def _print_current_param_assignments(self, specs:list[DootParamSpec], args:TomlGuard):

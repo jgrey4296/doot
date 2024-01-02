@@ -36,7 +36,7 @@ import doot
 import doot.enums
 import doot.errors
 import doot.constants
-from doot._abstract import Command_i, PluginLoader_p
+from doot._abstract import Command_i, PluginLoader_p, TaskBase_i
 from doot.structs import TaskStub, DootTaskName, DootCodeReference
 from doot.task.base_tasker import DootTasker
 from doot.task.base_task import DootTask
@@ -57,12 +57,13 @@ class StubCmd(Command_i):
     def param_specs(self) -> list:
         return super().param_specs + [
             self.make_param("file-target", type=str,     default=""),
-            self.make_param("Config",                    default=False,           desc="Stub a doot.toml",                  prefix="--"),
-            self.make_param("Tasks",                     default=False,           desc="List the types of task available",  prefix="--"),
-            self.make_param("Actions",                   default=False,           desc="Help Stub Actions",                 prefix="--"),
-            self.make_param("Flags",                     default=False,           desc="Help Stub Task Flags",              prefix="--"),
+            self.make_param("Config",                    default=False,           desc="Stub a doot.toml",                  prefix="-"),
+            self.make_param("Tasks",                     default=False,           desc="List the types of task available",  prefix="-"),
+            self.make_param("Actions",                   default=False,           desc="Help Stub Actions",                 prefix="-"),
+            self.make_param("Flags",                     default=False,           desc="Help Stub Task Flags",              prefix="-"),
             self.make_param("name",        type=str,     default="stub::stub",    desc="The Name of the new task",                          positional=True),
             self.make_param("ctor",        type=str,     default="task",          desc="The short type name of the task generator",         positional=True),
+            self.make_param("mixins",      type=list,    default=[],              desc="Mixins to add", positional=True),
             self.make_param("suppress-header",           default=True, invisible=True)
             ]
 
@@ -105,26 +106,33 @@ class StubCmd(Command_i):
         This creates a toml stub using default values, as best it can
         """
         logging.info("Building Task Toml Stub")
-        task_iden                   : str    = doot.args.on_fail("task").cmd.args.ctor()
-        task_import_path            : str    = PluginLoader_p.get_loaded("tasker", task_iden) or task_iden
-        task_type                   : type   = self._import_task_class(task_import_path)
+        task_iden                   : DootCodeReference       = DootCodeReference.from_alias(doot.args.on_fail("task").cmd.args.ctor(), "tasker", plugins)
+        task_iden_with_mixins       : DootCodeReference       = task_iden.add_mixins(*doot.args.on_fail([]).cmd.args.mixins(), plugins=plugins)
 
         # Create stub toml, with some basic information
-        stub                          = TaskStub(ctor=task_iden)
-        stub['print_levels'].default  = {"head":"INFO","build":"INFO","sleep":"INFO","action":"INFO", "execute":"INFO"}
-        stub['print_levels'].type     = f"Dict: {doot.constants.PRINT_LOCATIONS}"
-        stub['priority'].default      = 10
+        stub                          = TaskStub(ctor=task_iden_with_mixins)
         stub['name'].default          = DootTaskName.from_str(doot.args.cmd.args.name)
+        stub['mixins'].set(type="list", default=[], comment="mix in additional capabilities")
+
 
         # add ctor specific fields,
         # such as for dir_walker: roots [], exts [], recursive bool, subtask "", head_task ""
-        for cls in reversed(task_type.mro()):
+        # works *towards* the task_type, not away, so more specific elements are added over the top of more general elements
+        for cls in reversed(task_iden_with_mixins.try_import().mro()):
             try:
                 cls.stub_class(stub)
+                if issubclass(cls, TaskBase_i):
+                    stub['version'].default         = cls.version
+                    stub['doc'].default             = [f"\"{x}\"" for x in cls.class_help().split("\n") if bool(x)]
             except NotImplementedError:
                 pass
             except AttributeError:
                 pass
+
+        # Convert to alises
+        base_a, mixin_a= task_iden_with_mixins.to_aliases("tasker", plugins)
+        stub['ctor'].default   = base_a
+        stub['mixins'].default = mixin_a
 
         # extend the name if there are already tasks with that name
         original_name = stub['name'].default.task
