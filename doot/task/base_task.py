@@ -78,10 +78,17 @@ class DootTask(Task_i, ImporterMixin):
         if bool(list(filter(lambda x: x[0] == "task", doot.constants.DEFAULT_PLUGINS['tasker']))):
             stub.ctor = "task"
         else:
-            stub.ctor                  = cls
-        stub['version'].default    = cls._version
-        stub['doc'].default        = [f"\"{x}\"" for x in cls.class_help().split("\n") if bool(x)]
-        stub['flags'].default      = cls._default_flags
+            stub.ctor                   = cls
+
+        # Come first
+        stub['active_when'].priority    = -90
+        stub['required_for'].priority   = -90
+        stub['depends_on'].priority     = -100
+
+        stub['print_levels'].type       = f"Dict: {doot.constants.PRINT_LOCATIONS}"
+        stub['print_levels'].default    = {"head":"INFO","build":"INFO","sleep":"INFO","action":"INFO", "execute":"INFO"}
+
+        stub['priority'].default        = 10
         stub['queue_behaviour'].default = "default"
         stub['queue_behaviour'].comment = "default | auto | reactive"
         return stub

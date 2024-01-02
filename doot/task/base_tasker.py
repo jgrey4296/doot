@@ -88,13 +88,13 @@ class DootTasker(Tasker_i, ImporterMixin):
     @classmethod
     def stub_class(cls, stub) -> TaskStub:
         stub.ctor                 = cls
-        stub['version'].default   = cls._version
-        stub['doc'].default       = [f"\"{x}\"" for x  in cls.class_help().split("\n")]
-        stub['flags'].default     = cls._default_flags
-        stub['flags'].prefix      = "# "
-        stub['head_task'].type    = "task_iden"
-        stub['head_task'].default = ""
-        stub['head_task'].prefix  = "# "
+
+        # Come first
+        stub['active_when'].priority    = -90
+        stub['required_for'].priority   = -90
+        stub['depends_on'].priority     = -100
+
+        stub['head_task'].set(type="taskname", default="", prefix="# ", priority=100)
         stub['queue_behaviour'].default = "default"
         stub['queue_behaviour'].comment = "default | auto | reactive"
         return stub
@@ -104,7 +104,6 @@ class DootTasker(Tasker_i, ImporterMixin):
         stub['name'].default      = self.fullname
         if bool(self.doc):
             stub['doc'].default   = [f"\"{x}\"" for x in self.doc]
-        stub['flags'].default     = self.spec.flags
         return stub
 
     def _build_head(self, **kwargs) -> None|DootTaskSpec:

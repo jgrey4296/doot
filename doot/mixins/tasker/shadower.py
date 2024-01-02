@@ -85,10 +85,7 @@ class WalkShadowerMixin(WalkerMixin):
 
     @classmethod
     def stub_class(cls, stub):
-        stub.ctor                    = cls
-        stub['shadow_root'].type     = "Path"
-        stub['shadow_root'].default  = ""
-        return stub
+        stub['shadow_root'].set(type="pl.Path", default="")
 
 
 class LazyWalkShadowerMixin(WalkShadowerMixin):

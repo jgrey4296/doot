@@ -63,13 +63,11 @@ class MiniBuilderMixin(SubMixin):
 
     @classmethod
     def stub_class(cls, stub):
-        stub.ctor                  = cls
         if 'sub_task' in stub.parts:
             del stub.parts['sub_task']
 
         if 'head_task' in stub.parts:
             del stub.parts['head_task']
 
-        stub['sub_actions'].default  = list()
-        stub['head_actions'].default = list()
-        return stub
+        stub['sub_actions'].set(type="list[dict]",   default=[])
+        stub['head_actions'].set(type="list[dict]", default=[])

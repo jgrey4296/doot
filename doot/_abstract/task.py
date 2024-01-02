@@ -59,9 +59,9 @@ class TaskBase_i(ParamSpecMaker_m):
     def param_specs(cls) -> list[DootParamSpec]:
         """  make class parameter specs  """
         return [
-            cls.make_param(name="help", default=False, invisible=True),
-            cls.make_param(name="debug", default=False, invisible=True),
-            cls.make_param(name="verbose", default=0, type=int, invisible=True)
+            cls.make_param(name="help", default=False, invisible=True, prefix="--"),
+            cls.make_param(name="debug", default=False, invisible=True, prefix="--"),
+            cls.make_param(name="verbose", default=0, type=int, invisible=True, prefix="--")
            ]
 
     def __init__(self, spec:DootTaskSpec):
@@ -148,14 +148,14 @@ class TaskBase_i(ParamSpecMaker_m):
 
     @classmethod
     @abc.abstractmethod
-    def stub_class(cls, TaskStub) -> TaskStub:
+    def stub_class(cls, TaskStub):
         """
         Specialize a TaskStub to describe this class
         """
         raise NotImplementedError(cls, "stub_class")
 
     @abc.abstractmethod
-    def stub_instance(self, TaskStub) -> TaskStub:
+    def stub_instance(self, TaskStub):
         """
           Specialize a TaskStub with the settings of this specific instance
         """

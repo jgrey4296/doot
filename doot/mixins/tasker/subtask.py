@@ -88,7 +88,6 @@ class SubMixin:
 
     @classmethod
     def stub_class(cls, stub):
-        stub['sub_task'].type = "task_iden"
-        stub['sub_task'].default = ""
-        stub['sub_task'].prefix = "# "
+        stub['head_task'].set(priority=100)
+        stub['sub_task'].set(type="taskname", default="", prefix="# ", priority=100)
         del stub.parts['actions']

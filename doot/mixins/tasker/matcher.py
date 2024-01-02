@@ -91,22 +91,9 @@ class MatcherMixin:
 
     @classmethod
     def stub_class(cls, stub):
-        stub.ctor                     = cls
-        stub['version'].default       = cls._version
-        stub['exts'].type             = "list[str]"
-        stub['exts'].default          = []
-        stub['roots'].type            = "list[str|pl.Path]"
-        stub['roots'].default         = ["\".\""]
-        stub['roots'].comment         = "Places the walker will start"
-        stub['recursive'].type        = "bool"
-        stub['recursive'].default     = False
-        stub['select_num'].type       = "int"
-        stub['select_num'].default    = 1
-        stub['select_method'].type    = "str"
-        stub['select_method'].default = "random"
-        stub['select_fn'].type        = "str"
-        stub['select_fn'].prefix      = "# "
-        return stub
+        stub['select_num'].set(type="int",    default=1,        priority=100)
+        stub['select_method'].set(type="str", default="random", priority=100)
+        stub['select_fn'].set(type="str",     prefix="# ",      priority=100)
 
 
 class PatternMatcherMixin:
@@ -148,18 +135,4 @@ class PatternMatcherMixin:
 
     @classmethod
     def stub_class(cls, stub):
-        stub.ctor                 = cls
-        stub['version'].default   = cls._version
-        stub['exts'].type         = "list[str]"
-        stub['exts'].default      = []
-        stub['exts'].prefix = "# "
-        stub['roots'].type        = "list[str|pl.Path]"
-        stub['roots'].default     = ["\".\""]
-        stub['roots'].comment     = "Places the walker will start"
-        stub['recursive'].type    = "bool"
-        stub['recursive'].default = False
-        stub['recursive'].prefix = "# "
-        stub["filter_fn"].type = "callable"
-        stub["filter_fn"].default = ""
-        stub['filter_fn'].prefix = "# "
-        return stub
+        pass

@@ -226,25 +226,10 @@ class WalkerMixin(SubMixin):
 
     @classmethod
     def stub_class(cls, stub):
-        if bool(list(filter(lambda x: x[0] == "walker", doot.constants.DEFAULT_PLUGINS['tasker']))):
-            stub.ctor = "walker"
-        else:
-            stub.ctor                  = cls
-        stub['version'].default   = cls._version
-        stub['roots'].type        = "list[str|pl.Path]"
-        stub['roots'].default     = ["\".\""]
-        stub['roots'].comment     = "Places the walker will start"
-        stub['exts'].type         = "list[str]"
-        stub['exts'].default      = []
-        stub['exts'].prefix       = "# "
-        stub['recursive'].type    = "bool"
-        stub['recursive'].default = False
-        stub['recursive'].prefix  = "# "
-        stub["filter_fn"].type    = "callable"
-        stub['filter_fn'].prefix  = "# "
-        stub['inject'].type       = "list",
-        stub['inject'].default   = list(map(lambda x: f'"{x}"', cls._default_subtask_injections))
-        return stub
+        stub['exts'].set(type="list[str]",          default=[],      priority=80)
+        stub['roots'].set(type="list[str|pl.Path]", default=['"."'], priority=80, comment="Places the Walker will start")
+        stub['recursive'].set(type="bool",          default=False,   priority=80)
+        stub['filter_fn'].set(type="callable",      prefix="# ",     priority=81)
 
 
 
@@ -275,9 +260,5 @@ class WalkerExternalMixin(WalkerMixin):
 
     @classmethod
     def stub_class(cls, stub):
-        stub.ctor                 = cls
-        stub['cmd'].type          = "string"
-        stub['cmd'].default       = "fdfind"
-        stub['cmd_args'].type     = "list[str]"
-        stub['cmd_args'].default  = ['--color', 'never']
-        return stub
+        stub['cmd'].set(type="string",         default="fdfind")
+        stub['cmd_args'].set(type="list[str]", default=["--color", "never"])
