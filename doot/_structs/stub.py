@@ -174,8 +174,11 @@ class TaskStubPart:
             case list() if "Flags" in self.type:
                 parts = ", ".join([f"\"{x}\"" for x in self.default])
                 val_str = f"[{parts}]"
+            case list() if all(isinstance(x, (int, float)) for x in self.default):
+                def_str = ", ".join(str(x) for x in self.default)
+                val_str = f"[{def_str}]"
             case list():
-                def_str = ", ".join([f"\"{x}\"" for x in self.default])
+                def_str = ", ".join([f'"{x}"' for x in self.default])
                 val_str = f"[{def_str}]"
             case dict():
                 val_str = "{}"

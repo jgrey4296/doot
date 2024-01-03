@@ -31,21 +31,20 @@ class TestArgParser:
         assert(isinstance(parser, ArgParser_i))
 
     def test_cmd(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(mocker)
+        cmd_mock                   = mock_parse_cmd(name="list")
         parser                     = ctor()
-        result                     = parser.parse([
-            "doot", "list"
-                               ],
+
+        result                     = parser.parse(["doot", "list"],
             doot_specs=[], cmds={"list": cmd_mock}, tasks={}
             )
 
         assert(result.on_fail(False).head.name() == "doot")
-        assert(result.on_fail(False).cmd.name() == "list")
+        assert(result.on_fail(False).cmd.name()  == "list")
 
     def test_cmd_args(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(mocker, [DootParamSpec(name="all")])
-        parser = ctor()
-        result = parser.parse([
+        cmd_mock  = mock_parse_cmd( params=[DootParamSpec(name="all")])
+        parser    = ctor()
+        result    = parser.parse([
             "doot", "list", "-all"
                                ],
             doot_specs=[], cmds={"list": cmd_mock}, tasks={}
@@ -55,7 +54,7 @@ class TestArgParser:
         assert(result.on_fail(False).cmd.args.all() == True)
 
     def test_cmd_arg_fail(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(mocker, [DootParamSpec(name="all")])
+        cmd_mock                   = mock_parse_cmd(params=[DootParamSpec(name="all")])
 
         parser = ctor()
         with pytest.raises(Exception):
@@ -66,8 +65,8 @@ class TestArgParser:
         )
 
     def test_cmd_then_task(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(mocker, [DootParamSpec(name="all")])
-        task_mock                  = mock_parse_task(mocker, [{"name":"all"}])
+        cmd_mock                   = mock_parse_cmd(params=[DootParamSpec(name="all")])
+        task_mock                  = mock_parse_task(params=[{"name":"all"}])
 
         parser = ctor()
         result = parser.parse([
@@ -80,11 +79,11 @@ class TestArgParser:
         assert("blah" in result.tasks)
 
     def test_cmd_then_complex_task(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(mocker, [DootParamSpec(name="all")])
-        task_mock                  = mock_parse_task(mocker, [{"name":"all"}])
+        cmd_mock  = mock_parse_cmd(params=[DootParamSpec(name="all")])
+        task_mock = mock_parse_task(params=[{"name":"all"}])
 
-        parser = ctor()
-        result = parser.parse([
+        parser    = ctor()
+        result    = parser.parse([
             "doot", "list", "blah::bloo.blee"
                                ],
             doot_specs=[], cmds={"list": cmd_mock}, tasks={"blah::bloo.blee": task_mock},
@@ -95,8 +94,8 @@ class TestArgParser:
 
     def test_task_args(self, ctor, mocker):
         """ check tasks can recieve args """
-        cmd_mock                                    = mock_parse_cmd(mocker)
-        task_mock                                   = mock_parse_task(mocker, [{"name":"all"}])
+        cmd_mock                                    = mock_parse_cmd()
+        task_mock                                   = mock_parse_task(params=[{"name":"all"}])
 
         parser                                      = ctor()
         result                                      = parser.parse([
@@ -110,8 +109,8 @@ class TestArgParser:
         assert(result.on_fail(False).tasks["basic::list"].all() == True)
 
     def test_task_with_name_spaces(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(mocker)
-        task_mock                  = mock_parse_task(mocker, [{"name":"all"}])
+        cmd_mock                   = mock_parse_cmd()
+        task_mock                  = mock_parse_task(params=[{"name":"all"}])
 
         parser = ctor()
         result = parser.parse([
@@ -125,8 +124,8 @@ class TestArgParser:
         assert(result.on_fail(False).tasks['simple task'].all() == True)
 
     def test_task_args_default(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(mocker)
-        task_mock                  = mock_parse_task(mocker, [{"name":"all"}])
+        cmd_mock                   = mock_parse_cmd()
+        task_mock                  = mock_parse_task(params=[{"name":"all"}])
 
         parser = ctor()
         result = parser.parse([
@@ -139,8 +138,8 @@ class TestArgParser:
         assert(result.on_fail(False).tasks.list.all() == False)
 
     def test_tasks_dup_fail(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(mocker)
-        task_mock                  = mock_parse_task(mocker, [{"name":"all"}])
+        cmd_mock                   = mock_parse_cmd()
+        task_mock                  = mock_parse_task(params=[{"name":"all"}])
 
         parser = ctor()
         with pytest.raises(doot.errors.DootParseError):
@@ -151,8 +150,8 @@ class TestArgParser:
             )
 
     def test_positional_cmd_arg(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(mocker, [DootParamSpec("test", type=str, positional=True)])
-        task_mock                  = mock_parse_task(mocker, [{"name":"key"}])
+        cmd_mock                   = mock_parse_cmd(params=[DootParamSpec("test", type=str, positional=True)])
+        task_mock                  = mock_parse_task(params=[{"name":"key"}])
 
         parser = ctor()
         result = parser.parse([
@@ -164,11 +163,11 @@ class TestArgParser:
         assert(result.cmd.args.test == "blah")
 
     def test_positional_cmd_arg_seq(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(mocker, [
-                                                             DootParamSpec(name="first", type=str, positional=True),
-                                                             DootParamSpec(name="second", type=str, positional=True)
-                                                    ])
-        task_mock                  = mock_parse_task(mocker, [{"name":"key"}])
+        cmd_mock                   = mock_parse_cmd(params=[
+            DootParamSpec(name="first", type=str, positional=True),
+            DootParamSpec(name="second", type=str, positional=True)
+            ])
+        task_mock                  = mock_parse_task(params=[{"name":"key"}])
 
         parser = ctor()
         result = parser.parse([
@@ -180,8 +179,8 @@ class TestArgParser:
         assert(result.cmd.args.second == "bloo")
 
     def test_positional_task_arg(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(mocker)
-        task_mock                  = mock_parse_task(mocker, [{"name":"test", "type":str, "positional":True, "default":""}])
+        cmd_mock                   = mock_parse_cmd()
+        task_mock                  = mock_parse_task(params=[{"name":"test", "type":str, "positional":True, "default":""}])
 
         parser = ctor()
         result = parser.parse([
@@ -193,8 +192,8 @@ class TestArgParser:
         assert(result.tasks.example.test == "blah")
 
     def test_positional_taskarg_seq(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(mocker)
-        task_mock                  = mock_parse_task(mocker, [
+        cmd_mock                   = mock_parse_cmd()
+        task_mock                  = mock_parse_task(params=[
             {"name":"first", "type":str, "positional":True},
             {"name":"second", "type":str, "positional":True}
             ])
@@ -307,8 +306,7 @@ class TestArgParser:
         assert(result.head.args.key == "blah")
 
     def test_simple_cmd(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(mocker, [DootParamSpec(name="key")])
-
+        cmd_mock = mock_parse_cmd(params=[DootParamSpec(name="key")])
         parser   = ctor()
         result   = parser.parse(["doot", "list"],
             doot_specs=[], cmds={"list" : cmd_mock}, tasks={}
@@ -332,8 +330,8 @@ class TestArgParser:
         assert(result.cmd.args.key is True)
 
     def test_cmd_default(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(mocker)
-        task_mock                  = mock_parse_task(mocker, [{"name":"key"}])
+        cmd_mock                   = mock_parse_cmd()
+        task_mock                  = mock_parse_task(params=[{"name":"key"}])
 
         parser   = ctor()
         result   = parser.parse(["doot" , "val"],
@@ -344,8 +342,8 @@ class TestArgParser:
 
 
     def test_simple_task(self, ctor, mocker):
-        cmd_mock             = mock_parse_cmd(mocker)
-        task_mock            = mock_parse_task(mocker, [{"name":"key"}])
+        cmd_mock             = mock_parse_cmd()
+        task_mock            = mock_parse_task(params=[{"name":"key"}])
 
         parser               = ctor()
         result               = parser.parse(["doot", "list", '-key'],
@@ -358,12 +356,12 @@ class TestArgParser:
 
 
     def test_simple_task_sequence(self, ctor, mocker):
-        cmd_mock = mock_parse_cmd(mocker)
-        task_mock                    = mock_parse_task(mocker, [{"name":"key", "type":bool}])
-        task_mock2                   = mock_parse_task(mocker, [{"name":"other", "type":bool}])
+        cmd_mock   = mock_parse_cmd()
+        task_mock  = mock_parse_task(params=[{"name":"key", "type":bool}])
+        task_mock2 = mock_parse_task(params=[{"name":"other", "type":bool}])
 
-        parser   = ctor()
-        result   = parser.parse(["doot", "list", "-key", "blah", "-other"],
+        parser     = ctor()
+        result     = parser.parse(["doot", "list", "-key", "blah", "-other"],
             doot_specs=[], cmds={"run": cmd_mock }, tasks={"list" : task_mock, "blah": task_mock2}
             )
 

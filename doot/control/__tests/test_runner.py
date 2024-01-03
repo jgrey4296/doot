@@ -24,15 +24,6 @@ from doot.utils import mock_gen
 
 logging = logmod.root
 
-# caplog
-# mocker.patch | patch.object | patch.multiple | patch.dict | stopall | stop | spy | stub
-# pytest.mark.filterwarnings
-# pytest.parameterize
-# pytest.skip | skipif | xfail
-# with pytest.deprecated_call
-# with pytest.raises
-# with pytest.warns(warntype)
-
 class TestRunner:
 
     @pytest.fixture(scope="function")
@@ -61,13 +52,9 @@ class TestRunner:
         reporter_m                      = mocker.MagicMock(spec=Reporter_i)
         runner                          = DootRunner(tracker=tracker_m, reporter=reporter_m)
 
-        task1_m = mock_gen.mock_task_spec(mocker)
-        task1_m.name                     = "first"
-        task2_m = mock_gen.mock_task_spec(mocker)
-        task2_m.name                     = "second"
-        task3_m = mock_gen.mock_task_spec(mocker)
-        task3_m.name                     = "third"
-
+        task1_m = mock_gen.mock_task(name="first", actions=0)
+        task2_m = mock_gen.mock_task(name="second", actions=0)
+        task3_m = mock_gen.mock_task(name="third", actions=0)
         tracker_m.__iter__.return_value  = [task1_m, task2_m, task3_m]
 
         expand_tasker  = mocker.spy(runner, "_expand_tasker")
@@ -104,9 +91,9 @@ class TestRunner:
         reporter_m                                    = mocker.MagicMock(spec=Reporter_i)
         runner                                        = DootRunner(tracker=tracker_m, reporter=reporter_m)
 
-        tasker1_m                                     = mock_gen.mock_tasker_spec(mocker)
-        tasker2_m                                     = mock_gen.mock_tasker_spec(mocker)
-        tasker3_m                                     = mock_gen.mock_tasker_spec(mocker)
+        tasker1_m                                     = mock_gen.mock_tasker("first")
+        tasker2_m                                     = mock_gen.mock_tasker("second")
+        tasker3_m                                     = mock_gen.mock_tasker("third")
 
         tracker_m.__iter__.return_value               = [tasker1_m, tasker2_m, tasker3_m]
 
@@ -139,11 +126,11 @@ class TestRunner:
         reporter_m                         = mocker.MagicMock(spec=Reporter_i)
         runner                             = DootRunner(tracker=tracker_m, reporter=reporter_m)
 
-        tasker1_m                          = mock_gen.mock_tasker_spec(mocker)
-        tasker2_m                          = mock_gen.mock_tasker_spec(mocker)
-        tasker3_m                          = mock_gen.mock_tasker_spec(mocker)
+        tasker1_m                          = mock_gen.mock_tasker("first")
+        tasker2_m                          = mock_gen.mock_tasker("second")
+        tasker3_m                          = mock_gen.mock_tasker("third")
 
-        task_m                             = mock_gen.mock_task_spec(mocker)
+        task_m                             = mock_gen.mock_task_spec("firstTask")
 
         tasker1_m.build.return_value       = [task_m]
         tracker_m.__iter__.return_value    = [tasker1_m, tasker2_m, tasker3_m]
@@ -174,18 +161,16 @@ class TestRunner:
         execute_action.assert_not_called()
         execute_task.assert_not_called()
 
+    # @pytest.mark.xfail
     def test_tasks_execute_actions(self, mocker, setup):
         ##-- setup
         tracker_m                                  = mocker.MagicMock(spec=TaskTracker_i)
         reporter_m                                 = mocker.MagicMock(spec=Reporter_i)
         runner                                     = DootRunner(tracker=tracker_m, reporter=reporter_m)
 
-        task1_m = mock_gen.mock_task_spec(mocker, action_count=1)
-        task2_m = mock_gen.mock_task_spec(mocker, action_count=1)
-        task3_m = mock_gen.mock_task_spec(mocker, action_count=1)
-        task1_m.name                               = "firstTask"
-        task2_m.name                               = "secondTask"
-        task3_m.name                               = "thirdTask"
+        task1_m = mock_gen.mock_task("firstTask")
+        task2_m = mock_gen.mock_task("secondTask")
+        task3_m = mock_gen.mock_task("thirdTask")
         tracker_m.__iter__.return_value            = [task1_m, task2_m, task3_m]
 
         expand_tasker                              = mocker.spy(runner, "_expand_tasker")

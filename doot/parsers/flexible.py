@@ -106,10 +106,10 @@ class DootFlexibleParser(ArgParser_i):
                     remaining = self.process_extra(remaining)
 
 
-        if self.cmd_args['help']:
+        if self.cmd_args.get('help', False) is True:
             self.cmd_args['target']      = self.cmd_name
             self.cmd_name                = "help"
-        elif any(bool(x[1]['help']) for x in self.tasks_args if (target:=x[0])):
+        elif any(x[1].get('help', False) is True for x in self.tasks_args if (target:=x[0])):
             self.cmd_args['target'] = target
             self.cmd_name = "help"
 

@@ -97,7 +97,7 @@ class DootTask(Task_i, ImporterMixin):
         """ extend the class toml stub with details from this instance """
         stub['name'].default      = self.fullname
         if bool(self.doc):
-            stub['doc'].default   = [f"\"{x}\"" for x in self.doc]
+            stub['doc'].default   = self.doc[:]
         stub['flags'].default     = self.spec.flags
 
         return stub

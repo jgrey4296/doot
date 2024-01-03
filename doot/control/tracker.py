@@ -141,7 +141,7 @@ class DootTracker(TaskTracker_i):
         # Check it doesn't shadow another task
         match task.name in self.tasks, task.name in self.task_graph: # type: ignore
             case True, False:
-                raise doot.errors.DootConfigError("Task exists in defined tasks, but not the task graph")
+                raise doot.errors.DootTaskTrackingError("Task exists in defined tasks, but not the task graph")
             case True, True if not self.shadowing:
                 raise doot.errors.DootTaskTrackingError("Task with Duplicate Name not added: ", task.name)
             case True, True:

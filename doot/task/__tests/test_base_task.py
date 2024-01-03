@@ -88,13 +88,13 @@ class TestBaseTask:
 
     def test_toml_instance_stub_rebuild(self):
         """ take a stub and turn it into a task spec  """
-        stub_obj = TaskStub(ctor=DootTask)
-        task   = DootTask(DootTaskSpec.from_dict({"name" : "basic::example", "flags" : ["TASK", "IDEMPOTENT"]}), tasker=None)
-        stub   = task.stub_instance(stub_obj)
-        as_str = stub.to_toml()
-        loaded = tomlguard.read(as_str)
-        as_dict  = dict(loaded.tasks.basic[0])
+        stub_obj         = TaskStub(ctor=DootTask)
+        task             = DootTask(DootTaskSpec.from_dict({"name" : "basic::example", "flags" : ["TASK", "IDEMPOTENT"]}), tasker=None)
+        stub             = task.stub_instance(stub_obj)
+        as_str           = stub.to_toml()
+        loaded           = tomlguard.read(as_str)
+        as_dict          = dict(loaded.tasks.basic[0])
         as_dict['group'] = "basic"
-        new_spec = DootTaskSpec.from_dict(as_dict)
+        new_spec         = DootTaskSpec.from_dict(as_dict)
         assert(isinstance(new_spec, DootTaskSpec))
         assert(str(new_spec.name) == str(task.spec.name))

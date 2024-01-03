@@ -123,7 +123,7 @@ class StubCmd(Command_i):
                 cls.stub_class(stub)
                 if issubclass(cls, TaskBase_i):
                     stub['version'].default         = cls.version
-                    stub['doc'].default             = [f"\"{x}\"" for x in cls.class_help().split("\n") if bool(x)]
+                    stub['doc'].default             = [x for x in cls.class_help().split("\n") if bool(x)]
             except NotImplementedError:
                 pass
             except AttributeError:

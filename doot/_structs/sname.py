@@ -73,9 +73,10 @@ class DootStructuredName:
             case _:
                 raise doot.errors.DootError("Tried to build a name from a bad value", name)
 
-
     def __post_init__(self):
         match self.head:
+            case None | []:
+                self.head = ["default"]
             case ["tasks", x] if x.startswith('"') and x.endswith('"'):
                 self.head = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(self.subseparator), x[1:-1]))
             case ["tasks", *xs]:
@@ -84,16 +85,14 @@ class DootStructuredName:
                 self.head = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(self.subseparator), self.head))
             case str():
                 self.head = self.head.split(self.subseparator)
-            case None | []:
-                self.head = ["default"]
 
         match self.tail:
+            case None | []:
+                self.tail = ["default"]
             case list():
                 self.tail = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(self.subseparator), self.tail))
             case str():
                 self.tail = self.tail.split(self.subseparator)
-            case None | []:
-                self.tail = ["default"]
 
     def __hash__(self):
         return hash(str(self))
@@ -157,6 +156,16 @@ class DootCodeReference(DootStructuredName):
         ref = DootCodeReference(groupHead, codeHead, _type=_type)
         return ref
 
+    @staticmethod
+    def from_alias(alias:str, group:str, plugins:TomlGuard) -> DootCodeReference:
+        if group not in plugins:
+            return DootCodeReference.from_str(alias)
+        match [x for x in plugins[group] if x.name == alias]:
+            case [x, *xs]:
+                return DootCodeReference.from_str(x.value)
+            case _:
+                return DootCodeReference.from_str(alias)
+
     def __str__(self) -> str:
         return "{}{}{}".format(self.module, self.separator, self.value)
 
@@ -165,6 +174,7 @@ class DootCodeReference(DootStructuredName):
 
     def __iter__(self):
         return iter(self._mixins)
+
     @property
     def module(self):
         return self.subseparator.join(self.head)
@@ -223,16 +233,6 @@ class DootCodeReference(DootStructuredName):
         except AttributeError as err:
             raise ImportError("Attempted to import %s but failed", str(self)) from err
 
-    @staticmethod
-    def from_alias(alias:str, group:str, plugins:TomlGuard) -> DootCodeReference:
-        if group not in plugins:
-            return DootCodeReference.from_str(alias)
-        match [x for x in plugins[group] if x.name == alias]:
-            case [x, *xs]:
-                return DootCodeReference.from_str(x.value)
-            case _:
-                return DootCodeReference.from_str(alias)
-
     def to_aliases(self, group:str, plugins:TomlGuard) -> tuple[str, list[str]]:
         base_alias = str(self)
         match [x for x in plugins[group] if x.value == base_alias]:
@@ -245,7 +245,6 @@ class DootCodeReference(DootStructuredName):
             mixins = []
 
         return base_alias, mixins
-
 
     def _calculate_minimal_mixins(self, plugins:TomlGuard) -> list[DootCodeReference]:
         found          = set()
