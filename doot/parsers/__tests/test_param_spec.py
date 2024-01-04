@@ -16,7 +16,6 @@ logging = logmod.root
 
 import pytest
 import doot.errors
-from doot.parsers.parser import DootArgParser
 from doot.structs import DootParamSpec, DootTaskSpec
 
 class TestParamSpec:

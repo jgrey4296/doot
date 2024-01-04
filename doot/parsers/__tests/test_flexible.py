@@ -18,7 +18,6 @@ import pytest
 import doot.errors
 from doot._abstract import ArgParser_i, TaskBase_i
 from doot.parsers.flexible import DootFlexibleParser
-from doot.parsers.parser import DootArgParser
 from doot.structs import DootParamSpec, DootTaskSpec, DootCodeReference
 from doot.utils.mock_gen import mock_parse_cmd, mock_parse_task
 

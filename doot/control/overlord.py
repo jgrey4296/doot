@@ -46,7 +46,7 @@ from doot.errors import DootInvalidConfig, DootParseError
 from doot.loaders.cmd_loader import DootCommandLoader
 from doot.loaders.plugin_loader import DootPluginLoader
 from doot.loaders.task_loader import DootTaskLoader
-from doot.parsers.parser import DootArgParser
+from doot.parsers.flexible import DootFlexibleParser
 
 plugin_loader_key  : Final = doot.constants.DEFAULT_PLUGIN_LOADER_KEY
 command_loader_key : Final = doot.constants.DEFAULT_COMMAND_LOADER_KEY
@@ -161,7 +161,7 @@ class DootOverlord(Overlord_p):
         """ use the found task and command arguments to make sense of sys.argv """
         self.parser = plugin_selector(self.loaders.get("parser", None) or self.plugins.on_fail([], list).parser(),
                                      target=preferred_parser,
-                                     fallback=DootArgParser)()
+                                     fallback=DootFlexibleParser)()
 
         if not isinstance(self.parser, ArgParser_i):
             raise TypeError("Improper argparser specified: ", self.arg_parser)

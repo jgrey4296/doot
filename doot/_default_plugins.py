@@ -63,8 +63,7 @@ DEFAULT_PLUGINS['runner']      = [("basic",      "doot.control.runner:DootRunner
                                   ("step",       "doot.control.step_runner:DootStepRunner")
                                 ]
 
-DEFAULT_PLUGINS['parser']      = [("basic",      "doot.parsers.parser:DootArgParser"),
-                                  ("flexible",   "doot.parsers.flexible:DootFlexibleParser")]
+DEFAULT_PLUGINS['parser']      = [("basic",   "doot.parsers.flexible:DootFlexibleParser")]
 DEFAULT_PLUGINS['action']      = [("basic"  ,    "doot.actions.base_action:DootBaseAction"),
 
                                   ("shell" ,     "doot.actions.shell:DootShellAction"),
