@@ -36,9 +36,6 @@ DEFAULT_PLUGIN_LOADER_KEY   : Final[str] =  "plugin-loader"
 ##-- path and file names
 TEMPLATE_PATH         : Final[pl.Path]       =  resources.files("doot.__templates")
 TOML_TEMPLATE         : Final[pl.Path]       =  TEMPLATE_PATH / "basic_toml"
-DOOTER_TEMPLATE       : Final[pl.Path]       =  TEMPLATE_PATH / "dooter"
-
-DEFAULT_DOOTER        : Final[pl.Path]       =  pl.Path("dooter.py")
 
 DEFAULT_LOAD_TARGETS  : Final[list[pl.Path]] =  [pl.Path(x) for x in ["doot.toml", "pyproject.toml", "Cargo.toml", "./.cargo/config.toml"]]
 
@@ -54,7 +51,7 @@ IMPORT_SEP              : Final[str]              = ":"
 SUBTASKED_HEAD          : Final[str]              = "$head$"
 CONFLICTED_ADD          : Final[str]              = "$conflict$"
 INTERNAL_TASK_PREFIX    : Final[str]              = "_"
-FILE_DEP_PREFIX         : Final[str]              = "file://"
+FILE_DEP_PREFIX         : Final[str]              = "file:>"
 PARAM_ASSIGN_PREFIX     : Final[str]              = "--"
 
 DEFAULT_CLI_CMD         : Final[str]              = "run"
