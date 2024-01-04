@@ -10,3 +10,7 @@ Initial ... release.
 - Add reactive and auto queue behaviour for tasks.
 - Rewrite action argument expansion, using DootKey
 - bugfixes
+# 0.3.1 : 2024-01-04
+- refactor task specs to use mixins
+- improve arg parser
+- change file name prefix to "file:>"
