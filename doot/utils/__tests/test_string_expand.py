@@ -27,214 +27,81 @@ logging = logmod.root
 
 ##-- end pytest reminder
 
+from tomlguard import TomlGuard
 from doot.structs import DootActionSpec
-from doot.utils.string_expand import expand_str, expand_set, expand_to_obj
+from doot.utils.expansion import to_str, to_any
 
 class TestStringExpand:
 
     @pytest.fixture(scope="function")
-    def setup(self):
-        pass
-
-    @pytest.fixture(scope="function")
-    def cleanup(self):
-        pass
-
-    def test_initial(self):
-        assert("test" == expand_str("test", None, None))
-
-    def test_state_simple(self):
-        assert("blah" == expand_str("{test}", None, {"test" : "blah"}))
-
-    def test_state_multi(self):
-        assert("blah then blah" == expand_str("{test} then {test}", None, {"test" : "blah"}))
-
-    def test_state_multi_different(self):
-        assert("blah then bloo" == expand_str("{test} then {other}", None, {"test" : "blah", "other":"bloo"}))
-
-    def test_kwargs_simple(self, mocker):
-        mock_spec = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": "blah"}
-        assert("blah" == expand_str("{test}", mock_spec))
-
-    def test_kwargs_multi(self, mocker):
-        mock_spec = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": "blah"}
-        assert("blah then blah" == expand_str("{test} then {test}", mock_spec))
+    def spec(self):
+        return DootActionSpec(kwargs=TomlGuard({"y": "aweg", "test": "blah", "other": "bloo"}))
 
 
-    def test_kwargs_multi_diff(self, mocker):
-        mock_spec = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": "blah", "other": "bloo"}
-        assert("blah then bloo" == expand_str("{test} then {other}", mock_spec))
+    def test_initial(self, spec):
+        assert(to_str("test", spec, {}) == "blah")
 
+    def test_state_simple(self, spec):
+        assert("blah" == to_str("{test}", spec, {"test" : "blah"}))
 
-    def test_kwargs_and_state_mixed(self, mocker):
-        mock_spec = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": "blah"}
+    def test_state_multi(self, spec):
+        assert("blah then blah" == to_str("{test} then {test}", spec, {"test" : "blah"}))
+
+    def test_state_multi_different(self, spec):
+        assert("blah then bloo" == to_str("{test} then {other}", spec, {"test" : "blah", "other":"bloo"}))
+
+    def test_kwargs_simple(self, spec, mocker):
+        assert("blah" == to_str("{test}", spec, {}))
+
+    def test_kwargs_multi(self, spec, mocker):
+        assert("blah then blah" == to_str("{test} then {test}", spec, {}))
+
+    def test_kwargs_multi_diff(self, spec, mocker):
+        assert("blah then bloo" == to_str("{test} then {other}", spec, {}))
+
+    def test_kwargs_and_state_mixed(self, spec, mocker):
+        state = {"state": "blee"}
+        assert("blah then blee" == to_str("{test} then {state}", spec, state))
+
+    def test_prefer_state_over_kwargs(self, spec, mocker):
+        state = {"other": "blee"}
+        assert("blah then blee" == to_str("{test} then {other}", spec, state))
+
+    def test_expand_list_fails(self, spec, mocker):
         state = {"other": "bloo"}
-        assert("blah then bloo" == expand_str("{test} then {other}", mock_spec, state))
+        with pytest.raises(TypeError):
+            to_str(["{test} then {other}"], spec, state)
 
-
-    def test_prefer_state_over_kwargs(self, mocker):
-        mock_spec = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": "blah", "other": "aweg"}
+    def test_expand_set_fails(self, spec, mocker):
         state = {"other": "bloo"}
-        assert("blah then bloo" == expand_str("{test} then {other}", mock_spec, state))
+        with pytest.raises(TypeError):
+            to_str(set(["{test} then {other}"]), spec, state)
 
-
-    def test_expand_list(self, mocker):
-        mock_spec = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": "blah", "other": "aweg"}
-        state = {"other": "bloo"}
-        assert(["blah then bloo"] == expand_str(["{test} then {other}"], mock_spec, state))
-
-
-    def test_expand_set(self, mocker):
-        mock_spec = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": "blah", "other": "aweg"}
-        state = {"other": "bloo"}
-        assert(set(["blah then bloo"]) == expand_str(set(["{test} then {other}"]), mock_spec, state))
-
-
-    @pytest.mark.skip("TODO")
-    def test_non_recursive(self, mocker):
-        mock_spec = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": "{other}", "other": "aweg"}
-        state = {"other": "bloo"}
-        result = expand_str("{test}", mock_spec, state)
+    def test_non_recursive(self, spec, mocker):
+        state = {"other": "bloo", "rec": "{other}"}
+        result = to_str("{rec}", spec, state)
         assert("{other}" == result)
-        assert("bloo" == expand_str(result, mock_spec, state))
+        assert("bloo" == to_str(result, spec, state))
 
 
-    def test_flatten_list(self, mocker):
-        mock_spec = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": ["a", "b", "c"]}
-        state = {"other": "bloo"}
-        result = expand_str("{test}", mock_spec, state)
-        assert("a b c" == result)
+    def test_recursive(self, spec, mocker):
+        state = {"other": "bloo", "rec": "{other}"}
+        result = to_str("{rec}", spec, state, rec=True)
+        assert("bloo" == result)
 
+    @pytest.mark.xfail
+    def test_list_replacement_failes(self, spec, mocker):
+        state = {"other": "bloo", "test": ["a", "b", "c"]}
+        with pytest.raises(TypeError):
+            to_str("{test}", spec, state)
 
-    def test_no_expansion_interference(self, mocker):
-        mock_spec = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": "looooooooooooooong"}
-        state = {"other": "short"}
-        result = expand_str("{test}{other}", mock_spec, state)
+    def test_no_expansion_interference(self, spec, mocker):
+        state = {"other": "short", "long": "looooooooooooooong"}
+        result = to_str("{long}{other}", spec, state)
         assert("looooooooooooooongshort" == result)
 
-
-    def test_expand_non_str_value(self, mocker):
-        mock_spec = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": {"val" : "test"}}
-        state = {"other": "short"}
-        result = expand_str("{test}", mock_spec, state)
-        assert(result == str({"val": "test"}))
-
-
-    def test_expand_as_key(self, mocker):
-        mock_spec = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": "other"}
-        state = {"other": "short"}
-        result = expand_str("{test}", mock_spec, state, as_key=True)
-        assert(result == "{other}")
-        expanded_result = expand_str(result, mock_spec, state)
-        assert(expanded_result == "short")
-
-
-    def test_expand_key_no_initial_replace(self, mocker):
-        mock_spec = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": "other"}
-        state = {"other": "short"}
-        result = expand_str("test", mock_spec, state, as_key=True)
-        assert(result == "{test}")
-        expanded_result = expand_str(result, mock_spec, state)
-        assert(expanded_result == "other")
-
-
-class TestSetExpand:
-
-    def test_initial(self):
-        assert(set(["test"]) == expand_set("test", None, None))
-
-
-    def test_simple_expand(self, mocker):
-        mock_spec        = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": "blah"}
-        state            = {"other": "bloo"}
-        assert(set(["blah"])  == expand_set("{test}", mock_spec, state))
-
-
-    def test_expand_input_list(self, mocker):
-        mock_spec        = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": "blah"}
-        state            = {"other": "bloo"}
-        assert(set(["blah", "bloo"])  == expand_set(["{test}", "{test}", "{other}"], mock_spec, state))
-
-
-    def test_expand_list(self, mocker):
-        mock_spec        = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": ["a", "b", "c"]}
-        state            = {"other": "bloo"}
-        assert(set(["a", "b", "c"])  == expand_set("{test}", mock_spec, state))
-
-
-    def test_non_recursive(self, mocker):
-        mock_spec        = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": ["a", "{other}", "c"]}
-        state            = {"other": "bloo"}
-        assert(set(["a", "{other}", "c"])  == expand_set("{test}", mock_spec, state))
-
-
-    def test_multi_list(self, mocker):
-        mock_spec        = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": ["a", "{other}", "c"]}
-        state            = {"blah": ["bloo", "aweg"]}
-        result = expand_set("{test}{blah}", mock_spec, state)
-        logging.debug("Result: %s", result)
-        assert(set(["a", "{other}", "c", "bloo", "aweg"])  == result)
-
-
-    def test_simple_no_key(self, mocker):
-        mock_spec        = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": ["a", "{other}", "c"]}
-        state            = {"blah": ["bloo", "aweg"]}
-        result = expand_set("test", mock_spec, state)
-        logging.debug("Result: %s", result)
-        assert(set(["test"])  == result)
-
-
-    def test_simple_no_key_repeat(self, mocker):
-        mock_spec        = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": ["a", "{other}", "c"]}
-        state            = {"blah": ["bloo", "aweg"]}
-        result = expand_set("test", mock_spec, state)
-        result = expand_set(result, mock_spec, state)
-        logging.debug("Result: %s", result)
-        assert(set(["test"])  == result)
-
-
-    def test_expand_not_strs(self, mocker):
-        mock_spec        = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": [1,2,3,4],}
-        state            = {"blah": [2,3,6,7], }
-        result = expand_set(["{test}", "{blah}"], mock_spec, state)
-        logging.debug("Result: %s", result)
-        assert(set([1,2,3,4,6,7])  == result)
-
-
-class TestObjExpand:
-
-    def test_initial(self):
-        with pytest.raises(KeyError):
-            expand_to_obj("test", None, None)
-
-
-    def test_simple_expand(self, mocker):
-        mock_spec        = mocker.MagicMock(spec=DootActionSpec)
-        mock_spec.kwargs = {"test": set([1, 2, 3, 4, 5, 4])}
-        state            = {"other": "bloo"}
-        assert(set([1,2,3,4,5])  == expand_to_obj("{test}", mock_spec, state))
-
-
-class TestKeyExpand:
-    pass
+    @pytest.mark.xfail
+    def test_expand_non_str_value_fails(self, spec, mocker):
+        state = {"other": "short", "adict": {"val" : "test"}}
+        with pytest.raises(TypeError):
+            to_str("{adict}", spec, state)

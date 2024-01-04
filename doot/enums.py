@@ -75,12 +75,6 @@ class ReportEnum(enum.Flag):
     CONFIG   = enum.auto()
     ARTIFACT = enum.auto()
 
-class StructuredNameEnum(enum.Enum):
-    """ What a structured name describes """
-    TASK     = enum.auto()
-    CLASS    = enum.auto()
-    CALLABLE = enum.auto()
-
 
 class TaskPolicyEnum(enum.Flag):
     """

@@ -30,7 +30,7 @@ import doot.errors
 
 from doot.enums import TaskFlags, TaskStateEnum, ActionResponseEnum
 from doot._abstract.parser import ParamSpecMaker_m
-from doot.structs import DootParamSpec, TaskStub, DootTaskSpec, DootStructuredName, DootActionSpec
+from doot.structs import DootParamSpec, TaskStub, DootTaskSpec, DootTaskName, DootActionSpec
 
 
 ##-- logging
@@ -59,9 +59,9 @@ class TaskBase_i(ParamSpecMaker_m):
     def param_specs(cls) -> list[DootParamSpec]:
         """  make class parameter specs  """
         return [
-            cls.make_param(name="help", default=False, invisible=True),
-            cls.make_param(name="debug", default=False, invisible=True),
-            cls.make_param(name="verbose", default=0, type=int, invisible=True)
+            cls.make_param(name="help", default=False, invisible=True, prefix="--"),
+            cls.make_param(name="debug", default=False, invisible=True, prefix="--"),
+            cls.make_param(name="verbose", default=0, type=int, invisible=True, prefix="--")
            ]
 
     def __init__(self, spec:DootTaskSpec):
@@ -75,7 +75,7 @@ class TaskBase_i(ParamSpecMaker_m):
         return str(self.spec.name)
 
     @property
-    def fullname(self) -> DootStructuredName:
+    def fullname(self) -> DootTaskName:
         return self.spec.name
 
     def __hash__(self):
@@ -109,12 +109,12 @@ class TaskBase_i(ParamSpecMaker_m):
         return self.spec.doc or self._help
 
     @property
-    def depends_on(self) -> abc.Generator[str|DootStructuredName]:
+    def depends_on(self) -> abc.Generator[str|DootTaskName]:
         for x in self.spec.depends_on:
             yield x
 
     @property
-    def required_for(self) -> abc.Generator[str|DootStructuredName]:
+    def required_for(self) -> abc.Generator[str|DootTaskName]:
         for x in self.spec.required_for:
             yield x
 
@@ -148,14 +148,14 @@ class TaskBase_i(ParamSpecMaker_m):
 
     @classmethod
     @abc.abstractmethod
-    def stub_class(cls, TaskStub) -> TaskStub:
+    def stub_class(cls, TaskStub):
         """
         Specialize a TaskStub to describe this class
         """
         raise NotImplementedError(cls, "stub_class")
 
     @abc.abstractmethod
-    def stub_instance(self, TaskStub) -> TaskStub:
+    def stub_instance(self, TaskStub):
         """
           Specialize a TaskStub with the settings of this specific instance
         """
@@ -224,7 +224,7 @@ class Tasker_i(TaskBase_i):
         return "\n".join(help_lines)
 
     @abc.abstractmethod
-    def default_task(self, name:str|DootStructuredName|None, extra:None|dict|TomlGuard) -> DootTaskSpec:
+    def default_task(self, name:str|DootTaskName|None, extra:None|dict|TomlGuard) -> DootTaskSpec:
         raise NotImplementedError(self.__class__, "default_task")
 
     @abc.abstractmethod

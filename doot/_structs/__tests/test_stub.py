@@ -60,10 +60,10 @@ class TestTaskStub:
 
     def test_toml_reparse_to_spec(self):
         """ check a stub has the default components of a TaskSpec  """
-        obj    = structs.TaskStub(dict)
+        obj    = structs.TaskStub()
         as_str = obj.to_toml()
         loaded = tomlguard.read(as_str)
-        spec   = structs.DootTaskSpec.from_dict(loaded.tasks.stub[0]._table())
+        spec   = structs.DootTaskSpec.from_dict(loaded.tasks.stub[0])
         pass
 
 
@@ -79,7 +79,7 @@ class TestTaskStubPart:
 
 
     def test_name_reduce(self):
-        obj = structs.TaskStubPart("name", default=structs.DootStructuredName.from_str("blah::bloo"))
+        obj = structs.TaskStubPart("name", default=structs.DootTaskName.from_str("blah::bloo"))
         res_s = str(obj).split("\n")
         assert(res_s[0] == "[[tasks.blah]]")
         assert(res_s[1] == f"{'name':<20} = \"bloo\"")

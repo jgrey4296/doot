@@ -28,6 +28,7 @@ from weakref import ref
 
 ##-- logging
 logging = logmod.getLogger(__name__)
+printer = logmod.getLogger("doot._printer")
 ##-- end logging
 from time import sleep
 import doot
@@ -47,11 +48,6 @@ class BatchMixin:
     """
 
     batch_count       = 0
-
-    def batch_params(self) -> list:
-        return [
-            {"name": "chunkSize", "long": "chunkSize", "type": int, "default": batch_size},
-        ]
 
     def run_batches(self, *batches, reset=True, fn=None, **kwargs):
         """

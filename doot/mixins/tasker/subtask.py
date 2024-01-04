@@ -31,7 +31,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from doot.errors import DootDirAbsent, DootTaskError
-from doot.structs import DootStructuredName, DootTaskSpec
+from doot.structs import DootTaskSpec, DootTaskName
 from time import sleep
 
 class SubMixin:
@@ -47,30 +47,38 @@ class SubMixin:
     def _build_subs(self) -> Generator[DootTaskSpec]:
         raise NotImplementedError()
 
-    @abc.abstractmethod
     def build(self, **kwargs) -> Generator:
-        raise NotImplementedError()
+        head = self._build_head()
+        match head:
+            case DootTaskSpec(doc=[]):
+                head.doc = self.doc
+            case DootTaskSpec():
+                pass
+            case _:
+                raise DootTaskError("Failed to build the head task: %s", self.name)
 
-    def _sleep_subtask(self):
-        if self.sleep_notify:
-            logging.info("Sleep Subtask")
-        sleep(self.sleep_subtask)
+        for sub in self._build_subs():
+            match self.specialize_subtask(sub):
+                case None:
+                    pass
+                case DootTaskSpec(name=subname) if not (self.fullname < subname):
+                    raise DootTaskError("Subtasks must be part of their parents name: %s : %s", self.name, task.name)
+                case DootTaskSpec() as spec_sub:
+                    head.depends_on.append(spec_sub.name)
+                    yield spec_sub
+                case _:
+                    raise DootTaskError("Unrecognized subtask generated")
+
+        yield self.specialize_task(head)
 
     def _build_subtask(self, n:int, uname, **kwargs) -> DootTaskSpec:
         task_spec = self.default_task(uname, extra=kwargs)
 
-        task_ref = self.spec.extra.on_fail((None,), None|str).sub_task()
+        task_ref  = self.spec.extra.on_fail((None,), None|str).sub_task()
         if task_ref is not None:
-            task_spec.ctor_name = DootStructuredName.from_str(task_ref)
+            task_spec.ctor = DootTaskName.from_str(task_ref)
 
-        task      = self.specialize_subtask(task_spec)
-        if task is None:
-            return
-
-        if not (self.fullname < task.name):
-            raise DootTaskError("Subtasks must be part of their parents name: %s : %s", self.name, task.name)
-
-        return task
+        return task_spec
 
     def subtask_name(self, val):
         return self.fullname.subtask(val)
@@ -78,10 +86,8 @@ class SubMixin:
     def specialize_subtask(self, task) -> None|dict|DootTaskSpec:
         return task
 
-
     @classmethod
     def stub_class(cls, stub):
-        stub['sub_task'].type = "task_iden"
-        stub['sub_task'].default = ""
-        stub['sub_task'].prefix = "# "
+        stub['head_task'].set(priority=100)
+        stub['sub_task'].set(type="taskname", default="", prefix="# ", priority=100)
         del stub.parts['actions']

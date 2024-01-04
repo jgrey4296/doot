@@ -63,7 +63,7 @@ DEFAULT_PLUGINS['runner']      = [("basic",      "doot.control.runner:DootRunner
                                   ("step",       "doot.control.step_runner:DootStepRunner")
                                 ]
 
-DEFAULT_PLUGINS['parser']      = [("basic",      "doot.parsers.parser:DootArgParser")]
+DEFAULT_PLUGINS['parser']      = [("basic",   "doot.parsers.flexible:DootFlexibleParser")]
 DEFAULT_PLUGINS['action']      = [("basic"  ,    "doot.actions.base_action:DootBaseAction"),
 
                                   ("shell" ,     "doot.actions.shell:DootShellAction"),
@@ -93,7 +93,12 @@ DEFAULT_PLUGINS['action']      = [("basic"  ,    "doot.actions.base_action:DootB
                               ]
 
 DEFAULT_PLUGINS['tasker']      = [("tasker"  , "doot.task.base_tasker:DootTasker"),
-                                  ("walker" ,  "doot.task.dir_walker:DootDirWalker"),
                                   ("task"    , "doot.task.base_task:DootTask"),
-                                  ("shadow"  , "doot.task.tree_shadower:DootTreeShadower"),
+                                  ]
+
+DEFAULT_PLUGINS['mixins']      = [("walker", "doot.mixins.tasker.walker:WalkerMixin"),
+                                  ("shadow", "doot.mixins.tasker.shadower:WalkShadowerMixin"),
+                                  ("subs",   "doot.mixins.tasker.subtask:SubMixin"),
+                                  ("terse",  "doot.mixins.tasker.mini_builder:MiniBuilderMixin"),
+                                  ("zip",    "doot.mixins.task.zipper:ZipperMixin"),
                                   ]

@@ -14,23 +14,17 @@ import warnings
 import pytest
 logging = logmod.root
 
-# caplog
-# mocker.patch | patch.object | patch.multiple | patch.dict | stopall | stop | spy | stub
-# pytest.mark.filterwarnings
-# pytest.parameterize
-# pytest.skip | skipif | xfail
-# with pytest.deprecated_call
-# with pytest.raises
-# with pytest.warns(warntype)
-
 import doot
 from doot.enums import TaskFlags
-from doot.structs import DootTaskSpec, TaskStub
+from doot.structs import DootTaskSpec, TaskStub, DootCodeReference
 from doot.task.base_tasker import DootTasker
 from doot.mixins.tasker.subtask import SubMixin
 import doot._abstract
 
-class SimpleSubTasker(SubMixin, DootTasker):
+sub_ref   = DootCodeReference.from_str("doot.task.base_tasker:DootTasker").add_mixins("doot.mixins.tasker.subtask:SubMixin")
+SubTasker = sub_ref.try_import()
+
+class SimpleSubTasker(SubTasker):
 
     def build(self, **kwargs):
         head = self._build_head()
@@ -62,13 +56,11 @@ class SetupTearDownTasker(SimpleSubTasker):
         yield teardown
         yield head
 
-
 class TestSubtasks:
 
     def test_initial(self):
         obj = SimpleSubTasker(DootTaskSpec.from_dict({"name": "simple"}))
         assert(isinstance(obj, doot._abstract.TaskBase_i))
-
 
     def test_builds_task(self):
         obj   = SimpleSubTasker(DootTaskSpec.from_dict({"name": "simple"}))
@@ -78,7 +70,6 @@ class TestSubtasks:
         assert("default::simple.$head$" in names)
         assert("default::simple.first" in names)
         assert("default::simple.second" in names)
-
 
     def test_setup_teardown(self):
         obj   = SetupTearDownTasker(DootTaskSpec.from_dict({"name": "simple"}))

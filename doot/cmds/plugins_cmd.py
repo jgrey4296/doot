@@ -50,10 +50,9 @@ class PluginsCmd(Command_i):
     @property
     def param_specs(self) -> list[DootParamSpec]:
         return super().param_specs + [
-            self.make_param(name="all",                                          default=True,                   desc="List all loaded tasks, by group"),
-            self.make_param(name="groups",                   type=bool,          default=False,                  desc="List just the groups tasks fall into",   prefix="--"),
-            self.make_param(name="by-source",                                    default=False,                  desc="List all loaded tasks, by source file",  prefix="--"),
-            self.make_param(name="pattern",                  type=str,           default="", positional=True,    desc="List tasks with a basic string pattern in the name"),
+            self.make_param(name="all",                  default=True,                   desc="List all loaded tasks, by group"),
+            self.make_param(name="groups",    type=bool, default=False,                  desc="List just the groups tasks fall into",   prefix="--"),
+            self.make_param(name="pattern",   type=str,  default="", positional=True,    desc="List tasks with a basic string pattern in the name"),
             ]
 
     def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
@@ -62,6 +61,10 @@ class PluginsCmd(Command_i):
 
         if not bool(plugins):
             printer.info("No Tasks Defined")
+            return
+
+        if doot.args.cmd.args.pattern != "":
+            self._print_group_matches(plugins)
             return
 
         self._print_all_by_group(plugins)
@@ -76,27 +79,27 @@ class PluginsCmd(Command_i):
             spec = plugins[key]
             printer.info(fmt_str,
                          spec.name,
-                         spec.ctor_name,
+                         spec.ctor,
                          spec.source)
 
     def _print_group_matches(self, plugins):
         max_key = len(max(plugins.keys(), key=len))
-        fmt_str = f"    %-{max_key}s :: %-25s <%s>"
-        pattern  = doot.args.cmd.args.pattern.lower()
+        fmt_str = f"{INDENT}%-{max_key}s :: %-25s"
+        pattern  = re.compile(doot.args.cmd.args.pattern.lower())
         groups  = defaultdict(list)
-        for name, spec in plugins.items():
-            if pattern not in name:
-                continue
-            groups[spec.name.group_str()].append((spec.name.task_str(),
-                                                  spec.ctor.__module__,
-                                                  spec.ctor.__name__,
-                                                  spec.source))
+        for group_name, specs in plugins.items():
+            if pattern.search(group_name):
+                groups[group_name] += [(spec.name, spec.value) for spec in specs]
+            else:
+                groups[group_name] += [(spec.name, spec.value) for spec in specs if pattern.search(spec.name) or pattern.search(spec.value)]
 
-        printer.info("Plugins for Matching Groups: %s", pattern)
+        printer.info("Plugins for Matching Groups: %s", doot.args.cmd.args.pattern.lower())
         for group, plugins in groups.items():
+            if not bool(plugins):
+                continue
             printer.info("*   %s::", group)
-            for task in plugins:
-                printer.info(fmt_str, *task)
+            for plugin in plugins:
+                printer.info(fmt_str, *plugin)
 
     def _print_all_by_group(self, plugins):
         printer.info("Defined Plugins by Group:", extra={"colour":"cyan"})

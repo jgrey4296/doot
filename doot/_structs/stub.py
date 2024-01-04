@@ -19,7 +19,7 @@ import time
 import types
 import weakref
 # from copy import deepcopy
-from dataclasses import InitVar, dataclass, field
+from dataclasses import InitVar, dataclass, field, MISSING
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
@@ -40,12 +40,13 @@ import importlib
 from tomlguard import TomlGuard
 import doot.errors
 import doot.constants
-from doot.enums import TaskFlags, ReportEnum, StructuredNameEnum
-from doot._structs.structured_name import DootStructuredName
+from doot.enums import TaskFlags, ReportEnum
+from doot._structs.sname import DootTaskName, DootCodeReference
 from doot._structs.task_spec import DootTaskSpec
 
-PAD           : Final[int] = 15
-TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
+PAD           : Final[int]               = 15
+TaskFlagNames : Final[str]               = [x.name for x in TaskFlags]
+DEFAULT_CTOR  : Final[DootCodeReference] = DootCodeReference.from_str(doot.constants.DEFAULT_PLUGINS['tasker'][1][1])
 
 @dataclass
 class TaskStub:
@@ -60,36 +61,48 @@ class TaskStub:
     # str(obj) -> will now generate toml, including a "blah" key
 
     """
-    ctor       : str|type                     = field(default="doot.task.base_tasker::DootTasker")
-    parts      : dict[str, TaskStubPart]      = field(default_factory=dict, kw_only=True)
+    ctor       : str|DootCodeReference|type                     = field(default=DEFAULT_CTOR)
+    parts      : dict[str, TaskStubPart]                        = field(default_factory=dict, kw_only=True)
 
     # Don't copy these from DootTaskSpec blindly
-    skip_parts : ClassVar[set[str]]          = set(["name", "extra", "ctor", "ctor_name", "source", "version"])
+    skip_parts : ClassVar[set[str]]          = set(["name", "extra", "ctor", "source", "version"])
 
     def __post_init__(self):
-        self['name'].default     = DootStructuredName.from_str(doot.constants.DEFAULT_STUB_TASK_NAME)
+        self['name'].default     = DootTaskName.from_str(doot.constants.DEFAULT_STUB_TASK_NAME)
         self['version'].default  = "0.1"
         # Auto populate the stub with what fields are defined in a TaskSpec:
-        for key, type in DootTaskSpec.__annotations__.items():
-            if key in TaskStub.skip_parts:
+        for dcfield in DootTaskSpec.__dataclass_fields__.values():
+            if dcfield.name in TaskStub.skip_parts:
                 continue
-
-            self.parts[key] = TaskStubPart(key=key, type=type)
+            self.parts[dcfield.name] = TaskStubPart(key=dcfield.name, type=dcfield.type)
+            if dcfield.default != MISSING:
+                self.parts[dcfield.name].default = dcfield.default
 
     def to_toml(self) -> str:
         parts = []
         parts.append(self.parts['name'])
         parts.append(self.parts['version'])
+        parts.append(self.parts['doc'])
         if 'ctor' in self.parts:
             parts.append(self.parts['ctor'])
         elif isinstance(self.ctor, type):
             parts.append(TaskStubPart("ctor", type="type", default=f"\"{self.ctor.__module__}{doot.constants.IMPORT_SEP}{self.ctor.__name__}\""))
         else:
             parts.append(TaskStubPart("ctor", type="type", default=f"\"{self.ctor}\""))
+        if "mixins" in self.parts:
+            parts.append(self.parts['mixins'])
 
-        for key, part in self.parts.items():
-            if key in ["name", "version", "ctor"]:
+        delayed_actions = []
+        for key, part in sorted(self.parts.items(), key=lambda x: x[1]):
+            if key in ["name", "version", "ctor", "mixins", 'doc']:
                 continue
+            if 'actions' in key:
+                delayed_actions.append(part)
+                continue
+            parts.append(part)
+
+        # Actions always go at the end
+        for part in delayed_actions:
             parts.append(part)
 
         return "\n".join(map(str, parts))
@@ -121,12 +134,16 @@ class TaskStub:
 @dataclass
 class TaskStubPart:
     """ Describes a single part of a stub task in toml """
-    key     : str      = field()
-    type    : str      = field(default="str")
-    prefix  : str      = field(default="")
+    key      : str      = field()
+    type     : str      = field(default="str")
+    prefix   : str      = field(default="")
 
-    default : Any      = field(default="")
-    comment : str      = field(default="")
+    default  : Any      = field(default="")
+    comment  : str      = field(default="")
+    priority : int      = field(default=0)
+
+    def __lt__(self, other):
+        return self.priority < other.priority
 
     def __str__(self) -> str:
         """
@@ -135,8 +152,8 @@ class TaskStubPart:
           eg: lowercasing the python bool from False to false for toml
         """
         # shortcut on being the name:
-        if isinstance(self.default, DootStructuredName) and self.key == "name":
-            return f"[[tasks.{self.default.group_str()}]]\n{'name':<20} = \"{self.default.task_str()}\""
+        if isinstance(self.default, DootTaskName) and self.key == "name":
+            return f"[[tasks.{self.default.group}]]\n{'name':<20} = \"{self.default.task}\""
 
         key_str     = f"{self.key:<20}"
         type_str    = f"<{self.type}>"
@@ -157,9 +174,11 @@ class TaskStubPart:
             case list() if "Flags" in self.type:
                 parts = ", ".join([f"\"{x}\"" for x in self.default])
                 val_str = f"[{parts}]"
-            case list():
-
+            case list() if all(isinstance(x, (int, float)) for x in self.default):
                 def_str = ", ".join(str(x) for x in self.default)
+                val_str = f"[{def_str}]"
+            case list():
+                def_str = ", ".join([f'"{x}"' for x in self.default])
                 val_str = f"[{def_str}]"
             case dict():
                 val_str = "{}"
@@ -182,6 +201,9 @@ class TaskStubPart:
 
         return f"{self.prefix}{key_str} = {val_str:<20} # {type_str:<20} {comment_str}"
 
-"""
-
-"""
+    def set(self, **kwargs):
+        self.type     = kwargs.get('type', self.type)
+        self.prefix   = kwargs.get('prefix', self.prefix)
+        self.default  = kwargs.get('default', self.default)
+        self.comment  = kwargs.get('comment', self.comment)
+        self.priority = kwargs.get('priority', self.priority)

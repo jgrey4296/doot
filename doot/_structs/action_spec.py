@@ -42,7 +42,7 @@ import importlib
 from tomlguard import TomlGuard
 import doot.errors
 import doot.constants
-from doot.enums import TaskFlags, ReportEnum, StructuredNameEnum
+from doot.enums import TaskFlags, ReportEnum
 
 PAD           : Final[int] = 15
 TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
@@ -129,7 +129,7 @@ class DootActionSpec:
         self.verify(state, fields=self.outState)
 
     @staticmethod
-    def from_data(data:dict|list, *, fun=None) -> DootActionSpec:
+    def from_data(data:dict|list|TomlGuard, *, fun=None) -> DootActionSpec:
         match data:
             case list():
                 action_spec = DootActionSpec(
@@ -138,7 +138,7 @@ class DootActionSpec:
                     )
                 return action_spec
 
-            case dict():
+            case dict() | TomlGuard():
                 kwargs = TomlGuard({x:y for x,y in data.items() if x not in DootActionSpec.__dataclass_fields__.keys()})
                 action_spec = DootActionSpec(
                     do=data['do'],

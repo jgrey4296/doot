@@ -30,7 +30,7 @@ logging = logmod.getLogger(__name__)
 import re
 import tomlguard
 from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
-from doot.structs import DootStructuredName, DootTaskArtifact
+from doot._structs.artifact import DootTaskArtifact
 from doot.constants import KEY_PATTERN, MAX_KEY_EXPANSIONS
 from doot.utils.expansion import expand_path_part
 
@@ -53,7 +53,7 @@ class DootLocations:
     """
 
     def __init__(self, root:Pl.Path):
-        self._root : pl.Path()    = root.expanduser().absolute()
+        self._root : pl.Path()       = root.expanduser().absolute()
         self._data : TomlGuard       = tomlguard.TomlGuard()
 
 

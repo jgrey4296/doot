@@ -39,7 +39,7 @@ import doot.errors
 import doot.constants as const
 from doot.enums import TaskStateEnum
 from doot._abstract import Tasker_i, Task_i, FailPolicy_p
-from doot.structs import DootTaskArtifact, DootTaskSpec, DootStructuredName
+from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskName
 from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i
 from doot.task.base_task import DootTask
 
@@ -72,7 +72,7 @@ class DootTracker(TaskTracker_i):
         super().__init__(policy=policy) # self.tasks
         self.artifacts              : dict[str, DootTaskArtifact]                       = {}
         self.task_graph              : nx.DiGraph                                        = nx.DiGraph()
-        self.active_set             : list[str|DootStructuredName|DootTaskArtifact]     = set()
+        self.active_set             : list[str|DootTaskName|DootTaskArtifact]     = set()
         self.task_queue                                                                 = boltons.queueutils.HeapPriorityQueue()
         self.execution_path         : list[str]                                         = []
         self.shadowing              : bool                                              = shadowing
@@ -88,7 +88,7 @@ class DootTracker(TaskTracker_i):
         """ Read the dependency graph from a file """
         raise NotImplementedError()
 
-    def task_state(self, task:str|DootStructuredName|pl.Path, query_from=None) -> TaskStateEnum:
+    def task_state(self, task:str|DootTaskName|pl.Path, query_from=None) -> TaskStateEnum:
         """ Get the state of a task """
         if query_from is not None:
             query_date = self.last_ran.get(query_from, datetime.datetime.now())

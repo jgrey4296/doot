@@ -37,7 +37,15 @@ from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
 from doot.mixins.importer import ImporterMixin
 from doot.enums import ActionResponseEnum as ActRE
-from doot.utils.string_expand import expand_str, expand_key
+import doot.utils.expansion as exp
+
+##-- expansion keys
+MSG   : Final[exp.DootKey] = exp.DootKey("msg")
+OLD   : Final[exp.DootKey] = exp.DootKey("old")
+NEW   : Final[exp.DootKey] = exp.DootKey("new")
+LEVEL : Final[exp.DootKey] = exp.DootKey("level")
+
+##-- end expansion keys
 
 @doot.check_protocol
 class CancelOnPredicateAction(Action_p, ImporterMixin):
@@ -60,22 +68,22 @@ class CancelOnPredicateAction(Action_p, ImporterMixin):
 @doot.check_protocol
 class LogAction(Action_p):
 
-    _toml_kwargs = ["msg", "level"]
+    _toml_kwargs = [MSG, LEVEL]
 
     def __call__(self, spec, task_state):
-        level        = logmod.getLevelName(spec.kwargs.on_fail("INFO", str).level())
-        msg          = expand_key(spec.kwargs.on_fail("msg").msg_(), spec, task_state)
-        expanded_msg = expand_str(msg, spec, task_state)
-        printer.log(level, "%s", expanded_msg)
+        level_name   = LEVEL.to_type(spec, task_state, type_=str|None) or "INFO"
+        level        = logmod.getLevelName(level_name)
+        msg          = MSG.expand(spec, task_state, rec=True)
+        printer.log(level, "%s", msg)
 
 @doot.check_protocol
 class StalenessCheck(Action_p):
-    _toml_kwargs = ["old_", "new_"]
+    _toml_kwargs = [OLD, NEW]
     inState      = ["old", "new"]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        old_loc = expand_key(spec.kwargs.on_fail("old").old_(), spec, task_state, as_path=True)
-        new_loc = expand_key(spec.kwargs.on_fail("new").new_(), spec, task_state, as_path=True)
+        old_loc = OLD.to_path(spec, task_state)
+        new_loc = NEW.to_path(spec, task_state)
 
         if new_loc.exists() and old_loc.stat().st_mtime_ns <= new_loc.stat().st_mtime_ns:
             return ActRE.SKIP

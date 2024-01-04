@@ -12,7 +12,7 @@ from functools import partial
 
 import doot
 import doot.errors
-from doot.structs import DootStructuredName, DootTaskSpec
+from doot.structs import DootTaskSpec
 from doot._abstract import Tasker_i
 from doot.mixins.tasks.cleaning import CleanerMixin
 from doot.task.base_tasker import DootTasker

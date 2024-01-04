@@ -35,7 +35,7 @@ import doot
 import doot.errors
 from doot.constants import SUBTASKED_HEAD
 from doot.enums import TaskFlags
-from doot.structs import DootTaskSpec, TaskStub, TaskStubPart, DootStructuredName
+from doot.structs import DootTaskSpec, TaskStub, TaskStubPart, DootTaskName, DootCodeReference, DootStructuredName
 from doot._abstract import Tasker_i, Task_i
 from doot.mixins.importer import ImporterMixin
 from doot.errors import DootDirAbsent
@@ -55,14 +55,14 @@ class DootTasker(Tasker_i, ImporterMixin):
         assert(spec is not None), "Spec is empty"
         super(DootTasker, self).__init__(spec)
 
-    def default_task(self, name:str|DootStructuredName|None, extra:None|dict|TomlGuard) -> DootTaskSpec:
+    def default_task(self, name:str|DootTaskName|None, extra:None|dict|TomlGuard) -> DootTaskSpec:
         task_name = None
         match name:
             case None:
                 task_name = self.fullname.subtask(SUBTASKED_HEAD)
             case str():
                 task_name = self.fullname.subtask(name)
-            case DootStructuredName():
+            case DootTaskName():
                 task_name = name
             case _:
                 raise doot.errors.DootTaskError("Bad value used to make a subtask in %s : %s", self.name, name)
@@ -79,7 +79,8 @@ class DootTasker(Tasker_i, ImporterMixin):
             logging.debug("received kwargs: %s", kwargs)
             self.args.update(kwargs)
 
-        yield self._build_head()
+        head = self._build_head()
+        yield self.specialize_task(head)
 
     def specialize_task(self, task):
         return task
@@ -87,13 +88,15 @@ class DootTasker(Tasker_i, ImporterMixin):
     @classmethod
     def stub_class(cls, stub) -> TaskStub:
         stub.ctor                 = cls
-        stub['version'].default   = cls._version
-        stub['doc'].default       = [f"\"{x}\"" for x  in cls.class_help().split("\n")]
-        stub['flags'].default     = cls._default_flags
-        stub['flags'].prefix      = "# "
-        stub['head_task'].type    = "task_iden"
-        stub['head_task'].default = ""
-        stub['head_task'].prefix  = "# "
+
+        # Come first
+        stub['active_when'].priority    = -90
+        stub['required_for'].priority   = -90
+        stub['depends_on'].priority     = -100
+
+        stub['head_task'].set(type="taskname", default="", prefix="# ", priority=100)
+        stub['queue_behaviour'].default = "default"
+        stub['queue_behaviour'].comment = "default | auto | reactive"
         return stub
 
     def stub_instance(self, stub) -> TaskStub:
@@ -101,24 +104,14 @@ class DootTasker(Tasker_i, ImporterMixin):
         stub['name'].default      = self.fullname
         if bool(self.doc):
             stub['doc'].default   = [f"\"{x}\"" for x in self.doc]
-        stub['flags'].default     = self.spec.flags
         return stub
 
-    def _build_head(self, **kwargs) -> DootTaskSpec:
+    def _build_head(self, **kwargs) -> None|DootTaskSpec:
         logging.debug("Building Head Task for: %s", self.name)
-        task_spec                             = self.default_task(None, TomlGuard(kwargs))
+        task_spec = self.default_task(None, TomlGuard(kwargs))
 
         task_ref = self.spec.extra.on_fail((None,), None|str).head_task()
         if task_ref is not None:
-            task_spec.ctor_name = DootStructuredName.from_str(task_ref)
+            task_spec.ctor = DootStructuredName.build(task_ref)
 
-        maybe_task : DootTaskSpec | None = self.specialize_task(task_spec)
-
-        match maybe_task:
-            case None:
-                raise DootTaskError("Task Failed to specialize the head task: %s", self.name)
-            case _ if not bool(maybe_task.doc):
-                maybe_task.doc = self.doc
-                return maybe_task
-            case _:
-                return maybe_task
+        return task_spec

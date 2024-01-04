@@ -37,70 +37,107 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from unittest.mock import PropertyMock, MagicMock, create_autospec
+from importlib.metadata import EntryPoint
 import tomlguard
 from doot import structs
-from doot._abstract import Task_i, Tasker_i
+from doot._abstract import Task_i, Tasker_i, TaskBase_i, Command_i
 
-def mock_tasker_spec(mocker):
-    tasker_m                                     = mocker.MagicMock(spec=Tasker_i)
-    tasker_m.spec                                = mocker.MagicMock(spec=structs.DootTaskSpec)
-    type(tasker_m.spec).extra                    = tomlguard.TomlGuard()
-    type(tasker_m.spec).print_levels             = tomlguard.TomlGuard()
-    tasker_m.spec.actions                        = []
-    return tasker_m
+def _add_prop(m, name, val):
+    setattr(type(m), name, PropertyMock(return_value=val))
 
-def mock_task_spec(mocker, action_count=0):
-    task_m                                     = mocker.MagicMock(spec=Task_i)
-    task_m.spec                                = mocker.MagicMock(spec=structs.DootTaskSpec)
-    type(task_m.spec).extra                    = tomlguard.TomlGuard()
-    type(task_m.spec).print_levels             = tomlguard.TomlGuard()
-    task_m.state = {}
-    type(task_m).actions                      = mocker.PropertyMock(return_value=mock_action_spec(mocker, num=action_count))
+def task_network(tasks:dict):
+    built = []
+    for name, [pre, post] in tasks.items():
+        current = mock_task_spec(name, pre=pre, post=post)
+        built.append(current)
+
+    return built
+
+
+
+def mock_task(name, spec=None, actions:int=1, **kwargs):
+    task_m = MagicMock(spec=Task_i,
+                       depends_on=[],
+                       required_for=[],
+                       name=name,
+                       state={},
+                       **kwargs)
+    task_m.spec = spec or mock_task_spec(name=name, action_count=actions)
+    _add_prop(task_m, "name", name)
+    _add_prop(task_m, "actions", task_m.spec.actions)
     return task_m
 
+def mock_tasker(name, pre=None, post=None, spec=None, **kwargs):
+    task_m = MagicMock(spec=Tasker_i,
+                       depends_on=[],
+                       required_for=[],
+                       name=name,
+                       **kwargs)
+    _add_prop(task_m, "name", name)
+    task_m.spec = spec or mock_task_spec(name=name)
+    return task_m
 
-def mock_action_spec(mocker, num=1) -> list:
+def mock_task_spec(name="mockSpec", pre=None, post=None, action_count=1, extra=None,  **kwargs):
+    spec_m = MagicMock(structs.DootTaskSpec(name=name),
+                       actions=mock_action_specs(num=action_count),
+                       extra=tomlguard.TomlGuard(extra or {}),
+                       priority=10,
+                       queue_behaviour="default",
+                       depends_on=pre or [],
+                       required_for=post or [],
+                       print_levels=tomlguard.TomlGuard({}),
+                        )
+    spec_m.name = name
+    return spec_m
+
+def mock_action_specs(num=1) -> list:
     results = []
     for x in range(num):
-        action_spec_m                                = mocker.MagicMock(spec=structs.DootActionSpec)
-        type(action_spec_m).args                     = mocker.PropertyMock(return_value=[])
-        type(action_spec_m).kwargs                   = tomlguard.TomlGuard()
-        type(action_spec_m).__call__                 = mocker.MagicMock(return_value=None)
+        action_spec_m = MagicMock(spec=structs.DootActionSpec(),
+                                  args=[],
+                                  kwargs=tomlguard.TomlGuard())
+        type(action_spec_m).__call__ = MagicMock(return_value=None)
         results.append(action_spec_m)
 
     return results
 
-def mock_tracker_and_reporter(mocker):
-    pass
-
-def mock_task(mocker, name, pre=None, post=None):
-    mock_task                       = mocker.MagicMock(spec=Task_i)
-    mock_task.name                  = name
-    mock_task.spec                  = mocker.MagicMock(spec=structs.DootTaskSpec)
-    mock_task.spec.priority         = 0
-
-    depends_on                      = pre or mocker.PropertyMock()
-    required_for                    = post or mocker.PropertyMock()
-    type(mock_task).depends_on      = depends_on
-    type(mock_task).required_for    = required_for
-    return mock_task, depends_on, required_for
-
-
-
-"""
-
-
-"""
-
-
-def mock_parse_cmd(mocker, params=None):
-    params                     = params or []
-    cmd_mock                   = mocker.MagicMock()
-    type(cmd_mock).param_specs = mocker.PropertyMock(return_value=params)
+def mock_parse_cmd(name="cmd", params=None):
+    """ Build a mock command with cli params """
+    cmd_mock = MagicMock(spec=Command_i, name=name)
+    _add_prop(cmd_mock, "name", name)
+    _add_prop(cmd_mock, "param_specs", [mock_param_spec("help", False, type=bool)] + (params or []))
     return cmd_mock
 
-def mock_parse_task(mocker, params=None):
-    params                      = params or []
-    task_mock                   = mocker.MagicMock()
-    type(task_mock).param_specs = mocker.PropertyMock(return_value=params)
+def mock_parse_task(params=None, ctor_params=None):
+    """ Build a mock Task Spec, with spec defined cli params, and ctor defined cli params  """
+    task_ctor_mock       = mock_task_ctor(params=ctor_params)
+    task_ctor_ref_mock   = mock_code_ref(returns=task_ctor_mock)
+    task_mock            = mock_task_spec(extra={"cli": params})
+    task_mock.ctor       = task_ctor_ref_mock
     return task_mock
+
+def mock_entry_point(name="basic", value=None):
+    m = MagicMock(spec=EntryPoint)
+    _add_prop(m, "name", name)
+    _add_prop(m, "value", name)
+    m.load.return_value = value
+    return m
+
+def mock_task_ctor(name="APretendClass", module="pretend", params=None):
+    mock_ctor = MagicMock(spec=TaskBase_i)
+    _add_prop(mock_ctor, "name", name)
+    _add_prop(mock_ctor, "param_specs", params or [])
+    mock_ctor.__module__ = module
+    mock_ctor.__name__   = name
+    return mock_ctor
+
+def mock_code_ref(returns=None):
+    code_ref_m  = MagicMock(spec=structs.DootCodeReference())
+    code_ref_m.try_import.return_value  = returns
+    return code_ref_m
+
+def mock_param_spec(name, val, type=Any):
+    m = MagicMock(spec=structs.DootParamSpec(name, type), default=val, positional=False, prefix="-")
+
+    return m

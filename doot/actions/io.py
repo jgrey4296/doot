@@ -33,45 +33,54 @@ import tomlguard as TG
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
-from doot.utils.string_expand import expand_str, expand_set, expand_key
+import doot.utils.expansion as exp
 from doot.actions.postbox import _DootPostBox
 
 # TODO using doot.config.settings.general.protect to disallow write/delete/backup/copy
 
+##-- expansion keys
+TO_KEY        : Final[exp.DootKey] = exp.DootKey("to")
+FROM_KEY      : Final[exp.DootKey] = exp.DootKey("from")
+UPDATE        : Final[exp.DootKey] = exp.DootKey("update_")
+PROMPT        : Final[exp.DootKey] = exp.DootKey("prompt")
+PATTERN       : Final[exp.DootKey] = exp.DootKey("pattern")
+SEP           : Final[exp.DootKey] = exp.DootKey("pattern")
+TYPE_KEY      : Final[exp.DootKey] = exp.DootKey("type")
+AS_BYTES      : Final[exp.DootKey] = exp.DootKey("as_bytes")
+##-- end expansion keys
+
 @doot.check_protocol
 class AppendAction(Action_p):
     """
-      Append data _from the task_state to a file
+      Append data from the task_state to a file
     """
     sep = "\n--------------------\n"
-    _toml_kwargs = ["sep", "to"]
+    _toml_kwargs = [SEP, TO_KEY, "args"]
 
     def __call__(self, spec, state):
-        sep     = spec.kwargs.on_fail(AppendAction.sep, str).sep()
-        loc     = expand_key(spec.kwargs.on_fail("to").to_(), spec, state, as_path=True)
-        args    = [expand_str(x, spec, state) for x in spec.args]
+        sep     = SEP.to_type(spec, task_state, type_=str|None) or AppendAction.sep
+        loc     = TO_KEY.to_path(spec, state)
+        args    = [exp.to_str(x, spec, state) for x in spec.args]
         with open(loc, 'a') as f:
             for arg in args:
-                value = expand_str(arg, spec, state)
                 printer.info("Appending %s chars to %s", len(value), loc)
                 f.write(sep)
-                f.write(value)
+                f.write(arg)
 
 @doot.check_protocol
 class WriteAction(Action_p):
     """
-      Writes data _from the task_state to a file, accessed throug the
+      Writes data from the task_state to a file, accessed through the
       doot.locs object
     The arguments of the action are held in self.spec
 
-      { do="write!" _from="{data}" to="{temp}/{fname}" }
+      { do="write!" from="{data}" to="{temp}/{fname}" }
     """
-    _toml_kwargs = ["from_", "to" ]
+    _toml_kwargs = [FROM_KEY, TO_KEY]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        data              = expand_key(spec.kwargs.on_fail("from_").from_(), spec, task_state)
-        loc_key           = expand_key(spec.kwargs.on_fail("to").to_(), spec, task_state)
-        loc               = expand_str(loc_key, spec, task_state, as_path=True)
+        data = FROM_KEY.expand(spec, task_state)
+        loc  = TO_KEY.to_path(spec, task_state)
         printer.info("Writing %s chars to %s", len(data), loc)
         with open(loc, 'w') as f:
             f.write(data)
@@ -80,21 +89,21 @@ class WriteAction(Action_p):
 @doot.check_protocol
 class ReadAction(Action_p):
     """
-      Reads data _from the doot.locs location to  return for the task_state
+      Reads data from the doot.locs location to  return for the task_state
       The arguments of the action are held in self.spec
     """
-    _toml_kwargs = ["_from", "update_", "type", "as_bytes"]
+    _toml_kwargs = [FROM_KEY, UPDATE, TYPE_KEY, AS_BYTES],
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        data_key   = expand_str(spec.kwargs.update_, spec, task_state)
-        loc        = expand_key(spec.kwargs.on_fail("_from").from_(), spec, task_state, as_path=True)
-        read_type  = "rb" if spec.kwargs.on_fail(False).as_bytes() else "r"
+        data_key   = UPDATE.redirect(spec)
+        loc        = FROM_KEY.to_path(spec, task_state)
+        read_type  = "rb" if spec.kwargs.on_fail(False)[AS_BYTES]() else "r"
 
-        printer.info("Reading _from %s into %s", loc, data_key)
+        printer.info("Reading from %s into %s", loc, data_key)
         match read_type:
             case "r":
                 with open(loc, "r") as f:
-                    match spec.kwargs.on_fail("read").type():
+                    match spec.kwargs.on_fail("read")[TYPE_KEY]():
                         case "read":
                             return { data_key : f.read() }
                         case "lines":
@@ -112,45 +121,38 @@ class CopyAction(Action_p):
       copy a file somewhere
       The arguments of the action are held in self.spec
     """
-    _toml_kwargs = ["_from", "to"]
+    _toml_kwargs = [FROM_KEY, TO_KEY]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        sources = []
-        dest_loc   = expand_key(spec.kwargs.on_fail("to").to_(), spec, task_state, as_path=True)
-        if bool(spec.args) and not spec.kwargs.on_fail(False)._from():
-            printer.info("Copying into directory %s: %s", spec.args, dest_loc)
-            expanded = expand_set(spec.args, spec, task_state, as_path=True)
-            if any(not x.exists() for x in expanded):
-                raise doot.errors.DootActionError("Tried to copy a file that doesn't exist")
-            if any((dest_loc/x.name).exists() for x in expanded):
-                raise doot.errors.DootActionError("Tried to copy a file that already exists at the destination")
-            if len(expanded) > 1 and not dest_loc.is_dir():
-                raise doot.errors.DootActionError("Tried to copy multiple files to a non-directory")
+        dest_loc   = TO_KEY.to_path(spec, task_state)
+        sources    = FROM_KEY.to_type(spec, task_state, type_=list|str|pl.Path)
+        match sources:
+            case str() | pl.Path():
+                expanded = [exp.to_path(sources, spec, task_state)]
+            case list():
+                expanded = list(map(lambda x: exp.to_path(x, spec, task_state), sources))
+            case _:
+                raise doot.errors.DootActionError("Unrecognized type for copy sources", sources)
 
-            for arg in expanded:
-                shutil.copy2(arg, dest_loc)
+        if any(not x.exists() for x in expanded):
+            raise doot.errors.DootActionError("Tried to copy a file that doesn't exist")
+        if any((dest_loc/x.name).exists() for x in expanded):
+            raise doot.errors.DootActionError("Tried to copy a file that already exists at the destination")
+        if len(expanded) > 1 and not dest_loc.is_dir():
+            raise doot.errors.DootActionError("Tried to copy multiple files to a non-directory")
 
-        elif spec.kwargs.on_fail(False)._from():
-            expanded = expand_set(spec.kwargs._from, spec, task_state, as_path=True)
-            if any(not x.exists() for x in expanded):
-                raise doot.errors.DootActionError("Tried to copy a file that doesn't exist")
-            if any((dest_loc/x.name).exists() for x in expanded):
-                raise doot.errors.DootActionError("Tried to copy a file that already exists at the destination")
-            if len(expanded) > 1 and not dest_loc.is_dir():
-                raise doot.errors.DootActionError("Tried to copy multiple files to a non-directory")
-
-            for arg in expanded:
-                shutil.copy2(arg, dest_loc)
+        for arg in expanded:
+            shutil.copy2(arg, dest_loc)
 
 @doot.check_protocol
 class DeleteAction(Action_p):
     """
       delete a file / directory specified in spec.args
     """
-    _toml_kwargs = ["recursive", "lax"]
+    _toml_kwargs = ["recursive", "lax", "args"]
     def __call__(self, spec, task):
         for arg in spec.args:
-            loc = expand_str(arg, spec, task, as_path=True)
+            loc = exp.to_path(arg, spec, task)
             printer.info("Deleting %s", loc)
             if loc.is_dir() and spec.kwargs.on_fail(False).recursive():
                 shutil.rmtree(loc)
@@ -164,11 +166,11 @@ class BackupAction(Action_p):
       copy a file somewhere, but only if it doesn't exist at the dest, or is newer than the dest
       The arguments of the action are held in self.spec
     """
-    _toml_kwargs = ["_from", "to"]
+    _toml_kwargs = [FROM_KEY, TO_KEY]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        source_loc = expand_key(spec.kwargs.on_fail("_from").from_(), spec, task_state, as_path=True)
-        dest_loc   = expand_key(spec.kwargs.on_fail("to").to_(), spec, task_state, as_path=True)
+        source_loc = FROM_KEY.to_path(spec, task_state)
+        dest_loc   = TO_KEY.to_path(spec, task_state)
 
         if dest_loc.exists() and source_loc.stat().st_mtime_ns <= dest_loc.stat().st_mtime_ns:
             return True
@@ -188,7 +190,7 @@ class EnsureDirectory(Action_p):
 
     def __call__(self, spec, task_state:dict):
         for arg in spec.args:
-            loc = expand_str(arg, spec, task_state, as_path=True)
+            loc = exp.to_path(arg, spec, task_state)
             printer.debug("Building Directory: %s", loc)
             loc.mkdir(parents=True, exist_ok=True)
 
@@ -196,13 +198,13 @@ class EnsureDirectory(Action_p):
 @doot.check_protocol
 class ReadJson(Action_p):
     """
-        Read a json file `and add it to the task state as task_state[`data`] = TomlGuard(json_data)
+        Read a json file and add it to the task state as task_state[`data`] = TomlGuard(json_data)
     """
-    _toml_kwargs = ["_from", "update_"]
+    _toml_kwargs = [FROM_KEY, UPDATE]
 
     def __call__(self, spec, task_state:dict):
-        data_key = expand_str(spec.kwargs.update_, spec, task_state)
-        fpath    = expand_key(spec.kwargs.on_fail("_from").from_(), spec, task_state, as_path=True)
+        data_key = UPDATE.redirect(spec)
+        fpath    = FROM_KEY.to_path(spec, task_state)
         data     = json.load(fpath)
         return { data_key : TG.TomlGuard(data) }
 
@@ -210,11 +212,11 @@ class ReadJson(Action_p):
 @doot.check_protocol
 class UserInput(Action_p):
 
-    _toml_kwargs = ["update_", "prompt"]
+    _toml_kwargs = [UPDATE, PROMPT]
 
     def __call__(self, spec, state):
-        prompt = expand_str(spec.kwargs.on_fail("?::- ").prompt(), spec, state)
-        target = expand_str(spec.kwargs.update_, spec, state)
+        prompt = PROMPT.to_any(spec, state, type_=str|None) or "?::- "
+        target = UPDATE.redirect(spec)
         result = input(prompt)
         return { target : result }
 
@@ -225,12 +227,12 @@ class SimpleFind(Action_p):
 
     """
 
-    _toml_kwargs = ["_from", "pattern_", "rec", "update_"]
+    _toml_kwargs = [FROM_KEY, PATTERN, UPDATE, "rec"]
 
-    def __call__(self, spec, task):
-        from_loc     = expand_key(spec.kwargs.on_fail("_from").from_(), spec, task, as_path=True)
-        pattern      = expand_key(spec.kwargs.on_fail("pattern").pattern_(), spec, task)
-        data_key     = expand_str(spec.kwargs.update_, spec, task)
+    def __call__(self, spec, state):
+        from_loc = FROM_KEY.to_path(spec, state)
+        pattern  = PATTERN.to_str(spec, state)
+        data_key = UPDATE.redirect(spec)
         match spec.kwargs.on_fail(False).rec():
             case True:
                 return { data_key : list(from_loc.rglob(pattern)) }

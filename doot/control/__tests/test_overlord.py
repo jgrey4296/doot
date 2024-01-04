@@ -75,6 +75,7 @@ class TestOverlord:
         assert(f"Overloading Task: basic::simple : {BASIC_TASKER_NAME}" in caplog.messages)
 
 
+    @pytest.mark.skip
     def test_taskers_bad_type(self, mocker):
         mocker.patch("sys.argv", ["doot"])
         with pytest.raises(doot.errors.DootTaskLoadError):

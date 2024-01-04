@@ -35,23 +35,21 @@ import doot
 
 zip_default_name = doot.config.on_fail("default", str).zip.name()
 zip_overwrite    = doot.config.on_fail(False, bool).zip.overwrite()
-zip_compression  = doot.config.on_fail("ZIP_DEFLATED", str).zip.compression(wrapper=lambda x: getattr(zipfile, x))
+zip_compression  = getattr(zipfile, doot.config.on_fail("ZIP_DEFLATED", str).zip.compression())
 zip_level        = doot.config.on_fail(4, int).zip.level()
 
 zip_choices = [("none", "No compression"), ("zip", "Default Zip Compression"), ("bzip2", "bzip2 Compression"), ("lzma", "lzma compression")]
 
 class ZipperMixin:
+    """
+    Add methods for manipulating zip files.
+    Can set a self.zip_root path, where added files with be relative to
+    """
     zip_name                    = zip_default_name
     zip_overwrite               = zip_overwrite
     zip_root                    = None
     _zip_default_compression    = zip_compression
     _zip_default_compress_level = zip_level
-
-    def zip_params(self):
-        return [
-            {"name": "compression", "short": "c", "type": str, "default": self._zip_default_compression, "choices": zip_choices },
-            {"name": "level", "short": "l", "type": int, "default": self._zip_default_compress_level}
-        ]
 
     def _zip_get_compression_settings(self) -> tuple[int, int]:
         match self.args:
@@ -170,12 +168,13 @@ class ZipperMixin:
 
         for zipf in zips:
             logging.debug("Extracting: %s (%s) to %s", zipf, fn, fpath)
-            self.mkdirs(fpath / zipf.stem)
+            (fpath / zipf.stem).mkdir(parents=True, exist_ok=True)
             with zipfile.ZipFile(zipf) as targ:
                 subset = [x for x in targ.namelist() if fn(x)]
                 targ.extractall(fpath / zipf.stem, members=subset)
 
     def zip_unzip_concat(self, fpath:pl.Path, *zips:pl.Path, member=None, header=b"\n\n#------\n\n", footer=b"\n\n#------\n\n"):
+        """ Unzip and concatenate an fpath within multiple zip files, into a single file """
         with open(fpath, "ab") as out:
             for zipf in zips:
                 try:

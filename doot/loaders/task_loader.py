@@ -22,7 +22,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable)
 
-from doot.structs import DootStructuredName
 # from uuid import UUID, uuid1
 # from weakref import ref
 
@@ -40,9 +39,9 @@ import importlib
 import tomlguard
 import doot
 import doot.errors
-from doot.structs import DootTaskSpec
+from doot.structs import DootTaskSpec, DootTaskName, DootCodeReference
 from doot.constants import DEFAULT_TASK_GROUP, IMPORT_SEP
-from doot._abstract import TaskLoader_p, Tasker_i, Task_i
+from doot._abstract import TaskLoader_p, Tasker_i, Task_i, TaskBase_i
 
 TASK_STRING : Final[str]  = "task_"
 prefix_len  : Final[int]  = len(TASK_STRING)
@@ -70,6 +69,7 @@ class DootTaskLoader(TaskLoader_p):
         logging.debug("---- Registering Task Builders")
         self.cmd_names     = set(map(lambda x: x.name, plugins.get("command", [])))
         self.taskers       = {}
+        self.plugins       = plugins
         self.task_builders = {}
         for plugin in tomlguard.TomlGuard(plugins).on_fail([]).tasker():
             if plugin.name in self.task_builders:
@@ -86,7 +86,6 @@ class DootTaskLoader(TaskLoader_p):
                 logging.warning(f"Bad Task Builder Plugin Specified: %s", plugin)
         else:
             logging.debug("Registered Task Builders: %s", self.task_builders.keys())
-
 
         match extra: # { group : [task_dicts] }
             case None:
@@ -176,45 +175,51 @@ class DootTaskLoader(TaskLoader_p):
           checking nothing tries to shadow a command name or other task name
         """
         task_descriptions : dict[str, DootTaskSpec] = {}
+        dont_allow_overloads = lambda task_name, group_name: not allow_overloads and task_name in task_descriptions and group_name == task_descriptions[task_name][0]['group']
         for spec in group_specs:
+            task_alias = "task"
             try:
                 match spec:
-                    case {"name": task_name, "disable" : True}:
+                    case {"name": task_name, "disable" : True}: # Disabled specs
                         logging.info("Spec is disabled: %s", task_name)
-                    case {"name": task_name} if task_name in command_names:
-                        raise doot.errors.DootTaskLoadError("Name conflict: %s is already a Command", task_name)
-                    case {"name": task_name, "group": group} if (task_name in task_descriptions and group == task_descriptions[task_name][0]['group'] and not allow_overloads):
+                    # case {"name": task_name} if task_name in command_names:
+                    #     raise doot.errors.DootTaskLoadError("Name conflict: %s is already a Command", task_name)
+                    case {"name": task_name, "group": group} if dont_allow_overloads(task_name, group): # complain on overload
                         raise doot.errors.DootTaskLoadError("Task Name Overloaded: %s : %s", task_name, group)
-                    case {"name": task_name, "ctor": task_type} if task_type in self.task_builders:
-                        logging.info("Building Tasker from short name: %s : %s", task_name, task_type)
-                        cls       = self.task_builders[task_type]
-                        task_spec = DootTaskSpec.from_dict(spec, ctor=cls)
+                    case {"name": task_name, "ctor": str() as task_alias} if task_alias in self.task_builders: # build named plugin type
+                        logging.info("Building Tasker from short name: %s : %s", task_name, task_alias)
+                        task_iden                   : DootCodeReference       = DootCodeReference.from_alias(task_alias, "tasker", self.plugins)
+                        task_iden_with_mixins       : DootCodeReference       = task_iden.add_mixins(*spec.get("mixins", []), plugins=self.plugins)
+                        spec['ctor'] = task_iden_with_mixins
+                        task_spec = DootTaskSpec.from_dict(spec)
                         if str(task_spec.name) in task_descriptions:
-                            logging.warning("Overloading Task: %s : %s", str(task_spec.name), task_type)
+                            logging.warning("Overloading Task: %s : %s", str(task_spec.name), task_alias)
 
+                        task_spec.check(ensure=TaskBase_i)
                         task_descriptions[str(task_spec.name)] = task_spec
-                    case {"name": task_name, "ctor": task_type}:
-                        logging.info("Building Tasker from class name: %s : %s", task_name, task_type)
-                        mod_name, class_name = task_type.split(IMPORT_SEP)
-                        mod                  = importlib.import_module(mod_name)
-                        cls                  = getattr(mod, class_name)
-
-                        task_spec = DootTaskSpec.from_dict(spec, ctor=cls, ctor_name=task_type)
+                    case {"name": task_name}:
+                        logging.info("Building Tasker: %s", task_name)
+                        task_spec = DootTaskSpec.from_dict(spec)
                         if str(task_spec.name) in task_descriptions:
-                            logging.warning("Overloading Task: %s : %s", str(task_spec.name), task_type)
+                            logging.warning("Overloading Task: %s : %s", str(task_spec.name), str(task_spec.ctor))
 
+                        task_spec.check(ensure=TaskBase_i)
                         task_descriptions[str(task_spec.name)] = task_spec
 
-                    case _:
+                    case _: # Else complain
                         raise doot.errors.DootTaskLoadError("Task Spec missing, at least, a name and ctor: %s: %s", spec['source'], spec)
             except doot.errors.DootLocationError as err:
                 raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Missing Location: '%s'. Source File: %s", task_name, str(err), spec['source']) from err
             except ModuleNotFoundError as err:
-                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Module Name: '%s'. Source File: %s", task_name, task_type, spec['source']) from err
+                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Module Name: '%s'. Source File: %s", task_name, task_alias, spec['source']) from err
             except AttributeError as err:
-                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Class Name: '%s'. Source File: %s", task_name, task_type, spec['source'], err.args) from err
+                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Class Name: '%s'. Source File: %s", task_name, task_alias, spec['source'], err.args) from err
             except ValueError as err:
-                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Module/Class Split failed on: '%s'. Source File: %s", task_name, task_type, spec['source']) from err
+                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Module/Class Split failed on: '%s'. Source File: %s", task_name, task_alias, spec['source']) from err
+            except TypeError as err:
+                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Type constructor: '%s'. Source File: %s", task_name, spec['ctor'], spec['source']) from err
+            except ImportError as err:
+                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: ctor import check failed. Source File: %s", task_name, spec['source']) from err
 
         return task_descriptions
 

@@ -41,7 +41,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 import doot.constants
-from doot.enums import TaskFlags, ReportEnum, StructuredNameEnum
+from doot.enums import TaskFlags, ReportEnum
 
 PAD           : Final[int] = 15
 TaskFlagNames : Final[str] = [x.name for x in TaskFlags]

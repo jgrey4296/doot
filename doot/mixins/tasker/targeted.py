@@ -41,46 +41,46 @@ class TargetedMixin:
     """
     For Quickly making a task have cli args to control batching
     """
-    glob_all_as_default = False
+    walk_all_as_default = False
 
     def target_params(self) -> list:
         return [
             {"name": "target", "short": "t", "type": maybe_build_path, "default": None},
-            {"name": "all", "long": "all", "type": bool, "default": self.glob_all_as_default},
+            {"name": "all", "long": "all", "type": bool, "default": self.walk_all_as_default},
             {"name": "some", "long": "some", "type": float, "default": -1.0 },
             {"name" : "list", "long": "list", "short": "l", "type": bool, "default": False},
         ]
 
-    def glob_all(self, rec=None, fn=None, root:pl.Path=None) -> Generator[pl.Path]:
+    def walk_all(self, rec=None, fn=None, root:pl.Path=None) -> Generator[pl.Path]:
         if root is not None:
-            yield from ((y.name, y) for y in self.glob_target(x, fn=fn, rec=rec))
+            yield from ((y.name, y) for y in self.walk_target(x, fn=fn, rec=rec))
             return None
 
         match self.args:
             case {'list': True}:
                 yield from self._list_options()
             case {'target': targ} if bool(targ) and targ.parts[0] == "~":
-                yield from ((y.name, y) for y in self.glob_target(targ.expanduser(), fn=fn, rec=rec))
+                yield from ((y.name, y) for y in self.walk_target(targ.expanduser(), fn=fn, rec=rec))
             case {'target': targ} if bool(targ) and targ.is_absolute():
-                yield from ((y.name, y) for y in self.glob_target(targ, fn=fn, rec=rec))
+                yield from ((y.name, y) for y in self.walk_target(targ, fn=fn, rec=rec))
             case {'target': targ} if bool(targ):
-                yield from ((y.name, y) for y in self.glob_target(self.locs.root / targ, fn=fn, rec=rec))
+                yield from ((y.name, y) for y in self.walk_target(self.locs.root / targ, fn=fn, rec=rec))
             case {"some": val} if not val.is_integer() and 0 < val < 1:
                 k           = int(len(globbed) * val)
-                all_globbed = list(super().glob_all())
+                all_globbed = list(super().walk_all())
                 yield from random.choices(all_globbed, k=k)
             case {"some": val} if val.is_integer() and 1 < val:
-                all_globbed = list(super().glob_all())
+                all_globbed = list(super().walk_all())
                 yield from random.choices(all_globbed, k=int(val))
             case {'all': True}:
-                yield from super().glob_all()
+                yield from super().walk_all()
             case _:
                 logging.warning("%s : No Recognizable Target Specified", self.basename)
                 yield from []
 
     def _list_options(self):
         logging.info("Choices: ")
-        choices = list(enumerate(sorted(super().glob_all())))
+        choices = list(enumerate(sorted(super().walk_all())))
         max_len = len(choices)
         current_window = (0, target_list_size)
         to_yield = []
