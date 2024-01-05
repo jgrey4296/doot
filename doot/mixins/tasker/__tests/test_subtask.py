@@ -26,17 +26,13 @@ SubTasker = sub_ref.try_import()
 
 class SimpleSubTasker(SubTasker):
 
-    def build(self, **kwargs):
-        head = self._build_head()
-        for sub in self._build_subs():
-            head.depends_on.append(sub.name)
-            yield sub
-
-        yield head
-
     def _build_subs(self):
         yield DootTaskSpec(name=self.fullname.subtask("first"))
         yield DootTaskSpec(name=self.fullname.subtask("second"))
+
+    def alt_subgen(self):
+        yield DootTaskSpec(name=self.fullname.subtask("alt_first"))
+        yield DootTaskSpec(name=self.fullname.subtask("alt_second"))
 
 class SetupTearDownTasker(SimpleSubTasker):
 
@@ -61,6 +57,17 @@ class TestSubtasks:
     def test_initial(self):
         obj = SimpleSubTasker(DootTaskSpec.from_dict({"name": "simple"}))
         assert(isinstance(obj, doot._abstract.TaskBase_i))
+
+
+    def test_custom_subgen(self):
+        obj = SimpleSubTasker(DootTaskSpec.from_dict({"name": "simple", "sub_generator": SimpleSubTasker.alt_subgen }))
+        assert(isinstance(obj, doot._abstract.TaskBase_i))
+        tasks = list(obj.build())
+        assert(len(tasks) == 3)
+        names = [str(x.name) for x in tasks]
+        assert("default::simple.$head$" in names)
+        assert("default::simple.alt_first" in names)
+        assert("default::simple.alt_second" in names)
 
     def test_builds_task(self):
         obj   = SimpleSubTasker(DootTaskSpec.from_dict({"name": "simple"}))

@@ -31,7 +31,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from doot.errors import DootDirAbsent, DootTaskError
-from doot.structs import DootTaskSpec, DootTaskName
+from doot.structs import DootTaskSpec, DootTaskName, DootCodeReference
 from time import sleep
 
 class SubMixin:
@@ -43,12 +43,30 @@ class SubMixin:
     before calling `specialize_subtask` on the built spec
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._sub_gen = None
+        match self.spec.extra.on_fail((None,)).sub_generator():
+            case None:
+                pass
+            case str() as x:
+                self._sub_gen = DootCodeReference.from_str(x).try_import()
+            case DootCodeReference() as x:
+                self._sub_gen = x.try_import()
+            case _ as x if callable(x):
+                self._sub_gen = x
+            case _ as x:
+                raise TypeError("Subtask Generator is not a function or nothing", x)
+
+
+
     @abc.abstractmethod
     def _build_subs(self) -> Generator[DootTaskSpec]:
         raise NotImplementedError()
 
     def build(self, **kwargs) -> Generator:
         head = self._build_head()
+
         match head:
             case DootTaskSpec(doc=[]):
                 head.doc = self.doc
@@ -57,7 +75,8 @@ class SubMixin:
             case _:
                 raise DootTaskError("Failed to build the head task: %s", self.name)
 
-        for sub in self._build_subs():
+        sub_gen = self._sub_gen(self) if self._sub_gen is not None else self._build_subs()
+        for sub in sub_gen:
             match self.specialize_subtask(sub):
                 case None:
                     pass
@@ -88,6 +107,7 @@ class SubMixin:
 
     @classmethod
     def stub_class(cls, stub):
+        stub['sub_generator'].set(type="callable", default="", prefix="# ", priority= 99, comment="Callable[[TaskObj], Generator[DootTaskSpec]]")
         stub['head_task'].set(priority=100)
         stub['sub_task'].set(type="taskname", default="", prefix="# ", priority=100)
         del stub.parts['actions']
