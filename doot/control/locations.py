@@ -31,8 +31,8 @@ import re
 import tomlguard
 from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
 from doot._structs.artifact import DootTaskArtifact
+from doot._structs.key import DootKey, DootSimpleKey, DootMultiKey
 from doot.constants import KEY_PATTERN, MAX_KEY_EXPANSIONS
-from doot.utils.expansion import expand_path_part
 
 KEY_PAT        = KEY_PATTERN
 MAX_EXPANSIONS = MAX_KEY_EXPANSIONS
@@ -56,7 +56,6 @@ class DootLocations:
         self._root : pl.Path()       = root.expanduser().absolute()
         self._data : TomlGuard       = tomlguard.TomlGuard()
 
-
     def __repr__(self):
         keys = ", ".join(iter(self))
         return f"<DootLocations : {str(self.root)} : ({keys})>"
@@ -65,23 +64,28 @@ class DootLocations:
         """
           get a location by name from loaded toml
           eg: locs.temp
-        """
-        return self.get(key)
+          """
+        return self[DootKey.make(key, strict=True)]
 
-    def __getitem__(self, val:str|pl.Path|DootTaskArtifact) -> pl.Path:
+    def __getitem__(self, val:str|DootKey|pl.Path|DootTaskArtifact) -> pl.Path:
         """
+          eg: doot.locs["{data}/somewhere"]
+          A public utility method to easily convert paths.
+
           Get a location using item access for extending a stored path.
           eg: locs["{temp}/imgs/blah.jpg"]
         """
-        match val:
-            case str() | pl.Path():
-                return self.get(val)
-            case DootTaskArtifact():
-                return self.get(val.path)
+        match DootKey.make(val, strict=False, explicit=True):
+            case None:
+                return self.expand(self.get(val))
+            case DootSimpleKey() as key:
+                return self.expand(key.to_path(locs=self))
+            case DootMultiKey() as key:
+                return key.to_path(locs=self)
             case _:
                 raise DootLocationExpansionError("Unrecognized location expansion argument", val)
 
-    def __contains__(self, key):
+    def __contains__(self, key:str|DootKey|pl.Path|DootTaskArtifact):
         """ Test whether a key is a registered location """
         return key in self._data
 
@@ -89,7 +93,18 @@ class DootLocations:
         """ Iterate over the registered location names """
         return iter(self._data.keys())
 
-    def _calc_path(self, base:path, *, fallback:pl.Path|None=None) -> pl.Path:
+    def __call__(self, new_root) -> Self:
+        """ Create a copied locations object, with a different root """
+        new_obj = DootLocations(new_root)
+        return new_obj.update(self)
+
+    def __enter__(self) -> Any:
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
+        return False
+
+    def _calc_path(self, base:pl.Path, *, fallback:pl.Path|None=None) -> pl.Path:
         """
           Expands a string or key according to registered locations into a path.
           so if locs = {"base": "~/Desktop", "bloo": "bloo/sub/dir"}
@@ -126,17 +141,27 @@ class DootLocations:
             case _:
                 return self.root / expansion
 
-    def get(self, key, fallback=None):
+    def get(self, key:DootSimpleKey|str) -> pl.Path:
         """
-          Get an expanded path key, but if it fails, return the fallback value
+          convert a *simple* key of one value to a path.
+          This pairs with DootKey.to_path, which does the heavy lifting of expansions
+          does *not* expand returned paths
         """
-        assert(isinstance(fallback, None|pl.Path))
+        assert(isinstance(key,(DootSimpleKey,str)))
         if key in self._data:
             logging.info("Accessing %s -> %s", key, self._data[key])
-            return self._calc_path(pl.Path(self._data[key]), fallback=fallback)
+            return self._data[key]
         else:
-            return self._calc_path(pl.Path(key), fallback=fallback)
+            return pl.Path(key)
 
+    def expand(self, path) -> pl.Path:
+        if path.is_absolute():
+            return path
+        if not path.parts:
+            return self.root /path
+        if path.parts[0] == "~":
+            return path.expanduser().resolve()
+        return self.root / path
 
     @property
     def root(self):
@@ -145,7 +170,7 @@ class DootLocations:
         """
         return self._root
 
-    def update(self, extra:dict|TomlGuard|DootLocations):
+    def update(self, extra:dict|TomlGuard|DootLocations) -> Self:
         """
           Update the registered locations with a dict, tomlguard, or other dootlocations obj.
           The update process itself is tomlguard.tomlguard.merge
@@ -172,14 +197,3 @@ class DootLocations:
 
         if bool(missing):
             raise DootDirAbsent("Ensured Locations are missing for %s : %s", task, missing)
-
-    def __call__(self, new_root) -> Self:
-        """ Create a copied locations object, with a different root """
-        new_obj = DootLocations(new_root)
-        return new_obj.update(self)
-
-    def __enter__(self) -> Any:
-        return self
-
-    def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
-        return False

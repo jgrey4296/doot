@@ -31,7 +31,7 @@ logging = logmod.root
 
 ##-- end pytest reminder
 
-matcher_ref        = DootCodeReference.from_str("doot.task.base_tasker:DootTasker").add_mixins("doot.mixins.tasker.matcher:MatcherMixin")
+matcher_ref        = DootCodeReference.from_str("doot.task.base_tasker:DootTasker").add_mixins("doot.mixins.tasker.matcher:SubSelectMixin")
 MatcherBuilder     = matcher_ref.try_import()
 
 class SimpleMatcher(MatcherBuilder):

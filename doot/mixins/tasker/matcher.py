@@ -40,8 +40,9 @@ logging = logmod.getLogger(__name__)
 import doot
 import doot.errors
 from doot.structs import DootCodeReference
+from doot.mixins.tasker.walker import WalkerMixin
 
-class MatcherMixin:
+class SubSelectMixin(WalkerMixin):
     """
 
     """
@@ -50,12 +51,6 @@ class MatcherMixin:
         super().__init__(spec)
         self.filter_fn  = self.spec.extra.on_fail("null:fn").filter_fn(wrapper=DootCodeReference.from_str)
         self.select_fn  = self.spec.extra.on_fail("null:fn").sect_fn(wrapper=DootCodeReference.from_str)
-
-    def specialize_subtask(self, task) -> None|dict|DootTaskSpec:
-        """
-          use the task's data to look up a different task name to use, and modify the spec's ctor
-        """
-        return task
 
     def _build_subs(self) -> Generator[DootTaskSpec]:
         logging.debug("%s : Building Subselection Walker SubTasks", self.name)
@@ -96,24 +91,13 @@ class MatcherMixin:
         stub['select_fn'].set(type="str",     prefix="# ",      priority=100)
 
 
-class PatternMatcherMixin:
+class PatternMatcherMixin(WalkerMixin):
     """
 
     """
 
     def __init__(self, spec:DootTaskSpec):
         super().__init__(spec)
-        self.exts           = {y for x in spec.extra.on_fail([]).exts() for y in [x.lower(), x.upper()]}
-        # expand roots based on doot.locs
-        self.roots          = [doot.locs.get(x, fallback=pl.Path()) for x in spec.extra.on_fail([pl.Path()]).roots()]
-        self.rec            = spec.extra.on_fail(False, bool).recursive()
-        self.total_subtasks = 0
-        for x in self.roots:
-            depth = len(set(self.__class__.mro()) - set(super().__class__.mro()))
-            if not x.exists():
-                logging.warning(f"Walker Missing Root: {x.name}", stacklevel=depth)
-            if not x.is_dir():
-                 logging.warning(f"Walker Root is a file: {x.name}", stacklevel=depth)
 
     def _build_subs(self) -> Generator[DootTaskSpec]:
         self.total_subtasks = 0

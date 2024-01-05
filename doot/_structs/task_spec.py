@@ -68,7 +68,7 @@ def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|Doo
             case str() if consts.TASK_SEP in x:
                 results.append(DootTaskName.from_str(x))
             case _:
-                raise doot.errors.DootInvalidConfig("Unrecognised task pre/post dependency form. (Remember: files are prefixed with `file://`, tasks are in the form group::name)", x, source)
+                raise doot.errors.DootInvalidConfig(f"Unrecognised task pre/post dependency form. (Remember: files are prefixed with `{consts.FILE_DEP_PREFIX}`, tasks are in the form group::name)", x, source)
 
     return results
 

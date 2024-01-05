@@ -37,13 +37,12 @@ from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
 from doot.mixins.importer import ImporterMixin
 from doot.enums import ActionResponseEnum as ActRE
-import doot.utils.expansion as exp
 
 ##-- expansion keys
-MSG   : Final[exp.DootKey] = exp.DootKey("msg")
-OLD   : Final[exp.DootKey] = exp.DootKey("old")
-NEW   : Final[exp.DootKey] = exp.DootKey("new")
-LEVEL : Final[exp.DootKey] = exp.DootKey("level")
+MSG   : Final[DootKey] = DootKey.make("msg")
+OLD   : Final[DootKey] = DootKey.make("old")
+NEW   : Final[DootKey] = DootKey.make("new")
+LEVEL : Final[DootKey] = DootKey.make("level")
 
 ##-- end expansion keys
 

@@ -151,12 +151,3 @@ class DootActionSpec:
                 return action_spec
             case _:
                 raise doot.errors.DootActionError("Unrecognized specification data", data)
-
-
-
-
-
-"""
-
-
-"""

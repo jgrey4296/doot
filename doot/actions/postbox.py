@@ -33,14 +33,13 @@ import sh
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
-import doot.utils.expansion as exp
 
 printer = logmod.getLogger("doot._printer")
 
 ##-- expansion keys
-FROM_KEY    : Final[exp.DootKey] = exp.DootKey("from")
-UPDATE      : Final[exp.DootKey] = exp.DootKey("update_")
-TASK_NAME   : Final[exp.DootKey] = exp.DootKey("_task_name")
+FROM_KEY    : Final[DootKey] = DootKey.make("from")
+UPDATE      : Final[DootKey] = DootKey.make("update_")
+TASK_NAME   : Final[DootKey] = DootKey.make("_task_name")
 ##-- end expansion keys
 
 class _DootPostBox:
@@ -77,7 +76,7 @@ class PutPostAction(Action_p):
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
         for arg in spec.args:
-            data = exp.to_any(arg, spec, task_state)
+            data = DootKey.make(arg).to_type(spec, task_state)
             match data:
                 case None:
                     pass

@@ -33,20 +33,20 @@ import tomlguard as TG
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
-import doot.utils.expansion as exp
+from doot.structs import DootKey
 from doot.actions.postbox import _DootPostBox
 
 # TODO using doot.config.settings.general.protect to disallow write/delete/backup/copy
 
 ##-- expansion keys
-TO_KEY        : Final[exp.DootKey] = exp.DootKey("to")
-FROM_KEY      : Final[exp.DootKey] = exp.DootKey("from")
-UPDATE        : Final[exp.DootKey] = exp.DootKey("update_")
-PROMPT        : Final[exp.DootKey] = exp.DootKey("prompt")
-PATTERN       : Final[exp.DootKey] = exp.DootKey("pattern")
-SEP           : Final[exp.DootKey] = exp.DootKey("pattern")
-TYPE_KEY      : Final[exp.DootKey] = exp.DootKey("type")
-AS_BYTES      : Final[exp.DootKey] = exp.DootKey("as_bytes")
+TO_KEY        : Final[DootKey] = DootKey.make("to")
+FROM_KEY      : Final[DootKey] = DootKey.make("from")
+UPDATE        : Final[DootKey] = DootKey.make("update_")
+PROMPT        : Final[DootKey] = DootKey.make("prompt")
+PATTERN       : Final[DootKey] = DootKey.make("pattern")
+SEP           : Final[DootKey] = DootKey.make("pattern")
+TYPE_KEY      : Final[DootKey] = DootKey.make("type")
+AS_BYTES      : Final[DootKey] = DootKey.make("as_bytes")
 ##-- end expansion keys
 
 @doot.check_protocol
@@ -60,7 +60,7 @@ class AppendAction(Action_p):
     def __call__(self, spec, state):
         sep     = SEP.to_type(spec, task_state, type_=str|None) or AppendAction.sep
         loc     = TO_KEY.to_path(spec, state)
-        args    = [exp.to_str(x, spec, state) for x in spec.args]
+        args    = [DootKey.make(x, strict=False).expand(spec, state) for x in spec.args]
         with open(loc, 'a') as f:
             for arg in args:
                 printer.info("Appending %s chars to %s", len(value), loc)
@@ -128,9 +128,9 @@ class CopyAction(Action_p):
         sources    = FROM_KEY.to_type(spec, task_state, type_=list|str|pl.Path)
         match sources:
             case str() | pl.Path():
-                expanded = [exp.to_path(sources, spec, task_state)]
+                expanded = [DootKey.make(sources, strict=False).to_path(spec, task_state)]
             case list():
-                expanded = list(map(lambda x: exp.to_path(x, spec, task_state), sources))
+                expanded = list(map(lambda x: DootKey.make(x, strict=False).to_path(spec, task_state), sources))
             case _:
                 raise doot.errors.DootActionError("Unrecognized type for copy sources", sources)
 
@@ -152,7 +152,7 @@ class DeleteAction(Action_p):
     _toml_kwargs = ["recursive", "lax", "args"]
     def __call__(self, spec, task):
         for arg in spec.args:
-            loc = exp.to_path(arg, spec, task)
+            loc = DootKey.make(arg, strict=False).to_path(spec,task)
             printer.info("Deleting %s", loc)
             if loc.is_dir() and spec.kwargs.on_fail(False).recursive():
                 shutil.rmtree(loc)
@@ -190,7 +190,7 @@ class EnsureDirectory(Action_p):
 
     def __call__(self, spec, task_state:dict):
         for arg in spec.args:
-            loc = exp.to_path(arg, spec, task_state)
+            loc = DootKey.make(arg, strict=False).to_path(spec, task_state)
             printer.debug("Building Directory: %s", loc)
             loc.mkdir(parents=True, exist_ok=True)
 
@@ -215,7 +215,7 @@ class UserInput(Action_p):
     _toml_kwargs = [UPDATE, PROMPT]
 
     def __call__(self, spec, state):
-        prompt = PROMPT.to_any(spec, state, type_=str|None) or "?::- "
+        prompt = PROMPT.to_type(spec, state, type_=str|None) or "?::- "
         target = UPDATE.redirect(spec)
         result = input(prompt)
         return { target : result }
@@ -231,7 +231,7 @@ class SimpleFind(Action_p):
 
     def __call__(self, spec, state):
         from_loc = FROM_KEY.to_path(spec, state)
-        pattern  = PATTERN.to_str(spec, state)
+        pattern  = PATTERN.expand(spec, state)
         data_key = UPDATE.redirect(spec)
         match spec.kwargs.on_fail(False).rec():
             case True:

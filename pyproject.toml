@@ -92,11 +92,11 @@ version_pattern    = "MAJOR.MINOR.PATCH"
 commit_message     = "[bump]: version {old_version} -> {new_version}"
 tag_message        = "{new_version}"
 tag_scope          = "default"
-# commit             = true
-# tag                = true
+commit             = true
+tag                = true
+# push             = true
 # pre_commit_hook  = ""
 # post_commit_hook = ""
-# push             = true
 
 [tool.bumpver.file_patterns]
 "pyproject.toml"   = [
