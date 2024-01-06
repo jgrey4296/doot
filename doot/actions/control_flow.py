@@ -71,10 +71,12 @@ class CancelOnPredicateAction(Action_p):
 class SkipIfFileExists(Action_p):
 
     def __call__(self, spec, state:dict) -> dict|bool|None:
-        target = FILE_TARGET.to_path(spec, state)
-        if target.exists():
-            printer.info("Target Exists: %s", target)
-            return ActRE.SKIP
+        for arg in spec.args:
+            key = DootKey.make(arg)
+            path = key.to_path(spec, state)
+            if path.exists():
+                printer.info("Target Exists: %s", target)
+                return ActRE.SKIP
 
 @doot.check_protocol
 class LogAction(Action_p):
