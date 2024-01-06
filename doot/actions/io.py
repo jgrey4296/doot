@@ -39,14 +39,15 @@ from doot.actions.postbox import _DootPostBox
 # TODO using doot.config.settings.general.protect to disallow write/delete/backup/copy
 
 ##-- expansion keys
-TO_KEY        : Final[DootKey] = DootKey.make("to")
-FROM_KEY      : Final[DootKey] = DootKey.make("from")
-UPDATE        : Final[DootKey] = DootKey.make("update_")
-PROMPT        : Final[DootKey] = DootKey.make("prompt")
-PATTERN       : Final[DootKey] = DootKey.make("pattern")
-SEP           : Final[DootKey] = DootKey.make("pattern")
-TYPE_KEY      : Final[DootKey] = DootKey.make("type")
-AS_BYTES      : Final[DootKey] = DootKey.make("as_bytes")
+TO_KEY             : Final[DootKey] = DootKey.make("to")
+FROM_KEY           : Final[DootKey] = DootKey.make("from")
+UPDATE             : Final[DootKey] = DootKey.make("update_")
+PROMPT             : Final[DootKey] = DootKey.make("prompt")
+PATTERN            : Final[DootKey] = DootKey.make("pattern")
+SEP                : Final[DootKey] = DootKey.make("pattern")
+TYPE_KEY           : Final[DootKey] = DootKey.make("type")
+AS_BYTES           : Final[DootKey] = DootKey.make("as_bytes")
+FILE_TARGET        : Final[DootKey] = DootKey.make("file")
 ##-- end expansion keys
 
 @doot.check_protocol
@@ -190,8 +191,8 @@ class EnsureDirectory(Action_p):
 
     def __call__(self, spec, task_state:dict):
         for arg in spec.args:
-            loc = DootKey.make(arg, strict=False).to_path(spec, task_state)
-            printer.debug("Building Directory: %s", loc)
+            loc = DootKey.make(arg).to_path(spec, task_state)
+            printer.info("Building Directory: %s", loc)
             loc.mkdir(parents=True, exist_ok=True)
 
 
@@ -238,3 +239,11 @@ class SimpleFind(Action_p):
                 return { data_key : list(from_loc.rglob(pattern)) }
             case False:
                 return { data_key : list(from_loc.glob(pattern)) }
+
+
+@doot.check_protocol
+class TouchFileAction(Action_p):
+
+    def __call__(self, spec, state):
+        target = FILE_TARGET.to_path(spec, state)
+        target.touch()

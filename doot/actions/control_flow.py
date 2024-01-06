@@ -37,17 +37,20 @@ from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
 from doot.mixins.importer import ImporterMixin
 from doot.enums import ActionResponseEnum as ActRE
+from doot.structs import DootKey, DootCodeReference
 
 ##-- expansion keys
-MSG   : Final[DootKey] = DootKey.make("msg")
-OLD   : Final[DootKey] = DootKey.make("old")
-NEW   : Final[DootKey] = DootKey.make("new")
-LEVEL : Final[DootKey] = DootKey.make("level")
+MSG          : Final[DootKey] = DootKey.make("msg")
+OLD          : Final[DootKey] = DootKey.make("old")
+NEW          : Final[DootKey] = DootKey.make("new")
+LEVEL        : Final[DootKey] = DootKey.make("level")
+PRED         : Final[DootKey] = DootKey.make("pred")
+FILE_TARGET  : Final[DootKey] = DootKey.make("file")
 
 ##-- end expansion keys
 
 @doot.check_protocol
-class CancelOnPredicateAction(Action_p, ImporterMixin):
+class CancelOnPredicateAction(Action_p):
     """
       Get a predicate using the kwarg `pred`,
       call it with the action spec and task state.
@@ -61,8 +64,17 @@ class CancelOnPredicateAction(Action_p, ImporterMixin):
         return f"Cancel On Predicate Action: {self.spec.args}"
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        predicate = self.import_class(spec.kwargs.pred)
+        predicate = DootCodeReference.from_str(PRED.expand(spec, state)).try_import()
         return predicate(spec,task_state)
+
+@doot.check_protocol
+class SkipIfFileExists(Action_p):
+
+    def __call__(self, spec, state:dict) -> dict|bool|None:
+        target = FILE_TARGET.to_path(spec, state)
+        if target.exists():
+            printer.info("Target Exists: %s", target)
+            return ActRE.SKIP
 
 @doot.check_protocol
 class LogAction(Action_p):
