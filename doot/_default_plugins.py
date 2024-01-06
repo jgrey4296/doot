@@ -77,6 +77,8 @@ DEFAULT_PLUGINS['action']      = [("basic"  ,    "doot.actions.base_action:DootB
                                   ("write!" ,    "doot.actions.io:WriteAction"),
                                   ("dir!",       "doot.actions.io:EnsureDirectory"),
                                   ("delete!",    "doot.actions.io:DeleteAction"),
+                                  ("touch",      "doot.actions.io:TouchFileAction"),
+
                                   ("break!",     "doot.actions.util:action_debugger"),
                                   ("type!",      "doot.actions.util:typecheck"),
 
@@ -88,6 +90,7 @@ DEFAULT_PLUGINS['action']      = [("basic"  ,    "doot.actions.base_action:DootB
                                   ("sayTime",    "doot.actions.speak:SpeakTimeAction"),
 
                                   ("log",        "doot.actions.control_flow:LogAction"),
+                                  ("skipIfFile", "doot.actions.control_flow:SkipIfFileExists"),
                                   ("pred?",      "doot.actions.control_flow:CancelOnPredicateAction"),
                                   ("installed?", "doot.actions.control_flow:AssertInstalled"),
                               ]

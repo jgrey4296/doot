@@ -87,8 +87,6 @@ class DootTasker(Tasker_i, ImporterMixin):
 
     @classmethod
     def stub_class(cls, stub) -> TaskStub:
-        stub.ctor                 = cls
-
         # Come first
         stub['active_when'].priority    = -90
         stub['required_for'].priority   = -90

@@ -43,10 +43,10 @@ class SubMixin:
     before calling `specialize_subtask` on the built spec
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, spec):
+        super().__init__(spec)
         self._sub_gen = None
-        match self.spec.extra.on_fail((None,)).sub_generator():
+        match self.spec.extra.on_fail((None,), Any).sub_generator():
             case None:
                 pass
             case str() as x:

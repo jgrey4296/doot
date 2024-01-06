@@ -104,7 +104,12 @@ class DootTaskLoader(TaskLoader_p):
         raw_specs : list[dict] = []
         logging.debug("Loading Tasks from Config")
         for source in doot._configs_loaded_from:
-            source_data : TomlGuard = tomlguard.load(source)
+            try:
+                source_data : TomlGuard = tomlguard.load(source)
+            except OSError as err:
+                logging.error("Failed to Load Config File: %s : %s", source, err.args)
+                continue
+
             task_specs = source_data.on_fail({}).tasks()
             raw_specs += self._load_raw_specs(task_specs, source)
 
@@ -149,7 +154,13 @@ class DootTaskLoader(TaskLoader_p):
         if not path.exists():
             pass
         elif path.is_dir():
-            for task_file, data in [(x, tomlguard.load(x)) for x in path.iterdir() if x.suffix == ".toml"]:
+            for task_file in [x for x in path.iterdir() if x.suffix == ".toml"]:
+                try:
+                    data = tomlguard.load(task_file)
+                except OSError as err:
+                    logging.error("Failed to Load Task File: %s", task_file)
+                    continue
+
                 for group, val in data.on_fail({}).tasks().items():
                     # sets 'group' for each task if it hasn't been set already
                     raw_specs += map(ftz.partial(apply_group_and_source, group, task_file), val)
@@ -158,7 +169,12 @@ class DootTaskLoader(TaskLoader_p):
                     self._load_location_updates(data.locations, task_file)
 
         elif path.is_file():
-            data = tomlguard.load(path)
+            try:
+                data = tomlguard.load(path)
+            except OSError:
+                logging.error("Failed to Load Task File: %s", task_file)
+                return raw_specs
+
             for group, val in data.on_fail({}).tasks().items():
                 # sets 'group' for each task if it hasn't been set already
                 raw_specs += map(ftz.partial(apply_group_and_source, group, path), val)

@@ -172,7 +172,7 @@ class DootTracker(TaskTracker_i):
         """ add a task description into the tracker, but don't queue it
         connecting it with its dependencies and tasks that depend on it
         """
-        task = self._prep_task(task)
+        task : TaskBase_i = self._prep_task(task)
         assert(isinstance(task, TaskBase_i))
 
         # TODO check the spec's "active_when" conditions, return early if it fails

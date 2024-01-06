@@ -147,12 +147,14 @@ class DootLocations:
           This pairs with DootKey.to_path, which does the heavy lifting of expansions
           does *not* expand returned paths
         """
-        assert(isinstance(key,(DootSimpleKey,str)))
-        if key in self._data:
-            logging.info("Accessing %s -> %s", key, self._data[key])
-            return self._data[key]
-        else:
-            return pl.Path(key)
+        assert(isinstance(key,(DootSimpleKey,str))), (str(key), type(key))
+        match key:
+            case str() | DootSimpleKey() if key in self._data:
+                return self._data[key]
+            case DootSimpleKey():
+                return pl.Path(key.form)
+            case _:
+                return pl.Path(key)
 
     def expand(self, path) -> pl.Path:
         if path.is_absolute():

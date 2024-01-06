@@ -55,7 +55,12 @@ def setup(targets:list[pl.Path]|None=None, prefix:str|None=None) -> tuple[TG.Tom
 
     existing_targets       = [x for x in targets if x.exists()]
 
-    config = TG.load(*existing_targets)
+    try:
+        config = TG.load(*existing_targets)
+    except OSError:
+        logging.error("Failed to Load Config Files: %s", existing_targets)
+        raise doot.errors.DootError()
+
     locs   = DootLocations(pl.Path.cwd())
 
     for loc in config.locations:
