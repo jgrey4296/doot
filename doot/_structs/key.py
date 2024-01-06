@@ -36,6 +36,7 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+import abc
 from collections import UserString
 import string
 from tomlguard import TomlGuard
@@ -62,10 +63,14 @@ class DootFormatter(string.Formatter):
 
     def format(self, fmt:str|DootKey|pl.Path, /, *args, _as_path=False, **kwargs) -> str:
         self._depth = 0
-        if isinstance(kwargs.get("_spec", None), DootActionSpec):
-            kwargs['_spec'] = kwargs['_spec'].kwargs
-        else:
-            kwargs['_spec'] = {}
+        match kwargs.get("_spec", None):
+            case None:
+                kwargs['_spec'] = {}
+            case DootActionSpec():
+                kwargs['_spec'] = kwargs['_spec'].kwargs
+            case x:
+                raise TypeError("Bad Spec Type in Format Call", x)
+
 
         match fmt:
             case DootKey():
@@ -85,8 +90,8 @@ class DootFormatter(string.Formatter):
         if isinstance(key, int):
             return args[key]
 
-        spec              = kwargs.get('_spec') or {}
-        state             = kwargs.get('_state') or {}
+        spec              = kwargs.get('_spec')
+        state             = kwargs.get('_state', None) or {}
         cli               = doot.args.on_fail({}).tasks[str(state.get('_task_name', None))]()
         replacement       = cli.get(key, None) or state.get(key, None) or spec.get(key, None)
         match replacement:
@@ -107,7 +112,7 @@ class DootFormatter(string.Formatter):
                 return str(replacement)
                 # raise TypeError("Replacement Value isn't a string", args, kwargs)
 
-class DootKey:
+class DootKey(abc.ABC):
     """ A shared, non-functional base class for DootKeys and variants like DootMultiKey.
       Use DootKey.make for constructing keys
 
@@ -134,7 +139,7 @@ class DootKey:
             case str() if len(s_keys) == 1 and s_keys[0] == s[1:-1]:
                 # This means the is numeric check runs on the chopped key
                 return DootKey.make(s[1:-1])
-            case str():
+            case str() if not explicit:
                 return DootMultiKey(s)
             case DootTaskArtifact(path=path) | (pl.Path() as path) if not strict:
                 return DootMultiKey(path)
@@ -169,8 +174,9 @@ class DootKey:
             expanded             = [DootFormatter.fmt().format(x, _spec=spec, _state=state, _rec=True) for x in key.parts]
             expanded_as_path     = pl.Path().joinpath(*expanded)
             depth = 0
-            while any(PATTERN.search(x) for x in expanded_as_path.parts) and depth < MAX_KEY_EXPANSIONS:
-                loc_expansions      = [locs._data.get(k, x) for x in expanded_as_path.parts if (k:=DootKey.make(x, explicit=True))]
+            while PATTERN.search(str(expanded_as_path)) and depth < MAX_KEY_EXPANSIONS:
+                to_keys             = [DootKey.make(x, explicit=True) or x for x in expanded_as_path.parts]
+                loc_expansions      = [locs.get(x) for x in to_keys]
                 expanded_as_path    = pl.Path().joinpath(*loc_expansions)
                 depth += 1
 
@@ -184,8 +190,13 @@ class DootKey:
                 raise err
             return chain.to_path(spec, state)
 
+    @abc.abstractmethod
     def to_type(self, spec, state, type_=Any, chain:DootKey=None) -> Any:
         raise NotImplementedError()
+
+    @abc.abstractmethod
+    def expand(self, spec=None, state=None, *, rec=False) -> str:
+        pass
 
     def within(self, other:str|dict|TomlGuard) -> bool:
         return False
@@ -232,15 +243,17 @@ class DootSimpleKey(str, DootKey):
         """ Return the key in its use form """
         return "{{{}}}".format(str(self))
 
-    def expand(self, spec, state, rec=False) -> str:
+    def expand(self, spec=None, state=None, *, rec=False) -> str:
         key = self.redirect(spec)
         fmt = DootFormatter()
         return fmt.format(key, _spec=spec, _state=state, _rec=rec)
 
-    def redirect(self, spec, chain=None) -> DootKey:
+    def redirect(self, spec=None, chain=None) -> DootKey:
         """
           If the indirect form of the key is found in the spec, use that instead
         """
+        if not spec:
+            return self
         if self.indirect in spec.kwargs:
             return DootKey.make(spec.kwargs[self.indirect])
         if self.is_indirect and self in spec.kwargs:
@@ -300,12 +313,16 @@ class DootMultiKey(DootKey):
         """ Return the key in its use form """
         return str(self)
 
-    def expand(self, spec, state, rec=False):
+    def expand(self, spec=None, state=None, *, rec=False):
         fmt = DootFormatter()
         return fmt.format(self.value, _spec=spec, _state=state, _rec=rec)
 
     def within(self, other:str|dict|TomlGuard) -> bool:
         return str(self) in other
+
+
+    def to_type(self, spec, state, type_=Any, chain:DootKey=None) -> Any:
+        raise TypeError("Converting a MultiKey to a type doesn't make sense", self)
 
 class DootKeyChain(DootKey):
     pass

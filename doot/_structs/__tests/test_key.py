@@ -460,8 +460,9 @@ class TestPathExpansion:
         assert(result.parent.parent.stem == "test2")
 
     def test_missing_key_path(self, spec):
+        key = DootKey.make("{q}", explicit=True)
         with pytest.raises(doot.errors.DootLocationError):
-            DootKey.make("{q}").to_path(spec, {"x": "blah"})
+            key.to_path(spec, {"x": "blah"})
 
     def test_expansion_extra(self, spec, setup_locs):
         key = DootKey.make("{p1}/blah/{y}/{aweg}", strict=False)
@@ -515,7 +516,7 @@ class TestTypeExpansion:
             DootKey.make("{x}").to_type(spec, {"x": set([1,2,3])}, type_=list)
 
     def test_to_any_multikey_fail(self, spec, mocker, setup_locs):
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(TypeError):
             DootKey.make("{x}{x}", strict=False).to_type(spec, {"x": set([1,2,3])})
 
     def test_missing_key_any(self, spec):

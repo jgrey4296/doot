@@ -218,8 +218,9 @@ class DootTaskSpec:
 
     def check(self, ensure=Any):
         if self.ctor.module == "default":
-            return
+            return True
         self.ctor.try_import(ensure=ensure)
+        return True
 
     def __hash__(self):
         return hash(str(self.name))

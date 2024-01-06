@@ -169,6 +169,11 @@ class DootCodeReference(DootStructuredName):
     def __str__(self) -> str:
         return "{}{}{}".format(self.module, self.separator, self.value)
 
+    def __repr__(self) -> str:
+        code_path = str(self)
+        mixins    = ", ".join(str(x) for x in self._mixins)
+        return f"<CodeRef: {code_path} Mixins: {mixins}>"
+
     def __hash__(self):
         return hash(str(self))
 
