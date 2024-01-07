@@ -32,6 +32,7 @@ import shutil
 import tomlguard as TG
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
+from doot.enums import ActionResponseEnum
 from doot._abstract import Action_p
 from doot.structs import DootKey
 from doot.actions.postbox import _DootPostBox
@@ -49,6 +50,10 @@ TYPE_KEY           : Final[DootKey] = DootKey.make("type")
 AS_BYTES           : Final[DootKey] = DootKey.make("as_bytes")
 FILE_TARGET        : Final[DootKey] = DootKey.make("file")
 ##-- end expansion keys
+
+COMP_TAR_CMD  = sh.tar.bake("-cf", "-")
+COMP_GZIP_CMD = sh.gzip.bake("--best")
+DECOMP_CMD    = sh.tar.bake("-xf")
 
 @doot.check_protocol
 class AppendAction(Action_p):
@@ -247,3 +252,35 @@ class TouchFileAction(Action_p):
     def __call__(self, spec, state):
         target = FILE_TARGET.to_path(spec, state)
         target.touch()
+
+
+@doot.check_protocol
+class CompressAction(Action_p):
+    """ Compresses a target into a .tar.gz file """
+
+    def __call__(self, spec, state):
+        target = FILE_TARGET.to_path(spec, state)
+        try:
+            output = TO_KEY.to_path(spec, state)
+        except doot.errors.DootLocationError:
+            output = target.with_suffix(target.suffix + ".tar.gz")
+
+        if target.is_dir():
+            COMP_GZIP_CMD(_in=COMP_TAR_CMD("-C", target, ".", _piped=True), _out=output)
+        else:
+            COMP_GZIP_CMD(_in=COMP_TAR_CMD("-C", target.parent, target.name, _piped=True), _out=output)
+
+@doot.check_protocol
+class DecompressAction(Action_p):
+    """ Decompresses a .tar.gz file """
+
+    def __call__(self, spec, state):
+        target = FILE_TARGET.to_path(spec, state)
+        if not ".tar.gz" in target.name:
+            return ActionResponseEnum.FAIL
+        try:
+            output = TO_KEY.to_path(spec, state)
+        except doot.errors.DootLocationError:
+            output = pl.Path()
+
+        DECOMP_CMD(target, "-C", output)
