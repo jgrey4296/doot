@@ -191,29 +191,28 @@ class DootTracker(TaskTracker_i):
             logging.debug("Connecting Dependency: %s -> %s", pre, task.name)
             match pre:
                 case {"task": taskname}:
-                    if taskname in self.tasks:
-                        base_task                 = self.tasks[taskname]
-                        pre['name']               = task.spec.name.subtask("$specialized$", "${}$".format(uuid1().hex))
-                        pre['required_for']       = [task.name]
-                        pre['ctor']               = DootTaskName.from_str(taskname)
-                        pre_spec                  = DootTaskSpec.from_dict(pre)
-                        self.add_task(pre_spec)
-                    else:
-                        assert(str(pre) not in self.task_graph.nodes)
-                        pre['name']               = task.spec.name.subtask("$specialized$", "$late:{}$".format(uuid1().hex))
-                        pre['required_for']       = [task.name]
-                        pre['ctor']               = DootTaskName.from_str(taskname)
-                        pre_spec                  = DootTaskSpec.from_dict(pre)
-                        self._build_late.append(pre_spec)
+                    raise TypeError("Task Deps should not longer be dicts")
                 case pl.Path():
                     pre = self._prep_artifact(DootTaskArtifact(pre))
                     self.task_graph.add_edge(pre, task.name, type=_TrackerEdgeType.ARTIFACT_CROSS)
                 case DootTaskArtifact():
                     pre = self._prep_artifact(pre)
                     self.task_graph.add_edge(pre, task.name, type=_TrackerEdgeType.ARTIFACT_CROSS)
-                case DootTaskName() if str(pre) in self.task_graph:
-                    # just connect if the tracker already knows the tas
+                case DootTaskName() if all([(in_graph:=str(pre) in self.task_graph),(has_args:=bool(pre.args))]):
+                    base_spec                 = self.tasks[str(pre)].spec
+                    name_spec                 = DootTaskSpec.from_name(pre)
+                    name_spec.ctor            = base_spec.name
+                    name_spec.required_for.append(task.name)
+                    self.add_task(name_spec)
+                case DootTaskName() if in_graph and not has_args:
+                    # just connect if the tracker already knows the task
                     self.task_graph.add_edge(str(pre), task.name, type=_TrackerEdgeType.TASK)
+                case DootTaskName() if has_args:
+                    assert(str(pre) not in self.task_graph.nodes)
+                    name_spec      = DootTaskSpec.from_name(pre.specialize(info="late"))
+                    name_spec.ctor = pre
+                    name_spec.required_for.append(task.name)
+                    self._build_late.append(name_spec)
                 case str() | DootTaskName():
                     # Otherwise add a dummy task until its defined
                     self.task_graph.add_node(str(pre), state=self.state_e.DECLARED, priority=DECLARE_PRIORITY)
@@ -225,32 +224,31 @@ class DootTracker(TaskTracker_i):
             logging.debug("Connecting Successor: %s -> %s", task.name, post)
             match post:
                 case {"task": taskname}:
-                    if taskname in self.tasks:
-                        base_task                  = self.tasks[taskname]
-                        post['name']               = task.spec.name.subtask("$specialized$", "${}$".format(uuid1().hex))
-                        post['depends-on']         = []
-                        post['ctor']               = DootTaskName.from_str(taskname)
-                        post_spec                  = DootTaskSpec.from_dict(post)
-                        self.add_task(post_spec)
-                    else:
-                        assert(str(post) not in self.task_graph.nodes)
-                        post['name']               = task.spec.name.subtask("$specialized$", "$late:{}$".format(uuid1().hex))
-                        post['depends-on']         = [task.spec.name]
-                        post['ctor']               = DootTaskName.from_str(taskname)
-                        post_spec                  = DootTaskSpec.from_dict(post)
-                        self.tasks[post_spec.name] = post_spec
-                        self._build_late.append(post_spec)
+                    raise TypeError("Task Deps should not longer be dicts")
                 case pl.Path():
                     post = self._prep_artifact(DootTaskArtifact(post))
                     self.task_graph.add_edge(task.name, post, type=_TrackerEdgeType.TASK_CROSS)
                 case DootTaskArtifact():
                     post = self._prep_artifact(post)
                     self.task_graph.add_edge(task.name, post, type=_TrackerEdgeType.TASK_CROSS)
-                case str() | DootTaskName() if str(post) in self.task_graph:
-                    # Again, if the task is known, use it
+
+                case DootTaskName() if all([(in_graph:=str(post) in self.task_graph), (has_args:=bool(post.args))]):
+                    base_spec                 = self.tasks[str(post)].spec
+                    name_spec                 = DootTaskSpec.from_name(post)
+                    name_spec.ctor            = base_spec.name
+                    name_spec.depends_on.append(task.name)
+                    self.add_task(name_spec)
+                case DootTaskName() if in_graph and not has_args:
+                    # just connect if the tracker already knows the task
                     self.task_graph.add_edge(task.name, str(post), type=_TrackerEdgeType.TASK)
+                case DootTaskName() if has_args:
+                    assert(str(post) not in self.task_graph.nodes)
+                    name_spec      = DootTaskSpec.from_name(post.specialize(info="late"))
+                    name_spec.ctor = post
+                    name_spec.depends_on.append(task.name)
+                    self._build_late.append(name_spec)
                 case str() | DootTaskName():
-                    # Or create a dummy task
+                    # Otherwise add a dummy task until its defined
                     self.task_graph.add_node(str(post), state=self.state_e.DECLARED, priority=DECLARE_PRIORITY)
                     self.task_graph.add_edge(task.name, str(post), type=_TrackerEdgeType.TASK)
                 case _:
@@ -265,7 +263,6 @@ class DootTracker(TaskTracker_i):
                 pass
             case _:
                 raise doot.errors.DootTaskTrackingError("Unknown queue behaviour specified: %s", task.spec.queue_behaviour)
-
 
     def queue_task(self, *tasks:str|DootTaskName|DootTaskArtifact|tuple, silent=False) -> None:
         """
@@ -295,7 +292,6 @@ class DootTracker(TaskTracker_i):
                         targets.update(total)
                 case _:
                     raise doot.errors.DootTaskTrackingError("Unrecognized Queue Argument: %s", task)
-
 
         logging.debug("Queueing: %s", targets)
         for task in targets:
@@ -349,7 +345,7 @@ class DootTracker(TaskTracker_i):
             case _, _:
                 raise doot.errors.DootTaskTrackingError("Bad task update state args", task, state)
 
-    def task_state(self, task:str|DootTaskName|pl.Path) -> self.state_e:
+    def task_state(self, task:str|DootTaskName|DootTaskArtifact|pl.Path) -> self.state_e:
         """ Get the state of a task """
         if str(task) in self.task_graph.nodes:
             return self.task_graph.nodes[str(task)][STATE]
