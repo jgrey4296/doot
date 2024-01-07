@@ -268,7 +268,7 @@ class TestSimpleKey2:
 
     def test_repr_call(self):
         example = DootKey.make("blah")
-        assert(repr(example) == "<DootKey: blah>")
+        assert(repr(example) == "<DootSimpleKey: blah>")
 
     def test_indirect(self):
         example = DootKey.make("blah")

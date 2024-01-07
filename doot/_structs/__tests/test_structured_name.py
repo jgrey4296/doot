@@ -19,15 +19,6 @@ from doot import structs
 import doot.constants
 from doot.task.base_task import DootTask
 
-# caplog
-# mocker.patch | patch.object | patch.multiple | patch.dict | stopall | stop | spy | stub
-# pytest.mark.filterwarnings
-# pytest.parameterize
-# pytest.skip | skipif | xfail
-# with pytest.deprecated_call
-# with pytest.raises
-# with pytest.warns(warntype)
-
 class TestDootTaskName:
 
     @pytest.fixture(scope="function")
@@ -143,6 +134,27 @@ class TestDootTaskName:
         assert(str(simple) == "\"basic.sub.test\"::tail")
         sub    = simple.subtask("blah", subgroups=["another", "subgroup"])
         assert(str(sub) == "\"basic.sub.test.another.subgroup\"::tail.blah")
+
+
+    def test_specialize_name(self):
+        simple = structs.DootTaskName(["basic"], "tail")
+        assert(str(simple) == "basic::tail")
+        sub    = simple.specialize()
+        assert(sub.group == "basic")
+        assert(len(sub.tail) == 3)
+        assert(sub.tail[0] == "tail")
+        assert(sub.tail[1] == "$specialized$")
+
+
+    def test_specialize_name_with_info(self):
+        simple = structs.DootTaskName(["basic"], "tail")
+        assert(str(simple) == "basic::tail")
+        sub    = simple.specialize(info="blah")
+        assert(sub.group == "basic")
+        assert(len(sub.tail) == 4)
+        assert(sub.tail[0] == "tail")
+        assert(sub.tail[1] == "$specialized$")
+        assert(sub.tail[2] == "blah")
 
     def test_lt_comparison_equal(self):
         simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
