@@ -267,10 +267,11 @@ class DootCodeReference(DootStructuredName):
 class DootTaskName(DootStructuredName):
 
     internal        : bool               = field(default=False, kw_only=True)
-    separator  : str = field(default=doot.constants.TASK_SEP, kw_only=True)
+    separator       : str                = field(default=doot.constants.TASK_SEP, kw_only=True)
+    args            : dict               = field(default_factory=dict)
 
     @classmethod
-    def from_str(cls, name:str):
+    def from_str(cls, name:str, *, args=None):
         if ":" in name:
             groupHead_r, taskHead_r = name.split("::")
             groupHead = groupHead_r.split(".")
@@ -278,7 +279,7 @@ class DootTaskName(DootStructuredName):
         else:
             groupHead = None
             taskHead  = name
-        return DootTaskName(groupHead, taskHead)
+        return DootTaskName(groupHead, taskHead, args=args)
 
     def __post_init__(self):
         match self.head:
@@ -309,6 +310,13 @@ class DootTaskName(DootStructuredName):
     def __hash__(self):
         return hash(str(self))
 
+    def __eq__(self, other):
+        match other:
+            case str() | DootTaskName():
+                return str(self) == str(other)
+            case _:
+                return False
+
     @property
     def group(self) -> str:
         fmt = "{}"
@@ -324,8 +332,11 @@ class DootTaskName(DootStructuredName):
     def root(self):
         return f"{self.head_str()}{self.separator}{self.tail[0]}"
 
-    def subtask(self, *subtasks, subgroups:list[str]|None=None):
+    def subtask(self, *subtasks, subgroups:list[str]|None=None) -> DootTaskName:
+        args = self.args.copy() if self.args else None
         return DootTaskName(self.head + (subgroups or []),
-                            self.tail + list(subtasks),
-                            internal=self.internal
-                            )
+                            self.tail + [x for x in subtasks if x is not None],
+                            internal=self.internal,
+                            args=args)
+    def specialize(self, *, info=None):
+        return self.subtask("$specialized$", info, "${}$".format(uuid1().hex))

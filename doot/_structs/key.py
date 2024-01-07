@@ -71,7 +71,6 @@ class DootFormatter(string.Formatter):
             case x:
                 raise TypeError("Bad Spec Type in Format Call", x)
 
-
         match fmt:
             case DootKey():
                 fmt = fmt.form
@@ -124,7 +123,7 @@ class DootKey(abc.ABC):
     """
 
     @staticmethod
-    def make(s:str|DootKEy|DootTaskArtifact|pl.Path, *, strict=False, explicit=False) -> DootKey|None:
+    def make(s:str|DootKEy|DootTaskArtifact|pl.Path, *, strict=False, explicit=False) -> DootKey:
         """ Make an appropriate DootKey based on input value
           Can only create MultiKeys if strict = False,
           if explicit, only keys wrapped in {} are made, everything else is returned untouched
@@ -134,6 +133,8 @@ class DootKey(abc.ABC):
                 return s
             case str() if strict and (s.isnumeric() or not s.isascii()):
                 raise ValueError("Bad Characters for a key", s)
+            case DootTaskArtifact(path=path) | (pl.Path() as path) if not strict:
+                return DootMultiKey(path)
             case str() if not (s_keys := PATTERN.findall(s)) and not explicit:
                 return DootSimpleKey(s)
             case str() if len(s_keys) == 1 and s_keys[0] == s[1:-1]:
@@ -141,9 +142,9 @@ class DootKey(abc.ABC):
                 return DootKey.make(s[1:-1])
             case str() if not explicit:
                 return DootMultiKey(s)
-            case DootTaskArtifact(path=path) | (pl.Path() as path) if not strict:
-                return DootMultiKey(path)
-            case str() | pl.Path():
+            case str():
+                return DootNonKey(s)
+            case pl.Path():
                 return None
             case _:
                 raise TypeError("Bad Type to build a Doot Key Out of", s)
@@ -161,14 +162,11 @@ class DootKey(abc.ABC):
         return self
 
     def to_path(self, spec=None, state=None, chain=None, locs=None) -> pl.Path:
+        """
+          Convert a key to an absolute path
+        """
         locs                 = locs or doot.locs
-        match self:
-            case DootSimpleKey():
-                key = pl.Path(self.form)
-            case DootMultiKey():
-                key = pl.Path(self.value)
-            case _:
-                raise TypeError("Unknown key type trying to make a path", self)
+        key                  = pl.Path(self.form)
 
         try:
             expanded             = [DootFormatter.fmt().format(x, _spec=spec, _state=state, _rec=True) for x in key.parts]
@@ -190,6 +188,9 @@ class DootKey(abc.ABC):
                 raise err
             return chain.to_path(spec, state)
 
+    def within(self, other:str|dict|TomlGuard) -> bool:
+        return False
+
     @abc.abstractmethod
     def to_type(self, spec, state, type_=Any, chain:DootKey=None) -> Any:
         raise NotImplementedError()
@@ -198,16 +199,67 @@ class DootKey(abc.ABC):
     def expand(self, spec=None, state=None, *, rec=False) -> str:
         pass
 
-    def within(self, other:str|dict|TomlGuard) -> bool:
-        return False
-
-class DootSimpleKey(str, DootKey):
+class DootNonKey(str, DootKey):
     """
-
+      Just a string, not a key. But this lets you call no-ops for key specific methods
     """
 
     def __repr__(self):
-        return "<DootKey: {}>".format(str(self))
+        return "<DootNonKey: {}>".format(str(self))
+
+    def __hash__(self):
+        return super().__hash__()
+
+    def __eq__(self, other):
+        match other:
+            case DootKey() | str():
+                return str(self) == str(other)
+            case _:
+                return False
+
+    def within(self, other:str|dict|TomlGuard) -> bool:
+        match other:
+            case str():
+                return self.form in other
+            case dict() | TomlGuard():
+                return self in other
+            case _:
+                raise TypeError("Uknown DootKey target for within", other)
+
+    @property
+    def indirect(self):
+        if not self.is_indirect:
+            return DootSimpleKey("{}_".format(super().__str__()))
+        return self
+
+    @property
+    def is_indirect(self):
+        return False
+
+    @property
+    def form(self):
+        """ Return the key in its use form """
+        return str(self)
+
+    def expand(self, spec=None, state=None, *, rec=False) -> str:
+        return str(self)
+
+    def redirect(self, spec=None, chain=None) -> DootKey:
+        return self
+
+    def to_type(self, spec, state, type_=Any, chain:DootKey=None) -> Any:
+        if type_ != Any or type_ != str:
+            raise TypeError("NonKey's can only be strings")
+        return str(self)
+
+class DootSimpleKey(str, DootKey):
+    """
+      A Single key with no extras.
+      ie: {x}. not {x}{y}, or {x}.blah.
+    """
+
+    def __repr__(self):
+        return "<DootSimpleKey: {}>".format(str(self))
 
     def __hash__(self):
         return super().__hash__()
@@ -319,7 +371,6 @@ class DootMultiKey(DootKey):
 
     def within(self, other:str|dict|TomlGuard) -> bool:
         return str(self) in other
-
 
     def to_type(self, spec, state, type_=Any, chain:DootKey=None) -> Any:
         raise TypeError("Converting a MultiKey to a type doesn't make sense", self)

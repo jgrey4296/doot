@@ -129,8 +129,10 @@ class DootActionSpec:
         self.verify(state, fields=self.outState)
 
     @staticmethod
-    def from_data(data:dict|list|TomlGuard, *, fun=None) -> DootActionSpec:
+    def from_data(data:dict|list|TomlGuard|DootActionSpec, *, fun=None) -> DootActionSpec:
         match data:
+            case DootActionSpec():
+                return data
             case list():
                 action_spec = DootActionSpec(
                     args=data,
