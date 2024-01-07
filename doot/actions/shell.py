@@ -32,11 +32,13 @@ class DootShellAction(Action_p):
     """
     _toml_kwargs = ["background"]
 
-    def __call__(self, spec, task_state:dict) -> dict|bool|None:
+    def __call__(self, spec, state:dict) -> dict|bool|None:
         result = None
         try:
             cmd      = getattr(sh, spec.args[0])
-            expanded = spec.args[1:]
+            args     = spec.args[1:]
+            keys     = [DootKey.make(x, explicit=True) for x in args]
+            expanded = [x.expand(spec, state) for x in keys]
             result   = cmd(*expanded, _return_cmd=True, _bg=spec.kwargs.on_fail(False, bool).background())
             assert(result.exit_code == 0)
             printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, spec.args[0], spec.args[1:])
@@ -67,13 +69,15 @@ class DootInteractiveAction(Action_p):
     prompt     = ">>> "
     cont       = "... "
 
-    def __call__(self, spec, task_state:dict) -> dict|bool|None:
+    def __call__(self, spec, state:dict) -> dict|bool|None:
         try:
             self.prompt = spec.kwargs.on_fail(DootInteractiveAction.prompt, str).prompt()
             self.cont   = spec.kwargs.on_fail(DootInteractiveAction.cont, str).cont()
 
             cmd      = getattr(sh, spec.args[0])
-            expanded = [DootKey.make(x, strict=False).expand(spec, task_state) for x in spec.args[1:]]
+            args     = spec.args[1:]
+            keys     = [DootKey.make(x, explicit=True) for x in args]
+            expanded = [x.expand(spec, state) for x in keys]
             result   = cmd(*expanded, _return_cmd=True, _bg=spec.kwargs.on_fail(False, bool).background(), _out=self.interact, _out_bufsize=0, _tty_in=True, _unify_ttys=True)
             assert(result.exit_code == 0)
             printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, spec.args[0], spec.args[1:])

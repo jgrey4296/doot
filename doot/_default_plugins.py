@@ -78,6 +78,8 @@ DEFAULT_PLUGINS['action']      = [("basic"  ,    "doot.actions.base_action:DootB
                                   ("dir!",       "doot.actions.io:EnsureDirectory"),
                                   ("delete!",    "doot.actions.io:DeleteAction"),
                                   ("touch",      "doot.actions.io:TouchFileAction"),
+                                  ("tar!",       "doot.actions.io:CompressAction"),
+                                  ("untar!",     "doot.actions.io:DecompressAction"),
 
                                   ("break!",     "doot.actions.util:action_debugger"),
                                   ("type!",      "doot.actions.util:typecheck"),

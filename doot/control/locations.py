@@ -31,7 +31,7 @@ import re
 import tomlguard
 from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
 from doot._structs.artifact import DootTaskArtifact
-from doot._structs.key import DootKey, DootSimpleKey, DootMultiKey
+from doot._structs.key import DootKey, DootSimpleKey, DootMultiKey, DootNonKey
 from doot.constants import KEY_PATTERN, MAX_KEY_EXPANSIONS
 
 KEY_PAT        = KEY_PATTERN
@@ -78,6 +78,8 @@ class DootLocations:
         match DootKey.make(val, strict=False, explicit=True):
             case None:
                 return self.expand(self.get(val))
+            case DootNonKey() as key:
+                return self.expand(key.to_path(locs=self))
             case DootSimpleKey() as key:
                 return self.expand(key.to_path(locs=self))
             case DootMultiKey() as key:
@@ -149,6 +151,8 @@ class DootLocations:
         """
         assert(isinstance(key,(DootSimpleKey,str))), (str(key), type(key))
         match key:
+            case DootNonKey():
+                return pl.Path(key.form)
             case str() | DootSimpleKey() if key in self._data:
                 return self._data[key]
             case DootSimpleKey():

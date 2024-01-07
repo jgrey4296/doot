@@ -172,7 +172,7 @@ class DootTaskLoader(TaskLoader_p):
             try:
                 data = tomlguard.load(path)
             except OSError:
-                logging.error("Failed to Load Task File: %s", task_file)
+                logging.error("Failed to Load Task File: %s", path)
                 return raw_specs
 
             for group, val in data.on_fail({}).tasks().items():
@@ -225,16 +225,22 @@ class DootTaskLoader(TaskLoader_p):
                     case _: # Else complain
                         raise doot.errors.DootTaskLoadError("Task Spec missing, at least, a name and ctor: %s: %s", spec['source'], spec)
             except doot.errors.DootLocationError as err:
+                logging.debug(err)
                 raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Missing Location: '%s'. Source File: %s", task_name, str(err), spec['source']) from err
             except ModuleNotFoundError as err:
+                logging.debug(err)
                 raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Module Name: '%s'. Source File: %s", task_name, task_alias, spec['source']) from err
             except AttributeError as err:
+                logging.debug(err)
                 raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Class Name: '%s'. Source File: %s", task_name, task_alias, spec['source'], err.args) from err
             except ValueError as err:
+                logging.debug(err)
                 raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Module/Class Split failed on: '%s'. Source File: %s", task_name, task_alias, spec['source']) from err
             except TypeError as err:
+                logging.debug(err)
                 raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Type constructor: '%s'. Source File: %s", task_name, spec['ctor'], spec['source']) from err
             except ImportError as err:
+                logging.debug(err)
                 raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: ctor import check failed. Source File: %s", task_name, spec['source']) from err
 
         return task_descriptions
