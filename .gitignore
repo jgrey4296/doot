@@ -17,3 +17,5 @@ simplified_bookmarks.txt
 *rejected_tweets.log
 epub
 _dir_tests
+.temp/
+wiki/
