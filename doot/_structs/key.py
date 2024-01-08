@@ -158,7 +158,7 @@ class DootKey(abc.ABC):
         return False
 
     @property
-    def redirect(self, spec, chain=None) -> bool:
+    def redirect(self, spec, chain=None) -> DootKey:
         return self
 
     def to_path(self, spec=None, state=None, chain=None, locs=None) -> pl.Path:
@@ -227,7 +227,7 @@ class DootNonKey(str, DootKey):
                 raise TypeError("Uknown DootKey target for within", other)
 
     @property
-    def indirect(self):
+    def indirect(self) -> DootKey:
         if not self.is_indirect:
             return DootSimpleKey("{}_".format(super().__str__()))
         return self
@@ -306,14 +306,32 @@ class DootSimpleKey(str, DootKey):
         """
         if not spec:
             return self
-        if self.indirect in spec.kwargs:
-            return DootKey.make(spec.kwargs[self.indirect])
-        if self.is_indirect and self in spec.kwargs:
-            return DootKey.make(spec.kwargs[self])
-        if chain:
-            return chain
+
+        match spec.kwargs.get(self.indirect, self):
+            case str() as x if x == self.indirect:
+                return self
+            case str() as x:
+                return DootKey.make(x)
+            case list() as lst:
+                raise TypeError("Key Redirectio resulted in a list, use redirect_multi", self)
+            case _ if chain:
+                return chain
 
         return self
+
+    def redirect_multi(self, spec=None) -> list[DootKey]:
+        if not spec:
+            return [self]
+
+        match spec.kwargs.get(self.indirect, self):
+            case str() as x if x == self:
+                return [self]
+            case str() as x:
+                return [DootKey.make(x)]
+            case list() as lst:
+                return [DootKey.make(x) for x in lst]
+
+        return [self]
 
     def to_type(self, spec, state, type_=Any, chain:DootKey=None) -> Any:
         target            = self.redirect(spec)

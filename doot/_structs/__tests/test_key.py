@@ -130,6 +130,23 @@ class TestSimpleKey:
         assert(result == "blah")
 
     @pytest.mark.parametrize("name", KEY_BASES)
+    def test_redirect_to_list_fail(self, mocker, name):
+        obj           = dkey.DootSimpleKey(name)
+        spec          = mocker.Mock(kwargs={f"{name}_": ["blah", "bloo"]}, spec=DootActionSpec)
+        assert(obj.indirect in spec.kwargs)
+        with pytest.raises(TypeError):
+            result        = obj.redirect(spec)
+
+    @pytest.mark.parametrize("name", KEY_BASES)
+    def test_(self, mocker, name):
+        obj           = dkey.DootSimpleKey(name)
+        spec          = mocker.Mock(kwargs={f"{name}_": ["blah", "bloo"]}, spec=DootActionSpec)
+        assert(obj.indirect in spec.kwargs)
+        result        = obj.redirect_multi(spec)
+        assert(isinstance(result, list))
+        assert(all((isinstance(x, DootKey) for x in result)))
+
+    @pytest.mark.parametrize("name", KEY_BASES)
     def test_expand_from_spec(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
         spec          = mocker.Mock(kwargs={f"{obj}": "blah"}, spec=DootActionSpec)
