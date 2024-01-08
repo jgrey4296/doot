@@ -61,7 +61,7 @@ class _DootPostBox:
         """
         utility to add to a postbox using the state, instead of calculating the root yourself
         """
-        _DootPostBox.boxes[state['_task_name'].root()].append(val)
+        _DootPostBox.boxes[TASK_NAME.to_type(None, state).root()].append(val)
 
     @staticmethod
     def get(key) -> list:
@@ -84,7 +84,7 @@ class PutPostAction(Action_p):
                 case []:
                     pass
                 case _:
-                    _DootPostBox.put(task_state['_task_name'].root(), data)
+                    _DootPostBox.put(TASK_NAME.to_type(spec, task_state).root(), data)
 
 @doot.check_protocol
 class GetPostAction(Action_p):
@@ -95,7 +95,7 @@ class GetPostAction(Action_p):
     _toml_kwargs = [FROM_KEY, UPDATE]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        from_task = FROM_KEY.to_type(spec, task_state, type_=str|None) or task_state[TASK_NAME].root()
+        from_task = FROM_KEY.to_type(spec, task_state, type_=str|None) or TASK_NAME.to_type(spec, task-state).root()
         data_key  = UPDATE.redirect(spec)
         return { data_key : _DootPostBox.get(from_task) }
 
@@ -108,7 +108,7 @@ class SummarizePostAction(Action_p):
     _toml_kwargs = [FROM_KEY, "full"]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        from_task = FROM_KEY.to_type(spec, task_state, type_=str|None) or task_state[TASK_NAME].root()
+        from_task = FROM_KEY.to_type(spec, task_state, type_=str|None) or TASK_NAME.to_type(spec, task_state).root()
         data   = _DootPostBox.get(from_task)
         if spec.kwargs.on_fail(False, bool).full():
             for x in data:

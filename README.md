@@ -104,7 +104,7 @@ The defaults for indirect keys are for typical chaining, like initing a bibtex d
 Action standard kwargs:
 from_   : the spec/state key to get primary data from
 update_ : the state key to update with data from this action
-_from    : a path to read from  (as "from" is a reserved word in python)
+from    : a path to read from  (as "from" is a reserved word in python)
 to      : a path to write to
 
 ### Task Dependencies

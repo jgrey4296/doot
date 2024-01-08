@@ -64,12 +64,12 @@ class AppendAction(Action_p):
     _toml_kwargs = [SEP, TO_KEY, "args"]
 
     def __call__(self, spec, state):
-        sep     = SEP.to_type(spec, task_state, type_=str|None) or AppendAction.sep
+        sep     = SEP.to_type(spec, state, type_=str|None) or AppendAction.sep
         loc     = TO_KEY.to_path(spec, state)
-        args    = [DootKey.make(x, strict=False).expand(spec, state) for x in spec.args]
+        args    = [DootKey.make(x).expand(spec, state) for x in spec.args]
         with open(loc, 'a') as f:
             for arg in args:
-                printer.info("Appending %s chars to %s", len(value), loc)
+                printer.info("Appending %s chars to %s", len(arg), loc)
                 f.write(sep)
                 f.write(arg)
 
