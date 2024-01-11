@@ -229,7 +229,7 @@ class WalkerMixin(SubMixin):
         stub['exts'].set(type="list[str]",          default=[],      priority=80)
         stub['roots'].set(type="list[str|pl.Path]", default=['"."'], priority=80, comment="Places the Walker will start")
         stub['recursive'].set(type="bool",          default=False,   priority=80)
-        stub['filter_fn'].set(type="callable",      prefix="# ",     priority=81)
+        stub['filter_fn'].set(type="callable",      prefix="# ",     priority=81, comment="callable[[pl.Path], bool|_WalkControl]")
 
 
 

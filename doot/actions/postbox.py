@@ -79,7 +79,7 @@ class PutPostAction(Action_p):
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
         target = TASK_NAME.to_type(spec, task_state).root()
         for arg in spec.args:
-            data = DootKey.make(arg, explicit=True).to_type(spec, task_state)
+            data = DootKey.make(arg).to_type(spec, task_state)
             match data:
                 case None:
                     pass

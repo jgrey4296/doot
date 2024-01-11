@@ -142,13 +142,13 @@ class DootKey(abc.ABC):
                 return DootMultiKey(path)
             case str() if not (s_keys := PATTERN.findall(s)) and not explicit:
                 return DootSimpleKey(s)
+            case str() if not s_keys and not explicit:
+                return DootNonKey(s)
             case str() if len(s_keys) == 1 and s_keys[0] == s[1:-1]:
                 # This means the is numeric check runs on the chopped key
                 return DootKey.make(s[1:-1])
-            case str() if not explicit:
-                return DootMultiKey(s)
             case str():
-                return DootNonKey(s)
+                return DootMultiKey(s)
             case pl.Path():
                 return None
             case _:
@@ -162,8 +162,7 @@ class DootKey(abc.ABC):
     def is_indirect(self) -> bool:
         return False
 
-    @property
-    def redirect(self, spec) -> DootKey:
+    def redirect(self, spec=None) -> DootKey:
         return self
 
     def to_path(self, spec=None, state=None, chain:list[DootKey]=None, locs:DootLocations=None, on_fail:None|str|pl.Path|DootKey=Any) -> pl.Path:
@@ -171,7 +170,7 @@ class DootKey(abc.ABC):
           Convert a key to an absolute path
         """
         locs                 = locs or doot.locs
-        key                  = pl.Path(self.form)
+        key                  = pl.Path(self.redirect(spec).form)
 
         try:
             expanded             = [DootFormatter.fmt(x, _spec=spec, _state=state, _rec=True) for x in key.parts]
@@ -264,7 +263,7 @@ class DootNonKey(str, DootKey):
 
     def to_type(self, spec, state, type_=Any, chain:list[DootKey]=None, on_fail=Any) -> Any:
         if type_ != Any or type_ != str:
-            raise TypeError("NonKey's can only be strings")
+            raise TypeError("NonKey's can only be strings", self)
         return str(self)
 
 class DootSimpleKey(str, DootKey):

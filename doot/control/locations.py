@@ -75,7 +75,7 @@ class DootLocations:
           Get a location using item access for extending a stored path.
           eg: locs["{temp}/imgs/blah.jpg"]
         """
-        match DootKey.make(val, strict=False, explicit=True):
+        match DootKey.make(val, explicit=True):
             case None:
                 return self.expand(self.get(val))
             case DootNonKey() as key:
