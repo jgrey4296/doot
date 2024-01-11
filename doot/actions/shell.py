@@ -17,7 +17,7 @@ from doot._abstract import Action_p
 from doot.actions.base_action import DootBaseAction
 from doot.structs import DootKey
 
-
+BACKGROUND = DootKey.make("background")
 
 @doot.check_protocol
 class DootShellAction(Action_p):
@@ -27,15 +27,14 @@ class DootShellAction(Action_p):
 
     The arguments of the action are held in spec
 
-
     TODO : handle shell output redirection, and error code ignoring (use action spec dict)
     """
-    _toml_kwargs = ["background"]
+    _toml_kwargs = [BACKGROUND]
 
     def __call__(self, spec, state:dict) -> dict|bool|None:
         result = None
         try:
-            cmd      = getattr(sh, spec.args[0])
+            cmd      = getattr(sh, DootKey.make(spec.args[0], explicit=True).expand(spec, state))
             args     = spec.args[1:]
             keys     = [DootKey.make(x, explicit=True) for x in args]
             expanded = [x.expand(spec, state) for x in keys]
@@ -57,7 +56,6 @@ class DootShellAction(Action_p):
                 printer.error("%s", err.stderr.decode())
 
             return False
-
 
 @doot.check_protocol
 class DootInteractiveAction(Action_p):
@@ -89,7 +87,6 @@ class DootInteractiveAction(Action_p):
         except sh.ErrorReturnCode:
             printer.error("Shell Command '%s' exited with code: %s for args: %s", spec[0], result.exit_code, spec.args)
             return False
-
 
     def interact(self, char, stdin):
         # TODO possibly add a custom interupt handler

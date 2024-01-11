@@ -45,10 +45,12 @@ FROM_KEY           : Final[DootKey] = DootKey.make("from")
 UPDATE             : Final[DootKey] = DootKey.make("update_")
 PROMPT             : Final[DootKey] = DootKey.make("prompt")
 PATTERN            : Final[DootKey] = DootKey.make("pattern")
-SEP                : Final[DootKey] = DootKey.make("pattern")
+SEP                : Final[DootKey] = DootKey.make("sep")
 TYPE_KEY           : Final[DootKey] = DootKey.make("type")
 AS_BYTES           : Final[DootKey] = DootKey.make("as_bytes")
 FILE_TARGET        : Final[DootKey] = DootKey.make("file")
+RECURSIVE          : Final[DootKey] = DootKey.make("recursive")
+LAX                : Final[DootKey] = DootKey.make("lax")
 ##-- end expansion keys
 
 COMP_TAR_CMD  = sh.tar.bake("-cf", "-")
@@ -66,7 +68,7 @@ class AppendAction(Action_p):
     def __call__(self, spec, state):
         sep     = SEP.to_type(spec, state, type_=str|None) or AppendAction.sep
         loc     = TO_KEY.to_path(spec, state)
-        args    = [DootKey.make(x).expand(spec, state) for x in spec.args]
+        args    = [DootKey.make(x, explicit=True).expand(spec, state) for x in spec.args]
         with open(loc, 'a') as f:
             for arg in args:
                 printer.info("Appending %s chars to %s", len(arg), loc)
@@ -101,24 +103,24 @@ class ReadAction(Action_p):
     _toml_kwargs = [FROM_KEY, UPDATE, TYPE_KEY, AS_BYTES],
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        data_key   = UPDATE.redirect(spec)
-        loc        = FROM_KEY.to_path(spec, task_state)
-        read_type  = "rb" if spec.kwargs.on_fail(False)[AS_BYTES]() else "r"
+        data_key    = UPDATE.redirect(spec)
+        loc         = FROM_KEY.to_path(spec, task_state)
+        read_binary = AS_BYTES.to_type(spec, task_state, on_fail=False)
+        read_lines  = TYPE_KEY.to_type(spec, task_state, type_=str, on_fail="read")
 
         printer.info("Reading from %s into %s", loc, data_key)
-        match read_type:
-            case "r":
-                with open(loc, "r") as f:
-                    match spec.kwargs.on_fail("read")[TYPE_KEY]():
-                        case "read":
-                            return { data_key : f.read() }
-                        case "lines":
-                            return { data_key : f.readlines() }
-                        case unk:
-                            raise TypeError("Unknown read type", unk)
-            case "rb":
-                with open(loc, "rb") as f:
+        if read_binary:
+            with open(loc, "rb") as f:
+                return { data_key : f.read() }
+
+        with open(loc, "r") as f:
+            match read_lines:
+                case "read":
                     return { data_key : f.read() }
+                case "lines":
+                    return { data_key : f.readlines() }
+                case unk:
+                    raise TypeError("Unknown read type", unk)
 
 
 @doot.check_protocol
@@ -155,15 +157,18 @@ class DeleteAction(Action_p):
     """
       delete a file / directory specified in spec.args
     """
-    _toml_kwargs = ["recursive", "lax", "args"]
-    def __call__(self, spec, task):
+    _toml_kwargs = [RECURSIVE, "lax", "args"]
+
+    def __call__(self, spec, state):
+        rec = RECURSIVE.to_type(spec, state, type_=bool, on_fail=False)
+        lax = LAX.to_type(spec, state, type_=bool, on_fail=False)
         for arg in spec.args:
-            loc = DootKey.make(arg, strict=False).to_path(spec,task)
+            loc = DootKey.make(arg, explicit=True).to_path(spec, state)
             printer.info("Deleting %s", loc)
-            if loc.is_dir() and spec.kwargs.on_fail(False).recursive():
+            if loc.is_dir() and rec:
                 shutil.rmtree(loc)
             else:
-                loc.unlink(missing_ok=spec.kwargs.on_fail(False).lax())
+                loc.unlink(missing_ok=lax)
 
 
 @doot.check_protocol
@@ -196,7 +201,7 @@ class EnsureDirectory(Action_p):
 
     def __call__(self, spec, task_state:dict):
         for arg in spec.args:
-            loc = DootKey.make(arg).to_path(spec, task_state)
+            loc = DootKey.make(arg, explicit=True).to_path(spec, task_state)
             printer.info("Building Directory: %s", loc)
             loc.mkdir(parents=True, exist_ok=True)
 
@@ -221,7 +226,7 @@ class UserInput(Action_p):
     _toml_kwargs = [UPDATE, PROMPT]
 
     def __call__(self, spec, state):
-        prompt = PROMPT.to_type(spec, state, type_=str|None) or "?::- "
+        prompt = PROMPT.to_type(spec, state, type_=str, on_fail="?::- ")
         target = UPDATE.redirect(spec)
         result = input(prompt)
         return { target : result }
@@ -257,13 +262,11 @@ class TouchFileAction(Action_p):
 @doot.check_protocol
 class CompressAction(Action_p):
     """ Compresses a target into a .tar.gz file """
+    _toml_kwargs = [FILE_TARGET, TO_KEY]
 
     def __call__(self, spec, state):
         target = FILE_TARGET.to_path(spec, state)
-        try:
-            output = TO_KEY.to_path(spec, state)
-        except doot.errors.DootLocationError:
-            output = target.with_suffix(target.suffix + ".tar.gz")
+        output = TO_KEY.to_path(spec, state, on_fail=target.with_suffix(target.suffix + ".tar.gz"))
 
         if target.is_dir():
             COMP_GZIP_CMD(_in=COMP_TAR_CMD("-C", target, ".", _piped=True), _out=output)
@@ -273,14 +276,13 @@ class CompressAction(Action_p):
 @doot.check_protocol
 class DecompressAction(Action_p):
     """ Decompresses a .tar.gz file """
+    _toml_kwargs = [FILE_TARGET, TO_KEY]
 
     def __call__(self, spec, state):
         target = FILE_TARGET.to_path(spec, state)
         if not ".tar.gz" in target.name:
+            printer.warning("Decompression target isn't a .tar.gz", target)
             return ActionResponseEnum.FAIL
-        try:
-            output = TO_KEY.to_path(spec, state)
-        except doot.errors.DootLocationError:
-            output = pl.Path()
 
+        output = TO_KEY.to_path(spec, state, on_fail=pl.Path())
         DECOMP_CMD(target, "-C", output)

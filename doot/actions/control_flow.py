@@ -57,25 +57,25 @@ class CancelOnPredicateAction(Action_p):
       return its result for the task runner to handle
 
     """
-    _toml_kwargs = ["<Any>"]
-    inState      = ["pred"]
-
-    def __str__(self):
-        return f"Cancel On Predicate Action: {self.spec.args}"
+    _toml_kwargs = [PRED]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        predicate = DootCodeReference.from_str(PRED.expand(spec, state)).try_import()
+        val       = PRED.expand(spec, state)
+        ref       = DootCodeReference.from_str(val)
+        predicate = ref.try_import()
         return predicate(spec,task_state)
 
 @doot.check_protocol
 class SkipIfFileExists(Action_p):
 
+    _toml_kwargs = ["args"]
+
     def __call__(self, spec, state:dict) -> dict|bool|None:
         for arg in spec.args:
-            key = DootKey.make(arg)
-            path = key.to_path(spec, state)
-            if path.exists():
-                printer.info("Target Exists: %s", target)
+            key = DootKey.make(arg, explicit=True)
+            path = key.to_path(spec, state, on_fail=None)
+            if path and path.exists():
+                printer.info("Target Exists: %s", path)
                 return ActRE.SKIP
 
 @doot.check_protocol
@@ -92,7 +92,6 @@ class LogAction(Action_p):
 @doot.check_protocol
 class StalenessCheck(Action_p):
     _toml_kwargs = [OLD, NEW]
-    inState      = ["old", "new"]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
         old_loc = OLD.to_path(spec, task_state)
@@ -106,7 +105,8 @@ class AssertInstalled:
     """
     Easily check a program can be found and used
     """
-    _toml_kwargs = ["prog", "version"]
+    _toml_kwargs = []
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
+        raise NotImplementedError()
         return ActRE.FAIL

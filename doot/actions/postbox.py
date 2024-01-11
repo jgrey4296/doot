@@ -74,17 +74,19 @@ class PutPostAction(Action_p):
       push data to the inter-task postbox of this task tree
       The arguments of the action are held in self.spec
     """
+    _toml_kwargs = ["args"]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
+        target = TASK_NAME.to_type(spec, task_state).root()
         for arg in spec.args:
-            data = DootKey.make(arg).to_type(spec, task_state)
+            data = DootKey.make(arg, explicit=True).to_type(spec, task_state)
             match data:
                 case None:
                     pass
                 case []:
                     pass
                 case _:
-                    _DootPostBox.put(TASK_NAME.to_type(spec, task_state).root(), data)
+                    _DootPostBox.put(target, data)
 
 @doot.check_protocol
 class GetPostAction(Action_p):
@@ -95,7 +97,7 @@ class GetPostAction(Action_p):
     _toml_kwargs = [FROM_KEY, UPDATE]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        from_task = FROM_KEY.to_type(spec, task_state, type_=str|None) or TASK_NAME.to_type(spec, task-state).root()
+        from_task = FROM_KEY.to_type(spec, task_state, type_=str|None) or TASK_NAME.to_type(spec, task_state).root()
         data_key  = UPDATE.redirect(spec)
         return { data_key : _DootPostBox.get(from_task) }
 
