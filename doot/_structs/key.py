@@ -55,13 +55,14 @@ class DootFormatter(string.Formatter):
     """
     _fmt = None
 
-    def fmt() -> DootFormatter:
+    @staticmethod
+    def fmt(fmt:str|DootKey|pl.Path, /, *args, **kwargs) -> str:
         if not DootFormatter._fmt:
             DootFormatter._fmt = DootFormatter()
 
-        return DootFormatter._fmt
+        return DootFormatter._fmt.format(fmt, *args, **kwargs)
 
-    def format(self, fmt:str|DootKey|pl.Path, /, *args, _as_path=False, **kwargs) -> str:
+    def format(self, fmt:str|DootKey|pl.Path, /, *args, **kwargs) -> str:
         self._depth = 0
         match kwargs.get("_spec", None):
             case None:
@@ -92,7 +93,11 @@ class DootFormatter(string.Formatter):
         spec              = kwargs.get('_spec')
         state             = kwargs.get('_state', None) or {}
         cli               = doot.args.on_fail({}).tasks[str(state.get('_task_name', None))]()
+        locs              = kwargs.get("_locs", doot.locs)
         replacement       = cli.get(key, None) or state.get(key, None) or spec.get(key, None)
+        if replacement is None and locs is not None:
+            replacement = locs.get(key, None)
+
         match replacement:
             case None:
                 return DootKey.make(key).form
@@ -158,10 +163,10 @@ class DootKey(abc.ABC):
         return False
 
     @property
-    def redirect(self, spec, chain=None) -> DootKey:
+    def redirect(self, spec) -> DootKey:
         return self
 
-    def to_path(self, spec=None, state=None, chain=None, locs=None) -> pl.Path:
+    def to_path(self, spec=None, state=None, chain:list[DootKey]=None, locs:DootLocations=None, on_fail:None|str|pl.Path|DootKey=Any) -> pl.Path:
         """
           Convert a key to an absolute path
         """
@@ -169,7 +174,7 @@ class DootKey(abc.ABC):
         key                  = pl.Path(self.form)
 
         try:
-            expanded             = [DootFormatter.fmt().format(x, _spec=spec, _state=state, _rec=True) for x in key.parts]
+            expanded             = [DootFormatter.fmt(x, _spec=spec, _state=state, _rec=True) for x in key.parts]
             expanded_as_path     = pl.Path().joinpath(*expanded)
             depth = 0
             while PATTERN.search(str(expanded_as_path)) and depth < MAX_KEY_EXPANSIONS:
@@ -184,19 +189,29 @@ class DootKey(abc.ABC):
             return locs.expand(expanded_as_path)
 
         except doot.errors.DootLocationExpansionError as err:
-            if chain is None:
-                raise err
-            return chain.to_path(spec, state)
+            if bool(chain):
+                return chain[0].to_path(spec, state, chain=chain[1:], on_fail=on_fail)
+            match on_fail:
+                case None:
+                    return None
+                case DootKey():
+                    return on_fail.to_path(spec, state)
+                case pl.Path():
+                    return locs.expand(on_fail)
+                case str():
+                    return locs.expand(pl.Path(on_fail))
+                case _:
+                    raise err
 
     def within(self, other:str|dict|TomlGuard) -> bool:
         return False
 
     @abc.abstractmethod
-    def to_type(self, spec, state, type_=Any, chain:DootKey=None) -> Any:
+    def to_type(self, spec, state, type_=Any, chain:list[DootKey]=None, on_fail=Any) -> Any:
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def expand(self, spec=None, state=None, *, rec=False) -> str:
+    def expand(self, spec=None, state=None, *, rec=False, chain:list[DootKey]=None, on_fail=Any, locs:DootLocations=None) -> str:
         pass
 
 class DootNonKey(str, DootKey):
@@ -241,13 +256,13 @@ class DootNonKey(str, DootKey):
         """ Return the key in its use form """
         return str(self)
 
-    def expand(self, spec=None, state=None, *, rec=False) -> str:
+    def expand(self, spec=None, state=None, *, rec=False, chain:list[DootKey]=None, on_fail=Any, locs:DootLocations=None) -> str:
         return str(self)
 
-    def redirect(self, spec=None, chain=None) -> DootKey:
+    def redirect(self, spec=None) -> DootKey:
         return self
 
-    def to_type(self, spec, state, type_=Any, chain:DootKey=None) -> Any:
+    def to_type(self, spec, state, type_=Any, chain:list[DootKey]=None, on_fail=Any) -> Any:
         if type_ != Any or type_ != str:
             raise TypeError("NonKey's can only be strings")
         return str(self)
@@ -271,15 +286,6 @@ class DootSimpleKey(str, DootKey):
             case _:
                 return False
 
-    def within(self, other:str|dict|TomlGuard) -> bool:
-        match other:
-            case str():
-                return self.form in other
-            case dict() | TomlGuard():
-                return self in other
-            case _:
-                raise TypeError("Uknown DootKey target for within", other)
-
     @property
     def indirect(self):
         if not self.is_indirect:
@@ -295,12 +301,29 @@ class DootSimpleKey(str, DootKey):
         """ Return the key in its use form """
         return "{{{}}}".format(str(self))
 
-    def expand(self, spec=None, state=None, *, rec=False) -> str:
-        key = self.redirect(spec)
-        fmt = DootFormatter()
-        return fmt.format(key, _spec=spec, _state=state, _rec=rec)
+    def within(self, other:str|dict|TomlGuard) -> bool:
+        match other:
+            case str():
+                return self.form in other
+            case dict() | TomlGuard():
+                return self in other
+            case _:
+                raise TypeError("Uknown DootKey target for within", other)
 
-    def redirect(self, spec=None, chain=None) -> DootKey:
+    def expand(self, spec=None, state=None, *, rec=False, chain:list[DootKey]=None, on_fail=Any, locs:DootLocations=None) -> str:
+        key = self.redirect(spec)
+        try:
+            return DootFormatter.fmt(key, _spec=spec, _state=state, _rec=rec, _locs=locs)
+        except TypeError as err:
+            if bool(chain):
+                return chain[0].expand(spec, state, rec=rec, chain=chain[1:], on_fail=on_fail)
+            elif on_fail != Any:
+                return on_fail
+            else:
+                raise err
+
+
+    def redirect(self, spec=None) -> DootKey:
         """
           If the indirect form of the key is found in the spec, use that instead
         """
@@ -314,8 +337,6 @@ class DootSimpleKey(str, DootKey):
                 return DootKey.make(x)
             case list() as lst:
                 raise TypeError("Key Redirectio resulted in a list, use redirect_multi", self)
-            case _ if chain:
-                return chain
 
         return self
 
@@ -333,7 +354,7 @@ class DootSimpleKey(str, DootKey):
 
         return [self]
 
-    def to_type(self, spec, state, type_=Any, chain:DootKey=None) -> Any:
+    def to_type(self, spec, state, type_=Any, chain:list[DootKey]=None, on_fail=Any) -> Any:
         target            = self.redirect(spec)
         kwargs            = spec.kwargs
         cli               = doot.args.on_fail({}).tasks[str(state.get('_task_name', None))]()
@@ -344,8 +365,12 @@ class DootSimpleKey(str, DootKey):
             replacement = kwargs.get(target, None)
 
         match replacement:
-            case None if chain:
-                return chain.to_type(spec, state, type_=type)
+            case None if bool(chain):
+                return chain[0].to_type(spec, state, type_=type_, chain=chain[1:], on_fail=on_fail)
+            case None if on_fail != Any and isinstance(on_fail, DootKey):
+                return on_fail.to_type(spec, state, type_=type_)
+            case None if on_fail != Any:
+                return on_fail
             case None if type_ is Any or type_ is None:
                 return None
             case _ if type_ is Any:
@@ -353,7 +378,7 @@ class DootSimpleKey(str, DootKey):
             case _ if type_ and isinstance(replacement, type_):
                 return replacement
             case _:
-                raise TypeError("Unexpected Type for replacement", type, replacement, self)
+                raise TypeError("Unexpected Type for replacement", type_, replacement, self)
 
 class DootMultiKey(DootKey):
     """ A string or path of multiple keys """
@@ -383,14 +408,21 @@ class DootMultiKey(DootKey):
         """ Return the key in its use form """
         return str(self)
 
-    def expand(self, spec=None, state=None, *, rec=False):
-        fmt = DootFormatter()
-        return fmt.format(self.value, _spec=spec, _state=state, _rec=rec)
+    def expand(self, spec=None, state=None, *, rec=False, chain:list[DootKey]=None, on_fail=Any):
+        try:
+            return DootFormatter.fmt(self.value, _spec=spec, _state=state, _rec=rec)
+        except TypeError as err:
+            if bool(chain):
+                return chain[0].expand(spec, state, rec=rec, chain=chain[1:], on_fail=on_fail)
+            elif on_fail != Any:
+                return on_fail
+            else:
+                raise err
 
     def within(self, other:str|dict|TomlGuard) -> bool:
         return str(self) in other
 
-    def to_type(self, spec, state, type_=Any, chain:DootKey=None) -> Any:
+    def to_type(self, spec, state, type_=Any, chain:list[DootKey]=None, on_fail=Any) -> Any:
         raise TypeError("Converting a MultiKey to a type doesn't make sense", self)
 
 class DootKeyChain(DootKey):

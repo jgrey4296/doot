@@ -213,6 +213,26 @@ class TestSimpleKey:
         assert(isinstance(result, type))
         assert(result == value)
 
+    @pytest.mark.parametrize("name", KEY_BASES)
+    @pytest.mark.parametrize("value,type", [([1,2,3], list)])
+    def test_to_type_on_fail(self, mocker, name, value, type):
+        obj           = dkey.DootSimpleKey(name)
+        spec          = mocker.Mock(kwargs={}, spec=DootActionSpec)
+        state         = {}
+        result        = obj.to_type(spec, state, on_fail="blah")
+        # assert(isinstance(result, type))
+        assert(result == "blah")
+
+    @pytest.mark.parametrize("name", KEY_BASES)
+    @pytest.mark.parametrize("value,type", [([1,2,3], list)])
+    def test_to_type_on_fail_nop(self, mocker, name, value, type):
+        obj           = dkey.DootSimpleKey(name)
+        spec          = mocker.Mock(kwargs={}, spec=DootActionSpec)
+        state         = {name : value}
+        result        = obj.to_type(spec, state, on_fail="blah")
+        # assert(isinstance(result, type))
+        assert(result == value)
+
     @pytest.mark.parametrize("key,target", [("blah", "./doot")])
     def test_to_path_expansion(self, mocker, key, target):
         mocker.patch.dict("doot.__dict__", locs=TEST_LOCS)
@@ -385,7 +405,6 @@ class TestStringExpansion:
         result = DootKey.make(key).expand(spec, state)
         assert(result == target)
 
-
     def test_pre_expand_wrap(self, spec):
         result = DootKey.make("z").expand(spec, {"x": "blah"})
         assert(result == "{bloo}")
@@ -411,6 +430,12 @@ class TestStringExpansion:
     def test_multi_to_str(self, spec):
         result = DootKey.make("{x}:{y}:{x}", strict=False).expand(spec, {"x": "blah", "y":"bloo"})
         assert(result == "blah:bloo:blah")
+
+
+    def test_path_as_str(self, spec, setup_locs):
+        key = DootKey.make("{p2}/{x}", strict=True)
+        result = key.expand(spec, {"x": "blah", "y":"bloo"})
+        assert(result.endswith("test2/sub/blah"))
 
     @pytest.mark.xfail
     def test_to_str_fail(self, spec):
@@ -481,12 +506,59 @@ class TestPathExpansion:
         with pytest.raises(doot.errors.DootLocationError):
             key.to_path(spec, {"x": "blah"})
 
+    def test_to_path_on_fail(self, spec):
+        key = DootKey.make("{q}", explicit=True)
+        result = key.to_path(spec, {"x": "blah"}, on_fail="qqqq")
+        assert(isinstance(result, pl.Path))
+        assert(result.name == "qqqq")
+
+    def test_to_path_on_fail_existing_loc(self, spec, setup_locs):
+        key = DootKey.make("{q}", explicit=True)
+        result = key.to_path(spec, {"x": "blah"}, on_fail=DootKey.make("p2"))
+        assert(isinstance(result, pl.Path))
+        assert(result.parent.name == "test2")
+        assert(result.name == "sub")
+
+    def test_to_path_nop(self, spec):
+        key = DootKey.make("{q}", explicit=True)
+        result = key.to_path(spec, {"x": "blah"}, on_fail="blah")
+        assert(result.name == "blah")
+
+    def test_chain(self, spec):
+        key = DootKey.make("{q}", explicit=True)
+        result = key.to_path(spec, {"x": "blah"}, chain=[DootKey.make("t"), DootKey.make("x")])
+        assert(isinstance(result, pl.Path))
+        assert(result.name == "blah")
+
+
+    def test_chain_nop(self, spec, setup_locs):
+        key = DootKey.make("{p1}", explicit=True)
+        result = key.to_path(spec, {"x": "blah"}, chain=[DootKey.make("t"), DootKey.make("x")])
+        assert(isinstance(result, pl.Path))
+        assert(result.name == "test1")
+
+
+    def test_chain_into_on_fail(self, spec, setup_locs):
+        key = DootKey.make("{nothing}", explicit=True)
+        result = key.to_path(spec, {"x": "blah"}, chain=[DootKey.make("t"), DootKey.make("aweg")], on_fail=DootKey.make("p2"))
+        assert(isinstance(result, pl.Path))
+        assert(result.name == "sub")
+
     def test_expansion_extra(self, spec, setup_locs):
         key = DootKey.make("{p1}/blah/{y}/{aweg}", strict=False)
         assert(isinstance(key, DootKey))
         state = {"aweg": "doot"}
         result  = key.to_path(spec, state)
         assert(result == pl.Path("test1/blah/aweg/doot").expanduser().resolve())
+
+
+    @pytest.mark.xfail
+    def test_expansion_redirect(self, spec, setup_locs):
+        key = DootKey.make("aweg_", strict=False)
+        assert(isinstance(key, DootKey))
+        state = {"aweg": "p2"}
+        result  = key.to_path(spec, state)
+        assert(result == pl.Path("test2/sub").expanduser().resolve())
 
     @pytest.mark.parametrize("key,target,state", [("complex", "blah/jiojo/test1", {"x": "blah", "z": "aweg", "bloo": "jiojo", "complex": "{x}/{bloo}/{p1}" })])
     def test_path_expansion_rec(self, spec, setup_locs, key, target,  state):
@@ -539,3 +611,22 @@ class TestTypeExpansion:
     def test_missing_key_any(self, spec):
         result = DootKey.make("{q}").to_type(spec, {"x": "blah"})
         assert(result == None)
+
+    def test_missing_key_to_on_fail(self, spec):
+        result = DootKey.make("{q}").to_type(spec, {"x": "blah"}, on_fail=2)
+        assert(result == 2)
+
+
+    def test_on_fail_nop(self, spec):
+        result = DootKey.make("{x}").to_type(spec, {"x": "blah"}, on_fail=2)
+        assert(result == "blah")
+
+
+    def test_chain(self, spec):
+        result = DootKey.make("{nothing}").to_type(spec, {"x": "blah"}, chain=[DootKey.make("also_no"), DootKey.make("x")])
+        assert(result == "blah")
+
+
+    def test_chain_into_on_fail(self, spec):
+        result = DootKey.make("{nothing}").to_type(spec, {"x": "blah"}, chain=[DootKey.make("also_no"), DootKey.make("xawegw")], on_fail=2)
+        assert(result == 2)
