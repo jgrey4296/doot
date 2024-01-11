@@ -143,7 +143,7 @@ class DootLocations:
             case _:
                 return self.root / expansion
 
-    def get(self, key:DootSimpleKey|str) -> pl.Path:
+    def get(self, key:DootSimpleKey|str, on_fail:None|str|pl.Path=Any) -> pl.Path:
         """
           convert a *simple* key of one value to a path.
           This pairs with DootKey.to_path, which does the heavy lifting of expansions
@@ -155,6 +155,10 @@ class DootLocations:
                 return pl.Path(key.form)
             case str() | DootSimpleKey() if key in self._data:
                 return self._data[key]
+            case _ if on_fail is None:
+                return None
+            case _ if on_fail != Any:
+                return self.get(on_fail)
             case DootSimpleKey():
                 return pl.Path(key.form)
             case _:
