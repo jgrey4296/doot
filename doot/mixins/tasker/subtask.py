@@ -42,6 +42,7 @@ class SubMixin:
     and use the builders `extra.task` value as its ctor if that exists.
     before calling `specialize_subtask` on the built spec
     """
+    _default_head_injections = []
 
     def __init__(self, spec):
         super().__init__(spec)

@@ -36,20 +36,23 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from collections import defaultdict
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.structs import DootActionSpec
+from doot.structs import DootActionSpec, DootTaskSpec
 from doot.mixins.tasker.subtask import SubMixin
 
 class MiniBuilderMixin(SubMixin):
     """ Instead of using sub_task and head_task references,
     use sub_actions and head_actions to build them.
+
     """
 
     def _build_subtask(self, n:int, uname, **kwargs) -> DootTaskSpec:
+        actions               = [DootActionSpec.from_data(x) for x in self.spec.extra.on_fail([], list).sub_actions()]
         task                  = super()._build_subtask(n, uname, **kwargs)
-        task.actions         += [DootActionSpec.from_data(x) for x in self.spec.extra.on_fail([], list).sub_actions()]
+        task.actions         += actions
         task.print_levels     = self.spec.print_levels
         return task
 
@@ -71,3 +74,43 @@ class MiniBuilderMixin(SubMixin):
 
         stub['sub_actions'].set(type="list[dict]",   default=[])
         stub['head_actions'].set(type="list[dict]", default=[])
+
+
+
+class HeadOnlyTaskerMixin(SubMixin):
+    """
+      doesn't build subtasks, instead collects the specified 'head_inject' kwargs and passes them to the head task
+
+    """
+
+    def build(self, **kwargs) -> Generator:
+        inject_keys = self.spec.extra.on_fail([]).head_inject()
+        inject_dict = defaultdict(list, {x:[] for x in inject_keys})
+
+        sub_gen = self._sub_gen(self) if self._sub_gen is not None else self._build_subs()
+        for sub in sub_gen:
+            match self.specialize_subtask(sub):
+                case None:
+                    pass
+                case DootTaskSpec() as spec_sub:
+                    for x in inject_keys:
+                        inject_dict[x].append(spec_sub.extra[x])
+                case _:
+                    raise DootTaskError("Unrecognized subtask generated")
+
+        head = self._build_head(**inject_dict)
+
+        match head:
+            case DootTaskSpec(doc=[]):
+                head.doc = self.doc
+            case DootTaskSpec():
+                pass
+            case _:
+                raise DootTaskError("Failed to build the head task: %s", self.name)
+
+        yield self.specialize_task(head)
+
+
+    @classmethod
+    def stub_class(cls, stub):
+        stub['head_inject'].set(type="list[str]", default=[])
