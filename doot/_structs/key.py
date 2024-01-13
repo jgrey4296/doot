@@ -353,14 +353,19 @@ class DootSimpleKey(str, DootKey):
 
         return [self]
 
-    def to_type(self, spec, state, type_=Any, chain:list[DootKey]=None, on_fail=Any) -> Any:
+    def to_type(self, spec=None, state=None, type_=Any, chain:list[DootKey]=None, on_fail=Any) -> Any:
         target            = self.redirect(spec)
-        kwargs            = spec.kwargs
-        cli               = doot.args.on_fail({}).tasks[str(state.get('_task_name', None))]()
+        kwargs            = spec.kwargs if spec else {}
+        task_name         = state.get("_task_name", None) if state else None
+        if task_name:
+            cli           = doot.args.on_fail({}).tasks[str(state.get('_task_name', None))]()
+        else:
+            cli           = {}
+
         replacement       = cli.get(target, None)
-        if replacement is None:
+        if replacement is None and state:
             replacement = state.get(target, None)
-        if replacement is None:
+        if replacement is None and kwargs:
             replacement = kwargs.get(target, None)
 
         match replacement:

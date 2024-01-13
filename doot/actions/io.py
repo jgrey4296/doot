@@ -223,7 +223,8 @@ class EnsureDirectory(Action_p):
     def __call__(self, spec, task_state:dict):
         for arg in spec.args:
             loc = DootKey.make(arg, explicit=True).to_path(spec, task_state)
-            printer.info("Building Directory: %s", loc)
+            if not loc.exists():
+                printer.info("Building Directory: %s", loc)
             loc.mkdir(parents=True, exist_ok=True)
 
 
