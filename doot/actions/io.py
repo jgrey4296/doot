@@ -153,6 +153,27 @@ class CopyAction(Action_p):
             shutil.copy2(arg, dest_loc)
 
 @doot.check_protocol
+class MoveAction(Action_p):
+    """
+      move a file somewhere
+      The arguments of the action are held in self.spec
+    """
+    _toml_kwargs = [FROM_KEY, TO_KEY]
+
+    def __call__(self, spec, task_state:dict) -> dict|bool|None:
+        dest_loc   = TO_KEY.to_path(spec, task_state)
+        source     = FROM_KEY.to_path(spec, task_state)
+
+        if not source.exists():
+            raise doot.errors.DootActionError("Tried to move a file that doesn't exist", source)
+        if dest_loc.exists():
+            raise doot.errors.DootActionError("Tried to move a file that already exists at the destination", dest_loc)
+        if source.is_dir():
+            raise doot.errors.DootActionError("Tried to move multiple files to a non-directory", source)
+
+        source.rename(dest_loc)
+
+@doot.check_protocol
 class DeleteAction(Action_p):
     """
       delete a file / directory specified in spec.args

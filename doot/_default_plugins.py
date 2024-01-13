@@ -73,6 +73,7 @@ DEFAULT_PLUGINS['action']      = [("basic"  ,    "doot.actions.base_action:DootB
                                   ("read"  ,     "doot.actions.io:ReadAction"),
                                   ("readJson",   "doot.actions.io:ReadJson"),
                                   ("copy"  ,     "doot.actions.io:CopyAction"),
+                                  ("move",       "doot.actions.io:MoveAction"),
                                   ("backup!",    "doot.actions.io:BackupAction"),
                                   ("write!" ,    "doot.actions.io:WriteAction"),
                                   ("dir!",       "doot.actions.io:EnsureDirectory"),
@@ -106,4 +107,5 @@ DEFAULT_PLUGINS['mixins']      = [("walker", "doot.mixins.tasker.walker:WalkerMi
                                   ("subs",   "doot.mixins.tasker.subtask:SubMixin"),
                                   ("terse",  "doot.mixins.tasker.mini_builder:MiniBuilderMixin"),
                                   ("zip",    "doot.mixins.task.zipper:ZipperMixin"),
+                                  ("headonly", "doot.mixins.tasker.mini_builder:HeadOnlyTaskerMixin"),
                                   ]
