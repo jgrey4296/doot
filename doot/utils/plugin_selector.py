@@ -73,10 +73,3 @@ def plugin_selector(plugins:TomlGuard, *, target="default", fallback=None) -> ty
             matching = [x for x in loaders if x.name == target]
             if bool(matching):
                 return matching[0].load()
-
-
-
-"""
-
-
-"""

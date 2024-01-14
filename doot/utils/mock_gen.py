@@ -41,7 +41,7 @@ from unittest.mock import PropertyMock, MagicMock, create_autospec
 from importlib.metadata import EntryPoint
 import tomlguard
 from doot import structs
-from doot._abstract import Task_i, Job_i, TaskBase_i, Command_i
+from doot._abstract import Task_i, Job_i, TaskBase_i, Command_i, TaskTracker_i, TaskRunner_i
 
 def _add_prop(m, name, val):
     setattr(type(m), name, PropertyMock(return_value=val))
@@ -79,9 +79,12 @@ def mock_job(name, pre=None, post=None, spec=None, **kwargs):
     return task_m
 
 def mock_task_spec(name="mockSpec", pre=None, post=None, action_count=1, extra=None,  **kwargs):
+    extra = extra or {}
+    if "sleep" not in extra:
+        extra['sleep'] = 0.1
     spec_m = MagicMock(structs.DootTaskSpec(name=name),
                        actions=mock_action_specs(num=action_count),
-                       extra=tomlguard.TomlGuard(extra or {}),
+                       extra=tomlguard.TomlGuard(extra),
                        priority=10,
                        queue_behaviour="default",
                        depends_on=pre or [],
@@ -141,3 +144,16 @@ def mock_param_spec(name, val, type=Any):
     m = MagicMock(spec=structs.DootParamSpec(name, type), default=val, positional=False, prefix="-")
 
     return m
+
+
+def mock_tracker(tasks):
+    tracker_m        = MagicMock(spec=TaskTracker_i)
+    local_tasks      = tasks[:]
+    def simple_pop():
+        if bool(local_tasks):
+            return local_tasks.pop()
+        return None
+
+    tracker_m.next_for = simple_pop
+    tracker_m.__bool__ = lambda x: bool(local_tasks)
+    return tracker_m

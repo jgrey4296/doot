@@ -85,11 +85,14 @@ class DootTracker(TaskTracker_i):
 
         self.task_graph.add_node(ROOT, state=self.state_e.WAIT)
 
+    def __bool__(self):
+        return bool(self.active_set)
+
     def __len__(self):
         return len(self.tasks)
 
     def __iter__(self) -> Generator[Any,Any,Any]:
-        while bool(self.active_set):
+        while bool(self):
             logging.info("Tracker Queue: %s", self.active_set)
             yield self.next_for()
 

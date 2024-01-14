@@ -3,6 +3,7 @@
 notify                   = { say-on-exit = false }
 loaders                  = { commands="default", task="default", parser="default"}
 location_check           = { make_missing = true, print_levels={action="WARN", execute="WARN" } }
+max_steps                = 100_000
 
 [settings.tasks]
 sources = [".tasks"] # Files or directories where task specs can be loaded from, expanded according to [[locations]] keys

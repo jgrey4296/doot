@@ -54,6 +54,10 @@ class TaskTracker_i:
         self.policy = policy
 
     @abstractmethod
+    def __bool__(self) -> bool:
+        raise NotImplementedError()
+
+    @abstractmethod
     def __len__(self) -> int:
         raise NotImplementedError()
 
@@ -94,13 +98,9 @@ class TaskRunner_i:
     Run tasks, actions, and jobs
     """
 
+    @abstractmethod
     def __init__(self, *, tracker:TaskTracker_i, reporter:Reporter_i, policy:FailPolicy_p|None=None):
-        self.tracker        = tracker
-        self.reporter       = reporter
-        self.teardown_list  = []                     # list of tasks to teardown
-        self.final_result   = TaskStateEnum.SUCCESS  # until something fails
-        self._stop_running  = False
-        self.policy         = policy
+        pass
 
     @abstractmethod
     def __call__(self, *tasks:str) -> bool:
