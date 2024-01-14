@@ -56,7 +56,6 @@ class DootDateTracker(DootTracker):
     def __init__(self, shadowing:bool=False, *, policy=None):
         super().__init__(shadowing=shadowing, policy=policy)
         self._modification_db = None
-        pass
 
     def write(self, target:pl.Path) -> None:
         """ Write the dependency graph to a file """
@@ -73,17 +72,14 @@ class DootDateTracker(DootTracker):
         match state:
             case self.state_e.EXISTS:
                 task_date  = self._modification_db.set(str(task), now)
-                self._invalidate_descendants(task)
+                self._invalidate_descendents(task)
                 pass
             case self.state_e.FAILED:
-                self._invalidate_descendants(task)
+                self._invalidate_descendents(task)
                 pass
             case self.state_e.SUCCESS:
                 pass
 
-    def _invalidate_descendants, task):
-        incomplete, descendants = self._task_dependants(task)
-        pass
-
-    def _task_dependants(self, task) -> tuple[list[str], list[str]]:
+    def _invalidate_descendents(task):
+        incomplete, descendants = self._task_dependents(task)
         pass

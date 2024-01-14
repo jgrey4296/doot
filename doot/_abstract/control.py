@@ -49,10 +49,6 @@ class TaskTracker_i:
     """
     state_e : TypeAlias = TaskStateEnum
 
-    def __init__(self, *, policy:FailPolicy_p|None=None):
-        self.tasks : dict[str, TaskBase_i]  = {}
-        self.policy = policy
-
     @abstractmethod
     def __bool__(self) -> bool:
         raise NotImplementedError()
