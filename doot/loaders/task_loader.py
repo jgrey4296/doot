@@ -41,7 +41,7 @@ import doot
 import doot.errors
 from doot.structs import DootTaskSpec, DootTaskName, DootCodeReference
 from doot.constants import DEFAULT_TASK_GROUP, IMPORT_SEP
-from doot._abstract import TaskLoader_p, Tasker_i, Task_i, TaskBase_i
+from doot._abstract import TaskLoader_p, Job_i, Task_i, TaskBase_i
 
 TASK_STRING : Final[str]  = "task_"
 prefix_len  : Final[int]  = len(TASK_STRING)
@@ -60,7 +60,7 @@ class DootTaskLoader(TaskLoader_p):
     """
     load toml defined tasks, and create doot.structs.DootTaskSpecs of them
     """
-    taskers       : dict[str, tuple(dict, Tasker_i)] = {}
+    jobs       : dict[str, tuple(dict, Job_i)] = {}
     cmd_names     : set[str]                         = set()
     task_builders : dict[str,Any]                    = dict()
     extra : TomlGuard
@@ -68,10 +68,10 @@ class DootTaskLoader(TaskLoader_p):
     def setup(self, plugins, extra=None) -> Self:
         logging.debug("---- Registering Task Builders")
         self.cmd_names     = set(map(lambda x: x.name, plugins.get("command", [])))
-        self.taskers       = {}
+        self.jobs       = {}
         self.plugins       = plugins
         self.task_builders = {}
-        for plugin in tomlguard.TomlGuard(plugins).on_fail([]).tasker():
+        for plugin in tomlguard.TomlGuard(plugins).on_fail([]).job():
             if plugin.name in self.task_builders:
                 logging.warning("Conflicting Task Builder Type Name: %s: %s / %s",
                                 plugin.name,
@@ -98,7 +98,7 @@ class DootTaskLoader(TaskLoader_p):
         return self
 
 
-    def load(self) -> TomlGuard[tuple[dict, type[Task_i|Tasker_i]]]:
+    def load(self) -> TomlGuard[tuple[dict, type[Task_i|Job_i]]]:
         start_time = time.perf_counter()
         logging.debug("---- Loading Tasks")
         raw_specs : list[dict] = []
@@ -123,14 +123,14 @@ class DootTaskLoader(TaskLoader_p):
             raw_specs += self._load_specs_from_path(path)
 
         logging.debug("Loaded %s Task Specs", len(raw_specs))
-        if bool(self.taskers):
+        if bool(self.jobs):
             logging.warning("Task Loader is overwriting already loaded tasks")
-        self.taskers = self._build_task_specs(raw_specs, self.cmd_names)
+        self.jobs = self._build_task_specs(raw_specs, self.cmd_names)
 
-        logging.debug("Task List Size: %s", len(self.taskers))
-        logging.debug("Task List Names: %s", list(self.taskers.keys()))
+        logging.debug("Task List Size: %s", len(self.jobs))
+        logging.debug("Task List Names: %s", list(self.jobs.keys()))
         logging.debug("---- Tasks Loaded in %s seconds", f"{time.perf_counter() - start_time:0.4f}")
-        return tomlguard.TomlGuard(self.taskers)
+        return tomlguard.TomlGuard(self.jobs)
 
     def _load_raw_specs(self, data:dict, source:pl.Path|Literal['(extra)']) -> list[dict]:
         """ extract raw task descriptions from a toplevel tasks dict, with not format checking
@@ -203,8 +203,8 @@ class DootTaskLoader(TaskLoader_p):
                     case {"name": task_name, "group": group} if dont_allow_overloads(task_name, group): # complain on overload
                         raise doot.errors.DootTaskLoadError("Task Name Overloaded: %s : %s", task_name, group)
                     case {"name": task_name, "ctor": str() as task_alias} if task_alias in self.task_builders: # build named plugin type
-                        logging.info("Building Tasker from short name: %s : %s", task_name, task_alias)
-                        task_iden                   : DootCodeReference       = DootCodeReference.from_alias(task_alias, "tasker", self.plugins)
+                        logging.info("Building Job from short name: %s : %s", task_name, task_alias)
+                        task_iden                   : DootCodeReference       = DootCodeReference.from_alias(task_alias, "job", self.plugins)
                         task_iden_with_mixins       : DootCodeReference       = task_iden.add_mixins(*spec.get("mixins", []), plugins=self.plugins)
                         spec['ctor'] = task_iden_with_mixins
                         task_spec = DootTaskSpec.from_dict(spec)
@@ -214,7 +214,7 @@ class DootTaskLoader(TaskLoader_p):
                         task_spec.check(ensure=TaskBase_i)
                         task_descriptions[str(task_spec.name)] = task_spec
                     case {"name": task_name}:
-                        logging.info("Building Tasker: %s", task_name)
+                        logging.info("Building Job: %s", task_name)
                         task_spec = DootTaskSpec.from_dict(spec)
                         if str(task_spec.name) in task_descriptions:
                             logging.warning("Overloading Task: %s : %s", str(task_spec.name), str(task_spec.ctor))

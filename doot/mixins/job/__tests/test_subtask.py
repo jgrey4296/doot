@@ -17,14 +17,14 @@ logging = logmod.root
 import doot
 from doot.enums import TaskFlags
 from doot.structs import DootTaskSpec, TaskStub, DootCodeReference
-from doot.task.base_tasker import DootTasker
-from doot.mixins.tasker.subtask import SubMixin
+from doot.task.base_job import DootJob
+from doot.mixins.job.subtask import SubMixin
 import doot._abstract
 
-sub_ref   = DootCodeReference.from_str("doot.task.base_tasker:DootTasker").add_mixins("doot.mixins.tasker.subtask:SubMixin")
-SubTasker = sub_ref.try_import()
+sub_ref   = DootCodeReference.from_str("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.subtask:SubMixin")
+SubJob = sub_ref.try_import()
 
-class SimpleSubTasker(SubTasker):
+class SimpleSubJob(SubJob):
 
     def _build_subs(self):
         yield DootTaskSpec(name=self.fullname.subtask("first"))
@@ -34,7 +34,7 @@ class SimpleSubTasker(SubTasker):
         yield DootTaskSpec(name=self.fullname.subtask("alt_first"))
         yield DootTaskSpec(name=self.fullname.subtask("alt_second"))
 
-class SetupTearDownTasker(SimpleSubTasker):
+class SetupTearDownJob(SimpleSubJob):
 
     def build(self, **kwargs):
         head     = self._build_head()
@@ -55,12 +55,12 @@ class SetupTearDownTasker(SimpleSubTasker):
 class TestSubtasks:
 
     def test_initial(self):
-        obj = SimpleSubTasker(DootTaskSpec.from_dict({"name": "simple"}))
+        obj = SimpleSubJob(DootTaskSpec.from_dict({"name": "simple"}))
         assert(isinstance(obj, doot._abstract.TaskBase_i))
 
 
     def test_custom_subgen(self):
-        obj = SimpleSubTasker(DootTaskSpec.from_dict({"name": "simple", "sub_generator": SimpleSubTasker.alt_subgen }))
+        obj = SimpleSubJob(DootTaskSpec.from_dict({"name": "simple", "sub_generator": SimpleSubJob.alt_subgen }))
         assert(isinstance(obj, doot._abstract.TaskBase_i))
         tasks = list(obj.build())
         assert(len(tasks) == 3)
@@ -70,7 +70,7 @@ class TestSubtasks:
         assert("default::simple.alt_second" in names)
 
     def test_builds_task(self):
-        obj   = SimpleSubTasker(DootTaskSpec.from_dict({"name": "simple"}))
+        obj   = SimpleSubJob(DootTaskSpec.from_dict({"name": "simple"}))
         tasks = list(obj.build())
         assert(len(tasks) == 3)
         names = [str(x.name) for x in tasks]
@@ -79,7 +79,7 @@ class TestSubtasks:
         assert("default::simple.second" in names)
 
     def test_setup_teardown(self):
-        obj   = SetupTearDownTasker(DootTaskSpec.from_dict({"name": "simple"}))
+        obj   = SetupTearDownJob(DootTaskSpec.from_dict({"name": "simple"}))
         tasks = list(obj.build())
         assert(len(tasks) == 5)
         names = [str(x.name) for x in tasks]

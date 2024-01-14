@@ -38,7 +38,7 @@ import doot
 import doot.errors
 import doot.constants as const
 from doot.enums import TaskStateEnum
-from doot._abstract import Tasker_i, Task_i, FailPolicy_p
+from doot._abstract import Job_i, Task_i, FailPolicy_p
 from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskName
 from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i
 from doot.task.base_task import DootTask

@@ -19,7 +19,7 @@ from doot.enums import TaskStateEnum
 from doot.control.runner import DootRunner
 from doot.control.tracker import DootTracker
 from doot.structs import DootTaskSpec, DootActionSpec
-from doot._abstract import Tasker_i, Task_i, TaskTracker_i, TaskRunner_i, ReportLine_i, Action_p, Reporter_i
+from doot._abstract import Job_i, Task_i, TaskTracker_i, TaskRunner_i, ReportLine_i, Action_p, Reporter_i
 from doot.utils import mock_gen
 
 logging = logmod.root
@@ -57,7 +57,7 @@ class TestRunner:
         task3_m = mock_gen.mock_task(name="third", actions=0)
         tracker_m.__iter__.return_value  = [task1_m, task2_m, task3_m]
 
-        expand_tasker  = mocker.spy(runner, "_expand_tasker")
+        expand_job  = mocker.spy(runner, "_expand_job")
         execute_task   = mocker.spy(runner, "_execute_task")
         execute_action = mocker.spy(runner, "_execute_action")
         ##-- end setup
@@ -76,7 +76,7 @@ class TestRunner:
             assert(call.args[0].name in ["first", "second", "third"])
             assert(call.args[1] is tracker_m.state_e.SUCCESS)
 
-        expand_tasker.assert_not_called()
+        expand_job.assert_not_called()
         execute_action.assert_not_called()
 
         execute_task.assert_called()
@@ -85,19 +85,19 @@ class TestRunner:
             assert(call.args[0].name in ["first", "second", "third"])
         ##-- end check result
 
-    def test_taskers_expand(self, mocker, setup):
+    def test_jobs_expand(self, mocker, setup):
         ##-- setup
         tracker_m                                     = mocker.MagicMock(spec=TaskTracker_i)
         reporter_m                                    = mocker.MagicMock(spec=Reporter_i)
         runner                                        = DootRunner(tracker=tracker_m, reporter=reporter_m)
 
-        tasker1_m                                     = mock_gen.mock_tasker("first")
-        tasker2_m                                     = mock_gen.mock_tasker("second")
-        tasker3_m                                     = mock_gen.mock_tasker("third")
+        job1_m                                     = mock_gen.mock_job("first")
+        job2_m                                     = mock_gen.mock_job("second")
+        job3_m                                     = mock_gen.mock_job("third")
 
-        tracker_m.__iter__.return_value               = [tasker1_m, tasker2_m, tasker3_m]
+        tracker_m.__iter__.return_value               = [job1_m, job2_m, job3_m]
 
-        expand_tasker                                 = mocker.spy(runner, "_expand_tasker")
+        expand_job                                 = mocker.spy(runner, "_expand_job")
         execute_task                                  = mocker.spy(runner, "_execute_task")
         execute_action                                = mocker.spy(runner, "_execute_action")
         ##-- end setup
@@ -113,29 +113,29 @@ class TestRunner:
         tracker_m.update_state.assert_called()
         assert(tracker_m.update_state.call_count == 3)
 
-        expand_tasker.assert_called()
-        assert(expand_tasker.call_count == 3)
+        expand_job.assert_called()
+        assert(expand_job.call_count == 3)
 
         execute_action.assert_not_called()
         execute_task.assert_not_called()
         ##-- end check
 
-    def test_taskers_add_tasks(self, mocker, setup):
+    def test_jobs_add_tasks(self, mocker, setup):
         ##-- setup
         tracker_m                          = mocker.MagicMock(spec=TaskTracker_i)
         reporter_m                         = mocker.MagicMock(spec=Reporter_i)
         runner                             = DootRunner(tracker=tracker_m, reporter=reporter_m)
 
-        tasker1_m                          = mock_gen.mock_tasker("first")
-        tasker2_m                          = mock_gen.mock_tasker("second")
-        tasker3_m                          = mock_gen.mock_tasker("third")
+        job1_m                          = mock_gen.mock_job("first")
+        job2_m                          = mock_gen.mock_job("second")
+        job3_m                          = mock_gen.mock_job("third")
 
         task_m                             = mock_gen.mock_task_spec("firstTask")
 
-        tasker1_m.build.return_value       = [task_m]
-        tracker_m.__iter__.return_value    = [tasker1_m, tasker2_m, tasker3_m]
+        job1_m.build.return_value       = [task_m]
+        tracker_m.__iter__.return_value    = [job1_m, job2_m, job3_m]
 
-        expand_tasker                      = mocker.spy(runner, "_expand_tasker")
+        expand_job                      = mocker.spy(runner, "_expand_job")
         execute_task                       = mocker.spy(runner, "_execute_task")
         execute_action                     = mocker.spy(runner, "_execute_action")
         ##-- end setup
@@ -155,8 +155,8 @@ class TestRunner:
         tracker_m.update_state.assert_called()
         assert(tracker_m.update_state.call_count == 3)
 
-        expand_tasker.assert_called()
-        assert(expand_tasker.call_count == 3)
+        expand_job.assert_called()
+        assert(expand_job.call_count == 3)
 
         execute_action.assert_not_called()
         execute_task.assert_not_called()
@@ -173,7 +173,7 @@ class TestRunner:
         task3_m = mock_gen.mock_task("thirdTask")
         tracker_m.__iter__.return_value            = [task1_m, task2_m, task3_m]
 
-        expand_tasker                              = mocker.spy(runner, "_expand_tasker")
+        expand_job                              = mocker.spy(runner, "_expand_job")
         execute_task                               = mocker.spy(runner, "_execute_task")
         execute_action                             = mocker.spy(runner, "_execute_action")
         ##-- end setup
@@ -186,7 +186,7 @@ class TestRunner:
 
         ##-- Check
         tracker_m.add_task.assert_not_called()
-        expand_tasker.assert_not_called()
+        expand_job.assert_not_called()
 
         tracker_m.update_state.assert_called()
         assert(tracker_m.update_state.call_count == 3)

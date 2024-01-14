@@ -132,25 +132,23 @@ class DootKey(abc.ABC):
         """ Make an appropriate DootKey based on input value
           Can only create MultiKeys if strict = False,
           if explicit, only keys wrapped in {} are made, everything else is returned untouched
+          if strict, then only simple keys can be returned
         """
         match s:
+            case DootSimpleKey() if strict:
+                return s
             case DootKey():
                 return s
-            case str() if strict and (s.isnumeric() or not s.isascii()):
-                raise ValueError("Bad Characters for a key", s)
-            case DootTaskArtifact(path=path) | (pl.Path() as path) if not strict:
-                return DootMultiKey(path)
             case str() if not (s_keys := PATTERN.findall(s)) and not explicit:
                 return DootSimpleKey(s)
-            case str() if not s_keys and not explicit:
+            case str() if not s_keys and explicit:
                 return DootNonKey(s)
             case str() if len(s_keys) == 1 and s_keys[0] == s[1:-1]:
-                # This means the is numeric check runs on the chopped key
-                return DootKey.make(s[1:-1])
-            case str():
+                return DootSimpleKey(s[1:-1])
+            case str() if not strict:
                 return DootMultiKey(s)
-            case pl.Path():
-                return None
+            case DootTaskArtifact(path=path) | (pl.Path() as path) if not strict:
+                return DootMultiKey(path)
             case _:
                 raise TypeError("Bad Type to build a Doot Key Out of", s)
 

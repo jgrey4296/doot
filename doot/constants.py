@@ -23,7 +23,7 @@ FRONTEND_PLUGIN_TYPES      : Final = ['command', 'reporter', 'report-line']
 BACKEND_PLUGIN_TYPES       : Final = [
     'database', 'tracker', 'runner',
     'command-loader', 'task-loader',
-    'parser', 'action', "tasker", "mixins"
+    'parser', 'action', "job", "mixins"
     ]
 
 DEFAULT_COMMAND_LOADER_KEY  : Final[str] =  "command-loader"

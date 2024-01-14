@@ -36,12 +36,12 @@ import doot.errors
 from doot.constants import SUBTASKED_HEAD
 from doot.enums import TaskFlags
 from doot.structs import DootTaskSpec, TaskStub, TaskStubPart, DootTaskName, DootCodeReference, DootStructuredName
-from doot._abstract import Tasker_i, Task_i
+from doot._abstract import Job_i, Task_i
 from doot.mixins.importer import ImporterMixin
 from doot.errors import DootDirAbsent
 
 @doot.check_protocol
-class DootTasker(Tasker_i, ImporterMixin):
+class DootJob(Job_i, ImporterMixin):
     """ Util Class for building single tasks
       wraps with setup and teardown tasks,
       manages cleaning,
@@ -49,11 +49,11 @@ class DootTasker(Tasker_i, ImporterMixin):
 
     """
     _help = ["A Basic Task Constructor"]
-    _default_flags = TaskFlags.TASKER
+    _default_flags = TaskFlags.JOB
 
     def __init__(self, spec:DootTaskSpec):
         assert(spec is not None), "Spec is empty"
-        super(DootTasker, self).__init__(spec)
+        super(DootJob, self).__init__(spec)
 
     def default_task(self, name:str|DootTaskName|None, extra:None|dict|TomlGuard) -> DootTaskSpec:
         task_name = None
@@ -74,7 +74,7 @@ class DootTasker(Tasker_i, ImporterMixin):
         return False
 
     def build(self, **kwargs) -> Generator[DootTaskSpec]:
-        logging.debug("-- tasker %s expanding tasks", self.name)
+        logging.debug("-- job %s expanding tasks", self.name)
         if bool(kwargs):
             logging.debug("received kwargs: %s", kwargs)
             self.args.update(kwargs)

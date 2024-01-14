@@ -71,7 +71,7 @@ class GraphCmd(Command_i):
 
     def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
         """List task generators"""
-        logging.debug("Starting to List Taskers/Tasks")
+        logging.debug("Starting to List Jobs/Tasks")
         tracker = plugin_selector(plugins.on_fail([], list).tracker(), target=tracker_target)()
 
         printer.info("- Building Task Dependency Network")

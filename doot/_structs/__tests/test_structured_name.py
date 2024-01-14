@@ -206,14 +206,14 @@ class TestDootCodeReference:
     def test_add_mixin(self):
         ref = structs.DootCodeReference.from_str("doot.task.base_task:DootTask")
         assert(not bool(ref._mixins))
-        ref_plus = ref.add_mixins("doot.mixins.tasker.mini_builder:MiniBuilderMixin")
+        ref_plus = ref.add_mixins("doot.mixins.job.mini_builder:MiniBuilderMixin")
         assert(ref is not ref_plus)
         assert(not bool(ref._mixins))
         assert(bool(ref_plus._mixins))
 
     def test_build_mixin(self):
         ref      = structs.DootCodeReference.from_str("doot.task.base_task:DootTask")
-        ref_plus = ref.add_mixins("doot.mixins.tasker.mini_builder:MiniBuilderMixin")
+        ref_plus = ref.add_mixins("doot.mixins.job.mini_builder:MiniBuilderMixin")
         result   = ref_plus.try_import()
         assert(result != DootTask)
         assert(DootTask in result.mro())

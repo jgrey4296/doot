@@ -22,7 +22,7 @@ FRONTEND_PLUGIN_TYPES      : Final = ['command', 'reporter', 'report-line']
 BACKEND_PLUGIN_TYPES       : Final = [
     'database', 'tracker', 'runner',
     'command-loader', 'task-loader',
-    'parser', 'action', "tasker"
+    'parser', 'action', "job"
     ]
 
 DEFAULT_COMMAND_LOADER_KEY  : Final[str] =  "command-loader"
@@ -98,14 +98,14 @@ DEFAULT_PLUGINS['action']      = [("basic"  ,    "doot.actions.base_action:DootB
                                   ("installed?", "doot.actions.control_flow:AssertInstalled"),
                               ]
 
-DEFAULT_PLUGINS['tasker']      = [("tasker"  , "doot.task.base_tasker:DootTasker"),
+DEFAULT_PLUGINS['job']         = [("job"  , "doot.task.base_job:DootJob"),
                                   ("task"    , "doot.task.base_task:DootTask"),
                                   ]
 
-DEFAULT_PLUGINS['mixins']      = [("walker", "doot.mixins.tasker.walker:WalkerMixin"),
-                                  ("shadow", "doot.mixins.tasker.shadower:WalkShadowerMixin"),
-                                  ("subs",   "doot.mixins.tasker.subtask:SubMixin"),
-                                  ("terse",  "doot.mixins.tasker.mini_builder:MiniBuilderMixin"),
+DEFAULT_PLUGINS['mixins']      = [("walker", "doot.mixins.job.walker:WalkerMixin"),
+                                  ("shadow", "doot.mixins.job.shadower:WalkShadowerMixin"),
+                                  ("subs",   "doot.mixins.job.subtask:SubMixin"),
+                                  ("terse",  "doot.mixins.job.mini_builder:MiniBuilderMixin"),
                                   ("zip",    "doot.mixins.task.zipper:ZipperMixin"),
-                                  ("headonly", "doot.mixins.tasker.mini_builder:HeadOnlyTaskerMixin"),
+                                  ("headonly", "doot.mixins.job.mini_builder:HeadOnlyJobMixin"),
                                   ]

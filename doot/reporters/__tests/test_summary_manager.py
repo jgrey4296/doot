@@ -58,6 +58,6 @@ class TestSummaryReporter:
     def test_str(self):
         manager = DootReportManagerSummary()
         manager.trace("test", flags=ReportEnum.SUCCEED | ReportEnum.TASK)
-        manager.trace("test", flags=ReportEnum.FAIL    | ReportEnum.TASKER)
+        manager.trace("test", flags=ReportEnum.FAIL    | ReportEnum.JOB)
         manager.trace("test", flags=ReportEnum.SUCCEED | ReportEnum.ACTION)
-        assert(isinstance(manager) == "    - Taskers: 0/1\n    - Tasks  : 1/0\n    - Actions: 1/0")
+        assert(isinstance(manager) == "    - Jobs: 0/1\n    - Tasks  : 1/0\n    - Actions: 1/0")

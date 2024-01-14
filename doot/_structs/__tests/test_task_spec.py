@@ -19,8 +19,8 @@ import doot
 import doot.errors
 import doot.constants
 from doot import structs
-from doot.task.base_tasker import DootTasker
-from doot.mixins.tasker.mini_builder import MiniBuilderMixin
+from doot.task.base_job import DootJob
+from doot.mixins.job.mini_builder import MiniBuilderMixin
 
 class TestDootTaskSpec:
 
@@ -29,7 +29,7 @@ class TestDootTaskSpec:
         assert(isinstance(obj, structs.DootTaskSpec))
         assert(obj.name.group == "default")
         assert(obj.name.task == "default")
-        assert(str(obj.ctor) == doot.constants.DEFAULT_PLUGINS['tasker'][0][1])
+        assert(str(obj.ctor) == doot.constants.DEFAULT_PLUGINS['job'][0][1])
         assert(obj.version == "0.1")
 
     def test_version_change(self):
@@ -37,7 +37,7 @@ class TestDootTaskSpec:
         assert(isinstance(obj, structs.DootTaskSpec))
         assert(obj.name.group == "default")
         assert(obj.name.task == "default")
-        assert(str(obj.ctor) == doot.constants.DEFAULT_PLUGINS['tasker'][0][1])
+        assert(str(obj.ctor) == doot.constants.DEFAULT_PLUGINS['job'][0][1])
         assert(obj.version == "0.5")
 
     def test_basic_name(self):
@@ -70,12 +70,12 @@ class TestSpecMixinBuild:
 
     def test_basic(self):
         spec = structs.DootTaskSpec.from_dict({"name": "basic",
-                                       "ctor": "doot.task.base_tasker:DootTasker",
-                                       "mixins": ["doot.mixins.tasker.mini_builder:MiniBuilderMixin"],
+                                       "ctor": "doot.task.base_job:DootJob",
+                                       "mixins": ["doot.mixins.job.mini_builder:MiniBuilderMixin"],
 
                                       })
         task = spec.build()
-        assert(isinstance(task,DootTasker))
+        assert(isinstance(task,DootJob))
         assert(MiniBuilderMixin in task.__class__.mro())
         assert(isinstance(task, MiniBuilderMixin))
 

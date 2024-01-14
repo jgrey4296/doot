@@ -75,9 +75,9 @@ class DootStepRunner(DootRunner):
         self._override_level = "INFO"
         self._has_quit = False
 
-    def _expand_tasker(self, tasker:abstract.Tasker_i) -> None:
-        if self._pause(tasker):
-            super()._expand_tasker(tasker)
+    def _expand_job(self, job:abstract.Job_i) -> None:
+        if self._pause(job):
+            super()._expand_job(job)
         else:
             printer.info("::- ...")
 
@@ -104,7 +104,7 @@ class DootStepRunner(DootRunner):
         match target:
             case _ if True in self._conf_types:
                 pass
-            case abstract.Tasker_i() if abstract.Tasker_i not in self._conf_types:
+            case abstract.Job_i() if abstract.Job_i not in self._conf_types:
                 return True
             case abstract.Task_i() if abstract.Task_i not in self._conf_types:
                 return True
@@ -179,8 +179,8 @@ class DootStepRunner(DootRunner):
         printer.info("::- Down")
         match self._conf_types:
             case [True]:
-                self.set_confirm_type("tasker")
-            case [abstract.Tasker_i]:
+                self.set_confirm_type("job")
+            case [abstract.Job_i]:
                 self.set_confirm_type("task")
             case [abstract.Task_i]:
                 self.set_confirm_type("action")
@@ -196,8 +196,8 @@ class DootStepRunner(DootRunner):
             case [structs.DootActionSpec]:
                 self.set_confirm_type("task")
             case [abstract.Task_i]:
-                self.set_confirm_type("tasker")
-            case [abstract.Tasker_i]:
+                self.set_confirm_type("job")
+            case [abstract.Job_i]:
                 self.set_confirm_type("all")
             case [True]:
                 pass
@@ -230,8 +230,8 @@ class DootStepRunner(DootRunner):
                 case abstract.Task_i():
                     printer.info("%20s : %s", "Task Name", str(arg.name))
                     printer.info("%20s : %s", "Task State", arg.state)
-                case abstract.Tasker_i():
-                    printer.info("%20s : %s", "Tasker Args", arg.args)
+                case abstract.Job_i():
+                    printer.info("%20s : %s", "Job Args", arg.args)
 
     def _set_print_level(self, level=None):
         if level:
@@ -242,8 +242,8 @@ class DootStepRunner(DootRunner):
     def set_confirm_type(self, val):
         """ Sets the runners `breakpoints` """
         match val:
-            case "tasker":
-                self._conf_types = [abstract.Tasker_i]
+            case "job":
+                self._conf_types = [abstract.Job_i]
             case "task":
                 self._conf_types = [abstract.Task_i]
             case "action":

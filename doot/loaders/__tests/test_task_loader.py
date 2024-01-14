@@ -34,7 +34,7 @@ class TestTaskLoader:
 
     def test_basic__internal_load(self):
         specs = {"tasks": { "basic" : []}}
-        specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_tasker:DootTasker"})
+        specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_job:DootJob"})
         basic = task_loader.DootTaskLoader()
         basic.setup({})
         result = basic._load_raw_specs(tomlguard.TomlGuard(specs).tasks, "test_file")
@@ -48,7 +48,7 @@ class TestTaskLoader:
         mocker.patch("doot._configs_loaded_from")
 
         specs = {"tasks": {"basic" : []}}
-        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.base_tasker:DootTasker"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.base_job:DootJob"})
         basic = task_loader.DootTaskLoader()
         basic.setup({}, specs)
         result = basic.load()
@@ -63,8 +63,8 @@ class TestTaskLoader:
         mocker.patch("doot._configs_loaded_from")
 
         specs = {"tasks": { "basic" : []}}
-        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.base_tasker:DootTasker"})
-        specs['tasks']['basic'].append({"name"  : "other", "ctor": "doot.task.base_tasker:DootTasker"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.base_job:DootJob"})
+        specs['tasks']['basic'].append({"name"  : "other", "ctor": "doot.task.base_job:DootJob"})
         basic = task_loader.DootTaskLoader()
         basic.setup({}, specs)
         result = basic.load()
@@ -79,22 +79,22 @@ class TestTaskLoader:
         mocker.patch("doot._configs_loaded_from")
 
         specs = {"tasks": { "basic" : []}}
-        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.base_tasker:DootTasker"})
-        specs['tasks']['basic'].append({"name"  : "test", "ctor": "doot.task.base_tasker:DootTasker"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.base_job:DootJob"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor": "doot.task.base_job:DootJob"})
         basic = task_loader.DootTaskLoader()
         basic.setup({}, specs)
         task_loader.allow_overloads = False
 
         basic.load()
 
-        assert("Overloading Task: basic::test : doot.task.base_tasker:DootTasker" in caplog.messages)
+        assert("Overloading Task: basic::test : doot.task.base_job:DootJob" in caplog.messages)
 
     def test_cmd_name_conflict_doesnt_error(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_sources")
         mocker.patch("doot._configs_loaded_from")
 
         specs = {"tasks": { "basic" : []}}
-        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.base_tasker:DootTasker"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.base_job:DootJob"})
         basic = task_loader.DootTaskLoader()
         basic.setup({}, specs)
         basic.cmd_names = set(["test"])
@@ -107,7 +107,7 @@ class TestTaskLoader:
         mocker.patch("doot._configs_loaded_from")
 
         specs = {"tasks": { "basic": []}}
-        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.base_tasker:DoesntExistTasker"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.base_job:DoesntExistJob"})
 
         basic = task_loader.DootTaskLoader()
         basic.setup({}, specs)
@@ -120,7 +120,7 @@ class TestTaskLoader:
         mocker.patch("doot._configs_loaded_from")
 
         specs = {"tasks": { "basic" : []}}
-        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.doesnt_exist_module:DoesntExistTasker"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor" : "doot.task.doesnt_exist_module:DoesntExistJob"})
         basic = task_loader.DootTaskLoader()
         basic.setup({}, specs)
 
@@ -149,7 +149,7 @@ class TestTaskLoader:
         mock_ctor                   = mock_task_ctor()
         mock_ep                     = mock_entry_point(name="basic", value=mock_ctor)
 
-        plugins                     = tomlguard.TomlGuard({"tasker": [mock_ep]})
+        plugins                     = tomlguard.TomlGuard({"job": [mock_ep]})
         basic                       = task_loader.DootTaskLoader()
         basic.setup(plugins, tomlguard.TomlGuard(specs))
 
@@ -172,7 +172,7 @@ class TestTaskLoader:
         mock_ep      = importlib.metadata.EntryPoint()
         mock_ep.name = "basic"
 
-        plugins      = tomlguard.TomlGuard({"tasker": [mock_ep]})
+        plugins      = tomlguard.TomlGuard({"job": [mock_ep]})
         basic        = task_loader.DootTaskLoader()
         basic.setup(plugins, tomlguard.TomlGuard(specs))
 
@@ -190,7 +190,7 @@ class TestTaskLoader:
 
         mock_ep      = mock_entry_point()
 
-        plugins      = tomlguard.TomlGuard({"tasker": [mock_ep]})
+        plugins      = tomlguard.TomlGuard({"job": [mock_ep]})
         basic        = task_loader.DootTaskLoader()
         basic.setup(plugins, tomlguard.TomlGuard(specs))
 

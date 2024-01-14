@@ -53,7 +53,7 @@ class StepCmd(Command_i):
     Standard doit run command, but step through tasks
     """
     _name            = 'step'
-    _help            = ["Behaves like Run, but allows user confirmation before tasker/task/action performance"]
+    _help            = ["Behaves like Run, but allows user confirmation before job/task/action performance"]
 
     @property
     def param_specs(self) -> list:

@@ -38,7 +38,7 @@ import doot
 import doot.constants
 import doot.errors
 from doot.enums import ReportEnum, ActionResponseEnum as ActRE
-from doot._abstract import Tasker_i, Task_i, FailPolicy_p
+from doot._abstract import Job_i, Task_i, FailPolicy_p
 from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i, ReportLine_i, Action_p, Reporter_i
 from doot.structs import DootTaskArtifact
 from doot.utils.signal_handler import SignalHandler
@@ -82,9 +82,9 @@ class DootRunner(TaskRunner_i):
           and repeating,
           until done
 
-          if task is a tasker, it is expanded and added into the tracker
+          if task is a job, it is expanded and added into the tracker
           """
-        # TODO for threaded tasks: replace expand_tasker/execute_task/execute_action with twisted?
+        # TODO for threaded tasks: replace expand_job/execute_task/execute_action with twisted?
 
         with SignalHandler():
             self._set_print_level("INFO")
@@ -97,8 +97,8 @@ class DootRunner(TaskRunner_i):
                         case DootTaskArtifact():
                             self._notify_artifact(task)
                             continue
-                        case Tasker_i():
-                            self._expand_tasker(task)
+                        case Job_i():
+                            self._expand_job(task)
                         case Task_i():
                             self._execute_task(task)
 
@@ -130,33 +130,33 @@ class DootRunner(TaskRunner_i):
         printer.info("---- Artifact: %s", art)
         self.reporter.trace(art, flags=ReportEnum.ARTIFACT)
 
-    def _expand_tasker(self, tasker:Tasker_i) -> None:
-        """ turn a tasker into all of its tasks, including teardowns """
-        logmod.debug("-- Expanding Tasker %s: %s", self.step, tasker.name)
-        self._set_print_level(tasker.spec.print_levels.on_fail(head_level).head())
-        printer.info("---- Tasker %s: %s", self.step, tasker.name, extra={"colour":"magenta"})
-        if bool(tasker.spec.actions): # and tasker != mini...
-            printer.warning("-- Tasker %s: Actions were found in tasker spec, but taskers don't run actions")
-        self.reporter.trace(tasker.spec, flags=ReportEnum.TASKER | ReportEnum.INIT)
+    def _expand_job(self, job:Job_i) -> None:
+        """ turn a job into all of its tasks, including teardowns """
+        logmod.debug("-- Expanding Job %s: %s", self.step, job.name)
+        self._set_print_level(job.spec.print_levels.on_fail(head_level).head())
+        printer.info("---- Job %s: %s", self.step, job.name, extra={"colour":"magenta"})
+        if bool(job.spec.actions): # and job != mini...
+            printer.warning("-- Job %s: Actions were found in job spec, but jobs don't run actions")
+        self.reporter.trace(job.spec, flags=ReportEnum.JOB | ReportEnum.INIT)
         count = 0
-        self._set_print_level(tasker.spec.print_levels.on_fail(build_level).build())
-        for task in tasker.build():
+        self._set_print_level(job.spec.print_levels.on_fail(build_level).build())
+        for task in job.build():
             match task:
-                case Tasker_i():
-                    printer.warning("Taskers probably shouldn't build taskers: %s : %s", tasker.name, task.name)
+                case Job_i():
+                    printer.warning("Jobs probably shouldn't build jobs: %s : %s", job.name, task.name)
                     self.tracker.add_task(task, no_root_connection=True)
                 case Task_i():
                     self.tracker.add_task(task, no_root_connection=True)
                 case DootTaskSpec():
                     self.tracker.add_task(task, no_root_connection=True)
                 case _:
-                    self.reporter.trace(tasker.spec, flags=ReportEnum.FAIL | ReportEnum.TASKER)
-                    raise doot.errors.DootTaskError("Tasker %s Built a Bad Value: %s", tasker.name, task, task=tasker.spec)
+                    self.reporter.trace(job.spec, flags=ReportEnum.FAIL | ReportEnum.JOB)
+                    raise doot.errors.DootTaskError("Job %s Built a Bad Value: %s", job.name, task, task=job.spec)
 
             count += 1
 
-        logmod.debug("-- Tasker %s Expansion produced: %s tasks", tasker.name, count)
-        self.reporter.trace(tasker.spec, flags=ReportEnum.TASKER | ReportEnum.SUCCEED)
+        logmod.debug("-- Job %s Expansion produced: %s tasks", job.name, count)
+        self.reporter.trace(job.spec, flags=ReportEnum.JOB | ReportEnum.SUCCEED)
 
     def _execute_task(self, task:Task_i) -> None:
         """ execute a single task's actions """

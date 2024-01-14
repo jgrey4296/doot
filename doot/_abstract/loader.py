@@ -37,7 +37,7 @@ from importlib.metadata import EntryPoint
 
 from doot.structs import DootTaskSpec
 from doot._abstract.cmd import Command_i
-from doot._abstract.task import Tasker_i
+from doot._abstract.task import Job_i
 
 
 @runtime_checkable

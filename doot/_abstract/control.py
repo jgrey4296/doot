@@ -91,7 +91,7 @@ class TaskTracker_i:
 
 class TaskRunner_i:
     """
-    Run tasks, actions, and taskers
+    Run tasks, actions, and jobs
     """
 
     def __init__(self, *, tracker:TaskTracker_i, reporter:Reporter_i, policy:FailPolicy_p|None=None):

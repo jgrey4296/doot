@@ -47,7 +47,7 @@ report_line_targets      = doot.config.on_fail([]).commands.run.report_line(wrap
 @doot.check_protocol
 class RunCmd(Command_i):
     _name      = "run"
-    _help      = ["Will perform the tasks/taskers targeted.",
+    _help      = ["Will perform the tasks/jobs targeted.",
                   "Can be parameterized in a commands.run block with:",
                   "tracker(str), runner(str), reporter(str), report_lines(str)",
                   ]

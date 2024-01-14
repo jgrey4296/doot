@@ -44,7 +44,7 @@ class TaskFlags(enum.Flag):
       stored in the Task_i instance itself.
     """
     TASK         = enum.auto()
-    TASKER       = enum.auto()
+    JOB          = enum.auto()
     EPHEMERAL    = enum.auto()
     IDEMPOTENT   = enum.auto()
     REQ_TEARDOWN = enum.auto()
@@ -70,7 +70,7 @@ class ReportEnum(enum.Flag):
 
     PLUGIN   = enum.auto()
     TASK     = enum.auto()
-    TASKER   = enum.auto()
+    JOB      = enum.auto()
     ACTION   = enum.auto()
     CONFIG   = enum.auto()
     ARTIFACT = enum.auto()

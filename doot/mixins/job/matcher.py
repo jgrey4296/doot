@@ -40,7 +40,7 @@ logging = logmod.getLogger(__name__)
 import doot
 import doot.errors
 from doot.structs import DootCodeReference
-from doot.mixins.tasker.walker import WalkerMixin
+from doot.mixins.job.walker import WalkerMixin
 
 class SubSelectMixin(WalkerMixin):
     """

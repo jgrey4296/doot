@@ -83,7 +83,7 @@ class TestReportStackManager:
 
         manager = DootReportManagerStack([SimpleFilter()])
         manager.trace("first", flags=ReportEnum.TASK)
-        manager.trace("second", flags=ReportEnum.TASKER)
+        manager.trace("second", flags=ReportEnum.JOB)
         manager.trace("third", flags=ReportEnum.TASK)
         assert(str(manager) == "first\nthird")
 
@@ -101,7 +101,7 @@ class TestReportStackManager:
 
         manager = DootReportManagerStack([ SimpleTaskFilter(), SimpleActionFilter() ])
         manager.trace("first", flags=ReportEnum.TASK)
-        manager.trace("second", flags=ReportEnum.TASKER)
+        manager.trace("second", flags=ReportEnum.JOB)
         manager.trace("third", flags=ReportEnum.ACTION)
         assert(str(manager) == "first\nthird")
 
@@ -119,6 +119,6 @@ class TestReportStackManager:
 
         manager = DootReportManagerStack([ SimpleTaskFilter(), SimpleActionFilter() ])
         manager.trace("first", flags=ReportEnum.TASK)
-        manager.trace("second", flags=ReportEnum.TASKER)
+        manager.trace("second", flags=ReportEnum.JOB)
         manager.trace("third", flags=ReportEnum.ACTION)
         assert(str(manager) == "first\n- third")

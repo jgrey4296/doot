@@ -39,7 +39,7 @@ import doot.errors
 import doot.constants
 import tomlguard
 from doot._abstract import (ArgParser_i, Command_i, CommandLoader_p,
-                            Overlord_p, Task_i, Tasker_i, TaskLoader_p)
+                            Overlord_p, Task_i, Job_i, TaskLoader_p)
 
 from doot.utils.plugin_selector import plugin_selector
 from doot.errors import DootInvalidConfig, DootParseError
@@ -83,16 +83,16 @@ class DootOverlord(Overlord_p):
 
         self.plugins      : None|TomlGuard    = None
         self.cmds         : None|TomlGuard    = None
-        self.taskers      : None|TomlGuard    = None
+        self.jobs      : None|TomlGuard    = None
         self.current_cmd  : Command_i      = None
-        self.taskers      : list[Tasker_i] = []
+        self.jobs      : list[Job_i] = []
 
         self._errored     : None|DootError = None
         self._current_cmd : None|str       = None
 
         self._load_plugins(extra_config)
         self._load_commands(extra_config)
-        self._load_taskers(extra_config)
+        self._load_jobs(extra_config)
         self._parse_args()
         logging.debug("Core Overlord Initialisation complete")
 
@@ -142,7 +142,7 @@ class DootOverlord(Overlord_p):
         self.cmd_loader.setup(self.plugins, extra_config)
         self.cmds = self.cmd_loader.load()
 
-    def _load_taskers(self, extra_config):
+    def _load_jobs(self, extra_config):
         """ Load task entry points """
 
         self.task_loader = plugin_selector(self.loaders.get(task_loader_key, None) or self.plugins.on_fail([], list).task_loader(),
@@ -155,7 +155,7 @@ class DootOverlord(Overlord_p):
             raise TypeError("Attempted to use a non-Commandloader_i as a CommandLoader: ", self.cmd_loader)
 
         self.task_loader.setup(self.plugins, extra_config)
-        self.taskers = self.task_loader.load()
+        self.jobs = self.task_loader.load()
 
     def _parse_args(self, args=None):
         """ use the found task and command arguments to make sense of sys.argv """
@@ -168,7 +168,7 @@ class DootOverlord(Overlord_p):
 
         doot.args = self.parser.parse(args or self.args, doot_specs=self.param_specs,
             cmds=self.cmds,
-            tasks=self.taskers)
+            tasks=self.jobs)
 
     def _cli_arg_response(self) -> bool:
         """ Overlord specific cli arg responses. modify verbosity,
@@ -181,7 +181,7 @@ class DootOverlord(Overlord_p):
 
         logging.info("CLI Args: %s", doot.args._table())
         logging.info("Plugins: %s", dict(self.plugins))
-        logging.info("Taskers: %s", self.taskers.keys())
+        logging.info("Jobs: %s", self.jobs.keys())
 
         if doot.args.head.args.version:
             printer.info("\n\n----- Doot Version: %s\n\n", doot.__version__)
@@ -213,7 +213,7 @@ class DootOverlord(Overlord_p):
         logging.info("Overlord Calling: %s", cmd or doot.args.cmd.name)
         try:
             cmd = self._get_cmd(cmd)
-            cmd(self.taskers, self.plugins)
+            cmd(self.jobs, self.plugins)
         except doot.errors.DootError as err:
             self._errored = err
             raise err from err
@@ -236,7 +236,7 @@ class DootOverlord(Overlord_p):
     def shutdown(self):
         """ Doot has finished normally, so report on what was done """
         if self.current_cmd is not None and hasattr(self.current_cmd, "shutdown"):
-            self.current_cmd.shutdown(self._errored, self.taskers, self.plugins)
+            self.current_cmd.shutdown(self._errored, self.jobs, self.plugins)
 
         match self._errored:
             case doot.errors.DootError():

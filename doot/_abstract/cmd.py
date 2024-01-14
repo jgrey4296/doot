@@ -64,7 +64,7 @@ class Command_i(ParamSpecMaker_m):
            ]
 
     @abstractmethod
-    def __call__(self, taskers:TomlGuard, plugins:TomlGuard):
+    def __call__(self, jobs:TomlGuard, plugins:TomlGuard):
         raise NotImplementedError()
 
 

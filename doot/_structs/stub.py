@@ -46,7 +46,7 @@ from doot._structs.task_spec import DootTaskSpec
 
 PAD           : Final[int]               = 15
 TaskFlagNames : Final[str]               = [x.name for x in TaskFlags]
-DEFAULT_CTOR  : Final[DootCodeReference] = DootCodeReference.from_str(doot.constants.DEFAULT_PLUGINS['tasker'][1][1])
+DEFAULT_CTOR  : Final[DootCodeReference] = DootCodeReference.from_str(doot.constants.DEFAULT_PLUGINS['job'][1][1])
 
 @dataclass
 class TaskStub:

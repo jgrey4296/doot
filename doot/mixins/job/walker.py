@@ -45,7 +45,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.constants
 from doot.errors import DootDirAbsent
-from doot.mixins.tasker.subtask import SubMixin
+from doot.mixins.job.subtask import SubMixin
 from doot.structs import DootTaskSpec, DootActionSpec
 
 walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
@@ -65,7 +65,7 @@ class _WalkControl(enum.Enum):
 
 class WalkerMixin(SubMixin):
     """
-    Base tasker for file based walking.
+    Base job for file based walking.
     Each File found is a separate subtask
 
     Uses the toml key `sub_task` to spec each task,

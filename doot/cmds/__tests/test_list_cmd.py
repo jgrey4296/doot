@@ -80,11 +80,11 @@ class TestListCmd:
         mock_class2.__module__ = "builtins"
         mock_class2.__name__   = "other.type"
         plugin_mock = {"reporter": [mocker.stub("Reporter Stub")]}
-        tasker_mock = {
+        job_mock = {
             "simple" : DootTaskSpec.from_dict({"group": "blah", "name": "simple", "ctor": mock_class1}),
             "other"  : DootTaskSpec.from_dict({"group": "bloo", "name": "other", "ctor": mock_class2})
             }
-        obj(tasker_mock, plugin_mock)
+        obj(job_mock, plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
         assert("defined task generators by group:" in message_set)
@@ -99,15 +99,15 @@ class TestListCmd:
         doot.args.cmd.args.all     = False
         obj = ListCmd()
         plugin_mock  = {"reporter": [mocker.stub("Reporter Stub")]}
-        tasker_mock = {
+        job_mock = {
                        "simple" : DootTaskSpec.from_dict({"group": "blah", "name": "simple"}),
                        "other"  : DootTaskSpec.from_dict({"group": "bloo", "name": "other"}),
             }
-        result = obj(tasker_mock, plugin_mock)
+        result = obj(job_mock, plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
         assert("tasks for pattern: simple" in message_set)
-        assert( any(x.startswith("blah::simple :: doot.task.base_tasker:doottasker") for x in message_set) )
+        assert( any(x.startswith("blah::simple :: doot.task.base_job:dootjob") for x in message_set) )
 
 
     def test_call_partial_target_not_empty(self, caplog, mocker):
@@ -118,13 +118,13 @@ class TestListCmd:
         doot.args.cmd.args.all     = False
         obj = ListCmd()
         plugin_mock = {"reporter": [mocker.stub("Reporter Stub")]}
-        tasker_mock = { "blah::simple" : DootTaskSpec.from_dict({"group": "blah", "name": "simple"}),
+        job_mock = { "blah::simple" : DootTaskSpec.from_dict({"group": "blah", "name": "simple"}),
                         "bloo::other": DootTaskSpec.from_dict({"group": "bloo", "name": "other"}),
                         "bloo::diffSimple": DootTaskSpec.from_dict({"group": "bloo", "name": "diffSimple"}),
                        }
-        result = obj(tasker_mock, plugin_mock)
+        result = obj(job_mock, plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
         assert("tasks for pattern: simp" in message_set)
-        assert( any(x.startswith("blah::simple     :: doot.task.base_tasker:doottasker") for x in message_set) )
-        assert( any(x.startswith("bloo::diffsimple :: doot.task.base_tasker:doottasker") for x in message_set) )
+        assert( any(x.startswith("blah::simple     :: doot.task.base_job:dootjob") for x in message_set) )
+        assert( any(x.startswith("bloo::diffsimple :: doot.task.base_job:dootjob") for x in message_set) )

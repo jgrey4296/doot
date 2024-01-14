@@ -39,7 +39,7 @@ import doot
 import doot.errors
 import doot.constants as const
 from doot.enums import TaskStateEnum
-from doot._abstract import Tasker_i, Task_i, FailPolicy_p
+from doot._abstract import Job_i, Task_i, FailPolicy_p
 from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskName, DootCodeReference
 from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i
 from doot.task.base_task import DootTask
@@ -365,7 +365,7 @@ class DootTracker(TaskTracker_i):
         """ Read the dependency graph from a file """
         raise NotImplementedError()
 
-    def next_for(self, target:None|str=None) -> None|Tasker_i|Task_i|DootTaskArtifact:
+    def next_for(self, target:None|str=None) -> None|Job_i|Task_i|DootTaskArtifact:
         """ ask for the next task that can be performed """
         if target and target not in self.active_set:
             self.queue_task(target, silent=True)

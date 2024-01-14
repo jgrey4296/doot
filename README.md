@@ -150,6 +150,6 @@ example = "dootle.cmds.example_cmd:ExampleCmd"
 Plugins are specified in the pyproject.toml table `[project.entry-points."doot.plugins.TYPE"]`,
 where TYPE is one of the forms defined in `doot.constants`:
 1) Front End plugins: "command", "reporter", "report-line",
-2) Back End plugins: "tracker", "runner", "command-loader", "task-loader", "parser", "action", "tasker", "database"
+2) Back End plugins: "tracker", "runner", "command-loader", "task-loader", "parser", "action", "job", "database"
 
 Currently available plugins are listed with the command `doot plugins`

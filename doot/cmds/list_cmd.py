@@ -63,7 +63,7 @@ class ListCmd(Command_i):
 
     def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
         """List task generators"""
-        logging.debug("Starting to List Taskers/Tasks")
+        logging.debug("Starting to List Jobs/Tasks")
 
         if (doot.args.cmd.args.pattern == ""     # type: ignore
             and not bool(doot.args.tasks)        # type: ignore

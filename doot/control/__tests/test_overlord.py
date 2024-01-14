@@ -22,7 +22,7 @@ import doot
 doot.config = tomlguard.TomlGuard({})
 from doot.control.overlord import DootOverlord
 
-BASIC_TASKER_NAME = "tasker"
+BASIC_JOB_NAME = "job"
 
 class TestOverlord:
 
@@ -44,39 +44,39 @@ class TestOverlord:
         assert(bool(overlord.cmds))
         assert(len(overlord.cmds) >= len(doot.constants.DEFAULT_PLUGINS['command']))
 
-    def test_taskers_loaded(self, mocker):
+    def test_jobs_loaded(self, mocker):
         mocker.patch("sys.argv", ["doot"])
         mocker.patch("doot.loaders.task_loader.task_sources")
         overlord = DootOverlord(
-            extra_config={"tasks" : {"basic" : [{"name": "simple", "ctor": BASIC_TASKER_NAME}]}}
+            extra_config={"tasks" : {"basic" : [{"name": "simple", "ctor": BASIC_JOB_NAME}]}}
         )
-        assert(bool(overlord.taskers))
+        assert(bool(overlord.jobs))
 
-    def test_taskers_multi(self, mocker):
+    def test_jobs_multi(self, mocker):
         mocker.patch("sys.argv", ["doot"])
         mocker.patch("doot.loaders.task_loader.task_sources")
         mocker.patch("doot._configs_loaded_from")
         overlord = DootOverlord(extra_config={
             "tasks" : {"basic": [
-                {"name": "simple", "ctor": BASIC_TASKER_NAME},
-                {"name": "another", "ctor": BASIC_TASKER_NAME}
+                {"name": "simple", "ctor": BASIC_JOB_NAME},
+                {"name": "another", "ctor": BASIC_JOB_NAME}
         ]}})
-        assert(bool(overlord.taskers))
-        assert(len(overlord.taskers) == 2), len(overlord.taskers)
+        assert(bool(overlord.jobs))
+        assert(len(overlord.jobs) == 2), len(overlord.jobs)
 
-    def test_taskers_name_conflict(self, mocker, caplog):
+    def test_jobs_name_conflict(self, mocker, caplog):
         mocker.patch("sys.argv", ["doot"])
         DootOverlord(extra_config={
             "tasks" : {"basic" : [
-                {"name": "simple", "ctor": BASIC_TASKER_NAME},
-                {"name": "simple", "ctor": BASIC_TASKER_NAME}
+                {"name": "simple", "ctor": BASIC_JOB_NAME},
+                {"name": "simple", "ctor": BASIC_JOB_NAME}
                 ]}})
 
-        assert(f"Overloading Task: basic::simple : {BASIC_TASKER_NAME}" in caplog.messages)
+        assert(f"Overloading Task: basic::simple : {BASIC_JOB_NAME}" in caplog.messages)
 
 
     @pytest.mark.skip
-    def test_taskers_bad_type(self, mocker):
+    def test_jobs_bad_type(self, mocker):
         mocker.patch("sys.argv", ["doot"])
         with pytest.raises(doot.errors.DootTaskLoadError):
             DootOverlord(extra_config={"tasks" : {"basic": [{"name": "simple", "ctor": "not_basic"}]}})

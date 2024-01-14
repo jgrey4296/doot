@@ -41,7 +41,7 @@ from unittest.mock import PropertyMock, MagicMock, create_autospec
 from importlib.metadata import EntryPoint
 import tomlguard
 from doot import structs
-from doot._abstract import Task_i, Tasker_i, TaskBase_i, Command_i
+from doot._abstract import Task_i, Job_i, TaskBase_i, Command_i
 
 def _add_prop(m, name, val):
     setattr(type(m), name, PropertyMock(return_value=val))
@@ -68,8 +68,8 @@ def mock_task(name, spec=None, actions:int=1, **kwargs):
     _add_prop(task_m, "actions", task_m.spec.actions)
     return task_m
 
-def mock_tasker(name, pre=None, post=None, spec=None, **kwargs):
-    task_m = MagicMock(spec=Tasker_i,
+def mock_job(name, pre=None, post=None, spec=None, **kwargs):
+    task_m = MagicMock(spec=Job_i,
                        depends_on=[],
                        required_for=[],
                        name=name,
