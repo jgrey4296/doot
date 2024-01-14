@@ -98,14 +98,15 @@ DEFAULT_PLUGINS['action']      = [("basic"  ,    "doot.actions.base_action:DootB
                                   ("installed?", "doot.actions.control_flow:AssertInstalled"),
                               ]
 
-DEFAULT_PLUGINS['job']         = [("job"  , "doot.task.base_job:DootJob"),
-                                  ("task"    , "doot.task.base_task:DootTask"),
+DEFAULT_PLUGINS['job']         = [("job"  ,     "doot.task.base_job:DootJob"),
+                                  ("task" ,     "doot.task.base_task:DootTask"),
                                   ]
 
-DEFAULT_PLUGINS['mixins']      = [("walker", "doot.mixins.job.walker:WalkerMixin"),
-                                  ("shadow", "doot.mixins.job.shadower:WalkShadowerMixin"),
-                                  ("subs",   "doot.mixins.job.subtask:SubMixin"),
-                                  ("terse",  "doot.mixins.job.mini_builder:MiniBuilderMixin"),
-                                  ("zip",    "doot.mixins.task.zipper:ZipperMixin"),
-                                  ("headonly", "doot.mixins.job.mini_builder:HeadOnlyJobMixin"),
+DEFAULT_PLUGINS['mixins']      = [("job:walker", "doot.mixins.job.walker:WalkerMixin"),
+                                  ("job:shadow", "doot.mixins.job.shadower:WalkShadowerMixin"),
+                                  ("job:sub",    "doot.mixins.job.subtask:SubMixin"),
+                                  ("job:terse",  "doot.mixins.job.mini_builder:MiniBuilderMixin"),
+                                  ("job:headonly", "doot.mixins.job.mini_builder:HeadOnlyJobMixin"),
+                                  ("job:limit", "doot.mixins.job.matcher:TaskLimitMixin"),
+                                  ("job:match", "doot.mixins.job.matcher:PatternMatcherMixin"),
                                   ]
