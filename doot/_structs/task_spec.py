@@ -124,7 +124,7 @@ def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|Doo
 def _prepare_ctor(ctor, mixins):
     match ctor:
         case None:
-            return DootCodeReference.from_str(doot.constants.DEFAULT_PLUGINS['job'][0][1]).add_mixins(*mixins)
+            return DootCodeReference.from_str(doot.constants.DEFAULT_PLUGINS['task'][0][1]).add_mixins(*mixins)
         case EntryPoint():
             loaded = ctor.load()
             return DootCodeReference.from_type(loaded).add_mixins(*mixins)

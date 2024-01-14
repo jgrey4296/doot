@@ -75,7 +75,7 @@ class DootTask(Task_i, ImporterMixin):
     @classmethod
     def stub_class(cls, stub) -> TaskStub:
         """ Create a basic toml stub for this task"""
-        if bool(list(filter(lambda x: x[0] == "task", doot.constants.DEFAULT_PLUGINS['job']))):
+        if bool(list(filter(lambda x: x[0] == "task", doot.constants.DEFAULT_PLUGINS['task']))):
             stub.ctor = "task"
         else:
             stub.ctor                   = cls

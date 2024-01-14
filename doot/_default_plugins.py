@@ -98,9 +98,9 @@ DEFAULT_PLUGINS['action']      = [("basic"  ,    "doot.actions.base_action:DootB
                                   ("installed?", "doot.actions.control_flow:AssertInstalled"),
                               ]
 
-DEFAULT_PLUGINS['job']         = [("job"  ,     "doot.task.base_job:DootJob"),
-                                  ("task" ,     "doot.task.base_task:DootTask"),
-                                  ]
+DEFAULT_PLUGINS['task']         = [("job"  ,     "doot.task.base_job:DootJob"),
+                                   ("task" ,     "doot.task.base_task:DootTask"),
+                                   ]
 
 DEFAULT_PLUGINS['mixins']      = [("job:walker", "doot.mixins.job.walker:WalkerMixin"),
                                   ("job:shadow", "doot.mixins.job.shadower:WalkShadowerMixin"),

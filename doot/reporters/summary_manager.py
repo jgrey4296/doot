@@ -51,9 +51,9 @@ class DootReportManagerSummary(Reporter_i):
 
     def __str__(self):
         result = {
-            "tasks" :   {"success": 0, "fail": 0, "total": 0},
-            "actions" : {"success": 0, "fail": 0, "total": 0},
-            "jobs" : {"success": 0, "fail": 0, "total": 0},
+            "tasks"     : {"success": 0, "fail": 0, "total": 0},
+            "actions"   : {"success": 0, "fail": 0, "total": 0},
+            "jobs"      : {"success": 0, "fail": 0, "total": 0},
             "artifacts" : 0
             }
 

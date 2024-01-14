@@ -29,7 +29,7 @@ class TestDootTaskSpec:
         assert(isinstance(obj, structs.DootTaskSpec))
         assert(obj.name.group == "default")
         assert(obj.name.task == "default")
-        assert(str(obj.ctor) == doot.constants.DEFAULT_PLUGINS['job'][0][1])
+        assert(str(obj.ctor) == doot.constants.DEFAULT_PLUGINS['task'][0][1])
         assert(obj.version == "0.1")
 
     def test_version_change(self):
@@ -37,7 +37,7 @@ class TestDootTaskSpec:
         assert(isinstance(obj, structs.DootTaskSpec))
         assert(obj.name.group == "default")
         assert(obj.name.task == "default")
-        assert(str(obj.ctor) == doot.constants.DEFAULT_PLUGINS['job'][0][1])
+        assert(str(obj.ctor) == doot.constants.DEFAULT_PLUGINS['task'][0][1])
         assert(obj.version == "0.5")
 
     def test_basic_name(self):
