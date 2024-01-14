@@ -70,7 +70,7 @@ class BaseRunner(TaskRunner_i):
         self.policy               = policy
         self.step                 = 0
         self._enter_msg = "---------- Task Loop Starting ----------"
-        self._exit_msgg  = "---------- Task Loop Finished ----------"
+        self._exit_msg  = "---------- Task Loop Finished ----------"
 
     def __enter__(self) -> Any:
         printer.info("- Validating Task Network, building remaining abstract tasks")
