@@ -44,15 +44,15 @@ class TestOverlord:
         assert(bool(overlord.cmds))
         assert(len(overlord.cmds) >= len(doot.constants.DEFAULT_PLUGINS['command']))
 
-    def test_jobs_loaded(self, mocker):
+    def test_tasks_loaded(self, mocker):
         mocker.patch("sys.argv", ["doot"])
         mocker.patch("doot.loaders.task_loader.task_sources")
         overlord = DootOverlord(
             extra_config={"tasks" : {"basic" : [{"name": "simple", "ctor": BASIC_JOB_NAME}]}}
         )
-        assert(bool(overlord.jobs))
+        assert(bool(overlord.tasks))
 
-    def test_jobs_multi(self, mocker):
+    def test_tasks_multi(self, mocker):
         mocker.patch("sys.argv", ["doot"])
         mocker.patch("doot.loaders.task_loader.task_sources")
         mocker.patch("doot._configs_loaded_from")
@@ -61,10 +61,10 @@ class TestOverlord:
                 {"name": "simple", "ctor": BASIC_JOB_NAME},
                 {"name": "another", "ctor": BASIC_JOB_NAME}
         ]}})
-        assert(bool(overlord.jobs))
-        assert(len(overlord.jobs) == 2), len(overlord.jobs)
+        assert(bool(overlord.tasks))
+        assert(len(overlord.tasks) == 2), len(overlord.tasks)
 
-    def test_jobs_name_conflict(self, mocker, caplog):
+    def test_tasks_name_conflict(self, mocker, caplog):
         mocker.patch("sys.argv", ["doot"])
         DootOverlord(extra_config={
             "tasks" : {"basic" : [
@@ -76,7 +76,7 @@ class TestOverlord:
 
 
     @pytest.mark.skip
-    def test_jobs_bad_type(self, mocker):
+    def test_tasks_bad_type(self, mocker):
         mocker.patch("sys.argv", ["doot"])
         with pytest.raises(doot.errors.DootTaskLoadError):
             DootOverlord(extra_config={"tasks" : {"basic": [{"name": "simple", "ctor": "not_basic"}]}})
