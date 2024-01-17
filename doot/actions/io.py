@@ -68,9 +68,12 @@ class AppendAction(Action_p):
     def __call__(self, spec, state):
         sep     = SEP.to_type(spec, state, type_=str|None) or AppendAction.sep
         loc     = TO_KEY.to_path(spec, state)
-        args    = [DootKey.make(x, explicit=True).expand(spec, state) for x in spec.args]
+        args    = [DootKey.make(x, explicit=True).expand(spec, state, insist=True, on_fail=None) for x in spec.args]
         with open(loc, 'a') as f:
             for arg in args:
+                if not arg:
+                    continue
+
                 printer.info("Appending %s chars to %s", len(arg), loc)
                 f.write(sep)
                 f.write(arg)
@@ -87,8 +90,12 @@ class WriteAction(Action_p):
     _toml_kwargs = [FROM_KEY, TO_KEY]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        data = FROM_KEY.expand(spec, task_state)
+        data = FROM_KEY.expand(spec, task_state, insist=True, on_fail=None)
         loc  = TO_KEY.to_path(spec, task_state)
+        if not data:
+            printer.info("No Data to Write")
+            return
+
         printer.info("Writing %s chars to %s", len(data), loc)
         with open(loc, 'w') as f:
             f.write(data)

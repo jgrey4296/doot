@@ -95,10 +95,13 @@ class DootFormatter(string.Formatter):
         cli               = doot.args.on_fail({}).tasks[str(state.get('_task_name', None))]()
         locs              = kwargs.get("_locs", doot.locs)
         replacement       = cli.get(key, None) or state.get(key, None) or spec.get(key, None)
+        insist            = kwargs.get("_insist", False)
         if replacement is None and locs is not None:
             replacement = locs.get(key, None)
 
         match replacement:
+            case None if insist:
+                raise KeyError("Key Expansion Not Found")
             case None:
                 return DootKey.make(key).form
             case DootKey() if self._depth < MAX_KEY_EXPANSIONS:
@@ -307,11 +310,11 @@ class DootSimpleKey(str, DootKey):
             case _:
                 raise TypeError("Uknown DootKey target for within", other)
 
-    def expand(self, spec=None, state=None, *, rec=False, chain:list[DootKey]=None, on_fail=Any, locs:DootLocations=None) -> str:
+    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[DootKey]=None, on_fail=Any, locs:DootLocations=None) -> str:
         key = self.redirect(spec)
         try:
-            return DootFormatter.fmt(key, _spec=spec, _state=state, _rec=rec, _locs=locs)
-        except TypeError as err:
+            return DootFormatter.fmt(key, _spec=spec, _state=state, _rec=rec, _locs=locs, _insist=insist)
+        except (KeyError, TypeError) as err:
             if bool(chain):
                 return chain[0].expand(spec, state, rec=rec, chain=chain[1:], on_fail=on_fail)
             elif on_fail != Any:
@@ -410,10 +413,10 @@ class DootMultiKey(DootKey):
         """ Return the key in its use form """
         return str(self)
 
-    def expand(self, spec=None, state=None, *, rec=False, chain:list[DootKey]=None, on_fail=Any):
+    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[DootKey]=None, on_fail=Any):
         try:
-            return DootFormatter.fmt(self.value, _spec=spec, _state=state, _rec=rec)
-        except TypeError as err:
+            return DootFormatter.fmt(self.value, _spec=spec, _state=state, _rec=rec, _insist=insist)
+        except (KeyError, TypeError) as err:
             if bool(chain):
                 return chain[0].expand(spec, state, rec=rec, chain=chain[1:], on_fail=on_fail)
             elif on_fail != Any:
