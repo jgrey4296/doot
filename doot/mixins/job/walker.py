@@ -75,7 +75,7 @@ class WalkerMixin(SubMixin):
     `exts` filters by extension (py-style, so eg: '.bib')
     `roots` defines starting locations.
     `recursive` controls if just the specified location is searched, or subdirs.
-    `filter_fn` allows an import path of a callable: lambda(pl.Path) -> _WalkControl
+    `accept_fn` allows an import path of a callable: lambda(pl.Path) -> _WalkControl
 
     Config files can specify:
     settings.walking.ignores = []
@@ -126,14 +126,14 @@ class WalkerMixin(SubMixin):
     def walk_target(self, target, rec=None, fn=None, exts=None) -> Generator[pl.Path]:
         rec       = bool(rec) or rec is None and self.rec
         exts      = exts or self.exts or []
-        filter_fn = fn or self.filter
+        accept_fn = fn or self.filter
         printer.info("Walking Target: %s : rec=%s, exts=%s", target, rec, exts)
 
         if not target.exists():
             return None
 
         if not rec:
-            yield from self._single_directory_walk(target, filter_fn, exts)
+            yield from self._single_directory_walk(target, accept_fn, exts)
             return None
 
         assert(rec)
@@ -148,7 +148,7 @@ class WalkerMixin(SubMixin):
                 continue
             if bool(exts) and current.is_file() and current.suffix not in exts:
                 continue
-            match filter_fn(current):
+            match accept_fn(current):
                 case _WalkControl.yes:
                     yield current
                 case True if current.is_dir():
@@ -193,11 +193,11 @@ class WalkerMixin(SubMixin):
     def _build_subs(self) -> Generator[DootTaskSpec]:
         self.total_subtasks = 0
         logging.debug("%s : Building Walker SubTasks", self.name)
-        filter_fn   = self.import_callable(self.spec.extra.on_fail((None,)).filter_fn())
+        accept_fn   = self.import_callable(self.spec.extra.on_fail((None,)).accept_fn())
         inject_keys = set(self.spec.inject).difference(self._default_subtask_injections)
         inject_dict = {k: self.spec.extra[k] for k in inject_keys}
 
-        for i, (uname, fpath) in enumerate(self.walk_all(fn=filter_fn)):
+        for i, (uname, fpath) in enumerate(self.walk_all(fn=accept_fn)):
             match self._build_subtask(i, uname, fpath=fpath, fstem=fpath.stem, fname=fpath.name, lpath=self.rel_path(fpath), **inject_dict):
                 case None:
                     pass
@@ -208,8 +208,8 @@ class WalkerMixin(SubMixin):
                     raise TypeError("Unexpected type for subtask: %s", type(subtask))
 
 
-    def _single_directory_walk(self, target, filter_fn, exts):
-        check_fn = lambda x: (filter_fn(x) not in [None, False, _WalkControl.no, _WalkControl.noBut]
+    def _single_directory_walk(self, target, accept_fn, exts):
+        check_fn = lambda x: (accept_fn(x) not in [None, False, _WalkControl.no, _WalkControl.noBut]
                                 and x.name not in walk_ignores
                                 and (not bool(exts) or (x.is_file() and x.suffix in exts)))
 
@@ -229,7 +229,7 @@ class WalkerMixin(SubMixin):
         stub['exts'].set(type="list[str]",          default=[],      priority=80)
         stub['roots'].set(type="list[str|pl.Path]", default=['"."'], priority=80, comment="Places the Walker will start")
         stub['recursive'].set(type="bool",          default=False,   priority=80)
-        stub['filter_fn'].set(type="callable",      prefix="# ",     priority=81, comment="callable[[pl.Path], bool|_WalkControl]")
+        stub['accept_fn'].set(type="callable",      prefix="# ",     priority=81, comment="callable[[pl.Path], bool|_WalkControl]")
 
 
 
