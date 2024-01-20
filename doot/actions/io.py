@@ -297,6 +297,8 @@ class CompressAction(Action_p):
         target = FILE_TARGET.to_path(spec, state)
         output = TO_KEY.to_path(spec, state, on_fail=target.with_suffix(target.suffix + ".tar.gz"))
 
+        if output.exists():
+            raise doot.errors.DootActionError("Compression target already exists")
         if target.is_dir():
             COMP_GZIP_CMD(_in=COMP_TAR_CMD("-C", target, ".", _piped=True), _out=output)
         else:

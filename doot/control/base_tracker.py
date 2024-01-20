@@ -159,7 +159,7 @@ class BaseTracker(TaskTracker_i):
         return task
 
     def _insert_cli_args_into_spec(self, spec:DootTaskSpec):
-        if spec.name not in doot.args.tasks:
+        if spec.name not in doot.args.on_fail({}).tasks():
             return spec
 
         spec_extra : dict = dict(spec.extra.items())

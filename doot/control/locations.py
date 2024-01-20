@@ -65,6 +65,8 @@ class DootLocations:
           get a location by name from loaded toml
           eg: locs.temp
           """
+        if key == "__self__":
+            return None
         return self[DootKey.make(key, strict=True)]
 
     def __getitem__(self, val:str|DootKey|pl.Path|DootTaskArtifact) -> pl.Path:

@@ -186,7 +186,7 @@ class DootOverlord(Overlord_p):
         """ Overlord specific cli arg responses. modify verbosity,
           print version, and help.
         """
-        if doot.args.head.args.verbose and self.log_config:
+        if doot.args.on_fail(False).head.args.verbose() and self.log_config:
             printer.info("Switching to Verbose Output")
             self.log_config.set_level("NOTSET")
             pass
@@ -195,11 +195,11 @@ class DootOverlord(Overlord_p):
         logging.info("Plugins: %s", dict(self.plugins))
         logging.info("Tasks: %s", self.tasks.keys())
 
-        if doot.args.head.args.version:
+        if doot.args.on_fail(False).head.args.version():
             printer.info("\n\n----- Doot Version: %s\n\n", doot.__version__)
             return True
 
-        if doot.args.head.args.help:
+        if doot.args.on_fail(False).head.args.help():
             printer.info(self.help)
 
             return True
@@ -213,7 +213,7 @@ class DootOverlord(Overlord_p):
             printer.info("-------------------- Doot --------------------", extra={"colour" : "yellow"})
             printer.info("----------------------------------------------", extra={"colour": "green"})
 
-        if doot.args.head.args.debug:
+        if doot.args.on_fail(False).head.args.debug():
             breakpoint()
             pass
 
@@ -222,7 +222,7 @@ class DootOverlord(Overlord_p):
             return
 
         # Do the cmd
-        logging.info("Overlord Calling: %s", cmd or doot.args.cmd.name)
+        logging.info("Overlord Calling: %s", cmd or doot.args.on_fail("Unknown").cmd.name())
         try:
             cmd = self._get_cmd(cmd)
             cmd(self.tasks, self.plugins)
@@ -234,7 +234,7 @@ class DootOverlord(Overlord_p):
         if self.current_cmd is not None:
             return self.current_cmd
 
-        target = cmd or doot.args.on_fail(None).cmd.name() or doot.constants.DEFAULT_CLI_CMD
+        target = cmd or doot.args.on_fail(doot.constants.DEFAULT_CLI_CMD).cmd.name()
 
         self.current_cmd = self.cmds.get(target, None)
         if self.current_cmd is None:

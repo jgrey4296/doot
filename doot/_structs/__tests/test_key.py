@@ -553,6 +553,14 @@ class TestPathExpansion:
         assert(result == pl.Path("test1/blah/aweg/doot").expanduser().resolve())
 
 
+    def test_expansion_with_ext(self, spec, setup_locs):
+        key = DootKey.make("{y}.bib", strict=False)
+        assert(isinstance(key, DootKey))
+        state = {"aweg": "doot"}
+        result  = key.to_path(spec, state)
+        assert(result.name == "aweg.bib")
+
+
     @pytest.mark.xfail
     def test_expansion_redirect(self, spec, setup_locs):
         key = DootKey.make("aweg_", strict=False)
