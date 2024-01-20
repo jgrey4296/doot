@@ -41,6 +41,7 @@ printer = logmod.getLogger("doot._printer")
 import networkx as nx
 import boltons.queueutils
 from collections import defaultdict
+import tomlguard
 import doot
 import doot.errors
 import doot.constants as const
@@ -120,26 +121,29 @@ class BaseTracker(TaskTracker_i):
 
         return str(artifact)
 
-    def _prep_task(self, task:DootTaskSpec|TaskBase_i) -> TaskBase_i:
+    def _prep_task(self, spec:DootTaskSpec|TaskBase_i) -> TaskBase_i:
         """ Internal utility method to convert task identifier into actual task """
         # Build the Task if necessary
-        match task:
+        match spec:
             case DootTaskSpec(ctor=DootTaskName() as ctor) if str(ctor) in self.tasks:
                 # specialize a loaded task
-                base_spec   = self.tasks.get(str(ctor)).spec
-                specialized = base_spec.specialize_from(task)
-                if specialized.ctor is None:
-                    raise doot.errors.DootTaskTrackingError("Attempt to specialize task failed: %s", task.name)
+                base_spec          = self.tasks.get(str(ctor)).spec
+                inital_specialized = base_spec.specialize_from(spec)
+                cli_specialized    = self._insert_cli_args_into_spec(initial_specialized)
+                if cli_specialized.ctor is None:
+                    raise doot.errors.DootTaskTrackingError("Attempt to specialize task failed: %s", spec.name)
 
-                task = specialized.build()
-            case DootTaskSpec(ctor=DootCodeReference() as ctor) if task.check(ensure=TaskBase_i):
-                task : TaskBase_i = task.build()
+                task = cli_specialized.build()
+            case DootTaskSpec(ctor=DootCodeReference() as ctor) if spec.check(ensure=TaskBase_i):
+                cli_specialized    = self._insert_cli_args_into_spec(spec)
+                task : TaskBase_i = cli_specialized.build()
             case DootTaskSpec():
-                task : TaskBase_i = DootTask(task)
+                cli_specialized    = self._insert_cli_args_into_spec(spec)
+                task : TaskBase_i = DootTask(cli_specialized)
             case TaskBase_i():
-                pass
+                task = spec
             case _:
-                raise doot.errors.DootTaskTrackingError("Unknown task attempted to be added: %s", task)
+                raise doot.errors.DootTaskTrackingError("Unknown task attempted to be added: %s", spec)
 
         # Check it doesn't shadow another task
         match task.name in self.tasks, task.name in self.task_graph: # type: ignore
@@ -153,6 +157,17 @@ class BaseTracker(TaskTracker_i):
                 logging.debug("Defining a declared dependency task: %s", task.name)
 
         return task
+
+    def _insert_cli_args_into_spec(self, spec:DootTaskSpec):
+        if spec.name not in doot.args.tasks:
+            return spec
+
+        spec_extra : dict = dict(spec.extra.items())
+        for key,val in doot.args.tasks[str(spec.name)].items():
+            spec_extra[key] = val
+
+        spec.extra = tomlguard.TomlGuard(spec_extra)
+        return spec
 
     def _insert_dependencies(self, task):
         for pre in task.depends_on:
