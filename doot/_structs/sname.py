@@ -317,6 +317,10 @@ class DootTaskName(DootStructuredName):
     def __str__(self) -> str:
         return "{}{}{}".format(self.group, self.separator, self.task)
 
+    def __repr__(self) -> str:
+        name = str(self)
+        return f"<TaskName: {name}>"
+
     def __hash__(self):
         return hash(str(self))
 
@@ -338,7 +342,7 @@ class DootTaskName(DootStructuredName):
     def subtask(self, *subtasks, subgroups:list[str]|None=None) -> DootTaskName:
         args = self.args.copy() if self.args else None
         return DootTaskName(self.head + (subgroups or []),
-                            self.tail + [x for x in subtasks if x is not None],
+                            self.tail + [str(x) for x in subtasks if x is not None],
                             internal=self.internal,
                             args=args)
 

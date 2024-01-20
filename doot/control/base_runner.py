@@ -113,7 +113,8 @@ class BaseRunner(TaskRunner_i):
                 self.tracker.update_state(err.task, self.tracker.state_e.FAILED)
                 return err.task
             case doot.errors.DootTaskError() as err:
-                printer.warning("Task Error : %s : %s", err.task.name, err)
+                name = err.task.name if err.task is not None else "unknown"
+                printer.warning("Task Error : %s : %s", name, err)
                 self.tracker.update_state(err.task, self.tracker.state_e.FAILED)
                 return err.task
             case doot.errors.DootError() as err:

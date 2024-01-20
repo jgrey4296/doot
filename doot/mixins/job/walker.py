@@ -95,7 +95,7 @@ class WalkerMixin(SubMixin):
         super().__init__(spec)
         self.exts           = {y for x in spec.extra.on_fail([]).exts() for y in [x.lower(), x.upper()]}
         # expand roots based on doot.locs
-        self.roots          = [doot.locs[x] for x in spec.extra.on_fail([pl.Path()]).roots()]
+        self.roots = [doot.locs[x] for x in spec.extra.on_fail([pl.Path()], list).roots()]
         self.rec            = spec.extra.on_fail(False, bool).recursive()
         self.total_subtasks = 0
         for x in self.roots:

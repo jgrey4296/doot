@@ -184,7 +184,7 @@ class DootKey(abc.ABC):
                 depth += 1
 
             if any(bool(matches) for x in expanded_as_path.parts if (matches:=PATTERN.findall(x))):
-                raise doot.errors.DootLocationExpansionError("Missing keys on path expansion", matches)
+                raise doot.errors.DootLocationExpansionError("Missing keys on path expansion", matches, self)
 
             return locs.expand(expanded_as_path)
 
