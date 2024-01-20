@@ -33,12 +33,11 @@ import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
 from doot.mixins.importer import ImporterMixin
-from doot.structs import DootCodeReference
-import doot.utils.expansion as exp
+from doot.structs import DootCodeReference, DootKey
 
 ##-- expansion keys
-UPDATE : Final[exp.DootKey] = exp.DootKey("update_")
-FORMAT : Final[exp.DootKey] = exp.DootKey("format")
+UPDATE : Final[DootKey] = DootKey.make("update_")
+FORMAT : Final[DootKey] = DootKey.make("format")
 
 ##-- end expansion keys
 
@@ -51,7 +50,12 @@ class AddStateAction(Action_p):
     _toml_kwargs = ["<Any>"]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        return dict(spec.kwargs)
+        result = {}
+        for k,v in spec.kwargs.items():
+            key = DootKey.make(v, explicit=True)
+            val = key.to_type(spec, state)
+            result[k] = val
+        return result
 
 
 @doot.check_protocol
@@ -63,7 +67,9 @@ class AddStateFn(Action_p, ImporterMixin):
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
         result = {}
         for kwarg, val in spec.kwargs:
-            ref = DootCodeReference.from_str(exp.to_str(val, spec, task_state))
+            key = DootKey.make(val, explicit=True)
+            val = key.expand(spec, task_state)
+            ref = DootCodeReference.from_str(val)
             result[kwarg] = ref.try_import()
 
         return result
@@ -79,11 +85,12 @@ class PushState(Action_p):
 
     def __call__(self, spec, task_state) -> dict|bool|None:
         data_key = UPDATE.redirect(spec)
-        data     = data_key.to_any(spec, task_state, type_=list|set|None) or []
+        data     = data_key.to_type(spec, task_state, type_=list|set|None, on_fail=[])
 
+        arg_keys = (DootKey.make(arg, explicit=True).to_type(spec, task_state) for arg in spec.args)
         to_add   = map(lambda x: x if isinstance(x, list) else [x],
-                       filter(lambda x: x is not None,
-                              (exp.to_any(arg, spec, task_state) for arg in spec.args)))
+                       filter(lambda x: x is not None, arg_keys))
+
         match data:
             case set():
                 list(map(lambda x: data.update(x), to_add))

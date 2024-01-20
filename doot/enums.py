@@ -24,7 +24,7 @@ logging = logmod.getLogger(__name__)
 class TaskStateEnum(enum.Enum):
     """
       Enumeration of the different states a task can be in.
-      The state is stored in a TaskTracker_i
+      The state is stored in a TaskTracker_i, not the task itself
     """
     TEARDOWN        = enum.auto()
     SUCCESS         = enum.auto()
@@ -32,6 +32,7 @@ class TaskStateEnum(enum.Enum):
     HALTED          = enum.auto()
     WAIT            = enum.auto()
     READY           = enum.auto()
+    RUNNING         = enum.auto()
     EXISTS          = enum.auto()
     INIT            = enum.auto()
     DEFINED         = enum.auto()
@@ -44,7 +45,7 @@ class TaskFlags(enum.Flag):
       stored in the Task_i instance itself.
     """
     TASK         = enum.auto()
-    TASKER       = enum.auto()
+    JOB          = enum.auto()
     EPHEMERAL    = enum.auto()
     IDEMPOTENT   = enum.auto()
     REQ_TEARDOWN = enum.auto()
@@ -70,7 +71,7 @@ class ReportEnum(enum.Flag):
 
     PLUGIN   = enum.auto()
     TASK     = enum.auto()
-    TASKER   = enum.auto()
+    JOB      = enum.auto()
     ACTION   = enum.auto()
     CONFIG   = enum.auto()
     ARTIFACT = enum.auto()
@@ -105,6 +106,7 @@ class TaskPolicyEnum(enum.Flag):
 
 
 class ActionResponseEnum(enum.Enum):
+    # TODO make success -> succeed
     SUCCESS  = enum.auto()
     FAIL     = enum.auto()
     SKIP     = enum.auto()

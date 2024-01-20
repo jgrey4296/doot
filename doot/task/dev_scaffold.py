@@ -13,9 +13,9 @@ from functools import partial
 import doot
 import doot.errors
 from doot.structs import DootTaskSpec
-from doot._abstract import Tasker_i
+from doot._abstract import Job_i
 from doot.mixins.tasks.cleaning import CleanerMixin
-from doot.task.base_tasker import DootTasker
+from doot.task.base_job import DootJob
 from doot.task.base_task import DootTask
 
 ##-- logging
@@ -25,7 +25,7 @@ logging = logmod.getLogger(__name__)
 make_missing = doot.config.on_fail(False).settings.general.location_check.make_missing()
 
 @doot.check_protocol
-class DevScaffold(DootTasker):
+class DevScaffold(DootJob):
     """ When Authoring a task, scaffold it with test data, run it, test the results, and cleanup
 
 

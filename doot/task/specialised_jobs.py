@@ -31,11 +31,11 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import doot
-from doot.task.base_tasker import DootTasker
+from doot.task.base_job import DootJob
 
 
 @doot.check_protocol
-class GroupTasker(DootTasker):
+class GroupJob(DootJob):
     """ A Group of task specs, none of which require params """
 
     def __init__(self, spec:DootTaskSpec):
@@ -55,7 +55,7 @@ class GroupTasker(DootTasker):
         return self
 
     def to_dict(self):
-        # this can add taskers to the namespace,
+        # this can add jobs to the namespace,
         # but doesn't help for dicts
         return {f"doot_{self.name}_{id(x)}": x for x in self.tasks}
 
@@ -64,9 +64,9 @@ class GroupTasker(DootTasker):
             self.tasks.append(other)
 
 @doot.check_protocol
-class WatchTasker(DootTasker):
+class WatchJob(DootJob):
     """
-    Tasker that watches for conditions, *then*
+    Job that watches for conditions, *then*
     generates tasks.
     eg: a file watcher
     """

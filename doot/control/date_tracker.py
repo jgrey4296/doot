@@ -38,67 +38,48 @@ import doot
 import doot.errors
 import doot.constants as const
 from doot.enums import TaskStateEnum
-from doot._abstract import Tasker_i, Task_i, FailPolicy_p
+from doot._abstract import Job_i, Task_i, FailPolicy_p
 from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskName
 from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i
 from doot.task.base_task import DootTask
+from doot.control.tracker import _TrackerEdgeType, DootTracker
 
-ROOT             : Final[str]                  = "__root" # Root node of dependency graph
-STATE            : Final[str]                  = "state"  # Node attribute name
-PRIORITY         : Final[str]                  = "priority"
-DECLARE_PRIORITY : Final[int]                  = 10
-MIN_PRIORITY     : Final[int]                  = -10
-complete_states  : Final[set[TaskStateEnum]]   = {TaskStateEnum.SUCCESS, TaskStateEnum.EXISTS}
-
-class _TrackerEdgeType(enum.Enum):
-    TASK     = enum.auto()
-    ARTIFACT = enum.auto()
+STORAGE_FILE : Final[pl.Path] = doot.config.on_fail(DootKey.make(".tasks.bk")).settings.general.tracker_file(wrapper=DootKey.make).to_path()
 
 @doot.check_protocol
-class DootTracker(TaskTracker_i):
+class DootDateTracker(DootTracker):
     """
-    track dependencies in a networkx digraph,
-    predecessors of a node are its dependencies.
-      ie: SubDependency -> Dependency -> Task -> ROOT
+      Track task status, using file product modification times
+      reads and writes modification times to wherever config.settings.general.tracker_file locates
 
-    tracks definite and indefinite artifacts as products and dependencies of tasks as well.
-
-    the `task_graph` stores nodes as full names of tasks
     """
-    state_e            = TaskStateEnum
-    INITIAL_TASK_STATE = TaskStateEnum.DEFINED
-
     def __init__(self, shadowing:bool=False, *, policy=None):
-        super().__init__(policy=policy) # self.tasks
-        self.artifacts              : dict[str, DootTaskArtifact]                       = {}
-        self.task_graph              : nx.DiGraph                                        = nx.DiGraph()
-        self.active_set             : list[str|DootTaskName|DootTaskArtifact]     = set()
-        self.task_queue                                                                 = boltons.queueutils.HeapPriorityQueue()
-        self.execution_path         : list[str]                                         = []
-        self.shadowing              : bool                                              = shadowing
-        self._root_name             : str = ROOT
-
-        self.task_graph.add_node(ROOT, state=self.state_e.WAIT)
+        super().__init__(shadowing=shadowing, policy=policy)
+        self._modification_db = None
 
     def write(self, target:pl.Path) -> None:
         """ Write the dependency graph to a file """
+        # STORAGE_FILE.write_text(str(self._modification_db))
         raise NotImplementedError()
 
     def read(self, target:pl.Path) -> None:
         """ Read the dependency graph from a file """
+        # self._modification_db = STORAGE_FILE.read_text()
         raise NotImplementedError()
 
-    def task_state(self, task:str|DootTaskName|pl.Path, query_from=None) -> TaskStateEnum:
-        """ Get the state of a task """
-        if query_from is not None:
-            query_date = self.last_ran.get(query_from, datetime.datetime.now())
-            task_date  = self.last_ran.get(str(task), None)
-            if task_date and query_date <= task_date:
-                self.update_state(task, TaskStateEnum.DEFINED)
-            elif task_date and task_date <= query_date:
-                self.update_state(task, TaskStateEnum.SUCCESS)
+    def update_state(self, task:str|TaskBase_i|DootTaskArtifact|DootTaskName, state:self.state_e):
+        now = datetime.datetime.now()
+        match state:
+            case self.state_e.EXISTS:
+                task_date  = self._modification_db.set(str(task), now)
+                self._invalidate_descendents(task)
+                pass
+            case self.state_e.FAILED:
+                self._invalidate_descendents(task)
+                pass
+            case self.state_e.SUCCESS:
+                pass
 
-        if str(task) in self.dep_graph.nodes:
-            return self.dep_graph.nodes[str(task)][STATE]
-        else:
-            raise doot.errors.DootTaskTrackingError("Unknown Task state requested: %s", task)
+    def _invalidate_descendents(task):
+        incomplete, descendants = self._task_dependents(task)
+        pass

@@ -1,6 +1,6 @@
 [project]
 name            = "doot"
-version         = "0.3.1"
+version         = "0.4.0"
 description     = "An opinionated, TOML based task runner"
 readme          = "README.md"
 requires-python = ">=3.11"
@@ -87,16 +87,16 @@ log_format    = "%(levelname)s %(name)s : %(message)s"
 
 ##-- bumpver
 [tool.bumpver]
-current_version    = "0.3.1"
+current_version    = "0.4.0"
 version_pattern    = "MAJOR.MINOR.PATCH"
 commit_message     = "[bump]: version {old_version} -> {new_version}"
 tag_message        = "{new_version}"
 tag_scope          = "default"
-# commit             = true
-# tag                = true
+commit             = false
+tag                = true
+# push             = true
 # pre_commit_hook  = ""
 # post_commit_hook = ""
-# push             = true
 
 [tool.bumpver.file_patterns]
 "pyproject.toml"   = [

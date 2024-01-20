@@ -15,6 +15,7 @@ from importlib import resources
 import re
 from tomlguard import TomlGuard
 ##-- end std imports
+
 from doot._default_plugins import *
 
 ##-- plugin names and loaders
@@ -23,7 +24,7 @@ FRONTEND_PLUGIN_TYPES      : Final = ['command', 'reporter', 'report-line']
 BACKEND_PLUGIN_TYPES       : Final = [
     'database', 'tracker', 'runner',
     'command-loader', 'task-loader',
-    'parser', 'action', "tasker", "mixins"
+    'parser', 'action', "task", "mixins"
     ]
 
 DEFAULT_COMMAND_LOADER_KEY  : Final[str] =  "command-loader"

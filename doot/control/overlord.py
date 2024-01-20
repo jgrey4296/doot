@@ -39,7 +39,7 @@ import doot.errors
 import doot.constants
 import tomlguard
 from doot._abstract import (ArgParser_i, Command_i, CommandLoader_p,
-                            Overlord_p, Task_i, Tasker_i, TaskLoader_p)
+                            Overlord_p, Task_i, Job_i, TaskLoader_p)
 
 from doot.utils.plugin_selector import plugin_selector
 from doot.errors import DootInvalidConfig, DootParseError
@@ -76,23 +76,22 @@ class DootOverlord(Overlord_p):
 
     def __init__(self, *, loaders:dict[str, Loader_i]=None, config_filenames:tuple=('doot.toml', 'pyproject.toml'), extra_config:dict|TomlGuard=None, args:list=None, log_config:None|DootLogConfig=None):
         logging.debug("Initialising Overlord")
-        self.args                          = args or sys.argv[:]
-        self.BIN_NAME                      = self.args[0].split('/')[-1]
-        self.loaders                       = loaders or dict()
-        self.log_config                    = log_config
+        self.args                                = args or sys.argv[:]
+        self.BIN_NAME                            = self.args[0].split('/')[-1]
+        self.loaders                             = loaders or dict()
+        self.log_config                          = log_config
 
-        self.plugins      : None|TomlGuard    = None
-        self.cmds         : None|TomlGuard    = None
-        self.taskers      : None|TomlGuard    = None
-        self.current_cmd  : Command_i      = None
-        self.taskers      : list[Tasker_i] = []
+        self.plugins      : None|TomlGuard       = None
+        self.cmds         : None|TomlGuard       = None
+        self.tasks        : None|TomlGuard       = None
+        self.current_cmd  : Command_i            = None
 
-        self._errored     : None|DootError = None
-        self._current_cmd : None|str       = None
+        self._errored     : None|DootError       = None
+        self._current_cmd : None|str             = None
 
         self._load_plugins(extra_config)
         self._load_commands(extra_config)
-        self._load_taskers(extra_config)
+        self._load_tasks(extra_config)
         self._parse_args()
         logging.debug("Core Overlord Initialisation complete")
 
@@ -123,26 +122,33 @@ class DootOverlord(Overlord_p):
 
     def _load_plugins(self, extra_config:dict|TomlGuard=None):
         """ Use a plugin loader to find all applicable `importlib.EntryPoint`s  """
-        self.plugin_loader    = self.loaders.get(plugin_loader_key, DootPluginLoader())
-        self.plugin_loader.setup(extra_config)
-        self.plugins : TomlGuard = self.plugin_loader.load()
+        try:
+            self.plugin_loader    = self.loaders.get(plugin_loader_key, DootPluginLoader())
+            self.plugin_loader.setup(extra_config)
+            self.plugins : TomlGuard = self.plugin_loader.load()
+        except doot.errors.DootPluginError as err:
+            printer.warning("Plugins Not Loaded Due to Error: %s", err)
+            self.plugins = tomlguard.TomlGuard()
 
     def _load_commands(self, extra_config):
         """ Select Commands from the discovered plugins """
-
         self.cmd_loader = plugin_selector(self.loaders.get(command_loader_key, None) or self.plugins.on_fail([], list).command_loader(),
-                                          target=preferred_cmd_loader,
-                                          fallback=DootCommandLoader)()
+                                        target=preferred_cmd_loader,
+                                        fallback=DootCommandLoader)()
 
         if self.cmd_loader is None:
             raise TypeError("Command Loader is not initialised")
         if not isinstance(self.cmd_loader, CommandLoader_p):
             raise TypeError("Attempted to use a non-CommandLoader_p as a CommandLoader: ", self.cmd_loader)
 
-        self.cmd_loader.setup(self.plugins, extra_config)
-        self.cmds = self.cmd_loader.load()
+        try:
+            self.cmd_loader.setup(self.plugins, extra_config)
+            self.cmds = self.cmd_loader.load()
+        except doot.errors.DootPluginError as err:
+            printer.warning("Commands Not Loaded due to Error: %s", err)
+            self.cmds = tomlguard.TomlGuard()
 
-    def _load_taskers(self, extra_config):
+    def _load_tasks(self, extra_config):
         """ Load task entry points """
 
         self.task_loader = plugin_selector(self.loaders.get(task_loader_key, None) or self.plugins.on_fail([], list).task_loader(),
@@ -154,8 +160,12 @@ class DootOverlord(Overlord_p):
         if not isinstance(self.task_loader, TaskLoader_p):
             raise TypeError("Attempted to use a non-Commandloader_i as a CommandLoader: ", self.cmd_loader)
 
-        self.task_loader.setup(self.plugins, extra_config)
-        self.taskers = self.task_loader.load()
+        try:
+            self.task_loader.setup(self.plugins, extra_config)
+            self.tasks = self.task_loader.load()
+        except doot.errors.DootTaskLoadError as err:
+            printer.warning("Tasks Not Loaded Due to Error: %s", err)
+            self.tasks = tomlguard.TomlGuard()
 
     def _parse_args(self, args=None):
         """ use the found task and command arguments to make sense of sys.argv """
@@ -166,28 +176,30 @@ class DootOverlord(Overlord_p):
         if not isinstance(self.parser, ArgParser_i):
             raise TypeError("Improper argparser specified: ", self.arg_parser)
 
-        doot.args = self.parser.parse(args or self.args, doot_specs=self.param_specs,
-            cmds=self.cmds,
-            tasks=self.taskers)
+        try:
+            doot.args = self.parser.parse(args or self.args, doot_specs=self.param_specs, cmds=self.cmds, tasks=self.tasks)
+        except doot.errors.DootParseError as err:
+            printer.warning("Args failed to parse to due error: %s", err)
+            doot.args = tomlguard.TomlGuard()
 
     def _cli_arg_response(self) -> bool:
         """ Overlord specific cli arg responses. modify verbosity,
           print version, and help.
         """
-        if doot.args.head.args.verbose and self.log_config:
+        if doot.args.on_fail(False).head.args.verbose() and self.log_config:
             printer.info("Switching to Verbose Output")
             self.log_config.set_level("NOTSET")
             pass
 
         logging.info("CLI Args: %s", doot.args._table())
         logging.info("Plugins: %s", dict(self.plugins))
-        logging.info("Taskers: %s", self.taskers.keys())
+        logging.info("Tasks: %s", self.tasks.keys())
 
-        if doot.args.head.args.version:
+        if doot.args.on_fail(False).head.args.version():
             printer.info("\n\n----- Doot Version: %s\n\n", doot.__version__)
             return True
 
-        if doot.args.head.args.help:
+        if doot.args.on_fail(False).head.args.help():
             printer.info(self.help)
 
             return True
@@ -201,7 +213,7 @@ class DootOverlord(Overlord_p):
             printer.info("-------------------- Doot --------------------", extra={"colour" : "yellow"})
             printer.info("----------------------------------------------", extra={"colour": "green"})
 
-        if doot.args.head.args.debug:
+        if doot.args.on_fail(False).head.args.debug():
             breakpoint()
             pass
 
@@ -210,10 +222,10 @@ class DootOverlord(Overlord_p):
             return
 
         # Do the cmd
-        logging.info("Overlord Calling: %s", cmd or doot.args.cmd.name)
+        logging.info("Overlord Calling: %s", cmd or doot.args.on_fail("Unknown").cmd.name())
         try:
             cmd = self._get_cmd(cmd)
-            cmd(self.taskers, self.plugins)
+            cmd(self.tasks, self.plugins)
         except doot.errors.DootError as err:
             self._errored = err
             raise err from err
@@ -222,7 +234,7 @@ class DootOverlord(Overlord_p):
         if self.current_cmd is not None:
             return self.current_cmd
 
-        target = cmd or doot.args.on_fail(None).cmd.name() or doot.constants.DEFAULT_CLI_CMD
+        target = cmd or doot.args.on_fail(doot.constants.DEFAULT_CLI_CMD).cmd.name()
 
         self.current_cmd = self.cmds.get(target, None)
         if self.current_cmd is None:
@@ -236,7 +248,7 @@ class DootOverlord(Overlord_p):
     def shutdown(self):
         """ Doot has finished normally, so report on what was done """
         if self.current_cmd is not None and hasattr(self.current_cmd, "shutdown"):
-            self.current_cmd.shutdown(self._errored, self.taskers, self.plugins)
+            self.current_cmd.shutdown(self._errored, self.tasks, self.plugins)
 
         match self._errored:
             case doot.errors.DootError():

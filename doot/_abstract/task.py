@@ -1,20 +1,19 @@
 """TASKS ARE THE MAIN ABSTRACTIONS MANAGED BY DOOT
 
-  - TASKERS ARE ABSTRACTIONS OF TASKS WITHOUT HAVING DONE THE WORK TO DESCRIBE THEM FULLY.
-  (SAVING TIME AT CLI FOR LARGE GLOBS ETC)
-  - TASKS ARE REIFIED BY TASKERS, TO SPECIFY THE CORE INFORMATION NEEDED TO DO A TASK.
-  - Actions are individual atomic steps of a task, given the detailed information necessary to perform the step.
+  - JOBS create tasks
+  - TASKS have actions
+  - ACTIONS are individual atomic steps of a task, given the detailed information necessary to perform the step.
 
-Taskers, as they can control refication order, can add setup and teardown tasks.
+Jobs, as they can control refication order, can add setup and teardown tasks.
 This can allow interleaving, or grouping.
 
   Communication:
-  Tasker -> Task : by creation
+  Job  -> Task   : by creation
   Task -> Action : by creation
   Action -> Task : by return value, updating task state dict
-  Task -> Tasker : by reference to the tasker
+  Task -> Job    : by reference to the job
 
-  Task -> Task     = Task -> Tasker -> Task
+  Task -> Task     = Task -> Job -> Task
   Action -> Action = Action -> Task -> Action
 
 """
@@ -67,7 +66,7 @@ class TaskBase_i(ParamSpecMaker_m):
     def __init__(self, spec:DootTaskSpec):
         self.spec       : DootTaskSpec        = spec
         self.status     : TaskStateEnum       = TaskStateEnum.WAIT
-        self.flags      : TaskFlags           = TaskFlags.TASKER
+        self.flags      : TaskFlags           = TaskFlags.JOB
         self._records   : list[Any]           = []
 
     @property
@@ -97,7 +96,7 @@ class TaskBase_i(ParamSpecMaker_m):
 
     @property
     def short_doc(self) -> str:
-        """ Generate Tasker Class 1 line help string """
+        """ Generate Job Class 1 line help string """
         try:
             split_doc = [x for x in self.__class__.__doc__.split("\n") if bool(x)]
             return ":: " + split_doc[0].strip() if bool(split_doc) else ""
@@ -173,9 +172,9 @@ class Task_i(TaskBase_i):
 
     """
 
-    def __init__(self, spec:DootTaskSpec, *, tasker:Tasker_i=None, **kwargs):
+    def __init__(self, spec:DootTaskSpec, *, job:Job_i=None, **kwargs):
         super().__init__(spec)
-        self.tasker     = tasker
+        self.job     = job
         self.state      = dict(spec.extra)
         self.state.update(kwargs)
         self.state['_task_name']   = self.spec.name
@@ -201,7 +200,7 @@ class Task_i(TaskBase_i):
         """lazy creation of action instances"""
         raise NotImplementedError()
 
-class Tasker_i(TaskBase_i):
+class Job_i(TaskBase_i):
     """
     builds task descriptions, produces no actions
     """
@@ -212,8 +211,8 @@ class Tasker_i(TaskBase_i):
 
     @classmethod
     def class_help(cls) -> str:
-        """ Tasker *class* help. """
-        help_lines = [f"Tasker : {cls.__qualname__} v{cls._version}    ({cls.__module__}:{cls.__qualname__})", ""]
+        """ Job *class* help. """
+        help_lines = [f"Job : {cls.__qualname__} v{cls._version}    ({cls.__module__}:{cls.__qualname__})", ""]
         help_lines += cls._help
 
         params = cls.param_specs

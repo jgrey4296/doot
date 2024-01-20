@@ -27,7 +27,7 @@ logging = logmod.getLogger(__name__)
 printer         = logmod.getLogger("doot._printer")
 
 # Global, single points of truth:
-__version__          : Final[str]         = "0.3.1"
+__version__          : Final[str]         = "0.4.0"
 
 config               : TG.TomlGuard       = TG.TomlGuard() # doot config
 locs                 : DootLocData        = DootLocations(pl.Path()) # registered locations
@@ -55,7 +55,12 @@ def setup(targets:list[pl.Path]|None=None, prefix:str|None=None) -> tuple[TG.Tom
 
     existing_targets       = [x for x in targets if x.exists()]
 
-    config = TG.load(*existing_targets)
+    try:
+        config = TG.load(*existing_targets)
+    except OSError:
+        logging.error("Failed to Load Config Files: %s", existing_targets)
+        raise doot.errors.DootError()
+
     locs   = DootLocations(pl.Path.cwd())
 
     for loc in config.locations:

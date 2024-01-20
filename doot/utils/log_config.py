@@ -27,11 +27,6 @@ from uuid import UUID, uuid1
 
 ##-- end builtin imports
 
-
-##-- lib imports
-import more_itertools as mitz
-##-- end lib imports
-
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
@@ -129,7 +124,6 @@ class DootLogConfig:
             self.print_stream_handler.setFormatter(DootColourFormatter(fmt=printer_log_format))
         else:
             self.print_stream_handler.setFormatter(logmod.Formatter(printer_log_format, style="{"))
-
 
     def set_level(self, level):
         self.stream_handler.setLevel(level)

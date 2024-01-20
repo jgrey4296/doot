@@ -22,7 +22,7 @@ FRONTEND_PLUGIN_TYPES      : Final = ['command', 'reporter', 'report-line']
 BACKEND_PLUGIN_TYPES       : Final = [
     'database', 'tracker', 'runner',
     'command-loader', 'task-loader',
-    'parser', 'action', "tasker"
+    'parser', 'action', "job"
     ]
 
 DEFAULT_COMMAND_LOADER_KEY  : Final[str] =  "command-loader"
@@ -73,10 +73,15 @@ DEFAULT_PLUGINS['action']      = [("basic"  ,    "doot.actions.base_action:DootB
                                   ("read"  ,     "doot.actions.io:ReadAction"),
                                   ("readJson",   "doot.actions.io:ReadJson"),
                                   ("copy"  ,     "doot.actions.io:CopyAction"),
+                                  ("move",       "doot.actions.io:MoveAction"),
                                   ("backup!",    "doot.actions.io:BackupAction"),
                                   ("write!" ,    "doot.actions.io:WriteAction"),
                                   ("dir!",       "doot.actions.io:EnsureDirectory"),
                                   ("delete!",    "doot.actions.io:DeleteAction"),
+                                  ("touch",      "doot.actions.io:TouchFileAction"),
+                                  ("tar!",       "doot.actions.io:CompressAction"),
+                                  ("untar!",     "doot.actions.io:DecompressAction"),
+
                                   ("break!",     "doot.actions.util:action_debugger"),
                                   ("type!",      "doot.actions.util:typecheck"),
 
@@ -88,17 +93,20 @@ DEFAULT_PLUGINS['action']      = [("basic"  ,    "doot.actions.base_action:DootB
                                   ("sayTime",    "doot.actions.speak:SpeakTimeAction"),
 
                                   ("log",        "doot.actions.control_flow:LogAction"),
+                                  ("skipIfFile", "doot.actions.control_flow:SkipIfFileExists"),
                                   ("pred?",      "doot.actions.control_flow:CancelOnPredicateAction"),
                                   ("installed?", "doot.actions.control_flow:AssertInstalled"),
                               ]
 
-DEFAULT_PLUGINS['tasker']      = [("tasker"  , "doot.task.base_tasker:DootTasker"),
-                                  ("task"    , "doot.task.base_task:DootTask"),
-                                  ]
+DEFAULT_PLUGINS['task']         = [("job"  ,     "doot.task.base_job:DootJob"),
+                                   ("task" ,     "doot.task.base_task:DootTask"),
+                                   ]
 
-DEFAULT_PLUGINS['mixins']      = [("walker", "doot.mixins.tasker.walker:WalkerMixin"),
-                                  ("shadow", "doot.mixins.tasker.shadower:WalkShadowerMixin"),
-                                  ("subs",   "doot.mixins.tasker.subtask:SubMixin"),
-                                  ("terse",  "doot.mixins.tasker.mini_builder:MiniBuilderMixin"),
-                                  ("zip",    "doot.mixins.task.zipper:ZipperMixin"),
+DEFAULT_PLUGINS['mixins']      = [("job:walker", "doot.mixins.job.walker:WalkerMixin"),
+                                  ("job:shadow", "doot.mixins.job.shadower:WalkShadowerMixin"),
+                                  ("job:sub",    "doot.mixins.job.subtask:SubMixin"),
+                                  ("job:terse",  "doot.mixins.job.mini_builder:MiniBuilderMixin"),
+                                  ("job:headonly", "doot.mixins.job.mini_builder:HeadOnlyJobMixin"),
+                                  ("job:limit", "doot.mixins.job.matcher:TaskLimitMixin"),
+                                  ("job:match", "doot.mixins.job.matcher:PatternMatcherMixin"),
                                   ]

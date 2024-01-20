@@ -42,7 +42,7 @@ from doot.enums import ReportEnum
 
 class DootReportManagerSummary(Reporter_i):
     """
-    Groups tasker,task,action success and failures, returns information on them
+    Groups job,task,action success and failures, returns information on them
 
     """
 
@@ -51,9 +51,9 @@ class DootReportManagerSummary(Reporter_i):
 
     def __str__(self):
         result = {
-            "tasks" :   {"success": 0, "fail": 0, "total": 0},
-            "actions" : {"success": 0, "fail": 0, "total": 0},
-            "taskers" : {"success": 0, "fail": 0, "total": 0},
+            "tasks"     : {"success": 0, "fail": 0, "total": 0},
+            "actions"   : {"success": 0, "fail": 0, "total": 0},
+            "jobs"      : {"success": 0, "fail": 0, "total": 0},
             "artifacts" : 0
             }
 
@@ -65,8 +65,8 @@ class DootReportManagerSummary(Reporter_i):
             category = None
             ended   = None
 
-            if ReportEnum.TASKER in trace.flags:
-                category = "taskers"
+            if ReportEnum.JOB in trace.flags:
+                category = "jobs"
             elif ReportEnum.ACTION in trace.flags:
                 category = "actions"
             elif ReportEnum.TASK in trace.flags:
@@ -84,19 +84,11 @@ class DootReportManagerSummary(Reporter_i):
             result[category]["total"] += 1
 
         output = [
-            "    - Totals : Taskers: {}, Tasks: {}, Actions: {}".format(result['taskers']['total'], result['tasks']['total'], result['actions']['total']),
+            "    - Totals : Jobs: {}, Tasks: {}, Actions: {}".format(result['jobs']['total'], result['tasks']['total'], result['actions']['total']),
             "    - Success/Failures:",
-            "    -- Taskers   : {}/{}".format(result['taskers']['success'],result['taskers']['fail']),
+            "    -- Jobs      : {}/{}".format(result['jobs']['success'],result['jobs']['fail']),
             "    -- Tasks     : {}/{}".format(result['tasks']['success'], result['tasks']['fail']),
             "    -- Actions   : {}/{}".format(result['actions']['success'], result['actions']['fail']),
             "    -- Artifacts : {}".format(result['artifacts']),
         ]
         return "\n".join(output)
-
-
-
-
-
-"""
-
-"""

@@ -69,11 +69,11 @@ def main():
         errored = True
         printer.error("%s : %s", err.general_msg, err.task_name)
         printer.error("---- Source: %s", err.task_source)
-        printer.error("---- %s", err)
+        printer.error("---- %s", str(err))
     except doot.errors.DootError as err:
         errored = True
         printer.error("%s", err.general_msg)
-        printer.error("---- %s", err)
+        printer.error("---- %s", str(err))
     ##-- end handle doot errors
     ##-- handle todo errors
     except NotImplementedError as err:

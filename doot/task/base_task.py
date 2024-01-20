@@ -35,7 +35,7 @@ import doot
 import doot.errors
 import tomlguard
 import doot.constants
-from doot._abstract import Task_i, Tasker_i, Action_p, PluginLoader_p
+from doot._abstract import Task_i, Job_i, Action_p, PluginLoader_p
 from doot.enums import TaskFlags
 from doot.structs import TaskStub, TaskStubPart, DootActionSpec, DootCodeReference
 from doot.actions.base_action import DootBaseAction
@@ -55,8 +55,8 @@ class DootTask(Task_i, ImporterMixin):
     _default_flags = TaskFlags.TASK
     _help          = ["The Simplest Task"]
 
-    def __init__(self, spec, *, tasker=None, action_ctor=None, **kwargs):
-        super().__init__(spec, tasker=tasker, **kwargs)
+    def __init__(self, spec, *, job=None, action_ctor=None, **kwargs):
+        super().__init__(spec, job=job, **kwargs)
         if action_ctor:
             self.action_ctor = action_ctor
         self.prepare_actions()
@@ -75,7 +75,7 @@ class DootTask(Task_i, ImporterMixin):
     @classmethod
     def stub_class(cls, stub) -> TaskStub:
         """ Create a basic toml stub for this task"""
-        if bool(list(filter(lambda x: x[0] == "task", doot.constants.DEFAULT_PLUGINS['tasker']))):
+        if bool(list(filter(lambda x: x[0] == "task", doot.constants.DEFAULT_PLUGINS['task']))):
             stub.ctor = "task"
         else:
             stub.ctor                   = cls

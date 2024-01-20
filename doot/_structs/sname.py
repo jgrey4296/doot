@@ -45,12 +45,12 @@ from doot.enums import TaskFlags, ReportEnum
 PAD           : Final[int] = 15
 TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
 
-@dataclass
+@dataclass(eq=False, slots=True)
 class DootStructuredName:
     """ A Complex name class for identifying tasks and classes.
 
-      Classes are the standard form using in importlib: doot.structs:DootStucturedName
-      Tasks use a double colon to separate head from tail name: tasks.globGroup::GlobTask
+      Classes are the standard form used in importlib: "module.path:ClassName"
+      Tasks use a double colon to separate head from tail name: "group.name::TaskName"
 
     """
     head            : list[str]          = field(default_factory=list)
@@ -120,7 +120,10 @@ class DootStructuredName:
         return True
 
     def __contains__(self, other:str):
-        return other in str(self)
+        return str(other) in str(self)
+
+    def __eq__(self, other):
+        return str(self) == str(other)
 
     def tail_str(self):
         return self.subseparator.join(self.tail)
@@ -128,8 +131,12 @@ class DootStructuredName:
     def head_str(self):
         return self.subseparator.join(self.head)
 
-@dataclass
+@dataclass(eq=False, slots=True)
 class DootCodeReference(DootStructuredName):
+    """
+      A reference to a class or function. can be created from a string (so can be used from toml),
+      or from the actual object (from in python)
+    """
     separator : str                              = field(default=doot.constants.IMPORT_SEP, kw_only=True)
     _mixins   : list[DootCodeReference]          = field(default_factory=list, kw_only=True)
     _type     : None|type                        = field(default=None, kw_only=True)
@@ -168,6 +175,11 @@ class DootCodeReference(DootStructuredName):
 
     def __str__(self) -> str:
         return "{}{}{}".format(self.module, self.separator, self.value)
+
+    def __repr__(self) -> str:
+        code_path = str(self)
+        mixins    = ", ".join(str(x) for x in self._mixins)
+        return f"<CodeRef: {code_path} Mixins: {mixins}>"
 
     def __hash__(self):
         return hash(str(self))
@@ -258,14 +270,18 @@ class DootCodeReference(DootStructuredName):
 
         return [DootCodeReference.from_type(x) for x in minimal_mixins]
 
-@dataclass
+@dataclass(eq=False, slots=True)
 class DootTaskName(DootStructuredName):
+    """
+      A Task Name.
+    """
 
     internal        : bool               = field(default=False, kw_only=True)
-    separator  : str = field(default=doot.constants.TASK_SEP, kw_only=True)
+    separator       : str                = field(default=doot.constants.TASK_SEP, kw_only=True)
+    args            : dict               = field(default_factory=dict)
 
     @classmethod
-    def from_str(cls, name:str):
+    def from_str(cls, name:str, *, args=None):
         if ":" in name:
             groupHead_r, taskHead_r = name.split("::")
             groupHead = groupHead_r.split(".")
@@ -273,7 +289,7 @@ class DootTaskName(DootStructuredName):
         else:
             groupHead = None
             taskHead  = name
-        return DootTaskName(groupHead, taskHead)
+        return DootTaskName(groupHead, taskHead, args=args)
 
     def __post_init__(self):
         match self.head:
@@ -301,6 +317,10 @@ class DootTaskName(DootStructuredName):
     def __str__(self) -> str:
         return "{}{}{}".format(self.group, self.separator, self.task)
 
+    def __repr__(self) -> str:
+        name = str(self)
+        return f"<TaskName: {name}>"
+
     def __hash__(self):
         return hash(str(self))
 
@@ -319,8 +339,12 @@ class DootTaskName(DootStructuredName):
     def root(self):
         return f"{self.head_str()}{self.separator}{self.tail[0]}"
 
-    def subtask(self, *subtasks, subgroups:list[str]|None=None):
+    def subtask(self, *subtasks, subgroups:list[str]|None=None) -> DootTaskName:
+        args = self.args.copy() if self.args else None
         return DootTaskName(self.head + (subgroups or []),
-                            self.tail + list(subtasks),
-                            internal=self.internal
-                            )
+                            self.tail + [str(x) for x in subtasks if x is not None],
+                            internal=self.internal,
+                            args=args)
+
+    def specialize(self, *, info=None):
+        return self.subtask("$specialized$", info, "${}$".format(uuid1().hex))

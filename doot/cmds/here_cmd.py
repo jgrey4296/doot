@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Actions for building simple templated files
+TODO Here Command. - run the system doot at this cwd, using either a local, nearest parent, or global doot toml and tasks
 
 See EOF for license/metadata/notes as applicable
 """

@@ -28,7 +28,6 @@ import sh
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
-import doot.utils.expansion as exp
 
 @doot.check_protocol
 class SpeakTimeAction(Action_p):

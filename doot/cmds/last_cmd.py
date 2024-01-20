@@ -64,6 +64,6 @@ class LastCmd(Command_i):
 
     def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
         """List task generators"""
-        logging.debug("Starting to List Taskers/Tasks")
+        logging.debug("Starting to List Jobs/Tasks")
 
         raise NotImplementedError("TODO")

@@ -3,6 +3,7 @@
 notify                   = { say-on-exit = false }
 loaders                  = { commands="default", task="default", parser="default"}
 location_check           = { make_missing = true, print_levels={action="WARN", execute="WARN" } }
+max_steps                = 100_000
 
 [settings.tasks]
 sources = [".tasks"] # Files or directories where task specs can be loaded from, expanded according to [[locations]] keys
@@ -20,7 +21,7 @@ command        = { other-run = "doot.cmds.run_cmd:RunCmd", tasks = "doot.cmds.li
 report-line    = {}
 reporter       = {}
 action         = {}
-tasker         = {}
+task           = {}
 
 [commands]
 run = { tracker = "default", runner = "default", reporter= "default", report-line = []}

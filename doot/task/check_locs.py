@@ -17,9 +17,8 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.structs import DootTaskSpec
-from doot._abstract import Tasker_i
-from doot.mixins.task.cleaning import CleanerMixin
-from doot.task.base_tasker import DootTasker
+from doot._abstract import Job_i
+from doot.task.base_job import DootJob
 from doot.task.base_task import DootTask
 
 ##-- logging
@@ -36,7 +35,7 @@ class CheckLocsTask(DootTask):
     task_name = "_locations::check"
 
     def __init__(self, spec=None):
-        locations = [[doot.locs[x]] for x in doot.locs]
+        locations = [[doot.locs[f"{{{x}}}"]] for x in doot.locs]
         spec      = DootTaskSpec.from_dict({
             "name"         : CheckLocsTask.task_name,
             "actions"      : locations,

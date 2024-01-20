@@ -104,7 +104,7 @@ The defaults for indirect keys are for typical chaining, like initing a bibtex d
 Action standard kwargs:
 from_   : the spec/state key to get primary data from
 update_ : the state key to update with data from this action
-_from    : a path to read from  (as "from" is a reserved word in python)
+from    : a path to read from  (as "from" is a reserved word in python)
 to      : a path to write to
 
 ### Task Dependencies
@@ -150,6 +150,6 @@ example = "dootle.cmds.example_cmd:ExampleCmd"
 Plugins are specified in the pyproject.toml table `[project.entry-points."doot.plugins.TYPE"]`,
 where TYPE is one of the forms defined in `doot.constants`:
 1) Front End plugins: "command", "reporter", "report-line",
-2) Back End plugins: "tracker", "runner", "command-loader", "task-loader", "parser", "action", "tasker", "database"
+2) Back End plugins: "tracker", "runner", "command-loader", "task-loader", "parser", "action", "job", "database"
 
 Currently available plugins are listed with the command `doot plugins`

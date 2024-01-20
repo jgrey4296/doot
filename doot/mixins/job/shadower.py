@@ -38,7 +38,7 @@ logging = logmod.getLogger(__name__)
 
 import doot
 import doot.errors
-from doot.mixins.tasker.walker import WalkerMixin
+from doot.mixins.job.walker import WalkerMixin
 
 walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
 walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).settings.walking.halts()

@@ -37,33 +37,46 @@ from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
 from doot.mixins.importer import ImporterMixin
 from doot.enums import ActionResponseEnum as ActRE
-import doot.utils.expansion as exp
+from doot.structs import DootKey, DootCodeReference
 
 ##-- expansion keys
-MSG   : Final[exp.DootKey] = exp.DootKey("msg")
-OLD   : Final[exp.DootKey] = exp.DootKey("old")
-NEW   : Final[exp.DootKey] = exp.DootKey("new")
-LEVEL : Final[exp.DootKey] = exp.DootKey("level")
+MSG          : Final[DootKey] = DootKey.make("msg")
+OLD          : Final[DootKey] = DootKey.make("old")
+NEW          : Final[DootKey] = DootKey.make("new")
+LEVEL        : Final[DootKey] = DootKey.make("level")
+PRED         : Final[DootKey] = DootKey.make("pred")
+FILE_TARGET  : Final[DootKey] = DootKey.make("file")
 
 ##-- end expansion keys
 
 @doot.check_protocol
-class CancelOnPredicateAction(Action_p, ImporterMixin):
+class CancelOnPredicateAction(Action_p):
     """
       Get a predicate using the kwarg `pred`,
       call it with the action spec and task state.
       return its result for the task runner to handle
 
     """
-    _toml_kwargs = ["<Any>"]
-    inState      = ["pred"]
-
-    def __str__(self):
-        return f"Cancel On Predicate Action: {self.spec.args}"
+    _toml_kwargs = [PRED]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        predicate = self.import_class(spec.kwargs.pred)
+        val       = PRED.expand(spec, state)
+        ref       = DootCodeReference.from_str(val)
+        predicate = ref.try_import()
         return predicate(spec,task_state)
+
+@doot.check_protocol
+class SkipIfFileExists(Action_p):
+
+    _toml_kwargs = ["args"]
+
+    def __call__(self, spec, state:dict) -> dict|bool|None:
+        for arg in spec.args:
+            key = DootKey.make(arg, explicit=True)
+            path = key.to_path(spec, state, on_fail=None)
+            if path and path.exists():
+                printer.info("Target Exists: %s", path)
+                return ActRE.SKIP
 
 @doot.check_protocol
 class LogAction(Action_p):
@@ -79,7 +92,6 @@ class LogAction(Action_p):
 @doot.check_protocol
 class StalenessCheck(Action_p):
     _toml_kwargs = [OLD, NEW]
-    inState      = ["old", "new"]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
         old_loc = OLD.to_path(spec, task_state)
@@ -93,7 +105,8 @@ class AssertInstalled:
     """
     Easily check a program can be found and used
     """
-    _toml_kwargs = ["prog", "version"]
+    _toml_kwargs = []
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
+        raise NotImplementedError()
         return ActRE.FAIL

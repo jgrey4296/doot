@@ -38,7 +38,7 @@ import doot.errors
 import doot.constants
 from doot._abstract import Command_i, PluginLoader_p, TaskBase_i
 from doot.structs import TaskStub, DootTaskName, DootCodeReference
-from doot.task.base_tasker import DootTasker
+from doot.task.base_job import DootJob
 from doot.task.base_task import DootTask
 from collections import defaultdict
 
@@ -63,7 +63,7 @@ class StubCmd(Command_i):
             self.make_param("Flags",                     default=False,           desc="Help Stub Task Flags",              prefix="-"),
             self.make_param("name",        type=str,     default="stub::stub",    desc="The Name of the new task",                          positional=True),
             self.make_param("ctor",        type=str,     default="task",          desc="The short type name of the task generator",         positional=True),
-            self.make_param("mixins",      type=list,    default=[],              desc="Mixins to add", positional=True),
+            self.make_param("mixins",      type=list,    default=[],              desc="Mixins to add", prefix="--"),
             self.make_param("suppress-header",           default=True, invisible=True)
             ]
 
@@ -106,7 +106,7 @@ class StubCmd(Command_i):
         This creates a toml stub using default values, as best it can
         """
         logging.info("Building Task Toml Stub")
-        task_iden                   : DootCodeReference       = DootCodeReference.from_alias(doot.args.on_fail("task").cmd.args.ctor(), "tasker", plugins)
+        task_iden                   : DootCodeReference       = DootCodeReference.from_alias(doot.args.on_fail("task").cmd.args.ctor(), "task", plugins)
         task_iden_with_mixins       : DootCodeReference       = task_iden.add_mixins(*doot.args.on_fail([]).cmd.args.mixins(), plugins=plugins)
 
         # Create stub toml, with some basic information
@@ -114,11 +114,17 @@ class StubCmd(Command_i):
         stub['name'].default          = DootTaskName.from_str(doot.args.cmd.args.name)
         stub['mixins'].set(type="list", default=[], comment="mix in additional capabilities")
 
-
         # add ctor specific fields,
         # such as for dir_walker: roots [], exts [], recursive bool, subtask "", head_task ""
         # works *towards* the task_type, not away, so more specific elements are added over the top of more general elements
-        for cls in reversed(task_iden_with_mixins.try_import().mro()):
+        try:
+            task_mro = task_iden_with_mixins.try_import().mro()
+        except TypeError as err:
+            logging.error(err.args[0].replace("\n", ""))
+            task_mro = []
+            return
+
+        for cls in reversed(task_mro):
             try:
                 cls.stub_class(stub)
                 if issubclass(cls, TaskBase_i):
@@ -130,7 +136,7 @@ class StubCmd(Command_i):
                 pass
 
         # Convert to alises
-        base_a, mixin_a= task_iden_with_mixins.to_aliases("tasker", plugins)
+        base_a, mixin_a= task_iden_with_mixins.to_aliases("task", plugins)
         stub['ctor'].default   = base_a
         stub['mixins'].default = mixin_a
 
@@ -159,8 +165,8 @@ class StubCmd(Command_i):
             f.write(stub.to_toml())
 
     def _list_task_types(self, plugins):
-        printer.info("Available Tasker Types:")
-        for plug in plugins.tasker:
+        printer.info("Available Job Types:")
+        for plug in plugins.job:
             printer.info("- %10s : %s", plug.name, plug.value)
 
     def _stub_actions(self, plugins):

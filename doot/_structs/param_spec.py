@@ -51,7 +51,7 @@ class DootParamSpec:
       When `positional`, will not match against a string starting with `prefix`
       consumed in doot._abstract.parser.ArgParser_i's
       produced using doot._abstract.parser.ParamSpecMaker_m classes,
-      like tasks, and taskers
+      like tasks, and jobs
     """
     name        : str                       = field()
     type        : type                      = field(default=bool)
