@@ -106,7 +106,7 @@ class StubCmd(Command_i):
         This creates a toml stub using default values, as best it can
         """
         logging.info("Building Task Toml Stub")
-        task_iden                   : DootCodeReference       = DootCodeReference.from_alias(doot.args.on_fail("task").cmd.args.ctor(), "job", plugins)
+        task_iden                   : DootCodeReference       = DootCodeReference.from_alias(doot.args.on_fail("task").cmd.args.ctor(), "task", plugins)
         task_iden_with_mixins       : DootCodeReference       = task_iden.add_mixins(*doot.args.on_fail([]).cmd.args.mixins(), plugins=plugins)
 
         # Create stub toml, with some basic information
@@ -136,7 +136,7 @@ class StubCmd(Command_i):
                 pass
 
         # Convert to alises
-        base_a, mixin_a= task_iden_with_mixins.to_aliases("job", plugins)
+        base_a, mixin_a= task_iden_with_mixins.to_aliases("task", plugins)
         stub['ctor'].default   = base_a
         stub['mixins'].default = mixin_a
 
