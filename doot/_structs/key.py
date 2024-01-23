@@ -166,7 +166,7 @@ class DootKey(abc.ABC):
     def redirect(self, spec=None) -> DootKey:
         return self
 
-    def to_path(self, spec=None, state=None, chain:list[DootKey]=None, locs:DootLocations=None, on_fail:None|str|pl.Path|DootKey=Any) -> pl.Path:
+    def to_path(self, spec=None, state=None, chain:list[DootKey]=None, locs:DootLocations=None, on_fail:None|str|pl.Path|DootKey=Any, symlinks=False) -> pl.Path:
         """
           Convert a key to an absolute path
         """
@@ -186,20 +186,18 @@ class DootKey(abc.ABC):
             if any(bool(matches) for x in expanded_as_path.parts if (matches:=PATTERN.findall(x))):
                 raise doot.errors.DootLocationExpansionError("Missing keys on path expansion", matches, self)
 
-            return locs.expand(expanded_as_path)
+            return locs.expand(expanded_as_path, symlinks=symlinks)
 
         except doot.errors.DootLocationExpansionError as err:
             if bool(chain):
-                return chain[0].to_path(spec, state, chain=chain[1:], on_fail=on_fail)
+                return chain[0].to_path(spec, state, chain=chain[1:], on_fail=on_fail, symlinks=symlinks)
             match on_fail:
                 case None:
                     return None
                 case DootKey():
-                    return on_fail.to_path(spec, state)
-                case pl.Path():
-                    return locs.expand(on_fail)
-                case str():
-                    return locs.expand(pl.Path(on_fail))
+                    return on_fail.to_path(spec, state, symlinks=symlinks)
+                case pl.Path() | str():
+                    return locs.expand(pl.Path(on_fail),  symlinks=symlinks)
                 case _:
                     raise err
 
@@ -336,7 +334,7 @@ class DootSimpleKey(str, DootKey):
             case str() as x:
                 return DootKey.make(x)
             case list() as lst:
-                raise TypeError("Key Redirectio resulted in a list, use redirect_multi", self)
+                raise TypeError("Key Redirection resulted in a list, use redirect_multi", self)
 
         return self
 
