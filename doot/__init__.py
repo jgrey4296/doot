@@ -63,6 +63,7 @@ def setup(targets:list[pl.Path]|None=None, prefix:str|None=None) -> tuple[TG.Tom
 
     locs   = DootLocations(pl.Path.cwd())
 
+    # Load Initial locations
     for loc in config.locations:
         locs.update(loc)
 

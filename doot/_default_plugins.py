@@ -74,11 +74,13 @@ DEFAULT_PLUGINS['action']      = [("basic"  ,    "doot.actions.base_action:DootB
                                   ("readJson",   "doot.actions.io:ReadJson"),
                                   ("copy"  ,     "doot.actions.io:CopyAction"),
                                   ("move",       "doot.actions.io:MoveAction"),
+                                  ("touch",      "doot.actions.io:TouchFileAction"),
+
+                                  ("link!",      "doot.actions.io:LinkAction"),
                                   ("backup!",    "doot.actions.io:BackupAction"),
                                   ("write!" ,    "doot.actions.io:WriteAction"),
                                   ("dir!",       "doot.actions.io:EnsureDirectory"),
                                   ("delete!",    "doot.actions.io:DeleteAction"),
-                                  ("touch",      "doot.actions.io:TouchFileAction"),
                                   ("tar!",       "doot.actions.io:CompressAction"),
                                   ("untar!",     "doot.actions.io:DecompressAction"),
 

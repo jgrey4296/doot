@@ -1,4 +1,5 @@
 # -*- mode:conf-toml; -*-
+
 [settings.general]
 loaders                  = { commands="default", task="default", parser="default"}
 location_check           = { make_missing = true, print_levels={action="WARN", execute="WARN"}}
@@ -12,7 +13,6 @@ sleep   = { tasks=0.2, subtask=1, batch=1 }
 # Allows for defining aliases
 command        = { tasks="doot.cmds.list_cmd:ListCmd", pl="doot.cmds.plugins_cmd:PluginsCmd" }
 
-
 [commands]
 # Settings for commands, like telling the 'run' command what backends to use
 run = { tracker = "default", runner = "default", reporter= "default", report-line = []}
@@ -25,4 +25,4 @@ printer = { colour = true }
 [[locations]]
 tasks        = ".tasks"
 temp         = ".temp"
-src          = "doot"
+src          = {protect="doot"}
