@@ -128,7 +128,7 @@ class DootTaskLoader(TaskLoader_p):
         self.tasks = self._build_task_specs(raw_specs, self.cmd_names)
 
         # Reapply config location declarations as overrides:
-        for loc in doot.config.locations:
+        for loc in doot.config.on_fail([]).locations():
             doot.locs.update(loc, strict=False)
 
         logging.debug("Task List Size: %s", len(self.tasks))

@@ -28,18 +28,21 @@ class TestOverlord:
 
     def test_initial(self, mocker):
         mocker.patch("sys.argv", ["doot"])
+        mocker.patch("doot.loaders.task_loader.DootTaskLoader")
         overlord = DootOverlord()
         assert(bool(overlord))
         assert(overlord.args == ["doot"])
 
     def test_plugins_loaded(self, mocker):
         mocker.patch("sys.argv", ["doot"])
+        mocker.patch("doot.loaders.task_loader.DootTaskLoader")
         overlord = DootOverlord()
         assert(bool(overlord.plugins))
         assert(all(x in overlord.plugins for x in doot.constants.DEFAULT_PLUGINS.keys()))
 
     def test_cmds_loaded(self, mocker):
         mocker.patch("sys.argv", ["doot"])
+        mocker.patch("doot.loaders.task_loader.DootTaskLoader")
         overlord = DootOverlord()
         assert(bool(overlord.cmds))
         assert(len(overlord.cmds) >= len(doot.constants.DEFAULT_PLUGINS['command']))

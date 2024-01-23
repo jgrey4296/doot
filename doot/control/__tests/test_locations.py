@@ -48,7 +48,7 @@ class TestLocations:
         simple = DootLocations(pl.Path.cwd())
         simple.update({"blah": "bloo"})
 
-        with pytest.raises(KeyError):
+        with pytest.raises(DootLocationError):
             simple.update({"blah": "blah"})
 
     def test_empty_repr(self):

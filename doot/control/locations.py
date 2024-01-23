@@ -81,12 +81,10 @@ class DootLocations:
           eg: locs["{temp}/imgs/blah.jpg"]
         """
         match DootKey.make(val, explicit=True):
-            case None:
-                return self.expand(self.get(val))
             case DootNonKey() as key:
-                return self.expand(key.to_path(locs=self))
+                return key.to_path(locs=self)
             case DootSimpleKey() as key:
-                return self.expand(key.to_path(locs=self))
+                return key.to_path(locs=self)
             case DootMultiKey() as key:
                 return key.to_path(locs=self)
             case _:
@@ -175,12 +173,14 @@ class DootLocations:
           resolves symlinks unless symlinks=True
         """
         result = path
-        if not result.parts:
-            result = self.root / path
-        if result.parts[0] == "~":
-            result = result.expanduser()
-        if not symlinks:
-            result = result.resolve()
+        match result.parts:
+            case ["~", *xs]:
+                result = result.expanduser().resolve()
+            case ["/", *xs]:
+                result = result
+            case _:
+                result = (self.root / path).expanduser().resolve()
+
         return result
 
     @property
@@ -204,7 +204,7 @@ class DootLocations:
         for k,v in extra.items():
             match v:
                 case _ if k in raw and strict:
-                    raise doot.errors.DootLocationError("Duplicated Key", k)
+                    raise DootLocationError("Duplicated Key", k)
                 case str():
                     raw[k] = v
                 case {"protect": x}:
