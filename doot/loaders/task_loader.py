@@ -127,6 +127,10 @@ class DootTaskLoader(TaskLoader_p):
             logging.warning("Task Loader is overwriting already loaded tasks")
         self.tasks = self._build_task_specs(raw_specs, self.cmd_names)
 
+        # Reapply config location declarations as overrides:
+        for loc in doot.config.locations:
+            doot.locs.update(loc, strict=False)
+
         logging.debug("Task List Size: %s", len(self.tasks))
         logging.debug("Task List Names: %s", list(self.tasks.keys()))
         logging.debug("---- Tasks Loaded in %s seconds", f"{time.perf_counter() - start_time:0.4f}")

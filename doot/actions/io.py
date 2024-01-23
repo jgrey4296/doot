@@ -69,6 +69,10 @@ class AppendAction(Action_p):
         sep     = SEP.to_type(spec, state, type_=str|None) or AppendAction.sep
         loc     = TO_KEY.to_path(spec, state)
         args    = [DootKey.make(x, explicit=True).expand(spec, state, insist=True, on_fail=None) for x in spec.args]
+
+        if not doot.locs.check_writable(loc):
+            raise doot.errors.DootLocationError("Tried to write a protected location", loc)
+
         with open(loc, 'a') as f:
             for arg in args:
                 if not arg:
@@ -90,15 +94,24 @@ class WriteAction(Action_p):
     _toml_kwargs = [FROM_KEY, TO_KEY]
 
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        data = FROM_KEY.expand(spec, task_state, insist=True, on_fail=None)
+        data = FROM_KEY.to_type(spec, task_state, on_fail=None)
         loc  = TO_KEY.to_path(spec, task_state)
-        if not data:
-            printer.info("No Data to Write")
-            return
 
-        printer.info("Writing %s chars to %s", len(data), loc)
-        with open(loc, 'w') as f:
-            f.write(data)
+        if not doot.locs.check_writable(loc):
+            raise doot.errors.DootLocationError("Tried to write a protected location", loc)
+
+        match data:
+            case None:
+                printer.info("No Data to Write")
+            case _ if not bool(data):
+                printer.info("No Data to Write")
+            case bytes():
+                printer.info("Writing %s bytes to %s", len(data), loc)
+                loc.write_bytes(data)
+            case str():
+                printer.info("Writing %s chars to %s", len(data), loc)
+                loc.write_text(data)
+
 
 
 @doot.check_protocol
@@ -149,6 +162,9 @@ class CopyAction(Action_p):
             case _:
                 raise doot.errors.DootActionError("Unrecognized type for copy sources", sources)
 
+
+        if not all(doot.locs.check_writable(x) for x in expanded):
+            raise doot.errors.DootLocationError("Tried to write a protected location", expanded)
         if any(not x.exists() for x in expanded):
             raise doot.errors.DootActionError("Tried to copy a file that doesn't exist")
         if any((dest_loc/x.name).exists() for x in expanded):
@@ -171,6 +187,8 @@ class MoveAction(Action_p):
         dest_loc   = TO_KEY.to_path(spec, task_state)
         source     = FROM_KEY.to_path(spec, task_state)
 
+        if not doot.locs.check_writable(dest_loc):
+            raise doot.errors.DootLocationError("Tried to write a protected location", dest_loc)
         if not source.exists():
             raise doot.errors.DootActionError("Tried to move a file that doesn't exist", source)
         if dest_loc.exists():
@@ -192,6 +210,9 @@ class DeleteAction(Action_p):
         lax = LAX.to_type(spec, state, type_=bool, on_fail=False)
         for arg in spec.args:
             loc = DootKey.make(arg, explicit=True).to_path(spec, state)
+            if not doot.locs.check_writable(loc):
+                raise doot.errors.DootLocationError("Tried to delete a protected location", loc)
+
             printer.info("Deleting %s", loc)
             if loc.is_dir() and rec:
                 shutil.rmtree(loc)
@@ -210,6 +231,9 @@ class BackupAction(Action_p):
     def __call__(self, spec, task_state:dict) -> dict|bool|None:
         source_loc = FROM_KEY.to_path(spec, task_state)
         dest_loc   = TO_KEY.to_path(spec, task_state)
+
+        if not doot.locs.check_writable(dest_loc):
+            raise doot.errors.DootLocationError("Tried to write a protected location", dest_loc)
 
         if dest_loc.exists() and source_loc.stat().st_mtime_ns <= dest_loc.stat().st_mtime_ns:
             return True
@@ -317,3 +341,49 @@ class DecompressAction(Action_p):
 
         output = TO_KEY.to_path(spec, state, on_fail=pl.Path())
         DECOMP_CMD(target, "-C", output)
+
+
+@doot.check_protocol
+class LinkAction(Action_p):
+    """
+      for x,y in spec.args:
+      x.to_path().symlink_to(y.to_path())
+    """
+    FORCE = DootKey.make("force")
+    LINK = DootKey.make("link")
+    TO = DootKey.make("to")
+
+    def __call__(self, spec, state):
+        if self.LINK in spec.kwargs and self.TO in spec.kwargs:
+            self._do_link(spec.kwargs.link, spec.kwargs.to, spec, state)
+
+        for arg in spec.args:
+            match arg:
+                case [x,y]:
+                    self._do_link(x,y, spec, state)
+                case {"link":x, "to":list() as ys}:
+                    raise NotImplementedError()
+                case {"link":x, "to":y}:
+                    self._do_link(x,y, spec, state)
+                case {"from":x, "to_rel":y}:
+                    raise NotImplementedError()
+                case _:
+                    raise TypeError("unrecognized link targets")
+
+    def _do_link(self, x, y, spec, state):
+        x_key  = DootKey.make(x, explicit=True)
+        y_key  = DootKey.make(y, explicit=True)
+        x_path = x_key.to_path(spec, state, symlinks=True)
+        y_path = y_key.to_path(spec, state)
+        force  = bool(self.FORCE.to_type(spec, state, on_fail=False))
+        # TODO when py3.12: use follow_symlinks=False
+        if (x_path.exists() or x_path.is_symlink()) and not force:
+            printer.warning("SKIP: A Symlink already exists: %s -> %s", x_path, x_path.resolve())
+            return
+        if not y_path.exists():
+            raise doot.errors.DootActionError("Symlink target does not exist", y_path)
+        if force and x_path.is_symlink():
+            printer.warning("Forcing New Symlink")
+            x_path.unlink()
+        printer.info("Linking: %s -> %s", x_path, y_path)
+        x_path.symlink_to(y_path)

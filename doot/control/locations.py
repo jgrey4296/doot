@@ -39,22 +39,25 @@ MAX_EXPANSIONS = MAX_KEY_EXPANSIONS
 
 class DootLocations:
     """
-    A Single point of truth for locations tasks use.
-    entries in [[locations]] toml blocks are integrated into it.
+      A Single point of truth for locations that tasks use.
+      key=value pairs in [[locations]] toml blocks are integrated into it.
+      Also handles key={protect=value} to designate a path shouldn't have files written in it
+      by certain io actions
 
-    it expands relative paths according to cwd(),
-    but can be used as a context manager to expand from a temp different root
+      it expands relative paths according to cwd(),
+      but can be used as a context manager to expand from a temp different root
 
-    location designations are of the form:
-    key = "location/subdirectory/file"
+      location designations are of the form:
+      key = "location/subdirectory/file"
 
-    If a location value has "loc/{key}/somewhere",
-    then for key = "blah", it will be expanded upon access to "loc/blah/somewhere"
+        If a location value has "loc/{key}/somewhere",
+        then for key = "blah", it will be expanded upon access to "loc/blah/somewhere"
     """
 
     def __init__(self, root:Pl.Path):
-        self._root : pl.Path()       = root.expanduser().absolute()
-        self._data : TomlGuard       = tomlguard.TomlGuard()
+        self._root    : pl.Path()       = root.expanduser().absolute()
+        self._data    : TomlGuard       = tomlguard.TomlGuard()
+        self._protect : set             = set()
 
     def __repr__(self):
         keys = ", ".join(iter(self))
@@ -166,14 +169,19 @@ class DootLocations:
             case _:
                 return pl.Path(key)
 
-    def expand(self, path) -> pl.Path:
-        if path.is_absolute():
-            return path
-        if not path.parts:
-            return self.root /path
-        if path.parts[0] == "~":
-            return path.expanduser().resolve()
-        return self.root / path
+    def expand(self, path:pl.Path, symlinks:bool=False) -> pl.Path:
+        """
+          Expand a path to be absolute, taking into account the set doot root.
+          resolves symlinks unless symlinks=True
+        """
+        result = path
+        if not result.parts:
+            result = self.root / path
+        if result.parts[0] == "~":
+            result = result.expanduser()
+        if not symlinks:
+            result = result.resolve()
+        return result
 
     @property
     def root(self):
@@ -182,22 +190,30 @@ class DootLocations:
         """
         return self._root
 
-    def update(self, extra:dict|TomlGuard|DootLocations) -> Self:
+    def update(self, extra:dict|TomlGuard|DootLocations, strict=True) -> Self:
         """
           Update the registered locations with a dict, tomlguard, or other dootlocations obj.
           The update process itself is tomlguard.tomlguard.merge
         """
-        current_keys = set(self._data.keys())
-        match extra:
-            case dict() | tomlguard.TomlGuard():
-                self._data = tomlguard.TomlGuard.merge(self._data, extra)
-            case DootLocations():
-                self._data = tomlguard.TomlGuard.merge(self._data, extra._data)
-            case _:
-                raise TypeError("Bad type passed to DootLocations for updating: %s", type(extra))
+        if isinstance(extra, DootLocations):
+            return self.update(extra._data)
 
-        new_keys = set(self._data.keys()) - current_keys
+        assert(isinstance(extra, (tomlguard.TomlGuard,dict)))
+        raw          = dict(self._data.items())
+        base_keys    = set(raw.keys())
+        for k,v in extra.items():
+            match v:
+                case _ if k in raw and strict:
+                    raise doot.errors.DootLocationError("Duplicated Key", k)
+                case str():
+                    raw[k] = v
+                case {"protect": x}:
+                    self._protect.add(k)
+                    raw[k] = x
+
+        new_keys = set(raw.keys()) - base_keys
         logging.debug("Registered New Locations: %s", ", ".join(new_keys))
+        self._data = tomlguard.TomlGuard(raw)
 
         return self
 
@@ -209,3 +225,12 @@ class DootLocations:
 
         if bool(missing):
             raise DootDirAbsent("Ensured Locations are missing for %s : %s", task, missing)
+
+
+    def check_writable(self, path:pl.Path) -> bool:
+        for key in self._protect:
+            base = getattr(self, key)
+            if path.is_relative_to(base):
+                return False
+
+        return True
