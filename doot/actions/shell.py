@@ -18,6 +18,9 @@ from doot.actions.base_action import DootBaseAction
 from doot.structs import DootKey
 
 BACKGROUND = DootKey.make("background")
+UPDATE     = DootKey.make("update_")
+NOTTY      = DootKey.make("notty")
+ENV        = DootKey.make("shenv_")
 
 @doot.check_protocol
 class DootShellAction(Action_p):
@@ -25,24 +28,32 @@ class DootShellAction(Action_p):
     For actions in subshells.
     all other arguments are passed directly to the program, using `sh`
 
-    The arguments of the action are held in spec
 
-    TODO : handle shell output redirection, and error code ignoring (use action spec dict)
+    can use a pre-baked sh passed into what "shenv_" points to
     """
-    _toml_kwargs = [BACKGROUND]
+    _toml_kwargs = [BACKGROUND, NOTTY, ENV]
 
     def __call__(self, spec, state:dict) -> dict|bool|None:
-        result = None
+        result     = None
+        update     = UPDATE.redirect(spec) if UPDATE in spec.kwargs else None
+        background = bool(BACKGROUND.to_type(spec, state))
+        notty      = not bool(NOTTY.to_type(spec, state))
+        env        = ENV.to_type(spec, state, on_fail=sh)
         try:
-            cmd      = getattr(sh, DootKey.make(spec.args[0], explicit=True).expand(spec, state))
+            cmd      = getattr(env, DootKey.make(spec.args[0], explicit=True).expand(spec, state))
             args     = spec.args[1:]
             keys     = [DootKey.make(x, explicit=True) for x in args]
             expanded = [x.expand(spec, state) for x in keys]
-            result   = cmd(*expanded, _return_cmd=True, _bg=spec.kwargs.on_fail(False, bool).background())
+            result   = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=notty)
             assert(result.exit_code == 0)
+
             printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, spec.args[0], spec.args[1:])
-            printer.info("%s", result, extra={"colour":"reset"})
-            return True
+            if not update:
+                printer.info("%s", result, extra={"colour":"reset"})
+                return True
+
+            return { update : result.stdout }
+
         except sh.CommandNotFound as err:
             printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], spec.args)
             return False
