@@ -39,7 +39,7 @@ from doot._abstract import Job_i, Task_i, FailPolicy_p
 from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskName, DootCodeReference
 from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i
 from doot.task.base_task import DootTask
-from doot.control.base_tracker import BaseTracker, ROOT, STATE, PRIORITY, EDGE_E
+from doot.control.base_tracker import BaseTracker, ROOT, STATE, PRIORITY, EDGE_E, MIN_PRIORITY
 
 REACTIVE_ADD     : Final[str]                  = "reactive-add"
 
@@ -170,7 +170,10 @@ class DootTracker(BaseTracker, TaskTracker_i):
                 case self.state_e.DECLARED:
                     logging.warning("Tried to Schedule a Declared but Undefined Task: %s", focus)
                     self.deque_task()
-                    self.update_state(focus, self.state_e.SUCCESS)
+                    if self.task_graph.nodes[focus][PRIORITY] > MIN_PRIORITY:
+                        self.queue_task(focus)
+                    else:
+                        self.update_state(focus, self.state_e.SUCCESS)
                 case x: # Error otherwise
                     raise doot.errors.DootTaskTrackingError("Unknown task state: ", x)
 
