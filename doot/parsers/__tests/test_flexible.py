@@ -264,7 +264,7 @@ class TestArgParser:
         assert(result.head.args.key == "blah")
 
 
-    def test_assing_fail_with_wrong_prefix(self, ctor, mocker):
+    def test_assign_fail_with_wrong_prefix(self, ctor, mocker):
         param    = DootParamSpec("key", str, prefix="-")
         parser   = ctor()
 

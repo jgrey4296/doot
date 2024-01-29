@@ -148,7 +148,9 @@ class DootTaskSpec:
     """ The information needed to describe a generic task.
     Optional things are shoved into 'extra', so things can use .on_fail on the tomlguard
 
+    the cli parser can understand cli=[{}] specs
     actions                      : list[ [args] | {do="", args=[], **kwargs} ]
+
     """
     name                         : DootTaskName                                                 = field()
     doc                          : list[str]                                                    = field(default_factory=list)

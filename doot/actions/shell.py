@@ -40,11 +40,10 @@ class DootShellAction(Action_p):
         notty      = not bool(NOTTY.to_type(spec, state))
         env        = ENV.to_type(spec, state, on_fail=sh)
         try:
-            cmd      = getattr(env, DootKey.make(spec.args[0], explicit=True).expand(spec, state))
-            args     = spec.args[1:]
-            keys     = [DootKey.make(x, explicit=True) for x in args]
-            expanded = [x.expand(spec, state) for x in keys]
-            result   = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=notty)
+            cmd                     = getattr(env, DootKey.make(spec.args[0], explicit=True).expand(spec, state))
+            keys                    = [DootKey.make(x, explicit=True) for x in spec.args[1:]]
+            expanded                = [x.expand(spec, state) for x in keys]
+            result                  = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=notty)
             assert(result.exit_code == 0)
 
             printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, spec.args[0], spec.args[1:])

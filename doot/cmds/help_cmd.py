@@ -32,7 +32,7 @@ printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
 import doot
-from doot.structs import DootParamSpec, DootTaskSpec
+from doot.structs import DootParamSpec, DootTaskSpec, DootCodeReference
 from doot._abstract import Command_i
 from doot.constants import NON_DEFAULT_KEY
 from collections import defaultdict
@@ -95,6 +95,14 @@ class HelpCmd(Command_i):
 
     def print_task_spec(self, count, spec:DootTaskSpec):
         task_name = spec.name
+        match spec.ctor:
+            case None:
+                ctor = None
+            case DootCodeReference():
+                ctor = spec.ctor.try_import()
+            case _:
+                ctor = spec.ctor
+
         lines     = []
         lines.append("")
         lines.append("------------------------------")
@@ -104,8 +112,9 @@ class HelpCmd(Command_i):
         lines.append(f"Group  : {spec.name.group}")
         lines.append(f"Source : {spec.source}")
 
-        if spec.ctor is not None:
-            lines.append(spec.ctor.try_import().class_help())
+        if ctor is not None:
+            lines.append(ctor.class_help())
+
 
         match spec.doc:
             case None:
@@ -132,9 +141,11 @@ class HelpCmd(Command_i):
                 printer.info("-- %-20s : Args=%-20s Kwargs=%s", action.do, action.args, dict(action.kwargs) )
 
 
-        # TODO fix this to work with --help flag
-        if task_name in doot.args.tasks and bool(doot.args.task[task_name][NON_DEFAULT_KEY]) and spec.ctor is not None:
-            self._print_current_param_assignments(spec.ctor.param_specs, doot.args.tasks[task_name])
+        cli_has_params = str(task_name) in doot.args.tasks
+        cli_has_non_default = bool(doot.args.tasks[str(task_name)][NON_DEFAULT_KEY])
+
+        if cli_has_params and cli_has_non_default and ctor is not None:
+            self._print_current_param_assignments(ctor.param_specs, doot.args.tasks[task_name])
 
     def _print_current_param_assignments(self, specs:list[DootParamSpec], args:TomlGuard):
         if not bool(specs):

@@ -160,12 +160,8 @@ class DootOverlord(Overlord_p):
         if not isinstance(self.task_loader, TaskLoader_p):
             raise TypeError("Attempted to use a non-Commandloader_i as a CommandLoader: ", self.cmd_loader)
 
-        try:
-            self.task_loader.setup(self.plugins, extra_config)
-            self.tasks = self.task_loader.load()
-        except doot.errors.DootTaskLoadError as err:
-            printer.warning("Tasks Not Loaded Due to Error: %s", err)
-            self.tasks = tomlguard.TomlGuard()
+        self.task_loader.setup(self.plugins, extra_config)
+        self.tasks = self.task_loader.load()
 
     def _parse_args(self, args=None):
         """ use the found task and command arguments to make sense of sys.argv """
@@ -176,11 +172,7 @@ class DootOverlord(Overlord_p):
         if not isinstance(self.parser, ArgParser_i):
             raise TypeError("Improper argparser specified: ", self.arg_parser)
 
-        try:
-            doot.args = self.parser.parse(args or self.args, doot_specs=self.param_specs, cmds=self.cmds, tasks=self.tasks)
-        except doot.errors.DootParseError as err:
-            printer.warning("Args failed to parse to due error: %s", err)
-            doot.args = tomlguard.TomlGuard()
+        doot.args = self.parser.parse(args or self.args, doot_specs=self.param_specs, cmds=self.cmds, tasks=self.tasks)
 
     def _cli_arg_response(self) -> bool:
         """ Overlord specific cli arg responses. modify verbosity,

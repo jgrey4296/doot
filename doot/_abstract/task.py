@@ -190,6 +190,9 @@ class Task_i(TaskBase_i):
     def class_help(cls):
         """ Task *class* help. """
         help_lines = [f"Task   : {cls.__qualname__} v{cls._version}", ""]
+        mro = " -> ".join(x.__name__ for x in cls.mro())
+        help_lines.append(f"Task MRO: {mro}")
+        help_lines.append("")
         help_lines += cls._help
 
         return "\n".join(help_lines)
@@ -213,6 +216,10 @@ class Job_i(TaskBase_i):
     def class_help(cls) -> str:
         """ Job *class* help. """
         help_lines = [f"Job : {cls.__qualname__} v{cls._version}    ({cls.__module__}:{cls.__qualname__})", ""]
+
+        mro = " -> ".join(x.__name__ for x in cls.mro())
+        help_lines.append(f"Job MRO: {mro}")
+        help_lines.append("")
         help_lines += cls._help
 
         params = cls.param_specs

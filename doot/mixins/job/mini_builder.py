@@ -60,7 +60,6 @@ class MiniBuilderMixin(SubMixin):
         head = super()._build_head(**kwargs)
         spec_head_actions     = [DootActionSpec.from_data(x) for x in self.spec.extra.on_fail([], list).head_actions()]
         head.actions         += spec_head_actions
-        head.queue_behaviour  = "auto"
 
         return head
 
