@@ -71,7 +71,6 @@ DEFAULT_PLUGINS['action']      = [("basic"  ,    "doot.actions.base_action:DootB
 
                                   ("user",       "doot.actions.io:UserInput"),
                                   ("read"  ,     "doot.actions.io:ReadAction"),
-                                  ("readJson",   "doot.actions.io:ReadJson"),
                                   ("copy"  ,     "doot.actions.io:CopyAction"),
                                   ("move",       "doot.actions.io:MoveAction"),
                                   ("touch",      "doot.actions.io:TouchFileAction"),
@@ -81,8 +80,17 @@ DEFAULT_PLUGINS['action']      = [("basic"  ,    "doot.actions.base_action:DootB
                                   ("write!" ,    "doot.actions.io:WriteAction"),
                                   ("dir!",       "doot.actions.io:EnsureDirectory"),
                                   ("delete!",    "doot.actions.io:DeleteAction"),
-                                  ("tar!",       "doot.actions.io:CompressAction"),
-                                  ("untar!",     "doot.actions.io:DecompressAction"),
+
+                                  ("json.read",  "doot.actions.json:ReadJson"),
+
+                                  ("tar!",       "doot.actions.compression:TarCompressAction"),
+                                  ("untar!",     "doot.actions.compression:TarDecompressAction"),
+                                  ("tar.list",   "doot.actions.compression:TarListAction"),
+                                  ("zip.new",    "doot.action.compression:ZipNewAction"),
+                                  ("zip.add",    "doot.actions.compression:ZipAddAction"),
+                                  ("zip.get",    "doot.actions.compression:ZipGetAction"),
+                                  ("zip.list",  "doot.actions.compression:ZipListAction"),
+
 
                                   ("break!",     "doot.actions.util:action_debugger"),
                                   ("type!",      "doot.actions.util:typecheck"),

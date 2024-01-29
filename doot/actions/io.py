@@ -12,7 +12,7 @@ import pathlib as pl
 import re
 import time
 import types
-import json
+# import json
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
@@ -53,9 +53,6 @@ RECURSIVE          : Final[DootKey] = DootKey.make("recursive")
 LAX                : Final[DootKey] = DootKey.make("lax")
 ##-- end expansion keys
 
-COMP_TAR_CMD  = sh.tar.bake("-cf", "-")
-COMP_GZIP_CMD = sh.gzip.bake("--best")
-DECOMP_CMD    = sh.tar.bake("-xf")
 
 @doot.check_protocol
 class AppendAction(Action_p):
@@ -105,6 +102,10 @@ class WriteAction(Action_p):
                 printer.info("No Data to Write")
             case _ if not bool(data):
                 printer.info("No Data to Write")
+            case [*xs]:
+                text = "\n".join(xs)
+                printer.info("Writing %s chars to %s", len(text), loc)
+                loc.write_text(text)
             case bytes():
                 printer.info("Writing %s bytes to %s", len(data), loc)
                 loc.write_bytes(data)
@@ -260,20 +261,6 @@ class EnsureDirectory(Action_p):
 
 
 @doot.check_protocol
-class ReadJson(Action_p):
-    """
-        Read a json file and add it to the task state as task_state[`data`] = TomlGuard(json_data)
-    """
-    _toml_kwargs = [FROM_KEY, UPDATE]
-
-    def __call__(self, spec, task_state:dict):
-        data_key = UPDATE.redirect(spec)
-        fpath    = FROM_KEY.to_path(spec, task_state)
-        data     = json.load(fpath)
-        return { data_key : TG.TomlGuard(data) }
-
-
-@doot.check_protocol
 class UserInput(Action_p):
 
     _toml_kwargs = [UPDATE, PROMPT]
@@ -310,37 +297,6 @@ class TouchFileAction(Action_p):
     def __call__(self, spec, state):
         target = FILE_TARGET.to_path(spec, state)
         target.touch()
-
-
-@doot.check_protocol
-class CompressAction(Action_p):
-    """ Compresses a target into a .tar.gz file """
-    _toml_kwargs = [FILE_TARGET, TO_KEY]
-
-    def __call__(self, spec, state):
-        target = FILE_TARGET.to_path(spec, state)
-        output = TO_KEY.to_path(spec, state, on_fail=target.with_suffix(target.suffix + ".tar.gz"))
-
-        if output.exists():
-            raise doot.errors.DootActionError("Compression target already exists")
-        if target.is_dir():
-            COMP_GZIP_CMD(_in=COMP_TAR_CMD("-C", target, ".", _piped=True), _out=output)
-        else:
-            COMP_GZIP_CMD(_in=COMP_TAR_CMD("-C", target.parent, target.name, _piped=True), _out=output)
-
-@doot.check_protocol
-class DecompressAction(Action_p):
-    """ Decompresses a .tar.gz file """
-    _toml_kwargs = [FILE_TARGET, TO_KEY]
-
-    def __call__(self, spec, state):
-        target = FILE_TARGET.to_path(spec, state)
-        if not ".tar.gz" in target.name:
-            printer.warning("Decompression target isn't a .tar.gz", target)
-            return ActionResponseEnum.FAIL
-
-        output = TO_KEY.to_path(spec, state, on_fail=pl.Path())
-        DECOMP_CMD(target, "-C", output)
 
 
 @doot.check_protocol
@@ -387,3 +343,19 @@ class LinkAction(Action_p):
             x_path.unlink()
         printer.info("Linking: %s -> %s", x_path, y_path)
         x_path.symlink_to(y_path)
+
+
+@doot.check_protocol
+class ListFiles(Action_p):
+    """ add a list of all files in a path (recursively) to the state """
+
+    def __call__(self, spec, state):
+        update = UPDATE.redirect(spec)
+        target = FROM_KEY.to_path(spec, state)
+        base   = target.parent
+        target = target.name
+        result = sh.fdfind("--color", "never", "-t", "f", "--base-directory",  str(base), ".", target, _return_cmd=True)
+        filelist = result.stdout.decode().split("\n")
+
+        printer.info("%s files in %s", len(filelist), target)
+        return { update : filelist }
