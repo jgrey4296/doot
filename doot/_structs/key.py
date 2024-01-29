@@ -90,12 +90,16 @@ class DootFormatter(string.Formatter):
         if isinstance(key, int):
             return args[key]
 
-        spec              = kwargs.get('_spec')
-        state             = kwargs.get('_state', None) or {}
-        cli               = doot.args.on_fail({}).tasks[str(state.get('_task_name', None))]()
-        locs              = kwargs.get("_locs", doot.locs)
-        replacement       = cli.get(key, None) or state.get(key, None) or spec.get(key, None)
         insist            = kwargs.get("_insist", False)
+        state             = kwargs.get('_state', None) or {}
+        locs              = kwargs.get("_locs", doot.locs)
+        cli               = doot.args.on_fail({}).tasks[str(state.get('_task_name', None))]()
+        replacement       = cli.get(key, None)
+        if replacement is None:
+            replacement = state.get(key, None)
+        if replacement is None:
+            spec        = kwargs.get('_spec')
+            replacement = spec.get(key, None)
         if replacement is None and locs is not None:
             replacement = locs.get(key, None)
 
@@ -131,13 +135,15 @@ class DootKey(abc.ABC):
     """
 
     @staticmethod
-    def make(s:str|DootKEy|DootTaskArtifact|pl.Path, *, strict=False, explicit=False) -> DootKey:
+    def make(s:str|DootKEy|DootTaskArtifact|pl.Path|dict, *, strict=False, explicit=False) -> DootKey:
         """ Make an appropriate DootKey based on input value
           Can only create MultiKeys if strict = False,
           if explicit, only keys wrapped in {} are made, everything else is returned untouched
           if strict, then only simple keys can be returned
         """
         match s:
+            case { "path": x }:
+                return DootPathKey(x)
             case DootSimpleKey() if strict:
                 return s
             case DootKey():
@@ -428,5 +434,9 @@ class DootMultiKey(DootKey):
     def to_type(self, spec, state, type_=Any, chain:list[DootKey]=None, on_fail=Any) -> Any:
         raise TypeError("Converting a MultiKey to a type doesn't make sense", self)
 
-class DootKeyChain(DootKey):
-    pass
+
+class DootPathKey(DootMultiKey):
+    """ A Multi key that always expands to a path """
+
+    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[DootKey]=None, on_fail=Any):
+        return str(self.to_path(spec, state, chain=chain, on_fail=on_fail))

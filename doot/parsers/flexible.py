@@ -205,13 +205,14 @@ class DootFlexibleParser(ArgParser_i):
 
                 match [x for x in current_specs if x == args[0]]:
                     case [] if args[0].startswith(PARAM_ASSIGN_PREFIX):
+                        # No matches, its a free cli arg.
                         try:
                             key, *values     = args[0].split("=")
                             task_args[key.removeprefix("--")] = values
                             args.pop(0)
                         except ValueError:
                             raise doot.errors.DootParseError("Arg failed to split into key=value", args[0])
-                    case [x]:
+                    case [x] if not x.positional:
                         x.maybe_consume(args, task_args)
                     case [*xs] if all(y.positional for y in xs):
                         self._consume_next_positional(args, task_args, xs)

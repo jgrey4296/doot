@@ -81,6 +81,8 @@ class DootParamSpec:
                 param.type = bool
             case DootParamSpec(type="str"):
                 param.type = str
+            case DootParamSpec(type="list"):
+                param.type = list
 
         if param.default == "None":
             param.default = None
@@ -115,7 +117,7 @@ class DootParamSpec:
                 return val.removeprefix(self.prefix).split(self.separator)
             case True if isinstance(val, list):
                 return (self.name, val)
-            case True:
+            case True | int():
                 return (self.name, [val])
 
     def __eq__(self, val) -> bool:
@@ -126,6 +128,8 @@ class DootParamSpec:
                 [head, *_] = self._split_name_from_value(val)
                 return head in [self.name, self.short, self.inverse]
             case str(), True:
+                return not val.startswith(self.prefix)
+            case str(), int():
                 return not val.startswith(self.prefix)
             case _, _:
                 return False
@@ -186,7 +190,7 @@ class DootParamSpec:
 
         return f"{self.prefix}{self.name[0]}"
 
-    def add_value_to(self, data:dict, *, key:str=None, vals:list[str]=None) -> bool:
+    def _add_non_positional_value(self, data:dict, *, key:str=None, vals:list[str]=None) -> bool:
         """ if the given value is suitable, add it into the given data
         takes separated key, values,
         and the key has had the prefix stripped
@@ -195,7 +199,18 @@ class DootParamSpec:
 
         logging.debug("Matching: %s : %s : %s", self.type.__name__, key, vals)
 
+        # Use type.__name__ because you can't match on type. ("case str" fails, expecting "case str()")
         match self.type.__name__:
+            case "list":
+                if self.name not in data or data[self.name] == self.default:
+                    data[self.name] = []
+                data[self.name] += vals
+            case "set":
+                if self.name not in data or data[self.name] == self.default:
+                    data[self.name] = set()
+                data[self.name].update(vals)
+            case _ if data.get(self.name, self.default) != self.default:
+                raise doot.errors.DootParseError("Trying to re-set an arg already set: %s : %s", self.name, vals)
             ##-- handle bools and inversion
             case "bool" if bool(vals):
                 raise doot.errors.DootParseError("Bool Arguments shouldn't have values: %s : %s", self.name, vals)
@@ -206,22 +221,6 @@ class DootParamSpec:
             ##-- end handle bools and inversion
             case _ if not bool(vals):
                 raise doot.errors.DootParseError("Non-Bool Arguments should have values: %s : %s", self.name, vals)
-            case "list":
-                if self.name not in data:
-                    data[self.name] = []
-                data[self.name] += vals[0].split(",")
-            case "set":
-                if self.name not in data:
-                    data[self.name] = set()
-                data[self.name].update(vals[0].split(","))
-            case _ if isinstance(self.positional, int) and not isinstance(self.positional, bool) and self.name not in data:
-                data[self.name] = [vals[0]]
-            case _ if not isinstance(self.positional, bool) and len(data.get(self.name, [])) < self.positional:
-                if self.name not in data:
-                    data[self.name] = []
-                data[self.name].append(vals[0])
-            case _ if data.get(self.name, self.default) != self.default:
-                raise doot.errors.DootParseError("Trying to re-set an arg already set: %s : %s", self.name, vals)
             case _ if len(vals) == 1:
                 data[self.name] = self.type(vals[0])
             case _:
@@ -229,23 +228,40 @@ class DootParamSpec:
 
         return data[self.name] != self.default
 
+    def _add_positional_value(self, data, *, key:str=None, vals:list[str]=None):
+        match self.positional:
+            case True:
+                data[self.name] = self.type(vals[0])
+            case int() if self.type.__name__ != "list":
+                raise doot.errors.DootParseError("Multi-positional args should be of type 'list'", self.name)
+            case int():
+                if data[self.name] == self.default:
+                    data[self.name] = []
+                data[self.name] += vals
+
+        if not isinstance(self.positional, bool) and self.positional < len(data[self.name]):
+            raise doot.errors.DootParseError("Too many positional args provided", self.name)
+
     def maybe_consume(self, args:list[str], data:dict) -> bool:
         """
           Given a list of args, possibly add a value to the data.
           operates in place.
           return True if consumed a value
 
-          handles ["--arg=val"], ["-a", "val"], and, if positional, ["val"]
+          handles:
+          ["--arg=val"],
+          ["-arg", "val"],
+          ["val"],     (if positional=True)
+          ["-arg"],    (if type=bool)
+          ["-no-arg"], (if type=bool)
         """
-        if not bool(args) or data is None:
-            return False
-        if args[0] != self:
+        if not bool(args) or data is None or args[0] != self:
             return False
 
-        pop_count = 1
-        focus     = args[0]
-        prefixed  = focus.startswith(self.prefix)
-        is_assign = self.separator in focus
+        pop_count  = 1
+        focus      = args[0]
+        prefixed   = focus.startswith(self.prefix)
+        is_assign  = self.separator in focus
         key, vals  = None, []
 
         match prefixed, is_assign:
@@ -266,6 +282,9 @@ class DootParamSpec:
             case False, False if self.positional and data.get(self.name, self.default) == self.default:
                 key = self.name
                 vals.append(focus)
+            case False, False if self.positional and self.type == list:
+                key = self.name
+                vals.append(focus)
             case False, False if not isinstance(self.positional, bool) and len(data.get(self.name, [])) < self.positional:
                 key = self.name
                 vals.append(focus)
@@ -275,7 +294,10 @@ class DootParamSpec:
         if key is None or vals is None:
             return False
 
-        self.add_value_to(data, key=key, vals=vals)
+        if self.positional:
+            self._add_positional_value(data, key=key, vals=vals)
+        else:
+            self._add_non_positional_value(data, key=key, vals=vals)
 
         for x in range(pop_count):
             args.pop(0)

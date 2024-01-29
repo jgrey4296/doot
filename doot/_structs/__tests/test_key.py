@@ -438,6 +438,13 @@ class TestStringExpansion:
         result = key.expand(spec, {"x": "blah", "y":"bloo"})
         assert(result.endswith("test2/sub/blah"))
 
+
+    def test_expansion_to_false(self, spec, setup_locs):
+        key = DootKey.make("{aFalse}")
+        result = key.expand(spec, {"aFalse": False})
+        assert(result == "False")
+
+
     @pytest.mark.xfail
     def test_to_str_fail(self, spec):
         with pytest.raises(TypeError):
