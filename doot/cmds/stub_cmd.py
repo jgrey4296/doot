@@ -58,12 +58,13 @@ class StubCmd(Command_i):
         return super().param_specs + [
             self.make_param("file-target", type=str,     default=""),
             self.make_param("Config",                    default=False,           desc="Stub a doot.toml",                  prefix="-"),
-            self.make_param("Tasks",                     default=False,           desc="List the types of task available",  prefix="-"),
             self.make_param("Actions",                   default=False,           desc="Help Stub Actions",                 prefix="-"),
+            self.make_param("cli",                       default=False,           desc="Generate a stub cli arg dict", prefix="-"),
             self.make_param("Flags",                     default=False,           desc="Help Stub Task Flags",              prefix="-"),
+
             self.make_param("name",        type=str,     default="stub::stub",    desc="The Name of the new task",                          positional=True),
             self.make_param("ctor",        type=str,     default="task",          desc="The short type name of the task generator",         positional=True),
-            self.make_param("mixins",      type=list,    default=[],              desc="Mixins to add", prefix="--"),
+            self.make_param("mixins",      type=list,    default=[],              desc="Mixins to add to task/job", prefix="--"),
             self.make_param("suppress-header",           default=True, invisible=True)
             ]
 
@@ -76,12 +77,12 @@ class StubCmd(Command_i):
 
     def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
         match dict(doot.args.cmd.args):
-            case {"Tasks": True}:
-                self._list_task_types(plugins)
             case {"Config": True}:
                 self._stub_doot_toml()
             case {"Actions": True}:
                 self._stub_actions(plugins)
+            case {"cli": True}:
+                self._stub_cli_arg()
             case {"Flags": True}:
                 self._list_flags()
             case _:
@@ -164,11 +165,6 @@ class StubCmd(Command_i):
             f.write("\n")
             f.write(stub.to_toml())
 
-    def _list_task_types(self, plugins):
-        printer.info("Available Job Types:")
-        for plug in plugins.job:
-            printer.info("- %10s : %s", plug.name, plug.value)
-
     def _stub_actions(self, plugins):
         matched = [x for x in plugins.action if x.name == doot.args.cmd.args.name or x.value == doot.args.cmd.args.name]
         if bool(matched):
@@ -202,6 +198,23 @@ class StubCmd(Command_i):
         printer.info("")
         printer.info("- For Custom Python Actions, implement the following in the .tasks directory")
         printer.info("def custom_action(spec:DootActionSpec, task_state:dict) -> None|bool|dict:...")
+
+    def _stub_cli_arg(self):
+        printer.info("# - CLI Arg Form. Add to task spec: cli=[]")
+        printer.info("")
+        stub = []
+        stub.append('name="')
+        stub.append(doot.args.on_fail("default").cmd.args.name())
+        stub.append('", ')
+        stub.append('type="str", ')
+        stub.append('prefix="-", ')
+        stub.append('default="", ')
+        stub.append('desc="", ')
+        stub.append('positional=false ')
+
+        printer.info("{ %s }", "".join(stub))
+
+
 
     def _list_flags(self):
         printer.info("Task Flags: ")
