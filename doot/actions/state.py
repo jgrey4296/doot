@@ -38,7 +38,7 @@ from doot.structs import DootCodeReference, DootKey
 ##-- expansion keys
 UPDATE : Final[DootKey] = DootKey.make("update_")
 FORMAT : Final[DootKey] = DootKey.make("format")
-
+FROM   : Final[DootKey] = DootKey.make("from")
 ##-- end expansion keys
 
 @doot.check_protocol
@@ -113,3 +113,22 @@ class AddNow(Action_p):
         format   = FORMAT.expand(spec, state)
         now      = datetime.datetime.now()
         return { data_key : now.strftime(format) }
+
+
+@doot.check_protocol
+class PathParts(Action_p):
+    """ take a path and add fstem, fpar, fname to state """
+    _toml_kwargs = ["from"]
+
+    def __call__(self, spec, state):
+        fpath = FROM.to_path(spec, state)
+        name = fpath.name
+        stem = fpath
+        # This handles "a/b/c.tar.gz"
+        while stem.stem != stem.with_suffix("").stem:
+            stem = stem.with_suffix("")
+
+        return { "fstem": stem.stem,
+                 "fpar" : fpath.parent,
+                 "fname": name,
+                }

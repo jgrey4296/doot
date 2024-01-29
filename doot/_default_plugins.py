@@ -99,6 +99,7 @@ DEFAULT_PLUGINS['action']      = [("basic"  ,    "doot.actions.base_action:DootB
                                   ("getPost",    "doot.actions.postbox:GetPostAction"),
                                   ("addState",   "doot.actions.state:AddStateAction"),
                                   ("addFn",      "doot.actions.state:AddStateFn"),
+                                  ("pathParts",  "doot.actions.state:PathParts"),
 
                                   ("sayTime",    "doot.actions.speak:SpeakTimeAction"),
 
