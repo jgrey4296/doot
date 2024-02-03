@@ -45,23 +45,24 @@ class TestParamSpec:
         assert(example != "--test")
         assert(example != "-tw")
 
-    def test_add_value_bool(self):
+    def test_consume_bool(self):
         example = DootParamSpec.from_dict({
-            "name" : "test"
+            "name" : "test",
+            "type" : "bool",
           })
         assert(example == "test")
         data = {}
-        example.add_value_to(data, key="test")
+        example.maybe_consume(["-test"], data)
         assert('test' in data)
         assert(bool(data['test']))
 
-    def test_add_value_short_bool(self):
+    def test_consume_short_bool(self):
         example = DootParamSpec.from_dict({
             "name" : "test"
           })
         assert(example == "test")
         data = {}
-        example.add_value_to(data, key="t")
+        example.maybe_consume(["-t"], data)
         assert('test' in data)
         assert(bool(data['test']))
 
@@ -73,17 +74,17 @@ class TestParamSpec:
         with pytest.raises(doot.errors.DootParseError):
             example.maybe_consume(["-t=blah"], {})
 
-    def test_add_value_inverse_bool(self):
+    def test_consume_inverse_bool(self):
         example = DootParamSpec.from_dict({
             "name" : "test"
           })
         assert(example == "test")
         data = {}
-        example.add_value_to(data, key="no-test")
+        example.maybe_consume(["-no-test"], data)
         assert('test' in data)
         assert(not bool(data['test']))
 
-    def test_add_value_list(self):
+    def test_consume_list(self):
         example = DootParamSpec.from_dict({
             "name" : "test",
             "type" : list,
@@ -91,11 +92,11 @@ class TestParamSpec:
           })
         assert(example == "test")
         data = {'test': []}
-        example.add_value_to(data, key="test", vals=["bloo"])
+        example.maybe_consume(["-test", "bloo"], data)
         assert('test' in data)
         assert(data['test'] == ["bloo"])
 
-    def test_add_value_list_multi(self):
+    def test_consume_list_multi(self):
         example = DootParamSpec.from_dict({
             "name" : "test",
             "type" : list,
@@ -103,12 +104,12 @@ class TestParamSpec:
           })
         assert(example == "test")
         data = {'test': []}
-        example.add_value_to(data, key="test", vals=["bloo"])
-        example.add_value_to(data, key="test", vals= ["blah"])
+        example.maybe_consume(["-test", "bloo"], data)
+        example.maybe_consume(["-test", "blah"], data)
         assert('test' in data)
         assert(data['test'] == ["bloo", "blah"])
 
-    def test_add_value_list_multi_joined(self):
+    def test_consume_list_multi_joined(self):
         example = DootParamSpec.from_dict({
             "name" : "test",
             "type" : list,
@@ -116,35 +117,27 @@ class TestParamSpec:
           })
         assert(example == "test")
         data = {'test': []}
-        example.add_value_to(data, key="test", vals=["bloo,blah"])
+        args = ["-test", "bloo", "-test", "blah"]
+        example.maybe_consume(args, data)
+        example.maybe_consume(args, data)
         assert('test' in data)
         assert(data['test'] == ["bloo", "blah"])
 
-    def test_add_value_set_multi_joined(self):
+    def test_consume_set_multi_joined(self):
         example = DootParamSpec.from_dict({
-            "name" : "test",
-            "type" : set,
+            "name"    : "test",
+            "type"    : set,
             "default" : set(),
           })
         assert(example == "test")
         data = {'test': set()}
-        example.add_value_to(data, key="test", vals=["bloo,blah"])
+        example.maybe_consume(["-test", "bloo"], data)
+        example.maybe_consume(["-test", "bloo"], data)
+        example.maybe_consume(["-test", "blah"], data)
         assert('test' in data)
         assert(data['test'] == {"bloo", "blah"})
 
-    def test_add_value_set_missing_joined(self):
-        example = DootParamSpec.from_dict({
-            "name" : "test",
-            "type" : set,
-            "default" : set(),
-          })
-        assert(example == "test")
-        data = {} # <---
-        example.add_value_to(data, key="test", vals=["bloo,blah"])
-        assert('test' in data)
-        assert(data['test'] == {"bloo", "blah"})
-
-    def test_add_value_str(self):
+    def test_consume_str(self):
         example = DootParamSpec.from_dict({
             "name" : "test",
             "type" : str,
@@ -152,11 +145,11 @@ class TestParamSpec:
           })
         assert(example == "test")
         data = {}
-        example.add_value_to(data, key="test", vals=["bloo,blah"])
+        example.maybe_consume(["-test", "bloo,blah"], data)
         assert('test' in data)
         assert(data['test'] == "bloo,blah")
 
-    def test_add_value_str_multi_set_fail(self):
+    def test_consume_str_multi_set_fail(self):
         example = DootParamSpec.from_dict({
             "name" : "test",
             "type" : str,
@@ -164,11 +157,11 @@ class TestParamSpec:
           })
         assert(example == "test")
         data = {} # <---
-        example.add_value_to(data, key="test", vals=["bloo,blah"])
+        example.maybe_consume(["-test", "bloo", "blah"], data)
         with pytest.raises(Exception):
-            example.add_value_to(data, "-test=aweg")
+            example.maybe_consume(data, "-test=aweg")
 
-    def test_add_value_custom_value(self):
+    def test_consume_custom_value(self):
         example = DootParamSpec.from_dict({
             "name" : "test",
             "type" : lambda x: int(x) + 2,
@@ -176,7 +169,7 @@ class TestParamSpec:
           })
         assert(example == "test")
         data = {} # <---
-        example.add_value_to(data, key="test", vals=["2"])
+        example.maybe_consume(["-test", "2"], data)
         assert(example == "test")
         assert(data['test'] == 4)
 

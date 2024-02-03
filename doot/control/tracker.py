@@ -105,7 +105,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
         focus : str | DootTaskArtifact | None = None
         while bool(self.task_queue):
             focus : str = self.task_queue.peek()
-            logging.debug("Task: %s  State: %s, Priority: %s, Stack: %s", focus, self.task_state(focus), self.task_graph.nodes[focus][PRIORITY], self.active_set)
+            logging.debug("Task: %s  State: %s, Priority: %s, Stack: %s", focus, self.task_state(focus), self.task_graph.nodes[focus][PRIORITY], len(self.active_set))
 
             if focus in self.task_graph and self.task_graph.nodes[focus][PRIORITY] < self._min_priority:
                 logging.warning("Task halted due to reaching minimum priority while tracking: %s", focus)

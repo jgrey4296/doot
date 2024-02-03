@@ -72,5 +72,6 @@ class SetupMixin:
         setup = self.default_task("$entry$", kwargs)
         spec_setup_actions     = [DootActionSpec.from_data(x) for x in self.spec.extra.on_fail([], list).setup_actions()]
         setup.actions         += spec_setup_actions
+        setup.priority        += self.spec.priority
 
         return setup

@@ -76,7 +76,8 @@ class ReadJson(Action_p):
     def __call__(self, spec, task_state:dict):
         data_key = UPDATE.redirect(spec)
         fpath    = FROM_KEY.to_path(spec, task_state)
-        data     = json.load(fpath)
+        with open(fpath) as fp:
+            data     = json.load(fp)
         return { data_key : TG.TomlGuard(data) }
 
 class ParseJson(Action_p):
