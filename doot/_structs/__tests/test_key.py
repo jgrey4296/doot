@@ -661,87 +661,87 @@ class TestKeyWrap:
         def an_action(self, spec, state):
             pass
 
-        assert(dkey.KWrap._check_keys(an_action, []))
+        assert(dkey.DootKey.kwrap._check_keys(an_action, []))
 
     def test_check_keys_basic_no_self(self):
 
         def an_action(spec, state):
             pass
 
-        assert(dkey.KWrap._check_keys(an_action, []))
+        assert(dkey.DootKey.kwrap._check_keys(an_action, []))
 
     def test_check_keys_fail_wrong_self(self):
 
         def an_action(notself, spec, state):
             pass
 
-        assert(not dkey.KWrap._check_keys(an_action, []))
+        assert(not dkey.DootKey.kwrap._check_keys(an_action, []))
 
     def test_check_keys_fail_no_self_wrong_spec(self):
 
         def an_action(notspec, state):
             pass
 
-        assert(not dkey.KWrap._check_keys(an_action, []))
+        assert(not dkey.DootKey.kwrap._check_keys(an_action, []))
 
     def test_check_keys_fail_no_self_wrong_state(self):
 
         def an_action(spec, notstate):
             pass
 
-        assert(not dkey.KWrap._check_keys(an_action, []))
+        assert(not dkey.DootKey.kwrap._check_keys(an_action, []))
 
     def test_check_keys_with_key(self):
 
         def an_action(spec, state, x):
             pass
 
-        assert(dkey.KWrap._check_keys(an_action, ["x"]))
+        assert(dkey.DootKey.kwrap._check_keys(an_action, ["x"]))
 
     def test_check_keys_fail_with_wrong_key(self):
         def an_action(spec, state, x):
             pass
 
-        assert(not dkey.KWrap._check_keys(an_action, ["y"]))
+        assert(not dkey.DootKey.kwrap._check_keys(an_action, ["y"]))
 
     def test_check_keys_with_multi_keys(self):
 
         def an_action(spec, state, x, y):
             pass
 
-        assert(dkey.KWrap._check_keys(an_action, ["x", "y"]))
+        assert(dkey.DootKey.kwrap._check_keys(an_action, ["x", "y"]))
 
     def test_check_keys_fail_with_multi_keys(self):
 
         def an_action(spec, state, x, y):
             pass
 
-        assert(not dkey.KWrap._check_keys(an_action, ["x", "z"]))
+        assert(not dkey.DootKey.kwrap._check_keys(an_action, ["x", "z"]))
 
     def test_check_keys_with_multi_keys_offset(self):
 
         def an_action(spec, state, x, y):
             pass
 
-        assert(dkey.KWrap._check_keys(an_action, ["y"], offset=1))
+        assert(dkey.DootKey.kwrap._check_keys(an_action, ["y"], offset=1))
 
     def test_check_keys_fail_with_multi_keys_offset(self):
 
         def an_action(spec, state, x, y):
             pass
 
-        assert(not dkey.KWrap._check_keys(an_action, ["z"], offset=1))
+        assert(not dkey.DootKey.kwrap._check_keys(an_action, ["z"], offset=1))
 
     def test_basic_annotate(self):
 
         def an_action(spec, state, x, y):
             pass
-        result = dkey.KWrap._annotate_keys(an_action, ["x", "y"])
+        result = dkey.DootKey.kwrap._annotate_keys(an_action, ["x", "y"])
         assert(result)
 
     def test_basic_expand(self, spec, state):
 
-        @dkey.KWrap.expands("x")
+        @dkey.DootKey.kwrap.expands("x")
         def an_action(spec, state, x):
             return x
         assert(an_action.__name__ == "an_action")
@@ -750,7 +750,7 @@ class TestKeyWrap:
 
     def test_basic_method_expand(self, spec, state):
 
-        @dkey.KWrap.expands("x")
+        @dkey.DootKey.kwrap.expands("x")
         def an_action(self, spec, state, x):
             return x
         assert(an_action.__name__ == "an_action")
@@ -759,8 +759,8 @@ class TestKeyWrap:
 
     def test_sequence_expand(self, spec, state):
 
-        @dkey.KWrap.expands("x")
-        @dkey.KWrap.expands("{c}/blah")
+        @dkey.DootKey.kwrap.expands("x")
+        @dkey.DootKey.kwrap.expands("{c}/blah")
         def an_action(spec, state, x, y):
             return [x,y]
         assert(an_action.__name__ == "an_action")
@@ -770,7 +770,7 @@ class TestKeyWrap:
 
     def test_multi_expand(self, spec, state):
 
-        @dkey.KWrap.expands("x", "y")
+        @dkey.DootKey.kwrap.expands("x", "y")
         def an_action(spec, state, x, y):
             return [x,y]
         assert(an_action.__name__ == "an_action")
@@ -780,8 +780,8 @@ class TestKeyWrap:
 
     def test_sequence_multi_expand(self, spec, state):
 
-        @dkey.KWrap.expands("x", "y")
-        @dkey.KWrap.expands("a", "c")
+        @dkey.DootKey.kwrap.expands("x", "y")
+        @dkey.DootKey.kwrap.expands("a", "c")
         def an_action(spec, state, x, y, a, c):
             return [x,y, a, c]
         assert(an_action.__name__ == "an_action")

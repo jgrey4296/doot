@@ -62,9 +62,11 @@ class AppendAction(Action_p):
     sep = "\n--------------------\n"
     _toml_kwargs = [SEP, TO_KEY, "args"]
 
-    def __call__(self, spec, state):
-        sep     = SEP.to_type(spec, state, type_=str|None) or AppendAction.sep
-        loc     = TO_KEY.to_path(spec, state)
+    @DootKey.kwrap.types("sep")
+    @DootKey.kwrap.paths("to")
+    def __call__(self, spec, state, sep, to):
+        sep     = sep or AppendAction.sep
+        loc     = to
         args    = [DootKey.make(x, explicit=True).expand(spec, state, insist=True, on_fail=None) for x in spec.args]
 
         if not doot.locs.check_writable(loc):
@@ -295,8 +297,8 @@ class SimpleFind(Action_p):
 class TouchFileAction(Action_p):
 
     def __call__(self, spec, state):
-        target = FILE_TARGET.to_path(spec, state)
-        target.touch()
+        for target in [DootKey.make(x, exp_as="path") for x in spec.args]:
+            target(spec, state).touch()
 
 
 @doot.check_protocol

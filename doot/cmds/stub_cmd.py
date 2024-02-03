@@ -177,12 +177,13 @@ class StubCmd(Command_i):
                     for x in xs:
                         printer.info(x)
 
-            match getattr(loaded, "_toml_kwargs", []):
+            loaded = getattr(loaded, "__call__", loaded)
+
+            match getattr(loaded, "_doot_keys", []):
                 case []:
                     printer.info("-- No Declared Kwargs")
                 case [*xs]:
                     printer.info("-- Declared kwargs for action: %s", sorted(xs))
-
         else:
             printer.info("Available Actions:")
             for action in sorted(plugins.action, key=lambda x: x.name):
