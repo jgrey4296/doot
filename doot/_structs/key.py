@@ -48,6 +48,10 @@ from doot._structs.artifact import DootTaskArtifact
 
 PATTERN      : Final[re.Pattern]    = re.compile("{(.+?)}")
 FAIL_PATTERN : Final[re.Pattern]    = re.compile("[^a-zA-Z_{}/0-9-]")
+KEYS_HANDLED : Final[str]           = "KEYS_HANDLED"
+ORIG_ARGS    : Final[str]           = "_doot_orig_args"
+KEY_ANNOTS   : Final[str]           = "_doot_keys"
+EXPANSION_TYPE : Final[str]         = "_doot_expansion_type"
 
 class DootFormatter(string.Formatter):
     """
@@ -135,31 +139,60 @@ class DootKey(abc.ABC):
     """
 
     @staticmethod
-    def make(s:str|DootKEy|DootTaskArtifact|pl.Path|dict, *, strict=False, explicit=False) -> DootKey:
+    def make(s:str|DootKEy|DootTaskArtifact|pl.Path|dict, *, strict=False, explicit=False, exp_as=None) -> DootKey:
         """ Make an appropriate DootKey based on input value
           Can only create MultiKeys if strict = False,
           if explicit, only keys wrapped in {} are made, everything else is returned untouched
           if strict, then only simple keys can be returned
         """
+        result = s
         match s:
             case { "path": x }:
-                return DootPathKey(x)
+                result = DootPathKey(x)
+                exp_as = "path"
             case DootSimpleKey() if strict:
-                return s
+                result = s
             case DootKey():
-                return s
+                result = s
             case str() if not (s_keys := PATTERN.findall(s)) and not explicit:
-                return DootSimpleKey(s)
+                result = DootSimpleKey(s)
             case str() if not s_keys and explicit:
-                return DootNonKey(s)
+                result = DootNonKey(s)
             case str() if len(s_keys) == 1 and s_keys[0] == s[1:-1]:
-                return DootSimpleKey(s[1:-1])
+                result = DootSimpleKey(s[1:-1])
             case str() if not strict:
-                return DootMultiKey(s)
+                result = DootMultiKey(s)
             case DootTaskArtifact(path=path) | (pl.Path() as path) if not strict:
-                return DootMultiKey(path)
+                result = DootMultiKey(path)
             case _:
                 raise TypeError("Bad Type to build a Doot Key Out of", s)
+
+        if exp_as is not None:
+            result.set_expansion(exp_as)
+
+        return result
+
+    def set_expansion(self, etype:str):
+        match etype:
+            case "str" | "path" | "type" | "redirect" | "require":
+                setattr(self, EXPANSION_TYPE, etype)
+            case _:
+                raise doot.errors.DootKeyError("Bad Key Expansion Type Declared", self, etype)
+
+    def __call__(self, spec, state, *, rec=False, chain=None, on_fail=Any, locs=None, symlinks=None):
+        match getattr(self, EXPANSION_TYPE, False):
+            case "str":
+                return self.expand(spec, state, rec=rec, chain=chain, on_fail=on_fail, locs=locs)
+            case "path":
+                return self.to_path(spec, state, chain=chain, on_fail=on_fail, locs=locs, symlinks=symlinks)
+            case "type":
+                return self.expand(spec, state, chain=chain, on_fail=on_fail)
+            case "redirect":
+                return self.expand(spec)
+            case False:
+                raise doot.errors.DootKeyError("No Default Key Expansion Type Declared", self, etype)
+            case _:
+                raise doot.errors.DootKeyError("Key Called with Bad Key Expansion Type", self, etype)
 
     @property
     def form(self) -> str:
@@ -326,7 +359,6 @@ class DootSimpleKey(str, DootKey):
             else:
                 raise err
 
-
     def redirect(self, spec=None) -> DootKey:
         """
           If the indirect form of the key is found in the spec, use that instead
@@ -417,9 +449,9 @@ class DootMultiKey(DootKey):
         """ Return the key in its use form """
         return str(self)
 
-    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[DootKey]=None, on_fail=Any):
+    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[DootKey]=None, on_fail=Any, locs=None):
         try:
-            return DootFormatter.fmt(self.value, _spec=spec, _state=state, _rec=rec, _insist=insist)
+            return DootFormatter.fmt(self.value, _spec=spec, _state=state, _rec=rec, _insist=insist, locs=locs)
         except (KeyError, TypeError) as err:
             if bool(chain):
                 return chain[0].expand(spec, state, rec=rec, chain=chain[1:], on_fail=on_fail)
@@ -434,9 +466,153 @@ class DootMultiKey(DootKey):
     def to_type(self, spec, state, type_=Any, chain:list[DootKey]=None, on_fail=Any) -> Any:
         raise TypeError("Converting a MultiKey to a type doesn't make sense", self)
 
-
 class DootPathKey(DootMultiKey):
     """ A Multi key that always expands to a path """
 
-    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[DootKey]=None, on_fail=Any):
-        return str(self.to_path(spec, state, chain=chain, on_fail=on_fail))
+    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[DootKey]=None, on_fail=Any, locs=None):
+        return str(self.to_path(spec, state, chain=chain, on_fail=on_fail, locs=locs))
+
+class KWrap:
+    """ Decorators for actions """
+
+    @staticmethod
+    def _annotate_keys(f, keys:list) -> bool:
+        """ cache original args, and cache declared keys """
+        if hasattr(f, "__wrapped__"):
+            return KWrap._annotate_keys(f.__wrapped__, keys)
+
+        if not hasattr(f, ORIG_ARGS):
+            setattr(f, ORIG_ARGS, f.__code__.co_varnames[:f.__code__.co_argcount])
+        if not hasattr(f, KEY_ANNOTS):
+            setattr(f, KEY_ANNOTS, [])
+        new_annotations = keys + getattr(f, KEY_ANNOTS)
+        setattr(f, KEY_ANNOTS, new_annotations)
+
+        if not KWrap._check_keys(f, getattr(f, KEY_ANNOTS)):
+            raise doot.errors.DootKeyError("Annotations do not match signature", getattr(f, ORIG_ARGS, []), getattr(f, KEY_ANNOTS))
+
+        return True
+
+    @staticmethod
+    def _check_keys(f, keys, offset=0) -> bool:
+        """ test declared args to a list of keys """
+        if hasattr(f, ORIG_ARGS):
+            code_args           = getattr(f, ORIG_ARGS)
+            code_argcount       = len(code_args)
+        else:
+            code_argcount           = f.__code__.co_argcount
+            code_args               = f.__code__.co_varnames[:code_argcount]
+
+        result                  = True
+        if code_args[0]         == "self":
+            code_args           = code_args[1:]
+
+        result &= code_args[:2] == ("spec", "state")
+
+        for actual, expected in zip(code_args[:1+offset:-1], keys[::-1]):
+            match expected:
+                case DootMultiKey() | DootPathKey():
+                    pass
+                case DootSimpleKey() | str():
+                    result &= (actual == expected)
+
+        return result
+
+    @staticmethod
+    def _add_key_handler(f):
+        """ a general flat key handler so decorated functions dont need multiples """
+        if getattr(f, KEYS_HANDLED, False):
+            return f
+
+        match getattr(f, ORIG_ARGS)[0]:
+            case "self":
+                @ftz.wraps(f)
+                def action_expands(self, spec, state, *call_args, **kwargs):
+                    expansions = [x(spec, state) for x in getattr(f, KEY_ANNOTS)]
+                    all_args = (*call_args, *expansions)
+                    return f(self, spec, state, *all_args, **kwargs)
+            case _:
+                @ftz.wraps(f)
+                def action_expands(spec, state, *call_args, **kwargs):
+                    expansions = [x(spec, state) for x in getattr(f, KEY_ANNOTS)]
+                    all_args = (*call_args, *expansions)
+                    return f(spec, state, *all_args, **kwargs)
+
+        setattr(action_expands, KEYS_HANDLED, True)
+        return action_expands
+
+    @staticmethod
+    def expands(*args):
+        """ mark an action as using expanded string keys """
+        keys = [DootKey.make(x, exp_as="str") for x in args]
+
+        def expand_wrapper(f):
+            KWrap._annotate_keys(f, keys)
+            return KWrap._add_key_handler(f)
+
+        return expand_wrapper
+
+    @staticmethod
+    def paths(*args):
+        """ mark an action as using expanded path keys """
+        keys = [DootKey.make(x, explicit=True, exp_as="path") for x in args]
+
+        def expand_wrapper(f):
+            KWrap._annotate_keys(f, keys)
+            return KWrap._add_key_handler(f)
+
+        return expand_wrapper
+
+    @staticmethod
+    def types(*args):
+        """ mark an action as using raw type keys """
+        keys = [DootKey.make(x, exp_as="type") for x in args]
+
+        def expand_wrapper(f):
+            KWrap._annotate_keys(f, keys)
+            return KWrap._add_key_handler(f)
+
+        return expand_wrapper
+
+    @staticmethod
+    def args():
+        """ mark an action as using spec.args """
+
+        def expand_wrapper(f):
+            KWrap._annotate_keys(f, ["args"])
+            return KWrap._add_key_handler(f)
+
+        return expand_wrapper
+
+    @staticmethod
+    def redirects(*args):
+        """ mark an action as using redirection keys """
+        keys = [DootKey.make(x) for x in args]
+
+        def expand_wrapper(f):
+            KWrap._annotate_keys(f, keys)
+            return KWrap._add_key_handler(f)
+
+        return expand_wrapper
+
+    @staticmethod
+    def requires(*args):
+        """ mark an action as requiring certain keys to be passed in """
+        keys = [DootKey.make(x) for x in args]
+
+        def expand_wrapper(f):
+            KWrap._annotate_keys(f, keys)
+            return KWrap._add_key_handler(f)
+
+        return expand_wrapper
+
+    @staticmethod
+    def returns(*args):
+        """ mark an action as needing to return certain keys """
+        keys = [DootKey.make(x) for x in args]
+
+        def expand_wrapper(f):
+            KWrap._annotate_keys(f, keys)
+            return KWrap._add_key_handler(f)
+
+        return expand_wrapper

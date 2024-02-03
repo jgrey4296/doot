@@ -114,3 +114,6 @@ class DootMissingConfigError(DootError):
 
 class DootEarlyExit(Exception):
     pass
+
+class DootKeyError(DootError):
+    pass

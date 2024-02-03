@@ -254,7 +254,7 @@ class TestSimpleKey2:
     def state(self):
         return {"a": "bloo", "b_": "blee"}
 
-    def test_initial(self):
+    def test_basic_expand(self):
         example = DootKey.make("blah")
         assert(isinstance(example, str))
         assert(isinstance(example, DootKey))
@@ -337,6 +337,14 @@ class TestSimpleKey2:
         example = DootKey.make("c")
         the_dict = {"c": "blah"}
         assert(example in the_dict)
+
+
+    @pytest.mark.parametrize("name", MULTI_KEYS + NON_PATH_MUTI_KEYS)
+    def test_set_default_expansion(self, spec, state, name):
+        obj = dkey.DootKey.make(name, strict=False)
+        obj.set_expansion("str")
+        assert(isinstance(obj(spec, state), str))
+
 
 class TestMultiKey:
 
@@ -432,18 +440,15 @@ class TestStringExpansion:
         result = DootKey.make("{x}:{y}:{x}", strict=False).expand(spec, {"x": "blah", "y":"bloo"})
         assert(result == "blah:bloo:blah")
 
-
     def test_path_as_str(self, spec, setup_locs):
         key = DootKey.make("{p2}/{x}")
         result = key.expand(spec, {"x": "blah", "y":"bloo"})
         assert(result.endswith("test2/sub/blah"))
 
-
     def test_expansion_to_false(self, spec, setup_locs):
         key = DootKey.make("{aFalse}")
         result = key.expand(spec, {"aFalse": False})
         assert(result == "False")
-
 
     @pytest.mark.xfail
     def test_to_str_fail(self, spec):
@@ -538,13 +543,11 @@ class TestPathExpansion:
         assert(isinstance(result, pl.Path))
         assert(result.name == "blah")
 
-
     def test_chain_nop(self, spec, setup_locs):
         key = DootKey.make("{p1}", explicit=True)
         result = key.to_path(spec, {"x": "blah"}, chain=[DootKey.make("t"), DootKey.make("x")])
         assert(isinstance(result, pl.Path))
         assert(result.name == "test1")
-
 
     def test_chain_into_on_fail(self, spec, setup_locs):
         key = DootKey.make("{nothing}", explicit=True)
@@ -559,14 +562,12 @@ class TestPathExpansion:
         result  = key.to_path(spec, state)
         assert(result == pl.Path("test1/blah/aweg/doot").expanduser().resolve())
 
-
     def test_expansion_with_ext(self, spec, setup_locs):
         key = DootKey.make("{y}.bib", strict=False)
         assert(isinstance(key, DootKey))
         state = {"aweg": "doot"}
         result  = key.to_path(spec, state)
         assert(result.name == "aweg.bib")
-
 
     @pytest.mark.xfail
     def test_expansion_redirect(self, spec, setup_locs):
@@ -632,17 +633,160 @@ class TestTypeExpansion:
         result = DootKey.make("{q}").to_type(spec, {"x": "blah"}, on_fail=2)
         assert(result == 2)
 
-
     def test_on_fail_nop(self, spec):
         result = DootKey.make("{x}").to_type(spec, {"x": "blah"}, on_fail=2)
         assert(result == "blah")
-
 
     def test_chain(self, spec):
         result = DootKey.make("{nothing}").to_type(spec, {"x": "blah"}, chain=[DootKey.make("also_no"), DootKey.make("x")])
         assert(result == "blah")
 
-
     def test_chain_into_on_fail(self, spec):
         result = DootKey.make("{nothing}").to_type(spec, {"x": "blah"}, chain=[DootKey.make("also_no"), DootKey.make("xawegw")], on_fail=2)
         assert(result == 2)
+
+class TestKeyWrap:
+    """ Test the key decorators """
+
+    @pytest.fixture(scope="function")
+    def spec(self):
+        return DootActionSpec(kwargs=TomlGuard({"x": "aweg", "y_": "a"}))
+
+    @pytest.fixture(scope="function")
+    def state(self):
+        return {"a": "bloo", "b_": "blee", "c": "awegg"}
+
+    def test_check_keys_basic_with_self(self):
+
+        def an_action(self, spec, state):
+            pass
+
+        assert(dkey.KWrap._check_keys(an_action, []))
+
+    def test_check_keys_basic_no_self(self):
+
+        def an_action(spec, state):
+            pass
+
+        assert(dkey.KWrap._check_keys(an_action, []))
+
+    def test_check_keys_fail_wrong_self(self):
+
+        def an_action(notself, spec, state):
+            pass
+
+        assert(not dkey.KWrap._check_keys(an_action, []))
+
+    def test_check_keys_fail_no_self_wrong_spec(self):
+
+        def an_action(notspec, state):
+            pass
+
+        assert(not dkey.KWrap._check_keys(an_action, []))
+
+    def test_check_keys_fail_no_self_wrong_state(self):
+
+        def an_action(spec, notstate):
+            pass
+
+        assert(not dkey.KWrap._check_keys(an_action, []))
+
+    def test_check_keys_with_key(self):
+
+        def an_action(spec, state, x):
+            pass
+
+        assert(dkey.KWrap._check_keys(an_action, ["x"]))
+
+    def test_check_keys_fail_with_wrong_key(self):
+        def an_action(spec, state, x):
+            pass
+
+        assert(not dkey.KWrap._check_keys(an_action, ["y"]))
+
+    def test_check_keys_with_multi_keys(self):
+
+        def an_action(spec, state, x, y):
+            pass
+
+        assert(dkey.KWrap._check_keys(an_action, ["x", "y"]))
+
+    def test_check_keys_fail_with_multi_keys(self):
+
+        def an_action(spec, state, x, y):
+            pass
+
+        assert(not dkey.KWrap._check_keys(an_action, ["x", "z"]))
+
+    def test_check_keys_with_multi_keys_offset(self):
+
+        def an_action(spec, state, x, y):
+            pass
+
+        assert(dkey.KWrap._check_keys(an_action, ["y"], offset=1))
+
+    def test_check_keys_fail_with_multi_keys_offset(self):
+
+        def an_action(spec, state, x, y):
+            pass
+
+        assert(not dkey.KWrap._check_keys(an_action, ["z"], offset=1))
+
+    def test_basic_annotate(self):
+
+        def an_action(spec, state, x, y):
+            pass
+        result = dkey.KWrap._annotate_keys(an_action, ["x", "y"])
+        assert(result)
+
+    def test_basic_expand(self, spec, state):
+
+        @dkey.KWrap.expands("x")
+        def an_action(spec, state, x):
+            return x
+        assert(an_action.__name__ == "an_action")
+        result = an_action(spec, state)
+        assert(result == "aweg")
+
+    def test_basic_method_expand(self, spec, state):
+
+        @dkey.KWrap.expands("x")
+        def an_action(self, spec, state, x):
+            return x
+        assert(an_action.__name__ == "an_action")
+        result = an_action(self, spec, state)
+        assert(result == "aweg")
+
+    def test_sequence_expand(self, spec, state):
+
+        @dkey.KWrap.expands("x")
+        @dkey.KWrap.expands("{c}/blah")
+        def an_action(spec, state, x, y):
+            return [x,y]
+        assert(an_action.__name__ == "an_action")
+        result = an_action(spec, state)
+        assert(result[0] == "aweg")
+        assert(result[1] == "awegg/blah")
+
+    def test_multi_expand(self, spec, state):
+
+        @dkey.KWrap.expands("x", "y")
+        def an_action(spec, state, x, y):
+            return [x,y]
+        assert(an_action.__name__ == "an_action")
+        result = an_action(spec, state)
+        assert(result[0] == "aweg")
+        assert(result[1] == "bloo")
+
+    def test_sequence_multi_expand(self, spec, state):
+
+        @dkey.KWrap.expands("x", "y")
+        @dkey.KWrap.expands("a", "c")
+        def an_action(spec, state, x, y, a, c):
+            return [x,y, a, c]
+        assert(an_action.__name__ == "an_action")
+        result = an_action(spec, state)
+        assert(result[0] == "aweg")
+        assert(result[1] == "bloo")
+        assert(result[2] == "bloo")
+        assert(result[3] == "awegg")
