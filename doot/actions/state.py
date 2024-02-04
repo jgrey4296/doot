@@ -47,11 +47,11 @@ class AddStateAction(Action_p):
       add to task state in the task description toml,
       adds kwargs directly, without expansion
     """
-    _toml_kwargs = ["<Any>"]
 
-    def __call__(self, spec, task_state:dict) -> dict|bool|None:
+    @DootKey.kwrap.kwargs
+    def __call__(self, spec, state:dict, kwargs) -> dict|bool|None:
         result = {}
-        for k,v in spec.kwargs.items():
+        for k,v in kwargs.items():
             key = DootKey.make(v, explicit=True)
             val = key.to_type(spec, state)
             result[k] = val
@@ -60,15 +60,16 @@ class AddStateAction(Action_p):
 
 @doot.check_protocol
 class AddStateFn(Action_p, ImporterMixin):
-    """ for each toml kwarg, import its value and set the task_state[kwarg] = val
+    """ for each toml kwarg, import its value and set the state[kwarg] = val
       with expansion
     """
 
-    def __call__(self, spec, task_state:dict) -> dict|bool|None:
+    @DootKey.kwrap.kwargs
+    def __call__(self, spec, state:dict, kwargs) -> dict|bool|None:
         result = {}
-        for kwarg, val in spec.kwargs:
+        for kwarg, val in kwargs:
             key = DootKey.make(val, explicit=True)
-            val = key.expand(spec, task_state)
+            val = key.expand(spec, state)
             ref = DootCodeReference.from_str(val)
             result[kwarg] = ref.try_import()
 
@@ -79,15 +80,17 @@ class AddStateFn(Action_p, ImporterMixin):
 @doot.check_protocol
 class PushState(Action_p):
     """
-      task_state[update_] += [task_state[x] for x in spec.args]
+      state[update_] += [state[x] for x in spec.args]
     """
     _toml_kwargs = [UPDATE]
 
-    def __call__(self, spec, task_state) -> dict|bool|None:
-        data_key = UPDATE.redirect(spec)
-        data     = data_key.to_type(spec, task_state, type_=list|set|None, on_fail=[])
+    @DootKey.kwrap.args
+    @DootKey.kwrap.redirects("update_")
+    def __call__(self, spec, state, args, _update) -> dict|bool|None:
+        data_key = _update
+        data     = data_key.to_type(spec, state, type_=list|set|None, on_fail=[])
 
-        arg_keys = (DootKey.make(arg, explicit=True).to_type(spec, task_state) for arg in spec.args)
+        arg_keys = (DootKey.make(arg, explicit=True).to_type(spec, state) for arg in args)
         to_add   = map(lambda x: x if isinstance(x, list) else [x],
                        filter(lambda x: x is not None, arg_keys))
 
@@ -106,11 +109,10 @@ class AddNow(Action_p):
       Add the current date, as a string, to the state
     """
 
-    _toml_kwargs = [FORMAT, UPDATE]
-
-    def __call__(self, spec, state):
-        data_key = UPDATE.redirect(spec)
-        format   = FORMAT.expand(spec, state)
+    @DootKey.kwrap.expands("format")
+    @DootKey.kwrap.redirects("update_")
+    def __call__(self, spec, state, format, _update):
+        data_key = _update
         now      = datetime.datetime.now()
         return { data_key : now.strftime(format) }
 
@@ -118,12 +120,13 @@ class AddNow(Action_p):
 @doot.check_protocol
 class PathParts(Action_p):
     """ take a path and add fstem, fpar, fname to state """
-    _toml_kwargs = ["from"]
 
-    def __call__(self, spec, state):
-        fpath = FROM.to_path(spec, state)
-        name = fpath.name
-        stem = fpath
+    @DootKey.kwrap.paths("from")
+    @DootKey.kwrap.returns("fstem", "fpar", "fname")
+    def __call__(self, spec, state, _from):
+        fpath = _from
+        name  = fpath.name
+        stem  = fpath
         # This handles "a/b/c.tar.gz"
         while stem.stem != stem.with_suffix("").stem:
             stem = stem.with_suffix("")

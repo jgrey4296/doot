@@ -97,21 +97,22 @@ class _DootPostBox:
 @doot.check_protocol
 class PutPostAction(Action_p):
     """
-      push data to the inter-task postbox of this task tree
-      The arguments of the action are held in self.spec
-      'args' are pushed to the default subbox
-      'kwargs' are pushed to the kwarg subbox
+    push data to the inter-task postbox of this task tree
+    The arguments of the action are held in self.spec
+    'args' are pushed to the default subbox
+    'kwargs' are pushed to the kwarg subbox
     """
-    _toml_kwargs = ["args", "kwargs"]
 
-    def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        target = TASK_NAME.to_type(spec, task_state).root()
-        for statekey in spec.args:
-            data = DootKey.make(statekey).to_type(spec, task_state)
+    @DootKey.kwrap.args
+    @DootKey.kwrap.kwargs
+    def __call__(self, spec, state, args, kwargs) -> dict|bool|None:
+        target = TASK_NAME.to_type(spec, state).root()
+        for statekey in args:
+            data = DootKey.make(statekey).to_type(spec, state)
             _DootPostBox.put(target, data)
 
-        for subkey,statekey in spec.kwargs.items():
-            data = DootKey.make(statekey).to_type(spec, task_state)
+        for subkey,statekey in kwargs.items():
+            data = DootKey.make(statekey).to_type(spec, state)
             _DootPostBox.put(target, data, subkey=subkey)
 
 
@@ -126,18 +127,17 @@ class GetPostAction(Action_p):
       kwarg=""     -> get the default subbox
       kwarg="*"    -> get the entire box dict
     """
-    _toml_kwargs = [FROM_KEY]
 
-    def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        task_root = TASK_NAME.to_type(spec, task_state).root()
-        from_task = FROM_KEY.to_type(spec, task_state, type_=str|None)
-        target_box = from_task or task_root
+    @DootKey.kwrap.types("from", hint={"type_":str|None})
+    @DootKey.kwrap.kwargs
+    def __call__(self, spec, state, _from, kwargs) -> dict|bool|None:
+        target_box = _from or TASK_NAME.to_type(spec, state).root()
 
         updates = {}
-        for key,subkey in spec.kwargs.items():
+        for key,subkey in kwargs.items():
             if key == FROM_KEY:
                 pass
-            actual_key = DootKey.make(key, explicit=True).expand(spec, task_state)
+            actual_key = DootKey.make(key, explicit=True).expand(spec, state)
             if subkey == "" or subkey == "-":
                 updates[actual_key] = _DootPostBox.get(target_box, subkey=Any)
             elif subkey == "*":
@@ -154,9 +154,9 @@ class ClearPostAction(Action_p):
     """
     _toml_kwargs = [FROM_KEY, SUBKEY]
 
-    def __call__(self, spec, state):
+    @DootKey.kwrap.expands("subkey", hint={"on_fail":Any})
+    def __call__(self, spec, state, subkey):
         from_task = TASK_NAME.to_type(spec, state).root()
-        subkey    = SUBKEY.expand(spec, state, on_fail=Any)
         _DootPostBox.clear_box(from_task, subkey=subkey)
         return
 
@@ -169,10 +169,12 @@ class SummarizePostAction(Action_p):
     """
     _toml_kwargs = [FROM_KEY, "full"]
 
-    def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        from_task = FROM_KEY.to_type(spec, task_state, type_=str|None) or TASK_NAME.to_type(spec, task_state).root()
+    @DootKey.kwrap.types("from", hint={"type_":str|None})
+    @DootKey.kwrap.types("full", hint={"type_":bool, "on_fail":False})
+    def __call__(self, spec, state, _from) -> dict|bool|None:
+        from_task = _from or TASK_NAME.to_type(spec, state).root()
         data   = _DootPostBox.get(from_task)
-        if spec.kwargs.on_fail(False, bool).full():
+        if full:
             for x in data:
                 printer.info("Postbox %s: Item: %s", from_task, str(x))
 

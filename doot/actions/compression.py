@@ -70,11 +70,12 @@ DECOMP_CMD    = sh.tar.bake("-xf")
 @doot.check_protocol
 class TarCompressAction(Action_p):
     """ Compresses a target into a .tar.gz file """
-    _toml_kwargs = [FILE_TARGET, TO_KEY]
 
-    def __call__(self, spec, state):
-        target = FILE_TARGET.to_path(spec, state)
-        output = TO_KEY.to_path(spec, state, on_fail=target.with_suffix(target.suffix + ".tar.gz"))
+    @DootKey.kwrap.paths("file")
+    @DootKey.kwrap.paths("to", hint={"on_fail":None})
+    def __call__(self, spec, state, file, to):
+        target = file
+        output = to or target.with_suffix(target.suffix + ".tar.gz")
 
         if output.exists():
             raise doot.errors.DootActionError("Compression target already exists")
@@ -86,15 +87,15 @@ class TarCompressAction(Action_p):
 @doot.check_protocol
 class TarDecompressAction(Action_p):
     """ Decompresses a .tar.gz file """
-    _toml_kwargs = [FILE_TARGET, TO_KEY]
 
-    def __call__(self, spec, state):
-        target = FILE_TARGET.to_path(spec, state)
+    @DootKey.kwrap.paths("file", "to")
+    def __call__(self, spec, state, file, to):
+        target = file
+        output = to
         if not ".tar.gz" in target.name:
             printer.warning("Decompression target isn't a .tar.gz", target)
             return ActionResponseEnum.FAIL
 
-        output = TO_KEY.to_path(spec, state, on_fail=pl.Path())
         DECOMP_CMD(target, "-C", output)
 
 
@@ -102,16 +103,17 @@ class TarDecompressAction(Action_p):
 class TarListAction(Action_p):
     """ List the contents of a tar archive """
 
-    def __call__(self, spec, state):
-        update = UPDATE.redirect(spec)
-        target = FROM_KEY.to_path(spec, state)
+    @DootKey.kwrap.paths("from")
+    @DootKey.kwrap.redirects("update_")
+    def __call__(self, spec, state, _from, _update):
+        target = _from
         if "".join(target.suffixes) != ".tar.gz":
             printer.warning("Trying to list the contents of a non-tar archive")
             return ActionResponseEnum.FAIL
 
         result = sh.tar("--list", "-f", str(target))
         lines = result.split("\n")
-        return { update : lines }
+        return { _update : lines }
 
 
 class ZipNewAction(Action_p):

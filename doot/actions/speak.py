@@ -26,6 +26,7 @@ from time import sleep
 import sys
 import sh
 import doot
+from doot.structs import DootKey
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
 
@@ -46,24 +47,25 @@ class SpeakTimeAction(Action_p):
         now = datetime.datetime.now()
         return now.strftime(self.time_format)
 
-    def __call__(self, spec, task_state):
+    @DootKey.kwrap.args
+    def __call__(self, spec, state, args):
         try:
             match sys.platform:
                 case "linux":
-                    return self._say_linux(spec, task_state)
+                    return self._say_linux(spec, state)
                 case "darwin":
-                    return self._say_mac(spec, task_state)
+                    return self._say_mac(spec, state)
                 case _:
                     return False
         except sh.CommandNotFound as err:
-            printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], spec.args)
+            printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], args)
             return False
         except sh.ErrorReturnCode:
-            printer.error("Shell Command '%s' exited with code: %s for args: %s", spec.args[0], result.exit_code, spec.args)
+            printer.error("Shell Command '%s' exited with code: %s for args: %s", args[0], result.exit_code, args)
             return False
 
 
-    def _say_linux(self, spec, task_state:dict):
+    def _say_linux(self, spec, state:dict):
         cmd    = sh.espeak
         args   = (spec.args or self.mac_announce_args) + [self._current_time()]
         if spec.kwargs.on_fail(False, bool).wait():
@@ -75,7 +77,7 @@ class SpeakTimeAction(Action_p):
         return True
 
 
-    def _say_mac(self, spec, task_state:dict):
+    def _say_mac(self, spec, state:dict):
         cmd    = sh.say
         args   = (spec.args or self.mac_announce_args) + [self._current_time()]
         if spec.kwargs.on_fail(False, bool).wait():

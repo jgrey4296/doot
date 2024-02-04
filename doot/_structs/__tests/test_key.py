@@ -24,7 +24,6 @@ from doot._structs import key as dkey
 KEY_BASES               : Final[str] = ["bob", "bill", "blah", "other"]
 MULTI_KEYS              : Final[str] = ["{bob}/{bill}", "{blah}/{bloo}", "{blah}/{bloo}"]
 NON_PATH_MUTI_KEYS      : Final[str] = ["{bob}_{bill}", "{blah} <> {bloo}", "! {blah}! {bloo}!"]
-DISALLOWED_KEYS         : Final[str] = ["42"]
 KEY_INDIRECTS           : Final[str] = ["bob_", "bill_", "blah_", "other_"]
 
 TEST_LOCS               : Final[DootLocations] = DootLocations(pl.Path.cwd()).update({"blah": "doot"})
@@ -53,12 +52,6 @@ class TestKeyConstruction:
     def test_make(self, name):
         obj = DootKey.make(name)
         assert(isinstance(obj, DootKey))
-
-    @pytest.mark.xfail
-    @pytest.mark.parametrize("name", DISALLOWED_KEYS)
-    def test_make_fails(self, name):
-        with pytest.raises(ValueError):
-            obj = DootKey.make(name, strict=True)
 
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_make_idempotent(self, name):
@@ -338,13 +331,11 @@ class TestSimpleKey2:
         the_dict = {"c": "blah"}
         assert(example in the_dict)
 
-
     @pytest.mark.parametrize("name", MULTI_KEYS + NON_PATH_MUTI_KEYS)
     def test_set_default_expansion(self, spec, state, name):
         obj = dkey.DootKey.make(name, strict=False)
-        obj.set_expansion("str")
+        obj.set_expansion_hint("str")
         assert(isinstance(obj(spec, state), str))
-
 
 class TestMultiKey:
 
@@ -408,8 +399,7 @@ class TestStringExpansion:
         ("x", "blah", {"x": "blah", "z": "aweg", "bloo": "jiojo"}),
         ("something", "{something}", {"x": "blah", "z": "aweg", "bloo": "jiojo"}),
         ("z", "jiojo", {"x": "blah", "z": "aweg", "bloo": "jiojo", "something_": "qqqq"}),
-])
-
+                             ])
     def test_prefer_explicit_key_to_default(self, spec, setup_locs, key, target, state):
         result = DootKey.make(key).expand(spec, state)
         assert(result == target)
@@ -699,6 +689,7 @@ class TestKeyWrap:
         assert(dkey.DootKey.kwrap._check_keys(an_action, ["x"]))
 
     def test_check_keys_fail_with_wrong_key(self):
+
         def an_action(spec, state, x):
             pass
 

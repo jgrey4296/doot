@@ -49,21 +49,11 @@ from doot.errors import DootTaskError, DootTaskFailed
 from doot.enums import ActionResponseEnum
 from doot._abstract import Action_p
 from doot.structs import DootKey
-from doot.actions.postbox import _DootPostBox
 
 
 ##-- expansion keys
-TO_KEY             : Final[DootKey] = DootKey.make("to")
 FROM_KEY           : Final[DootKey] = DootKey.make("from")
 UPDATE             : Final[DootKey] = DootKey.make("update_")
-PROMPT             : Final[DootKey] = DootKey.make("prompt")
-PATTERN            : Final[DootKey] = DootKey.make("pattern")
-SEP                : Final[DootKey] = DootKey.make("sep")
-TYPE_KEY           : Final[DootKey] = DootKey.make("type")
-AS_BYTES           : Final[DootKey] = DootKey.make("as_bytes")
-FILE_TARGET        : Final[DootKey] = DootKey.make("file")
-RECURSIVE          : Final[DootKey] = DootKey.make("recursive")
-LAX                : Final[DootKey] = DootKey.make("lax")
 ##-- end expansion keys
 
 @doot.check_protocol
@@ -73,12 +63,13 @@ class ReadJson(Action_p):
     """
     _toml_kwargs = [FROM_KEY, UPDATE]
 
-    def __call__(self, spec, task_state:dict):
-        data_key = UPDATE.redirect(spec)
-        fpath    = FROM_KEY.to_path(spec, task_state)
+    @DootKey.kwrap.paths("from")
+    @DootKey.kwrap.redirects("update_")
+    def __call__(self, spec, state, _from, _update):
+        fpath    = _from
         with open(fpath) as fp:
             data     = json.load(fp)
-        return { data_key : TG.TomlGuard(data) }
+        return { _update : TG.TomlGuard(data) }
 
 class ParseJson(Action_p):
     """ parse a string as json """

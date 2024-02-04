@@ -42,7 +42,7 @@ class DootBaseAction(Action_p):
     def __str__(self):
         return f"Base Action"
 
-    def __call__(self, spec:DootActionSpec, task_state:dict) -> dict|bool|None:
-        printer.debug("Base Action Called: %s", task_state.get("count", 0))
+    def __call__(self, spec:DootActionSpec, state:dict) -> dict|bool|None:
+        printer.debug("Base Action Called: %s", state.get("count", 0))
         printer.info(" ".join(spec.args))
-        return { "count" : task_state.get("count", 0) + 1 }
+        return { "count" : state.get("count", 0) + 1 }

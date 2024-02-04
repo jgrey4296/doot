@@ -57,21 +57,18 @@ class CancelOnPredicateAction(Action_p):
       return its result for the task runner to handle
 
     """
-    _toml_kwargs = [PRED]
-
-    def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        val       = PRED.expand(spec, state)
-        ref       = DootCodeReference.from_str(val)
+    @DootKey.kwrap.expands("pred")
+    def __call__(self, spec, state, pred) -> dict|bool|None:
+        ref       = DootCodeReference.from_str(pred)
         predicate = ref.try_import()
-        return predicate(spec,task_state)
+        return predicate(spec,state)
 
 @doot.check_protocol
 class SkipIfFileExists(Action_p):
 
-    _toml_kwargs = ["args"]
-
-    def __call__(self, spec, state:dict) -> dict|bool|None:
-        for arg in spec.args:
+    @DootKey.kwrap.args
+    def __call__(self, spec, state, args) -> dict|bool|None:
+        for arg in args:
             key = DootKey.make(arg, explicit=True)
             path = key.to_path(spec, state, on_fail=None)
             if path and path.exists():
@@ -81,23 +78,20 @@ class SkipIfFileExists(Action_p):
 @doot.check_protocol
 class LogAction(Action_p):
 
-    _toml_kwargs = [MSG, LEVEL]
-
-    def __call__(self, spec, task_state):
-        level_name   = LEVEL.to_type(spec, task_state, type_=str|None) or "INFO"
+    @DootKey.kwrap.types("level", hint={"type_":str, "on_fail":"INFO"})
+    @DootKey.kwrap.expands("msg")
+    def __call__(self, spec, state, level, msg):
         level        = logmod.getLevelName(level_name)
-        msg          = MSG.expand(spec, task_state, rec=True)
+        msg          = MSG.expand(spec, state, rec=True)
         printer.log(level, "%s", msg)
 
 @doot.check_protocol
 class StalenessCheck(Action_p):
-    _toml_kwargs = [OLD, NEW]
+    """ Skip the rest of the task if old hasn't been modified since new was modifed """
 
-    def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        old_loc = OLD.to_path(spec, task_state)
-        new_loc = NEW.to_path(spec, task_state)
-
-        if new_loc.exists() and old_loc.stat().st_mtime_ns <= new_loc.stat().st_mtime_ns:
+    @DootKey.kwrap.paths("old", "new")
+    def __call__(self, spec, state, old, new) -> dict|bool|None:
+        if new.exists() and (old.stat().st_mtime_ns <= new.stat().st_mtime_ns):
             return ActRE.SKIP
 
 @doot.check_protocol
@@ -105,8 +99,8 @@ class AssertInstalled:
     """
     Easily check a program can be found and used
     """
-    _toml_kwargs = []
 
-    def __call__(self, spec, task_state:dict) -> dict|bool|None:
+    @DootKey.kwrap.args
+    def __call__(self, spec, state, args) -> dict|bool|None:
         raise NotImplementedError()
         return ActRE.FAIL

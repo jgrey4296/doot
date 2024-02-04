@@ -57,12 +57,12 @@ LAX                : Final[DootKey] = DootKey.make("lax")
 @doot.check_protocol
 class AppendAction(Action_p):
     """
-      Append data from the task_state to a file
+      Append data from the state to a file
     """
     sep = "\n--------------------\n"
     _toml_kwargs = [SEP, TO_KEY, "args"]
 
-    @DootKey.kwrap.types("sep")
+    @DootKey.kwrap.types("sep", hint={"on_fail":None})
     @DootKey.kwrap.paths("to")
     def __call__(self, spec, state, sep, to):
         sep     = sep or AppendAction.sep
@@ -84,17 +84,15 @@ class AppendAction(Action_p):
 @doot.check_protocol
 class WriteAction(Action_p):
     """
-      Writes data from the task_state to a file, accessed through the
+      Writes data from the state to a file, accessed through the
       doot.locs object
-    The arguments of the action are held in self.spec
-
-      { do="write!" from="{data}" to="{temp}/{fname}" }
     """
-    _toml_kwargs = [FROM_KEY, TO_KEY]
 
-    def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        data = FROM_KEY.to_type(spec, task_state, on_fail=None)
-        loc  = TO_KEY.to_path(spec, task_state)
+    @DootKey.kwrap.types("from")
+    @DootKey.kwrap.paths("to")
+    def __call__(self, spec, state, _from, to) -> dict|bool|None:
+        data = _from
+        loc  = to
 
         if not doot.locs.check_writable(loc):
             raise doot.errors.DootLocationError("Tried to write a protected location", loc)
@@ -120,16 +118,20 @@ class WriteAction(Action_p):
 @doot.check_protocol
 class ReadAction(Action_p):
     """
-      Reads data from the doot.locs location to  return for the task_state
+      Reads data from the doot.locs location to  return for the state
       The arguments of the action are held in self.spec
     """
-    _toml_kwargs = [FROM_KEY, UPDATE, TYPE_KEY, AS_BYTES],
+    _toml_kwargs = [TYPE_KEY, AS_BYTES],
 
-    def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        data_key    = UPDATE.redirect(spec)
-        loc         = FROM_KEY.to_path(spec, task_state)
-        read_binary = AS_BYTES.to_type(spec, task_state, on_fail=False)
-        read_lines  = TYPE_KEY.to_type(spec, task_state, type_=str, on_fail="read")
+    @DootKey.kwrap.types("from")
+    @DootKey.kwrap.redirects("update_")
+    @DootKey.kwrap.types("as_bytes", hint={"on_fail":False})
+    @DootKey.kwrap.types("type", hint={"type_":str, "on_fail":"read"})
+    def __call__(self, spec, state, _from, _update, as_bytes, _type) -> dict|bool|None:
+        data_key    = _update
+        loc         = _from
+        read_binary = as_bytes
+        read_lines  = type_
 
         printer.info("Reading from %s into %s", loc, data_key)
         if read_binary:
@@ -152,18 +154,18 @@ class CopyAction(Action_p):
       copy a file somewhere
       The arguments of the action are held in self.spec
     """
-    _toml_kwargs = [FROM_KEY, TO_KEY]
 
-    def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        dest_loc   = TO_KEY.to_path(spec, task_state)
-        sources    = FROM_KEY.to_type(spec, task_state, type_=list|str|pl.Path)
-        match sources:
+    @DootKey.kwrap.types("from", hint={"type_":str|pl.Path|list})
+    @DootKey.kwrap.paths("to")
+    def __call__(self, spec, state, _from, to) -> dict|bool|None:
+        dest_loc   = to
+        match _from:
             case str() | pl.Path():
-                expanded = [DootKey.make(sources, strict=False).to_path(spec, task_state)]
+                expanded = [DootKey.make(_from, strict=False).to_path(spec, state)]
             case list():
-                expanded = list(map(lambda x: DootKey.make(x, strict=False).to_path(spec, task_state), sources))
+                expanded = list(map(lambda x: DootKey.make(x, strict=False).to_path(spec, state), _from))
             case _:
-                raise doot.errors.DootActionError("Unrecognized type for copy sources", sources)
+                raise doot.errors.DootActionError("Unrecognized type for copy sources", _from)
 
 
         if not all(doot.locs.check_writable(x) for x in expanded):
@@ -184,11 +186,11 @@ class MoveAction(Action_p):
       move a file somewhere
       The arguments of the action are held in self.spec
     """
-    _toml_kwargs = [FROM_KEY, TO_KEY]
 
-    def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        dest_loc   = TO_KEY.to_path(spec, task_state)
-        source     = FROM_KEY.to_path(spec, task_state)
+    @DootKey.kwrap.paths("from", "to")
+    def __call__(self, spec, state, _from, to) -> dict|bool|None:
+        source     = _from
+        dest_loc   = to
 
         if not doot.locs.check_writable(dest_loc):
             raise doot.errors.DootLocationError("Tried to write a protected location", dest_loc)
@@ -206,11 +208,9 @@ class DeleteAction(Action_p):
     """
       delete a file / directory specified in spec.args
     """
-    _toml_kwargs = [RECURSIVE, "lax", "args"]
-
-    def __call__(self, spec, state):
-        rec = RECURSIVE.to_type(spec, state, type_=bool, on_fail=False)
-        lax = LAX.to_type(spec, state, type_=bool, on_fail=False)
+    @DootKey.kwrap.types("recursive", "lax", hint={"type_":bool, "on_fail":False})
+    def __call__(self, spec, state, recursive, lax):
+        rec = recursive
         for arg in spec.args:
             loc = DootKey.make(arg, explicit=True).to_path(spec, state)
             if not doot.locs.check_writable(loc):
@@ -229,11 +229,11 @@ class BackupAction(Action_p):
       copy a file somewhere, but only if it doesn't exist at the dest, or is newer than the dest
       The arguments of the action are held in self.spec
     """
-    _toml_kwargs = [FROM_KEY, TO_KEY]
 
-    def __call__(self, spec, task_state:dict) -> dict|bool|None:
-        source_loc = FROM_KEY.to_path(spec, task_state)
-        dest_loc   = TO_KEY.to_path(spec, task_state)
+    @DootKey.kwrap.paths("from", "to")
+    def __call__(self, spec, state, _from, to) -> dict|bool|None:
+        source_loc = _from
+        dest_loc   = to
 
         if not doot.locs.check_writable(dest_loc):
             raise doot.errors.DootLocationError("Tried to write a protected location", dest_loc)
@@ -243,7 +243,7 @@ class BackupAction(Action_p):
 
         printer.warning("Backing up : %s", source_loc)
         printer.warning("Destination: %s", dest_loc)
-        _DootPostBox.put_from(task_state, dest_loc)
+        _DootPostBox.put_from(state, dest_loc)
         shutil.copy2(source_loc,dest_loc)
 
 
@@ -254,9 +254,10 @@ class EnsureDirectory(Action_p):
       if they don't, build them
     """
 
-    def __call__(self, spec, task_state:dict):
-        for arg in spec.args:
-            loc = DootKey.make(arg, explicit=True).to_path(spec, task_state)
+    @DootKey.kwrap.args
+    def __call__(self, spec, state, args):
+        for arg in args:
+            loc = DootKey.make(arg, explicit=True).to_path(spec, state)
             if not loc.exists():
                 printer.info("Building Directory: %s", loc)
             loc.mkdir(parents=True, exist_ok=True)
@@ -265,39 +266,38 @@ class EnsureDirectory(Action_p):
 @doot.check_protocol
 class UserInput(Action_p):
 
-    _toml_kwargs = [UPDATE, PROMPT]
-
-    def __call__(self, spec, state):
-        prompt = PROMPT.to_type(spec, state, type_=str, on_fail="?::- ")
-        target = UPDATE.redirect(spec)
+    @DootKey.kwrap.types("prompt", hint={"type_":str, "on_fail":"?::- "})
+    @DootKey.kwrap.redirects("update_")
+    def __call__(self, spec, state, prompt, _update):
         result = input(prompt)
-        return { target : result }
+        return { _update : result }
 
 
 @doot.check_protocol
 class SimpleFind(Action_p):
     """
-
+    A Simple glob on a path
     """
 
-    _toml_kwargs = [FROM_KEY, PATTERN, UPDATE, "rec"]
-
-    def __call__(self, spec, state):
-        from_loc = FROM_KEY.to_path(spec, state)
-        pattern  = PATTERN.expand(spec, state)
-        data_key = UPDATE.redirect(spec)
-        match spec.kwargs.on_fail(False).rec():
+    @DootKey.kwrap.paths("from")
+    @DootKey.kwrap.types("rec", hint={"on_fail":False})
+    @DootKey.kwrap.expands("pattern")
+    @DootKey.kwrap.redirects("update_")
+    def __call__(self, spec, state, _from, rec, pattern, _update):
+        from_loc = _from
+        match rec:
             case True:
-                return { data_key : list(from_loc.rglob(pattern)) }
+                return { update : list(from_loc.rglob(pattern)) }
             case False:
-                return { data_key : list(from_loc.glob(pattern)) }
+                return { update : list(from_loc.glob(pattern)) }
 
 
 @doot.check_protocol
 class TouchFileAction(Action_p):
 
-    def __call__(self, spec, state):
-        for target in [DootKey.make(x, exp_as="path") for x in spec.args]:
+    @DootKey.kwrap.args
+    def __call__(self, spec, state, args):
+        for target in [DootKey.make(x, exp_as="path") for x in args]:
             target(spec, state).touch()
 
 
@@ -307,33 +307,31 @@ class LinkAction(Action_p):
       for x,y in spec.args:
       x.to_path().symlink_to(y.to_path())
     """
-    FORCE = DootKey.make("force")
-    LINK = DootKey.make("link")
-    TO = DootKey.make("to")
-
-    def __call__(self, spec, state):
-        if self.LINK in spec.kwargs and self.TO in spec.kwargs:
-            self._do_link(spec.kwargs.link, spec.kwargs.to, spec, state)
+    @DootKey.kwrap.paths("link", "to", hint={"on_fail":None})
+    @DootKey.kwrap.args
+    @DootKey.kwrap.types("force", hint={"type_":bool, "on_fail":False})
+    def __call__(self, spec, state, link, to, args, force):
+        if link is not None and to is not None:
+            self._do_link(spec, state, spec.kwargs.link, spec.kwargs.to, force)
 
         for arg in spec.args:
             match arg:
                 case [x,y]:
-                    self._do_link(x,y, spec, state)
+                    self._do_link(spec, state, x,y, force)
                 case {"link":x, "to":list() as ys}:
                     raise NotImplementedError()
                 case {"link":x, "to":y}:
-                    self._do_link(x,y, spec, state)
+                    self._do_link(spec, state, x,y, force)
                 case {"from":x, "to_rel":y}:
                     raise NotImplementedError()
                 case _:
                     raise TypeError("unrecognized link targets")
 
-    def _do_link(self, x, y, spec, state):
+    def _do_link(self, spec, state, x, y, force):
         x_key  = DootKey.make(x, explicit=True)
         y_key  = DootKey.make(y, explicit=True)
         x_path = x_key.to_path(spec, state, symlinks=True)
         y_path = y_key.to_path(spec, state)
-        force  = bool(self.FORCE.to_type(spec, state, on_fail=False))
         # TODO when py3.12: use follow_symlinks=False
         if (x_path.exists() or x_path.is_symlink()) and not force:
             printer.warning("SKIP: A Symlink already exists: %s -> %s", x_path, x_path.resolve())
@@ -351,13 +349,14 @@ class LinkAction(Action_p):
 class ListFiles(Action_p):
     """ add a list of all files in a path (recursively) to the state """
 
-    def __call__(self, spec, state):
-        update = UPDATE.redirect(spec)
-        target = FROM_KEY.to_path(spec, state)
+    @DootKey.kwrap.paths("from")
+    @DootKey.kwrap.redirects("update_")
+    def __call__(self, spec, state, _from, _update):
+        target = _from
         base   = target.parent
         target = target.name
         result = sh.fdfind("--color", "never", "-t", "f", "--base-directory",  str(base), ".", target, _return_cmd=True)
         filelist = result.stdout.decode().split("\n")
 
         printer.info("%s files in %s", len(filelist), target)
-        return { update : filelist }
+        return { _update : filelist }

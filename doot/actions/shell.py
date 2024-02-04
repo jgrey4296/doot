@@ -33,28 +33,28 @@ class DootShellAction(Action_p):
     """
     _toml_kwargs = [BACKGROUND, NOTTY, ENV]
 
-    def __call__(self, spec, state:dict) -> dict|bool|None:
+    @DootKey.kwrap.args
+    @DootKey.kwrap.types("background", "notty", hint={"type_":bool, "on_fail":False})
+    @DootKey.kwrap.types("env", hint={"on_fail":sh})
+    @DootKey.kwrap.redirects("update_")
+    def __call__(self, spec, state, args, background, notty, env, _update) -> dict|bool|None:
         result     = None
-        update     = UPDATE.redirect(spec) if UPDATE in spec.kwargs else None
-        background = bool(BACKGROUND.to_type(spec, state))
-        notty      = not bool(NOTTY.to_type(spec, state))
-        env        = ENV.to_type(spec, state, on_fail=sh)
         try:
-            cmd                     = getattr(env, DootKey.make(spec.args[0], explicit=True).expand(spec, state))
-            keys                    = [DootKey.make(x, explicit=True) for x in spec.args[1:]]
+            cmd                     = getattr(env, DootKey.make(args[0], explicit=True).expand(spec, state))
+            keys                    = [DootKey.make(x, explicit=True) for x in args[1:]]
             expanded                = [x.expand(spec, state) for x in keys]
             result                  = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=notty)
             assert(result.exit_code == 0)
 
-            printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, spec.args[0], spec.args[1:])
+            printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, args[0], args[1:])
             if not update:
                 printer.info("%s", result, extra={"colour":"reset"})
                 return True
 
-            return { update : result.stdout }
+            return { _update : result.stdout }
 
         except sh.CommandNotFound as err:
-            printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], spec.args)
+            printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], args)
             return False
         except sh.ErrorReturnCode as err:
             printer.error("Shell Command '%s' exited with code: %s", err.full_cmd, err.exit_code)

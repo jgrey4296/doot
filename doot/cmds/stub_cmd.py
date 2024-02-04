@@ -31,6 +31,7 @@ logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
+from collections import defaultdict
 import importlib
 import doot
 import doot.enums
@@ -40,7 +41,8 @@ from doot._abstract import Command_i, PluginLoader_p, TaskBase_i
 from doot.structs import TaskStub, DootTaskName, DootCodeReference
 from doot.task.base_job import DootJob
 from doot.task.base_task import DootTask
-from collections import defaultdict
+from doot._structs.key import KEY_ANNOTS, HELP_HINT
+
 
 ##-- data
 data_path = doot.constants.TOML_TEMPLATE
@@ -179,7 +181,7 @@ class StubCmd(Command_i):
 
             loaded = getattr(loaded, "__call__", loaded)
 
-            match getattr(loaded, "_doot_keys", []):
+            match getattr(loaded, KEY_ANNOTS, []):
                 case []:
                     printer.info("-- No Declared Kwargs")
                 case [*xs]:
@@ -191,8 +193,9 @@ class StubCmd(Command_i):
 
         printer.info("")
         printer.info("-- Toml Form: ")
+        # TODO customize this with declared annotations
         if bool(matched):
-            printer.info("{ do=\"%s\", args=[], inState=[], outState=[] } # plus any kwargs a specific action uses", matched[0].name)
+            printer.info("{ do=\"%s\", args=[] } # plus any kwargs a specific action uses", matched[0].name)
         else:
             printer.info("{ do=\"action name/import path\", args=[], inState=[], outState=[] } # plus any kwargs a specific action uses")
 
