@@ -146,7 +146,7 @@ class DootLocations:
             case _:
                 return self.root / expansion
 
-    def get(self, key:DootSimpleKey|str, on_fail:None|str|pl.Path=Any) -> pl.Path:
+    def get(self, key:DootSimpleKey|str, on_fail:None|str|pl.Path=Any) -> None|pl.Path:
         """
           convert a *simple* key of one value to a path.
           This pairs with DootKey.to_path, which does the heavy lifting of expansions
@@ -157,7 +157,7 @@ class DootLocations:
             case DootNonKey():
                 return pl.Path(key.form)
             case str() | DootSimpleKey() if key in self._data:
-                return self._data[key]
+                return pl.Path(self._data[key])
             case _ if on_fail is None:
                 return None
             case _ if on_fail != Any:
@@ -168,6 +168,9 @@ class DootLocations:
                 return pl.Path(key)
 
     def expand(self, path:pl.Path, symlinks:bool=False) -> pl.Path:
+        return self.normalize(path, symlinks)
+
+    def normalize(self, path:pl.Path, symlinks:bool=False) -> pl.Path:
         """
           Expand a path to be absolute, taking into account the set doot root.
           resolves symlinks unless symlinks=True
