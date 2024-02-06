@@ -128,22 +128,21 @@ class ReadAction(Action_p):
     @DootKey.kwrap.types("as_bytes", hint={"on_fail":False})
     @DootKey.kwrap.types("type", hint={"type_":str, "on_fail":"read"})
     def __call__(self, spec, state, _from, _update, as_bytes, _type) -> dict|bool|None:
-        data_key    = _update
         loc         = _from
         read_binary = as_bytes
         read_lines  = type_
 
-        printer.info("Reading from %s into %s", loc, data_key)
+        printer.info("Reading from %s into %s", loc, _update)
         if read_binary:
             with open(loc, "rb") as f:
-                return { data_key : f.read() }
+                return { _update : f.read() }
 
         with open(loc, "r") as f:
             match read_lines:
                 case "read":
-                    return { data_key : f.read() }
+                    return { _update : f.read() }
                 case "lines":
-                    return { data_key : f.readlines() }
+                    return { _update : f.readlines() }
                 case unk:
                     raise TypeError("Unknown read type", unk)
 
@@ -287,9 +286,9 @@ class SimpleFind(Action_p):
         from_loc = _from
         match rec:
             case True:
-                return { update : list(from_loc.rglob(pattern)) }
+                return { _update : list(from_loc.rglob(pattern)) }
             case False:
-                return { update : list(from_loc.glob(pattern)) }
+                return { _update : list(from_loc.glob(pattern)) }
 
 
 @doot.check_protocol

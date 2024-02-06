@@ -47,7 +47,7 @@ class DootShellAction(Action_p):
             assert(result.exit_code == 0)
 
             printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, args[0], args[1:])
-            if not update:
+            if not _update:
                 printer.info("%s", result, extra={"colour":"reset"})
                 return True
 

@@ -87,7 +87,6 @@ class PushState(Action_p):
     @DootKey.kwrap.args
     @DootKey.kwrap.redirects("update_")
     def __call__(self, spec, state, args, _update) -> dict|bool|None:
-        data_key = _update
         data     = data_key.to_type(spec, state, type_=list|set|None, on_fail=[])
 
         arg_keys = (DootKey.make(arg, explicit=True).to_type(spec, state) for arg in args)
@@ -100,7 +99,7 @@ class PushState(Action_p):
             case list():
                 list(map(lambda x: data.extend(x), to_add))
 
-        return { data_key : data }
+        return { _update : data }
 
 
 @doot.check_protocol
@@ -112,9 +111,8 @@ class AddNow(Action_p):
     @DootKey.kwrap.expands("format")
     @DootKey.kwrap.redirects("update_")
     def __call__(self, spec, state, format, _update):
-        data_key = _update
         now      = datetime.datetime.now()
-        return { data_key : now.strftime(format) }
+        return { _update : now.strftime(format) }
 
 
 @doot.check_protocol
