@@ -275,6 +275,7 @@ class BaseTracker(TaskTracker_i):
           By default it does *not* complain on trying to re-add already queued tasks,
         """
         # TODO queue the task's setup task if it exists / hasn't been executed already
+        # TODO if only task name is specified, without group, and theres no ambiguity, accept that
         logging.debug("Queue Request: %s", tasks)
         targets = set()
         for task in tasks:

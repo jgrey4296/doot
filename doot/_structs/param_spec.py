@@ -190,13 +190,78 @@ class DootParamSpec:
 
         return f"{self.prefix}{self.name[0]}"
 
+    def maybe_consume(self, args:list[str], data:dict) -> bool:
+        """
+          Given a list of args, possibly add a value to the data.
+          operates *in place* on both the args list and the data.
+          return True if consumed a value
+
+          handles:
+          ["--arg=val"],
+          ["-arg", "val"],
+          ["val"],     (if positional=True)
+          ["-arg"],    (if type=bool)
+          ["-no-arg"], (if type=bool)
+        """
+        if not bool(args) or data is None or args[0] != self:
+            return False
+
+        pop_count  = 1
+        focus      = args[0]
+        prefixed   = focus.startswith(self.prefix)
+        is_assign  = self.separator in focus
+        key, vals  = None, []
+
+        # Figure out the key and value
+        match prefixed, is_assign:
+            case _, True if self.prefix != doot.constants.PARAM_ASSIGN_PREFIX:
+                raise doot.errors.DootParseError("Assignment parameters should be prefixed with the PARAM_ASSIGN_PREFIX", doot.constants.PARAM_ASSIGN_PREFIX)
+            case True, True: # --key=val
+                key, val = focus.split(self.separator)
+                key = key.removeprefix(self.prefix)
+                vals.append(val)
+            case True, False if self.type.__name__ != "bool" and not bool(args):
+                raise doot.errors.DootParseError("key lacks a following value", focus, self.type.__name__)
+            case True, False if self.type.__name__ == "bool": # --key
+                key = focus.removeprefix(self.prefix)
+            case True, False: # -key val
+                key = focus.removeprefix(self.prefix)
+                vals.append(args[1])
+                pop_count = 2
+            case False, False if self.positional and data.get(self.name, self.default) == self.default:
+                key = self.name
+                vals.append(focus)
+            case False, False if self.positional and self.type == list:
+                key = self.name
+                vals.append(focus)
+            case False, False if not isinstance(self.positional, bool) and len(data.get(self.name, [])) < self.positional:
+                key = self.name
+                vals.append(focus)
+            case _, _: # Nonsense
+                pass
+
+        if key is None or vals is None:
+            return False
+
+        # correct form, and the key is self, so add it to data
+        if self.positional:
+            self._add_positional_value(data, key=key, vals=vals)
+        else:
+            self._add_non_positional_value(data, key=key, vals=vals)
+
+        # data has been added, so remove it from the input list
+        for x in range(pop_count):
+            args.pop(0)
+
+        return True
+
     def _add_non_positional_value(self, data:dict, *, key:str=None, vals:list[str]=None) -> bool:
         """ if the given value is suitable, add it into the given data
         takes separated key, values,
         and the key has had the prefix stripped
         """
         vals = vals or []
-
+        # TODO if constraints, check against them
         logging.debug("Matching: %s : %s : %s", self.type.__name__, key, vals)
 
         # Use type.__name__ because you can't match on type. ("case str" fails, expecting "case str()")
@@ -229,6 +294,7 @@ class DootParamSpec:
         return data[self.name] != self.default
 
     def _add_positional_value(self, data, *, key:str=None, vals:list[str]=None):
+        # TODO if constraints, check against them
         match self.positional:
             case True:
                 data[self.name] = self.type(vals[0])
@@ -241,65 +307,3 @@ class DootParamSpec:
 
         if not isinstance(self.positional, bool) and self.positional < len(data[self.name]):
             raise doot.errors.DootParseError("Too many positional args provided", self.name)
-
-    def maybe_consume(self, args:list[str], data:dict) -> bool:
-        """
-          Given a list of args, possibly add a value to the data.
-          operates in place.
-          return True if consumed a value
-
-          handles:
-          ["--arg=val"],
-          ["-arg", "val"],
-          ["val"],     (if positional=True)
-          ["-arg"],    (if type=bool)
-          ["-no-arg"], (if type=bool)
-        """
-        if not bool(args) or data is None or args[0] != self:
-            return False
-
-        pop_count  = 1
-        focus      = args[0]
-        prefixed   = focus.startswith(self.prefix)
-        is_assign  = self.separator in focus
-        key, vals  = None, []
-
-        match prefixed, is_assign:
-            case _, True if self.prefix != doot.constants.PARAM_ASSIGN_PREFIX:
-                raise doot.errors.DootParseError("Assignment parameters should be prefixed with the PARAM_ASSIGN_PREFIX", doot.constants.PARAM_ASSIGN_PREFIX)
-            case True, True: # --key=val
-                key, val = focus.split(self.separator)
-                key = key.removeprefix(self.prefix)
-                vals.append(val)
-            case True, False if self.type.__name__ != "bool" and not bool(args):
-                raise doot.errors.DootParseError("key lacks a following value", focus, self.type.__name__)
-            case True, False if self.type.__name__ == "bool": # --key
-                key = focus.removeprefix(self.prefix)
-            case True, False: # -key val
-                key = focus.removeprefix(self.prefix)
-                vals.append(args[1])
-                pop_count = 2
-            case False, False if self.positional and data.get(self.name, self.default) == self.default:
-                key = self.name
-                vals.append(focus)
-            case False, False if self.positional and self.type == list:
-                key = self.name
-                vals.append(focus)
-            case False, False if not isinstance(self.positional, bool) and len(data.get(self.name, [])) < self.positional:
-                key = self.name
-                vals.append(focus)
-            case _, _: # Nonsense
-                pass
-
-        if key is None or vals is None:
-            return False
-
-        if self.positional:
-            self._add_positional_value(data, key=key, vals=vals)
-        else:
-            self._add_non_positional_value(data, key=key, vals=vals)
-
-        for x in range(pop_count):
-            args.pop(0)
-
-        return True
