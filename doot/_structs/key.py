@@ -276,16 +276,20 @@ class DootFormatter(string.Formatter):
 
         insist            = kwargs.get("_insist", False)
         state             = kwargs.get('_state', None) or {}
-        locs              = kwargs.get("_locs", doot.locs)
+        locs              = kwargs.get("_locs", None)
         cli               = doot.args.on_fail({}).tasks[str(state.get('_task_name', None))]()
         replacement       = cli.get(key, None)
         if replacement is None:
-            replacement = state.get(key, None)
-        if replacement is None:
             spec        = kwargs.get('_spec')
             replacement = spec.get(key, None)
+        if replacement is None:
+            replacement = state.get(key, None)
         if replacement is None and locs is not None:
-            replacement = locs.get(key, None)
+            match locs.get(key, None):
+                case None:
+                    pass
+                case pl.Path() as x:
+                    replacement = locs.normalize(x)
 
         match replacement:
             case None if insist:
@@ -401,22 +405,22 @@ class DootKey(abc.ABC):
           Convert a key to an absolute path
         """
         locs                 = locs or doot.locs
-        key                  = pl.Path(self.redirect(spec).form)
+        key : pl.Path        = pl.Path(self.redirect(spec).form)
 
         try:
-            expanded             = [DootFormatter.fmt(x, _spec=spec, _state=state, _rec=True) for x in key.parts]
-            expanded_as_path     = pl.Path().joinpath(*expanded)
-            depth = 0
+            expanded         : list       = [DootFormatter.fmt(x, _spec=spec, _state=state, _rec=True) for x in key.parts]
+            expanded_as_path : pl.Path    = pl.Path().joinpath(*expanded)
+            depth                         = 0
             while PATTERN.search(str(expanded_as_path)) and depth < MAX_KEY_EXPANSIONS:
-                to_keys             = [DootKey.make(x, explicit=True) or x for x in expanded_as_path.parts]
-                loc_expansions      = [locs.get(x) for x in to_keys]
-                expanded_as_path    = pl.Path().joinpath(*loc_expansions)
+                to_keys          : list       = [DootKey.make(x, explicit=True) or x for x in expanded_as_path.parts]
+                loc_expansions   : list       = [locs.get(x) for x in to_keys]
+                expanded_as_path : pl.Path    = pl.Path().joinpath(*loc_expansions)
                 depth += 1
 
             if any(bool(matches) for x in expanded_as_path.parts if (matches:=PATTERN.findall(x))):
                 raise doot.errors.DootLocationExpansionError("Missing keys on path expansion", matches, self)
 
-            return locs.expand(expanded_as_path, symlinks=symlinks)
+            return locs.normalize(expanded_as_path, symlinks=symlinks)
 
         except doot.errors.DootLocationExpansionError as err:
             if bool(chain):
@@ -427,7 +431,7 @@ class DootKey(abc.ABC):
                 case DootKey():
                     return on_fail.to_path(spec, state, symlinks=symlinks)
                 case pl.Path() | str():
-                    return locs.expand(pl.Path(on_fail),  symlinks=symlinks)
+                    return locs.normalize(pl.Path(on_fail),  symlinks=symlinks)
                 case _:
                     raise err
 
@@ -592,10 +596,10 @@ class DootSimpleKey(str, DootKey):
             cli           = {}
 
         replacement       = cli.get(target, None)
-        if replacement is None and state:
-            replacement = state.get(target, None)
         if replacement is None and kwargs:
             replacement = kwargs.get(target, None)
+        if replacement is None and state:
+            replacement = state.get(target, None)
 
         match replacement:
             case None if bool(chain):
@@ -671,7 +675,7 @@ class DootMultiKey(DootKey):
 
     def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[DootKey]=None, on_fail=Any, locs=None, **kwargs) -> str:
         try:
-            return DootFormatter.fmt(self.value, _spec=spec, _state=state, _rec=rec, _insist=insist, locs=locs)
+            return DootFormatter.fmt(self.value, _spec=spec, _state=state, _rec=rec, _insist=insist, _locs=locs)
         except (KeyError, TypeError) as err:
             if bool(chain):
                 return chain[0].expand(spec, state, rec=rec, chain=chain[1:], on_fail=on_fail)

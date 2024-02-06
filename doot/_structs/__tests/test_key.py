@@ -156,12 +156,12 @@ class TestSimpleKey:
         assert(result == "blah")
 
     @pytest.mark.parametrize("name", KEY_BASES)
-    def test_expansion_prefers_state_over_spec(self, mocker, name):
+    def test_expansion_prefers_spec_over_state(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
         spec          = mocker.Mock(kwargs={f"{obj}": "bloo"}, spec=DootActionSpec)
         state         = {f"{obj}": "blah"}
         result        = obj.expand(spec, state)
-        assert(result == "blah")
+        assert(result == "bloo")
 
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_expansion_prefers_redirect_over_other(self, mocker, name):
@@ -182,8 +182,8 @@ class TestSimpleKey:
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_recursive_expansion(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(kwargs={f"{name}": dkey.DootSimpleKey("blah")}, spec=DootActionSpec)
-        state         = {"blah": dkey.DootSimpleKey("bloo"), "bloo": "aweg"}
+        spec          = mocker.Mock(kwargs={f"{name}": dkey.DootSimpleKey("key1")}, spec=DootActionSpec)
+        state         = {"key1": dkey.DootSimpleKey("key2"), "key2": "aweg"}
         result        = obj.expand(spec, state)
         assert(result == "aweg")
 
@@ -428,11 +428,11 @@ class TestStringExpansion:
 
     def test_multi_to_str(self, spec):
         result = DootKey.make("{x}:{y}:{x}", strict=False).expand(spec, {"x": "blah", "y":"bloo"})
-        assert(result == "blah:bloo:blah")
+        assert(result == "blah:aweg:blah")
 
     def test_path_as_str(self, spec, setup_locs):
         key = DootKey.make("{p2}/{x}")
-        result = key.expand(spec, {"x": "blah", "y":"bloo"})
+        result = key.expand(spec, {"x": "blah", "y":"bloo"}, locs=doot.locs)
         assert(result.endswith("test2/sub/blah"))
 
     def test_expansion_to_false(self, spec, setup_locs):
@@ -569,7 +569,8 @@ class TestPathExpansion:
 
     @pytest.mark.parametrize("key,target,state", [("complex", "blah/jiojo/test1", {"x": "blah", "z": "aweg", "bloo": "jiojo", "complex": "{x}/{bloo}/{p1}" })])
     def test_path_expansion_rec(self, spec, setup_locs, key, target,  state):
-        result = DootKey.make(key).to_path(spec, state )
+        key_obj = DootKey.make(key)
+        result = key_obj.to_path(spec, state)
         assert(result.relative_to(pl.Path.cwd()) == pl.Path(target))
 
 class TestTypeExpansion:
