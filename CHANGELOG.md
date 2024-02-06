@@ -14,7 +14,7 @@ Initial ... release.
 - refactor task specs to use mixins
 - improve arg parser
 - change file name prefix to "file:>"
-# 0.4.1 : 2024-01-20
+# 0.4.0 : 2024-01-20
 - refactor tasker -> job
 - refactor walker 'filter_fn' -> 'accept_fn'
 - add skipfile action
@@ -26,3 +26,10 @@ Initial ... release.
 - add postbox -> task expander mixin for job
 - add headonly mixin
 - add basic injection of cli params
+# 0.5.0 : 2024-02-06
+- add symlink handling to keys
+- add shell baking and pipelining
+- add pathParts action
+- add setup actions mixin
+- add cli param parsing / stubbing
+- add key decorators for action authoring
