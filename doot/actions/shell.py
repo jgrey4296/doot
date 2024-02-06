@@ -67,7 +67,6 @@ class DootShellBakedRun:
     def __call__(self, spec, state, _in, _update):
         try:
             result = _in()
-            breakpoint()
             return { _update : result }
         except sh.CommandNotFound as err:
             printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], args)
