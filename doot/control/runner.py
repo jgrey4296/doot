@@ -172,7 +172,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
         if dry_run:
             logging.info("Dry Run: Not executing action: %s : %s", task.name, action, extra={"colour":"cyan"})
             self.reporter.trace(task.spec, flags=ReportEnum.ACTION | ReportEnum.SKIP)
-            return ActRe.SUCCESS
+            return ActRE.SUCCESS
 
         result = None
         with logctx(task.spec.print_levels.on_fail(action_level).action()) as p:
