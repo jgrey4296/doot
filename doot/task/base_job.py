@@ -107,7 +107,7 @@ class DootJob(Job_i, ImporterMixin):
     def _build_head(self, **kwargs) -> None|DootTaskSpec:
         logging.debug("Building Head Task for: %s", self.name)
         inject_keys = set(self.spec.inject)
-        inject_dict = {k: self.spec.extra[k] for k in inject_keys}
+        inject_dict = {k: self.spec.extra[k] for k in inject_keys if k in self.spec.extra}
         extra       = {}
         extra.update(kwargs)
         extra.update(inject_dict)
