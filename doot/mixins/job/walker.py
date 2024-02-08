@@ -177,12 +177,13 @@ class WalkerMixin(SubMixin):
         for root in self.roots:
             for fpath in self.walk_target(root, rec=rec, fn=fn):
                 # ensure unique task names
-                curr = fpath.absolute()
-                name = base_name.subtask(curr.stem)
+                parts = self.rel_path(fpath).parts
+                curr = 1
+                name = base_name.subtask(parts[-curr])
                 logging.debug("Building Unique name for: %s : %s", name, fpath)
-                while name in found_names:
-                    curr = curr.parent
-                    name = name.subtask(curr.stem)
+                while name in found_names and curr < len(parts):
+                    curr += 1
+                    name = base_name.subtask(*parts[-curr:])
 
                 found_names.add(name)
                 yield name, fpath
@@ -227,7 +228,7 @@ class WalkerMixin(SubMixin):
     @classmethod
     def stub_class(cls, stub):
         stub['exts'].set(type="list[str]",          default=[],      priority=80)
-        stub['roots'].set(type="list[str|pl.Path]", default=['"."'], priority=80, comment="Places the Walker will start")
+        stub['roots'].set(type="list[str|pl.Path]", default=['.'], priority=80, comment="Places the Walker will start")
         stub['recursive'].set(type="bool",          default=False,   priority=80)
         stub['accept_fn'].set(type="callable",      prefix="# ",     priority=81, comment="callable[[pl.Path], bool|_WalkControl]")
 

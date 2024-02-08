@@ -84,7 +84,9 @@ class SubMixin:
                 case DootTaskSpec(name=subname) if not (self.fullname < subname):
                     raise DootTaskError("Subtasks must be part of their parents name: %s : %s", self.name, task.name)
                 case DootTaskSpec() as spec_sub:
-                    head.depends_on.append(spec_sub.name)
+                    # link sub -> head instead of head -> sub
+                    # so sub can be specialized without the link being lost
+                    spec_sub.required_for.append(head.name)
                     yield spec_sub
                 case _:
                     raise DootTaskError("Unrecognized subtask generated")
