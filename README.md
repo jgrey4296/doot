@@ -1,3 +1,4 @@
+![doot](https://github.com/jgrey4296/doot/assets/5943270/170a5631-6175-4d92-8d66-e26aa2c2e472)
 # doot
 Version : 0.5.1
 Author  : John Grey
@@ -15,68 +16,73 @@ More complicated logic is written in normal python, either as a library (eg: [Do
 or as local task specific code.
 
 To use doot, call `doot help`.
+Examples and details can be found in the [Wiki](https://github.com/jgrey4296/doot/wiki)
 
 ### doot.toml
 The `doot.toml` file provides a place for marking where doot considers the current working directory,
 and lets you control general settings.
-It is created by just running `doot`, if no `doot.toml` file exists.
+It is created from a default template by just running `doot`, if no `doot.toml` file exists.
+If you don't want a separate file, everything can be added to `pyproject.toml` by prepending `tool.doot` to sections.
 
 eg:
 ``` toml
 # -*- mode:conf-toml; -*-
 [settings.general]
+notify                   = { say-on-exit = false }
 loaders                  = { commands="default", task="default", parser="default"}
-location_check           = { make_missing = true, print_levels={action="WARN", execute="WARN"}}
+location_check           = { make_missing = true, print_levels={action="WARN", execute="WARN" } }
 
 [settings.tasks]
-sources = [".config/jg/templates/doot/home_tasks"] # Files or directories where task specs can be loaded from, expanded according to [[locations]] keys
-code    = []                                       # Directories where task specific code can be imported from, expanded according to [[locations]] keys
-sleep   = { tasks=0.2, subtask=1, batch=1 }
-
-[plugins]
-# Allows for defining aliases
-command        = { other-run = "doot.cmds.run_cmd:RunCmd", tasks = "doot.cmds.list_cmd:ListCmd" }
-
-[commands]
-# Settings for commands, like telling the 'run' command what backends to use
-run = { tracker = "default", runner = "default", reporter= "default", report-line = []}
+sources = [".tasks"] # Files or directories where task specs can be loaded from, expanded according to [[locations]] keys
+code    = []         # Directories where task specific code can be imported from, expanded according to [[locations]] keys
+sleep   = { task=0.2, subtask=1, batch=1 }
 
 [logging]
-stream  = { level = "WARN", format  = "{levelname:<8} : {message}", filters = ["doot"] }
-file    = { level = "DEBUG", format = "{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})", filters =  ["doot"] }
-printer = { colour = true }
+stream  = { level="WARN",  allow=["doot"], format="{levelname:<8} : {message}", colour=true }
+file    = { level="DEBUG", allow=["doot"], format="{levelname:<8} : {message:<20} :|: (module:{module} line:{lineno} fn:{funcName})" }
+printer = { level="INFO", colour=true}
+
+[plugins]
+# Allows for defining shorthands
+command        = { other-run = "doot.cmds.run_cmd:RunCmd", tasks = "doot.cmds.list_cmd:ListCmd" }
+report-line    = {}
+reporter       = {}
+action         = {}
+task           = {}
+
+[commands]
+run = { tracker = "default", runner = "default", reporter= "default", report-line = []}
 
 [[locations]]
-tasks        = ".tasks"
-temp         = ".temp"
-src          = "doot"
-
+temp          = ".temp"
+desktop       = "~/Desktop"
 ```
 
 
 ### Tasks
-Tasks are specified in toml, by default in a `.tasks` directory, but that can be changed in `doot.toml:settings.tasks.sources`.
+Tasks are specified in toml, by default in the `doot.toml` file, or toml files in a `.tasks` directory, but that can be changed in `doot.toml:settings.tasks.sources`.
 The easiest way to write one is to use `doot stub`.
-The general form of a task is:
+eg: `doot stub mygroup::mytask` produces:
 
 ``` toml
-[[tasks.examples]] # 'examples' is the group this task is part of
-name                 = "basic" # combined together, this means this specific task is `examples::basic`
-version              = "0.1"                # <str>
-ctor                 = "task" # <type> the python class this task uses. See the plugins listed in 'doot plugins'
+[[tasks.mygroup]] # mygroup is the group this task is part of
+name                 = "mytask" # combined together, this means this specific task is `mygroup::mytask`
+version              = "0.1"    # <str>
+ctor                 = "task"   # <type> the python class this task uses. See the plugins listed in 'doot plugins'
 doc                  = ["Text to help understand what this task does"] # <list[str]>
-actions              = []                   # <list[Any]> See below
 required_for         = []                   # <list[DootTaskArtifact]> see below
 depends_on           = []                   # <list[DootTaskArtifact]> see below
+actions              = []                   # <list[Any]> See below
 ```
 
 You can see what tasks are available by calling `doot list`.
 You can get help on a specific task by calling `doot {task} --help` or `doot help {task}`.
 You can run a task by calling `doot {task}` or `doot run {task}`.
-eg: `doot examples::basic`
+eg: `doot mygroup::mytask`
 
 ### Actions
-Tasks run a sequence of actions, specified in the following form. the argument to `do` can be an import specifier, or an alias from `doot plugins`:
+Tasks run a sequence of actions, specified in the following form. the argument to `do` can be an import specifier,
+or an alias from the actions section of `doot plugins`:
 
 ``` toml
 { do="write!",                      args=[], aKwd="val" },
@@ -90,28 +96,36 @@ You can get help on writing an action using `doot stub --Actions {action}`. eg: 
 -- Declared kwargs for action: ['from_', 'to']
 
 -- Toml Form:
-{ do="write!", args=[], inState=[], outState=[] } # plus any kwargs a specific action uses
+{ do="write!", args=[] }
 
 - For Custom Python Actions, implement the following in the .tasks director
 def custom_action(spec:DootActionSpec, task_state:dict) -> None|bool|dict:...
 ```
 
-"{key}_"  : indirect keys that have a default internally. will be expanded according to state, and *that* value will be retrieved/expanded for use
-eg: ```{do="read!", from_="{data_path}", update_="data"}``` with state ```{'data_path':"{temp}/file.json", "temp":".temp"}``` will read .temp/file.json into the task state's "data" key.
+When specifying values in toml you can use direct keys, or indirect keys.
+For example, the action:
+``` toml
+{ do="log", msg="This is a test", level="INFO" }
+```
+will log that exact message, at that exact logging level.
+Meanwhile the action:
 
-The defaults for indirect keys are for typical chaining, like initing a bibtex db and then loading into it.
+``` toml
+{ do="log", msg_="gen_msg", level="INFO" }
+```
+Will use the string stored in the task state's 'gen_msg' variable, assuming that variable has been set by a prior action, or the toml spec of the task.
+This also allows you to specify the key to put information into:
 
-Action standard kwargs:
-from_   : the spec/state key to get primary data from
-update_ : the state key to update with data from this action
-from    : a path to read from  (as "from" is a reserved word in python)
-to      : a path to write to
+``` toml
+{ do="read!", from="{data}/names.txt", update_="names" }
+```
+This reads from the `names.txt` file, and adds it to the task state in the key `names`.
 
 ### Task Dependencies
 Tasks can depend on other tasks, or artifacts like files.
-these can be specified in the `required_for` and `depends_on` fields of a task spec.
-To depend on a task, use its full name. eg: `eamples::basic`.
-To depend on a file, specify it with the prefix `file://`. eg: `file://doot.toml`.
+These can be specified in the `required_for` and `depends_on` fields of a task spec.
+To depend on a task, use its full name. eg: `examples::basic`.
+To depend on a file, specify it with the prefix `file:>`. eg: `file:>./doot.toml`.
 
 ### String and Path expansion
 To simplify using locations, both `doot.toml` and task toml files can have `[[locations]]` tables.
@@ -119,7 +133,7 @@ eg:
 ``` toml
 [[locations]]
 tasks   = ".tasks"
-home    = "~"               # will be made into an absolute path when doot runs.
+home    = "~"               # will be made into an absolute path when a task uses the {home} key in a path.
 data    = "doot/data"       # A relative path, will be made absolute, according to cwd.
 other   = "/somewhere/else" # Absolute paths can also be used.
 subdata = "{data}/blah"     # {data} will expand to doot/data at runtime
@@ -145,11 +159,15 @@ actions = [
 # From dootle's pyproject.toml
 [project.entry-points."doot.plugins.command"]
 example = "dootle.cmds.example_cmd:ExampleCmd"
+
+[project-entry-points."doot.plugins.action"]
+an_action = "..."
 ```
 
 Plugins are specified in the pyproject.toml table `[project.entry-points."doot.plugins.TYPE"]`,
-where TYPE is one of the forms defined in `doot.constants`:
-1) Front End plugins: "command", "reporter", "report-line",
-2) Back End plugins: "tracker", "runner", "command-loader", "task-loader", "parser", "action", "job", "database"
+where TYPE is one of the forms defined in variables found in `doot.constants`:
+1) `FRONTEND_PLUGIN_TYPES` : "command", "reporter", "report-line",
+2) `BACKEND_PLUGIN_TYPES`  : "tracker", "runner", "command-loader", "task-loader", "parser", "action", "job", "database"
 
-Currently available plugins are listed with the command `doot plugins`
+Currently available plugins are listed with the command `doot plugins`.
+They can be filtered with a simple pattern (`pattern:str in plugin.fullname:str` essentially).
