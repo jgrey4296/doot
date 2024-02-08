@@ -1,7 +1,7 @@
 # doot
-
-Author: John Grey
-Date  : 2022-12-09
+Version : 0.5.1
+Author  : John Grey
+Date    : 2022-12-09
 
 ## Overview
 This started out as an opinionated rewrite of the [doit](https://pydoit.org/contents.html) task runner.

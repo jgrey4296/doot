@@ -104,5 +104,6 @@ tag                = true
                    '^current_version\s+=\s+"{version}"'
 ]
 "doot/__init__.py" = ['^__version__\s+:\s+Final\[str\]\s+=\s+"{version}"']
+"README.md"        = ["^Version : {version}"]
 
 ##-- end bumpver
