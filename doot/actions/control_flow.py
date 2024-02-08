@@ -81,7 +81,7 @@ class LogAction(Action_p):
     @DootKey.kwrap.types("level", hint={"type_":str, "on_fail":"INFO"})
     @DootKey.kwrap.expands("msg")
     def __call__(self, spec, state, level, msg):
-        level        = logmod.getLevelName(level_name)
+        level        = logmod.getLevelName(level)
         msg          = MSG.expand(spec, state, rec=True)
         printer.log(level, "%s", msg)
 

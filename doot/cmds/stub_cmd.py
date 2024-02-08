@@ -64,7 +64,7 @@ class StubCmd(Command_i):
             self.make_param("cli",                       default=False,           desc="Generate a stub cli arg dict", prefix="-"),
             self.make_param("Flags",                     default=False,           desc="Help Stub Task Flags",              prefix="-"),
 
-            self.make_param("name",        type=str,     default="stub::stub",    desc="The Name of the new task",                          positional=True),
+            self.make_param("name",        type=str,     default=None,            desc="The Name of the new task",                          positional=True),
             self.make_param("ctor",        type=str,     default="task",          desc="The short type name of the task generator",         positional=True),
             self.make_param("mixins",      type=list,    default=[],              desc="Mixins to add to task/job", prefix="--"),
             self.make_param("suppress-header",           default=True, invisible=True)
@@ -112,9 +112,12 @@ class StubCmd(Command_i):
         task_iden                   : DootCodeReference       = DootCodeReference.from_alias(doot.args.on_fail("task").cmd.args.ctor(), "task", plugins)
         task_iden_with_mixins       : DootCodeReference       = task_iden.add_mixins(*doot.args.on_fail([]).cmd.args.mixins(), plugins=plugins)
 
+        if (name:=doot.args.on_fail((None,)).cmd.args.name()) is None:
+            raise doot.errors.DootCommandError("No Name Provided for Stub")
+
         # Create stub toml, with some basic information
         stub                          = TaskStub(ctor=task_iden_with_mixins)
-        stub['name'].default          = DootTaskName.from_str(doot.args.cmd.args.name)
+        stub['name'].default          = DootTaskName.from_str(name)
         stub['mixins'].set(type="list", default=[], comment="mix in additional capabilities")
 
         # add ctor specific fields,

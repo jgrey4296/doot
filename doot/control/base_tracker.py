@@ -128,7 +128,7 @@ class BaseTracker(TaskTracker_i):
             case DootTaskSpec(ctor=DootTaskName() as ctor) if str(ctor) in self.tasks:
                 # specialize a loaded task
                 base_spec          = self.tasks.get(str(ctor)).spec
-                inital_specialized = base_spec.specialize_from(spec)
+                initial_specialized = base_spec.specialize_from(spec)
                 cli_specialized    = self._insert_cli_args_into_spec(initial_specialized)
                 if cli_specialized.ctor is None:
                     raise doot.errors.DootTaskTrackingError("Attempt to specialize task failed: %s", spec.name)

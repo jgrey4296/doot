@@ -81,4 +81,4 @@ class PostBoxExpanderMixin(SubMixin):
 
     @classmethod
     def stub_class(cls, stub):
-        stub['postbox'].set(type="dict", default={"inject_key": "data", "task": "", "sub_key":"-"}, priority=80, comment="the taskname and subbox to expand. option: flatten=bool")
+        stub['postbox'].set(type="dict", default={"inject_key": "data", "task": "", "sub_key":"-"}, priority=80, comment="{'inject_key': 'data', 'task': '', 'sub_key':'-'} : the taskname and subbox to expand. option: flatten=bool")

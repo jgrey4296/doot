@@ -102,8 +102,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 self._sleep(task)
 
             except doot.errors.DootError as err:
-                self._handle_failure(err)
-
+                self._handle_failure(task, err)
 
 
     def _expand_job(self, job:Job_i) -> None:

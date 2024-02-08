@@ -147,9 +147,12 @@ class DootCodeReference(DootStructuredName):
             raise doot.errors.DootError("Code References should use a single colon, not double")
 
         if ":" in name:
-            groupHead_r, taskHead_r = name.split(":")
-            groupHead = groupHead_r.split(".")
-            taskHead = taskHead_r.split(".")
+            try:
+                groupHead_r, taskHead_r = name.split(":")
+                groupHead = groupHead_r.split(".")
+                taskHead = taskHead_r.split(".")
+            except ValueError:
+                raise doot.errors.DootConfigError("Code ref can't be split correctly, ensure its of the form x.y.z:ClassName", name)
         else:
             groupHead = None
             taskHead  = name
@@ -276,16 +279,20 @@ class DootTaskName(DootStructuredName):
       A Task Name.
     """
 
-    internal        : bool               = field(default=False, kw_only=True)
-    separator       : str                = field(default=doot.constants.TASK_SEP, kw_only=True)
-    args            : dict               = field(default_factory=dict)
+    internal           : bool               = field(default=False, kw_only=True)
+    separator          : str                = field(default=doot.constants.TASK_SEP, kw_only=True)
+    version_constraint : str                = field(default=">=0.1")
+    args               : dict               = field(default_factory=dict)
 
     @classmethod
     def from_str(cls, name:str, *, args=None):
         if ":" in name:
-            groupHead_r, taskHead_r = name.split("::")
-            groupHead = groupHead_r.split(".")
-            taskHead = taskHead_r.split(".")
+            try:
+                groupHead_r, taskHead_r = name.split("::")
+                groupHead = groupHead_r.split(".")
+                taskHead = taskHead_r.split(".")
+            except ValueError:
+                raise doot.errors.DootConfigError("Provided Task Name can't be split correctly, check it is of the form group::name", name)
         else:
             groupHead = None
             taskHead  = name
@@ -324,6 +331,20 @@ class DootTaskName(DootStructuredName):
     def __hash__(self):
         return hash(str(self))
 
+    def __contains__(self, other) -> bool:
+        match other:
+            case str():
+                task = DootTaskName.from_str(other)
+                return self in task
+            case DootTaskName() if self != other:
+                return False
+            case DootTaskName():
+                self_vc  = self.version_constraint
+                other_vc = other.version_constraint
+                # check < | <= | > | >= | != | =
+                # of self_vc to other_vc
+                raise NotImplementedError()
+
     @property
     def group(self) -> str:
         fmt = "{}"
@@ -347,4 +368,4 @@ class DootTaskName(DootStructuredName):
                             args=args)
 
     def specialize(self, *, info=None):
-        return self.subtask("$specialized$", info, "${}$".format(uuid1().hex))
+        return self.subtask(doot.constants.SPECIALIZED_ADD, info, "${}$".format(uuid1().hex))

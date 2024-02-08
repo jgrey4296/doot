@@ -164,6 +164,7 @@ class DootTaskSpec:
     ctor                         : DootTaskName|DootCodeReference                               = field(default=None)
     # Any additional information:
     version                      : str                                             = field(default="0.1")
+    # TODO version : dict = field(default_factory=dict)
     print_levels                 : TomlGuard                                       = field(default_factory=TomlGuard)
     flags                        : TaskFlags                                       = field(default=TaskFlags.TASK)
 
