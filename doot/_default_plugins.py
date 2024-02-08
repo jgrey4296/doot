@@ -119,6 +119,6 @@ DEFAULT_PLUGINS['mixins']      = [("job:walker", "doot.mixins.job.walker:WalkerM
                                   ("job:terse",  "doot.mixins.job.mini_builder:MiniBuilderMixin"),
                                   ("job:setup",  "doot.mixins.job.setup:SetupMixin"),
                                   ("job:headonly", "doot.mixins.job.mini_builder:HeadOnlyJobMixin"),
-                                  ("job:limit", "doot.mixins.job.matcher:TaskLimitMixin"),
+                                  ("job:limit", "doot.mixins.job.limiter:TaskLimitMixin"),
                                   ("job:match", "doot.mixins.job.matcher:PatternMatcherMixin"),
                                   ]
