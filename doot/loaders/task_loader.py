@@ -50,8 +50,14 @@ task_sources              = doot.config.on_fail([".tasks"], list).settings.tasks
 allow_overloads           = doot.config.on_fail(False, bool).allow_overloads()
 
 def apply_group_and_source(group, source, x):
-    x['group']  = x.get('group', group)
-    x['source'] = str(source)
+    match x:
+        case tomlguard.TomlGuard():
+            x = dict(x.items())
+            x['group']  = x.get('group', group)
+            x['source'] = str(source)
+        case dict():
+            x['group']  = x.get('group', group)
+            x['source'] = str(source)
     return x
 
 
@@ -164,7 +170,6 @@ class DootTaskLoader(TaskLoader_p):
                 except OSError as err:
                     logging.error("Failed to Load Task File: %s", task_file)
                     continue
-
                 for group, val in data.on_fail({}).tasks().items():
                     # sets 'group' for each task if it hasn't been set already
                     raw_specs += map(ftz.partial(apply_group_and_source, group, task_file), val)

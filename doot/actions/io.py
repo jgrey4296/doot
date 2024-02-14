@@ -296,7 +296,7 @@ class TouchFileAction(Action_p):
 
     @DootKey.kwrap.args
     def __call__(self, spec, state, args):
-        for target in [DootKey.make(x, exp_as="path") for x in args]:
+        for target in [DootKey.make(x, exp_hint="path") for x in args]:
             target(spec, state).touch()
 
 

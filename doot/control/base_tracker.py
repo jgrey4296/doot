@@ -159,10 +159,15 @@ class BaseTracker(TaskTracker_i):
         return task
 
     def _insert_cli_args_into_spec(self, spec:DootTaskSpec):
+        spec_extra : dict = dict(spec.extra.items() or [])
+
+        for cli in spec.extra.on_fail([]).cli():
+            spec_extra[cli.name] = cli.default
+
         if spec.name not in doot.args.on_fail({}).tasks():
+            spec.extra = tomlguard.TomlGuard(spec_extra)
             return spec
 
-        spec_extra : dict = dict(spec.extra.items())
         for key,val in doot.args.tasks[str(spec.name)].items():
             spec_extra[key] = val
 
