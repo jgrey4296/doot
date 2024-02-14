@@ -15,7 +15,7 @@ cli = [
 env_name = "distributor"
 actions  = [
         {do="dootle.python.mamba:MambaEnv", env_="env_name", update_="env"},
-        {do="shell", args=["bumpver", "update", "--{raise}"], env_="env"},
+        {do="shell", args=["bumpver", "update", "--no-fetch", "--{raise}"], env_="env"},
 ]
 
 

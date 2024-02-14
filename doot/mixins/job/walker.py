@@ -46,7 +46,7 @@ import doot
 import doot.constants
 from doot.errors import DootDirAbsent
 from doot.mixins.job.subtask import SubMixin
-from doot.structs import DootTaskSpec, DootActionSpec
+from doot.structs import DootTaskSpec, DootActionSpec, DootKey
 
 walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
 walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).settings.walking.halts()
@@ -89,21 +89,25 @@ class WalkerMixin(SubMixin):
     .default_task : the basic task definition that everything customises
     """
     control = _WalkControl
-    _default_subtask_injections = ["fpath","fstem","fname","lpath"]
+    _default_subtask_injections = ["fpath","fstem","fname","lpath","pstem"]
 
     def __init__(self, spec:DootTaskSpec):
         super().__init__(spec)
         self.exts           = {y for x in spec.extra.on_fail([]).exts() for y in [x.lower(), x.upper()]}
         # expand roots based on doot.locs
-        self.roots = [doot.locs[x] for x in spec.extra.on_fail([pl.Path()], list).roots()]
+        self.roots = []
+        for root in spec.extra.on_fail([pl.Path()], list).roots():
+            key = DootKey.make(root)
+            self.roots.append(key.to_path(None, spec.extra))
+
         self.rec            = spec.extra.on_fail(False, bool).recursive()
         self.total_subtasks = 0
         for x in self.roots:
             depth = len(set(self.__class__.mro()) - set(super().__class__.mro()))
             if not x.exists():
-                logging.warning(f"Walker Missing Root: {x.name}", stacklevel=depth)
+                logging.warning(f"Walker Missing Root: {x}", stacklevel=depth)
             if not x.is_dir():
-                 logging.warning(f"Walker Root is a file: {x.name}", stacklevel=depth)
+                 logging.warning(f"Walker Root is a file: {x}", stacklevel=depth)
 
     def filter(self, target:pl.Path) -> bool | _WalkControl:
         """ filter function called on each prospective walk result
@@ -199,7 +203,7 @@ class WalkerMixin(SubMixin):
         inject_dict = {k: self.spec.extra[k] for k in inject_keys}
 
         for i, (uname, fpath) in enumerate(self.walk_all(fn=accept_fn)):
-            match self._build_subtask(i, uname, fpath=fpath, fstem=fpath.stem, fname=fpath.name, lpath=self.rel_path(fpath), **inject_dict):
+            match self._build_subtask(i, uname, fpath=fpath, fstem=fpath.stem, fname=fpath.name, lpath=self.rel_path(fpath), pstem=fpath.parent.stem, **inject_dict):
                 case None:
                     pass
                 case DootTaskSpec() as subtask:

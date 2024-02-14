@@ -102,7 +102,7 @@ class DootShellAction(Action_p):
             cmd                     = getattr(env, DootKey.make(args[0], explicit=True).expand(spec, state))
             keys                    = [DootKey.make(x, explicit=True) for x in args[1:]]
             expanded                = [x.expand(spec, state, locs=doot.locs) for x in keys]
-            result                  = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=notty)
+            result                  = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=not notty)
             assert(result.exit_code == 0)
 
             printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, args[0], args[1:])
