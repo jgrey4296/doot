@@ -112,12 +112,11 @@ class DootTaskLoader(TaskLoader_p):
         for source in doot._configs_loaded_from:
             try:
                 source_data : TomlGuard = tomlguard.load(source)
+                task_specs = source_data.on_fail({}).tasks()
+                raw_specs += self._load_raw_specs(task_specs, source)
             except OSError as err:
                 logging.error("Failed to Load Config File: %s : %s", source, err.args)
                 continue
-
-            task_specs = source_data.on_fail({}).tasks()
-            raw_specs += self._load_raw_specs(task_specs, source)
 
 
         if self.extra:
@@ -168,7 +167,7 @@ class DootTaskLoader(TaskLoader_p):
                 try:
                     data = tomlguard.load(task_file)
                 except OSError as err:
-                    logging.error("Failed to Load Task File: %s", task_file)
+                    logging.error("Failed to Load Task File: %s : %s", task_file, err.filename)
                     continue
                 for group, val in data.on_fail({}).tasks().items():
                     # sets 'group' for each task if it hasn't been set already
@@ -180,8 +179,8 @@ class DootTaskLoader(TaskLoader_p):
         elif path.is_file():
             try:
                 data = tomlguard.load(path)
-            except OSError:
-                logging.error("Failed to Load Task File: %s", path)
+            except OSError as err:
+                logging.error("Failed to Load Task File: %s : %s", path, err.filename)
                 return raw_specs
 
             for group, val in data.on_fail({}).tasks().items():
