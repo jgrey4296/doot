@@ -182,7 +182,10 @@ class WalkerMixin(SubMixin):
             for fpath in self.walk_target(root, rec=rec, fn=fn):
                 # ensure unique task names
                 parts = self.rel_path(fpath).parts
+                if not bool(parts):
+                    parts = [fpath.stem]
                 curr = 1
+
                 name = base_name.subtask(parts[-curr])
                 logging.debug("Building Unique name for: %s : %s", name, fpath)
                 while name in found_names and curr < len(parts):
