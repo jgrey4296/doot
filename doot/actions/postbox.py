@@ -168,7 +168,7 @@ class SummarizePostAction(Action_p):
 
     @DootKey.kwrap.types("from", hint={"type_":str|None})
     @DootKey.kwrap.types("full", hint={"type_":bool, "on_fail":False})
-    def __call__(self, spec, state, _from) -> dict|bool|None:
+    def __call__(self, spec, state, _from, full) -> dict|bool|None:
         from_task = _from or TASK_NAME.to_type(spec, state).root()
         data   = _DootPostBox.get(from_task)
         if full:
