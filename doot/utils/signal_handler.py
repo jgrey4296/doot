@@ -37,10 +37,18 @@ logging = logmod.getLogger(__name__)
 
 printer = logmod.getLogger("doot._printer")
 
+import os
 import signal
+import doot
+
+env : dict = os.environ
 
 class SignalHandler:
     """ Install a breakpoint to run on (by default) SIGINT """
+
+    def __init__(self):
+        self._disabled = "PRE_COMMIT" in env
+
     @staticmethod
     def handle(signum, frame):
         breakpoint()
@@ -57,13 +65,13 @@ class SignalHandler:
         printer.debug("Uninstalling Task Loop handler for: %s", signal.strsignal(sig))
         signal.signal(sig, signal.SIG_DFL)
 
-    @staticmethod
-    def __enter__():
-        SignalHandler.install()
+    def __enter__(self):
+        if not self._disabled:
+            SignalHandler.install()
         return
 
-    @staticmethod
-    def __exit__(exc_type, exc_value, exc_traceback):
-        SignalHandler.uninstall()
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        if not self._disabled:
+            SignalHandler.uninstall()
         # return False to reraise errors
         return
