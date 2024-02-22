@@ -47,6 +47,7 @@ class Action_p(Protocol):
     def __call__(self, spec:DootActionSpec, task_state:dict) -> dict|bool|ActionResponseEnum|None:
         raise NotImplementedError()
 
+
 class TaskBase_i(ParamSpecMaker_m):
     """ Core Interface for Tasks """
 
