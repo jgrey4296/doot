@@ -123,6 +123,7 @@ class DootFlexibleParser(ArgParser_i):
         return TomlGuard(data)
 
     def process_head(self, args) -> list[str]:
+        """ consume arguments for doot actual """
         logging.debug("Head Parsing: %s", args)
         head = args[0]
         while bool(args) and args[0] not in self.registered_cmds and args[0] not in self.registered_tasks:
@@ -137,6 +138,7 @@ class DootFlexibleParser(ArgParser_i):
         return args
 
     def process_cmd(self, args) -> list[str]:
+        """ consume arguments for the command being run """
         logging.debug("Cmd Parsing: %s", args)
         head                     = args[0]
         cmd                      = self.registered_cmds.get(head, None)
@@ -167,12 +169,11 @@ class DootFlexibleParser(ArgParser_i):
                 case [*xs] if len(y for y in xs if not y.positional):
                     raise doot.errors.DootParseError("Multiple possible cmd args", head, args[0])
 
-
-
         self.non_default_cmd_args = self._calc_non_default(self._build_defaults_dict(current_specs), self.cmd_args)
         return args
 
     def process_task(self, args) -> list[str]:
+        """ consume arguments for tasks """
         logging.debug("Task Parsing: %s", args)
         if args[0] not in self.registered_tasks:
             task                     = self.registered_tasks[default_task]
@@ -224,6 +225,7 @@ class DootFlexibleParser(ArgParser_i):
                 raise doot.errors.DootParseError("a single task was specified twice")
 
             task_args[NON_DEFAULT_KEY] = self._calc_non_default(default_args, task_args)
+            logging.debug("Resulting Arg Assignments for %s : %s", task_name, task_args)
             self.tasks_args.append((task_name, task_args))
 
         return args
@@ -239,12 +241,12 @@ class DootFlexibleParser(ArgParser_i):
         """
         for param in params:
             try:
-                if param.maybe_consume(args, arg_dict):
+                if 1 <= param.maybe_consume(args, arg_dict):
                     return
             except doot.errors.DootParseResetError:
                 continue
 
-        raise doot.errors.DootParseError("No positional argument succeeded")
+        raise doot.errors.DootParseError("No positional argument succeeded", args)
 
     def _calc_non_default(self, defaults, actual) -> list:
         return [x for x,y in actual.items() if x not in defaults or defaults[x] != y]
