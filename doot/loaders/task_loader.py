@@ -46,7 +46,7 @@ from doot._abstract import TaskLoader_p, Job_i, Task_i, TaskBase_i
 TASK_STRING : Final[str]  = "task_"
 prefix_len  : Final[int]  = len(TASK_STRING)
 
-task_sources              = doot.config.on_fail([".tasks"], list).settings.tasks.sources(wrapper=lambda x: [doot.locs[y] for y in x])
+task_sources              = doot.config.on_fail([doot.locs[".tasks"]], list).settings.tasks.sources(wrapper=lambda x: [doot.locs[y] for y in x])
 allow_overloads           = doot.config.on_fail(False, bool).allow_overloads()
 
 def apply_group_and_source(group, source, x):
