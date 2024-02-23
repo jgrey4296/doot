@@ -36,7 +36,7 @@ report               : Reporter_i         = None
 
 _configs_loaded_from : list[pl.Path]      = []
 
-def setup(targets:list[pl.Path]|None=None, prefix:str|None=None) -> tuple[TG.TomlGuard, DootLocData]:
+def setup(targets:list[pl.Path]|None=None, prefix:str|None="tool.doot") -> tuple[TG.TomlGuard, DootLocData]:
     """
       The core requirement to call before any other doot code is run.
       loads the config files, so everything else can retrieve values when imported.
@@ -61,21 +61,27 @@ def setup(targets:list[pl.Path]|None=None, prefix:str|None=None) -> tuple[TG.Tom
         logging.error("Failed to Load Config Files: %s", existing_targets)
         raise doot.errors.DootError()
 
-    locs   = DootLocations(pl.Path.cwd())
-
-    # Load Initial locations
-    for loc in config.locations:
-        locs.update(loc)
-
-    _configs_loaded_from   = existing_targets
-
     match prefix:
         case None:
             pass
         case str():
             logging.debug("Removing prefix from config data: %s", prefix)
-            for x in prefix.split("."):
-                config = config[x]
+            try:
+                attempt = config
+                for x in prefix.split("."):
+                    attempt = attempt[x]
+                else:
+                    config = TG.TomlGuard(attempt)
+            except TG.TomlAccessError:
+                pass
+
+    locs   = DootLocations(pl.Path.cwd())
+    # Load Initial locations
+    for loc in config.on_fail([]).locations():
+        locs.update(loc)
+
+    _configs_loaded_from   = existing_targets
+
 
     task_sources       = config.on_fail([locs[".tasks"]], list).settings.tasks.sources(wrapper=lambda x: [locs[y] for y in x])
     task_code          = config.on_fail([locs[".tasks"]], list).settings.tasks.code(wrapper=lambda x: [locs[y] for y in x])
