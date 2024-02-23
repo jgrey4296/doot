@@ -28,7 +28,7 @@ match_re               = 's/^pypi\s+\=\s+(.+)/\1/p'
 inject                 = ["env_name", "match_re"]                   # <list[str]>
 queue_behaviour        = "default"                      # <str>                default | auto | reactive
 actions                = [
-                     {do="dootle.python.mamba:MambaEnv", env_="env_name", update_="env"},
+                     {do="mamba.env", env_="env_name", update_="env"},
                      # Build
                      {do="shell", args=["python", "-m", "build", "."], env_="env"},
                      # Get pypi token
