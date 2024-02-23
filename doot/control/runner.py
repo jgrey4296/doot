@@ -75,6 +75,8 @@ class DootRunner(BaseRunner, TaskRunner_i):
         match handler:
             case None | True:
                 handler = SignalHandler()
+            case type() as x:
+                handler = x()
             case x if hasattr(x, "__enter__"):
                 handler = x
             case _:
