@@ -36,7 +36,7 @@ logging = logmod.root
 
 ##-- end pytest reminder
 
-matcher_ref        = DootCodeReference.from_str("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.matcher:PatternMatcherMixin")
+matcher_ref        = DootCodeReference.from_str("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.matcher:PatternMatcher_M")
 MatcherBuilder     = matcher_ref.try_import()
 
 base_exts          = [".bib", ".json", ".txt"]

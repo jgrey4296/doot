@@ -77,9 +77,11 @@ class _DootPostBox:
     @staticmethod
     def get(key, subkey=Any) -> list:
         match subkey:
+            case "" | "-":
+                return _DootPostBox.boxes[key][_DootPostBox.default_subkey][:]
             case x if x == Any:
                 return _DootPostBox.boxes[key][_DootPostBox.default_subkey][:]
-            case None:
+            case "*" | None:
                 return _DootPostBox.boxes[key].copy()
             case _:
                 return _DootPostBox.boxes[key][subkey]
@@ -138,12 +140,7 @@ class GetPostAction(Action_p):
             if key == FROM_KEY:
                 pass
             actual_key = DootKey.make(key, explicit=True).expand(spec, state)
-            if subkey == "" or subkey == "-":
-                updates[actual_key] = _DootPostBox.get(target_box, subkey=Any)
-            elif subkey == "*":
-                updates[actual_key] = _DootPostBox.get(target_box, subkey=None)
-            else:
-                updates[actual_key] = _DootPostBox.get(target_box, subkey=subkey)
+            updates[actual_key] = _DootPostBox.get(target_box, subkey=subkey)
 
         return updates
 
@@ -171,7 +168,7 @@ class SummarizePostAction(Action_p):
 
     @DootKey.kwrap.types("from", hint={"type_":str|None})
     @DootKey.kwrap.types("full", hint={"type_":bool, "on_fail":False})
-    def __call__(self, spec, state, _from) -> dict|bool|None:
+    def __call__(self, spec, state, _from, full) -> dict|bool|None:
         from_task = _from or TASK_NAME.to_type(spec, state).root()
         data   = _DootPostBox.get(from_task)
         if full:

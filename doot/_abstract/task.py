@@ -47,6 +47,7 @@ class Action_p(Protocol):
     def __call__(self, spec:DootActionSpec, task_state:dict) -> dict|bool|ActionResponseEnum|None:
         raise NotImplementedError()
 
+
 class TaskBase_i(ParamSpecMaker_m):
     """ Core Interface for Tasks """
 
@@ -68,6 +69,9 @@ class TaskBase_i(ParamSpecMaker_m):
         self.status     : TaskStateEnum       = TaskStateEnum.WAIT
         self.flags      : TaskFlags           = TaskFlags.JOB
         self._records   : list[Any]           = []
+        self.state                            = dict(spec.extra)
+        self.state['_task_name']              = self.spec.name
+        self.state['_action_step']            = 0
 
     @property
     def name(self) -> str:
@@ -175,10 +179,6 @@ class Task_i(TaskBase_i):
     def __init__(self, spec:DootTaskSpec, *, job:Job_i=None, **kwargs):
         super().__init__(spec)
         self.job     = job
-        self.state      = dict(spec.extra)
-        self.state.update(kwargs)
-        self.state['_task_name']   = self.spec.name
-        self.state['_action_step'] = 0
 
     def __repr__(self):
         return f"<Task: {self.name}>"

@@ -40,7 +40,7 @@ zip_level        = doot.config.on_fail(4, int).zip.level()
 
 zip_choices = [("none", "No compression"), ("zip", "Default Zip Compression"), ("bzip2", "bzip2 Compression"), ("lzma", "lzma compression")]
 
-class ZipperMixin:
+class Zipper_M:
     """
     Add methods for manipulating zip files.
     Can set a self.zip_root path, where added files with be relative to

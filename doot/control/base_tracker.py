@@ -64,8 +64,8 @@ class EDGE_E(enum.Enum):
     TASK_CROSS         = enum.auto() # Task to artifact
     ARTIFACT_CROSS     = enum.auto() # artifact to task
 
-class BaseTracker(TaskTracker_i):
-    """ An example tracker implementation to extend """
+class _InternalTrackerBase(TaskTracker_i):
+    """ Standard implementation of private tracker methods and plumbing """
 
     state_e            = TaskStateEnum
     INITIAL_TASK_STATE = TaskStateEnum.DEFINED
@@ -133,12 +133,12 @@ class BaseTracker(TaskTracker_i):
                 if cli_specialized.ctor is None:
                     raise doot.errors.DootTaskTrackingError("Attempt to specialize task failed: %s", spec.name)
 
-                task = cli_specialized.build()
+                task : TaskBase_i = cli_specialized.build()
             case DootTaskSpec(ctor=DootCodeReference() as ctor) if spec.check(ensure=TaskBase_i):
-                cli_specialized    = self._insert_cli_args_into_spec(spec)
+                cli_specialized   = self._insert_cli_args_into_spec(spec)
                 task : TaskBase_i = cli_specialized.build()
             case DootTaskSpec():
-                cli_specialized    = self._insert_cli_args_into_spec(spec)
+                cli_specialized   = self._insert_cli_args_into_spec(spec)
                 task : TaskBase_i = DootTask(cli_specialized)
             case TaskBase_i():
                 task = spec
@@ -274,6 +274,9 @@ class BaseTracker(TaskTracker_i):
     def _task_dependents(self, task) -> tuple[list[str], list[str]]:
         raise NotImplementedError()
 
+
+class BaseTracker(_InternalTrackerBase):
+    """ The public part of the standard tracker implementation """
     def queue_task(self, *tasks:str|DootTaskName|DootTaskArtifact|tuple, silent=False) -> None:
         """
           Add tasks to the queue.
@@ -322,7 +325,7 @@ class BaseTracker(TaskTracker_i):
         self.task_queue = boltons.queueutils.HeapPriorityQueue()
 
     def validate(self) -> bool:
-        """
+        """ Finalise and ensure consistence of the task network.
         run tests to check the dependency graph is acceptable
         """
         logging.debug("Building %s abstract tasks", len(self._build_late))

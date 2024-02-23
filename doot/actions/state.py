@@ -32,7 +32,7 @@ import shutil
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
-from doot.mixins.importer import ImporterMixin
+from doot.mixins.importer import Importer_M
 from doot.structs import DootCodeReference, DootKey
 
 ##-- expansion keys
@@ -59,7 +59,7 @@ class AddStateAction(Action_p):
 
 
 @doot.check_protocol
-class AddStateFn(Action_p, ImporterMixin):
+class AddStateFn(Action_p, Importer_M):
     """ for each toml kwarg, import its value and set the state[kwarg] = val
       with expansion
     """

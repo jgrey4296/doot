@@ -36,7 +36,7 @@ import datetime
 Seconds  : TypeAlias = int
 DateTime : TypeAlias = datetime.datetime
 
-class HumanMixin:
+class Human_M:
     """
     Simple Mixin for human related functions
     """

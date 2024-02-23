@@ -53,21 +53,22 @@ class DootParamSpec:
       produced using doot._abstract.parser.ParamSpecMaker_m classes,
       like tasks, and jobs
     """
-    name        : str                       = field()
-    type        : type                      = field(default=bool)
+    name              : str                       = field()
+    type              : type                      = field(default=bool)
 
-    prefix      : str                       = field(default="-")
+    prefix            : str                       = field(default="-")
 
-    default     : Any                       = field(default=False)
-    desc        : str                       = field(default="An undescribed parameter")
-    constraints : list                      = field(default_factory=list)
-    invisible   : bool                      = field(default=False)
-    positional  : bool|int                  = field(default=False)
-    _short       : None|str                 = field(default=None)
+    default           : Any                       = field(default=False)
+    desc              : str                       = field(default="An undescribed parameter")
+    constraints       : list                      = field(default_factory=list)
+    invisible         : bool                      = field(default=False)
+    positional        : bool|int                  = field(default=False)
+    _short            : None|str                  = field(default=None)
 
-    _repeatable_types : ClassVar[list[Any]] = [list, int]
+    _repeatable_types : ClassVar[list[Any]]       = [list, int]
 
-    separator   : str                       = field(default="=")
+    separator         : str                       = field(default="=")
+    _consumed         : int                       = field(default=0)
 
     @classmethod
     def from_dict(cls, data:TomlGuard|dict) -> DootParamSpec:
@@ -91,7 +92,7 @@ class DootParamSpec:
 
     @staticmethod
     def key_func(x):
-        return (x.positional, x.prefix)
+        return (x.positional != 0, x.prefix)
 
     @property
     def short(self):
@@ -121,6 +122,10 @@ class DootParamSpec:
                 return (self.name, [val])
 
     def __eq__(self, val) -> bool:
+        """ test to see if a cli argument matches this param """
+        if 0 < self.positional <= self._consumed:
+            return False
+
         match val, self.positional:
             case DootParamSpec(), _:
                 return val is self
@@ -190,11 +195,11 @@ class DootParamSpec:
 
         return f"{self.prefix}{self.name[0]}"
 
-    def maybe_consume(self, args:list[str], data:dict) -> bool:
+    def maybe_consume(self, args:list[str], data:dict) -> int:
         """
           Given a list of args, possibly add a value to the data.
           operates *in place* on both the args list and the data.
-          return True if consumed a value
+          return True if _consumed a value
 
           handles:
           ["--arg=val"],
@@ -204,56 +209,54 @@ class DootParamSpec:
           ["-no-arg"], (if type=bool)
         """
         if not bool(args) or data is None or args[0] != self:
-            return False
+            return 0
+        if 0 < self._consumed:
+            return self._consumed
 
-        pop_count  = 1
-        focus      = args[0]
-        prefixed   = focus.startswith(self.prefix)
-        is_assign  = self.separator in focus
-        key, vals  = None, []
+        pop_count     = 0
+        focus         = args[0]
+        is_positional = bool(self.positional)
+
+
+        if is_positional:
+            pop_count = self._add_positional_value(data, key=self.name, vals=args)
+        else:
+            key, vals, pop_count = self._calc_positional_consumption(focus, args)
+            self._add_non_positional_value(data, key=key, vals=vals)
+
+        # data has been added, so remove it from the input list
+        logging.debug("Arg: %s consuming count %s", self.name, pop_count)
+        for x in range(pop_count):
+            args.pop(0)
+
+        self._consumed += pop_count
+        return self._consumed
+
+    def _calc_positional_consumption(self, focus, args):
+        pop_count     = 1
+        prefixed      = focus.startswith(self.prefix) # form of -param
+        is_assign     = self.separator in focus       # form of --param=arg
+        key, vals     = None, []
 
         # Figure out the key and value
         match prefixed, is_assign:
             case _, True if self.prefix != doot.constants.PARAM_ASSIGN_PREFIX:
                 raise doot.errors.DootParseError("Assignment parameters should be prefixed with the PARAM_ASSIGN_PREFIX", doot.constants.PARAM_ASSIGN_PREFIX)
+            case True, False if self.type.__name__ != "bool" and not bool(args):
+                raise doot.errors.DootParseError("key lacks a following value", focus, self.type.__name__)
             case True, True: # --key=val
                 key, val = focus.split(self.separator)
                 key = key.removeprefix(self.prefix)
                 vals.append(val)
-            case True, False if self.type.__name__ != "bool" and not bool(args):
-                raise doot.errors.DootParseError("key lacks a following value", focus, self.type.__name__)
             case True, False if self.type.__name__ == "bool": # --key
                 key = focus.removeprefix(self.prefix)
             case True, False: # -key val
                 key = focus.removeprefix(self.prefix)
                 vals.append(args[1])
                 pop_count = 2
-            case False, False if self.positional and data.get(self.name, self.default) == self.default:
-                key = self.name
-                vals.append(focus)
-            case False, False if self.positional and self.type == list:
-                key = self.name
-                vals.append(focus)
-            case False, False if not isinstance(self.positional, bool) and len(data.get(self.name, [])) < self.positional:
-                key = self.name
-                vals.append(focus)
-            case _, _: # Nonsense
-                pass
 
-        if key is None or vals is None:
-            return False
+        return key, vals, pop_count
 
-        # correct form, and the key is self, so add it to data
-        if self.positional:
-            self._add_positional_value(data, key=key, vals=vals)
-        else:
-            self._add_non_positional_value(data, key=key, vals=vals)
-
-        # data has been added, so remove it from the input list
-        for x in range(pop_count):
-            args.pop(0)
-
-        return True
 
     def _add_non_positional_value(self, data:dict, *, key:str=None, vals:list[str]=None) -> bool:
         """ if the given value is suitable, add it into the given data
@@ -293,17 +296,31 @@ class DootParamSpec:
 
         return data[self.name] != self.default
 
-    def _add_positional_value(self, data, *, key:str=None, vals:list[str]=None):
-        # TODO if constraints, check against them
-        match self.positional:
-            case True:
-                data[self.name] = self.type(vals[0])
-            case int() if self.type.__name__ != "list":
-                raise doot.errors.DootParseError("Multi-positional args should be of type 'list'", self.name)
-            case int():
-                if data[self.name] == self.default:
-                    data[self.name] = []
-                data[self.name] += vals
+    def _add_positional_value(self, data, *, key:str=None, vals:list[str]=None) -> int:
+        pop_count = 1
+        end_index = None if "--" not in vals else vals.index("--")
 
-        if not isinstance(self.positional, bool) and self.positional < len(data[self.name]):
-            raise doot.errors.DootParseError("Too many positional args provided", self.name)
+        match self.positional:
+            case True if self.type != list:
+                data[self.name] = vals[0]
+            case True:
+                consume_these      = vals[:end_index]
+                pop_count          = len(consume_these)
+                data[self.name]    = consume_these
+            case 1:
+                data[self.name] = self.type(vals[0])
+                pop_count = 1
+            case x:
+                t = min(x, end_index or len(vals))
+                consume_these      = vals[:t]
+                pop_count          = len(consume_these)
+                data[self.name]    = consume_these
+
+        if 1 < pop_count < self.positional:
+            raise doot.errors.DootParseError("Not Enough positional args provided", self.name, self.positional, vals)
+        elif 1 < self.positional < pop_count:
+            raise doot.errors.DootParseError("Too Many positional args provided", self.name, self.positional, vals)
+        elif 1 < pop_count and self.type != list:
+            raise doot.errors.DootParseError("Multi positional args should be of type list", self.name, self.positional, self.type)
+
+        return pop_count

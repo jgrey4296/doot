@@ -61,7 +61,9 @@ class StubCmd(Command_i):
             self.make_param("file-target", type=str,     default=""),
             self.make_param("Config",                    default=False,           desc="Stub a doot.toml",                  prefix="-"),
             self.make_param("Actions",                   default=False,           desc="Help Stub Actions",                 prefix="-"),
-            self.make_param("cli",                       default=False,           desc="Generate a stub cli arg dict", prefix="-"),
+            self.make_param("cli",                       default=False,           desc="Generate a stub cli arg dict",      prefix="-"),
+            self.make_param("printer",                   default=False,           desc="Generate a stub cli arg dict",      prefix="-"),
+
             self.make_param("Flags",                     default=False,           desc="Help Stub Task Flags",              prefix="-"),
 
             self.make_param("name",        type=str,     default=None,            desc="The Name of the new task",                          positional=True),
@@ -87,6 +89,8 @@ class StubCmd(Command_i):
                 self._stub_cli_arg()
             case {"Flags": True}:
                 self._list_flags()
+            case {"printer": True}:
+                self._stub_printer_settings()
             case _:
                 self._stub_task_toml(tasks, plugins)
 
@@ -183,12 +187,13 @@ class StubCmd(Command_i):
                         printer.info(x)
 
             loaded = getattr(loaded, "__call__", loaded)
+            loaded = getattr(loaded, "__wrapped__", loaded)
 
             match getattr(loaded, KEY_ANNOTS, []):
                 case []:
                     printer.info("-- No Declared Kwargs")
                 case [*xs]:
-                    printer.info("-- Declared kwargs for action: %s", sorted(xs))
+                    printer.info("-- Declared kwargs for action: %s", sorted([repr(x) for x in xs]))
         else:
             printer.info("Available Actions:")
             for action in sorted(plugins.action, key=lambda x: x.name):
@@ -221,7 +226,8 @@ class StubCmd(Command_i):
 
         printer.info("{ %s }", "".join(stub))
 
-
+    def _stub_printer_settings(self):
+        printer.info("print_levels = { %s }", ", ".join(f'{x}="INFO"' for x in doot.constants.PRINT_LOCATIONS))
 
     def _list_flags(self):
         printer.info("Task Flags: ")

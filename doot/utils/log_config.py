@@ -31,10 +31,13 @@ from uuid import UUID, uuid1
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+import os
 from sys import stdout, stderr
 import doot
 import doot.constants
 from doot.utils.log_colour import DootColourFormatter, DootColourStripFormatter
+
+env : dict = os.environ
 
 class _DootAnyFilter:
     """
@@ -106,10 +109,12 @@ class DootLogConfig:
         stream_filter_names = doot.config.on_fail([], list).logging.stream.allow()
 
         self.stream_handler.setLevel(stream_log_level)
-        if doot.config.on_fail(False, bool).logging.stream.colour():
+        use_colour = doot.config.on_fail(False, bool).logging.stream.colour()
+        use_colour &= "PRE_COMMIT" not in env
+        if use_colour:
             self.stream_handler.setFormatter(DootColourFormatter(fmt=stream_log_format))
         else:
-            self.stream_handler.setFormatter(logmod.Formatter(stream_log_format, style="{"))
+            self.stream_handler.setFormatter(DootColourStripFormatter(fmt=stream_log_format))
 
         if bool(stream_filter_names):
             self.stream_handler.addFilter(_DootAnyFilter(stream_filter_names))
@@ -120,10 +125,12 @@ class DootLogConfig:
 
         self.print_stream_handler.setLevel(printer_log_level)
 
-        if doot.config.on_fail(False, bool).logging.printer.colour():
+        use_colour = doot.config.on_fail(False, bool).logging.printer.colour()
+        use_colour &= "PRE_COMMIT" not in env
+        if use_colour:
             self.print_stream_handler.setFormatter(DootColourFormatter(fmt=printer_log_format))
         else:
-            self.print_stream_handler.setFormatter(logmod.Formatter(printer_log_format, style="{"))
+            self.print_stream_handler.setFormatter(DootColourStripFormatter(fmt=printer_log_format))
 
     def set_level(self, level):
         self.stream_handler.setLevel(level)

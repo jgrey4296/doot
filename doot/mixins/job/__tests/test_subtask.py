@@ -18,10 +18,10 @@ import doot
 from doot.enums import TaskFlags
 from doot.structs import DootTaskSpec, TaskStub, DootCodeReference
 from doot.task.base_job import DootJob
-from doot.mixins.job.subtask import SubMixin
+from doot.mixins.job.subtask import SubTask_M
 import doot._abstract
 
-sub_ref   = DootCodeReference.from_str("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.subtask:SubMixin")
+sub_ref   = DootCodeReference.from_str("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.subtask:SubTask_M")
 SubJob = sub_ref.try_import()
 
 class SimpleSubJob(SubJob):

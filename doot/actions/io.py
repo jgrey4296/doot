@@ -57,23 +57,24 @@ LAX                : Final[DootKey] = DootKey.make("lax")
 @doot.check_protocol
 class AppendAction(Action_p):
     """
-      Append data from the state to a file
+      Pre/Ap-pend data from the state to a file
     """
     sep = "\n--------------------\n"
-    _toml_kwargs = [SEP, TO_KEY, "args"]
 
+    @DootKey.kwrap.args
     @DootKey.kwrap.types("sep", hint={"on_fail":None})
     @DootKey.kwrap.paths("to")
-    def __call__(self, spec, state, sep, to):
-        sep     = sep or AppendAction.sep
-        loc     = to
-        args    = [DootKey.make(x, explicit=True).expand(spec, state, insist=True, on_fail=None) for x in spec.args]
+    def __call__(self, spec, state, args, sep, to):
+        sep          = sep or AppendAction.sep
+        loc          = to
+        args_keys    = [DootKey.make(x, explicit=True) for x in args]
+        exp_args     = [k.expand(spec, state, insist=True, on_fail=None) for k in args_keys]
 
         if not doot.locs.check_writable(loc):
             raise doot.errors.DootLocationError("Tried to write a protected location", loc)
 
         with open(loc, 'a') as f:
-            for arg in args:
+            for arg in exp_args:
                 if not arg:
                     continue
 
@@ -121,17 +122,14 @@ class ReadAction(Action_p):
       Reads data from the doot.locs location to  return for the state
       The arguments of the action are held in self.spec
     """
-    _toml_kwargs = [TYPE_KEY, AS_BYTES],
-
-    @DootKey.kwrap.types("from")
+    @DootKey.kwrap.paths("from")
     @DootKey.kwrap.redirects("update_")
     @DootKey.kwrap.types("as_bytes", hint={"on_fail":False})
     @DootKey.kwrap.types("type", hint={"type_":str, "on_fail":"read"})
     def __call__(self, spec, state, _from, _update, as_bytes, _type) -> dict|bool|None:
-        loc         = _from
+        loc = _from
         read_binary = as_bytes
-        read_lines  = type_
-
+        read_lines  = _type
         printer.info("Reading from %s into %s", loc, _update)
         if read_binary:
             with open(loc, "rb") as f:

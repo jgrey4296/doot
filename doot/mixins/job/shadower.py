@@ -38,12 +38,12 @@ logging = logmod.getLogger(__name__)
 
 import doot
 import doot.errors
-from doot.mixins.job.walker import WalkerMixin
+from doot.mixins.job.expander import WalkExpander_M
 
 walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
 walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).settings.walking.halts()
 
-class WalkShadowerMixin(WalkerMixin):
+class WalkShadower_M(WalkExpander_M):
     """
         Walk a directory tree,
         but in addition to the subtask keys [`fpath`, `fstem`, `fname`, and `lpath`],
@@ -88,7 +88,7 @@ class WalkShadowerMixin(WalkerMixin):
         stub['shadow_root'].set(type="pl.Path", default="")
 
 
-class LazyWalkShadowerMixin(WalkShadowerMixin):
+class LazyShadower_M(WalkShadower_M):
 
     def _build_subs(self) -> Generator[DootTaskSpec]:
         self.total_subtasks = 0

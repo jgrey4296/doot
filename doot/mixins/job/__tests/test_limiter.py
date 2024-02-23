@@ -36,7 +36,7 @@ logging = logmod.root
 
 ##-- end pytest reminder
 
-select_ref        = DootCodeReference.from_str("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.limiter:TaskLimitMixin")
+select_ref        = DootCodeReference.from_str("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.limiter:TaskLimit_M")
 SelectBuilder     = select_ref.try_import()
 
 base_exts = [".bib", ".json", ".txt"]

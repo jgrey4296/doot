@@ -14,7 +14,7 @@ import doot
 import doot.errors
 from doot.structs import DootTaskSpec
 from doot._abstract import Job_i
-from doot.mixins.tasks.cleaning import CleanerMixin
+from doot.mixins.tasks.cleaning import Cleaner_M
 from doot.task.base_job import DootJob
 from doot.task.base_task import DootTask
 

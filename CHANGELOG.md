@@ -33,3 +33,9 @@ Initial ... release.
 - add setup actions mixin
 - add cli param parsing / stubbing
 - add key decorators for action authoring
+# 0.6.0 : 2024-02-23
+- improve cli param parsing
+- add signal handler and logging recognition of pre-commmit
+- add general expander mixin
+- refactor mixin names to {}_M
+- refactor walker and postbox expanders

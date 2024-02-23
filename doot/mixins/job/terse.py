@@ -41,9 +41,9 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.structs import DootActionSpec, DootTaskSpec
-from doot.mixins.job.subtask import SubMixin
+from doot.mixins.job.subtask import SubTask_M
 
-class MiniBuilderMixin(SubMixin):
+class TerseBuilder_M(SubTask_M):
     """ Instead of using sub_task and head_task references,
     use sub_actions and head_actions to build them.
 
@@ -76,7 +76,7 @@ class MiniBuilderMixin(SubMixin):
 
 
 
-class HeadOnlyJobMixin(SubMixin):
+class HeadOnly_M(SubTask_M):
     """
       doesn't build subtasks, instead collects the specified 'head_inject' kwargs and passes them to the head task
 

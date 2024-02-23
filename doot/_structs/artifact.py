@@ -7,7 +7,7 @@ See EOF for license/metadata/notes as applicable
 ##-- builtin imports
 from __future__ import annotations
 
-# import abc
+import abc
 import datetime
 import enum
 import functools as ftz
@@ -80,27 +80,6 @@ class DootTaskArtifact:
     def __bool__(self):
         return self.exists
 
-    @property
-    def exists(self):
-        return self.path.exists() or not self.is_definite
-
-    @property
-    def is_definite(self):
-        return "*" not in str(self.path)
-
-    @property
-    def _dstem(self):
-        return "*" not in self.path.stem
-
-    @property
-    def _dsuffix(self):
-        return "*" not in self.path.suffix
-
-    @property
-    def is_stale(self) -> bool:
-        """ whether the artifact itself is stale """
-        raise NotImplementedError('TODO')
-
     def __contains__(self, other):
         """ whether a definite artifact is matched by self, an indefinite artifact
           a/b/c.py ∈ a/b/*.py
@@ -121,3 +100,27 @@ class DootTaskArtifact:
         suffix      = (not self._dsuffix) or self.path.suffix == other.path.suffix
         stem        = (not self._dstem)    or self.path.stem == other.path.stem
         return  suffix and stem
+
+    @property
+    def exists(self):
+        return self.path.exists() or not self.is_definite
+
+    @property
+    def is_definite(self):
+        """ tests the entire artifact path """
+        return "*" not in str(self.path)
+
+    @property
+    def _dstem(self):
+        """ tests the stem of the artifact """
+        return "*" not in self.path.stem
+
+    @property
+    def _dsuffix(self):
+        """ tests the suffix of the artifact """
+        return "*" not in self.path.suffix
+
+    @property
+    def is_stale(self) -> bool:
+        """ whether the artifact itself is stale """
+        raise NotImplementedError('TODO')

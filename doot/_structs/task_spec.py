@@ -155,7 +155,7 @@ class DootTaskSpec:
     name                         : DootTaskName                                                 = field()
     doc                          : list[str]                                                    = field(default_factory=list)
     source                       : DootTaskName|str|None                                        = field(default=None)
-    actions                      : list[Any]                                                    = field(default_factory=list)
+    actions                      : list[DootActionSpec]                                                    = field(default_factory=list)
 
     active_when                  : list[DootTaskArtifact|callable]                              = field(default_factory=list)
     required_for                 : list[DootTaskName|DootTaskArtifact]                          = field(default_factory=list)

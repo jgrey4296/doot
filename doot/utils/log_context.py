@@ -43,7 +43,7 @@ class DootLogContext:
 
     def __init__(self, logger, level=None):
         self._logger          = logger
-        self._original_level = self._logger.level
+        self._original_level  = self._logger.level
         self._level_stack     = [self._original_level]
         self._temp_level      = level or self._original_level
 

@@ -83,7 +83,6 @@ class DootTracker(BaseTracker, TaskTracker_i):
         self._insert_dependents(task)
         self._insert_according_to_queue_behaviour(task)
 
-
     def update_state(self, task:str|TaskBase_i|DootTaskArtifact, state:self.state_e):
         """ update the state of a task in the dependency graph """
         logging.debug("Updating State: %s -> %s", task, state)

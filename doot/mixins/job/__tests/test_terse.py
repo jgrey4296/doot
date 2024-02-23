@@ -31,7 +31,7 @@ logging = logmod.root
 
 ##-- end pytest reminder
 
-mini_ref        = DootCodeReference.from_str("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.mini_builder:MiniBuilderMixin")
+mini_ref        = DootCodeReference.from_str("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.terse:TerseBuilder_M")
 MiniBuilder     = mini_ref.try_import()
 
 class SimpleMini(MiniBuilder):

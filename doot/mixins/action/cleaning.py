@@ -33,7 +33,7 @@ mac_os_globs   = ["**/.DS_Store", "**/*~"]
 java_globs     = ["**/*.class"]
 log_globs      = ["**/log.*", "**/*.log"]
 
-class CleanerMixin:
+class Cleaner_M:
 
     @staticmethod
     def clean_target_dirs(task, dryrun):

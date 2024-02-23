@@ -231,6 +231,7 @@ class DootLocations:
 
 
     def check_writable(self, path:pl.Path) -> bool:
+        """ test a path to see if it is relative to a protected location """
         for key in self._protect:
             base = getattr(self, key)
             if path.is_relative_to(base):

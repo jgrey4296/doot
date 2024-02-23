@@ -36,6 +36,7 @@ import doot
 from doot._abstract import ReportLine_i, TaskRunner_i, Reporter_i, Command_i
 from doot.utils.plugin_selector import plugin_selector
 from doot.task.check_locs import CheckLocsTask
+from doot.structs import DootCodeReference
 
 printer                  = logmod.getLogger("doot._printer")
 
@@ -43,6 +44,7 @@ tracker_target           = doot.config.on_fail("default", str).commands.run.trac
 runner_target            = doot.config.on_fail("default", str).commands.run.runner()
 reporter_target          = doot.config.on_fail("default", str).commands.run.reporter()
 report_line_targets      = doot.config.on_fail([]).commands.run.report_line(wrapper=list)
+interrupt_handler        = doot.config.on_fail("doot.utils.signal_handler:SignalHandler", bool|str).commands.run.interrupt()
 
 @doot.check_protocol
 class RunCmd(Command_i):
@@ -88,6 +90,14 @@ class RunCmd(Command_i):
 
         tracker.queue_task(CheckLocsTask.task_name)
 
+        match interrupt_handler:
+            case bool():
+                interrupt = interrupt_handler
+            case str():
+                interrupt = DootCodeReference.from_str(interrupt_handler).try_import()
+            case None:
+                interrupt = None
+
         printer.info("- %s Tasks Queued: %s", len(tracker.active_set), " ".join(tracker.active_set))
         with runner:
-            runner()
+            runner(handler=interrupt)

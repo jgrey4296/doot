@@ -143,7 +143,7 @@ class TestDootTaskName:
         assert(sub.group == "basic")
         assert(len(sub.tail) == 3)
         assert(sub.tail[0] == "tail")
-        assert(sub.tail[1] == "$specialized$")
+        assert(sub.tail[1] == doot.constants.SPECIALIZED_ADD)
 
 
     def test_specialize_name_with_info(self):
@@ -153,7 +153,7 @@ class TestDootTaskName:
         assert(sub.group == "basic")
         assert(len(sub.tail) == 4)
         assert(sub.tail[0] == "tail")
-        assert(sub.tail[1] == "$specialized$")
+        assert(sub.tail[1] == doot.constants.SPECIALIZED_ADD)
         assert(sub.tail[2] == "blah")
 
     def test_lt_comparison_equal(self):
@@ -181,6 +181,25 @@ class TestDootTaskName:
         simple2 = structs.DootTaskName(["basic", "test"], ["tail", "sub"])
         assert(not (simple < simple2))
 
+
+    def test_contains_basic_group(self):
+        simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
+        assert("sub" in simple)
+
+
+    def test_contains_basic_sub(self):
+        simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
+        assert("tail" in simple)
+
+
+    def test_contains_other_name(self):
+        simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
+        sub   = structs.DootTaskName(["basic", "sub", "test"], ["tail", "sub"])
+        assert(sub in simple)
+
+
+
+
 class TestDootCodeReference:
 
     def test_basic(self):
@@ -206,14 +225,14 @@ class TestDootCodeReference:
     def test_add_mixin(self):
         ref = structs.DootCodeReference.from_str("doot.task.base_task:DootTask")
         assert(not bool(ref._mixins))
-        ref_plus = ref.add_mixins("doot.mixins.job.mini_builder:MiniBuilderMixin")
+        ref_plus = ref.add_mixins("doot.mixins.job.terse:TerseBuilder_M")
         assert(ref is not ref_plus)
         assert(not bool(ref._mixins))
         assert(bool(ref_plus._mixins))
 
     def test_build_mixin(self):
         ref      = structs.DootCodeReference.from_str("doot.task.base_task:DootTask")
-        ref_plus = ref.add_mixins("doot.mixins.job.mini_builder:MiniBuilderMixin")
+        ref_plus = ref.add_mixins("doot.mixins.job.terse:TerseBuilder_M")
         result   = ref_plus.try_import()
         assert(result != DootTask)
         assert(DootTask in result.mro())

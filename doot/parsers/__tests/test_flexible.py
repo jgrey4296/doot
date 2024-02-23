@@ -41,7 +41,7 @@ class TestArgParser:
         assert(result.on_fail(False).cmd.name()  == "list")
 
     def test_cmd_args(self, ctor, mocker):
-        cmd_mock  = mock_parse_cmd( params=[DootParamSpec(name="all")])
+        cmd_mock  = mock_parse_cmd(params=[DootParamSpec(name="all")])
         parser    = ctor()
         result    = parser.parse([
             "doot", "list", "-all"

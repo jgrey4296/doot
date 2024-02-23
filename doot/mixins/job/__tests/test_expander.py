@@ -9,6 +9,7 @@ import pathlib as pl
 from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
                     Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
                     TypeVar, cast)
+import re
 import warnings
 
 import pytest
@@ -32,7 +33,7 @@ logging = logmod.root
 
 ##-- end pytest reminder
 
-walker_ref = DootCodeReference.from_str("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.walker:WalkerMixin")
+walker_ref = DootCodeReference.from_str("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.expander:WalkExpander_M")
 Walker     = walker_ref.try_import()
 
 class TestWalker:
@@ -63,7 +64,8 @@ class TestWalker:
             logging.debug("Built Subtask: %s", sub.name)
             count += 1
             assert(isinstance(sub, DootTaskSpec))
-            assert(str(sub.name) in ["default::basic.first", "default::basic.second", "default::basic.$head$", "default::basic.test_root"])
+            assert(re.match(r"default::basic.(\$head\$|[0-9].(first|second|test_root))", str(sub.name)) is not None)
+
 
         assert(count == 4)
 
@@ -79,7 +81,7 @@ class TestWalker:
         for sub in obj.build():
             count += 1
             assert(isinstance(sub, DootTaskSpec))
-            assert(str(sub.name) in ["default::basic.blah", "default::basic.bloo", "default::basic.$head$"])
+            assert(re.match(r"default::basic.(\$head\$|[0-9].(blah|bloo).txt)", str(sub.name)) is not None)
 
         assert(count == 3)
 
@@ -98,7 +100,7 @@ class TestWalker:
         for sub in obj.build():
             count += 1
             assert(isinstance(sub, DootTaskSpec))
-            assert(str(sub.name) not in ["default::basic.bad", "default::basic.bibble"])
+            assert(re.match(r"default::basic.[0-9].(bad|bibble).txt", str(sub.name)) is None)
 
         assert(count == 3)
 
@@ -156,4 +158,4 @@ class TestWalker:
             assert(str(sub.name) in ["default::basic.$head$"])
 
         assert(count == 1)
-        assert("Walker Missing Root: aweg" in caplog.messages)
+        assert(any("Walker Missing Root:" in x for x in caplog.messages))
