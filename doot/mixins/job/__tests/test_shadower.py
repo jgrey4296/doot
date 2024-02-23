@@ -33,7 +33,7 @@ logging = logmod.root
 
 ##-- end pytest reminder
 
-walker_ref = DootCodeReference.from_str("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.shadower:WalkShadowerMixin")
+walker_ref = DootCodeReference.from_str("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.shadower:WalkShadower_M")
 Walker     = walker_ref.try_import()
 
 class TestTreeShadower:

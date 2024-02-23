@@ -143,7 +143,7 @@ class TestDootTaskName:
         assert(sub.group == "basic")
         assert(len(sub.tail) == 3)
         assert(sub.tail[0] == "tail")
-        assert(sub.tail[1] == "$specialized$")
+        assert(sub.tail[1] == doot.constants.SPECIALIZED_ADD)
 
 
     def test_specialize_name_with_info(self):
@@ -153,7 +153,7 @@ class TestDootTaskName:
         assert(sub.group == "basic")
         assert(len(sub.tail) == 4)
         assert(sub.tail[0] == "tail")
-        assert(sub.tail[1] == "$specialized$")
+        assert(sub.tail[1] == doot.constants.SPECIALIZED_ADD)
         assert(sub.tail[2] == "blah")
 
     def test_lt_comparison_equal(self):
@@ -180,6 +180,25 @@ class TestDootTaskName:
         simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
         simple2 = structs.DootTaskName(["basic", "test"], ["tail", "sub"])
         assert(not (simple < simple2))
+
+
+    def test_contains_basic_group(self):
+        simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
+        assert("sub" in simple)
+
+
+    def test_contains_basic_sub(self):
+        simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
+        assert("tail" in simple)
+
+
+    def test_contains_other_name(self):
+        simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
+        sub   = structs.DootTaskName(["basic", "sub", "test"], ["tail", "sub"])
+        assert(sub in simple)
+
+
+
 
 class TestDootCodeReference:
 
