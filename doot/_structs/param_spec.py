@@ -123,7 +123,7 @@ class DootParamSpec:
 
     def __eq__(self, val) -> bool:
         """ test to see if a cli argument matches this param """
-        if 0 <= self.positional <= self._consumed:
+        if 0 < self.positional <= self._consumed:
             return False
 
         match val, self.positional:
@@ -221,7 +221,7 @@ class DootParamSpec:
         if is_positional:
             pop_count = self._add_positional_value(data, key=self.name, vals=args)
         else:
-            key, vals, pop_count = self._calc_positional_consumption(focus)
+            key, vals, pop_count = self._calc_positional_consumption(focus, args)
             self._add_non_positional_value(data, key=key, vals=vals)
 
         # data has been added, so remove it from the input list

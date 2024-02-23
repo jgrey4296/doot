@@ -85,8 +85,11 @@ class Expander_M(SubTask_M):
         base               = self.fullname
         result      : list = self._retriever_fn(self.spec, self.state)
         for i, data in enumerate(result):
-            uname = base.subtask(i)
-
+            match data:
+                case {"name": x}:
+                    uname = base.subtask(i, x)
+                case _:
+                    uname = base.subtask(i)
             inject_keys = set(self.spec.inject).difference(self._default_subtask_injections)
             inject_dict = {k: self.spec.extra[k] for k in inject_keys}
 
