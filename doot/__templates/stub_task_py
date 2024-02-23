@@ -41,11 +41,11 @@ printer = logmod.getLogger("doot._printer")
 
 import doot
 import doot.errors
-from doot.mixins.task.human_numbers import HumanMixin
+from doot.mixins.task.human_numbers import Human_M
 from doot.task.base_task import DootTask
 from doot.structs import DootActionSpec
 
-class SimpleTaskExample(HumanMixin, DootTask):
+class SimpleTaskExample(Human_M, DootTask):
     """
       A Simple example task that uses a mixin, and adds its own default actions
     """

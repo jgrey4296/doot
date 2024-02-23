@@ -46,7 +46,7 @@ from doot.errors import DootDirAbsent, DootTaskError
 from doot.structs import DootTaskSpec, DootTaskName, DootCodeReference, DootActionSpec
 
 
-class SetupMixin:
+class SetupStage_M:
     """
       A terse mixin to add a single setup task before all subtasks/head of this job
     """

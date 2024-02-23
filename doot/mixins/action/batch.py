@@ -38,7 +38,7 @@ batches_max      = doot.config.on_fail(-1,    int).settings.tasks.batch.max()
 sleep_batch      = doot.config.on_fail(2.0,   int|float).settings.tasks.sleep.batch()
 sleep_notify     = doot.config.on_fail(False, bool).settings.general.notify.sleep()
 
-class BatchMixin:
+class Batch_M:
     """
     A Mixin to enable running batches of *subtasks* with
     some sleep time

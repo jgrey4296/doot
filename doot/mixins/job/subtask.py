@@ -34,7 +34,7 @@ from doot.errors import DootDirAbsent, DootTaskError
 from doot.structs import DootTaskSpec, DootTaskName, DootCodeReference
 from time import sleep
 
-class SubMixin:
+class SubTask_M:
     """
     Mixin methods for building subtasks.
     The public method is `build`,

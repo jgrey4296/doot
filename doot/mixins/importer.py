@@ -40,7 +40,7 @@ ACTION_CTORS = {}
 if PluginLoader_p.loaded:
     ACTION_CTORS = {x.name : x for x in PluginLoader_p.loaded.action}
 
-class ImporterMixin:
+class Importer_M:
 
     def import_task(self, pathname:None|str):
         """

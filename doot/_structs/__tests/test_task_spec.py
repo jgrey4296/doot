@@ -20,7 +20,7 @@ import doot.errors
 import doot.constants
 from doot import structs
 from doot.task.base_job import DootJob
-from doot.mixins.job.mini_builder import MiniBuilderMixin
+from doot.mixins.job.terse import TerseBuilder_M
 
 class TestDootTaskSpec:
 
@@ -71,13 +71,13 @@ class TestSpecMixinBuild:
     def test_basic(self):
         spec = structs.DootTaskSpec.from_dict({"name": "basic",
                                        "ctor": "doot.task.base_job:DootJob",
-                                       "mixins": ["doot.mixins.job.mini_builder:MiniBuilderMixin"],
+                                       "mixins": ["doot.mixins.job.terse:TerseBuilder_M"],
 
                                       })
         task = spec.build()
         assert(isinstance(task,DootJob))
-        assert(MiniBuilderMixin in task.__class__.mro())
-        assert(isinstance(task, MiniBuilderMixin))
+        assert(TerseBuilder_M in task.__class__.mro())
+        assert(isinstance(task, TerseBuilder_M))
 
 
 class TestTaskSpecSpecialization:

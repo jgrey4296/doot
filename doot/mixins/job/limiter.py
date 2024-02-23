@@ -43,9 +43,9 @@ import doot
 import doot.errors
 from doot._abstract import Job_i
 from doot.structs import DootCodeReference, DootTaskSpec, DootTaskName, DootKey
-from doot.mixins.job.walker import WalkerMixin
+from doot.mixins.job.expander import WalkExpander_M
 
-class TaskLimitMixin:
+class TaskLimit_M:
     """
       Limit the number of task the job generates
     """
