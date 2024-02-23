@@ -83,8 +83,7 @@ class Expander_M(SubTask_M):
 
     def _build_subs(self) -> Generator[DootTaskSpec]:
         base               = self.fullname
-        result      : list = self._retriever_fn(self.spec, self.state)
-        for i, data in enumerate(result):
+        for i, data in enumerate(self._retriever_fn(self.spec, self.state)):
             match data:
                 case {"name": x}:
                     uname = base.subtask(i, x)
