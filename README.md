@@ -1,6 +1,6 @@
 ![doot](https://github.com/jgrey4296/doot/assets/5943270/170a5631-6175-4d92-8d66-e26aa2c2e472)
 # doot
-Version : 0.5.2.5.1  
+Version : 0.6.0.5.2.5.1  
 Author  : John Grey  
 Date    : 2022-12-09  
 
