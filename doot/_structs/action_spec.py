@@ -58,12 +58,12 @@ class DootActionSpec:
       path:/usr/bin/python  -> Path(/usr/bin/python)
 
     """
-    do         : None|str                = field(default=None)
-    args       : list[Any]               = field(default_factory=list)
+    do         : None|str                   = field(default=None)
+    args       : list[Any]                  = field(default_factory=list)
     kwargs     : TomlGuard                  = field(default_factory=TomlGuard)
-    inState    : set[str]                = field(default_factory=set)
-    outState   : set[str]                = field(default_factory=set)
-    fun        : None|Callable           = field(default=None)
+    inState    : set[str]                   = field(default_factory=set)
+    outState   : set[str]                   = field(default_factory=set)
+    fun        : None|Callable              = field(default=None)
 
     def __str__(self):
         result = []
