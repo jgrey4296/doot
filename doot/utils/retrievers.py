@@ -38,6 +38,8 @@ logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
+from doot.structs import DootKey
+
 def id_retriever(spec, state) -> list[dict]:
     """ A Null retriever, retruns to dicts to create subtasks from """
     return []
