@@ -101,7 +101,7 @@ class BaseRunner(TaskRunner_i):
             self.tracker.update_state(task, self.tracker.state_e.SUCCESS)
         return task
 
-    def _handle_failure(self, task, failure):
+    def _handle_failure(self, task:None|TaskBase_i, failure):
         match failure:
             case doot.errors.DootTaskInterrupt():
                 breakpoint()

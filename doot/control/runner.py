@@ -89,6 +89,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
 
     def _run_next_task(self):
         with logctx("INFO"):
+            task = None
             try:
                 match (task:= self.tracker.next_for()):
                     case None:
