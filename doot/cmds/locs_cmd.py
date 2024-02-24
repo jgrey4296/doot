@@ -78,6 +78,6 @@ class LocsCmd(Command_i):
         locs = defaultdict(list)
 
         for name in doot.locs:
-            printer.info(fmt_str, name, doot.locs[name])
+            printer.info(fmt_str, name, doot.locs[f"{{{name}}}"])
 
         printer.info("")
