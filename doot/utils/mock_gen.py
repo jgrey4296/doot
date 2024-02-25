@@ -60,6 +60,7 @@ def mock_task(name, spec=None, actions:int=1, **kwargs):
     task_m = MagicMock(spec=Task_i,
                        depends_on=[],
                        required_for=[],
+                       inject=[],
                        name=name,
                        state={},
                        **kwargs)

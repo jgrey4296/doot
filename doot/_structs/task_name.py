@@ -42,7 +42,7 @@ from tomlguard import TomlGuard
 import doot.errors
 import doot.constants
 from doot.enums import TaskFlags, ReportEnum
-from doot._structs.structured_name import DootStructuredName
+from doot._structs.structured_name import DootStructuredName, aware_splitter
 
 TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
 
@@ -72,13 +72,14 @@ class DootTaskName(DootStructuredName):
         return DootTaskName(groupHead, taskHead, args=args)
 
     def __post_init__(self):
+        sub_split = ftz.partial(aware_splitter, sep=self.subseparator)
         match self.head:
             case ["tasks", x] if x.startswith('"') and x.endswith('"'):
-                self.head = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(self.subseparator), x[1:-1]))
+                self.head = ftz.reduce(lambda x, y: x + y, map(aware_splitter, x[1:-1]))
             case ["tasks", *xs]:
-                self.head = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(self.subseparator), xs))
+                self.head = ftz.reduce(lambda x, y: x + y, map(aware_splitter, xs))
             case list():
-                self.head = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(self.subseparator), self.head))
+                self.head = ftz.reduce(lambda x, y: x + y, map(aware_splitter, self.head))
             case str():
                 self.head = self.head.split(self.subseparator)
             case None | []:
@@ -86,7 +87,7 @@ class DootTaskName(DootStructuredName):
 
         match self.tail:
             case list():
-                self.tail = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(self.subseparator), self.tail))
+                self.tail = ftz.reduce(lambda x, y: x + y, map(aware_splitter, self.tail))
             case str():
                 self.tail = self.tail.split(self.subseparator)
             case None | []:
@@ -127,7 +128,13 @@ class DootTaskName(DootStructuredName):
 
     @property
     def task(self) -> str:
-        return self.tail_str()
+        return self.subseparator.join([x if not isinstance(x, UUID) else "${}$".format(x.hex) for x in self.tail])
+
+    @property
+    def readable(self):
+        group = self.group
+        tail = self.subseparator.join([x if not isinstance(x, UUID) else "<UUID>" for x in self.tail])
+        return "{}{}{}".format(group, self.separator, tail)
 
     def root(self):
         return f"{self.head_str()}{self.separator}{self.tail[0]}"
@@ -142,7 +149,7 @@ class DootTaskName(DootStructuredName):
             case [str() as x]:
                 subs.append(x)
             case [*xs]:
-                subs = [str(x) for x in xs]
+                subs = xs
 
         return DootTaskName(self.head + (subgroups or []),
                             self.tail + subs,
@@ -152,6 +159,6 @@ class DootTaskName(DootStructuredName):
     def specialize(self, *, info=None):
         match info:
             case None:
-                return self.subtask(doot.constants.SPECIALIZED_ADD, "${}$".format(uuid1().hex))
+                return self.subtask(doot.constants.SPECIALIZED_ADD, uuid1())
             case _:
-                return self.subtask(doot.constants.SPECIALIZED_ADD, info, "${}$".format(uuid1().hex))
+                return self.subtask(doot.constants.SPECIALIZED_ADD, info, uuid1())

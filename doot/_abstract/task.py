@@ -31,7 +31,6 @@ from doot.enums import TaskFlags, TaskStateEnum, ActionResponseEnum
 from doot._abstract.parser import ParamSpecMaker_m
 from doot.structs import DootParamSpec, TaskStub, DootTaskSpec, DootTaskName, DootActionSpec
 
-
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
@@ -46,7 +45,6 @@ class Action_p(Protocol):
     @abc.abstractmethod
     def __call__(self, spec:DootActionSpec, task_state:dict) -> dict|bool|ActionResponseEnum|None:
         raise NotImplementedError()
-
 
 class TaskBase_i(ParamSpecMaker_m):
     """ Core Interface for Tasks """
@@ -72,6 +70,10 @@ class TaskBase_i(ParamSpecMaker_m):
         self.state                            = dict(spec.extra)
         self.state['_task_name']              = self.spec.name
         self.state['_action_step']            = 0
+
+    @property
+    def readable_name(self) -> str:
+        return str(self.spec.name.readable)
 
     @property
     def name(self) -> str:

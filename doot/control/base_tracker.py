@@ -152,9 +152,9 @@ class _InternalTrackerBase(TaskTracker_i):
             case True, True if not self.shadowing:
                 raise doot.errors.DootTaskTrackingError("Task with Duplicate Name not added: ", task.name)
             case True, True:
-                logging.warning("Task Shadowed by Duplicate Name: %s", task.name)
+                logging.warning("Task Shadowed by Duplicate Name: %s", task.readable_name)
             case False, True:
-                logging.debug("Defining a declared dependency task: %s", task.name)
+                logging.debug("Defining a declared dependency task: %s", task.readable_name)
 
         return task
 
@@ -176,7 +176,7 @@ class _InternalTrackerBase(TaskTracker_i):
 
     def _insert_dependencies(self, task):
         for pre in task.depends_on:
-            logging.debug("Connecting Dependency: %s -> %s", pre, task.name)
+            logging.debug("Connecting Dependency: %s -> %s", pre, task.readable_name)
             match pre:
                 case {"task": taskname}:
                     raise TypeError("Task Deps should not longer be dicts")
@@ -191,7 +191,7 @@ class _InternalTrackerBase(TaskTracker_i):
                     name_spec                 = DootTaskSpec.from_name(pre)
                     name_spec.ctor            = base_spec.name
                     name_spec.required_for.append(task.name)
-                    self.add_task(name_spec)
+                    self.add_task(name_spec, no_root_connection=True)
                 case DootTaskName() if in_graph and not has_args:
                     # just connect if the tracker already knows the task
                     self.task_graph.add_edge(str(pre), task.name, type=EDGE_E.TASK)
@@ -202,6 +202,7 @@ class _InternalTrackerBase(TaskTracker_i):
                     name_spec.required_for.append(task.name)
                     self._build_late.append(name_spec)
                 case str() | DootTaskName():
+                    logging.debug("Adding Dummy Dependency Task: %s -> %s", task.readable_name, pre)
                     # Otherwise add a dummy task until its defined
                     self.task_graph.add_node(str(pre), state=self.state_e.DECLARED, priority=self._declare_priority)
                     self.task_graph.add_edge(str(pre), task.name, type=EDGE_E.TASK)
@@ -210,7 +211,7 @@ class _InternalTrackerBase(TaskTracker_i):
 
     def _insert_dependents(self, task):
         for post in task.required_for:
-            logging.debug("Connecting Successor: %s -> %s", task.name, post)
+            logging.debug("Connecting Successor: %s -> %s", task.readable_name, post.readable)
             match post:
                 case {"task": taskname}:
                     raise TypeError("Task Deps should not longer be dicts")
@@ -220,7 +221,6 @@ class _InternalTrackerBase(TaskTracker_i):
                 case DootTaskArtifact():
                     post = self._prep_artifact(post)
                     self.task_graph.add_edge(task.name, post, type=EDGE_E.TASK_CROSS)
-
                 case DootTaskName() if all([(in_graph:=str(post) in self.task_graph), (has_args:=bool(post.args))]):
                     base_spec                 = self.tasks[str(post)].spec
                     name_spec                 = DootTaskSpec.from_name(post)
@@ -237,6 +237,7 @@ class _InternalTrackerBase(TaskTracker_i):
                     name_spec.depends_on.append(task.name)
                     self._build_late.append(name_spec)
                 case str() | DootTaskName():
+                    logging.debug("Adding Dummy Dependent Task: %s -> %s", task.readable_name, post)
                     # Otherwise add a dummy task until its defined
                     self.task_graph.add_node(str(post), state=self.state_e.DECLARED, priority=self._declare_priority)
                     self.task_graph.add_edge(task.name, str(post), type=EDGE_E.TASK)
@@ -334,6 +335,7 @@ class BaseTracker(_InternalTrackerBase):
             assert(isinstance(curr, DootTaskSpec))
             self.add_task(curr)
 
+        logging.debug("Validating Graph")
         return all([nx.is_directed_acyclic_graph(self.task_graph),
                     self.declared_set() == self.defined_set()
                    ])

@@ -256,7 +256,7 @@ class DootTaskSpec:
 
                     specialized[field] = value
 
-        logging.debug("Specialized Task: %s on top of: %s", data.name, self.name)
+        logging.debug("Specialized Task: %s on top of: %s", data.name.readable, self.name)
         return DootTaskSpec.from_dict(specialized)
 
     def build(self, ensure=Any):

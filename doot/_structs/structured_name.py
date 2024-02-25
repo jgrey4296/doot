@@ -45,6 +45,13 @@ from doot.enums import TaskFlags, ReportEnum
 PAD           : Final[int] = 15
 TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
 
+def aware_splitter(x, sep="."):
+    match x:
+        case str():
+            return x.split(sep)
+        case _:
+            return [x]
+
 @dataclass(eq=False, slots=True)
 class DootStructuredName:
     """ A Complex name class for identifying tasks and classes.
@@ -54,34 +61,42 @@ class DootStructuredName:
 
     """
     head            : list[str]          = field(default_factory=list)
-    tail            : list[str]          = field(default_factory=list)
+    tail            : list[str|UUID]     = field(default_factory=list)
 
     separator       : str                = field(default=doot.constants.TASK_SEP, kw_only=True)
     subseparator    : str                = field(default=".", kw_only=True)
 
     def __post_init__(self):
+        sub_split = ftz.partial(aware_splitter, sep=self.subseparator)
         match self.head:
             case None | []:
                 self.head = ["default"]
             case ["tasks", x] if x.startswith('"') and x.endswith('"'):
-                self.head = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(self.subseparator), x[1:-1]))
+                self.head = ftz.reduce(lambda x, y: x + y, map(sub_split, x[1:-1]))
             case ["tasks", *xs]:
-                self.head = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(self.subseparator), xs))
+                self.head = ftz.reduce(lambda x, y: x + y, map(sub_split, xs))
             case list():
-                self.head = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(self.subseparator), self.head))
+                self.head = ftz.reduce(lambda x, y: x + y, map(sub_split, self.head))
             case str():
                 self.head = self.head.split(self.subseparator)
+            case _:
+                self.head = [self.head]
 
         match self.tail:
             case None | []:
                 self.tail = ["default"]
             case list():
-                self.tail = ftz.reduce(lambda x, y: x + y, map(lambda x: x.split(self.subseparator), self.tail))
+                self.tail = ftz.reduce(lambda x, y: x + y, map(sub_split, self.tail))
             case str():
                 self.tail = self.tail.split(self.subseparator)
+            case _:
+                self.tail = [self.tail]
 
     def __hash__(self):
         return hash(str(self))
+
+    def __str__(self):
+        return self.head_str + self.separator + self.tail_str
 
     def __lt__(self, other) -> bool:
         """ Compare two names, return true if other is a subname of this name
@@ -112,7 +127,7 @@ class DootStructuredName:
         return str(self) == str(other)
 
     def tail_str(self):
-        return self.subseparator.join(self.tail)
+        return self.subseparator.join(str(x) for x in self.tail)
 
     def head_str(self):
-        return self.subseparator.join(self.head)
+        return self.subseparator.join(str(x) for x in self.head)
