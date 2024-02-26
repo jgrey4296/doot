@@ -128,12 +128,12 @@ class DootTaskName(DootStructuredName):
 
     @property
     def task(self) -> str:
-        return self.subseparator.join([x if not isinstance(x, UUID) else "${}$".format(x.hex) for x in self.tail])
+        return self.subseparator.join([str(x) if not isinstance(x, UUID) else "${}$".format(x.hex) for x in self.tail])
 
     @property
     def readable(self):
         group = self.group
-        tail = self.subseparator.join([x if not isinstance(x, UUID) else "<UUID>" for x in self.tail])
+        tail = self.subseparator.join([str(x) if not isinstance(x, UUID) else "<UUID>" for x in self.tail])
         return "{}{}{}".format(group, self.separator, tail)
 
     def root(self):
