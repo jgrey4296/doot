@@ -211,7 +211,7 @@ class _InternalTrackerBase(TaskTracker_i):
 
     def _insert_dependents(self, task):
         for post in task.required_for:
-            logging.debug("Connecting Successor: %s -> %s", task.readable_name, post.readable)
+            logging.debug("Connecting Successor: %s -> %s", task.readable_name, post)
             match post:
                 case {"task": taskname}:
                     raise TypeError("Task Deps should not longer be dicts")

@@ -113,9 +113,6 @@ class DootRunner(BaseRunner, TaskRunner_i):
         with logctx(job.spec.print_levels.on_fail(head_level).head()) as p:
             p.info("---- Job %s: %s", self.step, job.name, extra={"colour":"magenta"})
 
-            if bool(job.spec.actions): # and job != mini...
-                p.warning("-- Job %s: Actions were found in job spec, but jobs don't run actions", job.name)
-
         self.reporter.trace(job.spec, flags=ReportEnum.JOB | ReportEnum.INIT)
 
         count = 0

@@ -74,7 +74,7 @@ class TestRunner:
         tracker_m.update_state.assert_called()
         assert(tracker_m.update_state.call_count == 3)
         for call in tracker_m.update_state.call_args_list:
-            assert(call.args[0].name in ["first", "second", "third"])
+            assert(call.args[0].name in ["default::first", "default::second", "default::third"])
             assert(call.args[1] is tracker_m.state_e.SUCCESS)
 
         expand_job.assert_not_called()
@@ -83,7 +83,7 @@ class TestRunner:
         execute_task.assert_called()
         assert(execute_task.call_count == 3)
         for call in execute_task.call_args_list:
-            assert(call.args[0].name in ["first", "second", "third"])
+            assert(str(call.args[0].name) in ["default::first", "default::second", "default::third"])
         ##-- end check result
 
     def test_jobs_expand(self, ctor, mocker, setup):
