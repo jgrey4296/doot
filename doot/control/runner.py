@@ -41,8 +41,7 @@ import doot.errors
 from doot.enums import ReportEnum, ActionResponseEnum as ActRE
 from doot._abstract import Job_i, Task_i, FailPolicy_p
 from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i, ReportLine_i, Action_p, Reporter_i
-from doot.structs import DootTaskArtifact
-from doot.structs import DootTaskSpec, DootActionSpec
+from doot.structs import DootTaskArtifact, DootTaskSpec, DootActionSpec, DootTaskName
 from doot.control.base_runner import BaseRunner, logctx
 from doot.utils.signal_handler import SignalHandler
 
@@ -124,7 +123,6 @@ class DootRunner(BaseRunner, TaskRunner_i):
             for task in job.build():
                 match task:
                     case Job_i():
-                        p.warning("Jobs probably shouldn't build jobs: %s : %s", job.name, task.name)
                         self.tracker.add_task(task, no_root_connection=True)
                     case Task_i():
                         self.tracker.add_task(task, no_root_connection=True)
@@ -135,6 +133,26 @@ class DootRunner(BaseRunner, TaskRunner_i):
                         raise doot.errors.DootTaskError("Job %s Built a Bad Value: %s", job.name, task, task=job.spec)
 
                 count += 1
+
+            for action in job.actions:
+                match action:
+                    case DootActionSpec() if action.fun is None:
+                        self.reporter.trace(job.spec, flags=ReportEnum.FAIL | ReportEnum.JOB)
+                        raise doot.errors.DootTaskError("Job %s Failed: Produced an action with no callable: %s", job.name, action, task=job.spec)
+                    case DootActionSpec():
+                        action_result = self._execute_action(count, action, job)
+                    case _:
+                        self.reporter.trace(job.spec, flags=ReportEnum.FAIL | ReportEnum.JOB)
+                        raise doot.errors.DootTaskError("Task %s Failed: Produced a bad action: %s", job.name, action, task=job.spec)
+
+                match action_result:
+                    case list():
+                        for task in action_result:
+                            self.tracker.add_task(task, no_root_connection=True)
+                            count += 1
+                    case ActRE.SKIP:
+                        p.info("------ Remaining Job Actions skipped by Action Instruction")
+                        break
 
         logmod.debug("-- Job %s Expansion produced: %s tasks", job.name, count)
         self.reporter.trace(job.spec, flags=ReportEnum.JOB | ReportEnum.SUCCEED)
@@ -201,6 +219,8 @@ class DootRunner(BaseRunner, TaskRunner_i):
             case False | ActRE.FAIL:
                 self.reporter.trace(action, flags=ReportEnum.FAIL | ReportEnum.ACTION)
                 raise doot.errors.DootTaskFailed("Task %s Action Failed: %s", task.name, action, task=task.spec)
+            case list() if all(isinstance(x, (DootTaskName, DootTaskSpec)) for x in result):
+                pass
             case _:
                 self.reporter.trace(action, flags=ReportEnum.FAIL | ReportEnum.ACTION)
                 raise doot.errors.DootTaskError("Task %s Action %s Failed: Returned an unplanned for value: %s", task.name, action, result, task=task.spec)

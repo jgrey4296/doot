@@ -205,14 +205,10 @@ class Task_i(TaskBase_i):
         """lazy creation of action instances"""
         raise NotImplementedError()
 
-class Job_i(TaskBase_i):
+class Job_i(Task_i):
     """
-    builds task descriptions, produces no actions
+    builds tasks
     """
-
-    def __init__(self, spec:DootTaskSpec):
-        super().__init__(spec)
-        self.args       : dict                 = {}
 
     @classmethod
     def class_help(cls) -> str:

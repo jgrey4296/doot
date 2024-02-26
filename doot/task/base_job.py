@@ -39,9 +39,10 @@ from doot.structs import DootTaskSpec, TaskStub, TaskStubPart, DootTaskName, Doo
 from doot._abstract import Job_i, Task_i
 from doot.mixins.importer import Importer_M
 from doot.errors import DootDirAbsent
+from doot.task.base_task import DootTask
 
 @doot.check_protocol
-class DootJob(Job_i, Importer_M):
+class DootJob(Job_i, DootTask):
     """ Util Class for building single tasks
       wraps with setup and teardown tasks,
       manages cleaning,
