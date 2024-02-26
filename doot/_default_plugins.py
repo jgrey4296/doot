@@ -64,63 +64,73 @@ DEFAULT_PLUGINS['runner']      = [("basic",      "doot.control.runner:DootRunner
                                 ]
 
 DEFAULT_PLUGINS['parser']      = [("basic",   "doot.parsers.flexible:DootFlexibleParser")]
-DEFAULT_PLUGINS['action']      = [("basic"  ,    "doot.actions.base_action:DootBaseAction"),
 
+DEFAULT_PLUGINS['action']      = []
+
+DEFAULT_PLUGINS['action']     += [("basic"  ,    "doot.actions.base_action:DootBaseAction"),
                                   ("shell" ,     "doot.actions.shell:DootShellAction"),
                                   ("interact",   "doot.actions.shell:DootInteractiveAction"),
-
                                   ("user",       "doot.actions.io:UserInput"),
                                   ("read"  ,     "doot.actions.io:ReadAction"),
                                   ("copy"  ,     "doot.actions.io:CopyAction"),
                                   ("move",       "doot.actions.io:MoveAction"),
                                   ("touch",      "doot.actions.io:TouchFileAction"),
-
-                                  ("link!",      "doot.actions.io:LinkAction"),
+]
+DEFAULT_PLUGINS['action']     += [("link!",      "doot.actions.io:LinkAction"),
                                   ("backup!",    "doot.actions.io:BackupAction"),
                                   ("write!" ,    "doot.actions.io:WriteAction"),
                                   ("dir!",       "doot.actions.io:EnsureDirectory"),
                                   ("delete!",    "doot.actions.io:DeleteAction"),
+                                  ("break!",     "doot.actions.util:action_debugger"),
+                                  ("type!",      "doot.actions.util:typecheck"),
+]
 
-                                  ("json.read",  "doot.actions.json:ReadJson"),
+DEFAULT_PLUGINS['action']     += [("skipIfFile", "doot.actions.control_flow:SkipIfFileExists"),
+                                  ("pred?",      "doot.actions.control_flow:CancelOnPredicateAction"),
+                                  ("installed?", "doot.actions.control_flow:AssertInstalled"),
+                                  ("dir?",       "doot.actions.io:EnsureDirectory"),
+]
 
+DEFAULT_PLUGINS['action']     += [("json.read",  "doot.actions.json:ReadJson"),
                                   ("tar!",       "doot.actions.compression:TarCompressAction"),
                                   ("untar!",     "doot.actions.compression:TarDecompressAction"),
                                   ("tar.list",   "doot.actions.compression:TarListAction"),
                                   ("zip.new",    "doot.action.compression:ZipNewAction"),
                                   ("zip.add",    "doot.actions.compression:ZipAddAction"),
                                   ("zip.get",    "doot.actions.compression:ZipGetAction"),
-                                  ("zip.list",  "doot.actions.compression:ZipListAction"),
+                                  ("zip.list",   "doot.actions.compression:ZipListAction"),
+]
 
-
-                                  ("break!",     "doot.actions.util:action_debugger"),
-                                  ("type!",      "doot.actions.util:typecheck"),
-
-                                  ("putPost",    "doot.actions.postbox:PutPostAction"),
+DEFAULT_PLUGINS['action']     += [("putPost",    "doot.actions.postbox:PutPostAction"),
                                   ("getPost",    "doot.actions.postbox:GetPostAction"),
                                   ("addState",   "doot.actions.state:AddStateAction"),
                                   ("addFn",      "doot.actions.state:AddStateFn"),
                                   ("pathParts",  "doot.actions.state:PathParts"),
+]
 
-                                  ("sayTime",    "doot.actions.speak:SpeakTimeAction"),
-
+DEFAULT_PLUGINS['action']     += [("sayTime",    "doot.actions.speak:SpeakTimeAction"),
                                   ("log",        "doot.actions.control_flow:LogAction"),
-                                  ("skipIfFile", "doot.actions.control_flow:SkipIfFileExists"),
-                                  ("pred?",      "doot.actions.control_flow:CancelOnPredicateAction"),
-                                  ("installed?", "doot.actions.control_flow:AssertInstalled"),
-                              ]
+]
+
+DEFAULT_PLUGINS['action']     += [("job.queue",    "doot.actions.job_actions:JobQueueAction"),
+                                  ("job.walk",     "doot.actions.job_actions:JobWalkAction"),
+                                  ("job.limit",    "doot.actions.job_actions:JobLimitAction"),
+                                  ("job.expand",   "doot.actions.job_actions:JobExpandAction"),
+                                  ("job.shadow",   "doot.actions.job_actions:JobInjectShadowAction"),
+]
 
 DEFAULT_PLUGINS['task']         = [("job"  ,     "doot.task.base_job:DootJob"),
                                    ("task" ,     "doot.task.base_task:DootTask"),
                                    ]
 
-DEFAULT_PLUGINS['mixins']      = [("job:expander", "doot.mixins.job.expander:Expander_M"),
-                                  ("job:postbox", "doot.mixins.job.expander:PostBoxExpander_M"),
-                                  ("job:walker", "doot.mixins.job.expander:WalkExpander_M"),
-                                  ("job:shadow", "doot.mixins.job.shadower:WalkShadower_M"),
-                                  ("job:sub",    "doot.mixins.job.subtask:SubTask_M"),
-                                  ("job:terse",  "doot.mixins.job.terse:TerseBuilder_M"),
-                                  ("job:headonly", "doot.mixins.job.terse:HeadOnly_M"),
-                                  ("job:setup",  "doot.mixins.job.setup:SetupStage_M"),
-                                  ("job:limit", "doot.mixins.job.limiter:TaskLimit_M"),
-                                  ("job:match", "doot.mixins.job.matcher:PatternMatcher_M"),
+DEFAULT_PLUGINS['mixins']      = [("job:expander",   "doot.mixins.job.expander:Expander_M"),
+                                  ("job:postbox",    "doot.mixins.job.expander:PostBoxExpander_M"),
+                                  ("job:walker",     "doot.mixins.job.expander:WalkExpander_M"),
+                                  ("job:shadow",     "doot.mixins.job.shadower:WalkShadower_M"),
+                                  ("job:sub",        "doot.mixins.job.subtask:SubTask_M"),
+                                  ("job:terse",      "doot.mixins.job.terse:TerseBuilder_M"),
+                                  ("job:headonly",   "doot.mixins.job.terse:HeadOnly_M"),
+                                  ("job:setup",      "doot.mixins.job.setup:SetupStage_M"),
+                                  ("job:limit",      "doot.mixins.job.limiter:TaskLimit_M"),
+                                  ("job:match",      "doot.mixins.job.matcher:PatternMatcher_M"),
                                   ]
