@@ -68,9 +68,3 @@ class SimpleTaskExample(Human_M, DootTask):
 
     def _tail(self, spec, state):
         printer.info("Another Big Number: %s", self.human_sizes(50_234_235))
-
-
-"""
-
-
-"""

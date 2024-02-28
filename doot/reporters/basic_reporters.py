@@ -49,10 +49,3 @@ class TimeReporter(Reporter_i):
     def __call__(self, trace):
         time = trace.time.strftime("%H:%M")
         return "{:10} : {}".format(time, str(trace))
-
-
-
-"""
-
-
-"""
