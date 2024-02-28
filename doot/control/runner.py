@@ -152,6 +152,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
                         break
 
         logmod.debug("-- Job %s Expansion produced: %s tasks", job.name, count)
+        job.state.clear()
         self.reporter.trace(job.spec, flags=ReportEnum.JOB | ReportEnum.SUCCEED)
 
     def _execute_task(self, task:Task_i) -> None:
@@ -181,6 +182,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
                     break
 
             self.reporter.trace(task.spec, flags=ReportEnum.TASK | ReportEnum.SUCCEED)
+            task.state.clear()
             p.debug("------ Task %s: Actions Complete", task.name, extra={"colour":"cyan"})
             p.debug("------ Task Executed %s Actions", action_count)
 
