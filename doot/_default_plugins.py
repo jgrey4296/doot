@@ -91,14 +91,19 @@ DEFAULT_PLUGINS['action']     += [("skipIfFile", "doot.actions.control_flow:Skip
                                   ("dir?",       "doot.actions.io:EnsureDirectory"),
 ]
 
-DEFAULT_PLUGINS['action']     += [("json.read",  "doot.actions.json:ReadJson"),
-                                  ("tar!",       "doot.actions.compression:TarCompressAction"),
-                                  ("untar!",     "doot.actions.compression:TarDecompressAction"),
-                                  ("tar.list",   "doot.actions.compression:TarListAction"),
-                                  ("zip.new",    "doot.action.compression:ZipNewAction"),
-                                  ("zip.add",    "doot.actions.compression:ZipAddAction"),
-                                  ("zip.get",    "doot.actions.compression:ZipGetAction"),
-                                  ("zip.list",   "doot.actions.compression:ZipListAction"),
+DEFAULT_PLUGINS['action']     += [("json.read",     "doot.actions.json:ReadJson"),
+                                  ("json.write",    "doot.actions.json:WriteJson"),
+                                  ("json.parse",    "doot.actions.json:ParseJson"),
+                                  ("json.nl.read",  "doot.actions.json:ReadJsonLines"),
+                                  ("json.nl.write", "doot.actions.json:WriteJsonLines"),
+
+                                  ("tar!",          "doot.actions.compression:TarCompressAction"),
+                                  ("untar!",        "doot.actions.compression:TarDecompressAction"),
+                                  ("tar.list",      "doot.actions.compression:TarListAction"),
+                                  ("zip.new",       "doot.action.compression:ZipNewAction"),
+                                  ("zip.add",       "doot.actions.compression:ZipAddAction"),
+                                  ("zip.get",       "doot.actions.compression:ZipGetAction"),
+                                  ("zip.list",      "doot.actions.compression:ZipListAction"),
 ]
 
 DEFAULT_PLUGINS['action']     += [("putPost",    "doot.actions.postbox:PutPostAction"),
