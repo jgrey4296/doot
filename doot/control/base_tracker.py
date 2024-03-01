@@ -134,6 +134,14 @@ class _InternalTrackerBase(TaskTracker_i):
                     raise doot.errors.DootTaskTrackingError("Attempt to specialize task failed: %s", spec.name)
 
                 task : TaskBase_i = cli_specialized.build()
+            case DootTaskSpec(ctor=str() as ctor):
+                base_spec           = self.tasks.get(ctor).spec
+                initial_specialized = base_spec.specialize_from(spec)
+                cli_specialized     = self._insert_cli_args_into_spec(initial_specialized)
+                if cli_specialized.ctor is None:
+                    raise doot.errors.DootTaskTrackingError("Attempt to specialize task failed: %s", spec.name)
+
+                task : TaskBase_i = cli_specialized.build()
             case DootTaskSpec(ctor=DootCodeReference() as ctor) if spec.check(ensure=TaskBase_i):
                 cli_specialized   = self._insert_cli_args_into_spec(spec)
                 task : TaskBase_i = cli_specialized.build()
