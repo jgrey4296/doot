@@ -42,10 +42,11 @@ import string
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.constants import KEY_PATTERN, MAX_KEY_EXPANSIONS
+from doot.constants import KEY_PATTERN, MAX_KEY_EXPANSIONS, STATE_TASK_NAME_K
 from doot._structs.action_spec import DootActionSpec
 from doot._structs.task_spec import DootTaskSpec
 from doot._structs.artifact import DootTaskArtifact
+from doot._structs.code_ref import DootCodeReference
 
 PATTERN        : Final[re.Pattern]         = re.compile("{(.+?)}")
 FAIL_PATTERN   : Final[re.Pattern]         = re.compile("[^a-zA-Z_{}/0-9-]")
@@ -69,8 +70,8 @@ class KWrapper:
     arguments are added to the tail of the action args, in order of the decorators.
     the name of the expansion is expected to be the name of the action parameter,
     with a "_" prepended if the name would conflict with a keyword., or with "_ex" as a suffix
-    eg: @DootKey.wrap.paths("from") -> def __call__(self, spec, state, _from):...
-    or: @DootKey.wrap.paths("from") -> def __call__(self, spec, state, from_ex):...
+    eg: @DootKey.kwrap.paths("from") -> def __call__(self, spec, state, _from):...
+    or: @DootKey.kwrap.paths("from") -> def __call__(self, spec, state, from_ex):...
     """
 
     @staticmethod
@@ -157,6 +158,11 @@ class KWrapper:
 
         setattr(action_expands, KEYS_HANDLED, True)
         return action_expands
+
+    @staticmethod
+    def basename(f):
+        KWrapper._annotate_keys(f, [DootKey.make(STATE_TASK_NAME_K, exp_hint="type")])
+        return KWrapper._add_key_handler(f)
 
     @staticmethod
     def expands(*args, hint:dict|None=None, **kwargs):
@@ -251,6 +257,18 @@ class KWrapper:
 
         return expand_wrapper
 
+    @staticmethod
+    def references(*args, **kwargs):
+        """ mark keys to use as to_coderef imports """
+        exp_hint = {"expansion": "coderef", "kwargs" : {} }
+        keys = [DootKey.make(x, exp_hint=exp_hint, **kwargs) for x in args]
+
+        def expand_wrapper(f):
+            KWrapper._annotate_keys(f, keys)
+            return KWrapper._add_key_handler(f)
+
+        return expand_wrapper
+
 class DootFormatter(string.Formatter):
     """
       A Formatter for expanding arguments based on action spec kwargs, and task state, and cli args
@@ -295,7 +313,7 @@ class DootFormatter(string.Formatter):
         insist            = kwargs.get("_insist", False)
         state             = kwargs.get('_state', None) or {}
         locs              = kwargs.get("_locs", None)
-        cli               = doot.args.on_fail({}).tasks[str(state.get('_task_name', None))]()
+        cli               = doot.args.on_fail({}).tasks[str(state.get(STATE_TASK_NAME_K, None))]()
         replacement       = cli.get(key, None)
         if replacement is None:
             spec        = kwargs.get('_spec')
@@ -418,6 +436,8 @@ class DootKey(abc.ABC):
                 return self.redirect(spec)
             case {"expansion": "redirect_multi"}:
                 return self.redirect_multi(spec)
+            case {"expansion": "coderef"}:
+                return self.to_coderef(spec, state)
             case x:
                 raise doot.errors.DootKeyError("Key Called with Bad Key Expansion Type", self, x)
 
@@ -477,6 +497,16 @@ class DootKey(abc.ABC):
     @abc.abstractmethod
     def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[DootKey]=None, on_fail=Any, locs:DootLocations=None, **kwargs) -> str:
         pass
+
+    def to_coderef(self, spec, state) -> None|DootCodeReference:
+        if self not in spec.kwargs and self not in state:
+            return None
+        try:
+            expanded = self.expand(spec, state)
+            ref = DootCodeReference.from_str(expanded)
+            return ref
+        except doot.errors.DootError:
+            return None
 
 class DootNonKey(str, DootKey):
     """
@@ -641,9 +671,9 @@ class DootSimpleKey(str, DootKey):
             case None:
                 kwargs = {}
 
-        task_name         = state.get("_task_name", None) if state else None
+        task_name         = state.get(STATE_TASK_NAME_K, None) if state else None
         if task_name:
-            cli           = doot.args.on_fail({}).tasks[str(state.get('_task_name', None))]()
+            cli           = doot.args.on_fail({}).tasks[str(state.get(STATE_TASK_NAME_K, None))]()
         else:
             cli           = {}
 

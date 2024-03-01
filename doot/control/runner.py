@@ -144,6 +144,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
 
                 match action_result:
                     case list():
+                        printer.info("Queuing: %s", [str(x.name) for x in action_result])
                         for task in action_result:
                             self.tracker.add_task(task, no_root_connection=True)
                             count += 1
@@ -158,7 +159,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
     def _execute_task(self, task:Task_i) -> None:
         """ execute a single task's actions """
         with logctx(task.spec.print_levels.on_fail(head_level).head()) as p:
-            p.info("---- Task %s: %s", self.step, task.name, extra={"colour":"magenta"})
+            p.info("---- Task %s: %s", self.step, task.spec.name.readable, extra={"colour":"magenta"})
 
         self.reporter.trace(task.spec, flags=ReportEnum.TASK | ReportEnum.INIT)
 

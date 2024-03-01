@@ -274,11 +274,11 @@ class WalkExpander_M(Expander_M):
                     parts = [fpath.stem]
                 curr = 1
 
-                name = base_name.subtask(parts[-curr])
+                name = parts[-curr]
                 logging.debug("Building Unique name for: %s : %s", name, fpath)
                 while name in found_names and curr < len(parts):
                     curr += 1
-                    name = base_name.subtask(*parts[-curr:])
+                    name = ".".join(parts[-curr:])
 
                 found_names.add(name)
                 yield dict(name=name,

@@ -55,6 +55,8 @@ SPECIALIZED_ADD         : Final[str]              = "$gen$"
 INTERNAL_TASK_PREFIX    : Final[str]              = "_"
 FILE_DEP_PREFIX         : Final[str]              = "file:>"
 PARAM_ASSIGN_PREFIX     : Final[str]              = "--"
+STATE_TASK_NAME_K       : Final[str]              = "_task_name"
+STATE_ARG_EXPANSION     : Final[str]              = "$arg$"
 
 DEFAULT_CLI_CMD         : Final[str]              = "run"
 

@@ -27,6 +27,7 @@ from typing import Generator, NewType, Protocol, Any, runtime_checkable
 from tomlguard import TomlGuard
 import doot.errors
 
+from doot.constants import STATE_TASK_NAME_K
 from doot.enums import TaskFlags, TaskStateEnum, ActionResponseEnum
 from doot._abstract.parser import ParamSpecMaker_m
 from doot.structs import DootParamSpec, TaskStub, DootTaskSpec, DootTaskName, DootActionSpec
@@ -68,7 +69,7 @@ class TaskBase_i(ParamSpecMaker_m):
         self.flags      : TaskFlags           = TaskFlags.JOB
         self._records   : list[Any]           = []
         self.state                            = dict(spec.extra)
-        self.state['_task_name']              = self.spec.name
+        self.state[STATE_TASK_NAME_K]         = self.spec.name
         self.state['_action_step']            = 0
 
     @property

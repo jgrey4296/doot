@@ -74,6 +74,7 @@ def mock_job(name, pre=None, post=None, spec=None, **kwargs):
                        depends_on=[],
                        required_for=[],
                        name=name,
+                       state={},
                        **kwargs)
     _add_prop(task_m, "name", name)
     task_m.spec = spec or mock_task_spec(name=name)

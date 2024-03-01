@@ -139,10 +139,13 @@ class DootTaskName(DootStructuredName):
     def root(self):
         return f"{self.head_str()}{self.separator}{self.tail[0]}"
 
+    def task_head(self):
+        return self.subtask(doot.constants.SUBTASKED_HEAD)
+
     def subtask(self, *subtasks, subgroups:list[str]|None=None) -> DootTaskName:
         args = self.args.copy() if self.args else None
         subs = []
-        match subtasks:
+        match [x for x in subtasks if bool(x)]:
             case [int() as i, DootTaskName() as x]:
                 subs.append(str(i))
                 subs.append(x.task.removeprefix(self.task + "."))
