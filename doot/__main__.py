@@ -48,7 +48,7 @@ def main():
         from doot.loaders.plugin_loader import DootPluginLoader
         from doot.control.overlord import DootOverlord
         overlord  = DootOverlord(loaders={"plugin": DootPluginLoader().setup(sys.argv[:]) },
-                                 config_filenames=[doot.constants.DEFAULT_LOAD_TARGETS],
+                                 config_filenames=[doot.constants.paths.DEFAULT_LOAD_TARGETS],
                                  log_config=log_config,
                                  args=sys.argv[:])
 

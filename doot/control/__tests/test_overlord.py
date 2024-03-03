@@ -38,14 +38,14 @@ class TestOverlord:
         mocker.patch("doot.loaders.task_loader.DootTaskLoader")
         overlord = DootOverlord()
         assert(bool(overlord.plugins))
-        assert(all(x in overlord.plugins for x in doot.constants.DEFAULT_PLUGINS.keys()))
+        assert(all(x in overlord.plugins for x in doot.aliases.keys()))
 
     def test_cmds_loaded(self, mocker):
         mocker.patch("sys.argv", ["doot"])
         mocker.patch("doot.loaders.task_loader.DootTaskLoader")
         overlord = DootOverlord()
         assert(bool(overlord.cmds))
-        assert(len(overlord.cmds) >= len(doot.constants.DEFAULT_PLUGINS['command']))
+        assert(len(overlord.cmds) >= len(doot.aliases.command))
 
     def test_tasks_loaded(self, mocker):
         mocker.patch("sys.argv", ["doot"])

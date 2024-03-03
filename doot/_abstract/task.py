@@ -25,9 +25,9 @@ import types
 from typing import Generator, NewType, Protocol, Any, runtime_checkable
 
 from tomlguard import TomlGuard
-import doot.errors
 
-from doot.constants import STATE_TASK_NAME_K
+import doot
+import doot.errors
 from doot.enums import TaskFlags, TaskStateEnum, ActionResponseEnum
 from doot._abstract.parser import ParamSpecMaker_m
 from doot.structs import DootParamSpec, TaskStub, DootTaskSpec, DootTaskName, DootActionSpec
@@ -35,6 +35,8 @@ from doot.structs import DootParamSpec, TaskStub, DootTaskSpec, DootTaskName, Do
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
+
+STATE_TASK_NAME_K : Final[str] = doot.constants.patterns.STATE_TASK_NAME_K
 
 @runtime_checkable
 class Action_p(Protocol):

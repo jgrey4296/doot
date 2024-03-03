@@ -31,10 +31,11 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import importlib
+import doot
 import doot.errors
-from doot.constants import IMPORT_SEP
 from doot._abstract.loader import PluginLoader_p
 
+IMPORT_SEP = doot.constants.patterns.IMPORT_SEP
 ACTION_CTORS = {}
 
 if PluginLoader_p.loaded:

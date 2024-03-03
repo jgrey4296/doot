@@ -39,8 +39,8 @@ logging = logmod.getLogger(__name__)
 
 import importlib
 from tomlguard import TomlGuard
+import doot
 import doot.errors
-import doot.constants
 from doot._structs.structured_name import DootStructuredName
 
 @dataclass(eq=False, slots=True)
@@ -49,13 +49,13 @@ class DootCodeReference(DootStructuredName):
       A reference to a class or function. can be created from a string (so can be used from toml),
       or from the actual object (from in python)
     """
-    separator : str                              = field(default=doot.constants.IMPORT_SEP, kw_only=True)
+    separator : str                              = field(default=doot.constants.patterns.IMPORT_SEP, kw_only=True)
     _mixins   : list[DootCodeReference]          = field(default_factory=list, kw_only=True)
     _type     : None|type                        = field(default=None, kw_only=True)
 
     @classmethod
     def from_str(cls, name:str):
-        if doot.constants.TASK_SEP in name:
+        if doot.constants.patterns.TASK_SEP in name:
             raise doot.errors.DootError("Code References should use a single colon, not double")
 
         if ":" in name:
@@ -115,7 +115,7 @@ class DootCodeReference(DootStructuredName):
         for mix in mixins:
             match mix:
                 case str() if plugins is not None:
-                    ref = DootCodeReference.from_alias(mix, "mixins", plugins)
+                    ref = DootCodeReference.from_alias(mix, "mixin", plugins)
                 case str():
                     ref = DootCodeReference.from_str(mix)
                 case DootCodeReference():

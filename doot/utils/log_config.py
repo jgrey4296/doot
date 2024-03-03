@@ -34,7 +34,6 @@ logging = logmod.getLogger(__name__)
 import os
 from sys import stdout, stderr
 import doot
-import doot.constants
 from doot.utils.log_colour import DootColourFormatter, DootColourStripFormatter
 
 env : dict = os.environ
@@ -61,7 +60,7 @@ class DootLogConfig:
         # Root Logger for everything
         self.root    = logmod.root
         # EXCEPT this, which replaces 'print(x)'
-        self.printer               = logmod.getLogger(doot.constants.PRINTER_NAME)
+        self.printer               = logmod.getLogger(doot.constants.printer.PRINTER_NAME)
 
         self.file_handler          = logmod.FileHandler(pl.Path() / "log.doot", mode='w')
         self.stream_handler        = logmod.StreamHandler(stdout)

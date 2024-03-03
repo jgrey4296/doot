@@ -31,12 +31,12 @@ from collections import defaultdict
 from time import sleep
 import sh
 import doot
-from doot.constants import STATE_TASK_NAME_K
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
 from doot.structs import DootKey
 
 printer = logmod.getLogger("doot._printer")
+STATE_TASK_NAME_K : Final[str] = doot.constants.patterns.STATE_TASK_NAME_K
 
 ##-- expansion keys
 FROM_KEY    : Final[DootKey] = DootKey.make("from")

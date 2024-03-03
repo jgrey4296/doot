@@ -38,8 +38,8 @@ logging = logmod.getLogger(__name__)
 
 import importlib
 from tomlguard import TomlGuard
+import doot
 import doot.errors
-import doot.constants
 from doot.enums import TaskFlags, ReportEnum
 from doot._structs.structured_name import DootStructuredName
 from doot._structs.task_name import DootTaskName
@@ -59,7 +59,7 @@ class DootStructuredName(DootStructuredName):
     head            : list[str]          = field(default_factory=list)
     tail            : list[str]          = field(default_factory=list)
 
-    separator       : str                = field(default=doot.constants.TASK_SEP, kw_only=True)
+    separator       : str                = field(default=doot.constants.patterns.TASK_SEP, kw_only=True)
     subseparator    : str                = field(default=".", kw_only=True)
 
     @staticmethod
@@ -69,9 +69,9 @@ class DootStructuredName(DootStructuredName):
                 return name
             case type():
                 return DootCodeReference.from_type(name)
-            case str() if doot.constants.TASK_SEP in name:
+            case str() if doot.constants.patterns.TASK_SEP in name:
                 return DootTaskName.from_str(name)
-            case str() if doot.constants.IMPORT_SEP in name:
+            case str() if doot.constants.patterns.IMPORT_SEP in name:
                 return DootTaskName.from_str(name)
             case _:
                 raise doot.errors.DootError("Tried to build a name from a bad value", name)

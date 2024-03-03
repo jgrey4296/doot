@@ -34,9 +34,9 @@ printer = logmod.getLogger("doot._printer")
 import doot
 from doot.structs import DootParamSpec, DootTaskSpec, DootCodeReference
 from doot._abstract import Command_i
-from doot.constants import NON_DEFAULT_KEY
 from collections import defaultdict
 
+NON_DEFAULT_KEY : Final[str] = doot.constants.misc.NON_DEFAULT_KEY
 
 class HelpCmd(Command_i):
     _name      = "help"

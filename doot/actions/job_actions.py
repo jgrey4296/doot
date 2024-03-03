@@ -42,7 +42,6 @@ import random
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-import doot.constants
 from doot._abstract import Action_p
 from doot.structs import DootKey, DootTaskSpec, DootTaskName, DootCodeReference
 
@@ -124,7 +123,7 @@ class JobExpandAction(Action_p):
         match inject:
              case dict() | TomlGuard():
                  inject_base.update(inject)
-                 inject_arg_key = [k for k,v in inject.items() if v == doot.constants.STATE_ARG_EXPANSION]
+                 inject_arg_key = [k for k,v in inject.items() if v == doot.constants.patterns.STATE_ARG_EXPANSION]
              case str():
                  inject_arg_key = [inject]
 
@@ -286,38 +285,6 @@ class JobLimitAction(Action_p):
 
         return { update : limited }
 
-class JobInjectShadowAction(Action_p):
-    """
-      Inject a shadow path into each task entry
-    """
-
-    def _shadow_path(self, fpath:pl.Path, roots:list, shadow_root:pl.Path) -> pl.Path:
-        shadow_root = doot.locs[self.spec.extra.shadow_root]
-        rel_path    = self._rel_path(fpath, roots)
-        result      = shadow_root / rel_path
-        if result == fpath:
-            raise doot.errors.DootLocationError("Shadowed Path is same as original", fpath)
-
-        return result.parent
-
-    def _rel_path(self, fpath, roots) -> pl.Path:
-        """
-        make the path relative to the appropriate root
-        """
-        for root in roots:
-            try:
-                return fpath.relative_to(root)
-            except ValueError:
-                continue
-
-        raise ValueError(f"{fpath} is not able to be made relative")
-
-    @DootKey.kwrap.types("onto", "roots")
-    @DootKey.kwrap.paths("shadow_root")
-    def __call__(self, spec, state, _onto, roots, _shadow):
-        for x in _onto:
-            rel_path = self._shadow_path(x.extra.fpath, roots, _shadow)
-
 class JobPrependActions(Action_p):
 
     @DootKey.kwrap.types("_onto", "add_actions")
@@ -342,8 +309,7 @@ class JobInjectAction(Action_p):
             base.update(inject)
             x.extra = base
 
-
-class JobInjectRelPath(Action_p):
+class _RelPather(Action_p):
 
     def _rel_path(self, fpath, roots) -> pl.Path:
         """
@@ -357,8 +323,40 @@ class JobInjectRelPath(Action_p):
 
         raise ValueError(f"{fpath} is not able to be made relative")
 
+class JobInjectPathParts(_RelPather):
+    """
+      Map lpath, fstem, fparent, fname, fext onto each
+      taskspec in the `onto` list, using each spec's `key`
+    """
+
     @DootKey.kwrap.types("onto", "roots")
     @DootKey.kwrap.expands("key")
     def __call__(self, spec, state, _onto, roots, key):
         for x in _onto:
-            rel_path = self._rel_path(x.extra[key])
+            base_extra            = dict(x.extra.items())
+            fpath                 = x.extra[key]
+            base_extra['lpath']   = self._rel_path(fpath, roots)
+            base_extra['fstem']   = fpath.stem
+            base_extra['fparent'] = fpath.parent
+            base_extra['fname']   = fpath.name
+            base_extra['fext']    = fpath.suffix
+
+class JobInjectShadowAction(_RelPather):
+    """
+      Inject a shadow path into each task entry
+    """
+
+    def _shadow_path(self, fpath:pl.Path, roots:list, shadow_root:pl.Path) -> pl.Path:
+        shadow_root = doot.locs[self.spec.extra.shadow_root]
+        rel_path    = self._rel_path(fpath, roots)
+        result      = shadow_root / rel_path
+        if result == fpath:
+            raise doot.errors.DootLocationError("Shadowed Path is same as original", fpath)
+
+        return result.parent
+
+    @DootKey.kwrap.types("onto", "roots")
+    @DootKey.kwrap.paths("shadow_root")
+    def __call__(self, spec, state, _onto, roots, _shadow):
+        for x in _onto:
+            rel_path = self._shadow_path(x.extra.fpath, roots, _shadow)

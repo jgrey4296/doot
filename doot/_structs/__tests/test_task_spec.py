@@ -17,10 +17,13 @@ logging = logmod.root
 import tomlguard
 import doot
 import doot.errors
-import doot.constants
+
+doot.setup()
 from doot import structs
 from doot.task.base_job import DootJob
 from doot.mixins.job.terse import TerseBuilder_M
+
+DEFAULT_CTOR = doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS]
 
 class TestDootTaskSpec:
 
@@ -29,7 +32,7 @@ class TestDootTaskSpec:
         assert(isinstance(obj, structs.DootTaskSpec))
         assert(obj.name.group == "default")
         assert(obj.name.task == "default")
-        assert(str(obj.ctor) == doot.constants.DEFAULT_PLUGINS['task'][0][1])
+        assert(str(obj.ctor) == DEFAULT_CTOR)
         assert(obj.version == "0.1")
 
     def test_version_change(self):
@@ -37,7 +40,7 @@ class TestDootTaskSpec:
         assert(isinstance(obj, structs.DootTaskSpec))
         assert(obj.name.group == "default")
         assert(obj.name.task == "default")
-        assert(str(obj.ctor) == doot.constants.DEFAULT_PLUGINS['task'][0][1])
+        assert(str(obj.ctor) == DEFAULT_CTOR)
         assert(obj.version == "0.5")
 
     def test_basic_name(self):

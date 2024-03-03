@@ -29,12 +29,13 @@ logging = logmod.getLogger(__name__)
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.constants import PARAM_ASSIGN_PREFIX, NON_DEFAULT_KEY
 from doot._abstract import ArgParser_i
 from doot.structs import DootParamSpec, DootTaskSpec
 from collections import ChainMap
 
-SEP : Final[str] = "--"
+SEP : Final[str]          = "--"
+PARAM_ASSIGN_PREFIX       = doot.constants.patterns.PARAM_ASSIGN_PREFIX
+NON_DEFAULT_KEY           = doot.constants.misc.NON_DEFAULT_KEY
 
 default_task : Final[str] = doot.config.on_fail((None,)).general.settings.default_task()
 default_cmd  : Final[str] = doot.config.on_fail("run", str).general.settings.default_cmd()

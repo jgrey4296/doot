@@ -42,13 +42,16 @@ import string
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.constants import KEY_PATTERN, MAX_KEY_EXPANSIONS, STATE_TASK_NAME_K
 from doot._structs.action_spec import DootActionSpec
 from doot._structs.task_spec import DootTaskSpec
 from doot._structs.artifact import DootTaskArtifact
 from doot._structs.code_ref import DootCodeReference
 
-PATTERN        : Final[re.Pattern]         = re.compile("{(.+?)}")
+KEY_PATTERN                                = doot.constants.patterns.KEY_PATTERN
+MAX_KEY_EXPANSIONS                         = doot.constants.patterns.MAX_KEY_EXPANSIONS
+STATE_TASK_NAME_K                          = doot.constants.patterns.STATE_TASK_NAME_K
+
+PATTERN        : Final[re.Pattern]         = re.compile(KEY_PATTERN)
 FAIL_PATTERN   : Final[re.Pattern]         = re.compile("[^a-zA-Z_{}/0-9-]")
 KEYS_HANDLED   : Final[str]                = "_doot_keys_handler"
 ORIG_ARGS      : Final[str]                = "_doot_orig_args"

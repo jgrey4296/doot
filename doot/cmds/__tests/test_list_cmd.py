@@ -22,6 +22,7 @@ import sys
 import io
 import contextlib
 import doot
+doot.setup()
 import doot.errors
 from doot._abstract import Command_i
 from doot.structs import DootTaskSpec
@@ -107,7 +108,7 @@ class TestListCmd:
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
         assert("tasks for pattern: simple" in message_set)
-        assert( any(x.startswith("blah::simple :: doot.task.base_job:dootjob") for x in message_set) )
+        assert( any(x.startswith("blah::simple :: doot.task.base_task:doottask") for x in message_set) )
 
 
     def test_call_partial_target_not_empty(self, caplog, mocker):
@@ -126,5 +127,5 @@ class TestListCmd:
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
         assert("tasks for pattern: simp" in message_set)
-        assert( any(x.startswith("blah::simple     :: doot.task.base_job:dootjob") for x in message_set) )
-        assert( any(x.startswith("bloo::diffsimple :: doot.task.base_job:dootjob") for x in message_set) )
+        assert( any(x.startswith("blah::simple     :: doot.task.base_task:doottask") for x in message_set) )
+        assert( any(x.startswith("bloo::diffsimple :: doot.task.base_task:doottask") for x in message_set) )

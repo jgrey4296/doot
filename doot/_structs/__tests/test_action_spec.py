@@ -15,8 +15,9 @@ import pytest
 logging = logmod.root
 
 import tomlguard
+import doot
+doot.setup()
 from doot import structs
-import doot.constants
 
 # caplog
 # mocker.patch | patch.object | patch.multiple | patch.dict | stopall | stop | spy | stub

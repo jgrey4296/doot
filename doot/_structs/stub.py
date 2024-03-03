@@ -38,15 +38,15 @@ logging = logmod.getLogger(__name__)
 
 import importlib
 from tomlguard import TomlGuard
+import doot
 import doot.errors
-import doot.constants
 from doot.enums import TaskFlags, ReportEnum
 from doot._structs.sname import DootTaskName, DootCodeReference
 from doot._structs.task_spec import DootTaskSpec
 
 PAD           : Final[int]               = 15
 TaskFlagNames : Final[str]               = [x.name for x in TaskFlags]
-DEFAULT_CTOR  : Final[DootCodeReference] = DootCodeReference.from_str(doot.constants.DEFAULT_PLUGINS['task'][1][1])
+DEFAULT_CTOR  : Final[DootCodeReference] = DootCodeReference.from_str(doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS])
 
 @dataclass
 class TaskStub:
@@ -68,7 +68,7 @@ class TaskStub:
     skip_parts : ClassVar[set[str]]          = set(["name", "extra", "ctor", "source", "version"])
 
     def __post_init__(self):
-        self['name'].default     = DootTaskName.from_str(doot.constants.DEFAULT_STUB_TASK_NAME)
+        self['name'].default     = DootTaskName.from_str(doot.constants.names.DEFAULT_STUB_TASK_NAME)
         self['version'].default  = "0.1"
         # Auto populate the stub with what fields are defined in a TaskSpec:
         for dcfield in DootTaskSpec.__dataclass_fields__.values():
@@ -86,7 +86,7 @@ class TaskStub:
         if 'ctor' in self.parts:
             parts.append(self.parts['ctor'])
         elif isinstance(self.ctor, type):
-            parts.append(TaskStubPart("ctor", type="type", default=f"\"{self.ctor.__module__}{doot.constants.IMPORT_SEP}{self.ctor.__name__}\""))
+            parts.append(TaskStubPart("ctor", type="type", default=f"\"{self.ctor.__module__}{doot.constants.patterns.IMPORT_SEP}{self.ctor.__name__}\""))
         else:
             parts.append(TaskStubPart("ctor", type="type", default=f"\"{self.ctor}\""))
         if "mixins" in self.parts:

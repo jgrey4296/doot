@@ -34,7 +34,6 @@ printer = logmod.getLogger("doot._printer")
 import doot
 import doot.errors
 import tomlguard
-import doot.constants
 from doot._abstract import Task_i, Job_i, Action_p, PluginLoader_p
 from doot.enums import TaskFlags
 from doot.structs import TaskStub, TaskStubPart, DootActionSpec, DootCodeReference
@@ -43,6 +42,8 @@ from doot.errors import DootTaskLoadError, DootTaskError
 
 from doot.mixins.importer import Importer_M
 
+TASK_ALISES     = doot.aliases.task
+PRINT_LOCATIONS = doot.constants.printer.PRINT_LOCATIONS
 
 @doot.check_protocol
 class DootTask(Task_i, Importer_M):
@@ -75,7 +76,7 @@ class DootTask(Task_i, Importer_M):
     @classmethod
     def stub_class(cls, stub) -> TaskStub:
         """ Create a basic toml stub for this task"""
-        if bool(list(filter(lambda x: x[0] == "task", doot.constants.DEFAULT_PLUGINS['task']))):
+        if bool(list(filter(lambda x: x[0] == "task", TASK_ALISES))):
             stub.ctor = "task"
         else:
             stub.ctor                   = cls
@@ -85,7 +86,7 @@ class DootTask(Task_i, Importer_M):
         stub['required_for'].priority   = -90
         stub['depends_on'].priority     = -100
 
-        stub['print_levels'].type       = f"Dict: {doot.constants.PRINT_LOCATIONS}"
+        stub['print_levels'].type       = f"Dict: {PRINT_LOCATIONS}"
         stub['print_levels'].default    = {"head":"INFO","build":"INFO","sleep":"INFO","action":"INFO", "execute":"INFO"}
 
         stub['priority'].default        = 10

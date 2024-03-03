@@ -15,8 +15,9 @@ import pytest
 logging = logmod.root
 
 import tomlguard
+import doot
+doot.setup()
 from doot import structs
-import doot.constants
 
 # caplog
 # mocker.patch | patch.object | patch.multiple | patch.dict | stopall | stop | spy | stub
@@ -33,7 +34,7 @@ class TestTaskStub:
         obj = structs.TaskStub(dict)
         assert(isinstance(obj, structs.TaskStub))
         assert(obj.ctor == dict)
-        assert(str(obj['name'].default) == "stub::stub")
+        assert(str(obj['name'].default) == "basic::stub")
 
     def test_default_keys(self):
         """ check a stub has the default components of a TaskSpec  """
@@ -63,8 +64,8 @@ class TestTaskStub:
         obj    = structs.TaskStub()
         as_str = obj.to_toml()
         loaded = tomlguard.read(as_str)
-        spec   = structs.DootTaskSpec.from_dict(loaded.tasks.stub[0])
-        pass
+        spec   = structs.DootTaskSpec.from_dict(loaded.tasks.basic[0])
+
 
 
 class TestTaskStubPart:

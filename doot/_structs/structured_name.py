@@ -38,8 +38,8 @@ logging = logmod.getLogger(__name__)
 
 import importlib
 from tomlguard import TomlGuard
+import doot
 import doot.errors
-import doot.constants
 from doot.enums import TaskFlags, ReportEnum
 
 PAD           : Final[int] = 15
@@ -63,7 +63,7 @@ class DootStructuredName:
     head            : list[str]          = field(default_factory=list)
     tail            : list[str|UUID]     = field(default_factory=list)
 
-    separator       : str                = field(default=doot.constants.TASK_SEP, kw_only=True)
+    separator       : str                = field(default=doot.constants.patterns.TASK_SEP, kw_only=True)
     subseparator    : str                = field(default=".", kw_only=True)
 
     def __post_init__(self):

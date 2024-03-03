@@ -18,6 +18,7 @@ from unittest import mock
 import pytest
 import tomlguard
 import doot
+doot.setup()
 doot.config = tomlguard.TomlGuard({})
 from doot.loaders import plugin_loader
 logging = logmod.root
@@ -33,5 +34,5 @@ class TestPluginLoader:
         basic.setup()
         loaded = basic.load()
 
-        for key in (doot.constants.FRONTEND_PLUGIN_TYPES + doot.constants.BACKEND_PLUGIN_TYPES):
+        for key in (doot.constants.entrypoints.FRONTEND_PLUGIN_TYPES + doot.constants.entrypoints.BACKEND_PLUGIN_TYPES):
             assert(key in loaded), f"{key} missing"

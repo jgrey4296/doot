@@ -33,7 +33,6 @@ printer = logmod.getLogger("doot._printer")
 from collections import defaultdict
 import doot
 import doot.errors
-import doot.constants as const
 from doot.enums import TaskStateEnum
 from doot._abstract import Job_i, Task_i, FailPolicy_p
 from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskName, DootCodeReference

@@ -17,7 +17,6 @@ logging = logmod.root
 
 import tomlguard
 import doot
-import doot.constants
 from doot.structs import DootTaskSpec, TaskStub
 from doot.task.base_task import DootTask
 import doot._abstract
@@ -76,7 +75,7 @@ class TestBaseTask:
         """ build the simplest stub from the class itself """
         stub_obj = TaskStub(ctor=DootTask)
         stub     = DootTask.stub_class(stub_obj)
-        assert(str(stub['name'].default) == doot.constants.DEFAULT_STUB_TASK_NAME)
+        assert(str(stub['name'].default) == doot.constants.names.DEFAULT_STUB_TASK_NAME)
 
     def test_toml_instance_stub(self):
         """ build the next simplest stub from an instance of the task """

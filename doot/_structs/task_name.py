@@ -39,8 +39,8 @@ logging = logmod.getLogger(__name__)
 
 import importlib
 from tomlguard import TomlGuard
+import doot
 import doot.errors
-import doot.constants
 from doot.enums import TaskFlags, ReportEnum
 from doot._structs.structured_name import DootStructuredName, aware_splitter
 
@@ -53,7 +53,7 @@ class DootTaskName(DootStructuredName):
     """
 
     internal           : bool                    = field(default=False, kw_only=True)
-    separator          : str                     = field(default=doot.constants.TASK_SEP, kw_only=True)
+    separator          : str                     = field(default=doot.constants.patterns.TASK_SEP, kw_only=True)
     version_constraint : None|str                = field(default=None)
     args               : dict                    = field(default_factory=dict)
 
@@ -93,7 +93,7 @@ class DootTaskName(DootStructuredName):
             case None | []:
                 self.tail = ["default"]
 
-        self.internal = self.tail[0].startswith(doot.constants.INTERNAL_TASK_PREFIX) or self.internal
+        self.internal = self.tail[0].startswith(doot.constants.patterns.INTERNAL_TASK_PREFIX) or self.internal
 
     def __str__(self) -> str:
         return "{}{}{}".format(self.group, self.separator, self.task)
@@ -140,7 +140,7 @@ class DootTaskName(DootStructuredName):
         return f"{self.head_str()}{self.separator}{self.tail[0]}"
 
     def task_head(self):
-        return self.subtask(doot.constants.SUBTASKED_HEAD)
+        return self.subtask(doot.constants.patterns.SUBTASKED_HEAD)
 
     def subtask(self, *subtasks, subgroups:list[str]|None=None) -> DootTaskName:
         args = self.args.copy() if self.args else None
@@ -162,6 +162,6 @@ class DootTaskName(DootStructuredName):
     def specialize(self, *, info=None):
         match info:
             case None:
-                return self.subtask(doot.constants.SPECIALIZED_ADD, uuid1())
+                return self.subtask(doot.constants.patterns.SPECIALIZED_ADD, uuid1())
             case _:
-                return self.subtask(doot.constants.SPECIALIZED_ADD, info, uuid1())
+                return self.subtask(doot.constants.patterns.SPECIALIZED_ADD, info, uuid1())

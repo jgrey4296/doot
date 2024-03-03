@@ -36,20 +36,19 @@ from collections import defaultdict
 from importlib.metadata import entry_points, EntryPoint
 import tomlguard
 import doot
-import doot.constants
 from doot._abstract import PluginLoader_p
 
 skip_default_plugins        = doot.config.on_fail(False).skip_default_plugins()
 skip_plugin_search          = doot.config.on_fail(False).skip_plugin_search()
 env_plugins                 = doot.config.on_fail({}).plugins(wrapper=dict)
-plugin_types                = set(doot.constants.FRONTEND_PLUGIN_TYPES + doot.constants.BACKEND_PLUGIN_TYPES)
-cmd_loader_key  : Final     = doot.constants.DEFAULT_COMMAND_LOADER_KEY
-task_loader_key : Final     = doot.constants.DEFAULT_TASK_LOADER_KEY
+plugin_types                = set(doot.constants.entrypoints.FRONTEND_PLUGIN_TYPES + doot.constants.entrypoints.BACKEND_PLUGIN_TYPES)
+cmd_loader_key  : Final     = doot.constants.entrypoints.DEFAULT_COMMAND_LOADER_KEY
+task_loader_key : Final     = doot.constants.entrypoints.DEFAULT_TASK_LOADER_KEY
 
 def make_ep (x, y, z):
     if z not in plugin_types:
         raise doot.errors.DootPluginError("Plugin Type Not Found: %s : %s", z, (x, y))
-    return EntryPoint(name=x, value=y, group="{}.{}".format(doot.constants.PLUGIN_TOML_PREFIX, z))
+    return EntryPoint(name=x, value=y, group="{}.{}".format(doot.constants.entrypoints.PLUGIN_TOML_PREFIX, z))
 
 
 @doot.check_protocol
@@ -75,7 +74,7 @@ class DootPluginLoader(PluginLoader_p):
         use entry_points(group="doot")
         add to the config tomlguard
         """
-        logging.debug("---- Loading Plugins: %s", doot.constants.PLUGIN_TOML_PREFIX)
+        logging.debug("---- Loading Plugins: %s", doot.constants.entrypoints.PLUGIN_TOML_PREFIX)
         try:
             self._load_system_plugins()
         except Exception as err:
@@ -107,7 +106,7 @@ class DootPluginLoader(PluginLoader_p):
             logging.info("Searching environment for plugins, skip with `skip_plugin_search` in config")
             for plugin_type in plugin_types:
                 try:
-                    plugin_group = "{}.{}".format(doot.constants.PLUGIN_TOML_PREFIX, plugin_type)
+                    plugin_group = "{}.{}".format(doot.constants.entrypoints.PLUGIN_TOML_PREFIX, plugin_type)
                     # Load env wide entry points
                     for entry_point in entry_points(group=plugin_group):
                         self.plugins[plugin_type].append(entry_point)
@@ -135,7 +134,7 @@ class DootPluginLoader(PluginLoader_p):
             if k not in plugin_types:
                 logging.warning("Unknown plugin type found in extra config: %s", k)
                 continue
-            ep = EntryPoint(name=k, value=v, group=doot.constants.PLUGIN_TOML_PREFIX)
+            ep = EntryPoint(name=k, value=v, group=doot.constants.entrypoints.PLUGIN_TOML_PREFIX)
             logging.debug("Adding Plugin: %s", ep)
             self.plugins[k].append(ep)
 
@@ -147,5 +146,6 @@ class DootPluginLoader(PluginLoader_p):
         self.plugins[cmd_loader_key].append(make_ep(cmd_loader_key, "doot.loaders.cmd_loader:DootCommandLoader", cmd_loader_key))
         self.plugins[task_loader_key].append(make_ep(task_loader_key, "doot.loaders.task_loader:DootTaskLoader", task_loader_key))
 
-        for group, vals in doot.constants.DEFAULT_PLUGINS.items():
-            self.plugins[group]  += [make_ep(x, y, group) for x,y in vals]
+        for group, vals in doot.aliases:
+            logging.debug("Loading aliases: %s", group)
+            self.plugins[group]  += [make_ep(x, y, group) for x,y in vals.items()]

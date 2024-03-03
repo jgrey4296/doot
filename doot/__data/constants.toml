@@ -1,0 +1,53 @@
+# Doot Constants
+
+[doot.constants.entrypoints]
+# plugin names and loaders
+# ie: [project.entry-points."doot.plugins.{}"]
+PLUGIN_TOML_PREFIX     = "doot.plugins"
+FRONTEND_PLUGIN_TYPES  = ["command", "reporter", "report-line"]
+BACKEND_PLUGIN_TYPES   = ["tracker", "runner", "command-loader", "task-loader", "parser", "action", "task", "mixin"]
+
+DEFAULT_COMMAND_LOADER_KEY  = "command-loader"
+DEFAULT_TASK_LOADER_KEY     = "task-loader"
+DEFAULT_PLUGIN_LOADER_KEY   = "plugin-loader"
+DEFAULT_TASK_CTOR_ALIAS     = "task"
+
+[doot.constants.paths]
+TEMPLATE_PATH           =  "doot.__templates"
+TOML_TEMPLATE           =  "basic_toml"
+DEFAULT_LOAD_TARGETS    =  ["doot.toml", "pyproject.toml", "Cargo.toml", "./.cargo/config.toml"]
+
+[doot.constants.names]
+DEFAULT_STUB_TASK_NAME  = "basic::stub"
+DEFAULT_TASK_GROUP      = "default"
+
+[doot.constants.patterns]
+KEY_PATTERN             = "{(.+?)}"
+MAX_KEY_EXPANSIONS      = 10
+
+TASK_SEP                = "::"
+IMPORT_SEP              = ":"
+SUBTASKED_HEAD          = "$head$"
+CONFLICTED_ADD          = "$conflict$"
+SPECIALIZED_ADD         = "$gen$"
+INTERNAL_TASK_PREFIX    = "_"
+FILE_DEP_PREFIX         = "file:>"
+PARAM_ASSIGN_PREFIX     = "--"
+STATE_TASK_NAME_K       = "_task_name"
+STATE_ARG_EXPANSION     = "$arg$"
+DEFAULT_TASK_PREFIX     = "task_"
+
+[doot.constants.misc]
+DEFAULT_CLI_CMD         = "run"
+ANNOUNCE_EXIT           = false
+ANNOUNCE_VOICE          = "Moira"
+NON_DEFAULT_KEY         = "_non_default"
+
+[doot.constants.printer]
+PRINTER_NAME            = "doot._printer"
+PRINT_LOCATIONS         = ["head", "build", "action", "sleep", "execute"]
+DEFAULT_HEAD_LEVEL      = "INFO"
+DEFAULT_BUILD_LEVEL     = "WARN"
+DEFAULT_ACTION_LEVEL    = "INFO"
+DEFAULT_SLEEP_LEVEL     = "WARN"
+DEFAULT_EXECUTE_LEVEL   = "INFO"

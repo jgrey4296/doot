@@ -15,8 +15,8 @@ import pytest
 logging = logmod.root
 
 import tomlguard
+import doot
 from doot import structs
-import doot.constants
 from doot.task.base_task import DootTask
 
 class TestDootTaskName:
@@ -143,7 +143,7 @@ class TestDootTaskName:
         assert(sub.group == "basic")
         assert(len(sub.tail) == 3)
         assert(sub.tail[0] == "tail")
-        assert(sub.tail[1] == doot.constants.SPECIALIZED_ADD)
+        assert(sub.tail[1] == doot.constants.patterns.SPECIALIZED_ADD)
 
 
     def test_specialize_name_with_info(self):
@@ -153,7 +153,7 @@ class TestDootTaskName:
         assert(sub.group == "basic")
         assert(len(sub.tail) == 4)
         assert(sub.tail[0] == "tail")
-        assert(sub.tail[1] == doot.constants.SPECIALIZED_ADD)
+        assert(sub.tail[1] == doot.constants.patterns.SPECIALIZED_ADD)
         assert(sub.tail[2] == "blah")
 
     def test_lt_comparison_equal(self):

@@ -39,8 +39,8 @@ logging = logmod.getLogger(__name__)
 import importlib
 from importlib.metadata import EntryPoint
 from tomlguard import TomlGuard
+import doot
 import doot.errors
-import doot.constants as consts
 from doot.enums import TaskFlags, ReportEnum
 from doot._structs.sname import DootTaskName, DootCodeReference
 from doot._structs.action_spec import DootActionSpec
@@ -110,21 +110,23 @@ def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|Doo
         match x:
             case { "task": taskname }:
                 results.append(DootTaskName.from_str(taskname, args=x))
-            case str() if x.startswith(consts.FILE_DEP_PREFIX):
-                results.append(DootTaskArtifact(pl.Path(x.removeprefix(consts.FILE_DEP_PREFIX))))
-            case str() if consts.TASK_SEP in x:
+            case str() if x.startswith(doot.constants.patterns.FILE_DEP_PREFIX):
+                results.append(DootTaskArtifact(pl.Path(x.removeprefix(doot.constants.patterns.FILE_DEP_PREFIX))))
+            case str() if doot.constants.patterns.TASK_SEP in x:
                 results.append(DootTaskName.from_str(x))
             case DootTaskName() | DootTaskArtifact():
                 results.append(x)
             case _:
-                raise doot.errors.DootInvalidConfig(f"Unrecognised task pre/post dependency form. (Remember: files are prefixed with `{consts.FILE_DEP_PREFIX}`, tasks are in the form group::name)", x, source)
+                raise doot.errors.DootInvalidConfig(f"Unrecognised task pre/post dependency form. (Remember: files are prefixed with `{doot.constants.patterns.FILE_DEP_PREFIX}`, tasks are in the form group::name)", x, source)
 
     return results
 
 def _prepare_ctor(ctor, mixins):
     match ctor:
         case None:
-            return DootCodeReference.from_str(doot.constants.DEFAULT_PLUGINS['task'][0][1]).add_mixins(*mixins)
+            default_alias = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
+            coderef_str = doot.aliases.task[default_alias]
+            return DootCodeReference.from_str(coderef_str).add_mixins(*mixins)
         case EntryPoint():
             loaded = ctor.load()
             return DootCodeReference.from_type(loaded).add_mixins(*mixins)

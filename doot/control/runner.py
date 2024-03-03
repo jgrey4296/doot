@@ -36,7 +36,6 @@ printer = logmod.getLogger("doot._printer")
 from collections import defaultdict
 from contextlib import nullcontext
 import doot
-import doot.constants
 import doot.errors
 from doot.enums import ReportEnum, ActionResponseEnum as ActRE
 from doot._abstract import Job_i, Task_i, FailPolicy_p
@@ -46,11 +45,11 @@ from doot.control.base_runner import BaseRunner, logctx
 from doot.utils.signal_handler import SignalHandler
 
 dry_run                    = doot.args.on_fail(False).cmd.args.dry_run()
-head_level    : Final[str] = doot.constants.DEFAULT_HEAD_LEVEL
-build_level   : Final[str] = doot.constants.DEFAULT_BUILD_LEVEL
-action_level  : Final[str] = doot.constants.DEFAULT_ACTION_LEVEL
-sleep_level   : Final[str] = doot.constants.DEFAULT_SLEEP_LEVEL
-execute_level : Final[str] = doot.constants.DEFAULT_EXECUTE_LEVEL
+head_level    : Final[str] = doot.constants.printer.DEFAULT_HEAD_LEVEL
+build_level   : Final[str] = doot.constants.printer.DEFAULT_BUILD_LEVEL
+action_level  : Final[str] = doot.constants.printer.DEFAULT_ACTION_LEVEL
+sleep_level   : Final[str] = doot.constants.printer.DEFAULT_SLEEP_LEVEL
+execute_level : Final[str] = doot.constants.printer.DEFAULT_EXECUTE_LEVEL
 max_steps     : Final[str] = doot.config.on_fail(100_000).settings.general.max_steps()
 
 @doot.check_protocol

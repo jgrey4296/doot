@@ -29,13 +29,13 @@ logging = logmod.getLogger(__name__)
 
 import re
 import tomlguard
+import doot
 from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
 from doot._structs.artifact import DootTaskArtifact
 from doot._structs.key import DootKey, DootSimpleKey, DootMultiKey, DootNonKey
-from doot.constants import KEY_PATTERN, MAX_KEY_EXPANSIONS
 
-KEY_PAT        = KEY_PATTERN
-MAX_EXPANSIONS = MAX_KEY_EXPANSIONS
+KEY_PAT        = doot.constants.patterns.KEY_PATTERN
+MAX_EXPANSIONS = doot.constants.patterns.MAX_KEY_EXPANSIONS
 
 class DootLocations:
     """

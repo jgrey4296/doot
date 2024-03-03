@@ -20,7 +20,6 @@ import pytest
 import doot
 import doot._abstract
 import doot.structs
-import doot.constants
 from doot.task.base_task import DootTask
 from doot.actions.base_action import DootBaseAction
 

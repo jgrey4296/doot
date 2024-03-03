@@ -33,13 +33,14 @@ logging = logmod.getLogger(__name__)
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.constants import SUBTASKED_HEAD
 from doot.enums import TaskFlags
 from doot.structs import DootTaskSpec, TaskStub, TaskStubPart, DootTaskName, DootCodeReference, DootStructuredName
 from doot._abstract import Job_i, Task_i
 from doot.mixins.importer import Importer_M
 from doot.errors import DootDirAbsent
 from doot.task.base_task import DootTask
+
+SUBTASKED_HEAD = doot.constants.patterns.SUBTASKED_HEAD
 
 @doot.check_protocol
 class DootJob(Job_i, DootTask):

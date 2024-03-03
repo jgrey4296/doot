@@ -39,7 +39,6 @@ printer = logmod.getLogger("doot._printer")
 
 from tomlguard import TomlGuard
 import doot
-import doot.constants
 from doot.errors import DootDirAbsent
 from doot.mixins.job.subtask import SubTask_M
 from doot.structs import DootTaskSpec, DootActionSpec, DootKey, DootCodeReference

@@ -36,7 +36,6 @@ from importlib.metadata import EntryPoint
 
 import doot
 import doot.errors
-import doot.constants
 import tomlguard
 from doot._abstract import (ArgParser_i, Command_i, CommandLoader_p,
                             Overlord_p, Task_i, Job_i, TaskLoader_p)
@@ -48,9 +47,10 @@ from doot.loaders.plugin_loader import DootPluginLoader
 from doot.loaders.task_loader import DootTaskLoader
 from doot.parsers.flexible import DootFlexibleParser
 
-plugin_loader_key  : Final = doot.constants.DEFAULT_PLUGIN_LOADER_KEY
-command_loader_key : Final = doot.constants.DEFAULT_COMMAND_LOADER_KEY
-task_loader_key    : Final = doot.constants.DEFAULT_TASK_LOADER_KEY
+plugin_loader_key  : Final = doot.constants.entrypoints.DEFAULT_PLUGIN_LOADER_KEY
+command_loader_key : Final = doot.constants.entrypoints.DEFAULT_COMMAND_LOADER_KEY
+task_loader_key    : Final = doot.constants.entrypoints.DEFAULT_TASK_LOADER_KEY
+DEFAULT_CLI_CMD    : Final = doot.constants.misc.DEFAULT_CLI_CMD
 
 preferred_cmd_loader  = doot.config.on_fail("default").settings.general.loaders.command()
 preferred_task_loader = doot.config.on_fail("default").settings.general.loaders.task()
@@ -226,7 +226,7 @@ class DootOverlord(Overlord_p):
         if self.current_cmd is not None:
             return self.current_cmd
 
-        target = cmd or doot.args.on_fail(doot.constants.DEFAULT_CLI_CMD).cmd.name()
+        target = cmd or doot.args.on_fail(DEFAULT_CLI_CMD).cmd.name()
 
         self.current_cmd = self.cmds.get(target, None)
         if self.current_cmd is None:

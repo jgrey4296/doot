@@ -39,7 +39,6 @@ logging = logmod.getLogger(__name__)
 import importlib
 from tomlguard import TomlGuard
 import doot.errors
-import doot.constants
 from doot.enums import TaskFlags, ReportEnum
 
 PAD           : Final[int] = 15

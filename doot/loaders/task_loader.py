@@ -40,9 +40,10 @@ import tomlguard
 import doot
 import doot.errors
 from doot.structs import DootTaskSpec, DootTaskName, DootCodeReference
-from doot.constants import DEFAULT_TASK_GROUP, IMPORT_SEP
 from doot._abstract import TaskLoader_p, Job_i, Task_i, TaskBase_i
 
+DEFAULT_TASK_GROUP        = doot.constants.names.DEFAULT_TASK_GROUP
+IMPORT_SEP                = doot.constants.patterns.IMPORT_SEP
 TASK_STRING : Final[str]  = "task_"
 prefix_len  : Final[int]  = len(TASK_STRING)
 

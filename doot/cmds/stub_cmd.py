@@ -33,20 +33,20 @@ printer = logmod.getLogger("doot._printer")
 
 from collections import defaultdict
 import importlib
+from importlib.resources import files
 import doot
 import doot.enums
 import doot.errors
-import doot.constants
 from doot._abstract import Command_i, PluginLoader_p, TaskBase_i
 from doot.structs import TaskStub, DootTaskName, DootCodeReference
 from doot.task.base_job import DootJob
 from doot.task.base_task import DootTask
 from doot._structs.key import KEY_ANNOTS, HELP_HINT
 
-
 ##-- data
-data_path = doot.constants.TOML_TEMPLATE
+data_path = files(doot.constants.paths.TEMPLATE_PATH).joinpath(doot.constants.paths.TOML_TEMPLATE)
 ##-- end data
+PRINT_LOCATIONS : Final[list[str]] = doot.constants.printer.PRINT_LOCATIONS
 
 class StubCmd(Command_i):
     """ Called to interactively create a stub task definition
@@ -227,7 +227,7 @@ class StubCmd(Command_i):
         printer.info("{ %s }", "".join(stub))
 
     def _stub_printer_settings(self):
-        printer.info("print_levels = { %s }", ", ".join(f'{x}="INFO"' for x in doot.constants.PRINT_LOCATIONS))
+        printer.info("print_levels = { %s }", ", ".join(f'{x}="INFO"' for x in PRINT_LOCATIONS))
 
     def _list_flags(self):
         printer.info("Task Flags: ")

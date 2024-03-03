@@ -38,8 +38,8 @@ logging = logmod.getLogger(__name__)
 
 import importlib
 from tomlguard import TomlGuard
+import doot
 import doot.errors
-import doot.constants
 from doot.enums import TaskFlags, ReportEnum
 
 PAD           : Final[int] = 15
@@ -180,7 +180,7 @@ class DootParamSpec:
         if self.invisible or self.positional:
             return ""
 
-        if self.prefix == doot.constants.PARAM_ASSIGN_PREFIX:
+        if self.prefix == doot.constants.patterns.PARAM_ASSIGN_PREFIX:
             return f"{self.prefix}{self.name}{self.separator}"
 
         return f"{self.prefix}{self.name}"
@@ -190,7 +190,7 @@ class DootParamSpec:
         if self.invisible or self.positional:
             return ""
 
-        if self.prefix == doot.constants.PARAM_ASSIGN_PREFIX:
+        if self.prefix == doot.constants.patterns.PARAM_ASSIGN_PREFIX:
             return f"{self.prefix}{self.name[0]}{self.separator}"
 
         return f"{self.prefix}{self.name[0]}"
@@ -240,8 +240,8 @@ class DootParamSpec:
 
         # Figure out the key and value
         match prefixed, is_assign:
-            case _, True if self.prefix != doot.constants.PARAM_ASSIGN_PREFIX:
-                raise doot.errors.DootParseError("Assignment parameters should be prefixed with the PARAM_ASSIGN_PREFIX", doot.constants.PARAM_ASSIGN_PREFIX)
+            case _, True if self.prefix != doot.constants.patterns.PARAM_ASSIGN_PREFIX:
+                raise doot.errors.DootParseError("Assignment parameters should be prefixed with the PARAM_ASSIGN_PREFIX", doot.constants.patterns.PARAM_ASSIGN_PREFIX)
             case True, False if self.type.__name__ != "bool" and not bool(args):
                 raise doot.errors.DootParseError("key lacks a following value", focus, self.type.__name__)
             case True, True: # --key=val

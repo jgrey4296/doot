@@ -40,7 +40,6 @@ printer = logmod.getLogger("doot._printer")
 
 from collections import defaultdict
 import doot
-import doot.constants
 import doot.errors
 from doot.enums import ReportEnum, ActionResponseEnum as ActRE, TaskStateEnum
 from doot._abstract import Job_i, Task_i, FailPolicy_p
@@ -51,11 +50,11 @@ from doot.structs import DootTaskSpec, DootActionSpec
 from doot.utils.log_context import DootLogContext
 
 dry_run                                      = doot.args.on_fail(False).cmd.args.dry_run()
-head_level           : Final[str]            = doot.constants.DEFAULT_HEAD_LEVEL
-build_level          : Final[str]            = doot.constants.DEFAULT_BUILD_LEVEL
-action_level         : Final[str]            = doot.constants.DEFAULT_ACTION_LEVEL
-sleep_level          : Final[str]            = doot.constants.DEFAULT_SLEEP_LEVEL
-execute_level        : Final[str]            = doot.constants.DEFAULT_EXECUTE_LEVEL
+head_level           : Final[str]            = doot.constants.printer.DEFAULT_HEAD_LEVEL
+build_level          : Final[str]            = doot.constants.printer.DEFAULT_BUILD_LEVEL
+action_level         : Final[str]            = doot.constants.printer.DEFAULT_ACTION_LEVEL
+sleep_level          : Final[str]            = doot.constants.printer.DEFAULT_SLEEP_LEVEL
+execute_level        : Final[str]            = doot.constants.printer.DEFAULT_EXECUTE_LEVEL
 max_steps            : Final[str]            = doot.config.on_fail(100_000).settings.general.max_steps()
 
 default_SLEEP_LENGTH : Fina[int|float]       = doot.config.on_fail(0.2, int|float).settings.tasks.sleep.task()
