@@ -57,10 +57,9 @@ class CancelOnPredicateAction(Action_p):
       return its result for the task runner to handle
 
     """
-    @DootKey.kwrap.expands("pred")
-    def __call__(self, spec, state, pred) -> dict|bool|None:
-        ref       = DootCodeReference.from_str(pred)
-        predicate = ref.try_import()
+    @DootKey.kwrap.references("pred")
+    def __call__(self, spec, state, _pred) -> dict|bool|None:
+        predicate = _pred.try_import()
         return predicate(spec,state)
 
 @doot.check_protocol
