@@ -60,6 +60,34 @@ class _WalkControl(enum.Enum):
     noBut   = enum.auto()
     no      = enum.auto()
 
+class _injectionPrepper(Action_p):
+
+    def prep_injection_dict(self, inject) -> tuple[dict, list]:
+        inject_base     = {}
+        inject_arg_keys  = []
+        match inject:
+             case dict() | TomlGuard():
+                 inject_base.update(inject)
+                 inject_arg_keys = [k for k,v in inject.items() if v == doot.constants.patterns.STATE_ARG_EXPANSION]
+             case str():
+                 inject_arg_keys = [inject]
+
+        return inject_base, inject_arg_keys
+
+class _RelPather(Action_p):
+
+    def _rel_path(self, fpath, roots) -> pl.Path:
+        """
+        make the path relative to the appropriate root
+        """
+        for root in roots:
+            try:
+                return fpath.relative_to(root)
+            except ValueError:
+                continue
+
+        raise ValueError(f"{fpath} is not able to be made relative")
+
 class JobQueueAction(Action_p):
     """
       Queues a list of tasks into the tracker.
@@ -69,8 +97,9 @@ class JobQueueAction(Action_p):
 
     @DootKey.kwrap.args
     @DootKey.kwrap.types("from_", hint={"type_":list|DootTaskSpec|None})
-    @DootKey.kwrap.basename
-    def __call__(self, spec, state, _args, _from, _basename):
+    @DootKey.kwrap.types("from_multi_", hint={"type_":list|None})
+    @DootKey.kwrap.taskname
+    def __call__(self, spec, state, _args, _from, _from_multi, _basename):
         subtasks  = []
         subtasks += [DootTaskSpec(_basename.subtask(i), ctor=DootTaskName.from_str(x), required_for=[_basename.task_head()]) for i,x in enumerate(_args)]
 
@@ -84,25 +113,38 @@ class JobQueueAction(Action_p):
             case _:
                 raise doot.errors.DootActionError("Tried to queue a not DootTaskSpec")
 
+        match _from_multi:
+            case None:
+                pass
+            case [*xs]:
+                as_keys = [DootKey.make(x) for x in xs]
+                for key in as_keys:
+                    match key.types(spec, state, type_=list|None):
+                        case None:
+                            pass
+                        case list() as l:
+                            subtasks += [spec for spec in l if isinstance(spec, DootTaskSpec)]
+
         return subtasks
 
-class JobSubNamer(Action_p):
-    """
-      Apply the name {basename}.{i}.{key} to each taskspec in {onto}
-    """
+class JobQueueHead(_injectionPrepper):
 
-    @DootKey.kwrap.basename
-    @DootKey.kwrap.expands("key")
-    @DootKey.kwrap.types("onto")
-    def __call__(self, spec, state, _basename, key, _onto):
-        for x in enumerate(_onto):
-            match x:
-                case DootTaskSpec():
-                    x.name = _basename.subtask(i, key)
-                case _:
-                    raise doot.errors.DootActionError("Job Tried to apply a name to a non-taskspec", x)
+    @DootKey.kwrap.types("base", hint={"type_":str|list})
+    @DootKey.kwrap.types("inject")
+    @DootKey.kwrap.taskname
+    def __call__(self, spec, state, base, inject, _basename):
+        head_name = _basename.task_head()
+        inject_base, inject_arg_keys = self.prep_injection_dict(inject)
 
-class JobExpandAction(Action_p):
+        match base:
+            case str():
+                head = DootTaskSpec.from_dict(dict(name=head_name, ctor=base, extra=inject_base))
+            case list():
+                head = DootTaskSpec.from_dict(dict(name=head_name, actions=base, extra=inject_base))
+
+        return [head]
+
+class JobExpandAction(_injectionPrepper):
     """
       Takes a base action and builds one new subtask for each entry in a list
 
@@ -111,47 +153,58 @@ class JobExpandAction(Action_p):
       provides a key to assign the entry from the source list
     """
 
-    @DootKey.kwrap.types("from", "inject")
-    @DootKey.kwrap.expands("base")
+    @DootKey.kwrap.types("from", "inject", "base")
     @DootKey.kwrap.redirects("update_")
-    @DootKey.kwrap.basename
+    @DootKey.kwrap.taskname
     def __call__(self, spec, state, _from, inject, base, _update, _basename):
         result         = []
-        base           = DootTaskName.from_str(base)
-        inject_base    = {}
-        inject_arg_key = []
-        match inject:
-             case dict() | TomlGuard():
-                 inject_base.update(inject)
-                 inject_arg_key = [k for k,v in inject.items() if v == doot.constants.patterns.STATE_ARG_EXPANSION]
-             case str():
-                 inject_arg_key = [inject]
+        match base:
+            case list():
+                base    = none
+                actions = base
+            case DootTaskName():
+                action = []
+            case str():
+                base    = DootTaskName.from_str(base)
+                actions = []
+        inject_base, inject_arg_keys = self.prep_injection_dict(inject)
 
         match _from:
             case list():
                 for i, arg in enumerate(_from):
                     injection = {}
                     injection.update(inject_base)
-                    injection.update({k:arg for k in inject_arg_key})
-                    result.append(DootTaskSpec(_basename.subtask(i),
-                                               ctor=base,
-                                               required_for=[_basename.task_head()],
-                                               extra=injection
-                                  ))
+                    injection.update({k:arg for k in inject_arg_keys})
+                    result.append(DootTaskSpec.from_dict(dict(name=_basename.subtask(i),
+                                                              ctor=base,
+                                                              actions = actions or [],
+                                                              required_for=[_basename.task_head()],
+                                                              extra=injection
+                                                         )))
             case dict() | TomlGuard():
                 injection = {}
                 injection.update(_from)
                 injection.update(inject_base)
-                injection.update({k:arg for k in inject_arg_key})
-                result.append(DootTaskSpec(_basename.subtask(i),
-                                           ctor=base,
-                                           required_for=[_basename.task_head()],
-                                           extra=injection
-                              ))
+                injection.update({k:arg for k in inject_arg_keys})
+                result.append(DootTaskSpec.from_dict(dict(name=_basename.subtask(i),
+                                                          ctor=base,
+                                                          actions = actions or [],
+                                                          required_for=[_basename.task_head()],
+                                                          extra=injection
+                                                     )))
             case _:
                 printer.warning("Tried to expand a non-list of args")
 
         return { _update : result }
+
+class JobGenerate(Action_p):
+    """ Run a custom function to generate task specs  """
+
+    @DootKey.kwrap.references("fn")
+    @DootKey.kwrap.redirects("update_")
+    def __call__(self, spec, state, _fn_ref, _update):
+        fn = _fn_ref.try_import()
+        return { _update : list(fn(spec, state)) }
 
 class JobMatchAction(Action_p):
     """
@@ -186,7 +239,7 @@ class JobWalkAction(Action_p):
     """
 
     @DootKey.kwrap.types("roots", "exts")
-    @DootKey.kwrap.types("recursive", hint={"type": bool|None})
+    @DootKey.kwrap.types("recursive", hint={"type_": bool|None})
     @DootKey.kwrap.references("fn")
     @DootKey.kwrap.redirects("update_")
     def __call__(self, spec, state, roots, exts, recursive, fn, _update):
@@ -269,7 +322,10 @@ class JobWalkAction(Action_p):
 
 class JobLimitAction(Action_p):
     """
-      Limits a list to an amount
+      Limits a list to an amount, overwriting the 'from' key,
+      'method' defaults to a random sample,
+      or a coderef of type callable[[spec, state, list[taskspec]], list[taskspec]]
+
     """
 
     @DootKey.kwrap.types("from_", "count")
@@ -281,7 +337,7 @@ class JobLimitAction(Action_p):
                 limited = random.sample(_from, count)
             case DootCodeReference():
                 fn      = method.try_import()
-                limited = fn(spec, state, _from, count)
+                limited = fn(spec, state, _from)
 
         return { update : limited }
 
@@ -289,16 +345,18 @@ class JobPrependActions(Action_p):
 
     @DootKey.kwrap.types("_onto", "add_actions")
     def __call__(self, spec, state, _onto, _actions):
+        action_specs = [DootActionSpec.from_data(x) for x in _actions]
         for x in _onto:
-            actions = _actions + x.actions
+            actions = action_specs + x.actions
             x.actions = actions
 
 class JobAppendActions(Action_p):
 
     @DootKey.kwrap.types("_onto", "add_actions")
     def __call__(self, spec, state, _onto, _actions):
+        actions_specs = [DootActionSpec.from_data(x) for x in _actions]
         for x in _onto:
-            x.actions += _actions
+            x.actions += action_specs
 
 class JobInjectAction(Action_p):
 
@@ -308,20 +366,6 @@ class JobInjectAction(Action_p):
             base = dict(x.extra.items())
             base.update(inject)
             x.extra = base
-
-class _RelPather(Action_p):
-
-    def _rel_path(self, fpath, roots) -> pl.Path:
-        """
-        make the path relative to the appropriate root
-        """
-        for root in roots:
-            try:
-                return fpath.relative_to(root)
-            except ValueError:
-                continue
-
-        raise ValueError(f"{fpath} is not able to be made relative")
 
 class JobInjectPathParts(_RelPather):
     """
@@ -360,3 +404,19 @@ class JobInjectShadowAction(_RelPather):
     def __call__(self, spec, state, _onto, roots, _shadow):
         for x in _onto:
             rel_path = self._shadow_path(x.extra.fpath, roots, _shadow)
+
+class JobSubNamer(Action_p):
+    """
+      Apply the name {basename}.{i}.{key} to each taskspec in {onto}
+    """
+
+    @DootKey.kwrap.taskname
+    @DootKey.kwrap.expands("key")
+    @DootKey.kwrap.types("onto")
+    def __call__(self, spec, state, _basename, key, _onto):
+        for x in enumerate(_onto):
+            match x:
+                case DootTaskSpec():
+                    x.name = _basename.subtask(i, key)
+                case _:
+                    raise doot.errors.DootActionError("Job Tried to apply a name to a non-taskspec", x)
