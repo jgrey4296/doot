@@ -114,7 +114,8 @@ class DootRunner(BaseRunner, TaskRunner_i):
 
         self.reporter.trace(job.spec, flags=ReportEnum.JOB | ReportEnum.INIT)
 
-        count = 0
+        count       = 0
+        queue_tasks = []
         with logctx(job.spec.print_levels.on_fail(build_level).build()) as p:
             for task in job.build():
                 match task:
@@ -144,14 +145,17 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 match action_result:
                     case list():
                         printer.info("Queuing: %s", [str(x.name) for x in action_result])
-                        for task in action_result:
-                            self.tracker.add_task(task, no_root_connection=True)
-                            count += 1
+                        queue_tasks += action_result
                     case ActRE.SKIP:
                         p.info("------ Remaining Job Actions skipped by Action Instruction")
                         break
+            else:
+                # Only add tasks if the entire job succeeded, and wasn't skipped
+                for task in queue_tasks:
+                    self.tracker.add_task(task, no_root_connection=True)
+                    count += 1
+                logmod.debug("-- Job %s Expansion produced: %s tasks", job.name, count)
 
-        logmod.debug("-- Job %s Expansion produced: %s tasks", job.name, count)
         job.state.clear()
         self.reporter.trace(job.spec, flags=ReportEnum.JOB | ReportEnum.SUCCEED)
 
