@@ -33,13 +33,12 @@ import sh
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
-from doot.structs import DootKey
+from doot.structs import DootKey, DootTaskName
 
 printer = logmod.getLogger("doot._printer")
 STATE_TASK_NAME_K : Final[str] = doot.constants.patterns.STATE_TASK_NAME_K
 
 ##-- expansion keys
-FROM_KEY    : Final[DootKey] = DootKey.make("from")
 UPDATE      : Final[DootKey] = DootKey.make("update_")
 TASK_NAME   : Final[DootKey] = DootKey.make(STATE_TASK_NAME_K)
 SUBKEY      : Final[DootKey] = DootKey.make("subkey")
@@ -57,11 +56,13 @@ class _DootPostBox:
 
     @staticmethod
     def put(key:DootTaskName, val):
-        subbox = key.last()
-        box    = key.root()
+        subbox = str(key.last())
+        box    = str(key.root())
         match val:
             case None | [] | {} | dict() if not bool(val):
                 pass
+            case "" | "-":
+                _DootPostBox.boxes[box][_DootPostBox.default_subkey] += val
             case list() | set():
                 _DootPostBox.boxes[box][subbox] += val
             case _:
@@ -69,8 +70,8 @@ class _DootPostBox:
 
     @staticmethod
     def get(key:DootTaskName, subkey=Any) -> list:
-        box    = key.root()
-        subbox = key.last()
+        box    = str(key.root())
+        subbox = str(key.last())
         match subbox:
             case "" | "-":
                 return _DootPostBox.boxes[box][_DootPostBox.default_subkey][:]
@@ -83,8 +84,8 @@ class _DootPostBox:
 
     @staticmethod
     def clear_box(key):
-        box    = key.root()
-        subbox = key.last()
+        box    = str(key.root())
+        subbox = str(key.last())
         match subbox:
             case x if x == Any:
                 _DootPostBox.boxes[box][_DootPostBox.default_subkey] = []
@@ -108,13 +109,14 @@ class PutPostAction(Action_p):
     @DootKey.kwrap.kwargs
     @DootKey.kwrap.taskname
     def __call__(self, spec, state, args, kwargs, _basename) -> dict|bool|None:
-        target = basename.root().subtask(True)
+        target = _basename.root().subtask(_DootPostBox.default_subkey)
         for statekey in args:
             data = DootKey.make(statekey).to_type(spec, state)
             _DootPostBox.put(target, data)
 
-        for box,statekey in kwargs.items():
-            box  = basename.root().subtask(box)
+        root = _basename.root()
+        for subbox,statekey in kwargs.items():
+            box  = root.subtask(subbox)
             data = DootKey.make(statekey).to_type(spec, state)
             _DootPostBox.put(box, data)
 
@@ -130,11 +132,9 @@ class GetPostAction(Action_p):
     """
 
     @DootKey.kwrap.kwargs
-    def __call__(self, spec, state, _from, kwargs) -> dict|bool|None:
+    def __call__(self, spec, state, kwargs) -> dict|bool|None:
         updates = {}
         for key,subkey in kwargs.items():
-            if key == FROM_KEY:
-                pass
             state_key          = DootKey.make(key, explicit=True).expand(spec, state)
             target_box         = DootTaskName.from_str(subkey)
             updates[state_key] = _DootPostBox.get(target_box)
@@ -146,12 +146,11 @@ class ClearPostAction(Action_p):
     """
       Clear your postbox
     """
-    _toml_kwargs = [FROM_KEY, SUBKEY]
-
-    @DootKey.kwrap.expands("subkey", hint={"on_fail":Any})
-    def __call__(self, spec, state, subkey):
-        from_task = TASK_NAME.to_type(spec, state).root()
-        _DootPostBox.clear_box(from_task, subkey=subkey)
+    @DootKey.kwrap.expands("key", hint={"on_fail":Any})
+    @DootKey.kwrap.taskname
+    def __call__(self, spec, state, key, _basename):
+        from_task = _basename.root().subtask(key)
+        _DootPostBox.clear_box(from_task)
         return
 
 
@@ -161,8 +160,6 @@ class SummarizePostAction(Action_p):
       print a summary of this task tree's postbox
       The arguments of the action are held in self.spec
     """
-    _toml_kwargs = [FROM_KEY, "full"]
-
     @DootKey.kwrap.types("from", hint={"type_":str|None})
     @DootKey.kwrap.types("full", hint={"type_":bool, "on_fail":False})
     def __call__(self, spec, state, _from, full) -> dict|bool|None:

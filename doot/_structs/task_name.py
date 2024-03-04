@@ -136,8 +136,8 @@ class DootTaskName(DootStructuredName):
         tail = self.subseparator.join([str(x) if not isinstance(x, UUID) else "<UUID>" for x in self.tail])
         return "{}{}{}".format(group, self.separator, tail)
 
-    def root(self):
-        return f"{self.head_str()}{self.separator}{self.tail[0]}"
+    def root(self) -> DootTaskName:
+        return DootTaskName.from_str(f"{self.head_str()}{self.separator}{self.tail[0]}")
 
     def task_head(self):
         return self.subtask(doot.constants.patterns.SUBTASKED_HEAD)
