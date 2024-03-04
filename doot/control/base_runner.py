@@ -72,7 +72,7 @@ class BaseRunner(TaskRunner_i):
         self._exit_msg  = "---------- Task Loop Finished ----------"
 
     def __enter__(self) -> Any:
-        printer.info("- Validating Task Network, building remaining abstract tasks")
+        printer.info("- Validating Task Network, building remaining abstract tasks: %s", self.tracker.late_count)
         self.tracker.validate()
         printer.info(self._enter_msg, extra={"colour" : "green"})
         return

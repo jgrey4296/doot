@@ -82,7 +82,8 @@ class DootJob(Job_i, DootTask):
             self.args.update(kwargs)
 
         head = self._build_head()
-        yield self.specialize_task(head)
+        # yield self.specialize_task(head)
+        return [None]
 
     def specialize_task(self, task):
         return task

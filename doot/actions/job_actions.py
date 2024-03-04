@@ -97,7 +97,7 @@ class JobQueueAction(Action_p):
 
     @DootKey.kwrap.args
     @DootKey.kwrap.types("from_", hint={"type_":list|DootTaskSpec|None})
-    @DootKey.kwrap.types("from_multi_", hint={"type_":list|None})
+    @DootKey.kwrap.redirects_many("from_multi_")
     @DootKey.kwrap.taskname
     def __call__(self, spec, state, _args, _from, _from_multi, _basename):
         subtasks  = []
@@ -119,7 +119,7 @@ class JobQueueAction(Action_p):
             case [*xs]:
                 as_keys = [DootKey.make(x) for x in xs]
                 for key in as_keys:
-                    match key.types(spec, state, type_=list|None):
+                    match key.to_type(spec, state, type_=list|None):
                         case None:
                             pass
                         case list() as l:
@@ -129,20 +129,29 @@ class JobQueueAction(Action_p):
 
 class JobQueueHead(_injectionPrepper):
 
-    @DootKey.kwrap.types("base", hint={"type_":str|list})
+    @DootKey.kwrap.types("base")
     @DootKey.kwrap.types("inject")
     @DootKey.kwrap.taskname
     def __call__(self, spec, state, base, inject, _basename):
         head_name = _basename.task_head()
         inject_base, inject_arg_keys = self.prep_injection_dict(inject)
+        head = []
 
         match base:
             case str():
-                head = DootTaskSpec.from_dict(dict(name=head_name, ctor=base, extra=inject_base))
+                head += [DootTaskSpec.from_dict(dict(name=head_name,
+                                                     actions=[],
+                                                     queue_behaviour="auto")),
+                         DootTaskSpec.from_dict(dict(name=head_name.subtask("1"),
+                                                     ctor=DootTaskName.from_str(base),
+                                                     depends_on=[head_name],
+                                                     extra=inject_base,
+                                                     queue_behaviour="auto"))
+                    ]
             case list():
-                head = DootTaskSpec.from_dict(dict(name=head_name, actions=base, extra=inject_base))
+                head += [DootTaskSpec.from_dict(dict(name=head_name, actions=base, extra=inject_base, queue_behaviour="auto"))]
 
-        return [head]
+        return head
 
 class JobExpandAction(_injectionPrepper):
     """
@@ -167,6 +176,9 @@ class JobExpandAction(_injectionPrepper):
             case str():
                 base    = DootTaskName.from_str(base)
                 actions = []
+            case _:
+                raise doot.errors.DootActionError("Unrecognized base type", base)
+
         inject_base, inject_arg_keys = self.prep_injection_dict(inject)
 
         match _from:
@@ -177,7 +189,7 @@ class JobExpandAction(_injectionPrepper):
                     injection.update({k:arg for k in inject_arg_keys})
                     result.append(DootTaskSpec.from_dict(dict(name=_basename.subtask(i),
                                                               ctor=base,
-                                                              actions = actions or [],
+                                                             actions = actions or [],
                                                               required_for=[_basename.task_head()],
                                                               extra=injection
                                                          )))

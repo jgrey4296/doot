@@ -285,6 +285,11 @@ class _InternalTrackerBase(TaskTracker_i):
 
 class BaseTracker(_InternalTrackerBase):
     """ The public part of the standard tracker implementation """
+
+    @property
+    def late_count(self):
+        return len(self._build_late)
+
     def queue_task(self, *tasks:str|DootTaskName|DootTaskArtifact|tuple, silent=False) -> None:
         """
           Add tasks to the queue.

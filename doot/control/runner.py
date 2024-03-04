@@ -119,6 +119,8 @@ class DootRunner(BaseRunner, TaskRunner_i):
         with logctx(job.spec.print_levels.on_fail(build_level).build()) as p:
             for task in job.build():
                 match task:
+                    case None:
+                        pass
                     case Job_i():
                         self.tracker.add_task(task, no_root_connection=True)
                     case Task_i():
