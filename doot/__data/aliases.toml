@@ -83,27 +83,37 @@ touch    =       "doot.actions.io:TouchFileAction"
 
 [[doot.aliases.action]]
 # Map {alias} -> CodeRef String
-"putPost"   =  "doot.actions.postbox:PutPostAction"
-"getPost"   =  "doot.actions.postbox:GetPostAction"
-"addState"  =  "doot.actions.state:AddStateAction"
-"addFn"     =  "doot.actions.state:AddStateFn"
-"pathParts" =  "doot.actions.state:PathParts"
+"post.put"                    =  "doot.actions.postbox:PutPostAction"
+"post.get"                    =  "doot.actions.postbox:GetPostAction"
+"state.add"                   =  "doot.actions.state:AddStateAction"
+"state.add.fn"                =  "doot.actions.state:AddStateFn"
+"state.add.path.parts"        =  "doot.actions.state:PathParts"
 
 
 [[doot.aliases.action]]
 # Map {alias} -> CodeRef String
-"sayTime" = "doot.actions.speak:SpeakTimeAction"
-"log"     = "doot.actions.control_flow:LogAction"
+"say.time" = "doot.actions.speak:SpeakTimeAction"
+"log"      = "doot.actions.control_flow:LogAction"
 
 
 [[doot.aliases.action]]
 # Map {alias} -> CodeRef String
-"job.queue"  = "doot.actions.job_actions:JobQueueAction"
-"job.walk"   = "doot.actions.job_actions:JobWalkAction"
-"job.limit"  = "doot.actions.job_actions:JobLimitAction"
-"job.expand" = "doot.actions.job_actions:JobExpandAction"
-"job.shadow" = "doot.actions.job_actions:JobInjectShadowAction"
+"job.queue"           = "doot.actions.job_actions:JobQueueAction"
+"job.queue.head"      = "doot.actions.job_actions:JobQueueHead"
 
+"job.expand"          = "doot.actions.job_actions:JobExpandAction"
+"job.gen"             = "doot.actions.job_actions:JobGenerate"
+
+"job.walk"            = "doot.actions.job_actions:JobWalkAction"
+"job.limit"           = "doot.actions.job_actions:JobLimitAction"
+
+"job.match"           = "doot.actions.job_actions:JobMatchAction"
+"job.sub.name"        = "doot.actions.job_actions:JobSubNamer"
+"job.actions.prepend" = "doot.actions.job_actions:JobPrependActions"
+"job.actions.append"  = "doot.actions.job_actions:JobAppendActions"
+"job.inject"          = "doot.actions.job_actions:JobInjectAction"
+"job.inject.path"     = "doot.actions.job_actions:JobInjectPathParts"
+"job.inject.shadow"   = "doot.actions.job_actions:JobInjectShadowAction"
 
 [[doot.aliases.task]]
 # Map {alias} -> CodeRef String
@@ -111,14 +121,3 @@ touch    =       "doot.actions.io:TouchFileAction"
 "task"  =      "doot.task.base_task:DootTask"
 
 [[doot.aliases.mixin]]
-# Map {alias} -> CodeRef String
-"job:expander" = "doot.mixins.job.expander:Expander_M"
-"job:postbox"  = "doot.mixins.job.expander:PostBoxExpander_M"
-"job:walker"   = "doot.mixins.job.expander:WalkExpander_M"
-"job:shadow"   = "doot.mixins.job.shadower:WalkShadower_M"
-"job:sub"      = "doot.mixins.job.subtask:SubTask_M"
-"job:terse"    = "doot.mixins.job.terse:TerseBuilder_M"
-"job:headonly" = "doot.mixins.job.terse:HeadOnly_M"
-"job:setup"    = "doot.mixins.job.setup:SetupStage_M"
-"job:limit"    = "doot.mixins.job.limiter:TaskLimit_M"
-"job:match"    = "doot.mixins.job.matcher:PatternMatcher_M"

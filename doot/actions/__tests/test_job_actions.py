@@ -13,6 +13,7 @@ import warnings
 import pytest
 
 import doot
+doot.setup()
 import doot.errors
 from doot.structs import DootKey, DootTaskSpec, DootActionSpec, DootTaskName
 import doot.actions.job_actions as JA
@@ -49,7 +50,7 @@ class TestJobActions:
     def test_basic_expander(self, spec, state):
         state.update(dict(_task_name=DootTaskName.from_str("basic"),
                           inject="aKey",
-                          base=DootTaskName.from_str("base::task")))
+                          base="base::task"))
 
         state['from']          = ["first", "second", "third"]
         jqa    = JA.JobExpandAction()
@@ -64,7 +65,7 @@ class TestJobActions:
     def test_expander_with_dict_injection(self, spec, state):
         state.update(dict(_task_name=DootTaskName.from_str("basic"),
                           inject={"aKey": "$arg$", "other":"blah"},
-                          base=DootTaskName.from_str("base::task")))
+                          base="base::task"))
 
         state['from']          = ["first", "second", "third"]
         jqa    = JA.JobExpandAction()

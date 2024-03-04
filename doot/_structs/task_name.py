@@ -165,3 +165,6 @@ class DootTaskName(DootStructuredName):
                 return self.subtask(doot.constants.patterns.SPECIALIZED_ADD, uuid1())
             case _:
                 return self.subtask(doot.constants.patterns.SPECIALIZED_ADD, info, uuid1())
+
+    def last(self):
+        return self.tail[-1]

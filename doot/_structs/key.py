@@ -163,7 +163,7 @@ class KWrapper:
         return action_expands
 
     @staticmethod
-    def basename(f):
+    def taskname(f):
         KWrapper._annotate_keys(f, [DootKey.make(STATE_TASK_NAME_K, exp_hint="type")])
         return KWrapper._add_key_handler(f)
 
