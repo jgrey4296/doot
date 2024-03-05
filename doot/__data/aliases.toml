@@ -60,10 +60,11 @@ touch    =       "doot.actions.io:TouchFileAction"
 
 [[doot.aliases.action]]
 # Map {alias} -> CodeRef String
-"skipIfFile" = "doot.actions.control_flow:SkipIfFileExists"
-"pred?"      = "doot.actions.control_flow:CancelOnPredicateAction"
-"installed?" = "doot.actions.control_flow:AssertInstalled"
-"dir?"       = "doot.actions.io:EnsureDirectory"
+"exists?"       = "doot.actions.control_flow:SkipIfFileExists"
+"ext?"          = "doot.actions.control_flow:SkipUnlessSuffix"
+"pred?"         = "doot.actions.control_flow:CancelOnPredicateAction"
+"installed?"    = "doot.actions.control_flow:AssertInstalled"
+"dir?"          = "doot.actions.io:EnsureDirectory"
 
 [[doot.aliases.action]]
 # Map {alias} -> CodeRef String

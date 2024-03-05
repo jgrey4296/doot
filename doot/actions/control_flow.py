@@ -75,6 +75,15 @@ class SkipIfFileExists(Action_p):
                 return ActRE.SKIP
 
 @doot.check_protocol
+class SkipUnlessSuffix(Action_p):
+
+    @DootKey.kwrap.paths("fpath")
+    @DootKey.kwrap.expands("ext")
+    def __call__(self, spec, state, fpath, ext):
+        if fpath.suffix != ext:
+            return ActRE.SKIP
+
+@doot.check_protocol
 class LogAction(Action_p):
 
     @DootKey.kwrap.types("level", hint={"type_":str, "on_fail":"INFO"})
