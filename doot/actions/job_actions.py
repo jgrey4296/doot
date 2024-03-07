@@ -62,27 +62,24 @@ class _WalkControl(enum.Enum):
 
 class _injectionPrepper(Action_p):
 
-    def prep_injection_dict(self, inject) -> tuple[dict, list]:
-        inject_base     = {}
-        inject_arg_keys  = []
+    def get_injection_keys(self, inject) -> set:
         match inject:
              case dict() | TomlGuard():
-                 inject_base.update(inject)
-                 inject_arg_keys = [k for k,v in inject.items() if v == doot.constants.patterns.STATE_ARG_EXPANSION]
-             case str():
-                 inject_arg_keys = [inject]
-
-        return inject_base, inject_arg_keys
+                return {k for k,v in inject.items() if v == doot.constants.patterns.STATE_ARG_EXPANSION}
+             case _:
+                 return {}
 
 class _RelPather(Action_p):
 
-    def _rel_path(self, fpath, roots) -> pl.Path:
+    def _rel_path(self, spec, state, fpath, roots) -> pl.Path:
         """
         make the path relative to the appropriate root
         """
         for root in roots:
+            root_key = DootKey.make(root)
+            root_path = root_key.to_path(spec, state)
             try:
-                return fpath.relative_to(root)
+                return fpath.relative_to(root_path)
             except ValueError:
                 continue
 
@@ -133,23 +130,25 @@ class JobQueueHead(_injectionPrepper):
     @DootKey.kwrap.types("inject")
     @DootKey.kwrap.taskname
     def __call__(self, spec, state, base, inject, _basename):
-        head_name = _basename.task_head()
-        inject_base, inject_arg_keys = self.prep_injection_dict(inject)
-        head = []
+        head_name       = _basename.task_head()
+        inject_arg_keys = self.get_injection_keys(inject)
+        head            = []
 
         match base:
-            case str():
+            case str() | DootTaskName():
                 head += [DootTaskSpec.from_dict(dict(name=head_name,
                                                      actions=[],
                                                      queue_behaviour="auto")),
                          DootTaskSpec.from_dict(dict(name=head_name.subtask("1"),
                                                      ctor=DootTaskName.from_str(base),
                                                      depends_on=[head_name],
-                                                     extra=inject_base,
+                                                     extra=inject or {},
                                                      queue_behaviour="auto"))
                     ]
             case list():
-                head += [DootTaskSpec.from_dict(dict(name=head_name, actions=base, extra=inject_base, queue_behaviour="auto"))]
+                head += [DootTaskSpec.from_dict(dict(name=head_name, actions=base, extra=inject or {}, queue_behaviour="auto"))]
+            case None:
+                head += [DootTaskSpec.from_dict(dict(name=head_name, queue_behaviour="auto"))]
 
         return head
 
@@ -162,47 +161,51 @@ class JobExpandAction(_injectionPrepper):
       provides a key to assign the entry from the source list
     """
 
-    @DootKey.kwrap.types("from", "inject", "base")
+    @DootKey.kwrap.types("from", "inject", "base", "print_levels")
     @DootKey.kwrap.redirects("update_")
     @DootKey.kwrap.taskname
     def __call__(self, spec, state, _from, inject, base, _update, _basename):
         result         = []
+
         match base:
             case list():
-                base    = None
                 actions = base
+                base    = None
             case DootTaskName():
-                action = []
-            case str():
-                base    = DootTaskName.from_str(base)
                 actions = []
+            case str():
+                actions = []
+                base    = DootTaskName.from_str(base)
             case _:
                 raise doot.errors.DootActionError("Unrecognized base type", base)
 
-        inject_base, inject_arg_keys = self.prep_injection_dict(inject)
-
+        inject_arg_keys = self.get_injection_keys(inject)
         match _from:
             case list():
                 for i, arg in enumerate(_from):
                     injection = {}
-                    injection.update(inject_base)
+                    injection.update(inject)
                     injection.update({k:arg for k in inject_arg_keys})
+                    if print_levels is not None:
+                        injection['print_levels'] = print_levels
                     result.append(DootTaskSpec.from_dict(dict(name=_basename.subtask(i),
                                                               ctor=base,
-                                                             actions = actions or [],
+                                                              actions = actions or [],
                                                               required_for=[_basename.task_head()],
-                                                              extra=injection
+                                                              extra=injection or {}
                                                          )))
             case dict() | TomlGuard():
                 injection = {}
                 injection.update(_from)
-                injection.update(inject_base)
+                injection.update(inject)
                 injection.update({k:arg for k in inject_arg_keys})
-                result.append(DootTaskSpec.from_dict(dict(name=_basename.subtask(i),
+                if print_levels is not None:
+                    injection['print_levels'] = print_levels
+                result.append(DootTaskSpec.from_dict(dict(name=_basename.subtask("i"),
                                                           ctor=base,
                                                           actions = actions or [],
                                                           required_for=[_basename.task_head()],
-                                                          extra=injection
+                                                          extra=injection or {}
                                                      )))
             case _:
                 printer.warning("Tried to expand a non-list of args")
@@ -255,7 +258,7 @@ class JobWalkAction(Action_p):
     @DootKey.kwrap.references("fn")
     @DootKey.kwrap.redirects("update_")
     def __call__(self, spec, state, roots, exts, recursive, fn, _update):
-        exts    = {y for x in exts for y in [x.lower(), x.upper()]}
+        exts    = {y for x in (exts or []) for y in [x.lower(), x.upper()]}
         rec     = recursive or False
         roots   = [DootKey.make(x).to_path(spec, state) for x in roots]
         match fn:
@@ -318,18 +321,19 @@ class JobWalkAction(Action_p):
                     raise TypeError("Unexpected filter value", x)
 
     def walk_target_shallow(self, target, exts, fn):
-        check_fn = lambda x: (fn(x) not in [None, False, _WalkControl.no, _WalkControl.noBut]
-                              and x.name not in walk_ignores
-                              and (not bool(exts) or (x.is_file() and x.suffix in exts)))
-
-        if check_fn(target):
-            yield target
-
-        if not target.is_dir():
+        if target.is_file():
+            fn_fail = fn(target) in [None, False, _WalkControl.no, _WalkControl.noBut]
+            ignore  = target.name in walk_ignores
+            bad_ext = (bool(exts) and (x.is_file() and x.suffix in exts))
+            if not (fn_fail or ignore or bad_ext):
+                yield target
             return None
 
         for x in target.iterdir():
-            if check_fn(x):
+            fn_fail = fn(x) in [None, False, _WalkControl.no, _WalkControl.noBut]
+            ignore  = x.name in walk_ignores
+            bad_ext = bool(exts) and x.is_file() and x.suffix not in exts
+            if not (fn_fail or ignore or bad_ext):
                 yield x
 
 class JobLimitAction(Action_p):
@@ -344,6 +348,9 @@ class JobLimitAction(Action_p):
     @DootKey.kwrap.references("method")
     @DootKey.kwrap.redirects("from_")
     def __call__(self, spec, state, _from, count, method, _update):
+        if count == -1:
+            return
+
         match method:
             case None:
                 limited = random.sample(_from, count)
@@ -351,7 +358,7 @@ class JobLimitAction(Action_p):
                 fn      = method.try_import()
                 limited = fn(spec, state, _from)
 
-        return { update : limited }
+        return { _update : limited }
 
 class JobPrependActions(Action_p):
 
@@ -375,9 +382,7 @@ class JobInjectAction(Action_p):
     @DootKey.kwrap.types("onto", "inject")
     def __call__(self, spec, state, _onto, inject):
         for x in _onto:
-            base = dict(x.extra.items())
-            base.update(inject)
-            x.extra = base
+            x.extra = TomlGuard(dict(**x.extra, **inject))
 
 class JobInjectPathParts(_RelPather):
     """
@@ -389,13 +394,15 @@ class JobInjectPathParts(_RelPather):
     @DootKey.kwrap.expands("key")
     def __call__(self, spec, state, _onto, roots, key):
         for x in _onto:
-            base_extra            = dict(x.extra.items())
-            fpath                 = x.extra[key]
-            base_extra['lpath']   = self._rel_path(fpath, roots)
-            base_extra['fstem']   = fpath.stem
-            base_extra['fparent'] = fpath.parent
-            base_extra['fname']   = fpath.name
-            base_extra['fext']    = fpath.suffix
+            fpath                  = x.extra[key]
+            path_extras            = dict(x.extra)
+            path_extras['lpath']   = self._rel_path(spec, state, fpath, roots)
+            path_extras['fstem']   = fpath.stem
+            path_extras['fparent'] = fpath.parent
+            path_extras['fname']   = fpath.name
+            path_extras['fext']    = fpath.suffix
+            path_extras['pstem']   = fpath.parent.stem
+            x.extra                = TomlGuard(path_extras)
 
 class JobInjectShadowAction(_RelPather):
     """
@@ -404,7 +411,7 @@ class JobInjectShadowAction(_RelPather):
 
     def _shadow_path(self, fpath:pl.Path, roots:list, shadow_root:pl.Path) -> pl.Path:
         shadow_root = doot.locs[self.spec.extra.shadow_root]
-        rel_path    = self._rel_path(fpath, roots)
+        rel_path    = self._rel_path(spec, state, fpath, roots)
         result      = shadow_root / rel_path
         if result == fpath:
             raise doot.errors.DootLocationError("Shadowed Path is same as original", fpath)
@@ -416,6 +423,7 @@ class JobInjectShadowAction(_RelPather):
     def __call__(self, spec, state, _onto, roots, _shadow):
         for x in _onto:
             rel_path = self._shadow_path(x.extra.fpath, roots, _shadow)
+            x.extra = TomlGuard(dict(**x.extra, **{"shadow_path": rel_path}))
 
 class JobSubNamer(Action_p):
     """

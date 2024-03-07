@@ -61,15 +61,13 @@ class _DootPostBox:
         match val:
             case None | [] | {} | dict() if not bool(val):
                 pass
-            case "" | "-":
-                _DootPostBox.boxes[box][_DootPostBox.default_subkey] += val
             case list() | set():
                 _DootPostBox.boxes[box][subbox] += val
             case _:
                 _DootPostBox.boxes[box][subbox].append(val)
 
     @staticmethod
-    def get(key:DootTaskName, subkey=Any) -> list:
+    def get(key:DootTaskName, subkey=Any) -> list|dict:
         box    = str(key.root())
         subbox = str(key.last())
         match subbox:

@@ -16,6 +16,7 @@ logging = logmod.root
 
 import tomlguard
 import doot
+doot.setup()
 from doot import structs
 from doot.task.base_task import DootTask
 
@@ -196,6 +197,20 @@ class TestDootTaskName:
         simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
         sub   = structs.DootTaskName(["basic", "sub", "test"], ["tail", "sub"])
         assert(sub in simple)
+
+
+    def test_subtask_0(self):
+        simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
+        sub = simple.subtask(0)
+        assert(sub.tail == ["tail", 0])
+        assert(str(sub) == '"basic.sub.test"::tail.0')
+
+
+    def test_subtask_1(self):
+        simple = structs.DootTaskName(["basic", "sub", "test"], "tail")
+        sub = simple.subtask(1)
+        assert(sub.tail == ["tail", 1])
+        assert(str(sub) == '"basic.sub.test"::tail.1')
 
 
 

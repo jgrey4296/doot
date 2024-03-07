@@ -145,7 +145,7 @@ class DootTaskName(DootStructuredName):
     def subtask(self, *subtasks, subgroups:list[str]|None=None) -> DootTaskName:
         args = self.args.copy() if self.args else None
         subs = []
-        match [x for x in subtasks if bool(x)]:
+        match [x for x in subtasks if x != None]:
             case [int() as i, DootTaskName() as x]:
                 subs.append(str(i))
                 subs.append(x.task.removeprefix(self.task + "."))

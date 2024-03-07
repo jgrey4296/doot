@@ -110,7 +110,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
         """ turn a job into all of its tasks, including teardowns """
         logmod.debug("-- Expanding Job %s: %s", self.step, job.name)
         with logctx(job.spec.print_levels.on_fail(head_level).head()) as p:
-            p.info("---- Job %s: %s", self.step, job.name, extra={"colour":"magenta"})
+            p.info("---> Job %s: %s", self.step, job.name, extra={"colour":"magenta"})
 
         self.reporter.trace(job.spec, flags=ReportEnum.JOB | ReportEnum.INIT)
 
@@ -154,12 +154,18 @@ class DootRunner(BaseRunner, TaskRunner_i):
             else:
                 # Only add tasks if the entire job succeeded, and wasn't skipped
                 for task in queue_tasks:
-                    self.tracker.add_task(task, no_root_connection=True)
+                    match task:
+                        case DootTaskSpec():
+                            self.tracker.add_task(task, no_root_connection=True)
+                        case _:
+                            raise doot.errors.DootTaskError("Tried to queue a non-taskspec", task)
                     count += 1
                 logmod.debug("-- Job %s Expansion produced: %s tasks", job.name, count)
 
-        job.state.clear()
-        self.reporter.trace(job.spec, flags=ReportEnum.JOB | ReportEnum.SUCCEED)
+        with logctx(job.spec.print_levels.on_fail(head_level).head()) as p:
+            p.info("---< Job %s: %s", self.step, job.name, extra={"colour":"magenta"})
+            job.state.clear()
+            self.reporter.trace(job.spec, flags=ReportEnum.JOB | ReportEnum.SUCCEED)
 
     def _execute_task(self, task:Task_i) -> None:
         """ execute a single task's actions """
@@ -221,11 +227,11 @@ class DootRunner(BaseRunner, TaskRunner_i):
             case dict():
                 task.state.update(result)
                 result = ActRE.SUCCESS
+            case list() if all(isinstance(x, (DootTaskName, DootTaskSpec)) for x in result):
+                pass
             case False | ActRE.FAIL:
                 self.reporter.trace(action, flags=ReportEnum.FAIL | ReportEnum.ACTION)
                 raise doot.errors.DootTaskFailed("Task %s Action Failed: %s", task.name, action, task=task.spec)
-            case list() if all(isinstance(x, (DootTaskName, DootTaskSpec)) for x in result):
-                pass
             case _:
                 self.reporter.trace(action, flags=ReportEnum.FAIL | ReportEnum.ACTION)
                 raise doot.errors.DootTaskError("Task %s Action %s Failed: Returned an unplanned for value: %s", task.name, action, result, task=task.spec)

@@ -57,7 +57,6 @@ class AddStateAction(Action_p):
             result[k] = val
         return result
 
-
 @doot.check_protocol
 class AddStateFn(Action_p, Importer_M):
     """ for each toml kwarg, import its value and set the state[kwarg] = val
@@ -74,8 +73,6 @@ class AddStateFn(Action_p, Importer_M):
             result[kwarg] = ref.try_import()
 
         return result
-
-
 
 @doot.check_protocol
 class PushState(Action_p):
@@ -101,7 +98,6 @@ class PushState(Action_p):
 
         return { _update : data }
 
-
 @doot.check_protocol
 class AddNow(Action_p):
     """
@@ -114,7 +110,6 @@ class AddNow(Action_p):
         now      = datetime.datetime.now()
         return { _update : now.strftime(format) }
 
-
 @doot.check_protocol
 class PathParts(Action_p):
     """ take a path and add fstem, fpar, fname to state """
@@ -122,14 +117,17 @@ class PathParts(Action_p):
     @DootKey.kwrap.paths("from")
     @DootKey.kwrap.returns("fstem", "fpar", "fname")
     def __call__(self, spec, state, _from):
-        fpath = _from
-        name  = fpath.name
-        stem  = fpath
+        fpath      = _from
+        name       = fpath.name
+        temp_stem  = fpath
         # This handles "a/b/c.tar.gz"
-        while stem.stem != stem.with_suffix("").stem:
-            stem = stem.with_suffix("")
+        while temp_stem.stem != temp_stem.with_suffix("").stem:
+            temp_stem = temp_stem.with_suffix("")
 
-        return { "fstem": stem.stem,
-                 "fpar" : fpath.parent,
-                 "fname": name,
-                }
+        return {
+            'fstem'   : temp_stem.stem,
+            'fparent' : fpath.parent,
+            'fname'   : fpath.name,
+            'fext'    : fpath.suffix,
+            'pstem'   : fpath.parent.stem,
+        }

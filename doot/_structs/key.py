@@ -502,7 +502,8 @@ class DootKey(abc.ABC):
         pass
 
     def to_coderef(self, spec, state) -> None|DootCodeReference:
-        if self not in spec.kwargs and self not in state:
+        redir = self.redirect(spec)
+        if redir not in spec.kwargs and redir not in state:
             return None
         try:
             expanded = self.expand(spec, state)
