@@ -169,7 +169,7 @@ class JobExpandAction(_injectionPrepper):
         result         = []
         match base:
             case list():
-                base    = none
+                base    = None
                 actions = base
             case DootTaskName():
                 action = []
