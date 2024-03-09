@@ -17,6 +17,7 @@ logging = logmod.root
 
 from tomlguard import TomlGuard
 import doot
+doot._test_setup()
 from doot.control.locations import DootLocations
 from doot.structs import DootKey, DootActionSpec
 from doot._structs import key as dkey
@@ -66,6 +67,35 @@ class TestKeyConstruction:
         obj = dkey.DootKey.make(name, strict=False)
         assert(isinstance(obj, DootKey))
         assert(isinstance(obj, dkey.DootMultiKey))
+
+
+class TestSimpleGet:
+
+    @pytest.fixture(scope="function")
+    def spec(self):
+        return DootActionSpec(kwargs=TomlGuard({"y": "aweg", "z_": "bloo", "a": 2}))
+
+    def test_initial(self, spec):
+        key = DootKey.make("z_")
+        result = key.basic(spec, {})
+        assert(str(key) == "z_")
+        assert(result == "bloo")
+
+
+    def test_basic(self, spec):
+        key = DootKey.make("y")
+        result = key.basic(spec, {})
+        assert(str(key) == "y")
+        assert(result == "aweg")
+
+
+    def test_another(self, spec):
+        key = DootKey.make("a")
+        result = key.basic(spec, {})
+        assert(str(key) == "a")
+        assert(result == 2)
+
+
 
 class TestSimpleKey:
 
