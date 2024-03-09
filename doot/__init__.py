@@ -46,24 +46,32 @@ report               : Reporter_i         = None
 
 _configs_loaded_from : list[pl.Path]      = []
 
-def setup(targets:list[pl.Path]|None=None, prefix:str|None=TOOL_PREFIX) -> tuple[TG.TomlGuard, DootLocData]:
+def setup(targets:list[pl.Path]|False|None=None, prefix:str|None=TOOL_PREFIX) -> tuple[TG.TomlGuard, DootLocData]:
     """
       The core requirement to call before any other doot code is run.
       loads the config files, so everything else can retrieve values when imported.
 
       `prefix` removes a prefix from the loaded data.
       eg: 'tool.doot' for if putting doot settings in a pyproject.toml
+
+      targets=False is for loading nothing, for testing
     """
     global config, _configs_loaded_from
-    targets : list[pl.Path] = [pl.Path(x) for x in targets or constants.paths.DEFAULT_LOAD_TARGETS]
+    match targets:
+        case False:
+            targets :list[pl.Path] = []
+        case list() if bool(targets) and all([isinstance(x, pl.Path) for x in targets]):
+            targets : list[pl.Path] = [pl.Path(x) for x in targets]
+        case list() if bool(targets):
+            raise TypeError("Doot Config Targets should be pathlib.Path's", targets)
+        case _:
+            targets : list[pl.Path] = [pl.Path(x) for x in constants.paths.DEFAULT_LOAD_TARGETS]
+
     logging.debug("Loading Doot Config, version: %s targets: %s", __version__, targets)
     if bool(config):
         printer.warning("doot.setup called even though doot is already set up")
 
-    if bool(targets) and not all([isinstance(x, pl.Path) for x in targets]):
-        raise TypeError("Doot Config Targets should be pathlib.Path's", targets)
-
-    if not any([x.exists() for x in targets]):
+    if bool(targets) and not any([x.exists() for x in targets]):
         raise doot.errors.DootMissingConfigError("No Doot data found")
 
     existing_targets       = [x for x in targets if x.exists()]
@@ -102,7 +110,7 @@ def _load_aliases():
         flat[key] = {k:v for x in val for k,v in x.items()}
 
     # Then override with config specified:
-    for key,val in config.plugins:
+    for key,val in config.on_fail({}).plugins().items():
         flat[key].update(dict(val))
 
     aliases = TG.TomlGuard(flat)
@@ -124,3 +132,11 @@ def _update_import_path():
         if source.exists() and source.is_dir():
             logging.debug("Adding task code directory to Import Path: %s", source)
             sys.path.append(str(source))
+
+
+
+def _test_setup():
+    """
+      Doesn't load anything but constants, for testing
+    """
+    setup(False)
