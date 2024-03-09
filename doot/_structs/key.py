@@ -465,6 +465,11 @@ class DootKey(abc.ABC):
         return str(self)
 
     @property
+    def direct(self):
+        return str(self).removesuffix("_")
+
+
+    @property
     def is_indirect(self) -> bool:
         return False
 
@@ -508,6 +513,16 @@ class DootKey(abc.ABC):
 
     def within(self, other:str|dict|TomlGuard) -> bool:
         return False
+
+    def basic(self, spec, state, locs=None):
+        match spec:
+            case DootTaskSpec():
+                kwargs = spec.extra
+            case DootActionSpec():
+                kwargs = spec.kwargs
+
+        return _DootKeyGetter.get(str(self), kwargs, state, locs=locs or doot.locs)
+
 
     @abc.abstractmethod
     def to_type(self, spec, state, type_=Any, chain:list[DootKey]=None, on_fail=Any, **kwargs) -> Any:
@@ -577,8 +592,8 @@ class DootNonKey(str, DootKey):
         return self
 
     def to_type(self, spec, state, type_=Any, **kwargs) -> str:
-        if type_ != Any or type_ != str:
-            raise TypeError("NonKey's can only be strings", self)
+        if type_ not in [Any, str]:
+            raise TypeError("NonKey's can only be strings", self, type_)
         return str(self)
 
 class DootSimpleKey(str, DootKey):
@@ -612,7 +627,7 @@ class DootSimpleKey(str, DootKey):
 
     @property
     def form(self):
-        """ Return the key in its use form """
+        """ Return the key in its use form, ie: wrapped in braces """
         return "{{{}}}".format(str(self))
 
     def within(self, other:str|dict|TomlGuard) -> bool:
