@@ -22,6 +22,9 @@ import doot.errors
 from doot.structs import DootKey, DootActionSpec, DootTaskName
 
 class TestJobInjection:
+    """
+
+    """
 
     @pytest.fixture(scope="function")
     def spec(self):
@@ -32,23 +35,23 @@ class TestJobInjection:
         return {"_task_name": DootTaskName.from_str("basic")}
 
     def test_copy(self, spec, state):
+        """ the injection copies the value over directly """
         state.update({"a": 2})
         inj = JobInjector()
         injection = inj.build_injection(spec, state, dict(copy=["a"]))
         assert("a" in injection)
         assert(injection['a'] == 2)
 
-
-
     def test_copy_multikey(self, spec, state):
+        """ the injection doesn't expand a multikey """
         state.update({"a": "{x} : {y}", "x": 5, "y": 10})
         inj = JobInjector()
         injection = inj.build_injection(spec, state, dict(copy=["a"]))
         assert("a" in injection)
         assert(injection['a'] == "{x} : {y}")
 
-
     def test_expand(self, spec, state):
+        """ the injection expands the key to its value, adding it under the original key """
         spec.kwargs._table().update({"a_": "b"})
         state.update({"b": 5})
         inj = JobInjector()
@@ -56,8 +59,8 @@ class TestJobInjection:
         assert("a" in injection)
         assert(injection['a'] == 5)
 
-
     def test_copy_doesnt_expand(self, spec, state):
+        """ a copied indirect key will copy its redirected value """
         spec.kwargs._table().update({"a_": "b"})
         state.update({"b": 5})
         inj = JobInjector()
@@ -67,6 +70,7 @@ class TestJobInjection:
         assert(injection['a'] == 5)
 
     def test_copy_remap(self, spec, state):
+        """ copied values can be remapped to new key names """
         state.update({"a": 2})
         inj = JobInjector()
         injection = inj.build_injection(spec, state, dict(copy={"test":"a"}))
@@ -74,8 +78,8 @@ class TestJobInjection:
         assert("a" not in injection)
         assert(injection['test'] == 2)
 
-
     def test_expand_remap(self, spec, state):
+        """ expanded injections can be remapped to new key names """
         state.update({"a": 2})
         inj = JobInjector()
         injection = inj.build_injection(spec, state, dict(expand={"test":"a"}))
@@ -83,10 +87,29 @@ class TestJobInjection:
         assert("a" not in injection)
         assert(injection['test'] == 2)
 
-
     def test_replacement(self, spec, state):
+        """ keys can be inserted with the defined replacement value """
         state.update({"a": 2})
         inj = JobInjector()
         injection = inj.build_injection(spec, state, dict(replace=["a"]), replacement=10)
         assert("a" in injection)
         assert(injection['a'] == 10)
+
+
+class TestPathInjection:
+
+    def test_initial(self):
+        pass
+
+    def test_inject_shadow(self):
+        pass
+
+class TestNameInjection:
+
+    def test_initial(self):
+        pass
+
+class TestActionInjection:
+
+    def test_initial(self):
+        pass

@@ -16,17 +16,8 @@ logging = logmod.root
 
 import tomlguard
 import doot
-doot.setup()
+doot._test_setup()
 from doot import structs
-
-# caplog
-# mocker.patch | patch.object | patch.multiple | patch.dict | stopall | stop | spy | stub
-# pytest.mark.filterwarnings
-# pytest.parameterize
-# pytest.skip | skipif | xfail
-# with pytest.deprecated_call
-# with pytest.raises
-# with pytest.warns(warntype)
 
 class TestTaskStub:
 

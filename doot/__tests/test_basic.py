@@ -23,14 +23,14 @@ class TestBasicDoot:
     def test_initial(self, mocker):
         mocker.patch.object(doot,  "config", None)
         assert(doot.config is None)
-        doot.setup()
+        doot._test_setup()
         assert(isinstance(doot.config, tomlguard.TomlGuard))
 
 
     def test_initial2(self, mocker):
         mocker.patch.object(doot,  "config", None)
         assert(doot.config is None)
-        doot.setup()
+        doot._test_setup()
         assert(isinstance(doot.config, tomlguard.TomlGuard))
 
     def test_overlord(self, mocker):

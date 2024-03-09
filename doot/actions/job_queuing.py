@@ -46,9 +46,6 @@ import doot.errors
 from doot._abstract import Action_p
 from doot.structs import DootKey, DootTaskSpec, DootTaskName, DootCodeReference
 
-walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
-walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).settings.walking.halts()
-
 
 class JobQueueAction(Action_p):
     """
@@ -117,3 +114,26 @@ class JobQueueHead(Action_p):
                 head += [DootTaskSpec.from_dict(dict(name=head_name, queue_behaviour="auto"))]
 
         return head
+
+
+class JobChainer(Action_p):
+    """
+      Add dependencies to task specs, from left to right, by key
+      ie: task -> task -> task
+
+      key=[{required_fors}], key2=[{required_fors}]...
+
+      {do="job.chain.->", unpack={literal=[key, key, key], by-name=[taskname, taskname]}},
+    """
+
+    @DootKey.kwrap.kwargs
+    def __call__(self, spec, state, kwargs):
+        for k,v in kwargs.items():
+            match DootKey.make(k).to_type(spec, state):
+                case list() as l:
+                    for x in l:
+                        x.required_for += []
+
+                case DootTaskSpec() as s:
+                    s.required_for += []
+                    pass

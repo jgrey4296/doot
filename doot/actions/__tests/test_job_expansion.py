@@ -31,6 +31,27 @@ class TestJobExpansion:
     def state(self):
         return {"_task_name": DootTaskName.from_str("basic")}
 
+    def test_solo_expansion(self):
+        pass
+
+    def test_list_expansion(self):
+        pass
+
+    def test_solo_injection(self):
+        pass
+
+    def test_list_injection(self):
+        pass
+
+    def test_replacement(self):
+        pass
+
+    def test_action_base(self):
+        pass
+
+    def test_taskname_base(self):
+        pass
+
 class TestJobMatcher:
 
     @pytest.fixture(scope="function")
@@ -41,6 +62,9 @@ class TestJobMatcher:
     def state(self):
         return {"_task_name": DootTaskName.from_str("basic")}
 
+    def test_initial(self):
+        pass
+
 class TestJobGenerate:
 
     @pytest.fixture(scope="function")
@@ -50,3 +74,6 @@ class TestJobGenerate:
     @pytest.fixture(scope="function")
     def state(self):
         return {"_task_name": DootTaskName.from_str("basic")}
+
+    def test_initial(self):
+        pass

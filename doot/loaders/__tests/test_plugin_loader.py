@@ -18,7 +18,7 @@ from unittest import mock
 import pytest
 import tomlguard
 import doot
-doot.setup()
+doot._test_setup()
 doot.config = tomlguard.TomlGuard({})
 from doot.loaders import plugin_loader
 logging = logmod.root

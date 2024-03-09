@@ -47,9 +47,6 @@ from doot._abstract import Action_p
 from doot.structs import DootKey, DootTaskSpec, DootTaskName, DootCodeReference
 from doot.actions.job_injection import JobInjector
 
-walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
-walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).settings.walking.halts()
-
 
 class JobGenerate(Action_p):
     """ Run a custom function to generate task specs  """

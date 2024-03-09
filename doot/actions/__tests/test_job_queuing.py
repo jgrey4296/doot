@@ -17,7 +17,7 @@ logging = logmod.root
 
 import doot
 doot._test_setup()
-from doot.actions.job_queuing import JobQueueAction, JobQueueHeadAction
+from doot.actions.job_queuing import JobQueueAction, JobQueueHead
 import doot.errors
 from doot.structs import DootKey, DootActionSpec, DootTaskName
 
@@ -31,6 +31,8 @@ class TestJobQueueAction:
     def state(self):
         return {"_task_name": DootTaskName.from_str("basic")}
 
+    def test_initial(self):
+        pass
 
 class TestJobQueueHeadAction:
 
@@ -41,3 +43,19 @@ class TestJobQueueHeadAction:
     @pytest.fixture(scope="function")
     def state(self):
         return {"_task_name": DootTaskName.from_str("basic")}
+
+    def test_initial(self):
+        pass
+
+class TestJobChaining:
+
+    @pytest.fixture(scope="function")
+    def spec(self):
+        return DootActionSpec.from_data({"do": "action", "args":["test::simple", "test::other"], "update_":"specs"})
+
+    @pytest.fixture(scope="function")
+    def state(self):
+        return {"_task_name": DootTaskName.from_str("basic")}
+
+    def test_initial(self):
+        pass

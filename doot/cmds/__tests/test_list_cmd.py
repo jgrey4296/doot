@@ -22,7 +22,7 @@ import sys
 import io
 import contextlib
 import doot
-doot.setup()
+doot._test_setup()
 import doot.errors
 from doot._abstract import Command_i
 from doot.structs import DootTaskSpec

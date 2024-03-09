@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 """
+  Injection adds to a task spec.
+  allowing initial state, extra actions, etc.
+
 
 
 See EOF for license/metadata/notes as applicable
@@ -46,8 +49,22 @@ import doot.errors
 from doot._abstract import Action_p
 from doot.structs import DootKey, DootTaskSpec, DootTaskName, DootCodeReference
 
-walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
-walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).settings.walking.halts()
+
+class _RelPather(Action_p):
+
+    def _rel_path(self, spec, state, fpath, roots) -> pl.Path:
+        """
+        make the path relative to the appropriate root
+        """
+        for root in roots:
+            root_key = DootKey.make(root)
+            root_path = root_key.to_path(spec, state)
+            try:
+                return fpath.relative_to(root_path)
+            except ValueError:
+                continue
+
+        raise ValueError(f"{fpath} is not able to be made relative")
 
 class JobInjector(Action_p):
     """
@@ -65,7 +82,6 @@ class JobInjector(Action_p):
     @DootKey.kwrap.types("onto", "inject")
     def __call__(self, spec, state, onto, inject):
         self.apply_injection(spec, state, onto, inject)
-
 
     def build_injection(self, spec, state, inject, replacement=None, post:dict|None=None) -> None|TomlGuard:
         match inject:
@@ -107,7 +123,6 @@ class JobInjector(Action_p):
                     as_key = DootKey.make(k)
                     injection_dict[as_key.direct] = as_key.to_type(spec, state)
 
-
         if replacement is not None:
             injection_dict.update({k:replacement for k in replace})
 
@@ -115,25 +130,6 @@ class JobInjector(Action_p):
             injection_dict.update({k:v for k,v in post.items() if v is not None})
 
         return injection_dict
-
-
-
-class _RelPather(Action_p):
-
-    def _rel_path(self, spec, state, fpath, roots) -> pl.Path:
-        """
-        make the path relative to the appropriate root
-        """
-        for root in roots:
-            root_key = DootKey.make(root)
-            root_path = root_key.to_path(spec, state)
-            try:
-                return fpath.relative_to(root_path)
-            except ValueError:
-                continue
-
-        raise ValueError(f"{fpath} is not able to be made relative")
-
 
 class JobPrependActions(Action_p):
 
@@ -215,15 +211,3 @@ class JobSubNamer(Action_p):
                     x.name = _basename.subtask(i, key)
                 case _:
                     raise doot.errors.DootActionError("Job Tried to apply a name to a non-taskspec", x)
-
-
-class JobChainer(Action_p):
-    """
-      Add dependencies to task specs, from left to right, by key
-      ie: task -> task -> task
-
-      key=[{required_fors}], key2=[{required_fors}]...
-    """
-
-    def __call__(self, spec, state):
-        pass

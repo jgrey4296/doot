@@ -18,7 +18,7 @@ import tomlguard
 import doot
 import doot.errors
 
-doot.setup()
+doot._test_setup()
 from doot import structs
 from doot.task.base_job import DootJob
 from doot.mixins.job.terse import TerseBuilder_M

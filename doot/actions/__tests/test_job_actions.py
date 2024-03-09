@@ -13,7 +13,7 @@ import warnings
 import pytest
 
 import doot
-doot.setup()
+doot._test_setup()
 import doot.errors
 from doot.structs import DootKey, DootTaskSpec, DootActionSpec, DootTaskName
 import doot.actions.job_actions as JA
@@ -61,7 +61,6 @@ class TestJobActions:
         assert(all(x.extra['aKey'] in ["first", "second", "third"] for x in result['specs']))
         assert(len(result['specs']) == 3)
 
-
     def test_expander_with_dict_injection(self, spec, state):
         state.update(dict(_task_name=DootTaskName.from_str("basic"),
                           inject={"replace": ["aKey"], "copy":{"other":"blah"}},
@@ -78,37 +77,9 @@ class TestJobActions:
         assert(len(result['specs']) == 3)
 
     @pytest.mark.skip
-    def test_matcher(self, spec, state):
-        pass
-
-    @pytest.mark.skip
     def test_walker(self, spec, state):
         pass
 
     @pytest.mark.skip
     def test_limiter(self, spec, state):
-        pass
-
-    @pytest.mark.skip
-    def test_shadower(self, spec, state):
-        pass
-
-    @pytest.mark.skip
-    def test_prepend_actions(self, spec, state):
-        pass
-
-    @pytest.mark.skip
-    def test_append_actions(self, spec, state):
-        pass
-
-    @pytest.mark.skip
-    def test_inject_action(self, spec, state):
-        pass
-
-    @pytest.mark.skip
-    def test_inject_relpath(self, spec, state):
-        pass
-
-    @pytest.mark.skip
-    def test_inject_state(self, spec, state):
         pass

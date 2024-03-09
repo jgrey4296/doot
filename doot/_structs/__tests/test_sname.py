@@ -16,7 +16,7 @@ logging = logmod.root
 
 import tomlguard
 import doot
-doot.setup()
+doot._test_setup()
 from doot import structs
 from doot.task.base_task import DootTask
 
