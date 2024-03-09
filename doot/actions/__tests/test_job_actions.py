@@ -49,10 +49,10 @@ class TestJobActions:
 
     def test_basic_expander(self, spec, state):
         state.update(dict(_task_name=DootTaskName.from_str("basic"),
-                          inject="aKey",
+                          inject={"replace":["aKey"]},
                           base="base::task"))
 
-        state['from']          = ["first", "second", "third"]
+        state['from'] = ["first", "second", "third"]
         jqa    = JA.JobExpandAction()
         result = jqa(spec, state)
         assert(isinstance(result, dict))
@@ -64,7 +64,7 @@ class TestJobActions:
 
     def test_expander_with_dict_injection(self, spec, state):
         state.update(dict(_task_name=DootTaskName.from_str("basic"),
-                          inject={"aKey": "$arg$", "other":"blah"},
+                          inject={"replace": ["aKey"], "copy":{"other":"blah"}},
                           base="base::task"))
 
         state['from']          = ["first", "second", "third"]

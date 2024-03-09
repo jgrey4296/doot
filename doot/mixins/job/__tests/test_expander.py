@@ -15,6 +15,7 @@ import warnings
 import pytest
 
 import doot
+doot._test_setup()
 from doot.utils.testing_fixtures import wrap_tmp
 from doot.structs import DootTaskSpec, DootCodeReference
 from doot._abstract import TaskBase_i
@@ -64,7 +65,7 @@ class TestWalker:
             logging.debug("Built Subtask: %s", sub.name)
             count += 1
             assert(isinstance(sub, DootTaskSpec))
-            assert(re.match(r"default::basic.(\$head\$|[0-9].(first|second)|test_root)", str(sub.name)) is not None)
+            assert(re.match(r"default::basic.(\$head\$|[0-9].(first|second|test_root))", str(sub.name)) is not None)
 
 
         assert(count == 4)
