@@ -60,6 +60,33 @@ EXPANSION_HINT : Final[str]                = "_doot_expansion_hint"
 HELP_HINT      : Final[str]                = "_doot_help_hint"
 FUNC_WRAPPED   : Final[str]                = "__wrapped__"
 
+class _DootKeyGetter:
+    """
+      The core logic to turn a key into a value.
+      Doesn't perform repeated expansions.
+
+      Order it tries:
+      cli -> spec -> state -> locs
+    """
+
+    @staticmethod
+    def get(key:str, spec:None|dict, state:None|dict, locs:None|DootLocations=None) -> Any:
+        cli   : dict          = doot.args.on_fail({}).tasks[str(state.get(STATE_TASK_NAME_K, None))]()
+        replacement           = cli.get(key, None)
+        # *Not* elif's, want it to chain.
+        if replacement is None:
+            replacement = spec.get(key, None)
+        if replacement is None:
+            replacement = state.get(key, None)
+        if replacement is None and locs is not None:
+            match locs.get(key, None):
+                case None:
+                    pass
+                case pl.Path() as x:
+                    replacement = locs.normalize(x)
+
+        return replacement
+
 class KWrapper:
     """ Decorators for actions
     Kwrapper is accessible as DootKey.kwrap
@@ -313,37 +340,26 @@ class DootFormatter(string.Formatter):
         if isinstance(key, int):
             return args[key]
 
-        insist            = kwargs.get("_insist", False)
-        state             = kwargs.get('_state', None) or {}
-        locs              = kwargs.get("_locs", None)
-        cli               = doot.args.on_fail({}).tasks[str(state.get(STATE_TASK_NAME_K, None))]()
-        replacement       = cli.get(key, None)
-        if replacement is None:
-            spec        = kwargs.get('_spec')
-            replacement = spec.get(key, None)
-        if replacement is None:
-            replacement = state.get(key, None)
-        if replacement is None and locs is not None:
-            match locs.get(key, None):
-                case None:
-                    pass
-                case pl.Path() as x:
-                    replacement = locs.normalize(x)
+        insist                = kwargs.get("_insist", False)
+        depth_check           = self._depth < MAX_KEY_EXPANSIONS
+        spec  : dict          = kwargs.get('_spec', None) or {}
+        state : dict          = kwargs.get('_state', None) or {}
+        locs  : DootLocations = kwargs.get("_locs",  None)
 
-        match replacement:
+        match (replacement := _DootKeyGetter.get(key, spec, state, locs=locs)):
             case None if insist:
                 raise KeyError("Key Expansion Not Found")
             case None:
                 return DootKey.make(key).form
-            case DootKey() if self._depth < MAX_KEY_EXPANSIONS:
+            case DootKey() if depth_check:
                 self._depth += 1
                 return self.vformat(replacement.form, args, kwargs)
-            case str() if kwargs.get("_rec", False) and self._depth < MAX_KEY_EXPANSIONS:
+            case str() if kwargs.get("_rec", False) and depth_check:
                 self._depth += 1
                 return self.vformat(str(replacement), args, kwargs)
             case str():
                 return replacement
-            case pl.Path() if self._depth < MAX_KEY_EXPANSIONS:
+            case pl.Path() if depth_check:
                 self._depth += 1
                 return ftz.reduce(pl.Path.joinpath, map(lambda x: self.vformat(x, args, kwargs), replacement.parts), pl.Path())
             case _:
@@ -676,18 +692,7 @@ class DootSimpleKey(str, DootKey):
                 kwargs = {}
 
         task_name         = state.get(STATE_TASK_NAME_K, None) if state else None
-        if task_name:
-            cli           = doot.args.on_fail({}).tasks[str(state.get(STATE_TASK_NAME_K, None))]()
-        else:
-            cli           = {}
-
-        replacement       = cli.get(target, None)
-        if replacement is None and kwargs:
-            replacement = kwargs.get(target, None)
-        if replacement is None and state:
-            replacement = state.get(target, None)
-
-        match replacement:
+        match (replacement := _DootKeyGetter.get(target, kwargs, state)):
             case None if bool(chain):
                 return chain[0].to_type(spec, state, type_=type_, chain=chain[1:], on_fail=on_fail)
             case None if on_fail != Any and isinstance(on_fail, DootKey):
