@@ -62,7 +62,7 @@ class PatternMatcher_M:
             case "ext":
                 self.match_fn = self._match_ext
             case str() as x:
-                ref = DootCodeReference.from_str(x)
+                ref = DootCodeReference.build(x)
                 self.match_fn = ref.try_import()
 
     def _build_subs(self) -> Generator[DootTaskSpec]:
@@ -101,7 +101,7 @@ class PatternMatcher_M:
         printer.info("Matched %s (%s) to: %s", task.name, task.extra[match_field].name, ctor)
         match ctor:
             case str():
-                return DootTaskName.from_str(ctor)
+                return DootTaskName.build(ctor)
             case DootTaskName():
                 return ctor
             case DootCodeReference():

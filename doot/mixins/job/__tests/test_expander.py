@@ -34,7 +34,7 @@ logging = logmod.root
 
 ##-- end pytest reminder
 
-walker_ref = DootCodeReference.from_str("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.expander:WalkExpander_M")
+walker_ref = DootCodeReference.build("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.expander:WalkExpander_M")
 Walker     = walker_ref.try_import()
 
 class TestWalker:
@@ -52,16 +52,16 @@ class TestWalker:
         assert("second" in contents)
 
     def test_initial(self):
-        obj = Walker(DootTaskSpec.from_dict({"name" : "basic"}))
+        obj = Walker(DootTaskSpec.build({"name" : "basic"}))
         assert(isinstance(obj, TaskBase_i))
 
     def test_basic_walk(self, wrap_tmp):
         (wrap_tmp / "first").mkdir()
         (wrap_tmp / "second").mkdir()
-        obj = Walker(DootTaskSpec.from_dict({"name" : "basic"}))
+        obj = Walker(DootTaskSpec.build({"name" : "basic"}))
 
         count = 0
-        for sub in obj.build():
+        for sub in obj.make():
             logging.debug("Built Subtask: %s", sub.name)
             count += 1
             assert(isinstance(sub, DootTaskSpec))
@@ -76,10 +76,10 @@ class TestWalker:
         (wrap_tmp / "second").mkdir()
         (wrap_tmp / "second" / "bloo.txt").touch()
 
-        obj = Walker(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": True}))
+        obj = Walker(DootTaskSpec.build({"name" : "basic", "exts" : [".txt"], "recursive": True}))
 
         count = 0
-        for sub in obj.build():
+        for sub in obj.make():
             count += 1
             assert(isinstance(sub, DootTaskSpec))
             assert(re.match(r"default::basic.(\$head\$|([0-9].)?(blah|bloo).txt)", str(sub.name)) is not None)
@@ -95,10 +95,10 @@ class TestWalker:
         (wrap_tmp / "second" / "bloo.txt").touch()
         (wrap_tmp / "second" / "bibble.blib").touch()
 
-        obj = Walker(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": True}))
+        obj = Walker(DootTaskSpec.build({"name" : "basic", "exts" : [".txt"], "recursive": True}))
 
         count = 0
-        for sub in obj.build():
+        for sub in obj.make():
             count += 1
             assert(isinstance(sub, DootTaskSpec))
             assert(re.match(r"default::basic.[0-9].(bad|bibble).txt", str(sub.name)) is None)
@@ -112,10 +112,10 @@ class TestWalker:
         (wrap_tmp / "second").mkdir()
         (wrap_tmp / "second" / "bloo.txt").touch()
 
-        obj = Walker(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": False}))
+        obj = Walker(DootTaskSpec.build({"name" : "basic", "exts" : [".txt"], "recursive": False}))
 
         count = 0
-        for sub in obj.build():
+        for sub in obj.make():
             count += 1
             assert(isinstance(sub, DootTaskSpec))
             assert(str(sub.name) in ["default::basic.$head$"])
@@ -129,10 +129,10 @@ class TestWalker:
         (wrap_tmp / "second").mkdir()
         (wrap_tmp / "second" / "bloo.txt").touch()
 
-        obj = Walker(DootTaskSpec.from_dict({"name" : "basic", "exts" : [".txt"], "recursive": False}))
+        obj = Walker(DootTaskSpec.build({"name" : "basic", "exts" : [".txt"], "recursive": False}))
 
         count = 0
-        for sub in obj.build():
+        for sub in obj.make():
             count += 1
             assert(isinstance(sub, DootTaskSpec))
             assert(str(sub.name) in ["default::basic.$head$"])
@@ -146,14 +146,14 @@ class TestWalker:
         (wrap_tmp / "second").mkdir()
         (wrap_tmp / "second" / "bloo.txt").touch()
 
-        obj = Walker(DootTaskSpec.from_dict({
+        obj = Walker(DootTaskSpec.build({
             "name"        : "basic",
             "exts"        : [".txt"],
             "recursive"   : False,
             "roots"       : [pl.Path() / "aweg" ],
                                                       }))
         count = 0
-        for sub in obj.build():
+        for sub in obj.make():
             count += 1
             assert(isinstance(sub, DootTaskSpec))
             assert(str(sub.name) in ["default::basic.$head$"])

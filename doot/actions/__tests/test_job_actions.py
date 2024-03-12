@@ -25,11 +25,11 @@ class TestJobActions:
 
     @pytest.fixture(scope="function")
     def spec(self):
-        return DootActionSpec.from_data({"do": "action", "args":["test::simple", "test::other"], "update_":"specs"})
+        return DootActionSpec.build({"do": "action", "args":["test::simple", "test::other"], "update_":"specs"})
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": DootTaskName.from_str("basic")}
+        return {"_task_name": DootTaskName.build("basic")}
 
     @pytest.fixture(scope="function")
     def cleanup(self):
@@ -48,7 +48,7 @@ class TestJobActions:
         assert(all(isinstance(x, DootTaskSpec) for x in result))
 
     def test_basic_expander(self, spec, state):
-        state.update(dict(_task_name=DootTaskName.from_str("basic"),
+        state.update(dict(_task_name=DootTaskName.build("basic"),
                           inject={"replace":["aKey"]},
                           base="base::task"))
 
@@ -62,7 +62,7 @@ class TestJobActions:
         assert(len(result['specs']) == 3)
 
     def test_expander_with_dict_injection(self, spec, state):
-        state.update(dict(_task_name=DootTaskName.from_str("basic"),
+        state.update(dict(_task_name=DootTaskName.build("basic"),
                           inject={"replace": ["aKey"], "copy":{"other":"blah"}},
                           base="base::task"))
 
@@ -76,10 +76,14 @@ class TestJobActions:
         assert(all('other' in x.extra for x in result['specs']))
         assert(len(result['specs']) == 3)
 
+
+class TestJobWalker:
     @pytest.mark.skip
     def test_walker(self, spec, state):
         pass
 
+
+class TestJobLimiter:
     @pytest.mark.skip
     def test_limiter(self, spec, state):
         pass

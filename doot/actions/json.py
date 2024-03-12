@@ -54,8 +54,8 @@ from doot.structs import DootKey
 
 
 ##-- expansion keys
-FROM_KEY           : Final[DootKey] = DootKey.make("from")
-UPDATE             : Final[DootKey] = DootKey.make("update_")
+FROM_KEY           : Final[DootKey] = DootKey.build("from")
+UPDATE             : Final[DootKey] = DootKey.build("update_")
 ##-- end expansion keys
 
 @doot.check_protocol

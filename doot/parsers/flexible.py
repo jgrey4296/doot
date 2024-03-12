@@ -180,7 +180,7 @@ class DootFlexibleParser(ArgParser_i):
             task                     = self.registered_tasks[default_task]
             assert(isinstance(task, DootTaskSpec))
             task_name                 = default_task
-            spec_params               = [DootParamSpec.from_dict(x) for x in task.extra.on_fail([], list).cli()]
+            spec_params               = [DootParamSpec.build(x) for x in task.extra.on_fail([], list).cli()]
             ctor_params               = task.ctor.try_import().param_specs
             current_specs             = list(sorted(spec_params + ctor_params, key=DootParamSpec.key_func))
             task_args                 = self._build_defaults_dict(current_specs)
@@ -193,7 +193,7 @@ class DootFlexibleParser(ArgParser_i):
             task_name                 = args.pop(0)
             task                      = self.registered_tasks[task_name]
             assert(isinstance(task, DootTaskSpec))
-            spec_params               = [DootParamSpec.from_dict(x) for x in task.extra.on_fail([], list).cli()]
+            spec_params               = [DootParamSpec.build(x) for x in task.extra.on_fail([], list).cli()]
             ctor_params               = task.ctor.try_import().param_specs
             current_specs             = list(sorted(spec_params + ctor_params, key=DootParamSpec.key_func))
             task_args                 = self._build_defaults_dict(current_specs)

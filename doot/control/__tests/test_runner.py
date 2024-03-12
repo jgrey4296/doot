@@ -129,7 +129,7 @@ class TestRunner:
         job3_m                             = mock_gen.mock_job("third")
 
         task_m                             = mock_gen.mock_task_spec("firstTask")
-        job1_m.build.return_value          = [task_m]
+        job1_m.make.return_value          = [task_m]
 
         tracker_m                        = mock_gen.mock_tracker(tasks=[job1_m, job2_m, job3_m])
         runner                             = ctor(tracker=tracker_m, reporter=reporter_m)

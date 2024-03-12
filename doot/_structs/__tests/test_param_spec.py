@@ -15,19 +15,21 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 logging = logmod.root
 
 import pytest
+import doot
+doot._test_setup()
 import doot.errors
 from doot.structs import DootParamSpec, DootTaskSpec
 
 class TestParamSpec:
 
     def test_paramspec(self):
-        example = DootParamSpec.from_dict({
+        example = DootParamSpec.build({
             "name" : "test"
           })
         assert(isinstance(example, DootParamSpec))
 
     def test_equal(self):
-        example = DootParamSpec.from_dict({
+        example = DootParamSpec.build({
             "name" : "test"
           })
         assert(example == "test")
@@ -38,7 +40,7 @@ class TestParamSpec:
         assert(example == "-t=blah")
 
     def test_equal_fail(self):
-        example = DootParamSpec.from_dict({
+        example = DootParamSpec.build({
             "name" : "test"
           })
         assert(example != "atest")
@@ -46,7 +48,7 @@ class TestParamSpec:
         assert(example != "-tw")
 
     def test_consume_bool(self):
-        example = DootParamSpec.from_dict({
+        example = DootParamSpec.build({
             "name" : "test",
             "type" : "bool",
           })
@@ -57,7 +59,7 @@ class TestParamSpec:
         assert(bool(data['test']))
 
     def test_consume_short_bool(self):
-        example = DootParamSpec.from_dict({
+        example = DootParamSpec.build({
             "name" : "test"
           })
         assert(example == "test")
@@ -67,7 +69,7 @@ class TestParamSpec:
         assert(bool(data['test']))
 
     def test_fail_on_assign_wrong_prefix(self):
-        example = DootParamSpec.from_dict({
+        example = DootParamSpec.build({
             "name" : "test"
           })
         assert(example == "test")
@@ -75,7 +77,7 @@ class TestParamSpec:
             example.maybe_consume(["-t=blah"], {})
 
     def test_consume_inverse_bool(self):
-        example = DootParamSpec.from_dict({
+        example = DootParamSpec.build({
             "name" : "test"
           })
         assert(example == "test")
@@ -85,7 +87,7 @@ class TestParamSpec:
         assert(not bool(data['test']))
 
     def test_consume_list(self):
-        example = DootParamSpec.from_dict({
+        example = DootParamSpec.build({
             "name" : "test",
             "type" : list,
             "default" : [],
@@ -97,7 +99,7 @@ class TestParamSpec:
         assert(data['test'] == ["bloo"])
 
     def test_consume_list_multi(self):
-        example = DootParamSpec.from_dict({
+        example = DootParamSpec.build({
             "name" : "test",
             "type" : list,
             "default" : [],
@@ -111,7 +113,7 @@ class TestParamSpec:
 
     @pytest.mark.xfail
     def test_consume_list_multi_joined(self):
-        example = DootParamSpec.from_dict({
+        example = DootParamSpec.build({
             "name" : "test",
             "type" : list,
             "default" : [],
@@ -126,7 +128,7 @@ class TestParamSpec:
 
     @pytest.mark.xfail
     def test_consume_set_multi_joined(self):
-        example = DootParamSpec.from_dict({
+        example = DootParamSpec.build({
             "name"    : "test",
             "type"    : set,
             "default" : set(),
@@ -140,7 +142,7 @@ class TestParamSpec:
         assert(data['test'] == {"bloo", "blah"})
 
     def test_consume_str(self):
-        example = DootParamSpec.from_dict({
+        example = DootParamSpec.build({
             "name" : "test",
             "type" : str,
             "default" : "",
@@ -152,7 +154,7 @@ class TestParamSpec:
         assert(data['test'] == "bloo,blah")
 
     def test_consume_str_multi_set_fail(self):
-        example = DootParamSpec.from_dict({
+        example = DootParamSpec.build({
             "name" : "test",
             "type" : str,
             "default" : "",
@@ -164,7 +166,7 @@ class TestParamSpec:
             example.maybe_consume(data, "-test=aweg")
 
     def test_consume_custom_value(self):
-        example = DootParamSpec.from_dict({
+        example = DootParamSpec.build({
             "name" : "test",
             "type" : lambda x: int(x) + 2,
             "default" : 5,
@@ -176,7 +178,7 @@ class TestParamSpec:
         assert(data['test'] == 4)
 
     def test_positional(self):
-        example = DootParamSpec.from_dict({
+        example = DootParamSpec.build({
             "name" : "test",
             "type" : list,
             "default" : [1,2,3],
@@ -185,7 +187,7 @@ class TestParamSpec:
         assert(example.positional is True)
 
     def test_invisible_str(self):
-        example = DootParamSpec.from_dict({
+        example = DootParamSpec.build({
             "name" : "test",
             "type" : list,
             "default" : [1,2,3],
@@ -194,7 +196,7 @@ class TestParamSpec:
         assert(str(example) == "")
 
     def test_not_invisible_str(self):
-        example = DootParamSpec.from_dict({
+        example = DootParamSpec.build({
             "name" : "test",
             "type" : list,
             "default" : [1,2,3],

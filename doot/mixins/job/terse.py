@@ -50,7 +50,7 @@ class TerseBuilder_M(SubTask_M):
     """
 
     def _build_subtask(self, n:int, uname, **kwargs) -> DootTaskSpec:
-        actions               = [DootActionSpec.from_data(x) for x in self.spec.extra.on_fail([], list).sub_actions()]
+        actions               = [DootActionSpec.build(x) for x in self.spec.extra.on_fail([], list).sub_actions()]
         task                  = super()._build_subtask(n, uname, **kwargs)
         task.actions         += actions
         task.print_levels     = self.spec.print_levels
@@ -58,7 +58,7 @@ class TerseBuilder_M(SubTask_M):
 
     def _build_head(self, **kwargs) -> DootTaskSpec:
         head = super()._build_head(**kwargs)
-        spec_head_actions     = [DootActionSpec.from_data(x) for x in self.spec.extra.on_fail([], list).head_actions()]
+        spec_head_actions     = [DootActionSpec.build(x) for x in self.spec.extra.on_fail([], list).head_actions()]
         head.actions         += spec_head_actions
 
         return head
@@ -82,7 +82,7 @@ class HeadOnly_M(SubTask_M):
 
     """
 
-    def build(self, **kwargs) -> Generator:
+    def make(self, **kwargs) -> Generator:
         inject_keys = self.spec.extra.on_fail([]).head_inject()
         inject_dict = defaultdict(list, {x:[] for x in inject_keys})
 

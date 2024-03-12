@@ -104,7 +104,7 @@ class DootStructuredName:
         """
         match other:
             case str():
-                other = DootStructuredName.from_str(other)
+                other = DootStructuredName.build(other)
             case DootStructuredName():
                 pass
             case _:

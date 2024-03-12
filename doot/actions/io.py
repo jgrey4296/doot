@@ -40,17 +40,17 @@ from doot.actions.postbox import _DootPostBox
 # TODO using doot.config.settings.general.protect to disallow write/delete/backup/copy
 
 ##-- expansion keys
-TO_KEY             : Final[DootKey] = DootKey.make("to")
-FROM_KEY           : Final[DootKey] = DootKey.make("from")
-UPDATE             : Final[DootKey] = DootKey.make("update_")
-PROMPT             : Final[DootKey] = DootKey.make("prompt")
-PATTERN            : Final[DootKey] = DootKey.make("pattern")
-SEP                : Final[DootKey] = DootKey.make("sep")
-TYPE_KEY           : Final[DootKey] = DootKey.make("type")
-AS_BYTES           : Final[DootKey] = DootKey.make("as_bytes")
-FILE_TARGET        : Final[DootKey] = DootKey.make("file")
-RECURSIVE          : Final[DootKey] = DootKey.make("recursive")
-LAX                : Final[DootKey] = DootKey.make("lax")
+TO_KEY             : Final[DootKey] = DootKey.build("to")
+FROM_KEY           : Final[DootKey] = DootKey.build("from")
+UPDATE             : Final[DootKey] = DootKey.build("update_")
+PROMPT             : Final[DootKey] = DootKey.build("prompt")
+PATTERN            : Final[DootKey] = DootKey.build("pattern")
+SEP                : Final[DootKey] = DootKey.build("sep")
+TYPE_KEY           : Final[DootKey] = DootKey.build("type")
+AS_BYTES           : Final[DootKey] = DootKey.build("as_bytes")
+FILE_TARGET        : Final[DootKey] = DootKey.build("file")
+RECURSIVE          : Final[DootKey] = DootKey.build("recursive")
+LAX                : Final[DootKey] = DootKey.build("lax")
 ##-- end expansion keys
 
 
@@ -67,7 +67,7 @@ class AppendAction(Action_p):
     def __call__(self, spec, state, args, sep, to):
         sep          = sep or AppendAction.sep
         loc          = to
-        args_keys    = [DootKey.make(x, explicit=True) for x in args]
+        args_keys    = [DootKey.build(x, explicit=True) for x in args]
         exp_args     = [k.expand(spec, state, insist=True, on_fail=None) for k in args_keys]
 
         if not doot.locs.check_writable(loc):
@@ -158,9 +158,9 @@ class CopyAction(Action_p):
         dest_loc   = to
         match _from:
             case str() | pl.Path():
-                expanded = [DootKey.make(_from, strict=False).to_path(spec, state)]
+                expanded = [DootKey.build(_from, strict=False).to_path(spec, state)]
             case list():
-                expanded = list(map(lambda x: DootKey.make(x, strict=False).to_path(spec, state), _from))
+                expanded = list(map(lambda x: DootKey.build(x, strict=False).to_path(spec, state), _from))
             case _:
                 raise doot.errors.DootActionError("Unrecognized type for copy sources", _from)
 
@@ -209,7 +209,7 @@ class DeleteAction(Action_p):
     def __call__(self, spec, state, recursive, lax):
         rec = recursive
         for arg in spec.args:
-            loc = DootKey.make(arg, explicit=True).to_path(spec, state)
+            loc = DootKey.build(arg, explicit=True).to_path(spec, state)
             if not doot.locs.check_writable(loc):
                 raise doot.errors.DootLocationError("Tried to delete a protected location", loc)
 
@@ -254,7 +254,7 @@ class EnsureDirectory(Action_p):
     @DootKey.kwrap.args
     def __call__(self, spec, state, args):
         for arg in args:
-            loc = DootKey.make(arg, explicit=True).to_path(spec, state)
+            loc = DootKey.build(arg, explicit=True).to_path(spec, state)
             if not loc.exists():
                 printer.info("Building Directory: %s", loc)
             loc.mkdir(parents=True, exist_ok=True)
@@ -294,7 +294,7 @@ class TouchFileAction(Action_p):
 
     @DootKey.kwrap.args
     def __call__(self, spec, state, args):
-        for target in [DootKey.make(x, exp_hint="path") for x in args]:
+        for target in [DootKey.build(x, exp_hint="path") for x in args]:
             target(spec, state).touch()
 
 
@@ -325,8 +325,8 @@ class LinkAction(Action_p):
                     raise TypeError("unrecognized link targets")
 
     def _do_link(self, spec, state, x, y, force):
-        x_key  = DootKey.make(x, explicit=True)
-        y_key  = DootKey.make(y, explicit=True)
+        x_key  = DootKey.build(x, explicit=True)
+        y_key  = DootKey.build(y, explicit=True)
         x_path = x_key.to_path(spec, state, symlinks=True)
         y_path = y_key.to_path(spec, state)
         # TODO when py3.12: use follow_symlinks=False

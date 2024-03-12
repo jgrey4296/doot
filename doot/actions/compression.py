@@ -50,17 +50,17 @@ from doot.structs import DootKey
 from doot.actions.postbox import _DootPostBox
 
 ##-- expansion keys
-TO_KEY             : Final[DootKey] = DootKey.make("to")
-FROM_KEY           : Final[DootKey] = DootKey.make("from")
-UPDATE             : Final[DootKey] = DootKey.make("update_")
-PROMPT             : Final[DootKey] = DootKey.make("prompt")
-PATTERN            : Final[DootKey] = DootKey.make("pattern")
-SEP                : Final[DootKey] = DootKey.make("sep")
-TYPE_KEY           : Final[DootKey] = DootKey.make("type")
-AS_BYTES           : Final[DootKey] = DootKey.make("as_bytes")
-FILE_TARGET        : Final[DootKey] = DootKey.make("file")
-RECURSIVE          : Final[DootKey] = DootKey.make("recursive")
-LAX                : Final[DootKey] = DootKey.make("lax")
+TO_KEY             : Final[DootKey] = DootKey.build("to")
+FROM_KEY           : Final[DootKey] = DootKey.build("from")
+UPDATE             : Final[DootKey] = DootKey.build("update_")
+PROMPT             : Final[DootKey] = DootKey.build("prompt")
+PATTERN            : Final[DootKey] = DootKey.build("pattern")
+SEP                : Final[DootKey] = DootKey.build("sep")
+TYPE_KEY           : Final[DootKey] = DootKey.build("type")
+AS_BYTES           : Final[DootKey] = DootKey.build("as_bytes")
+FILE_TARGET        : Final[DootKey] = DootKey.build("file")
+RECURSIVE          : Final[DootKey] = DootKey.build("recursive")
+LAX                : Final[DootKey] = DootKey.build("lax")
 ##-- end expansion keys
 
 COMP_TAR_CMD  = sh.tar.bake("-cf", "-")

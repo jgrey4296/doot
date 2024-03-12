@@ -117,7 +117,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
         count       = 0
         queue_tasks = []
         with logctx(job.spec.print_levels.on_fail(build_level).build()) as p:
-            for task in job.build():
+            for task in job.make():
                 match task:
                     case None:
                         pass

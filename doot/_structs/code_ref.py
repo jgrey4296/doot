@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 See EOF for license/metadata/notes as applicable
 """
 
@@ -54,7 +53,18 @@ class DootCodeReference(DootStructuredName):
     _type     : None|type                        = field(default=None, kw_only=True)
 
     @classmethod
-    def from_str(cls, name:str):
+    def build(cls, name:str|type):
+        match name:
+            case str():
+                return cls._from_str(name)
+            case type():
+                groupHead = name.__module__
+                codeHead  = name.__name__
+                ref = cls(groupHead, codeHead, _type=name)
+                return ref
+
+    @classmethod
+    def _from_str(cls, name:str):
         if doot.constants.patterns.TASK_SEP in name:
             raise doot.errors.DootError("Code References should use a single colon, not double")
 
@@ -72,21 +82,14 @@ class DootCodeReference(DootStructuredName):
         return DootCodeReference(groupHead, taskHead)
 
     @staticmethod
-    def from_type(_type:type):
-        groupHead = _type.__module__
-        codeHead  = _type.__name__
-        ref = DootCodeReference(groupHead, codeHead, _type=_type)
-        return ref
-
-    @staticmethod
     def from_alias(alias:str, group:str, plugins:TomlGuard) -> DootCodeReference:
         if group not in plugins:
-            return DootCodeReference.from_str(alias)
+            return DootCodeReference._from_str(alias)
         match [x for x in plugins[group] if x.name == alias]:
             case [x, *xs]:
-                return DootCodeReference.from_str(x.value)
+                return DootCodeReference._from_str(x.value)
             case _:
-                return DootCodeReference.from_str(alias)
+                return DootCodeReference._from_str(alias)
 
     def __str__(self) -> str:
         return "{}{}{}".format(self.module, self.separator, self.value)
@@ -114,14 +117,12 @@ class DootCodeReference(DootStructuredName):
         to_add = self._mixins[:]
         for mix in mixins:
             match mix:
-                case str() if plugins is not None:
-                    ref = DootCodeReference.from_alias(mix, "mixin", plugins)
-                case str():
-                    ref = DootCodeReference.from_str(mix)
                 case DootCodeReference():
                     ref = mix
-                case type():
-                    ref = DootCodeReference.from_type(mix)
+                case str() if plugins is not None:
+                    ref = DootCodeReference.from_alias(mix, "mixin", plugins)
+                case str() | type():
+                    ref = DootCodeReference.build(mix)
                 case _:
                     raise TypeError("Unrecognised mixin type", mix)
 
@@ -183,4 +184,4 @@ class DootCodeReference(DootStructuredName):
             found.update(mixin.mro())
             minimal_mixins.append(mixin)
 
-        return [DootCodeReference.from_type(x) for x in minimal_mixins]
+        return [DootCodeReference.build(x) for x in minimal_mixins]

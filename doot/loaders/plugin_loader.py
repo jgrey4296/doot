@@ -45,7 +45,8 @@ plugin_types                = set(doot.constants.entrypoints.FRONTEND_PLUGIN_TYP
 cmd_loader_key  : Final     = doot.constants.entrypoints.DEFAULT_COMMAND_LOADER_KEY
 task_loader_key : Final     = doot.constants.entrypoints.DEFAULT_TASK_LOADER_KEY
 
-def make_ep (x, y, z):
+def build_entry_point (x, y, z):
+    """ Make an EntryPoint """
     if z not in plugin_types:
         raise doot.errors.DootPluginError("Plugin Type Not Found: %s : %s", z, (x, y))
     return EntryPoint(name=x, value=y, group="{}.{}".format(doot.constants.entrypoints.PLUGIN_TOML_PREFIX, z))
@@ -143,9 +144,9 @@ class DootPluginLoader(PluginLoader_p):
             logging.info("Skipping Default Plugins")
             return
 
-        self.plugins[cmd_loader_key].append(make_ep(cmd_loader_key, "doot.loaders.cmd_loader:DootCommandLoader", cmd_loader_key))
-        self.plugins[task_loader_key].append(make_ep(task_loader_key, "doot.loaders.task_loader:DootTaskLoader", task_loader_key))
+        self.plugins[cmd_loader_key].append(build_entry_point(cmd_loader_key, "doot.loaders.cmd_loader:DootCommandLoader", cmd_loader_key))
+        self.plugins[task_loader_key].append(build_entry_point(task_loader_key, "doot.loaders.task_loader:DootTaskLoader", task_loader_key))
 
         for group, vals in doot.aliases:
             logging.debug("Loading aliases: %s", group)
-            self.plugins[group]  += [make_ep(x, y, group) for x,y in vals.items()]
+            self.plugins[group]  += [build_entry_point(x, y, group) for x,y in vals.items()]

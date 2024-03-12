@@ -18,6 +18,7 @@ import pytest
 
 import random
 import doot
+doot._test_setup()
 import doot.errors
 from doot.structs import DootTaskSpec, DootCodeReference
 from doot._abstract import TaskBase_i
@@ -36,7 +37,7 @@ logging = logmod.root
 
 ##-- end pytest reminder
 
-matcher_ref        = DootCodeReference.from_str("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.matcher:PatternMatcher_M")
+matcher_ref        = DootCodeReference.build("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.matcher:PatternMatcher_M")
 MatcherBuilder     = matcher_ref.try_import()
 
 base_exts          = [".bib", ".json", ".txt"]
@@ -48,7 +49,7 @@ class ExampleGenerator():
         exts = self.spec.extra.on_fail(base_exts, list).exts()
         for x in range(0, self.spec.extra.on_fail(5, int).subnum()):
             pretend_path = pl.Path("pretend").with_suffix(random.choice(exts))
-            yield DootTaskSpec.from_dict({"name": f"subtask_{x}", "fpath": pretend_path})
+            yield DootTaskSpec.build({"name": f"subtask_{x}", "fpath": pretend_path})
 
 class SimpleMatcher(MatcherBuilder, ExampleGenerator):
     pass
@@ -58,14 +59,14 @@ class TestMatcher:
 
     @pytest.mark.parametrize("count", [1, 5, 10, 4, 11])
     def test_initial(self, count):
-        obj = SimpleMatcher(DootTaskSpec.from_dict({"name":"test::basic", "subnum":count, "match_map":base_mapping, "match_fn":"ext"}))
+        obj = SimpleMatcher(DootTaskSpec.build({"name":"test::basic", "subnum":count, "match_map":base_mapping, "match_fn":"ext"}))
         assert(isinstance(obj, TaskBase_i))
         subs = list(obj._build_subs())
         assert(len(subs) == count)
 
     @pytest.mark.parametrize("count", [1, 5, 10, 4, 11])
     def test_mapping(self, count):
-        obj = SimpleMatcher(DootTaskSpec.from_dict({"name":"test::basic", "subnum":count, "match_map":base_mapping, "match_fn":"ext"}))
+        obj = SimpleMatcher(DootTaskSpec.build({"name":"test::basic", "subnum":count, "match_map":base_mapping, "match_fn":"ext"}))
         assert(isinstance(obj, TaskBase_i))
         tasks = list(obj._build_subs())
         for task in tasks:
@@ -80,7 +81,7 @@ class TestMatcher:
     @pytest.mark.parametrize("count", [1, 5, 10, 4, 11])
     def test_mapping_failure(self, count):
         mapping = {".not": "blah::bloo"}
-        obj = SimpleMatcher(DootTaskSpec.from_dict(
+        obj = SimpleMatcher(DootTaskSpec.build(
             {"name":"test::basic",
              "subnum":count,
              "match_map":mapping,

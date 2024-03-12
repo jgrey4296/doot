@@ -28,6 +28,7 @@ logging = logmod.root
 ##-- end pytest reminder
 
 import doot
+doot._test_setup()
 from doot._structs.artifact import DootTaskArtifact
 
 class TestTaskArtifact:

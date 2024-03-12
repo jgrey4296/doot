@@ -47,8 +47,8 @@ class HelpCmd(Command_i):
     @property
     def param_specs(self) -> list:
         return super().param_specs + [
-            # self.make_param(name="target", type=str, default=""),
-            self.make_param(name="target", type=str, positional=True, default="", desc="The target to get help about. A command or task.")
+            # self.build_param(name="target", type=str, default=""),
+            self.build_param(name="target", type=str, positional=True, default="", desc="The target to get help about. A command or task.")
             ]
 
     def __call__(self, tasks, plugins):

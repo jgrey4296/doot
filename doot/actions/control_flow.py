@@ -40,12 +40,12 @@ from doot.enums import ActionResponseEnum as ActRE
 from doot.structs import DootKey, DootCodeReference
 
 ##-- expansion keys
-MSG          : Final[DootKey] = DootKey.make("msg")
-OLD          : Final[DootKey] = DootKey.make("old")
-NEW          : Final[DootKey] = DootKey.make("new")
-LEVEL        : Final[DootKey] = DootKey.make("level")
-PRED         : Final[DootKey] = DootKey.make("pred")
-FILE_TARGET  : Final[DootKey] = DootKey.make("file")
+MSG          : Final[DootKey] = DootKey.build("msg")
+OLD          : Final[DootKey] = DootKey.build("old")
+NEW          : Final[DootKey] = DootKey.build("new")
+LEVEL        : Final[DootKey] = DootKey.build("level")
+PRED         : Final[DootKey] = DootKey.build("pred")
+FILE_TARGET  : Final[DootKey] = DootKey.build("file")
 
 ##-- end expansion keys
 
@@ -68,7 +68,7 @@ class SkipIfFileExists(Action_p):
     @DootKey.kwrap.args
     def __call__(self, spec, state, args) -> dict|bool|None:
         for arg in args:
-            key = DootKey.make(arg, explicit=True)
+            key = DootKey.build(arg, explicit=True)
             path = key.to_path(spec, state, on_fail=None)
             if path and path.exists():
                 printer.info("Target Exists: %s", path)

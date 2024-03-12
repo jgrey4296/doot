@@ -36,7 +36,7 @@ class CheckLocsTask(DootTask):
 
     def __init__(self, spec=None):
         locations = [[doot.locs[f"{{{x}}}"]] for x in doot.locs]
-        spec      = DootTaskSpec.from_dict({
+        spec      = DootTaskSpec.build({
             "name"         : CheckLocsTask.task_name,
             "actions"      : locations,
             "print_levels" : print_levels,

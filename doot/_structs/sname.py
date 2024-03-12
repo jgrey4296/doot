@@ -68,10 +68,10 @@ class DootStructuredName(DootStructuredName):
             case DootStructuredName():
                 return name
             case type():
-                return DootCodeReference.from_type(name)
+                return DootCodeReference.build(name)
             case str() if doot.constants.patterns.TASK_SEP in name:
-                return DootTaskName.from_str(name)
+                return DootTaskName.build(name)
             case str() if doot.constants.patterns.IMPORT_SEP in name:
-                return DootTaskName.from_str(name)
+                return DootTaskName.build(name)
             case _:
                 raise doot.errors.DootError("Tried to build a name from a bad value", name)

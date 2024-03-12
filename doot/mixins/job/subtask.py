@@ -51,7 +51,7 @@ class SubTask_M:
             case None:
                 pass
             case str() as x:
-                self._sub_gen = DootCodeReference.from_str(x).try_import()
+                self._sub_gen = DootCodeReference.build(x).try_import()
             case DootCodeReference() as x:
                 self._sub_gen = x.try_import()
             case _ as x if callable(x):
@@ -65,7 +65,7 @@ class SubTask_M:
     def _build_subs(self) -> Generator[DootTaskSpec]:
         raise NotImplementedError()
 
-    def build(self, **kwargs) -> Generator:
+    def make(self, **kwargs) -> Generator:
         head = self._build_head()
 
         match head:
@@ -98,7 +98,7 @@ class SubTask_M:
 
         task_ref  = self.spec.extra.on_fail((None,), None|str).sub_task()
         if task_ref is not None:
-            task_spec.ctor = DootTaskName.from_str(task_ref)
+            task_spec.ctor = DootTaskName.build(task_ref)
 
         return task_spec
 

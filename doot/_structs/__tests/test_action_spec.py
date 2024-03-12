@@ -19,20 +19,29 @@ import doot
 doot._test_setup()
 from doot import structs
 
-# caplog
-# mocker.patch | patch.object | patch.multiple | patch.dict | stopall | stop | spy | stub
-# pytest.mark.filterwarnings
-# pytest.parameterize
-# pytest.skip | skipif | xfail
-# with pytest.deprecated_call
-# with pytest.raises
-# with pytest.warns(warntype)
-
 class TestActionSpec:
 
     def test_initial(self):
         obj = structs.DootActionSpec()
         assert(isinstance(obj, structs.DootActionSpec))
+
+
+    def test_build_from_dict(self):
+        obj = structs.DootActionSpec.build({"do":"test"})
+        assert(isinstance(obj, structs.DootActionSpec))
+        assert(obj.do == "test")
+
+
+    def test_build_from_list(self):
+        obj = structs.DootActionSpec.build({"do":"test"})
+        assert(isinstance(obj, structs.DootActionSpec))
+        assert(obj.do == "test")
+
+
+    def test_build_nop(self):
+        obj = structs.DootActionSpec.build([])
+        obj2 = structs.DootActionSpec.build(obj)
+        assert(obj is obj2)
 
 
     def test_call(self, mocker):
@@ -41,3 +50,7 @@ class TestActionSpec:
 
         obj({})
         fun_mock.assert_called_once()
+
+
+    def test_set_function(self):
+        pass

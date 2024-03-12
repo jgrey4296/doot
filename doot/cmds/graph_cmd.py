@@ -57,16 +57,16 @@ class GraphCmd(Command_i):
     @property
     def param_specs(self) -> list[DootParamSpec]:
         return super().param_specs + [
-            self.make_param(name="all",                                          default=True,                   desc="List all loaded tasks, by group"),
-            self.make_param(name="dependencies",                                 default=False,                  desc="List task dependencies",                 prefix="--"),
-            self.make_param(name="dag",       _short="D",                        default=False,                  desc="Output a DOT compatible graph of tasks", prefix="--"),
-            self.make_param(name="groups",                   type=bool,          default=False,                  desc="List just the groups tasks fall into",   prefix="--"),
-            self.make_param(name="by-source",                                    default=False,                  desc="List all loaded tasks, by source file",  prefix="--"),
-            self.make_param(name="locations", _short="l",    type=bool,          default=False,                  desc="List all Loaded Locations"),
-            self.make_param(name="internal",  _short="i",    type=bool,          default=False,                  desc="Include internal tasks (ie: prefixed with an underscore)"),
-            self.make_param(name="as-dot", type=bool, default=True, desc="use dot for visualisation"),
-            self.make_param(name="dot-file", prefix="--", type=str, default=None, desc="a file name to write the dot to"),
-            self.make_param(name="pattern",                  type=str,           default="", positional=True,    desc="List tasks with a basic string pattern in the name"),
+            self.build_param(name="all",                                          default=True,                   desc="List all loaded tasks, by group"),
+            self.build_param(name="dependencies",                                 default=False,                  desc="List task dependencies",                 prefix="--"),
+            self.build_param(name="dag",       _short="D",                        default=False,                  desc="Output a DOT compatible graph of tasks", prefix="--"),
+            self.build_param(name="groups",                   type=bool,          default=False,                  desc="List just the groups tasks fall into",   prefix="--"),
+            self.build_param(name="by-source",                                    default=False,                  desc="List all loaded tasks, by source file",  prefix="--"),
+            self.build_param(name="locations", _short="l",    type=bool,          default=False,                  desc="List all Loaded Locations"),
+            self.build_param(name="internal",  _short="i",    type=bool,          default=False,                  desc="Include internal tasks (ie: prefixed with an underscore)"),
+            self.build_param(name="as-dot", type=bool, default=True, desc="use dot for visualisation"),
+            self.build_param(name="dot-file", prefix="--", type=str, default=None, desc="a file name to write the dot to"),
+            self.build_param(name="pattern",                  type=str,           default="", positional=True,    desc="List tasks with a basic string pattern in the name"),
             ]
 
     def __call__(self, tasks:TomlGuard, plugins:TomlGuard):

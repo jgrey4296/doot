@@ -36,7 +36,7 @@ logging = logmod.root
 
 ##-- end pytest reminder
 
-select_ref        = DootCodeReference.from_str("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.limiter:TaskLimit_M")
+select_ref        = DootCodeReference.build("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.limiter:TaskLimit_M")
 SelectBuilder     = select_ref.try_import()
 
 base_exts = [".bib", ".json", ".txt"]
@@ -48,7 +48,7 @@ class ExampleGenerator():
         exts = self.spec.extra.on_fail(base_exts, list).exts()
         for x in range(0, self.spec.extra.on_fail(5, int).subnum()):
             pretend_path = pl.Path("pretend").with_suffix(random.choice(exts))
-            yield DootTaskSpec.from_dict({"name": f"subtask_{x}", "fpath": pretend_path})
+            yield DootTaskSpec.build({"name": f"subtask_{x}", "fpath": pretend_path})
 
 class SimpleSelector(SelectBuilder, ExampleGenerator):
     pass
@@ -57,25 +57,25 @@ class TestSelector:
 
     @pytest.mark.parametrize("count", [1, 5, 10, 4, 11])
     def test_initial(self, count):
-        obj = SimpleSelector(DootTaskSpec.from_dict({"name" : "test::basic", "subnum":count}))
+        obj = SimpleSelector(DootTaskSpec.build({"name" : "test::basic", "subnum":count}))
         assert(isinstance(obj, TaskBase_i))
         subs = list(obj._build_subs())
         assert(len(subs) == count)
 
     @pytest.mark.parametrize("count", [4, 5, 10, 15, 20])
     def test_hard_limit(self, count):
-        obj = SimpleSelector(DootTaskSpec.from_dict({"name" : "test::basic", "subnum":count, "select_limit": 4}))
+        obj = SimpleSelector(DootTaskSpec.build({"name" : "test::basic", "subnum":count, "select_limit": 4}))
         with pytest.raises(doot.errors.DootTaskError):
             list(obj._build_subs())
 
     @pytest.mark.parametrize("count", [4, 5, 10, 15, 20])
     def test_limit_soft(self, count):
-        obj = SimpleSelector(DootTaskSpec.from_dict({"name" : "test::basic", "subnum":count, "select_limit": 4, "select_limit_type":"soft"}))
+        obj = SimpleSelector(DootTaskSpec.build({"name" : "test::basic", "subnum":count, "select_limit": 4, "select_limit_type":"soft"}))
         subs = list(obj._build_subs())
         assert(len(subs) <= 4)
 
     @pytest.mark.parametrize("count", [0, 1, 2, 3])
     def test_limit_pass(self, count):
-        obj = SimpleSelector(DootTaskSpec.from_dict({"name" : "test::basic", "subnum":count, "select_limit": 4}))
+        obj = SimpleSelector(DootTaskSpec.build({"name" : "test::basic", "subnum":count, "select_limit": 4}))
         subs = list(obj._build_subs())
         assert(len(subs) <= 4)

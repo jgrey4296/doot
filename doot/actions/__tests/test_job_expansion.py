@@ -17,7 +17,7 @@ logging = logmod.root
 
 import doot
 doot._test_setup()
-from doot.actions.job_expansion import JobInjector
+from doot.actions.job_expansion import JobExpandAction, JobMatchAction
 import doot.errors
 from doot.structs import DootKey, DootActionSpec, DootTaskName
 
@@ -25,11 +25,11 @@ class TestJobExpansion:
 
     @pytest.fixture(scope="function")
     def spec(self):
-        return DootActionSpec.from_data({"do": "action", "args":["test::simple", "test::other"], "update_":"specs"})
+        return DootActionSpec.build({"do": "action", "args":["test::simple", "test::other"], "update_":"specs"})
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": DootTaskName.from_str("basic")}
+        return {"_task_name": DootTaskName.build("basic")}
 
     def test_solo_expansion(self):
         pass
@@ -56,11 +56,11 @@ class TestJobMatcher:
 
     @pytest.fixture(scope="function")
     def spec(self):
-        return DootActionSpec.from_data({"do": "action", "args":["test::simple", "test::other"], "update_":"specs"})
+        return DootActionSpec.build({"do": "action", "args":["test::simple", "test::other"], "update_":"specs"})
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": DootTaskName.from_str("basic")}
+        return {"_task_name": DootTaskName.build("basic")}
 
     def test_initial(self):
         pass
@@ -69,11 +69,11 @@ class TestJobGenerate:
 
     @pytest.fixture(scope="function")
     def spec(self):
-        return DootActionSpec.from_data({"do": "action", "args":["test::simple", "test::other"], "update_":"specs"})
+        return DootActionSpec.build({"do": "action", "args":["test::simple", "test::other"], "update_":"specs"})
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": DootTaskName.from_str("basic")}
+        return {"_task_name": DootTaskName.build("basic")}
 
     def test_initial(self):
         pass

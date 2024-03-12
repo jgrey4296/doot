@@ -102,8 +102,8 @@ class TestTracker:
 
     def test_task_post_registration(self, ctor, mocker):
         mock_task = mock_gen.mock_task("test_task")
-        mock_task.required_for.append(doot.structs.DootTaskName.from_str("example"))
-        mock_task.required_for.append(doot.structs.DootTaskName.from_str("blah"))
+        mock_task.required_for.append(doot.structs.DootTaskName.build("example"))
+        mock_task.required_for.append(doot.structs.DootTaskName.build("blah"))
 
         tracker = ctor()
         tracker.add_task(mock_task)
@@ -114,8 +114,8 @@ class TestTracker:
 
     def test_declared_set(self, ctor, mocker):
         mock_task = mock_gen.mock_task("test_task")
-        mock_task.depends_on   += map(doot.structs.DootTaskName.from_str, ["subtask", "sub2"])
-        mock_task.required_for += map(doot.structs.DootTaskName.from_str, ["example", "blah"])
+        mock_task.depends_on   += map(doot.structs.DootTaskName.build, ["subtask", "sub2"])
+        mock_task.required_for += map(doot.structs.DootTaskName.build, ["example", "blah"])
 
         tracker = ctor()
         tracker.add_task(mock_task)

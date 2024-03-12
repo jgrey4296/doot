@@ -70,7 +70,7 @@ class DootLocations:
           """
         if key == "__self__":
             return None
-        return self[DootKey.make(key, strict=True)]
+        return self[DootKey.build(key, strict=True)]
 
     def __getitem__(self, val:str|DootKey|pl.Path|DootTaskArtifact) -> pl.Path:
         """
@@ -80,7 +80,7 @@ class DootLocations:
           Get a location using item access for extending a stored path.
           eg: locs["{temp}/imgs/blah.jpg"]
         """
-        match DootKey.make(val, explicit=True):
+        match DootKey.build(val, explicit=True):
             case DootNonKey() as key:
                 return key.to_path(locs=self)
             case DootSimpleKey() as key:

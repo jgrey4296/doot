@@ -65,7 +65,7 @@ def mock_task(name, spec=None, actions:int=1, **kwargs):
                        state={},
                        **kwargs)
     task_m.spec = spec or mock_task_spec(name=name, action_count=actions)
-    _add_prop(task_m, "name", structs.DootTaskName.from_str(name))
+    _add_prop(task_m, "name", structs.DootTaskName.build(name))
     _add_prop(task_m, "actions", task_m.spec.actions)
     return task_m
 
@@ -93,7 +93,7 @@ def mock_task_spec(name="mockSpec", pre=None, post=None, action_count=1, extra=N
                        required_for=post or [],
                        print_levels=tomlguard.TomlGuard({}),
                         )
-    spec_m.name = structs.DootTaskName.from_str(name)
+    spec_m.name = structs.DootTaskName.build(name)
     return spec_m
 
 def mock_action_specs(num=1) -> list:

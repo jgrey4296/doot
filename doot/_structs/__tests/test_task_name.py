@@ -37,7 +37,7 @@ class TestDootTaskName:
         assert(simple.tail == ["tail"])
 
     def test_name_with_leading_tasks(self):
-        simple = structs.DootTaskName.from_str("tasks.basic::tail")
+        simple = structs.DootTaskName.build("tasks.basic::tail")
         assert(simple.head == [ "basic"])
         assert(simple.tail == ["tail"])
 
@@ -211,43 +211,3 @@ class TestDootTaskName:
         sub = simple.subtask(1)
         assert(sub.tail == ["tail", 1])
         assert(str(sub) == '"basic.sub.test"::tail.1')
-
-
-
-
-class TestDootCodeReference:
-
-    def test_basic(self):
-        ref = structs.DootCodeReference.from_str("doot.task.base_task:DootTask")
-        assert(isinstance(ref, structs.DootCodeReference))
-
-    def test_import(self):
-        ref = structs.DootCodeReference.from_str("doot.task.base_task:DootTask")
-        imported = ref.try_import()
-        assert(isinstance(imported, type))
-        assert(imported == DootTask)
-
-    def test_import_module_fail(self):
-        ref = structs.DootCodeReference.from_str("doot.taskSSSSS.base_task:DootTask")
-        with pytest.raises(ImportError):
-            imported = ref.try_import()
-
-    def test_import_class_fail(self):
-        ref = structs.DootCodeReference.from_str("doot.task.base_task:DootTaskSSSSSS")
-        with pytest.raises(ImportError):
-            imported = ref.try_import()
-
-    def test_add_mixin(self):
-        ref = structs.DootCodeReference.from_str("doot.task.base_task:DootTask")
-        assert(not bool(ref._mixins))
-        ref_plus = ref.add_mixins("doot.mixins.job.terse:TerseBuilder_M")
-        assert(ref is not ref_plus)
-        assert(not bool(ref._mixins))
-        assert(bool(ref_plus._mixins))
-
-    def test_build_mixin(self):
-        ref      = structs.DootCodeReference.from_str("doot.task.base_task:DootTask")
-        ref_plus = ref.add_mixins("doot.mixins.job.terse:TerseBuilder_M")
-        result   = ref_plus.try_import()
-        assert(result != DootTask)
-        assert(DootTask in result.mro())

@@ -54,10 +54,10 @@ class _RelPather(Action_p):
 
     def _rel_path(self, spec, state, fpath, roots) -> pl.Path:
         """
-        make the path relative to the appropriate root
+        build the path relative to the appropriate root
         """
         for root in roots:
-            root_key = DootKey.make(root)
+            root_key = DootKey.build(root)
             root_path = root_key.to_path(spec, state)
             try:
                 return fpath.relative_to(root_path)
@@ -106,21 +106,21 @@ class JobInjector(Action_p):
         match copy:
             case dict():
                 for k,v in copy.items():
-                    as_key = DootKey.make(v)
+                    as_key = DootKey.build(v)
                     injection_dict[k] = as_key.basic(spec, state)
             case list():
                 for k in copy:
-                    as_key = DootKey.make(k)
+                    as_key = DootKey.build(k)
                     injection_dict[as_key.direct] = as_key.redirect(spec).basic(spec, state)
 
         match expand:
             case dict():
                 for k,v in expand.items():
-                    as_key = DootKey.make(v)
+                    as_key = DootKey.build(v)
                     injection_dict[k] = as_key.to_type(spec, state)
             case list():
                 for k in expand:
-                    as_key = DootKey.make(k)
+                    as_key = DootKey.build(k)
                     injection_dict[as_key.direct] = as_key.to_type(spec, state)
 
         if replacement is not None:
@@ -135,7 +135,7 @@ class JobPrependActions(Action_p):
 
     @DootKey.kwrap.types("_onto", "add_actions")
     def __call__(self, spec, state, _onto, _actions):
-        action_specs = [DootActionSpec.from_data(x) for x in _actions]
+        action_specs = [DootActionSpec.build(x) for x in _actions]
         for x in _onto:
             actions = action_specs + x.actions
             x.actions = actions
@@ -144,7 +144,7 @@ class JobAppendActions(Action_p):
 
     @DootKey.kwrap.types("_onto", "add_actions")
     def __call__(self, spec, state, _onto, _actions):
-        actions_specs = [DootActionSpec.from_data(x) for x in _actions]
+        actions_specs = [DootActionSpec.build(x) for x in _actions]
         for x in _onto:
             x.actions += action_specs
 

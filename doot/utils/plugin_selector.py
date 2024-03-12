@@ -49,7 +49,7 @@ def plugin_selector(plugins:TomlGuard, *, target="default", fallback=None) -> ty
 
     if target != "default":
         try:
-            name = DootCodeReference.from_str(target)
+            name = DootCodeReference.build(target)
             return name.try_import()
         except ImportError as err:
             # raise doot.errors.DootInvalidConfig("Import Failed: %s : %s", target, err.msg) from err

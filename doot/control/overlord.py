@@ -98,10 +98,10 @@ class DootOverlord(Overlord_p):
     @property
     def param_specs(self) -> list[DootParamSpec]:
         return [
-           self.make_param(name="version" , prefix="--"),
-           self.make_param(name="help"    , prefix="--"),
-           self.make_param(name="verbose" , prefix="--"),
-           self.make_param(name="debug",    prefix="--")
+           self.build_param(name="version" , prefix="--"),
+           self.build_param(name="help"    , prefix="--"),
+           self.build_param(name="verbose" , prefix="--"),
+           self.build_param(name="debug",    prefix="--")
         ]
 
     @property

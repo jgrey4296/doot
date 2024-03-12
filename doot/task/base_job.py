@@ -75,7 +75,7 @@ class DootJob(Job_i, DootTask):
     def is_stale(self, task:Task_i):
         return False
 
-    def build(self, **kwargs) -> Generator[DootTaskSpec]:
+    def make(self, **kwargs) -> Generator[DootTaskSpec]:
         logging.debug("-- job %s expanding tasks", self.name)
         if bool(kwargs):
             logging.debug("received kwargs: %s", kwargs)

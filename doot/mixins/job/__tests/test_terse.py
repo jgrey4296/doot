@@ -14,6 +14,7 @@ import warnings
 import pytest
 
 import doot
+doot._test_setup()
 from doot.structs import DootTaskSpec, DootCodeReference
 from doot._abstract import TaskBase_i
 
@@ -31,7 +32,7 @@ logging = logmod.root
 
 ##-- end pytest reminder
 
-mini_ref        = DootCodeReference.from_str("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.terse:TerseBuilder_M")
+mini_ref        = DootCodeReference.build("doot.task.base_job:DootJob").add_mixins("doot.mixins.job.terse:TerseBuilder_M")
 MiniBuilder     = mini_ref.try_import()
 
 class SimpleMini(MiniBuilder):
@@ -44,18 +45,18 @@ class SimpleMini(MiniBuilder):
 class TestMiniBuilder:
 
     def test_initial(self):
-        obj = MiniBuilder(DootTaskSpec.from_dict({"name" : "test::basic"}))
+        obj = MiniBuilder(DootTaskSpec.build({"name" : "test::basic"}))
         assert(isinstance(obj, TaskBase_i))
 
     def test_build_no_actions_default(self):
         """
         On its only, a minibuilder just adds actions to the $head$
         """
-        obj = SimpleMini(DootTaskSpec.from_dict({"name" : "test::basic",
+        obj = SimpleMini(DootTaskSpec.build({"name" : "test::basic",
             # "head_actions": [{"do":"log", "msg":"test_head"}],
         }))
         assert(isinstance(obj, TaskBase_i))
-        subtasks = list(obj.build())
+        subtasks = list(obj.make())
         assert(len(subtasks) == 3)
         for task in subtasks:
             assert(task.name.group == "test")
@@ -67,13 +68,13 @@ class TestMiniBuilder:
         """
         On its only, a minibuilder just adds actions to the $head$
         """
-        obj = SimpleMini(DootTaskSpec.from_dict({"name" : "test::basic",
+        obj = SimpleMini(DootTaskSpec.build({"name" : "test::basic",
             "sub_actions": [{"do":"log", "msg":"test_sub1"},
                             {"do":"log", "msg":"test_sub2"}],
             "head_actions": [{"do":"log", "msg":"test_head"}],
         }))
         assert(isinstance(obj, TaskBase_i))
-        subtasks = list(obj.build())
+        subtasks = list(obj.make())
         assert(len(subtasks) == 3)
         for task in subtasks:
             if (task.name.task == "basic.$head$"):
@@ -86,7 +87,7 @@ class TestMiniBuilder:
         """
         On its only, a minibuilder just adds actions to the $head$
         """
-        obj = SimpleMini(DootTaskSpec.from_dict({"name" : "test::basic",
+        obj = SimpleMini(DootTaskSpec.build({"name" : "test::basic",
             "sub_task": "example::blah",
             "head_task": "example::bloo",
             "sub_actions": [{"do":"log", "msg":"test_sub1"},
@@ -94,7 +95,7 @@ class TestMiniBuilder:
             "head_actions": [{"do":"log", "msg":"test_head"}],
         }))
         assert(isinstance(obj, TaskBase_i))
-        subtasks = list(obj.build())
+        subtasks = list(obj.make())
         assert(len(subtasks) == 3)
         for task in subtasks:
             if (task.name.task == "basic.$head$"):

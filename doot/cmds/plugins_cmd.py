@@ -50,9 +50,9 @@ class PluginsCmd(Command_i):
     @property
     def param_specs(self) -> list[DootParamSpec]:
         return super().param_specs + [
-            self.make_param(name="all",                  default=True,                   desc="List all loaded tasks, by group"),
-            self.make_param(name="groups",    type=bool, default=False,                  desc="List just the groups tasks fall into",   prefix="--"),
-            self.make_param(name="pattern",   type=str,  default="", positional=True,    desc="List tasks with a basic string pattern in the name"),
+            self.build_param(name="all",                  default=True,                   desc="List all loaded tasks, by group"),
+            self.build_param(name="groups",    type=bool, default=False,                  desc="List just the groups tasks fall into",   prefix="--"),
+            self.build_param(name="pattern",   type=str,  default="", positional=True,    desc="List tasks with a basic string pattern in the name"),
             ]
 
     def __call__(self, tasks:TomlGuard, plugins:TomlGuard):

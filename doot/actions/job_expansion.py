@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 See EOF for license/metadata/notes as applicable
 """
 
@@ -47,7 +46,6 @@ from doot._abstract import Action_p
 from doot.structs import DootKey, DootTaskSpec, DootTaskName, DootCodeReference
 from doot.actions.job_injection import JobInjector
 
-
 class JobGenerate(Action_p):
     """ Run a custom function to generate task specs  """
 
@@ -64,7 +62,6 @@ class JobExpandAction(JobInjector):
       'inject' provides an injection dict, with $arg$ being the entry from the source list
     """
 
-
     @DootKey.kwrap.types("from", "inject", "base", "print_levels")
     @DootKey.kwrap.redirects("update_")
     @DootKey.kwrap.taskname
@@ -75,7 +72,7 @@ class JobExpandAction(JobInjector):
             case list():
                 for i, arg in enumerate(_from):
                     injection = self.build_injection(spec, state, inject, replacement=arg)
-                    result.append(DootTaskSpec.from_dict(dict(name=_basename.subtask(i),
+                    result.append(DootTaskSpec.build(dict(name=_basename.subtask(i),
                                                               ctor=base,
                                                               actions = actions or [],
                                                               required_for=[_basename.task_head()],
@@ -84,7 +81,7 @@ class JobExpandAction(JobInjector):
                                                          )))
             case None:
                 injection = self.build_injection(spec, state, inject)
-                new_spec  = DootTaskSpec.from_dict(dict(name=_basename.subtask("i"),
+                new_spec  = DootTaskSpec.build(dict(name=_basename.subtask("i"),
                                                         ctor=base,
                                                         actions = actions or [],
                                                         required_for=[_basename.task_head()],
@@ -95,7 +92,6 @@ class JobExpandAction(JobInjector):
                 printer.warning("Tried to expand a non-list of args")
 
         return { _update : result }
-
 
     def _prep_base(self, base) -> tuple[list, DootTaskName|None]:
         """
@@ -113,7 +109,7 @@ class JobExpandAction(JobInjector):
                 actions = []
             case str():
                 actions = []
-                base    = DootTaskName.from_str(base)
+                base    = DootTaskName.build(base)
             case _:
                 raise doot.errors.DootActionError("Unrecognized base type", base)
 
@@ -142,6 +138,6 @@ class JobMatchAction(Action_p):
         for x in _onto:
             match fn(x):
                 case str() as key if key in mapping:
-                    x.ctor = DootTaskName.from_str(mapping[key])
+                    x.ctor = DootTaskName.build(mapping[key])
                 case _:
                     pass

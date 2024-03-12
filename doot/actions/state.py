@@ -36,9 +36,9 @@ from doot.mixins.importer import Importer_M
 from doot.structs import DootCodeReference, DootKey
 
 ##-- expansion keys
-UPDATE : Final[DootKey] = DootKey.make("update_")
-FORMAT : Final[DootKey] = DootKey.make("format")
-FROM   : Final[DootKey] = DootKey.make("from")
+UPDATE : Final[DootKey] = DootKey.build("update_")
+FORMAT : Final[DootKey] = DootKey.build("format")
+FROM   : Final[DootKey] = DootKey.build("from")
 ##-- end expansion keys
 
 @doot.check_protocol
@@ -52,7 +52,7 @@ class AddStateAction(Action_p):
     def __call__(self, spec, state:dict, kwargs) -> dict|bool|None:
         result = {}
         for k,v in kwargs.items():
-            key = DootKey.make(v, explicit=True)
+            key = DootKey.build(v, explicit=True)
             val = key.to_type(spec, state)
             result[k] = val
         return result
@@ -67,9 +67,9 @@ class AddStateFn(Action_p, Importer_M):
     def __call__(self, spec, state:dict, kwargs) -> dict|bool|None:
         result = {}
         for kwarg, val in kwargs:
-            key = DootKey.make(val, explicit=True)
+            key = DootKey.build(val, explicit=True)
             val = key.expand(spec, state)
-            ref = DootCodeReference.from_str(val)
+            ref = DootCodeReference.build(val)
             result[kwarg] = ref.try_import()
 
         return result
@@ -86,7 +86,7 @@ class PushState(Action_p):
     def __call__(self, spec, state, args, _update) -> dict|bool|None:
         data     = data_key.to_type(spec, state, type_=list|set|None, on_fail=[])
 
-        arg_keys = (DootKey.make(arg, explicit=True).to_type(spec, state) for arg in args)
+        arg_keys = (DootKey.build(arg, explicit=True).to_type(spec, state) for arg in args)
         to_add   = map(lambda x: x if isinstance(x, list) else [x],
                        filter(lambda x: x is not None, arg_keys))
 

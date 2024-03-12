@@ -60,9 +60,9 @@ class TaskBase_i(ParamSpecMaker_m):
     def param_specs(cls) -> list[DootParamSpec]:
         """  make class parameter specs  """
         return [
-            cls.make_param(name="help", default=False, invisible=True, prefix="--"),
-            cls.make_param(name="debug", default=False, invisible=True, prefix="--"),
-            cls.make_param(name="verbose", default=0, type=int, invisible=True, prefix="--")
+            cls.build_param(name="help", default=False, invisible=True, prefix="--"),
+            cls.build_param(name="debug", default=False, invisible=True, prefix="--"),
+            cls.build_param(name="verbose", default=0, type=int, invisible=True, prefix="--")
            ]
 
     def __init__(self, spec:DootTaskSpec):
@@ -239,7 +239,7 @@ class Job_i(Task_i):
         raise NotImplementedError(self.__class__, "specialize_task")
 
     @abc.abstractmethod
-    def build(self, **kwargs) -> abc.Generator[Task_i]:
+    def make(self, **kwargs) -> abc.Generator[Task_i]:
         raise NotImplementedError()
 
     @abc.abstractmethod

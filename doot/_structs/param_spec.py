@@ -71,7 +71,7 @@ class DootParamSpec:
     _consumed         : int                       = field(default=0)
 
     @classmethod
-    def from_dict(cls, data:TomlGuard|dict) -> DootParamSpec:
+    def build(cls, data:TomlGuard|dict) -> DootParamSpec:
         param =  cls(**data)
         match param:
             case DootParamSpec(type="int"):
@@ -111,6 +111,26 @@ class DootParamSpec:
     @property
     def repeatable(self):
         return self.type in DootParamSpec._repeatable_types and not self.positional
+
+    @property
+    def key_str(self):
+        if self.invisible or self.positional:
+            return ""
+
+        if self.prefix == doot.constants.patterns.PARAM_ASSIGN_PREFIX:
+            return f"{self.prefix}{self.name}{self.separator}"
+
+        return f"{self.prefix}{self.name}"
+
+    @property
+    def short_key_str(self):
+        if self.invisible or self.positional:
+            return ""
+
+        if self.prefix == doot.constants.patterns.PARAM_ASSIGN_PREFIX:
+            return f"{self.prefix}{self.name[0]}{self.separator}"
+
+        return f"{self.prefix}{self.name[0]}"
 
     def _split_name_from_value(self, val):
         match self.positional:
@@ -175,63 +195,6 @@ class DootParamSpec:
             return f"<ParamSpec: {self.name}>"
         return f"<ParamSpec: {self.prefix}{self.name}>"
 
-    @property
-    def key_str(self):
-        if self.invisible or self.positional:
-            return ""
-
-        if self.prefix == doot.constants.patterns.PARAM_ASSIGN_PREFIX:
-            return f"{self.prefix}{self.name}{self.separator}"
-
-        return f"{self.prefix}{self.name}"
-
-    @property
-    def short_key_str(self):
-        if self.invisible or self.positional:
-            return ""
-
-        if self.prefix == doot.constants.patterns.PARAM_ASSIGN_PREFIX:
-            return f"{self.prefix}{self.name[0]}{self.separator}"
-
-        return f"{self.prefix}{self.name[0]}"
-
-    def maybe_consume(self, args:list[str], data:dict) -> int:
-        """
-          Given a list of args, possibly add a value to the data.
-          operates *in place* on both the args list and the data.
-          return True if _consumed a value
-
-          handles:
-          ["--arg=val"],
-          ["-arg", "val"],
-          ["val"],     (if positional=True)
-          ["-arg"],    (if type=bool)
-          ["-no-arg"], (if type=bool)
-        """
-        if not bool(args) or data is None or args[0] != self:
-            return 0
-        if 0 < self._consumed:
-            return self._consumed
-
-        pop_count     = 0
-        focus         = args[0]
-        is_positional = bool(self.positional)
-
-
-        if is_positional:
-            pop_count = self._add_positional_value(data, key=self.name, vals=args)
-        else:
-            key, vals, pop_count = self._calc_positional_consumption(focus, args)
-            self._add_non_positional_value(data, key=key, vals=vals)
-
-        # data has been added, so remove it from the input list
-        logging.debug("Arg: %s consuming count %s", self.name, pop_count)
-        for x in range(pop_count):
-            args.pop(0)
-
-        self._consumed += pop_count
-        return self._consumed
-
     def _calc_positional_consumption(self, focus, args):
         pop_count     = 1
         prefixed      = focus.startswith(self.prefix) # form of -param
@@ -256,7 +219,6 @@ class DootParamSpec:
                 pop_count = 2
 
         return key, vals, pop_count
-
 
     def _add_non_positional_value(self, data:dict, *, key:str=None, vals:list[str]=None) -> bool:
         """ if the given value is suitable, add it into the given data
@@ -324,3 +286,39 @@ class DootParamSpec:
             raise doot.errors.DootParseError("Multi positional args should be of type list", self.name, self.positional, self.type)
 
         return pop_count
+
+    def maybe_consume(self, args:list[str], data:dict) -> int:
+        """
+          Given a list of args, possibly add a value to the data.
+          operates *in place* on both the args list and the data.
+          return True if _consumed a value
+
+          handles:
+          ["--arg=val"],
+          ["-arg", "val"],
+          ["val"],     (if positional=True)
+          ["-arg"],    (if type=bool)
+          ["-no-arg"], (if type=bool)
+        """
+        if not bool(args) or data is None or args[0] != self:
+            return 0
+        if 0 < self._consumed:
+            return self._consumed
+
+        pop_count     = 0
+        focus         = args[0]
+        is_positional = bool(self.positional)
+
+        if is_positional:
+            pop_count = self._add_positional_value(data, key=self.name, vals=args)
+        else:
+            key, vals, pop_count = self._calc_positional_consumption(focus, args)
+            self._add_non_positional_value(data, key=key, vals=vals)
+
+        # data has been added, so remove it from the input list
+        logging.debug("Arg: %s consuming count %s", self.name, pop_count)
+        for x in range(pop_count):
+            args.pop(0)
+
+        self._consumed += pop_count
+        return self._consumed

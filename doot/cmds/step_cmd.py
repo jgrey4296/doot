@@ -58,9 +58,9 @@ class StepCmd(Command_i):
     @property
     def param_specs(self) -> list:
         return super().param_specs + [
-            self.make_param(name="dry-run", default=False),
-            self.make_param(name="type", type=str, default="task"),
-            self.make_param(name="target", type=list[str], default=[], positional=True),
+            self.build_param(name="dry-run", default=False),
+            self.build_param(name="type", type=str, default="task"),
+            self.build_param(name="target", type=list[str], default=[], positional=True),
             ]
 
     def __call__(self, tasks:TomlGuard, plugins:TomlGuard):

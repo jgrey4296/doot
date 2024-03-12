@@ -57,9 +57,9 @@ class RunCmd(Command_i):
     @property
     def param_specs(self) -> list:
         return super().param_specs + [
-            self.make_param(name="step", default=False),
-            self.make_param(name="dry-run", default=False),
-            self.make_param(name="target", type=list[str], default=[], positional=True),
+            self.build_param(name="step", default=False),
+            self.build_param(name="dry-run", default=False),
+            self.build_param(name="target", type=list[str], default=[], positional=True),
             ]
 
     def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
@@ -94,7 +94,7 @@ class RunCmd(Command_i):
             case bool():
                 interrupt = interrupt_handler
             case str():
-                interrupt = DootCodeReference.from_str(interrupt_handler).try_import()
+                interrupt = DootCodeReference.build(interrupt_handler).try_import()
             case None:
                 interrupt = None
 

@@ -43,7 +43,7 @@ from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i
 from doot.task.base_task import DootTask
 from doot.control.tracker import _TrackerEdgeType, DootTracker
 
-STORAGE_FILE : Final[pl.Path] = doot.config.on_fail(DootKey.make(".tasks.bk")).settings.general.tracker_file(wrapper=DootKey.make).to_path()
+STORAGE_FILE : Final[pl.Path] = doot.config.on_fail(DootKey.build(".tasks.bk")).settings.general.tracker_file(wrapper=DootKey.build).to_path()
 
 @doot.check_protocol
 class DootDateTracker(DootTracker):

@@ -58,7 +58,7 @@ class DootTaskName(DootStructuredName):
     args               : dict                    = field(default_factory=dict)
 
     @classmethod
-    def from_str(cls, name:str, *, args=None):
+    def build(cls, name:str, *, args=None):
         if ":" in name:
             try:
                 groupHead_r, taskHead_r = name.split("::")
@@ -137,7 +137,7 @@ class DootTaskName(DootStructuredName):
         return "{}{}{}".format(group, self.separator, tail)
 
     def root(self) -> DootTaskName:
-        return DootTaskName.from_str(f"{self.head_str()}{self.separator}{self.tail[0]}")
+        return DootTaskName.build(f"{self.head_str()}{self.separator}{self.tail[0]}")
 
     def task_head(self):
         return self.subtask(doot.constants.patterns.SUBTASKED_HEAD)

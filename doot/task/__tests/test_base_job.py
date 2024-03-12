@@ -24,20 +24,20 @@ import doot._abstract
 class TestBaseJob:
 
     def test_initial(self):
-        job = DootJob(DootTaskSpec.from_dict({"name": "basic::example", "flags": ["JOB"]}))
+        job = DootJob(DootTaskSpec.build({"name": "basic::example", "flags": ["JOB"]}))
         assert(isinstance(job, doot._abstract.TaskBase_i))
         assert(TaskFlags.JOB in job.spec.flags)
 
     def test_paramspecs(self):
-        job = DootJob(DootTaskSpec.from_dict({"name": "basic::example"}))
+        job = DootJob(DootTaskSpec.build({"name": "basic::example"}))
         param_specs = job.param_specs
         assert(isinstance(param_specs, list))
         assert(len(param_specs) == 3)
 
     def test_spec(self):
         ##-- setup
-        job1 = DootJob(DootTaskSpec.from_dict({"name" :"basic::example"}))
-        job2 = DootJob(DootTaskSpec.from_dict({"name" :"other.group::blah"}))
+        job1 = DootJob(DootTaskSpec.build({"name" :"basic::example"}))
+        job2 = DootJob(DootTaskSpec.build({"name" :"other.group::blah"}))
         ##-- end setup
         assert(str(job1.name) == "basic::example")
         assert(str(job2.name) == "\"other.group\"::blah")
@@ -46,11 +46,11 @@ class TestBaseJob:
 
     def test_build(self):
         ##-- setup
-        job = DootJob(DootTaskSpec.from_dict({"name": "basic::example"}))
+        job = DootJob(DootTaskSpec.build({"name": "basic::example"}))
         ##-- end setup
 
         # Run:
-        tasks = list(job.build())
+        tasks = list(job.make())
 
         ##-- check
         assert(len(tasks) == 1)
@@ -59,11 +59,11 @@ class TestBaseJob:
 
     def test_build_multi(self):
         ##-- setup
-        job = DootJob(DootTaskSpec.from_dict({"name": "basic::example"}))
+        job = DootJob(DootTaskSpec.build({"name": "basic::example"}))
         ##-- end setup
 
         # Run:
-        tasks = list(job.build())
+        tasks = list(job.make())
 
         ##-- check
         assert(len(tasks) == 1)

@@ -56,7 +56,7 @@ class TaskLimit_M:
             case "identity":
                 self.early_select_fn = self._identity_select
             case str() as s:
-                ref = DootCodeReference.from_str(s)
+                ref = DootCodeReference.build(s)
                 self.early_select_fn = ref.try_import()
 
         match self.spec.extra.on_fail("hard", str).select_limit_type().lower():
@@ -80,7 +80,7 @@ class TaskLimit_M:
             case "random" | "Random":
                 self.late_select_fn = self._random_select
             case str() as s:
-                ref = DootCodeReference.from_str(s)
+                ref = DootCodeReference.build(s)
                 self.late_select_fn = ref.try_import()
 
     def _build_subs(self) -> Generator[DootTaskSpec]:

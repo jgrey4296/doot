@@ -39,9 +39,9 @@ printer = logmod.getLogger("doot._printer")
 STATE_TASK_NAME_K : Final[str] = doot.constants.patterns.STATE_TASK_NAME_K
 
 ##-- expansion keys
-UPDATE      : Final[DootKey] = DootKey.make("update_")
-TASK_NAME   : Final[DootKey] = DootKey.make(STATE_TASK_NAME_K)
-SUBKEY      : Final[DootKey] = DootKey.make("subkey")
+UPDATE      : Final[DootKey] = DootKey.build("update_")
+TASK_NAME   : Final[DootKey] = DootKey.build(STATE_TASK_NAME_K)
+SUBKEY      : Final[DootKey] = DootKey.build("subkey")
 ##-- end expansion keys
 
 class _DootPostBox:
@@ -109,13 +109,13 @@ class PutPostAction(Action_p):
     def __call__(self, spec, state, args, kwargs, _basename) -> dict|bool|None:
         target = _basename.root().subtask(_DootPostBox.default_subkey)
         for statekey in args:
-            data = DootKey.make(statekey).to_type(spec, state)
+            data = DootKey.build(statekey).to_type(spec, state)
             _DootPostBox.put(target, data)
 
         root = _basename.root()
         for subbox,statekey in kwargs.items():
             box  = root.subtask(subbox)
-            data = DootKey.make(statekey).to_type(spec, state)
+            data = DootKey.build(statekey).to_type(spec, state)
             _DootPostBox.put(box, data)
 
 
@@ -133,8 +133,8 @@ class GetPostAction(Action_p):
     def __call__(self, spec, state, kwargs) -> dict|bool|None:
         updates = {}
         for key,subkey in kwargs.items():
-            state_key          = DootKey.make(key, explicit=True).expand(spec, state)
-            target_box         = DootTaskName.from_str(subkey)
+            state_key          = DootKey.build(key, explicit=True).expand(spec, state)
+            target_box         = DootTaskName.build(subkey)
             updates[state_key] = _DootPostBox.get(target_box)
 
         return updates

@@ -54,7 +54,7 @@ def _build_name(data) -> DootTaskName:
         case {"group": group, "name": str() as name}:
             return DootTaskName(data['group'], data['name'])
         case {"name": str() as name}:
-            return DootTaskName.from_str(name)
+            return DootTaskName.build(name)
         case {"name": DootTaskName() as name}:
             return name
         case _:
@@ -109,11 +109,11 @@ def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|Doo
     for x in deps:
         match x:
             case { "task": taskname }:
-                results.append(DootTaskName.from_str(taskname, args=x))
+                results.append(DootTaskName.build(taskname, args=x))
             case str() if x.startswith(doot.constants.patterns.FILE_DEP_PREFIX):
                 results.append(DootTaskArtifact(pl.Path(x.removeprefix(doot.constants.patterns.FILE_DEP_PREFIX))))
             case str() if doot.constants.patterns.TASK_SEP in x:
-                results.append(DootTaskName.from_str(x))
+                results.append(DootTaskName.build(x))
             case DootTaskName() | DootTaskArtifact():
                 results.append(x)
             case _:
@@ -126,10 +126,10 @@ def _prepare_ctor(ctor, mixins):
         case None:
             default_alias = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
             coderef_str = doot.aliases.task[default_alias]
-            return DootCodeReference.from_str(coderef_str).add_mixins(*mixins)
+            return DootCodeReference.build(coderef_str).add_mixins(*mixins)
         case EntryPoint():
             loaded = ctor.load()
-            return DootCodeReference.from_type(loaded).add_mixins(*mixins)
+            return DootCodeReference.build(loaded).add_mixins(*mixins)
         case DootTaskName() if bool(mixins):
             raise TypeError("Task name ctor can't take mixins")
         case DootTaskName():
@@ -139,11 +139,11 @@ def _prepare_ctor(ctor, mixins):
         case DootCodeReference():
             return ctor
         case type():
-            return DootCodeReference.from_type(ctor).add_mixins(*mixins)
+            return DootCodeReference.build(ctor).add_mixins(*mixins)
         case str():
-            return DootCodeReference.from_str(ctor).add_mixins(*mixins)
+            return DootCodeReference.build(ctor).add_mixins(*mixins)
         case _:
-            return DootCodeReference.from_type(ctor).add_mixins(*mixins)
+            return DootCodeReference.build(ctor).add_mixins(*mixins)
 
 @dataclass
 class DootTaskSpec:
@@ -176,6 +176,16 @@ class DootTaskSpec:
     queue_behaviour              : str                                             = field(default="default")
 
     @staticmethod
+    def build(data:TomlGuard|dict|DootTaskName|str):
+        match data:
+            case TomlGuard() | dict():
+                return DootTaskSpec.from_dict(data)
+            case DootTaskname():
+                return DootTaskSpec.from_name(data)
+            case str():
+                return DootTaskSpec.from_name(DootTaskName.build(data))
+
+    @staticmethod
     def from_dict(data:TomlGuard|dict):
         """ builds a task spec from a raw dict
           able to handle a name:str = "group::task" form,
@@ -197,7 +207,7 @@ class DootTaskSpec:
         core_data['ctor'] = _prepare_ctor(data.get("ctor",None), mixins)
 
         # prep actions
-        core_data['actions'] = [DootActionSpec.from_data(x) for x in core_data.get('actions', [])]
+        core_data['actions'] = [DootActionSpec.build(x) for x in core_data.get('actions', [])]
 
         task = DootTaskSpec(**core_data, extra=TomlGuard(extra_data))
         return task
@@ -259,9 +269,9 @@ class DootTaskSpec:
                     specialized[field] = value
 
         logging.debug("Specialized Task: %s on top of: %s", data.name.readable, self.name)
-        return DootTaskSpec.from_dict(specialized)
+        return DootTaskSpec.build(specialized)
 
-    def build(self, ensure=Any):
+    def make(self, ensure=Any):
         task_ctor = self.ctor.try_import(ensure=ensure)
         return task_ctor(self)
 

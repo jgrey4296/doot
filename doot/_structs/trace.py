@@ -68,7 +68,3 @@ class DootTraceRecord:
 
     def some(self, other:reportPositionEnum) -> bool:
         return any([x in self.flags for x in other])
-
-"""
-
-"""

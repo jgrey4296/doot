@@ -55,7 +55,7 @@ class SetupStage_M:
     def stub_class(cls, stub):
         stub['setup_actions'].set(type="list[dict]",   default=[])
 
-    def build(self, **kwargs):
+    def make(self, **kwargs):
         entry_task = self._build_setup(kwargs)
         for task in super().build(**kwargs):
             match task:
@@ -73,7 +73,7 @@ class SetupStage_M:
         inject_dict = {k: self.spec.extra[k] for k in inject_keys}
         kwargs.update(inject_dict)
         setup = self.default_task("$entry$", kwargs)
-        spec_setup_actions     = [DootActionSpec.from_data(x) for x in self.spec.extra.on_fail([], list).setup_actions()]
+        spec_setup_actions     = [DootActionSpec.build(x) for x in self.spec.extra.on_fail([], list).setup_actions()]
         setup.actions         += spec_setup_actions
         setup.priority        += self.spec.priority
 

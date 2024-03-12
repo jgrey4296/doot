@@ -59,8 +59,8 @@ class Command_i(ParamSpecMaker_m):
         Provide parameter specs for parsing into doot.args.cmd
         """
         return [
-           self.make_param(name="help", default=False, prefix="--", invisible=True),
-           self.make_param(name="debug", default=False, prefix="--", invisible=True)
+           self.build_param(name="help", default=False, prefix="--", invisible=True),
+           self.build_param(name="debug", default=False, prefix="--", invisible=True)
            ]
 
     @abstractmethod

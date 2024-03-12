@@ -46,7 +46,8 @@ from doot._structs.task_spec import DootTaskSpec
 
 PAD           : Final[int]               = 15
 TaskFlagNames : Final[str]               = [x.name for x in TaskFlags]
-DEFAULT_CTOR  : Final[DootCodeReference] = DootCodeReference.from_str(doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS])
+
+DEFAULT_CTOR  : Final[DootCodeReference] = DootCodeReference.build(doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS])
 
 @dataclass
 class TaskStub:
@@ -68,7 +69,7 @@ class TaskStub:
     skip_parts : ClassVar[set[str]]          = set(["name", "extra", "ctor", "source", "version"])
 
     def __post_init__(self):
-        self['name'].default     = DootTaskName.from_str(doot.constants.names.DEFAULT_STUB_TASK_NAME)
+        self['name'].default     = DootTaskName.build(doot.constants.names.DEFAULT_STUB_TASK_NAME)
         self['version'].default  = "0.1"
         # Auto populate the stub with what fields are defined in a TaskSpec:
         for dcfield in DootTaskSpec.__dataclass_fields__.values():
@@ -77,6 +78,30 @@ class TaskStub:
             self.parts[dcfield.name] = TaskStubPart(key=dcfield.name, type=dcfield.type)
             if dcfield.default != MISSING:
                 self.parts[dcfield.name].default = dcfield.default
+
+    def __getitem__(self, key):
+        if key not in self.parts:
+            self.parts[key] = TaskStubPart(key)
+        return self.parts[key]
+
+    def __iadd__(self, other):
+        match other:
+            case [head, val] if head in self.parts:
+                self.parts[head].default = val
+            case [head, val]:
+                self.parts[head] = TaskStubPart(head, default=val)
+            case { "name" : name, "type": type, "default": default, "doc": doc, }:
+                pass
+            case { "name" : name, "default": default }:
+                pass
+            case dict():
+                part = TaskStubPart(**other)
+            case TomlGuard():
+                pass
+            case TaskStubPart() if other.key not in self.parts:
+                self.parts[other.key] = other
+            case _:
+                raise TypeError("Unrecognized Toml Stub component")
 
     def to_toml(self) -> str:
         parts = []
@@ -106,30 +131,6 @@ class TaskStub:
             parts.append(part)
 
         return "\n".join(map(str, parts))
-
-    def __getitem__(self, key):
-        if key not in self.parts:
-            self.parts[key] = TaskStubPart(key)
-        return self.parts[key]
-
-    def __iadd__(self, other):
-        match other:
-            case [head, val] if head in self.parts:
-                self.parts[head].default = val
-            case [head, val]:
-                self.parts[head] = TaskStubPart(head, default=val)
-            case { "name" : name, "type": type, "default": default, "doc": doc, }:
-                pass
-            case { "name" : name, "default": default }:
-                pass
-            case dict():
-                part = TaskStubPart(**other)
-            case TomlGuard():
-                pass
-            case TaskStubPart() if other.key not in self.parts:
-                self.parts[other.key] = other
-            case _:
-                raise TypeError("Unrecognized Toml Stub component")
 
 @dataclass
 class TaskStubPart:
@@ -175,9 +176,11 @@ class TaskStubPart:
                 parts = ", ".join([f"\"{x}\"" for x in self.default])
                 val_str = f"[{parts}]"
             case list() if all(isinstance(x, (int, float)) for x in self.default):
+
                 def_str = ", ".join(str(x) for x in self.default)
                 val_str = f"[{def_str}]"
             case list():
+
                 def_str = ", ".join([f'"{x}"' for x in self.default])
                 val_str = f"[{def_str}]"
             case dict():

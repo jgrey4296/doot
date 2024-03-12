@@ -58,23 +58,23 @@ class StubCmd(Command_i):
     @property
     def param_specs(self) -> list:
         return super().param_specs + [
-            self.make_param("file-target", type=str,     default=""),
-            self.make_param("Config",                    default=False,           desc="Stub a doot.toml",                  prefix="-"),
-            self.make_param("Actions",                   default=False,           desc="Help Stub Actions",                 prefix="-"),
-            self.make_param("cli",                       default=False,           desc="Generate a stub cli arg dict",      prefix="-"),
-            self.make_param("printer",                   default=False,           desc="Generate a stub cli arg dict",      prefix="-"),
+            self.build_param("file-target", type=str,     default=""),
+            self.build_param("Config",                    default=False,           desc="Stub a doot.toml",                  prefix="-"),
+            self.build_param("Actions",                   default=False,           desc="Help Stub Actions",                 prefix="-"),
+            self.build_param("cli",                       default=False,           desc="Generate a stub cli arg dict",      prefix="-"),
+            self.build_param("printer",                   default=False,           desc="Generate a stub cli arg dict",      prefix="-"),
 
-            self.make_param("Flags",                     default=False,           desc="Help Stub Task Flags",              prefix="-"),
+            self.build_param("Flags",                     default=False,           desc="Help Stub Task Flags",              prefix="-"),
 
-            self.make_param("name",        type=str,     default=None,            desc="The Name of the new task",                          positional=True),
-            self.make_param("ctor",        type=str,     default="task",          desc="The short type name of the task generator",         positional=True),
-            self.make_param("mixins",      type=list,    default=[],              desc="Mixins to add to task/job", prefix="--"),
-            self.make_param("suppress-header",           default=True, invisible=True)
+            self.build_param("name",        type=str,     default=None,            desc="The Name of the new task",                          positional=True),
+            self.build_param("ctor",        type=str,     default="task",          desc="The short type name of the task generator",         positional=True),
+            self.build_param("mixins",      type=list,    default=[],              desc="Mixins to add to task/job", prefix="--"),
+            self.build_param("suppress-header",           default=True, invisible=True)
             ]
 
     def _import_task_class(self, ctor_name):
         try:
-            code_ref = DootCodeReference.from_str(ctor_name)
+            code_ref = DootCodeReference.build(ctor_name)
             return code_ref.try_import()
         except ImportError as err:
             raise doot.errors.DootTaskLoadError(ctor_name)
@@ -121,7 +121,7 @@ class StubCmd(Command_i):
 
         # Create stub toml, with some basic information
         stub                          = TaskStub(ctor=task_iden_with_mixins)
-        stub['name'].default          = DootTaskName.from_str(name)
+        stub['name'].default          = DootTaskName.build(name)
         stub['mixins'].set(type="list", default=[], comment="mix in additional capabilities")
 
         # add ctor specific fields,

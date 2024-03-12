@@ -17,10 +17,10 @@ from doot._abstract import Action_p
 from doot.actions.base_action import DootBaseAction
 from doot.structs import DootKey
 
-BACKGROUND = DootKey.make("background")
-UPDATE     = DootKey.make("update_")
-NOTTY      = DootKey.make("notty")
-ENV        = DootKey.make("shenv_")
+BACKGROUND = DootKey.build("background")
+UPDATE     = DootKey.build("update_")
+NOTTY      = DootKey.build("notty")
+ENV        = DootKey.build("shenv_")
 
 @doot.check_protocol
 class DootShellBake:
@@ -33,8 +33,8 @@ class DootShellBake:
         if not env:
             env = sh
         try:
-            cmd                     = getattr(env, DootKey.make(args[0], explicit=True).expand(spec, state))
-            keys                    = [DootKey.make(x, explicit=True) for x in args[1:]]
+            cmd                     = getattr(env, DootKey.build(args[0], explicit=True).expand(spec, state))
+            keys                    = [DootKey.build(x, explicit=True) for x in args[1:]]
             expanded                = [x.expand(spec, state, locs=doot.locs) for x in keys]
             match _in:
                 case False | None:
@@ -99,8 +99,8 @@ class DootShellAction(Action_p):
         result     = None
         try:
             # Build the command by getting it from env, :
-            cmd                     = getattr(env, DootKey.make(args[0], explicit=True).expand(spec, state))
-            keys                    = [DootKey.make(x, explicit=True) for x in args[1:]]
+            cmd                     = getattr(env, DootKey.build(args[0], explicit=True).expand(spec, state))
+            keys                    = [DootKey.build(x, explicit=True) for x in args[1:]]
             expanded                = [x.expand(spec, state, locs=doot.locs) for x in keys]
             result                  = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=not notty)
             assert(result.exit_code == 0)
@@ -142,7 +142,7 @@ class DootInteractiveAction(Action_p):
 
             cmd      = getattr(sh, spec.args[0])
             args     = spec.args[1:]
-            keys     = [DootKey.make(x, explicit=True) for x in args]
+            keys     = [DootKey.build(x, explicit=True) for x in args]
             expanded = [x.expand(spec, state, locs=doot.locs) for x in keys]
             result   = cmd(*expanded, _return_cmd=True, _bg=spec.kwargs.on_fail(False, bool).background(), _out=self.interact, _out_bufsize=0, _tty_in=True, _unify_ttys=True)
             assert(result.exit_code == 0)

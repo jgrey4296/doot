@@ -60,7 +60,7 @@ class JobQueueAction(Action_p):
     @DootKey.kwrap.taskname
     def __call__(self, spec, state, _args, _from, _from_multi, _basename):
         subtasks  = []
-        subtasks += [DootTaskSpec(_basename.subtask(i), ctor=DootTaskName.from_str(x), required_for=[_basename.task_head()]) for i,x in enumerate(_args)]
+        subtasks += [DootTaskSpec(_basename.subtask(i), ctor=DootTaskName.build(x), required_for=[_basename.task_head()]) for i,x in enumerate(_args)]
 
         match _from:
             case [*xs] if all(isinstance(x, DootTaskSpec) for x in xs):
@@ -76,7 +76,7 @@ class JobQueueAction(Action_p):
             case None:
                 pass
             case [*xs]:
-                as_keys = [DootKey.make(x) for x in xs]
+                as_keys = [DootKey.build(x) for x in xs]
                 for key in as_keys:
                     match key.to_type(spec, state, type_=list|None):
                         case None:
@@ -99,19 +99,19 @@ class JobQueueHead(Action_p):
 
         match base:
             case str() | DootTaskName():
-                head += [DootTaskSpec.from_dict(dict(name=head_name,
+                head += [DootTaskSpec.build(dict(name=head_name,
                                                      actions=[],
                                                      queue_behaviour="auto")),
-                         DootTaskSpec.from_dict(dict(name=head_name.subtask("1"),
-                                                     ctor=DootTaskName.from_str(base),
+                         DootTaskSpec.build(dict(name=head_name.subtask("1"),
+                                                     ctor=DootTaskName.build(base),
                                                      depends_on=[head_name],
                                                      extra=inject or {},
                                                      queue_behaviour="auto"))
                     ]
             case list():
-                head += [DootTaskSpec.from_dict(dict(name=head_name, actions=base, extra=inject or {}, queue_behaviour="auto"))]
+                head += [DootTaskSpec.build(dict(name=head_name, actions=base, extra=inject or {}, queue_behaviour="auto"))]
             case None:
-                head += [DootTaskSpec.from_dict(dict(name=head_name, queue_behaviour="auto"))]
+                head += [DootTaskSpec.build(dict(name=head_name, queue_behaviour="auto"))]
 
         return head
 
@@ -129,7 +129,7 @@ class JobChainer(Action_p):
     @DootKey.kwrap.kwargs
     def __call__(self, spec, state, kwargs):
         for k,v in kwargs.items():
-            match DootKey.make(k).to_type(spec, state):
+            match DootKey.build(k).to_type(spec, state):
                 case list() as l:
                     for x in l:
                         x.required_for += []

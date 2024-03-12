@@ -73,7 +73,7 @@ class Expander_M(SubTask_M):
         super().__init__(spec)
         match spec.extra.on_fail(None, None|str).retriever():
             case str() as x:
-                retriever_ref = DootCodeReference.from_str(x)
+                retriever_ref = DootCodeReference.build(x)
                 self._retriever_fn = retriever_ref.try_import()
             case None:
                 self._retriever_fn = id_retriever
@@ -178,14 +178,14 @@ class WalkExpander_M(Expander_M):
             case None:
                 self._accept_fn = self.filter
             case str() as x:
-                accept_ref = DootCodeReference.from_str(x)
+                accept_ref = DootCodeReference.build(x)
                 self._accept_fn = accept_ref.try_import()
 
         self.exts           = {y for x in spec.extra.on_fail([]).exts() for y in [x.lower(), x.upper()]}
         # expand roots based on doot.locs
         self.roots = []
         for root in spec.extra.on_fail([pl.Path()], list).roots():
-            key = DootKey.make(root)
+            key = DootKey.build(root)
             self.roots.append(key.to_path(None, spec.extra))
 
         self.rec            = spec.extra.on_fail(False, bool).recursive()
@@ -205,7 +205,7 @@ class WalkExpander_M(Expander_M):
 
     def rel_path(self, fpath) -> pl.Path:
         """
-        make the path relative to the appropriate root
+        build the path relative to the appropriate root
         """
         for root in self.roots:
             try:

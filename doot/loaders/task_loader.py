@@ -216,7 +216,7 @@ class DootTaskLoader(TaskLoader_p):
                         task_iden                   : DootCodeReference       = DootCodeReference.from_alias(task_alias, "task", self.plugins)
                         task_iden_with_mixins       : DootCodeReference       = task_iden.add_mixins(*spec.get("mixins", []), plugins=self.plugins)
                         spec['ctor'] = task_iden_with_mixins
-                        task_spec = DootTaskSpec.from_dict(spec)
+                        task_spec = DootTaskSpec.build(spec)
                         if str(task_spec.name) in task_descriptions:
                             logging.warning("Overloading Task: %s : %s", str(task_spec.name), task_alias)
 
@@ -224,7 +224,7 @@ class DootTaskLoader(TaskLoader_p):
                         task_descriptions[str(task_spec.name)] = task_spec
                     case {"name": task_name}:
                         logging.info("Building Task: %s", task_name)
-                        task_spec = DootTaskSpec.from_dict(spec)
+                        task_spec = DootTaskSpec.build(spec)
                         if str(task_spec.name) in task_descriptions:
                             logging.warning("Overloading Task: %s : %s", str(task_spec.name), str(task_spec.ctor))
 

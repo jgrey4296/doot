@@ -132,7 +132,7 @@ class _InternalTrackerBase(TaskTracker_i):
                 if cli_specialized.ctor is None:
                     raise doot.errors.DootTaskTrackingError("Attempt to specialize task failed: %s", spec.name)
 
-                task : TaskBase_i = cli_specialized.build()
+                task : TaskBase_i = cli_specialized.make()
             case DootTaskSpec(ctor=str() as ctor):
                 base_spec           = self.tasks.get(ctor).spec
                 initial_specialized = base_spec.specialize_from(spec)
@@ -140,10 +140,10 @@ class _InternalTrackerBase(TaskTracker_i):
                 if cli_specialized.ctor is None:
                     raise doot.errors.DootTaskTrackingError("Attempt to specialize task failed: %s", spec.name)
 
-                task : TaskBase_i = cli_specialized.build()
+                task : TaskBase_i = cli_specialized.make()
             case DootTaskSpec(ctor=DootCodeReference() as ctor) if spec.check(ensure=TaskBase_i):
                 cli_specialized   = self._insert_cli_args_into_spec(spec)
-                task : TaskBase_i = cli_specialized.build()
+                task : TaskBase_i = cli_specialized.make()
             case DootTaskSpec():
                 cli_specialized   = self._insert_cli_args_into_spec(spec)
                 task : TaskBase_i = DootTask(cli_specialized)
@@ -195,7 +195,7 @@ class _InternalTrackerBase(TaskTracker_i):
                     self.task_graph.add_edge(pre, task.name, type=EDGE_E.ARTIFACT_CROSS)
                 case DootTaskName() if all([(in_graph:=str(pre) in self.task_graph),(has_args:=bool(pre.args))]):
                     base_spec                 = self.tasks[str(pre)].spec
-                    name_spec                 = DootTaskSpec.from_name(pre)
+                    name_spec                 = DootTaskSpec.build(pre)
                     name_spec.ctor            = base_spec.name
                     name_spec.required_for.append(task.name)
                     self.add_task(name_spec, no_root_connection=True)
@@ -204,7 +204,7 @@ class _InternalTrackerBase(TaskTracker_i):
                     self.task_graph.add_edge(str(pre), task.name, type=EDGE_E.TASK)
                 case DootTaskName() if has_args:
                     assert(str(pre) not in self.task_graph.nodes)
-                    name_spec      = DootTaskSpec.from_name(pre.specialize(info="late"))
+                    name_spec      = DootTaskSpec.build(pre.specialize(info="late"))
                     name_spec.ctor = pre
                     name_spec.required_for.append(task.name)
                     self._build_late.append(name_spec)
@@ -230,7 +230,7 @@ class _InternalTrackerBase(TaskTracker_i):
                     self.task_graph.add_edge(task.name, post, type=EDGE_E.TASK_CROSS)
                 case DootTaskName() if all([(in_graph:=str(post) in self.task_graph), (has_args:=bool(post.args))]):
                     base_spec                 = self.tasks[str(post)].spec
-                    name_spec                 = DootTaskSpec.from_name(post)
+                    name_spec                 = DootTaskSpec.build(post)
                     name_spec.ctor            = base_spec.name
                     name_spec.depends_on.append(task.name)
                     self.add_task(name_spec)
@@ -239,7 +239,7 @@ class _InternalTrackerBase(TaskTracker_i):
                     self.task_graph.add_edge(task.name, str(post), type=EDGE_E.TASK)
                 case DootTaskName() if has_args:
                     assert(str(post) not in self.task_graph.nodes)
-                    name_spec      = DootTaskSpec.from_name(post.specialize(info="late"))
+                    name_spec      = DootTaskSpec.build(post.specialize(info="late"))
                     name_spec.ctor = post
                     name_spec.depends_on.append(task.name)
                     self._build_late.append(name_spec)

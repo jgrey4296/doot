@@ -54,8 +54,8 @@ class CleanCmd(Command_i):
     @property
     def param_specs(self) -> list:
         return super().param_specs + [
-            self.make_param(name="target", type=str, default=None),
-            self.make_param(name="recursive", type=bool, default=False)
+            self.build_param(name="target", type=str, default=None),
+            self.build_param(name="recursive", type=bool, default=False)
             ]
 
     def __call__(self, tasks:dict, plugins:dict):

@@ -75,7 +75,7 @@ class JobWalkAction(Action_p):
     def __call__(self, spec, state, roots, exts, recursive, fn, _update):
         exts    = {y for x in (exts or []) for y in [x.lower(), x.upper()]}
         rec     = recursive or False
-        roots   = [DootKey.make(x).to_path(spec, state) for x in roots]
+        roots   = [DootKey.build(x).to_path(spec, state) for x in roots]
         match fn:
             case DootCodeReference():
                 accept_fn = fn.try_import()

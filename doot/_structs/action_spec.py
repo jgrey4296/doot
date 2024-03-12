@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 See EOF for license/metadata/notes as applicable
 """
 
@@ -37,7 +36,6 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-
 import importlib
 from tomlguard import TomlGuard
 import doot.errors
@@ -63,6 +61,32 @@ class DootActionSpec:
     inState    : set[str]                   = field(default_factory=set)
     outState   : set[str]                   = field(default_factory=set)
     fun        : None|Callable              = field(default=None)
+
+    @staticmethod
+    def build(data:dict|list|TomlGuard|DootActionSpec, *, fun=None) -> DootActionSpec:
+        match data:
+            case DootActionSpec():
+                return data
+            case list():
+                action_spec = DootActionSpec(
+                    args=data,
+                    fun=fun if callable(fun) else None
+                    )
+                return action_spec
+
+            case dict() | TomlGuard():
+                kwargs = TomlGuard({x:y for x,y in data.items() if x not in DootActionSpec.__dataclass_fields__.keys()})
+                action_spec = DootActionSpec(
+                    do=data['do'],
+                    args=data.get('args',[]),
+                    kwargs=kwargs,
+                    inState=set(data.get('inState', set())),
+                    outState=set(data.get('outState', set())),
+                    fun=fun if callable(fun) else None
+                    )
+                return action_spec
+            case _:
+                raise doot.errors.DootActionError("Unrecognized specification data", data)
 
     def __str__(self):
         result = []
@@ -126,29 +150,3 @@ class DootActionSpec:
 
     def verify_out(self, state:dict):
         self.verify(state, fields=self.outState)
-
-    @staticmethod
-    def from_data(data:dict|list|TomlGuard|DootActionSpec, *, fun=None) -> DootActionSpec:
-        match data:
-            case DootActionSpec():
-                return data
-            case list():
-                action_spec = DootActionSpec(
-                    args=data,
-                    fun=fun if callable(fun) else None
-                    )
-                return action_spec
-
-            case dict() | TomlGuard():
-                kwargs = TomlGuard({x:y for x,y in data.items() if x not in DootActionSpec.__dataclass_fields__.keys()})
-                action_spec = DootActionSpec(
-                    do=data['do'],
-                    args=data.get('args',[]),
-                    kwargs=kwargs,
-                    inState=set(data.get('inState', set())),
-                    outState=set(data.get('outState', set())),
-                    fun=fun if callable(fun) else None
-                    )
-                return action_spec
-            case _:
-                raise doot.errors.DootActionError("Unrecognized specification data", data)

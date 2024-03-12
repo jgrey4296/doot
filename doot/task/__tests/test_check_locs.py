@@ -38,7 +38,7 @@ logging = logmod.root
 class TestCheckLocsTask:
 
     def test_initial(self):
-        obj = CheckLocsTask(DootTaskSpec.from_dict({"name": "basic"}))
+        obj = CheckLocsTask(DootTaskSpec.build({"name": "basic"}))
         assert(isinstance(obj, doot._abstract.Task_i))
 
 
