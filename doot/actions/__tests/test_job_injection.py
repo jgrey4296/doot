@@ -95,14 +95,38 @@ class TestJobInjection:
         assert("a" in injection)
         assert(injection['a'] == 10)
 
-
 class TestPathInjection:
 
-    def test_initial(self):
-        pass
+    @pytest.fixture(scope="function")
+    def spec(self):
+        return DootActionSpec.build({"do": "action", "args":["test::simple", "test::other"], "update_":"specs"})
 
-    def test_inject_shadow(self):
-        pass
+    @pytest.fixture(scope="function")
+    def state(self):
+        return {"_task_name": DootTaskName.build("basic")}
+
+    def test_initial(self, spec ,state):
+        obj = ji.JobInjectPathParts()
+        # build task specs
+        # set roots
+        # Call:
+        result = obj(spec, state)
+
+        # expect these:
+        expect = ["lpath", "fstem", "fparent", "fname", "fext", "pstem"]
+
+
+    def test_inject_shadow(self, spec, state):
+        state['shadow_root'] = "blah"
+        obj = ji.JobInjectShadowAction()
+        # build task specs
+        # set roots
+        # Call:
+        result = obj(spec, state)
+
+        # expect these:
+        expect = ["lpath", "fstem", "fparent", "fname", "fext", "pstem"]
+
 
 class TestNameInjection:
 

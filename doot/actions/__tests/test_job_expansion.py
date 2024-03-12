@@ -25,32 +25,57 @@ class TestJobExpansion:
 
     @pytest.fixture(scope="function")
     def spec(self):
-        return DootActionSpec.build({"do": "action", "args":["test::simple", "test::other"], "update_":"specs"})
+        return DootActionSpec.build({"do": "expand", "args":[], "update_":"specs"})
 
     @pytest.fixture(scope="function")
     def state(self):
         return {"_task_name": DootTaskName.build("basic")}
 
-    def test_solo_expansion(self):
-        pass
+    def test_initial(self, spec, state):
+        obj = JobExpandAction()
+        result = obj(spec, state)
+        assert(isinstance(result, dict))
+        assert(isinstance(result[spec.kwargs['update_']], list))
+        assert(len(result['specs']) == 1)
 
-    def test_list_expansion(self):
-        pass
+    @pytest.mark.parametrize("count", [1,11,2,5,20])
+    def test_count_expansion(self, spec, state, count):
+        spec.kwargs._table()['from'] = count
+        obj = JobExpandAction()
+        result = obj(spec, state)
+        assert(isinstance(result, dict))
+        assert(isinstance(result[spec.kwargs['update_']], list))
+        assert(len(result['specs']) == count)
 
-    def test_solo_injection(self):
-        pass
+    def test_list_expansion(self, spec, state):
+        args = ["a", "b", "c"]
+        spec.kwargs._table()['from'] = args
+        state['inject'] = {"replace": ['target']}
+        obj = JobExpandAction()
+        result = obj(spec, state)
+        assert(isinstance(result, dict))
+        assert(isinstance(result[spec.kwargs['update_']], list))
+        assert(len(result['specs']) == 3)
+        for spec, expect in zip(result['specs'], args):
+            assert(spec.extra.target == expect)
 
-    def test_list_injection(self):
-        pass
 
-    def test_replacement(self):
-        pass
+    def test_action_base(self, spec, state):
+        state['base'] = "test::task"
+        obj = JobExpandAction()
+        result = obj(spec, state)
+        assert(isinstance(result, dict))
+        assert(isinstance(result[spec.kwargs['update_']], list))
+        assert(result['specs'][0].ctor == "test::task")
+        assert(len(result['specs'][0].actions) == 0)
 
-    def test_action_base(self):
-        pass
-
-    def test_taskname_base(self):
-        pass
+    def test_taskname_base(self, spec, state):
+        state['base'] = [{"do":"aweg"}, {"do":"blah"}, {"do":"jioj"}]
+        obj = JobExpandAction()
+        result = obj(spec, state)
+        assert(isinstance(result, dict))
+        assert(isinstance(result[spec.kwargs['update_']], list))
+        assert(len(result['specs'][0].actions) == 3)
 
 class TestJobMatcher:
 

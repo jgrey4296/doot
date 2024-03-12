@@ -112,7 +112,7 @@ touch    =       "doot.actions.io:TouchFileAction"
 "job.sub.name"        = "doot.actions.job_actions:JobSubNamer"
 "job.actions.prepend" = "doot.actions.job_actions:JobPrependActions"
 "job.actions.append"  = "doot.actions.job_actions:JobAppendActions"
-"job.inject"          = "doot.actions.job_actions:JobInjectAction"
+"job.injector"        = "doot.actions.job_actions:JobInjector"
 "job.inject.path"     = "doot.actions.job_actions:JobInjectPathParts"
 "job.inject.shadow"   = "doot.actions.job_actions:JobInjectShadowAction"
 

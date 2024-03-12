@@ -19,7 +19,7 @@ import doot
 doot._test_setup()
 from doot.actions.job_queuing import JobQueueAction, JobQueueHead, JobChainer
 import doot.errors
-from doot.structs import DootKey, DootActionSpec, DootTaskName
+from doot.structs import DootKey, DootActionSpec, DootTaskName, DootTaskSpec
 
 class TestJobQueue:
 
@@ -40,12 +40,19 @@ class TestJobQueue:
         obj = JobQueueAction()
         result = obj(spec, state)
         assert(isinstance( result, list ))
+        assert(all(isinstance(x, DootTaskSpec) for x in result))
 
     def test_from_multi_arg(self):
-        pass
+        obj = JobQueueAction()
+        result = obj(spec, state)
+        assert(isinstance( result, list ))
+        assert(all(isinstance(x, DootTaskSpec) for x in result))
 
     def test_args(self):
-        pass
+        obj = JobQueueAction()
+        result = obj(spec, state)
+        assert(isinstance( result, list ))
+        assert(all(isinstance(x, DootTaskSpec) for x in result))
 
 class TestJobQueueHead:
 
@@ -57,8 +64,22 @@ class TestJobQueueHead:
     def state(self):
         return {"_task_name": DootTaskName.build("basic")}
 
-    def test_initial(self):
-        pass
+    def test_initial(self, spec, state):
+        obj = JobQueueHead()
+        result = obj(spec, state)
+        assert(isinstance( result, list ))
+
+
+    def test_base_as_name(self, spec, state):
+        obj = JobQueueHead()
+        result = obj(spec, state)
+        assert(isinstance( result, list ))
+
+
+    def test_base_as_list(self, spec, state):
+        obj = JobQueueHead()
+        result = obj(spec, state)
+        assert(isinstance( result, list ))
 
 class TestJobChainer:
 
@@ -70,5 +91,8 @@ class TestJobChainer:
     def state(self):
         return {"_task_name": DootTaskName.build("basic")}
 
-    def test_initial(self):
-        pass
+
+    def test_initial(self, spec, state):
+        obj = JobChainer()
+        result = obj(spec, state)
+        assert(result is None)

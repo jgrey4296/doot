@@ -69,25 +69,37 @@ class JobExpandAction(JobInjector):
         result          = []
         actions, base   = self._prep_base(base)
         match _from:
+            case int():
+                for i in range(_from):
+                    injection = self.build_injection(spec, state, inject)
+                    result.append(DootTaskSpec.build(dict(name=_basename.subtask(i),
+                                                          ctor=base,
+                                                          actions = actions or [],
+                                                          required_for=[_basename.task_head()],
+                                                          extra=injection,
+                                                          print_levels=_printL or {},
+                                                         )))
+
             case list():
                 for i, arg in enumerate(_from):
                     injection = self.build_injection(spec, state, inject, replacement=arg)
                     result.append(DootTaskSpec.build(dict(name=_basename.subtask(i),
-                                                              ctor=base,
-                                                              actions = actions or [],
-                                                              required_for=[_basename.task_head()],
-                                                              extra=injection,
-                                                              print_levels=_printL or {},
+                                                          ctor=base,
+                                                          actions = actions or [],
+                                                          required_for=[_basename.task_head()],
+                                                          extra=injection,
+                                                          print_levels=_printL or {},
                                                          )))
             case None:
                 injection = self.build_injection(spec, state, inject)
                 new_spec  = DootTaskSpec.build(dict(name=_basename.subtask("i"),
-                                                        ctor=base,
-                                                        actions = actions or [],
-                                                        required_for=[_basename.task_head()],
-                                                        extra=injection,
-                                                        print_levels=_printL or {},
+                                                    ctor=base,
+                                                    actions = actions or [],
+                                                    required_for=[_basename.task_head()],
+                                                    extra=injection,
+                                                    print_levels=_printL or {},
                                                    ))
+                result.append(new_spec)
             case _:
                 printer.warning("Tried to expand a non-list of args")
 
@@ -110,6 +122,9 @@ class JobExpandAction(JobInjector):
             case str():
                 actions = []
                 base    = DootTaskName.build(base)
+            case None:
+                actions = []
+                base    = None
             case _:
                 raise doot.errors.DootActionError("Unrecognized base type", base)
 

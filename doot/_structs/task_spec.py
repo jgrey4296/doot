@@ -68,8 +68,10 @@ def _separate_into_core_and_extra(data) -> tuple[dict, dict]:
         if "-" in key:
             key = key.replace("-","_")
         match key:
-            case "extra":
+            case "extra" if val is not None:
                 extra_data.update(dict(val))
+            case "extra":
+                pass
             case "print_levels":
                 core_data["print_levels"] = TomlGuard(val)
             case "active_when":
@@ -125,7 +127,7 @@ def _prepare_ctor(ctor, mixins):
     match ctor:
         case None:
             default_alias = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
-            coderef_str = doot.aliases.task[default_alias]
+            coderef_str   = doot.aliases.task[default_alias]
             return DootCodeReference.build(coderef_str).add_mixins(*mixins)
         case EntryPoint():
             loaded = ctor.load()
