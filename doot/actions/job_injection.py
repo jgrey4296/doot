@@ -77,9 +77,9 @@ class JobInjector(Action_p):
                 expand  = inject.get("expand", {})
                 replace = inject.get("replace", [])
             case TomlGuard():
-                copy    = inject.on_fail([]).copy()
-                expand  = inject.on_fail({}).expand()
-                replace = inject.on_fail([]).replace()
+                copy    = inject.on_fail([], non_root=True).copy()
+                expand  = inject.on_fail({}, non_root=True).expand()
+                replace = inject.on_fail([], non_root=True).replace()
             case None:
                 return
             case _:
@@ -154,6 +154,7 @@ class JobInjectPathParts(Action_p):
 
     def _calc_path_parts(self, data, key, roots) -> TomlGuard:
         fpath                  = data[key]
+        assert(fpath is not None)
         path_extras            = dict(data)
         path_extras['lpath']   = self._get_relative(fpath, roots)
         path_extras['fstem']   = fpath.stem

@@ -1,5 +1,5 @@
 [[locations]]
-build     = "dist"
+build     = "{temp}/dist"
 dist_key  = "~/.config/secrets/pypi/token.asc"
 
 # TODO run pytest
@@ -25,12 +25,23 @@ version                = "0.1"                          # <str>
 ctor                   = "task"                         # <str>
 env_name               = "distributor"
 match_re               = 's/^pypi\s+\=\s+(.+)/\1/p'
-inject                 = ["env_name", "match_re"]                   # <list[str]>
-queue_behaviour        = "default"                      # <str>                default | auto | reactive
 actions                = [
                      {do="mamba.env", env_="env_name", update_="env"},
                      # Build
-                     {do="shell", args=["python", "-m", "build", "."], env_="env"},
+                     {do="shell", args=["python", "-m", "build", "--outdir", "{build}", "."], env_="env"},
+                     # Cleanup
+                     {do="delete!", recursive=true, lax=true, args=["./doot.egg-info"]}
+]
+
+[[tasks.dist]]
+name                   = "upload"
+version                = "0.1"
+ctor                   = "task"
+depends_on             = ["dist::build"]
+env_name               = "distributor"
+match_re               = 's/^pypi\s+\=\s+(.+)/\1/p'
+actions                = [
+                     {do="mamba.env", env_="env_name", update_="env"},
                      # Get pypi token
                      {do="doot.actions.shell:DootShellBake", args=["gpg", "-q", "-d", "{dist_key}"], update_="gpg", env=false},
                      {do="doot.actions.shell:DootShellBake", args=["sed", "-n", "-E", "{match_re}"], in_="gpg", update_="token", env=false},

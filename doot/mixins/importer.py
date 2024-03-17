@@ -59,11 +59,11 @@ class Importer_M:
             module = importlib.import_module(module_name)
             return getattr(module, cls_name)
         except ImportError as err:
-            raise doot.errors.DootTaskLoadError("Import Failed: %s : %s", pathname, err.msg, task=self.spec) from err
+            raise doot.errors.DootTaskLoadError("Task Import Failed: %s : %s", pathname, err.msg, task=self.spec) from err
         except (AttributeError, KeyError) as err:
-            raise doot.errors.DootTaskLoadError("Import Failed: Module has missing attribute/key: %s", pathname, task=self.spec) from err
+            raise doot.errors.DootTaskLoadError("Task Import Failed: Module has missing attribute/key: %s", pathname, task=self.spec) from err
         except ValueError as err:
-            raise doot.errors.DootTaskLoadError("Import Failed: Can't split %s : %s", pathname, task=self.spec) from err
+            raise doot.errors.DootTaskLoadError("Task Import Failed: Can't split %s : %s", pathname, task=self.spec) from err
 
 
     def import_callable(self, pathname:None|str) -> None|callable[Any]:
@@ -84,11 +84,11 @@ class Importer_M:
             assert(callable(fun))
             return fun
         except ImportError as err:
-            raise doot.errors.DootTaskLoadError("Import Failed: %s : %s", pathname, err.msg, task=self.spec) from err
+            raise doot.errors.DootTaskLoadError("Callable Import Failed: %s : %s", pathname, err.msg, task=self.spec) from err
         except (AttributeError, KeyError) as err:
-            raise doot.errors.DootTaskLoadError("Import Failed: Module has missing attribute/key: %s", pathname, task=self.spec) from err
+            raise doot.errors.DootTaskLoadError("Callable Import Failed: Module has missing attribute/key: %s : %s", pathname, err.args, task=self.spec) from err
         except ValueError as err:
-            raise doot.errors.DootTaskLoadError("Import Failed: Can't split %s", pathname, task=self.spec) from err
+            raise doot.errors.DootTaskLoadError("Callable Import Failed: Can't split %s", pathname, task=self.spec) from err
 
     def import_class(self, pathname:None|str, *, is_task_ctor=False) -> None|type[Any]:
         """
@@ -105,8 +105,8 @@ class Importer_M:
             module = importlib.import_module(module_name)
             return getattr(module, cls_name)
         except ImportError as err:
-            raise doot.errors.DootInvalidConfig("Import Failed: %s : %s", pathname, err.msg) from err
+            raise doot.errors.DootInvalidConfig("Class Import Failed: %s : %s", pathname, err.msg) from err
         except (AttributeError, KeyError) as err:
-            raise doot.errors.DootInvalidConfig("Import Failed: Module has missing attribute/key: %s", pathname) from err
+            raise doot.errors.DootInvalidConfig("Class Import Failed: Module has missing attribute/key: %s", pathname) from err
         except ValueError as err:
-            raise doot.errors.DootInvalidConfig("Import Failed: Can't split %s", pathname) from err
+            raise doot.errors.DootInvalidConfig("Class Import Failed: Can't split %s", pathname) from err

@@ -42,13 +42,13 @@ class TestJobQueue:
         assert(isinstance( result, list ))
         assert(all(isinstance(x, DootTaskSpec) for x in result))
 
-    def test_from_multi_arg(self):
+    def test_from_multi_arg(self, spec, state):
         obj = JobQueueAction()
         result = obj(spec, state)
         assert(isinstance( result, list ))
         assert(all(isinstance(x, DootTaskSpec) for x in result))
 
-    def test_args(self):
+    def test_args(self, spec, state):
         obj = JobQueueAction()
         result = obj(spec, state)
         assert(isinstance( result, list ))

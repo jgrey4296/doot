@@ -45,7 +45,7 @@ import doot.errors
 from doot._abstract import Action_p
 from doot.structs import DootKey, DootTaskSpec, DootTaskName, DootCodeReference
 from doot.actions.job_expansion import JobGenerate, JobExpandAction, JobMatchAction
-from doot.actions.job_injection import JobPrependActions, JobAppendActions, JobInjectAction, JobInjectPathParts, JobInjectShadowAction, JobSubNamer
+from doot.actions.job_injection import JobPrependActions, JobAppendActions, JobInjector, JobInjectPathParts, JobInjectShadowAction, JobSubNamer
 from doot.actions.job_queuing import JobQueueAction, JobQueueHead, JobChainer
 
 walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
