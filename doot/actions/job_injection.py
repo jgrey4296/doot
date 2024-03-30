@@ -142,7 +142,7 @@ class JobInjectPathParts(Action_p):
     """
 
     @DootKey.kwrap.types("onto", "roots")
-    @DootKey.kwrap.expands("key")
+    @DootKey.kwrap.redirects("key")
     def __call__(self, spec, state, _onto, roots, key):
         root_paths = self._build_roots(spec, state, roots)
         match _onto:

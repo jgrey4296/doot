@@ -225,7 +225,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
             case None | True:
                 result = ActRE.SUCCESS
             case dict():
-                task.state.update(result)
+                task.state.update({str(k):v for k,v in result.items()})
                 result = ActRE.SUCCESS
             case list() if all(isinstance(x, (DootTaskName, DootTaskSpec)) for x in result):
                 pass
