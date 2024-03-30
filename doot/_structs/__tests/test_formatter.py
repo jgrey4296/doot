@@ -29,6 +29,8 @@ logging = logmod.root
 
 from tomlguard import TomlGuard
 import doot
+doot._test_setup()
+
 from doot.structs import DootActionSpec
 from doot._structs.key import DootFormatter
 

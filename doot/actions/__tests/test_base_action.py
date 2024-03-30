@@ -18,6 +18,8 @@ logging = logmod.root
 import pytest
 
 import doot
+doot._test_setup()
+
 import doot._abstract
 import doot.structs
 from doot.task.base_task import DootTask

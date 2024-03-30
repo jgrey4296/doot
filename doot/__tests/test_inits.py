@@ -14,14 +14,9 @@ import warnings
 import pytest
 logging = logmod.root
 
-# caplog
-# mocker.patch | patch.object | patch.multiple | patch.dict | stopall | stop | spy | stub
-# pytest.mark.filterwarnings
-# pytest.parameterize
-# pytest.skip | skipif | xfail
-# with pytest.deprecated_call
-# with pytest.raises
-# with pytest.warns(warntype)
+import doot
+doot._test_setup()
+
 
 class TestDootInits:
 

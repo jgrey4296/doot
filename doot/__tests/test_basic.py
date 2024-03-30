@@ -17,6 +17,7 @@ logging = logmod.root
 import pytest
 import tomlguard
 import doot
+doot._test_setup()
 
 class TestBasicDoot:
 

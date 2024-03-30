@@ -15,6 +15,9 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 logging = logmod.root
 
 import pytest
+import doot
+doot._test_setup()
+
 import doot.errors
 from doot._abstract import ArgParser_i, TaskBase_i
 from doot.parsers.flexible import DootFlexibleParser

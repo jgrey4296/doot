@@ -16,6 +16,9 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 logging = logmod.root
 
 import pytest
+import doot
+doot._test_setup()
+
 import doot.errors
 import doot.structs
 from doot.control.tracker import DootTracker

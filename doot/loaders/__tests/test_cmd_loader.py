@@ -15,10 +15,12 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 from unittest import mock
 ##-- end imports
 
+from importlib.metadata import EntryPoint
 import pytest
 import tomlguard
 import doot
-from importlib.metadata import EntryPoint
+doot._test_setup()
+
 doot.config = tomlguard.TomlGuard({})
 from doot.loaders import cmd_loader
 logging = logmod.root

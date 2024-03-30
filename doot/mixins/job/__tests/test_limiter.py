@@ -18,6 +18,8 @@ import pytest
 
 import random
 import doot
+doot._test_setup()
+
 import doot.errors
 from doot.structs import DootTaskSpec, DootCodeReference
 from doot._abstract import TaskBase_i

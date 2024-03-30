@@ -15,6 +15,8 @@ import pytest
 
 import tomlguard
 import doot
+doot._test_setup()
+
 from doot.enums import TaskStateEnum
 from doot.control.runner import DootRunner
 from doot.control.tracker import DootTracker

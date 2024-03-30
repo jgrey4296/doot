@@ -12,6 +12,9 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 import warnings
 
 import pytest
+import doot
+doot._test_setup()
+
 from doot._abstract import Reporter_i
 from doot.reporters.stack_manager import DootReportManagerStack
 from doot.structs import DootTraceRecord
