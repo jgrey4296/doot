@@ -25,12 +25,15 @@ from weakref import ref
 logging         = logmod.root
 printer         = logmod.getLogger("doot._printer")
 
+from importlib.resources import files
 import sh
 import stackprinter
 import tomlguard as TG
 import doot
 from bdb import BdbQuit
 from doot.utils.log_config import DootLogConfig
+
+template_path      = files("doot.__templates")
 
 def main():
     result  = 1
@@ -60,10 +63,13 @@ def main():
         printer.warning("Early Exit Triggered")
     except doot.errors.DootMissingConfigError as err:
         # Handle missing files
-        if not doot.constants.DEFAULT_LOAD_TARGETS[0].exists():
-            if input("No toml config data found, create stub doot.toml? _/n ") != "n":
-                doot.constants.DEFAULT_LOAD_TARGETS[0].write_text(doot.constants.TOML_TEMPLATE.read_text())
-                logging.info("Stubbed")
+        if pl.Path(doot.constants.on_fail(["doesntexist"]).paths.DEFAULT_LOAD_TARGETS()[0]).exists():
+            pass
+        elif input("No toml config data found, create stub doot.toml? _/n ") != "n":
+            template = template_path.joinpath(doot.constants.paths.TOML_TEMPLATE)
+            target = pl.Path(doot.constants.on_fail(["doot.toml"]).paths.DEFAULT_LOAD_TARGETS()[0])
+            target.write_text(template.read_text())
+            logging.info("Stubbed")
 
     except doot.errors.DootTaskError as err:
         errored = True
