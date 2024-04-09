@@ -192,6 +192,9 @@ class JobInjectPathParts(Action_p):
         if not fpath.is_absolute():
             return fpath
 
+        if not bool(roots):
+            return None
+
         for root_path in roots:
             try:
                 return fpath.relative_to(root_path)
