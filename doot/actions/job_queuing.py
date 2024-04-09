@@ -52,6 +52,8 @@ class JobQueueAction(Action_p):
       Queues a list of tasks into the tracker.
       Args are strings converted to simple taskspec's
       `from` is a state list of DootTaskSpec's
+
+      does NOT queue a head task automatically
     """
 
     @DootKey.kwrap.args
@@ -89,6 +91,7 @@ class JobQueueAction(Action_p):
         return subtasks
 
 class JobQueueHead(Action_p):
+    """ Queue the head/on_completion task of this job"""
 
     @DootKey.kwrap.types("base")
     @DootKey.kwrap.types("inject")

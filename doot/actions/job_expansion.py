@@ -63,45 +63,35 @@ class JobExpandAction(JobInjector):
     """
 
     @DootKey.kwrap.types("from", "inject", "base", "print_levels")
+    @DootKey.kwrap.expands("prefix")
     @DootKey.kwrap.redirects("update_")
     @DootKey.kwrap.taskname
-    def __call__(self, spec, state, _from, inject, base, _printL, _update, _basename):
+    def __call__(self, spec, state, _from, inject, base, _printL, prefix, _update, _basename):
         result          = []
         actions, base   = self._prep_base(base)
+        build_queue = []
         match _from:
             case int():
-                for i in range(_from):
-                    injection = self.build_injection(spec, state, inject)
-                    result.append(DootTaskSpec.build(dict(name=_basename.subtask(i),
-                                                          ctor=base,
-                                                          actions = actions or [],
-                                                          required_for=[_basename.task_head()],
-                                                          extra=injection,
-                                                          print_levels=_printL or {},
-                                                         )))
-
+                build_queue += range(_from)
             case list():
-                for i, arg in enumerate(_from):
-                    injection = self.build_injection(spec, state, inject, replacement=arg)
-                    result.append(DootTaskSpec.build(dict(name=_basename.subtask(i),
-                                                          ctor=base,
-                                                          actions = actions or [],
-                                                          required_for=[_basename.task_head()],
-                                                          extra=injection,
-                                                          print_levels=_printL or {},
-                                                         )))
+                build_queue += _from
             case None:
-                injection = self.build_injection(spec, state, inject)
-                new_spec  = DootTaskSpec.build(dict(name=_basename.subtask("i"),
+                build_queue += [1]
+            case _:
+                printer.warning("Tried to expand a non-list of args")
+                return None
+
+        for i, arg in enumerate(build_queue):
+                injection = self.build_injection(spec, state, inject, replacement=arg)
+                new_spec  = DootTaskSpec.build(dict(name=_basename.subtask(prefix, i),
                                                     ctor=base,
                                                     actions = actions or [],
                                                     required_for=[_basename.task_head()],
                                                     extra=injection,
                                                     print_levels=_printL or {},
-                                                   ))
+                                                    ))
                 result.append(new_spec)
-            case _:
-                printer.warning("Tried to expand a non-list of args")
+
 
         return { _update : result }
 

@@ -189,7 +189,8 @@ class JobInjectPathParts(Action_p):
 
 class JobInjectShadowAction(Action_p):
     """
-      Inject a shadow path into each task entry
+      Inject a shadow path into each task entry, using the target key which points to the relative path to shadow
+      returns the *directory* of the shadow target
     """
 
     @DootKey.kwrap.types("onto")
@@ -208,9 +209,6 @@ class JobInjectShadowAction(Action_p):
     def _shadow_path(self, lpath:pl.Path, shadow_root:pl.Path) -> pl.Path:
         assert(isinstance(lpath, pl.Path))
         assert(not lpath.is_absolute())
-        assert(isinstance(shadow_root, pl.Path))
-        assert(shadow_root.is_absolute())
-        shadow_root = doot.locs[self.spec.extra.shadow_root]
         result      = shadow_root / lpath
         if result == doot.locs[lpath]:
             raise doot.errors.DootLocationError("Shadowed Path is same as original", fpath)
