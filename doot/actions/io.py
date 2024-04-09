@@ -111,6 +111,10 @@ class WriteAction(Action_p):
             case str():
                 printer.info("Writing %s chars to %s", len(data), loc)
                 loc.write_text(data)
+            case _:
+                as_str = str(data)
+                printer.info("Writing %s chars to %s", len(as_str), loc)
+                loc.write_text(as_str)
 
 
 
