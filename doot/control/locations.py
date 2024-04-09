@@ -58,6 +58,7 @@ class DootLocations:
         self._root    : pl.Path()       = root.expanduser().absolute()
         self._data    : TomlGuard       = tomlguard.TomlGuard()
         self._protect : set             = set()
+        self._files   : set             = set()
 
     def __repr__(self):
         keys = ", ".join(iter(self))
@@ -186,6 +187,9 @@ class DootLocations:
 
         return result
 
+    def is_file(self, key:str) -> bool:
+        return key in self._files
+
     @property
     def root(self):
         """
@@ -213,6 +217,9 @@ class DootLocations:
                 case {"protect": x}:
                     self._protect.add(k)
                     raw[k] = x
+                case {"file": x}:
+                    raw[k] = x
+                    self._files.add(k)
 
         new_keys = set(raw.keys()) - base_keys
         logging.debug("Registered New Locations: %s", ", ".join(new_keys))

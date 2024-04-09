@@ -35,7 +35,7 @@ class CheckLocsTask(DootTask):
     task_name = "_locations::check"
 
     def __init__(self, spec=None):
-        locations = [[doot.locs[f"{{{x}}}"]] for x in doot.locs]
+        locations = [[doot.locs[f"{{{x}}}"]] for x in doot.locs if not doot.locs.is_file(x)]
         spec      = DootTaskSpec.build({
             "name"         : CheckLocsTask.task_name,
             "actions"      : locations,
