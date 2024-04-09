@@ -67,6 +67,11 @@ class JobExpandAction(JobInjector):
     @DootKey.kwrap.redirects("update_")
     @DootKey.kwrap.taskname
     def __call__(self, spec, state, _from, inject, base, _printL, prefix, _update, _basename):
+        match prefix:
+            case "{prefix}":
+                prefix = "{Anon}"
+            case _:
+                pass
         result          = []
         actions, base   = self._prep_base(base)
         build_queue = []

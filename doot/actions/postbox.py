@@ -92,13 +92,12 @@ class _DootPostBox:
             case _:
                 _DootPostBox.boxes[box][subkey] = []
 
-@doot.check_protocol
 class PutPostAction(Action_p):
     """
     push data to the inter-task postbox of this task tree
     The arguments of the action are held in self.spec
     'args' are pushed to the default subbox
-    'kwargs' are pushed to the kwarg subbox
+    'kwargs' are pushed to the kwarg specific subbox
 
     eg: {do="post.put", args=["{key}", "{key}"], subbox="{key}"}
     """
@@ -115,11 +114,16 @@ class PutPostAction(Action_p):
         root = _basename.root()
         for subbox,statekey in kwargs.items():
             box  = root.subtask(subbox)
-            data = DootKey.build(statekey).to_type(spec, state)
-            _DootPostBox.put(box, data)
+            match statekey:
+                case str():
+                    data = DootKey.build(statekey).to_type(spec, state)
+                    _DootPostBox.put(box, data)
+                case [*xs]:
+                    for x in statekey:
+                        data = DootKey.build(x).to_type(spec, state)
+                        _DootPostBox.put(box, data)
 
 
-@doot.check_protocol
 class GetPostAction(Action_p):
     """
       Read data from the inter-task postbox of a task tree
@@ -139,7 +143,6 @@ class GetPostAction(Action_p):
 
         return updates
 
-@doot.check_protocol
 class ClearPostAction(Action_p):
     """
       Clear your postbox
@@ -152,7 +155,6 @@ class ClearPostAction(Action_p):
         return
 
 
-@doot.check_protocol
 class SummarizePostAction(Action_p):
     """
       print a summary of this task tree's postbox
