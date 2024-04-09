@@ -54,7 +54,6 @@ LAX                : Final[DootKey] = DootKey.build("lax")
 ##-- end expansion keys
 
 
-@doot.check_protocol
 class AppendAction(Action_p):
     """
       Pre/Ap-pend data from the state to a file
@@ -82,7 +81,6 @@ class AppendAction(Action_p):
                 f.write(sep)
                 f.write(arg)
 
-@doot.check_protocol
 class WriteAction(Action_p):
     """
       Writes data from the state to a file, accessed through the
@@ -116,7 +114,6 @@ class WriteAction(Action_p):
 
 
 
-@doot.check_protocol
 class ReadAction(Action_p):
     """
       Reads data from the doot.locs location to  return for the state
@@ -145,7 +142,6 @@ class ReadAction(Action_p):
                     raise TypeError("Unknown read type", unk)
 
 
-@doot.check_protocol
 class CopyAction(Action_p):
     """
       copy a file somewhere
@@ -177,7 +173,6 @@ class CopyAction(Action_p):
         for arg in expanded:
             shutil.copy2(arg, dest_loc)
 
-@doot.check_protocol
 class MoveAction(Action_p):
     """
       move a file somewhere
@@ -200,7 +195,6 @@ class MoveAction(Action_p):
 
         source.rename(dest_loc)
 
-@doot.check_protocol
 class DeleteAction(Action_p):
     """
       delete a file / directory specified in spec.args
@@ -220,7 +214,6 @@ class DeleteAction(Action_p):
                 loc.unlink(missing_ok=lax)
 
 
-@doot.check_protocol
 class BackupAction(Action_p):
     """
       copy a file somewhere, but only if it doesn't exist at the dest, or is newer than the dest
@@ -228,7 +221,8 @@ class BackupAction(Action_p):
     """
 
     @DootKey.kwrap.paths("from", "to")
-    def __call__(self, spec, state, _from, to) -> dict|bool|None:
+    @DootKey.kwrap.taskname
+    def __call__(self, spec, state, _from, to, _name) -> dict|bool|None:
         source_loc = _from
         dest_loc   = to
 
@@ -240,11 +234,10 @@ class BackupAction(Action_p):
 
         printer.warning("Backing up : %s", source_loc)
         printer.warning("Destination: %s", dest_loc)
-        _DootPostBox.put_from(state, dest_loc)
+        _DootPostBox.put(_name, dest_loc)
         shutil.copy2(source_loc,dest_loc)
 
 
-@doot.check_protocol
 class EnsureDirectory(Action_p):
     """
       ensure the directories passed as arguments exist
@@ -260,7 +253,6 @@ class EnsureDirectory(Action_p):
             loc.mkdir(parents=True, exist_ok=True)
 
 
-@doot.check_protocol
 class UserInput(Action_p):
 
     @DootKey.kwrap.types("prompt", hint={"type_":str, "on_fail":"?::- "})
@@ -270,7 +262,6 @@ class UserInput(Action_p):
         return { _update : result }
 
 
-@doot.check_protocol
 class SimpleFind(Action_p):
     """
     A Simple glob on a path
@@ -289,7 +280,6 @@ class SimpleFind(Action_p):
                 return { _update : list(from_loc.glob(pattern)) }
 
 
-@doot.check_protocol
 class TouchFileAction(Action_p):
 
     @DootKey.kwrap.args
@@ -298,7 +288,6 @@ class TouchFileAction(Action_p):
             target(spec, state).touch()
 
 
-@doot.check_protocol
 class LinkAction(Action_p):
     """
       for x,y in spec.args:
@@ -342,7 +331,6 @@ class LinkAction(Action_p):
         x_path.symlink_to(y_path)
 
 
-@doot.check_protocol
 class ListFiles(Action_p):
     """ add a list of all files in a path (recursively) to the state """
 

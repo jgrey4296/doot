@@ -49,7 +49,6 @@ FILE_TARGET  : Final[DootKey] = DootKey.build("file")
 
 ##-- end expansion keys
 
-@doot.check_protocol
 class CancelOnPredicateAction(Action_p):
     """
       Get a predicate using the kwarg `pred`,
@@ -62,7 +61,6 @@ class CancelOnPredicateAction(Action_p):
         predicate = _pred.try_import()
         return predicate(spec,state)
 
-@doot.check_protocol
 class SkipIfFileExists(Action_p):
 
     @DootKey.kwrap.args
@@ -74,7 +72,6 @@ class SkipIfFileExists(Action_p):
                 printer.info("Target Exists: %s", path)
                 return ActRE.SKIP
 
-@doot.check_protocol
 class SkipUnlessSuffix(Action_p):
 
     @DootKey.kwrap.paths("fpath")
@@ -83,7 +80,6 @@ class SkipUnlessSuffix(Action_p):
         if fpath.suffix != ext:
             return ActRE.SKIP
 
-@doot.check_protocol
 class LogAction(Action_p):
 
     @DootKey.kwrap.types("level", hint={"type_":str, "on_fail":"INFO"})
@@ -93,7 +89,6 @@ class LogAction(Action_p):
         msg          = MSG.expand(spec, state, rec=True)
         printer.log(level, "%s", msg)
 
-@doot.check_protocol
 class StalenessCheck(Action_p):
     """ Skip the rest of the task if old hasn't been modified since new was modifed """
 
@@ -102,7 +97,6 @@ class StalenessCheck(Action_p):
         if new.exists() and (old.stat().st_mtime_ns <= new.stat().st_mtime_ns):
             return ActRE.SKIP
 
-@doot.check_protocol
 class AssertInstalled:
     """
     Easily check a program can be found and used
@@ -112,3 +106,10 @@ class AssertInstalled:
     def __call__(self, spec, state, args) -> dict|bool|None:
         raise NotImplementedError()
         return ActRE.FAIL
+
+class WaitAction:
+    """ An action that waits for some amount of time """
+
+    @DootKey.kwrap.types("count")
+    def __call__(self, spec, state, count):
+        sleep(count)

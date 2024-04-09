@@ -112,6 +112,8 @@ def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|Doo
         match x:
             case { "task": taskname }:
                 results.append(DootTaskName.build(taskname, args=x))
+            case { "file" : filename }:
+                results.append(DootTaskArtifact(pl.Path(filename)))
             case str() if x.startswith(doot.constants.patterns.FILE_DEP_PREFIX):
                 results.append(DootTaskArtifact(pl.Path(x.removeprefix(doot.constants.patterns.FILE_DEP_PREFIX))))
             case str() if doot.constants.patterns.TASK_SEP in x:

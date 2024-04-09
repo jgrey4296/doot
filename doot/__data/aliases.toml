@@ -53,6 +53,7 @@ touch    =       "doot.actions.io:TouchFileAction"
 "link!"   =  "doot.actions.io:LinkAction"
 "backup!" =  "doot.actions.io:BackupAction"
 "write!"  =  "doot.actions.io:WriteAction"
+"append!" =  "doot.actions.io:AppendAction"
 "dir!"    =  "doot.actions.io:EnsureDirectory"
 "delete!" =  "doot.actions.io:DeleteAction"
 "break!"  =  "doot.actions.util:action_debugger"
@@ -65,6 +66,7 @@ touch    =       "doot.actions.io:TouchFileAction"
 "pred?"         = "doot.actions.control_flow:CancelOnPredicateAction"
 "installed?"    = "doot.actions.control_flow:AssertInstalled"
 "dir?"          = "doot.actions.io:EnsureDirectory"
+"wait"          = "doot.actions.control_flow:WaitAction"
 
 [[doot.aliases.action]]
 # Map {alias} -> CodeRef String

@@ -115,7 +115,7 @@ class PathParts(Action_p):
     """ take a path and add fstem, fpar, fname to state """
 
     @DootKey.kwrap.paths("from")
-    @DootKey.kwrap.returns("fstem", "fpar", "fname")
+    @DootKey.kwrap.returns("fstem", "fpar", "fname", "fext", "pstem")
     def __call__(self, spec, state, _from):
         fpath      = _from
         name       = fpath.name
