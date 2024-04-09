@@ -62,28 +62,27 @@ class DootLogConfig:
         # EXCEPT this, which replaces 'print(x)'
         self.printer               = logmod.getLogger(doot.constants.printer.PRINTER_NAME)
 
-        self.file_handler          = logmod.FileHandler(pl.Path() / "log.doot", mode='w')
+        self.file_handler          = None
         self.stream_handler        = logmod.StreamHandler(stdout)
         self.print_stream_handler  = logmod.StreamHandler(stdout)
 
-        self._setup()
+        self._pre_setup()
 
-    def _setup(self):
+    def _pre_setup(self):
         """ a basic, config-less setup """
         self.root.setLevel(logmod.NOTSET)
-        self.file_handler.setFormatter(DootColourStripFormatter(fmt="{levelname} : INIT : {message}"))
+        # self.file_handler.setFormatter(DootColourStripFormatter(fmt="{levelname} : INIT : {message}"))
 
         self.stream_handler.setLevel(logmod.WARNING)
         self.stream_handler.setFormatter(logmod.Formatter("{levelname}  : INIT : {message}", style="{"))
 
-        self.root.addHandler(self.file_handler)
         self.root.addHandler(self.stream_handler)
 
         self.printer.propagate = False
         self.print_stream_handler.setFormatter(logmod.Formatter("{message}", style="{"))
         self.printer.setLevel(logmod.NOTSET)
         self.printer.addHandler(self.print_stream_handler)
-        self.printer.addHandler(self.file_handler)
+        # self.printer.addHandler(self.file_handler)
 
     def setup(self):
         """ a setup that uses config values """
@@ -93,14 +92,27 @@ class DootLogConfig:
         self._setup_print_logging()
 
     def _setup_file_logging(self):
-        file_log_level    = doot.config.on_fail("DEBUG", str|int).logging.file.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
-        file_log_format   = doot.config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str).logging.file.format()
-        file_filter_names = doot.config.on_fail([], list).logging.file.allow()
+        log_name_format = doot.config.on_fail("doot-%Y-%m-%d::%H:%M.log").logging.file.name()
+        log_file_name   = datetime.datetime.now().strftime(log_name_format)
+
+        log_dir = doot.locs["{logs}"]
+        # TODO delete old logs if number of logs larger than N
+        if not log_dir.exists():
+            log_dir = pl.Path()
+
+        log_file_path = log_dir / log_file_name
+
+        self.file_handler  = logmod.FileHandler(log_file_path, mode='w')
+        file_log_level     = doot.config.on_fail("DEBUG", str|int).logging.file.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
+        file_log_format    = doot.config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str).logging.file.format()
+        file_filter_names  = doot.config.on_fail([], list).logging.file.allow()
 
         self.file_handler.setLevel(file_log_level)
         self.file_handler.setFormatter(DootColourStripFormatter(fmt=file_log_format))
         if bool(file_filter_names):
             self.file_handler.addFilter(_DootAnyFilter(file_filter_names))
+
+        self.root.addHandler(self.file_handler)
 
     def _setup_stream_logging(self):
         stream_log_level    = doot.config.on_fail("WARNING", str|int).logging.stream.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))

@@ -30,6 +30,7 @@ run = { tracker = "default", runner = "default", reporter= "default", report-lin
 src     = "src"
 codegen = "{src}/_codegen"
 temp    = ".temp"
-build   = "build"
+logs    = "{temp}/logs"
+build   = "{temp}/build"
 docs    = "docs"
 data    = "data"
