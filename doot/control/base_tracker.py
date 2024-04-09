@@ -126,9 +126,9 @@ class _InternalTrackerBase(TaskTracker_i):
         match spec:
             case DootTaskSpec(ctor=DootTaskName() as ctor) if str(ctor) in self.tasks:
                 # specialize a loaded task
-                base_spec          = self.tasks.get(str(ctor)).spec
+                base_spec           = self.tasks.get(str(ctor)).spec
                 initial_specialized = base_spec.specialize_from(spec)
-                cli_specialized    = self._insert_cli_args_into_spec(initial_specialized)
+                cli_specialized     = self._insert_cli_args_into_spec(initial_specialized)
                 if cli_specialized.ctor is None:
                     raise doot.errors.DootTaskTrackingError("Attempt to specialize task failed: %s", spec.name)
 
@@ -169,7 +169,8 @@ class _InternalTrackerBase(TaskTracker_i):
         spec_extra : dict = dict(spec.extra.items() or [])
 
         for cli in spec.extra.on_fail([]).cli():
-            spec_extra[cli.name] = cli.default
+            if cli.name not in spec_extra:
+                spec_extra[cli.name] = cli.default
 
         if spec.name not in doot.args.on_fail({}).tasks():
             spec.extra = tomlguard.TomlGuard(spec_extra)
