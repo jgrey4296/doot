@@ -34,6 +34,7 @@ from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
 from doot.mixins.importer import Importer_M
 from doot.structs import DootCodeReference, DootKey
+from doot.actions.job_injection import JobInjectPathParts
 
 ##-- expansion keys
 UPDATE : Final[DootKey] = DootKey.build("update_")
@@ -41,7 +42,6 @@ FORMAT : Final[DootKey] = DootKey.build("format")
 FROM   : Final[DootKey] = DootKey.build("from")
 ##-- end expansion keys
 
-@doot.check_protocol
 class AddStateAction(Action_p):
     """
       add to task state in the task description toml,
@@ -57,7 +57,6 @@ class AddStateAction(Action_p):
             result[k] = val
         return result
 
-@doot.check_protocol
 class AddStateFn(Action_p, Importer_M):
     """ for each toml kwarg, import its value and set the state[kwarg] = val
       with expansion
@@ -74,7 +73,6 @@ class AddStateFn(Action_p, Importer_M):
 
         return result
 
-@doot.check_protocol
 class PushState(Action_p):
     """
       state[update_] += [state[x] for x in spec.args]
@@ -98,7 +96,6 @@ class PushState(Action_p):
 
         return { _update : data }
 
-@doot.check_protocol
 class AddNow(Action_p):
     """
       Add the current date, as a string, to the state
@@ -110,24 +107,12 @@ class AddNow(Action_p):
         now      = datetime.datetime.now()
         return { _update : now.strftime(format) }
 
-@doot.check_protocol
-class PathParts(Action_p):
+class PathParts(JobInjectPathParts):
     """ take a path and add fstem, fpar, fname to state """
 
     @DootKey.kwrap.paths("from")
+    @DootKey.kwrap.types("roots")
     @DootKey.kwrap.returns("fstem", "fpar", "fname", "fext", "pstem")
-    def __call__(self, spec, state, _from):
-        fpath      = _from
-        name       = fpath.name
-        temp_stem  = fpath
-        # This handles "a/b/c.tar.gz"
-        while temp_stem.stem != temp_stem.with_suffix("").stem:
-            temp_stem = temp_stem.with_suffix("")
-
-        return {
-            'fstem'   : temp_stem.stem,
-            'fparent' : fpath.parent,
-            'fname'   : fpath.name,
-            'fext'    : fpath.suffix,
-            'pstem'   : fpath.parent.stem,
-        }
+    def __call__(self, spec, state, _from, roots):
+        root_paths = self._build_roots(spec, state, roots)
+        return self._calc_path_parts(_from, root_paths)
