@@ -73,6 +73,12 @@ def _separate_into_core_and_extra(data) -> tuple[dict, dict]:
             case "depends_on":
                 processed = _prepare_deps(val)
                 core_data["depends_on"] = processed
+            case "queue_behaviour":
+                try:
+                    as_enum = TaskActivationBehaviour[val]
+                    core_data["queue_behaviour"] = as_enum
+                except KeyError:
+                    logging.exception("Unrecognized queue_behaviour value: %s", val)
             case x if x in core_keys:
                 core_data[x] = val
             case x if x not in ["name", "group"]:
@@ -91,12 +97,10 @@ def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|Doo
     results = []
     for x in deps:
         match x:
-            case { "task": taskname }:
-                results.append(DootTaskName.build(taskname, args=x))
-            case { "file" : filename }:
-                results.append(DootTaskArtifact(pl.Path(filename)))
+            case { "loc": filename }:
+                results.append(DootTaskArtifact.build(x))
             case str() if x.startswith(doot.constants.patterns.FILE_DEP_PREFIX):
-                results.append(DootTaskArtifact(pl.Path(x.removeprefix(doot.constants.patterns.FILE_DEP_PREFIX))))
+                results.append(DootTaskArtifact.build(x))
             case str() if doot.constants.patterns.TASK_SEP in x:
                 results.append(DootTaskName.build(x))
             case DootTaskName() | DootTaskArtifact():
@@ -106,15 +110,14 @@ def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|Doo
 
     return results
 
-def _prepare_ctor(ctor, mixins):
+def _prepare_ctor(ctor, mixins) -> DootTaskName|DootCodeReference:
     match ctor:
         case None:
             default_alias = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
             coderef_str   = doot.aliases.task[default_alias]
             return DootCodeReference.build(coderef_str).add_mixins(*mixins)
         case EntryPoint():
-            loaded = ctor.load()
-            return DootCodeReference.build(loaded).add_mixins(*mixins)
+            return DootCodeReference.build(ctor).add_mixins(*mixins)
         case DootTaskName() if bool(mixins):
             raise TypeError("Task name ctor can't take mixins")
         case DootTaskName():
@@ -158,7 +161,7 @@ class DootTaskSpec(SpecStruct_p):
     extra                        : TomlGuard                                       = field(default_factory=TomlGuard)
 
     inject                       : list[str]                                       = field(default_factory=list) # For jobs
-    queue_behaviour              : str                                             = field(default="default")
+    queue_behaviour              : TaskActivationBehaviour                         = field(default=TaskActivationBehaviour.default)
 
     @staticmethod
     def build(data:TomlGuard|dict|DootTaskName|str):
@@ -178,18 +181,11 @@ class DootTaskSpec(SpecStruct_p):
           """
         core_data, extra_data = _separate_into_core_and_extra(data)
 
-        core_data['name'] = _build_name(data)
-
-        # Check flags are valid
-        if any(flag for x in data.get('flags', []) if (flag:=x) and not _valid_flag(flag)):
-            logging.warning("Unknown Task Flag used (%s), check the spec for %s in %s", flag, core_data['name'], data.get('source', ''))
-
-        filtered = filter(lambda x: x in TaskFlagNames, core_data.get('flags', ["TASK"]))
-        core_data['flags'] = ftz.reduce(lambda x,y: x|y, map(lambda x: TaskFlags[x],  filtered), TaskFlags.TASK)
+        core_data['name']     = DootTaskName.build(data)
+        core_data['flags']    = TaskFlags.build(core_data.get("flags", []))
 
         # Prepare constructor
-        mixins = extra_data.get("mixins", [])
-        core_data['ctor'] = _prepare_ctor(data.get("ctor",None), mixins)
+        core_data['ctor'] = _prepare_ctor(data.get("ctor",None), [])
 
         # prep actions
         core_data['actions'] = [DootActionSpec.build(x) for x in core_data.get('actions', [])]

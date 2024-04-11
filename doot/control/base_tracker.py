@@ -184,13 +184,14 @@ class _InternalTrackerBase(TaskTracker_i):
         return spec
 
     def _insert_dependencies(self, task):
+        """ insert a task's dependencies into the network, connecting them to the task """
         for pre in task.depends_on:
             logging.debug("Connecting Dependency: %s -> %s", pre, task.readable_name)
             match pre:
                 case {"task": taskname}:
                     raise TypeError("Task Deps should not longer be dicts")
                 case pl.Path():
-                    pre = self._prep_artifact(DootTaskArtifact(pre))
+                    pre = self._prep_artifact(DootTaskArtifact.build(pre))
                     self.task_graph.add_edge(pre, task.name, type=EDGE_E.ARTIFACT_CROSS)
                 case DootTaskArtifact():
                     pre = self._prep_artifact(pre)
@@ -219,13 +220,14 @@ class _InternalTrackerBase(TaskTracker_i):
                     raise doot.errors.DootTaskTrackingError("Unknown dependency task attempted to be added: %s", pre)
 
     def _insert_dependents(self, task):
+        """ insert a task's downstream dependents into the network, connecting them to the task """
         for post in task.required_for:
             logging.debug("Connecting Successor: %s -> %s", task.readable_name, post)
             match post:
                 case {"task": taskname}:
                     raise TypeError("Task Deps should not longer be dicts")
                 case pl.Path():
-                    post = self._prep_artifact(DootTaskArtifact(post))
+                    post = self._prep_artifact(DootTaskArtifact.build(post))
                     self.task_graph.add_edge(task.name, post, type=EDGE_E.TASK_CROSS)
                 case DootTaskArtifact():
                     post = self._prep_artifact(post)
@@ -254,12 +256,15 @@ class _InternalTrackerBase(TaskTracker_i):
                     raise doot.errors.DootTaskTrackingError("Unknown successor task attempted to be added: %s", post)
 
     def _insert_according_to_queue_behaviour(self, task):
+        """ tasks can be activated for running by a number of different conditions
+          this handles that
+          """
         match task.spec.queue_behaviour:
-            case "auto":
+            case TaskActivationBehaviour.auto:
                 self.queue_task(task.name)
-            case "reactive":
+            case TaskActivationBehaviour.reactive:
                 self.task_graph.nodes[task.name][REACTIVE_ADD] = True
-            case "default":
+            case TaskActivationBehaviour.default:
                 pass
             case _:
                 raise doot.errors.DootTaskTrackingError("Unknown queue behaviour specified: %s", task.spec.queue_behaviour)
