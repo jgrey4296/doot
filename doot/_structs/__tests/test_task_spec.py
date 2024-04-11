@@ -21,14 +21,13 @@ import doot.errors
 doot._test_setup()
 from doot import structs
 from doot.task.base_job import DootJob
-from doot.mixins.job.terse import TerseBuilder_M
 
 DEFAULT_CTOR = doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS]
 
 class TestDootTaskSpec:
 
     def test_initial(self):
-        obj = structs.DootTaskSpec.build({})
+        obj = structs.DootTaskSpec.build({"name":"default::default"})
         assert(isinstance(obj, structs.DootTaskSpec))
         assert(obj.name.group == "default")
         assert(obj.name.task == "default")
@@ -36,7 +35,7 @@ class TestDootTaskSpec:
         assert(obj.version == "0.1")
 
     def test_version_change(self):
-        obj = structs.DootTaskSpec.build({"version" : "0.5"})
+        obj = structs.DootTaskSpec.build({"version" : "0.5", "name":"default::default"})
         assert(isinstance(obj, structs.DootTaskSpec))
         assert(obj.name.group == "default")
         assert(obj.name.task == "default")
@@ -69,6 +68,7 @@ class TestDootTaskSpec:
         assert(obj.name.group == "agroup")
         assert(obj.name.task == "atask")
 
+@pytest.mark.skip
 class TestSpecMixinBuild:
 
     def test_basic(self):

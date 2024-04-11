@@ -59,6 +59,7 @@ class TestTaskStub:
 
 
 
+
 class TestTaskStubPart:
 
     def test_stub_initial(self):

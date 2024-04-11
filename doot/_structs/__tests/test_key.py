@@ -68,7 +68,6 @@ class TestKeyConstruction:
         assert(isinstance(obj, DootKey))
         assert(isinstance(obj, dkey.DootMultiKey))
 
-
 class TestSimpleGet:
 
     @pytest.fixture(scope="function")
@@ -147,8 +146,8 @@ class TestSimpleKey:
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_redirect(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(kwargs={f"{name}_": "blah"}, spec=DootActionSpec)
-        assert(obj.indirect in spec.kwargs)
+        spec          = mocker.Mock(params={f"{name}_": "blah"}, spec=DootActionSpec)
+        assert(obj.indirect in spec.params)
         result        = obj.redirect(spec)
         assert(isinstance(result, DootKey))
         assert(result == "blah")
@@ -156,16 +155,16 @@ class TestSimpleKey:
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_redirect_to_list_fail(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(kwargs={f"{name}_": ["blah", "bloo"]}, spec=DootActionSpec)
-        assert(obj.indirect in spec.kwargs)
+        spec          = mocker.Mock(params={f"{name}_": ["blah", "bloo"]}, spec=DootActionSpec)
+        assert(obj.indirect in spec.params)
         with pytest.raises(TypeError):
             result        = obj.redirect(spec)
 
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(kwargs={f"{name}_": ["blah", "bloo"]}, spec=DootActionSpec)
-        assert(obj.indirect in spec.kwargs)
+        spec          = mocker.Mock(params={f"{name}_": ["blah", "bloo"]}, spec=DootActionSpec)
+        assert(obj.indirect in spec.params)
         result        = obj.redirect_multi(spec)
         assert(isinstance(result, list))
         assert(all((isinstance(x, DootKey) for x in result)))
@@ -173,14 +172,14 @@ class TestSimpleKey:
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_expand_from_spec(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(kwargs={f"{obj}": "blah"}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={f"{obj}": "blah"}, spec=DootActionSpec)
         result        = obj.expand(spec, {})
         assert(result == "blah")
 
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_expand_from_state(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(kwargs={}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={}, spec=DootActionSpec)
         state         = {f"{obj}": "blah"}
         result        = obj.expand(spec, state)
         assert(result == "blah")
@@ -188,7 +187,7 @@ class TestSimpleKey:
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_expansion_prefers_spec_over_state(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(kwargs={f"{obj}": "bloo"}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={f"{obj}": "bloo"}, spec=DootActionSpec)
         state         = {f"{obj}": "blah"}
         result        = obj.expand(spec, state)
         assert(result == "bloo")
@@ -196,7 +195,7 @@ class TestSimpleKey:
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_expansion_prefers_redirect_over_other(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(kwargs={"aweg": "bloo", obj.indirect : "aweg"}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={"aweg": "bloo", obj.indirect : "aweg"}, spec=DootActionSpec)
         state         = {f"{obj}": "blah"}
         result        = obj.expand(spec, state)
         assert(result == "bloo")
@@ -204,7 +203,7 @@ class TestSimpleKey:
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_expansion_of_missing_returns_form(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(kwargs={}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={}, spec=DootActionSpec)
         state         = {}
         result        = obj.expand(spec, state)
         assert(result == obj.form)
@@ -212,7 +211,7 @@ class TestSimpleKey:
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_recursive_expansion(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(kwargs={f"{name}": dkey.DootSimpleKey("key1")}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={f"{name}": dkey.DootSimpleKey("key1")}, spec=DootActionSpec)
         state         = {"key1": dkey.DootSimpleKey("key2"), "key2": "aweg"}
         result        = obj.expand(spec, state)
         assert(result == "aweg")
@@ -221,7 +220,7 @@ class TestSimpleKey:
     @pytest.mark.parametrize("value,type", [([1,2,3], list)])
     def test_expansion_flattening(self, mocker, name, value, type):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(kwargs={}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={}, spec=DootActionSpec)
         state         = {name: value}
         result        = obj.expand(spec, state)
         assert(isinstance(result, str))
@@ -231,7 +230,7 @@ class TestSimpleKey:
     @pytest.mark.parametrize("value,type", [([1,2,3], list)])
     def test_to_type_expansion(self, mocker, name, value, type):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(kwargs={}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={}, spec=DootActionSpec)
         state         = {name: value}
         result        = obj.to_type(spec, state)
         assert(isinstance(result, type))
@@ -241,7 +240,7 @@ class TestSimpleKey:
     @pytest.mark.parametrize("value,type", [([1,2,3], list)])
     def test_to_type_on_fail(self, mocker, name, value, type):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(kwargs={}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={}, spec=DootActionSpec)
         state         = {}
         result        = obj.to_type(spec, state, on_fail="blah")
         # assert(isinstance(result, type))
@@ -251,7 +250,7 @@ class TestSimpleKey:
     @pytest.mark.parametrize("value,type", [([1,2,3], list)])
     def test_to_type_on_fail_nop(self, mocker, name, value, type):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(kwargs={}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={}, spec=DootActionSpec)
         state         = {name : value}
         result        = obj.to_type(spec, state, on_fail="blah")
         # assert(isinstance(result, type))
@@ -261,7 +260,7 @@ class TestSimpleKey:
     def test_to_path_expansion(self, mocker, key, target):
         mocker.patch.dict("doot.__dict__", locs=TEST_LOCS)
         obj           = DootKey.build(key)
-        spec          = mocker.Mock(kwargs={}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={}, spec=DootActionSpec)
         state         = {}
         result        = obj.to_path(spec, state)
         assert(isinstance(result, pl.Path))
@@ -378,7 +377,7 @@ class TestMultiKey:
     def test_to_path_expansion(self, mocker, key, target):
         mocker.patch.dict("doot.__dict__", locs=TEST_LOCS)
         obj           = DootKey.build(key, strict=False)
-        spec          = mocker.Mock(kwargs={}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={}, spec=DootActionSpec)
         state         = {"aweg": "qqqq"}
         result        = obj.to_path(spec, state)
         assert(isinstance(result, pl.Path))
@@ -387,7 +386,7 @@ class TestMultiKey:
     @pytest.mark.parametrize("key,target", [("{blah}/bloo", "doot/bloo"), ("test !!! {blah}", "test !!! doot"), ("{aweg}-{blah}", "BOO-doot") ])
     def test_expansion(self, mocker, key, target):
         obj           = DootKey.build(key, strict=False)
-        spec          = mocker.Mock(kwargs={}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={}, spec=DootActionSpec)
         state         = {"blah": "doot", "aweg": "BOO"}
         result        = obj.expand(spec, state)
         assert(isinstance(result, str))

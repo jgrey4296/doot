@@ -42,6 +42,8 @@ class TestDootCodeReference:
         with pytest.raises(ImportError):
             imported = ref.try_import()
 
+
+    @pytest.mark.skip(reason="mixins obsolete")
     def test_add_mixin(self):
         ref = structs.DootCodeReference.build("doot.task.base_task:DootTask")
         assert(not bool(ref._mixins))
@@ -50,6 +52,8 @@ class TestDootCodeReference:
         assert(not bool(ref._mixins))
         assert(bool(ref_plus._mixins))
 
+
+    @pytest.mark.skip(reason="mixins obsolete")
     def test_build_mixin(self):
         ref      = structs.DootCodeReference.build("doot.task.base_task:DootTask")
         ref_plus = ref.add_mixins("doot.mixins.job.terse:TerseBuilder_M")

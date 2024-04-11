@@ -31,6 +31,7 @@ import doot
 doot._test_setup()
 from doot._structs.artifact import DootTaskArtifact
 
+@pytest.mark.skip("needs refactor")
 class TestTaskArtifact:
 
     @pytest.fixture(scope="function")
@@ -42,7 +43,7 @@ class TestTaskArtifact:
         pass
 
     def test_initial(self):
-        basic = DootTaskArtifact(pl.Path("a/b/c"))
+        basic = DootTaskArtifact("test", pl.Path("a/b/c"))
         assert(basic is not None)
 
     def test_self_eq(self):

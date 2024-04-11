@@ -23,18 +23,6 @@ from doot.utils.testing_fixtures import wrap_tmp
 
 logging = logmod.root
 
-##-- pytest reminder
-# caplog
-# mocker.patch | patch.object | patch.multiple | patch.dict | stopall | stop | spy | stub
-# pytest.mark.filterwarnings
-# pytest.parameterize
-# pytest.skip | skipif | xfail
-# with pytest.deprecated_call
-# with pytest.raises
-# with pytest.warns(warntype)
-
-##-- end pytest reminder
-
 class TestCheckLocsTask:
 
     def test_initial(self):

@@ -43,20 +43,20 @@ class TestDootFormatter:
 
     def test_initial(self, mocker):
         fmt = DootFormatter()
-        spec = mocker.Mock(kwargs={"a":"blah"}, spec=DootActionSpec)
+        spec = mocker.Mock(params={"a":"blah"}, spec=DootActionSpec)
         result = fmt.format("{a}", _spec=spec, _state={})
         assert(result == "blah")
 
     def test_missing(self, mocker):
         fmt = DootFormatter()
-        spec = mocker.Mock(kwargs={"a":"blah"}, spec=DootActionSpec)
+        spec = mocker.Mock(params={"a":"blah"}, spec=DootActionSpec)
         result = fmt.format("{b}", _spec=spec, _state={})
         assert(result == "{b}")
 
 
     def test_multi(self, mocker):
         fmt = DootFormatter()
-        spec = mocker.Mock(kwargs={"a":"blah"}, spec=DootActionSpec)
+        spec = mocker.Mock(params={"a":"blah"}, spec=DootActionSpec)
         state = {"b": "aweg"}
         result = fmt.format("{a}:{b}", _spec=spec, _state=state)
         assert(result == "blah:aweg")
@@ -64,7 +64,7 @@ class TestDootFormatter:
 
     def test_indirect(self, mocker):
         fmt = DootFormatter()
-        spec = mocker.Mock(kwargs={"a":"blah"}, spec=DootActionSpec)
+        spec = mocker.Mock(params={"a":"blah"}, spec=DootActionSpec)
         state = {"b": "aweg"}
         result = fmt.format("{a}", _spec=spec, _state=state)
         assert(result == "blah")
@@ -72,7 +72,7 @@ class TestDootFormatter:
 
     def test_recursive(self, mocker):
         fmt = DootFormatter()
-        spec = mocker.Mock(kwargs={"a":"this is a {b}"}, spec=DootActionSpec)
+        spec = mocker.Mock(params={"a":"this is a {b}"}, spec=DootActionSpec)
         state = {"b": "aweg {c}", "c": "blah"}
         result = fmt.format("{a}", _spec=spec, _state=state, _rec=True)
         assert(result == "this is a aweg blah")
@@ -80,7 +80,7 @@ class TestDootFormatter:
 
     def test_recursive_missing(self, mocker):
         fmt = DootFormatter()
-        spec = mocker.Mock(kwargs={"a":"this is a {b}"}, spec=DootActionSpec)
+        spec = mocker.Mock(params={"a":"this is a {b}"}, spec=DootActionSpec)
         state = {"b": "aweg {c}", "c": "blah {d}"}
         result = fmt.format("{a}", _spec=spec, _state=state, _rec=True)
         assert(result == "this is a aweg blah {d}")
@@ -89,7 +89,7 @@ class TestDootFormatter:
     @pytest.mark.xfail
     def test_not_str_fails(self, mocker):
         fmt = DootFormatter()
-        spec = mocker.Mock(kwargs={"a":"this is a {b}"}, spec=DootActionSpec)
+        spec = mocker.Mock(params={"a":"this is a {b}"}, spec=DootActionSpec)
         state = {"b": "aweg {c}", "c": [1,2,3]}
         with pytest.raises(TypeError):
             fmt.format("{a}", _spec=spec, _state=state, _rec=True)

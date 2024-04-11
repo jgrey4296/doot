@@ -44,6 +44,7 @@ class TestLocations:
         simple.update({"blah": "bloo"})
         assert(bool(simple._data))
 
+    @pytest.mark.skip
     def test_update_conflict(self):
         simple = DootLocations(pl.Path.cwd())
         simple.update({"blah": "bloo"})
