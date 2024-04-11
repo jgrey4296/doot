@@ -21,6 +21,8 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from doot.mixins.enums import EnumBuilder_m, FlagsBuilder_m
+
 class TaskStateEnum(enum.Enum):
     """
       Enumeration of the different states a task can be in.
@@ -35,15 +37,17 @@ class TaskStateEnum(enum.Enum):
     RUNNING         = enum.auto()
     EXISTS          = enum.auto()
     INIT            = enum.auto()
+
     DEFINED         = enum.auto()
     DECLARED        = enum.auto()
     ARTIFACT        = enum.auto()
 
-class TaskFlags(enum.Flag):
+class TaskFlags(FlagsBuilder_m, enum.Flag):
     """
       Flags describing properties of a task,
       stored in the Task_i instance itself.
     """
+    default      = enum.auto()
     TASK         = enum.auto()
     JOB          = enum.auto()
     EPHEMERAL    = enum.auto()
@@ -76,7 +80,6 @@ class ReportEnum(enum.Flag):
     CONFIG   = enum.auto()
     ARTIFACT = enum.auto()
 
-
 class TaskPolicyEnum(enum.Flag):
     """
       Combinable Policy Types:
@@ -104,9 +107,42 @@ class TaskPolicyEnum(enum.Flag):
     PRETEND  = enum.auto()
     ACCEPT   = enum.auto()
 
-
-class ActionResponseEnum(enum.Enum):
-    # TODO make success -> succeed
+class ActionResponseEnum(EnumBuilder_m, enum.Enum):
+    # TODO refactor success -> succeed
     SUCCESS  = enum.auto()
     FAIL     = enum.auto()
     SKIP     = enum.auto()
+
+class LoopControl(enum.Enum):
+    """
+      A Simple enum to descrbe results for testing in a maybe recursive loop
+      (like walking a a tree)
+
+    accept  : is a result, and descend if recursive
+    keep    : is a result, don't descend
+    discard : not a result, descend
+    reject  : not a result, don't descend
+    """
+    yesAnd  = enum.auto()
+    yes     = enum.auto()
+    noBut   = enum.auto()
+    no      = enum.auto()
+
+
+class LocationMeta(FlagsBuilder_m, enum.Flag):
+    """ Available metadata attachable to a location """
+    default   = enum.auto()
+    file      = enum.auto()
+    protected = enum.auto()
+    indefinite = enum.auto()
+
+class TaskActivationBehaviour(EnumBuilder_m, enum.Enum):
+    """ available ways a task can be activated for running
+      auto     : activates automatically when added to the task network
+      reactive : activates if an adjacent node completes
+      default  : activates only if uses queues the task, or its a dependency
+
+    """
+    default  = enum.auto()
+    auto     = enum.auto()
+    reactive = enum.auto()

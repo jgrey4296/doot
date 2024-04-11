@@ -20,6 +20,7 @@ from doot.structs import DootTaskSpec
 from doot._abstract import Job_i
 from doot.task.base_job import DootJob
 from doot.task.base_task import DootTask
+from doot.enums import LocationMeta
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -35,7 +36,7 @@ class CheckLocsTask(DootTask):
     task_name = "_locations::check"
 
     def __init__(self, spec=None):
-        locations = [[doot.locs[f"{{{x}}}"]] for x in doot.locs if not doot.locs.is_file(x)]
+        locations = [[doot.locs[f"{{{x}}}"]] for x in doot.locs if not doot.locs.metacheck(x, LocationMeta.file)]
         spec      = DootTaskSpec.build({
             "name"         : CheckLocsTask.task_name,
             "actions"      : locations,
