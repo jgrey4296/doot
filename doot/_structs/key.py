@@ -63,27 +63,22 @@ class _DootKeyGetter:
       The core logic to turn a key into a value.
       Doesn't perform repeated expansions.
 
-      Order it tries:
-      cli -> spec -> state -> locs
+      tries sources in order.
     """
 
     @staticmethod
-    def get(key:str, spec:None|dict, state:None|dict, locs:None|DootLocations=None) -> Any:
-        cli   : dict          = doot.args.on_fail({}).tasks[str(state.get(STATE_TASK_NAME_K, None))]()
-        replacement           = cli.get(key, None)
+    def chained_get(key:str, *sources:dict|DootLocations) -> Any:
+        # cli   : dict          = doot.args.on_fail({}).tasks[str(state.get(STATE_TASK_NAME_K, None))]()
+        # replacement           = cli.get(key, None)
         # *Not* elif's, want it to chain.
-        if replacement is None:
-            replacement = spec.get(key, None)
-        if replacement is None:
-            replacement = state.get(key, None)
-        if replacement is None and locs is not None:
-            match locs.get(key, None):
-                case None:
-                    pass
-                case pl.Path() as x:
-                    replacement = locs.normalize(x)
+        for source in sources:
+            if source is None:
+                continue
+            replacement = source.get(key, None)
+            if replacement is not None:
+                return replacement
 
-        return replacement
+        return None
 
 class KWrapper:
     """ Decorators for actions
