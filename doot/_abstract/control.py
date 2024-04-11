@@ -35,11 +35,11 @@ from typing import Generator, NewType
 from collections import deque, defaultdict
 
 from doot.enums import TaskStateEnum
-from doot._structs.artifact import DootTaskArtifact
-from doot._structs.task_spec import DootTaskSpec
+
 from doot._abstract.reporter import ReportLine_i, Reporter_i
 from doot._abstract.policy import FailPolicy_p
 from doot._abstract.task import TaskBase_i
+from doot._abstract.structs import ArtifactStruct_p, SpecStruct_p
 
 class TaskTracker_i:
     """
@@ -66,7 +66,7 @@ class TaskTracker_i:
         raise NotImplementedError()
 
     @abstractmethod
-    def add_task(self, task:DootTaskSpec|TaskBase_i):
+    def add_task(self, task:SpecStruct_p|TaskBase_i):
         raise NotImplementedError()
 
     @abstractmethod
@@ -74,11 +74,11 @@ class TaskTracker_i:
         raise NotImplementedError()
 
     @abstractmethod
-    def update_state(self, task:str|DootTaskName|DootTaskSpec|TaskBase_i|DootTaskArtifact, state:TaskStateEnum) -> None:
+    def update_state(self, task:str|DootTaskName|SpecStruct_p|TaskBase_i|ArtifactStruct_p, state:TaskStateEnum) -> None:
         raise notimplementederror()
 
     @abstractmethod
-    def next_for(self, target:str) -> TaskBase_i|DootTaskArtifact|None:
+    def next_for(self, target:str) -> TaskBase_i|ArtifactStruct_p|None:
         raise NotImplementedError()
 
     @abstractmethod

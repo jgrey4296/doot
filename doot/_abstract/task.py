@@ -30,7 +30,10 @@ import doot
 import doot.errors
 from doot.enums import TaskFlags, TaskStateEnum, ActionResponseEnum
 from doot._abstract.parser import ParamSpecMaker_m
-from doot.structs import DootParamSpec, TaskStub, DootTaskSpec, DootTaskName, DootActionSpec
+from doot._abstract.structs import StubStruct_p, SpecStruct_p
+from doot._structs.param_spec import DootParamSpec
+from doot._structs.task_name import DootTaskName
+from doot._structs.action_spec import DootActionSpec
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -65,8 +68,8 @@ class TaskBase_i(ParamSpecMaker_m):
             cls.build_param(name="verbose", default=0, type=int, invisible=True, prefix="--")
            ]
 
-    def __init__(self, spec:DootTaskSpec):
-        self.spec       : DootTaskSpec        = spec
+    def __init__(self, spec:SpecStruct_p):
+        self.spec       : SpecStruct_p        = spec
         self.status     : TaskStateEnum       = TaskStateEnum.WAIT
         self.flags      : TaskFlags           = TaskFlags.JOB
         self._records   : list[Any]           = []
@@ -156,16 +159,16 @@ class TaskBase_i(ParamSpecMaker_m):
 
     @classmethod
     @abc.abstractmethod
-    def stub_class(cls, TaskStub):
+    def stub_class(cls, stub:StubStruct_p):
         """
-        Specialize a TaskStub to describe this class
+        Specialize a StubStruct_p to describe this class
         """
         raise NotImplementedError(cls, "stub_class")
 
     @abc.abstractmethod
-    def stub_instance(self, TaskStub):
+    def stub_instance(self, stub:StubStruct_p):
         """
-          Specialize a TaskStub with the settings of this specific instance
+          Specialize a StubStruct_p with the settings of this specific instance
         """
         raise NotImplementedError(self.__class__, "stub_instance")
 
@@ -181,7 +184,7 @@ class Task_i(TaskBase_i):
 
     """
 
-    def __init__(self, spec:DootTaskSpec, *, job:Job_i=None, **kwargs):
+    def __init__(self, spec:SpecStruct_p, *, job:Job_i=None, **kwargs):
         super().__init__(spec)
         self.job     = job
 
@@ -231,11 +234,11 @@ class Job_i(Task_i):
         return "\n".join(help_lines)
 
     @abc.abstractmethod
-    def default_task(self, name:str|DootTaskName|None, extra:None|dict|TomlGuard) -> DootTaskSpec:
+    def default_task(self, name:str|DootTaskName|None, extra:None|dict|TomlGuard) -> SpecStruct_p:
         raise NotImplementedError(self.__class__, "default_task")
 
     @abc.abstractmethod
-    def specialize_task(self, task:DootTaskSpec) -> DootTaskSpec|None:
+    def specialize_task(self, task:SpecStruct_p) -> SpecStruct_p|None:
         raise NotImplementedError(self.__class__, "specialize_task")
 
     @abc.abstractmethod
@@ -243,5 +246,5 @@ class Job_i(Task_i):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def _build_head(self, **kwargs) -> DootTaskSpec:
+    def _build_head(self, **kwargs) -> SpecStruct_p:
         raise NotImplementedError()

@@ -35,7 +35,6 @@ from abc import abstractmethod
 from tomlguard import TomlGuard
 from importlib.metadata import EntryPoint
 
-from doot.structs import DootTaskSpec
 from doot._abstract.cmd import Command_i
 from doot._abstract.task import Job_i
 
@@ -89,7 +88,7 @@ class TaskLoader_p(Protocol):
         raise NotImplementedError()
 
     @abstractmethod
-    def load(self) -> TomlGuard[DootTaskSpec]:
+    def load(self) -> TomlGuard:
         raise NotImplementedError()
 
 

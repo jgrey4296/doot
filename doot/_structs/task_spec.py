@@ -41,10 +41,12 @@ from importlib.metadata import EntryPoint
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.enums import TaskFlags, ReportEnum
+from doot.enums import TaskFlags, ReportEnum, TaskActivationBehaviour
 from doot._structs.sname import DootTaskName, DootCodeReference
 from doot._structs.action_spec import DootActionSpec
 from doot._structs.artifact import DootTaskArtifact
+from doot._structs.toml_loc import TomlLocation
+from doot._abstract.structs import SpecStruct_p
 
 PAD           : Final[int] = 15
 TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
@@ -150,7 +152,7 @@ def _prepare_ctor(ctor, mixins):
             return DootCodeReference.build(ctor).add_mixins(*mixins)
 
 @dataclass
-class DootTaskSpec:
+class DootTaskSpec(SpecStruct_p):
     """ The information needed to describe a generic task.
     Optional things are shoved into 'extra', so things can use .on_fail on the tomlguard
 
@@ -287,3 +289,7 @@ class DootTaskSpec:
 
     def __hash__(self):
         return hash(str(self.name))
+
+    @property
+    def params(self):
+        return self.extra

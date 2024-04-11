@@ -42,10 +42,8 @@ import string
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot._structs.action_spec import DootActionSpec
-from doot._structs.task_spec import DootTaskSpec
-from doot._structs.artifact import DootTaskArtifact
 from doot._structs.code_ref import DootCodeReference
+from doot._abstract.structs import SpecStruct_p
 
 KEY_PATTERN                                = doot.constants.patterns.KEY_PATTERN
 MAX_KEY_EXPANSIONS                         = doot.constants.patterns.MAX_KEY_EXPANSIONS

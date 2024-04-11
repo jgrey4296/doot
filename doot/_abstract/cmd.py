@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from abc import abstractmethod
 from tomlguard import TomlGuard
-from doot.structs import DootParamSpec
+from doot._structs.param_spec import DootParamSpec
 
 from doot._abstract.parser import ParamSpecMaker_m
 

@@ -40,12 +40,13 @@ import importlib
 from tomlguard import TomlGuard
 import doot.errors
 from doot.enums import TaskFlags, ReportEnum
+from doot._abstract.structs import SpecStruct_p
 
 PAD           : Final[int] = 15
 TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
 
 @dataclass
-class DootActionSpec:
+class DootActionSpec(SpecStruct_p):
     """
       When an action isn't a full blown class, it gets wrapped in this,
       which passes the action spec to the callable.
@@ -150,3 +151,7 @@ class DootActionSpec:
 
     def verify_out(self, state:dict):
         self.verify(state, fields=self.outState)
+
+    @property
+    def params(self):
+        return self.kwargs

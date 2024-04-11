@@ -32,7 +32,7 @@ logging = logmod.getLogger(__name__)
 
 from abc import abstractmethod
 from tomlguard import TomlGuard
-from doot.structs import DootParamSpec
+from doot._structs.param_spec import DootParamSpec
 
 
 @dataclass

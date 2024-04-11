@@ -40,16 +40,17 @@ import importlib
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.enums import TaskFlags, ReportEnum
+from doot.enums import TaskFlags, ReportEnum, LocationMeta, TaskActivationBehaviour
 from doot._structs.sname import DootTaskName, DootCodeReference
 from doot._structs.task_spec import DootTaskSpec
+from doot._abstract.structs import StubStruct_p
 
 PAD           : Final[int]               = 15
 TaskFlagNames : Final[str]               = [x.name for x in TaskFlags]
 DEFAULT_CTOR  : Final[DootCodeReference] = DootCodeReference.build(doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS])
 
 @dataclass
-class TaskStub:
+class TaskStub(StubStruct_p):
     """ Stub Task Spec for description in toml
     Automatically Adds default keys from DootTaskSpec
 
@@ -161,10 +162,12 @@ class TaskStubPart:
         val_str     = None
 
         match self.default:
-            case TaskFlags():
+            case TaskFlags() | LocationMeta():
                 parts = [x.name for x in TaskFlags if x in self.default]
                 joined = ", ".join(map(lambda x: f"\"{x}\"", parts))
                 val_str = f"[ {joined} ]"
+            case TaskActivationBehaviour():
+                val_str = '"{}"'.format(self.default.name)
             case "" if self.type == "TaskFlags":
                 val_str = f"[ \"{TaskFlags.TASK.name}\" ]"
             case bool():

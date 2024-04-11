@@ -32,7 +32,7 @@ logging = logmod.getLogger(__name__)
 
 from tomlguard import TomlGuard
 from doot.enums import ReportEnum
-from doot.structs import DootTraceRecord
+from doot._structs.trace import DootTraceRecord
 
 class Reporter_i:
     """
