@@ -49,67 +49,108 @@ FILE_TARGET  : Final[DootKey] = DootKey.build("file")
 
 ##-- end expansion keys
 
-class CancelOnPredicateAction(Action_p):
+class CancelOnPredicateAction(DootBaseAction):
     """
       Get a predicate using the kwarg `pred`,
       call it with the action spec and task state.
       return its result for the task runner to handle
 
     """
-    @DootKey.kwrap.references("pred")
+
+    @DootKey.dec.references("pred")
     def __call__(self, spec, state, _pred) -> dict|bool|None:
         predicate = _pred.try_import()
         return predicate(spec,state)
 
-class SkipIfFileExists(Action_p):
+class SkipIfFileExists(DootBaseAction):
 
-    @DootKey.kwrap.args
+    @DootKey.dec.args
     def __call__(self, spec, state, args) -> dict|bool|None:
         for arg in args:
             key = DootKey.build(arg, explicit=True)
             path = key.to_path(spec, state, on_fail=None)
             if path and path.exists():
                 printer.info("Target Exists: %s", path)
-                return ActRE.SKIP
+                return self.ActRE.SKIP
 
-class SkipUnlessSuffix(Action_p):
+class SkipUnlessSuffix(DootBaseAction):
 
-    @DootKey.kwrap.paths("fpath")
-    @DootKey.kwrap.expands("ext")
+    @DootKey.dec.paths("fpath")
+    @DootKey.dec.expands("ext")
     def __call__(self, spec, state, fpath, ext):
         if fpath.suffix != ext:
-            return ActRE.SKIP
+            return self.ActRE.SKIP
 
-class LogAction(Action_p):
+class LogAction(DootBaseAction):
 
-    @DootKey.kwrap.types("level", hint={"type_":str, "on_fail":"INFO"})
-    @DootKey.kwrap.expands("msg")
+    @DootKey.dec.types("level", hint={"type_":str, "on_fail":"INFO"})
+    @DootKey.dec.expands("msg")
     def __call__(self, spec, state, level, msg):
         level        = logmod.getLevelName(level)
         msg          = MSG.expand(spec, state, rec=True)
         printer.log(level, "%s", msg)
 
-class StalenessCheck(Action_p):
+class StalenessCheck(DootBaseAction):
     """ Skip the rest of the task if old hasn't been modified since new was modifed """
 
-    @DootKey.kwrap.paths("old", "new")
+    @DootKey.dec.paths("old", "new")
     def __call__(self, spec, state, old, new) -> dict|bool|None:
         if new.exists() and (old.stat().st_mtime_ns <= new.stat().st_mtime_ns):
-            return ActRE.SKIP
+            return self.ActRE.SKIP
 
-class AssertInstalled:
+class AssertInstalled(DootBaseAction):
     """
     Easily check a program can be found and used
     """
 
-    @DootKey.kwrap.args
+    @DootKey.dec.args
     def __call__(self, spec, state, args) -> dict|bool|None:
-        raise NotImplementedError()
-        return ActRE.FAIL
+        failures = []
+        for prog in args:
+            try:
+                getattr(sh, prog)
+            except sh.CommandNotFound:
+                failures.append(prog)
+
+        if not bool(failures):
+            return
+
+        printer.exception("Required Programs were not found: %s", ", ".join(failures))
+        return self.ActRE.FAIL
 
 class WaitAction:
     """ An action that waits for some amount of time """
 
-    @DootKey.kwrap.types("count")
+    @DootKey.dec.types("count")
     def __call__(self, spec, state, count):
         sleep(count)
+
+class SkipWhenRelativeTo(PathManip_m, DootBaseAction):
+
+    @DootKey.dec.paths("fpath")
+    @DootKey.dec.types("when_roots")
+    def __call__(self, spec, state, fpath, _roots):
+        roots = self._build_roots(spec, state, _roots)
+        try:
+            match self._get_relative(fpath, roots):
+                case None:
+                    return
+                case _:
+                    return self.ActRE.SKIP
+        except ValueError:
+            return
+
+class SkipUnlessRelativeTo(PathManip_m, DootBaseAction):
+
+    @DootKey.dec.paths("fpath")
+    @DootKey.dec.types("unless_roots")
+    def __call__(self, spec, state, fpath, _roots):
+        roots = self._build_roots(spec, state, _roots)
+        try:
+            match self._get_relative(fpath, roots):
+                case None:
+                    return self.ActRE.SKIP
+                case _:
+                    return
+        except ValueError:
+            return self.ActRE.SKIP
