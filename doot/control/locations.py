@@ -98,7 +98,7 @@ class DootLocations(PathManip_m):
         """ Test whether a key is a registered location """
         return key in self._data
 
-    def __iter__(self):
+    def __iter__(self) -> Generator[str]:
         """ Iterate over the registered location names """
         return iter(self._data.keys())
 
@@ -113,55 +113,23 @@ class DootLocations(PathManip_m):
     def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
         return False
 
-    def _calc_path(self, base:pl.Path, *, fallback:pl.Path|None=None) -> pl.Path:
-        """
-          Expands a string or key according to registered locations into a path.
-          so if locs = {"base": "~/Desktop", "bloo": "bloo/sub/dir"}
-          then:
-          _calc_path("base") -> "~/Desktop"
-          _calc_path("{base}/blah") -> "~/Desktop/blah"
-          _calc_path("{base}/{bloo}") -> "~/Desktop/bloo/sub/dir"
-        """
-        expansion = pl.Path()
-
-        # Expand each part:
-        try:
-            for part in base.parts:
-                expanded_part = expand_path_part(part.strip(), self._data)
-                # build the total expansion from the parts
-                logging.debug("Expanded %s -> %s", part, expanded_part)
-                expansion /= expanded_part
-        except (DootLocationExpansionError, DootLocationError) as err:
-            if fallback is not None:
-                logging.debug("Expansion failed, using fallback: %s -> %s", base, fallback)
-                expansion = pl.Path(fallback)
-            else:
-                raise err
-
-        logging.debug("Expansion Result: %s", expansion)
-        # Force the path to be absolute
-        match expansion.parts:
-            case []:
-                return self.root
-            case ["~", *_]:  # absolute path or home
-                return expansion.expanduser().absolute()
-            case ["/", *_]:
-                return expansion.absolute()
-            case _:
-                return self.root / expansion
-
     def get(self, key:DootSimpleKey|str, on_fail:None|str|pl.Path=Any) -> None|pl.Path:
         """
           convert a *simple* key of one value to a path.
-          This pairs with DootKey.to_path, which does the heavy lifting of expansions
-          does *not* expand returned paths
+          This pairs with _DootKeyGetter.chained_get, which does the heavy lifting of expansions
+          does *not* recursively expand returned paths
         """
         assert(isinstance(key,(DootSimpleKey,str))), (str(key), type(key))
         match key:
             case DootNonKey():
                 return pl.Path(key.form)
             case str() | DootSimpleKey() if key in self._data:
-                return pl.Path(self._data[key])
+                match self._data[key]:
+                    case str() as x:
+                        return pl.Path(x)
+                    case TomlLocation() as x:
+                        return x.base
+                return self._data[key]
             case _ if on_fail is None:
                 return None
             case _ if on_fail != Any:
@@ -171,27 +139,22 @@ class DootLocations(PathManip_m):
             case _:
                 return pl.Path(key)
 
-    def expand(self, path:pl.Path, symlinks:bool=False) -> pl.Path:
-        return self.normalize(path, symlinks)
-
     def normalize(self, path:pl.Path, symlinks:bool=False) -> pl.Path:
         """
           Expand a path to be absolute, taking into account the set doot root.
           resolves symlinks unless symlinks=True
         """
-        result = path
-        match result.parts:
-            case ["~", *xs]:
-                result = result.expanduser().resolve()
-            case ["/", *xs]:
-                result = result
-            case _:
-                result = (self.root / path).expanduser().resolve()
+        return self._normalize(path, root=self.root)
 
-        return result
+    def metacheck(self, key:str|DootKey, meta:LocationMeta) -> bool:
+        match key:
+            case DootNonKey():
+                return False
+            case str() | DootSimpleKey() if key in self._data:
+                return self._data[key].check(meta)
 
-    def is_file(self, key:str) -> bool:
-        return key in self._files
+        return False
+
 
     @property
     def root(self):
@@ -203,31 +166,35 @@ class DootLocations(PathManip_m):
     def update(self, extra:dict|TomlGuard|DootLocations, strict=True) -> Self:
         """
           Update the registered locations with a dict, tomlguard, or other dootlocations obj.
-          The update process itself is tomlguard.tomlguard.merge
         """
-        if isinstance(extra, DootLocations):
-            return self.update(extra._data)
+        match extra:
+            case dict():
+                pass
+            case tomlguard.TomlGuard():
+                return self.update(extra._table())
+            case DootLocations():
+                return self.update(extra._data)
+            case _:
+                raise doot.errors.DootLocationError("Tried to update locations with unknown type: %s", extra)
 
-        assert(isinstance(extra, (tomlguard.TomlGuard,dict)))
         raw          = dict(self._data.items())
         base_keys    = set(raw.keys())
+        new_keys     = set()
         for k,v in extra.items():
-            match v:
-                case _ if k in raw and strict:
-                    raise DootLocationError("Duplicated Key", k)
-                case str():
-                    raw[k] = v
-                case {"protect": x}:
-                    self._protect.add(k)
-                    raw[k] = x
-                case {"file": x}:
-                    raw[k] = x
-                    self._files.add(k)
+            match TomlLocation.build(k, v):
+                case _ if k in new_keys and v != raw[k]:
+                    raise DootLocationError("Duplicated, non-matching Key", k)
+                case _ if k in base_keys:
+                    logging.debug("Skipping Location update of: %s", k)
+                    pass
+                case TomlLocation() as l:
+                    raw[l.key] = l
+                    new_keys.add(l.key)
+                case _:
+                    raise DootLocationError("Couldn't build a TomlLocation for: (%s : %s)", k, v)
 
-        new_keys = set(raw.keys()) - base_keys
         logging.debug("Registered New Locations: %s", ", ".join(new_keys))
         self._data = tomlguard.TomlGuard(raw)
-
         return self
 
     def ensure(self, *values, task="doot"):
@@ -239,10 +206,9 @@ class DootLocations(PathManip_m):
         if bool(missing):
             raise DootDirAbsent("Ensured Locations are missing for %s : %s", task, missing)
 
-
     def check_writable(self, path:pl.Path) -> bool:
         """ test a path to see if it is relative to a protected location """
-        for key in self._protect:
+        for key in filter(lambda x: x.check(LocationMeta.protected)):
             base = getattr(self, key)
             if path.is_relative_to(base):
                 return False
