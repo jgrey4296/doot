@@ -57,17 +57,45 @@ class DootTaskName(DootStructuredName):
     args               : dict                    = field(default_factory=dict)
 
     @classmethod
-    def build(cls, name:str, *, args=None):
-        if ":" in name:
-            try:
-                groupHead_r, taskHead_r = name.split("::")
-                groupHead = groupHead_r.split(".")
-                taskHead = taskHead_r.split(".")
-            except ValueError:
-                raise doot.errors.DootConfigError("Provided Task Name can't be split correctly, check it is of the form group::name", name)
-        else:
-            groupHead = None
-            taskHead  = name
+    def build(cls, name:str|dict|DootTaskName, *, args=None):
+        """ build a name from the various ways it can be specificed.
+          handles a single string of the group and taskname,
+          or a dict that specifies taskname and maybe the groupname
+
+        """
+        groupHead = []
+        taskHead  = []
+        match name:
+            case DootTaskName():
+                return name
+            case str() if doot.constants.patterns.TASK_SEP in name:
+                try:
+                    groupHead_r, taskHead_r = name.split(doot.constants.patterns.TASK_SEP)
+                    groupHead = groupHead_r.split(".")
+                    taskHead = taskHead_r.split(".")
+                except ValueError:
+                    raise doot.errors.DootConfigError("Provided Task Name can't be split correctly, check it is of the form group::name", name)
+            case str():
+                groupHead.append("default")
+                taskHead.append(name)
+            case {"name": str() as name} if doot.constants.patterns.TASK_SEP in name:
+                try:
+                    groupHead_r, taskHead_r = name.split(doot.constants.patterns.TASK_SEP)
+                    groupHead = groupHead_r.split(".")
+                    taskHead = taskHead_r.split(".")
+                except ValueError:
+                    raise doot.errors.DootConfigError("Provided Task Name can't be split correctly, check it is of the form group::name", name)
+            case { "group": str() as group, "name": str() as name }:
+                groupHead.append(group)
+                taskHead.append(name)
+            case {"name": str() as name}:
+                groupHead.append("default")
+                taskHead.append(name)
+            case {"name": DootTaskName() as name}:
+                return name
+            case _:
+                raise doot.errors.DootError("Unrecognized name format: %s", name)
+
         return DootTaskName(groupHead, taskHead, args=args)
 
     def __post_init__(self):
