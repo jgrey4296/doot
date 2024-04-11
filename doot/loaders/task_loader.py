@@ -133,10 +133,6 @@ class DootTaskLoader(TaskLoader_p):
             logging.warning("Task Loader is overwriting already loaded tasks")
         self.tasks = self._build_task_specs(raw_specs, self.cmd_names)
 
-        # Reapply config location declarations as overrides:
-        for loc in doot.config.on_fail([]).locations():
-            doot.locs.update(loc, strict=False)
-
         logging.debug("Task List Size: %s", len(self.tasks))
         logging.debug("Task List Names: %s", list(self.tasks.keys()))
         logging.debug("---- Tasks Loaded in %s seconds", f"{time.perf_counter() - start_time:0.4f}")
@@ -174,8 +170,7 @@ class DootTaskLoader(TaskLoader_p):
                     # sets 'group' for each task if it hasn't been set already
                     raw_specs += map(ftz.partial(apply_group_and_source, group, task_file), val)
                 logging.info("Loaded Tasks from: %s", task_file)
-                if 'locations' in data:
-                    self._load_location_updates(data.locations, task_file)
+                self._load_location_updates(data.on_fail([]).locations(), task_file)
 
         elif path.is_file():
             try:
@@ -188,8 +183,7 @@ class DootTaskLoader(TaskLoader_p):
                 # sets 'group' for each task if it hasn't been set already
                 raw_specs += map(ftz.partial(apply_group_and_source, group, path), val)
             logging.info("Loaded Tasks from: %s", path)
-            if 'locations' in data:
-                self._load_location_updates(data.locations, path)
+            self._load_location_updates(data.on_fail([]).locations(), path)
 
         return raw_specs
 

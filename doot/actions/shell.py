@@ -22,13 +22,12 @@ UPDATE     = DootKey.build("update_")
 NOTTY      = DootKey.build("notty")
 ENV        = DootKey.build("shenv_")
 
-@doot.check_protocol
 class DootShellBake:
 
-    @DootKey.kwrap.args
-    @DootKey.kwrap.types("in_", hint={"on_fail":None, "type_":sh.Command|bool|None})
-    @DootKey.kwrap.types("env", hint={"on_fail":sh, "type_":sh.Command|bool|None})
-    @DootKey.kwrap.redirects("update_")
+    @DootKey.dec.args
+    @DootKey.dec.types("in_", hint={"on_fail":None, "type_":sh.Command|bool|None})
+    @DootKey.dec.types("env", hint={"on_fail":sh, "type_":sh.Command|bool|None})
+    @DootKey.dec.redirects("update_")
     def __call__(self, spec, state, args, _in, env, _update):
         if not env:
             env = sh
@@ -59,11 +58,10 @@ class DootShellBake:
         return False
 
 
-@doot.check_protocol
 class DootShellBakedRun:
 
-    @DootKey.kwrap.types("in_", hint={"on_fail":None, "type_":sh.Command|None})
-    @DootKey.kwrap.redirects("update_")
+    @DootKey.dec.types("in_", hint={"on_fail":None, "type_":sh.Command|None})
+    @DootKey.dec.redirects("update_")
     def __call__(self, spec, state, _in, _update):
         try:
             result = _in()
@@ -81,7 +79,6 @@ class DootShellBakedRun:
 
         return False
 
-@doot.check_protocol
 class DootShellAction(Action_p):
     """
     For actions in subshells.
@@ -91,10 +88,10 @@ class DootShellAction(Action_p):
     can use a pre-baked sh passed into what "shenv_" points to
     """
 
-    @DootKey.kwrap.args
-    @DootKey.kwrap.types("background", "notty", hint={"type_":bool, "on_fail":False})
-    @DootKey.kwrap.types("env", hint={"on_fail":sh, "type_":sh.Command|None})
-    @DootKey.kwrap.redirects("update_")
+    @DootKey.dec.args
+    @DootKey.dec.types("background", "notty", hint={"type_":bool, "on_fail":False})
+    @DootKey.dec.types("env", hint={"on_fail":sh, "type_":sh.Command|None})
+    @DootKey.dec.redirects("update_")
     def __call__(self, spec, state, args, background, notty, env, _update) -> dict|bool|None:
         result     = None
         try:
@@ -125,7 +122,6 @@ class DootShellAction(Action_p):
 
         return False
 
-@doot.check_protocol
 class DootInteractiveAction(Action_p):
     """
       An interactive command, which uses the self.interact method as a callback for sh.

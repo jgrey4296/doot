@@ -29,8 +29,8 @@ import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot.structs import DootActionSpec
 from doot._abstract import Action_p
+from doot.enums import ActionResponseEnum
 
-@doot.check_protocol
 class DootBaseAction(Action_p):
     """
     The basic action, which just prints that the action was called
@@ -38,6 +38,8 @@ class DootBaseAction(Action_p):
     The arguments of the action are held in the passed in spec
     __call__ is passed a *copy* of the task's state dictionary
     """
+    ActRE = ActionResponseEnum
+
 
     def __str__(self):
         return f"Base Action"

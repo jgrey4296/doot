@@ -34,9 +34,8 @@ import more_itertools as mitz
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-##-- end logging
-
 printer = logmod.getLogger("doot._printer")
+##-- end logging
 
 import networkx as nx
 import boltons.queueutils
@@ -44,7 +43,7 @@ from collections import defaultdict
 import tomlguard
 import doot
 import doot.errors
-from doot.enums import TaskStateEnum
+from doot.enums import TaskStateEnum, TaskActivationBehaviour
 from doot._abstract import Job_i, Task_i, FailPolicy_p
 from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskName, DootCodeReference
 from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i
@@ -58,6 +57,7 @@ DECLARE_PRIORITY : Final[int]                  = 10
 MIN_PRIORITY     : Final[int]                  = -10
 
 class EDGE_E(enum.Enum):
+    """ Enum describing the possible edges of the task tracker's task network """
     TASK               = enum.auto()
     ARTIFACT           = enum.auto()
     TASK_CROSS         = enum.auto() # Task to artifact
@@ -108,14 +108,14 @@ class _InternalTrackerBase(TaskTracker_i):
             case DootTaskArtifact() if artifact.is_definite:
                 self.artifacts[str(artifact)] = artifact
                 self.task_graph.add_node(str(artifact), state=self.state_e.ARTIFACT, priority=self._declare_priority)
-                # connect to indefinites
-                for x in filter(lambda x: (not x.is_definite) and artifact in x, self.artifacts.values()):
+                # connect to matching indefinites
+                for x in filter(lambda x: artifact in x, self.artifacts.values()):
                     self.task_graph.add_edge(str(artifact), str(x), type=EDGE_E.ARTIFACT)
             case DootTaskArtifact():
                 self.artifacts[str(artifact)] = artifact
                 self.task_graph.add_node(str(artifact), state=self.state_e.ARTIFACT, priority=self._declare_priority)
                 # connect to definites
-                for x in filter(lambda x: x.is_definite and x in artifact, self.artifacts.values()):
+                for x in filter(lambda x: x in artifact, self.artifacts.values()):
                     self.task_graph.add_edge(str(x), str(artifact), type=EDGE_E.ARTIFACT)
 
         return str(artifact)
@@ -166,6 +166,7 @@ class _InternalTrackerBase(TaskTracker_i):
         return task
 
     def _insert_cli_args_into_spec(self, spec:DootTaskSpec):
+        """ Takes a task spec, and inserts matching cli args into it if necessary """
         spec_extra : dict = dict(spec.extra.items() or [])
 
         for cli in spec.extra.on_fail([]).cli():
@@ -282,7 +283,6 @@ class _InternalTrackerBase(TaskTracker_i):
 
     def _task_dependents(self, task) -> tuple[list[str], list[str]]:
         raise NotImplementedError()
-
 
 class BaseTracker(_InternalTrackerBase):
     """ The public part of the standard tracker implementation """

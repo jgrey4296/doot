@@ -45,7 +45,7 @@ def id_retriever(spec, state) -> list[dict]:
     """ A Null retriever, retruns to dicts to create subtasks from """
     return []
 
-@DootKey.kwrap.types("files", "exts")
+@DootKey.dec.types("files", "exts")
 def cli_retriever(spec, state, files, exts):
     """ A CLI retriever, eg: for pre-commit.
       gets the cli arg list "files", and makes a dict that can be used with

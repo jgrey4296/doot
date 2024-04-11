@@ -16,6 +16,7 @@ DEFAULT_TASK_CTOR_ALIAS     = "task"
 TEMPLATE_PATH           =  "doot.__templates"
 TOML_TEMPLATE           =  "basic_toml"
 DEFAULT_LOAD_TARGETS    =  ["doot.toml", "pyproject.toml", "Cargo.toml", "./.cargo/config.toml"]
+MARKER_FILE_NAME        =  ".doot_marker"
 
 [doot.constants.names]
 DEFAULT_STUB_TASK_NAME  = "basic::stub"

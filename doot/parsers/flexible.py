@@ -40,7 +40,6 @@ NON_DEFAULT_KEY           = doot.constants.misc.NON_DEFAULT_KEY
 default_task : Final[str] = doot.config.on_fail((None,)).general.settings.default_task()
 default_cmd  : Final[str] = doot.config.on_fail("run", str).general.settings.default_cmd()
 
-@doot.check_protocol
 class DootFlexibleParser(ArgParser_i):
     """
     convert argv to tomlguard by:

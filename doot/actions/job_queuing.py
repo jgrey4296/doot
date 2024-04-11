@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 See EOF for license/metadata/notes as applicable
 """
 
@@ -35,9 +34,8 @@ import more_itertools as mitz
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-##-- end logging
-
 printer = logmod.getLogger("doot._printer")
+##-- end logging
 
 import random
 from tomlguard import TomlGuard
@@ -45,7 +43,6 @@ import doot
 import doot.errors
 from doot._abstract import Action_p
 from doot.structs import DootKey, DootTaskSpec, DootTaskName, DootCodeReference
-
 
 class JobQueueAction(Action_p):
     """
@@ -56,10 +53,10 @@ class JobQueueAction(Action_p):
       does NOT queue a head task automatically
     """
 
-    @DootKey.kwrap.args
-    @DootKey.kwrap.types("from_", hint={"type_":list|DootTaskSpec|None})
-    @DootKey.kwrap.redirects_many("from_multi_")
-    @DootKey.kwrap.taskname
+    @DootKey.dec.args
+    @DootKey.dec.types("from_", hint={"type_":list|DootTaskSpec|None})
+    @DootKey.dec.redirects_many("from_multi_")
+    @DootKey.dec.taskname
     def __call__(self, spec, state, _args, _from, _from_multi, _basename):
         subtasks  = []
         subtasks += [DootTaskSpec(_basename.subtask(i), ctor=DootTaskName.build(x), required_for=[_basename.task_head()]) for i,x in enumerate(_args)]
@@ -93,9 +90,9 @@ class JobQueueAction(Action_p):
 class JobQueueHead(Action_p):
     """ Queue the head/on_completion task of this job"""
 
-    @DootKey.kwrap.types("base")
-    @DootKey.kwrap.types("inject")
-    @DootKey.kwrap.taskname
+    @DootKey.dec.types("base")
+    @DootKey.dec.types("inject")
+    @DootKey.dec.taskname
     def __call__(self, spec, state, base, inject, _basename):
         head_name       = _basename.task_head()
         head            = []
@@ -118,7 +115,6 @@ class JobQueueHead(Action_p):
 
         return head
 
-
 class JobChainer(Action_p):
     """
       Add dependencies to task specs, from left to right, by key
@@ -129,7 +125,7 @@ class JobChainer(Action_p):
       {do="job.chain.->", unpack={literal=[key, key, key], by-name=[taskname, taskname]}},
     """
 
-    @DootKey.kwrap.kwargs
+    @DootKey.dec.kwargs
     def __call__(self, spec, state, kwargs):
         for k,v in kwargs.items():
             match DootKey.build(k).to_type(spec, state):

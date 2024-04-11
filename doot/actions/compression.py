@@ -48,6 +48,7 @@ from doot.enums import ActionResponseEnum
 from doot._abstract import Action_p
 from doot.structs import DootKey
 from doot.actions.postbox import _DootPostBox
+from doot.mixins.zipper import Zipper_m
 
 ##-- expansion keys
 TO_KEY             : Final[DootKey] = DootKey.build("to")
@@ -67,12 +68,11 @@ COMP_TAR_CMD  = sh.tar.bake("-cf", "-")
 COMP_GZIP_CMD = sh.gzip.bake("--best")
 DECOMP_CMD    = sh.tar.bake("-xf")
 
-@doot.check_protocol
 class TarCompressAction(Action_p):
     """ Compresses a target into a .tar.gz file """
 
-    @DootKey.kwrap.paths("file")
-    @DootKey.kwrap.paths("to", hint={"on_fail":None})
+    @DootKey.dec.paths("file")
+    @DootKey.dec.paths("to", hint={"on_fail":None})
     def __call__(self, spec, state, file, to):
         target = file
         output = to or target.with_suffix(target.suffix + ".tar.gz")
@@ -84,11 +84,10 @@ class TarCompressAction(Action_p):
         else:
             COMP_GZIP_CMD(_in=COMP_TAR_CMD("-C", target.parent, target.name, _piped=True), _out=output)
 
-@doot.check_protocol
 class TarDecompressAction(Action_p):
     """ Decompresses a .tar.gz file """
 
-    @DootKey.kwrap.paths("file", "to")
+    @DootKey.dec.paths("file", "to")
     def __call__(self, spec, state, file, to):
         target = file
         output = to
@@ -99,12 +98,11 @@ class TarDecompressAction(Action_p):
         DECOMP_CMD(target, "-C", output)
 
 
-@doot.check_protocol
 class TarListAction(Action_p):
     """ List the contents of a tar archive """
 
-    @DootKey.kwrap.paths("from")
-    @DootKey.kwrap.redirects("update_")
+    @DootKey.dec.paths("from")
+    @DootKey.dec.redirects("update_")
     def __call__(self, spec, state, _from, _update):
         target = _from
         if "".join(target.suffixes) != ".tar.gz":
@@ -116,18 +114,58 @@ class TarListAction(Action_p):
         return { _update : lines }
 
 
-class ZipNewAction(Action_p):
+class ZipNewAction(Zipper_m, Action_p):
     """ Make a new zip archive """
-    pass
 
-class ZipAddAction(Action_p):
+    @DootKey.dec.paths("target")
+    def __call__(self, spec, state, target):
+         self.zip_create(target)
+
+
+class ZipAddAction(Zipper_m, Action_p):
     """ Add a file/directory to a zip archive """
-    pass
 
-class ZipGetAction(Action_p):
+    @DootKey.dec.paths("target")
+    @DootKey.dec.args
+    def __call__(self, spec, state, target, args):
+        arg_paths = []
+        for str in args:
+            key = DootKey.build(x)
+            match key.to_path(spec, state, on_fail=None):
+                case pl.Path() as x if not x.exists():
+                    printer.warning("Can't add non-existent path to zip: %s", key)
+                case pl.Path() as x:
+                    arg_paths.append(x)
+                case _:
+                    printer.warning("Can't add non-expandable path to zip: %s", key)
+
+        self.zip_add_paths(target, *arg_paths)
+
+
+class ZipGetAction(Zipper_m, Action_p):
     """ unpack a file/files/all files from a zip archive """
-    pass
+
+    @DootKey.dec.paths("zipf", "target")
+    def __call__(self, spec, state, zipf:pl.Path, target:pl.Path):
+        if target.is_file():
+            raise doot.errors.DootActionError("Can't unzip to a file: %s", target)
+
+        self.zip_unzip_to(target, zipf)
+
 
 class ZipListAction(Action_p):
     """ List the contents of a zip archive """
-    pass
+
+    @DootKey.dec.paths("target")
+    @DootKey.dec.redirects("update_")
+    def __call__(self, spec, state, target:pl.Path, _update):
+        contents = self.zip_get_contents(target)
+        printer.info("Contents of Zip File: %s", target)
+        for x in contents:
+            printer.info("- %s", x)
+        printer.info("--")
+
+        if _update == "update_":
+            return
+
+        return { _update : contents }

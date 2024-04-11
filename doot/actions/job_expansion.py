@@ -34,23 +34,23 @@ import more_itertools as mitz
 
 ##-- logging
 logging = logmod.getLogger(__name__)
+printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
-printer = logmod.getLogger("doot._printer")
 
 import random
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot._abstract import Action_p
 from doot.structs import DootKey, DootTaskSpec, DootTaskName, DootCodeReference
+from doot.actions.base_action import DootBaseAction
 from doot.actions.job_injection import JobInjector
 
-class JobGenerate(Action_p):
+class JobGenerate(DootBaseAction):
     """ Run a custom function to generate task specs  """
 
-    @DootKey.kwrap.references("fn")
-    @DootKey.kwrap.redirects("update_")
+    @DootKey.dec.references("fn")
+    @DootKey.dec.redirects("update_")
     def __call__(self, spec, state, _fn_ref, _update):
         fn = _fn_ref.try_import()
         return { _update : list(fn(spec, state)) }
@@ -62,10 +62,10 @@ class JobExpandAction(JobInjector):
       'inject' provides an injection dict, with $arg$ being the entry from the source list
     """
 
-    @DootKey.kwrap.types("from", "inject", "base", "print_levels")
-    @DootKey.kwrap.expands("prefix")
-    @DootKey.kwrap.redirects("update_")
-    @DootKey.kwrap.taskname
+    @DootKey.dec.types("from", "inject", "base", "print_levels")
+    @DootKey.dec.expands("prefix")
+    @DootKey.dec.redirects("update_")
+    @DootKey.dec.taskname
     def __call__(self, spec, state, _from, inject, base, _printL, prefix, _update, _basename):
         match prefix:
             case "{prefix}":
@@ -125,7 +125,7 @@ class JobExpandAction(JobInjector):
 
         return actions, base
 
-class JobMatchAction(Action_p):
+class JobMatchAction(DootBaseAction):
     """
       Take a mapping of {pattern -> task} and a list,
       and build a list of new subtasks
@@ -135,9 +135,9 @@ class JobMatchAction(Action_p):
       defaults to getting spec.extra.fpath.suffix
     """
 
-    @DootKey.kwrap.types("onto_")
-    @DootKey.kwrap.references("prepfn")
-    @DootKey.kwrap.types("mapping")
+    @DootKey.dec.types("onto_")
+    @DootKey.dec.references("prepfn")
+    @DootKey.dec.types("mapping")
     def __call__(self, spec, state, _onto, prepfn, mapping):
         match prepfn:
             case None:

@@ -30,7 +30,6 @@ from doot.structs import DootKey
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
 
-@doot.check_protocol
 class SpeakTimeAction(Action_p):
     """
     A Simple Action that announces the time
@@ -47,7 +46,7 @@ class SpeakTimeAction(Action_p):
         now = datetime.datetime.now()
         return now.strftime(self.time_format)
 
-    @DootKey.kwrap.args
+    @DootKey.dec.args
     def __call__(self, spec, state, args):
         try:
             match sys.platform:

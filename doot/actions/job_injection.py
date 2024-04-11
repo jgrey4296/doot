@@ -36,9 +36,8 @@ import more_itertools as mitz
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-##-- end logging
-
 printer = logmod.getLogger("doot._printer")
+##-- end logging
 
 import random
 from tomlguard import TomlGuard
@@ -46,6 +45,7 @@ import doot
 import doot.errors
 from doot._abstract import Action_p
 from doot.structs import DootKey, DootTaskSpec, DootTaskName, DootCodeReference
+from doot.mixins.path_manip import PathManip_m
 
 class JobInjector(Action_p):
     """
@@ -60,7 +60,7 @@ class JobInjector(Action_p):
 
     """
 
-    @DootKey.kwrap.types("onto", "inject")
+    @DootKey.dec.types("onto", "inject")
     def __call__(self, spec, state, onto, inject):
         injection = self.build_injection(spec, state, inject)
         match onto:
@@ -120,7 +120,7 @@ class JobInjector(Action_p):
 
 class JobPrependActions(Action_p):
 
-    @DootKey.kwrap.types("_onto", "add_actions")
+    @DootKey.dec.types("_onto", "add_actions")
     def __call__(self, spec, state, _onto, _actions):
         action_specs = [DootActionSpec.build(x) for x in _actions]
         for x in _onto:
@@ -129,20 +129,20 @@ class JobPrependActions(Action_p):
 
 class JobAppendActions(Action_p):
 
-    @DootKey.kwrap.types("_onto", "add_actions")
+    @DootKey.dec.types("_onto", "add_actions")
     def __call__(self, spec, state, _onto, _actions):
         actions_specs = [DootActionSpec.build(x) for x in _actions]
         for x in _onto:
             x.actions += action_specs
 
-class JobInjectPathParts(Action_p):
+class JobInjectPathParts(PathManip_m):
     """
       Map lpath, fstem, fparent, fname, fext onto each
       taskspec in the `onto` list, using each spec's `key`
     """
 
-    @DootKey.kwrap.types("onto", "roots")
-    @DootKey.kwrap.redirects("key_")
+    @DootKey.dec.types("onto", "roots")
+    @DootKey.dec.redirects("key_")
     def __call__(self, spec, state, _onto, roots, _key):
         root_paths = self._build_roots(spec, state, roots)
         match _onto:
@@ -156,62 +156,15 @@ class JobInjectPathParts(Action_p):
                 data.update(self._calc_path_parts(onto.extra[_key], root_paths))
                 _onto.extra = TomlGuard(data)
 
-
-    def _calc_path_parts(self, fpath, roots) -> dict:
-        assert(fpath is not None)
-
-        temp_stem  = fpath
-        # This handles "a/b/c.tar.gz"
-        while temp_stem.stem != temp_stem.with_suffix("").stem:
-            temp_stem = temp_stem.with_suffix("")
-
-        return {
-            'lpath'   : self._get_relative(fpath, roots),
-            'fstem'   : temp_stem.stem,
-            'fparent' : fpath.parent,
-            'fname'   : fpath.name,
-            'fext'    : fpath.suffix,
-            'pstem'   : fpath.parent.stem,
-            }
-
-    def _build_roots(self, spec, state, roots) -> list[pl.Path]:
-        """
-        convert roots from keys to paths
-        """
-        roots = roots or []
-        results = []
-
-        for root in roots:
-            root_key = DootKey.build(root)
-            results.append(root_key.to_path(spec, state))
-
-        return results
-
-    def _get_relative(self, fpath, roots) -> pl.Path:
-        logging.debug("Finding Relative Path of: %s using %s", fpath, roots)
-        if not fpath.is_absolute():
-            return fpath
-
-        if not bool(roots):
-            return None
-
-        for root_path in roots:
-            try:
-                return fpath.relative_to(root_path)
-            except ValueError:
-                continue
-
-        raise ValueError(f"{fpath} is not able to be made relative", roots)
-
-class JobInjectShadowAction(Action_p):
+class JobInjectShadowAction(PathManip_m):
     """
       Inject a shadow path into each task entry, using the target key which points to the relative path to shadow
       returns the *directory* of the shadow target
     """
 
-    @DootKey.kwrap.types("onto")
-    @DootKey.kwrap.paths("shadow_root")
-    @DootKey.kwrap.redirects("key_")
+    @DootKey.dec.types("onto")
+    @DootKey.dec.paths("shadow_root")
+    @DootKey.dec.redirects("key_")
     def __call__(self, spec, state, _onto, _shadow, _key):
         match _onto:
             case list():
@@ -222,23 +175,14 @@ class JobInjectShadowAction(Action_p):
                 rel_path = self._shadow_path(onto.extra[_key], _shadow)
                 onto.extra = TomlGuard(dict(**onto.extra, **{"shadow_path": rel_path}))
 
-    def _shadow_path(self, lpath:pl.Path, shadow_root:pl.Path) -> pl.Path:
-        assert(isinstance(lpath, pl.Path))
-        assert(not lpath.is_absolute())
-        result      = shadow_root / lpath
-        if result == doot.locs[lpath]:
-            raise doot.errors.DootLocationError("Shadowed Path is same as original", fpath)
-
-        return result.parent
-
 class JobSubNamer(Action_p):
     """
       Apply the name {basename}.{i}.{key} to each taskspec in {onto}
     """
 
-    @DootKey.kwrap.taskname
-    @DootKey.kwrap.expands("keylit")
-    @DootKey.kwrap.types("onto")
+    @DootKey.dec.taskname
+    @DootKey.dec.expands("keylit")
+    @DootKey.dec.types("onto")
     def __call__(self, spec, state, _basename, _key, _onto):
         match _onto:
             case list():

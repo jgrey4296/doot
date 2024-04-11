@@ -49,18 +49,6 @@ from doot._structs.toml_loc import TomlLocation
 from doot._abstract.structs import SpecStruct_p
 
 PAD           : Final[int] = 15
-TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
-
-def _build_name(data) -> DootTaskName:
-    match data:
-        case {"group": group, "name": str() as name}:
-            return DootTaskName(data['group'], data['name'])
-        case {"name": str() as name}:
-            return DootTaskName.build(name)
-        case {"name": DootTaskName() as name}:
-            return name
-        case _:
-            return DootTaskName(None, None)
 
 def _separate_into_core_and_extra(data) -> tuple[dict, dict]:
     core_keys   = list(DootTaskSpec.__dataclass_fields__.keys())
@@ -91,15 +79,6 @@ def _separate_into_core_and_extra(data) -> tuple[dict, dict]:
                 extra_data[key] = val
 
     return core_data, extra_data
-
-def _valid_flag(x):
-    match x:
-        case str() if x in TaskFlagNames:
-            return True
-        case TaskFlags():
-            return True
-        case _:
-            return False
 
 def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|DootTaskName]:
     """

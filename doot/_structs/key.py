@@ -301,7 +301,13 @@ class DootFormatter(string.Formatter):
     """
       A Formatter for expanding arguments based on action spec kwargs, and task state, and cli args
     """
-    _fmt = None
+    _fmt                = None
+
+    SPEC   : Final[str] = "_spec"
+    INSIST : Final[str] = "_insist"
+    STATE  : Final[str] = "_state"
+    LOCS   : Final[str] = "_locs"
+    REC    : Final[str] = "_rec"
 
     @staticmethod
     def fmt(fmt:str|DootKey|pl.Path, /, *args, **kwargs) -> str:
@@ -311,12 +317,13 @@ class DootFormatter(string.Formatter):
         return DootFormatter._fmt.format(fmt, *args, **kwargs)
 
     def format(self, fmt:str|DootKey|pl.Path, /, *args, **kwargs) -> str:
+        """ expand and coerce keys """
         self._depth = 0
-        match kwargs.get("_spec", None):
+        match kwargs.get(self.SPEC, None):
             case None:
                 kwargs['_spec'] = {}
-            case DootActionSpec():
-                kwargs['_spec'] = kwargs['_spec'].kwargs
+            case SpecStruct_p():
+                kwargs['_spec'] = kwargs[self.SPEC].params
             case x:
                 raise TypeError("Bad Spec Type in Format Call", x)
 
@@ -334,17 +341,19 @@ class DootFormatter(string.Formatter):
         return result
 
     def get_value(self, key, args, kwargs):
+        """ lowest level handling of keys being expanded """
         logging.debug("Expanding: %s", key)
         if isinstance(key, int):
             return args[key]
 
-        insist                = kwargs.get("_insist", False)
+        insist                = kwargs.get(self.INSIST, False)
+        spec  : dict          = kwargs.get(self.SPEC, None) or {}
+        state : dict          = kwargs.get(self.STATE, None) or {}
+        locs  : DootLocations = kwargs.get(self.LOCS,  None)
         depth_check           = self._depth < MAX_KEY_EXPANSIONS
-        spec  : dict          = kwargs.get('_spec', None) or {}
-        state : dict          = kwargs.get('_state', None) or {}
-        locs  : DootLocations = kwargs.get("_locs",  None)
+        rec_allowed           = kwargs.get(self.REC, False) and depth_check
 
-        match (replacement := _DootKeyGetter.get(key, spec, state, locs=locs)):
+        match (replacement:=_DootKeyGetter.chained_get(key, spec, state, locs)):
             case None if insist:
                 raise KeyError("Key Expansion Not Found")
             case None:
@@ -352,7 +361,7 @@ class DootFormatter(string.Formatter):
             case DootKey() if depth_check:
                 self._depth += 1
                 return self.vformat(replacement.form, args, kwargs)
-            case str() if kwargs.get("_rec", False) and depth_check:
+            case str() if rec_allowed:
                 self._depth += 1
                 return self.vformat(str(replacement), args, kwargs)
             case str():
@@ -375,10 +384,11 @@ class DootKey(abc.ABC):
       DootMultiKeys are containers of a string `value`, and a list of SimpleKeys the value contains.
       So DootKey.build("{blah}/{bloo}") -> DootMultiKey("{blah}/{bloo}", [DootSimpleKey("blah", DootSimpleKey("bloo")]) -> .form == "{blah}/{bloo}"
     """
+    dec   = KWrapper
     kwrap = KWrapper
 
     @staticmethod
-    def build(s:str|DootKey|DootTaskArtifact|pl.Path|dict, *, strict=False, explicit=False, exp_hint:str|dict=None, help=None) -> DootKey:
+    def build(s:str|DootKey|pl.Path|dict, *, strict=False, explicit=False, exp_hint:str|dict=None, help=None) -> DootKey:
         """ Make an appropriate DootKey based on input value
           Can only create MultiKeys if strict = False,
           if explicit, only keys wrapped in {} are made, everything else is returned untouched
@@ -398,12 +408,13 @@ class DootKey(abc.ABC):
             case { "path": x }:
                 result = DootPathMultiKey(x)
                 exp_hint = "path"
+            case pl.Path():
+                result = DootPathMultiKey(s)
+                exp_hint = "path"
             case DootSimpleKey() if strict:
                 result = s
             case DootKey():
                 result = s
-            case DootTaskArtifact(path=path) | (pl.Path() as path) if not strict:
-                result = DootPathMultiKey(path)
             case str() if not (s_keys := PATTERN.findall(s)) and not explicit and not is_path:
                 result = DootSimpleKey(s)
             case str() if is_path and not bool(s_keys):
@@ -476,22 +487,30 @@ class DootKey(abc.ABC):
 
     def to_path(self, spec=None, state=None, chain:list[DootKey]=None, locs:DootLocations=None, on_fail:None|str|pl.Path|DootKey=Any, symlinks=False) -> pl.Path:
         """
-          Convert a key to an absolute path
+          Convert a key to an absolute path, using registered locations
+
+          The Process is:
+          1) redirect the given key if necessary
+          2) Expand each part of the keypath, using DootFormatter
+          3) normalize it
+
+          If necessary, a fallback chain, and on_fail value can be provided
         """
         locs                 = locs or doot.locs
         key : pl.Path        = pl.Path(self.redirect(spec).form)
 
         try:
-            expanded         : list       = [DootFormatter.fmt(x, _spec=spec, _state=state, _rec=True) for x in key.parts]
-            expanded_as_path : pl.Path    = pl.Path().joinpath(*expanded)
-            depth                         = 0
-            while PATTERN.search(str(expanded_as_path)) and depth < MAX_KEY_EXPANSIONS:
-                to_keys          : list       = [DootKey.build(x, explicit=True) or x for x in expanded_as_path.parts]
-                loc_expansions   : list       = [locs.get(x) for x in to_keys]
-                expanded_as_path : pl.Path    = pl.Path().joinpath(*loc_expansions)
-                depth += 1
+            expanded         : list       = [DootFormatter.fmt(x, _spec=spec, _state=state, _rec=True, _locs=locs) for x in key.parts]
+            expanded_as_path : pl.Path    = pl.Path().joinpath(*expanded) # allows ("a", "b/c") -> "a/b/c"
+            # This should be unneceesary:
+            # depth                         = 0
+            # while PATTERN.search(str(expanded_as_path)) and depth < MAX_KEY_EXPANSIONS:
+            #     to_keys          : list       = [DootKey.build(x, explicit=True) or x for x in expanded_as_path.parts]
+            #     loc_expansions   : list       = [locs.get(x) for x in to_keys]
+            #     expanded_as_path : pl.Path    = pl.Path().joinpath(*loc_expansions)
+            #     depth += 1
 
-            if any(bool(matches) for x in expanded_as_path.parts if (matches:=PATTERN.findall(x))):
+            if bool(matches:=PATTERN.findall(str(expanded_as_path))):
                 raise doot.errors.DootLocationExpansionError("Missing keys on path expansion", matches, self)
 
             return locs.normalize(expanded_as_path, symlinks=symlinks)
@@ -512,14 +531,10 @@ class DootKey(abc.ABC):
     def within(self, other:str|dict|TomlGuard) -> bool:
         return False
 
-    def basic(self, spec, state, locs=None):
-        match spec:
-            case DootTaskSpec():
-                kwargs = spec.extra
-            case DootActionSpec():
-                kwargs = spec.kwargs
-
-        return _DootKeyGetter.get(str(self), kwargs, state, locs=locs or doot.locs)
+    def basic(self, spec:SpecStruct_p, state, locs=None):
+        """ the most basic expansion of a key """
+        kwargs = spec.params
+        return _DootKeyGetter.chained_get(str(self), kwargs, state, locs or doot.locs)
 
 
     @abc.abstractmethod
@@ -530,9 +545,16 @@ class DootKey(abc.ABC):
     def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[DootKey]=None, on_fail=Any, locs:DootLocations=None, **kwargs) -> str:
         pass
 
-    def to_coderef(self, spec, state) -> None|DootCodeReference:
+    def to_coderef(self, spec:None|SpecStruct_p, state) -> None|DootCodeReference:
+        match spec:
+            case SpecStruct_p():
+                kwargs = spec.params
+            case None:
+                kwargs = {}
+
         redir = self.redirect(spec)
-        if redir not in spec.kwargs and redir not in state:
+
+        if redir not in kwargs and redir not in state:
             return None
         try:
             expanded = self.expand(spec, state)
@@ -649,7 +671,7 @@ class DootSimpleKey(str, DootKey):
             else:
                 raise err
 
-    def redirect(self, spec=None) -> DootKey:
+    def redirect(self, spec:None|SpecStruct_p=None) -> DootKey:
         """
           If the indirect form of the key is found in the spec, use that as a key instead
         """
@@ -657,10 +679,10 @@ class DootSimpleKey(str, DootKey):
             return self
 
         match spec:
-            case DootTaskSpec():
-                kwargs = spec.extra
-            case DootActionSpec():
-                kwargs = spec.kwargs
+            case SpecStruct_p():
+                kwargs = spec.params
+            case None:
+                kwargs = {}
 
         match kwargs.get(self.indirect, self):
             case str() as x if x == self.indirect:
@@ -672,16 +694,17 @@ class DootSimpleKey(str, DootKey):
 
         return self
 
-    def redirect_multi(self, spec=None) -> list[DootKey]:
+    def redirect_multi(self, spec:None|SpecStruct_p=None) -> list[DootKey]:
         """ redirect an indirect key to a *list* of keys """
         if not spec:
             return [self]
 
         match spec:
-            case DootTaskSpec():
-                kwargs = spec.extra
-            case DootActionSpec():
-                kwargs = spec.kwargs
+            case SpecStruct_p():
+                kwargs = spec.params
+            case None:
+                kwargs = {}
+
 
         match kwargs.get(self.indirect, self):
             case str() as x if x == self:
@@ -693,19 +716,17 @@ class DootSimpleKey(str, DootKey):
 
         return [self]
 
-    def to_type(self, spec=None, state=None, type_=Any, chain:list[DootKey]=None, on_fail=Any) -> Any:
+    def to_type(self, spec:None|SpecStruct_p=None, state=None, type_=Any, chain:list[DootKey]=None, on_fail=Any) -> Any:
         target            = self.redirect(spec)
 
         match spec:
-            case DootTaskSpec():
-                kwargs = spec.extra
-            case DootActionSpec():
-                kwargs = spec.kwargs
+            case SpecStruct_p():
+                kwargs = spec.params
             case None:
                 kwargs = {}
 
-        task_name         = state.get(STATE_TASK_NAME_K, None) if state else None
-        match (replacement := _DootKeyGetter.get(target, kwargs, state)):
+        task_name = state.get(STATE_TASK_NAME_K, None) if state else None
+        match (replacement:=_DootKeyGetter.chained_get(target, kwargs, state)):
             case None if bool(chain):
                 return chain[0].to_type(spec, state, type_=type_, chain=chain[1:], on_fail=on_fail)
             case None if on_fail != Any and isinstance(on_fail, DootKey):
@@ -762,11 +783,7 @@ class DootArgsKey(str, DootKey):
         raise doot.errors.DootKeyError("Args Key doesn't redirect")
 
     def to_type(self, spec=None, state=None, *args, **kwargs) -> list:
-        match spec:
-            case DootTaskSpec():
-                return []
-            case DootActionSpec():
-                return spec.args
+        return spec.args
 
 class DootKwargsKey(DootArgsKey):
     """ A Key representing all of an action spec's kwargs """
@@ -774,12 +791,12 @@ class DootKwargsKey(DootArgsKey):
     def __repr__(self):
         return "<DootArgsKey>"
 
-    def to_type(self, spec=None, state=None, *args, **kwargs) -> dict:
+    def to_type(self, spec:None|SpecStruct_p=None, state=None, *args, **kwargs) -> dict:
         match spec:
-            case DootTaskSpec():
-                return spec.extra
-            case DootActionSpec():
-                return spec.kwargs
+            case SpecStruct_p():
+                return spec.params
+            case None:
+                return {}
 
 class DootMultiKey(DootKey):
     """ A string or path of multiple keys """

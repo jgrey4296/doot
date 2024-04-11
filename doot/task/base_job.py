@@ -36,7 +36,6 @@ import doot.errors
 from doot.enums import TaskFlags
 from doot.structs import DootTaskSpec, TaskStub, TaskStubPart, DootTaskName, DootCodeReference, DootStructuredName
 from doot._abstract import Job_i, Task_i
-from doot.mixins.importer import Importer_M
 from doot.errors import DootDirAbsent
 from doot.task.base_task import DootTask
 

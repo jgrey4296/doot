@@ -139,4 +139,8 @@ def _test_setup():
     """
       Doesn't load anything but constants, for testing
     """
+    global config, _configs_loaded_from, locs
+    config               = TG.TomlGuard()
+    _configs_loaded_from = []
+    locs                 = None
     setup(False)

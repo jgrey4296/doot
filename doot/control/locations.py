@@ -33,32 +33,33 @@ import doot
 from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
 from doot._structs.artifact import DootTaskArtifact
 from doot._structs.key import DootKey, DootSimpleKey, DootMultiKey, DootNonKey
+from doot.mixins.path_manip import PathManip_m
+from doot._structs.toml_loc import TomlLocation
+from doot.enums import LocationMeta
 
 KEY_PAT        = doot.constants.patterns.KEY_PATTERN
 MAX_EXPANSIONS = doot.constants.patterns.MAX_KEY_EXPANSIONS
 
-class DootLocations:
+class DootLocations(PathManip_m):
     """
-      A Single point of truth for locations that tasks use.
+      A Single point of truth for task access to locations.
       key=value pairs in [[locations]] toml blocks are integrated into it.
-      Also handles key={protect=value} to designate a path shouldn't have files written in it
-      by certain io actions
 
       it expands relative paths according to cwd(),
       but can be used as a context manager to expand from a temp different root
 
       location designations are of the form:
-      key = "location/subdirectory/file"
+      key = 'location/subdirectory/file'
+      simple locations can be accessed as attributes: locs.temp
 
-        If a location value has "loc/{key}/somewhere",
-        then for key = "blah", it will be expanded upon access to "loc/blah/somewhere"
-    """
+      more complex locations, with expansions, are accessed as items:
+      locs['{temp}/somewhere']
+      will expand 'temp' (if it is a registered location)
+      """
 
     def __init__(self, root:Pl.Path):
         self._root    : pl.Path()       = root.expanduser().absolute()
         self._data    : TomlGuard       = tomlguard.TomlGuard()
-        self._protect : set             = set()
-        self._files   : set             = set()
 
     def __repr__(self):
         keys = ", ".join(iter(self))
@@ -67,6 +68,7 @@ class DootLocations:
     def __getattr__(self, key) -> pl.Path:
         """
           get a location by name from loaded toml
+          delegates to __getitem__
           eg: locs.temp
           """
         if key == "__self__":
@@ -75,11 +77,12 @@ class DootLocations:
 
     def __getitem__(self, val:str|DootKey|pl.Path|DootTaskArtifact) -> pl.Path:
         """
-          eg: doot.locs["{data}/somewhere"]
+          eg: doot.locs['{data}/somewhere']
           A public utility method to easily convert paths.
+          delegates to DootKey's path expansion
 
           Get a location using item access for extending a stored path.
-          eg: locs["{temp}/imgs/blah.jpg"]
+          eg: locs['{temp}/imgs/blah.jpg']
         """
         match DootKey.build(val, explicit=True):
             case DootNonKey() as key:

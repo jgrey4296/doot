@@ -32,9 +32,10 @@ import shutil
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
-from doot.mixins.importer import Importer_M
+from doot.mixins.importer import Importer_m
 from doot.structs import DootCodeReference, DootKey
-from doot.actions.job_injection import JobInjectPathParts
+from doot.actions.job_injection import JobInjectPathParts, JobInjectShadowAction
+from doot.actions.path_manip import PathManip_m
 
 ##-- expansion keys
 UPDATE : Final[DootKey] = DootKey.build("update_")
@@ -48,7 +49,7 @@ class AddStateAction(Action_p):
       adds kwargs directly, without expansion
     """
 
-    @DootKey.kwrap.kwargs
+    @DootKey.dec.kwargs
     def __call__(self, spec, state:dict, kwargs) -> dict|bool|None:
         result = {}
         for k,v in kwargs.items():
@@ -57,12 +58,12 @@ class AddStateAction(Action_p):
             result[k] = val
         return result
 
-class AddStateFn(Action_p, Importer_M):
+class AddStateFn(Action_p, Importer_m):
     """ for each toml kwarg, import its value and set the state[kwarg] = val
       with expansion
     """
 
-    @DootKey.kwrap.kwargs
+    @DootKey.dec.kwargs
     def __call__(self, spec, state:dict, kwargs) -> dict|bool|None:
         result = {}
         for kwarg, val in kwargs:
@@ -79,8 +80,8 @@ class PushState(Action_p):
     """
     _toml_kwargs = [UPDATE]
 
-    @DootKey.kwrap.args
-    @DootKey.kwrap.redirects("update_")
+    @DootKey.dec.args
+    @DootKey.dec.redirects("update_")
     def __call__(self, spec, state, args, _update) -> dict|bool|None:
         data     = data_key.to_type(spec, state, type_=list|set|None, on_fail=[])
 
@@ -101,18 +102,26 @@ class AddNow(Action_p):
       Add the current date, as a string, to the state
     """
 
-    @DootKey.kwrap.expands("format")
-    @DootKey.kwrap.redirects("update_")
+    @DootKey.dec.expands("format")
+    @DootKey.dec.redirects("update_")
     def __call__(self, spec, state, format, _update):
         now      = datetime.datetime.now()
         return { _update : now.strftime(format) }
 
-class PathParts(JobInjectPathParts):
+class PathParts(PathManip_m):
     """ take a path and add fstem, fpar, fname to state """
 
-    @DootKey.kwrap.paths("from")
-    @DootKey.kwrap.types("roots")
-    @DootKey.kwrap.returns("fstem", "fpar", "fname", "fext", "pstem")
+    @DootKey.dec.paths("from")
+    @DootKey.dec.types("roots")
+    @DootKey.dec.returns("fstem", "fpar", "fname", "fext", "pstem")
     def __call__(self, spec, state, _from, roots):
         root_paths = self._build_roots(spec, state, roots)
         return self._calc_path_parts(_from, root_paths)
+
+class ShadowPath(PathManip_m):
+
+    @DootKey.dec.paths("shadow_root")
+    @DootKey.dec.types("base", hint={"type_":pl.Path})
+    def __call__(self, spec, state, shadow_root, base):
+        shadow_dir = self._shadow_path(base, shadow_root)
+        return { "shadow_path" : shadow_dir }

@@ -34,10 +34,10 @@ import sh
 import shutil
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
-from doot._abstract import Action_p
-from doot.mixins.importer import Importer_M
-from doot.enums import ActionResponseEnum as ActRE
+
 from doot.structs import DootKey, DootCodeReference
+from doot.actions.path_manip import PathManip_m
+from doot.acitons.base_action import DootBaseAction
 
 ##-- expansion keys
 MSG          : Final[DootKey] = DootKey.build("msg")

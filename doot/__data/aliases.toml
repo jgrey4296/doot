@@ -91,6 +91,7 @@ touch    =       "doot.actions.io:TouchFileAction"
 "state.add"                   =  "doot.actions.state:AddStateAction"
 "state.add.fn"                =  "doot.actions.state:AddStateFn"
 "state.add.path.parts"        =  "doot.actions.state:PathParts"
+"state.add.path.shadow"       =  "doot.actions.state:ShadowPath"
 
 
 [[doot.aliases.action]]

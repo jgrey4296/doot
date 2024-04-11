@@ -40,13 +40,13 @@ from doot.structs import TaskStub, TaskStubPart, DootActionSpec, DootCodeReferen
 from doot.actions.base_action import DootBaseAction
 from doot.errors import DootTaskLoadError, DootTaskError
 
-from doot.mixins.importer import Importer_M
+from doot.mixins.importer import Importer_m
 
 TASK_ALISES     = doot.aliases.task
 PRINT_LOCATIONS = doot.constants.printer.PRINT_LOCATIONS
 
 @doot.check_protocol
-class DootTask(Task_i, Importer_M):
+class DootTask(Task_i, Importer_m):
     """
       The simplest task, which can import action classes.
       eg:

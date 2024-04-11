@@ -25,4 +25,5 @@ printer = { colour = true }
 [[locations]]
 tasks        = ".tasks"
 temp         = ".temp"
+logs         = "{temp}/logs"
 src          = {protect="doot"}

@@ -58,15 +58,14 @@ FROM_KEY           : Final[DootKey] = DootKey.build("from")
 UPDATE             : Final[DootKey] = DootKey.build("update_")
 ##-- end expansion keys
 
-@doot.check_protocol
 class ReadJson(Action_p):
     """
         Read a .json file and add it to the task state as a tomlguard
     """
     _toml_kwargs = [FROM_KEY, UPDATE]
 
-    @DootKey.kwrap.paths("from")
-    @DootKey.kwrap.redirects("update_")
+    @DootKey.dec.paths("from")
+    @DootKey.dec.redirects("update_")
     def __call__(self, spec, state, _from, _update):
         if _from.suffix != ".json":
             printer.warning("Read Json expected a .json file, got: %s", _from)
@@ -78,18 +77,18 @@ class ReadJson(Action_p):
 class ParseJson(Action_p):
     """ parse a string as json """
 
-    @DootKey.kwrap.types("from")
-    @DootKey.kwrap.redirects("update_")
+    @DootKey.dec.types("from")
+    @DootKey.dec.redirects("update_")
     def __call__(self, spec, state, _from, _update):
         return { _update : json.loads(_from) }
 
 class ReadJsonLines(Action_p):
     """ read a .jsonl file, or some of it, and add it to the task state  """
 
-    @DootKey.kwrap.paths("from")
-    @DootKey.kwrap.types("offset", hint={"default":0})
-    @DootKey.kwrap.types("count", hint={"default":math.inf})
-    @DootKey.kwrap.redirects("update_")
+    @DootKey.dec.paths("from")
+    @DootKey.dec.types("offset", hint={"default":0})
+    @DootKey.dec.types("count", hint={"default":math.inf})
+    @DootKey.dec.redirects("update_")
     def __call__(self, spec, state, _from, offset, count, _update):
         if _from.suffix != ".jsonl":
             printer.warning("Read JsonNL expects a .jsonl file, got: %s", _from)
@@ -112,8 +111,8 @@ class WriteJsonLines(Action_p):
       optionally gzip the file
     """
 
-    @DootKey.kwrap.types("from")
-    @DootKey.kwrap.paths("to")
+    @DootKey.dec.types("from")
+    @DootKey.dec.paths("to")
     def __call__(self, spec, state, _from, _to):
         if _to.suffix != ".jsonl":
             printer.warning("Write Json Lines expected a .jsonl file, got: %s", _to)
@@ -125,8 +124,8 @@ class WriteJsonLines(Action_p):
 class WriteJson(Action_p):
     """ Write a dict as a .json file  """
 
-    @DootKey.kwrap.types("from")
-    @DootKey.kwrap.paths("to")
+    @DootKey.dec.types("from")
+    @DootKey.dec.paths("to")
     def __call__(self, spec, state, _from, _to):
         if _to.suffix != ".json":
             printer.warning("Write Json Expected a .json file, got: %s", _to)

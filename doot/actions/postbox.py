@@ -102,9 +102,9 @@ class PutPostAction(Action_p):
     eg: {do="post.put", args=["{key}", "{key}"], subbox="{key}"}
     """
 
-    @DootKey.kwrap.args
-    @DootKey.kwrap.kwargs
-    @DootKey.kwrap.taskname
+    @DootKey.dec.args
+    @DootKey.dec.kwargs
+    @DootKey.dec.taskname
     def __call__(self, spec, state, args, kwargs, _basename) -> dict|bool|None:
         target = _basename.root().subtask(_DootPostBox.default_subkey)
         for statekey in args:
@@ -133,7 +133,7 @@ class GetPostAction(Action_p):
       eg: data="bib::format.-"
     """
 
-    @DootKey.kwrap.kwargs
+    @DootKey.dec.kwargs
     def __call__(self, spec, state, kwargs) -> dict|bool|None:
         updates = {}
         for key,subkey in kwargs.items():
@@ -147,8 +147,8 @@ class ClearPostAction(Action_p):
     """
       Clear your postbox
     """
-    @DootKey.kwrap.expands("key", hint={"on_fail":Any})
-    @DootKey.kwrap.taskname
+    @DootKey.dec.expands("key", hint={"on_fail":Any})
+    @DootKey.dec.taskname
     def __call__(self, spec, state, key, _basename):
         from_task = _basename.root().subtask(key)
         _DootPostBox.clear_box(from_task)
@@ -160,8 +160,8 @@ class SummarizePostAction(Action_p):
       print a summary of this task tree's postbox
       The arguments of the action are held in self.spec
     """
-    @DootKey.kwrap.types("from", hint={"type_":str|None})
-    @DootKey.kwrap.types("full", hint={"type_":bool, "on_fail":False})
+    @DootKey.dec.types("from", hint={"type_":str|None})
+    @DootKey.dec.types("full", hint={"type_":bool, "on_fail":False})
     def __call__(self, spec, state, _from, full) -> dict|bool|None:
         from_task = _from or TASK_NAME.to_type(spec, state).root()
         data   = _DootPostBox.get(from_task)

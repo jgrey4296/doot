@@ -37,6 +37,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import importlib
+from importlib.metadata import EntryPoint
 from tomlguard import TomlGuard
 import doot
 import doot.errors
@@ -53,7 +54,7 @@ class DootCodeReference(DootStructuredName):
     _type     : None|type                        = field(default=None, kw_only=True)
 
     @classmethod
-    def build(cls, name:str|type):
+    def build(cls, name:str|type|EntryPoint):
         match name:
             case str():
                 return cls._from_str(name)
@@ -61,6 +62,12 @@ class DootCodeReference(DootStructuredName):
                 groupHead = name.__module__
                 codeHead  = name.__name__
                 ref = cls(groupHead, codeHead, _type=name)
+                return ref
+            case EntryPoint():
+                loaded = ctor.load()
+                groupHead = loaded.__module__
+                codeHead  = loaded.__name__
+                ref = cls(groupHead, codeHead, _type=loaded)
                 return ref
 
     @classmethod
