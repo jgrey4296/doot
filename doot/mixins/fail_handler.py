@@ -43,7 +43,7 @@ import doot
 import doot.errors
 from doot.structs import DootKey
 
-class RunnerFailHandler:
+class FailHandler_m:
     """
       A Mixin for changing how a task runner handles failure
     """

@@ -35,13 +35,13 @@ import doot
 import doot.errors
 from doot._abstract.loader import PluginLoader_p
 
-IMPORT_SEP = doot.constants.patterns.IMPORT_SEP
+IMPORT_SEP   = doot.constants.patterns.IMPORT_SEP
 ACTION_CTORS = {}
 
 if PluginLoader_p.loaded:
     ACTION_CTORS = {x.name : x for x in PluginLoader_p.loaded.action}
 
-class Importer_M:
+class Importer_m:
     """ Mixin for importing using doot aliases """
 
     def import_task(self, pathname:None|str):

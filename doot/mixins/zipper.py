@@ -40,7 +40,7 @@ zip_level        = doot.config.on_fail(4, int).zip.level()
 
 zip_choices = [("none", "No compression"), ("zip", "Default Zip Compression"), ("bzip2", "bzip2 Compression"), ("lzma", "lzma compression")]
 
-class Zipper_M:
+class Zipper_m:
     """
     Add methods for manipulating zip files.
     Can set a self.zip_root path, where added files with be relative to
@@ -64,10 +64,12 @@ class Zipper_M:
             case _:
                 return self._zip_default_compression, self._zip_default_compress_level
 
-    def zip_set_root(self, fpath):
+    def zip_set_root(self, fpath:pl.Path):
+        """ set the filesystem that acts as the root for paths to be added to the zip file """
         self.zip_root = fpath
 
-    def zip_create(self, fpath):
+    def zip_create(self, fpath:pl.Path):
+        """ Create a new zipfile. will overwrite an existing zip if 'zip_overwrite' is set """
         assert(fpath.suffix== ".zip")
         if self.zip_overwrite and fpath.exists():
             fpath.unlink()
@@ -82,9 +84,10 @@ class Zipper_M:
         with zipfile.ZipFile(fpath, mode='w', compression=compress_type, compresslevel=compress_level, allowZip64=True ) as targ:
             targ.writestr(".taskrecord", record_str)
 
-    def zip_add_paths(self, fpath, *args):
+    def zip_add_paths(self, fpath:pl.Path, *args:pl.Path):
         """
-        Add specific files to the zip
+        Add specific files to the zip.
+          Will Create the zip if it doesn't exist
         """
         logging.info("Adding to Zipfile: %s : %s", fpath, args)
         assert(fpath.suffix == ".zip")
@@ -114,7 +117,7 @@ class Zipper_M:
                 except FileNotFoundError as err:
                     logging.warning(f"Adding File to Zip {fpath} failed: {err}", file=sys.stderr)
 
-    def zip_globs(self, fpath, *globs:str, ignore_dots=False):
+    def zip_globs(self, fpath:pl.Path, *globs:str, ignore_dots=False):
         """
         Add files chosen by globs to the zip, relative to the cwd
         """
@@ -141,7 +144,8 @@ class Zipper_M:
                     except FileNotFoundError as err:
                         logging.warning(f"Adding File to Zip {fpath} failed: {err}", file=sys.stderr)
 
-    def zip_add_str(self, fpath, fname, text:str):
+    def zip_add_str(self, fpath:pl.Path, fname:str, text:str):
+        """ add a string of text to a zip file as a new file """
         assert(fpath.suffix == ".zip")
         self.zip_create(fpath)
 
@@ -154,7 +158,7 @@ class Zipper_M:
                     targ.writestr(fname, text)
 
 
-    def zip_get_contents(self, fpath) -> list[str]:
+    def zip_get_contents(self, fpath:pl.Path) -> list[str]:
         with zipfile.Zipfile(fpath):
             return zipfile.namelist()
 
@@ -174,7 +178,9 @@ class Zipper_M:
                 targ.extractall(fpath / zipf.stem, members=subset)
 
     def zip_unzip_concat(self, fpath:pl.Path, *zips:pl.Path, member=None, header=b"\n\n#------\n\n", footer=b"\n\n#------\n\n"):
-        """ Unzip and concatenate an fpath within multiple zip files, into a single file """
+        """ Unzip a member file in a multiple zip files,
+          append their text contents into a single file """
+        assert(member is not None)
         with open(fpath, "ab") as out:
             for zipf in zips:
                 try:
@@ -191,6 +197,7 @@ class Zipper_M:
                     logging.warning("Issue reading: %s : %s", zipf, err)
 
     def zip_test(self, *zips:pl.Path):
+        """ Test the validity of zip files """
         for zipf in zips:
             with zipfile.ZipFile(zipf) as targ:
                 result = targ.testzip()
@@ -198,7 +205,8 @@ class Zipper_M:
                     logging.warning("Issue with %s : %s", zipf, targ)
 
 
-    def zip_contains(self, fpath, *args) -> bool:
+    def zip_contains(self, fpath:pl.Path, *zips:pl.Path) -> bool:
+        """ test that multiple zip files contain a specified filename """
         with zipfile.ZipFile(fpath, "r") as zipf:
             contents = zipf.namelist()
 
