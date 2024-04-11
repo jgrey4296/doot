@@ -69,7 +69,7 @@ class AppendAction(PathManip_m):
         args_keys    = [DootKey.build(x, explicit=True) for x in args]
         exp_args     = [k.expand(spec, state, insist=True, on_fail=None) for k in args_keys]
 
-        if not doot.locs.check_writable(loc):
+        if self._is_write_protected(loc):
             raise doot.errors.DootLocationError("Tried to write a protected location", loc)
 
         with open(loc, 'a') as f:
@@ -93,7 +93,7 @@ class WriteAction(PathManip_m):
         data = _from
         loc  = to
 
-        if not doot.locs.check_writable(loc):
+        if self._is_write_protected(loc):
             raise doot.errors.DootLocationError("Tried to write a protected location", loc)
 
         match data:
@@ -165,8 +165,8 @@ class CopyAction(PathManip_m):
                 raise doot.errors.DootActionError("Unrecognized type for copy sources", _from)
 
 
-        if not all(doot.locs.check_writable(x) for x in expanded):
-            raise doot.errors.DootLocationError("Tried to write a protected location", expanded)
+        if any(self._is_write_protected(x) for x in expanded):
+            raise doot.errors.DootLocationError("Tried to write a protected location", x)
         if any(not x.exists() for x in expanded):
             raise doot.errors.DootActionError("Tried to copy a file that doesn't exist")
         if any((dest_loc/x.name).exists() for x in expanded):
@@ -188,7 +188,7 @@ class MoveAction(PathManip_m):
         source     = _from
         dest_loc   = to
 
-        if not doot.locs.check_writable(dest_loc):
+        if self._is_write_protected(dest_loc):
             raise doot.errors.DootLocationError("Tried to write a protected location", dest_loc)
         if not source.exists():
             raise doot.errors.DootActionError("Tried to move a file that doesn't exist", source)
@@ -208,8 +208,8 @@ class DeleteAction(PathManip_m):
         rec = recursive
         for arg in spec.args:
             loc = DootKey.build(arg, explicit=True).to_path(spec, state)
-            if not doot.locs.check_writable(loc):
-                raise doot.errors.DootLocationError("Tried to delete a protected location", loc)
+            if self._is_write_protected(loc):
+                raise doot.errors.DootLocationError("Tried to write a protected location", loc)
 
             printer.info("Deleting %s", loc)
             if loc.is_dir() and rec:
@@ -230,7 +230,7 @@ class BackupAction(PathManip_m):
         source_loc = _from
         dest_loc   = to
 
-        if not doot.locs.check_writable(dest_loc):
+        if self._is_write_protected(dest_loc):
             raise doot.errors.DootLocationError("Tried to write a protected location", dest_loc)
 
         if dest_loc.exists() and source_loc.stat().st_mtime_ns <= dest_loc.stat().st_mtime_ns:

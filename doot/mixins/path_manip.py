@@ -112,11 +112,13 @@ class PathManip_m:
 
         return None
 
-
-
     def _is_write_protected(self, fpath) -> bool:
-        return LocationMeta.protected
+        for key in filter(lambda x: doot.locs.metacheck(x, LocationMeta.protected), doot.locs):
+            base = getattr(self, key)
+            if path.is_relative_to(base):
+                return True
 
+        return False
 
     def _normalize(self, path:pl.Path, root=None, symlinks:bool=False) -> pl.Path:
         """

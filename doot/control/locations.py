@@ -155,7 +155,6 @@ class DootLocations(PathManip_m):
 
         return False
 
-
     @property
     def root(self):
         """
@@ -205,12 +204,3 @@ class DootLocations(PathManip_m):
 
         if bool(missing):
             raise DootDirAbsent("Ensured Locations are missing for %s : %s", task, missing)
-
-    def check_writable(self, path:pl.Path) -> bool:
-        """ test a path to see if it is relative to a protected location """
-        for key in filter(lambda x: x.check(LocationMeta.protected)):
-            base = getattr(self, key)
-            if path.is_relative_to(base):
-                return False
-
-        return True
