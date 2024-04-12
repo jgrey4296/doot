@@ -38,7 +38,6 @@ from collections import defaultdict
 
 clean_locs = doot.config.on_fail([], list).commands.clean.locs()
 
-
 class CleanCmd(Command_i):
     """
       Runs either a general clean command, or a specific task clean command
@@ -74,7 +73,6 @@ class CleanCmd(Command_i):
         task_clean_locs = task.extra.on_fail([], list).clean_locs()
         existing_clean_targets = list(filter(lambda x: x.exists(), [doot.locs[x] for x in task_clean_locs]))
         self._gen_clean(existing_clean_targets)
-
 
     def _gen_clean(self, existing_clean_targets):
         if not bool(existing_clean_targets):

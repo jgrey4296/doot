@@ -69,14 +69,12 @@ class HelpCmd(Command_i):
                 printer.info(self.help)
                 return
 
-
         logging.debug("Matched %s commands, %s tasks", len(cmd_targets), len(task_targets))
         if len(cmd_targets) == 1:
             cmd_class = cmd_targets[0].load()()
             printer.info(cmd_class.help)
             if bool(doot.args.cmd[NON_DEFAULT_KEY]):
                 self._print_current_param_assignments(cmd_class.param_specs, doot.args.cmd.args)
-
 
         elif bool(task_targets):
             for i, spec in enumerate(task_targets):
@@ -91,7 +89,6 @@ class HelpCmd(Command_i):
 
         printer.info("\n------------------------------")
         printer.info("Call a command by doing 'doot [cmd] [args]'. Eg: doot list --help")
-
 
     def print_task_spec(self, count, spec:DootTaskSpec):
         task_name = spec.name
@@ -114,7 +111,6 @@ class HelpCmd(Command_i):
 
         if ctor is not None:
             lines.append(ctor.class_help())
-
 
         match spec.doc:
             case None:
@@ -139,7 +135,6 @@ class HelpCmd(Command_i):
             printer.info("Task Actions: ")
             for action in spec.actions:
                 printer.info("-- %-20s : Args=%-20s Kwargs=%s", action.do, action.args, dict(action.kwargs) )
-
 
         cli_has_params = str(task_name) in doot.args.tasks
         cli_has_non_default = bool(doot.args.tasks[str(task_name)][NON_DEFAULT_KEY])

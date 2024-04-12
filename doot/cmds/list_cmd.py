@@ -40,7 +40,6 @@ import doot.errors
 from doot._abstract import Command_i
 from doot.structs import DootParamSpec
 
-
 INDENT : Final[str] = " "*8
 
 @doot.check_protocol
@@ -167,14 +166,12 @@ class ListCmd(Command_i):
             for task in tasks:
                 printer.info(fmt_str, *task)
 
-
     def _print_just_groups(self, tasks):
         printer.info("Defined Task Groups:", extra={"colour":"cyan"})
 
         group_set = set(spec.name.group for spec in tasks.values())
         for group in group_set:
             printer.info("- %s", group)
-
 
     def _print_locations(self):
         printer.info("Defined Locations: ")
