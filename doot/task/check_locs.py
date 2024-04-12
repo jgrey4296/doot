@@ -32,7 +32,9 @@ print_levels = doot.config.on_fail(TomlGuard(), TomlGuard).settings.general.loca
 
 @doot.check_protocol
 class CheckLocsTask(DootTask):
-    """ A Task for checking a single location exists """
+    """ A Task for checking a single location exists
+
+    """
     task_name = "_locations::check"
 
     def __init__(self, spec=None):

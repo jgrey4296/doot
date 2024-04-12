@@ -77,7 +77,7 @@ class DootTaskArtifact:
                 key = DootKey.build(base.base)
                 return DootTaskArtifact(base, key)
             case pl.Path():
-                base = TomlLocation(ARTIFACT, data)
+                base = TomlLocation.build(ARTIFACT, data)
                 if "*" in str(base.base):
                     base.meta |= LocationMeta.indefinite
                 key = DootKey.build(base.base)
