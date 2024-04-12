@@ -115,8 +115,8 @@ class PathManip_m:
 
     def _is_write_protected(self, fpath) -> bool:
         for key in filter(lambda x: doot.locs.metacheck(x, LocationMeta.protected), doot.locs):
-            base = getattr(self, key)
-            if path.is_relative_to(base):
+            base = getattr(doot.locs, key)
+            if fpath.is_relative_to(base):
                 return True
 
         return False
