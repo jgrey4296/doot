@@ -31,7 +31,6 @@ import doot
 doot._test_setup()
 from doot._structs.artifact import DootTaskArtifact
 
-@pytest.mark.skip("needs refactor")
 class TestTaskArtifact:
 
     @pytest.fixture(scope="function")
@@ -43,125 +42,125 @@ class TestTaskArtifact:
         pass
 
     def test_initial(self):
-        basic = DootTaskArtifact("test", pl.Path("a/b/c"))
+        basic = DootTaskArtifact.build(pl.Path("a/b/c"))
         assert(basic is not None)
 
     def test_self_eq(self):
-        basic = DootTaskArtifact(pl.Path("a/b/c"))
+        basic = DootTaskArtifact.build(pl.Path("a/b/c"))
         assert(basic is basic)
         assert(basic == basic)
 
 
     def test_eq(self):
-        basic = DootTaskArtifact(pl.Path("a/b/c"))
-        basic2 = DootTaskArtifact(pl.Path("a/b/c"))
+        basic = DootTaskArtifact.build(pl.Path("a/b/c"))
+        basic2 = DootTaskArtifact.build(pl.Path("a/b/c"))
         assert(basic is not basic2)
         assert(basic == basic2)
 
 
     def test_neq(self):
-        basic = DootTaskArtifact(pl.Path("a/b/c"))
-        basic2 = DootTaskArtifact(pl.Path("a/b/d"))
+        basic = DootTaskArtifact.build(pl.Path("a/b/c"))
+        basic2 = DootTaskArtifact.build(pl.Path("a/b/d"))
         assert(basic is not basic2)
         assert(basic != basic2)
 
 
     def test_definite(self):
-        basic = DootTaskArtifact(pl.Path("a/b/c"))
+        basic = DootTaskArtifact.build(pl.Path("a/b/c"))
         assert(basic.is_definite)
-        assert(basic._dstem)
-        assert(basic._dsuffix)
+        assert(basic._definite_stem)
+        assert(basic._definite_suffix)
 
 
     def test_indefinite_stem(self):
-        basic = DootTaskArtifact(pl.Path("a/b/*.py"))
+        basic = DootTaskArtifact.build(pl.Path("a/b/*.py"))
         assert(not basic.is_definite)
-        assert(not basic._dstem)
-        assert(basic._dsuffix)
+        assert(not basic._definite_stem)
+        assert(basic._definite_suffix)
 
 
     def test_indefinite_suffix(self):
-        basic = DootTaskArtifact(pl.Path("a/b/c.*"))
+        basic = DootTaskArtifact.build(pl.Path("a/b/c.*"))
         assert(not basic.is_definite)
-        assert(basic._dstem)
-        assert(not basic._dsuffix)
+        assert(basic._definite_stem)
+        assert(not basic._definite_suffix)
 
 
     def test_indefinite_path(self):
-        basic = DootTaskArtifact(pl.Path("a/*/c.py"))
+        basic = DootTaskArtifact.build(pl.Path("a/*/c.py"))
         assert(not basic.is_definite)
-        assert(basic._dstem)
-        assert(basic._dsuffix)
+        assert(basic._definite_stem)
+        assert(basic._definite_suffix)
 
 
     def test_recursive_indefinite(self):
-        basic = DootTaskArtifact(pl.Path("a/**/c.py"))
+        basic = DootTaskArtifact.build(pl.Path("a/**/c.py"))
         assert(not basic.is_definite)
-        assert(basic._dstem)
-        assert(basic._dsuffix)
+        assert(basic._definite_stem)
+        assert(basic._definite_suffix)
 
 
     def test_stem_contains(self):
-        definite = DootTaskArtifact(pl.Path("a/b/c.py"))
-        indef    = DootTaskArtifact(pl.Path("a/b/*.py"))
+        definite = DootTaskArtifact.build(pl.Path("a/b/c.py"))
+        indef    = DootTaskArtifact.build(pl.Path("a/b/*.py"))
         assert(definite in indef)
 
 
     def test_not_contains_reverse(self):
-        definite = DootTaskArtifact(pl.Path("a/b/c.py"))
-        indef    = DootTaskArtifact(pl.Path("a/b/*.py"))
+        definite = DootTaskArtifact.build(pl.Path("a/b/c.py"))
+        indef    = DootTaskArtifact.build(pl.Path("a/b/*.py"))
         assert(indef not in definite)
 
 
     def test_suffix_contains(self):
-        definite = DootTaskArtifact(pl.Path("a/b/c.py"))
-        indef    = DootTaskArtifact(pl.Path("a/b/c.*"))
+        definite = DootTaskArtifact.build(pl.Path("a/b/c.py"))
+        indef    = DootTaskArtifact.build(pl.Path("a/b/c.*"))
         assert(definite in indef)
 
 
     def test_suffix_contain_fail(self):
-        definite = DootTaskArtifact(pl.Path("a/b/d.py"))
-        indef    = DootTaskArtifact(pl.Path("a/b/c.*"))
+        definite = DootTaskArtifact.build(pl.Path("a/b/d.py"))
+        indef    = DootTaskArtifact.build(pl.Path("a/b/c.*"))
         assert(definite not in indef)
 
 
     def test_path_contains(self):
-        definite = DootTaskArtifact(pl.Path("a/b/c.py"))
-        indef    = DootTaskArtifact(pl.Path("a/*/c.py"))
+        definite = DootTaskArtifact.build(pl.Path("a/b/c.py"))
+        indef    = DootTaskArtifact.build(pl.Path("a/*/c.py"))
         assert(definite in indef)
 
 
     def test_path_contain_fail(self):
-        definite = DootTaskArtifact(pl.Path("b/b/c.py"))
-        indef    = DootTaskArtifact(pl.Path("a/*/c.py"))
+        definite = DootTaskArtifact.build(pl.Path("b/b/c.py"))
+        indef    = DootTaskArtifact.build(pl.Path("a/*/c.py"))
         assert(definite not in indef)
 
 
     def test_path_recursive_contains(self):
-        definite = DootTaskArtifact(pl.Path("a/b/c.py"))
-        indef    = DootTaskArtifact(pl.Path("a/**/c.py"))
+        definite = DootTaskArtifact.build(pl.Path("a/b/c.py"))
+        indef    = DootTaskArtifact.build(pl.Path("a/**/c.py"))
         assert(definite in indef)
 
 
     def test_path_recursive_contain_fail(self):
-        definite = DootTaskArtifact(pl.Path("b/b/c.py"))
-        indef    = DootTaskArtifact(pl.Path("a/**/c.py"))
+        definite = DootTaskArtifact.build(pl.Path("b/b/c.py"))
+        indef    = DootTaskArtifact.build(pl.Path("a/**/c.py"))
         assert(definite not in indef)
 
 
     def test_multi_depth_recursive_contains(self):
-        definite = DootTaskArtifact(pl.Path("a/b/d/e/f/c.py"))
-        indef    = DootTaskArtifact(pl.Path("a/**/c.py"))
+        definite = DootTaskArtifact.build(pl.Path("a/b/d/e/f/c.py"))
+        indef    = DootTaskArtifact.build(pl.Path("a/**/c.py"))
         assert(definite in indef)
 
 
     def test_root_recursive_contains(self):
-        definite = DootTaskArtifact(pl.Path("a/b/d/e/f/c.py"))
-        indef    = DootTaskArtifact(pl.Path("**/c.py"))
+        definite = DootTaskArtifact.build(pl.Path("a/b/d/e/f/c.py"))
+        indef    = DootTaskArtifact.build(pl.Path("**/c.py"))
         assert(definite in indef)
 
 
     def test_multi_indef_component_contains(self):
-        definite = DootTaskArtifact(pl.Path("a/b/d/e/f/c.py"))
-        indef    = DootTaskArtifact(pl.Path("**/*.*"))
+        definite = DootTaskArtifact.build(pl.Path("a/b/d/e/f/c.py"))
+        indef    = DootTaskArtifact.build(pl.Path("**/*.*"))
         assert(definite in indef)

@@ -26,36 +26,6 @@ logging = logmod.root
 class TestCheckLocsTask:
 
     def test_initial(self):
+        doot._test_setup()
         obj = CheckLocsTask(DootTaskSpec.build({"name": "basic"}))
         assert(isinstance(obj, doot._abstract.Task_i))
-
-    def test_expand_actions(self):
-        pytest.skip("todo")
-        obj = CheckLocsTask()
-        actions = list(obj.actions)
-        assert(len(actions) > 1)
-        assert(callable(actions[0]))
-
-    def test_expand_multi_actions(self):
-        pytest.skip("todo")
-        obj = CheckLocsTask()
-        actions = list(obj.actions)
-        assert(len(actions) == 2)
-        assert(callable(actions[0]))
-        assert(callable(actions[1]))
-
-    def test_run_action(self):
-        pytest.skip("todo")
-        obj = CheckLocsTask()
-        actions = list(obj.actions)
-        assert(len(actions) == 1)
-        result = actions[0]({})
-        assert(result is True)
-
-    def test_run_action_nonexistent_target(self):
-        pytest.skip("todo")
-        obj = CheckLocsTask()
-        actions = list(obj.actions)
-        assert(len(actions) == 1)
-        result = actions[0]({})
-        assert(result is False)

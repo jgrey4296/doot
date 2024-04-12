@@ -25,7 +25,6 @@ from doot.control.overlord import DootOverlord
 
 BASIC_JOB_NAME = "job"
 
-@pytest.mark.skip
 class TestOverlord:
 
     def test_initial(self, mocker):
