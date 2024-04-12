@@ -6,8 +6,6 @@ help      = "doot.cmds.help_cmd:HelpCmd"
 run       = "doot.cmds.run_cmd:RunCmd"
 list      = "doot.cmds.list_cmd:ListCmd"
 clean     = "doot.cmds.clean_cmd:CleanCmd"
-complete  = "doot.cmds.complete_cmd:CompleteCmd"
-daemon    = "doot.cmds.daemon_cmd:DaemonCmd"
 stub      = "doot.cmds.stub_cmd:StubCmd"
 step      = "doot.cmds.step_cmd:StepCmd"
 plugins   = "doot.cmds.plugins_cmd:PluginsCmd"
@@ -37,7 +35,7 @@ step  = "doot.control.step_runner:DootStepRunner"
 # Map {alias} -> CodeRef String
 basic =   "doot.parsers.flexible:DootFlexibleParser"
 
-[[doot.aliases.action]]
+[[doot.aliases.action]] # basic actions
 # Map {alias} -> CodeRef String
 basic    =       "doot.actions.base_action:DootBaseAction"
 shell    =       "doot.actions.shell:DootShellAction"
@@ -48,7 +46,7 @@ copy     =       "doot.actions.io:CopyAction"
 move     =       "doot.actions.io:MoveAction"
 touch    =       "doot.actions.io:TouchFileAction"
 
-[[doot.aliases.action]]
+[[doot.aliases.action]] # ! actions
 # Map {alias} -> CodeRef String
 "link!"   =  "doot.actions.io:LinkAction"
 "backup!" =  "doot.actions.io:BackupAction"
@@ -59,7 +57,7 @@ touch    =       "doot.actions.io:TouchFileAction"
 "break!"  =  "doot.actions.util:action_debugger"
 "type!"   =  "doot.actions.util:typecheck"
 
-[[doot.aliases.action]]
+[[doot.aliases.action]] # control flow
 # Map {alias} -> CodeRef String
 "exists?"       = "doot.actions.control_flow:SkipIfFileExists"
 "ext?"          = "doot.actions.control_flow:SkipUnlessSuffix"
@@ -68,7 +66,7 @@ touch    =       "doot.actions.io:TouchFileAction"
 "dir?"          = "doot.actions.io:EnsureDirectory"
 "wait"          = "doot.actions.control_flow:WaitAction"
 
-[[doot.aliases.action]]
+[[doot.aliases.action]] # compressions
 # Map {alias} -> CodeRef String
 "json.read"     =  "doot.actions.json:ReadJson"
 "json.write"    =  "doot.actions.json:WriteJson"
@@ -84,42 +82,42 @@ touch    =       "doot.actions.io:TouchFileAction"
 "zip.get"       =  "doot.actions.compression:ZipGetAction"
 "zip.list"      =  "doot.actions.compression:ZipListAction"
 
-[[doot.aliases.action]]
+[[doot.aliases.action]] # postbox and state
 # Map {alias} -> CodeRef String
 "post.put"                    =  "doot.actions.postbox:PutPostAction"
 "post.get"                    =  "doot.actions.postbox:GetPostAction"
 "state.add"                   =  "doot.actions.state:AddStateAction"
 "state.add.fn"                =  "doot.actions.state:AddStateFn"
-"state.add.path.parts"        =  "doot.actions.state:PathParts"
-"state.add.path.shadow"       =  "doot.actions.state:ShadowPath"
+"path.elements"               =  "doot.actions.state:PathParts"
+"path.shadow"                 =  "doot.actions.state:ShadowPath"
 
 
-[[doot.aliases.action]]
+[[doot.aliases.action]] # misc
 # Map {alias} -> CodeRef String
 "say.time" = "doot.actions.speak:SpeakTimeAction"
 "log"      = "doot.actions.control_flow:LogAction"
 
 
-[[doot.aliases.action]]
+[[doot.aliases.action]] # job actions
 # Map {alias} -> CodeRef String
-"job.queue"           = "doot.actions.job_actions:JobQueueAction"
-"job.queue.head"      = "doot.actions.job_actions:JobQueueHead"
+"job.queue"                    = "doot.actions.job_actions:JobQueueAction"
+"job.queue.head"               = "doot.actions.job_actions:JobQueueHead"
 
-"job.expand"          = "doot.actions.job_actions:JobExpandAction"
-"job.gen"             = "doot.actions.job_actions:JobGenerate"
+"job.expand"                   = "doot.actions.job_actions:JobExpandAction"
+"job.gen"                      = "doot.actions.job_actions:JobGenerate"
 
-"job.walk"            = "doot.actions.job_actions:JobWalkAction"
-"job.limit"           = "doot.actions.job_actions:JobLimitAction"
+"job.walk"                     = "doot.actions.job_actions:JobWalkAction"
+"job.limit"                    = "doot.actions.job_actions:JobLimitAction"
 
-"job.match"           = "doot.actions.job_actions:JobMatchAction"
-"job.sub.name"        = "doot.actions.job_actions:JobSubNamer"
-"job.actions.prepend" = "doot.actions.job_actions:JobPrependActions"
-"job.actions.append"  = "doot.actions.job_actions:JobAppendActions"
-"job.injector"        = "doot.actions.job_actions:JobInjector"
-"job.inject.path"     = "doot.actions.job_actions:JobInjectPathParts"
-"job.inject.shadow"   = "doot.actions.job_actions:JobInjectShadowAction"
+"job.match"                    = "doot.actions.job_actions:JobMatchAction"
+"job.sub.name"                 = "doot.actions.job_actions:JobSubNamer"
+"job.actions.prepend"          = "doot.actions.job_actions:JobPrependActions"
+"job.actions.append"           = "doot.actions.job_actions:JobAppendActions"
+"job.injector"                 = "doot.actions.job_actions:JobInjector"
+"job.inject.path.elements"     = "doot.actions.job_actions:JobInjectPathParts"
+"job.inject.shadow"            = "doot.actions.job_actions:JobInjectShadowAction"
 
-[[doot.aliases.task]]
+[[doot.aliases.task]] # task types
 # Map {alias} -> CodeRef String
 "job"   =      "doot.task.base_job:DootJob"
 "task"  =      "doot.task.base_task:DootTask"

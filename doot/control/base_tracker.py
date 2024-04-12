@@ -294,6 +294,7 @@ class BaseTracker(_InternalTrackerBase):
 
     @property
     def late_count(self):
+        """ Get the count of tasks which are to be built after all definnitions are loaded """
         return len(self._build_late)
 
     def queue_task(self, *tasks:str|DootTaskName|DootTaskArtifact|tuple, silent=False) -> None:
@@ -333,12 +334,14 @@ class BaseTracker(_InternalTrackerBase):
                 self.task_queue.add(str(task), self.task_graph.nodes[str(task)].get(PRIORITY, self._declare_priority))
 
     def deque_task(self) -> None:
+        """ remove the top task from the queue """
         focus = self.task_queue.pop()
         self.task_graph.nodes[focus][PRIORITY] -= 1
         logging.debug("Task Priority Decrement: %s = %s", focus, self.task_graph.nodes[focus][PRIORITY])
         self.active_set.remove(focus)
 
     def clear_queue(self) -> None:
+        """ Remove everything from the task queue """
         # TODO queue the task's failure/cleanup task
         self.active_set =  set()
         self.task_queue = boltons.queueutils.HeapPriorityQueue()
@@ -379,9 +382,9 @@ class BaseTracker(_InternalTrackerBase):
         return {x: y[STATE] for x,y in nodes.items()}
 
     def write(self, target:pl.Path) -> None:
-        """ Write the dependency graph to a file """
+        """ TODO Write the dependency graph to a file """
         raise NotImplementedError()
 
     def read(self, target:pl.Path) -> None:
-        """ Read the dependency graph from a file """
+        """ TODO Read the dependency graph from a file """
         raise NotImplementedError()

@@ -42,7 +42,14 @@ class EnumBuilder_m:
 
     @classmethod
     def build(cls, val:str) -> Self:
-        return cls[val]
+        try:
+            match val:
+                case str():
+                    return cls[val]
+                case cls():
+                    return val
+        except KeyError:
+            logging.exception("Can't Create a flag of (%s):%s", cls, val)
 
 class FlagsBuilder_m:
 
@@ -59,8 +66,11 @@ class FlagsBuilder_m:
         base = cls.default
         for x in vals:
             try:
-
-                base |= cls[x]
+                match x:
+                    case str():
+                        base |= cls[x]
+                    case cls():
+                        base |= x
             except KeyError:
                 logging.exception("Can't create a flag of (%s):%s", cls, x)
 

@@ -28,8 +28,8 @@ run = { tracker = "default", runner = "default", reporter= "default", report-lin
 
 [[locations]]
 src     = "src"
-codegen = "{src}/_codegen"
-temp    = ".temp"
+codegen = {loc="{src}/_codegen", cleanable=true}
+temp    = {loc=".temp", cleanable=true}
 logs    = "{temp}/logs"
 build   = "{temp}/build"
 docs    = "docs"

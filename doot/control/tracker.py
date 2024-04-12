@@ -90,8 +90,8 @@ class DootTracker(BaseTracker, TaskTracker_i):
                 self.task_graph.nodes[task][STATE] = state
             case TaskBase_i(), self.state_e() if task.name in self.task_graph:
                 self.task_graph.nodes[task.name][STATE] = state
-            case DootTaskArtifact(), self.state_e() if task in self.task_graph:
-                self.task_graph.nodes[task][STATE] = state
+            case DootTaskArtifact(), self.state_e() if str(task) in self.task_graph:
+                self.task_graph.nodes[str(task)][STATE] = state
             case _, _:
                 raise doot.errors.DootTaskTrackingError("Bad task update state args", task, state)
 

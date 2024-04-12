@@ -50,6 +50,7 @@ from doot.parsers.flexible import DootFlexibleParser
 plugin_loader_key  : Final = doot.constants.entrypoints.DEFAULT_PLUGIN_LOADER_KEY
 command_loader_key : Final = doot.constants.entrypoints.DEFAULT_COMMAND_LOADER_KEY
 task_loader_key    : Final = doot.constants.entrypoints.DEFAULT_TASK_LOADER_KEY
+
 DEFAULT_CLI_CMD    : Final = doot.constants.misc.DEFAULT_CLI_CMD
 
 preferred_cmd_loader  = doot.config.on_fail("default").settings.general.loaders.command()
@@ -198,6 +199,19 @@ class DootOverlord(Overlord_p):
 
         return False
 
+    def _get_cmd(self, cmd=None):
+        if self.current_cmd is not None:
+            return self.current_cmd
+
+        target = cmd or doot.args.on_fail(DEFAULT_CLI_CMD).cmd.name()
+
+        self.current_cmd = self.cmds.get(target, None)
+        if self.current_cmd is None:
+            self._errored = DootParseError("Specified Command Couldn't be Found: %s", target)
+            raise self._errored
+
+        return self.current_cmd
+
     def __call__(self, cmd=None):
 
         if not doot.args.on_fail((None,)).cmd.args.suppress_header():
@@ -222,21 +236,6 @@ class DootOverlord(Overlord_p):
             self._errored = err
             raise err from err
 
-    def _get_cmd(self, cmd=None):
-        if self.current_cmd is not None:
-            return self.current_cmd
-
-        target = cmd or doot.args.on_fail(DEFAULT_CLI_CMD).cmd.name()
-
-        self.current_cmd = self.cmds.get(target, None)
-        if self.current_cmd is None:
-            self._errored = DootParseError("Specified Command Couldn't be Found: %s", target)
-            raise self._errored
-
-        return self.current_cmd
-
-
-
     def shutdown(self):
         """ Doot has finished normally, so report on what was done """
         if self.current_cmd is not None and hasattr(self.current_cmd, "shutdown"):
@@ -247,6 +246,7 @@ class DootOverlord(Overlord_p):
                 pass
             case None:
                 logging.info("Shutting Doot Down Normally, reporting defaulted tomlguard values")
+
                 defaulted_toml = tomlguard.TomlGuard.report_defaulted()
 
                 with open(defaulted_file, 'w') as f:

@@ -91,6 +91,9 @@ class DootTaskArtifact:
     def __str__(self):
         return str(self.base.base)
 
+    def __hash__(self):
+        return hash(str(self))
+
     def __eq__(self, other:DootTaskArtifact|Any):
         match other:
             case DootTaskArtifact():

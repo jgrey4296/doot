@@ -51,7 +51,7 @@ SLEEP_LENGTH = doot.config.on_fail(0.2, int|float).settings.tasks.sleep.task()
 
 @doot.check_protocol
 class DootStepRunner(DootRunner):
-    """ A runner with step control """
+    """ extends the default runner with step control """
     _conf_prompt  = "::- Command? (? for help): "
     _cmd_prefix   = "_do_"
     _aliases      = { ""  : "continue",

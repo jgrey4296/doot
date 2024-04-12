@@ -47,6 +47,7 @@ class TaskFlags(FlagsBuilder_m, enum.Flag):
       Flags describing properties of a task,
       stored in the Task_i instance itself.
     """
+
     default      = enum.auto()
     TASK         = enum.auto()
     JOB          = enum.auto()
@@ -128,21 +129,24 @@ class LoopControl(enum.Enum):
     noBut   = enum.auto()
     no      = enum.auto()
 
-
 class LocationMeta(FlagsBuilder_m, enum.Flag):
     """ Available metadata attachable to a location """
-    default   = enum.auto()
-    file      = enum.auto()
-    protected = enum.auto()
+
+    default    = enum.auto()
+    file       = enum.auto()
+    protected  = enum.auto()
     indefinite = enum.auto()
+    cleanable  = enum.auto()
 
 class TaskActivationBehaviour(EnumBuilder_m, enum.Enum):
     """ available ways a task can be activated for running
       auto     : activates automatically when added to the task network
       reactive : activates if an adjacent node completes
+
       default  : activates only if uses queues the task, or its a dependency
 
     """
+
     default  = enum.auto()
     auto     = enum.auto()
     reactive = enum.auto()

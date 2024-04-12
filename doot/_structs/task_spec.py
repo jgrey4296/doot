@@ -74,11 +74,8 @@ def _separate_into_core_and_extra(data) -> tuple[dict, dict]:
                 processed = _prepare_deps(val)
                 core_data["depends_on"] = processed
             case "queue_behaviour":
-                try:
-                    as_enum = TaskActivationBehaviour[val]
-                    core_data["queue_behaviour"] = as_enum
-                except KeyError:
-                    logging.exception("Unrecognized queue_behaviour value: %s", val)
+                as_enum = TaskActivationBehaviour.build(val)
+                core_data["queue_behaviour"] = as_enum
             case x if x in core_keys:
                 core_data[x] = val
             case x if x not in ["name", "group"]:
