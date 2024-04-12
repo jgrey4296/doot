@@ -100,31 +100,34 @@ class BaseRunner(TaskRunner_i):
             self.tracker.update_state(task, self.tracker.state_e.SUCCESS)
         return task
 
-    def _handle_failure(self, task:None|TaskBase_i, failure):
+    def _handle_failure(self, task:None|TaskBase_i, failure:Error) -> None:
         match failure:
             case doot.errors.DootTaskInterrupt():
                 breakpoint()
-                return failure
-            case doot.errors.DootTaskTrackingError() as err:
-                return err.task
+                pass
             case doot.errors.DootTaskFailed() as err:
                 printer.warning("Task Failed: %s : %s", err.task.name, err)
                 self.tracker.update_state(err.task, self.tracker.state_e.FAILED)
-                return err.task
             case doot.errors.DootTaskError() as err:
                 name = err.task.name if err.task is not None else "unknown"
                 printer.warning("Task Error : %s : %s", name, err)
                 self.tracker.update_state(err.task, self.tracker.state_e.FAILED)
-                return err.task
             case doot.errors.DootError() as err:
                 printer.warning("Doot Error : %s", err)
-                return failure
+                self.tracker.update_state(task, self.tracker.state_e.FAILED)
+            case doot.errors.DootTaskTrackingError() as err:
+                printer.warning("Task Tracking Error Occurred: %s", err)
+                self.tracker.clear_queue()
             case _:
-                return failure
+                printer.exception("Unknown failure occurred: %s", failure)
+                self.tracker.clear_queue()
 
     def _sleep(self, task):
-        if task is None:
-            return
+        match task:
+            case None:
+                return
+            case DootTaskArtifact():
+                return
 
         with logctx(task.spec.print_levels.on_fail(sleep_level).sleep()) as p:
             sleep_len = task.spec.extra.on_fail(default_SLEEP_LENGTH, int|float).sleep()

@@ -103,8 +103,8 @@ class DootRunner(BaseRunner, TaskRunner_i):
                         self._execute_task(task)
             except doot.errors.DootError as err:
                 self._handle_failure(task, err)
-            except Error as err:
-                printer.exception("Unknown, non-Doot failure occurred: %s", failure)
+            except Exception as err:
+                printer.exception("Unknown, non-Doot failure occurred: %s", err)
                 self.tracker.clear_queue()
                 raise err
             else:
