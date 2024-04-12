@@ -73,7 +73,7 @@ class PathManip_m:
         results = []
 
         for root in roots:
-            root_key = DootKey.build(root)
+            root_key = DootKey.build(root, explicit=True)
             results.append(root_key.to_path(spec, state))
 
         return results

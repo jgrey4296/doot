@@ -34,9 +34,8 @@ import more_itertools as mitz
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-##-- end logging
-
 printer = logmod.getLogger("doot._printer")
+##-- end logging
 
 from collections import defaultdict
 import doot
@@ -56,6 +55,7 @@ action_level         : Final[str]            = doot.constants.printer.DEFAULT_AC
 sleep_level          : Final[str]            = doot.constants.printer.DEFAULT_SLEEP_LEVEL
 execute_level        : Final[str]            = doot.constants.printer.DEFAULT_EXECUTE_LEVEL
 max_steps            : Final[str]            = doot.config.on_fail(100_000).settings.general.max_steps()
+fail_prefix          : Final[str]            = doot.constants.printer.FAILURE_PREFIX
 
 default_SLEEP_LENGTH : Fina[int|float]       = doot.config.on_fail(0.2, int|float).settings.tasks.sleep.task()
 logctx               : Final[DootLogContext] = DootLogContext(printer)
@@ -106,20 +106,20 @@ class BaseRunner(TaskRunner_i):
                 breakpoint()
                 pass
             case doot.errors.DootTaskFailed() as err:
-                printer.warning("Task Failed: %s : %s", err.task.name, err)
-                self.tracker.update_state(err.task, self.tracker.state_e.FAILED)
+                printer.warning("%s %s", fail_prefix, err)
+                self.tracker.update_state(err.task.name, self.tracker.state_e.FAILED)
             case doot.errors.DootTaskError() as err:
-                name = err.task.name if err.task is not None else "unknown"
-                printer.warning("Task Error : %s : %s", name, err)
-                self.tracker.update_state(err.task, self.tracker.state_e.FAILED)
+                name = err.task.name
+                printer.warning("%s %s", fail_prefix, err)
+                self.tracker.update_state(err.task.name, self.tracker.state_e.FAILED)
             case doot.errors.DootError() as err:
-                printer.warning("Doot Error : %s", err)
+                printer.warning("%s %s", fail_prefix, err)
                 self.tracker.update_state(task, self.tracker.state_e.FAILED)
             case doot.errors.DootTaskTrackingError() as err:
-                printer.warning("Task Tracking Error Occurred: %s", err)
+                printer.warning("%s %s", fail_prefix, err)
                 self.tracker.clear_queue()
             case _:
-                printer.exception("Unknown failure occurred: %s", failure)
+                printer.exception("%s Unknown failure occurred: %s", fail_prefix, failure)
                 self.tracker.clear_queue()
 
     def _sleep(self, task):

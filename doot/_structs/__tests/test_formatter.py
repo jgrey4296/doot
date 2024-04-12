@@ -93,3 +93,9 @@ class TestDootFormatter:
         state = {"b": "aweg {c}", "c": [1,2,3]}
         with pytest.raises(TypeError):
             fmt.format("{a}", _spec=spec, _state=state, _rec=True)
+
+
+    def test_empty_format(self):
+        fmt = DootFormatter()
+        result = fmt.format(".")
+        assert(result == ".")

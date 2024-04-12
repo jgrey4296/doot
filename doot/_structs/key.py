@@ -34,6 +34,7 @@ import more_itertools as mitz
 
 ##-- logging
 logging = logmod.getLogger(__name__)
+printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
 import abc
@@ -164,18 +165,26 @@ class KWrapper:
             return f
 
         match getattr(f, ORIG_ARGS)[0]:
-            case "self":
+            case "self": # The method form handler
 
                 @ftz.wraps(f)
                 def action_expands(self, spec, state, *call_args, **kwargs):
-                    expansions = [x(spec, state) for x in getattr(f, KEY_ANNOTS)]
+                    try:
+                        expansions = [x(spec, state) for x in getattr(f, KEY_ANNOTS)]
+                    except KeyError as err:
+                        printer.warning("Action State Expansion Failure: %s", err)
+                        return False
                     all_args = (*call_args, *expansions)
                     return f(self, spec, state, *all_args, **kwargs)
-            case _:
+            case _: # The function form handler
 
                 @ftz.wraps(f)
                 def action_expands(spec, state, *call_args, **kwargs):
-                    expansions = [x(spec, state) for x in getattr(f, KEY_ANNOTS)]
+                    try:
+                        expansions = [x(spec, state) for x in getattr(f, KEY_ANNOTS)]
+                    except KeyError as err:
+                        printer.warning("Action State Expansion Failure: %s", err)
+                        return False
                     all_args = (*call_args, *expansions)
                     return f(spec, state, *all_args, **kwargs)
 
@@ -472,7 +481,6 @@ class DootKey(abc.ABC):
     def direct(self):
         return str(self).removesuffix("_")
 
-
     @property
     def is_indirect(self) -> bool:
         return False
@@ -497,13 +505,6 @@ class DootKey(abc.ABC):
         try:
             expanded         : list       = [DootFormatter.fmt(x, _spec=spec, _state=state, _rec=True, _locs=locs) for x in key.parts]
             expanded_as_path : pl.Path    = pl.Path().joinpath(*expanded) # allows ("a", "b/c") -> "a/b/c"
-            # This should be unneceesary:
-            # depth                         = 0
-            # while PATTERN.search(str(expanded_as_path)) and depth < MAX_KEY_EXPANSIONS:
-            #     to_keys          : list       = [DootKey.build(x, explicit=True) or x for x in expanded_as_path.parts]
-            #     loc_expansions   : list       = [locs.get(x) for x in to_keys]
-            #     expanded_as_path : pl.Path    = pl.Path().joinpath(*loc_expansions)
-            #     depth += 1
 
             if bool(matches:=PATTERN.findall(str(expanded_as_path))):
                 raise doot.errors.DootLocationExpansionError("Missing keys on path expansion", matches, self)
@@ -530,7 +531,6 @@ class DootKey(abc.ABC):
         """ the most basic expansion of a key """
         kwargs = spec.params
         return _DootKeyGetter.chained_get(str(self), kwargs, state, locs or doot.locs)
-
 
     @abc.abstractmethod
     def to_type(self, spec, state, type_=Any, chain:list[DootKey]=None, on_fail=Any, **kwargs) -> Any:
@@ -700,7 +700,6 @@ class DootSimpleKey(str, DootKey):
             case None:
                 kwargs = {}
 
-
         match kwargs.get(self.indirect, self):
             case str() as x if x == self:
                 return [self]
@@ -734,6 +733,8 @@ class DootSimpleKey(str, DootKey):
                 return replacement
             case _ if type_ and isinstance(replacement, type_):
                 return replacement
+            case None if not any(target in x for x in [kwargs, state]):
+                raise KeyError("Key is not available in the state or spec", target)
             case _:
                 raise TypeError("Unexpected Type for replacement", type_, replacement, self)
 

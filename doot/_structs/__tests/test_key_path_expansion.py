@@ -156,3 +156,8 @@ class TestPathExpansion:
         key_obj = DootKey.build(key)
         result = key_obj.to_path(spec, state)
         assert(result.relative_to(pl.Path.cwd()) == pl.Path(target))
+
+    def test_cwd_expansion(self):
+        key_obj = DootKey.build(".", explicit=True)
+        result = key_obj.to_path(None, None)
+        assert(result == pl.Path().resolve())

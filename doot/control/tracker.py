@@ -88,6 +88,8 @@ class DootTracker(BaseTracker, TaskTracker_i):
         match task, state:
             case str(), self.state_e() if task in self.task_graph:
                 self.task_graph.nodes[task][STATE] = state
+            case DootTaskName(), self.state_e() if task in self.task_graph:
+                self.task_graph.nodes[task][STATE] = state
             case TaskBase_i(), self.state_e() if task.name in self.task_graph:
                 self.task_graph.nodes[task.name][STATE] = state
             case DootTaskArtifact(), self.state_e() if str(task) in self.task_graph:

@@ -226,11 +226,12 @@ class DootRunner(BaseRunner, TaskRunner_i):
             self.reporter.trace(task.spec, flags=ReportEnum.ACTION | ReportEnum.SKIP)
             return ActRE.SUCCESS
 
+        logmod.debug("-----> Action Execution: %s for %s", action, task.name)
         with logctx(action_log_level) as p: # Prep the action
             self.reporter.trace(action, flags=ReportEnum.ACTION | ReportEnum.INIT)
             task.state['_action_step'] = count
-            p.info( "------ Action %s.%s: %s", self.step, count, action.do, extra={"colour":"cyan"})
-            p.debug("------ Action %s.%s: args=%s kwargs=%s. state keys = %s", self.step, count, action.args, dict(action.kwargs), list(task.state.keys()))
+            p.info( "-----> Action %s.%s: %s", self.step, count, action.do, extra={"colour":"cyan"})
+            p.debug("-----> Action %s.%s: args=%s kwargs=%s. state keys = %s", self.step, count, action.args, dict(action.kwargs), list(task.state.keys()))
             action.verify(task.state)
 
             with logctx(task.spec.print_levels.on_fail(execute_level).execute()) as p2: # call the action
@@ -251,13 +252,13 @@ class DootRunner(BaseRunner, TaskRunner_i):
                     pass
                 case False | ActRE.FAIL:
                     self.reporter.trace(action, flags=ReportEnum.FAIL | ReportEnum.ACTION)
-                    raise doot.errors.DootTaskFailed("Task %s Action Failed: %s", task.name, action, task=task.spec)
+                    raise doot.errors.DootTaskFailed("Task %s: Action Failed: %s", task.name, action.do, task=task.spec)
                 case _:
                     self.reporter.trace(action, flags=ReportEnum.FAIL | ReportEnum.ACTION)
-                    raise doot.errors.DootTaskError("Task %s Action %s Failed: Returned an unplanned for value: %s", task.name, action, result, task=task.spec)
+                    raise doot.errors.DootTaskError("Task %s: Action %s Failed: Returned an unplanned for value: %s", task.name, action.do, result, task=task.spec)
 
             action.verify_out(task.state)
 
-        logmod.debug("------ Action Execution Complete: %s for %s", action, task.name)
+        logmod.debug("-----< Action Execution Complete: %s for %s", action, task.name)
         self.reporter.trace(action, flags=ReportEnum.ACTION | ReportEnum.SUCCEED)
         return result
