@@ -36,8 +36,8 @@ import doot
 from doot.errors import DootTaskError, DootTaskFailed
 
 from doot.structs import DootKey, DootCodeReference
-from doot.actions.path_manip import PathManip_m
-from doot.acitons.base_action import DootBaseAction
+from doot.mixins.path_manip import PathManip_m
+from doot.actions.base_action import DootBaseAction
 
 ##-- expansion keys
 MSG          : Final[DootKey] = DootKey.build("msg")

@@ -33,9 +33,9 @@ import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
 from doot.mixins.importer import Importer_m
+from doot.mixins.path_manip import PathManip_m
 from doot.structs import DootCodeReference, DootKey
 from doot.actions.job_injection import JobInjectPathParts, JobInjectShadowAction
-from doot.actions.path_manip import PathManip_m
 
 ##-- expansion keys
 UPDATE : Final[DootKey] = DootKey.build("update_")
