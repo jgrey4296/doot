@@ -37,7 +37,6 @@ template_path      = files("doot.__templates")
 
 def main():
     result  = 1
-    errored = False
     overlord = None
     try:
         log_config = DootLogConfig()
@@ -61,7 +60,9 @@ def main():
     ##-- handle doot errors
     except (doot.errors.DootEarlyExit, BdbQuit):
         printer.warning("Early Exit Triggered")
+        result = 0
     except doot.errors.DootMissingConfigError as err:
+        result = 0
         # Handle missing files
         if pl.Path(doot.constants.on_fail(["doesntexist"]).paths.DEFAULT_LOAD_TARGETS()[0]).exists():
             pass
@@ -70,56 +71,29 @@ def main():
             target = pl.Path(doot.constants.on_fail(["doot.toml"]).paths.DEFAULT_LOAD_TARGETS()[0])
             target.write_text(template.read_text())
             logging.info("Stubbed")
-
     except doot.errors.DootTaskError as err:
-        errored = True
         printer.error("%s : %s", err.general_msg, err.task_name)
         printer.error("---- Source: %s", err.task_source)
         printer.error("---- %s", str(err))
     except doot.errors.DootError as err:
-        errored = True
         printer.error("%s", err.general_msg)
         printer.error("---- %s", str(err))
     ##-- end handle doot errors
     ##-- handle todo errors
     except NotImplementedError as err:
-        errored = True
         logging.error(stackprinter.format())
         printer.error("Not Implemented: %s", err)
     ##-- end handle todo errors
     ##-- handle general errors
     except Exception as err:
-        errored = True
         logging.error(stackprinter.format())
         # logging.error("Python Error: %s", err)
     ##-- end handle general errors
     finally: # --- final shutdown
         if overlord:
             overlord.shutdown()
-        match sys.platform:
-            case "linux":
-                pass
-            case "darwin":
-                announce_exit : bool = doot.constants.ANNOUNCE_EXIT
-                announce_voice : str = doot.constants.ANNOUNCE_VOICE
-                if doot.config is not None:
-                    announce_exit        = doot.config.on_fail(announce_exit, bool|str).settings.general.notify.say_on_exit()
-                    announce_voice       = doot.config.on_fail(announce_voice, str).setttings.general.notify.announce_voice()
-
-                match errored, announce_exit:
-                    case False, str() as say_text:
-                        cmd = sh.say("-v", announce_voice, "-r", "50", say_text)
-                    case False, True:
-                        cmd = sh.say("-v", announce_voice, "-r", "50", "Doot Has Finished")
-                    case True, True|str():
-                        cmd = sh.say("-v", announce_voice, "-r", "50", "Doot Encountered a problem")
-                    case _:
-                        cmd = None
-                if cmd is not None:
-                    cmd.execute()
 
         sys.exit(result)
-
 
 ##-- ifmain
 if __name__ == '__main__':

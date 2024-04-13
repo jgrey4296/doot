@@ -35,18 +35,118 @@ import doot
 import doot.errors
 import tomlguard
 from doot._abstract import Task_i, Job_i, Action_p, PluginLoader_p
-from doot.enums import TaskFlags
+from doot.enums import TaskFlags, TaskStateEnum
 from doot.structs import TaskStub, TaskStubPart, DootActionSpec, DootCodeReference
 from doot.actions.base_action import DootBaseAction
 from doot.errors import DootTaskLoadError, DootTaskError
 
+from doot.mixins.param_spec import ParamSpecMaker_m
 from doot.mixins.importer import Importer_m
 
 TASK_ALISES     = doot.aliases.task
 PRINT_LOCATIONS = doot.constants.printer.PRINT_LOCATIONS
+STATE_TASK_NAME_K : Final[str] = doot.constants.patterns.STATE_TASK_NAME_K
+
+class _TaskProperties_m(ParamSpecMaker_m):
+
+    @classmethod
+    @property
+    def param_specs(cls) -> list[DootParamSpec]:
+        """  make class parameter specs  """
+        return [
+            cls.build_param(name="help", default=False, invisible=True, prefix="--"),
+            cls.build_param(name="debug", default=False, invisible=True, prefix="--"),
+            cls.build_param(name="verbose", default=0, type=int, invisible=True, prefix="--")
+           ]
+
+    @property
+    def readable_name(self) -> str:
+        return str(self.spec.name.readable)
+
+    @property
+    def actions(self):
+        """lazy creation of action instances,
+          `prepare_actions` has already ensured all ctors can be found
+        """
+        yield from iter(self.spec.actions)
+
+    @property
+    def name(self) -> str:
+        return str(self.spec.name)
+
+    @property
+    def fullname(self) -> DootTaskName:
+        return self.spec.name
+
+    @property
+    def short_doc(self) -> str:
+        """ Generate Job Class 1 line help string """
+        try:
+            split_doc = [x for x in self.__class__.__doc__.split("\n") if bool(x)]
+            return ":: " + split_doc[0].strip() if bool(split_doc) else ""
+        except AttributeError:
+            return ":: "
+
+    @property
+    def doc(self) -> list[str]:
+        return self.spec.doc or self._help
+
+    @property
+    def depends_on(self) -> abc.Generator[str|DootTaskName]:
+        for x in self.spec.depends_on:
+            yield x
+
+    @property
+    def required_for(self) -> abc.Generator[str|DootTaskName]:
+        for x in self.spec.required_for:
+            yield x
+
+    def add_execution_record(self, arg):
+        """ Record some execution record information for display or debugging """
+        self._records.append(arg)
+
+    def log(self, msg, level=logmod.DEBUG, prefix=None) -> None:
+        """
+        utility method to log a message, useful as tasks are running
+        """
+        prefix : str       = prefix or ""
+        lines  : list[str] = []
+        match msg:
+            case str():
+                lines.append(msg)
+            case types.LambdaType():
+                lines.append(msg())
+            case [types.LambdaType()]:
+                lines += msg[0]()
+            case list():
+                lines += msg
+
+        for line in lines:
+            logging.log(level, prefix + str(line))
+
+    @property
+    def is_stale(self):
+        return False
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __lt__(self, other:Task_i) -> bool:
+        """ Task A < Task B iff A ∈ B.run_after   """
+        return (other.name in self.spec.after_artifacts
+                or other.name in self.spec.depends_on)
+
+    def __eq__(self, other):
+        match other:
+            case str():
+                return self.name == other
+            case Task_i():
+                return self.name == other.name
+            case _:
+                return False
 
 @doot.check_protocol
-class DootTask(Task_i, Importer_m):
+class DootTask(_TaskProperties_m, Importer_m, Task_i):
     """
       The simplest task, which can import action classes.
       eg:
@@ -57,21 +157,30 @@ class DootTask(Task_i, Importer_m):
     _help          = ["The Simplest Task"]
 
     def __init__(self, spec, *, job=None, action_ctor=None, **kwargs):
-        super().__init__(spec, job=job, **kwargs)
-        if action_ctor:
-            self.action_ctor = action_ctor
+        self.spec       : SpecStruct_p        = spec
+        self.status     : TaskStateEnum       = TaskStateEnum.WAIT
+        self.flags      : TaskFlags           = TaskFlags.JOB
+        self._records   : list[Any]           = []
+        self.state                            = dict(spec.extra)
+        self.job                              = job
+        self.state[STATE_TASK_NAME_K]         = self.spec.name
+        self.state['_action_step']            = 0
+        self.action_ctor                      = action_ctor
         self.prepare_actions()
 
-    @property
-    def actions(self):
-        """lazy creation of action instances,
-          `prepare_actions` has already ensured all ctors can be found
-        """
-        yield from iter(self.spec.actions)
+    def __repr__(self):
+        return f"<Task: {self.name}>"
 
-    @property
-    def is_stale(self):
-        return False
+    @classmethod
+    def class_help(cls):
+        """ Task *class* help. """
+        help_lines = [f"Task   : {cls.__qualname__} v{cls._version}", ""]
+        mro = " -> ".join(x.__name__ for x in cls.mro())
+        help_lines.append(f"Task MRO: {mro}")
+        help_lines.append("")
+        help_lines += cls._help
+
+        return "\n".join(help_lines)
 
     @classmethod
     def stub_class(cls, stub) -> TaskStub:

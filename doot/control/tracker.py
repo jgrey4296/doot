@@ -36,7 +36,7 @@ import doot.errors
 from doot.enums import TaskStateEnum
 from doot._abstract import Job_i, Task_i, FailPolicy_p
 from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskName, DootCodeReference
-from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i
+from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i
 from doot.task.base_task import DootTask
 from doot.control.base_tracker import BaseTracker, ROOT, STATE, PRIORITY, EDGE_E, MIN_PRIORITY
 
@@ -59,14 +59,14 @@ class DootTracker(BaseTracker, TaskTracker_i):
     def __init__(self, shadowing:bool=False, *, policy=None):
         super().__init__(shadowing=shadowing, policy=policy) # self.tasks
 
-    def add_task(self, task:DootTaskSpec|TaskBase_i, *, no_root_connection=False) -> None:
+    def add_task(self, task:DootTaskSpec|Task_i, *, no_root_connection=False) -> None:
         """ add a task description into the tracker, but don't queue it
         connecting it with its dependencies and tasks that depend on it
 
         # TODO check the spec's "active_when" conditions, return early if it fails
         """
-        task : TaskBase_i = self._prep_task(task)
-        assert(isinstance(task, TaskBase_i))
+        task : Task_i = self._prep_task(task)
+        assert(isinstance(task, Task_i))
 
         # Store it
         self.tasks[task.name] = task
@@ -82,7 +82,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
         self._insert_dependents(task)
         self._insert_according_to_queue_behaviour(task)
 
-    def update_state(self, task:str|TaskBase_i|DootTaskArtifact, state:self.state_e):
+    def update_state(self, task:str|Task_i|DootTaskArtifact, state:self.state_e):
         """ update the state of a task in the dependency graph """
         logging.debug("Updating State: %s -> %s", task, state)
         match task, state:
@@ -90,7 +90,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
                 self.task_graph.nodes[task][STATE] = state
             case DootTaskName(), self.state_e() if task in self.task_graph:
                 self.task_graph.nodes[task][STATE] = state
-            case TaskBase_i(), self.state_e() if task.name in self.task_graph:
+            case Task_i(), self.state_e() if task.name in self.task_graph:
                 self.task_graph.nodes[task.name][STATE] = state
             case DootTaskArtifact(), self.state_e() if str(task) in self.task_graph:
                 self.task_graph.nodes[str(task)][STATE] = state

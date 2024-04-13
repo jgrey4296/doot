@@ -37,7 +37,8 @@ from importlib.resources import files
 import doot
 import doot.enums
 import doot.errors
-from doot._abstract import Command_i, PluginLoader_p, TaskBase_i
+from doot.cmds.base_cmd import BaseCommand
+from doot._abstract import PluginLoader_p, Task_i
 from doot.structs import TaskStub, DootTaskName, DootCodeReference
 from doot.task.base_job import DootJob
 from doot.task.base_task import DootTask
@@ -48,7 +49,7 @@ data_path = files(doot.constants.paths.TEMPLATE_PATH).joinpath(doot.constants.pa
 ##-- end data
 PRINT_LOCATIONS : Final[list[str]] = doot.constants.printer.PRINT_LOCATIONS
 
-class StubCmd(Command_i):
+class StubCmd(BaseCommand):
     """ Called to interactively create a stub task definition
       with a `target`, outputs to that file, else to stdout for piping
     """
@@ -137,7 +138,7 @@ class StubCmd(Command_i):
         for cls in reversed(task_mro):
             try:
                 cls.stub_class(stub)
-                if issubclass(cls, TaskBase_i):
+                if issubclass(cls, Task_i):
                     stub['version'].default         = cls.version
                     stub['doc'].default             = [x for x in cls.class_help().split("\n") if bool(x)]
             except NotImplementedError:

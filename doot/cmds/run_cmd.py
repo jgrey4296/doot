@@ -33,7 +33,8 @@ logging = logmod.getLogger(__name__)
 from collections import defaultdict
 from tomlguard import TomlGuard
 import doot
-from doot._abstract import ReportLine_i, TaskRunner_i, Reporter_i, Command_i
+from doot.cmds.base_cmd import BaseCommand
+from doot._abstract import ReportLine_i, TaskRunner_i, Reporter_i
 from doot.utils.plugin_selector import plugin_selector
 from doot.task.check_locs import CheckLocsTask
 from doot.structs import DootCodeReference
@@ -47,7 +48,7 @@ report_line_targets      = doot.config.on_fail([]).commands.run.report_line(wrap
 interrupt_handler        = doot.config.on_fail("doot.utils.signal_handler:SignalHandler", bool|str).commands.run.interrupt()
 
 @doot.check_protocol
-class RunCmd(Command_i):
+class RunCmd(BaseCommand):
     _name      = "run"
     _help      = ["Will perform the tasks/jobs targeted.",
                   "Can be parameterized in a commands.run block with:",

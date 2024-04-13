@@ -38,7 +38,7 @@ import sh
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot._abstract import Command_i
+from doot.cmds.base_cmd import BaseCommand
 from doot.structs import DootParamSpec
 from doot.utils.plugin_selector import plugin_selector
 import networkx as nx
@@ -50,7 +50,7 @@ INDENT : Final[str]      = " "*8
 tracker_target           = doot.config.on_fail("default", str).commands.run.tracker()
 
 @doot.check_protocol
-class GraphCmd(Command_i):
+class GraphCmd(BaseCommand):
     _name      = "graph"
     _help      = ["Create a graph representation of the task network"]
 

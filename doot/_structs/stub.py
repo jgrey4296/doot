@@ -41,7 +41,8 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.enums import TaskFlags, ReportEnum, LocationMeta, TaskActivationBehaviour
-from doot._structs.sname import DootTaskName, DootCodeReference
+from doot._structs.task_name import DootTaskName
+from doot._structs.code_ref import DootCodeReference
 from doot._structs.task_spec import DootTaskSpec
 from doot._abstract.structs import StubStruct_p
 

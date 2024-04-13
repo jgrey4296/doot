@@ -29,9 +29,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.enums import TaskFlags, TaskStateEnum, ActionResponseEnum
-from doot._abstract.parser import ParamSpecMaker_m
-from doot._abstract.structs import StubStruct_p, SpecStruct_p
-from doot._structs.param_spec import DootParamSpec
+from doot._abstract.structs import StubStruct_p, SpecStruct_p, ParamStruct_p
 from doot._structs.task_name import DootTaskName
 from doot._structs.action_spec import DootActionSpec
 
@@ -39,7 +37,6 @@ from doot._structs.action_spec import DootActionSpec
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-STATE_TASK_NAME_K : Final[str] = doot.constants.patterns.STATE_TASK_NAME_K
 
 @runtime_checkable
 class Action_p(Protocol):
@@ -52,7 +49,7 @@ class Action_p(Protocol):
     def __call__(self, spec:DootActionSpec, task_state:dict) -> dict|bool|ActionResponseEnum|None:
         raise NotImplementedError()
 
-class TaskBase_i(ParamSpecMaker_m):
+class _TaskBase_i:
     """ Core Interface for Tasks """
 
     _version         : str       = "0.1"
@@ -60,102 +57,80 @@ class TaskBase_i(ParamSpecMaker_m):
 
     @classmethod
     @property
-    def param_specs(cls) -> list[DootParamSpec]:
+    @abc.abstractmethod
+    def param_specs(cls) -> list[ParamStruct_p]:
         """  make class parameter specs  """
-        return [
-            cls.build_param(name="help", default=False, invisible=True, prefix="--"),
-            cls.build_param(name="debug", default=False, invisible=True, prefix="--"),
-            cls.build_param(name="verbose", default=0, type=int, invisible=True, prefix="--")
-           ]
+        pass
 
+    @abc.abstractmethod
     def __init__(self, spec:SpecStruct_p):
-        self.spec       : SpecStruct_p        = spec
-        self.status     : TaskStateEnum       = TaskStateEnum.WAIT
-        self.flags      : TaskFlags           = TaskFlags.JOB
-        self._records   : list[Any]           = []
-        self.state                            = dict(spec.extra)
-        self.state[STATE_TASK_NAME_K]         = self.spec.name
-        self.state['_action_step']            = 0
+        pass
 
     @property
+    @abc.abstractmethod
     def readable_name(self) -> str:
-        return str(self.spec.name.readable)
+        pass
 
     @property
+    @abc.abstractmethod
     def name(self) -> str:
-        return str(self.spec.name)
+        pass
 
     @property
+    @abc.abstractmethod
     def fullname(self) -> DootTaskName:
-        return self.spec.name
+        pass
 
+    @abc.abstractmethod
     def __hash__(self):
-        return hash(self.name)
+        pass
 
-    def __lt__(self, other:TaskBase_i) -> bool:
+    @abc.abstractmethod
+    def __lt__(self, other:_TaskBase_i) -> bool:
         """ Task A < Task B iff A ∈ B.run_after   """
-        return (other.name in self.spec.after_artifacts
-                or other.name in self.spec.depends_on)
+        pass
 
+    @abc.abstractmethod
     def __eq__(self, other):
-        match other:
-            case str():
-                return self.name == other
-            case TaskBase_i():
-                return self.name == other.name
-            case _:
-                return False
+        pass
 
     @property
+    @abc.abstractmethod
     def short_doc(self) -> str:
         """ Generate Job Class 1 line help string """
-        try:
-            split_doc = [x for x in self.__class__.__doc__.split("\n") if bool(x)]
-            return ":: " + split_doc[0].strip() if bool(split_doc) else ""
-        except AttributeError:
-            return ":: "
+        pass
 
     @property
+    @abc.abstractmethod
     def doc(self) -> list[str]:
-        return self.spec.doc or self._help
+        pass
 
     @property
+    @abc.abstractmethod
     def depends_on(self) -> abc.Generator[str|DootTaskName]:
-        for x in self.spec.depends_on:
-            yield x
+        pass
 
     @property
+    @abc.abstractmethod
     def required_for(self) -> abc.Generator[str|DootTaskName]:
-        for x in self.spec.required_for:
-            yield x
+        pass
 
+    @abc.abstractmethod
     def add_execution_record(self, arg):
         """ Record some execution record information for display or debugging """
-        self._records.append(arg)
+        pass
 
+    @abc.abstractmethod
     def log(self, msg, level=logmod.DEBUG, prefix=None) -> None:
         """
-        utility method to log a message, useful as tasks are running
+          utility method to log a message, useful as tasks are running
         """
-        prefix : str       = prefix or ""
-        lines  : list[str] = []
-        match msg:
-            case str():
-                lines.append(msg)
-            case types.LambdaType():
-                lines.append(msg())
-            case [types.LambdaType()]:
-                lines += msg[0]()
-            case list():
-                lines += msg
-
-        for line in lines:
-            logging.log(level, prefix + str(line))
+        pass
 
     @classmethod
     @abc.abstractmethod
     def class_help(cls) -> str:
-        raise NotImplementedError(cls, "help")
+        pass
 
     @classmethod
     @abc.abstractmethod
@@ -163,53 +138,38 @@ class TaskBase_i(ParamSpecMaker_m):
         """
         Specialize a StubStruct_p to describe this class
         """
-        raise NotImplementedError(cls, "stub_class")
+        pass
 
     @abc.abstractmethod
     def stub_instance(self, stub:StubStruct_p):
         """
           Specialize a StubStruct_p with the settings of this specific instance
         """
-        raise NotImplementedError(self.__class__, "stub_instance")
+        pass
 
     @property
     @abc.abstractmethod
     def is_stale(self) -> bool:
         """ Query whether the task's artifacts have become stale and need to be rebuilt"""
-        raise NotImplementedError()
+        pass
 
-class Task_i(TaskBase_i):
+class Task_i(_TaskBase_i):
     """
     holds task information and state, produces actions to execute.
 
     """
 
-    def __init__(self, spec:SpecStruct_p, *, job:Job_i=None, **kwargs):
-        super().__init__(spec)
-        self.job     = job
-
-    def __repr__(self):
-        return f"<Task: {self.name}>"
-
-    def maybe_more_tasks(self) -> Generator[Task_i]:
-        return iter([])
-
     @classmethod
+    @abc.abstractmethod
     def class_help(cls):
         """ Task *class* help. """
-        help_lines = [f"Task   : {cls.__qualname__} v{cls._version}", ""]
-        mro = " -> ".join(x.__name__ for x in cls.mro())
-        help_lines.append(f"Task MRO: {mro}")
-        help_lines.append("")
-        help_lines += cls._help
-
-        return "\n".join(help_lines)
+        pass
 
     @property
     @abc.abstractmethod
     def actions(self) -> Generator[Action_p]:
         """lazy creation of action instances"""
-        raise NotImplementedError()
+        pass
 
 class Job_i(Task_i):
     """
@@ -217,21 +177,10 @@ class Job_i(Task_i):
     """
 
     @classmethod
+    @abc.abstractmethod
     def class_help(cls) -> str:
         """ Job *class* help. """
-        help_lines = [f"Job : {cls.__qualname__} v{cls._version}    ({cls.__module__}:{cls.__qualname__})", ""]
-
-        mro = " -> ".join(x.__name__ for x in cls.mro())
-        help_lines.append(f"Job MRO: {mro}")
-        help_lines.append("")
-        help_lines += cls._help
-
-        params = cls.param_specs
-        if bool([x for x in params if not x.invisible]):
-            help_lines += ["", "Params:"]
-            help_lines += [str(x) for x in cls.param_specs if not x.invisible]
-
-        return "\n".join(help_lines)
+        pass
 
     @abc.abstractmethod
     def default_task(self, name:str|DootTaskName|None, extra:None|dict|TomlGuard) -> SpecStruct_p:

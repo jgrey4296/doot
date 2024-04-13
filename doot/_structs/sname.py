@@ -41,7 +41,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.enums import TaskFlags, ReportEnum
-from doot._structs.structured_name import DootStructuredName
+from doot._structs.structured_name import StructuredName
 from doot._structs.task_name import DootTaskName
 from doot._structs.code_ref import DootCodeReference
 
@@ -49,7 +49,7 @@ PAD           : Final[int] = 15
 TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
 
 @dataclass(eq=False, slots=True)
-class DootStructuredName(DootStructuredName):
+class DootStructuredName(StructuredName):
     """ A Complex name class for identifying tasks and classes.
 
       Classes are the standard form used in importlib: "module.path:ClassName"

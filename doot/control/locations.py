@@ -31,10 +31,9 @@ import re
 import tomlguard
 import doot
 from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
-from doot._structs.artifact import DootTaskArtifact
-from doot._structs.key import DootKey, DootSimpleKey, DootMultiKey, DootNonKey
+from doot.structs import DootTaskArtifact, DootKey, TomlLocation
+from doot._structs.key import DootSimpleKey, DootMultiKey, DootNonKey
 from doot.mixins.path_manip import PathManip_m
-from doot._structs.toml_loc import TomlLocation
 from doot.enums import LocationMeta
 
 KEY_PAT        = doot.constants.patterns.KEY_PATTERN

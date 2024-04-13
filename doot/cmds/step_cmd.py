@@ -37,7 +37,8 @@ logging = logmod.getLogger(__name__)
 from collections import defaultdict
 from tomlguard import TomlGuard
 import doot
-from doot._abstract import ReportLine_i, TaskRunner_i, Reporter_i, Command_i
+from doot.cmds.base_cmd import BaseCommand
+from doot._abstract import ReportLine_i, TaskRunner_i, Reporter_i
 from doot.utils.plugin_selector import plugin_selector
 from doot.task.check_locs import CheckLocsTask
 
@@ -48,7 +49,7 @@ tracker_target           = doot.config.on_fail("default", str).commands.step.tra
 reporter_target          = doot.config.on_fail("default", str).commands.step.reporter()
 report_line_targets      = doot.config.on_fail([]).commands.run.report_line(wrapper=list)
 
-class StepCmd(Command_i):
+class StepCmd(BaseCommand):
     """
     Standard doit run command, but step through tasks
     """

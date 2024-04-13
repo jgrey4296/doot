@@ -36,14 +36,14 @@ from collections import defaultdict
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot._abstract import Command_i
+from doot.cmds.base_cmd import BaseCommand
 from doot.structs import DootParamSpec
 
 
 INDENT : Final[str] = " "*8
 
 @doot.check_protocol
-class LocsCmd(Command_i):
+class LocsCmd(BaseCommand):
     _name      = "locs"
     _help      = ["A simple command to list all config defined locations."]
 

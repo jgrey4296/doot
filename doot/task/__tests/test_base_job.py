@@ -26,7 +26,7 @@ class TestBaseJob:
 
     def test_initial(self):
         job = DootJob(DootTaskSpec.build({"name": "basic::example", "flags": ["JOB"]}))
-        assert(isinstance(job, doot._abstract.TaskBase_i))
+        assert(isinstance(job, doot._abstract.Task_i))
         assert(TaskFlags.JOB in job.spec.flags)
 
     def test_paramspecs(self):

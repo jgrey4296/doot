@@ -18,7 +18,7 @@ from .control import TaskTracker_i, TaskRunner_i
 from .loader import CommandLoader_p, PluginLoader_p, TaskLoader_p
 from .overlord import Overlord_p
 from .cmd import Command_i
-from .task import Action_p, TaskBase_i, Task_i, Job_i
+from .task import Action_p, Task_i, Job_i
 
 from .dbm import DBManager_p
 from .parser import ArgParser_i

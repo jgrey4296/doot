@@ -8,7 +8,7 @@ See EOF for license/metadata/notes as applicable
 ##-- builtin imports
 from __future__ import annotations
 
-import abc
+# import abc
 import datetime
 import enum
 import functools as ftz
@@ -38,24 +38,11 @@ from uuid import UUID, uuid1
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-import tomlguard
+from doot._structs.param_spec import DootParamSpec
 
-class SpecStruct_p(abc.ABC):
-    """ Base class for specs, for type matching """
+class ParamSpecMaker_m:
 
-    @property
-    @abc.abstractmethod
-    def params(self) -> dict|tomlguard.TomlGuard:
-        pass
-
-class ArtifactStruct_p(abc.ABC):
-    """ Base class for artifacts, for type matching """
-    pass
-
-class StubStruct_p(abc.ABC):
-    """ Base class for stubs, for type matching """
-    pass
-
-class ParamStruct_p(abc.ABC):
-    """ Base class for param specs, for type matching """
-    pass
+    @staticmethod
+    def build_param(*args:Any, **kwargs:Any) -> DootParamSpec:
+        """ Utility method for easily making paramspecs """
+        return DootParamSpec(*args, **kwargs)

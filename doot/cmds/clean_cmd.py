@@ -33,12 +33,12 @@ printer = logmod.getLogger("doot._printer")
 
 import doot
 import shutil
-from doot._abstract import Command_i
+from doot.cmds.base_cmd import BaseCommand
 from collections import defaultdict
 
 clean_locs = doot.config.on_fail([], list).commands.clean.locs()
 
-class CleanCmd(Command_i):
+class CleanCmd(BaseCommand):
     """
       Runs either a general clean command, or a specific task clean command
 

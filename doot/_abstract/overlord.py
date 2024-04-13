@@ -7,11 +7,10 @@ from abc import abstractmethod
 from typing import NewType, Any
 
 from tomlguard import TomlGuard
-from doot._abstract.parser import ParamSpecMaker_m
 from doot._abstract.loader import Loaders_p
 
 
-class Overlord_p(ParamSpecMaker_m):
+class Overlord_p:
     """
     Main entrypoint for doot
     """
@@ -28,7 +27,7 @@ class Overlord_p(ParamSpecMaker_m):
         raise NotImplementedError()
 
 
-    def __call__(self, cmd:str|None=None) -> None:
+    def __call__(self, cmd:str|None=None) -> int:
         """entry point for all commands
 
         :param all_args: list of string arguments from command line
@@ -45,4 +44,4 @@ class Overlord_p(ParamSpecMaker_m):
         raise NotImplementedError()
 
     def shutdown(self) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()

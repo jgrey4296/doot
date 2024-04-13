@@ -37,13 +37,13 @@ from collections import defaultdict
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot._abstract import Command_i
+from doot.cmds.base_cmd import BaseCommand
 from doot.structs import DootParamSpec
 
 INDENT : Final[str] = " "*8
 
 @doot.check_protocol
-class ListCmd(Command_i):
+class ListCmd(BaseCommand):
     _name      = "list"
     _help      = ["A simple command to list all loaded task heads."]
 

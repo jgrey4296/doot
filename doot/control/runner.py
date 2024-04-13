@@ -39,7 +39,7 @@ import doot
 import doot.errors
 from doot.enums import ReportEnum, ActionResponseEnum as ActRE
 from doot._abstract import Job_i, Task_i, FailPolicy_p
-from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i, ReportLine_i, Action_p, Reporter_i
+from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i, ReportLine_i, Action_p, Reporter_i
 from doot.structs import DootTaskArtifact, DootTaskSpec, DootActionSpec, DootTaskName
 from doot.control.base_runner import BaseRunner, logctx
 from doot.utils.signal_handler import SignalHandler
@@ -126,25 +126,27 @@ class DootRunner(BaseRunner, TaskRunner_i):
 
         self.reporter.trace(job.spec, flags=ReportEnum.JOB | ReportEnum.INIT)
 
-        with logctx(action_log_level) as p: # Run the actions
+        with logctx(build_log_level) as p: # Run the actions
             for action in job.actions:
-                match action:
-                    case DootActionSpec() if action.fun is None:
-                        self.reporter.trace(job.spec, flags=ReportEnum.FAIL | ReportEnum.JOB)
-                        raise doot.errors.DootTaskError("Job %s Failed: Produced an action with no callable: %s", job.name, action, task=job.spec)
-                    case DootActionSpec():
-                        action_result = self._execute_action(count, action, job)
-                    case _:
-                        self.reporter.trace(job.spec, flags=ReportEnum.FAIL | ReportEnum.JOB)
-                        raise doot.errors.DootTaskError("Task %s Failed: Produced a bad action: %s", job.name, action, task=job.spec)
+                with logctx(action_log_level) as p2:
+                    match action:
+                        case DootActionSpec() if action.fun is None:
+                            self.reporter.trace(job.spec, flags=ReportEnum.FAIL | ReportEnum.JOB)
+                            raise doot.errors.DootTaskError("Job %s Failed: Produced an action with no callable: %s", job.name, action, task=job.spec)
+                        case DootActionSpec():
+                            action_result = self._execute_action(count, action, job)
+                        case _:
+                            self.reporter.trace(job.spec, flags=ReportEnum.FAIL | ReportEnum.JOB)
+                            raise doot.errors.DootTaskError("Task %s Failed: Produced a bad action: %s", job.name, action, task=job.spec)
 
                 match action_result:
                     case list():
-                        printer.info("Queuing: %s", [str(x.name) for x in action_result])
+                        p.info("Preparing to Queue: %s", [str(x.name) for x in action_result])
                         queue_tasks += action_result
                     case ActRE.SKIP:
-                        p.info("------ Remaining Job Actions skipped by Action Instruction")
+                        p.warning("------ Remaining Job Actions skipped by Action Instruction")
                         break
+
         with logctx(build_log_level)   as p: # Run the job class' 'Make'
             for task in job.make():
                 match task:
@@ -192,19 +194,20 @@ class DootRunner(BaseRunner, TaskRunner_i):
 
         with logctx(build_log_level) as p: # Build then run actions
             for action in task.actions:
-                match action:
-                    case DootActionSpec() if action.fun is None:
-                        self.reporter.trace(task.spec, flags=ReportEnum.FAIL | ReportEnum.TASK)
-                        raise doot.errors.DootTaskError("Task %s Failed: Produced an action with no callable: %s", task.name, action, task=task.spec)
-                    case DootActionSpec():
-                        action_result = self._execute_action(action_count, action, task)
-                    case _:
-                        self.reporter.trace(task.spec, flags=ReportEnum.FAIL | ReportEnum.TASK)
-                        raise doot.errors.DootTaskError("Task %s Failed: Produced a bad action: %s", task.name, action, task=task.spec)
+                with logctx(action_log_level) as p2:
+                    match action:
+                        case DootActionSpec() if action.fun is None:
+                            self.reporter.trace(task.spec, flags=ReportEnum.FAIL | ReportEnum.TASK)
+                            raise doot.errors.DootTaskError("Task %s Failed: Produced an action with no callable: %s", task.name, action, task=task.spec)
+                        case DootActionSpec():
+                            action_result = self._execute_action(action_count, action, task)
+                        case _:
+                            self.reporter.trace(task.spec, flags=ReportEnum.FAIL | ReportEnum.TASK)
+                            raise doot.errors.DootTaskError("Task %s Failed: Produced a bad action: %s", task.name, action, task=task.spec)
 
                 action_count += 1
                 if action_result is ActRE.SKIP:
-                    p.info("------ Remaining Task Actions skipped by Action Instruction")
+                    p.warning("------ Remaining Task Actions skipped by Action Instruction")
                     break
 
             self.reporter.trace(task.spec, flags=ReportEnum.TASK | ReportEnum.SUCCEED)
@@ -242,6 +245,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
         with logctx(action_log_level) as p: # Handle the result
             match result:
                 case ActRE.SKIP:
+                    # result will be returned, and expand_job/execute_task will handle it
                     pass
                 case None | True:
                     result = ActRE.SUCCESS

@@ -46,7 +46,7 @@ import doot.errors
 from doot.enums import TaskStateEnum, TaskActivationBehaviour
 from doot._abstract import Job_i, Task_i, FailPolicy_p
 from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskName, DootCodeReference
-from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i
+from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i
 from doot.task.base_task import DootTask
 
 ROOT             : Final[str]                  = "__root" # Root node of dependency graph
@@ -71,7 +71,7 @@ class _InternalTrackerBase(TaskTracker_i):
 
     def __init__(self, shadowing:bool=False, *, policy=None):
         self.policy                                                              = policy
-        self.tasks                   : dict[str, TaskBase_i]                     = {}
+        self.tasks                   : dict[str, Task_i]                     = {}
         self.artifacts               : dict[str, DootTaskArtifact]               = {}
         self.task_graph              : nx.DiGraph                                = nx.DiGraph()
         self.active_set              : list[str|DootTaskName|DootTaskArtifact]   = set()
@@ -120,7 +120,7 @@ class _InternalTrackerBase(TaskTracker_i):
 
         return str(artifact)
 
-    def _prep_task(self, spec:DootTaskSpec|TaskBase_i) -> TaskBase_i:
+    def _prep_task(self, spec:DootTaskSpec|Task_i) -> Task_i:
         """ Internal utility method to convert task identifier into actual task """
         # Build the Task if necessary
         match spec:
@@ -132,7 +132,7 @@ class _InternalTrackerBase(TaskTracker_i):
                 if cli_specialized.ctor is None:
                     raise doot.errors.DootTaskTrackingError("Attempt to specialize task failed: %s", spec.name)
 
-                task : TaskBase_i = cli_specialized.make()
+                task : Task_i = cli_specialized.make()
             case DootTaskSpec(ctor=str() as ctor):
                 base_spec           = self.tasks.get(ctor).spec
                 initial_specialized = base_spec.specialize_from(spec)
@@ -140,14 +140,14 @@ class _InternalTrackerBase(TaskTracker_i):
                 if cli_specialized.ctor is None:
                     raise doot.errors.DootTaskTrackingError("Attempt to specialize task failed: %s", spec.name)
 
-                task : TaskBase_i = cli_specialized.make()
-            case DootTaskSpec(ctor=DootCodeReference() as ctor) if spec.check(ensure=TaskBase_i):
+                task : Task_i = cli_specialized.make()
+            case DootTaskSpec(ctor=DootCodeReference() as ctor) if spec.check(ensure=Task_i):
                 cli_specialized   = self._insert_cli_args_into_spec(spec)
-                task : TaskBase_i = cli_specialized.make()
+                task : Task_i = cli_specialized.make()
             case DootTaskSpec():
                 cli_specialized   = self._insert_cli_args_into_spec(spec)
-                task : TaskBase_i = DootTask(cli_specialized)
-            case TaskBase_i():
+                task : Task_i = DootTask(cli_specialized)
+            case Task_i():
                 task = spec
             case _:
                 raise doot.errors.DootTaskTrackingError("Unknown task attempted to be added: %s", spec)

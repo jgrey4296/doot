@@ -41,10 +41,10 @@ from importlib.metadata import EntryPoint
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot._structs.structured_name import DootStructuredName
+from doot._structs.structured_name import StructuredName
 
 @dataclass(eq=False, slots=True)
-class DootCodeReference(DootStructuredName):
+class DootCodeReference(StructuredName):
     """
       A reference to a class or function. can be created from a string (so can be used from toml),
       or from the actual object (from in python)

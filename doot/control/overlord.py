@@ -34,6 +34,8 @@ printer = logmod.getLogger("doot._printer")
 
 from importlib.metadata import EntryPoint
 
+import sh
+import sys
 import doot
 import doot.errors
 import tomlguard
@@ -46,21 +48,24 @@ from doot.loaders.cmd_loader import DootCommandLoader
 from doot.loaders.plugin_loader import DootPluginLoader
 from doot.loaders.task_loader import DootTaskLoader
 from doot.parsers.flexible import DootFlexibleParser
+from doot.mixins.param_spec import ParamSpecMaker_m
 
 plugin_loader_key  : Final = doot.constants.entrypoints.DEFAULT_PLUGIN_LOADER_KEY
 command_loader_key : Final = doot.constants.entrypoints.DEFAULT_COMMAND_LOADER_KEY
 task_loader_key    : Final = doot.constants.entrypoints.DEFAULT_TASK_LOADER_KEY
+announce_exit      : bool  = doot.constants.misc.ANNOUNCE_EXIT
+announce_voice     : str   = doot.constants.misc.ANNOUNCE_VOICE
 
 DEFAULT_CLI_CMD    : Final = doot.constants.misc.DEFAULT_CLI_CMD
 
-preferred_cmd_loader  = doot.config.on_fail("default").settings.general.loaders.command()
-preferred_task_loader = doot.config.on_fail("default").settings.general.loaders.task()
-preferred_parser      = doot.config.on_fail("default").settings.general.loaders.parser()
+preferred_cmd_loader       = doot.config.on_fail("default").settings.general.loaders.command()
+preferred_task_loader      = doot.config.on_fail("default").settings.general.loaders.task()
+preferred_parser           = doot.config.on_fail("default").settings.general.loaders.parser()
 
-defaulted_file = doot.config.on_fail(pl.Path(".doot_defaults.toml"), pl.Path).report.defaulted_file(pl.Path)
+defaulted_file             = doot.config.on_fail(pl.Path(".doot_defaults.toml"), pl.Path).report.defaulted_file(pl.Path)
 
 @doot.check_protocol
-class DootOverlord(Overlord_p):
+class DootOverlord(ParamSpecMaker_m, Overlord_p):
     """
     Main control point for doot.
     prefers passed in loaders, then plugins it finds.
@@ -212,7 +217,7 @@ class DootOverlord(Overlord_p):
 
         return self.current_cmd
 
-    def __call__(self, cmd=None):
+    def __call__(self, cmd=None) -> int:
 
         if not doot.args.on_fail((None,)).cmd.args.suppress_header():
             printer.info("----------------------------------------------", extra={"colour" : "green"})
@@ -234,7 +239,9 @@ class DootOverlord(Overlord_p):
             cmd(self.tasks, self.plugins)
         except doot.errors.DootError as err:
             self._errored = err
-            raise err from err
+            raise err
+        else:
+            return 0
 
     def shutdown(self):
         """ Doot has finished normally, so report on what was done """
@@ -245,12 +252,37 @@ class DootOverlord(Overlord_p):
             case doot.errors.DootError():
                 pass
             case None:
-                logging.info("Shutting Doot Down Normally, reporting defaulted tomlguard values")
+                logging.info("Shutting Doot Down Normally")
+                self._record_defaulted_config_values()
 
-                defaulted_toml = tomlguard.TomlGuard.report_defaulted()
+        self._announce_exit()
 
-                with open(defaulted_file, 'w') as f:
-                    f.write("# default values used:\n")
-                    f.write("\n".join(defaulted_toml) + "\n\n")
-                    # f.write("[.directories]\n")
-                    # f.write("\n".join(defaulted_locs))
+    def _announce_exit(self):
+        match sys.platform:
+            case "linux":
+                pass
+            case "darwin":
+                if doot.config is not None:
+                    announce_exit        = doot.config.on_fail(announce_exit, bool|str).settings.general.notify.say_on_exit()
+                    announce_voice       = doot.config.on_fail(announce_voice, str).setttings.general.notify.announce_voice()
+
+                match result, announce_exit:
+                    case 0, str() as say_text:
+                        cmd = sh.say("-v", announce_voice, "-r", "50", say_text)
+                    case 0, True:
+                        cmd = sh.say("-v", announce_voice, "-r", "50", "Doot Has Finished")
+                    case _, True|str():
+                        cmd = sh.say("-v", announce_voice, "-r", "50", "Doot Encountered a problem")
+                    case _, _:
+                        cmd = None
+                if cmd is not None:
+                    cmd.execute()
+
+    def _record_defaulted_config_values(self):
+
+        defaulted_toml = tomlguard.TomlGuard.report_defaulted()
+        with open(defaulted_file, 'w') as f:
+            f.write("# default values used:\n")
+            f.write("\n".join(defaulted_toml) + "\n\n")
+            # f.write("[.directories]\n")
+            # f.write("\n".join(defaulted_locs))

@@ -106,6 +106,23 @@ class DootJob(Job_i, DootTask):
             stub['doc'].default   = [f"\"{x}\"" for x in self.doc]
         return stub
 
+
+    @classmethod
+    def class_help(cls) -> str:
+        """ Job *class* help. """
+        help_lines = [f"Job : {cls.__qualname__} v{cls._version}    ({cls.__module__}:{cls.__qualname__})", ""]
+
+        mro = " -> ".join(x.__name__ for x in cls.mro())
+        help_lines.append(f"Job MRO: {mro}")
+        help_lines.append("")
+        help_lines += cls._help
+
+        params = cls.param_specs
+        if bool([x for x in params if not x.invisible]):
+            help_lines += ["", "Params:"]
+            help_lines += [str(x) for x in cls.param_specs if not x.invisible]
+
+        return "\n".join(help_lines)
     def _build_head(self, **kwargs) -> None|DootTaskSpec:
         logging.debug("Building Head Task for: %s", self.name)
         inject_keys = set(self.spec.inject)

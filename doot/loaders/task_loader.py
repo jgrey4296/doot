@@ -40,7 +40,7 @@ import tomlguard
 import doot
 import doot.errors
 from doot.structs import DootTaskSpec, DootTaskName, DootCodeReference
-from doot._abstract import TaskLoader_p, Job_i, Task_i, TaskBase_i
+from doot._abstract import TaskLoader_p, Job_i, Task_i
 
 DEFAULT_TASK_GROUP        = doot.constants.names.DEFAULT_TASK_GROUP
 IMPORT_SEP                = doot.constants.patterns.IMPORT_SEP
@@ -214,7 +214,7 @@ class DootTaskLoader(TaskLoader_p):
                         if str(task_spec.name) in task_descriptions:
                             logging.warning("Overloading Task: %s : %s", str(task_spec.name), task_alias)
 
-                        task_spec.check(ensure=TaskBase_i)
+                        task_spec.check(ensure=Task_i)
                         task_descriptions[str(task_spec.name)] = task_spec
                     case {"name": task_name}:
                         logging.info("Building Task: %s", task_name)
@@ -222,7 +222,7 @@ class DootTaskLoader(TaskLoader_p):
                         if str(task_spec.name) in task_descriptions:
                             logging.warning("Overloading Task: %s : %s", str(task_spec.name), str(task_spec.ctor))
 
-                        task_spec.check(ensure=TaskBase_i)
+                        task_spec.check(ensure=Task_i)
                         task_descriptions[str(task_spec.name)] = task_spec
 
                     case _: # Else complain

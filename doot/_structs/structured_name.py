@@ -53,7 +53,7 @@ def aware_splitter(x, sep="."):
             return [x]
 
 @dataclass(eq=False, slots=True)
-class DootStructuredName:
+class StructuredName:
     """ A Complex name class for identifying tasks and classes.
 
       Classes are the standard form used in importlib: "module.path:ClassName"
@@ -104,8 +104,8 @@ class DootStructuredName:
         """
         match other:
             case str():
-                other = DootStructuredName.build(other)
-            case DootStructuredName():
+                other = StructuredName.build(other)
+            case StructuredName():
                 pass
             case _:
                 return False

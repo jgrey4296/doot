@@ -32,8 +32,8 @@ logging = logmod.getLogger(__name__)
 
 from abc import abstractmethod
 from tomlguard import TomlGuard
-from doot._structs.param_spec import DootParamSpec
 
+from doot._abstract.structs import ParamStruct_p
 
 @dataclass
 class _RegexEqual(str):
@@ -47,13 +47,6 @@ class _RegexEqual(str):
 
     def __getitem__(self, group):
         return self.match[group]
-
-class ParamSpecMaker_m:
-
-    @staticmethod
-    def build_param(*args:Any, **kwargs:Any) -> DootParamSpec:
-        """ Utility method for easily making paramspecs """
-        return DootParamSpec(*args, **kwargs)
 
 class ArgParser_i:
     """
@@ -69,5 +62,5 @@ class ArgParser_i:
         self.specs += specs
 
     @abstractmethod
-    def parse(self, args:list[str], doot_arg_specs:list[DootParamSpec], cmds:TomlGuard, tasks:TomlGuard) -> TomlGuard:
+    def parse(self, args:list[str], doot_arg_specs:list[ParamStruct_p], cmds:TomlGuard, tasks:TomlGuard) -> TomlGuard:
         raise NotImplementedError()

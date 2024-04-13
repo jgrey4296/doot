@@ -83,9 +83,9 @@ def setup(targets:list[pl.Path]|False|None=None, prefix:str|None=TOOL_PREFIX) ->
         raise doot.errors.DootError()
 
     config = config.remove_prefix(prefix)
-    _load_locations()
     _load_constants()
     _load_aliases()
+    _load_locations()
     _update_import_path()
 
     _configs_loaded_from   = existing_targets

@@ -41,13 +41,13 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.enums import TaskFlags, ReportEnum
-from doot._abstract.structs import SpecStruct_p
+from doot._abstract.structs import ParamStruct_p
 
 PAD           : Final[int] = 15
 TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
 
 @dataclass
-class DootParamSpec:
+class DootParamSpec(ParamStruct_p):
     """ Describes a command line parameter to use in the parser
       When `positional`, will not match against a string starting with `prefix`
       consumed in doot._abstract.parser.ArgParser_i's

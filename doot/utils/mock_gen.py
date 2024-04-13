@@ -42,7 +42,7 @@ from importlib.metadata import EntryPoint
 import tomlguard
 from doot import structs
 from doot.enums import TaskActivationBehaviour
-from doot._abstract import Task_i, Job_i, TaskBase_i, Command_i, TaskTracker_i, TaskRunner_i
+from doot._abstract import Task_i, Job_i, Command_i, TaskTracker_i, TaskRunner_i
 
 def _add_prop(m, name, val):
     setattr(type(m), name, PropertyMock(return_value=val))
@@ -131,7 +131,7 @@ def mock_entry_point(name="basic", value=None):
     return m
 
 def mock_task_ctor(name="APretendClass", module="pretend", params=None):
-    mock_ctor = MagicMock(spec=TaskBase_i)
+    mock_ctor = MagicMock(spec=Task_i)
     _add_prop(mock_ctor, "name", name)
     _add_prop(mock_ctor, "param_specs", params or [])
     mock_ctor.__module__ = module

@@ -41,12 +41,12 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.enums import TaskFlags, ReportEnum
-from doot._structs.structured_name import DootStructuredName, aware_splitter
+from doot._structs.structured_name import StructuredName, aware_splitter
 
 TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
 
 @dataclass(eq=False, slots=True)
-class DootTaskName(DootStructuredName):
+class DootTaskName(StructuredName):
     """
       A Task Name.
     """

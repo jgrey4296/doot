@@ -32,13 +32,13 @@ printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
 import doot
+from doot.cmds.base_cmd import BaseCommand
 from doot.structs import DootParamSpec, DootTaskSpec, DootCodeReference
-from doot._abstract import Command_i
 from collections import defaultdict
 
 NON_DEFAULT_KEY : Final[str] = doot.constants.misc.NON_DEFAULT_KEY
 
-class HelpCmd(Command_i):
+class HelpCmd(BaseCommand):
     _name      = "help"
     _help      = ["Print info about the specified cmd or task",
                   "Can also be triggered by passing --help to any command or task"

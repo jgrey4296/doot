@@ -42,7 +42,7 @@ import doot
 import doot.errors
 from doot.enums import ReportEnum, ActionResponseEnum as ActRE, TaskStateEnum
 from doot._abstract import Job_i, Task_i, FailPolicy_p
-from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i, ReportLine_i, Action_p, Reporter_i
+from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i, ReportLine_i, Action_p, Reporter_i
 from doot.structs import DootTaskArtifact
 from doot.utils.signal_handler import SignalHandler
 from doot.structs import DootTaskSpec, DootActionSpec
@@ -64,12 +64,13 @@ class BaseRunner(TaskRunner_i):
     """ An incomplete implementation for runners to extend """
 
     def __init__(self:Self, *, tracker:TaskTracker_i, reporter:Reporter_i, policy=None):
-        self.tracker              = tracker
-        self.reporter             = reporter
-        self.policy               = policy
-        self.step                 = 0
-        self._enter_msg = "---------- Task Loop Starting ----------"
-        self._exit_msg  = "---------- Task Loop Finished ----------"
+        self.tracker                                          = tracker
+        self.reporter                                         = reporter
+        self.policy                                           = policy
+        self.step                                             = 0
+        self._signal_failure : None|doot.errors.DootError     = None
+        self._enter_msg                                       = "---------- Task Loop Starting ----------"
+        self._exit_msg                                        = "---------- Task Loop Finished ----------"
 
     def __enter__(self) -> Any:
         printer.info("- Validating Task Network, building remaining abstract tasks: %s", self.tracker.late_count)
@@ -94,31 +95,40 @@ class BaseRunner(TaskRunner_i):
 
         printer.info("Final Summary: ")
         printer.info(str(self.reporter), extra={"colour":"magenta"})
+        match self._signal_failure:
+            case None:
+                return
+            case doot.errors.DootError():
+                raise self._signal_failure
 
     def _handle_task_success(self, task):
         if task:
             self.tracker.update_state(task, self.tracker.state_e.SUCCESS)
         return task
 
-    def _handle_failure(self, task:None|TaskBase_i, failure:Error) -> None:
+    def _handle_failure(self, task:None|Task_i, failure:Error) -> None:
         match failure:
             case doot.errors.DootTaskInterrupt():
                 breakpoint()
                 pass
             case doot.errors.DootTaskFailed() as err:
+                self._signal_failure = err
                 printer.warning("%s %s", fail_prefix, err)
                 self.tracker.update_state(err.task.name, self.tracker.state_e.FAILED)
             case doot.errors.DootTaskError() as err:
-                name = err.task.name
+                self._signal_failure = err
                 printer.warning("%s %s", fail_prefix, err)
                 self.tracker.update_state(err.task.name, self.tracker.state_e.FAILED)
             case doot.errors.DootError() as err:
+                self._signal_failure = err
                 printer.warning("%s %s", fail_prefix, err)
                 self.tracker.update_state(task, self.tracker.state_e.FAILED)
             case doot.errors.DootTaskTrackingError() as err:
+                self._signal_failure = err
                 printer.warning("%s %s", fail_prefix, err)
                 self.tracker.clear_queue()
             case _:
+                self._signal_failure = doot.errors.DootError("Unknown Failure")
                 printer.exception("%s Unknown failure occurred: %s", fail_prefix, failure)
                 self.tracker.clear_queue()
 
