@@ -45,32 +45,6 @@ class TestBaseJob:
         assert(job1 != job2)
         assert(job1 == job1)
 
-    def test_build(self):
-        ##-- setup
-        job = DootJob(DootTaskSpec.build({"name": "basic::example"}))
-        ##-- end setup
-
-        # Run:
-        tasks = list(job.make())
-
-        ##-- check
-        assert(len(tasks) == 1)
-        ##-- end check
-        pass
-
-    def test_build_multi(self):
-        ##-- setup
-        job = DootJob(DootTaskSpec.build({"name": "basic::example"}))
-        ##-- end setup
-
-        # Run:
-        tasks = list(job.make())
-
-        ##-- check
-        assert(len(tasks) == 1)
-        ##-- end check
-        pass
-
     def test_class_stub(self):
         stub_obj = TaskStub(ctor=DootJob)
         stub = DootJob.stub_class(stub_obj)

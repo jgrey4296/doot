@@ -44,7 +44,6 @@ from doot.structs import DootTaskArtifact, DootTaskSpec, DootActionSpec, DootTas
 from doot.control.base_runner import BaseRunner, logctx
 from doot.utils.signal_handler import SignalHandler
 
-dry_run                    = doot.args.on_fail(False).cmd.args.dry_run()
 head_level    : Final[str] = doot.constants.printer.DEFAULT_HEAD_LEVEL
 build_level   : Final[str] = doot.constants.printer.DEFAULT_BUILD_LEVEL
 action_level  : Final[str] = doot.constants.printer.DEFAULT_ACTION_LEVEL
@@ -97,9 +96,9 @@ class DootRunner(BaseRunner, TaskRunner_i):
                         pass
                     case DootTaskArtifact():
                         self._notify_artifact(task)
-                    case Job_i() if self._test_entry_conditions(task):
+                    case Job_i() if self._test_conditions(task):
                         self._expand_job(task)
-                    case Task_i() if self._test_entry_conditions(task):
+                    case Task_i() if self._test_conditions(task):
                         self._execute_task(task)
                     case _:
                         pass
@@ -113,133 +112,115 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 self._handle_task_success(task)
                 self._sleep(task)
 
-
     def _expand_job(self, job:Job_i) -> None:
         """ turn a job into all of its tasks, including teardowns """
-        count       = 0
-        queue_tasks = []
-        action_log_level = job.spec.print_levels.on_fail(action_level).action()
         build_log_level  = job.spec.print_levels.on_fail(build_level).build()
         head_log_level   = job.spec.print_levels.on_fail(head_level).head()
 
-        logmod.debug("-- Expanding Job %s: %s", self.step, job.name)
-        with logctx(head_log_level) as p:     # Announce entry
-            p.info("---> Job %s: %s", self.step, job.name, extra={"colour":"magenta"})
+        try:
+            logmod.debug("-- Expanding Job %s: %s", self.step, job.name)
+            with logctx(head_log_level) as p:     # Announce entry
+                p.info("---> Job %s: %s", self.step, job.name, extra={"colour":"magenta"})
 
-        self.reporter.trace(job.spec, flags=ReportEnum.JOB | ReportEnum.INIT)
+            self.reporter.add_trace(job.spec, flags=ReportEnum.JOB | ReportEnum.INIT)
 
-        with logctx(build_log_level) as p: # Run the actions
-            for action in job.actions:
-                with logctx(action_log_level) as p2:
-                    match action:
-                        case DootActionSpec() if action.fun is None:
-                            self.reporter.trace(job.spec, flags=ReportEnum.FAIL | ReportEnum.JOB)
-                            raise doot.errors.DootTaskError("Job %s Failed: Produced an action with no callable: %s", job.name, action, task=job.spec)
-                        case DootActionSpec():
-                            action_result = self._execute_action(count, action, job)
-                        case _:
-                            self.reporter.trace(job.spec, flags=ReportEnum.FAIL | ReportEnum.JOB)
-                            raise doot.errors.DootTaskError("Task %s Failed: Produced a bad action: %s", job.name, action, task=job.spec)
+            with logctx(build_log_level) as p: # Run the actions
+                self._execute_action_group(job.spec.setup, job)
+                self._execute_action_group(job.spec.actions, job, allow_queue=True)
 
-                match action_result:
-                    case list():
-                        p.info("Preparing to Queue: %s", [str(x.name) for x in action_result])
-                        queue_tasks += action_result
-                    case ActRE.SKIP:
-                        p.warning("------ Remaining Job Actions skipped by Action Instruction")
-                        break
-
-        with logctx(build_log_level)   as p: # Run the job class' 'Make'
-            for task in job.make():
-                match task:
-                    case None:
-                        pass
-                    case Job_i():
-                        self.tracker.add_task(task, no_root_connection=True)
-                    case Task_i():
-                        self.tracker.add_task(task, no_root_connection=True)
-                    case DootTaskSpec():
-                        self.tracker.add_task(task, no_root_connection=True)
-                    case _:
-                        self.reporter.trace(job.spec, flags=ReportEnum.FAIL | ReportEnum.JOB)
-                        raise doot.errors.DootTaskError("Job %s Built a Bad Value: %s", job.name, task, task=job.spec)
-
-                count += 1
-
-        with logctx(build_log_level)   as p: # Now queue the actual tasks collected
-            for task in queue_tasks:
-                match task:
-                    case DootTaskSpec():
-                        self.tracker.add_task(task, no_root_connection=True)
-                    case _:
-                        raise doot.errors.DootTaskError("Tried to queue a non-taskspec", task)
-                count += 1
-            logmod.debug("-- Job %s Expansion produced: %s tasks", job.name, count)
-
-        with logctx(head_log_level)     as p: # Announce Exit
-            p.info("---< Job %s: %s", self.step, job.name, extra={"colour":"magenta"})
+        except doot.errors.DootError as err:
+            self._execute_action_group(task.spec.on_fail, task)
+            raise err
+        finally:
+            self._execute_action_group(job.spec.cleanup, job)
             job.state.clear()
-            self.reporter.trace(job.spec, flags=ReportEnum.JOB | ReportEnum.SUCCEED)
+
+            with logctx(head_log_level)  as p: # Announce Exit
+                self.reporter.add_trace(job.spec, flags=ReportEnum.JOB | ReportEnum.SUCCEED)
+                p.info("---< Job %s: %s", self.step, job.name, extra={"colour":"magenta"})
 
     def _execute_task(self, task:Task_i) -> None:
         """ execute a single task's actions """
-        action_count     = 0
-        action_result    = ActRE.SUCCESS
-        action_log_level = task.spec.print_levels.on_fail(action_level).action()
         build_log_level  = task.spec.print_levels.on_fail(build_level).build()
         head_log_level   = task.spec.print_levels.on_fail(head_level).head()
 
-        with logctx(head_log_level) as p: # Announce entry
-            p.info("---- Task %s: %s", self.step, task.spec.name.readable, extra={"colour":"magenta"})
+        try:
+            with logctx(head_log_level) as p: # Announce entry
+                p.info("----> Task %s :  %s", self.step, task.spec.name.readable, extra={"colour":"magenta"})
 
-        self.reporter.trace(task.spec, flags=ReportEnum.TASK | ReportEnum.INIT)
+            self.reporter.add_trace(task.spec, flags=ReportEnum.TASK | ReportEnum.INIT)
 
-        with logctx(build_log_level) as p: # Build then run actions
-            for action in task.actions:
-                with logctx(action_log_level) as p2:
-                    match action:
-                        case DootActionSpec() if action.fun is None:
-                            self.reporter.trace(task.spec, flags=ReportEnum.FAIL | ReportEnum.TASK)
-                            raise doot.errors.DootTaskError("Task %s Failed: Produced an action with no callable: %s", task.name, action, task=task.spec)
-                        case DootActionSpec():
-                            action_result = self._execute_action(action_count, action, task)
-                        case _:
-                            self.reporter.trace(task.spec, flags=ReportEnum.FAIL | ReportEnum.TASK)
-                            raise doot.errors.DootTaskError("Task %s Failed: Produced a bad action: %s", task.name, action, task=task.spec)
-
-                action_count += 1
-                if action_result is ActRE.SKIP:
-                    p.warning("------ Remaining Task Actions skipped by Action Instruction")
-                    break
-
-            self.reporter.trace(task.spec, flags=ReportEnum.TASK | ReportEnum.SUCCEED)
+            with logctx(build_log_level) as p: # Build then run actions
+                self._execute_action_group(task.spec.setup, task)
+                self._execute_action_group(task.spec.actions, task)
+                self.reporter.add_trace(task.spec, flags=ReportEnum.TASK | ReportEnum.SUCCEED)
+        except doot.errors.DootError as err:
+            self._execute_action_group(task.spec.on_fail, task)
+            raise err
+        finally:
+            self._execute_action_group(task.spec.cleanup, task)
             task.state.clear()
 
-        with logctx(head_log_level)  as p: # Announce Exit
-            p.debug("------ Task %s: Actions Complete", task.name, extra={"colour":"cyan"})
-            p.debug("------ Task Executed %s Actions", action_count)
+            with logctx(head_log_level)  as p: # Cleanup and exit
+                p.debug("----< Task: %s", task.name, extra={"colour":"cyan"})
+
+    def _execute_action_group(self, actions:list, task:Task_i, allow_queue=False) -> tuple[int, ActRE]:
+        """ Execute a group of actions, possibly queue any task specs they produced,
+        and return a count of the actions run + the result
+        """
+        group_result    = ActRE.SUCCESS
+        to_queue        = []
+        executed        = 0
+
+        for action in actions:
+            result = None
+            match action:
+                case DootActionSpec():
+                    result = self._execute_action(executed, action, task)
+                case DootTaskArtifact():
+                    pass
+                case _:
+                    self.reporter.add_trace(task.spec, flags=ReportEnum.FAIL | ReportEnum.TASK)
+                    raise doot.errors.DootTaskError("Task %s Failed: Produced a bad action: %s", task.name, action, task=task.spec)
+
+            match result:
+                case None:
+                    continue
+                case list():
+                    to_queue += result
+                case ActRE.SKIP:
+                    p.warning("------ Remaining Task Actions skipped by Action Instruction")
+                    group_result = ActRE.SKIP
+                    break
+
+            executed += 1
+
+        else: # runs only if no 'break'
+            if not allow_queue:
+                    return executed, group_result
+
+            for spec in to_queue:
+                self.tracker.add_task(spec, no_root_connection=True)
+
+        return executed, group_result
 
     def _execute_action(self, count, action, task) -> ActRE|list:
         """ Run the given action of a specific task.
 
         """
-        result = None
-        action_log_level = task.spec.print_levels.on_fail(action_level).action()
-
-        if dry_run:
-            logging.warning("Dry Run: Not executing action: %s : %s", task.name, action, extra={"colour":"cyan"})
-            self.reporter.trace(task.spec, flags=ReportEnum.ACTION | ReportEnum.SKIP)
-            return ActRE.SUCCESS
-
+        result                     = None
+        action_log_level           = task.spec.print_levels.on_fail(action_level).action()
+        execute_log_level          = task.spec.print_levels.on_fail(execute_level).execute()
+        task.state['_action_step'] = count
+        self.reporter.add_trace(action, flags=ReportEnum.ACTION | ReportEnum.INIT)
         logmod.debug("-----> Action Execution: %s for %s", action, task.name)
+
         with logctx(action_log_level) as p: # Prep the action
-            self.reporter.trace(action, flags=ReportEnum.ACTION | ReportEnum.INIT)
-            task.state['_action_step'] = count
             p.info( "-----> Action %s.%s: %s", self.step, count, action.do, extra={"colour":"cyan"})
             p.debug("-----> Action %s.%s: args=%s kwargs=%s. state keys = %s", self.step, count, action.args, dict(action.kwargs), list(task.state.keys()))
             action.verify(task.state)
 
-            with logctx(task.spec.print_levels.on_fail(execute_level).execute()) as p2: # call the action
+            with logctx(execute_log_level) as p2: # call the action
                 result = action(task.state)
                 ##
             p.debug("-- Action Result: %s", result)
@@ -257,14 +238,24 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 case list() if all(isinstance(x, (DootTaskName, DootTaskSpec)) for x in result):
                     pass
                 case False | ActRE.FAIL:
-                    self.reporter.trace(action, flags=ReportEnum.FAIL | ReportEnum.ACTION)
+                    self.reporter.add_trace(action, flags=ReportEnum.FAIL | ReportEnum.ACTION)
                     raise doot.errors.DootTaskFailed("Task %s: Action Failed: %s", task.name, action.do, task=task.spec)
                 case _:
-                    self.reporter.trace(action, flags=ReportEnum.FAIL | ReportEnum.ACTION)
+                    self.reporter.add_trace(action, flags=ReportEnum.FAIL | ReportEnum.ACTION)
                     raise doot.errors.DootTaskError("Task %s: Action %s Failed: Returned an unplanned for value: %s", task.name, action.do, result, task=task.spec)
 
             action.verify_out(task.state)
 
-        logmod.debug("-----< Action Execution Complete: %s for %s", action, task.name)
-        self.reporter.trace(action, flags=ReportEnum.ACTION | ReportEnum.SUCCEED)
+        with logctx(action_log_level) as p: # Prep the action
+            p.debug("-----< Action Execution Complete: %s for %s", action, task.name)
+
+        self.reporter.add_trace(action, flags=ReportEnum.ACTION | ReportEnum.SUCCEED)
         return result
+
+    def _test_conditions(self, task:Task_i) -> bool:
+        """ run action specs that test if the task can be started """
+        match self._execute_action_group(task.spec.depends_on, task):
+            case _, ActRE.SKIP:
+                return False
+            case _, _:
+                return True

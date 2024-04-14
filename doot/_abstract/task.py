@@ -189,11 +189,3 @@ class Job_i(Task_i):
     @abc.abstractmethod
     def specialize_task(self, task:SpecStruct_p) -> SpecStruct_p|None:
         raise NotImplementedError(self.__class__, "specialize_task")
-
-    @abc.abstractmethod
-    def make(self, **kwargs) -> abc.Generator[Task_i]:
-        raise NotImplementedError()
-
-    @abc.abstractmethod
-    def _build_head(self, **kwargs) -> SpecStruct_p:
-        raise NotImplementedError()

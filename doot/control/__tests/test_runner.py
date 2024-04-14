@@ -118,48 +118,8 @@ class TestRunner:
         expand_job.assert_called()
         assert(expand_job.call_count == 3)
 
-        execute_action.assert_not_called()
         execute_task.assert_not_called()
         ##-- end check
-
-    def test_jobs_add_tasks(self, ctor, mocker, setup):
-        ##-- setup
-        reporter_m                         = mocker.MagicMock(spec=Reporter_i)
-
-        job1_m                             = mock_gen.mock_job("first")
-        job2_m                             = mock_gen.mock_job("second")
-        job3_m                             = mock_gen.mock_job("third")
-
-        task_m                             = mock_gen.mock_task_spec("firstTask")
-        job1_m.make.return_value          = [task_m]
-
-        tracker_m                        = mock_gen.mock_tracker(tasks=[job1_m, job2_m, job3_m])
-        runner                             = ctor(tracker=tracker_m, reporter=reporter_m)
-        expand_job                         = mocker.spy(runner, "_expand_job")
-        execute_task                       = mocker.spy(runner, "_execute_task")
-        execute_action                     = mocker.spy(runner, "_execute_action")
-        ##-- end setup
-
-        ##-- pre-check
-        tracker_m.update_state.assert_not_called()
-        ##-- end pre-check
-
-        ## Run:
-        runner(handler=False)
-
-        ##-- Check
-        tracker_m.add_task.assert_called()
-        assert(tracker_m.add_task.call_count == 1)
-        assert(tracker_m.add_task.call_args.args[0] is task_m)
-
-        tracker_m.update_state.assert_called()
-        assert(tracker_m.update_state.call_count == 3)
-
-        expand_job.assert_called()
-        assert(expand_job.call_count == 3)
-
-        execute_action.assert_not_called()
-        execute_task.assert_not_called()
 
     # @pytest.mark.xfail
     def test_tasks_execute_actions(self, ctor, mocker, setup):

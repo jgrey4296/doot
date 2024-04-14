@@ -50,7 +50,7 @@ from doot._abstract.structs import SpecStruct_p
 
 PAD           : Final[int] = 15
 
-# TODO: taskspec.setup, taskspec.cleanup
+# TODO: taskspec.setup, taskspec.cleanup, taskspec.on_fail
 
 def _separate_into_core_and_extra(data) -> tuple[dict, dict]:
     core_keys   = list(DootTaskSpec.__dataclass_fields__.keys())
@@ -75,6 +75,15 @@ def _separate_into_core_and_extra(data) -> tuple[dict, dict]:
             case "depends_on":
                 processed = _prepare_deps(val)
                 core_data["depends_on"] = processed
+            case "setup":
+                processed = _prepare_deps(val)
+                core_data["setup"] = processed
+            case "cleanup":
+                processed = _prepare_deps(val)
+                core_data["cleanup"] = processed
+            case "on_fail":
+                processed = _prepare_deps(val)
+                core_data["on_fail"] = processed
             case "queue_behaviour":
                 as_enum = TaskActivationBehaviour.build(val)
                 core_data["queue_behaviour"] = as_enum
@@ -97,7 +106,7 @@ def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|Doo
     for x in deps:
         match x:
             case { "do": action  }:
-                results.append(ActionSpec.build(x))
+                results.append(DootActionSpec.build(x))
             case { "loc": filename }:
                 results.append(DootTaskArtifact.build(x))
             case str() if x.startswith(doot.constants.patterns.FILE_DEP_PREFIX):
@@ -152,6 +161,7 @@ class DootTaskSpec(SpecStruct_p):
     depends_on                   : list[DootTaskName|DootTaskArtifact|DootActionSpec]                      = field(default_factory=list)
     setup                        : list[DootTaskName|DootActionSpec]                                       = field(default_factory=list)
     cleanup                      : list[DootTaskName|DootActionSpec]                                       = field(default_factory=list)
+    on_fail                      : list[DootTaskName|DootAcitonSpec]                                       = field(default_factory=list)
     priority                     : int                                                                     = field(default=10)
     ctor                         : DootTaskName|DootCodeReference                                          = field(default=None)
     # Any additional information:

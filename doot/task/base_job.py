@@ -74,16 +74,6 @@ class DootJob(Job_i, DootTask):
     def is_stale(self, task:Task_i):
         return False
 
-    def make(self, **kwargs) -> Generator[DootTaskSpec]:
-        logging.debug("-- job %s expanding tasks", self.name)
-        if bool(kwargs):
-            logging.debug("received kwargs: %s", kwargs)
-            self.args.update(kwargs)
-
-        head = self._build_head()
-        # yield self.specialize_task(head)
-        return [None]
-
     def specialize_task(self, task):
         return task
 
@@ -106,7 +96,6 @@ class DootJob(Job_i, DootTask):
             stub['doc'].default   = [f"\"{x}\"" for x in self.doc]
         return stub
 
-
     @classmethod
     def class_help(cls) -> str:
         """ Job *class* help. """
@@ -123,6 +112,7 @@ class DootJob(Job_i, DootTask):
             help_lines += [str(x) for x in cls.param_specs if not x.invisible]
 
         return "\n".join(help_lines)
+
     def _build_head(self, **kwargs) -> None|DootTaskSpec:
         logging.debug("Building Head Task for: %s", self.name)
         inject_keys = set(self.spec.inject)

@@ -59,9 +59,6 @@ def task_network(tasks:dict):
 
 def mock_task(name, spec=None, actions:int=1, **kwargs):
     task_m = MagicMock(spec=Task_i,
-                       depends_on=[],
-                       required_for=[],
-                       inject=[],
                        name=name,
                        state={},
                        **kwargs)
@@ -72,8 +69,6 @@ def mock_task(name, spec=None, actions:int=1, **kwargs):
 
 def mock_job(name, pre=None, post=None, spec=None, **kwargs):
     task_m = MagicMock(spec=Job_i,
-                       depends_on=[],
-                       required_for=[],
                        name=name,
                        state={},
                        **kwargs)
@@ -92,8 +87,10 @@ def mock_task_spec(name="mockSpec", pre=None, post=None, action_count=1, extra=N
                        queue_behaviour=TaskActivationBehaviour.default,
                        depends_on=pre or [],
                        required_for=post or [],
+                       setup=[],
+                       cleanup=[],
                        print_levels=tomlguard.TomlGuard({}),
-                        )
+                       )
     spec_m.name = structs.DootTaskName.build(name)
     return spec_m
 

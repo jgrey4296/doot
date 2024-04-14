@@ -149,19 +149,3 @@ class BaseRunner(TaskRunner_i):
     def _notify_artifact(self, art:DootTaskArtifact) -> None:
         printer.info("---- Artifact: %s", art)
         self.reporter.trace(art, flags=ReportEnum.ARTIFACT)
-
-    def _test_entry_conditions(self, task:Task_i) -> bool:
-        """ run action specs that test if the task can be started """
-        count = 0
-        for spec in task.spec.depends_on:
-            match spec:
-                case DootActionSpec():
-                    if self._execute_action(count, spec, task) is ActRE.SKIP:
-                        return False
-                    count += 2
-                case DootTaskArtifact():
-                    pass
-                case _:
-                    pass
-
-        return True
