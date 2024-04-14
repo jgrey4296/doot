@@ -43,7 +43,7 @@ import doot.errors
 from doot.enums import ReportEnum, ActionResponseEnum as ActRE, TaskStateEnum
 from doot._abstract import Job_i, Task_i, FailPolicy_p
 from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i, ReportLine_i, Action_p, Reporter_i
-from doot.structs import DootTaskArtifact
+from doot.structs import DootTaskArtifact, DootActionSpec
 from doot.utils.signal_handler import SignalHandler
 from doot.structs import DootTaskSpec, DootActionSpec
 from doot.utils.log_context import DootLogContext
@@ -54,6 +54,7 @@ build_level          : Final[str]            = doot.constants.printer.DEFAULT_BU
 action_level         : Final[str]            = doot.constants.printer.DEFAULT_ACTION_LEVEL
 sleep_level          : Final[str]            = doot.constants.printer.DEFAULT_SLEEP_LEVEL
 execute_level        : Final[str]            = doot.constants.printer.DEFAULT_EXECUTE_LEVEL
+enter_level          : Final[str]            = doot.constants.printer.DEFAULT_ENTER_LEVEL
 max_steps            : Final[str]            = doot.config.on_fail(100_000).settings.general.max_steps()
 fail_prefix          : Final[str]            = doot.constants.printer.FAILURE_PREFIX
 
@@ -148,3 +149,19 @@ class BaseRunner(TaskRunner_i):
     def _notify_artifact(self, art:DootTaskArtifact) -> None:
         printer.info("---- Artifact: %s", art)
         self.reporter.trace(art, flags=ReportEnum.ARTIFACT)
+
+    def _test_entry_conditions(self, task:Task_i) -> bool:
+        """ run action specs that test if the task can be started """
+        count = 0
+        for spec in task.spec.depends_on:
+            match spec:
+                case DootActionSpec():
+                    if self._execute_action(count, spec, task) is ActRE.SKIP:
+                        return False
+                    count += 2
+                case DootTaskArtifact():
+                    pass
+                case _:
+                    pass
+
+        return True

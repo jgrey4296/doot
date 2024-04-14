@@ -50,6 +50,8 @@ from doot._abstract.structs import SpecStruct_p
 
 PAD           : Final[int] = 15
 
+# TODO: taskspec.setup, taskspec.cleanup
+
 def _separate_into_core_and_extra(data) -> tuple[dict, dict]:
     core_keys   = list(DootTaskSpec.__dataclass_fields__.keys())
     core_data, extra_data = dict(), dict()
@@ -94,6 +96,8 @@ def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|Doo
     results = []
     for x in deps:
         match x:
+            case { "do": action  }:
+                results.append(ActionSpec.build(x))
             case { "loc": filename }:
                 results.append(DootTaskArtifact.build(x))
             case str() if x.startswith(doot.constants.patterns.FILE_DEP_PREFIX):
@@ -139,26 +143,27 @@ class DootTaskSpec(SpecStruct_p):
     actions                      : list[ [args] | {do="", args=[], **kwargs} ]
 
     """
-    name                         : DootTaskName                                                 = field()
-    doc                          : list[str]                                                    = field(default_factory=list)
-    source                       : DootTaskName|str|None                                        = field(default=None)
+    name                         : DootTaskName                                                            = field()
+    doc                          : list[str]                                                               = field(default_factory=list)
+    source                       : DootTaskName|str|None                                                   = field(default=None)
     actions                      : list[DootActionSpec]                                                    = field(default_factory=list)
 
-    active_when                  : list[DootTaskArtifact|callable]                              = field(default_factory=list)
-    required_for                 : list[DootTaskName|DootTaskArtifact]                          = field(default_factory=list)
-    depends_on                   : list[DootTaskName|DootTaskArtifact]                          = field(default_factory=list)
-    priority                     : int                                                          = field(default=10)
-    ctor                         : DootTaskName|DootCodeReference                               = field(default=None)
+    required_for                 : list[DootTaskName|DootTaskArtifact]                                     = field(default_factory=list)
+    depends_on                   : list[DootTaskName|DootTaskArtifact|DootActionSpec]                      = field(default_factory=list)
+    setup                        : list[DootTaskName|DootActionSpec]                                       = field(default_factory=list)
+    cleanup                      : list[DootTaskName|DootActionSpec]                                       = field(default_factory=list)
+    priority                     : int                                                                     = field(default=10)
+    ctor                         : DootTaskName|DootCodeReference                                          = field(default=None)
     # Any additional information:
-    version                      : str                                             = field(default="0.1")
-    # TODO version : dict = field(default_factory=dict)
-    print_levels                 : TomlGuard                                       = field(default_factory=TomlGuard)
-    flags                        : TaskFlags                                       = field(default=TaskFlags.TASK)
+    version                      : str                                                                     = field(default="0.1")
+    # TODO version               : dict                                                                    = field(default_factory=dict)
+    print_levels                 : TomlGuard                                                               = field(default_factory=TomlGuard)
+    flags                        : TaskFlags                                                               = field(default=TaskFlags.TASK)
 
-    extra                        : TomlGuard                                       = field(default_factory=TomlGuard)
+    extra                        : TomlGuard                                                               = field(default_factory=TomlGuard)
 
-    inject                       : list[str]                                       = field(default_factory=list) # For jobs
-    queue_behaviour              : TaskActivationBehaviour                         = field(default=TaskActivationBehaviour.default)
+    inject                       : list[str]                                                               = field(default_factory=list) # For jobs
+    queue_behaviour              : TaskActivationBehaviour                                                 = field(default=TaskActivationBehaviour.default)
 
     @staticmethod
     def build(data:TomlGuard|dict|DootTaskName|str):

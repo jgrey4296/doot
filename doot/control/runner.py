@@ -97,10 +97,12 @@ class DootRunner(BaseRunner, TaskRunner_i):
                         pass
                     case DootTaskArtifact():
                         self._notify_artifact(task)
-                    case Job_i():
+                    case Job_i() if self._test_entry_conditions(task):
                         self._expand_job(task)
-                    case Task_i():
+                    case Task_i() if self._test_entry_conditions(task):
                         self._execute_task(task)
+                    case _:
+                        pass
             except doot.errors.DootError as err:
                 self._handle_failure(task, err)
             except Exception as err:

@@ -45,7 +45,7 @@ import doot
 import doot.errors
 from doot.enums import TaskStateEnum, TaskActivationBehaviour
 from doot._abstract import Job_i, Task_i, FailPolicy_p
-from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskName, DootCodeReference
+from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskName, DootCodeReference, DootActionSpec
 from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i
 from doot.task.base_task import DootTask
 
@@ -196,6 +196,9 @@ class _InternalTrackerBase(TaskTracker_i):
                 case DootTaskArtifact():
                     pre = self._prep_artifact(pre)
                     self.task_graph.add_edge(pre, task.name, type=EDGE_E.ARTIFACT_CROSS)
+                case DootActionSpec():
+                    # Action spec dependencies are tested when running, not as part of the DAG
+                    pass
                 case DootTaskName() if all([(in_graph:=str(pre) in self.task_graph),(has_args:=bool(pre.args))]):
                     base_spec                 = self.tasks[str(pre)].spec
                     name_spec                 = DootTaskSpec.build(pre)
