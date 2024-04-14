@@ -49,7 +49,7 @@ class Reporter_i:
     def __str__(self):
         raise NotImplementedError()
 
-    def trace(self, msg, *args, flags=None):
+    def add_trace(self, msg, *args, flags=None):
         self._full_trace.append(DootTraceRecord(msg, flags, args))
 
 

@@ -40,7 +40,10 @@ logging = logmod.getLogger(__name__)
 import doot
 from doot.structs import DootKey
 from doot.enums import LoopControl, LocationMeta
+
 MARKER : Final[str] = doot.constants.paths.MARKER_FILE_NAME
+walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
+walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).settings.walking.halts()
 
 class PathManip_m:
     """

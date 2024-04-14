@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 See EOF for license/metadata/notes as applicable
 """
 
@@ -41,6 +40,7 @@ from doot.structs import DootTraceRecord
 from doot._abstract import Reporter_i
 
 class DootAlwaysReport(Reporter_i):
+
     def __call__(self, trace):
         return str(trace)
 

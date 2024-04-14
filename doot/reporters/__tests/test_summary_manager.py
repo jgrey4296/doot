@@ -44,23 +44,23 @@ class TestSummaryReporter:
     def test_add_basic_trace(self):
         manager = DootReportManagerSummary()
         assert(not bool(manager._full_trace))
-        manager.trace("test")
+        manager.add_trace("test")
         assert(bool(manager._full_trace))
         assert(isinstance(manager._full_trace[0], DootTraceRecord))
 
     def test_multi_add(self):
         manager = DootReportManagerSummary()
         assert(not bool(manager._full_trace))
-        manager.trace("test")
-        manager.trace("test")
-        manager.trace("test")
+        manager.add_trace("test")
+        manager.add_trace("test")
+        manager.add_trace("test")
         assert(len(manager._full_trace) == 3)
         assert(all(isinstance(x, DootTraceRecord) for x in manager._full_trace))
 
     @pytest.mark.skip("TODO")
     def test_str(self):
         manager = DootReportManagerSummary()
-        manager.trace("test", flags=ReportEnum.SUCCEED | ReportEnum.TASK)
-        manager.trace("test", flags=ReportEnum.FAIL    | ReportEnum.JOB)
-        manager.trace("test", flags=ReportEnum.SUCCEED | ReportEnum.ACTION)
+        manager.add_trace("test", flags=ReportEnum.SUCCEED | ReportEnum.TASK)
+        manager.add_trace("test", flags=ReportEnum.FAIL    | ReportEnum.JOB)
+        manager.add_trace("test", flags=ReportEnum.SUCCEED | ReportEnum.ACTION)
         assert(isinstance(manager) == "    - Jobs: 0/1\n    - Tasks  : 1/0\n    - Actions: 1/0")

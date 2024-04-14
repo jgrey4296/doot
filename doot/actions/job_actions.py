@@ -49,8 +49,6 @@ from doot.actions.job_injection import JobPrependActions, JobAppendActions, JobI
 from doot.actions.job_queuing import JobQueueAction, JobQueueHead, JobChainer
 from doot.mixins.path_manip import Walker_m
 
-walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
-walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).settings.walking.halts()
 
 class JobWalkAction(Walker_m, DootBaseAction):
     """
@@ -71,7 +69,7 @@ class JobWalkAction(Walker_m, DootBaseAction):
             case None:
                 accept_fn = lambda x: True
 
-        results = [x for x in self.walk_all(spec, state, roots, exts, rec=rec, fn=accept_fn)]
+        results = [x for x in self.walk_all(roots, exts, rec=rec, fn=accept_fn)]
         return { _update : results }
 
 class JobLimitAction(DootBaseAction):
