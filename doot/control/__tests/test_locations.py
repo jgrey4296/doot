@@ -14,6 +14,8 @@ import warnings
 import pytest
 
 import tomlguard
+import doot
+doot._test_setup()
 from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
 from doot.control.locations import DootLocations
 
@@ -236,5 +238,5 @@ class TestLocations:
         simple.update({"a": "blah"})
         assert(bool(simple._data))
 
-        with simple(pl.Path("~/desktop")) as ctx:
-            assert(ctx.a == (pl.Path("~/desktop/") / "blah").expanduser().absolute())
+        with simple(pl.Path("~/Desktop")) as ctx:
+            assert(ctx.a == (pl.Path("~/Desktop/") / "blah").expanduser().absolute())

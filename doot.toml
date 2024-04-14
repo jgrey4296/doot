@@ -24,6 +24,6 @@ printer = { colour = true }
 
 [[locations]]
 tasks        = ".tasks"
-temp         = ".temp"
+temp         = {loc=".temp", cleanable=true}
+src          = {loc="doot", protected=true}
 logs         = "{temp}/logs"
-src          = {protect="doot"}

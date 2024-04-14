@@ -24,7 +24,9 @@ dependencies   = [
     "matplotlib",
     "sty",
     "boltons",
-    "more_itertools"
+    "more_itertools",
+    "decorator-validation >= 3.0.0",
+    "decorator >= 5.0.0",
 ]
 
 [project.optional-dependencies]

@@ -27,6 +27,7 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
+import os
 import re
 import tomlguard
 import doot
@@ -55,10 +56,12 @@ class DootLocations(PathManip_m):
       locs['{temp}/somewhere']
       will expand 'temp' (if it is a registered location)
       """
+    locmeta = LocationMeta
 
     def __init__(self, root:Pl.Path):
-        self._root    : pl.Path()       = root.expanduser().absolute()
-        self._data    : TomlGuard       = tomlguard.TomlGuard()
+        self._root    : pl.Path()           = root.expanduser().absolute()
+        self._data    : TomlGuard           = tomlguard.TomlGuard()
+        self._loc_ctx : None|DootLocations  = None
 
     def __repr__(self):
         keys = ", ".join(iter(self))
@@ -101,22 +104,33 @@ class DootLocations(PathManip_m):
         """ Iterate over the registered location names """
         return iter(self._data.keys())
 
-    def __call__(self, new_root) -> Self:
+    def __call__(self, new_root=None) -> Self:
         """ Create a copied locations object, with a different root """
-        new_obj = DootLocations(new_root)
+        new_obj = DootLocations(new_root or self._root)
         return new_obj.update(self)
 
     def __enter__(self) -> Any:
+        """ replaces the global doot.locs with this locations obj,
+        and changes the system root to wherever this locations obj uses as root
+        """
+        self._loc_ctx = doot.locs
+        doot.locs = self
+        os.chdir(doot.locs._root)
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
+        """ returns the global state to its original, """
+        assert(self._loc_ctx is not None)
+        doot.locs     = self._loc_ctx
+        os.chdir(doot.locs._root)
+        self._loc_ctx = None
         return False
 
     def get(self, key:DootSimpleKey|str, on_fail:None|str|pl.Path=Any) -> None|pl.Path:
         """
           convert a *simple* key of one value to a path.
-          This pairs with _DootKeyGetter.chained_get, which does the heavy lifting of expansions
           does *not* recursively expand returned paths
+          More complex expansion is handled in DootKey and subclasses
         """
         assert(isinstance(key,(DootSimpleKey,str))), (str(key), type(key))
         match key:
@@ -146,12 +160,20 @@ class DootLocations(PathManip_m):
         return self._normalize(path, root=self.root)
 
     def metacheck(self, key:str|DootKey, meta:LocationMeta) -> bool:
+        """ check if any key provided has the applicable meta flags """
         match key:
             case DootNonKey():
                 return False
-            case str() | DootSimpleKey() if key in self._data:
+            case DootSimpleKey() if key in self._data:
                 return self._data[key].check(meta)
-
+            case DootMultiKey():
+                 for k in DootKey.build(key):
+                     if k not in self._data:
+                         continue
+                     if self._data[k].check(meta):
+                         return True
+            case str():
+                return self.metacheck(DootKey.build(key), meta)
         return False
 
     @property
@@ -165,7 +187,7 @@ class DootLocations(PathManip_m):
         """
           Update the registered locations with a dict, tomlguard, or other dootlocations obj.
         """
-        match extra:
+        match extra: # unwrap to just a dict
             case dict():
                 pass
             case tomlguard.TomlGuard():
@@ -203,3 +225,7 @@ class DootLocations(PathManip_m):
 
         if bool(missing):
             raise DootDirAbsent("Ensured Locations are missing for %s : %s", task, missing)
+
+
+    def _clear(self):
+        self._data = tomlguard.TomlGuard()

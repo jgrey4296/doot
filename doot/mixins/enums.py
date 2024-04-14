@@ -49,7 +49,7 @@ class EnumBuilder_m:
                 case cls():
                     return val
         except KeyError:
-            logging.exception("Can't Create a flag of (%s):%s", cls, val)
+            logging.warning("Can't Create a flag of (%s):%s. Available: %s", cls, val, list(cls.__members__.keys()))
 
 class FlagsBuilder_m:
 
@@ -72,6 +72,6 @@ class FlagsBuilder_m:
                     case cls():
                         base |= x
             except KeyError:
-                logging.exception("Can't create a flag of (%s):%s", cls, x)
+                logging.warning("Can't create a flag of (%s):%s. Available: %s", cls, x, list(cls.__members__.keys()))
 
         return base

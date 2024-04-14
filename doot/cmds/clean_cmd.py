@@ -58,51 +58,15 @@ class CleanCmd(BaseCommand):
             ]
 
     def __call__(self, tasks:dict, plugins:dict):
-        clean_target = doot.args.on_fail(None).cmd.args.target()
-        if clean_target is None:
-            printer.info("- No Clean Target Specified.")
-            existing_clean_targets = list(filter(lambda x: x.exists(), [doot.locs[x] for x in clean_locs]))
-            self._gen_clean(existing_clean_targets)
-        elif clean_target in tasks:
-            self._task_clean(tasks[clean_target])
-        elif clean_target not in tasks:
-            printer.error("Specified Target not found in task list: %s", clean_target)
+        self._loc_clean()
 
-    def _task_clean(self, task):
-        printer.info("Cleaning Task: %s", task.name)
-        task_clean_locs = task.extra.on_fail([], list).clean_locs()
-        existing_clean_targets = list(filter(lambda x: x.exists(), [doot.locs[x] for x in task_clean_locs]))
-        self._gen_clean(existing_clean_targets)
-
-    def _gen_clean(self, existing_clean_targets):
-        if not bool(existing_clean_targets):
-            printer.info("- No Viable Clean Locations.")
-            return
-
-        printer.info("- Clean will *delete* the following locations:")
-        printer.info("")
-        for loc in existing_clean_targets:
-            printer.info("-- %s", str(loc))
-
-        printer.info("")
-        match input(":-- WARNING: Do you want to clean? Yes/_: "):
-            case "Yes":
-                for loc in existing_clean_targets:
-                    match input(f"--- Delete {loc} ? Y/_: "):
-                        case "Y" if loc.is_dir() and doot.args.cmd.args.recursive:
-                            printer.info("---- Deleting Recursively")
-                            shutil.rmtree(loc)
-                        case "Y" if loc.is_dir():
-                            printer.info("---- Deleting Non-Recursively")
-                            try:
-                                loc.rmdir()
-                            except OSError:
-                                printer.info("---- Location is not empty, to delete recursively, pass -r to clean")
-                        case "Y" if loc.is_file():
-                            printer.info("---- Deleting")
-                            loc.unlink()
-                        case _:
-                            printer.info("---- Skipping")
-
-            case _:
-                printer.info("Not cleaning.")
+    def _loc_clean(self):
+        cleanable = [doo.locs[x] for x in doot.locs if doot.locs.metacheck(x, doot.locs.locmeta.cleanable)]
+        for x in cleanable:
+            if not x.exists():
+                pass
+            logging.info("Cleaning: %s", x)
+            if x.is_dir():
+                shutil.rmtree(x)
+            else:
+                x.unlink(missing_ok=True)
