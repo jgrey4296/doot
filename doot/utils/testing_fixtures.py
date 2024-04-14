@@ -44,9 +44,13 @@ def wrap_tmp(tmp_path):
     orig     = pl.Path().cwd()
     new_base = tmp_path / "test_root"
     new_base.mkdir()
-    os.chdir(new_base)
-    doot.locs._root = new_base
-    yield new_base
+    with doot.locs(new_base):
+        yield new_base
     logging.debug("Returning to original dir")
-    os.chdir(orig)
-    doot.locs._root = orig
+
+
+@pytest.fixture
+def wrap_locs():
+    logging.debug("Activating temp locs")
+    with doot.locs() as temp:
+        yield temp

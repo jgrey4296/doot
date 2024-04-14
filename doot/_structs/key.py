@@ -37,14 +37,16 @@ logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
+import decorator
 import abc
-from collections import UserString
 import string
 from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot._structs.code_ref import DootCodeReference
 from doot._abstract.structs import SpecStruct_p
+from doot.utils.chain_get import DootKeyGetter
+from doot.utils.decorators import DootDecorator
 
 KEY_PATTERN                                = doot.constants.patterns.KEY_PATTERN
 MAX_KEY_EXPANSIONS                         = doot.constants.patterns.MAX_KEY_EXPANSIONS
@@ -59,29 +61,7 @@ EXPANSION_HINT : Final[str]                = "_doot_expansion_hint"
 HELP_HINT      : Final[str]                = "_doot_help_hint"
 FUNC_WRAPPED   : Final[str]                = "__wrapped__"
 
-class _DootKeyGetter:
-    """
-      The core logic to turn a key into a value.
-      Doesn't perform repeated expansions.
-
-      tries sources in order.
-    """
-
-    @staticmethod
-    def chained_get(key:str, *sources:dict|DootLocations) -> Any:
-        # cli   : dict          = doot.args.on_fail({}).tasks[str(state.get(STATE_TASK_NAME_K, None))]()
-        # replacement           = cli.get(key, None)
-        # *Not* elif's, want it to chain.
-        for source in sources:
-            if source is None:
-                continue
-            replacement = source.get(key, None)
-            if replacement is not None:
-                return replacement
-
-        return None
-
-class KWrapper:
+class KWrapper(DootDecorator):
     """ Decorators for actions
     Kwrapper is accessible as DootKey.kwrap
 
@@ -161,8 +141,10 @@ class KWrapper:
     @staticmethod
     def _add_key_handler(f):
         """ idempotent key handler so decorated functions dont add unnecessary stack frames """
-        if getattr(f, KEYS_HANDLED, False):
+        if DootDecorator.has_annotations(f):
             return f
+
+        DootDecorator.truncate_signature(f)
 
         match getattr(f, ORIG_ARGS)[0]:
             case "self": # The method form handler
@@ -188,8 +170,9 @@ class KWrapper:
                     all_args = (*call_args, *expansions)
                     return f(spec, state, *all_args, **kwargs)
 
-        setattr(action_expands, KEYS_HANDLED, True)
+        DootDecorator.annotate(action_expands, {KEYS_HANDLED})
         return action_expands
+
 
     @staticmethod
     def taskname(f):
@@ -357,7 +340,7 @@ class DootFormatter(string.Formatter):
         depth_check           = self._depth < MAX_KEY_EXPANSIONS
         rec_allowed           = kwargs.get(self.REC, False) and depth_check
 
-        match (replacement:=_DootKeyGetter.chained_get(key, spec, state, locs)):
+        match (replacement:=DootKeyGetter.chained_get(key, spec, state, locs)):
             case None if insist:
                 raise KeyError("Key Expansion Not Found")
             case None:
@@ -530,7 +513,7 @@ class DootKey(abc.ABC):
     def basic(self, spec:SpecStruct_p, state, locs=None):
         """ the most basic expansion of a key """
         kwargs = spec.params
-        return _DootKeyGetter.chained_get(str(self), kwargs, state, locs or doot.locs)
+        return DootKeyGetter.chained_get(str(self), kwargs, state, locs or doot.locs)
 
     @abc.abstractmethod
     def to_type(self, spec, state, type_=Any, chain:list[DootKey]=None, on_fail=Any, **kwargs) -> Any:
@@ -720,7 +703,7 @@ class DootSimpleKey(str, DootKey):
                 kwargs = {}
 
         task_name = state.get(STATE_TASK_NAME_K, None) if state else None
-        match (replacement:=_DootKeyGetter.chained_get(target, kwargs, state)):
+        match (replacement:=DootKeyGetter.chained_get(target, kwargs, state)):
             case None if bool(chain):
                 return chain[0].to_type(spec, state, type_=type_, chain=chain[1:], on_fail=on_fail)
             case None if on_fail != Any and isinstance(on_fail, DootKey):

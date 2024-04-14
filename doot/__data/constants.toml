@@ -46,10 +46,21 @@ NON_DEFAULT_KEY         = "_non_default"
 
 [doot.constants.printer]
 PRINTER_NAME            = "doot._printer"
-PRINT_LOCATIONS         = ["head", "build", "action", "sleep", "execute"]
+PRINT_LOCATIONS         = ["head", "build", "action", "sleep", "execute", "enter"]
 DEFAULT_HEAD_LEVEL      = "INFO"
 DEFAULT_BUILD_LEVEL     = "WARN"
 DEFAULT_ACTION_LEVEL    = "INFO"
 DEFAULT_SLEEP_LEVEL     = "WARN"
 DEFAULT_EXECUTE_LEVEL   = "INFO"
+DEFAULT_ENTER_LEVEL     = "WARN"
 FAILURE_PREFIX          = "---- !!!!"
+
+[doot.constants.decorations]
+RUN_DRY_SWITCH = "__DOOT_RUN_DRY_SWITCH"
+RUN_DRY        = "__DOOT_RUN_DRY"
+GEN_TASKS      = "__DOOT_GEN_TASKS"
+IO_ACT         = "__DOOT_IO_ACT"
+CONTROL_FLOW   = "__DOOT_CONTROL_FLOW"
+EXTERNAL       = "__DOOT_EXTERNAL"
+STATE_MOD      = "__DOOT_STATE_MOD"
+ANNOUNCER      = "__DOOT_ANNOUNCER"

@@ -19,7 +19,6 @@ import doot._abstract
 from doot.task.check_locs import CheckLocsTask
 from doot.control.locations import DootLocations
 from doot.structs import DootTaskSpec
-from doot.utils.testing_fixtures import wrap_tmp
 
 logging = logmod.root
 
