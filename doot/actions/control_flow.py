@@ -38,6 +38,7 @@ from doot.errors import DootTaskError, DootTaskFailed
 from doot.structs import DootKey, DootCodeReference
 from doot.mixins.path_manip import PathManip_m
 from doot.actions.base_action import DootBaseAction
+from doot.utils.decorators import ControlFlow
 
 ##-- expansion keys
 MSG          : Final[DootKey] = DootKey.build("msg")
@@ -49,6 +50,7 @@ FILE_TARGET  : Final[DootKey] = DootKey.build("file")
 
 ##-- end expansion keys
 
+@ControlFlow()
 class CancelOnPredicateAction(DootBaseAction):
     """
       Get a predicate using the kwarg `pred`,
@@ -62,6 +64,7 @@ class CancelOnPredicateAction(DootBaseAction):
         predicate = _pred.try_import()
         return predicate(spec,state)
 
+@ControlFlow()
 class SkipIfFileExists(DootBaseAction):
 
     @DootKey.dec.args
@@ -73,6 +76,7 @@ class SkipIfFileExists(DootBaseAction):
                 printer.info("Target Exists: %s", path)
                 return self.ActRE.SKIP
 
+@ControlFlow()
 class SkipUnlessSuffix(DootBaseAction):
 
     @DootKey.dec.paths("fpath")
@@ -90,6 +94,7 @@ class LogAction(DootBaseAction):
         msg          = MSG.expand(spec, state, rec=True)
         printer.log(level, "%s", msg)
 
+@ControlFlow()
 class StalenessCheck(DootBaseAction):
     """ Skip the rest of the task if old hasn't been modified since new was modifed """
 
@@ -98,6 +103,7 @@ class StalenessCheck(DootBaseAction):
         if new.exists() and (old.stat().st_mtime_ns <= new.stat().st_mtime_ns):
             return self.ActRE.SKIP
 
+@ControlFlow()
 class AssertInstalled(DootBaseAction):
     """
     Easily check a program can be found and used
@@ -118,6 +124,7 @@ class AssertInstalled(DootBaseAction):
         printer.exception("Required Programs were not found: %s", ", ".join(failures))
         return self.ActRE.FAIL
 
+@ControlFlow()
 class WaitAction:
     """ An action that waits for some amount of time """
 
@@ -125,6 +132,7 @@ class WaitAction:
     def __call__(self, spec, state, count):
         sleep(count)
 
+@ControlFlow()
 class SkipWhenRelativeTo(PathManip_m, DootBaseAction):
 
     @DootKey.dec.paths("fpath")
@@ -140,6 +148,7 @@ class SkipWhenRelativeTo(PathManip_m, DootBaseAction):
         except ValueError:
             return
 
+@ControlFlow()
 class SkipUnlessRelativeTo(PathManip_m, DootBaseAction):
 
     @DootKey.dec.paths("fpath")

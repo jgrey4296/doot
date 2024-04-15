@@ -64,6 +64,8 @@ class DootTracker(BaseTracker, TaskTracker_i):
         connecting it with its dependencies and tasks that depend on it
 
         # TODO check the spec's "active_when" conditions, return early if it fails
+
+        # TODO ensure idempotency
         """
         task : Task_i = self._prep_task(task)
         assert(isinstance(task, Task_i))

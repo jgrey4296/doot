@@ -121,6 +121,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
             logmod.debug("-- Expanding Job %s: %s", self.step, job.name)
             with logctx(head_log_level) as p:     # Announce entry
                 p.info("---> Job %s: %s", self.step, job.name, extra={"colour":"magenta"})
+                # TODO queue $head$
 
             self.reporter.add_trace(job.spec, flags=ReportEnum.JOB | ReportEnum.INIT)
 
@@ -147,6 +148,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
         try:
             with logctx(head_log_level) as p: # Announce entry
                 p.info("----> Task %s :  %s", self.step, task.spec.name.readable, extra={"colour":"magenta"})
+                # TODO queue $head$
 
             self.reporter.add_trace(task.spec, flags=ReportEnum.TASK | ReportEnum.INIT)
 

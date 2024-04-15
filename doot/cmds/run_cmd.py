@@ -59,6 +59,7 @@ class RunCmd(BaseCommand):
     def param_specs(self) -> list:
         return super().param_specs + [
             self.build_param(name="step", default=False),
+            self.build_param(name="interrupt", default=False),
             self.build_param(name="dry-run", default=False),
             self.build_param(name="target", type=list[str], default=[], positional=True),
             ]
@@ -92,12 +93,14 @@ class RunCmd(BaseCommand):
         tracker.queue_task(CheckLocsTask.task_name)
 
         match interrupt_handler:
+            case _ if not doot.args.cmd.args.interrupt:
+                interrupt = None
+            case None:
+                interrupt = None
             case bool():
                 interrupt = interrupt_handler
             case str():
                 interrupt = DootCodeReference.build(interrupt_handler).try_import()
-            case None:
-                interrupt = None
 
         printer.info("- %s Tasks Queued: %s", len(tracker.active_set), " ".join(tracker.active_set))
         with runner:

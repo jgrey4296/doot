@@ -307,6 +307,7 @@ class BaseTracker(_InternalTrackerBase):
         """
         # TODO queue the task's setup task if it exists / hasn't been executed already
         # TODO if only task name is specified, without group, and theres no ambiguity, accept that
+        # TODO Ensure idempotency
         logging.debug("Queue Request: %s", tasks)
         targets = set()
         for task in tasks:
