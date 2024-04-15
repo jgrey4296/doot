@@ -37,8 +37,9 @@ class TestPathExpansion:
 
     @pytest.fixture(scope="function")
     def setup_locs(self, mocker):
-        new_locs = TomlGuard({"p1": "test1", "p2": "test2/sub"})
-        return mocker.patch.object(doot.locs, "_data", new_locs)
+        with doot.locs:
+            doot.locs.update({"p1": "test1", "p2": "test2/sub"})
+            yield
 
     @pytest.mark.parametrize("key,target,state", [("{x}", "blah", {"x": "blah"})])
     def test_to_path_basic(self, spec, mocker, setup_locs, key, target,state):

@@ -37,8 +37,9 @@ class TestStringExpansion:
 
     @pytest.fixture(scope="function")
     def setup_locs(self, mocker):
-        new_locs = TomlGuard({"p1": "test1", "p2": "test2/sub"})
-        return mocker.patch.object(doot.locs, "_data", new_locs)
+        with doot.locs:
+            doot.locs.update({"p1": "test1", "p2": "test2/sub"})
+            yield
 
     def test_basic_to_str(self, spec):
         result = DootKey.build("{x}").expand(spec, {"x": "blah"})

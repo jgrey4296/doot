@@ -26,11 +26,108 @@ from doot._abstract import Task_i
 from doot.utils import mock_gen
 
 @pytest.mark.parametrize("ctor", [DootTracker])
-class TestTracker:
+class TestTrackerBasic:
 
     def test_initial(self, ctor):
         tracker = ctor()
         assert(tracker is not None)
+
+    @pytest.mark.skip("TODO")
+    def test_clear(self, ctor):
+        pass
+
+    @pytest.mark.skip("TODO")
+    def test_validate(self, ctor):
+        pass
+
+    @pytest.mark.skip("TODO")
+    def test_task_state(self, ctor):
+        pass
+
+    @pytest.mark.skip("TODO")
+    def test_update_task_state(self, ctor):
+        pass
+
+@pytest.mark.parametrize("ctor", [DootTracker])
+class TestTrackerArtifacts:
+
+    @pytest.mark.xfail
+    def test_task_exact_artifact_dependency(self, ctor, mocker):
+        tracker = ctor()
+        for task in mock_gen.task_network({"task1"     : [[pl.Path("test.file")], []],
+                                           "subtask"   : [[], [pl.Path("blah.other")]],
+                                           "subtask2"  : [[], [pl.Path("test.file")]],
+
+                                          }):
+            tracker.add_task(task)
+
+        next_task = tracker.next_for("default::task1")
+        assert(next_task.name == "default::subtask2")
+
+    @pytest.mark.skip
+    def test_task_inexact_artifact_dependency(self, ctor, mocker):
+        tracker = ctor()
+        for task in mock_gen.task_network({"task1"     : [[pl.Path("*.file")], []],
+                                           "subtask"   : [[], [pl.Path("blah.other")]],
+                                           "subtask2"  : [[], [pl.Path("test.file")]],
+
+                                          }):
+            tracker.add_task(task)
+
+        next_task = tracker.next_for("default::task1")
+        assert(isinstance(next_task, doot.structs.DootTaskArtifact))
+
+    @pytest.mark.xfail
+    def test_task_artifact_exists(self, ctor, mocker):
+        """
+          check that if artifacts exist, tasks that generate them aren't queued
+        """
+        mocker.patch.object(pl.Path, "exists", return_value=True)
+        tracker = ctor()
+        for task in mock_gen.task_network({"task1"     : [[pl.Path("*.file")], []],
+                                           "subtask"   : [[], [pl.Path("blah.other")]],
+                                           "subtask2"  : [[], [pl.Path("test.file")]],
+
+                                          }):
+            tracker.add_task(task)
+
+        next_task = tracker.next_for("default::task1")
+        assert(isinstance(next_task, doot.structs.DootTaskArtifact))
+
+    @pytest.mark.skip
+    def test_task_artifact_doesnt_exists(self, ctor, mocker):
+        mocker.patch.object(pl.Path, "exists", return_value=False)
+        tracker = ctor()
+        for task in mock_gen.task_network({"task1"     : [[pl.Path("*.file")], []],
+                                           "subtask"   : [[], [pl.Path("blah.other")]],
+                                           "subtask2"  : [[], [pl.Path("test.file")]],
+
+                                          }):
+            tracker.add_task(task)
+
+        next_task = tracker.next_for("default::task1")
+        assert(isinstance(next_task, doot.structs.DootTaskArtifact))
+
+    @pytest.mark.xfail
+    def test_task_artifact_partial_exists(self, ctor, mocker):
+
+        def temp_exists(self):
+            return not "*" in self.stem
+
+        mocker.patch.object(pl.Path, "exists", new=temp_exists)
+        tracker = ctor()
+        for task in mock_gen.task_network({"task1"     : [[pl.Path("*.file")], []],
+                                           "subtask"   : [[], [pl.Path("blah.other")]],
+                                           "subtask2"  : [[], [pl.Path("test.file")]],
+
+                                          }):
+            tracker.add_task(task)
+
+        next_task = tracker.next_for("default::task1")
+        assert(isinstance(next_task, doot.structs.DootTaskArtifact))
+
+@pytest.mark.parametrize("ctor", [DootTracker])
+class TestTrackerInsertion:
 
     def test_add_task(self, ctor, mocker):
         mock_task = mock_gen.mock_task("task1")
@@ -62,16 +159,6 @@ class TestTracker:
 
         assert("default::task1" in tracker.tasks)
 
-    def test_contains_defined(self, ctor, mocker):
-        mock_task = mock_gen.mock_task("test_task")
-        mock_task.depends_on = ["example", "blah"]
-
-        tracker = ctor()
-        tracker.add_task(mock_task)
-        # defined Task is contained
-        assert("default::test_task" in tracker)
-
-
     def test_warn_on_undefined(self, ctor, mocker, caplog):
         """ create a task with undefined dependencies, it should just warn not error """
         tracker = ctor()
@@ -82,14 +169,6 @@ class TestTracker:
         assert(bool([x for x in caplog.records if x.levelname == "WARNING"]))
         assert("Tried to Schedule a Declared but Undefined Task: subtask" in caplog.messages)
         assert("Tried to Schedule a Declared but Undefined Task: subtask2" in caplog.messages)
-
-    def test_not_contains_declared(self, ctor, mocker):
-        mock_task = mock_gen.mock_task("test_task", pre=["example", "blah"])
-
-        tracker = ctor()
-        tracker.add_task(mock_task)
-        assert("example" not in tracker)
-        assert("blah" not in tracker)
 
     @pytest.mark.skip
     def test_task_prior_registration(self, ctor, mocker):
@@ -137,6 +216,30 @@ class TestTracker:
 
         defined = tracker.defined_set()
         assert(defined == {"default::test_task"})
+
+    def test_contains_defined(self, ctor, mocker):
+        mock_task = mock_gen.mock_task("test_task")
+        mock_task.depends_on = ["example", "blah"]
+
+        tracker = ctor()
+        tracker.add_task(mock_task)
+        # defined Task is contained
+        assert("default::test_task" in tracker)
+
+    def test_not_contains_declared(self, ctor, mocker):
+        mock_task = mock_gen.mock_task("test_task", pre=["example", "blah"])
+
+        tracker = ctor()
+        tracker.add_task(mock_task)
+        assert("example" not in tracker)
+        assert("blah" not in tracker)
+
+    @pytest.mark.skip("TODO")
+    def test_late_count(self, ctor):
+        pass
+
+@pytest.mark.parametrize("ctor", [DootTracker])
+class TestTrackerUpdate:
 
     def test_task_order(self, ctor, mocker):
         tasks = mock_gen.task_network({
@@ -224,7 +327,6 @@ class TestTracker:
         assert(tracker.next_for().name == "default::task1")
         assert("Tried to Schedule a Declared but Undefined Task: subsub" in caplog.messages)
 
-
     def test_post_task_order(self, ctor, mocker):
         tracker = ctor()
         for task in mock_gen.task_network({"task1"     : [["default::subtask", "default::subtask2"], []],
@@ -251,75 +353,16 @@ class TestTracker:
         next_task_4 = tracker.next_for()
         assert(next_task_4.name == "default::task1" )
 
-    def test_task_exact_artifact_dependency(self, ctor, mocker):
-        tracker = ctor()
-        for task in mock_gen.task_network({"task1"     : [[pl.Path("test.file")], []],
-                                           "subtask"   : [[], [pl.Path("blah.other")]],
-                                           "subtask2"  : [[], [pl.Path("test.file")]],
+class TestTrackerPersistence:
 
-                                          }):
-            tracker.add_task(task)
+    @pytest.mark.skip("TODO")
+    def test_all_state(self):
+        pass
 
-        next_task = tracker.next_for("default::task1")
-        assert(next_task.name == "default::subtask2")
+    @pytest.mark.skip("TODO")
+    def test_write(self):
+        pass
 
-    @pytest.mark.skip
-    def test_task_inexact_artifact_dependency(self, ctor, mocker):
-        tracker = ctor()
-        for task in mock_gen.task_network({"task1"     : [[pl.Path("*.file")], []],
-                                           "subtask"   : [[], [pl.Path("blah.other")]],
-                                           "subtask2"  : [[], [pl.Path("test.file")]],
-
-                                          }):
-            tracker.add_task(task)
-
-        next_task = tracker.next_for("default::task1")
-        assert(isinstance(next_task, doot.structs.DootTaskArtifact))
-
-    def test_task_artifact_exists(self, ctor, mocker):
-        """
-          check that if artifacts exist, tasks that generate them aren't queued
-        """
-        mocker.patch.object(pl.Path, "exists", return_value=True)
-        tracker = ctor()
-        for task in mock_gen.task_network({"task1"     : [[pl.Path("*.file")], []],
-                                           "subtask"   : [[], [pl.Path("blah.other")]],
-                                           "subtask2"  : [[], [pl.Path("test.file")]],
-
-                                          }):
-            tracker.add_task(task)
-
-
-        next_task = tracker.next_for("default::task1")
-        assert(isinstance(next_task, doot.structs.DootTaskArtifact))
-
-    @pytest.mark.skip
-    def test_task_artifact_doesnt_exists(self, ctor, mocker):
-        mocker.patch.object(pl.Path, "exists", return_value=False)
-        tracker = ctor()
-        for task in mock_gen.task_network({"task1"     : [[pl.Path("*.file")], []],
-                                           "subtask"   : [[], [pl.Path("blah.other")]],
-                                           "subtask2"  : [[], [pl.Path("test.file")]],
-
-                                          }):
-            tracker.add_task(task)
-
-        next_task = tracker.next_for("default::task1")
-        assert(isinstance(next_task, doot.structs.DootTaskArtifact))
-
-    def test_task_artifact_partial_exists(self, ctor, mocker):
-
-        def temp_exists(self):
-            return not "*" in self.stem
-
-        mocker.patch.object(pl.Path, "exists", new=temp_exists)
-        tracker = ctor()
-        for task in mock_gen.task_network({"task1"     : [[pl.Path("*.file")], []],
-                                           "subtask"   : [[], [pl.Path("blah.other")]],
-                                           "subtask2"  : [[], [pl.Path("test.file")]],
-
-                                          }):
-            tracker.add_task(task)
-
-        next_task = tracker.next_for("default::task1")
-        assert(isinstance(next_task, doot.structs.DootTaskArtifact))
+    @pytest.mark.skip("TODO")
+    def test_read(self):
+        pass
