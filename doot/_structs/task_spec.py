@@ -41,7 +41,7 @@ from importlib.metadata import EntryPoint
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.enums import TaskFlags, ReportEnum, TaskActivationBehaviour
+from doot.enums import TaskFlags, ReportEnum, TaskQueueMeta
 from doot._structs.sname import DootTaskName, DootCodeReference
 from doot._structs.action_spec import DootActionSpec
 from doot._structs.artifact import DootTaskArtifact
@@ -85,7 +85,7 @@ def _separate_into_core_and_extra(data) -> tuple[dict, dict]:
                 processed = _prepare_deps(val)
                 core_data["on_fail"] = processed
             case "queue_behaviour":
-                as_enum = TaskActivationBehaviour.build(val)
+                as_enum = TaskQueueMeta.build(val)
                 core_data["queue_behaviour"] = as_enum
             case x if x in core_keys:
                 core_data[x] = val
@@ -123,6 +123,7 @@ def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|Doo
 def _prepare_ctor(ctor, mixins) -> DootTaskName|DootCodeReference:
     match ctor:
         case None:
+
             default_alias = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
             coderef_str   = doot.aliases.task[default_alias]
             return DootCodeReference.build(coderef_str).add_mixins(*mixins)
@@ -173,14 +174,14 @@ class DootTaskSpec(SpecStruct_p):
     extra                        : TomlGuard                                                               = field(default_factory=TomlGuard)
 
     inject                       : list[str]                                                               = field(default_factory=list) # For jobs
-    queue_behaviour              : TaskActivationBehaviour                                                 = field(default=TaskActivationBehaviour.default)
+    queue_behaviour              : TaskQueueMeta                                                 = field(default=TaskQueueMeta.default)
 
     @staticmethod
     def build(data:TomlGuard|dict|DootTaskName|str):
         match data:
             case TomlGuard() | dict():
                 return DootTaskSpec.from_dict(data)
-            case DootTaskname():
+            case DootTaskName():
                 return DootTaskSpec.from_name(data)
             case str():
                 return DootTaskSpec.from_name(DootTaskName.build(data))
@@ -264,7 +265,8 @@ class DootTaskSpec(SpecStruct_p):
         logging.debug("Specialized Task: %s on top of: %s", data.name.readable, self.name)
         return DootTaskSpec.build(specialized)
 
-    def make(self, ensure=Any):
+    def make(self, ensure=Any) -> Task_i:
+        """ Create actual task instance """
         task_ctor = self.ctor.try_import(ensure=ensure)
         return task_ctor(self)
 

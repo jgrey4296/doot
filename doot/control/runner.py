@@ -29,9 +29,8 @@ import networkx as nx
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-##-- end logging
-
 printer = logmod.getLogger("doot._printer")
+##-- end logging
 
 from collections import defaultdict
 from contextlib import nullcontext
@@ -100,6 +99,9 @@ class DootRunner(BaseRunner, TaskRunner_i):
                         self._expand_job(task)
                     case Task_i() if self._test_conditions(task):
                         self._execute_task(task)
+                    case Task_i():
+                        # test_conditions failed, so skip
+                        printer.info("Skipping Task: %s", task.spec.name)
                     case _:
                         pass
             except doot.errors.DootError as err:

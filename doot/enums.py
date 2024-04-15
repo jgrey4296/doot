@@ -60,6 +60,7 @@ class TaskFlags(FlagsBuilder_m, enum.Flag):
     THREAD_SAFE  = enum.auto()
     STATEFUL     = enum.auto()
     STATELESS    = enum.auto()
+    INTERNAL     = enum.auto()
 
 class ReportEnum(enum.Flag):
     """ Flags to mark what a reporter reports """
@@ -81,38 +82,12 @@ class ReportEnum(enum.Flag):
     CONFIG   = enum.auto()
     ARTIFACT = enum.auto()
 
-class TaskPolicyEnum(enum.Flag):
-    """
-      Combinable Policy Types:
-      breaker  : fails fast
-      bulkhead : limits extent of problem and continues
-      retry    : trys to do the action again to see if its resolved
-      timeout  : waits then fails
-      cache    : reuses old results
-      fallback : uses defined alternatives
-      cleanup  : uses defined cleanup actions
-      debug    : triggers pdb
-      pretend  : pretend everything went fine
-      accept   : accept the failure
-
-      breaker will overrule bulkhead
-    """
-    BREAKER  = enum.auto()
-    BULKHEAD = enum.auto()
-    RETRY    = enum.auto()
-    TIMEOUT  = enum.auto()
-    CACHE    = enum.auto()
-    FALLBACK = enum.auto()
-    CLEANUP  = enum.auto()
-    DEBUG    = enum.auto()
-    PRETEND  = enum.auto()
-    ACCEPT   = enum.auto()
-
 class ActionResponseEnum(EnumBuilder_m, enum.Enum):
-    # TODO refactor success -> succeed
-    SUCCESS  = enum.auto()
+
+    SUCCEED  = enum.auto()
     FAIL     = enum.auto()
     SKIP     = enum.auto()
+    SUCCESS  = SUCCEED
 
 class LoopControl(enum.Enum):
     """
@@ -139,15 +114,16 @@ class LocationMeta(FlagsBuilder_m, enum.Flag):
     cleanable    = enum.auto()
     normOnLoad   = enum.auto()
 
-class TaskActivationBehaviour(EnumBuilder_m, enum.Enum):
+class TaskQueueMeta(EnumBuilder_m, enum.Enum):
     """ available ways a task can be activated for running
-      auto     : activates automatically when added to the task network
-      reactive : activates if an adjacent node completes
+      onRegister/auto     : activates automatically when added to the task network
+      reactive            : activates if an adjacent node completes
 
-      default  : activates only if uses queues the task, or its a dependency
+      default             : activates only if uses queues the task, or its a dependency
 
     """
 
-    default  = enum.auto()
-    auto     = enum.auto()
-    reactive = enum.auto()
+    default    = enum.auto()
+    onRegister = enum.auto()
+    reactive   = enum.auto()
+    auto       = onRegister

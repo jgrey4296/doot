@@ -40,7 +40,7 @@ import importlib
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.enums import TaskFlags, ReportEnum, LocationMeta, TaskActivationBehaviour
+from doot.enums import TaskFlags, ReportEnum, LocationMeta, TaskQueueMeta
 from doot._structs.task_name import DootTaskName
 from doot._structs.code_ref import DootCodeReference
 from doot._structs.task_spec import DootTaskSpec
@@ -167,7 +167,7 @@ class TaskStubPart:
                 parts = [x.name for x in TaskFlags if x in self.default]
                 joined = ", ".join(map(lambda x: f"\"{x}\"", parts))
                 val_str = f"[ {joined} ]"
-            case TaskActivationBehaviour():
+            case TaskQueueMeta():
                 val_str = '"{}"'.format(self.default.name)
             case "" if self.type == "TaskFlags":
                 val_str = f"[ \"{TaskFlags.TASK.name}\" ]"

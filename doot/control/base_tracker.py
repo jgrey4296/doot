@@ -43,7 +43,7 @@ from collections import defaultdict
 import tomlguard
 import doot
 import doot.errors
-from doot.enums import TaskStateEnum, TaskActivationBehaviour
+from doot.enums import TaskStateEnum, TaskQueueMeta
 from doot._abstract import Job_i, Task_i, FailPolicy_p
 from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskName, DootCodeReference, DootActionSpec
 from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i
@@ -71,7 +71,7 @@ class _InternalTrackerBase(TaskTracker_i):
 
     def __init__(self, shadowing:bool=False, *, policy=None):
         self.policy                                                              = policy
-        self.tasks                   : dict[str, Task_i]                     = {}
+        self.tasks                   : dict[str, Task_i]                         = {}
         self.artifacts               : dict[str, DootTaskArtifact]               = {}
         self.task_graph              : nx.DiGraph                                = nx.DiGraph()
         self.active_set              : list[str|DootTaskName|DootTaskArtifact]   = set()
@@ -100,50 +100,23 @@ class _InternalTrackerBase(TaskTracker_i):
         # TODO handle definite artifacts -> indefinite artifacts
         return target in self.tasks
 
-    def _prep_artifact(self, artifact:DootTaskArtifact) -> str:
-        """ convert a path to an artifact, and connect it with matching artifacts """
-        match artifact:
-            case _ if str(artifact) in self.artifacts:
-                pass
-            case DootTaskArtifact() if artifact.is_definite:
-                self.artifacts[str(artifact)] = artifact
-                self.task_graph.add_node(str(artifact), state=self.state_e.ARTIFACT, priority=self._declare_priority)
-                # connect to matching indefinites
-                for x in filter(lambda x: artifact in x, self.artifacts.values()):
-                    self.task_graph.add_edge(str(artifact), str(x), type=EDGE_E.ARTIFACT)
-            case DootTaskArtifact():
-                self.artifacts[str(artifact)] = artifact
-                self.task_graph.add_node(str(artifact), state=self.state_e.ARTIFACT, priority=self._declare_priority)
-                # connect to definites
-                for x in filter(lambda x: x in artifact, self.artifacts.values()):
-                    self.task_graph.add_edge(str(x), str(artifact), type=EDGE_E.ARTIFACT)
-
-        return str(artifact)
-
     def _prep_task(self, spec:DootTaskSpec|Task_i) -> Task_i:
-        """ Internal utility method to convert task identifier into actual task """
+        """ Internal utility method to convert task identifier into actual task
+        doesn't modify tracker state
+        """
         # Build the Task if necessary
+
         match spec:
-            case DootTaskSpec(ctor=DootTaskName() as ctor) if str(ctor) in self.tasks:
+            case DootTaskSpec(ctor=str()|DootTaskName() as ctor) if str(ctor) in self.tasks:
                 # specialize a loaded task
                 base_spec           = self.tasks.get(str(ctor)).spec
                 initial_specialized = base_spec.specialize_from(spec)
                 cli_specialized     = self._insert_cli_args_into_spec(initial_specialized)
-                if cli_specialized.ctor is None:
-                    raise doot.errors.DootTaskTrackingError("Attempt to specialize task failed: %s", spec.name)
-
-                task : Task_i = cli_specialized.make()
-            case DootTaskSpec(ctor=str() as ctor):
-                base_spec           = self.tasks.get(ctor).spec
-                initial_specialized = base_spec.specialize_from(spec)
-                cli_specialized     = self._insert_cli_args_into_spec(initial_specialized)
-                if cli_specialized.ctor is None:
-                    raise doot.errors.DootTaskTrackingError("Attempt to specialize task failed: %s", spec.name)
-
-                task : Task_i = cli_specialized.make()
+                task : Task_i       = cli_specialized.make()
             case DootTaskSpec(ctor=DootCodeReference() as ctor) if spec.check(ensure=Task_i):
+                # Specialized a custom task class
                 cli_specialized   = self._insert_cli_args_into_spec(spec)
-                task : Task_i = cli_specialized.make()
+                task : Task_i     = cli_specialized.make()
             case DootTaskSpec():
                 cli_specialized   = self._insert_cli_args_into_spec(spec)
                 task : Task_i = DootTask(cli_specialized)
@@ -153,7 +126,7 @@ class _InternalTrackerBase(TaskTracker_i):
                 raise doot.errors.DootTaskTrackingError("Unknown task attempted to be added: %s", spec)
 
         # Check it doesn't shadow another task
-        match task.name in self.tasks, task.name in self.task_graph: # type: ignore
+        match task.name in self.tasks, task.name in self.task_graph:
             case True, False:
                 raise doot.errors.DootTaskTrackingError("Task exists in defined tasks, but not the task graph")
             case True, True if not self.shadowing:
@@ -165,7 +138,27 @@ class _InternalTrackerBase(TaskTracker_i):
 
         return task
 
-    def _insert_cli_args_into_spec(self, spec:DootTaskSpec):
+    def _add_artifact(self, artifact:DootTaskArtifact) -> str:
+        """ convert a path to an artifact, and connect it with matching artifacts """
+        match artifact:
+            case _ if str(artifact) in self.artifacts: # artifact already known
+                pass
+            case DootTaskArtifact() if artifact.is_definite: # x/y/y.ext
+                self.artifacts[str(artifact)] = artifact
+                self.task_graph.add_node(str(artifact), state=self.state_e.ARTIFACT, priority=self._declare_priority)
+                # connect to matching indefinites
+                for x in filter(lambda x: artifact in x, self.artifacts.values()):
+                    self.task_graph.add_edge(str(artifact), str(x), type=EDGE_E.ARTIFACT)
+            case DootTaskArtifact(): # x/*/*.ext
+                self.artifacts[str(artifact)] = artifact
+                self.task_graph.add_node(str(artifact), state=self.state_e.ARTIFACT, priority=self._declare_priority)
+                # connect to definites
+                for x in filter(lambda x: x in artifact, self.artifacts.values()):
+                    self.task_graph.add_edge(str(x), str(artifact), type=EDGE_E.ARTIFACT)
+
+        return str(artifact)
+
+    def _insert_cli_args_into_spec(self, spec:DootTaskSpec) -> DootTaskSpec:
         """ Takes a task spec, and inserts matching cli args into it if necessary """
         spec_extra : dict = dict(spec.extra.items() or [])
 
@@ -181,6 +174,7 @@ class _InternalTrackerBase(TaskTracker_i):
             spec_extra[key] = val
 
         spec.extra = tomlguard.TomlGuard(spec_extra)
+
         return spec
 
     def _insert_dependencies(self, task):
@@ -188,17 +182,12 @@ class _InternalTrackerBase(TaskTracker_i):
         for pre in task.depends_on:
             logging.debug("Connecting Dependency: %s -> %s", pre, task.readable_name)
             match pre:
-                case {"task": taskname}:
-                    raise TypeError("Task Deps should not longer be dicts")
-                case pl.Path():
-                    pre = self._prep_artifact(DootTaskArtifact.build(pre))
-                    self.task_graph.add_edge(pre, task.name, type=EDGE_E.ARTIFACT_CROSS)
-                case DootTaskArtifact():
-                    pre = self._prep_artifact(pre)
-                    self.task_graph.add_edge(pre, task.name, type=EDGE_E.ARTIFACT_CROSS)
                 case DootActionSpec():
                     # Action spec dependencies are tested when running, not as part of the DAG
                     pass
+                case DootTaskArtifact():
+                    pre = self._add_artifact(pre)
+                    self.task_graph.add_edge(pre, task.name, type=EDGE_E.ARTIFACT_CROSS)
                 case DootTaskName() if all([(in_graph:=str(pre) in self.task_graph),(has_args:=bool(pre.args))]):
                     base_spec                 = self.tasks[str(pre)].spec
                     name_spec                 = DootTaskSpec.build(pre)
@@ -227,13 +216,11 @@ class _InternalTrackerBase(TaskTracker_i):
         for post in task.required_for:
             logging.debug("Connecting Successor: %s -> %s", task.readable_name, post)
             match post:
-                case {"task": taskname}:
-                    raise TypeError("Task Deps should not longer be dicts")
-                case pl.Path():
-                    post = self._prep_artifact(DootTaskArtifact.build(post))
-                    self.task_graph.add_edge(task.name, post, type=EDGE_E.TASK_CROSS)
+                case DootActionSpec():
+
+                    pass
                 case DootTaskArtifact():
-                    post = self._prep_artifact(post)
+                    post = self._add_artifact(post)
                     self.task_graph.add_edge(task.name, post, type=EDGE_E.TASK_CROSS)
                 case DootTaskName() if all([(in_graph:=str(post) in self.task_graph), (has_args:=bool(post.args))]):
                     base_spec                 = self.tasks[str(post)].spec
@@ -258,16 +245,17 @@ class _InternalTrackerBase(TaskTracker_i):
                 case _:
                     raise doot.errors.DootTaskTrackingError("Unknown successor task attempted to be added: %s", post)
 
-    def _insert_according_to_queue_behaviour(self, task):
+    def _maybe_implicit_queue(self, task):
         """ tasks can be activated for running by a number of different conditions
           this handles that
           """
         match task.spec.queue_behaviour:
-            case TaskActivationBehaviour.auto:
+            case TaskQueueMeta.auto:
                 self.queue_task(task.name)
-            case TaskActivationBehaviour.reactive:
+            case TaskQueueMeta.reactive:
                 self.task_graph.nodes[task.name][REACTIVE_ADD] = True
-            case TaskActivationBehaviour.default:
+            case TaskQueueMeta.default:
+                # Waits for explicit queue
                 pass
             case _:
                 raise doot.errors.DootTaskTrackingError("Unknown queue behaviour specified: %s", task.spec.queue_behaviour)
@@ -305,9 +293,6 @@ class BaseTracker(_InternalTrackerBase):
           Add tasks to the queue.
           By default it does *not* complain on trying to re-add already queued tasks,
         """
-        # TODO queue the task's setup task if it exists / hasn't been executed already
-        # TODO if only task name is specified, without group, and theres no ambiguity, accept that
-        # TODO Ensure idempotency
         logging.debug("Queue Request: %s", tasks)
         targets = set()
         for task in tasks:

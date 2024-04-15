@@ -49,11 +49,12 @@ TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
 class DootTaskName(StructuredName):
     """
       A Task Name.
+
     """
 
-    internal           : bool                    = field(default=False, kw_only=True)
     separator          : str                     = field(default=doot.constants.patterns.TASK_SEP, kw_only=True)
     version_constraint : None|str                = field(default=None)
+    meta               : TaskFlags               = field(default=TaskFlags.default)
     args               : dict                    = field(default_factory=dict)
 
     @classmethod
@@ -96,6 +97,7 @@ class DootTaskName(StructuredName):
             case _:
                 raise doot.errors.DootError("Unrecognized name format: %s", name)
 
+
         return DootTaskName(groupHead, taskHead, args=args)
 
     def __post_init__(self):
@@ -120,7 +122,8 @@ class DootTaskName(StructuredName):
             case None | []:
                 self.tail = ["default"]
 
-        self.internal = self.tail[0].startswith(doot.constants.patterns.INTERNAL_TASK_PREFIX) or self.internal
+        if self.tail[0].startswith(doot.constants.patterns.INTERNAL_TASK_PREFIX):
+            self.meta |= TaskFlags.INTERNAL
 
     def __str__(self) -> str:
         return "{}{}{}".format(self.group, self.separator, self.task)
@@ -183,7 +186,7 @@ class DootTaskName(StructuredName):
 
         return DootTaskName(self.head + (subgroups or []),
                             self.tail + subs,
-                            internal=self.internal,
+                            meta=self.meta,
                             args=args)
 
     def specialize(self, *, info=None):

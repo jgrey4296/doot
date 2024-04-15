@@ -62,10 +62,6 @@ class DootTracker(BaseTracker, TaskTracker_i):
     def add_task(self, task:DootTaskSpec|Task_i, *, no_root_connection=False) -> None:
         """ add a task description into the tracker, but don't queue it
         connecting it with its dependencies and tasks that depend on it
-
-        # TODO check the spec's "active_when" conditions, return early if it fails
-
-        # TODO ensure idempotency
         """
         task : Task_i = self._prep_task(task)
         assert(isinstance(task, Task_i))
@@ -82,7 +78,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
 
         self._insert_dependencies(task)
         self._insert_dependents(task)
-        self._insert_according_to_queue_behaviour(task)
+        self._maybe_implicit_queue(task)
 
     def update_state(self, task:str|Task_i|DootTaskArtifact, state:self.state_e):
         """ update the state of a task in the dependency graph """

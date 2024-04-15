@@ -37,6 +37,7 @@ from collections import defaultdict
 from tomlguard import TomlGuard
 import doot
 import doot.errors
+from doot.enums import TaskFlags
 from doot.cmds.base_cmd import BaseCommand
 from doot.structs import DootParamSpec
 
@@ -98,7 +99,7 @@ class ListCmd(BaseCommand):
         printer.info("Tasks for Pattern: %s", pattern)
         for key in matches:
             spec = tasks[key]
-            if spec.name.internal and not doot.args.cmd.args.internal:
+            if TaskFlags.INTERNAL in spec.name.meta and not doot.args.cmd.args.internal:
                 continue
 
             printer.info(fmt_str,
@@ -114,7 +115,7 @@ class ListCmd(BaseCommand):
         for name, spec in tasks.items():
             if pattern not in name:
                 continue
-            if spec.name.internal and not doot.args.cmd.args.internal:
+            if TaskFlags.INTERNAL in spec.name.meta and not doot.args.cmd.args.internal:
                 continue
 
             groups[spec.name.group].append((spec.name.task,
@@ -134,8 +135,9 @@ class ListCmd(BaseCommand):
         fmt_str = f"{INDENT}%-{max_key}s :: %-60s :: <Source: %s>"
         groups  = defaultdict(list)
         for spec in tasks.values():
-            if spec.name.internal and not doot.args.cmd.args.internal:
+            if TaskFlags.INTERNAL in spec.name.meta and not doot.args.cmd.args.internal:
                 continue
+
             groups[spec.name.group].append((spec.name.task,
                                                   (spec.doc[0] if bool(spec.doc) else "")[:60],
                                                   spec.source))
@@ -154,8 +156,9 @@ class ListCmd(BaseCommand):
         fmt_str = f"{INDENT}%-{max_key}s :: %s.%-25s"
         sources = defaultdict(list)
         for key, spec in tasks.items():
-            if spec.name.internal and not doot.args.cmd.args.internal:
+            if TaskFlags.INTERNAL in spec.name.meta and not doot.args.cmd.args.internal:
                 continue
+
             sources[spec.source].append((spec.name.task,
                                          spec.ctor.__module__,
                                          spec.ctor.__name__,
