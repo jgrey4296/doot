@@ -27,6 +27,7 @@ dependencies   = [
     "more_itertools",
     "decorator-validation >= 3.0.0",
     "decorator >= 5.0.0",
+    "jgdv",
 ]
 
 [project.optional-dependencies]
