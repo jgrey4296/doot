@@ -179,6 +179,8 @@ class DootRunner(BaseRunner, TaskRunner_i):
                     result = self._execute_action(executed, action, task)
                 case DootTaskArtifact():
                     pass
+                case DootTaskName():
+                    pass
                 case _:
                     self.reporter.add_trace(task.spec, flags=ReportEnum.FAIL | ReportEnum.TASK)
                     raise doot.errors.DootTaskError("Task %s Failed: Produced a bad action: %s", task.name, action, task=task.spec)

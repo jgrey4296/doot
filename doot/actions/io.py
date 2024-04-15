@@ -211,10 +211,15 @@ class DeleteAction(PathManip_m):
             if self._is_write_protected(loc):
                 raise doot.errors.DootLocationError("Tried to write a protected location", loc)
 
-            printer.info("Deleting %s", loc)
+            if not loc.exists():
+                printer.info("Not Deleting Due to non-existence: %s", loc)
+                continue
+
             if loc.is_dir() and rec:
+                printer.info("Deleting Directory: %s", loc)
                 shutil.rmtree(loc)
             else:
+                printer.info("Deleting File: %s", loc)
                 loc.unlink(missing_ok=lax)
 
 

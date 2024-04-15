@@ -115,6 +115,9 @@ class DootActionSpec(SpecStruct_p):
         return f"<ActionSpec: {' '.join(result)} >"
 
     def __call__(self, task_state:dict):
+        if self.fun is None:
+            raise doot.errors.DootActionError("Action Spec has not been finalised with a function", self)
+
         return self.fun(self, task_state)
 
     def set_function(self, fun:Action_p|Callable):

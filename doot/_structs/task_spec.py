@@ -280,3 +280,7 @@ class DootTaskSpec(SpecStruct_p):
     @property
     def params(self):
         return self.extra
+
+    @property
+    def action_groups(self):
+        return [self.depends_on, self.setup, self.actions, self.cleanup, self.on_fail]

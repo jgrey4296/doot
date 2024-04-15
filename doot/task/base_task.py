@@ -36,7 +36,7 @@ import doot.errors
 import tomlguard
 from doot._abstract import Task_i, Job_i, Action_p, PluginLoader_p
 from doot.enums import TaskFlags, TaskStateEnum
-from doot.structs import TaskStub, TaskStubPart, DootActionSpec, DootCodeReference
+from doot.structs import TaskStub, TaskStubPart, DootActionSpec, DootCodeReference, DootTaskName
 from doot.actions.base_action import DootBaseAction
 from doot.errors import DootTaskLoadError, DootTaskError
 
@@ -217,14 +217,17 @@ class DootTask(_TaskProperties_m, Importer_m, Task_i):
           if the action spec doesn't have a ctor, use the task's action_ctor
         """
         logging.info("Preparing Actions: %s", self.name)
-        for action_spec in self.spec.actions:
-            assert(isinstance(action_spec, DootActionSpec)), action_spec
-            if action_spec.fun is not None:
-                continue
-            if action_spec.do  is not None:
-                action_ref = self.import_callable(action_spec.do)
-                action_spec.set_function(action_ref)
-                continue
-
-            assert(action_spec.do is None), action_spec
-            action_spec.set_function(self.action_ctor)
+        for group in self.spec.action_groups:
+            for action_spec in group:
+                match action_spec:
+                    case DootTaskName():
+                        pass
+                    case DootActionSpec() if action_spec.fun is not None:
+                        pass
+                    case DootActionSpec() if action_spec.do is not None:
+                        action_ref = self.import_callable(action_spec.do)
+                        action_spec.set_function(action_ref)
+                    case DootActionSpec():
+                        action_spec.set_function(self.action_ctor)
+                    case _:
+                        raise doot.errors.DootTaskError("Unknown element in action group: ", action_spec)
