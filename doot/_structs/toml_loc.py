@@ -59,17 +59,23 @@ class TomlLocation:
     meta : LocationMeta = field(default=LocationMeta.default)
 
     @staticmethod
-    def build(key:str, data:dict|str):
+    def build(key:str, data:dict|str, base:pl.Path=None):
+        result = None
         match data:
             case str():
-                return TomlLocation(key=key, base=pl.Path(data))
+                result = TomlLocation(key=key, base=(base or pl.Path(data)))
             case pl.Path():
-                return TomlLocation(key=key, base=data)
-            case dict() if 'loc'in data:
-                meta = LocationMeta.build({x:y for x,y in data.items() if x != "loc"})
-                return TomlLocation(key=key, base=pl.Path(data['loc']), meta=meta)
+                result = TomlLocation(key=key, base=(base or data))
             case TomlLocation():
-                return data
+                result = TomlLocation(key=data.key, base=(base or data.base), meta=data.meta)
+            case dict() if base is not None:
+                meta   = LocationMeta.build({x:y for x,y in data.items() if x != "loc"})
+                result = TomlLocation(key=key, base=base, meta=meta)
+            case dict() if 'loc'in data:
+                meta   = LocationMeta.build({x:y for x,y in data.items() if x != "loc"})
+                result = TomlLocation(key=key, base=pl.Path(data['loc']), meta=meta)
+
+        return result
 
     def check(self, meta:LocationMeta) -> bool:
         return meta in self.meta

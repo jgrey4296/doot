@@ -59,9 +59,9 @@ class DootLocations(PathManip_m):
     locmeta = LocationMeta
 
     def __init__(self, root:Pl.Path):
-        self._root    : pl.Path()           = root.expanduser().absolute()
-        self._data    : TomlGuard           = tomlguard.TomlGuard()
-        self._loc_ctx : None|DootLocations  = None
+        self._root    : pl.Path()               = root.expanduser().absolute()
+        self._data    : dict[str, TomlLocation] = dict()
+        self._loc_ctx : None|DootLocations      = None
 
     def __repr__(self):
         keys = ", ".join(iter(self))
@@ -137,12 +137,7 @@ class DootLocations(PathManip_m):
             case DootNonKey():
                 return pl.Path(key.form)
             case str() | DootSimpleKey() if key in self._data:
-                match self._data[key]:
-                    case str() as x:
-                        return pl.Path(x)
-                    case TomlLocation() as x:
-                        return x.base
-                return self._data[key]
+                return self._data[key].base
             case _ if on_fail is None:
                 return None
             case _ if on_fail != Any:
@@ -207,6 +202,9 @@ class DootLocations(PathManip_m):
                 case _ if k in base_keys:
                     logging.debug("Skipping Location update of: %s", k)
                     pass
+                case TomlLocation() as l if l.check(LocationMeta.normOnLoad):
+                    raw[l.key] = TomlLocation.build(k, v, base=self.normalize(l.base))
+                    new_keys.add(l.key)
                 case TomlLocation() as l:
                     raw[l.key] = l
                     new_keys.add(l.key)
@@ -214,7 +212,7 @@ class DootLocations(PathManip_m):
                     raise DootLocationError("Couldn't build a TomlLocation for: (%s : %s)", k, v)
 
         logging.debug("Registered New Locations: %s", ", ".join(new_keys))
-        self._data = tomlguard.TomlGuard(raw)
+        self._data = raw
         return self
 
     def ensure(self, *values, task="doot"):
@@ -225,7 +223,6 @@ class DootLocations(PathManip_m):
 
         if bool(missing):
             raise DootDirAbsent("Ensured Locations are missing for %s : %s", task, missing)
-
 
     def _clear(self):
         self._data = tomlguard.TomlGuard()
