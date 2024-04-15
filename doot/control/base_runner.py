@@ -55,7 +55,7 @@ action_level         : Final[str]            = doot.constants.printer.DEFAULT_AC
 sleep_level          : Final[str]            = doot.constants.printer.DEFAULT_SLEEP_LEVEL
 execute_level        : Final[str]            = doot.constants.printer.DEFAULT_EXECUTE_LEVEL
 enter_level          : Final[str]            = doot.constants.printer.DEFAULT_ENTER_LEVEL
-max_steps            : Final[str]            = doot.config.on_fail(100_000).settings.general.max_steps()
+max_steps            : Final[str]            = doot.config.on_fail(100_000).settings.tasks.max_steps()
 fail_prefix          : Final[str]            = doot.constants.printer.FAILURE_PREFIX
 
 default_SLEEP_LENGTH : Fina[int|float]       = doot.config.on_fail(0.2, int|float).settings.tasks.sleep.task()

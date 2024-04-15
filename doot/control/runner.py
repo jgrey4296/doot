@@ -49,7 +49,7 @@ build_level   : Final[str] = doot.constants.printer.DEFAULT_BUILD_LEVEL
 action_level  : Final[str] = doot.constants.printer.DEFAULT_ACTION_LEVEL
 sleep_level   : Final[str] = doot.constants.printer.DEFAULT_SLEEP_LEVEL
 execute_level : Final[str] = doot.constants.printer.DEFAULT_EXECUTE_LEVEL
-max_steps     : Final[str] = doot.config.on_fail(100_000).settings.general.max_steps()
+max_steps     : Final[str] = doot.config.on_fail(100_000).settings.tasks.max_steps()
 
 @doot.check_protocol
 class DootRunner(BaseRunner, TaskRunner_i):
