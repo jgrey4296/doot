@@ -36,7 +36,7 @@ from doot.enums import ActionResponseEnum
 from doot.mixins.path_manip import PathManip_m
 from doot.structs import DootKey
 from doot.actions.postbox import _DootPostBox
-from doot.utils.decorators import IOWriter
+from doot.utils.action_decorators import IOWriter
 
 # TODO using doot.config.settings.general.protect to disallow write/delete/backup/copy
 
@@ -81,6 +81,8 @@ class AppendAction(PathManip_m):
                 printer.info("Appending %s chars to %s", len(arg), loc)
                 f.write(sep)
                 f.write(arg)
+
+
 
 @IOWriter()
 class WriteAction(PathManip_m):

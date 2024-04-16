@@ -38,7 +38,7 @@ from doot.errors import DootTaskError, DootTaskFailed
 from doot.structs import DootKey, DootCodeReference
 from doot.mixins.path_manip import PathManip_m
 from doot.actions.base_action import DootBaseAction
-from doot.utils.decorators import ControlFlow
+from doot.utils.action_decorators import ControlFlow
 
 ##-- expansion keys
 MSG          : Final[DootKey] = DootKey.build("msg")
