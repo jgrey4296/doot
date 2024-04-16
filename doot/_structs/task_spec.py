@@ -66,9 +66,6 @@ def _separate_into_core_and_extra(data) -> tuple[dict, dict]:
                 pass
             case "print_levels":
                 core_data["print_levels"] = TomlGuard(val)
-            case "active_when":
-                processed = _prepare_deps(val)
-                core_data["active_when"] = processed
             case "required_for":
                 processed = _prepare_deps(val)
                 core_data["required_for"] = processed

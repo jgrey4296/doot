@@ -107,12 +107,15 @@ class LoopControl(enum.Enum):
 class LocationMeta(FlagsBuilder_m, enum.Flag):
     """ Available metadata attachable to a location """
 
-    default      = enum.auto()
-    file         = enum.auto()
+    location     = enum.auto()
+    artifact     = enum.auto()
     protected    = enum.auto()
     indefinite   = enum.auto()
     cleanable    = enum.auto()
     normOnLoad   = enum.auto()
+
+    file         = artifact
+    default      = location
 
 class TaskQueueMeta(EnumBuilder_m, enum.Enum):
     """ available ways a task can be activated for running
