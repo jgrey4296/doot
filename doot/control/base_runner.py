@@ -148,4 +148,4 @@ class BaseRunner(TaskRunner_i):
 
     def _notify_artifact(self, art:DootTaskArtifact) -> None:
         printer.info("---- Artifact: %s", art)
-        self.reporter.trace(art, flags=ReportEnum.ARTIFACT)
+        self.reporter.add_trace(art, flags=ReportEnum.ARTIFACT)

@@ -132,7 +132,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 self._execute_action_group(job.spec.actions, job, allow_queue=True)
 
         except doot.errors.DootError as err:
-            self._execute_action_group(task.spec.on_fail, task)
+            self._execute_action_group(job.spec.on_fail, job)
             raise err
         finally:
             self._execute_action_group(job.spec.cleanup, job)
@@ -195,7 +195,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 case list():
                     to_queue += result
                 case ActRE.SKIP:
-                    p.warning("------ Remaining Task Actions skipped by Action Instruction")
+                    printer.warning("------ Remaining Task Actions skipped by Action Instruction")
                     group_result = ActRE.SKIP
                     break
 

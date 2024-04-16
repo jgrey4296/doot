@@ -110,7 +110,7 @@ def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|Doo
                 results.append(DootTaskArtifact.build(x))
             case str() if doot.constants.patterns.TASK_SEP in x:
                 results.append(DootTaskName.build(x))
-            case DootTaskName() | DootTaskArtifact():
+            case DootTaskName() | DootTaskArtifact() | DootActionSpec():
                 results.append(x)
             case _:
                 raise doot.errors.DootInvalidConfig(f"Unrecognised task pre/post dependency form. (Remember: files are prefixed with `{doot.constants.patterns.FILE_DEP_PREFIX}`, tasks are in the form group::name)", x, source)

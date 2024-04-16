@@ -36,7 +36,7 @@ import doot.errors
 import tomlguard
 from doot._abstract import Task_i, Job_i, Action_p, PluginLoader_p
 from doot.enums import TaskFlags, TaskStateEnum
-from doot.structs import TaskStub, TaskStubPart, DootActionSpec, DootCodeReference, DootTaskName
+from doot.structs import TaskStub, TaskStubPart, DootActionSpec, DootCodeReference, DootTaskName, DootTaskArtifact
 from doot.actions.base_action import DootBaseAction
 from doot.errors import DootTaskLoadError, DootTaskError
 
@@ -220,7 +220,7 @@ class DootTask(_TaskProperties_m, Importer_m, Task_i):
         for group in self.spec.action_groups:
             for action_spec in group:
                 match action_spec:
-                    case DootTaskName():
+                    case DootTaskName() | DootTaskArtifact():
                         pass
                     case DootActionSpec() if action_spec.fun is not None:
                         pass
@@ -230,4 +230,4 @@ class DootTask(_TaskProperties_m, Importer_m, Task_i):
                     case DootActionSpec():
                         action_spec.set_function(self.action_ctor)
                     case _:
-                        raise doot.errors.DootTaskError("Unknown element in action group: ", action_spec)
+                        raise doot.errors.DootTaskError("Unknown element in action group: ", action_spec, self.spec.name)
