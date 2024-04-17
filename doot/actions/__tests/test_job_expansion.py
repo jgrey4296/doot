@@ -59,9 +59,8 @@ class TestJobExpansion:
         for spec, expect in zip(result['specs'], args):
             assert(spec.extra.target == expect)
 
-
-    def test_action_base(self, spec, state):
-        state['base'] = "test::task"
+    def test_action_template(self, spec, state):
+        state['template'] = "test::task"
         obj = JobExpandAction()
         result = obj(spec, state)
         assert(isinstance(result, dict))
@@ -69,8 +68,8 @@ class TestJobExpansion:
         assert(result['specs'][0].ctor == "test::task")
         assert(len(result['specs'][0].actions) == 0)
 
-    def test_taskname_base(self, spec, state):
-        state['base'] = [{"do":"aweg"}, {"do":"blah"}, {"do":"jioj"}]
+    def test_taskname_template(self, spec, state):
+        state['template'] = [{"do":"aweg"}, {"do":"blah"}, {"do":"jioj"}]
         obj = JobExpandAction()
         result = obj(spec, state)
         assert(isinstance(result, dict))

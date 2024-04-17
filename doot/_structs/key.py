@@ -46,7 +46,7 @@ import doot.errors
 from doot._structs.code_ref import DootCodeReference
 from doot._abstract.structs import SpecStruct_p
 from doot.utils.chain_get import DootKeyGetter
-from doot.utils.decorators import DootDecorator
+from doot.utils.decorators import DootDecorator, DecorationUtils
 
 KEY_PATTERN                                = doot.constants.patterns.KEY_PATTERN
 MAX_KEY_EXPANSIONS                         = doot.constants.patterns.MAX_KEY_EXPANSIONS
@@ -54,16 +54,12 @@ STATE_TASK_NAME_K                          = doot.constants.patterns.STATE_TASK_
 
 PATTERN        : Final[re.Pattern]         = re.compile(KEY_PATTERN)
 FAIL_PATTERN   : Final[re.Pattern]         = re.compile("[^a-zA-Z_{}/0-9-]")
-KEYS_HANDLED   : Final[str]                = "_doot_keys_handler"
-ORIG_ARGS      : Final[str]                = "_doot_orig_args"
-KEY_ANNOTS     : Final[str]                = "_doot_keys"
 EXPANSION_HINT : Final[str]                = "_doot_expansion_hint"
 HELP_HINT      : Final[str]                = "_doot_help_hint"
-FUNC_WRAPPED   : Final[str]                = "__wrapped__"
 
-class KWrapper(DootDecorator):
+class KeyDecorator:
     """ Decorators for actions
-    Kwrapper is accessible as DootKey.kwrap
+    KeyDecorator is accessible as DootKey.kwrap
 
     It registers arguments on an action and extracts them from the spec and state automatically.
 
@@ -79,210 +75,76 @@ class KWrapper(DootDecorator):
     """
 
     @staticmethod
-    def _annotate_keys(f, keys:list) -> bool:
-        """ cache original args, and cache declared keys """
-        if hasattr(f, FUNC_WRAPPED): # Deal with the actual function, not any decorators
-            return KWrapper._annotate_keys(f.__wrapped__, keys)
-
-        if not hasattr(f, ORIG_ARGS): # store the original arguments for easy access
-            setattr(f, ORIG_ARGS, f.__code__.co_varnames[:f.__code__.co_argcount])
-
-        if not hasattr(f, KEY_ANNOTS): # ensure theres a place for annotations
-            setattr(f, KEY_ANNOTS, [])
-
-        # prepend annotations, so written decorator order is the same as written arg order:
-        # (ie: @wrap(x) @wrap(y) @wrap(z) def f (x, y, z), even though z's decorator is applied first
-        new_annotations = keys + getattr(f, KEY_ANNOTS)
-        setattr(f, KEY_ANNOTS, new_annotations)
-
-        # run the key check
-        if not KWrapper._check_keys(f, getattr(f, KEY_ANNOTS)):
-            raise doot.errors.DootKeyError("Annotations do not match signature", getattr(f, ORIG_ARGS, []), getattr(f, KEY_ANNOTS), f.__qualname__)
-
-        return True
-
-    @staticmethod
-    def _annotate_non_expansions(f, keys:list, type_="in") -> bool:
-        """
-        Annotate required inputs and output
-        """
-        if hasattr(f, FUNC_WRAPPED):
-            return KWrapper._annotate_non_expansions(f.__wrapped__, keys)
-
-    @staticmethod
-    def _check_keys(f, keys, offset=0) -> bool:
-        """ test declared args to a list of keys """
-        if hasattr(f, ORIG_ARGS):
-            code_args           = getattr(f, ORIG_ARGS)
-            code_argcount       = len(code_args)
-        else:
-            code_argcount           = f.__code__.co_argcount
-            code_args               = f.__code__.co_varnames[:code_argcount]
-
-        result                  = True
-        if code_args[0]         == "self":
-            code_args           = code_args[1:]
-
-        # First two params should always be spec and state
-        result &= code_args[:2] == ("spec", "state")
-
-        # The rest should match keys
-        for actual, expected in zip(code_args[:1+offset:-1], keys[::-1]):
-            match expected:
-                case DootMultiKey():
-                    pass
-                case DootSimpleKey() | str() if actual.startswith("_"):
-                    pass
-                case DootSimpleKey() | str():
-                    result &= ((actual == expected) or (actual == f"{expected}_ex"))
-
-        return result
-
-    @staticmethod
-    def _add_key_handler(f):
-        """ idempotent key handler so decorated functions dont add unnecessary stack frames """
-        if DootDecorator.has_annotations(f):
-            return f
-
-        DootDecorator.truncate_signature(f)
-
-        match getattr(f, ORIG_ARGS)[0]:
-            case "self": # The method form handler
-
-                @ftz.wraps(f)
-                def action_expands(self, spec, state, *call_args, **kwargs):
-                    try:
-                        expansions = [x(spec, state) for x in getattr(f, KEY_ANNOTS)]
-                    except KeyError as err:
-                        printer.warning("Action State Expansion Failure: %s", err)
-                        return False
-                    all_args = (*call_args, *expansions)
-                    return f(self, spec, state, *all_args, **kwargs)
-            case _: # The function form handler
-
-                @ftz.wraps(f)
-                def action_expands(spec, state, *call_args, **kwargs):
-                    try:
-                        expansions = [x(spec, state) for x in getattr(f, KEY_ANNOTS)]
-                    except KeyError as err:
-                        printer.warning("Action State Expansion Failure: %s", err)
-                        return False
-                    all_args = (*call_args, *expansions)
-                    return f(spec, state, *all_args, **kwargs)
-
-        DootDecorator.annotate(action_expands, {KEYS_HANDLED})
-        return action_expands
-
-
-    @staticmethod
-    def taskname(f):
-        KWrapper._annotate_keys(f, [DootKey.build(STATE_TASK_NAME_K, exp_hint="type")])
-        return KWrapper._add_key_handler(f)
+    def taskname(fn):
+        keys = [DootKey.build(STATE_TASK_NAME_K, exp_hint="type")]
+        return DecorationUtils.prepare_expansion(keys, fn)
 
     @staticmethod
     def expands(*args, hint:dict|None=None, **kwargs):
         """ mark an action as using expanded string keys """
         exp_hint = {"expansion": "str", "kwargs" : hint or {} }
-        keys = [DootKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
-
-        def expand_wrapper(f):
-            KWrapper._annotate_keys(f, keys)
-            return KWrapper._add_key_handler(f)
-
-        return expand_wrapper
+        keys     = [DootKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
+        return ftz.partial(DecorationUtils.prepare_expansion, keys)
 
     @staticmethod
     def paths(*args, hint:dict|None=None, **kwargs):
         """ mark an action as using expanded path keys """
         exp_hint = {"expansion": "path", "kwargs" : hint or {} }
         keys = [DootKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
-
-        def expand_wrapper(f):
-            KWrapper._annotate_keys(f, keys)
-            return KWrapper._add_key_handler(f)
-
-        return expand_wrapper
+        return ftz.partial(DecorationUtils.prepare_expansion, keys)
 
     @staticmethod
     def types(*args, hint:dict|None=None, **kwargs):
         """ mark an action as using raw type keys """
         exp_hint = {"expansion": "type", "kwargs" : hint or {} }
         keys = [DootKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
-
-        def expand_wrapper(f):
-            KWrapper._annotate_keys(f, keys)
-            return KWrapper._add_key_handler(f)
-
-        return expand_wrapper
+        return ftz.partial(DecorationUtils.prepare_expansion, keys)
 
     @staticmethod
-    def args(f):
+    def args(fn):
         """ mark an action as using spec.args """
         # TODO handle expansion hint for the args
-        KWrapper._annotate_keys(f, [DootArgsKey("args")])
-        return KWrapper._add_key_handler(f)
+        keys = [DootArgsKey("args")]
+        return DecorationUtils.prepare_expansion(keys, fn)
 
     @staticmethod
-    def kwargs(f):
+    def kwargs(fn):
         """ mark an action as using spec.args """
-        KWrapper._annotate_keys(f, [DootKwargsKey("kwargs")])
-        return KWrapper._add_key_handler(f)
+        keys = [DootKwargsKey("kwargs")]
+        return DecorationUtils.prepare_expansion(keys, fn)
 
     @staticmethod
     def redirects(*args):
         """ mark an action as using redirection keys """
         keys = [DootKey.build(x, exp_hint="redirect") for x in args]
-
-        def expand_wrapper(f):
-            KWrapper._annotate_keys(f, keys)
-            return KWrapper._add_key_handler(f)
-
-        return expand_wrapper
+        return ftz.partial(DecorationUtils.prepare_expansion, keys)
 
     @staticmethod
     def redirects_many(*args, **kwargs):
         """ mark an action as using redirection key lists """
         keys = [DootKey.build(x, exp_hint="redirect_multi") for x in args]
-
-        def expand_wrapper(f):
-            KWrapper._annotate_keys(f, keys)
-            return KWrapper._add_key_handler(f)
-
-        return expand_wrapper
+        return ftz.partial(DecorationUtils.prepare_expansion, keys)
 
     @staticmethod
     def requires(*args, **kwargs):
-        """ mark an action as requiring certain keys to be passed in """
+        """ TODO mark an action as requiring certain keys to be passed in """
         keys = [DootKey.build(x, **kwargs) for x in args]
-
-        def expand_wrapper(f):
-            KWrapper._annotate_non_expansions(f, keys)
-            return f
-
-        return expand_wrapper
+        # return ftz.partial(DecorationUtils.prepare_expansion, keys)
+        return lambda x: x
 
     @staticmethod
     def returns(*args, **kwargs):
         """ mark an action as needing to return certain keys """
         keys = [DootKey.build(x, **kwargs) for x in args]
-
-        def expand_wrapper(f):
-            KWrapper._annotate_non_expansions(f, keys)
-            return f
-
-        return expand_wrapper
+        # return ftz.partial(DecorationUtils.prepare_expansion, keys)
+        return lambda x: x
 
     @staticmethod
     def references(*args, **kwargs):
         """ mark keys to use as to_coderef imports """
         exp_hint = {"expansion": "coderef", "kwargs" : {} }
         keys = [DootKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
-
-        def expand_wrapper(f):
-            KWrapper._annotate_keys(f, keys)
-            return KWrapper._add_key_handler(f)
-
-        return expand_wrapper
+        return ftz.partial(DecorationUtils.prepare_expansion, keys)
 
 class DootFormatter(string.Formatter):
     """
@@ -371,8 +233,8 @@ class DootKey(abc.ABC):
       DootMultiKeys are containers of a string `value`, and a list of SimpleKeys the value contains.
       So DootKey.build("{blah}/{bloo}") -> DootMultiKey("{blah}/{bloo}", [DootSimpleKey("blah", DootSimpleKey("bloo")]) -> .form == "{blah}/{bloo}"
     """
-    dec   = KWrapper
-    kwrap = KWrapper
+    dec   = KeyDecorator
+    kwrap = KeyDecorator
 
     @staticmethod
     def build(s:str|DootKey|pl.Path|dict, *, strict=False, explicit=False, exp_hint:str|dict=None, help=None) -> DootKey:

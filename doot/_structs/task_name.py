@@ -169,7 +169,10 @@ class DootTaskName(StructuredName):
     def root(self) -> DootTaskName:
         return DootTaskName.build(f"{self.head_str()}{self.separator}{self.tail[0]}")
 
-    def task_head(self):
+    def task_head(self) -> DootTaskName:
+        if self.tail[-1] == doot.constants.patterns.SUBTASKED_HEAD:
+            return self
+
         return self.subtask(doot.constants.patterns.SUBTASKED_HEAD)
 
     def subtask(self, *subtasks, subgroups:list[str]|None=None) -> DootTaskName:

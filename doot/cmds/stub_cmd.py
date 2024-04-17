@@ -42,7 +42,8 @@ from doot._abstract import PluginLoader_p, Task_i
 from doot.structs import TaskStub, DootTaskName, DootCodeReference
 from doot.task.base_job import DootJob
 from doot.task.base_task import DootTask
-from doot._structs.key import KEY_ANNOTS, HELP_HINT
+from doot._structs.key import HELP_HINT
+from doot.utils.decorators import KEY_ANNOTS
 
 ##-- data
 data_path = files(doot.constants.paths.TEMPLATE_PATH).joinpath(doot.constants.paths.TOML_TEMPLATE)

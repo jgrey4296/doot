@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 """
 
 See EOF for license/metadata/notes as applicable
@@ -38,6 +38,7 @@ logging = logmod.getLogger(__name__)
 
 printer = logmod.getLogger("doot._printer")
 
+import keyword
 import inspect
 import abc
 import builtins
@@ -48,46 +49,20 @@ import doot.errors
 from doot.enums import LocationMeta
 from doot._abstract.structs import SpecStruct_p
 
-FUNC_WRAPPED     : Final[str]                = "__wrapped__"
 DOOT_ANNOTATIONS : Final[str]                = "__DOOT_ANNOTATIONS__"
+KEYS_HANDLED   : Final[str]                = "_doot_keys_handler"
+ORIG_ARGS      : Final[str]                = "_doot_orig_args"
+KEY_ANNOTS     : Final[str]                = "_doot_keys"
+FUNC_WRAPPED   : Final[str]                = "__wrapped__"
+PARAM_PREFIX   : Final[str] = "_"
+PARAM_SUFFIX   : Final[str] = "_ex"
 
-RUN_DRY_SWITCH                               = doot.constants.decorations.RUN_DRY_SWITCH
-RUN_DRY                                      = doot.constants.decorations.RUN_DRY
-GEN_TASKS                                    = doot.constants.decorations.GEN_TASKS
-IO_ACT                                       = doot.constants.decorations.IO_ACT
-CONTROL_FLOW                                 = doot.constants.decorations.CONTROL_FLOW
-EXTERNAL                                     = doot.constants.decorations.EXTERNAL
-STATE_MOD                                    = doot.constants.decorations.STATE_MOD
-ANNOUNCER                                    = doot.constants.decorations.ANNOUNCER
+class DecorationUtils:
 
-dry_run_active                               = doot.args.on_fail(False).cmd.args.dry_run()
-
-class DootDecorator(abc.ABC):
-    """ Base Class for decorators that annotate action callables
-      set self._annotations:dict to add annotations to fn.__DOOT_ANNOTATIONS (:set)
-      implement self._wrapper to add a wrapper around the fn.
-      TODO: set self._idempotent=True to only add a wrapper once
-      """
-
-    def __init__(self):
-        self._idempotent  = False
-        self._annotations =  set()
-
-    def __call__(self, fn):
-        if bool(self._annotations):
-            self.annotate(fn, self._annotations)
-
-        if not hasattr(self, "_wrapper"):
-            return fn
-
-        if isinstance(fn, Type):
-            return self.wrap_method(fn, fn.__call__, self._wrapper)
-
-        decorated = decorator.decorate(fn, self._wrapper)
-        return decorated
+    _annot = DOOT_ANNOTATIONS
 
     @staticmethod
-    def _strip_wrappers(fn:callable) -> callable:
+    def _unwrap(fn:callable) -> callable:
         # if not hasattr(fn, FUNC_WRAPPED):
         #     return fn
 
@@ -95,32 +70,78 @@ class DootDecorator(abc.ABC):
         return inspect.unwrap(fn)
 
     @staticmethod
+    def verify_signature(fn, head:list, tail:list=None) -> bool:
+        match fn:
+            case inspect.Signature():
+                sig = fn
+            case _:
+                sig = inspect.signature(fn, follow_wrapped=False)
+
+        params      = list(sig.parameters)
+        tail        = tail or []
+        for x,y in zip(params, head):
+            if x != y:
+                logging.debug("Mismatch in signature head: %s != %s", x, y)
+                return False
+
+        for x,y in zip(params[::-1], tail[::-1]):
+            key_str = str(y)
+            if x.startswith(PARAM_PREFIX) or x.endswith(PARAM_SUFFIX):
+                continue
+            if keyword.iskeyword(key_str):
+                logging.debug("Key is a keyword, the function sig needs to use _{} or {}_ex: %s : %s", x, y)
+                return False
+            if not key_str.isidentifier():
+                logging.debug("Key is not an identifier, the function sig needs to use _{} or {}_ex: %s : %s", x,y)
+                return False
+
+            if x != y:
+                logging.debug("Mismatch in signature tail: %s != %s", x, y)
+                return False
+
+        return True
+
+    def verify_action_signature(fn:Signature|callable, args:list) -> bool:
+        match fn:
+            case inspect.Signature():
+                sig = fn
+            case _:
+                sig = inspect.signature(fn, follow_wrapped=False)
+
+        match sig.parameters.get("self", None):
+            case None:
+                head_sig = ["spec", "state"]
+            case _:
+                head_sig = ["self", "spec", "state"]
+
+        return DecorationUtils.verify_signature(sig, head_sig, args)
+
+
+    @staticmethod
+    def manipulate_signature(fn, args) -> callable:
+        pass
+
+    @staticmethod
     def has_annotations(fn, *keys) -> bool:
-        base = DootDecorator._strip_wrappers(fn)
-        if not hasattr(base, DOOT_ANNOTATIONS):
+        if not hasattr(fn, DOOT_ANNOTATIONS):
             return False
 
-        annots = getattr(base, DOOT_ANNOTATIONS)
+        annots = getattr(fn, DOOT_ANNOTATIONS)
         return all(key in annots for key in keys)
 
     @staticmethod
-    def annotate(fn:callable, annots:set) -> callable:
-        base = DootDecorator._strip_wrappers(fn)
-        if not hasattr(base, DOOT_ANNOTATIONS):
-            setattr(base, DOOT_ANNOTATIONS, set())
+    def annotate(fn:callable, annots:dict|set) -> callable:
+        match annots:
+            case dict():
+                fn.__dict__.update(annots)
+            case set():
+                if not hasattr(fn, DOOT_ANNOTATIONS):
+                    setattr(fn, DOOT_ANNOTATIONS, set())
 
-        annotations = getattr(base, DOOT_ANNOTATIONS)
-        for cls in getattr(fn, '__mro__', []):
-            annotations.update(getattr(cls, DOOT_ANNOTATIONS, {}))
-
-        annotations.update(annots)
+                annotations = getattr(fn, DOOT_ANNOTATIONS)
+                annotations.update(annots)
         return fn
 
-    @staticmethod
-    def wrap_method(obj:Type, method:callable, wrapper:callable) -> Type:
-        wrapped = decorator.decorate(method, wrapper)
-        setattr(obj, method.__name__, wrapped)
-        return obj
 
     @staticmethod
     def truncate_signature(fn):
@@ -137,77 +158,120 @@ class DootDecorator(abc.ABC):
         fn.__signature__ = newsig
         return fn
 
-class DryRunSwitch(DootDecorator):
-    """ Mark an action callable/class as to be skipped in dry runs """
+    @staticmethod
+    def _update_key_annotations(fn, keys:list[DootKey]) -> True:
+        """ update the declared expansion keys on the wrapped action """
+        sig = inspect.signature(fn)
 
-    def __init__(self, *, override:bool=False):
-        self._override = override
-        self._annotations = {RUN_DRY_SWITCH}
+        # prepend annotations, so written decorator order is the same as written arg order:
+        # (ie: @wrap(x) @wrap(y) @wrap(z) def fn (x, y, z), even though z's decorator is applied first
+        new_annotations = keys + getattr(fn, KEY_ANNOTS, [])
+        setattr(fn, KEY_ANNOTS, new_annotations)
 
-    def _wrapper(self, fn, *args, **kwargs):
-        if dry_run_active or self._override:
-            return None
-        return fn(*args, **kwargs)
+        if not DecorationUtils.verify_action_signature(sig, new_annotations):
+            raise doot.errors.DootKeyError("Annotations do not match signature", sig)
 
-class RunsDry(DootDecorator):
-    """ mark an action that makes no changes to the system, on an honour system """
+        return True
+
+    @staticmethod
+    def prepare_expansion(keys:list[DootKey], fn):
+        """ used as a partial fn. adds declared keys to a function,
+          and idempotently adds the expansion decorator
+        """
+        is_func = True
+        match DecorationUtils._unwrap(fn):
+            case x if DecorationUtils.has_annotations(x, KEYS_HANDLED):
+                DecorationUtils._update_key_annotations(x, keys)
+                return fn
+            case orig:
+                is_func = inspect.signature(orig).parameters.get("self", None) is None
+                DecorationUtils._update_key_annotations(x, keys)
+                DecorationUtils.annotate(orig, {KEYS_HANDLED})
+
+        match is_func:
+            case False:
+                wrapper = DecorationUtils.add_method_expander(fn)
+            case True:
+                wrapper = DecorationUtils.add_fn_expander(fn)
+
+        return wrapper
+
+    @staticmethod
+    def add_method_expander(fn):
+
+        @ftz.wraps(fn)
+        def method_action_expansions(self, spec, state, *call_args, **kwargs):
+            try:
+                expansions = [x(spec, state) for x in getattr(fn, KEY_ANNOTS)]
+            except KeyError as err:
+                printer.warning("Action State Expansion Failure: %s", err)
+                return False
+            all_args = (*call_args, *expansions)
+            return fn(self, spec, state, *all_args, **kwargs)
+
+        # -
+        return method_action_expansions
+
+    @staticmethod
+    def add_fn_expander(fn):
+
+        @ftz.wraps(fn)
+        def fn_action_expansions(spec, state, *call_args, **kwargs):
+            try:
+                expansions = [x(spec, state) for x in getattr(fn, KEY_ANNOTS)]
+            except KeyError as err:
+                printer.warning("Action State Expansion Failure: %s", err)
+                return False
+            all_args = (*call_args, *expansions)
+            return fn(spec, state, *all_args, **kwargs)
+
+        # -
+        return fn_action_expansions
+
+class DootDecorator(abc.ABC):
+    """ Base Class for decorators that annotate action callables
+      set self._annotations:dict to add annotations to fn.__DOOT_ANNOTATIONS (:set)
+      implement self._wrapper to add a wrapper around the fn.
+      TODO: set self._idempotent=True to only add a wrapper once
+      """
+
 
     def __init__(self):
-        self._annotations = {RUN_DRY}
+        self._idempotent  = False
+        self._annotations =  set()
 
-class GeneratesTasks(DootDecorator):
-    """ Mark an action callable/class as a task generator """
+    def __call__(self, fn):
+        if bool(self._annotations):
+            DecorationUtils.annotate(fn, self._annotations)
 
-    def __init__(self):
-        self._annotations = {GEN_TASKS}
+        if not hasattr(self, "_wrapper"):
+            return fn
 
-    def _wrapper(self, fn, *args, **kwargs):
-        result = fn(*args, **kwargs)
-        if isinstance(result, Generator):
-            raise NotImplementedError("Actions can't return generators yet to generate tasks")
-        if not isinstance(result, list):
-            raise doot.errors.DootActionError("Action did not return a list of generated tasks")
-        if any(not isinstance(x, SpecStruct_p) for x in result):
-            raise doot.errors.DootActionError("Action did not return task specs")
-        return result
+        if isinstance(fn, Type):
+            return self._decorate_class(fn)
 
-class IOWriter(DootDecorator):
-    """ mark an action callable/class as an io action,
-      checks the path it'll write to isn't write protected
-    """
+        match DecorationUtils.verify_signature(fn, ["self"]):
+            case True:
+                @ftz.wraps(fn)
+                def decorated(obj, *args, **kwargs):
+                    return self._wrapper(self._prep_method(fn, obj), *args, **kwargs, _obj=obj)
 
-    def __init__(self, *targets):
-        super().__init__()
-        self._annotations = {IO_ACT}
-        self._targets = [x for x in targets or ["to"]]
+            case False:
+                @ftz.wraps(fn)
+                def decorated(*args, **kwargs):
+                    return self._wrapper(fn, *args ,**kwargs)
 
-    def _wrapper(self, fn, spec, state, *args, **kwargs):
-        for x in [y for y in getattr(fn, '_doot_keys', []) if y in self._targets]:
-            if doot.locs._is_write_protected(x.to_path(spec, state)):
-                raise doot.errors.DootTaskError("A Target to an IOWriter action is marked as protected")
 
-        return fn(spec, state, *args, **kwargs)
+        return decorated
 
-class ControlFlow(DootDecorator):
-    """ mark an action callable/class as a control flow action
-      implies it runs dry
-      """
-    pass
+    def _decorate_class(self, cls):
+        original = cls.__call__
+        @ftz.wraps(cls.__call__)
+        def decorated(obj, *args, **kwargs):
+            return self._wrapper(self._prep_method(original, obj), *args, **kwargs, _obj=original)
 
-class External(DootDecorator):
-    """ mark an action callable/class as calling an external program.
-      implies rundryswitch
-      """
-    pass
+        cls.__call__ = decorated
+        return cls
 
-class StateManipulator(DootDecorator):
-    """ mark an action callable/class as a state modifier
-      checks the DootKey `returns` are in the return dict
-    """
-    pass
-
-class Announcer(DootDecorator):
-    """ mark an action callable/class as reporting in a particular way
-      implies run_dry, and skips on cli arg `silent`
-      """
-    pass
+    def _prep_method(self, fn, obj):
+        return ftz.partial(fn, obj)

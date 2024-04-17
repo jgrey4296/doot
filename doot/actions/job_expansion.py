@@ -37,7 +37,6 @@ logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
-
 import random
 from tomlguard import TomlGuard
 import doot
@@ -47,7 +46,9 @@ from doot.actions.base_action import DootBaseAction
 from doot.actions.job_injection import JobInjector
 
 class JobGenerate(DootBaseAction):
-    """ Run a custom function to generate task specs  """
+    """ Run a custom function to generate task specs
+      Function is in the form: fn(spec, state) -> list[DootTaskSpec]
+    """
 
     @DootKey.dec.references("fn")
     @DootKey.dec.redirects("update_")
@@ -57,24 +58,26 @@ class JobGenerate(DootBaseAction):
 
 class JobExpandAction(JobInjector):
     """
-      Takes a base action and builds one new subtask for each entry in a list
+      Takes a template taskname/list[actionspec] and builds one new subtask for each entry in a list
 
       'inject' provides an injection dict, with $arg$ being the entry from the source list
     """
 
-    @DootKey.dec.types("from", "inject", "base", "print_levels")
+    @DootKey.dec.types("from", "inject", "template", "print_levels")
     @DootKey.dec.expands("prefix")
     @DootKey.dec.redirects("update_")
     @DootKey.dec.taskname
-    def __call__(self, spec, state, _from, inject, base, _printL, prefix, _update, _basename):
+    def __call__(self, spec, state, _from, inject, template, _printL, prefix, _update, _basename):
         match prefix:
             case "{prefix}":
                 prefix = "{Anon}"
             case _:
                 pass
+
         result          = []
-        actions, base   = self._prep_base(base)
-        build_queue = []
+        build_queue     = []
+        base_head       = _basename.task_head()
+        actions, base   = self._prep_base(template)
         match _from:
             case int():
                 build_queue += range(_from)
@@ -84,23 +87,22 @@ class JobExpandAction(JobInjector):
                 build_queue += [1]
             case _:
                 printer.warning("Tried to expand a non-list of args")
-                return None
+                return self.ActRE.FAIL
 
         for i, arg in enumerate(build_queue):
                 injection = self.build_injection(spec, state, inject, replacement=arg)
                 new_spec  = DootTaskSpec.build(dict(name=_basename.subtask(prefix, i),
                                                     ctor=base,
                                                     actions = actions or [],
-                                                    required_for=[_basename.task_head()],
+                                                    required_for=[base_head],
                                                     extra=injection,
                                                     print_levels=_printL or {},
                                                     ))
                 result.append(new_spec)
 
-
         return { _update : result }
 
-    def _prep_base(self, base) -> tuple[list, DootTaskName|None]:
+    def _prep_base(self, base:DootTaskName|list[DootActionSpec]) -> tuple[list, DootTaskName|None]:
         """
           base can be the literal name of a task (base="group::task") to build off,
           or an indirect key to a list of actions (base_="sub_actions")

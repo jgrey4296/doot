@@ -66,9 +66,6 @@ def _separate_into_core_and_extra(data) -> tuple[dict, dict]:
                 pass
             case "print_levels":
                 core_data["print_levels"] = TomlGuard(val)
-            case "active_when":
-                processed = _prepare_deps(val)
-                core_data["active_when"] = processed
             case "required_for":
                 processed = _prepare_deps(val)
                 core_data["required_for"] = processed
@@ -113,7 +110,7 @@ def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|Doo
                 results.append(DootTaskArtifact.build(x))
             case str() if doot.constants.patterns.TASK_SEP in x:
                 results.append(DootTaskName.build(x))
-            case DootTaskName() | DootTaskArtifact():
+            case DootTaskName() | DootTaskArtifact() | DootActionSpec():
                 results.append(x)
             case _:
                 raise doot.errors.DootInvalidConfig(f"Unrecognised task pre/post dependency form. (Remember: files are prefixed with `{doot.constants.patterns.FILE_DEP_PREFIX}`, tasks are in the form group::name)", x, source)
@@ -123,7 +120,6 @@ def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|Doo
 def _prepare_ctor(ctor, mixins) -> DootTaskName|DootCodeReference:
     match ctor:
         case None:
-
             default_alias = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
             coderef_str   = doot.aliases.task[default_alias]
             return DootCodeReference.build(coderef_str).add_mixins(*mixins)
@@ -173,7 +169,6 @@ class DootTaskSpec(SpecStruct_p):
 
     extra                        : TomlGuard                                                               = field(default_factory=TomlGuard)
 
-    inject                       : list[str]                                                               = field(default_factory=list) # For jobs
     queue_behaviour              : TaskQueueMeta                                                 = field(default=TaskQueueMeta.default)
 
     @staticmethod
@@ -239,8 +234,12 @@ class DootTaskSpec(SpecStruct_p):
                     specialized["depends_on"] = self.depends_on[:] + data.depends_on[:]
                 case "required_for":
                     specialized["required_for"] = self.required_for[:] + data.required_for[:]
-                case "inject":
-                    specialized["inject"] = self.inject[:] + data.inject[:]
+                case "cleanup":
+                    specialized["cleanup"] = self.cleanup[:] + data.cleanup[:]
+                case "on_fail":
+                    specialized["on_fail"] = self.on_fail[:] + data.on_fail[:]
+                case "setup":
+                    specialized["setup"] = self.setup[:] + data.setup[:]
                 case _:
                     # prefer the newest data, then the unspecialized data, then the default
                     field_data         = DootTaskSpec.__dataclass_fields__.get(field)

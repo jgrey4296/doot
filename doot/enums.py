@@ -38,6 +38,7 @@ class TaskStateEnum(enum.Enum):
     EXISTS          = enum.auto()
     INIT            = enum.auto()
 
+    SKIPPED         = enum.auto()
     DEFINED         = enum.auto()
     DECLARED        = enum.auto()
     ARTIFACT        = enum.auto()
@@ -107,12 +108,15 @@ class LoopControl(enum.Enum):
 class LocationMeta(FlagsBuilder_m, enum.Flag):
     """ Available metadata attachable to a location """
 
-    default      = enum.auto()
-    file         = enum.auto()
+    location     = enum.auto()
+    artifact     = enum.auto()
     protected    = enum.auto()
     indefinite   = enum.auto()
     cleanable    = enum.auto()
     normOnLoad   = enum.auto()
+
+    file         = artifact
+    default      = location
 
 class TaskQueueMeta(EnumBuilder_m, enum.Enum):
     """ available ways a task can be activated for running
@@ -123,7 +127,8 @@ class TaskQueueMeta(EnumBuilder_m, enum.Enum):
 
     """
 
-    default    = enum.auto()
-    onRegister = enum.auto()
-    reactive   = enum.auto()
-    auto       = onRegister
+    default      = enum.auto()
+    onRegister   = enum.auto()
+    reactive     = enum.auto()
+    reactiveFail = enum.auto()
+    auto         = onRegister

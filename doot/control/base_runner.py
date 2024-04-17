@@ -80,6 +80,7 @@ class BaseRunner(TaskRunner_i):
         return
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
+        # TODO handle exc_types?
         printer.setLevel("INFO")
         printer.info("")
         printer.info(self._exit_msg, extra={"colour":"green"})
@@ -87,7 +88,7 @@ class BaseRunner(TaskRunner_i):
         return
 
     def _finish(self):
-        """finish running tasks, summarizing results
+        """finish running tasks, summarizing results using the reporter
           separate from __exit__ to allow it to be overridden
         """
         logging.info("Task Running Completed")
@@ -102,12 +103,22 @@ class BaseRunner(TaskRunner_i):
             case doot.errors.DootError():
                 raise self._signal_failure
 
-    def _handle_task_success(self, task):
+    def _handle_task_success(self, task:None|Task_i|DootTaskArtifact):
+        """ The basic success handler. just informs the tracker of the success """
         if task:
             self.tracker.update_state(task, self.tracker.state_e.SUCCESS)
         return task
 
     def _handle_failure(self, task:None|Task_i, failure:Error) -> None:
+        """ The basic failure handler.
+          Triggers a breakpoint on DootTaskInterrupt,
+          otherwise informs the tracker of the failure.
+
+          Halts any failed or errored tasks, which propagates to any successors
+          Fails any DootErrors, TrackingErrors, and non-doot errors
+
+          the tracker handle's clearing itself and shutting down
+        """
         match failure:
             case doot.errors.DootTaskInterrupt():
                 breakpoint()
@@ -115,11 +126,11 @@ class BaseRunner(TaskRunner_i):
             case doot.errors.DootTaskFailed() as err:
                 self._signal_failure = err
                 printer.warning("%s %s", fail_prefix, err)
-                self.tracker.update_state(err.task.name, self.tracker.state_e.FAILED)
+                self.tracker.update_state(err.task.name, self.tracker.state_e.HALTED)
             case doot.errors.DootTaskError() as err:
                 self._signal_failure = err
                 printer.warning("%s %s", fail_prefix, err)
-                self.tracker.update_state(err.task.name, self.tracker.state_e.FAILED)
+                self.tracker.update_state(err.task.name, self.tracker.state_e.HALTED)
             case doot.errors.DootError() as err:
                 self._signal_failure = err
                 printer.warning("%s %s", fail_prefix, err)
@@ -127,13 +138,16 @@ class BaseRunner(TaskRunner_i):
             case doot.errors.DootTaskTrackingError() as err:
                 self._signal_failure = err
                 printer.warning("%s %s", fail_prefix, err)
-                self.tracker.clear_queue()
+                self.tracker.update_state(task, self.tracker.state_e.FAILED)
             case _:
                 self._signal_failure = doot.errors.DootError("Unknown Failure")
                 printer.exception("%s Unknown failure occurred: %s", fail_prefix, failure)
-                self.tracker.clear_queue()
+                self.tracker.update_state(task, self.tracker.state_e.FAILED)
 
     def _sleep(self, task):
+        """
+          The runner's sleep method, which spaces out tasks
+        """
         match task:
             case None:
                 return
@@ -144,8 +158,8 @@ class BaseRunner(TaskRunner_i):
             sleep_len = task.spec.extra.on_fail(default_SLEEP_LENGTH, int|float).sleep()
             p.info("[Sleeping (%s)...]", sleep_len, extra={"colour":"white"})
             time.sleep(sleep_len)
-            self.step += 1
 
     def _notify_artifact(self, art:DootTaskArtifact) -> None:
+        """ A No-op for when the tracker gives an artifact """
         printer.info("---- Artifact: %s", art)
-        self.reporter.trace(art, flags=ReportEnum.ARTIFACT)
+        self.reporter.add_trace(art, flags=ReportEnum.ARTIFACT)

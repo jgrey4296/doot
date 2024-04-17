@@ -51,9 +51,9 @@ class DootReportManagerSummary(Reporter_i):
 
     def __str__(self):
         result = {
-            "tasks"     : {"success": 0, "fail": 0, "total": 0},
+            "tasks"     : {"success": 0, "fail": 0, "skip": 0, "total": 0},
+            "jobs"      : {"success": 0, "fail": 0, "skip": 0, "total": 0},
             "actions"   : {"success": 0, "fail": 0, "total": 0},
-            "jobs"      : {"success": 0, "fail": 0, "total": 0},
             "artifacts" : 0
             }
 
@@ -76,6 +76,8 @@ class DootReportManagerSummary(Reporter_i):
                 ended = "fail"
             elif ReportEnum.SUCCEED in trace.flags:
                 ended = "success"
+            elif ReportEnum.SKIP in trace.flags:
+                ended = "skip"
 
             if category is None or ended is None:
                 continue
@@ -85,9 +87,9 @@ class DootReportManagerSummary(Reporter_i):
 
         output = [
             "    - Totals : Jobs: {}, Tasks: {}, Actions: {}".format(result['jobs']['total'], result['tasks']['total'], result['actions']['total']),
-            "    - Success/Failures:",
-            "    -- Jobs      : {}/{}".format(result['jobs']['success'],result['jobs']['fail']),
-            "    -- Tasks     : {}/{}".format(result['tasks']['success'], result['tasks']['fail']),
+            "    - Success/Failures/Skips:",
+            "    -- Jobs      : {}/{}/{}".format(result['jobs']['success'],result['jobs']['fail'], result['jobs']['skip']),
+            "    -- Tasks     : {}/{}/{}".format(result['tasks']['success'], result['tasks']['fail'], result['tasks']['skip']),
             "    -- Actions   : {}/{}".format(result['actions']['success'], result['actions']['fail']),
             "    -- Artifacts : {}".format(result['artifacts']),
         ]

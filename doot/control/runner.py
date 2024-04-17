@@ -101,7 +101,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
                         self._execute_task(task)
                     case Task_i():
                         # test_conditions failed, so skip
-                        printer.info("Skipping Task: %s", task.spec.name)
+                        printer.info("----| Task %s: %s Skipped.", self.step, task.spec.name)
                     case _:
                         pass
             except doot.errors.DootError as err:
@@ -113,6 +113,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
             else:
                 self._handle_task_success(task)
                 self._sleep(task)
+                self.step += 1
 
     def _expand_job(self, job:Job_i) -> None:
         """ turn a job into all of its tasks, including teardowns """
@@ -128,14 +129,14 @@ class DootRunner(BaseRunner, TaskRunner_i):
             self.reporter.add_trace(job.spec, flags=ReportEnum.JOB | ReportEnum.INIT)
 
             with logctx(build_log_level) as p: # Run the actions
-                self._execute_action_group(job.spec.setup, job)
-                self._execute_action_group(job.spec.actions, job, allow_queue=True)
+                self._execute_action_group(job.spec.setup, job, group="setup")
+                self._execute_action_group(job.spec.actions, job, allow_queue=True, group="actions")
 
         except doot.errors.DootError as err:
-            self._execute_action_group(task.spec.on_fail, task)
+            self._execute_action_group(job.spec.on_fail, job, group="on_fail")
             raise err
         finally:
-            self._execute_action_group(job.spec.cleanup, job)
+            # cleanup actions are *not* run here, as they've been added to the auto-gen $head$ and queued
             job.state.clear()
 
             with logctx(head_log_level)  as p: # Announce Exit
@@ -150,37 +151,38 @@ class DootRunner(BaseRunner, TaskRunner_i):
         try:
             with logctx(head_log_level) as p: # Announce entry
                 p.info("----> Task %s :  %s", self.step, task.spec.name.readable, extra={"colour":"magenta"})
-                # TODO queue $head$
 
             self.reporter.add_trace(task.spec, flags=ReportEnum.TASK | ReportEnum.INIT)
 
             with logctx(build_log_level) as p: # Build then run actions
-                self._execute_action_group(task.spec.setup, task)
-                self._execute_action_group(task.spec.actions, task)
+                self._execute_action_group(task.spec.setup, task, group="setup")
+                self._execute_action_group(task.spec.actions, task, group="action")
                 self.reporter.add_trace(task.spec, flags=ReportEnum.TASK | ReportEnum.SUCCEED)
         except doot.errors.DootError as err:
-            self._execute_action_group(task.spec.on_fail, task)
+            self._execute_action_group(task.spec.on_fail, task, group="on_fail")
             raise err
         finally:
-            self._execute_action_group(task.spec.cleanup, task)
+            # Cleanup Actions *are* run here, because tasks don't have subtasks they setup for
+            self._execute_action_group(task.spec.cleanup, task, group="cleanup")
             task.state.clear()
 
             with logctx(head_log_level)  as p: # Cleanup and exit
                 p.debug("----< Task: %s", task.name, extra={"colour":"cyan"})
 
-    def _execute_action_group(self, actions:list, task:Task_i, allow_queue=False) -> tuple[int, ActRE]:
+    def _execute_action_group(self, actions:list, task:Task_i, allow_queue=False, group=None) -> tuple[int, ActRE]:
         """ Execute a group of actions, possibly queue any task specs they produced,
         and return a count of the actions run + the result
         """
-        group_result    = ActRE.SUCCESS
-        to_queue        = []
-        executed        = 0
+        logging.debug("Running Action Group %s (%s) for : %s", group, len(actions), task.spec.name)
+        group_result     = ActRE.SUCCESS
+        to_queue         = []
+        executed_count   = 0
 
         for action in actions:
             result = None
             match action:
                 case DootActionSpec():
-                    result = self._execute_action(executed, action, task)
+                    result = self._execute_action(executed_count, action, task)
                 case DootTaskArtifact():
                     pass
                 case DootTaskName():
@@ -195,23 +197,31 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 case list():
                     to_queue += result
                 case ActRE.SKIP:
-                    p.warning("------ Remaining Task Actions skipped by Action Instruction")
+                    printer.warning("------ Remaining Task Actions skipped by Action Result")
                     group_result = ActRE.SKIP
                     break
 
-            executed += 1
+            executed_count += 1
 
         else: # runs only if no 'break'
-            if not allow_queue:
-                    return executed, group_result
+            match to_queue:
+                case []:
+                    pass
+                case [*xs] if not allow_queue:
+                    printer.warning("---- !!!! Tried to Queue additional tasks from a bad action group: %s", task)
+                    group_result = ActRE.FAIL
+                case [*xs]:
+                    for spec in xs:
+                        self.tracker.add_task(spec, no_root_connection=True)
+                    printer.info("Queued %s Subtasks for %s", len(xs), task.spec.name)
 
-            for spec in to_queue:
-                self.tracker.add_task(spec, no_root_connection=True)
-
-        return executed, group_result
+        return executed_count, group_result
 
     def _execute_action(self, count, action, task) -> ActRE|list:
         """ Run the given action of a specific task.
+
+          returns either a list of specs to (potentially) queue,
+          or an ActRE describing the action result.
 
         """
         result                     = None
@@ -259,9 +269,9 @@ class DootRunner(BaseRunner, TaskRunner_i):
         return result
 
     def _test_conditions(self, task:Task_i) -> bool:
-        """ run action specs that test if the task can be started """
-        match self._execute_action_group(task.spec.depends_on, task):
-            case _, ActRE.SKIP:
+        """ run a task's depends_on group, coercing to a bool """
+        match self._execute_action_group(task.spec.depends_on, task, group="depends_on"):
+            case _, ActRE.SKIP | ActRE.FAIL:
                 return False
             case _, _:
                 return True
