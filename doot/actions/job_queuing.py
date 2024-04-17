@@ -106,12 +106,12 @@ class JobQueueAction(Action_p):
         result = []
         head   = base.task_head()
         for i,x in enumerate(args):
-            sub = DootTaskSpec.build(
-                _basename.subtask(i),
+            sub = DootTaskSpec.build(dict(
+                name=base.subtask(i),
                 ctor=DootTaskName.build(x),
                 required_for=[head],
-                depends_on=_after or [],
-                )
+                depends_on=[],
+                ))
             result.append(sub)
 
         return result

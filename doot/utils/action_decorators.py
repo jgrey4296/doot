@@ -59,7 +59,7 @@ class DryRunSwitch(DootDecorator):
         self._override = override
         self._annotations = {RUN_DRY_SWITCH}
 
-    def _wrapper(self, fn, *args, **kwargs):
+    def _wrapper(self, fn, *args, _obj=None, **kwargs):
         if dry_run_active or self._override:
             return None
         return fn(*args, **kwargs)
@@ -76,7 +76,7 @@ class GeneratesTasks(DootDecorator):
     def __init__(self):
         self._annotations = {GEN_TASKS}
 
-    def _wrapper(self, fn, *args, **kwargs):
+    def _wrapper(self, fn, *args, _obj=None, **kwargs):
         result = fn(*args, **kwargs)
         if isinstance(result, Generator):
             raise NotImplementedError("Actions can't return generators yet to generate tasks")

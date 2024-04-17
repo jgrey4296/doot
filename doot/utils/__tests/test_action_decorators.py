@@ -16,7 +16,8 @@ import doot
 doot._test_setup()
 from doot.structs import DootKey
 from doot.utils.testing_fixtures import wrap_locs
-from doot.utils import decorators as decs
+from doot.utils import action_decorators as decs
+from doot.utils.decorators import DecorationUtils as DU
 
 logging = logmod.root
 
@@ -39,7 +40,7 @@ class TestDecorators:
         def simple(spec:dict, state:dict) -> str:
             return "blah"
 
-        assert(DD.has_annotations(simple, doot.constants.decorations.RUN_DRY_SWITCH))
+        assert(DU.has_annotations(simple, doot.constants.decorations.RUN_DRY_SWITCH))
         assert(simple({}, {}) == "blah")
 
     def test_override_dry_run(self):
@@ -49,7 +50,7 @@ class TestDecorators:
         def simple(spec:dict, state:dict) -> str:
             return "blah"
 
-        assert(DD.has_annotations(simple, doot.constants.decorations.RUN_DRY_SWITCH))
+        assert(DU.has_annotations(simple, doot.constants.decorations.RUN_DRY_SWITCH))
         assert(simple({}, {}) is None)
 
     def test_wrap_method(self):
@@ -61,9 +62,9 @@ class TestDecorators:
                 return "blah"
 
         # class is annotated
-        assert(DD.has_annotations(SimpleClass, doot.constants.decorations.RUN_DRY_SWITCH))
+        assert(DU.has_annotations(SimpleClass, doot.constants.decorations.RUN_DRY_SWITCH))
         # Instance is annotated
-        assert(DD.has_annotations(SimpleClass(), doot.constants.decorations.RUN_DRY_SWITCH))
+        assert(DU.has_annotations(SimpleClass(), doot.constants.decorations.RUN_DRY_SWITCH))
         assert(SimpleClass()({}, {}) == "blah")
 
     def test_wrap_method_override_dry(self):
@@ -75,9 +76,9 @@ class TestDecorators:
                 return "blah"
 
         # class is annotated
-        assert(DD.has_annotations(SimpleClass, doot.constants.decorations.RUN_DRY_SWITCH))
+        assert(DU.has_annotations(SimpleClass, doot.constants.decorations.RUN_DRY_SWITCH))
         # Instance is annotated
-        assert(DD.has_annotations(SimpleClass(), doot.constants.decorations.RUN_DRY_SWITCH))
+        assert(DU.has_annotations(SimpleClass(), doot.constants.decorations.RUN_DRY_SWITCH))
         assert(SimpleClass()({}, {}) is None)
 
     def test_annotate_fn(self):
@@ -86,7 +87,7 @@ class TestDecorators:
         def simple(spec:dict, state:dict) -> str:
             return "blah"
 
-        assert(DD.has_annotations(simple, doot.constants.decorations.RUN_DRY))
+        assert(DU.has_annotations(simple, doot.constants.decorations.RUN_DRY))
 
     def test_annotate_method(self):
 
@@ -96,8 +97,8 @@ class TestDecorators:
             def __call__(self, spec:dict, state:dict) -> str:
                 return "blah"
 
-        assert(DD.has_annotations(SimpleClass, doot.constants.decorations.RUN_DRY))
-        assert(DD.has_annotations(SimpleClass(), doot.constants.decorations.RUN_DRY))
+        assert(DU.has_annotations(SimpleClass, doot.constants.decorations.RUN_DRY))
+        assert(DU.has_annotations(SimpleClass(), doot.constants.decorations.RUN_DRY))
 
     def test_annotation_survives_subclassing(self):
 
@@ -108,10 +109,10 @@ class TestDecorators:
         class SimpleChild(SimpleSuper):
             pass
 
-        assert(DD.has_annotations(SimpleSuper,   decs.RUN_DRY))
-        assert(DD.has_annotations(SimpleSuper(), decs.RUN_DRY))
-        assert(DD.has_annotations(SimpleChild,   decs.RUN_DRY))
-        assert(DD.has_annotations(SimpleChild(), decs.RUN_DRY))
+        assert(DU.has_annotations(SimpleSuper,   decs.RUN_DRY))
+        assert(DU.has_annotations(SimpleSuper(), decs.RUN_DRY))
+        assert(DU.has_annotations(SimpleChild,   decs.RUN_DRY))
+        assert(DU.has_annotations(SimpleChild(), decs.RUN_DRY))
 
 
     def test_key_decoration_survives_annotation(self):
@@ -121,7 +122,7 @@ class TestDecorators:
         def simple(spec, state, blah):
             return blah
 
-        assert(DD.has_annotations(simple,   decs.RUN_DRY))
+        assert(DU.has_annotations(simple,   decs.RUN_DRY))
         assert(simple(None, {"blah":"bloo"}) == "bloo")
 
 
@@ -133,7 +134,7 @@ class TestDecorators:
             """ a simple test func """
             return blah
 
-        assert(DD.has_annotations(simple,   decs.RUN_DRY_SWITCH))
+        assert(DU.has_annotations(simple,   decs.RUN_DRY_SWITCH))
         assert(simple(None, {"blah": "bloo"}) is None)
 
 
@@ -147,7 +148,7 @@ class TestDecorators:
                 """ a simple test func """
                 return blah
 
-        assert(DD.has_annotations(SimpleAction,   decs.RUN_DRY_SWITCH))
+        assert(DU.has_annotations(SimpleAction,   decs.RUN_DRY_SWITCH))
         assert(SimpleAction()({}, {"blah": "bloo"}) is None)
 
 
@@ -161,7 +162,7 @@ class TestDecorators:
                 """ a simple test func """
                 return blah
 
-        assert(DD.has_annotations(SimpleAction.__call__,   decs.RUN_DRY_SWITCH))
+        assert(DU.has_annotations(SimpleAction.__call__,   decs.RUN_DRY_SWITCH))
         assert(SimpleAction()({}, {"blah": "bloo"}) is None)
 
     def test_wrapping_overriden_by_subclassing(self):
@@ -186,7 +187,7 @@ class TestDecorators:
         def simple(spec, state):
             return []
 
-        assert(DD.has_annotations(simple, decs.GEN_TASKS))
+        assert(DU.has_annotations(simple, decs.GEN_TASKS))
         assert(isinstance(simple({},{}), list))
 
 
@@ -196,7 +197,7 @@ class TestDecorators:
         def simple(spec, state):
             return "blah"
 
-        assert(DD.has_annotations(simple, decs.GEN_TASKS))
+        assert(DU.has_annotations(simple, decs.GEN_TASKS))
         with pytest.raises(doot.errors.DootActionError):
             simple({},{})
 
@@ -209,7 +210,7 @@ class TestDecorators:
         def simple(spec, state, to):
             return "blah"
 
-        assert(DD.has_annotations(simple, decs.IO_ACT))
+        assert(DU.has_annotations(simple, decs.IO_ACT))
         with pytest.raises(doot.errors.DootTaskError):
             simple(None, {"to": "{blah}"})
 
@@ -223,5 +224,5 @@ class TestDecorators:
             "a simple docstring "
             return "blah"
 
-        assert(DD.has_annotations(simple, decs.IO_ACT))
+        assert(DU.has_annotations(simple, decs.IO_ACT))
         assert(simple(None, {"to": "{blah}"}) == "blah")
