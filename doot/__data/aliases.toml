@@ -59,9 +59,10 @@ touch    =       "doot.actions.io:TouchFileAction"
 
 [[doot.aliases.action]] # control flow
 # Map {alias} -> CodeRef String
-"exists?"       = "doot.actions.control_flow:SkipIfFileExists"
-"ext?"          = "doot.actions.control_flow:SkipUnlessSuffix"
-"pred?"         = "doot.actions.control_flow:CancelOnPredicateAction"
+"exists?"       = "doot.actions.control_flow:FileExistsCheck"
+"ext?"          = "doot.actions.control_flow:SuffixCheck"
+"relative?"     = "doot.actions.control_flow:RelativeCheck"
+"pred?"         = "doot.actions.control_flow:PredicateCheck"
 "installed?"    = "doot.actions.control_flow:AssertInstalled"
 "dir?"          = "doot.actions.io:EnsureDirectory"
 "wait"          = "doot.actions.control_flow:WaitAction"

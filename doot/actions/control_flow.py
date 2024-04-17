@@ -40,18 +40,8 @@ from doot.mixins.path_manip import PathManip_m
 from doot.actions.base_action import DootBaseAction
 from doot.utils.action_decorators import ControlFlow
 
-##-- expansion keys
-MSG          : Final[DootKey] = DootKey.build("msg")
-OLD          : Final[DootKey] = DootKey.build("old")
-NEW          : Final[DootKey] = DootKey.build("new")
-LEVEL        : Final[DootKey] = DootKey.build("level")
-PRED         : Final[DootKey] = DootKey.build("pred")
-FILE_TARGET  : Final[DootKey] = DootKey.build("file")
-
-##-- end expansion keys
-
 @ControlFlow()
-class CancelOnPredicateAction(DootBaseAction):
+class PredicateCheck(DootBaseAction):
     """
       Get a predicate using the kwarg `pred`,
       call it with the action spec and task state.
@@ -65,25 +55,88 @@ class CancelOnPredicateAction(DootBaseAction):
         return predicate(spec,state)
 
 @ControlFlow()
-class SkipIfFileExists(DootBaseAction):
+class FileExistsCheck(DootBaseAction):
+    """ Continue only if a file exists. invertable with `not`.
+      converts to a failure with fail=true
+      """
 
     @DootKey.dec.args
-    def __call__(self, spec, state, args) -> dict|bool|None:
+    @DootKey.dec.types("not", hint={"type_":bool, "on_fail": False})
+    @DootKey.dec.types("fail", hint={"type_":bool, "on_fail": False})
+    def __call__(self, spec, state, args, _invert, _fail) -> dict|bool|None:
+        result = self.ActRE.SKIP
+        if _fail:
+            result = self.ActRE.FAIL
+
         for arg in args:
-            key = DootKey.build(arg, explicit=True)
-            path = key.to_path(spec, state, on_fail=None)
-            if path and path.exists():
-                printer.info("Target Exists: %s", path)
-                return self.ActRE.SKIP
+            path = DootKey.build(arg, explicit=True).to_path(spec, state, on_fail=None)
+            match bool(path and path.exists()), _invert:
+                case False, True:
+                    continue
+                case False, False:
+                    return result
+                case True, True:
+                    return result
+                case True, False:
+                    continue
 
 @ControlFlow()
-class SkipUnlessSuffix(DootBaseAction):
+class SuffixCheck(DootBaseAction):
+    """ Continue only if args ext is in supplied extensions
+      invertable, failable
+      """
 
-    @DootKey.dec.paths("fpath")
-    @DootKey.dec.expands("ext")
-    def __call__(self, spec, state, fpath, ext):
-        if fpath.suffix != ext:
-            return self.ActRE.SKIP
+    @DootKey.dec.args
+    @DootKey.dec.types("exts", hint={"type_":list})
+    @DootKey.dec.types("not", hint={"type_":bool, "on_fail": False})
+    @DootKey.dec.types("fail", hint={"type_":bool, "on_fail": False})
+    def __call__(self, spec, state, args, exts, _invert, _fail):
+        result = self.ActRE.SKIP
+        if _fail:
+            result = self.ActRE.FAIL
+
+        for arg in args:
+            path = DootKey.build(arg, explicit=True).to_path(spec, state, on_fail=None)
+            match path.suffix in exts, _invert:
+                case False, True:
+                    continue
+                case False, False:
+                    return result
+                case True, True:
+                    return result
+                case True, False:
+                    continue
+
+@ControlFlow()
+class RelativeCheck(PathManip_m, DootBaseAction):
+    """ continue only if paths are relative to a base.
+      invertable. Skips by default, can fail
+    """
+
+    @DootKey.dec.args
+    @DootKey.dec.types("bases", hint={"type_":list})
+    @DootKey.dec.types("not", hint={"type_":bool, "on_fail":False})
+    @DootKey.dec.types("fail", hint={"type_":bool, "on_fail": False})
+    def __call__(self, spec, state, args, _bases, _invert, _fail):
+        result = self.ActRE.SKIP
+        if _fail:
+            result = self.ActRE.SKIP
+
+        roots = self._build_roots(spec, state, _bases)
+        try:
+            for arg in args:
+                path = DootKey.build(arg, explicit=True).to_path(spec, state, on_fail=None)
+                match self._get_relative(fpath, roots), _invert:
+                    case None, True:
+                        return
+                    case None, False:
+                        return result
+                    case _, True:
+                        return result
+                    case _, False:
+                        return
+        except ValueError:
+            return result
 
 class LogAction(DootBaseAction):
 
@@ -91,7 +144,6 @@ class LogAction(DootBaseAction):
     @DootKey.dec.expands("msg")
     def __call__(self, spec, state, level, msg):
         level        = logmod.getLevelName(level)
-        msg          = MSG.expand(spec, state, rec=True)
         printer.log(level, "%s", msg)
 
 @ControlFlow()
@@ -131,35 +183,3 @@ class WaitAction:
     @DootKey.dec.types("count")
     def __call__(self, spec, state, count):
         sleep(count)
-
-@ControlFlow()
-class SkipWhenRelativeTo(PathManip_m, DootBaseAction):
-
-    @DootKey.dec.paths("fpath")
-    @DootKey.dec.types("when_roots")
-    def __call__(self, spec, state, fpath, _roots):
-        roots = self._build_roots(spec, state, _roots)
-        try:
-            match self._get_relative(fpath, roots):
-                case None:
-                    return
-                case _:
-                    return self.ActRE.SKIP
-        except ValueError:
-            return
-
-@ControlFlow()
-class SkipUnlessRelativeTo(PathManip_m, DootBaseAction):
-
-    @DootKey.dec.paths("fpath")
-    @DootKey.dec.types("unless_roots")
-    def __call__(self, spec, state, fpath, _roots):
-        roots = self._build_roots(spec, state, _roots)
-        try:
-            match self._get_relative(fpath, roots):
-                case None:
-                    return self.ActRE.SKIP
-                case _:
-                    return
-        except ValueError:
-            return self.ActRE.SKIP
