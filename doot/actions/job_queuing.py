@@ -47,45 +47,106 @@ from doot.structs import DootKey, DootTaskSpec, DootTaskName, DootCodeReference
 class JobQueueAction(Action_p):
     """
       Queues a list of tasks into the tracker.
-      Args are strings converted to simple taskspec's
-      `from` is a state list of DootTaskSpec's
 
-      does NOT queue a head task automatically
+      1) Queue Named Tasks: {do='job.queue', args=['group::task'] }
+      2) Queue Expanded TaskSpecs: {do='job.queue', from_="state_key" }
     """
 
     @DootKey.dec.args
     @DootKey.dec.types("from_", hint={"type_":list|DootTaskSpec|None})
     @DootKey.dec.redirects_many("from_multi_")
+    @DootKey.dec.types("after", hint={"type_":list|DootTaskName|str|None, "on_fail":None})
     @DootKey.dec.taskname
-    def __call__(self, spec, state, _args, _from, _from_multi, _basename):
-        subtasks  = []
-        subtasks += [DootTaskSpec(_basename.subtask(i), ctor=DootTaskName.build(x), required_for=[_basename.task_head()]) for i,x in enumerate(_args)]
+    def __call__(self, spec, state, _args, _from, _from_multi, _after, _basename) -> list:
+        # TODO maybe expand args
+        subtasks                   = []
+        queue : list[DootTaskSpec] = []
+        _after                     = self._expand_afters(_after, _basename)
 
-        match _from:
-            case [*xs] if all(isinstance(x, DootTaskSpec) for x in xs):
-                subtasks += xs
-            case DootTaskSpec():
-                subtasks.append(_from)
+        if _args:
+            queue += self._build_args(_basename, _args)
+
+        if _from:
+            queue += self._build_from(_basename, _from)
+
+        if _from_multi:
+            queue += self._build_from_multi(_basename, _from_multi, spec, state)
+
+        for sub in queue:
+            match sub:
+                case DootTaskSpec():
+                    sub.depends_on += _after
+                    subtasks.append(sub)
+                case x:
+                    raise doot.errors.DootActionError("Tried to queue a not DootTaskSpec", x)
+
+        return subtasks
+
+    def _expand_afters(self, afters, base):
+        result = []
+        match afters:
             case None:
-                pass
-            case _:
-                raise doot.errors.DootActionError("Tried to queue a not DootTaskSpec")
+                return []
+            case "$head$":
+                return [base.head_task()]
+            case str():
+                return [DootTaskName.build(afters)]
+            case list():
+                for x in afters:
+                    if x == "$head$":
+                        result.append(base.head_task())
+                    else:
+                        result.append(DootTaskName.build(x))
 
-        match _from_multi:
+        return result
+
+
+
+    def _build_args(self, base, args) -> list:
+        result = []
+        head   = base.task_head()
+        for i,x in enumerate(args):
+            sub = DootTaskSpec.build(
+                _basename.subtask(i),
+                ctor=DootTaskName.build(x),
+                required_for=[head],
+                depends_on=_after or [],
+                )
+            result.append(sub)
+
+        return result
+
+    def _build_from_multi(self, base, froms, spec, state) -> list:
+        result  = []
+        head    = base.task_head()
+        as_keys = []
+        match froms:
             case None:
                 pass
             case [*xs]:
-                as_keys = [DootKey.build(x) for x in xs]
-                for key in as_keys:
-                    match key.to_type(spec, state, type_=list|None):
-                        case None:
-                            pass
-                        case DootTaskSpec() as s:
-                            subtasks.append(s)
-                        case list() as l:
-                            subtasks += [spec for spec in l if isinstance(spec, DootTaskSpec)]
+                as_keys += [DootKey.build(x) for x in xs]
 
-        return subtasks
+        for key in as_keys:
+            match key.to_type(spec, state, type_=list|DootTaskSpec|None):
+                case None:
+                    pass
+                case list() as l:
+                    result += l
+                case DootTaskSpec() as s:
+                    result.append(s)
+
+        return result
+
+    def _build_from(self, base, _from) -> list:
+        result = []
+        head = base.task_head()
+        match _from:
+            case None:
+                pass
+            case list() as l:
+                queue += l
+
+        return result
 
 class JobQueueHead(Action_p):
     """ Queue the head/on_completion task of this job"""
@@ -100,13 +161,13 @@ class JobQueueHead(Action_p):
         match base:
             case str() | DootTaskName():
                 head += [DootTaskSpec.build(dict(name=head_name,
-                                                     actions=[],
-                                                     queue_behaviour="auto")),
+                                                 actions=[],
+                                                 queue_behaviour="auto")),
                          DootTaskSpec.build(dict(name=head_name.subtask("1"),
-                                                     ctor=DootTaskName.build(base),
-                                                     depends_on=[head_name],
-                                                     extra=inject or {},
-                                                     queue_behaviour="auto"))
+                                                 ctor=DootTaskName.build(base),
+                                                 depends_on=[head_name],
+                                                 extra=inject or {},
+                                                 queue_behaviour="auto"))
                     ]
             case list():
                 head += [DootTaskSpec.build(dict(name=head_name, actions=base, extra=inject or {}, queue_behaviour="auto"))]
