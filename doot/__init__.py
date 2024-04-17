@@ -31,7 +31,7 @@ printer         = logmod.getLogger("doot._printer")
 ##-- end logging
 
 # Global, single points of truth:
-__version__          : Final[str]         = "0.7.0"
+__version__          : Final[str]         = "0.7.1"
 
 CONSTANT_PREFIX      : Final[str]         = "doot.constants"
 ALIAS_PREFIX         : Final[str]         = "doot.aliases"
