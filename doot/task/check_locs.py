@@ -18,7 +18,6 @@ import doot
 import doot.errors
 from doot.structs import DootTaskSpec
 from doot._abstract import Job_i
-from doot.task.base_job import DootJob
 from doot.task.base_task import DootTask
 from doot.enums import LocationMeta
 
@@ -47,7 +46,7 @@ class CheckLocsTask(DootTask):
                                            })
         super().__init__(spec, action_ctor=self.checklocs)
 
-    def checklocs(self, spec, task_state_copy):
+    def checklocs(self, spec, state):
         exists_p = spec.args[0].exists()
         if exists_p:
             printer.info("Base Location Exists : %s", spec.args[0])

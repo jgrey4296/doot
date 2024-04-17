@@ -112,20 +112,3 @@ class DootJob(Job_i, DootTask):
             help_lines += [str(x) for x in cls.param_specs if not x.invisible]
 
         return "\n".join(help_lines)
-
-    def _build_head(self, **kwargs) -> None|DootTaskSpec:
-        logging.debug("Building Head Task for: %s", self.name)
-        inject_keys = set(self.spec.inject)
-        inject_dict = {k: self.spec.extra[k] for k in inject_keys if k in self.spec.extra}
-        extra       = {}
-        extra.update(kwargs)
-        extra.update(inject_dict)
-        task_spec                 = self.default_task(None, TomlGuard(extra))
-        task_spec.queue_behaviour = "auto"
-        task_spec.print_levels    = self.spec.print_levels
-
-        task_ref                  = self.spec.extra.on_fail((None,), None|str).head_task()
-        if task_ref is not None:
-            task_spec.ctor = DootStructuredName.build(task_ref)
-
-        return task_spec

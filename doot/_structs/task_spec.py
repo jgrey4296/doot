@@ -120,7 +120,6 @@ def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|Doo
 def _prepare_ctor(ctor, mixins) -> DootTaskName|DootCodeReference:
     match ctor:
         case None:
-
             default_alias = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
             coderef_str   = doot.aliases.task[default_alias]
             return DootCodeReference.build(coderef_str).add_mixins(*mixins)
@@ -170,7 +169,6 @@ class DootTaskSpec(SpecStruct_p):
 
     extra                        : TomlGuard                                                               = field(default_factory=TomlGuard)
 
-    inject                       : list[str]                                                               = field(default_factory=list) # For jobs
     queue_behaviour              : TaskQueueMeta                                                 = field(default=TaskQueueMeta.default)
 
     @staticmethod
@@ -236,8 +234,12 @@ class DootTaskSpec(SpecStruct_p):
                     specialized["depends_on"] = self.depends_on[:] + data.depends_on[:]
                 case "required_for":
                     specialized["required_for"] = self.required_for[:] + data.required_for[:]
-                case "inject":
-                    specialized["inject"] = self.inject[:] + data.inject[:]
+                case "cleanup":
+                    specialized["cleanup"] = self.cleanup[:] + data.cleanup[:]
+                case "on_fail":
+                    specialized["on_fail"] = self.on_fail[:] + data.on_fail[:]
+                case "setup":
+                    specialized["setup"] = self.setup[:] + data.setup[:]
                 case _:
                     # prefer the newest data, then the unspecialized data, then the default
                     field_data         = DootTaskSpec.__dataclass_fields__.get(field)
