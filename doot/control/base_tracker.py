@@ -49,19 +49,21 @@ from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskName, DootCodeR
 from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i
 from doot.task.base_task import DootTask
 
-ROOT             : Final[str]                  = "__root" # Root node of dependency graph
-STATE            : Final[str]                  = "state"  # Node attribute name
-PRIORITY         : Final[str]                  = "priority"
-COMPLETE_STATES  : Final[set[TaskStateEnum]]   = {TaskStateEnum.SUCCESS, TaskStateEnum.EXISTS}
-DECLARE_PRIORITY : Final[int]                  = 10
-MIN_PRIORITY     : Final[int]                  = -10
-
 class EDGE_E(enum.Enum):
     """ Enum describing the possible edges of the task tracker's task network """
     TASK               = enum.auto()
     ARTIFACT           = enum.auto()
     TASK_CROSS         = enum.auto() # Task to artifact
     ARTIFACT_CROSS     = enum.auto() # artifact to task
+
+ROOT             : Final[str]                  = "__root" # Root node of dependency graph
+STATE            : Final[str]                  = "state"  # Node attribute name
+PRIORITY         : Final[str]                  = "priority"
+REACTIVE_ADD     : Final[str]                  = "reactive-add"
+COMPLETE_STATES  : Final[set[TaskStateEnum]]   = {TaskStateEnum.SUCCESS, TaskStateEnum.EXISTS}
+ARTIFACT_EDGES   : Final[set[EDGE_E]]          = [EDGE_E.ARTIFACT, EDGE_E.TASK_CROSS]
+DECLARE_PRIORITY : Final[int]                  = 10
+MIN_PRIORITY     : Final[int]                  = -10
 
 class _InternalTrackerBase(TaskTracker_i):
     """ Standard implementation of private tracker methods and plumbing """
@@ -158,6 +160,24 @@ class _InternalTrackerBase(TaskTracker_i):
 
         return str(artifact)
 
+    def _build_head(self, spec:DootTaskSpec) -> None|TaskSpec:
+        """
+          Build a head task for a job, taking the jobs cleanup actions
+          and using them as the head's main action.
+          Depends on the job, and its reactively queued.
+        """
+        # build $head$
+        head : DootTaskSpec = DootTaskSpec.build({
+            "name"            : spec.name.task_head(),
+            "source"          : spec.name,
+            "actions"         : spec.cleanup,
+            "print_levels"    : spec.print_levels,
+            "extra"           : spec.extra,
+            "queue_behaviour" : TaskQueueMeta.reactive,
+            "depends_on"      : [spec.name],
+            })
+        return head
+
     def _insert_cli_args_into_spec(self, spec:DootTaskSpec) -> DootTaskSpec:
         """ Takes a task spec, and inserts matching cli args into it if necessary """
         spec_extra : dict = dict(spec.extra.items() or [])
@@ -184,6 +204,7 @@ class _InternalTrackerBase(TaskTracker_i):
             match pre:
                 case DootActionSpec():
                     # Action spec dependencies are tested when running, not as part of the DAG
+                    # TODO use decorations to know about implicit depencies, eg: artifacts
                     pass
                 case DootTaskArtifact():
                     pre = self._add_artifact(pre)
@@ -261,23 +282,36 @@ class _InternalTrackerBase(TaskTracker_i):
                 raise doot.errors.DootTaskTrackingError("Unknown queue behaviour specified: %s", task.spec.queue_behaviour)
 
     def _task_dependencies(self, task) -> tuple[list[str], list[str]]:
-        # TODO detect 'read' actions as implicit dependencies
+        """ get predecessors of the task,
+          return [list[incomplete], list[all]]
+        """
         dependencies = list(self.task_graph.pred[task].keys())
         incomplete   = list(filter(lambda x: self.task_state(x) not in COMPLETE_STATES, dependencies))
         return incomplete, dependencies
 
     def _task_products(self, task) -> tuple[list[str], list[str]]:
         """
-          Get task 'required-for' files: [not-existing, total]
+          Get task 'required-for' files: [list[not-existing], list[total]]
         """
         # TODO detect 'write!' actions as implicit products
-        looking_for  = [EDGE_E.ARTIFACT, EDGE_E.TASK_CROSS]
-        artifacts    = list(map(lambda x: x[0], filter(lambda x: x[1].get('type', None) in looking_for, self.task_graph.succ[str(task)].items())))
+        artifacts    = list(map(lambda x: x[0], filter(lambda x: x[1].get('type', None) in ARTIFACT_EDGES, self.task_graph.succ[str(task)].items())))
         incomplete   = list(filter(lambda x: not bool(self.artifacts[x]), artifacts))
-
         return incomplete, artifacts
 
     def _task_dependents(self, task) -> tuple[list[str], list[str]]:
+        """ TODO get [list[incomplete], list[total]] successors for a task """
+        raise NotImplementedError()
+
+    def _reactive_queue(self, focus:str):
+        """ Queue any known task in the network that auto-reacts to a focus """
+        for adj in self.task_graph.adj[focus]:
+            if self.task_graph.nodes[adj].get(REACTIVE_ADD, False):
+                self.queue_task(adj, silent=True)
+
+    def _reactive_fail_queue(self, focus:str):
+        """ TODO: make reactive failure tasks that can be triggered from
+          a tasks 'on_fail' collection
+          """
         raise NotImplementedError()
 
 class BaseTracker(_InternalTrackerBase):

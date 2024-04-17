@@ -40,7 +40,6 @@ from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i
 from doot.task.base_task import DootTask
 from doot.control.base_tracker import BaseTracker, ROOT, STATE, PRIORITY, EDGE_E, MIN_PRIORITY
 
-REACTIVE_ADD     : Final[str]                  = "reactive-add"
 
 @doot.check_protocol
 class DootTracker(BaseTracker, TaskTracker_i):
@@ -57,7 +56,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
     INITIAL_TASK_STATE = TaskStateEnum.DEFINED
 
     def __init__(self, shadowing:bool=False, *, policy=None):
-        super().__init__(shadowing=shadowing, policy=policy) # self.tasks
+        super().__init__(shadowing=shadowing, policy=policy) # -> self.tasks
 
     def add_task(self, task:DootTaskSpec|Task_i, *, no_root_connection=False) -> None:
         """ add a task description into the tracker, but don't queue it
@@ -79,6 +78,15 @@ class DootTracker(BaseTracker, TaskTracker_i):
         self._insert_dependencies(task)
         self._insert_dependents(task)
         self._maybe_implicit_queue(task)
+
+        # To Stop heads having heads
+        if task.spec.name == task.spec.name.task_head():
+            return
+        if not isinstance(task, Job_i):
+            return
+
+        head_spec = self._build_head(task.spec)
+        self.add_task(head_spec, no_root_connection=True)
 
     def update_state(self, task:str|Task_i|DootTaskArtifact, state:self.state_e):
         """ update the state of a task in the dependency graph """
@@ -112,11 +120,8 @@ class DootTracker(BaseTracker, TaskTracker_i):
             match self.task_state(focus):
                 case self.state_e.SUCCESS:
                     self.deque_task()
-                    # Queue any task that auto-reacts to this task
-                    for adj in self.task_graph.adj[focus]:
-                        if self.task_graph.nodes[adj].get(REACTIVE_ADD, False):
-                            self.queue_task(adj)
-                case self.state_e.EXISTS: # remove task on completion
+                    self._reactive_queue(focus)
+                case self.state_e.EXISTS: # remove artifact if exists
                     for pred in self.task_graph.pred[focus].keys():
                         logging.debug("Propagating Artifact existence to disable: %s", pred)
                         self.update_state(pred, self.state_e.SUCCESS)
@@ -131,12 +136,17 @@ class DootTracker(BaseTracker, TaskTracker_i):
                     # And remove the halted task from the active_set
                     self.deque_task()
                 case self.state_e.FAILED:  # stop when a task fails, and clear any queued tasks
+                    # TODO
                     self.clear_queue()
                     return None
+                case self.state_e.RUNNING:
+                    raise doot.errors.DootTaskTrackingError("running state shouldn't be possible")
                 case self.state_e.READY if focus in self.execution_path: # error on running the same task twice
                     raise doot.errors.DootTaskTrackingError("Task Attempted to run twice: %s", focus)
                 case self.state_e.READY:   # return the task if its ready
                     self.execution_path.append(focus)
+                    # TODO check this, it might not affect the priority queue
+                    self.task_graph.nodes[focus][PRIORITY] -= 1
                     return self.tasks.get(focus, None)
                 case self.state_e.ARTIFACT if bool(self.artifacts[focus]): # if an artifact exists, mark it so and remove it
                     logging.info("Artifact Exists: %s", focus)
@@ -148,6 +158,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
                         self.deque_task()
                         self.queue_task(focus, *incomplete, silent=True)
                     elif bool(all_deps):
+                        # Only unblock if something produces thsi artifact
                         logging.debug("Artifact Unblocked: %s", focus)
                         self.update_state(focus, self.state_e.EXISTS)
                     else:
