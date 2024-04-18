@@ -35,7 +35,7 @@ import doot
 import doot.errors
 import tomlguard
 from doot._abstract import Task_i, Job_i, Action_p, PluginLoader_p
-from doot.enums import TaskFlags, TaskStateEnum
+from doot.enums import TaskFlags, TaskStateEnum, TaskQueueMeta
 from doot.structs import TaskStub, TaskStubPart, DootActionSpec, DootCodeReference, DootTaskName, DootTaskArtifact
 from doot.actions.base_action import DootBaseAction
 from doot.errors import DootTaskLoadError, DootTaskError
@@ -191,7 +191,6 @@ class DootTask(_TaskProperties_m, Importer_m, Task_i):
             stub.ctor                   = cls
 
         # Come first
-        stub['active_when'].priority    = -90
         stub['required_for'].priority   = -90
         stub['depends_on'].priority     = -100
 
@@ -200,7 +199,8 @@ class DootTask(_TaskProperties_m, Importer_m, Task_i):
 
         stub['priority'].default        = 10
         stub['queue_behaviour'].default = "default"
-        stub['queue_behaviour'].comment = "default | auto | reactive"
+        stub['queue_behaviour'].comment = " | ".join({x.name for x in TaskQueueMeta})
+        stub['flags'].comment = " | ".join({x.name for x in TaskFlags})
         return stub
 
     def stub_instance(self, stub) -> TaskStub:

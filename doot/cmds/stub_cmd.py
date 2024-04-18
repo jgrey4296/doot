@@ -70,7 +70,6 @@ class StubCmd(BaseCommand):
 
             self.build_param("name",        type=str,     default=None,            desc="The Name of the new task",                          positional=True),
             self.build_param("ctor",        type=str,     default="task",          desc="The short type name of the task generator",         positional=True),
-            self.build_param("mixins",      type=list,    default=[],              desc="Mixins to add to task/job", prefix="--"),
             self.build_param("suppress-header",           default=True, invisible=True)
             ]
 
@@ -116,21 +115,19 @@ class StubCmd(BaseCommand):
         """
         logging.info("Building Task Toml Stub")
         task_iden                   : DootCodeReference       = DootCodeReference.from_alias(doot.args.on_fail("task").cmd.args.ctor(), "task", plugins)
-        task_iden_with_mixins       : DootCodeReference       = task_iden.add_mixins(*doot.args.on_fail([]).cmd.args.mixins(), plugins=plugins)
 
         if (name:=doot.args.on_fail((None,)).cmd.args.name()) is None:
             raise doot.errors.DootCommandError("No Name Provided for Stub")
 
         # Create stub toml, with some basic information
-        stub                          = TaskStub(ctor=task_iden_with_mixins)
+        stub                          = TaskStub(ctor=task_iden)
         stub['name'].default          = DootTaskName.build(name)
-        stub['mixins'].set(type="list", default=[], comment="mix in additional capabilities")
 
         # add ctor specific fields,
         # such as for dir_walker: roots [], exts [], recursive bool, subtask "", head_task ""
         # works *towards* the task_type, not away, so more specific elements are added over the top of more general elements
         try:
-            task_mro = task_iden_with_mixins.try_import().mro()
+            task_mro = task_iden.try_import().mro()
         except TypeError as err:
             logging.error(err.args[0].replace("\n", ""))
             task_mro = []
@@ -140,17 +137,16 @@ class StubCmd(BaseCommand):
             try:
                 cls.stub_class(stub)
                 if issubclass(cls, Task_i):
-                    stub['version'].default         = cls.version
-                    stub['doc'].default             = [x for x in cls.class_help().split("\n") if bool(x)]
+                    stub['version'].default         = doot.__version__
+                    stub['doc'].default             = []
             except NotImplementedError:
                 pass
             except AttributeError:
                 pass
 
         # Convert to alises
-        base_a, mixin_a= task_iden_with_mixins.to_aliases("task", plugins)
+        base_a, mixin_a= task_iden.to_aliases("task", plugins)
         stub['ctor'].default   = base_a
-        stub['mixins'].default = mixin_a
 
         # extend the name if there are already tasks with that name
         original_name = stub['name'].default.task

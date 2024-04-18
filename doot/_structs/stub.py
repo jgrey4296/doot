@@ -115,12 +115,10 @@ class TaskStub(StubStruct_p):
             parts.append(TaskStubPart("ctor", type="type", default=f"\"{self.ctor.__module__}{doot.constants.patterns.IMPORT_SEP}{self.ctor.__name__}\""))
         else:
             parts.append(TaskStubPart("ctor", type="type", default=f"\"{self.ctor}\""))
-        if "mixins" in self.parts:
-            parts.append(self.parts['mixins'])
 
         delayed_actions = []
         for key, part in sorted(self.parts.items(), key=lambda x: x[1]):
-            if key in ["name", "version", "ctor", "mixins", 'doc']:
+            if key in ["name", "version", "ctor", "doc"]:
                 continue
             if 'actions' in key:
                 delayed_actions.append(part)
