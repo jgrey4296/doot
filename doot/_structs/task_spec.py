@@ -162,7 +162,7 @@ class DootTaskSpec(SpecStruct_p):
     priority                     : int                                                                     = field(default=10)
     ctor                         : DootTaskName|DootCodeReference                                          = field(default=None)
     # Any additional information:
-    version                      : str                                                                     = field(default="0.1")
+    version                      : str                                                                     = field(default=doot.__version__)
     # TODO version               : dict                                                                    = field(default_factory=dict)
     print_levels                 : TomlGuard                                                               = field(default_factory=TomlGuard)
     flags                        : TaskFlags                                                               = field(default=TaskFlags.TASK)

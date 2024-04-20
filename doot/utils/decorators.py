@@ -153,7 +153,7 @@ class DecorationUtils:
           TODO: could take a callable as the prototype to build the signature from
         """
         sig = inspect.signature(fn)
-        min_index = len(sig.parameters) - len(getattr(fn, "_doot_keys"))
+        min_index = len(sig.parameters) - len(getattr(fn, KEY_ANNOTS))
         newsig = sig.replace(parameters=list(sig.parameters.values())[:min_index])
         fn.__signature__ = newsig
         return fn

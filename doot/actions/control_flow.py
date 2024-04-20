@@ -126,7 +126,7 @@ class RelativeCheck(PathManip_m, DootBaseAction):
         try:
             for arg in args:
                 path = DootKey.build(arg, explicit=True).to_path(spec, state, on_fail=None)
-                match self._get_relative(fpath, roots), _invert:
+                match self._get_relative(path, roots), _invert:
                     case None, True:
                         return
                     case None, False:

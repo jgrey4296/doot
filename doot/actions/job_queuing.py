@@ -144,7 +144,7 @@ class JobQueueAction(Action_p):
             case None:
                 pass
             case list() as l:
-                queue += l
+                result += l
 
         return result
 
