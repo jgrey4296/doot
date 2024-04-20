@@ -39,3 +39,20 @@ Initial ... release.
 - add general expander mixin
 - refactor mixin names to {}_M
 - refactor walker and postbox expanders
+# 0.7.0 : 2024-04-15
+- bug fixes
+- add job actions
+- add json actions
+- refactor constants and aliases to toml
+- add ext check action
+- io.write data coercion to str
+- default log dir
+- write protection
+- add decorators
+- task action groups
+- location metadata
+# 0.7.1 : 2024-04-17
+- bug fixes
+- refactor control flow actions
+# 0.7.2 : 2024-04-20
+- bug fixes
