@@ -135,7 +135,7 @@ class TestTrackerInsertion:
         tracker.add_task(mock_task)
 
         assert("default::task1" in tracker.tasks)
-        assert(tracker.task_graph.nodes['default::task1']['state'] == tracker.state_e.DEFINED)
+        assert(tracker.task_graph.nodes['default::task1']['state'] == TaskStatus_e.DEFINED)
 
     def test_duplicate_add_fail(self, ctor, mocker):
         """ dont add a duplicately named task, or its dependencies """
@@ -179,8 +179,8 @@ class TestTrackerInsertion:
         tracker = ctor()
         tracker.add_task(mock_task)
 
-        assert(tracker.task_graph.nodes['example']['state'] == tracker.state_e.DECLARED)
-        assert(tracker.task_graph.nodes['blah']['state'] == tracker.state_e.DECLARED)
+        assert(tracker.task_graph.nodes['example']['state'] == TaskStatus_e.DECLARED)
+        assert(tracker.task_graph.nodes['blah']['state'] == TaskStatus_e.DECLARED)
         assert("example" in tracker.task_graph)
         assert("blah" in tracker.task_graph)
 
@@ -192,8 +192,8 @@ class TestTrackerInsertion:
 
         tracker = ctor()
         tracker.add_task(mock_task)
-        assert(tracker.task_graph.nodes['default::example']['state'] == tracker.state_e.DECLARED)
-        assert(tracker.task_graph.nodes['default::blah']['state'] == tracker.state_e.DECLARED)
+        assert(tracker.task_graph.nodes['default::example']['state'] == TaskStatus_e.DECLARED)
+        assert(tracker.task_graph.nodes['default::blah']['state'] == TaskStatus_e.DECLARED)
         assert("default::example" in tracker.task_graph)
         assert("default::blah" in tracker.task_graph)
 
@@ -255,15 +255,15 @@ class TestTrackerUpdate:
 
         next_task = tracker.next_for("default::task1")
         assert(next_task.name == "default::subsub")
-        tracker.update_state(next_task, tracker.state_e.SUCCESS)
+        tracker.update_state(next_task, TaskStatus_e.SUCCESS)
 
         next_task_2 = tracker.next_for()
         assert(next_task_2.name in {"default::subtask", "default::subtask2"})
-        tracker.update_state(next_task_2, tracker.state_e.SUCCESS)
+        tracker.update_state(next_task_2, TaskStatus_e.SUCCESS)
 
         next_task_3 = tracker.next_for()
         assert(next_task_3.name in {"default::subtask", "default::subtask2"} - {next_task_2.name})
-        tracker.update_state(next_task_3, tracker.state_e.SUCCESS)
+        tracker.update_state(next_task_3, TaskStatus_e.SUCCESS)
 
         next_task_4 = tracker.next_for()
         assert(next_task_4.name in "default::task1")
@@ -288,7 +288,7 @@ class TestTrackerUpdate:
         for x in tracker:
             if x:
                 result_tasks.append(x.name)
-                tracker.update_state(x.name, tracker.state_e.SUCCESS)
+                tracker.update_state(x.name, TaskStatus_e.SUCCESS)
 
         assert(len(result_tasks) == 5)
 
@@ -302,13 +302,13 @@ class TestTrackerUpdate:
                                           }):
             tracker.add_task(task)
 
-        tracker.update_state("default::subtask2", tracker.state_e.SUCCESS)
+        tracker.update_state("default::subtask2", TaskStatus_e.SUCCESS)
         tasks = []
         tracker.queue_task("default::task1")
         for x in tracker:
             if x:
                 tasks.append(x.name)
-                tracker.update_state(x.name, tracker.state_e.SUCCESS)
+                tracker.update_state(x.name, TaskStatus_e.SUCCESS)
 
         assert("default::subtask2" not in tasks)
         assert(len(tasks) == 4)
@@ -323,7 +323,7 @@ class TestTrackerUpdate:
 
         result = tracker.next_for("default::task1")
         assert(result.name == "default::subtask")
-        tracker.update_state(result, tracker.state_e.SUCCESS)
+        tracker.update_state(result, TaskStatus_e.SUCCESS)
         assert(tracker.next_for().name == "default::task1")
         assert("Tried to Schedule a Declared but Undefined Task: subsub" in caplog.messages)
 
@@ -340,15 +340,15 @@ class TestTrackerUpdate:
 
         next_task = tracker.next_for("default::task1")
         assert(next_task.name == "default::subtask2")
-        tracker.update_state(next_task, tracker.state_e.SUCCESS)
+        tracker.update_state(next_task, TaskStatus_e.SUCCESS)
 
         next_task_2 = tracker.next_for()
         assert(next_task_2.name == "default::subsub")
-        tracker.update_state(next_task_2, tracker.state_e.SUCCESS)
+        tracker.update_state(next_task_2, TaskStatus_e.SUCCESS)
 
         next_task_3 = tracker.next_for()
         assert(next_task_3.name == "default::subtask")
-        tracker.update_state(next_task_3, tracker.state_e.SUCCESS)
+        tracker.update_state(next_task_3, TaskStatus_e.SUCCESS)
 
         next_task_4 = tracker.next_for()
         assert(next_task_4.name == "default::task1" )

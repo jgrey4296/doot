@@ -23,7 +23,7 @@ logging = logmod.getLogger(__name__)
 
 from doot.mixins.enums import EnumBuilder_m, FlagsBuilder_m
 
-class TaskStateEnum(enum.Enum):
+class TaskStatus_e(enum.Enum):
     """
       Enumeration of the different states a task can be in.
       The state is stored in a TaskTracker_i, not the task itself

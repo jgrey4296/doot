@@ -17,7 +17,7 @@ import tomlguard
 import doot
 doot._test_setup()
 
-from doot.enums import TaskStateEnum
+from doot.enums import TaskStatus_e
 from doot.control.runner import DootRunner
 from doot.control.tracker import DootTracker
 from doot.structs import DootTaskSpec, DootActionSpec
@@ -77,7 +77,7 @@ class TestRunner:
         assert(tracker_m.update_state.call_count == 3)
         for call in tracker_m.update_state.call_args_list:
             assert(call.args[0].name in ["default::first", "default::second", "default::third"])
-            assert(call.args[1] is tracker_m.state_e.SUCCESS)
+            assert(call.args[1] is TaskStatus_e.SUCCESS)
 
         expand_job.assert_not_called()
         execute_action.assert_not_called()

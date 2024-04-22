@@ -33,7 +33,7 @@ printer = logmod.getLogger("doot._printer")
 from collections import defaultdict
 import doot
 import doot.errors
-from doot.enums import TaskStateEnum
+from doot.enums import TaskStatus_e
 from doot._abstract import Job_i, Task_i, FailPolicy_p
 from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskName, DootCodeReference
 from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i
@@ -52,8 +52,6 @@ class DootTracker(BaseTracker, TaskTracker_i):
 
     the `task_graph` stores nodes as full names of tasks
     """
-    state_e            = TaskStateEnum
-    INITIAL_TASK_STATE = TaskStateEnum.DEFINED
 
     def __init__(self, shadowing:bool=False, *, policy=None):
         super().__init__(shadowing=shadowing, policy=policy) # -> self.tasks
@@ -165,7 +163,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
                         self.deque_task()
                         self.queue_task(focus)
 
-                case self.state_e.WAIT | self.state_e.DEFINED: # Add dependencies of a task to the stack
+                case TaskStatus_e.WAIT | TaskStatus_e.DEFINED: # Add dependencies of a task to the stack
                     incomplete, _ = self._task_dependencies(focus)
                     if bool(incomplete):
                         logging.info("Task Blocked: %s on : %s", focus, incomplete)
@@ -176,7 +174,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
                         logging.debug("Task Unblocked: %s", focus)
                         self.update_state(focus, self.state_e.READY)
 
-                case self.state_e.DECLARED:
+                case TaskStatus_e.DECLARED:
                     logging.warning("Tried to Schedule a Declared but Undefined Task: %s", focus)
                     self.deque_task()
                     if self.task_graph.nodes[focus][PRIORITY] > MIN_PRIORITY:

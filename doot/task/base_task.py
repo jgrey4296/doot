@@ -35,7 +35,7 @@ import doot
 import doot.errors
 import tomlguard
 from doot._abstract import Task_i, Job_i, Action_p, PluginLoader_p
-from doot.enums import TaskFlags, TaskStateEnum, TaskQueueMeta
+from doot.enums import TaskFlags, TaskStatus_e, TaskQueueMeta
 from doot.structs import TaskStub, TaskStubPart, DootActionSpec, DootCodeReference, DootTaskName, DootTaskArtifact
 from doot.actions.base_action import DootBaseAction
 from doot.errors import DootTaskLoadError, DootTaskError
@@ -155,17 +155,18 @@ class DootTask(_TaskProperties_m, Importer_m, Task_i):
     action_ctor    = DootBaseAction
     _default_flags = TaskFlags.TASK
     _help          = ["The Simplest Task"]
+    COMPLETE_STATES  : Final[set[TaskStatus_e]]   = {TaskStatus_e.SUCCESS, TaskStatus_e.EXISTS}
 
     def __init__(self, spec, *, job=None, action_ctor=None, **kwargs):
         self.spec       : SpecStruct_p        = spec
-        self.status     : TaskStateEnum       = TaskStateEnum.WAIT
+        self.status     : TaskStatus_e       = TaskStatus_e.WAIT
         self.flags      : TaskFlags           = TaskFlags.JOB
-        self._records   : list[Any]           = []
         self.state                            = dict(spec.extra)
         self.job                              = job
         self.state[STATE_TASK_NAME_K]         = self.spec.name
         self.state['_action_step']            = 0
         self.action_ctor                      = action_ctor
+        self._records   : list[Any]           = []
         self.prepare_actions()
 
     def __repr__(self):

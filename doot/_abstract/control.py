@@ -34,7 +34,7 @@ from abc import abstractmethod
 from typing import Generator, NewType
 from collections import deque, defaultdict
 
-from doot.enums import TaskStateEnum
+from doot.enums import TaskStatus_e
 
 from doot._abstract.reporter import ReportLine_i, Reporter_i
 from doot._abstract.policy import FailPolicy_p
@@ -47,8 +47,6 @@ class TaskTracker_i:
     and have failed.
     Does not execute anything itself
     """
-    state_e : TypeAlias = TaskStateEnum
-
     @abstractmethod
     def __bool__(self) -> bool:
         raise NotImplementedError()
@@ -74,7 +72,7 @@ class TaskTracker_i:
         raise NotImplementedError()
 
     @abstractmethod
-    def update_state(self, task:str|DootTaskName|SpecStruct_p|Task_i|ArtifactStruct_p, state:TaskStateEnum) -> None:
+    def update_state(self, task:str|DootTaskName|SpecStruct_p|Task_i|ArtifactStruct_p, state:TaskStatus_e) -> None:
         raise notimplementederror()
 
     @abstractmethod

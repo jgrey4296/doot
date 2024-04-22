@@ -41,7 +41,7 @@ from collections import defaultdict
 import doot
 import doot.structs as structs
 import doot.errors
-from doot.enums import TaskStateEnum, ReportEnum, TaskFlags
+from doot.enums import TaskStatus_e, ReportEnum, TaskFlags
 import doot._abstract as abstract
 from doot.control.runner import DootRunner
 from doot.utils.signal_handler import SignalHandler

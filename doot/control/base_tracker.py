@@ -43,7 +43,7 @@ from collections import defaultdict
 import tomlguard
 import doot
 import doot.errors
-from doot.enums import TaskStateEnum, TaskQueueMeta
+from doot.enums import TaskStatus_e, TaskQueueMeta
 from doot._abstract import Job_i, Task_i, FailPolicy_p
 from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskName, DootCodeReference, DootActionSpec
 from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i
@@ -60,7 +60,7 @@ ROOT             : Final[str]                  = "__root" # Root node of depende
 STATE            : Final[str]                  = "state"  # Node attribute name
 PRIORITY         : Final[str]                  = "priority"
 REACTIVE_ADD     : Final[str]                  = "reactive-add"
-COMPLETE_STATES  : Final[set[TaskStateEnum]]   = {TaskStateEnum.SUCCESS, TaskStateEnum.EXISTS}
+COMPLETE_STATES  : Final[set[TaskStatus_e]]   = {TaskStatus_e.SUCCESS, TaskStatus_e.EXISTS}
 ARTIFACT_EDGES   : Final[set[EDGE_E]]          = [EDGE_E.ARTIFACT, EDGE_E.TASK_CROSS]
 DECLARE_PRIORITY : Final[int]                  = 10
 MIN_PRIORITY     : Final[int]                  = -10
@@ -68,8 +68,8 @@ MIN_PRIORITY     : Final[int]                  = -10
 class _InternalTrackerBase(TaskTracker_i):
     """ Standard implementation of private tracker methods and plumbing """
 
-    state_e            = TaskStateEnum
-    INITIAL_TASK_STATE = TaskStateEnum.DEFINED
+    state_e            = TaskStatus_e
+    INITIAL_TASK_STATE = TaskStatus_e.DEFINED
 
     def __init__(self, shadowing:bool=False, *, policy=None):
         self.policy                                                              = policy
@@ -85,7 +85,7 @@ class _InternalTrackerBase(TaskTracker_i):
         self._declare_priority                                                   = DECLARE_PRIORITY
         self._min_priority                                                       = MIN_PRIORITY
 
-        self.task_graph.add_node(ROOT, state=self.state_e.WAIT)
+        self.task_graph.add_node(ROOT, state=TaskStatus_e.WAIT)
 
     def __bool__(self):
         return bool(self.active_set)
@@ -121,7 +121,7 @@ class _InternalTrackerBase(TaskTracker_i):
                 task : Task_i     = cli_specialized.make()
             case DootTaskSpec():
                 cli_specialized   = self._insert_cli_args_into_spec(spec)
-                task : Task_i = DootTask(cli_specialized)
+                task : Task_i     = DootTask(cli_specialized)
             case Task_i():
                 task = spec
             case _:
@@ -147,13 +147,13 @@ class _InternalTrackerBase(TaskTracker_i):
                 pass
             case DootTaskArtifact() if artifact.is_definite: # x/y/y.ext
                 self.artifacts[str(artifact)] = artifact
-                self.task_graph.add_node(str(artifact), state=self.state_e.ARTIFACT, priority=self._declare_priority)
+                self.task_graph.add_node(str(artifact), state=TaskStatus_e.ARTIFACT, priority=self._declare_priority)
                 # connect to matching indefinites
                 for x in filter(lambda x: artifact in x, self.artifacts.values()):
                     self.task_graph.add_edge(str(artifact), str(x), type=EDGE_E.ARTIFACT)
             case DootTaskArtifact(): # x/*/*.ext
                 self.artifacts[str(artifact)] = artifact
-                self.task_graph.add_node(str(artifact), state=self.state_e.ARTIFACT, priority=self._declare_priority)
+                self.task_graph.add_node(str(artifact), state=TaskStatus_e.ARTIFACT, priority=self._declare_priority)
                 # connect to definites
                 for x in filter(lambda x: x in artifact, self.artifacts.values()):
                     self.task_graph.add_edge(str(x), str(artifact), type=EDGE_E.ARTIFACT)
@@ -286,7 +286,7 @@ class _InternalTrackerBase(TaskTracker_i):
           return [list[incomplete], list[all]]
         """
         dependencies = list(self.task_graph.pred[task].keys())
-        incomplete   = list(filter(lambda x: self.task_state(x) not in COMPLETE_STATES, dependencies))
+        incomplete   = list(filter(lambda x: self.task_status(x) not in COMPLETE_STATES, dependencies))
         return incomplete, dependencies
 
     def _task_products(self, task) -> tuple[list[str], list[str]]:
@@ -392,10 +392,10 @@ class BaseTracker(_InternalTrackerBase):
         """ get the set of tasks which are explicitly defined """
         return set(self.tasks.keys())
 
-    def task_state(self, task:str|DootTaskName|DootTaskArtifact|pl.Path) -> self.state_e:
-        """ Get the state of a task """
-        if str(task) in self.task_graph.nodes:
-            return self.task_graph.nodes[str(task)][STATE]
+    def task_status(self, task:str|DootTaskName|DootTaskArtifact|pl.Path) -> TaskStatus_e:
+        """ Get the status of a task """
+        if str(task) in self.tasks:
+            return self.tasks[str(task)].status
         else:
             raise doot.errors.DootTaskTrackingError("Unknown Task state requested: %s", task)
 

@@ -28,7 +28,7 @@ from tomlguard import TomlGuard
 
 import doot
 import doot.errors
-from doot.enums import TaskFlags, TaskStateEnum, ActionResponseEnum
+from doot.enums import TaskFlags, TaskStatus_e, ActionResponseEnum
 from doot._abstract.structs import StubStruct_p, SpecStruct_p, ParamStruct_p
 from doot._structs.task_name import DootTaskName
 from doot._structs.action_spec import DootActionSpec
