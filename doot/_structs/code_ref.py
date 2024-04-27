@@ -36,6 +36,7 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from pydantic import field_validator, ValidationError, model_validator
 import importlib
 from importlib.metadata import EntryPoint
 from tomlguard import TomlGuard
@@ -43,63 +44,47 @@ import doot
 import doot.errors
 from doot._structs.structured_name import StructuredName
 
-@dataclass(eq=False, slots=True)
 class DootCodeReference(StructuredName):
     """
       A reference to a class or function. can be created from a string (so can be used from toml),
       or from the actual object (from in python)
     """
-    separator : str                              = field(default=doot.constants.patterns.IMPORT_SEP, kw_only=True)
-    _mixins   : list[DootCodeReference]          = field(default_factory=list, kw_only=True)
-    _type     : None|type                        = field(default=None, kw_only=True)
+    _mixins   : list[DootCodeReference]          = []
+    _type     : None|type                        = None
+
+    _separator : ClassVar[str]                    = doot.constants.patterns.IMPORT_SEP
 
     @classmethod
     def build(cls, name:str|type|EntryPoint):
         match name:
+            case str() if cls._separator not in name:
+                raise ValueError("a separator needs to be used", name, cls._separator)
             case str():
-                return cls._from_str(name)
+                groupHead_r, taskHead_r = name.split(cls._separator)
+                return cls(head=[groupHead_r], tail=[taskHead_r])
             case type():
-                groupHead = name.__module__
-                codeHead  = name.__name__
-                ref = cls(groupHead, codeHead, _type=name)
+                group, code = name.__module__, name.__name__
+                ref = cls(head=[group], tail=[code], _type=name)
                 return ref
             case EntryPoint():
-                loaded = ctor.load()
-                groupHead = loaded.__module__
-                codeHead  = loaded.__name__
-                ref = cls(groupHead, codeHead, _type=loaded)
+                loaded    = ctor.load()
+                group, code = loaded.__module__, loaded.__name__
+                ref       = cls(head=[group], tail=[code], _type=loaded)
                 return ref
-
-    @classmethod
-    def _from_str(cls, name:str):
-        if doot.constants.patterns.TASK_SEP in name:
-            raise doot.errors.DootError("Code References should use a single colon, not double")
-
-        if ":" in name:
-            try:
-                groupHead_r, taskHead_r = name.split(":")
-                groupHead = groupHead_r.split(".")
-                taskHead = taskHead_r.split(".")
-            except ValueError:
-                raise doot.errors.DootConfigError("Code ref can't be split correctly, ensure its of the form x.y.z:ClassName", name)
-        else:
-            groupHead = None
-            taskHead  = name
-
-        return DootCodeReference(groupHead, taskHead)
 
     @staticmethod
     def from_alias(alias:str, group:str, plugins:TomlGuard) -> DootCodeReference:
         if group not in plugins:
-            return DootCodeReference._from_str(alias)
+            raise ValueError("Plugin Group not found for CodeRef dealiasing", group, alias, plugins)
+
         match [x for x in plugins[group] if x.name == alias]:
             case [x, *xs]:
-                return DootCodeReference._from_str(x.value)
+                return DootCodeReference.build(x.value)
             case _:
-                return DootCodeReference._from_str(alias)
+                return DootCodeReference.build(alias)
 
     def __str__(self) -> str:
-        return "{}{}{}".format(self.module, self.separator, self.value)
+        return "{}{}{}".format(self.module, self._separator, self.value)
 
     def __repr__(self) -> str:
         code_path = str(self)
@@ -114,11 +99,11 @@ class DootCodeReference(StructuredName):
 
     @property
     def module(self):
-        return self.subseparator.join(self.head)
+        return self._subseparator.join(self.head)
 
     @property
     def value(self):
-        return self.subseparator.join(self.tail)
+        return self._subseparator.join(self.tail)
 
     def add_mixins(self, *mixins:str|DootCodeReference|type, plugins:TomlGuard=None) -> DootCodeReference:
         to_add = self._mixins[:]

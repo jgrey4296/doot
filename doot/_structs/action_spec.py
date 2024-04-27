@@ -36,17 +36,14 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 import importlib
 from tomlguard import TomlGuard
 import doot.errors
 from doot.enums import TaskFlags, ReportEnum
 from doot._abstract.structs import SpecStruct_p
 
-PAD           : Final[int] = 15
-TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
-
-@dataclass
-class DootActionSpec(SpecStruct_p):
+class DootActionSpec(BaseModel, arbitrary_types_allowed=True):
     """
       When an action isn't a full blown class, it gets wrapped in this,
       which passes the action spec to the callable.
@@ -56,12 +53,12 @@ class DootActionSpec(SpecStruct_p):
       path:/usr/bin/python  -> Path(/usr/bin/python)
 
     """
-    do         : None|str                   = field(default=None)
-    args       : list[Any]                  = field(default_factory=list)
-    kwargs     : TomlGuard                  = field(default_factory=TomlGuard)
-    inState    : set[str]                   = field(default_factory=set)
-    outState   : set[str]                   = field(default_factory=set)
-    fun        : None|Callable              = field(default=None)
+    do         : None|str                   = None
+    args       : list[Any]                  = []
+    kwargs     : TomlGuard                  = Field(default_factory=TomlGuard)
+    inState    : set[str]                   = set()
+    outState   : set[str]                   = set()
+    fun        : None|Callable              = None
 
     @staticmethod
     def build(data:dict|list|TomlGuard|DootActionSpec, *, fun=None) -> DootActionSpec:
@@ -76,7 +73,7 @@ class DootActionSpec(SpecStruct_p):
                 return action_spec
 
             case dict() | TomlGuard():
-                kwargs = TomlGuard({x:y for x,y in data.items() if x not in DootActionSpec.__dataclass_fields__.keys()})
+                kwargs = TomlGuard({x:y for x,y in data.items() if x not in DootActionSpec.model_fields})
                 action_spec = DootActionSpec(
                     do=data['do'],
                     args=data.get('args',[]),

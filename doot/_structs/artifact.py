@@ -36,6 +36,7 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from pydantic import BaseModel, field_validator, model_validator, ValidationError
 import importlib
 from tomlguard import TomlGuard
 import doot
@@ -44,46 +45,48 @@ from doot.enums import TaskFlags, ReportEnum, LocationMeta
 from doot._structs.toml_loc import TomlLocation
 from doot._structs.key import DootKey
 
-PAD           : Final[int]   = 15
-ARTIFACT      : Final[str]   = "!!Artifact!!"
-
-@dataclass
-class DootTaskArtifact:
+class DootTaskArtifact(BaseModel, arbitrary_types_allowed=True):
     """
       Wraps a toml defined location into an artifact
 
       Describes an artifact a task can produce or consume.
     Artifacts can be Definite (concrete path) or indefinite (glob path)
     """
-    base     : TomlLocation = field()
-    key      : DootKey      = field()
+    base     : TomlLocation
+    key      : DootKey
+
+    _toml_str_prefix : ClassVar[str] = doot.constants.patterns.FILE_DEP_PREFIX
+    _artifact_loc_key : ClassVar[str] = "!!Artifact!!"
 
     @staticmethod
     def build(data:str|dict|pl.Path) -> DootTaskArtifact:
+        """
+        build an artifact using a str|path of a path,
+        or a dict setting a path and metadata
+        """
         match data:
-            case str() if data.startswith(doot.constants.patterns.FILE_DEP_PREFIX):
-                base = TomlLocation.build(ARTIFACT, data.removeprefix(doot.constants.patterns.FILE_DEP_PREFIX))
+            case str() if data.startswith(DootTaskArtifact._toml_str_prefix):
+                # prefixed str: file:>a/simple/path.txt
+                base = TomlLocation.build(DootTaskArtifact._artifact_loc_key, data.removeprefix(DootTaskArtifact._toml_str_prefix))
                 base.meta |= LocationMeta.file
                 key = DootKey.build(base.base)
-                return DootTaskArtifact(base, key)
             case str():
-                base = TomlLocation.build(ARTIFACT, data)
+                # a straight string, no extra metadata
+                # infers indefinite
+                base = TomlLocation.build(DootTaskArtifact._artifact_loc_key, data)
                 key  = DootKey.build(base.base)
-                return DootTaskArtifact(base, key)
             case dict():
-                base = TomlLocation.build(ARTIFACT, data)
-                if "*" in str(base.base):
-                    base.meta |= LocationMeta.indefinite
+                # dict with metadata
+                base = TomlLocation.build(DootTaskArtifact._artifact_loc_key, data)
                 key = DootKey.build(base.base)
-                return DootTaskArtifact(base, key)
             case pl.Path():
-                base = TomlLocation.build(ARTIFACT, data)
-                if "*" in str(base.base):
-                    base.meta |= LocationMeta.indefinite
+                # path, no metadata, infers indefinite
+                base = TomlLocation.build(DootTaskArtifact._artifact_loc_key, data)
                 key = DootKey.build(base.base)
-                return DootTaskArtifact(base, key)
             case _:
                 raise TypeError("Unknown Type to build Artifact from: %s", data)
+
+        return DootTaskArtifact(base=base, key=key)
 
     def __repr__(self):
         return f"<TaskArtifact: {self.key} : {self.base.meta}>"

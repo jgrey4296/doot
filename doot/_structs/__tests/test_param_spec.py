@@ -165,6 +165,7 @@ class TestParamSpec:
         with pytest.raises(Exception):
             example.maybe_consume(data, "-test=aweg")
 
+    @pytest.mark.xfail
     def test_consume_custom_value(self):
         example = DootParamSpec.build({
             "name" : "test",

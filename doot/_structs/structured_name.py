@@ -36,6 +36,7 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from pydantic import BaseModel, Field, field_validator, ValidationError
 import importlib
 from tomlguard import TomlGuard
 import doot
@@ -45,62 +46,76 @@ from doot.enums import TaskFlags, ReportEnum
 PAD           : Final[int] = 15
 TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
 
-def aware_splitter(x, sep="."):
+def aware_splitter(x, sep=".") -> list[str]:
     match x:
         case str():
             return x.split(sep)
         case _:
             return [x]
 
-@dataclass(eq=False, slots=True)
-class StructuredName:
+class StructuredName(BaseModel):
     """ A Complex name class for identifying tasks and classes.
 
       Classes are the standard form used in importlib: "module.path:ClassName"
       Tasks use a double colon to separate head from tail name: "group.name::TaskName"
 
     """
-    head            : list[str]          = field(default_factory=list)
-    tail            : list[str|UUID]     = field(default_factory=list)
+    head            : list[str]          = []
+    tail            : list[str|UUID]     = []
 
-    separator       : str                = field(default=doot.constants.patterns.TASK_SEP, kw_only=True)
-    subseparator    : str                = field(default=".", kw_only=True)
+    _separator       : ClassVar[str]      = doot.constants.patterns.TASK_SEP
+    _subseparator    : ClassVar[str]      = "."
 
-    def __post_init__(self):
-        sub_split = ftz.partial(aware_splitter, sep=self.subseparator)
-        match self.head:
+    @staticmethod
+    def build(val:str) -> StructuredName:
+        match val.split(StructuredName._separator):
+            case [head, tail]:
+                return StructuredName(head=[head], tail=[tail])
+            case _:
+                raise ValueError("Bad value for building a name from", val)
+
+    @field_validator("head")
+    def _process_head(cls, head):
+        sub_split = ftz.partial(aware_splitter, sep=cls._subseparator)
+        match head:
             case None | []:
-                self.head = ["default"]
+                head = ["default"]
             case ["tasks", x] if x.startswith('"') and x.endswith('"'):
-                self.head = ftz.reduce(lambda x, y: x + y, map(sub_split, x[1:-1]))
+                head = ftz.reduce(lambda x, y: x + y, map(sub_split, x[1:-1]))
             case ["tasks", *xs]:
-                self.head = ftz.reduce(lambda x, y: x + y, map(sub_split, xs))
+                head = ftz.reduce(lambda x, y: x + y, map(sub_split, xs))
             case list():
-                self.head = ftz.reduce(lambda x, y: x + y, map(sub_split, self.head))
-            case str():
-                self.head = self.head.split(self.subseparator)
+                head = ftz.reduce(lambda x, y: x + y, map(sub_split, head))
             case _:
-                self.head = [self.head]
+                raise ValidationError("Bad Head Value", head)
 
-        match self.tail:
+        return head
+
+    @field_validator("tail")
+    def _process_tail(cls, tail):
+        sub_split = ftz.partial(aware_splitter, sep=cls._subseparator)
+        match tail:
             case None | []:
-                self.tail = ["default"]
+                tail = ["default"]
             case list():
-                self.tail = ftz.reduce(lambda x, y: x + y, map(sub_split, self.tail))
-            case str():
-                self.tail = self.tail.split(self.subseparator)
+                tail = ftz.reduce(lambda x, y: x + y, map(sub_split, tail))
             case _:
-                self.tail = [self.tail]
+                raise ValidationError("Bad Tail Value", tail)
+        return tail
 
     def __hash__(self):
         return hash(str(self))
 
     def __str__(self):
-        return self.head_str + self.separator + self.tail_str
+        return self._separator.join([self.head_str(), self.tail_str()])
+
+    def __eq__(self, other):
+        return str(self) == str(other)
 
     def __lt__(self, other) -> bool:
-        """ Compare two names, return true if other is a subname of this name
-        eg: a.b.c < a.b.c.d
+        """ test for hierarhical ordering of names
+        eg: self(a.b.c) < other(a.b.c.d)
+        ie: other ∈ self
         """
         match other:
             case str():
@@ -109,6 +124,11 @@ class StructuredName:
                 pass
             case _:
                 return False
+
+        if len(self.head) != len(other.head):
+            return False
+        if len(self.tail) >= len(other.tail):
+            return False
 
         for x,y in zip(self.head, other.head):
             if x != y:
@@ -120,14 +140,27 @@ class StructuredName:
 
         return True
 
-    def __contains__(self, other:str):
-        return str(other) in str(self)
+    def __le__(self, other) -> bool:
+        return (self == other) or (self < other)
 
-    def __eq__(self, other):
-        return str(self) == str(other)
+    def __contains__(self, other) -> bool:
+        """ test for conceptual containment of names
+        other(a.b.c) ∈ self(a.b) ?
+        ie: self < other
+        """
+        match other:
+            case str():
+                return other in str(self)
+            case StructuredName() if len(self.tail) > len(other.tail):
+                # a.b.c.d is not in a.b
+                return False
+            case StructuredName():
+                head_matches = all(x==y for x,y in zip(self.head, other.head))
+                tail_matches = all(x==y for x,y in zip(self.tail, other.tail))
+                return head_matches and tail_matches
 
     def tail_str(self):
-        return self.subseparator.join(str(x) for x in self.tail)
+        return self._subseparator.join(str(x) for x in self.tail)
 
     def head_str(self):
-        return self.subseparator.join(str(x) for x in self.head)
+        return self._subseparator.join(str(x) for x in self.head)

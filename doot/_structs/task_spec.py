@@ -36,69 +36,30 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError, BeforeValidator
+from typing_extensions import Annotated
+from dataclasses import fields
 import importlib
 from importlib.metadata import EntryPoint
 from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.enums import TaskFlags, ReportEnum, TaskQueueMeta
-from doot._structs.sname import DootTaskName, DootCodeReference
+from doot._structs.task_name import DootTaskName
+from doot._structs.code_ref import DootCodeReference
 from doot._structs.action_spec import DootActionSpec
 from doot._structs.artifact import DootTaskArtifact
 from doot._structs.toml_loc import TomlLocation
 from doot._abstract.structs import SpecStruct_p
+from doot._structs.dependency_spec import DependencySpec
 
-PAD           : Final[int] = 15
 
-# TODO: taskspec.setup, taskspec.cleanup, taskspec.on_fail
-
-def _separate_into_core_and_extra(data) -> tuple[dict, dict]:
-    core_keys   = list(DootTaskSpec.__dataclass_fields__.keys())
-    core_data, extra_data = dict(), dict()
-    # Integrate extras, normalize keys
-    for key, val in data.items():
-        if "-" in key:
-            key = key.replace("-","_")
-        match key:
-            case "extra" if val is not None:
-                extra_data.update(dict(val))
-            case "extra":
-                pass
-            case "print_levels":
-                core_data["print_levels"] = TomlGuard(val)
-            case "required_for":
-                processed = _prepare_deps(val)
-                core_data["required_for"] = processed
-            case "depends_on":
-                processed = _prepare_deps(val)
-                core_data["depends_on"] = processed
-            case "setup":
-                processed = _prepare_deps(val)
-                core_data["setup"] = processed
-            case "cleanup":
-                processed = _prepare_deps(val)
-                core_data["cleanup"] = processed
-            case "on_fail":
-                processed = _prepare_deps(val)
-                core_data["on_fail"] = processed
-            case "queue_behaviour":
-                as_enum = TaskQueueMeta.build(val)
-                core_data["queue_behaviour"] = as_enum
-            case x if x in core_keys:
-                core_data[x] = val
-            case x if x not in ["name", "group"]:
-                extra_data[key] = val
-
-    return core_data, extra_data
-
-def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|DootTaskName]:
+def _prepare_action_group(deps:list[str]) -> list[DootTaskArtifact|DootTaskName]:
     """
-      Prepares dependencies, converting from strings to Artifacts (ie:files), or Task Names
+      Prepares action groups / dependencies,
+      converting toml specified strings, list, and dicts to Artifacts (ie:files), Task Names, ActionSpecs
       # TODO handle callables?
     """
-    if deps is None:
-        return []
-
     results = []
     for x in deps:
         match x:
@@ -106,6 +67,8 @@ def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|Doo
                 results.append(DootActionSpec.build(x))
             case { "loc": filename }:
                 results.append(DootTaskArtifact.build(x))
+            case { "task": taskname }:
+                results.append(DependencySpec.build(x))
             case str() if x.startswith(doot.constants.patterns.FILE_DEP_PREFIX):
                 results.append(DootTaskArtifact.build(x))
             case str() if doot.constants.patterns.TASK_SEP in x:
@@ -113,35 +76,13 @@ def _prepare_deps(deps:None|list[str], source=None) -> list[DootTaskArtifact|Doo
             case DootTaskName() | DootTaskArtifact() | DootActionSpec():
                 results.append(x)
             case _:
-                raise doot.errors.DootInvalidConfig(f"Unrecognised task pre/post dependency form. (Remember: files are prefixed with `{doot.constants.patterns.FILE_DEP_PREFIX}`, tasks are in the form group::name)", x, source)
+                raise ValueError(f"Unrecognised task pre/post dependency form. (Remember: files are prefixed with `{doot.constants.patterns.FILE_DEP_PREFIX}`, tasks are in the form group::name)", x)
 
     return results
 
-def _prepare_ctor(ctor, mixins) -> DootTaskName|DootCodeReference:
-    match ctor:
-        case None:
-            default_alias = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
-            coderef_str   = doot.aliases.task[default_alias]
-            return DootCodeReference.build(coderef_str).add_mixins(*mixins)
-        case EntryPoint():
-            return DootCodeReference.build(ctor).add_mixins(*mixins)
-        case DootTaskName() if bool(mixins):
-            raise TypeError("Task name ctor can't take mixins")
-        case DootTaskName():
-            return ctor
-        case DootCodeReference() if not bool(ctor._mixins):
-            return ctor.add_mixins(*mixins)
-        case DootCodeReference():
-            return ctor
-        case type():
-            return DootCodeReference.build(ctor).add_mixins(*mixins)
-        case str():
-            return DootCodeReference.build(ctor).add_mixins(*mixins)
-        case _:
-            return DootCodeReference.build(ctor).add_mixins(*mixins)
+ActionGroup = Annotated[list[DootTaskName|DootTaskArtifact|DootActionSpec], BeforeValidator(_prepare_action_group)]
 
-@dataclass
-class DootTaskSpec(SpecStruct_p):
+class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
     """ The information needed to describe a generic task.
     Optional things are shoved into 'extra', so things can use .on_fail on the tomlguard
 
@@ -149,117 +90,148 @@ class DootTaskSpec(SpecStruct_p):
     actions                      : list[ [args] | {do="", args=[], **kwargs} ]
 
     """
-    name                         : DootTaskName                                                            = field()
-    doc                          : list[str]                                                               = field(default_factory=list)
-    source                       : DootTaskName|str|None                                                   = field(default=None)
-    actions                      : list[DootActionSpec]                                                    = field(default_factory=list)
+    name                         : str|DootTaskName
+    doc                          : list[str]                                                               = []
+    source                       : DootTaskName|str|pl.Path|None                                           = None
 
-    required_for                 : list[DootTaskName|DootTaskArtifact]                                     = field(default_factory=list)
-    depends_on                   : list[DootTaskName|DootTaskArtifact|DootActionSpec]                      = field(default_factory=list)
-    setup                        : list[DootTaskName|DootActionSpec]                                       = field(default_factory=list)
-    cleanup                      : list[DootTaskName|DootActionSpec]                                       = field(default_factory=list)
-    on_fail                      : list[DootTaskName|DootAcitonSpec]                                       = field(default_factory=list)
-    priority                     : int                                                                     = field(default=10)
-    ctor                         : DootTaskName|DootCodeReference                                          = field(default=None)
+    # Action Groups:
+    actions                      : ActionGroup                                                             = []
+    required_for                 : ActionGroup                                                             = []
+    depends_on                   : ActionGroup                                                             = []
+    setup                        : ActionGroup                                                             = []
+    cleanup                      : ActionGroup                                                             = []
+    on_fail                      : ActionGroup                                                             = []
+
     # Any additional information:
-    version                      : str                                                                     = field(default=doot.__version__)
-    # TODO version               : dict                                                                    = field(default_factory=dict)
-    print_levels                 : TomlGuard                                                               = field(default_factory=TomlGuard)
-    flags                        : TaskFlags                                                               = field(default=TaskFlags.TASK)
-
-    extra                        : TomlGuard                                                               = field(default_factory=TomlGuard)
-
-    queue_behaviour              : TaskQueueMeta                                                 = field(default=TaskQueueMeta.default)
+    version                      : str                                                                     = doot.__version__ # TODO: make dict?
+    priority                     : int                                                                     = 10
+    ctor                         : type|str|DootCodeReference                                              = Field(default=None, validate_default=True)
+    queue_behaviour              : TaskQueueMeta                                                           = TaskQueueMeta.default
+    print_levels                 : TomlGuard                                                               = Field(default_factory=TomlGuard)
+    flags                        : TaskFlags                                                               = TaskFlags.default
+    # task specific extras to use in state
+    _default_ctor         : ClassVar[str]       = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
+    _allowed_print_locs   : ClassVar[list[str]] = doot.constants.printer.PRINT_LOCATIONS
+    _allowed_print_levels : ClassVar[list[str]] = ["INFO", "WARNING", "DEBUG", "EXCEPTION"]
 
     @staticmethod
     def build(data:TomlGuard|dict|DootTaskName|str):
         match data:
             case TomlGuard() | dict():
-                return DootTaskSpec.from_dict(data)
+                return DootTaskSpec.model_validate(data)
             case DootTaskName():
-                return DootTaskSpec.from_name(data)
+                return DootTaskSpec(name=data)
             case str():
-                return DootTaskSpec.from_name(DootTaskName.build(data))
+                return DootTaskSpec(name=DootTaskName.build(data))
 
-    @staticmethod
-    def from_dict(data:TomlGuard|dict):
-        """ builds a task spec from a raw dict
-          able to handle a name:str = "group::task" form,
-          able to convert TaskFlag str's into an or'd enum value
-          """
-        core_data, extra_data = _separate_into_core_and_extra(data)
+    @model_validator(mode="before")
+    def _convert_toml_keys(cls, data):
+        """ converts a-key into a_key """
+        cleaned = {k.replace("-","_") : v  for k,v in data.items()}
+        if "group" in cleaned and DootTaskName._separator not in cleaned["name"]:
+            cleaned['name'] = DootTaskName._separator.join([cleaned['group'], cleaned['name']])
+            del cleaned['group']
+        return cleaned
 
-        core_data['name']     = DootTaskName.build(data)
-        core_data['flags']    = TaskFlags.build(core_data.get("flags", []))
-
-        # Prepare constructor
-        core_data['ctor'] = _prepare_ctor(data.get("ctor",None), [])
-
-        # prep actions
-        core_data['actions'] = [DootActionSpec.build(x) for x in core_data.get('actions', [])]
-
-        task = DootTaskSpec(**core_data, extra=TomlGuard(extra_data))
-        return task
-
-    @staticmethod
-    def from_name(name:DootTaskName):
-        match name:
-            case DootTaskName() if bool(name.args):
-                spec_dict = name.args.copy()
-                spec_dict['name'] = str(name)
-                return DootTaskSpec.from_dict(spec_dict)
+    @field_validator("name", mode="before")
+    def _validate_name(cls, val):
+        match val:
             case DootTaskName():
-                return DootTaskSpec.from_dict({"name": name})
+                return val
+            case str():
+                name = DootTaskName.build(val)
+                return name
             case _:
-                raise TypeError("Bad Type used to build a task spec", name)
+                raise TypeError("A TaskSpec Name should be a str or DootTaskName", val)
+
+    @field_validator("flags", mode="before")
+    def _validate_flags(cls, val):
+        match val:
+            case TaskFlags():
+                return val
+            case str()|list():
+                return TaskFlags.build(val)
+
+    @field_validator("ctor", mode="before")
+    def _validate_ctor(cls, val):
+        match val:
+            case None:
+
+                default_alias = DootTaskSpec._default_ctor
+                coderef_str   = doot.aliases.task[default_alias]
+                return DootCodeReference.build(coderef_str)
+            case EntryPoint():
+                return DootCodeReference.build(val)
+            case DootCodeReference():
+                return val
+            case type()|str():
+                return DootCodeReference.build(val)
+            case _:
+                return DootCodeReference.build(val)
+
+    @field_validator("print_levels", mode="before")
+    def _validate_print_levels(cls, val):
+        match val:
+            case dict() | TomlGuard() if any(x not in DootTaskSpec._allowed_print_locs for x in val.keys()):
+                raise ValueError("Print targets must be those declared in doot.constants.printer.PRINT_LOCATIONS", val.keys(), DootTaskSpec._allowed_print_locs)
+            case dict() | TomlGuard() if any(x not in DootTaskSpec._allowed_print_levels for x in val.values()):
+                raise ValueError("Print levels must be standard logging levels", val.values(), DootTaskSpec._allowed_print_levels)
+            case dict():
+                return TomlGuard(val)
+            case TomlGuard():
+                return val
+            case _:
+                raise TypeError("print_levels must be a dict or TomlGuard", val)
+
+    @field_validator("queue_behaviour", mode="before")
+    def _validate_queue_behaviour(cls, val):
+        match val:
+            case TaskQueueMeta():
+                return val
+            case str():
+                return TaskQueueMeta.build(val)
+            case _:
+                raise ValueError("Queue Behaviour needs to be a str or a TaskQueueMeta enum", val)
+
+    def instantiate_onto(self, data:DootTaskSpec) -> DootTaskSpec:
+        return data.specialize_from(self)
 
     def specialize_from(self, data:DootTaskSpec) -> DootTaskSpec:
         """
-          Specialize an existing task spec, with additional data
-        """
-        if not self.name == data.ctor:
-            raise doot.errors.DootTaskTrackingError("Tried to specialize a task that isn't based on this task", str(data.name), str(self.name))
-        specialized = {}
-        for field in DootTaskSpec.__annotations__.keys():
-            match field:
-                case "name":
-                    specialized[field] = data.name.specialize()
-                case "extra":
-                   specialized[field] = TomlGuard.merge(data.extra, self.extra, shadow=True)
-                case "ctor":
-                    specialized[field] = self.ctor
-                case "actions":
-                    specialized[field] = self.actions + data.actions
-                case "depends_on":
-                    specialized["depends_on"] = self.depends_on[:] + data.depends_on[:]
-                case "required_for":
-                    specialized["required_for"] = self.required_for[:] + data.required_for[:]
-                case "cleanup":
-                    specialized["cleanup"] = self.cleanup[:] + data.cleanup[:]
-                case "on_fail":
-                    specialized["on_fail"] = self.on_fail[:] + data.on_fail[:]
-                case "setup":
-                    specialized["setup"] = self.setup[:] + data.setup[:]
-                case _:
-                    # prefer the newest data, then the unspecialized data, then the default
-                    field_data         = DootTaskSpec.__dataclass_fields__.get(field)
-                    match getattr(data,field), field_data.default, field_data.default_factory:
-                        case x, _MISSING_TYPE(), y if y == TomlGuard:
-                            value = TomlGuard.merge(getattr(data,field), getattr(self, field), shadow=True)
-                        case x, _MISSING_TYPE(), _MISSING_TYPE():
-                            value = x or getattr(self, field)
-                        case x, y, _MISSING_TYPE() if x == y:
-                            value = getattr(self, field)
-                        case x, _, _MISSING_TYPE():
-                            value = x
-                        case x, _MISSING_TYPE(), _ if bool(x):
-                            value = x
-                        case x, _MISSING_TYPE(), _:
-                            value = getattr(self, field)
-                        case x, y, z:
-                            raise TypeError("Unknown Task Spec Specialization field types", field, x, y, z)
+          Specialize an existing task spec, with additional data.
+          Only operates on the *internal* data.
+          So dependencies are not, themselves, specialized.
 
-                    specialized[field] = value
+        """
+        if self is data:
+            return self
+        if self.name != data.source:
+            raise doot.errors.DootTaskTrackingError("Tried to specialize a task that isn't based on this task", str(data.name), str(self.name))
+
+        match data.ctor:
+            case x if x == self.ctor:
+                pass
+            case x if x == DootTaskSpec._default_ctor:
+                pass
+            case _:
+                raise doot.errors.DootTaskTrackingError("Unknown ctor for spec", data.ctor)
+
+        # Basic Merging:
+        specialized = dict(self)
+        specialized.update({k:v for k,v in dict(data).items() if k in data.model_fields_set})
+
+        # Then special updates
+        specialized['name']   = data.name.instantiate()
+        specialized['source'] = self.name
+
+        specialized['actions']      = self.actions      + data.actions
+        specialized["depends_on"]   = self.depends_on   + data.depends_on
+        specialized["required_for"] = self.required_for + data.required_for
+        specialized["cleanup"]      = self.cleanup      + data.cleanup
+        specialized["on_fail"]      = self.on_fail      + data.on_fail
+        specialized["setup"]        = self.setup        + data.setup
+
+        specialized['flags']        = self.flags | data.flags
 
         logging.debug("Specialized Task: %s on top of: %s", data.name.readable, self.name)
         return DootTaskSpec.build(specialized)
@@ -279,9 +251,40 @@ class DootTaskSpec(SpecStruct_p):
         return hash(str(self.name))
 
     @property
-    def params(self):
-        return self.extra
+    def params(self) -> dict:
+        return self.model_extra
+
+    @property
+    def extra(self) -> dict:
+        return self.model_extra
 
     @property
     def action_groups(self):
+        # TODO: use introspection on the model to get any fields annotated as an ActionGroup
         return [self.depends_on, self.setup, self.actions, self.cleanup, self.on_fail]
+
+    def head_spec(self) -> None|TaskSpec:
+        """
+          Generate a head taskspec for a job, taking the jobs cleanup actions
+          and using them as the head's main action.
+          Depends on the job, and its reactively queued.
+        """
+        if TaskFlags.JOB not in self.flags:
+            return None
+        if TaskFlags.JOB_HEAD in self.flags:
+            return None
+        if self.name.task_head() is self.name:
+            return None
+
+        # build $head$
+        head : DootTaskSpec = DootTaskSpec.build({
+            "name"            : self.name.task_head(),
+            "source"          : None,
+            "actions"         : self.cleanup,
+            "print_levels"    : self.print_levels,
+            "extra"           : self.extra,
+            "queue_behaviour" : TaskQueueMeta.reactive,
+            "depends_on"      : [self.name],
+            "flags"           : self.flags | TaskFlags.JOB_HEAD,
+            })
+        return head

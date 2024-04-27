@@ -36,6 +36,8 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from typing import GenericAlias
+from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError, InstanceOf
 import importlib
 from tomlguard import TomlGuard
 import doot
@@ -46,12 +48,11 @@ from doot._structs.code_ref import DootCodeReference
 from doot._structs.task_spec import DootTaskSpec
 from doot._abstract.structs import StubStruct_p
 
-PAD           : Final[int]               = 15
 TaskFlagNames : Final[str]               = [x.name for x in TaskFlags]
+
 DEFAULT_CTOR  : Final[DootCodeReference] = DootCodeReference.build(doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS])
 
-@dataclass
-class TaskStub(StubStruct_p):
+class TaskStub(BaseModel):
     """ Stub Task Spec for description in toml
     Automatically Adds default keys from DootTaskSpec
 
@@ -63,27 +64,45 @@ class TaskStub(StubStruct_p):
     # str(obj) -> will now generate toml, including a "blah" key
 
     """
-    ctor       : str|DootCodeReference|type                     = field(default=DEFAULT_CTOR)
-    parts      : dict[str, TaskStubPart]                        = field(default_factory=dict, kw_only=True)
+    ctor       : str|DootCodeReference|type                     = DEFAULT_CTOR
+    parts      : dict[str, TaskStubPart]                        = {}
 
     # Don't copy these from DootTaskSpec blindly
     skip_parts : ClassVar[set[str]]          = set(["name", "extra", "ctor", "source", "version"])
 
-    def __post_init__(self):
+    @classmethod
+    def build(cls, data:None|dict=None):
+        match data:
+            case None:
+                return TaskStub()
+            case _:
+                return TaskStub.model_validate(data)
+
+    @model_validator(mode="after")
+    def initial_values(self):
         self['name'].default     = DootTaskName.build(doot.constants.names.DEFAULT_STUB_TASK_NAME)
         self['version'].default  = "0.1"
         # Auto populate the stub with what fields are defined in a TaskSpec:
-        for dcfield in DootTaskSpec.__dataclass_fields__.values():
-            if dcfield.name in TaskStub.skip_parts:
+        for dcfield, data in DootTaskSpec.model_fields.items():
+            if dcfield in TaskStub.skip_parts:
                 continue
-            self.parts[dcfield.name] = TaskStubPart(key=dcfield.name, type=dcfield.type)
-            if dcfield.default != MISSING:
-                self.parts[dcfield.name].default = dcfield.default
+
+            self.parts[dcfield] = TaskStubPart(key=dcfield, type_=data.annotation)
+            if data.default_factory is not None:
+                self.parts[dcfield].default = data.default_factory()
+            else:
+                self.parts[dcfield].default= data.default
+
+
+        return self
 
     def __getitem__(self, key):
         if key not in self.parts:
-            self.parts[key] = TaskStubPart(key)
+            self.parts[key] = TaskStubPart(key=key)
         return self.parts[key]
+
+    def __contains__(self, key):
+        return key in self.parts
 
     def __iadd__(self, other):
         match other:
@@ -112,9 +131,9 @@ class TaskStub(StubStruct_p):
         if 'ctor' in self.parts:
             parts.append(self.parts['ctor'])
         elif isinstance(self.ctor, type):
-            parts.append(TaskStubPart("ctor", type="type", default=f"\"{self.ctor.__module__}{doot.constants.patterns.IMPORT_SEP}{self.ctor.__name__}\""))
+            parts.append(TaskStubPart(key="ctor", type_="type", default=f"\"{self.ctor.__module__}{doot.constants.patterns.IMPORT_SEP}{self.ctor.__name__}\""))
         else:
-            parts.append(TaskStubPart("ctor", type="type", default=f"\"{self.ctor}\""))
+            parts.append(TaskStubPart(key="ctor", type_="type", default=f"\"{self.ctor}\""))
 
         delayed_actions = []
         for key, part in sorted(self.parts.items(), key=lambda x: x[1]):
@@ -131,16 +150,16 @@ class TaskStub(StubStruct_p):
 
         return "\n".join(map(str, parts))
 
-@dataclass
-class TaskStubPart:
+class TaskStubPart(BaseModel, arbitrary_types_allowed=True):
     """ Describes a single part of a stub task in toml """
-    key      : str      = field()
-    type     : str      = field(default="str")
-    prefix   : str      = field(default="")
+    key       : str
+    type_     : str|InstanceOf[type]|Any       = "str"
+    prefix    : str                            = ""
 
-    default  : Any      = field(default="")
-    comment  : str      = field(default="")
-    priority : int      = field(default=0)
+    default   : Any                            = Field(default="Undefined")
+    comment   : str                            = ""
+    priority  : int                            = 0
+
 
     def __lt__(self, other):
         return self.priority < other.priority
@@ -155,59 +174,71 @@ class TaskStubPart:
         if isinstance(self.default, DootTaskName) and self.key == "name":
             return f"[[tasks.{self.default.group}]]\n{'name':<20} = \"{self.default.task}\""
 
-        key_str     = f"{self.key:<20}"
-        type_str    = f"<{self.type}>"
-        comment_str = f"{self.comment}"
-        val_str     = None
+        key_str     = self._key_str()
+        type_str    = self._type_str()
+        comment_str = self._comment_str()
+        val_str     = self._default_str()
 
+        return f"{self.prefix}{key_str} = {val_str:<20} # {type_str:<20} # {comment_str}"
+
+    def set(self, **kwargs):
+        self.type_     = kwargs.get('type_', self.type)
+        self.prefix    = kwargs.get('prefix', self.prefix)
+        self.default   = kwargs.get('default', self.default)
+        self.comment   = kwargs.get('comment', self.comment)
+        self.priority  = kwargs.get('priority', self.priority)
+
+    def _key_str(self) -> str:
+        return f"{self.key:<20}"
+
+    def _type_str(self) -> str:
+        match type(self.type_), self.type_:
+            case x, t if x == GenericAlias and bool(t.__args__) and hasattr(t.__args__[0], "__args__"):
+                args = self.type_.__args__[0].__args__
+                args_s = " | ".join(arg.__name__ for arg in args)
+                return f"<{self.type_.__name__}[{args_s}]>"
+            case _, t if hasattr(t, "__name__"):
+                return f"<{self.type_.__name__}>"
+            case _, _:
+                return f"<{self.type_}>"
+
+    def _comment_str(self) -> str:
+        return f"{self.comment}"
+
+    def _default_str(self) -> str:
         match self.default:
-            case TaskFlags() | LocationMeta():
+            case "" if isinstance(self.type_, enum.EnumMeta):
+                val_str = f'[ "{self.type_.default.name}" ]'
+            case enum.Flag(): # TaskFlags() | LocationMeta():
                 parts = [x.name for x in TaskFlags if x in self.default]
                 joined = ", ".join(map(lambda x: f"\"{x}\"", parts))
                 val_str = f"[ {joined} ]"
             case TaskQueueMeta():
                 val_str = '"{}"'.format(self.default.name)
-            case "" if self.type == "TaskFlags":
-                val_str = f"[ \"{TaskFlags.TASK.name}\" ]"
             case bool():
                 val_str = str(self.default).lower()
-            case str() if self.type == "type":
+            case str() if self.type_ == "type":
                 val_str = self.default
-            case list() if "Flags" in self.type:
-                parts = ", ".join([f"\"{x}\"" for x in self.default])
-                val_str = f"[{parts}]"
+            case int() | float():
+                val_str = f"{self.default}"
+            case str() if "\n" in self.default:
+                flat = self.default.replace("\n", "\\n")
+                val_str = f'"{flat}"'
+            case str():
+                val_str = f'"{self.default}"'
             case list() if all(isinstance(x, (int, float)) for x in self.default):
 
                 def_str = ", ".join(str(x) for x in self.default)
                 val_str = f"[{def_str}]"
             case list():
-
-                def_str = ", ".join([f'"{x}"' for x in self.default])
-                val_str = f"[{def_str}]"
-            case dict():
+                parts = ", ".join([f'"{x}"' for x in self.default])
+                val_str = f"[{parts}]"
+            case dict() | TomlGuard() if not bool(self.default):
                 val_str = "{}"
-            case _ if "list" in self.type:
+            case _:
+                logging.debug("Unknown stub part reduction: %s : %s : %s", self.key, self.type_, self.default)
+                breakpoint()
+                pass
+                val_str = '"unknown"'
 
-                def_str = ", ".join(str(x) for x in self.default)
-                val_str = f"[{def_str}]"
-            case _ if "dict" in self.type:
-                val_str = f"{{{self.default}}}"
-            case int() | float():
-                val_str = f"{self.default}"
-            case str() if "\n" in self.default:
-                flat = self.default.replace("\n", "\\n")
-                val_str = f"\"{flat}\""
-            case str():
-                val_str = f"\"{self.default}\""
-
-        if val_str is None:
-            raise TypeError("Unknown stub part reduction:", self)
-
-        return f"{self.prefix}{key_str} = {val_str:<20} # {type_str:<20} {comment_str}"
-
-    def set(self, **kwargs):
-        self.type     = kwargs.get('type', self.type)
-        self.prefix   = kwargs.get('prefix', self.prefix)
-        self.default  = kwargs.get('default', self.default)
-        self.comment  = kwargs.get('comment', self.comment)
-        self.priority = kwargs.get('priority', self.priority)
+        return val_str

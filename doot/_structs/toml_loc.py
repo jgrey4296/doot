@@ -37,11 +37,11 @@ from uuid import UUID, uuid1
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from pydantic import BaseModel, model_validator, field_validator
 from doot.enums import LocationMeta
 from doot._structs.key import DootKey
 
-@dataclass
-class TomlLocation:
+class TomlLocation(BaseModel):
     """ A representation of a location specified in toml.
       This is the single point of truth for converting a location specified in toml
       to preserve its metadata.
@@ -54,9 +54,9 @@ class TomlLocation:
     or for combinations:
       {loc="...", protected=true...}
     """
-    key  : str          = field()
-    base : pl.Path      = field()
-    meta : LocationMeta = field(default=LocationMeta.default)
+    key  : str
+    base : pl.Path
+    meta : LocationMeta = LocationMeta.default
 
     @staticmethod
     def build(key:str, data:dict|str, base:pl.Path=None):
@@ -74,8 +74,19 @@ class TomlLocation:
             case dict() if 'loc'in data:
                 meta   = LocationMeta.build({x:y for x,y in data.items() if x != "loc"})
                 result = TomlLocation(key=key, base=pl.Path(data['loc']), meta=meta)
+            case _:
+                raise ValueError("bad data for toml location", data)
 
         return result
+
+
+    @model_validator(mode="after")
+    def _check_metadata(self):
+        if "*" in str(self.base):
+            self.meta |= LocationMeta.indefinite
+        # TODO finer grained indefinite: glob, file, type
+
+        return self
 
     def check(self, meta:LocationMeta) -> bool:
         return meta in self.meta

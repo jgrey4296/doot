@@ -17,40 +17,36 @@ logging = logmod.root
 import tomlguard
 import doot
 doot._test_setup()
-from doot import structs
+from doot._structs.action_spec import DootActionSpec
 
 class TestActionSpec:
 
     def test_initial(self):
-        obj = structs.DootActionSpec()
-        assert(isinstance(obj, structs.DootActionSpec))
-
+        obj = DootActionSpec()
+        assert(isinstance(obj, DootActionSpec))
 
     def test_build_from_dict(self):
-        obj = structs.DootActionSpec.build({"do":"test"})
-        assert(isinstance(obj, structs.DootActionSpec))
+        obj = DootActionSpec.build({"do":"test"})
+        assert(isinstance(obj, DootActionSpec))
         assert(obj.do == "test")
-
 
     def test_build_from_list(self):
-        obj = structs.DootActionSpec.build({"do":"test"})
-        assert(isinstance(obj, structs.DootActionSpec))
+        obj = DootActionSpec.build({"do":"test"})
+        assert(isinstance(obj, DootActionSpec))
         assert(obj.do == "test")
 
-
     def test_build_nop(self):
-        obj = structs.DootActionSpec.build([])
-        obj2 = structs.DootActionSpec.build(obj)
+        obj = DootActionSpec.build([])
+        obj2 = DootActionSpec.build(obj)
         assert(obj is obj2)
-
 
     def test_call(self, mocker):
         fun_mock = mocker.Mock()
-        obj = structs.DootActionSpec(fun=fun_mock)
+        obj = DootActionSpec(fun=fun_mock)
 
         obj({})
         fun_mock.assert_called_once()
 
-
+    @pytest.mark.xfail
     def test_set_function(self):
-        pass
+        raise NotImplementedError()

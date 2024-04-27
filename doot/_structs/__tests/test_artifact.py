@@ -33,11 +33,13 @@ class TestTaskArtifact:
     def test_eq(self):
         basic = DootTaskArtifact.build(pl.Path("a/b/c"))
         basic2 = DootTaskArtifact.build(pl.Path("a/b/c"))
+        assert(basic is not None)
+        assert(basic2 is not None)
         assert(basic is not basic2)
         assert(basic == basic2)
 
     def test_neq(self):
-        basic = DootTaskArtifact.build(pl.Path("a/b/c"))
+        basic  = DootTaskArtifact.build(pl.Path("a/b/c"))
         basic2 = DootTaskArtifact.build(pl.Path("a/b/d"))
         assert(basic is not basic2)
         assert(basic != basic2)

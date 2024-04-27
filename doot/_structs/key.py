@@ -37,6 +37,7 @@ logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
+from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 import decorator
 import abc
 import string
@@ -171,8 +172,8 @@ class DootFormatter(string.Formatter):
         match kwargs.get(self.SPEC, None):
             case None:
                 kwargs['_spec'] = {}
-            case SpecStruct_p():
-                kwargs['_spec'] = kwargs[self.SPEC].params
+            case x if hasattr(x, "params"):
+                kwargs['_spec'] = x.params
             case x:
                 raise TypeError("Bad Spec Type in Format Call", x)
 
@@ -233,8 +234,8 @@ class DootKey(abc.ABC):
       DootMultiKeys are containers of a string `value`, and a list of SimpleKeys the value contains.
       So DootKey.build("{blah}/{bloo}") -> DootMultiKey("{blah}/{bloo}", [DootSimpleKey("blah", DootSimpleKey("bloo")]) -> .form == "{blah}/{bloo}"
     """
-    dec   = KeyDecorator
-    kwrap = KeyDecorator
+    dec   : ClassVar[type] = KeyDecorator
+    kwrap : ClassVar[type] = KeyDecorator
 
     @staticmethod
     def build(s:str|DootKey|pl.Path|dict, *, strict=False, explicit=False, exp_hint:str|dict=None, help=None) -> DootKey:
@@ -387,7 +388,7 @@ class DootKey(abc.ABC):
 
     def to_coderef(self, spec:None|SpecStruct_p, state) -> None|DootCodeReference:
         match spec:
-            case SpecStruct_p():
+            case _ if hasattr(spec, "params"):
                 kwargs = spec.params
             case None:
                 kwargs = {}
@@ -519,9 +520,9 @@ class DootSimpleKey(str, DootKey):
             return self
 
         match spec:
-            case SpecStruct_p():
+            case _ if hasattr(spec, "params"):
                 kwargs = spec.params
-            case None:
+            case _:
                 kwargs = {}
 
         match kwargs.get(self.indirect, self):
@@ -540,7 +541,7 @@ class DootSimpleKey(str, DootKey):
             return [self]
 
         match spec:
-            case SpecStruct_p():
+            case _ if hasattr(spec, "params"):
                 kwargs = spec.params
             case None:
                 kwargs = {}
@@ -559,7 +560,7 @@ class DootSimpleKey(str, DootKey):
         target            = self.redirect(spec)
 
         match spec:
-            case SpecStruct_p():
+            case _ if hasattr(spec, "params"):
                 kwargs = spec.params
             case None:
                 kwargs = {}
@@ -634,7 +635,7 @@ class DootKwargsKey(DootArgsKey):
 
     def to_type(self, spec:None|SpecStruct_p=None, state=None, *args, **kwargs) -> dict:
         match spec:
-            case SpecStruct_p():
+            case _ if hasattr(spec, "params"):
                 return spec.params
             case None:
                 return {}
