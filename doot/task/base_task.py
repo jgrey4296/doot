@@ -36,7 +36,8 @@ import doot.errors
 import tomlguard
 from doot._abstract import Task_i, Job_i, Action_p, PluginLoader_p
 from doot.enums import TaskFlags, TaskStatus_e, TaskQueueMeta
-from doot.structs import TaskStub, TaskStubPart, DootActionSpec, DootCodeReference, DootTaskName, DootTaskArtifact
+from doot.structs import DootActionSpec, DootCodeReference, DootTaskName, DootTaskArtifact
+# from doot.structs import TaskStub, TaskStubPart
 from doot.actions.base_action import DootBaseAction
 from doot.errors import DootTaskLoadError, DootTaskError
 

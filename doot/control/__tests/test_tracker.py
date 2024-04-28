@@ -20,6 +20,7 @@ import doot
 doot._test_setup()
 
 import doot.errors
+from doot.enums import TaskStatus_e
 import doot.structs
 from doot.control.tracker import DootTracker
 from doot._abstract import Task_i

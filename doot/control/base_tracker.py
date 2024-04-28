@@ -43,9 +43,10 @@ from collections import defaultdict
 import tomlguard
 import doot
 import doot.errors
-from doot.enums import TaskStatus_e, TaskQueueMeta
+from doot.enums import TaskStatus_e, TaskQueueMeta, TaskFlags
 from doot._abstract import Job_i, Task_i, FailPolicy_p
 from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskName, DootCodeReference, DootActionSpec
+from doot._structs.dependency_spec import DependencySpec
 from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i
 from doot.task.base_task import DootTask
 

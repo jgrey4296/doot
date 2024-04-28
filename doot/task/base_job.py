@@ -34,7 +34,8 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.enums import TaskFlags
-from doot.structs import DootTaskSpec, TaskStub, TaskStubPart, DootTaskName, DootCodeReference, DootStructuredName
+from doot.structs import DootTaskSpec, DootTaskName, DootCodeReference
+# from doot.structs import TaskStub, TaskStubPart
 from doot._abstract import Job_i, Task_i
 from doot.errors import DootDirAbsent
 from doot.task.base_task import DootTask
