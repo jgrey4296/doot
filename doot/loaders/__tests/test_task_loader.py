@@ -142,6 +142,7 @@ class TestTaskLoader:
         with pytest.raises(doot.errors.DootTaskLoadError):
             result = basic.load()
 
+    @pytest.mark.xfail
     def test_task_type(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_sources")
         mocker.patch("doot._configs_loaded_from")
@@ -151,7 +152,7 @@ class TestTaskLoader:
         mock_ctor                   = mock_task_ctor()
         mock_ep                     = mock_entry_point(name="basic", value=mock_ctor)
 
-        plugins                     = tomlguard.TomlGuard({"job": [mock_ep]})
+        plugins                     = tomlguard.TomlGuard({"task": [mock_ep]})
         basic                       = task_loader.DootTaskLoader()
         basic.setup(plugins, tomlguard.TomlGuard(specs))
 

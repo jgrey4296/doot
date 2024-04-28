@@ -57,7 +57,7 @@ class TestJobExpansion:
         assert(isinstance(result[spec.kwargs['update_']], list))
         assert(len(result['specs']) == 3)
         for spec, expect in zip(result['specs'], args):
-            assert(spec.extra.target == expect)
+            assert(spec.target == expect)
 
     def test_action_template(self, spec, state):
         state['template'] = "test::task"
@@ -65,7 +65,7 @@ class TestJobExpansion:
         result = obj(spec, state)
         assert(isinstance(result, dict))
         assert(isinstance(result[spec.kwargs['update_']], list))
-        assert(result['specs'][0].ctor == "test::task")
+        assert(result['specs'][0].source == "test::task")
         assert(len(result['specs'][0].actions) == 0)
 
     def test_taskname_template(self, spec, state):

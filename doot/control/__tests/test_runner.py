@@ -66,16 +66,16 @@ class TestRunner:
         ##-- end setup
 
         ##-- pre-check
-        tracker_m.update_state.assert_not_called()
+        tracker_m.update_status.assert_not_called()
         ##-- end pre-check
 
         # Run
         runner(handler=False)
 
         ##-- check result
-        tracker_m.update_state.assert_called()
-        assert(tracker_m.update_state.call_count == 3)
-        for call in tracker_m.update_state.call_args_list:
+        tracker_m.update_status.assert_called()
+        assert(tracker_m.update_status.call_count == 3)
+        for call in tracker_m.update_status.call_args_list:
             assert(call.args[0].name in ["default::first", "default::second", "default::third"])
             assert(call.args[1] is TaskStatus_e.SUCCESS)
 
@@ -105,15 +105,15 @@ class TestRunner:
         ##-- end setup
 
         ##-- pre-check
-        tracker_m.update_state.assert_not_called()
+        tracker_m.update_status.assert_not_called()
         ##-- end pre-check
 
         # Run
         runner(handler=False)
 
         ##-- check
-        tracker_m.update_state.assert_called()
-        assert(tracker_m.update_state.call_count == 3)
+        tracker_m.update_status.assert_called()
+        assert(tracker_m.update_status.call_count == 3)
 
         expand_job.assert_called()
         assert(expand_job.call_count == 3)
@@ -149,8 +149,8 @@ class TestRunner:
         tracker_m.add_task.assert_not_called()
         expand_job.assert_not_called()
 
-        tracker_m.update_state.assert_called()
-        assert(tracker_m.update_state.call_count == 3)
+        tracker_m.update_status.assert_called()
+        assert(tracker_m.update_status.call_count == 3)
 
         execute_task.assert_called()
         execute_action.assert_called()
