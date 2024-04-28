@@ -160,10 +160,10 @@ class DootTask(_TaskProperties_m, Importer_m, Task_i):
 
     def __init__(self, spec, *, job=None, action_ctor=None, **kwargs):
         self.spec       : SpecStruct_p        = spec
-        self.status     : TaskStatus_e       = TaskStatus_e.WAIT
-        self.flags      : TaskFlags           = TaskFlags.JOB
+        self.priority   : int                 = self.spec.priority
+        self.status     : TaskStatus_e        = TaskStatus_e.WAIT
+        self.flags      : TaskFlags           = TaskFlags.TASK
         self.state                            = dict(spec.extra)
-        self.job                              = job
         self.state[STATE_TASK_NAME_K]         = self.spec.name
         self.state['_action_step']            = 0
         self.action_ctor                      = action_ctor
@@ -196,7 +196,7 @@ class DootTask(_TaskProperties_m, Importer_m, Task_i):
         stub['required_for'].priority   = -90
         stub['depends_on'].priority     = -100
 
-        stub['print_levels'].type       = f"Dict: {PRINT_LOCATIONS}"
+        stub['print_levels'].type_       = f"Dict: {PRINT_LOCATIONS}"
         stub['print_levels'].default    = {"head":"INFO","build":"INFO","sleep":"INFO","action":"INFO", "execute":"INFO"}
 
         stub['priority'].default        = 10

@@ -73,7 +73,7 @@ class RunCmd(BaseCommand):
         runner                 = plugin_selector(plugins.on_fail([], list).runner(), target=runner_target)(tracker=tracker, reporter=reporter)
         printer.info("- Building Task Dependency Network")
         for task in tasks.values():
-            tracker.add_task(task)
+            tracker.register_spec(task)
         tracker.add_task(CheckLocsTask())
 
         printer.info("- Task Dependency Network Built")

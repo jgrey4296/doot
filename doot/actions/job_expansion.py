@@ -90,14 +90,20 @@ class JobExpandAction(JobInjector):
                 return self.ActRE.FAIL
 
         for i, arg in enumerate(build_queue):
-                injection = self.build_injection(spec, state, inject, replacement=arg)
-                new_spec  = DootTaskSpec.build(dict(name=_basename.subtask(prefix, i),
-                                                    ctor=base,
-                                                    actions = actions or [],
-                                                    required_for=[base_head],
-                                                    extra=injection,
-                                                    print_levels=_printL or {},
-                                                    ))
+                # TODO change job subtask naming scheme
+                base_dict = dict(name=_basename.subtask(prefix, i),
+                                 source=base,
+                                 actions = actions or [],
+                                 required_for=[base_head],
+                                 print_levels=_printL or {},
+                                 )
+                match self.build_injection(spec, state, inject, replacement=arg):
+                    case None:
+                        pass
+                    case dict() as val:
+                        base_dict.update(val)
+
+                new_spec  = DootTaskSpec.build(base_dict)
                 result.append(new_spec)
 
         return { _update : result }

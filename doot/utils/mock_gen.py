@@ -55,8 +55,6 @@ def task_network(tasks:dict):
 
     return built
 
-
-
 def mock_task(name, spec=None, actions:int=1, **kwargs):
     task_m = MagicMock(spec=Task_i,
                        name=name,
@@ -123,37 +121,46 @@ def mock_parse_task(params=None, ctor_params=None):
 def mock_entry_point(name="basic", value=None):
     m = MagicMock(spec=EntryPoint)
     _add_prop(m, "name", name)
-    _add_prop(m, "value", name)
-    m.load.return_value = value
+    _add_prop(m, "value", value)
+    m.load = MagicMock(return_value=value)
     return m
 
 def mock_task_ctor(name="APretendClass", module="pretend", params=None):
-    mock_ctor = MagicMock(spec=Task_i)
-    _add_prop(mock_ctor, "name", name)
-    _add_prop(mock_ctor, "param_specs", params or [])
+    class MockedSubClass(Task_i):
+        def __new__(cls, *args, **kwargs):
+            m = mock.Mock(spec=cls)
+            _add_prop(mock_ctor, "name", name)
+            _add_prop(mock_ctor, "param_specs", params or [])
+            return m
+
+        @classmethod
+        @property
+        def param_specs(cls):
+            return params or []
+
+    mock_ctor = MockedSubClass
     mock_ctor.__module__ = module
     mock_ctor.__name__   = name
     return mock_ctor
 
 def mock_code_ref(returns=None):
     code_ref_m  = MagicMock(spec=structs.DootCodeReference())
-    code_ref_m.try_import.return_value  = returns
+    code_ref_m.try_import = MagicMock(return_value=returns)
     return code_ref_m
 
 def mock_param_spec(name, val, type=Any):
-    m = MagicMock(spec=structs.DootParamSpec(name, type), default=val, positional=False, prefix="-")
+    m = MagicMock(spec=structs.DootParamSpec(name=name, type=type), default=val, positional=False, prefix="-")
 
     return m
-
 
 def mock_tracker(tasks):
     tracker_m        = MagicMock(spec=TaskTracker_i)
     local_tasks      = tasks[:]
+
     def simple_pop():
         if bool(local_tasks):
             return local_tasks.pop()
         return None
 
     tracker_m.next_for = simple_pop
-    tracker_m.__bool__ = lambda x: bool(local_tasks)
     return tracker_m
