@@ -15,7 +15,7 @@ import pytest
 import doot
 doot._test_setup()
 
-from doot._abstract import Reporter_i
+from doot._abstract import Reporter_p
 from doot.reporters.stack_manager import DootReportManagerStack
 from doot.structs import DootTraceRecord
 from doot.enums import ReportEnum
@@ -38,7 +38,7 @@ class TestReportStackManager:
 
     def test_initial(self):
         manager = DootReportManagerStack()
-        assert(isinstance(manager, Reporter_i))
+        assert(isinstance(manager, Reporter_p))
 
 
     def test_add_basic_trace(self):

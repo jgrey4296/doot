@@ -34,7 +34,7 @@ from collections import defaultdict
 from tomlguard import TomlGuard
 import doot
 from doot.cmds.base_cmd import BaseCommand
-from doot._abstract import ReportLine_i, TaskRunner_i, Reporter_i
+from doot._abstract import TaskRunner_i
 from doot.utils.plugin_selector import plugin_selector
 from doot.task.check_locs import CheckLocsTask
 from doot.structs import DootCodeReference

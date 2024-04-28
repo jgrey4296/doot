@@ -42,7 +42,7 @@ import doot
 import doot.errors
 from doot.enums import ReportEnum, ActionResponseEnum as ActRE, TaskStatus_e
 from doot._abstract import Job_i, Task_i, FailPolicy_p
-from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i, ReportLine_i, Action_p, Reporter_i
+from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i, Action_p, Reporter_p
 from doot.structs import DootTaskArtifact, DootActionSpec
 from doot.utils.signal_handler import SignalHandler
 from doot.structs import DootTaskSpec, DootActionSpec
@@ -64,10 +64,9 @@ logctx               : Final[DootLogContext] = DootLogContext(printer)
 class BaseRunner(TaskRunner_i):
     """ An incomplete implementation for runners to extend """
 
-    def __init__(self:Self, *, tracker:TaskTracker_i, reporter:Reporter_i, policy=None):
+    def __init__(self:Self, *, tracker:TaskTracker_i, reporter:Reporter_p):
         self.tracker                                          = tracker
         self.reporter                                         = reporter
-        self.policy                                           = policy
         self.step                                             = 0
         self._signal_failure : None|doot.errors.DootError     = None
         self._enter_msg                                       = "---------- Task Loop Starting ----------"

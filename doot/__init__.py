@@ -42,7 +42,7 @@ constants            : TG.TomlGuard       = TG.TomlGuard.load(constants_file).re
 aliases              : TG.TomlGuard       = TG.TomlGuard()
 locs                 : DootLocData        = None # DootLocations(pl.Path()) # registered locations
 args                 : TG.TomlGuard       = TG.TomlGuard() # parsed arg access
-report               : Reporter_i         = None
+report               : Reporter_p         = None
 
 _configs_loaded_from : list[pl.Path]      = []
 

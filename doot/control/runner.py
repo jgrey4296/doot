@@ -38,7 +38,7 @@ import doot
 import doot.errors
 from doot.enums import ReportEnum, ActionResponseEnum as ActRE
 from doot._abstract import Job_i, Task_i, FailPolicy_p
-from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i, ReportLine_i, Action_p, Reporter_i
+from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i, Action_p, Reporter_p
 from doot.structs import DootTaskArtifact, DootTaskSpec, DootActionSpec, DootTaskName
 from doot.control.base_runner import BaseRunner, logctx
 from doot.utils.signal_handler import SignalHandler
@@ -54,8 +54,8 @@ max_steps     : Final[str] = doot.config.on_fail(100_000).settings.tasks.max_ste
 class DootRunner(BaseRunner, TaskRunner_i):
     """ The simplest single threaded task runner """
 
-    def __init__(self:Self, *, tracker:TaskTracker_i, reporter:Reporter_i, policy=None):
-        super().__init__(tracker=tracker, reporter=reporter, policy=policy)
+    def __init__(self:Self, *, tracker:TaskTracker_i, reporter:Reporter_p):
+        super().__init__(tracker=tracker, reporter=reporter)
         self.teardown_list  = []                     # list of tasks to teardown
 
     def __call__(self, *tasks:str, handler=None):

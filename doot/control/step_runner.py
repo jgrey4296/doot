@@ -69,8 +69,8 @@ class DootStepRunner(DootRunner):
                      "s"  : "print_state"
                      }
 
-    def __init__(self:Self, *, tracker:abstract.TaskTracker_i, reporter:abstract.Reporter_i, policy=None):
-        super().__init__(tracker=tracker, reporter=reporter, policy=policy)
+    def __init__(self:Self, *, tracker:abstract.TaskTracker_i, reporter:abstract.Reporter_p):
+        super().__init__(tracker=tracker, reporter=reporter)
         self._conf_types = []
         self._override_level = "INFO"
         self._has_quit = False

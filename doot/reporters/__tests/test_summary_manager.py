@@ -19,7 +19,7 @@ doot._test_setup()
 from doot.reporters.summary_manager import DootReportManagerSummary
 from doot.enums import ReportEnum
 from doot.structs import DootTraceRecord
-from doot._abstract import Reporter_i, ReportLine_i
+from doot._abstract import Reporter_p
 
 logging = logmod.root
 
@@ -39,7 +39,7 @@ class TestSummaryReporter:
 
     def test_initial(self):
         manager = DootReportManagerSummary()
-        assert(isinstance(manager, Reporter_i))
+        assert(isinstance(manager, Reporter_p))
 
     def test_add_basic_trace(self):
         manager = DootReportManagerSummary()

@@ -36,7 +36,7 @@ from collections import deque, defaultdict
 
 from doot.enums import TaskStatus_e
 
-from doot._abstract.reporter import ReportLine_i, Reporter_i
+from doot._abstract.reporter import Reporter_p
 from doot._abstract.policy import FailPolicy_p
 from doot._abstract.task import Task_i
 from doot._abstract.structs import ArtifactStruct_p, SpecStruct_p
@@ -93,7 +93,7 @@ class TaskRunner_i:
     """
 
     @abstractmethod
-    def __init__(self, *, tracker:TaskTracker_i, reporter:Reporter_i, policy:FailPolicy_p|None=None):
+    def __init__(self, *, tracker:TaskTracker_i, reporter:Reporter_p, policy:FailPolicy_p|None=None):
         pass
 
     @abstractmethod

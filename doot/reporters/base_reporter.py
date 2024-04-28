@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 
+
 See EOF for license/metadata/notes as applicable
 """
 
@@ -29,24 +30,28 @@ from uuid import UUID, uuid1
 ##-- end builtin imports
 
 ##-- lib imports
-import more_itertools as mitz
+# import more_itertools as mitz
+# from boltons import
 ##-- end lib imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doot.structs import DootTraceRecord
-from doot.reporters.base_reporter import BaseReporter
-from doot._abstract import Reporter_p
+from doot._abstract.reporter import Reporter_p
+from doot._structs.trace import DootTraceRecord
 
-class DootAlwaysReport(BaseReporter):
+class BaseReporter(Reporter_p):
 
-    def __call__(self, trace):
+    def __init__(self, reporters:list[ReportLine_i]=None):
+        self._full_trace     : list[DootTraceRecord]       = []
+        self._reporters      : list[ReportLine_i] = list(reporters or [self._default_formatter])
+
+    def _default_formatter(self, trace:DootTraceRecord) -> str:
         return str(trace)
 
-class TimeReporter(BaseReporter):
+    def __str__(self):
+        raise NotImplementedError()
 
-    def __call__(self, trace):
-        time = trace.time.strftime("%H:%M")
-        return "{:10} : {}".format(time, str(trace))
+    def add_trace(self, msg, *args, flags=None):
+        self._full_trace.append(DootTraceRecord(message=msg, flags=flags, args=args))

@@ -34,29 +34,29 @@ from tomlguard import TomlGuard
 from doot.enums import ReportEnum
 from doot._structs.trace import DootTraceRecord
 
-class Reporter_i:
+class Reporter_p(abc.ABC):
     """
       Holds ReportLine_i's, and stores DootTraceRecords
     """
 
+    @abc.abstractmethod
     def __init__(self, reporters:list[ReportLine_i]=None):
-        self._full_trace     : list[DootTraceRecord]       = []
-        self._reporters      : list[ReportLine_i] = list(reporters or [self._default_formatter])
+        pass
 
+    @abc.abstractmethod
     def _default_formatter(self, trace:DootTraceRecord) -> str:
-        return str(trace)
+        pass
 
-    def __str__(self):
-        raise NotImplementedError()
-
+    @abc.abstractmethod
     def add_trace(self, msg, *args, flags=None):
-        self._full_trace.append(DootTraceRecord(msg, flags, args))
+        pass
 
 
-class ReportLine_i:
+class ReportLine_p(abc.ABC):
     """
     Reporters, like loggers, are stacked, and each takes the flags and data and maybe runs.
     """
 
+    @abc.abstractmethod
     def __call__(self, trace:DootTraceRecord) -> None|str:
-        raise NotImplementedError(self.__class__, "call")
+        pass

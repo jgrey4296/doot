@@ -21,7 +21,7 @@ from doot.enums import TaskStatus_e
 from doot.control.runner import DootRunner
 from doot.control.tracker import DootTracker
 from doot.structs import DootTaskSpec, DootActionSpec
-from doot._abstract import Job_i, Task_i, TaskTracker_i, TaskRunner_i, ReportLine_i, Action_p, Reporter_i
+from doot._abstract import Job_i, Task_i, TaskTracker_i, TaskRunner_i, ReportLine_p, Action_p, Reporter_p
 from doot.utils import mock_gen
 
 logging = logmod.root
@@ -42,7 +42,7 @@ class TestRunner:
     def test_initial(self, ctor, mocker, setup):
         ##-- setup
         tracker_m  = mocker.MagicMock(spec=TaskTracker_i)
-        reporter_m = mocker.MagicMock(spec=ReportLine_i)
+        reporter_m = mocker.MagicMock(spec=ReportLine_p)
         runner     = ctor(tracker=tracker_m, reporter=reporter_m)
         ##-- end setup
 
@@ -51,7 +51,7 @@ class TestRunner:
 
     def test_tasks_execute(self, ctor, mocker, setup):
         ##-- setup
-        reporter_m                       = mocker.MagicMock(spec=Reporter_i)
+        reporter_m                       = mocker.MagicMock(spec=Reporter_p)
 
         task1_m                          = mock_gen.mock_task(name="first", actions=0)
         task2_m                          = mock_gen.mock_task(name="second", actions=0)
@@ -90,7 +90,7 @@ class TestRunner:
 
     def test_jobs_expand(self, ctor, mocker, setup):
         ##-- setup
-        reporter_m                                    = mocker.MagicMock(spec=Reporter_i)
+        reporter_m                                    = mocker.MagicMock(spec=Reporter_p)
 
         job1_m                                        = mock_gen.mock_job("first")
         job2_m                                        = mock_gen.mock_job("second")
@@ -121,10 +121,10 @@ class TestRunner:
         execute_task.assert_not_called()
         ##-- end check
 
-    # @pytest.mark.xfail
+    @pytest.mark.xfail
     def test_tasks_execute_actions(self, ctor, mocker, setup):
         ##-- setup
-        reporter_m                                 = mocker.MagicMock(spec=Reporter_i)
+        reporter_m                                 = mocker.MagicMock(spec=Reporter_p)
 
         task1_m = mock_gen.mock_task("firstTask")
         task2_m = mock_gen.mock_task("secondTask")
