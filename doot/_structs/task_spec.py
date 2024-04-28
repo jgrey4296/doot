@@ -61,6 +61,8 @@ def _prepare_action_group(deps:list[str]) -> list[DootTaskArtifact|DootTaskName]
       # TODO handle callables?
     """
     results = []
+    if deps is None:
+        return results
     for x in deps:
         match x:
             case { "do": action  }:
@@ -180,6 +182,8 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
                 return TomlGuard(val)
             case TomlGuard():
                 return val
+            case None:
+                return TomlGuard({})
             case _:
                 raise TypeError("print_levels must be a dict or TomlGuard", val)
 
@@ -255,8 +259,8 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
         return self.model_extra
 
     @property
-    def extra(self) -> dict:
-        return self.model_extra
+    def extra(self) -> TomlGuard:
+        return TomlGuard(self.model_extra)
 
     @property
     def action_groups(self):

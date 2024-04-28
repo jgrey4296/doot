@@ -182,7 +182,7 @@ class TaskStubPart(BaseModel, arbitrary_types_allowed=True):
         return f"{self.prefix}{key_str} = {val_str:<20} # {type_str:<20} # {comment_str}"
 
     def set(self, **kwargs):
-        self.type_     = kwargs.get('type_', self.type)
+        self.type_     = kwargs.get('type_', self.type_)
         self.prefix    = kwargs.get('prefix', self.prefix)
         self.default   = kwargs.get('default', self.default)
         self.comment   = kwargs.get('comment', self.comment)

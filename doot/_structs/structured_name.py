@@ -61,7 +61,7 @@ class StructuredName(BaseModel):
 
     """
     head            : list[str]          = []
-    tail            : list[str|UUID]     = []
+    tail            : list[str|int|UUID]     = []
 
     _separator       : ClassVar[str]      = doot.constants.patterns.TASK_SEP
     _subseparator    : ClassVar[str]      = "."
@@ -74,7 +74,7 @@ class StructuredName(BaseModel):
             case _:
                 raise ValueError("Bad value for building a name from", val)
 
-    @field_validator("head")
+    @field_validator("head", mode="before")
     def _process_head(cls, head):
         sub_split = ftz.partial(aware_splitter, sep=cls._subseparator)
         match head:
@@ -91,7 +91,7 @@ class StructuredName(BaseModel):
 
         return head
 
-    @field_validator("tail")
+    @field_validator("tail", mode="before")
     def _process_tail(cls, tail):
         sub_split = ftz.partial(aware_splitter, sep=cls._subseparator)
         match tail:

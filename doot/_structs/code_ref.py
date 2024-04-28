@@ -67,10 +67,12 @@ class DootCodeReference(StructuredName):
                 ref = cls(head=[group], tail=[code], _type=name)
                 return ref
             case EntryPoint():
-                loaded    = ctor.load()
+                loaded      = ctor.load()
                 group, code = loaded.__module__, loaded.__name__
-                ref       = cls(head=[group], tail=[code], _type=loaded)
+                ref         = cls(head=[group], tail=[code], _type=loaded)
                 return ref
+            case _:
+                raise ValueError("Bad Value used to try to build a coderef", name)
 
     @staticmethod
     def from_alias(alias:str, group:str, plugins:TomlGuard) -> DootCodeReference:

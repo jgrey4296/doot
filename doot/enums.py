@@ -49,9 +49,9 @@ class TaskFlags(FlagsBuilder_m, enum.Flag):
       stored in the Task_i instance itself.
     """
 
-    default      = enum.auto()
     TASK         = enum.auto()
     JOB          = enum.auto()
+    JOB_HEAD     = enum.auto()
     EPHEMERAL    = enum.auto()
     IDEMPOTENT   = enum.auto()
     REQ_TEARDOWN = enum.auto()
@@ -62,6 +62,10 @@ class TaskFlags(FlagsBuilder_m, enum.Flag):
     STATEFUL     = enum.auto()
     STATELESS    = enum.auto()
     INTERNAL     = enum.auto()
+    INSTANCED    = enum.auto()
+    VERSIONED    = enum.auto()
+
+    default      = TASK
 
 class ReportEnum(enum.Flag):
     """ Flags to mark what a reporter reports """
@@ -82,6 +86,8 @@ class ReportEnum(enum.Flag):
     ACTION   = enum.auto()
     CONFIG   = enum.auto()
     ARTIFACT = enum.auto()
+
+    default  = enum.auto()
 
 class ActionResponseEnum(EnumBuilder_m, enum.Enum):
 

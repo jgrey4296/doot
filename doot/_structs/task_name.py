@@ -92,7 +92,7 @@ class DootTaskName(StructuredName):
 
         return DootTaskName(head=[group], tail=[task], args=args or {})
 
-    @field_validator("head")
+    @field_validator("head", mode="before")
     def _process_head(cls, head):
         """ ensure the head is in its component parts """
         match head:
@@ -108,7 +108,7 @@ class DootTaskName(StructuredName):
             case _:
                  return head
 
-    @field_validator("tail")
+    @field_validator("tail", mode="before")
     def _process_tail(cls, tail):
         """ ensure the tail is in its component parts """
         match tail:

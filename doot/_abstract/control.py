@@ -47,24 +47,9 @@ class TaskTracker_i:
     and have failed.
     Does not execute anything itself
     """
-    @abstractmethod
-    def __bool__(self) -> bool:
-        raise NotImplementedError()
 
     @abstractmethod
-    def __len__(self) -> int:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def __iter__(self) -> Generator:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def __contains__(self, target:str) -> bool:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def add_task(self, task:SpecStruct_p|Task_i):
+    def register_spec(self, task:SpecStruct_p|Task_i):
         raise NotImplementedError()
 
     @abstractmethod
@@ -72,19 +57,11 @@ class TaskTracker_i:
         raise NotImplementedError()
 
     @abstractmethod
-    def update_state(self, task:str|DootTaskName|SpecStruct_p|Task_i|ArtifactStruct_p, state:TaskStatus_e) -> None:
+    def update_status(self, task:str|DootTaskName|SpecStruct_p|Task_i|ArtifactStruct_p, state:TaskStatus_e) -> None:
         raise notimplementederror()
 
     @abstractmethod
     def next_for(self, target:str) -> Task_i|ArtifactStruct_p|None:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def declared_set(self) -> set[str]:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def defined_set(self) -> set[str]:
         raise NotImplementedError()
 
 class TaskRunner_i:

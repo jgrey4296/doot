@@ -52,6 +52,8 @@ class DootTraceRecord(BaseModel):
     @field_validator("flags", mode="before")
     def _valdiate_flags(cls, val):
         match val:
+            case None:
+                return ReportEnum.default
             case str() | list():
                 return ReportEnum.build(val)
             case ReportEnum():

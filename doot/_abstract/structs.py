@@ -39,11 +39,11 @@ logging = logmod.getLogger(__name__)
 
 import tomlguard
 
-class SpecStruct_p(abc.ABC):
+@runtime_checkable
+class SpecStruct_p(Protocol):
     """ Base class for specs, for type matching """
 
     @property
-    @abc.abstractmethod
     def params(self) -> dict|tomlguard.TomlGuard:
         pass
 

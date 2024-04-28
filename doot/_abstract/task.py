@@ -31,7 +31,6 @@ import doot.errors
 from doot.enums import TaskFlags, TaskStatus_e, ActionResponseEnum
 from doot._abstract.structs import StubStruct_p, SpecStruct_p, ParamStruct_p
 from doot._structs.task_name import DootTaskName
-from doot._structs.action_spec import DootActionSpec
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -46,7 +45,7 @@ class Action_p(Protocol):
     _toml_kwargs : ClassVar[list[str]] = []
 
     @abc.abstractmethod
-    def __call__(self, spec:DootActionSpec, task_state:dict) -> dict|bool|ActionResponseEnum|None:
+    def __call__(self, spec:"DootActionSpec", task_state:dict) -> dict|bool|ActionResponseEnum|None:
         raise NotImplementedError()
 
 class _TaskBase_i:
