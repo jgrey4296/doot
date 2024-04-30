@@ -18,6 +18,7 @@ import re
 import time
 import types
 import weakref
+
 # from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
@@ -71,14 +72,13 @@ class TomlLocation(BaseModel):
             case dict() if base is not None:
                 meta   = LocationMeta.build({x:y for x,y in data.items() if x != "loc"})
                 result = TomlLocation(key=key, base=base, meta=meta)
-            case dict() if 'loc'in data:
+            case dict() if "loc" in data:
                 meta   = LocationMeta.build({x:y for x,y in data.items() if x != "loc"})
-                result = TomlLocation(key=key, base=pl.Path(data['loc']), meta=meta)
+                result = TomlLocation(key=key, base=pl.Path(data["loc"]), meta=meta)
             case _:
                 raise ValueError("bad data for toml location", data)
 
         return result
-
 
     @model_validator(mode="after")
     def _check_metadata(self):

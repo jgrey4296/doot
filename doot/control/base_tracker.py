@@ -3,10 +3,10 @@
 
 See EOF for license/metadata/notes as applicable
 """
-
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
@@ -18,37 +18,45 @@ import re
 import time
 import types
 import weakref
+from collections import defaultdict
+from itertools import chain, cycle
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
+# ##-- 3rd party imports
+import boltons.queueutils
 ##-- lib imports
 import more_itertools as mitz
-##-- end lib imports
+import networkx as nx
+import tomlguard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+from doot._abstract import (FailPolicy_p, Job_i, Task_i, TaskRunner_i,
+                            TaskTracker_i)
+from doot._structs.dependency_spec import DependencySpec
+from doot.enums import TaskFlags, TaskQueueMeta, TaskStatus_e
+from doot.structs import (DootActionSpec, DootCodeReference, DootTaskArtifact,
+                          DootTaskName, DootTaskSpec)
+from doot.task.base_task import DootTask
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
-
-import networkx as nx
-import boltons.queueutils
-from collections import defaultdict
-import tomlguard
-import doot
-import doot.errors
-from doot.enums import TaskStatus_e, TaskQueueMeta, TaskFlags
-from doot._abstract import Job_i, Task_i, FailPolicy_p
-from doot.structs import DootTaskArtifact, DootTaskSpec, DootTaskName, DootCodeReference, DootActionSpec
-from doot._structs.dependency_spec import DependencySpec
-from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i
-from doot.task.base_task import DootTask
 
 class EDGE_E(enum.Enum):
     """ Enum describing the possible edges of the task tracker's task network """

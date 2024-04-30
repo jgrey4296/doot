@@ -4,13 +4,15 @@
 See EOF for license/metadata/notes as applicable
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
 import functools as ftz
+import importlib
 import itertools as itz
 import logging as logmod
 import pathlib as pl
@@ -20,31 +22,35 @@ import types
 import weakref
 # from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from types import GenericAlias
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
+# ##-- 3rd party imports
 import more_itertools as mitz
-##-- end lib imports
+from pydantic import (BaseModel, Field, InstanceOf, ValidationError,
+                      field_validator, model_validator)
+from tomlguard import TomlGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+from doot._abstract.structs import ParamStruct_p
+from doot.enums import ReportEnum, TaskFlags
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-from types import GenericAlias
-from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError, InstanceOf
-import importlib
-from tomlguard import TomlGuard
-import doot
-import doot.errors
-from doot.enums import TaskFlags, ReportEnum
-from doot._abstract.structs import ParamStruct_p
-
 
 class DootParamSpec(BaseModel, arbitrary_types_allowed=True):
     """ Describes a command line parameter to use in the parser
@@ -53,6 +59,7 @@ class DootParamSpec(BaseModel, arbitrary_types_allowed=True):
       produced using doot._abstract.parser.ParamSpecMaker_m classes,
       like tasks, and jobs
     """
+
     name               : str
     type_              : InstanceOf[type]|Callable = Field(default=bool, alias="type")
 
@@ -214,9 +221,14 @@ class DootParamSpec(BaseModel, arbitrary_types_allowed=True):
         # Figure out the key and value
         match prefixed, is_assign:
             case _, True if self.prefix != doot.constants.patterns.PARAM_ASSIGN_PREFIX:
-                raise doot.errors.DootParseError("Assignment parameters should be prefixed with the PARAM_ASSIGN_PREFIX", doot.constants.patterns.PARAM_ASSIGN_PREFIX)
+                raise doot.errors.DootParseError(
+                    "Assignment parameters should be prefixed with the PARAM_ASSIGN_PREFIX",
+                    doot.constants.patterns.PARAM_ASSIGN_PREFIX,
+                )
             case True, False if self.type_.__name__ != "bool" and not bool(args):
-                raise doot.errors.DootParseError("key lacks a following value", focus, self.type_.__name__)
+                raise doot.errors.DootParseError(
+                    "key lacks a following value", focus, self.type_.__name__
+                )
             case True, True: # --key=val
                 key, val = focus.split(self.separator)
                 key = key.removeprefix(self.prefix)
@@ -252,17 +264,23 @@ class DootParamSpec(BaseModel, arbitrary_types_allowed=True):
             case "Any":
                 data[self.name] = vals[0]
             case _ if data.get(self.name, self.default) != self.default:
-                raise doot.errors.DootParseError("Trying to re-set an arg already set: %s : %s", self.name, vals)
+                raise doot.errors.DootParseError(
+                    "Trying to re-set an arg already set: %s : %s", self.name, vals
+                )
             ##-- handle bools and inversion
             case "bool" if bool(vals):
-                raise doot.errors.DootParseError("Bool Arguments shouldn't have values: %s : %s", self.name, vals)
+                raise doot.errors.DootParseError(
+                    "Bool Arguments shouldn't have values: %s : %s", self.name, vals
+                )
             case "bool" if key == self.inverse:
                 data[self.name] = False
             case "bool":
                 data[self.name] = True
             ##-- end handle bools and inversion
             case _ if not bool(vals):
-                raise doot.errors.DootParseError("Non-Bool Arguments should have values: %s : %s", self.name, vals)
+                raise doot.errors.DootParseError(
+                    "Non-Bool Arguments should have values: %s : %s", self.name, vals
+                )
             case _ if len(vals) == 1:
                 data[self.name] = self.type_(vals[0])
             case _:
@@ -291,11 +309,20 @@ class DootParamSpec(BaseModel, arbitrary_types_allowed=True):
                 data[self.name]    = consume_these
 
         if 1 < pop_count < self.positional:
-            raise doot.errors.DootParseError("Not Enough positional args provided", self.name, self.positional, vals)
+            raise doot.errors.DootParseError(
+                "Not Enough positional args provided", self.name, self.positional, vals
+            )
         elif 1 < self.positional < pop_count:
-            raise doot.errors.DootParseError("Too Many positional args provided", self.name, self.positional, vals)
+            raise doot.errors.DootParseError(
+                "Too Many positional args provided", self.name, self.positional, vals
+            )
         elif 1 < pop_count and self.type_ != list:
-            raise doot.errors.DootParseError("Multi positional args should be of type list", self.name, self.positional, self.type_)
+            raise doot.errors.DootParseError(
+                "Multi positional args should be of type list",
+                self.name,
+                self.positional,
+                self.type_,
+            )
 
         return pop_count
 

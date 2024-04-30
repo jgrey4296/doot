@@ -17,7 +17,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-__all__ = ["DootError", "DootTaskError", "DootTaskLoadError", "DootTaskFailed", "DootTaskTrackingError", "DootTaskInterrupt"
+__all__ = ["DootError", "DootTaskError", "DootTaskLoadError", "DootTaskFailed", "DootTaskTrackingError", "DootTaskInterrupt",
            "DootParseError", "DootInvalidConfig", "DootLocationError", "DootLocationExpansionError", "DootDirAbsent",
            "DootPluginError", "DootCommandError", "DootConfigError"]
 
