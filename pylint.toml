@@ -1,3 +1,6 @@
+## pylint.toml -*- mode: Conf[TOML] -*-
+# https://pylint.readthedocs.io/en/latest/
+#
 [tool.pylint.main]
 # Analyse import fallback blocks. This can be used to support both Python 2 and 3
 # compatible code, which means that the block might have code that exists only in

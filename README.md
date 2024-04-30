@@ -1,3 +1,4 @@
+<!-- <!--  README.md -*- mode: GFM -*-
 ![doot](https://github.com/jgrey4296/doot/assets/5943270/170a5631-6175-4d92-8d66-e26aa2c2e472)
 # doot
 Version : 0.7.2  
