@@ -212,7 +212,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
                     group_result = ActRE.FAIL
                 case [*xs]:
                     for spec in xs:
-                        self.tracker.add_task(spec, no_root_connection=True)
+                        self.tracker.queue_task(spec, no_root_connection=True)
                     printer.info("Queued %s Subtasks for %s", len(xs), task.spec.name)
 
         return executed_count, group_result
