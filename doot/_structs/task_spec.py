@@ -51,8 +51,8 @@ from doot._structs.action_spec import DootActionSpec
 from doot._structs.artifact import DootTaskArtifact
 from doot._structs.toml_loc import TomlLocation
 from doot._abstract.structs import SpecStruct_p
+from doot._abstract.task import Task_i
 from doot._structs.dependency_spec import DependencySpec
-
 
 def _prepare_action_group(deps:list[str]) -> list[DootTaskArtifact|DootTaskName]:
     """
@@ -75,14 +75,14 @@ def _prepare_action_group(deps:list[str]) -> list[DootTaskArtifact|DootTaskName]
                 results.append(DootTaskArtifact.build(x))
             case str() if doot.constants.patterns.TASK_SEP in x:
                 results.append(DootTaskName.build(x))
-            case DootTaskName() | DootTaskArtifact() | DootActionSpec():
+            case DootTaskName() | DootTaskArtifact() | DootActionSpec() | DependencySpec():
                 results.append(x)
             case _:
                 raise ValueError(f"Unrecognised task pre/post dependency form. (Remember: files are prefixed with `{doot.constants.patterns.FILE_DEP_PREFIX}`, tasks are in the form group::name)", x)
 
     return results
 
-ActionGroup = Annotated[list[DootTaskName|DootTaskArtifact|DootActionSpec], BeforeValidator(_prepare_action_group)]
+ActionGroup = Annotated[list[DootTaskName|DootTaskArtifact|DootActionSpec|DependencySpec], BeforeValidator(_prepare_action_group)]
 
 class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
     """ The information needed to describe a generic task.
@@ -94,7 +94,7 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
     """
     name                         : str|DootTaskName
     doc                          : list[str]                                                               = []
-    source                       : DootTaskName|str|pl.Path|None                                           = None
+    source                       : DootTaskName|pl.Path|None                                               = None
 
     # Action Groups:
     actions                      : ActionGroup                                                             = []
@@ -107,7 +107,7 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
     # Any additional information:
     version                      : str                                                                     = doot.__version__ # TODO: make dict?
     priority                     : int                                                                     = 10
-    ctor                         : type|str|DootCodeReference                                              = Field(default=None, validate_default=True)
+    ctor                         : DootCodeReference                                                       = Field(default=None, validate_default=True)
     queue_behaviour              : TaskQueueMeta                                                           = TaskQueueMeta.default
     print_levels                 : TomlGuard                                                               = Field(default_factory=TomlGuard)
     flags                        : TaskFlags                                                               = TaskFlags.default
@@ -115,6 +115,7 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
     _default_ctor         : ClassVar[str]       = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
     _allowed_print_locs   : ClassVar[list[str]] = doot.constants.printer.PRINT_LOCATIONS
     _allowed_print_levels : ClassVar[list[str]] = ["INFO", "WARNING", "DEBUG", "EXCEPTION"]
+    _action_group_wipe    : ClassVar[dict]      = {"required_for": [], "setup": [], "actions": [], "depends_on": []}
 
     @staticmethod
     def build(data:TomlGuard|dict|DootTaskName|str):
@@ -135,6 +136,18 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
             del cleaned['group']
         return cleaned
 
+    @model_validator(mode="after")
+    def _validate_metadata(self):
+        self.flags |= self.name.meta
+        match self.ctor.try_import():
+            case x if issubclass(x, Task_i):
+                self.flags |= x._default_flags
+                self.name.meta |= x._default_flags
+            case x:
+                pass
+
+        return self
+
     @field_validator("name", mode="before")
     def _validate_name(cls, val):
         match val:
@@ -144,7 +157,7 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
                 name = DootTaskName.build(val)
                 return name
             case _:
-                raise TypeError("A TaskSpec Name should be a str or DootTaskName", val)
+                raise TypeError("A DootTaskSpec Name should be a str or DootTaskName", val)
 
     @field_validator("flags", mode="before")
     def _validate_flags(cls, val):
@@ -158,7 +171,6 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
     def _validate_ctor(cls, val):
         match val:
             case None:
-
                 default_alias = DootTaskSpec._default_ctor
                 coderef_str   = doot.aliases.task[default_alias]
                 return DootCodeReference.build(coderef_str)
@@ -197,32 +209,46 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
             case _:
                 raise ValueError("Queue Behaviour needs to be a str or a TaskQueueMeta enum", val)
 
-    def instantiate_onto(self, data:DootTaskSpec) -> DootTaskSpec:
-        return data.specialize_from(self)
+    @field_validator("source", mode="before")
+    def _validate_source(cls, val):
+        match val:
+            case DootTaskName() | pl.Path | None:
+                return val
+            case str():
+                return DootTaskName.build(val)
 
-    def specialize_from(self, data:DootTaskSpec) -> DootTaskSpec:
-        """
-          Specialize an existing task spec, with additional data.
-          Only operates on the *internal* data.
-          So dependencies are not, themselves, specialized.
-
-        """
-        if self is data:
-            return self
-        if self.name != data.source:
-            raise doot.errors.DootTaskTrackingError("Tried to specialize a task that isn't based on this task", str(data.name), str(self.name))
-
-        match data.ctor:
-            case x if x == self.ctor:
-                pass
-            case x if x == DootTaskSpec._default_ctor:
-                pass
+    def instantiate_onto(self, data:None|DootTaskSpec) -> DootTaskSpec:
+        """ apply self over the top of data """
+        match data:
+            case None:
+                return self.specialize_from(self)
+            case DootTaskSpec():
+                return data.specialize_from(self)
             case _:
-                raise doot.errors.DootTaskTrackingError("Unknown ctor for spec", data.ctor)
+                raise TypeError("Can't instantiate onto something not a task spec", data)
 
-        # Basic Merging:
-        specialized = dict(self)
-        specialized.update({k:v for k,v in dict(data).items() if k in data.model_fields_set})
+    def specialize_from(self, data:dict|DootTaskSpec) -> DootTaskSpec:
+        """
+          apply data over the top of self
+        """
+        match data:
+            case DootTaskSpec() if self is data:
+                # specializing on self, just instantiate a name
+                specialized = dict(self)
+                specialized['name']   = data.name.instantiate()
+                specialized['source'] = self.name
+                return DootTaskSpec.build(specialized)
+            case DootTaskSpec(source=DootTaskName() as source) if not source <= self.name:
+                raise doot.errors.DootTaskTrackingError("Tried to specialize a task that isn't based on this task", str(data.name), str(self.name), str(data.source))
+            case DootTaskSpec(ctor=ctor) if self.ctor != ctor and ctor != DootTaskSpec._default_ctor:
+                raise doot.errors.DootTaskTrackingError("Unknown ctor for spec", data.ctor)
+            case DootTaskSpec():
+                specialized = dict(self)
+                specialized.update({k:v for k,v in dict(data).items() if k in data.model_fields_set})
+            case dict():
+                specialized = dict(self)
+                specialized.update(data)
+                return DootTaskSpec.build(specialized)
 
         # Then special updates
         specialized['name']   = data.name.instantiate()
@@ -267,7 +293,7 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
         # TODO: use introspection on the model to get any fields annotated as an ActionGroup
         return [self.depends_on, self.setup, self.actions, self.cleanup, self.on_fail]
 
-    def head_spec(self) -> None|TaskSpec:
+    def head_spec(self) -> None|DootTaskSpec:
         """
           Generate a head taskspec for a job, taking the jobs cleanup actions
           and using them as the head's main action.
@@ -277,12 +303,14 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
             return None
         if TaskFlags.JOB_HEAD in self.flags:
             return None
-        if self.name.task_head() is self.name:
+        if TaskFlags.CONCRETE in self.flags:
+            return None
+        if self.name.job_head() is self.name:
             return None
 
         # build $head$
         head : DootTaskSpec = DootTaskSpec.build({
-            "name"            : self.name.task_head(),
+            "name"            : self.name.job_head(),
             "source"          : None,
             "actions"         : self.cleanup,
             "print_levels"    : self.print_levels,

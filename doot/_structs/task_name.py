@@ -44,9 +44,6 @@ import doot.errors
 from doot.enums import TaskFlags, ReportEnum
 from doot._structs.structured_name import StructuredName, aware_splitter
 
-TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
-INTERNAL_TASK : Final[str] = doot.constants.patterns.INTERNAL_TASK_PREFIX
-
 class DootTaskName(StructuredName):
     """
       A Task Name.
@@ -60,6 +57,9 @@ class DootTaskName(StructuredName):
     _root              : None|DootTaskName       = None
 
     _separator          : ClassVar[str]           = doot.constants.patterns.TASK_SEP
+    _gen_marker         : ClassVar[str]           = doot.constants.patterns.SPECIALIZED_ADD
+    _internal_marker    : ClassVar[str]           = doot.constants.patterns.INTERNAL_TASK_PREFIX
+    _head_marker        : ClassVar[str]           = doot.constants.patterns.SUBTASKED_HEAD
 
     @classmethod
     def build(cls, name:str|dict|DootTaskName, *, args=None):
@@ -125,16 +125,18 @@ class DootTaskName(StructuredName):
 
     @model_validator(mode="after")
     def check_metdata(self):
-        if self.tail[0].startswith(INTERNAL_TASK):
+        if self.tail[0] == DootTaskName._internal_marker:
             self.meta |= TaskFlags.INTERNAL
+        if DootTaskName._gen_marker in self.tail:
+            self.meta |= TaskFlags.CONCRETE
+        if DootTaskName._head_marker in self.tail:
+            self.meta |= TaskFlags.JOB_HEAD
 
-        if TaskFlags.INSTANCED in self.meta and 'uuid' not in self.args:
+        if TaskFlags.CONCRETE in self.meta and 'uuid' not in self.args:
             raise ValidationError("Instanced Name lacks a stored uuid", self)
-        if TaskFlags.INSTANCED in self.meta and doot.constants.patterns.SPECIALIZED_ADD not in self.tail:
+        if TaskFlags.CONCRETE in self.meta and DootTaskName._gen_marker not in self.tail:
             raise ValidationError("Specialized Name lacks the specialized keyword in its tail", self)
-        if TaskFlags.INSTANCED in self.meta and self._root is None:
-            raise ValidationError("Specialized and subtasked names need their original root", self)
-        if TaskFlags.INTERNAL in self.meta and not self.tail[0].startswith("_"):
+        if TaskFlags.INTERNAL in self.meta and not self.tail[0] == DootTaskName._internal_marker:
             raise ValidationError("Internal Name lacks a prefix underscore", self)
 
         return self
@@ -159,7 +161,7 @@ class DootTaskName(StructuredName):
 
     @property
     def task(self) -> str:
-        return self._subseparator.join([str(x) if not isinstance(x, UUID) else "${}$".format(x.hex) for x in self.tail])
+        return self._subseparator.join([str(x) if not isinstance(x, UUID) else "${}$".format(hex(x.time_low)) for x in self.tail])
 
     @property
     def readable(self):
@@ -168,7 +170,7 @@ class DootTaskName(StructuredName):
         return "{}{}{}".format(group, self._separator, tail)
 
     def is_instance(self) -> bool:
-        return TaskFlags.INSTANCED in self.meta
+        return TaskFlags.CONCRETE in self.meta
 
     def match_version(self, other) -> bool:
         """ match version constraints of two task names against each other """
@@ -178,14 +180,18 @@ class DootTaskName(StructuredName):
         """
         Strip off detail information to get the basic task name for id purposes
         """
-        # TODO this relies on unbroken chain of creation, can't go from a str.
-        match self._root:
+        index = None
+        if DootTaskName._gen_marker in self.tail:
+            index = self.tail.index(DootTaskName._gen_marker)
+        elif DootTaskName._head_marker in self.tail:
+            index = self.tail.index(DootTaskName._head_marker)
+
+        match index:
+            case int():
+                return DootTaskName(head=self.head[:], tail=self.tail[:index])
             case None:
-                assert(TaskFlags.INSTANCED not in self.meta)
-                # TODO: pop off $gen$, UUID's, and prefixs?
                 return self
-            case _:
-                return self._root
+
 
     def subtask(self, *subtasks, subgroups:list[str]|None=None, **kwargs) -> DootTaskName:
         """ generate an extended name, with more information
@@ -217,27 +223,30 @@ class DootTaskName(StructuredName):
                             args=args,
                             _root=self.root())
 
-    def task_head(self) -> DootTaskName:
+    def job_head(self) -> DootTaskName:
         """ generate a canonical head/completion task name for this name
         eg: group::simple.task.$gen$.<UUID>
         ->  group::simple.task.$gen$.<UUID>.$head$
 
         """
-        if self.tail[-1] == doot.constants.patterns.SUBTASKED_HEAD:
+        if TaskFlags.JOB_HEAD in self.meta:
             return self
 
-        return self.subtask(doot.constants.patterns.SUBTASKED_HEAD)
+        return self.subtask(DootTaskName._head_marker)
 
     def instantiate(self, *, prefix=None):
-        """ Generate a instance of this name with a UUID appended,
+        """ Generate a concrete instance of this name with a UUID appended,
         optionally can add a prefix
+          # TODO possibly do $gen$.{prefix?}.<UUID>
+
+          ie: a.task.group::task.name.{prefix?}.$gen$.<UUID>
         """
         uuid = uuid1()
         match prefix:
             case None:
-                return self.subtask(doot.constants.patterns.SPECIALIZED_ADD, uuid, uuid=uuid)
+                return self.subtask(DootTaskName._gen_marker, uuid, uuid=uuid)
             case _:
-                return self.subtask(prefix, doot.constants.patterns.SPECIALIZED_ADD, uuid, uuid=uuid)
+                return self.subtask(prefix, DootTaskName._gen_marker, uuid, uuid=uuid)
 
     def last(self):
         return self.tail[-1]

@@ -69,6 +69,6 @@ class DependencySpec(BaseModel):
             case str():
                 return DependencySpec(task=DootTaskName.build(data))
             case TomlGuard() | dict():
-                return DependencySpec(task=DootTaskName.build(data['task'], keys=data['keys']))
+                return DependencySpec(task=DootTaskName.build(data['task']), keys=data['keys'])
             case _:
                 raise ValueError("Bad data used for dependency spec", data)

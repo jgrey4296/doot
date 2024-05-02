@@ -76,7 +76,7 @@ class JobExpandAction(JobInjector):
 
         result          = []
         build_queue     = []
-        base_head       = _basename.task_head()
+        base_head       = _basename.job_head()
         actions, base   = self._prep_base(template)
         match _from:
             case int():

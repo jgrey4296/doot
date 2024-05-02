@@ -73,9 +73,10 @@ class TaskFlags(FlagsBuilder_m, enum.Flag):
     STATEFUL     = enum.auto()
     STATELESS    = enum.auto()
     INTERNAL     = enum.auto()
-    INSTANCED    = enum.auto()
+    CONCRETE     = enum.auto()
     VERSIONED    = enum.auto()
 
+    INSTANCED    = CONCRETE
     default      = TASK
 
 class ReportEnum(enum.Flag):
@@ -128,12 +129,13 @@ class LocationMeta(FlagsBuilder_m, enum.Flag):
     location     = enum.auto()
     artifact     = enum.auto()
     protected    = enum.auto()
-    indefinite   = enum.auto()
+    abstract     = enum.auto()
     cleanable    = enum.auto()
     normOnLoad   = enum.auto()
 
     file         = artifact
 
+    indefinite   = abstract
     default      = location
 
 class TaskQueueMeta(EnumBuilder_m, enum.Enum):

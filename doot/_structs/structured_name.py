@@ -60,11 +60,11 @@ class StructuredName(BaseModel):
       Tasks use a double colon to separate head from tail name: "group.name::TaskName"
 
     """
-    head            : list[str]          = []
-    tail            : list[str|int|UUID]     = []
+    head             : list[str]              = []
+    tail             : list[str|int|UUID]     = []
 
-    _separator       : ClassVar[str]      = doot.constants.patterns.TASK_SEP
-    _subseparator    : ClassVar[str]      = "."
+    _separator       : ClassVar[str]          = doot.constants.patterns.TASK_SEP
+    _subseparator    : ClassVar[str]          = "."
 
     @staticmethod
     def build(val:str) -> StructuredName:
