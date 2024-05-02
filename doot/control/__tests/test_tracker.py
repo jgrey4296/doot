@@ -70,9 +70,8 @@ class TestTrackerBasics:
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
         name = doot.structs.DootTaskName.build("basic::task")
         obj.register_spec(spec)
-        task = spec.make()
         assert(not bool(obj.tasks))
-        obj.add_task(task)
+        obj.queue_task(name)
         assert(bool(obj.tasks))
 
     def test_task_retrieval(self):
@@ -80,18 +79,17 @@ class TestTrackerBasics:
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
         name = doot.structs.DootTaskName.build("basic::task")
         obj.register_spec(spec)
-        task = spec.make()
-        obj.add_task(task)
-        retrieved = obj.tasks[name]
-        assert(retrieved == task)
+        result           = obj.queue_task(name)
+        retrieved        = obj.tasks[result]
+        assert(retrieved.fullname == result)
 
     def test_task_status(self):
         obj = DootTracker()
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
         name = doot.structs.DootTaskName.build("basic::task")
         obj.register_spec(spec)
-        task = spec.make()
-        obj.add_task(task)
+        task   = spec.make()
+        result = obj.queue_task(task)
         status = obj.task_status(name)
         assert(status is TaskStatus_e.WAIT)
 
@@ -107,11 +105,10 @@ class TestTrackerBasics:
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
         name = doot.structs.DootTaskName.build("basic::task")
         obj.register_spec(spec)
-        task = spec.make()
-        obj.add_task(task)
-        assert(obj.task_status(name) is TaskStatus_e.WAIT)
-        obj.update_status(name, TaskStatus_e.SUCCESS)
-        assert(obj.task_status(name) is TaskStatus_e.SUCCESS)
+        result = obj.queue_task(name)
+        assert(obj.task_status(result) is TaskStatus_e.WAIT)
+        obj.update_status(result, TaskStatus_e.SUCCESS)
+        assert(obj.task_status(result) is TaskStatus_e.SUCCESS)
 
     def test_update_status_fail_missing_task(self):
         obj = DootTracker()
@@ -124,9 +121,9 @@ class TestTrackerBasics:
         obj = DootTracker()
         name1 = doot.structs.DootTaskName.build("basic::task")
         name2 = doot.structs.DootTaskName.build("basic::other")
-        # Mock the tasks:
-        obj.tasks[name1] = True
-        obj.tasks[name2] = True
+        # Mock the specs:
+        obj.specs[name1] = True
+        obj.specs[name2] = True
 
         assert(len(obj.network) == 1)
         obj.connect(name1, name2)
@@ -139,7 +136,7 @@ class TestTrackerBasics:
         name1 = doot.structs.DootTaskName.build("basic::task")
         artifact = doot.structs.DootTaskArtifact.build("a/simple/artifact.txt")
         # Mock the task/artifact:
-        obj.tasks[name1] = True
+        obj.specs[name1] = True
         obj.artifacts.add(artifact)
 
         assert(len(obj.network) == 1)
@@ -169,21 +166,20 @@ class TestTrackerBasics:
         name1 = doot.structs.DootTaskName.build("basic::task")
         name2 = doot.structs.DootTaskName.build("basic::other")
         # Mock the tasks:
-        obj.tasks[name1] = True
-        obj.tasks[name2] = True
+        obj.specs[name1] = True
+        obj.specs[name2] = True
         obj.connect(name1, name2)
         assert(name2 in obj.network.adj[name1])
 
     def test_task_queue(self, mocker):
         obj   = DootTracker()
-        spec  = doot.structs.DootTaskSpec.build({"name":"basic::task"})
+        spec  = doot.structs.DootTaskSpec.build({"name":"basic::task", "priority":5})
         name1 = doot.structs.DootTaskName.build("basic::task")
-        # Mock the task:
-        obj.tasks[name1] = mocker.Mock(priority=5)
+        obj.register_spec(spec)
         assert(name1 not in obj.active_set)
         assert(not bool(obj._queue))
-        obj.queue_task(name1)
-        assert(name1 in obj.active_set)
+        result = obj.queue_task(name1)
+        assert(result in obj.active_set)
         assert(bool(obj._queue))
 
     def test_task_queue_fail_with_no_tasks(self):
@@ -196,25 +192,25 @@ class TestTrackerBasics:
     def test_deque_task(self, mocker):
         obj   = DootTracker()
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task"})
+        spec2  = doot.structs.DootTaskSpec.build({"name":"basic::other"})
         name1 = doot.structs.DootTaskName.build("basic::task")
         name2 = doot.structs.DootTaskName.build("basic::other")
-        # Mock the task:
-        obj.tasks[name1] = mocker.Mock(priority=5)
-        obj.tasks[name2] = mocker.Mock(priority=2)
-        obj.queue_task(name1)
-        obj.queue_task(name2)
+        obj.register_spec(spec)
+        obj.register_spec(spec2)
+        result1 = obj.queue_task(name1)
+        result2 = obj.queue_task(name2)
         val = obj.deque()
-        assert(val == name1)
-        assert(name1 not in obj.active_set)
+        assert(val == result1)
+        assert(result1 not in obj.active_set)
 
     def test_clear_queue(self, mocker):
-        obj   = DootTracker()
-        spec  = doot.structs.DootTaskSpec.build({"name":"basic::task"})
-        name1 = doot.structs.DootTaskName.build("basic::task")
-        name2 = doot.structs.DootTaskName.build("basic::other")
-        # Mock the task:
-        obj.tasks[name1] = mocker.Mock(priority=5)
-        obj.tasks[name2] = mocker.Mock(priority=2)
+        obj    = DootTracker()
+        spec   = doot.structs.DootTaskSpec.build({"name":"basic::task"})
+        spec2  = doot.structs.DootTaskSpec.build({"name":"basic::other"})
+        name1  = doot.structs.DootTaskName.build("basic::task")
+        name2  = doot.structs.DootTaskName.build("basic::other")
+        obj.register_spec(spec)
+        obj.register_spec(spec2)
         obj.queue_task(name1)
         obj.queue_task(name2)
         assert(bool(obj.active_set))

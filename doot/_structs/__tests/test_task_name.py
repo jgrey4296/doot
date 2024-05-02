@@ -74,7 +74,7 @@ class TestDootTaskName:
         assert(str(simple) == "\"basic.sub.test\"::tail")
 
     def test_internal(self):
-        simple = DootTaskName.build("agroup::_internal.task")
+        simple = DootTaskName.build("agroup::_.internal.task")
         assert(TaskFlags.INTERNAL in simple.meta)
 
     def test_root_is_self(self):
@@ -269,17 +269,26 @@ class TestTaskNameExtension:
 
     def test_head(self):
         simple = DootTaskName.build("basic.sub.test::tail")
-        sub = simple.task_head()
+        instance = simple.instantiate()
+        sub = instance.job_head()
         assert(simple < sub)
         assert(sub in simple)
-        assert(sub.last() == "$head$")
+        assert(sub.last() == DootTaskName._head_marker)
+
+
+    def test_head_only_on_instances(self):
+        simple = DootTaskName.build("basic.sub.test::tail")
+        head = simple.job_head()
+        assert(head.last() == DootTaskName._head_marker)
+
 
     def test_head_is_idempotent(self):
-        simple = DootTaskName.build("basic.sub.test::tail")
-        sub = simple.task_head()
-        sub2 = sub.task_head()
-        assert(sub.last() == "$head$")
-        assert(sub2.last() == "$head$")
+        simple             = DootTaskName.build("basic.sub.test::tail")
+        instance           = simple.instantiate()
+        sub                = instance.job_head()
+        sub2               = sub.job_head()
+        assert(sub.last()  == DootTaskName._head_marker)
+        assert(sub2.last() == DootTaskName._head_marker)
         assert(sub is sub2)
 
 class TestTaskNameStructInteraction:
