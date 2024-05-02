@@ -3,21 +3,38 @@
 Doot : An Opinionated refactor of the Doit Task Runner.
 
 """
-##-- std imports
+
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
+import datetime
+import enum
+import functools as ftz
+import itertools as itz
 import logging as logmod
 import pathlib as pl
-from typing import Final, Any, assert_type
-from importlib.resources import files
 import sys
-##-- end std imports
+from importlib.resources import files
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, assert_type, cast, final, overload,
+                    runtime_checkable)
+from uuid import UUID, uuid1
 
-##-- imports
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
 import tomlguard as TG
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
 import doot.errors
 from doot.utils.check_protocol import check_protocol
-##-- end imports
+
+# ##-- end 1st party imports
 
 ##-- data
 data_path      = files("doot.__data")
@@ -78,9 +95,9 @@ def setup(targets:list[pl.Path]|False|None=None, prefix:str|None=TOOL_PREFIX) ->
 
     try:
         config = TG.load(*existing_targets)
-    except OSError:
+    except OSError as err:
         logging.error("Failed to Load Config Files: %s", existing_targets)
-        raise doot.errors.DootError()
+        raise doot.errors.DootError() from err
 
     config = config.remove_prefix(prefix)
     _load_constants()
@@ -118,7 +135,10 @@ def _load_aliases():
 def _load_locations():
     """ Load and update the DootLocations db """
     global locs
+    # ##-- 1st party imports
     from doot.control.locations import DootLocations
+
+    # ##-- end 1st party imports
     locs   = DootLocations(pl.Path.cwd())
     # Load Initial locations
     for loc in config.on_fail([]).locations():
@@ -132,8 +152,6 @@ def _update_import_path():
         if source.exists() and source.is_dir():
             logging.debug("Adding task code directory to Import Path: %s", source)
             sys.path.append(str(source))
-
-
 
 def _test_setup():
     """
