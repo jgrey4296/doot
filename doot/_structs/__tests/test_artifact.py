@@ -45,7 +45,6 @@ class TestTaskArtifact:
         assert(basic != basic2)
 
     def test_definite_to_indefinite_contains(self):
-
         definite = DootTaskArtifact.build(pl.Path("a/b/c.py"))
         indef    = DootTaskArtifact.build(pl.Path("a/b/*.py"))
         assert(definite in indef)
@@ -54,35 +53,30 @@ class TestDefiniteArtifact:
 
     def test_definite(self):
         basic = DootTaskArtifact.build(pl.Path("a/b/c"))
-        assert(basic.is_definite)
-        assert(basic._definite_stem)
-        assert(basic._definite_suffix)
+        assert(basic.is_concrete)
+        assert(basic.abstracts == (False, False, False))
 
 class TestIndefiniteArtifact:
 
     def test_indefinite_stem(self):
         basic = DootTaskArtifact.build(pl.Path("a/b/*.py"))
-        assert(not basic.is_definite)
-        assert(not basic._definite_stem)
-        assert(basic._definite_suffix)
+        assert(not basic.is_concrete)
+        assert(basic.abstracts == (False, True, False))
 
     def test_indefinite_suffix(self):
         basic = DootTaskArtifact.build(pl.Path("a/b/c.*"))
-        assert(not basic.is_definite)
-        assert(basic._definite_stem)
-        assert(not basic._definite_suffix)
+        assert(not basic.is_concrete)
+        assert(basic.abstracts == (False, False, True))
 
     def test_indefinite_path(self):
         basic = DootTaskArtifact.build(pl.Path("a/*/c.py"))
-        assert(not basic.is_definite)
-        assert(basic._definite_stem)
-        assert(basic._definite_suffix)
+        assert(not basic.is_concrete)
+        assert(basic.abstracts == (True, False, False))
 
     def test_recursive_indefinite(self):
         basic = DootTaskArtifact.build(pl.Path("a/**/c.py"))
-        assert(not basic.is_definite)
-        assert(basic._definite_stem)
-        assert(basic._definite_suffix)
+        assert(not basic.is_concrete)
+        assert(basic.abstracts == (True, False, False))
 
     def test_indef_suffix_contains(self):
 
