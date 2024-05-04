@@ -32,7 +32,7 @@ import re
 import tomlguard
 import doot
 from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
-from doot.structs import DootTaskArtifact, DootKey, TomlLocation
+from doot.structs import DootTaskArtifact, DootKey, Location
 from doot._structs.key import DootSimpleKey, DootMultiKey, DootNonKey
 from doot.mixins.path_manip import PathManip_m
 from doot.enums import LocationMeta
@@ -60,7 +60,7 @@ class DootLocations(PathManip_m):
 
     def __init__(self, root:Pl.Path):
         self._root    : pl.Path()               = root.expanduser().absolute()
-        self._data    : dict[str, TomlLocation] = dict()
+        self._data    : dict[str, Location]     = dict()
         self._loc_ctx : None|DootLocations      = None
 
     def __repr__(self):
@@ -137,7 +137,7 @@ class DootLocations(PathManip_m):
             case DootNonKey():
                 return pl.Path(key.form)
             case str() | DootSimpleKey() if key in self._data:
-                return self._data[key].base
+                return self._data[key].path
             case _ if on_fail is None:
                 return None
             case _ if on_fail != Any:
@@ -196,20 +196,20 @@ class DootLocations(PathManip_m):
         base_keys    = set(raw.keys())
         new_keys     = set()
         for k,v in extra.items():
-            match TomlLocation.build(k, v):
+            match Location.build(v, key=k):
                 case _ if k in new_keys and v != raw[k]:
                     raise DootLocationError("Duplicated, non-matching Key", k)
                 case _ if k in base_keys:
                     logging.debug("Skipping Location update of: %s", k)
                     pass
-                case TomlLocation() as l if l.check(LocationMeta.normOnLoad):
-                    raw[l.key] = TomlLocation.build(k, v, base=self.normalize(l.base))
+                case Location() as l if l.check(LocationMeta.normOnLoad):
+                    raw[l.key] = Location.build(k, v, base=self.normalize(l.path))
                     new_keys.add(l.key)
-                case TomlLocation() as l:
+                case Location() as l:
                     raw[l.key] = l
                     new_keys.add(l.key)
                 case _:
-                    raise DootLocationError("Couldn't build a TomlLocation for: (%s : %s)", k, v)
+                    raise DootLocationError("Couldn't build a Location for: (%s : %s)", k, v)
 
         logging.debug("Registered New Locations: %s", ", ".join(new_keys))
         self._data = raw
