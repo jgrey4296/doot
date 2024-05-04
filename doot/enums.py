@@ -62,7 +62,13 @@ class TaskFlags(FlagsBuilder_m, enum.Flag):
 
     TASK         = enum.auto()
     JOB          = enum.auto()
+    TRANSFORMER  = enum.auto()
+
+    INTERNAL     = enum.auto()
     JOB_HEAD     = enum.auto()
+    CONCRETE     = enum.auto()
+    DISABLED     = enum.auto()
+
     EPHEMERAL    = enum.auto()
     IDEMPOTENT   = enum.auto()
     REQ_TEARDOWN = enum.auto()
@@ -72,11 +78,8 @@ class TaskFlags(FlagsBuilder_m, enum.Flag):
     THREAD_SAFE  = enum.auto()
     STATEFUL     = enum.auto()
     STATELESS    = enum.auto()
-    INTERNAL     = enum.auto()
-    CONCRETE     = enum.auto()
     VERSIONED    = enum.auto()
 
-    INSTANCED    = CONCRETE
     default      = TASK
 
 class ReportEnum(enum.Flag):
@@ -126,12 +129,14 @@ class LoopControl(enum.Enum):
 class LocationMeta(FlagsBuilder_m, enum.Flag):
     """ Available metadata attachable to a location """
 
-    location     = enum.auto()
-    artifact     = enum.auto()
-    protected    = enum.auto()
     abstract     = enum.auto()
+    artifact     = enum.auto()
     cleanable    = enum.auto()
+    location     = enum.auto()
     normOnLoad   = enum.auto()
+    protected    = enum.auto()
+    glob         = enum.auto()
+    expandable   = enum.auto()
 
     file         = artifact
 
@@ -143,7 +148,7 @@ class TaskQueueMeta(EnumBuilder_m, enum.Enum):
       onRegister/auto     : activates automatically when added to the task network
       reactive            : activates if an adjacent node completes
 
-      default             : activates only if uses queues the task, or its a dependency
+      default             : activates only if uses queues the task, or its a dependencyOf
 
     """
 
@@ -152,3 +157,24 @@ class TaskQueueMeta(EnumBuilder_m, enum.Enum):
     reactive     = enum.auto()
     reactiveFail = enum.auto()
     auto         = onRegister
+
+
+class RelationMeta(enum.Enum):
+    """
+      What types of task relation there can be,
+      in the form X {rel} Y,
+      + synonyms
+
+    """
+    dependencyOf     = enum.auto()
+    dependantOf      = enum.auto()
+
+    dependsOn        = dependencyOf
+    requirementFor   = dependantOf
+    resultsIn        = dependantOf
+    productOf        = dependencyOf
+
+    dep              = dependencyOf
+    req              = dependantOf
+
+    default          = dep

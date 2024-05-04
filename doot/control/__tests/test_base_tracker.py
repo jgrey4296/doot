@@ -49,7 +49,6 @@ from doot.utils import mock_gen
 
 # ##-- end 1st party imports
 
-
 class TestTrackerStore:
 
     def test_basic(self):
@@ -63,6 +62,14 @@ class TestTrackerStore:
         obj.register_spec(spec)
         assert(bool(obj.specs))
 
+    def test_register_spec_with_artifacts(self):
+        obj = BaseTracker()
+        spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["file:>test.txt"], "required_for": ["file:>other.txt"]})
+        assert(not bool(obj.artifacts))
+        obj.register_spec(spec)
+        obj.register_artifacts(spec.name)
+        assert(bool(obj.artifacts))
+
     def test_register_spec_pass_on_duplicate(self):
         obj = BaseTracker()
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
@@ -71,6 +78,13 @@ class TestTrackerStore:
         obj.register_spec(spec)
         assert(len(obj.specs) == 1)
 
+    def test_register_spec_ignores_disabled(self):
+        obj = BaseTracker()
+        spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "disabled":True})
+        assert(len(obj.specs) == 0)
+        obj.register_spec(spec)
+        assert(len(obj.specs) == 0)
+
     def test_spec_retrieval(self):
         obj = BaseTracker()
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
@@ -78,22 +92,6 @@ class TestTrackerStore:
         obj.register_spec(spec)
         retrieved = obj.specs[name]
         assert(retrieved == spec)
-
-    def test_add_artifact(self):
-        obj = BaseTracker()
-        artifact = doot.structs.DootTaskArtifact.build("simple/artifact.txt")
-        assert(not bool(obj.artifacts))
-        obj.add_artifact(artifact)
-        assert(bool(obj.artifacts))
-
-    @pytest.mark.xfail
-    def test_artifact_retrival(self):
-        obj = BaseTracker()
-        artifact = doot.structs.DootTaskArtifact.build("simple/artifact.txt")
-        obj.add_artifact(artifact)
-        matched = [x for x in obj.artifacts if x == "simple/artifact.txt"]
-        assert(bool(matched))
-        assert(matched[0] == artifact)
 
     def test_task_instantiation(self):
         obj = BaseTracker()
@@ -162,6 +160,7 @@ class TestTrackerNetwork:
         obj.connect(instance)
         assert(len(obj.network) == 2)
         assert(bool(obj.network.pred[obj._root_node]))
+        assert(bool(obj.network.succ[instance]))
 
     def test_connect_task(self):
         obj = BaseTracker()
@@ -176,6 +175,8 @@ class TestTrackerNetwork:
         assert(len(obj.network) == 3)
         assert(name1 in obj.network)
         assert(name2 in obj.network)
+        assert(name2 in obj.network.succ[name1])
+        assert(name1 in obj.network.pred[name2])
 
     def test_connect_artifact(self):
         obj      = BaseTracker()
@@ -183,13 +184,15 @@ class TestTrackerNetwork:
         artifact = doot.structs.DootTaskArtifact.build("a/simple/artifact.txt")
         # Mock the task/artifact:
         obj.specs[name1] = True
-        obj.artifacts.add(artifact)
+        obj.artifacts[artifact] = []
 
         assert(len(obj.network) == 1)
         obj.connect(name1, artifact)
         assert(len(obj.network) == 3)
         assert(name1 in obj.network)
         assert(artifact in obj.network)
+        assert(artifact in obj.network.succ[name1])
+        assert(name1 in obj.network.pred[artifact])
 
     def test_connect_fail_no_artifact(self):
         obj      = BaseTracker()
@@ -215,7 +218,8 @@ class TestTrackerNetwork:
         obj.specs[name1] = True
         obj.specs[name2] = True
         obj.connect(name1, name2)
-        assert(name2 in obj.network.adj[name1])
+        assert(name2 in obj.network.succ[name1])
+        assert(name1 in obj.network.pred[name2])
 
     def test_network_build_empty(self):
         obj = BaseTracker()
@@ -239,6 +243,7 @@ class TestTrackerNetwork:
         obj.build_network()
         assert(len(obj.network) == 3)
         assert(obj.concrete[spec2.name][0] in obj.network.pred[instance])
+        assert(instance in obj.network.succ[obj.concrete[spec2.name][0]])
 
     def test_network_build_single_dependent_node(self):
         obj   = BaseTracker()
@@ -254,6 +259,7 @@ class TestTrackerNetwork:
         obj.build_network()
         assert(len(obj.network) == 3)
         assert(obj.concrete[spec2.name][0] in obj.network.succ[instance])
+        assert(instance in obj.network.pred[obj.concrete[spec2.name][0]])
 
     def test_network_build_dep_chain(self):
         obj  = BaseTracker()
@@ -359,7 +365,6 @@ class TestTrackerNetwork:
         assert(obj.specs[succ2].source == spec3.name)
         assert(obj.specs[succ2].test_key != spec3.test_key)
 
-
     def test_build_network_with_head_dep(self):
         obj   = BaseTracker()
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep.$head$"], "test_key": "bloo"})
@@ -377,7 +382,57 @@ class TestTrackerNetwork:
         assert(spec2.name in obj.concrete)
         obj.validate_network()
 
+    def test_build_network_with_concrete_artifact_dependency(self):
+        obj   = BaseTracker()
+        spec  = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["file:>basic.txt"]})
+        obj.register_spec(spec)
+        instance = obj._instantiate_spec(spec.name)
+        assert(len(obj.network) == 1)
+        assert(len(obj.artifacts) == 1)
+        obj.connect(instance)
+        obj.build_network()
+        assert(spec.depends_on[0].target in obj.network.pred[instance])
+        assert(instance in obj.network.succ[spec.depends_on[0].target])
 
+    def test_build_network_with_concrete_artifact_dependent(self):
+        obj   = BaseTracker()
+        spec  = doot.structs.DootTaskSpec.build({"name":"basic::task", "required_for":["file:>basic.txt"]})
+        obj.register_spec(spec)
+        instance = obj._instantiate_spec(spec.name)
+        assert(len(obj.network) == 1)
+        assert(len(obj.artifacts) == 1)
+        obj.connect(instance)
+        obj.build_network()
+        assert(spec.required_for[0].target in obj.network.succ[instance])
+        assert(instance in obj.network.pred[spec.required_for[0].target])
+
+    def test_build_network_with_abstract_artifact_dependency(self):
+        obj   = BaseTracker()
+        spec  = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["file:>*.txt"]})
+        obj.register_spec(spec)
+        instance = obj._instantiate_spec(spec.name)
+        assert(len(obj.network) == 1)
+        assert(len(obj.artifacts) == 1)
+        obj.connect(instance)
+        obj.build_network()
+        assert(spec.depends_on[0].target in obj.network.pred[instance])
+
+    def test_build_network_artifact_chain(self):
+        obj   = BaseTracker()
+        consumer = doot.structs.DootTaskSpec.build({"name":"basic::consumer", "depends_on":["file:>*.txt"]})
+        producer = doot.structs.DootTaskSpec.build({"name":"basic::producer", "required_for":["file:>blah.txt"]})
+        obj.register_spec(consumer)
+        obj.register_spec(producer)
+        prod = obj._instantiate_spec(producer.name)
+        con  = obj._instantiate_spec(consumer.name)
+        assert(len(obj.artifacts) == 2)
+        obj.connect(con)
+        obj.build_network()
+        assert(consumer.depends_on[0].target in obj.network.pred[con])
+        assert(producer.required_for[0].target in obj.network.pred[consumer.depends_on[0].target])
+        assert(prod in obj.network.pred[producer.required_for[0].target])
+        assert(len(obj.concrete[consumer.name]) == 1)
+        assert(len(obj.concrete[producer.name]) == 1)
 
 class TestTrackerQueue:
 
@@ -464,8 +519,7 @@ class TestTrackerInternals:
         assert(isinstance(special, doot.structs.DootTaskName))
         assert(special in obj.concrete[spec.name])
 
-
-    def test_instantiate_head_spec(self):
+    def test_instantiate_job_top(self):
         obj = BaseTracker()
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "ctor": "doot.task.base_job:DootJob", "depends_on":["example::dep"], "blah": 2, "bloo": 5})
         abs_head = spec.name.job_head()
@@ -479,7 +533,6 @@ class TestTrackerInternals:
         assert(spec.name < instance)
         assert(instance < inst_head)
         assert(inst_head not in obj.specs)
-
 
     def test_instantiate_spec_chain(self):
         obj = BaseTracker()
@@ -541,9 +594,8 @@ class TestTrackerInternals:
         assert(isinstance(special, doot.structs.DootTaskName))
         concrete = obj.specs[special]
         assert(len(concrete.depends_on) == 2)
-        assert("example::dep" in concrete.depends_on)
-        assert("another::dep" in concrete.depends_on)
-
+        assert(any("example::dep" in x.target for x in concrete.depends_on))
+        assert(any("another::dep" in x.target for x in concrete.depends_on))
 
     def test_concrete_edges(self):
         obj   = BaseTracker()

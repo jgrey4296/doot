@@ -47,8 +47,8 @@ import tomlguard
 import doot
 import doot.errors
 from doot._abstract import FailPolicy_p, Job_i, Task_i, TaskRunner_i, TaskTracker_i
-from doot._structs.dependency_spec import DependencySpec
-from doot.enums import TaskFlags, TaskQueueMeta, TaskStatus_e
+from doot._structs.relation_spec import RelationSpec
+from doot.enums import TaskFlags, TaskQueueMeta, TaskStatus_e, LocationMeta
 from doot.structs import (DootActionSpec, DootCodeReference, DootTaskArtifact,
                           DootTaskName, DootTaskSpec)
 from doot.task.base_task import DootTask
@@ -67,14 +67,14 @@ class EDGE_E(enum.Enum):
     TASK_CROSS         = enum.auto() # Task to artifact
     ARTIFACT_CROSS     = enum.auto() # artifact to task
 
-ROOT                  : Final[str]                  = "__root" # Root node of dependency graph
+ROOT                  : Final[str]                  = "root::_" # Root node of dependency graph
 EXPANDED              : Final[str]                  = "expanded"  # Node attribute name
 REACTIVE_ADD          : Final[str]                  = "reactive-add"
 ARTIFACT_EDGES        : Final[set[EDGE_E]]          = [EDGE_E.ARTIFACT, EDGE_E.TASK_CROSS]
 DECLARE_PRIORITY      : Final[int]                  = 10
 MIN_PRIORITY          : Final[int]                  = -10
 
-ActionElem            : TypeAlias                   = DootTaskName|DootTaskArtifact|DootActionSpec|DependencySpec
+ActionElem            : TypeAlias                   = DootTaskName|DootTaskArtifact|DootActionSpec|RelationSpec
 ActionGroup           : TypeAlias                   = list[ActionElem]
 
 class _TrackerStore:
@@ -88,21 +88,30 @@ class _TrackerStore:
         self.concrete       : dict[DootTaskName, list[DootTaskName]]     = defaultdict(lambda: [])
         # All (Concrete Specs) Task objects. key is always in both self.specs, and self.concrete's values
         self.tasks           : dict[DootTaskName, Task_i]                = {}
-        # All [Abstract, Concrete] Artifacts
-        self.artifacts       : set[DootTaskArtifact]                     = set()
+        # Artifact -> list[TaskName]
+        self.artifacts            : dict[DootTaskArtifact, list[DootTaskName]] = defaultdict(lambda: [])
+        # Artifact sets
+        self._abstract_artifacts  : set[DootTaskArtifact] = set()
+        self._concrete_artifacts  : set[DootTaskArtifact] = set()
 
     def _instantiate_spec(self, name:DootTaskName, *, add_cli:bool=False, extra:None|dict|tomlguard.TomlGuard=None) -> DootTaskName:
-        """ Convert an Asbtract Spec into a Concrete Spec """
-        assert(TaskFlags.CONCRETE not in name.meta)
+        """ Convert an Asbtract Spec into a Concrete Spec,
+          Reuses a existing concrete spec if possible.
+          """
+        assert(TaskFlags.CONCRETE not in name)
         spec = self.specs[name]
 
         needs_minimal_customisation = True
         needs_minimal_customisation &= not bool(extra)
-        needs_minimal_customisation &= bool(self.concrete[spec.name])
         needs_minimal_customisation &= not add_cli
+        needs_minimal_customisation &= name in self.concrete[name]
         if needs_minimal_customisation:
-            # Can use an existing concrete spec
-            return self.concrete[spec.name][0]
+            match [x for x in self.concrete[name] if self.spec[x].match_with_constriants(spec)]:
+                case []:
+                    pass
+                case [x, *xs]:
+                    # Can use an existing concrete spec
+                    return x
 
         # Else you've got to customize it
         # So get its source chain
@@ -137,13 +146,40 @@ class _TrackerStore:
 
         custom_spec.flags |= TaskFlags.CONCRETE
         # Map abstract -> concrete
-        self.concrete[spec.name].append(custom_spec.name)
+        self.concrete[name].append(custom_spec.name)
         # register the actual concrete
         self.register_spec(custom_spec)
-        # TODO add artifacts from the concrete spec here
 
         logging.debug("Instantiated: %s", custom_spec.name)
         return custom_spec.name
+
+    def _instantiate_respecting_constraints(self, dep:RelationSpec, *, control:DootTaskName) -> DootTaskName:
+        """ find a matching dependency/requirement according to a set of keys in the spec, or create a matching instance """
+        target                    = self.specs.get(dep.target, None)
+        control_spec              = self.specs[control]
+        successful_matches        = []
+        match self.concrete[dep.target]:
+            case [] if dep.target not in self.specs:
+                raise doot.errors.DootTaskTrackingError("Unknown target declared in Constrained Relation", name, dep.target)
+            case []:
+                pass
+            case [*xs] if not bool(dep.constraints):
+                successful_matches = xs
+            case [*xs]:
+                # concrete instances exist, match on them
+                potentials = [self.specs[x] for x in xs]
+                successful_matches += [x.name for x in potentials if x.match_with_constraints(control_spec, relation=dep)]
+
+        match successful_matches:
+            case []: # No matches, instantiate
+                extra    : dict                   = control_spec.build_relevant_data(dep)
+                instance : DootTaskName           = self._instantiate_spec(dep.target, extra=extra)
+                return instance
+            case [x]: # One match, connect it
+                instance : DootTaskName = x
+                return instance
+            case [*xs]:
+                raise doot.errors.DootTaskTrackingError("multiple matches occured, this shouldn't be possible", dep, control, xs)
 
     def _insert_cli_args_into_spec(self, spec:DootTaskSpec) -> DootTaskSpec:
         """ Takes a task spec, and inserts matching cli args into it if necessary """
@@ -213,20 +249,41 @@ class _TrackerStore:
         """ Register a spec, abstract or concrete """
         if spec.name in self.specs:
             return
+        if TaskFlags.DISABLED in spec.flags:
+            logging.debug("Ignoring Registration of disabled task: %s", spec.name)
+            return
 
         self.specs[spec.name] = spec
+        self.register_artifacts(spec.name)
         logging.debug("Registered Spec: %s", spec.name)
-        match spec.head_spec():
+        match spec.job_top():
             case None:
                 pass
             case DootTaskSpec() as head:
                 self.specs[head.name] = head
                 logging.debug("Registered Head Spec: %s", head.name)
 
-    def add_artifact(self, artifact:DootTaskArtifact) -> None:
-        """ convert a path to an artifact, and connect it with matching artifacts """
-        self.artifacts.add(artifact)
-        logging.debug("Registered Artifact: %s", artifact)
+    def register_artifacts(self, name:DootTaskName) -> None:
+        """ Register the artifacts in a spec """
+        if name not in self.specs:
+            raise doot.errors.DootTaskTrackingError("tried to register artifacts of a non-registered spec", name)
+
+        spec = self.specs[name]
+        for rel in spec.depends_on + spec.required_for:
+            match rel:
+                case RelationSpec(target=DootTaskArtifact() as art) if art in self.artifacts:
+                    # Already Registered
+                    pass
+                case RelationSpec(target=DootTaskArtifact() as art):
+                    # Link artifact to its source task
+                    self.artifacts[art].append(spec.name)
+                    # Add it to the relevant abstract/concrete set
+                    if LocationMeta.abstract in art:
+                        self._abstract_artifacts.add(art)
+                    else:
+                        self._concrete_artifacts.add(art)
+                case _:
+                    pass
 
     def task_status(self, task:DootTaskName|DootTaskArtifact) -> TaskStatus_e:
         """ Get the status of a task """
@@ -283,6 +340,117 @@ class _TrackerNetwork:
 
         self._add_node(self._root_node)
 
+    def _add_node(self, name:DootTaskName|DootTaskArtifact) -> None:
+        """idempotent"""
+        match name:
+            case x if x is self._root_node:
+                self.network.add_node(name)
+                self.network.nodes[name][EXPANDED]     = True
+                self.network.nodes[name][REACTIVE_ADD] = False
+                self._root_node.meta                  |= TaskFlags.CONCRETE
+            case DootTaskName() if TaskFlags.CONCRETE not in name:
+                raise ValueError("Nodes should only be instantiated spec names")
+            case _ if name in self.network.nodes:
+                return
+            case _:
+                # Add node with metadata
+                self.network.add_node(name)
+                self.network.nodes[name][EXPANDED]     = False
+                self.network.nodes[name][REACTIVE_ADD] = False
+
+    def _expand_task_node(self, name:DootTaskName) -> set[DootTaskName|DootTaskArtifact]:
+        """ expand a task node, instantiating and connecting to its dependencies and dependents,
+        *without* expanding those new nodes.
+        returns a list of the new nodes tasknames
+        """
+        assert(TaskFlags.CONCRETE in name)
+        assert(not self.network.nodes[name].get(EXPANDED, False))
+        spec       = self.specs[name]
+        spec_pred, spec_succ = self.network.pred[name], self.network.succ[name]
+        deps, reqs = spec.depends_on, spec.required_for
+        # TODO possibly filter deps and reqs by existing pred and succs that are abstract < concrete
+        self._assert_specs_exists(deps + reqs)
+        to_expand  = set()
+        logging.debug("Expanding: %s : Pre(%s), Post(%s)", name, [str(x) for x in deps], [str(x) for x in reqs])
+        for rel, is_dep_p in chain(zip(deps, cycle([True])), zip(reqs, cycle([False]))):
+            relevant_edges = spec_pred if is_dep_p else spec_succ
+            match rel:
+                case DootActionSpec():
+                    # Action specs are no-ops in the tracker
+                    continue
+                case RelationSpec(target=DootTaskName() as target) if rel.match_simple_edge(relevant_edges.keys()):
+                    # already linked, ignore.
+                    continue
+                case RelationSpec(target=DootTaskArtifact() as target):
+                    # An artifact relation
+                    self.connect(*rel.to_edge(name))
+                    to_expand.add(target)
+                case RelationSpec(target=DootTaskName(), constraints=list()):
+                    # Get specs and instances with matching target
+                    instance = self._instantiate_respecting_constraints(rel, control=name)
+                    self.connect(*rel.to_edge(name, instance=instance))
+                    to_expand.add(instance)
+                    continue
+                case RelationSpec(target=DootTaskName() as target):
+                    assert(TaskFlags.CONCRETE not in target)
+                    assert(rel.constraints is None)
+                    instance : DootTaskName = self._instantiate_spec(target)
+                    self.connect(*rel.to_edge(name, instance=instance))
+                    to_expand.add(instance)
+                case RelationSpec(target=DootTaskName() as target):
+                    # already in network, connected, expanded: pass
+                    pass
+                case _:
+                    raise doot.errors.DootTaskTrackingError("Unknown dependency or requirement", spec, d)
+        else:
+            assert(name in self.network.nodes)
+            self.network.nodes[name][EXPANDED] = True
+        return to_expand
+
+    def _expand_artifact(self, artifact:DootTaskArtifact) -> set[DootTaskName|DootTaskArtifact]:
+        assert(artifact in self.artifacts)
+        assert(not self.network.nodes[artifact].get(EXPANDED, False))
+        logging.debug("Expanding Artifact: %s", artifact)
+        to_expand = set()
+
+        for name in [x for x in self.artifacts[artifact]]:
+            if TaskFlags.CONCRETE in name:
+                instance = name
+                self.connect(instance, False)
+                to_expand.add(instance)
+            elif bool(self.concrete[name]):
+                for instance in self.concrete[name]:
+                    self.connect(instance, False)
+                    to_expand.add(instance)
+            else:
+                instance = self._instantiate_spec(name)
+                self.connect(instance, False)
+                to_expand.add(instance)
+
+        match artifact.is_concrete:
+            case True:
+                # connect to any matching abstract artifacts
+                for abs in [x for x in self._abstract_artifacts if artifact in x]:
+                    self.connect(artifact, abs)
+                    to_expand.add(abs)
+            case False:
+                # connect to any matching concrete artifacts
+                for conc in [x for x in self._concrete_artifacts if x in artifact]:
+                    self.connect(conc, artifact)
+                    to_expand.add(conc)
+                pass
+
+        return to_expand
+
+    def _fixup_artifacts(self) -> None:
+        """
+        connect matching concrete and abstract artifacts in the network
+        """
+        if not bool(self.artifacts):
+            return
+
+        # raise NotImplementedError()
+
     def concrete_edges(self, name:DootTaskName|DootTaskArtifact) -> tomlguard.TomlGuard:
         """ get the concrete edges of a task.
           ie: the ones in the task network, not the abstract ones in the spec.
@@ -292,120 +460,13 @@ class _TrackerNetwork:
         succ  = self.network.succ[name]
         return tomlguard.TomlGuard({
             "pred" : {"tasks": [x for x in preds if isinstance(x, DootTaskName)],
-                      "artifacts": {"abstract": [x for x in preds if isinstance(x, DootTaskArtifact) and not x.is_definite],
-                                    "concrete": [x for x in preds if isinstance(x, DootTaskArtifact) and x.is_definite]}},
+                      "artifacts": {"abstract": [x for x in preds if isinstance(x, DootTaskArtifact) and not x.is_concrete],
+                                    "concrete": [x for x in preds if isinstance(x, DootTaskArtifact) and x.is_concrete]}},
             "succ" : {"tasks": [x for x in succ  if isinstance(x, DootTaskName) and x is not self._root_node],
-                      "artifacts": {"abstract": [x for x in succ if isinstance(x, DootTaskArtifact) and not x.is_definite],
-                                    "concrete": [x for x in succ if isinstance(x, DootTaskArtifact) and x.is_definite]}},
+                      "artifacts": {"abstract": [x for x in succ if isinstance(x, DootTaskArtifact) and not x.is_concrete],
+                                    "concrete": [x for x in succ if isinstance(x, DootTaskArtifact) and x.is_concrete]}},
             "root" : self._root_node in succ,
             })
-
-    def _add_node(self, name:DootTaskName|DootTaskArtifact) -> None:
-        "idempotent'"
-        match name:
-            case x if x is self._root_node:
-                self.network.add_node(name)
-                self.network.nodes[name][EXPANDED]     = True
-                self.network.nodes[name][REACTIVE_ADD] = False
-                self._root_node.meta                  |= TaskFlags.CONCRETE
-            case DootTaskName() if TaskFlags.CONCRETE not in name.meta:
-                raise ValueError("Nodes should only be instantaited spec names")
-            case _ if name in self.network.nodes:
-                return
-            case _:
-                # Add node with metadata
-                self.network.add_node(name)
-                self.network.nodes[name][EXPANDED]     = False
-                self.network.nodes[name][REACTIVE_ADD] = False
-
-    def _expand_task_node(self, name:DootTaskName) -> set[DootTaskName]:
-        """ expand a task node, instantiating and connecting to its dependencies and dependents,
-        *without* expanding those new nodes.
-        returns a list of the new nodes tasknames
-        """
-        assert(TaskFlags.CONCRETE in name.meta)
-        assert(not self.network.nodes[name].get(EXPANDED, False))
-        spec       = self.specs[name]
-        deps, reqs = spec.depends_on, spec.required_for
-        # TODO possibly filter deps and reqs by existing pred and succs that are abstract < concrete
-        self._assert_specs_exists(deps + reqs)
-        to_expand  = set()
-        logging.debug("Expanding: %s : Pre(%s), Post(%s)", name, [str(x) for x in deps], [str(x) for x in reqs])
-        for d, is_dep in chain(zip(deps, cycle([True])), zip(reqs, cycle([False]))):
-            match d:
-                case DootTaskName() if d in self.concrete and bool(self.concrete[d]):
-                    instance : DootTaskName = self.concrete[d][0]
-                    edge     = (instance, spec.name) if is_dep else (spec.name, instance)
-                    self.connect(*edge)
-                    to_expand.add(instance)
-                case DootTaskName() if d not in self.network.nodes: # completely missing. build, connect, queue
-                    logging.debug("Building %s : %s", "dep" if is_dep else "succ", d)
-                    instance : DootTaskName = self._instantiate_spec(d)
-                    edge     = (instance, spec.name) if is_dep else (spec.name, instance)
-                    self.connect(*edge)
-                    to_expand.add(instance)
-                case DootTaskName() if not (d in self.network.pred[name] or d in self.network.succ[name]):
-                    # in network, but not connected to the node of interest.
-                    edge     = (d, spec.name) if is_dep else (spec.name, d)
-                    self.connect(*edge)
-                    to_expand.add(d)
-                case DootTaskName() if not self.network.nodes[d].get(EXPANDED, False): # in network, connected, Queue for expansion
-                    to_expand.add(d)
-                case DootTaskName(): # already in network, connected, expanded: pass
-                    pass
-                case DependencySpec():
-                    # Get specs and instances with matching target
-                    instance = self._match_dep_on_spec(spec, d, is_dep=is_dep)
-                    to_expand.add(instance)
-                case DootTaskArtifact():
-                    edge     = (d, spec.name) if is_dep else (spec.name, d)
-                    self.connect(*edge)
-                case DootActionSpec():
-                    # Action specs are no-ops in the tracker
-                    pass
-                case _:
-                    raise doot.errors.DootTaskTrackingError("Unknown dependency or requirement", spec, d)
-        else:
-            assert(name in self.network.nodes)
-            self.network.nodes[name][EXPANDED] = True
-        return to_expand
-
-    def _match_dep_on_spec(self, current:DootTaskSpec, dep:DependencySpec, *, is_dep:bool=False) -> DootTaskSpec:
-        """ find a matching dependency/requirement according to a set of keys in the spec, or create a matching instance """
-        matching_names, looking_for, keys = [], dep.task, dep.keys
-        if looking_for not in self.specs:
-            raise doot.errors.DootTaskTrackingError("unknown dependency mentioned", looking_for, current.name)
-
-        match self.concrete[looking_for]:
-            case []:
-                pass
-            case [*xs]: # instances, test them
-                specs = [self.specs[x] for x in xs]
-                matching_names += [x.name for x in specs if all([(current.extra[k]==x.extra[k]) for k in keys])]
-
-        match matching_names:
-            case []: # No matches, instantiate
-                extra = {k:current.extra[k] for k in keys}
-                instance : DootTaskName = self._instantiate_spec(looking_for, extra=extra)
-                edge     = (instance, current.name) if is_dep else (current.name, instance)
-                self.connect(*edge)
-                return instance
-            case [x]: # One match, connect it
-                instance : DootTaskName = x
-                edge     = (instance, current.name) if is_dep else (current.name, instance)
-                self.connect(*edge)
-                return instance
-            case [*xs]:
-                raise doot.errors.DootTaskTrackingError("multiple matches occured, this shouldn't be possible", current.name, looking_for, xs)
-
-    def _fixup_artifacts(self) -> None:
-        """
-        connect matching concrete and abstract artifacts in the network
-        """
-        if not bool(self.artifacts):
-            return
-
-        raise NotImplementedError()
 
     def connect(self, left:None|DootTaskName|DootTaskArtifact, right:None|False|DootTaskName|DootTaskArtifact=None) -> None:
         """
@@ -463,7 +524,7 @@ class _TrackerNetwork:
             match node:
                 case DootTaskName() if not data[EXPANDED]:
                     raise doot.errors.DootTaskTrackingError("Network isn't fully expanded", node)
-                case DootTaskName() if TaskFlags.CONCRETE not in node.meta:
+                case DootTaskName() if TaskFlags.CONCRETE not in node:
                     raise doot.errors.DootTaskTrackingError("Abstract Node in network", node)
                 case DootTaskArtifact():
                     pass
@@ -487,11 +548,13 @@ class _TrackerNetwork:
                     processed.add(x)
                 case DootTaskName() as x:
                     additions = self._expand_task_node(x)
-                    logging.debug("Expansion produced: %s", additions)
+                    logging.debug("Task Expansion produced: %s", additions)
                     queue    += additions
                     processed.add(x)
                 case DootTaskArtifact() as x:
-                    # TODO connect to matching definite and indefinite tasks
+                    additions = self._expand_artifact(x)
+                    logging.debug("Artifact Expansion produced: %s", additions)
+                    queue += additions
                     processed.add(x)
                     pass
         else:
