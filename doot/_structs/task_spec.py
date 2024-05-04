@@ -7,7 +7,6 @@ See EOF for license/metadata/notes as applicable
 ##-- builtin imports
 from __future__ import annotations
 
-# import abc
 import datetime
 import enum
 import functools as ftz
@@ -18,10 +17,9 @@ import re
 import time
 import types
 import weakref
-# from copy import deepcopy
 from dataclasses import InitVar, dataclass, field, _MISSING_TYPE
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
+                    Iterable, Iterator, Mapping, Match, MutableMapping, Self,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable, Generator)
 from uuid import UUID, uuid1
@@ -36,7 +34,7 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError, BeforeValidator
+from pydantic import BaseModel, Field, model_validator, field_validator, BeforeValidator, WrapValidator, ValidationInfo, ValidatorFunctionWrapHandler
 from typing_extensions import Annotated
 from dataclasses import fields
 import importlib
@@ -44,45 +42,43 @@ from importlib.metadata import EntryPoint
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.enums import TaskFlags, ReportEnum, TaskQueueMeta
+from doot.enums import TaskFlags, ReportEnum, TaskQueueMeta, RelationMeta
 from doot._structs.task_name import DootTaskName
 from doot._structs.code_ref import DootCodeReference
 from doot._structs.action_spec import DootActionSpec
 from doot._structs.artifact import DootTaskArtifact
-from doot._structs.toml_loc import TomlLocation
 from doot._abstract.structs import SpecStruct_p
 from doot._abstract.task import Task_i
-from doot._structs.dependency_spec import DependencySpec
+from doot._structs.relation_spec import RelationSpec
 
-def _prepare_action_group(deps:list[str]) -> list[DootTaskArtifact|DootTaskName]:
+def _prepare_action_group(deps:list[str], handler:ValidatorFunctionWrapHandler, info:ValidationInfo) -> list[RelationSpec|DootActionSpec]:
     """
       Prepares action groups / dependencies,
       converting toml specified strings, list, and dicts to Artifacts (ie:files), Task Names, ActionSpecs
+
+      As a wrap handler, it has the context of what field is being processed,
+      this allows it to set the correct RelationMeta type
+
       # TODO handle callables?
     """
     results = []
     if deps is None:
         return results
+
+    relation_type = RelationMeta.dependsOn if info.field_name not in DootTaskSpec._dependant_groups else RelationMeta.dependantOf
     for x in deps:
         match x:
+            case DootActionSpec() | RelationSpec():
+                results.append(x)
             case { "do": action  }:
                 results.append(DootActionSpec.build(x))
-            case { "loc": filename }:
-                results.append(DootTaskArtifact.build(x))
-            case { "task": taskname }:
-                results.append(DependencySpec.build(x))
-            case str() if x.startswith(doot.constants.patterns.FILE_DEP_PREFIX):
-                results.append(DootTaskArtifact.build(x))
-            case str() if doot.constants.patterns.TASK_SEP in x:
-                results.append(DootTaskName.build(x))
-            case DootTaskName() | DootTaskArtifact() | DootActionSpec() | DependencySpec():
-                results.append(x)
             case _:
-                raise ValueError(f"Unrecognised task pre/post dependency form. (Remember: files are prefixed with `{doot.constants.patterns.FILE_DEP_PREFIX}`, tasks are in the form group::name)", x)
+                results.append(RelationSpec.build(x, relation=relation_type))
 
-    return results
+    return handler(results)
 
-ActionGroup = Annotated[list[DootTaskName|DootTaskArtifact|DootActionSpec|DependencySpec], BeforeValidator(_prepare_action_group)]
+
+ActionGroup = Annotated[list[DootActionSpec|RelationSpec], WrapValidator(_prepare_action_group)]
 
 class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
     """ The information needed to describe a generic task.
@@ -116,9 +112,11 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
     _allowed_print_locs   : ClassVar[list[str]] = doot.constants.printer.PRINT_LOCATIONS
     _allowed_print_levels : ClassVar[list[str]] = ["INFO", "WARNING", "DEBUG", "EXCEPTION"]
     _action_group_wipe    : ClassVar[dict]      = {"required_for": [], "setup": [], "actions": [], "depends_on": []}
+    # Action Groups that are dependant on, rather than are dependencies of, the task:
+    _dependant_groups    : ClassVar[list[str]]  = ["required_for", "cleanup", "on_fail"]
 
     @staticmethod
-    def build(data:TomlGuard|dict|DootTaskName|str):
+    def build(data:TomlGuard|dict|DootTaskName|str) -> Self:
         match data:
             case TomlGuard() | dict():
                 return DootTaskSpec.model_validate(data)
@@ -128,8 +126,8 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
                 return DootTaskSpec(name=DootTaskName.build(data))
 
     @model_validator(mode="before")
-    def _convert_toml_keys(cls, data):
-        """ converts a-key into a_key """
+    def _convert_toml_keys(cls, data:dict) -> dict:
+        """ converts a-key into a_key, and joins group+name """
         cleaned = {k.replace("-","_") : v  for k,v in data.items()}
         if "group" in cleaned and DootTaskName._separator not in cleaned["name"]:
             cleaned['name'] = DootTaskName._separator.join([cleaned['group'], cleaned['name']])
@@ -139,12 +137,19 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
     @model_validator(mode="after")
     def _validate_metadata(self):
         self.flags |= self.name.meta
-        match self.ctor.try_import():
-            case x if issubclass(x, Task_i):
-                self.flags |= x._default_flags
-                self.name.meta |= x._default_flags
-            case x:
-                pass
+        if self.extra.on_fail(False).disabled():
+            self.flags |= TaskFlags.DISABLED
+        try:
+            match self.ctor.try_import():
+                case x if issubclass(x, Task_i):
+                    self.flags |= x._default_flags
+                    self.name.meta |= x._default_flags
+                case x:
+                    pass
+        except ImportError as err:
+            logging.warning("Ctor Import Failed for: %s : %s", self.name, self.ctor)
+            self.flags |= TaskFlags.DISABLED
+            self.ctor = None
 
         return self
 
@@ -171,6 +176,7 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
     def _validate_ctor(cls, val):
         match val:
             case None:
+
                 default_alias = DootTaskSpec._default_ctor
                 coderef_str   = doot.aliases.task[default_alias]
                 return DootCodeReference.build(coderef_str)
@@ -271,12 +277,6 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
         task_ctor = self.ctor.try_import(ensure=ensure)
         return task_ctor(self)
 
-    def check(self, ensure=Any):
-        if self.ctor.module == "default":
-            return True
-        self.ctor.try_import(ensure=ensure)
-        return True
-
     def __hash__(self):
         return hash(str(self.name))
 
@@ -293,9 +293,9 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
         # TODO: use introspection on the model to get any fields annotated as an ActionGroup
         return [self.depends_on, self.setup, self.actions, self.cleanup, self.on_fail]
 
-    def head_spec(self) -> None|DootTaskSpec:
+    def job_top(self) -> None|DootTaskSpec:
         """
-          Generate a head taskspec for a job, taking the jobs cleanup actions
+          Generate a top spec for a job, taking the jobs cleanup actions
           and using them as the head's main action.
           Depends on the job, and its reactively queued.
         """
@@ -320,3 +320,39 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
             "flags"           : self.flags | TaskFlags.JOB_HEAD,
             })
         return head
+
+    def match_with_constraints(self, control:DootTaskSpec, *, relation:None|RelationSpec=None) -> bool:
+        """ Test this spec to see if it matches a spec,
+          when using a given relation and a given controlling spec to source values from
+
+          if not given a relation, acts as a coherence check between
+          self(a concrete spec) and control(the abstract source spec)
+          """
+        match relation:
+            case None:
+                assert(control.name < self.name)
+                constriants = control.extra.keys()
+            case RelationSpec(constraints=None):
+                return True
+            case RelationSpec(constraints=constraints):
+                assert(relation.target < self.name)
+
+
+        extra         = self.extra
+        control_extra = control.extra
+        for k in constraints:
+            if k not in extra:
+                return False
+            if extra[k] != control_extra[k]:
+                return False
+        else:
+            return True
+
+    def build_relevant_data(self, context:RelationSpec) -> dict:
+        """ Builds a dict of the data a matching spec will need, according
+          to a relations constraints.
+        """
+        if not bool(context.constraints):
+            return {}
+        extra = self.extra
+        return {k:extra[k] for k in context.constraints}
