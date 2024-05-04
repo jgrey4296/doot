@@ -34,7 +34,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import more_itertools as mitz
-from pydantic import (BaseModel, Field, InstanceOf, ValidationError,
+from pydantic import (BaseModel, Field, InstanceOf,
                       field_validator, model_validator)
 from tomlguard import TomlGuard
 

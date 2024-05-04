@@ -199,8 +199,6 @@ class DootTaskLoader(TaskLoader_p):
             task_alias = "task"
             try:
                 match spec:
-                    case {"name": task_name, "disable" : True}: # Disabled specs
-                        logging.info("Spec is disabled: %s", task_name)
                     # case {"name": task_name} if task_name in command_names:
                     #     raise doot.errors.DootTaskLoadError("Name conflict: %s is already a Command", task_name)
                     case {"name": task_name, "group": group} if dont_allow_overloads(task_name, group): # complain on overload
@@ -213,7 +211,6 @@ class DootTaskLoader(TaskLoader_p):
                         if str(task_spec.name) in task_descriptions:
                             logging.warning("Overloading Task: %s : %s", str(task_spec.name), task_alias)
 
-                        task_spec.check(ensure=Task_i)
                         task_descriptions[str(task_spec.name)] = task_spec
                     case {"name": task_name}:
                         logging.info("Building Task: %s", task_name)
@@ -221,7 +218,6 @@ class DootTaskLoader(TaskLoader_p):
                         if str(task_spec.name) in task_descriptions:
                             logging.warning("Overloading Task: %s : %s", str(task_spec.name), str(task_spec.ctor))
 
-                        task_spec.check(ensure=Task_i)
                         task_descriptions[str(task_spec.name)] = task_spec
 
                     case _: # Else complain

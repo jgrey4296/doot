@@ -37,7 +37,7 @@ logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
-from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+from pydantic import BaseModel, Field, model_validator, field_validator
 import decorator
 import abc
 import string
@@ -234,8 +234,9 @@ class DootKey(abc.ABC):
       DootMultiKeys are containers of a string `value`, and a list of SimpleKeys the value contains.
       So DootKey.build("{blah}/{bloo}") -> DootMultiKey("{blah}/{bloo}", [DootSimpleKey("blah", DootSimpleKey("bloo")]) -> .form == "{blah}/{bloo}"
     """
-    dec   : ClassVar[type] = KeyDecorator
-    kwrap : ClassVar[type] = KeyDecorator
+    dec      : ClassVar[type]      = KeyDecorator
+    kwrap    : ClassVar[type]      = KeyDecorator
+    _pattern : ClassVar[re.Pattern] = PATTERN
 
     @staticmethod
     def build(s:str|DootKey|pl.Path|dict, *, strict=False, explicit=False, exp_hint:str|dict=None, help=None) -> DootKey:

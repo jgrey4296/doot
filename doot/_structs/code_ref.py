@@ -36,7 +36,7 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from pydantic import field_validator, ValidationError, model_validator
+from pydantic import field_validator, model_validator
 import importlib
 from importlib.metadata import EntryPoint
 from tomlguard import TomlGuard

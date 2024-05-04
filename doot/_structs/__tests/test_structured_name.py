@@ -14,7 +14,6 @@ import pytest
 
 logging = logmod.root
 
-from pydantic import ValidationError
 import doot
 # doot._test_setup()
 from doot._structs.structured_name import StructuredName

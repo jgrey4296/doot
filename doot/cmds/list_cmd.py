@@ -99,8 +99,11 @@ class ListCmd(BaseCommand):
         printer.info("Tasks for Pattern: %s", pattern)
         for key in matches:
             spec = tasks[key]
-            if TaskFlags.INTERNAL in spec.name.meta and not doot.args.cmd.args.internal:
+            if TaskFlags.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
                 continue
+            if TaskFlags.DISABLED in spec.flags:
+                continue
+
 
             printer.info(fmt_str,
                          spec.name,
@@ -115,7 +118,9 @@ class ListCmd(BaseCommand):
         for name, spec in tasks.items():
             if pattern not in name:
                 continue
-            if TaskFlags.INTERNAL in spec.name.meta and not doot.args.cmd.args.internal:
+            if TaskFlags.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
+                continue
+            if TaskFlags.DISABLED in spec.flags:
                 continue
 
             groups[spec.name.group].append((spec.name.task,
@@ -135,8 +140,11 @@ class ListCmd(BaseCommand):
         fmt_str = f"{INDENT}%-{max_key}s :: %-60s :: <Source: %s>"
         groups  = defaultdict(list)
         for spec in tasks.values():
-            if TaskFlags.INTERNAL in spec.name.meta and not doot.args.cmd.args.internal:
+            if TaskFlags.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
                 continue
+            if TaskFlags.DISABLED in spec.flags:
+                continue
+
 
             groups[spec.name.group].append((spec.name.task,
                                                   (spec.doc[0] if bool(spec.doc) else "")[:60],
@@ -156,7 +164,9 @@ class ListCmd(BaseCommand):
         fmt_str = f"{INDENT}%-{max_key}s :: %s.%-25s"
         sources = defaultdict(list)
         for key, spec in tasks.items():
-            if TaskFlags.INTERNAL in spec.name.meta and not doot.args.cmd.args.internal:
+            if TaskFlags.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
+                continue
+            if TaskFlags.DISABLED in spec.flags:
                 continue
 
             sources[spec.source].append((spec.name.task,

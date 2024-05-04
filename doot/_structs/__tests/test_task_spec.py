@@ -14,7 +14,6 @@ import warnings
 import pytest
 logging = logmod.root
 
-from pydantic import ValidationError
 import tomlguard
 import doot
 import doot.errors
@@ -90,14 +89,20 @@ class TestDootTaskSpec:
         assert(obj.name.group == "agroup")
         assert(obj.name.task == "atask")
 
+
+    def test_disabled_spec(self):
+        obj = structs.DootTaskSpec.build({"name": "agroup::atask", "disabled":True})
+        assert(isinstance(obj, structs.DootTaskSpec))
+        assert(TaskFlags.DISABLED in obj.flags)
+
 class TestTaskSpecValidation:
 
     def test_print_level_fail_on_loc(self):
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValueError):
             structs.DootTaskSpec.build({"name":"simple::test", "print_levels":{"blah":"INFO"}})
 
     def test_print_level_fail_on_level(self):
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValueError):
             structs.DootTaskSpec.build({"name":"simple::test", "print_levels":{"head":"blah"}})
 
     def test_flag_build(self):

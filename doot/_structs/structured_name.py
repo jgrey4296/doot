@@ -36,7 +36,7 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from pydantic import BaseModel, Field, field_validator, ValidationError
+from pydantic import BaseModel, Field, field_validator
 import importlib
 from tomlguard import TomlGuard
 import doot
@@ -87,7 +87,7 @@ class StructuredName(BaseModel):
             case list():
                 head = ftz.reduce(lambda x, y: x + y, map(sub_split, head))
             case _:
-                raise ValidationError("Bad Head Value", head)
+                raise ValueError("Bad Head Value", head)
 
         return head
 
@@ -100,7 +100,7 @@ class StructuredName(BaseModel):
             case list():
                 tail = ftz.reduce(lambda x, y: x + y, map(sub_split, tail))
             case _:
-                raise ValidationError("Bad Tail Value", tail)
+                raise ValueError("Bad Tail Value", tail)
         return tail
 
     def __hash__(self):

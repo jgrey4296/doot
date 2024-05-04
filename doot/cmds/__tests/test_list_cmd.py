@@ -82,6 +82,33 @@ class TestListCmd:
         mock_class2.__name__   = "other.type"
         plugin_mock = {"reporter": [mocker.stub("Reporter Stub")]}
         job_mock = {
+            "simple" : DootTaskSpec.build({"group": "blah", "name": "simple"}), # "ctor": mock_class1}),
+            "other"  : DootTaskSpec.build({"group": "bloo", "name": "other"}),  # "ctor": mock_class2})
+            }
+        obj(job_mock, plugin_mock)
+        message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
+
+        assert("defined task generators by group:" in message_set)
+        assert(any(x.startswith("simple :: ") for x in message_set) )
+        assert(any(x.startswith("other  :: ") for x in message_set) )
+
+
+    def test_list_even_with_ctor_failure(self, caplog, mocker):
+        mocker.patch("doot.args")
+        del doot.args.cmd.args.keys
+        doot.args.cmd.args.__iter__.return_value = iter([("pattern", ""), ("all", True)])
+        doot.args.cmd.args.pattern = ""
+        doot.args.cmd.args.all     = True
+
+        obj = ListCmd()
+        mock_class1 = mocker.MagicMock(type)
+        mock_class1.__module__ = "builtins"
+        mock_class1.__name__   = "type"
+        mock_class2 = mocker.MagicMock(type)
+        mock_class2.__module__ = "builtins"
+        mock_class2.__name__   = "other.type"
+        plugin_mock = {"reporter": [mocker.stub("Reporter Stub")]}
+        job_mock = {
             "simple" : DootTaskSpec.build({"group": "blah", "name": "simple", "ctor": mock_class1}),
             "other"  : DootTaskSpec.build({"group": "bloo", "name": "other", "ctor": mock_class2})
             }
@@ -90,7 +117,7 @@ class TestListCmd:
 
         assert("defined task generators by group:" in message_set)
         assert(any(x.startswith("simple :: ") for x in message_set) )
-        assert(any(x.startswith("other  :: ") for x in message_set) )
+        assert(any(x.startswith("ctor import failed") for x in message_set) )
 
     def test_call_target_not_empty(self, caplog, mocker):
         mocker.patch("doot.args")
