@@ -35,6 +35,27 @@ class TestDootTaskName:
         assert(simple.head == [ "basic"])
         assert(simple.tail == ["tail"])
 
+    def test_build_job(self):
+        simple = DootTaskName.build("basic.+::tail")
+        assert(simple.head == [ "basic", "+"])
+        assert(simple.tail == ["tail"])
+        assert(TaskFlags.JOB in simple)
+
+    def test_build_internal_job(self):
+        simple = DootTaskName.build("basic.+::_.tail")
+        assert(simple.head == [ "basic", "+"])
+        assert(simple.tail == ["_", "tail"])
+        assert(TaskFlags.JOB in simple)
+        assert(TaskFlags.INTERNAL in simple)
+
+    def test_internal(self):
+        simple = DootTaskName.build("agroup::_.internal.task")
+        assert(TaskFlags.INTERNAL in simple)
+
+    def test_no_internal(self):
+        simple = DootTaskName.build("agroup::_internal.task")
+        assert(TaskFlags.INTERNAL not in simple)
+
     def test_name_with_leading_tasks(self):
         simple = DootTaskName.build("tasks.basic::tail")
         assert(simple.head == [ "basic"])
@@ -72,14 +93,6 @@ class TestDootTaskName:
     def test_subgroups_str(self):
         simple = DootTaskName.build("basic.sub.test::tail")
         assert(str(simple) == "\"basic.sub.test\"::tail")
-
-    def test_internal(self):
-        simple = DootTaskName.build("agroup::_.internal.task")
-        assert(TaskFlags.INTERNAL in simple.meta)
-
-    def test_root_is_self(self):
-        simple = DootTaskName.build("agroup::internal.task")
-        assert(simple.root() == simple)
 
 class TestTaskNameComparison:
 
@@ -213,21 +226,6 @@ class TestTaskNameExtension:
         sub    = simple.subtask("blah")
         assert(str(sub) == "\"basic.sub.test\"::tail.blah")
 
-    @pytest.mark.xfail
-    def test_subtask_root(self):
-        simple = DootTaskName.build("basic.sub.test::tail")
-        sub    = simple.subtask("blah")
-        assert(sub.root() == simple)
-
-    @pytest.mark.xfail
-    def test_subtask_root_from_str(self):
-        simple = DootTaskName.build("basic.sub.test::tail")
-        sub    = simple.subtask("blah")
-        sub_from_str = DootTaskName.build("basic.sub.test::tail.blah")
-        assert(sub.root() == simple)
-        assert(sub == sub_from_str)
-        assert(sub_from_str.root() == simple)
-
     def test_subtask_with_more_groups(self):
         simple = DootTaskName.build("basic.sub.test::tail")
         assert(str(simple) == "\"basic.sub.test\"::tail")
@@ -275,12 +273,10 @@ class TestTaskNameExtension:
         assert(sub in simple)
         assert(sub.last() == DootTaskName._head_marker)
 
-
     def test_head_only_on_instances(self):
         simple = DootTaskName.build("basic.sub.test::tail")
         head = simple.job_head()
         assert(head.last() == DootTaskName._head_marker)
-
 
     def test_head_is_idempotent(self):
         simple             = DootTaskName.build("basic.sub.test::tail")
@@ -290,6 +286,103 @@ class TestTaskNameExtension:
         assert(sub.last()  == DootTaskName._head_marker)
         assert(sub2.last() == DootTaskName._head_marker)
         assert(sub is sub2)
+
+class TestNameRoots:
+
+    def test_root_eq(self):
+        simple  = DootTaskName.build("basic::tail.")
+        simple2 = DootTaskName.build("basic::tail.")
+        assert(simple is not simple2)
+        assert(str(simple) == str(simple2))
+
+    def test_root_eq_fail(self):
+        simple = DootTaskName.build("basic::tail.")
+        simple2 = DootTaskName.build("basic::bloo.")
+        assert(simple is not simple2)
+        assert(simple != simple2)
+
+
+    def test_root_lt(self):
+        simple = DootTaskName.build("basic::tail.")
+        simple2 = DootTaskName.build("basic::tail..b.c")
+        assert(simple is not simple2)
+        assert(simple < simple2)
+
+
+    def test_root_lt_fail(self):
+        simple = DootTaskName.build("basic::tail.")
+        simple2 = DootTaskName.build("basic::tail.b.c")
+        assert(simple is not simple2)
+        assert(not simple < simple2)
+
+
+    def test_root_contains(self):
+        simple = DootTaskName.build("basic::tail.")
+        simple2 = DootTaskName.build("basic::tail..b.c")
+        assert(simple is not simple2)
+        assert(simple2 in simple)
+
+
+    def test_root_contains_fail(self):
+        simple = DootTaskName.build("basic::tail.")
+        simple2 = DootTaskName.build("basic::tail.b.c")
+        assert(simple is not simple2)
+        assert(simple2 not in simple)
+
+    def test_root_is_self(self):
+        simple = DootTaskName.build("agroup::simple.task")
+        assert(simple.root() == simple)
+        assert(simple._roots == (-1, -1))
+
+    def test_root_basic(self):
+        simple = DootTaskName.build("agroup::simple.task..a")
+        assert(simple.root() == "agroup::simple.task.")
+        assert(simple._roots == (2, 2))
+
+    def test_root_subtask_preserves_marker(self):
+        simple = DootTaskName.build("agroup::simple.task..a")
+        root = simple.root()
+        assert(root == "agroup::simple.task.")
+        assert(root.subtask("blah") == "agroup::simple.task..blah")
+        assert(simple._roots == (2, 2))
+
+    def test_root_multi(self):
+        simple = DootTaskName.build("agroup::simple.task..a.c..d.e.f")
+        assert(simple._roots == (2, 5))
+        assert(simple.root() == "agroup::simple.task..a.c.")
+        assert(simple.root()._roots == (2, 2))
+
+    def test_root_multi_repeat(self):
+        simple = DootTaskName.build("agroup::simple.task..a.c..d.e.f")
+        assert(simple._roots == (2, 5))
+        assert(simple.root() == "agroup::simple.task..a.c.")
+        assert(simple.root()._roots == (2, 2))
+        assert(simple.root().root() == "agroup::simple.task.")
+        assert(simple.root().root()._roots == (-1, -1))
+
+    def test_root_multi_end(self):
+        simple = DootTaskName.build("agroup::simple.task..a.c..d.e.f")
+        assert(simple._roots == (2, 5))
+        assert(simple.root().root().root() == simple.root().root())
+
+    def test_root_multi_jump_to_top(self):
+        simple = DootTaskName.build("agroup::simple.task..a.c..d.e.f")
+        assert(simple.root(top=True) == "agroup::simple.task.")
+        assert(simple.root().root() == "agroup::simple.task.")
+        assert(simple.root().root().root() == simple.root(top=True))
+
+    def test_subtask_root(self):
+        simple = DootTaskName.build("basic.sub.test::tail.")
+        sub    = simple.subtask("blah")
+        assert(sub.root() == simple)
+
+    def test_subtask_root_from_str(self):
+        simple = DootTaskName.build("basic.sub.test::tail.")
+        sub    = simple.subtask("blah")
+        sub_from_str = DootTaskName.build("basic.sub.test::tail..blah")
+        assert(sub.root() == simple)
+        assert(sub == sub_from_str)
+        assert(sub_from_str.root() == simple)
 
 class TestTaskNameStructInteraction:
 
