@@ -289,6 +289,16 @@ class TestTaskNameExtension:
 
 class TestNameRoots:
 
+    def test_add_root(self):
+        simple  = DootTaskName.build("basic::tail")
+        simple2 = DootTaskName.build("basic::tail.")
+        added_root = simple.add_root()
+
+        assert(simple != simple2)
+        assert(added_root == simple2)
+        assert(str(simple) != str(simple2))
+        assert(str(added_root) == str(simple2))
+
     def test_root_eq(self):
         simple  = DootTaskName.build("basic::tail.")
         simple2 = DootTaskName.build("basic::tail.")
@@ -301,13 +311,11 @@ class TestNameRoots:
         assert(simple is not simple2)
         assert(simple != simple2)
 
-
     def test_root_lt(self):
         simple = DootTaskName.build("basic::tail.")
         simple2 = DootTaskName.build("basic::tail..b.c")
         assert(simple is not simple2)
         assert(simple < simple2)
-
 
     def test_root_lt_fail(self):
         simple = DootTaskName.build("basic::tail.")
@@ -315,13 +323,11 @@ class TestNameRoots:
         assert(simple is not simple2)
         assert(not simple < simple2)
 
-
     def test_root_contains(self):
         simple = DootTaskName.build("basic::tail.")
         simple2 = DootTaskName.build("basic::tail..b.c")
         assert(simple is not simple2)
         assert(simple2 in simple)
-
 
     def test_root_contains_fail(self):
         simple = DootTaskName.build("basic::tail.")

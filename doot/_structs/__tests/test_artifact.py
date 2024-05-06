@@ -137,3 +137,53 @@ class TestIndefiniteArtifact:
         definite = DootTaskArtifact.build(pl.Path("a/b/d/e/f/c.py"))
         indef    = DootTaskArtifact.build(pl.Path("**/*.*"))
         assert(definite in indef)
+
+class TestArtifactMatching:
+
+    def test_match_non_abstract(self):
+        obj = DootTaskArtifact.build({"key":"test", "loc":"test/blah.txt"})
+        target = pl.Path("test/blah.txt")
+        result = obj.match_with(target)
+        assert(result is None)
+
+    def test_match_no_stem_wildcard(self):
+        obj = DootTaskArtifact.build({"key":"test", "loc":"*/blah.txt"})
+        target = pl.Path("test/blah.txt")
+        result = obj.match_with(target)
+        assert(result is None)
+
+    def test_matching_stem(self):
+        obj = DootTaskArtifact.build({"key":"test", "loc":"test/?.txt"})
+        target = pl.Path("test/blah.txt")
+        result = obj.match_with(target)
+        assert(result.path == pl.Path("test/blah.txt"))
+
+    def test_matching_path(self):
+        obj = DootTaskArtifact.build({"key":"test", "loc":"*/?.blah"})
+        target = pl.Path("test/blah.txt")
+        result = obj.match_with(target)
+        assert(result.path == pl.Path("test/blah.blah"))
+
+    def test_matching_path_fail(self):
+        obj = DootTaskArtifact.build({"key":"test", "loc":"other/?.blah"})
+        target = pl.Path("test/blah.txt")
+        result = obj.match_with(target)
+        assert(result.path == pl.Path("other/blah.blah"))
+
+    def test_glob_matching(self):
+        obj = DootTaskArtifact.build({"key":"test", "loc":"*/?.blah"})
+        target = pl.Path("test/blah.txt")
+        result = obj.match_with(target)
+        assert(result.path == pl.Path("test/blah.blah"))
+
+    def test_rec_glob_matching(self):
+        obj = DootTaskArtifact.build({"key":"test", "loc":"**/?.blah"})
+        target = pl.Path("test/aweg/blah.txt")
+        result = obj.match_with(target)
+        assert(result.path == pl.Path("test/aweg/blah.blah"))
+
+    def test_suffix_matching(self):
+        obj = DootTaskArtifact.build({"key":"test", "loc":"other/?.?"})
+        target = pl.Path("test/aweg/blah.txt")
+        result = obj.match_with(target)
+        assert(result.path == pl.Path("other/blah.txt"))

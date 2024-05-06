@@ -109,6 +109,13 @@ class RelationSpec(BaseModel):
                 raise ValueError("Unparsable target str")
 
 
+    def __contains__(self, query:TaskFlags|LocationMeta) -> bool:
+        match self.target, query:
+             case DootTaskName(), TaskFlags():
+                 return query in self.target
+             case DootTaskArtifact(), LocationMeta():
+                 return query in self.target
+
     def to_edge(self, other:DootTaskName|DootTaskArtifact, *, instance:None|DootTaskName=None) -> tuple[DootTaskName|DootTaskArtifact, DootTaskName|DootTaskArtifact]:
         """ a helper to make an edge for the tracker.
           uses the current target, unless an instance is provided
@@ -133,3 +140,40 @@ class RelationSpec(BaseModel):
                 return True
 
         return False
+
+    def invert(self, source) -> RelationSpec:
+        """ Instead of X depends on Y,
+          get Y required for X
+        """
+        match self.relation:
+            case RelationMeta.dep:
+                relation = RelationMeta.req
+            case _:
+                relation = RelationMeta.dep
+
+        return RelationSpec(target=source, constraints=self.constraints, relation=relation)
+
+    def instantiate(self, target:DootTaskName|DootTaskArtifact):
+        """
+          Duplicate this relation, but with a suitable concrete task or artifact
+        """
+        match self.target, target:
+            case DootTaskName(), DootTaskArtifact():
+                raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target", self.target, target)
+            case DootTaskArtifact(), DootTaskName():
+                raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target", self.target, target)
+            case DootTaskName(), DootTaskName() if TaskFlags.CONCRETE in self.target or TaskFlags.CONCRETE not in target:
+                raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target status", self.target, target)
+            case DootTaskName(), DootTaskName() if LocationMeta.abstract not in self.target or LocationMeta.abstract in target:
+                raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target status", self.target, target)
+            case _, _:
+                pass
+
+        match self.target.match_with(target):
+            case None:
+                logging.debug("Couldn't match %s onto %s", target, self.target)
+                return self
+            case result:
+                return RelationSpec(target=result,
+                                    relation=self.relation,
+                                    constraints=self.constraints)

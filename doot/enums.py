@@ -131,17 +131,18 @@ class LocationMeta(FlagsBuilder_m, enum.Flag):
 
     abstract     = enum.auto()
     artifact     = enum.auto()
+    directory    = enum.auto()
     cleanable    = enum.auto()
-    location     = enum.auto()
     normOnLoad   = enum.auto()
     protected    = enum.auto()
     glob         = enum.auto()
     expandable   = enum.auto()
 
     file         = artifact
+    location     = directory
 
     indefinite   = abstract
-    default      = location
+    default      = directory
 
 class TaskQueueMeta(EnumBuilder_m, enum.Enum):
     """ available ways a task can be activated for running

@@ -42,17 +42,23 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.enums import TaskFlags, ReportEnum, LocationMeta
-from doot._structs.location import Location
+from doot._structs.location import Location, GLOB, SOLO, REC_GLOB
 from doot._structs.key import DootKey
 
 class DootTaskArtifact(Location, arbitrary_types_allowed=True):
     """
       An concrete or abstract artifact a task can produce or consume.
 
+      Tasks can depend on both concrete and abstract:
+      depends_on=['file:>/a/file.txt', 'file:>*.txt', 'file:>?.txt']
+      and can be a requirement for concrete or *solo* abstract artifacts:
+      required_for=['file:>a/file.txt', 'file:>?.txt']
+
+
     """
 
     def __repr__(self):
-        return f"<TaskArtifact: {self.key} : {self.meta}>"
+        return f"<TaskArtifact: {self.path} : {self.meta}>"
 
     def __str__(self):
         return str(self.path)
@@ -60,8 +66,10 @@ class DootTaskArtifact(Location, arbitrary_types_allowed=True):
     def __hash__(self):
         return hash(str(self))
 
-    def __eq__(self, other:DootTaskArtifact|Any):
+    def __eq__(self, other:str|pl.Path|DootTaskArtifact|Any):
         match other:
+            case str() | pl.Path():
+                return pl.Path(other) == self.path
             case DootTaskArtifact():
                 return self.path == other.path
             case _:
@@ -81,3 +89,62 @@ class DootTaskArtifact(Location, arbitrary_types_allowed=True):
     def is_stale(self) -> bool:
         """ whether the artifact itself is stale """
         raise NotImplementedError('TODO')
+
+
+    def match_with(self, other:pl.Path|DootTaskArtifact) -> None|DootTaskArtifact:
+        """ An abstract location, given a concrete other location,
+          will apply parts of it onto itself, where it has wildcards
+
+          To match, the stem *must* be a wildcard, at least.
+
+          This is for instantiating task transformers.
+
+          eg: a/*/?.blah + a/blah/file.txt -> a/blah/file.blah
+          a/**/?.blah + a/b/c/d.txt -> a/b/c/d.blah
+
+        """
+        if LocationMeta.abstract not in self:
+            return None
+
+        a_path, a_stem, a_suff = self.abstracts
+
+        if not a_stem:
+            return None
+
+        match other:
+            case Location():
+                match_on = other.path.parent.parts
+                stem     = other.path.stem
+                suff     = other.path.suffix
+            case pl.Path():
+                match_on = other.parent.parts
+                stem     = other.stem
+                suffix   = other.suffix
+            case _:
+                raise ValueError("Location can't match against a non-Location or path", other)
+
+        result = []
+        rest_of = False
+
+        if a_path:
+            for i, (x,y) in enumerate(zip(self.path.parent.parts, match_on)):
+                if x in [GLOB, SOLO]:
+                    result.append(y)
+                elif x == REC_GLOB:
+                    result += match_on[i:]
+                elif x == y:
+                    result.append(x)
+                else:
+                    return None
+        else:
+            result += self.path.parents
+
+        result.append(stem)
+
+        base = pl.Path().joinpath(*result)
+        if a_suff:
+            return DootTaskArtifact(path=base.with_suffix(suffix),
+                                    key=self.key)
+
+        return DootTaskArtifact(path=base.with_suffix(self.path.suffix),
+                                key=self.key)

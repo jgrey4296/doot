@@ -67,7 +67,6 @@ class TestLocation:
         assert(LocationMeta.glob in obj)
         assert(obj.abstracts == (True, False, False))
 
-
     def test_meta_expansion(self):
         obj = Location.build({"key":"test", "loc":"test/{fname}.txt"})
         assert(LocationMeta.abstract in obj)

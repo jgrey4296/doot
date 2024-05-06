@@ -80,7 +80,7 @@ class Location(BaseModel, arbitrary_types_allowed=True):
                 # prefixed str: file:>a/simple/path.txt
                 assert(target is None)
                 the_path = pl.Path(data.removeprefix(cls._toml_str_prefix))
-                meta     = LocationMeta.file | LocationMeta.default
+                meta     = LocationMeta.file
                 return cls(key=key or cls._artifact_key, path=the_path, meta=meta)
             case str() | pl.Path():
                 assert(target is None)
@@ -135,6 +135,8 @@ class Location(BaseModel, arbitrary_types_allowed=True):
                 path = other.path
             case pl.Path():
                 path = other
+            case _:
+                return False
 
         if not self.check(LocationMeta.abstract):
             return False
@@ -153,7 +155,7 @@ class Location(BaseModel, arbitrary_types_allowed=True):
         return  suffix and stem
 
     @property
-    def abstracts(self) -> tuple[bool, bool]:
+    def abstracts(self) -> tuple[bool, bool, bool]:
         """ Return three bools,
           for is abstract [parent, stem, suffix]
         """
@@ -171,7 +173,6 @@ class Location(BaseModel, arbitrary_types_allowed=True):
         self._abstract_path   = bool(GLOB in path or SOLO in path or DootKey._pattern.search(path))
         self._abstract_stem   = bool(GLOB in stem or SOLO in stem or DootKey._pattern.search(stem))
         self._abstract_suffix = bool(GLOB in suff or SOLO in suff or DootKey._pattern.search(suff))
-
 
     def check(self, meta:LocationMeta) -> bool:
         return meta in self.meta

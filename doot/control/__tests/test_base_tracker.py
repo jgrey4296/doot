@@ -85,6 +85,18 @@ class TestTrackerStore:
         obj.register_spec(spec)
         assert(len(obj.specs) == 0)
 
+
+    def test_register_transformer_spec(self):
+        obj = BaseTracker()
+        spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "flags":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
+        assert(len(obj.specs) == 0)
+        assert(len(obj._transformer_specs) == 0)
+        obj.register_spec(spec)
+        assert(len(obj.specs) == 1)
+        assert(len(obj._transformer_specs) == 2)
+        assert("?.txt" in obj._transformer_specs)
+        assert("?.blah" in obj._transformer_specs)
+
     def test_spec_retrieval(self):
         obj = BaseTracker()
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
@@ -93,7 +105,7 @@ class TestTrackerStore:
         retrieved = obj.specs[name]
         assert(retrieved == spec)
 
-    def test_task_instantiation(self):
+    def test_make_task(self):
         obj = BaseTracker()
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
         name = spec.name
@@ -221,7 +233,23 @@ class TestTrackerNetwork:
         assert(name2 in obj.network.succ[name1])
         assert(name1 in obj.network.pred[name2])
 
-    def test_network_build_empty(self):
+    def test_connect_idempotent(self):
+        obj = BaseTracker()
+        name1 = doot.structs.DootTaskName.build("basic::task").instantiate()
+        name2 = doot.structs.DootTaskName.build("basic::other").instantiate()
+        # Mock the tasks:
+        obj.specs[name1] = True
+        obj.specs[name2] = True
+        obj.connect(name1, name2)
+        assert(len(obj.network.succ[name1]) == 1)
+        assert(len(obj.network.pred[name2]) == 1)
+        obj.connect(name1, name2)
+        assert(len(obj.network.succ[name1]) == 1)
+        assert(len(obj.network.pred[name2]) == 1)
+
+class TestTrackerNetworkBuild:
+
+    def test_build_empty(self):
         obj = BaseTracker()
         assert(len(obj.network) == 1)
         assert(not bool(obj.tasks))
@@ -229,7 +257,7 @@ class TestTrackerNetwork:
         obj.build_network()
         assert(len(obj.network) == 1)
 
-    def test_network_build_single_dependency_node(self):
+    def test_build_single_dependency_node(self):
         obj  = BaseTracker()
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
         spec2 = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
@@ -245,7 +273,7 @@ class TestTrackerNetwork:
         assert(obj.concrete[spec2.name][0] in obj.network.pred[instance])
         assert(instance in obj.network.succ[obj.concrete[spec2.name][0]])
 
-    def test_network_build_single_dependent_node(self):
+    def test_build_single_dependent_node(self):
         obj   = BaseTracker()
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task", "required_for":["basic::req"]})
         spec2 = doot.structs.DootTaskSpec.build({"name":"basic::req"})
@@ -261,7 +289,7 @@ class TestTrackerNetwork:
         assert(obj.concrete[spec2.name][0] in obj.network.succ[instance])
         assert(instance in obj.network.pred[obj.concrete[spec2.name][0]])
 
-    def test_network_build_dep_chain(self):
+    def test_build_dep_chain(self):
         obj  = BaseTracker()
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
         spec2 = doot.structs.DootTaskSpec.build({"name":"basic::dep", "depends_on":["basic::chained"]})
@@ -279,7 +307,7 @@ class TestTrackerNetwork:
         assert(obj.concrete[spec2.name][0] in obj.network.pred[instance])
         assert(obj.concrete[spec3.name][0] in obj.network.pred[obj.concrete[spec2.name][0]])
 
-    def test_network_build_dep_match_no_keys(self):
+    def test_build_dep_match_no_keys(self):
         obj   = BaseTracker()
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "keys":[]}], "test_key": "bloo"})
         spec2 = doot.structs.DootTaskSpec.build({"name":"basic::dep", "test_key": "blah"})
@@ -294,7 +322,7 @@ class TestTrackerNetwork:
         assert(len(obj.network) == 3)
         assert(obj.concrete[spec2.name][0] in obj.network.pred[instance])
 
-    def test_network_build_dep_match_with_key(self):
+    def test_build_dep_match_with_key(self):
         obj   = BaseTracker()
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "keys":["test_key"]}], "test_key": "bloo"})
         spec2 = doot.structs.DootTaskSpec.build({"name":"basic::dep", "test_key": "blah"})
@@ -311,7 +339,7 @@ class TestTrackerNetwork:
         assert(spec2.name  < pred)
         assert(spec.test_key == obj.specs[pred].test_key)
 
-    def test_build_network_dep_chain(self):
+    def test_build_dep_chain(self):
         obj   = BaseTracker()
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "keys":["test_key"]}], "test_key": "bloo"})
         spec2 = doot.structs.DootTaskSpec.build({"name":"basic::dep", "depends_on": [{"task":"basic::chained", "keys":["test_key"]}], "test_key": "blah"})
@@ -338,7 +366,7 @@ class TestTrackerNetwork:
         assert(obj.specs[pred2].source == spec3.name)
         assert(obj.specs[pred2].test_key != spec3.test_key)
 
-    def test_build_network_req_chain(self):
+    def test_build_req_chain(self):
         obj   = BaseTracker()
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task", "required_for":[{"task":"basic::dep", "keys":["test_key"]}], "test_key": "bloo"})
         spec2 = doot.structs.DootTaskSpec.build({"name":"basic::dep", "required_for": [{"task":"basic::chained", "keys":["test_key"]}], "test_key": "blah"})
@@ -365,7 +393,7 @@ class TestTrackerNetwork:
         assert(obj.specs[succ2].source == spec3.name)
         assert(obj.specs[succ2].test_key != spec3.test_key)
 
-    def test_build_network_with_head_dep(self):
+    def test_build_with_head_dep(self):
         obj   = BaseTracker()
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep.$head$"], "test_key": "bloo"})
         spec2 = doot.structs.DootTaskSpec.build({"name":"basic::dep", "flags": ["JOB"]})
@@ -382,7 +410,7 @@ class TestTrackerNetwork:
         assert(spec2.name in obj.concrete)
         obj.validate_network()
 
-    def test_build_network_with_concrete_artifact_dependency(self):
+    def test_build_with_concrete_artifact(self):
         obj   = BaseTracker()
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["file:>basic.txt"]})
         obj.register_spec(spec)
@@ -394,7 +422,7 @@ class TestTrackerNetwork:
         assert(spec.depends_on[0].target in obj.network.pred[instance])
         assert(instance in obj.network.succ[spec.depends_on[0].target])
 
-    def test_build_network_with_concrete_artifact_dependent(self):
+    def test_build_with_concrete_artifact(self):
         obj   = BaseTracker()
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task", "required_for":["file:>basic.txt"]})
         obj.register_spec(spec)
@@ -406,7 +434,7 @@ class TestTrackerNetwork:
         assert(spec.required_for[0].target in obj.network.succ[instance])
         assert(instance in obj.network.pred[spec.required_for[0].target])
 
-    def test_build_network_with_abstract_artifact_dependency(self):
+    def test_build_with_abstract_artifact(self):
         obj   = BaseTracker()
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["file:>*.txt"]})
         obj.register_spec(spec)
@@ -417,10 +445,12 @@ class TestTrackerNetwork:
         obj.build_network()
         assert(spec.depends_on[0].target in obj.network.pred[instance])
 
-    def test_build_network_artifact_chain(self):
-        obj   = BaseTracker()
-        consumer = doot.structs.DootTaskSpec.build({"name":"basic::consumer", "depends_on":["file:>*.txt"]})
-        producer = doot.structs.DootTaskSpec.build({"name":"basic::producer", "required_for":["file:>blah.txt"]})
+    def test_build_artifact_chain(self):
+        obj          = BaseTracker()
+        consumer     = doot.structs.DootTaskSpec.build({"name":"basic::consumer", "depends_on":["file:>*.txt"]})
+        producer     = doot.structs.DootTaskSpec.build({"name":"basic::producer", "required_for":["file:>blah.txt"]})
+        dep_artifact = consumer.depends_on[0].target
+        req_artifact = producer.required_for[0].target
         obj.register_spec(consumer)
         obj.register_spec(producer)
         prod = obj._instantiate_spec(producer.name)
@@ -428,11 +458,69 @@ class TestTrackerNetwork:
         assert(len(obj.artifacts) == 2)
         obj.connect(con)
         obj.build_network()
-        assert(consumer.depends_on[0].target in obj.network.pred[con])
-        assert(producer.required_for[0].target in obj.network.pred[consumer.depends_on[0].target])
-        assert(prod in obj.network.pred[producer.required_for[0].target])
-        assert(len(obj.concrete[consumer.name]) == 1)
-        assert(len(obj.concrete[producer.name]) == 1)
+        # check artifacts are in network:
+        assert(req_artifact in obj.network)
+        assert(dep_artifact in obj.network)
+        # check the tasks are in network:
+        assert(con in obj.network)
+        assert(prod in obj.network)
+        # Check chain: consumer <- abstract <- concrete <- producer
+        assert(dep_artifact in obj.network.pred[con])
+        # Check the concrete connects to the abstract:
+        assert(req_artifact in obj.network.pred[dep_artifact])
+        assert(req_artifact in obj.network.succ[prod])
+
+
+    def test_build_transformer_from_artifact(self):
+        obj                             = BaseTracker()
+        transformer                     = doot.structs.DootTaskSpec.build({"name":"basic::task", "flags":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
+        concrete_product                = doot.structs.DootTaskArtifact.build(pl.Path("example.blah"))
+        concrete_source                 = doot.structs.DootTaskArtifact.build(pl.Path("example.txt"))
+        obj.artifacts[concrete_product] = []
+        obj.artifacts[concrete_source]  = []
+        obj.register_spec(transformer)
+        assert(transformer.name in obj.specs)
+        obj.connect(concrete_product, None)
+        obj.connect(concrete_source, False)
+        obj.build_network()
+        assert(bool(obj.concrete[transformer.name]))
+        transformer_instance = obj.concrete[transformer.name][0]
+        assert(transformer_instance in obj.network.pred[concrete_product])
+        assert(transformer_instance in obj.network.succ[concrete_source])
+
+
+    def test_build_multi_transformers(self):
+        obj                             = BaseTracker()
+        transformer                     = doot.structs.DootTaskSpec.build({"name":"basic::task", "flags":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
+        concrete_product                = doot.structs.DootTaskArtifact.build(pl.Path("example.blah"))
+        concrete_source                 = doot.structs.DootTaskArtifact.build(pl.Path("example.txt"))
+        concrete_product2                = doot.structs.DootTaskArtifact.build(pl.Path("aweg.blah"))
+        concrete_source2                 = doot.structs.DootTaskArtifact.build(pl.Path("aweg.txt"))
+        obj.artifacts[concrete_product] = []
+        obj.artifacts[concrete_source]  = []
+        obj.artifacts[concrete_product2] = []
+        obj.artifacts[concrete_source2]  = []
+        obj.register_spec(transformer)
+        assert(transformer.name in obj.specs)
+        obj.connect(concrete_product, None)
+        obj.connect(concrete_source, False)
+        obj.connect(concrete_product2, None)
+        obj.connect(concrete_source2, False)
+        obj.build_network()
+        assert(len(obj.concrete[transformer.name]) == 2)
+        instances = obj.concrete[transformer.name]
+        if concrete_source in obj.network.pred[instances[0]]:
+            assert(concrete_product in obj.network.succ[instances[0]])
+            assert(concrete_source2 in obj.network.pred[instances[1]])
+            assert(concrete_product2 in obj.network.succ[instances[1]])
+        else:
+            assert(concrete_source in obj.network.pred[instances[1]])
+            assert(concrete_product in obj.network.succ[instances[1]])
+            assert(concrete_source2 in obj.network.pred[instances[0]])
+            assert(concrete_product2 in obj.network.succ[instances[0]])
+
+
+
 
 class TestTrackerQueue:
 

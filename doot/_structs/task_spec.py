@@ -20,7 +20,7 @@ import weakref
 from dataclasses import InitVar, dataclass, field, _MISSING_TYPE
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping, Self,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
+                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar, Literal,
                     cast, final, overload, runtime_checkable, Generator)
 from uuid import UUID, uuid1
 
@@ -42,7 +42,7 @@ from importlib.metadata import EntryPoint
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.enums import TaskFlags, ReportEnum, TaskQueueMeta, RelationMeta
+from doot.enums import TaskFlags, ReportEnum, TaskQueueMeta, RelationMeta, LocationMeta
 from doot._structs.task_name import DootTaskName
 from doot._structs.code_ref import DootCodeReference
 from doot._structs.action_spec import DootActionSpec
@@ -77,10 +77,180 @@ def _prepare_action_group(deps:list[str], handler:ValidatorFunctionWrapHandler, 
 
     return handler(results)
 
-
 ActionGroup = Annotated[list[DootActionSpec|RelationSpec], WrapValidator(_prepare_action_group)]
 
-class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
+class _SpecUtils_m:
+
+    def instantiate_onto(self, data:None|DootTaskSpec) -> DootTaskSpec:
+        """ apply self over the top of data """
+        match data:
+            case None:
+                return self.specialize_from(self)
+            case DootTaskSpec():
+                return data.specialize_from(self)
+            case _:
+                raise TypeError("Can't instantiate onto something not a task spec", data)
+
+    def make(self, ensure:type=Any) -> Task_i:
+        """ Create actual task instance """
+        task_ctor = self.ctor.try_import(ensure=ensure)
+        return task_ctor(self)
+
+    def job_top(self) -> None|DootTaskSpec:
+        """
+          Generate a top spec for a job, taking the jobs cleanup actions
+          and using them as the head's main action.
+          Depends on the job, and its reactively queued.
+        """
+        if TaskFlags.JOB not in self.flags:
+            return None
+        if TaskFlags.JOB_HEAD in self.flags:
+            return None
+        if TaskFlags.CONCRETE in self.flags:
+            return None
+        if self.name.job_head() is self.name:
+            return None
+
+        # build $head$
+        head : DootTaskSpec = DootTaskSpec.build({
+            "name"            : self.name.job_head(),
+            "source"          : None,
+            "actions"         : self.cleanup,
+            "print_levels"    : self.print_levels,
+            "extra"           : self.extra,
+            "queue_behaviour" : TaskQueueMeta.reactive,
+            "depends_on"      : [self.name],
+            "flags"           : self.flags | TaskFlags.JOB_HEAD,
+            })
+        return head
+
+    def match_with_constraints(self, control:DootTaskSpec, *, relation:None|RelationSpec=None) -> bool:
+        """ Test this spec to see if it matches a spec,
+          when using a given relation and a given controlling spec to source values from
+
+          if not given a relation, acts as a coherence check between
+          self(a concrete spec) and control(the abstract source spec)
+          """
+        match relation:
+            case None:
+                assert(control.name < self.name)
+                constraints = control.extra.keys()
+            case RelationSpec(constraints=None):
+                return True
+            case RelationSpec(constraints=constraints):
+                assert(relation.target < self.name)
+
+        extra         = self.extra
+        control_extra = control.extra
+        for k in constraints:
+            if k not in extra:
+                return False
+            if extra[k] != control_extra[k]:
+                return False
+        else:
+            return True
+
+    def build_relevant_data(self, context:RelationSpec) -> dict:
+        """ Builds a dict of the data a matching spec will need, according
+          to a relations constraints.
+        """
+        if not bool(context.constraints):
+            return {}
+        extra = self.extra
+        return {k:extra[k] for k in context.constraints}
+
+    def transformer_of(self) -> None|tuple[RelationSpec, RelationSpec]:
+        """ If this spec can transform an artifact,
+          return those relations.
+
+          Transformers have file relations of a single solo abstract artifact
+          so: 'file:>a/path/?.txt' -> 'file:>b/path/?.bib'
+          (other relations can exist as well, but to be a transformer there needs to
+          be only 1 in, 1 out solo file relation
+
+          """
+        match self._transform:
+            case False:
+                return None
+            case (x,y):
+                return self._transform
+            case None:
+                pass
+
+        assert(TaskFlags.TRANSFORMER in self.flags)
+
+        pre, post = None, None
+        for x in self.depends_on:
+            match x:
+                case RelationSpec(target=DootTaskArtifact() as target) if LocationMeta.glob in target:
+                    pass
+                case RelationSpec(target=DootTaskArtifact() as target) if LocationMeta.abstract in target:
+                    if pre is not None:
+                        self._transform = False
+                        return None
+                    pre = x
+                case _:
+                    pass
+
+        for y in self.required_for:
+            match x:
+                case RelationSpec(target=DootTaskArtifact() as target) if LocationMeta.glob in target:
+                    pass
+                case RelationSpec(target=DootTaskArtifact() as target) if LocationMeta.abstract in target:
+                    if post is not None:
+                        self._transform = False
+                        return None
+                    post = y
+                case _:
+                    pass
+
+        match pre, post:
+            case None, _:
+                self._transform = False
+                return None
+            case _, None:
+                self._transform = False
+                return None
+            case RelationSpec(), RelationSpec():
+                self._transform = (pre, post)
+                return self._transform
+
+        raise ValueError("This shouldn't be possible")
+
+    def instantiate_transformer(self, target:DootTaskArtifact|tuple[DootTaskArtifact, DootTaskArtifact]) -> None|DootTaskSpec:
+        """ Create an instantiated transformer spec.
+          ie     : ?.txt -> spec -> ?.blah
+          becomes: a.txt -> spec -> a.blah
+
+          can be given one artifact, which will be used for matching on pre and post,
+          or a tuple, which specifies an exact transform
+
+          TODO: handle ?/?.txt, */?.txt, blah/*/?.txt, path/blah.?
+        """
+        match target:
+            case DootTaskArtifact():
+                pre, post = target, target
+            case (DootTaskArtifact() as pre, DootTaskArtifact() as post):
+                pass
+
+        instance = self.instantiate_onto(None)
+        match self.transformer_of():
+            case None:
+                raise doot.errors.DootTaskTrackingError("Tried to transformer instantiate a non-transformer", self.name)
+            case (x, y) if pre in x.target or post in y.target:
+                # exact transform
+                # replace x with pre in depends_on
+                instance.depends_on.remove(x)
+                instance.depends_on.append(x.instantiate(pre))
+                # replace y with post in required_for
+                instance.required_for.remove(y)
+                instance.required_for.append(y.instantiate(post))
+            case _:
+                return None
+
+        return instance
+
+class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra="allow"):
     """ The information needed to describe a generic task.
     Optional things are shoved into 'extra', so things can use .on_fail on the tomlguard
 
@@ -107,6 +277,7 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
     queue_behaviour              : TaskQueueMeta                                                           = TaskQueueMeta.default
     print_levels                 : TomlGuard                                                               = Field(default_factory=TomlGuard)
     flags                        : TaskFlags                                                               = TaskFlags.default
+    _transform                   : None|Literal[False]|tuple[RelationSpec, RelationSpec]                            = None
     # task specific extras to use in state
     _default_ctor         : ClassVar[str]       = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
     _allowed_print_locs   : ClassVar[list[str]] = doot.constants.printer.PRINT_LOCATIONS
@@ -151,6 +322,10 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
             self.flags |= TaskFlags.DISABLED
             self.ctor = None
 
+        if TaskFlags.TRANSFORMER not in self.flags:
+            self._transform = False
+
+        self.name.meta |= self.flags
         return self
 
     @field_validator("name", mode="before")
@@ -223,15 +398,21 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
             case str():
                 return DootTaskName.build(val)
 
-    def instantiate_onto(self, data:None|DootTaskSpec) -> DootTaskSpec:
-        """ apply self over the top of data """
-        match data:
-            case None:
-                return self.specialize_from(self)
-            case DootTaskSpec():
-                return data.specialize_from(self)
-            case _:
-                raise TypeError("Can't instantiate onto something not a task spec", data)
+    def __hash__(self):
+        return hash(str(self.name))
+
+    @property
+    def params(self) -> dict:
+        return self.model_extra
+
+    @property
+    def extra(self) -> TomlGuard:
+        return TomlGuard(self.model_extra)
+
+    @property
+    def action_groups(self):
+        # TODO: use introspection on the model to get any fields annotated as an ActionGroup
+        return [self.depends_on, self.setup, self.actions, self.cleanup, self.on_fail]
 
     def specialize_from(self, data:dict|DootTaskSpec) -> DootTaskSpec:
         """
@@ -271,88 +452,3 @@ class DootTaskSpec(BaseModel, arbitrary_types_allowed=True, extra="allow"):
 
         logging.debug("Specialized Task: %s on top of: %s", data.name.readable, self.name)
         return DootTaskSpec.build(specialized)
-
-    def make(self, ensure=Any) -> Task_i:
-        """ Create actual task instance """
-        task_ctor = self.ctor.try_import(ensure=ensure)
-        return task_ctor(self)
-
-    def __hash__(self):
-        return hash(str(self.name))
-
-    @property
-    def params(self) -> dict:
-        return self.model_extra
-
-    @property
-    def extra(self) -> TomlGuard:
-        return TomlGuard(self.model_extra)
-
-    @property
-    def action_groups(self):
-        # TODO: use introspection on the model to get any fields annotated as an ActionGroup
-        return [self.depends_on, self.setup, self.actions, self.cleanup, self.on_fail]
-
-    def job_top(self) -> None|DootTaskSpec:
-        """
-          Generate a top spec for a job, taking the jobs cleanup actions
-          and using them as the head's main action.
-          Depends on the job, and its reactively queued.
-        """
-        if TaskFlags.JOB not in self.flags:
-            return None
-        if TaskFlags.JOB_HEAD in self.flags:
-            return None
-        if TaskFlags.CONCRETE in self.flags:
-            return None
-        if self.name.job_head() is self.name:
-            return None
-
-        # build $head$
-        head : DootTaskSpec = DootTaskSpec.build({
-            "name"            : self.name.job_head(),
-            "source"          : None,
-            "actions"         : self.cleanup,
-            "print_levels"    : self.print_levels,
-            "extra"           : self.extra,
-            "queue_behaviour" : TaskQueueMeta.reactive,
-            "depends_on"      : [self.name],
-            "flags"           : self.flags | TaskFlags.JOB_HEAD,
-            })
-        return head
-
-    def match_with_constraints(self, control:DootTaskSpec, *, relation:None|RelationSpec=None) -> bool:
-        """ Test this spec to see if it matches a spec,
-          when using a given relation and a given controlling spec to source values from
-
-          if not given a relation, acts as a coherence check between
-          self(a concrete spec) and control(the abstract source spec)
-          """
-        match relation:
-            case None:
-                assert(control.name < self.name)
-                constriants = control.extra.keys()
-            case RelationSpec(constraints=None):
-                return True
-            case RelationSpec(constraints=constraints):
-                assert(relation.target < self.name)
-
-
-        extra         = self.extra
-        control_extra = control.extra
-        for k in constraints:
-            if k not in extra:
-                return False
-            if extra[k] != control_extra[k]:
-                return False
-        else:
-            return True
-
-    def build_relevant_data(self, context:RelationSpec) -> dict:
-        """ Builds a dict of the data a matching spec will need, according
-          to a relations constraints.
-        """
-        if not bool(context.constraints):
-            return {}
-        extra = self.extra
-        return {k:extra[k] for k in context.constraints}

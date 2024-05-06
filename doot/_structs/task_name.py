@@ -214,6 +214,9 @@ class DootTaskName(StructuredName):
             case [_, x]:
                 return DootTaskName(head=self.head[:], tail=self.tail[:x] + [DootTaskName._root_marker])
 
+    def add_root(self):
+        return self.subtask("")
+
     def subtask(self, *subtasks, subgroups:list[str]|None=None, **kwargs) -> DootTaskName:
         """ generate an extended name, with more information
         eg: a.group::simple.task
