@@ -76,7 +76,7 @@ class DootTaskArtifact(Location, arbitrary_types_allowed=True):
                 return False
 
     def __bool__(self):
-        return self.exists
+        return self.exists()
 
     @property
     def is_concrete(self):
