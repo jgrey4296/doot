@@ -25,7 +25,7 @@ class TestJobExpansion:
 
     @pytest.fixture(scope="function")
     def spec(self):
-        return DootActionSpec.build({"do": "expand", "args":[], "update_":"specs"})
+        return DootActionSpec.build({"do": "job.expand", "args":[], "update_":"specs"})
 
     @pytest.fixture(scope="function")
     def state(self):
@@ -69,7 +69,7 @@ class TestJobExpansion:
         assert(len(result['specs'][0].actions) == 0)
 
     def test_taskname_template(self, spec, state):
-        state['template'] = [{"do":"aweg"}, {"do":"blah"}, {"do":"jioj"}]
+        state['template'] = [{"do":"basic"}, {"do":"basic"}, {"do":"basic"}]
         obj = JobExpandAction()
         result = obj(spec, state)
         assert(isinstance(result, dict))

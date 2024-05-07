@@ -149,7 +149,7 @@ class TestTaskSpecInstantiation:
             base_task.specialize_from(override_task)
 
     def test_specialize_keeps_base_actions(self):
-        base_task     = structs.DootTaskSpec.build({"name": "base", "group": "agroup", "a": 0, "actions":[{"do":"blah"}]})
+        base_task     = structs.DootTaskSpec.build({"name": "base", "group": "agroup", "a": 0, "actions":[{"do":"basic"}]})
         override_task = structs.DootTaskSpec.build({"name": "atask", "group": "agroup", "b": 2, "source":"agroup::base"})
 
         instance = base_task.specialize_from(override_task)
@@ -161,7 +161,7 @@ class TestTaskSpecInstantiation:
 
     def test_specialize_keeps_override_actions(self):
         base_task     = structs.DootTaskSpec.build({"name": "base", "group": "agroup", "a": 0})
-        override_task = structs.DootTaskSpec.build({"name": "atask", "group": "agroup", "b": 2, "actions":[{"do":"blah"}], "source":"agroup::base"})
+        override_task = structs.DootTaskSpec.build({"name": "atask", "group": "agroup", "b": 2, "actions":[{"do":"basic"}], "source":"agroup::base"})
 
         instance = base_task.specialize_from(override_task)
         assert(instance is not base_task)

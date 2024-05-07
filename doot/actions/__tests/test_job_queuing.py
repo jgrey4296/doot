@@ -25,7 +25,7 @@ class TestJobQueue:
 
     @pytest.fixture(scope="function")
     def spec(self):
-        return DootActionSpec.build({"do": "action", "args":["test::simple", "test::other"], "update_":"specs"})
+        return DootActionSpec.build({"do": "basic", "args":["test::simple", "test::other"], "update_":"specs"})
 
     @pytest.fixture(scope="function")
     def state(self):
@@ -58,7 +58,7 @@ class TestJobQueueHead:
 
     @pytest.fixture(scope="function")
     def spec(self):
-        return DootActionSpec.build({"do": "action", "args":["test::simple", "test::other"], "update_":"specs"})
+        return DootActionSpec.build({"do": "basic", "args":["test::simple", "test::other"], "update_":"specs"})
 
     @pytest.fixture(scope="function")
     def state(self):
@@ -85,7 +85,7 @@ class TestJobChainer:
 
     @pytest.fixture(scope="function")
     def spec(self):
-        return DootActionSpec.build({"do": "action", "args":["test::simple", "test::other"], "update_":"specs"})
+        return DootActionSpec.build({"do": "basic", "args":["test::simple", "test::other"], "update_":"specs"})
 
     @pytest.fixture(scope="function")
     def state(self):

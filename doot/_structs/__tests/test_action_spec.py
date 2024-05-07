@@ -26,14 +26,14 @@ class TestActionSpec:
         assert(isinstance(obj, DootActionSpec))
 
     def test_build_from_dict(self):
-        obj = DootActionSpec.build({"do":"test"})
+        obj = DootActionSpec.build({"do":"basic"})
         assert(isinstance(obj, DootActionSpec))
-        assert(obj.do == "test")
+        assert(str(obj.do) == doot.aliases.action['basic'])
 
     def test_build_from_list(self):
-        obj = DootActionSpec.build({"do":"test"})
+        obj = DootActionSpec.build({"do":"basic"})
         assert(isinstance(obj, DootActionSpec))
-        assert(obj.do == "test")
+        assert(str(obj.do) == doot.aliases.action['basic'])
 
     def test_build_nop(self):
         obj = DootActionSpec.build([])

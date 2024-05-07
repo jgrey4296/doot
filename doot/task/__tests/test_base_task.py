@@ -93,7 +93,7 @@ class TestBaseTask:
         stub             = task.stub_instance(stub_obj)
         as_str           = stub.to_toml()
         loaded           = tomlguard.read(as_str)
-        as_dict          = dict(loaded.tasks.basic[0])
+        as_dict          = dict(loaded)
         as_dict['group'] = "basic"
         new_spec         = DootTaskSpec.build(as_dict)
         assert(isinstance(new_spec, DootTaskSpec))
