@@ -39,9 +39,13 @@ logging = logmod.getLogger(__name__)
 from pydantic import BaseModel, Field, model_validator, field_validator
 import importlib
 from tomlguard import TomlGuard
+import doot
 import doot.errors
 from doot.enums import TaskFlags, ReportEnum
 from doot._abstract.structs import SpecStruct_p
+from doot._structs.code_ref import DootCodeReference
+
+ALIASES = doot.aliases.action
 
 class DootActionSpec(BaseModel, arbitrary_types_allowed=True):
     """
@@ -53,12 +57,12 @@ class DootActionSpec(BaseModel, arbitrary_types_allowed=True):
       path:/usr/bin/python  -> Path(/usr/bin/python)
 
     """
-    do         : None|str                   = None
-    args       : list[Any]                  = []
-    kwargs     : TomlGuard                  = Field(default_factory=TomlGuard)
-    inState    : set[str]                   = set()
-    outState   : set[str]                   = set()
-    fun        : None|Callable              = None
+    do         : None|DootCodeReference               = None
+    args       : list[Any]                            = []
+    kwargs     : TomlGuard                            = Field(default_factory=TomlGuard)
+    inState    : set[str]                             = set()
+    outState   : set[str]                             = set()
+    fun        : None|Callable                        = None
 
     @staticmethod
     def build(data:dict|list|TomlGuard|DootActionSpec, *, fun=None) -> DootActionSpec:
@@ -85,6 +89,20 @@ class DootActionSpec(BaseModel, arbitrary_types_allowed=True):
                 return action_spec
             case _:
                 raise doot.errors.DootActionError("Unrecognized specification data", data)
+
+    @field_validator("do")
+    def _validate_do(cls, val):
+        match val:
+            case None:
+                return None
+            case str() if val in ALIASES.action:
+                return DootCodeReference.build(ALIASES.action[val])
+            case str():
+                return DootCodeRerence.build(val)
+            case DootCodeReference():
+                return val
+            case _:
+                raise TypeError("Unrecognized action spec do type", val)
 
     def __str__(self):
         result = []
@@ -120,7 +138,7 @@ class DootActionSpec(BaseModel, arbitrary_types_allowed=True):
     def set_function(self, fun:Action_p|Callable):
         """
           Sets the function of the action spec.
-          if given a class, the class it built,
+          if given a class, the class is built,
           if given a callable, that is used directly.
 
         """
