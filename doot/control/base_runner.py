@@ -105,7 +105,7 @@ class BaseRunner(TaskRunner_i):
     def _handle_task_success(self, task:None|Task_i|DootTaskArtifact):
         """ The basic success handler. just informs the tracker of the success """
         if task:
-            self.tracker.update_status(task, TaskStatus_e.SUCCESS)
+            self.tracker.set_status(task, TaskStatus_e.SUCCESS)
         return task
 
     def _handle_failure(self, task:None|Task_i, failure:Error) -> None:
@@ -125,23 +125,23 @@ class BaseRunner(TaskRunner_i):
             case doot.errors.DootTaskFailed() as err:
                 self._signal_failure = err
                 printer.warning("%s %s", fail_prefix, err)
-                self.tracker.update_status(err.task.shortname, TaskStatus_e.HALTED)
+                self.tracker.set_status(err.task.shortname, TaskStatus_e.HALTED)
             case doot.errors.DootTaskError() as err:
                 self._signal_failure = err
                 printer.warning("%s %s", fail_prefix, err)
-                self.tracker.update_status(err.task.shortname, TaskStatus_e.HALTED)
+                self.tracker.set_status(err.task.shortname, TaskStatus_e.HALTED)
             case doot.errors.DootError() as err:
                 self._signal_failure = err
                 printer.warning("%s %s", fail_prefix, err)
-                self.tracker.update_status(task, TaskStatus_e.FAILED)
+                self.tracker.set_status(task, TaskStatus_e.FAILED)
             case doot.errors.DootTaskTrackingError() as err:
                 self._signal_failure = err
                 printer.warning("%s %s", fail_prefix, err)
-                self.tracker.update_status(task, TaskStatus_e.FAILED)
+                self.tracker.set_status(task, TaskStatus_e.FAILED)
             case _:
                 self._signal_failure = doot.errors.DootError("Unknown Failure")
                 printer.exception("%s Unknown failure occurred: %s", fail_prefix, failure)
-                self.tracker.update_status(task, TaskStatus_e.FAILED)
+                self.tracker.set_status(task, TaskStatus_e.FAILED)
 
     def _sleep(self, task):
         """

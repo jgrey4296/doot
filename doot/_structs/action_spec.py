@@ -90,15 +90,15 @@ class DootActionSpec(BaseModel, arbitrary_types_allowed=True):
             case _:
                 raise doot.errors.DootActionError("Unrecognized specification data", data)
 
-    @field_validator("do")
+    @field_validator("do", mode="before")
     def _validate_do(cls, val):
         match val:
             case None:
                 return None
-            case str() if val in ALIASES.action:
-                return DootCodeReference.build(ALIASES.action[val])
+            case str() if val in ALIASES:
+                return DootCodeReference.build(ALIASES[val])
             case str():
-                return DootCodeRerence.build(val)
+                return DootCodeReference.build(val)
             case DootCodeReference():
                 return val
             case _:

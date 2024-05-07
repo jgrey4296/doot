@@ -71,26 +71,28 @@ class RunCmd(BaseCommand):
         reporter               = plugin_selector(plugins.on_fail([], list).reporter(), target=reporter_target)(report_lines)
         tracker                = plugin_selector(plugins.on_fail([], list).tracker(), target=tracker_target)()
         runner                 = plugin_selector(plugins.on_fail([], list).runner(), target=runner_target)(tracker=tracker, reporter=reporter)
-        printer.info("- Building Task Dependency Network")
+        printer.info("- Registering Task Specs")
         for task in tasks.values():
             tracker.register_spec(task)
-        tracker.add_task(CheckLocsTask())
 
-        printer.info("- Task Dependency Network Built")
-
+        printer.info("- Queuing Initial Tasks")
         for target in doot.args.on_fail([], list).cmd.args.target():
             if target not in tracker:
                 printer.warn("- %s specified as run target, but it doesn't exist")
             else:
-                tracker.queue_task(target)
+                tracker.queue_entry(target)
 
         for target in doot.args.on_fail({}).tasks().keys():
             if target not in tracker:
                 printer.warn(- "%s specified as run target, but it doesn't exist")
             else:
-                tracker.queue_task(target)
+                tracker.queue_entry(target)
 
-        tracker.queue_task(CheckLocsTask.task_name)
+        tracker.queue_entry(CheckLocsTask())
+
+        printer.info("- Building Task Network")
+        tracker.build_network()
+        printer.info("- Task Network Built")
 
         match interrupt_handler:
             case _ if not doot.args.cmd.args.interrupt:
