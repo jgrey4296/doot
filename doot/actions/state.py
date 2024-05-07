@@ -1,41 +1,45 @@
 ## base_action.py -*- mode: python -*-
-##-- imports
+# Imports:
 from __future__ import annotations
 
-# import abc
+# ##-- stdlib imports
 import datetime
-# import enum
+import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
 import pathlib as pl
 import re
+import shutil
 import time
 import types
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
-# from uuid import UUID, uuid1
-# from weakref import ref
-
-##-- end imports
-
-printer = logmod.getLogger("doot._printer")
-
 from time import sleep
-import datetime
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
+from uuid import UUID, uuid1
+
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
 import sh
-import shutil
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
 import doot
-from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
-from doot.mixins.importer import Importer_m
+from doot.actions.job_injection import (JobInjectPathParts,
+                                        JobInjectShadowAction)
+from doot.errors import DootTaskError, DootTaskFailed
 from doot.mixins.path_manip import PathManip_m
 from doot.structs import DootCodeReference, DootKey
-from doot.actions.job_injection import JobInjectPathParts, JobInjectShadowAction
+
+# ##-- end 1st party imports
+
+printer = logmod.getLogger("doot._printer")
 
 ##-- expansion keys
 UPDATE : Final[DootKey] = DootKey.build("update_")
@@ -58,7 +62,7 @@ class AddStateAction(Action_p):
             result[k] = val
         return result
 
-class AddStateFn(Action_p, Importer_m):
+class AddStateFn(Action_p):
     """ for each toml kwarg, import its value and set the state[kwarg] = val
       with expansion
     """

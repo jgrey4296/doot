@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
 """
-##-- imports
+# Imports:
 from __future__ import annotations
 
-import types
+# ##-- stdlib imports
 import abc
 import datetime
 import enum
@@ -14,38 +14,45 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
+import types
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 from weakref import ref
 
-##-- end imports
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
+import tomlguard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+from doot._abstract import Action_p, Job_i, PluginLoader_p, Task_i
+from doot.actions.base_action import DootBaseAction
+from doot.enums import TaskFlags, TaskQueueMeta, TaskStatus_e
+from doot.errors import DootTaskError, DootTaskLoadError
+from doot.mixins.param_spec import ParamSpecMaker_m
+from doot.structs import (DootActionSpec, DootCodeReference, DootTaskArtifact,
+                          DootTaskName)
+from doot._structs.relation_spec import RelationSpec
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
+printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
-printer = logmod.getLogger("doot._printer")
-
-import doot
-import doot.errors
-import tomlguard
-from doot._abstract import Task_i, Job_i, Action_p, PluginLoader_p
-from doot.enums import TaskFlags, TaskStatus_e, TaskQueueMeta
-from doot.structs import DootActionSpec, DootCodeReference, DootTaskName, DootTaskArtifact
-# from doot.structs import TaskStub, TaskStubPart
-from doot.actions.base_action import DootBaseAction
-from doot.errors import DootTaskLoadError, DootTaskError
-
-from doot.mixins.param_spec import ParamSpecMaker_m
-from doot.mixins.importer import Importer_m
-
-TASK_ALISES     = doot.aliases.task
-PRINT_LOCATIONS = doot.constants.printer.PRINT_LOCATIONS
+TASK_ALISES                    = doot.aliases.task
+PRINT_LOCATIONS                = doot.constants.printer.PRINT_LOCATIONS
 STATE_TASK_NAME_K : Final[str] = doot.constants.patterns.STATE_TASK_NAME_K
 
 class _TaskProperties_m(ParamSpecMaker_m):

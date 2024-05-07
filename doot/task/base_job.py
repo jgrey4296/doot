@@ -2,12 +2,12 @@
 """
 Utility classes for building tasks with a bit of structure
 """
-##-- imports
+# Imports:
 from __future__ import annotations
 
-# import abc
-# import datetime
-# import enum
+# ##-- stdlib imports
+import datetime
+import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
@@ -15,30 +15,34 @@ import pathlib as pl
 import re
 import time
 import types
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
-# from uuid import UUID, uuid1
-# from weakref import ref
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
+from uuid import UUID, uuid1
 
-##-- end imports
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
+from tomlguard import TomlGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+from doot._abstract import Job_i, Task_i
+from doot.enums import TaskFlags
+from doot.errors import DootDirAbsent
+from doot.structs import DootCodeReference, DootTaskName, DootTaskSpec
+from doot.task.base_task import DootTask
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-from tomlguard import TomlGuard
-import doot
-import doot.errors
-from doot.enums import TaskFlags
-from doot.structs import DootTaskSpec, DootTaskName, DootCodeReference
-# from doot.structs import TaskStub, TaskStubPart
-from doot._abstract import Job_i, Task_i
-from doot.errors import DootDirAbsent
-from doot.task.base_task import DootTask
 
 SUBTASKED_HEAD = doot.constants.patterns.SUBTASKED_HEAD
 
