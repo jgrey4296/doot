@@ -38,7 +38,12 @@ from tomlguard import TomlGuard
 
 # ##-- 1st party imports
 import doot
+
+# ##-- end 1st party imports
+
 doot._test_setup()
+
+# ##-- 1st party imports
 import doot.errors
 import doot.structs
 from doot._abstract import Task_i
@@ -49,247 +54,122 @@ from doot.utils import mock_gen
 
 # ##-- end 1st party imports
 
-class TestTrackerBasics:
+class TestTracker:
 
     def test_basic(self):
         obj = DootTracker()
-        assert(obj is not None)
+        assert(isinstance(obj, DootTracker))
 
-    def test_register_spec(self):
+
+    def test_next_for_fails_with_unbuilt_network(self):
         obj = DootTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
-        assert(not bool(obj.specs))
-        obj.register_spec(spec)
-        assert(bool(obj.specs))
-
-    def test_register_spec_with_artifacts(self):
-        obj = BaseTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["file:>test.txt"], "required_for": ["file:>other.txt"]})
-        assert(not bool(obj.artifacts))
-        obj.register_spec(spec)
-        obj.register_artifacts(spec.name)
-        assert(bool(obj.artifacts))
-
-    def test_register_spec_pass_on_duplicate(self):
-        obj = BaseTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
-        obj.register_spec(spec)
-        assert(len(obj.specs) == 1)
-        obj.register_spec(spec)
-        assert(len(obj.specs) == 1)
-
-    def test_register_spec_ignores_disabled(self):
-        obj = BaseTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "disabled":True})
-        assert(len(obj.specs) == 0)
-        obj.register_spec(spec)
-        assert(len(obj.specs) == 0)
-
-    def test_spec_retrieval(self):
-        obj = DootTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
-        name = spec.name
-        obj.register_spec(spec)
-        retrieved = obj.specs[name]
-        assert(retrieved == spec)
-
-    def test_task_instantiation(self):
-        obj = DootTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
-        name = spec.name
-        obj.register_spec(spec)
-        instance = obj._instantiate_spec(name)
-        assert(not bool(obj.tasks))
-        obj._make_task(instance)
-        assert(bool(obj.tasks))
-
-    def test_task_retrieval(self):
-        obj = DootTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
-        name = spec.name
-        obj.register_spec(spec)
-        instance = obj._instantiate_spec(name)
-        result = obj._make_task(instance)
-        retrieved        = obj.tasks[result]
-        assert(isinstance(retrieved, Task_i))
-
-    def test_task_status(self):
-        obj = DootTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
-        name = spec.name
-        obj.register_spec(spec)
-        instance = obj._instantiate_spec(name)
-        result   = obj._make_task(instance)
-        status   = obj.task_status(result)
-        assert(status is TaskStatus_e.WAIT)
-
-    def test_task_status_fail_missing_task(self):
-        obj = DootTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
-        name = spec.name
         with pytest.raises(doot.errors.DootTaskTrackingError):
-            obj.task_status(name)
+            obj.next_for()
 
-    def test_update_status(self):
+
+    def test_next_for_empty(self):
         obj = DootTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
-        name = spec.name
+        obj.build_network()
+        assert(obj.next_for() is None)
+
+
+    def test_next_for_no_connections(self):
+        obj  = DootTracker()
+        spec = doot.structs.DootTaskSpec.build({"name":"basic::Task"})
         obj.register_spec(spec)
-        instance = obj._instantiate_spec(name)
-        result = obj._make_task(instance)
-        assert(obj.task_status(result) is TaskStatus_e.WAIT)
-        obj.update_status(result, TaskStatus_e.SUCCESS)
-        assert(obj.task_status(result) is TaskStatus_e.SUCCESS)
+        t_name = obj.queue_entry(spec.name)
+        assert(obj.get_status(t_name) is TaskStatus_e.WAIT)
+        obj.build_network()
+        match obj.next_for():
+            case Task_i():
+                assert(True)
+            case _:
+                assert(False)
+        assert(obj.get_status(t_name) is TaskStatus_e.READY)
 
-    def test_update_status_fail_missing_task(self):
-        obj = DootTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
-        name = spec.name
-        with pytest.raises(doot.errors.DootTaskTrackingError):
-            obj.update_status(name, TaskStatus_e.SUCCESS)
 
-class TestTrackerNetwork:
+    def test_next_simple_dependendency(self):
+        obj  = DootTracker()
+        spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
+        dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
+        obj.register_spec(spec, dep)
+        t_name = obj.queue_entry(spec.name)
+        assert(obj.get_status(t_name) is TaskStatus_e.WAIT)
+        obj.build_network()
+        match obj.next_for():
+            case Task_i() as result:
+                assert(dep.name < result.name)
+                assert(True)
+            case _:
+                assert(False)
+        assert(obj.get_status(t_name) is TaskStatus_e.WAIT)
 
-    def test_network_connect_to_root(self):
-        obj = BaseTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
-        obj.register_spec(spec)
-        instance = obj._instantiate_spec(spec.name)
-        assert(len(obj.network) == 1)
-        assert(not bool(obj.network.adj[obj._root_node]))
-        obj.connect(instance)
-        assert(len(obj.network) == 2)
-        assert(bool(obj.network.pred[obj._root_node]))
-        assert(bool(obj.network.succ[instance]))
 
-    def test_connect_task(self):
-        obj = DootTracker()
-        name1 = doot.structs.DootTaskName.build("basic::task").instantiate()
-        name2 = doot.structs.DootTaskName.build("basic::other").instantiate()
-        # Mock the specs:
-        obj.specs[name1] = True
-        obj.specs[name2] = True
+    def test_next_dependency_success_produces_ready_state_(self):
+        obj  = DootTracker()
+        spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
+        dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
+        obj.register_spec(spec, dep)
+        t_name = obj.queue_entry(spec.name)
+        assert(obj.get_status(t_name) is TaskStatus_e.WAIT)
+        obj.build_network()
+        dep_inst = obj.next_for()
+        assert(dep.name < dep_inst.name)
+        obj.set_status(dep_inst.name, TaskStatus_e.SUCCESS)
+        match obj.next_for():
+            case Task_i() as result:
+                assert(spec.name < result.name)
+                assert(True)
+            case _:
+                assert(False)
+        assert(obj.get_status(t_name) is TaskStatus_e.READY)
 
-        assert(len(obj.network) == 1)
-        obj.connect(name1, name2)
-        assert(len(obj.network) == 3)
-        assert(name1 in obj.network)
-        assert(name2 in obj.network)
-        assert(name2 in obj.network.succ[name1])
-        assert(name1 in obj.network.pred[name2])
 
-    def test_connect_artifact(self):
-        obj = DootTracker()
-        name1 = doot.structs.DootTaskName.build("basic::task").instantiate()
-        artifact = doot.structs.DootTaskArtifact.build("a/simple/artifact.txt")
-        # Mock the task/artifact:
-        obj.specs[name1] = True
-        obj.artifacts[artifact] = []
+    def test_next_artificial_success(self):
+        obj  = DootTracker()
+        spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
+        dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
+        obj.register_spec(spec, dep)
+        t_name   = obj.queue_entry(spec.name)
+        dep_inst = obj.queue_entry(dep.name)
+        assert(obj.get_status(t_name) is TaskStatus_e.WAIT)
+        obj.build_network()
+        # Force the dependency to success without getting it from next_for:
+        obj.set_status(dep_inst, TaskStatus_e.SUCCESS)
+        match obj.next_for():
+            case Task_i() as result:
+                assert(spec.name < result.name)
+                assert(True)
+            case _:
+                assert(False)
+        assert(obj.get_status(t_name) is TaskStatus_e.READY)
 
-        assert(len(obj.network) == 1)
-        obj.connect(name1, artifact)
-        assert(len(obj.network) == 3)
-        assert(name1 in obj.network)
-        assert(artifact in obj.network)
-        assert(artifact in obj.network.succ[name1])
-        assert(name1 in obj.network.pred[artifact])
 
-    def test_connect_fail_no_artifact(self):
-        obj = DootTracker()
-        name1 = doot.structs.DootTaskName.build("basic::task").instantiate()
-        artifact = doot.structs.DootTaskArtifact.build("a/simple/artifact.txt")
-        # Mock the task/artifact:
-        obj.specs[name1] = True
-        with pytest.raises(doot.errors.DootTaskTrackingError):
-            obj.connect(name1, artifact)
+    def test_next_halt(self):
+        obj  = DootTracker()
+        spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
+        dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
+        obj.register_spec(spec, dep)
+        t_name   = obj.queue_entry(spec.name)
+        dep_inst = obj.queue_entry(dep.name)
+        assert(obj.get_status(t_name) is TaskStatus_e.WAIT)
+        obj.build_network()
+        # Force the dependency to success without getting it from next_for:
+        obj.set_status(dep_inst, TaskStatus_e.HALTED)
+        assert(obj.next_for() == None)
+        assert(all(x.status == TaskStatus_e.HALTED for x in obj.tasks.values()))
 
-    def test_connect_fail_no_tasks(self):
-        obj = DootTracker()
-        name1 = doot.structs.DootTaskName.build("basic::task").instantiate()
-        name2 = doot.structs.DootTaskName.build("basic::other").instantiate()
-        with pytest.raises(doot.errors.DootTaskTrackingError):
-            obj.connect(name1, name2)
 
-    def test_network_retrieval(self):
-        obj = DootTracker()
-        name1 = doot.structs.DootTaskName.build("basic::task").instantiate()
-        name2 = doot.structs.DootTaskName.build("basic::other").instantiate()
-        # Mock the tasks:
-        obj.specs[name1] = True
-        obj.specs[name2] = True
-        obj.connect(name1, name2)
-        assert(name2 in obj.network.adj[name1])
-
-    def test_task_queue(self, mocker):
-        obj   = DootTracker()
-        spec  = doot.structs.DootTaskSpec.build({"name":"basic::task", "priority":5})
-        name1 = doot.structs.DootTaskName.build("basic::task")
-        obj.register_spec(spec)
-        instance = obj._instantiate_spec(spec.name)
-        # Mock the task:
-        obj.tasks[instance] = mocker.Mock(priority=5)
-        assert(instance not in obj.active_set)
-        assert(not bool(obj._queue))
-        obj.queue_task(instance)
-        assert(instance in obj.active_set)
-        assert(bool(obj._queue))
-
-    def test_task_queue_fail_with_no_tasks(self):
-        obj   = DootTracker()
-        spec  = doot.structs.DootTaskSpec.build({"name":"basic::task"})
-        name1 = doot.structs.DootTaskName.build("basic::task")
-        with pytest.raises(doot.errors.DootTaskTrackingError):
-            obj.queue_task(name1)
-
-    def test_deque_task(self, mocker):
-        obj   = DootTracker()
-        spec  = doot.structs.DootTaskSpec.build({"name":"basic::task"})
-        spec2  = doot.structs.DootTaskSpec.build({"name":"basic::other"})
-        obj.register_spec(spec)
-        obj.register_spec(spec2)
-        instance  = obj._instantiate_spec(spec.name)
-        instance2 = obj._instantiate_spec(spec2.name)
-        # Mock the task:
-        obj.tasks[instance] = mocker.Mock(priority=5)
-        obj.tasks[instance2] = mocker.Mock(priority=2)
-        obj.queue_task(instance)
-        obj.queue_task(instance2)
-        assert(instance in obj.active_set)
-        assert(instance2 in obj.active_set)
-        val = obj.deque()
-        assert(val == instance)
-        assert(instance not in obj.active_set)
-
-    def test_clear_queue(self, mocker):
-        obj    = DootTracker()
-        spec   = doot.structs.DootTaskSpec.build({"name":"basic::task"})
-        obj.register_spec(spec)
-        instance = obj._instantiate_spec(spec.name)
-        # Mock the task:
-        obj.tasks[instance] = mocker.Mock(priority=5)
-        obj.queue_task(instance)
-        assert(bool(obj.active_set))
-        obj.clear_queue()
-        assert(not bool(obj.active_set))
-
-class TestTrackerExtensions:
-
-    def test_basic(self):
-        obj = DootTracker()
-        assert(obj is not None)
-
-class TestTrackerUsage:
-    """ The basic pattern of tracker usage:
-    1) register task specs
-    2) instantiate specs as a tasks
-    3) queue them
-    4) build the dependency network (expands and instantites the dependencies)
-    6) call next_for to get the next task
-    8) perform the task
-    9) update its status
-    10) return to (5) until no more tasks
-
-    """
-
-    def test_basic(self):
-        obj = DootTracker()
+    def test_next_fail(self):
+        obj  = DootTracker()
+        spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
+        dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
+        obj.register_spec(spec, dep)
+        t_name   = obj.queue_entry(spec.name)
+        dep_inst = obj.queue_entry(dep.name)
+        assert(obj.get_status(t_name) is TaskStatus_e.WAIT)
+        obj.build_network()
+        # Force the dependency to success without getting it from next_for:
+        obj.set_status(dep_inst, TaskStatus_e.FAILED)
+        assert(obj.next_for() == None)
+        assert(all(x.status == TaskStatus_e.FAILED for x in obj.tasks.values()))

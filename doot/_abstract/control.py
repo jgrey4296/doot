@@ -53,17 +53,20 @@ class TaskTracker_i:
         raise NotImplementedError()
 
     @abstractmethod
-    def queue_task(self, task:str) -> None:
+    def queue_entry(self, task:str) -> None:
         raise NotImplementedError()
 
     @abstractmethod
-    def update_status(self, task:str|DootTaskName|SpecStruct_p|Task_i|ArtifactStruct_p, state:TaskStatus_e) -> None:
+    def set_status(self, task:str|DootTaskName|SpecStruct_p|Task_i|ArtifactStruct_p, state:TaskStatus_e) -> None:
         raise notimplementederror()
 
     @abstractmethod
     def next_for(self, target:str) -> Task_i|ArtifactStruct_p|None:
         raise NotImplementedError()
 
+    @abstractmethod
+    def build_network(self) -> None:
+        pass
 class TaskRunner_i:
     """
     Run tasks, actions, and jobs

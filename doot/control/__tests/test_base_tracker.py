@@ -67,7 +67,6 @@ class TestTrackerStore:
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["file:>test.txt"], "required_for": ["file:>other.txt"]})
         assert(not bool(obj.artifacts))
         obj.register_spec(spec)
-        obj.register_artifacts(spec.name)
         assert(bool(obj.artifacts))
 
     def test_register_spec_pass_on_duplicate(self):
@@ -84,7 +83,6 @@ class TestTrackerStore:
         assert(len(obj.specs) == 0)
         obj.register_spec(spec)
         assert(len(obj.specs) == 0)
-
 
     def test_register_transformer_spec(self):
         obj = BaseTracker()
@@ -132,7 +130,7 @@ class TestTrackerStore:
         obj.register_spec(spec)
         instance = obj._instantiate_spec(name)
         result   = obj._make_task(instance)
-        status   = obj.task_status(result)
+        status   = obj.get_status(result)
         assert(status is TaskStatus_e.WAIT)
 
     def test_task_status_fail_missing_task(self):
@@ -140,25 +138,25 @@ class TestTrackerStore:
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
         name = spec.name
         with pytest.raises(doot.errors.DootTaskTrackingError):
-            obj.task_status(name)
+            obj.get_status(name)
 
-    def test_update_status(self):
+    def test_set_status(self):
         obj = BaseTracker()
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
         name = spec.name
         obj.register_spec(spec)
         instance = obj._instantiate_spec(name)
         result = obj._make_task(instance)
-        assert(obj.task_status(result) is TaskStatus_e.WAIT)
-        obj.update_status(result, TaskStatus_e.SUCCESS)
-        assert(obj.task_status(result) is TaskStatus_e.SUCCESS)
+        assert(obj.get_status(result) is TaskStatus_e.WAIT)
+        obj.set_status(result, TaskStatus_e.SUCCESS)
+        assert(obj.get_status(result) is TaskStatus_e.SUCCESS)
 
-    def test_update_status_fail_missing_task(self):
+    def test_set_status_fail_missing_task(self):
         obj = BaseTracker()
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
         name = spec.name
         with pytest.raises(doot.errors.DootTaskTrackingError):
-            obj.update_status(name, TaskStatus_e.SUCCESS)
+            obj.set_status(name, TaskStatus_e.SUCCESS)
 
 class TestTrackerNetwork:
 
@@ -254,8 +252,10 @@ class TestTrackerNetworkBuild:
         assert(len(obj.network) == 1)
         assert(not bool(obj.tasks))
         assert(not bool(obj.specs))
+        assert(not obj.network_is_valid)
         obj.build_network()
         assert(len(obj.network) == 1)
+        assert(obj.network_is_valid)
 
     def test_build_single_dependency_node(self):
         obj  = BaseTracker()
@@ -470,7 +470,6 @@ class TestTrackerNetworkBuild:
         assert(req_artifact in obj.network.pred[dep_artifact])
         assert(req_artifact in obj.network.succ[prod])
 
-
     def test_build_transformer_from_artifact(self):
         obj                             = BaseTracker()
         transformer                     = doot.structs.DootTaskSpec.build({"name":"basic::task", "flags":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
@@ -487,7 +486,6 @@ class TestTrackerNetworkBuild:
         transformer_instance = obj.concrete[transformer.name][0]
         assert(transformer_instance in obj.network.pred[concrete_product])
         assert(transformer_instance in obj.network.succ[concrete_source])
-
 
     def test_build_multi_transformers(self):
         obj                             = BaseTracker()
@@ -519,30 +517,44 @@ class TestTrackerNetworkBuild:
             assert(concrete_source2 in obj.network.pred[instances[0]])
             assert(concrete_product2 in obj.network.succ[instances[0]])
 
-
-
-
 class TestTrackerQueue:
 
-    def test_task_queue(self, mocker):
+    def test_tracker_bool(self, mocker):
         obj   = BaseTracker()
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task"})
         obj.register_spec(spec)
-        instance = obj._instantiate_spec(spec.name)
-        # Mock the task:
-        obj.tasks[instance] = mocker.Mock(priority=5)
-        assert(instance not in obj.active_set)
         assert(not bool(obj._queue))
-        obj.queue_task(instance)
+        assert(not bool(obj))
+        instance = obj.queue_entry(spec.name)
+        assert(bool(obj._queue))
+        assert(bool(obj))
+
+    def test_queue_task(self, mocker):
+        obj   = BaseTracker()
+        spec  = doot.structs.DootTaskSpec.build({"name":"basic::task"})
+        obj.register_spec(spec)
+        assert(not bool(obj._queue))
+        instance = obj.queue_entry(spec.name)
         assert(instance in obj.active_set)
         assert(bool(obj._queue))
 
-    def test_task_queue_fail_when_not_registered(self):
+    def test_queue_task_fail_when_not_registered(self):
         obj   = BaseTracker()
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task"})
         name1 = doot.structs.DootTaskName.build("basic::task")
         with pytest.raises(doot.errors.DootTaskTrackingError):
-            obj.queue_task(name1)
+            obj.queue_entry(name1)
+
+    def test_queue_artifiact(self):
+        obj   = BaseTracker()
+        artifact = doot.structs.DootTaskArtifact.build(pl.Path("test.txt"))
+        # Stub artifact entry in tracker:
+        obj.artifacts[artifact] = []
+        obj._add_node(artifact)
+        assert(not bool(obj))
+        result = obj.queue_entry(artifact)
+        assert(bool(obj))
+        assert(artifact is result)
 
     def test_deque_task(self, mocker):
         obj   = BaseTracker()
@@ -550,27 +562,46 @@ class TestTrackerQueue:
         spec2 = doot.structs.DootTaskSpec.build({"name":"basic::other"})
         obj.register_spec(spec)
         obj.register_spec(spec2)
-        instance  = obj._instantiate_spec(spec.name)
-        instance2 = obj._instantiate_spec(spec2.name)
-        # Mock the task:
-        obj.tasks[instance] = mocker.Mock(priority=5)
-        obj.tasks[instance2] = mocker.Mock(priority=2)
-        obj.queue_task(instance)
-        obj.queue_task(instance2)
+        instance = obj.queue_entry(spec.name)
+        instance2 = obj.queue_entry(spec2.name)
         assert(instance in obj.active_set)
         assert(instance2 in obj.active_set)
-        val = obj.deque()
+        val = obj.deque_entry()
         assert(val == instance)
-        assert(instance not in obj.active_set)
+        assert(instance in obj.active_set)
+
+
+    def test_deque_artifact(self, mocker):
+        obj      = BaseTracker()
+        artifact = doot.structs.DootTaskArtifact.build(pl.Path("test.txt"))
+        # stub artifact in tracker:
+        obj.artifacts[artifact] = []
+        obj._add_node(artifact)
+        result   = obj.queue_entry(artifact)
+        assert(bool(obj))
+        val = obj.deque_entry()
+        assert(not bool(obj))
+        assert(val is artifact)
+
+    def test_peek_task(self, mocker):
+        obj   = BaseTracker()
+        spec  = doot.structs.DootTaskSpec.build({"name":"basic::task"})
+        spec2 = doot.structs.DootTaskSpec.build({"name":"basic::other"})
+        obj.register_spec(spec)
+        obj.register_spec(spec2)
+        instance  = obj.queue_entry(spec.name)
+        instance2 = obj.queue_entry(spec2.name)
+        assert(instance in obj.active_set)
+        assert(instance2 in obj.active_set)
+        val = obj.deque_entry(peek=True)
+        assert(val == instance)
+        assert(instance in obj.active_set)
 
     def test_clear_queue(self, mocker):
         obj   = BaseTracker()
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task"})
         obj.register_spec(spec)
-        instance = obj._instantiate_spec(spec.name)
-        # Mock the task:
-        obj.tasks[instance] = mocker.Mock(priority=5)
-        obj.queue_task(instance)
+        instance = obj.queue_entry(spec.name)
         assert(bool(obj.active_set))
         obj.clear_queue()
         assert(not bool(obj.active_set))
