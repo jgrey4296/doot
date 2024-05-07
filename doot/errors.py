@@ -37,7 +37,7 @@ class DootError(Exception):
 class DootTaskError(DootError):
     general_msg = "Doot Task Error:"
 
-    def __init__(self, msg, *args, task=None):
+    def __init__(self, msg, *args, task:None|"Task_i"=None):
         super().__init__(msg, *args)
         self.task = task
 
@@ -45,7 +45,7 @@ class DootTaskError(DootError):
     def task_name(self):
         if not self.task:
             return ""
-        return str(self.task.name)
+        return self.task.shortname
 
     @property
     def task_source(self):

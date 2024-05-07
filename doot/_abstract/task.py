@@ -36,7 +36,6 @@ from doot._structs.task_name import DootTaskName
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-
 @runtime_checkable
 class Action_p(Protocol):
     """
@@ -67,17 +66,12 @@ class _TaskBase_i:
 
     @property
     @abc.abstractmethod
-    def readable_name(self) -> str:
+    def shortname(self) -> str:
         pass
 
     @property
     @abc.abstractmethod
-    def name(self) -> str:
-        pass
-
-    @property
-    @abc.abstractmethod
-    def fullname(self) -> DootTaskName:
+    def name(self) -> DootTaskName:
         pass
 
     @abc.abstractmethod
@@ -105,15 +99,6 @@ class _TaskBase_i:
         pass
 
     @property
-    @abc.abstractmethod
-    def depends_on(self) -> abc.Generator[str|DootTaskName]:
-        pass
-
-    @property
-    @abc.abstractmethod
-    def required_for(self) -> abc.Generator[str|DootTaskName]:
-        pass
-
     @abc.abstractmethod
     def add_execution_record(self, arg):
         """ Record some execution record information for display or debugging """

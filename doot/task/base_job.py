@@ -65,13 +65,13 @@ class DootJob(Job_i, DootTask):
         task_name = None
         match name:
             case None:
-                task_name = self.fullname.subtask(SUBTASKED_HEAD)
+                task_name = self.name.subtask(SUBTASKED_HEAD)
             case str():
-                task_name = self.fullname.subtask(name)
+                task_name = self.name.subtask(name)
             case DootTaskName():
                 task_name = name
             case _:
-                raise doot.errors.DootTaskError("Bad value used to make a subtask in %s : %s", self.name, name)
+                raise doot.errors.DootTaskError("Bad value used to make a subtask in %s : %s", self.shortname, name)
 
         assert(task_name is not None)
         return DootTaskSpec(name=task_name, extra=TomlGuard(extra))
@@ -96,7 +96,7 @@ class DootJob(Job_i, DootTask):
 
     def stub_instance(self, stub) -> TaskStub:
         stub                      = self.__class__.stub_class(stub)
-        stub['name'].default      = self.fullname
+        stub['name'].default      = self.shortname
         if bool(self.doc):
             stub['doc'].default   = [f"\"{x}\"" for x in self.doc]
         return stub

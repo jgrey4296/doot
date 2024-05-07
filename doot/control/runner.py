@@ -101,7 +101,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
                         self._execute_task(task)
                     case Task_i():
                         # test_conditions failed, so skip
-                        printer.info("----| Task %s: %s Skipped.", self.step, task.spec.name)
+                        printer.info("----| Task %s: %s Skipped.", self.step, task.shortname)
                     case _:
                         pass
             except doot.errors.DootError as err:
@@ -121,9 +121,9 @@ class DootRunner(BaseRunner, TaskRunner_i):
         head_log_level   = job.spec.print_levels.on_fail(head_level).head()
 
         try:
-            logmod.debug("-- Expanding Job %s: %s", self.step, job.name)
+            logmod.debug("-- Expanding Job %s: %s", self.step, job.shortname)
             with logctx(head_log_level) as p:     # Announce entry
-                p.info("---> Job %s: %s", self.step, job.name, extra={"colour":"magenta"})
+                p.info("---> Job %s: %s", self.step, job.shortname, extra={"colour":"magenta"})
                 # TODO queue $head$
 
             self.reporter.add_trace(job.spec, flags=ReportEnum.JOB | ReportEnum.INIT)
@@ -141,7 +141,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
 
             with logctx(head_log_level)  as p: # Announce Exit
                 self.reporter.add_trace(job.spec, flags=ReportEnum.JOB | ReportEnum.SUCCEED)
-                p.info("---< Job %s: %s", self.step, job.name, extra={"colour":"magenta"})
+                p.info("---< Job %s: %s", self.step, job.shortname, extra={"colour":"magenta"})
 
     def _execute_task(self, task:Task_i) -> None:
         """ execute a single task's actions """
@@ -150,7 +150,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
 
         try:
             with logctx(head_log_level) as p: # Announce entry
-                p.info("----> Task %s :  %s", self.step, task.spec.name.readable, extra={"colour":"magenta"})
+                p.info("----> Task %s :  %s", self.step, task.shortname, extra={"colour":"magenta"})
 
             self.reporter.add_trace(task.spec, flags=ReportEnum.TASK | ReportEnum.INIT)
 
@@ -167,13 +167,13 @@ class DootRunner(BaseRunner, TaskRunner_i):
             task.state.clear()
 
             with logctx(head_log_level)  as p: # Cleanup and exit
-                p.debug("----< Task: %s", task.name, extra={"colour":"cyan"})
+                p.debug("----< Task: %s", task.shortname, extra={"colour":"cyan"})
 
     def _execute_action_group(self, actions:list, task:Task_i, allow_queue=False, group=None) -> tuple[int, ActRE]:
         """ Execute a group of actions, possibly queue any task specs they produced,
         and return a count of the actions run + the result
         """
-        logging.debug("Running Action Group %s (%s) for : %s", group, len(actions), task.spec.name)
+        logging.debug("Running Action Group %s (%s) for : %s", group, len(actions), task.shortname)
         group_result     = ActRE.SUCCESS
         to_queue         = []
         executed_count   = 0
@@ -189,7 +189,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
                     pass
                 case _:
                     self.reporter.add_trace(task.spec, flags=ReportEnum.FAIL | ReportEnum.TASK)
-                    raise doot.errors.DootTaskError("Task %s Failed: Produced a bad action: %s", task.name, action, task=task.spec)
+                    raise doot.errors.DootTaskError("Task %s Failed: Produced a bad action: %s", task.shortname, action, task=task.spec)
 
             match result:
                 case None:
@@ -213,7 +213,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 case [*xs]:
                     for spec in xs:
                         self.tracker.queue_task(spec, no_root_connection=True)
-                    printer.info("Queued %s Subtasks for %s", len(xs), task.spec.name)
+                    printer.info("Queued %s Subtasks for %s", len(xs), task.shortname)
 
         return executed_count, group_result
 
@@ -229,7 +229,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
         execute_log_level          = task.spec.print_levels.on_fail(execute_level).execute()
         task.state['_action_step'] = count
         self.reporter.add_trace(action, flags=ReportEnum.ACTION | ReportEnum.INIT)
-        logmod.debug("-----> Action Execution: %s for %s", action, task.name)
+        logmod.debug("-----> Action Execution: %s for %s", action, task.shortname)
 
         with logctx(action_log_level) as p: # Prep the action
             p.info( "-----> Action %s.%s: %s", self.step, count, action.do, extra={"colour":"cyan"})
@@ -255,15 +255,15 @@ class DootRunner(BaseRunner, TaskRunner_i):
                     pass
                 case False | ActRE.FAIL:
                     self.reporter.add_trace(action, flags=ReportEnum.FAIL | ReportEnum.ACTION)
-                    raise doot.errors.DootTaskFailed("Task %s: Action Failed: %s", task.name, action.do, task=task.spec)
+                    raise doot.errors.DootTaskFailed("Task %s: Action Failed: %s", task.shortname, action.do, task=task.spec)
                 case _:
                     self.reporter.add_trace(action, flags=ReportEnum.FAIL | ReportEnum.ACTION)
-                    raise doot.errors.DootTaskError("Task %s: Action %s Failed: Returned an unplanned for value: %s", task.name, action.do, result, task=task.spec)
+                    raise doot.errors.DootTaskError("Task %s: Action %s Failed: Returned an unplanned for value: %s", task.shortname, action.do, result, task=task.spec)
 
             action.verify_out(task.state)
 
         with logctx(action_log_level) as p: # Prep the action
-            p.debug("-----< Action Execution Complete: %s for %s", action, task.name)
+            p.debug("-----< Action Execution Complete: %s for %s", action, task.shortname)
 
         self.reporter.add_trace(action, flags=ReportEnum.ACTION | ReportEnum.SUCCEED)
         return result

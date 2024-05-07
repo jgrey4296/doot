@@ -125,11 +125,11 @@ class BaseRunner(TaskRunner_i):
             case doot.errors.DootTaskFailed() as err:
                 self._signal_failure = err
                 printer.warning("%s %s", fail_prefix, err)
-                self.tracker.update_status(err.task.name, TaskStatus_e.HALTED)
+                self.tracker.update_status(err.task.shortname, TaskStatus_e.HALTED)
             case doot.errors.DootTaskError() as err:
                 self._signal_failure = err
                 printer.warning("%s %s", fail_prefix, err)
-                self.tracker.update_status(err.task.name, TaskStatus_e.HALTED)
+                self.tracker.update_status(err.task.shortname, TaskStatus_e.HALTED)
             case doot.errors.DootError() as err:
                 self._signal_failure = err
                 printer.warning("%s %s", fail_prefix, err)
