@@ -83,10 +83,11 @@ class RunCmd(BaseCommand):
                 tracker.queue_entry(target)
 
         for target in doot.args.on_fail({}).tasks().keys():
-            if target not in tracker:
-                printer.warn(- "%s specified as run target, but it doesn't exist")
-            else:
+            try:
                 tracker.queue_entry(target)
+            except doot.errors.DootTaskTrackingError as err:
+                printer.warn("Failed to Queue Target: %s", target)
+                logging.debug(err)
 
         tracker.queue_entry(CheckLocsTask())
 

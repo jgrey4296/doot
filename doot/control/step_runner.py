@@ -210,7 +210,7 @@ class DootStepRunner(DootRunner):
         self._set_print_level(self._override_level)
 
     def _do_print_warn(self, *args):
-        self._override_level = "WARN"
+        self._override_level = "WARNING"
         printer.warning("Overring Printer to: %s", self._override_level)
         self._set_print_level(self._override_level)
 

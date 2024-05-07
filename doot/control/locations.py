@@ -203,7 +203,7 @@ class DootLocations(PathManip_m):
                     logging.debug("Skipping Location update of: %s", k)
                     pass
                 case Location() as l if l.check(LocationMeta.normOnLoad):
-                    raw[l.key] = Location.build(k, v, base=self.normalize(l.path))
+                    raw[l.key] = Location.build(v, key=k, target=self.normalize(l.path))
                     new_keys.add(l.key)
                 case Location() as l:
                     raw[l.key] = l

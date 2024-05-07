@@ -121,7 +121,7 @@ class _TrackerStore:
 
         return None
 
-    def _get_task_source_chain(self, name) -> list[DootTaskSpec]:
+    def _get_task_source_chain(self, name:DootTaskName) -> list[DootTaskSpec]:
         assert(TaskFlags.CONCRETE not in name)
         spec                          = self.specs[name]
         chain   : list[DootTaskSpec]  = []
@@ -724,6 +724,8 @@ class _TrackerQueue_boltons:
         """
 
         match name:
+            case str():
+                return self.queue_entry(DootTaskName.build(name))
             case DootTaskName() if name == self._root_node:
                 return None
             case DootTaskName() if name in self.active_set:
@@ -741,16 +743,16 @@ class _TrackerQueue_boltons:
                 self.register_spec(task.spec)
                 self.connect(t_name, False)
                 self.tasks[t_name] = task
-            case str() | DootTaskName() if name in self.tasks:
+            case DootTaskName() if name in self.tasks:
                 t_name  = self.tasks[name].name
-            case str() | DootTaskName() if name in self.network:
+            case  DootTaskName() if name in self.network:
                 t_name = self._make_task(name)
-            case str() | DootTaskName() if name in self.concrete and bool(self.concrete[name]):
+            case DootTaskName() if name in self.concrete and bool(self.concrete[name]):
                 instance = self.concrete[name][-1]
                 assert(instance in self.network)
                 # self.connect(instance, False)
                 t_name   = self._make_task(instance)
-            case str() | DootTaskName() if name in self.specs:
+            case DootTaskName() if name in self.specs:
                 assert(TaskFlags.CONCRETE not in DootTaskName.build(name))
                 instance : DootTaskName = self._instantiate_spec(name)
                 self.connect(instance, None)

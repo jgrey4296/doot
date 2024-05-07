@@ -31,7 +31,7 @@ eg:
 [settings.general]
 notify                   = { say-on-exit = false }
 loaders                  = { commands="default", task="default", parser="default"}
-location_check           = { make_missing = true, print_levels={action="WARN", execute="WARN" } }
+location_check           = { make_missing = true, print_levels={action="WARNING", execute="WARNING" } }
 
 [settings.tasks]
 sources = [".tasks"] # Files or directories where task specs can be loaded from, expanded according to [[locations]] keys
@@ -39,7 +39,7 @@ code    = []         # Directories where task specific code can be imported from
 sleep   = { task=0.2, subtask=1, batch=1 }
 
 [logging]
-stream  = { level="WARN",  allow=["doot"], format="{levelname:<8} : {message}", colour=true }
+stream  = { level="WARNING",  allow=["doot"], format="{levelname:<8} : {message}", colour=true }
 file    = { level="DEBUG", allow=["doot"], format="{levelname:<8} : {message:<20} :|: (module:{module} line:{lineno} fn:{funcName})" }
 printer = { level="INFO", colour=true}
 

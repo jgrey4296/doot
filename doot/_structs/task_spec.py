@@ -281,7 +281,7 @@ class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra=
     # task specific extras to use in state
     _default_ctor         : ClassVar[str]       = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
     _allowed_print_locs   : ClassVar[list[str]] = doot.constants.printer.PRINT_LOCATIONS
-    _allowed_print_levels : ClassVar[list[str]] = ["INFO", "WARNING", "DEBUG", "EXCEPTION"]
+    _allowed_print_levels : ClassVar[list[str]] = ["INFO", "WARNING", "DEBUG", "EXCEPTION", "WARN"]
     _action_group_wipe    : ClassVar[dict]      = {"required_for": [], "setup": [], "actions": [], "depends_on": []}
     # Action Groups that are dependant on, rather than are dependencies of, the task:
     _dependant_groups    : ClassVar[list[str]]  = ["required_for", "cleanup", "on_fail"]

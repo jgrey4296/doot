@@ -2,7 +2,7 @@
 
 [settings.general]
 loaders                  = { commands="default", task="default", parser="default"}
-location_check           = { make_missing = true, print_levels={action="WARN", execute="WARN"}}
+location_check           = { make_missing = true, print_levels={action="WARNING", execute="WARNING"}}
 
 [settings.tasks]
 sources = [".tasks", "~/.config/.templates/doot/py_upload"] # Files or directories where task specs can be loaded from, expanded according to [[locations]] keys
@@ -18,8 +18,8 @@ command        = { tasks="doot.cmds.list_cmd:ListCmd", pl="doot.cmds.plugins_cmd
 run = { tracker = "default", runner = "default", reporter= "default", report-line = []}
 
 [logging]
-stream  = { level = "WARN", format  = "{levelname:<8} : {message}", filters = ["doot"] }
-file    = { level = "DEBUG", format = "{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})", filters =  ["doot"] }
+stream  = { level = "WARNING", format  = "{levelname:<8} : {message}", filters = ["doot"] }
+file    = { level = "DEBUG",   format = "{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})", filters =  ["doot"] }
 printer = { colour = true }
 
 [[locations]]
