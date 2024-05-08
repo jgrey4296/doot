@@ -202,7 +202,7 @@ class DootFlexibleParser(ArgParser_i):
 
         while bool(args) and args[0] in self.registered_tasks:
             task_name                 = DootTaskName.build(args.pop(0))
-            task                      = self.registered_tasks[task_name]
+            task                      = self.registered_tasks[str(task_name)]
             assert(isinstance(task, DootTaskSpec))
             spec_params               = [DootParamSpec.build(x) for x in task.extra.on_fail([], list).cli()]
             ctor_params               = task.ctor.try_import().param_specs

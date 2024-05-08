@@ -265,7 +265,7 @@ class _TrackerStore:
         if source not in doot.args.on_fail({}).tasks():
             return spec.specialize_from(spec_extra)
 
-        for key,val in doot.args.tasks[source].items():
+        for key,val in doot.args.tasks[str(source)].items():
             spec_extra[key] = val
 
         cli_spec = spec.specialize_from(spec_extra)
