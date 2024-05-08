@@ -78,13 +78,14 @@ class DootActionSpec(BaseModel, arbitrary_types_allowed=True):
 
             case dict() | TomlGuard():
                 kwargs = TomlGuard({x:y for x,y in data.items() if x not in DootActionSpec.model_fields})
+                fun    = data.get('fun', fun)
                 action_spec = DootActionSpec(
-                    do=data['do'],
+                    do=data.get('do', None),
                     args=data.get('args',[]),
                     kwargs=kwargs,
                     inState=set(data.get('inState', set())),
                     outState=set(data.get('outState', set())),
-                    fun=fun if callable(fun) else None
+                    fun=fun,
                     )
                 return action_spec
             case _:

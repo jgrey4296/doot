@@ -52,7 +52,7 @@ TaskFlagNames : Final[str]               = [x.name for x in TaskFlags]
 
 DEFAULT_CTOR  : Final[DootCodeReference] = DootCodeReference.build(doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS])
 
-class TaskStub(BaseModel):
+class TaskStub(BaseModel, arbitrary_types_allowed=True):
     """ Stub Task Spec for description in toml
     Automatically Adds default keys from DootTaskSpec
 

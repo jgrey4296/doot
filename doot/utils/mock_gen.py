@@ -74,7 +74,7 @@ def mock_job(name, pre=None, post=None, spec=None, **kwargs):
     task_m.spec = spec or mock_task_spec(name=name)
     return task_m
 
-def mock_task_spec(name="mockSpec", pre=None, post=None, action_count=1, extra=None,  **kwargs):
+def mock_task_spec(name="agroup::mockSpec", pre=None, post=None, action_count=1, extra=None,  **kwargs):
     extra = extra or {}
     if "sleep" not in extra:
         extra['sleep'] = 0.1
@@ -103,20 +103,6 @@ def mock_action_specs(num=1) -> list:
 
     return results
 
-def mock_parse_cmd(name="cmd", params=None):
-    """ Build a mock command with cli params """
-    cmd_mock = MagicMock(spec=Command_i, name=name)
-    _add_prop(cmd_mock, "name", name)
-    _add_prop(cmd_mock, "param_specs", [mock_param_spec("help", False, type=bool)] + (params or []))
-    return cmd_mock
-
-def mock_parse_task(params=None, ctor_params=None):
-    """ Build a mock Task Spec, with spec defined cli params, and ctor defined cli params  """
-    task_ctor_mock       = mock_task_ctor(params=ctor_params)
-    task_ctor_ref_mock   = mock_code_ref(returns=task_ctor_mock)
-    task_mock            = mock_task_spec(extra={"cli": params})
-    task_mock.ctor       = task_ctor_ref_mock
-    return task_mock
 
 def mock_entry_point(name="basic", value=None):
     m = MagicMock(spec=EntryPoint)

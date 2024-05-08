@@ -80,20 +80,16 @@ class RunCmd(BaseCommand):
             if target not in tracker:
                 printer.warn("- %s specified as run target, but it doesn't exist")
             else:
-                tracker.queue_entry(target)
+                tracker.queue_entry(target, initial=True)
 
         for target in doot.args.on_fail({}).tasks().keys():
             try:
-                tracker.queue_entry(target)
+                tracker.queue_entry(target, initial=True)
             except doot.errors.DootTaskTrackingError as err:
                 printer.warn("Failed to Queue Target: %s", target)
                 logging.debug(err)
 
-        tracker.queue_entry(CheckLocsTask())
-
-        printer.info("- Building Task Network")
-        tracker.build_network()
-        printer.info("- Task Network Built")
+        tracker.queue_entry(CheckLocsTask(), initial=True)
 
         match interrupt_handler:
             case _ if not doot.args.cmd.args.interrupt:
@@ -105,6 +101,6 @@ class RunCmd(BaseCommand):
             case str():
                 interrupt = DootCodeReference.build(interrupt_handler).try_import()
 
-        printer.info("- %s Tasks Queued: %s", len(tracker.active_set), " ".join(tracker.active_set))
+        printer.info("- %s Tasks Queued: %s", len(tracker.active_set), " ".join(str(x) for x in tracker.active_set))
         with runner:
             runner(handler=interrupt)

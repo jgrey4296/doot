@@ -143,5 +143,8 @@ class DootLogConfig:
         else:
             self.print_stream_handler.setFormatter(DootColourStripFormatter(fmt=printer_log_format))
 
+        if self.file_handler:
+            self.printer.addHandler(self.file_handler)
+
     def set_level(self, level):
         self.stream_handler.setLevel(level)

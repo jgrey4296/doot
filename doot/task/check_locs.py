@@ -33,7 +33,7 @@ import doot
 import doot.errors
 from doot._abstract import Job_i
 from doot.enums import LocationMeta
-from doot.structs import DootTaskSpec
+from doot.structs import DootTaskSpec, DootActionSpec, DootKey
 from doot.task.base_task import DootTask
 
 # ##-- end 1st party imports
@@ -54,17 +54,19 @@ class CheckLocsTask(DootTask):
     task_name = "_locations::check"
 
     def __init__(self, spec=None):
-        locations = [[doot.locs[f"{{{x}}}"]] for x in doot.locs if not doot.locs.metacheck(x, LocationMeta.file)]
+        locations = [doot.locs[f"{{{x}}}"] for x in doot.locs if not doot.locs.metacheck(x, LocationMeta.file)]
+        actions   = [DootActionSpec.build({"args": [x], "fun":self.checklocs }) for x in locations]
         spec      = DootTaskSpec.build({
             "name"         : CheckLocsTask.task_name,
-            "actions"      : locations,
+            "actions"      : actions,
             "print_levels" : print_levels,
             "priority"     : 100,
                                            })
-        super().__init__(spec, action_ctor=self.checklocs)
+        super().__init__(spec)
 
-    def checklocs(self, spec, state):
-        exists_p = spec.args[0].exists()
+    @DootKey.dec.args
+    def checklocs(self, spec, state, args):
+        exists_p = args[0].exists()
         if exists_p:
             printer.info("Base Location Exists : %s", spec.args[0])
         else:
@@ -72,4 +74,3 @@ class CheckLocsTask(DootTask):
             if make_missing:
                 printer.info("Making Directory: %s", spec.args[0])
                 spec.args[0].mkdir(parents=True)
-        return
