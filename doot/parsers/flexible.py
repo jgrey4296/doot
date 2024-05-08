@@ -1,8 +1,12 @@
-##-- imports
+#!/usr/bin/env python3
+"""
+
+"""
+# Imports:
 from __future__ import annotations
 
-# import abc
-# import datetime
+# ##-- stdlib imports
+import datetime
 import enum
 import functools as ftz
 import itertools as itz
@@ -11,33 +15,41 @@ import pathlib as pl
 import re
 import time
 import types
+from collections import ChainMap
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
-# from uuid import UUID, uuid1
-# from weakref import ref
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
+from uuid import UUID, uuid1
 
-##-- end imports
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
+from tomlguard import TomlGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+from doot._abstract import ArgParser_i
+from doot.structs import DootParamSpec, DootTaskSpec, DootTaskName
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from tomlguard import TomlGuard
-import doot
-import doot.errors
-from doot._abstract import ArgParser_i
-from doot.structs import DootParamSpec, DootTaskSpec
-from collections import ChainMap
-
 SEP : Final[str]          = "--"
 PARAM_ASSIGN_PREFIX       = doot.constants.patterns.PARAM_ASSIGN_PREFIX
 NON_DEFAULT_KEY           = doot.constants.misc.NON_DEFAULT_KEY
 
-default_task : Final[str] = doot.config.on_fail((None,)).general.settings.default_task()
+default_task : Final[str] = doot.config.on_fail((None,)).general.settings.default_task(wrapper=DootTaskName.build)
+
 default_cmd  : Final[str] = doot.config.on_fail("run", str).general.settings.default_cmd()
 
 class DootFlexibleParser(ArgParser_i):
@@ -83,14 +95,14 @@ class DootFlexibleParser(ArgParser_i):
           Parses the list of arguments against available registered parameter specs, cmds, and tasks.
         """
         logging.debug("Parsing args: %s", args)
-        self.head_call                  = args[0]
-        self.head_args                  = self._build_defaults_dict(doot_specs)
-        self.head_arg_specs             = doot_specs
-        self.registered_cmds            = cmds
-        self.registered_tasks           = tasks
-        self.focus                      = self.PS.HEAD
+        self.head_call                                                    = args[0]
+        self.head_args                                                    = self._build_defaults_dict(doot_specs)
+        self.head_arg_specs                                               = doot_specs
+        self.registered_cmds  : dict[str, Command_i]                      = cmds
+        self.registered_tasks : dict[DootTaskName, DootTaskSpec]          = tasks
+        self.focus                                                        = self.PS.HEAD
 
-        remaining                      = args[1:]
+        remaining                                                         = args[1:]
         while bool(remaining):
             match self.focus:
                 case self.PS.HEAD:
@@ -104,7 +116,6 @@ class DootFlexibleParser(ArgParser_i):
                     self.focus = self.PS.EXTRA
                 case self.PS.EXTRA:
                     remaining = self.process_extra(remaining)
-
 
         if self.cmd_args.get('help', False) is True:
             self.cmd_args['target']      = self.cmd_name
@@ -176,6 +187,8 @@ class DootFlexibleParser(ArgParser_i):
         """ consume arguments for tasks """
         logging.debug("Task Parsing: %s", args)
         if args[0] not in self.registered_tasks:
+            if default_task is None:
+                return args
             task                     = self.registered_tasks[default_task]
             assert(isinstance(task, DootTaskSpec))
             task_name                 = default_task
@@ -187,15 +200,15 @@ class DootFlexibleParser(ArgParser_i):
             self.tasks_args.append((task_name, task_args))
             return args
 
-
         while bool(args) and args[0] in self.registered_tasks:
-            task_name                 = args.pop(0)
+            task_name                 = DootTaskName.build(args.pop(0))
             task                      = self.registered_tasks[task_name]
             assert(isinstance(task, DootTaskSpec))
             spec_params               = [DootParamSpec.build(x) for x in task.extra.on_fail([], list).cli()]
             ctor_params               = task.ctor.try_import().param_specs
             current_specs             = list(sorted(spec_params + ctor_params, key=DootParamSpec.key_func))
             task_args                 = self._build_defaults_dict(current_specs)
+
             default_args              = task_args.copy()
             logging.debug("Parsing Task args for: %s: Available: %s", task_name, task_args.keys())
 
@@ -220,7 +233,6 @@ class DootFlexibleParser(ArgParser_i):
                     case [*xs]:
                         raise doot.errors.DootParseError("Multiple possible task args", task_name, args[0])
 
-
             if task_name in [x[0] for x in self.tasks_args]:
                 raise doot.errors.DootParseError("a single task was specified twice")
 
@@ -233,7 +245,6 @@ class DootFlexibleParser(ArgParser_i):
     def process_extra(self, args) -> None:
         logging.debug("Extra Parsing: %s", args)
         return None
-
 
     def _consume_next_positional(self, args, arg_dict, params:list):
         """
