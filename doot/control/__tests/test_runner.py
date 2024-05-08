@@ -41,12 +41,13 @@ from doot._abstract import (Action_p, Job_i, Reporter_p, ReportLine_p, Task_i,
 from doot.control.runner import DootRunner
 from doot.control.tracker import DootTracker
 from doot.enums import TaskStatus_e
-from doot.structs import DootActionSpec, DootTaskSpec
-from doot.utils import mock_gen
+from doot.structs import DootActionSpec, DootTaskSpec, DootKey
 
 # ##-- end 1st party imports
 
 logging = logmod.root
+
+
 
 @pytest.mark.parametrize("ctor", [DootRunner])
 class TestRunner:
@@ -61,6 +62,60 @@ class TestRunner:
     def cleanup(self):
         pass
 
+
+    @pytest.fixture(scope="function")
+    def runner(self, ctor, mocker, tracker_mock, reporter_mock):
+        runner = ctor(tracker=tracker_mock, reporter=reporter_mock)
+        return runner
+
+    @pytest.fixture(scope="function")
+    def tracker_mock(self, mocker):
+        tracker = mocker.MagicMock(spec=TaskTracker_i)
+        tracker.clear_queue = mocker.Mock(return_value=None)
+        tracker._tasks = []
+        tracker._popped_tasks = []
+        def simple_pop():
+            if bool(tracker._tasks):
+                tracker._popped_tasks.append(tracker._tasks.pop())
+                return tracker._popped_tasks[-1]
+
+            return None
+
+        tracker.next_for = simple_pop
+        setattr(type(tracker), "__bool__", lambda _: bool(tracker._tasks))
+
+        return tracker
+
+    @pytest.fixture(scope="function")
+    def reporter_mock(self, mocker):
+        reporter = mocker.MagicMock(spec=Reporter_p)
+        return reporter
+
+
+    @pytest.fixture(scope="function")
+    def task_mock(self, mocker):
+        return self.make_task_mock(mocker, "agroup::atask")
+
+    def make_task_mock(self, mocker, name):
+        task                    = mocker.MagicMock(spec=Task_i, state={})
+        task.name = name
+        task.spec               = DootTaskSpec.build({"name": name})
+        task.spec.print_levels = mocker.Mock()
+        task.spec.sleep = 0.0
+        task.spec.actions = [
+            DootActionSpec.build({"do":None, "fun": lambda *xs: None})
+            ]
+        return task
+
+    def make_job_mock(self, mocker, name):
+        task                    = mocker.MagicMock(spec=Job_i, state={})
+        task.name = name
+        task.spec               = DootTaskSpec.build({"name": name})
+        task.spec.print_levels = mocker.Mock()
+        task.spec.sleep = 0.1
+        return task
+
+
     def test_initial(self, ctor, mocker, setup):
         ## setup
         tracker_m  = mocker.MagicMock(spec=TaskTracker_i)
@@ -70,99 +125,91 @@ class TestRunner:
         # Check:
         assert(isinstance(runner, TaskRunner_i))
 
-    def test_tasks_execute(self, ctor, mocker, setup):
-        ## setup
-        reporter_m                       = mocker.MagicMock(spec=Reporter_p)
+    def test_tasks_execute(self, ctor, mocker, setup, runner):
+        runner._execute_action = lambda *xs: None
+        tracker_mock = runner.tracker
 
-        task1_m                          = mock_gen.mock_task(name="first", actions=0)
-        task2_m                          = mock_gen.mock_task(name="second", actions=0)
-        task3_m                          = mock_gen.mock_task(name="third", actions=0)
+        tracker_mock._tasks += [
+            self.make_task_mock(mocker, "agroup::first"),
+            self.make_task_mock(mocker, "agroup::second"),
+            self.make_task_mock(mocker, "agroup::third"),
+            ]
 
-        tracker_m                        = mock_gen.mock_tracker(tasks=[task1_m, task2_m, task3_m])
+        names = [x.name for x in tracker_mock._tasks]
 
-        runner                           = ctor(tracker=tracker_m, reporter=reporter_m)
         expand_job                       = mocker.spy(runner, "_expand_job")
         execute_task                     = mocker.spy(runner, "_execute_task")
         execute_action                   = mocker.spy(runner, "_execute_action")
 
-        ## pre-check
-        tracker_m.set_status.assert_not_called()
+        tracker_mock.set_status.assert_not_called()
 
         # Run
         runner(handler=False)
 
         ## check result
-        tracker_m.set_status.assert_called()
-        assert(tracker_m.set_status.call_count == 3)
-        for call in tracker_m.set_status.call_args_list:
-            assert(call.args[0].name in ["default::first", "default::second", "default::third"])
+        tracker_mock.set_status.assert_called()
+        assert(tracker_mock.set_status.call_count == 3)
+        for call in tracker_mock.set_status.call_args_list:
+            assert(call.args[0].name in names)
             assert(call.args[1] is TaskStatus_e.SUCCESS)
 
         expand_job.assert_not_called()
-        execute_action.assert_not_called()
+        assert(execute_action.call_count == 3)
 
         execute_task.assert_called()
         assert(execute_task.call_count == 3)
         for call in execute_task.call_args_list:
-            assert(str(call.args[0].name) in ["default::first", "default::second", "default::third"])
+            assert(str(call.args[0].name) in names)
 
-    def test_jobs_expand(self, ctor, mocker, setup):
-        ## setup
-        reporter_m                                    = mocker.MagicMock(spec=Reporter_p)
-
-        job1_m                                        = mock_gen.mock_job("first")
-        job2_m                                        = mock_gen.mock_job("second")
-        job3_m                                        = mock_gen.mock_job("third")
-
-        tracker_m                                     = mock_gen.mock_tracker(tasks=[job1_m, job2_m, job3_m])
-        runner                                        = ctor(tracker=tracker_m, reporter=reporter_m)
+    def test_jobs_expand(self, ctor, mocker, setup, runner):
+        tracker_mock = runner.tracker
+        tracker_mock._tasks = [
+            self.make_job_mock(mocker, "agroup::first"),
+            self.make_job_mock(mocker, "agroup::second"),
+            self.make_job_mock(mocker, "agroup::third"),
+        ]
 
         expand_job                                    = mocker.spy(runner, "_expand_job")
         execute_task                                  = mocker.spy(runner, "_execute_task")
         execute_action                                = mocker.spy(runner, "_execute_action")
 
         ## pre-check
-        tracker_m.set_status.assert_not_called()
+        tracker_mock.set_status.assert_not_called()
 
         # Run
         runner(handler=False)
 
         ## check
-        tracker_m.set_status.assert_called()
-        assert(tracker_m.set_status.call_count == 3)
+        tracker_mock.set_status.assert_called()
+        assert(tracker_mock.set_status.call_count == 3)
 
         expand_job.assert_called()
         assert(expand_job.call_count == 3)
 
         execute_task.assert_not_called()
 
-    @pytest.mark.xfail
-    def test_tasks_execute_actions(self, ctor, mocker, setup):
-        ## setup
-        reporter_m                                 = mocker.MagicMock(spec=Reporter_p)
+    def test_tasks_execute_actions(self, ctor, mocker, setup, runner):
+        tracker_mock = runner.tracker
 
-        task1_m = mock_gen.mock_task("firstTask")
-        task2_m = mock_gen.mock_task("secondTask")
-        task3_m = mock_gen.mock_task("thirdTask")
+        tracker_mock._tasks += [
+            self.make_task_mock(mocker, "agroup::first"),
+            self.make_task_mock(mocker, "agroup::second"),
+            self.make_task_mock(mocker, "agroup::third"),
+            ]
 
-        tracker_m                        = mock_gen.mock_tracker(tasks=[task1_m, task2_m, task3_m])
+        names          = [x.name for x in tracker_mock._tasks]
 
-        runner                                     = ctor(tracker=tracker_m, reporter=reporter_m)
+        expand_job     = mocker.spy(runner, "_expand_job")
+        execute_task   = mocker.spy(runner, "_execute_task")
+        execute_action = mocker.spy(runner, "_execute_action")
 
-        expand_job                              = mocker.spy(runner, "_expand_job")
-        execute_task                               = mocker.spy(runner, "_execute_task")
-        execute_action                             = mocker.spy(runner, "_execute_action")
-
-        ## Run:
         runner(handler=False)
 
-        ## Check
-        tracker_m.add_task.assert_not_called()
+        tracker_mock.queue_entry.assert_not_called()
         expand_job.assert_not_called()
 
-        tracker_m.set_status.assert_called()
-        assert(tracker_m.set_status.call_count == 3)
+        tracker_mock.set_status.assert_called()
+        assert(tracker_mock.set_status.call_count == 3)
 
         execute_task.assert_called()
         execute_action.assert_called()
-        # TODO action_spec_m.__call__.assert_called()

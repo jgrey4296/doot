@@ -73,8 +73,12 @@ class BaseRunner(TaskRunner_i):
         self._exit_msg                                        = "---------- Task Loop Finished ----------"
 
     def __enter__(self) -> Any:
-        printer.info("- Validating Task Network, building remaining abstract tasks: %s", self.tracker.late_count)
-        self.tracker.validate()
+        printer.info("Building Task Network")
+        self.tracker.build_network()
+        printer.info("Task Network Built")
+        printer.info("Validating Task Network")
+        self.tracker.validate_network()
+        printer.info("Validation Complete")
         printer.info(self._enter_msg, extra={"colour" : "green"})
         return
 
@@ -104,11 +108,15 @@ class BaseRunner(TaskRunner_i):
 
     def _handle_task_success(self, task:None|Task_i|DootTaskArtifact):
         """ The basic success handler. just informs the tracker of the success """
-        if task:
-            self.tracker.set_status(task, TaskStatus_e.SUCCESS)
+        logging.debug("Task Succeeded: %s", task)
+        match task:
+            case None:
+                pass
+            case _:
+                self.tracker.set_status(task, TaskStatus_e.SUCCESS)
         return task
 
-    def _handle_failure(self, task:None|Task_i, failure:Error) -> None:
+    def _handle_failure(self, task:Task_i, failure:Error) -> None:
         """ The basic failure handler.
           Triggers a breakpoint on DootTaskInterrupt,
           otherwise informs the tracker of the failure.
@@ -125,11 +133,11 @@ class BaseRunner(TaskRunner_i):
             case doot.errors.DootTaskFailed() as err:
                 self._signal_failure = err
                 printer.warning("%s %s", fail_prefix, err)
-                self.tracker.set_status(err.task.shortname, TaskStatus_e.HALTED)
+                self.tracker.set_status(err.task, TaskStatus_e.HALTED)
             case doot.errors.DootTaskError() as err:
                 self._signal_failure = err
                 printer.warning("%s %s", fail_prefix, err)
-                self.tracker.set_status(err.task.shortname, TaskStatus_e.HALTED)
+                self.tracker.set_status(err.task, TaskStatus_e.HALTED)
             case doot.errors.DootError() as err:
                 self._signal_failure = err
                 printer.warning("%s %s", fail_prefix, err)
