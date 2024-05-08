@@ -29,7 +29,7 @@ class TestJobQueue:
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": DootTaskName.build("basic")}
+        return {"_task_name": DootTaskName.build("agroup::basic")}
 
     def test_initial(self, spec, state):
         obj = JobQueueAction()
@@ -62,7 +62,7 @@ class TestJobQueueHead:
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": DootTaskName.build("basic")}
+        return {"_task_name": DootTaskName.build("agroup::basic")}
 
     def test_initial(self, spec, state):
         obj = JobQueueHead()
@@ -89,7 +89,7 @@ class TestJobChainer:
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": DootTaskName.build("basic")}
+        return {"_task_name": DootTaskName.build("agroup::basic")}
 
 
     def test_initial(self, spec, state):

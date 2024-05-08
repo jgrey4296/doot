@@ -70,16 +70,13 @@ class TestDootTaskSpec:
         assert(obj.name.task == "atask")
 
     def test_groupless_name(self):
-        obj = structs.DootTaskSpec.build({"name": "atask"})
-        assert(isinstance(obj, structs.DootTaskSpec))
-        assert(obj.name.group == "default")
-        assert(obj.name.task == "atask")
+        with pytest.raises(ValueError):
+            structs.DootTaskSpec.build({"name": "atask"})
 
     def test_with_extra_data(self):
-        obj = structs.DootTaskSpec.build({"name": "atask", "blah": "bloo", "something": [1,2,3,4]})
+        obj = structs.DootTaskSpec.build({"name": "agroup::atask", "blah": "bloo", "something": [1,2,3,4]})
         assert(isinstance(obj, structs.DootTaskSpec))
-        assert(obj.name.group == "default")
-        assert(obj.name.task == "atask")
+        assert(obj.name == "agroup::atask")
         assert("blah" in obj.extra)
         assert("something" in obj.extra)
 
@@ -89,11 +86,34 @@ class TestDootTaskSpec:
         assert(obj.name.group == "agroup")
         assert(obj.name.task == "atask")
 
-
     def test_disabled_spec(self):
         obj = structs.DootTaskSpec.build({"name": "agroup::atask", "disabled":True})
         assert(isinstance(obj, structs.DootTaskSpec))
         assert(TaskFlags.DISABLED in obj.flags)
+
+    def test_sources_empty(self):
+        obj = structs.DootTaskSpec.build({"name": "agroup::atask"})
+        assert(isinstance(obj.sources, list))
+        assert(not bool(obj.sources))
+
+    def test_sources_name(self):
+        obj = structs.DootTaskSpec.build({"name": "agroup::atask", "sources":["other::task"]})
+        assert(isinstance(obj.sources, list))
+        assert(bool(obj.sources))
+        assert(obj.sources[0] == "other::task")
+
+    def test_sources_path(self):
+        obj = structs.DootTaskSpec.build({"name": "agroup::atask", "sources":["a/path.txt"]})
+        assert(isinstance(obj.sources, list))
+        assert(bool(obj.sources))
+        assert(obj.sources[0] == pl.Path("a/path.txt"))
+
+    def test_sources_multi(self):
+        obj = structs.DootTaskSpec.build({"name": "agroup::atask", "sources":["a/path.txt", "other::task"]})
+        assert(isinstance(obj.sources, list))
+        assert(bool(obj.sources))
+        assert(obj.sources[0] == pl.Path("a/path.txt"))
+        assert(obj.sources[1] == "other::task")
 
 class TestTaskSpecValidation:
 
@@ -121,8 +141,8 @@ class TestTaskSpecValidation:
 class TestTaskSpecInstantiation:
 
     def test_instantiation(self):
-        base_task     = structs.DootTaskSpec.build({"name": "base", "group": "agroup", "a": 0})
-        override_task = structs.DootTaskSpec.build({"name": "atask", "group": "agroup", "b": 2, "source": "agroup::base"})
+        base_task     = structs.DootTaskSpec.build({"name": "agroup::base", "a": 0})
+        override_task = structs.DootTaskSpec.build({"name": "agroup::atask", "b": 2, "sources": "agroup::base"})
 
         instance = override_task.instantiate_onto(base_task)
         assert(instance is not base_task)
@@ -132,36 +152,43 @@ class TestTaskSpecInstantiation:
         assert("a" in instance.extra)
         assert("b" in instance.extra)
         assert(instance.flags == instance.name.meta)
+        assert(instance.sources == ["agroup::base", "agroup::atask"])
+
+    def test_instantiation_extends_sources(self):
+        base_task     = structs.DootTaskSpec.build({"name": "agroup::base", "a": 0})
+        override_task = structs.DootTaskSpec.build({"name": "agroup::atask", "b": 2, "sources": "agroup::base"})
+        instance = override_task.instantiate_onto(base_task)
+        assert(instance.sources == ["agroup::base", "agroup::atask"])
 
     def test_instantiation_prefers_newer_extra_vals(self):
-        base_task     = structs.DootTaskSpec.build({"name": "base", "group": "agroup", "a": 0})
-        override_task = structs.DootTaskSpec.build({"name": "atask", "group": "agroup", "a": 100, "b": 2, "source": "agroup::base"})
+        base_task     = structs.DootTaskSpec.build({"name": "agroup::base", "a": 0})
+        override_task = structs.DootTaskSpec.build({"name": "agroup::atask", "a": 100, "b": 2, "sources": "agroup::base"})
         instance = override_task.instantiate_onto(base_task)
         assert(instance.extra['a'] == 100)
         assert(instance.flags == instance.name.meta)
+        assert(instance.sources == ["agroup::base", "agroup::atask"])
 
     def test_specialize_from_fail_unrelated(self):
         base_task     = structs.DootTaskSpec.build({"name": "agroup::base", "a": 0})
-        override_task = structs.DootTaskSpec.build({"name": "agroup::atask", "b": 2, "source": "agroup::not.base"})
+        override_task = structs.DootTaskSpec.build({"name": "agroup::atask", "b": 2, "sources": "agroup::not.base"})
 
-        assert(not base_task.name < structs.DootTaskName.build(override_task.source))
+        assert(not base_task.name < structs.DootTaskName.build(override_task.sources[-1]))
         with pytest.raises(doot.errors.DootTaskTrackingError):
             base_task.specialize_from(override_task)
 
     def test_specialize_keeps_base_actions(self):
-        base_task     = structs.DootTaskSpec.build({"name": "base", "group": "agroup", "a": 0, "actions":[{"do":"basic"}]})
-        override_task = structs.DootTaskSpec.build({"name": "atask", "group": "agroup", "b": 2, "source":"agroup::base"})
+        base_task     = structs.DootTaskSpec.build({"name": "agroup::base", "a": 0, "actions":[{"do":"basic"}]})
+        override_task = structs.DootTaskSpec.build({"name": "agroup::atask", "b": 2, "sources":"agroup::base"})
 
         instance = base_task.specialize_from(override_task)
         assert(instance is not base_task)
         assert(instance is not override_task)
         assert(bool(instance.actions))
         assert(instance.flags == instance.name.meta)
-
 
     def test_specialize_keeps_override_actions(self):
-        base_task     = structs.DootTaskSpec.build({"name": "base", "group": "agroup", "a": 0})
-        override_task = structs.DootTaskSpec.build({"name": "atask", "group": "agroup", "b": 2, "actions":[{"do":"basic"}], "source":"agroup::base"})
+        base_task     = structs.DootTaskSpec.build({"name": "agroup::base", "a": 0})
+        override_task = structs.DootTaskSpec.build({"name": "agroup::atask", "b": 2, "actions":[{"do":"basic"}], "sources":"agroup::base"})
 
         instance = base_task.specialize_from(override_task)
         assert(instance is not base_task)
@@ -169,10 +196,9 @@ class TestTaskSpecInstantiation:
         assert(bool(instance.actions))
         assert(instance.flags == instance.name.meta)
 
-
     def test_specialize_override_print_levels(self):
-        base_task     = structs.DootTaskSpec.build({"name": "base", "group": "agroup", "a": 0, "print_levels": {"head":"DEBUG"}})
-        override_task = structs.DootTaskSpec.build({"name": "atask", "group": "agroup", "b": 2, "print_levels": {"head":"WARNING"}, "source":"agroup::base"})
+        base_task     = structs.DootTaskSpec.build({"name": "agroup::base", "a": 0, "print_levels": {"head":"DEBUG"}})
+        override_task = structs.DootTaskSpec.build({"name": "agroup::atask", "b": 2, "print_levels": {"head":"WARNING"}, "sources":"agroup::base"})
 
         instance = base_task.specialize_from(override_task)
         assert(instance is not base_task)
@@ -181,8 +207,8 @@ class TestTaskSpecInstantiation:
         assert(instance.flags == instance.name.meta)
 
     def test_specialize_source_as_taskname(self):
-        base_task     = structs.DootTaskSpec.build({"name": "base", "group": "agroup", "a": 0})
-        override_task = structs.DootTaskSpec.build({"name": "atask", "group": "agroup", "b": 2, "source" : "agroup::base"})
+        base_task     = structs.DootTaskSpec.build({"name": "agroup::base", "a": 0})
+        override_task = structs.DootTaskSpec.build({"name": "agroup::atask", "b": 2, "sources" : "agroup::base"})
 
         instance = base_task.specialize_from(override_task)
         assert(instance is not base_task)
@@ -192,8 +218,8 @@ class TestTaskSpecInstantiation:
         assert(instance.flags == instance.name.meta)
 
     def test_dependency_merge(self):
-        base_task     = structs.DootTaskSpec.build({"name": "base", "group": "agroup", "a": 0, "depends_on": ["basic::dep"]})
-        override_task = structs.DootTaskSpec.build({"name": "atask", "group": "agroup", "depends_on": ["extra::dep"], "b": 2, "source" : "agroup::base"})
+        base_task     = structs.DootTaskSpec.build({"name": "agroup::base", "a": 0, "depends_on": ["basic::dep"]})
+        override_task = structs.DootTaskSpec.build({"name": "agroup::atask", "depends_on": ["extra::dep"], "b": 2, "sources" : "agroup::base"})
 
         instance = base_task.specialize_from(override_task)
         assert(instance is not base_task)
@@ -202,15 +228,14 @@ class TestTaskSpecInstantiation:
         assert(instance.flags == instance.name.meta)
 
     def test_specialize_conflict(self):
-        base_task     = structs.DootTaskSpec.build({"name": "base", "group": "agroup", "a": 0})
-        override_task = structs.DootTaskSpec.build({"name": "atask", "group": "agroup", "b": 1, "source" : "agroup::not.base"})
+        base_task     = structs.DootTaskSpec.build({"name": "agroup::base", "a": 0})
+        override_task = structs.DootTaskSpec.build({"name": "agroup::atask", "b": 1, "sources" : "agroup::not.base"})
 
         with pytest.raises(doot.errors.DootTaskTrackingError):
             base_task.specialize_from(override_task)
 
-
     def test_simple_data_extension(self):
-        base_task     = structs.DootTaskSpec.build({"name": "base", "group": "agroup", "a": 0, "c": "blah"})
+        base_task     = structs.DootTaskSpec.build({"name": "agroup::base", "a": 0, "c": "blah"})
         data = {"a": 2, "b": 3}
         instance = base_task.specialize_from(data)
         assert(instance is not base_task)
@@ -219,3 +244,24 @@ class TestTaskSpecInstantiation:
         assert(instance.b == 3)
         assert(instance.c == "blah")
         assert(instance.flags == instance.name.meta)
+
+    def test_sources_independece(self):
+        base_task     = structs.DootTaskSpec.build({"name": "agroup::base", "a": 0, "c": "blah"})
+        second = structs.DootTaskSpec.build(dict(base_task))
+        assert(base_task.sources is not second.sources)
+        second.sources.append("blah")
+        assert("blah" not in base_task.sources)
+
+    def test_dict_sources_independence(self):
+        base_task     = structs.DootTaskSpec.build({"name": "agroup::base", "a": 0, "c": "blah"})
+        instance = base_task.specialize_from({})
+        assert(base_task.sources is not instance.sources)
+        instance.sources.append("blah")
+        assert("blah" not in base_task.sources)
+
+    def test_self_sources_independence(self):
+        base_task     = structs.DootTaskSpec.build({"name": "agroup::base", "a": 0, "c": "blah"})
+        instance = base_task.specialize_from(base_task)
+        assert(base_task.sources is not instance.sources)
+        instance.sources.append("blah")
+        assert("blah" not in base_task.sources)

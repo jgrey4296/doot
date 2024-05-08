@@ -2,31 +2,52 @@
 """
 
 """
-##-- imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
+import contextlib
+import datetime
+import enum
+import functools as ftz
+import io
+import itertools as itz
 import logging as logmod
+import pathlib as pl
+import sys
 import unittest
 import warnings
-import pathlib as pl
-from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
-                    Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
-                    TypeVar, cast)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from unittest import mock
-##-- end imports
-logging = logmod.root
+from uuid import UUID, uuid1
 
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
 import pytest
-import functools as ftz
-import sys
-import io
-import contextlib
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
 import doot
+
+# ##-- end 1st party imports
+
 doot._test_setup()
+
+# ##-- 1st party imports
 import doot.errors
 from doot._abstract import Command_i
-from doot.structs import DootTaskSpec
 from doot.cmds.list_cmd import ListCmd
+from doot.structs import DootTaskSpec
+
+# ##-- end 1st party imports
+
+logging = logmod.root
 
 class TestListCmd:
 
@@ -65,7 +86,6 @@ class TestListCmd:
         message_set = {x.message for x in caplog.records}
         assert("No Tasks Defined" in message_set)
 
-
     def test_call_all_not_empty(self, caplog, mocker):
         mocker.patch("doot.args")
         del doot.args.cmd.args.keys
@@ -91,7 +111,6 @@ class TestListCmd:
         assert("defined task generators by group:" in message_set)
         assert(any(x.startswith("simple :: ") for x in message_set) )
         assert(any(x.startswith("other  :: ") for x in message_set) )
-
 
     def test_list_even_with_ctor_failure(self, caplog, mocker):
         mocker.patch("doot.args")
@@ -136,7 +155,6 @@ class TestListCmd:
 
         assert("tasks for pattern: simple" in message_set)
         assert( any(x.startswith("blah::simple :: doot.task.base_task:doottask") for x in message_set) )
-
 
     def test_call_partial_target_not_empty(self, caplog, mocker):
         mocker.patch("doot.args")

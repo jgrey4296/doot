@@ -50,7 +50,6 @@ from doot._abstract import Task_i
 from doot.control.base_tracker import BaseTracker
 from doot.control.tracker import DootTracker
 from doot.enums import TaskStatus_e
-from doot.utils import mock_gen
 
 # ##-- end 1st party imports
 
@@ -93,7 +92,7 @@ class TestTracker:
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
         dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
-        t_name = obj.queue_entry(spec.name)
+        t_name = obj.queue_entry(spec.name, initial=True)
         assert(obj.get_status(t_name) is TaskStatus_e.WAIT)
         obj.build_network()
         match obj.next_for():
@@ -110,7 +109,7 @@ class TestTracker:
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
         dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
-        t_name = obj.queue_entry(spec.name)
+        t_name = obj.queue_entry(spec.name, initial=True)
         assert(obj.get_status(t_name) is TaskStatus_e.WAIT)
         obj.build_network()
         dep_inst = obj.next_for()
@@ -150,7 +149,7 @@ class TestTracker:
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
         dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
-        t_name   = obj.queue_entry(spec.name)
+        t_name   = obj.queue_entry(spec.name, initial=True)
         dep_inst = obj.queue_entry(dep.name)
         assert(obj.get_status(t_name) is TaskStatus_e.WAIT)
         obj.build_network()
@@ -165,7 +164,7 @@ class TestTracker:
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
         dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
-        t_name   = obj.queue_entry(spec.name)
+        t_name   = obj.queue_entry(spec.name, initial=True)
         dep_inst = obj.queue_entry(dep.name)
         assert(obj.get_status(t_name) is TaskStatus_e.WAIT)
         obj.build_network()

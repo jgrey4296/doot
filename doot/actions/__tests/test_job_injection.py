@@ -32,7 +32,7 @@ class TestJobInjection:
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": DootTaskName.build("basic")}
+        return {"_task_name": DootTaskName.build("agroup::basic")}
 
     def test_copy(self, spec, state):
         """ the injection copies the value over directly """
@@ -103,7 +103,7 @@ class TestPathInjection:
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": DootTaskName.build("basic")}
+        return {"_task_name": DootTaskName.build("agroup::basic")}
 
     def test_initial(self, spec ,state):
         obj = ji.JobInjectPathParts()

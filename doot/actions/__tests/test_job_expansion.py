@@ -29,7 +29,7 @@ class TestJobExpansion:
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": DootTaskName.build("basic")}
+        return {"_task_name": DootTaskName.build("agroup::basic")}
 
     def test_initial(self, spec, state):
         obj = JobExpandAction()
@@ -65,7 +65,7 @@ class TestJobExpansion:
         result = obj(spec, state)
         assert(isinstance(result, dict))
         assert(isinstance(result[spec.kwargs['update_']], list))
-        assert(result['specs'][0].source == "test::task")
+        assert(result['specs'][0].sources == ["test::task"])
         assert(len(result['specs'][0].actions) == 0)
 
     def test_taskname_template(self, spec, state):
@@ -84,7 +84,7 @@ class TestJobMatcher:
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": DootTaskName.build("basic")}
+        return {"_task_name": DootTaskName.build("agroup::basic")}
 
     def test_initial(self):
         pass
@@ -97,7 +97,7 @@ class TestJobGenerate:
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": DootTaskName.build("basic")}
+        return {"_task_name": DootTaskName.build("agroup::basic")}
 
     def test_initial(self):
         pass
