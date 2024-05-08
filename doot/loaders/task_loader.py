@@ -55,10 +55,14 @@ def apply_group_and_source(group, source, x):
         case tomlguard.TomlGuard():
             x = dict(x.items())
             x['group']  = x.get('group', group)
-            x['source'] = str(source)
+            if 'sources' not in x:
+                x['sources'] = []
+            x['sources'].append(str(source))
         case dict():
             x['group']  = x.get('group', group)
-            x['source'] = str(source)
+            if 'sources' not in x:
+                x['sources'] = []
+            x['sources'].append(str(source))
     return x
 
 
@@ -221,24 +225,24 @@ class DootTaskLoader(TaskLoader_p):
                         task_descriptions[str(task_spec.name)] = task_spec
 
                     case _: # Else complain
-                        raise doot.errors.DootTaskLoadError("Task Spec missing, at least, a name and ctor: %s: %s", spec['source'], spec)
+                        raise doot.errors.DootTaskLoadError("Task Spec missing, at least, needs at least a name and ctor: %s: %s", spec, spec['sources'][0] )
             except doot.errors.DootLocationError as err:
-                logging.warning("Task Spec '%s' Load Failure: Missing Location: '%s'. Source File: %s", task_name, str(err), spec['source'])
+                logging.warning("Task Spec '%s' Load Failure: Missing Location: '%s'. Source File: %s", task_name, str(err), spec['sources'][0])
             except ModuleNotFoundError as err:
                 logging.debug(err)
-                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Module Name: '%s'. Source File: %s", task_name, task_alias, spec['source']) from err
+                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Module Name: '%s'. Source File: %s", task_name, task_alias, spec['sources'][0]) from err
             except AttributeError as err:
                 logging.debug(err)
-                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Class Name: '%s'. Source File: %s", task_name, task_alias, spec['source'], err.args) from err
+                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Class Name: '%s'. Source File: %s", task_name, task_alias, spec['sources'][0], err.args) from err
             except ValueError as err:
                 logging.debug(err)
-                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Module/Class Split failed on: '%s'. Source File: %s", task_name, task_alias, spec['source']) from err
+                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Module/Class Split failed on: '%s'. Source File: %s", task_name, task_alias, spec['sources'][0]) from err
             except TypeError as err:
                 logging.debug(err)
-                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Type constructor: '%s'. Source File: %s", task_name, spec['ctor'], spec['source']) from err
+                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Type constructor: '%s'. Source File: %s", task_name, spec['ctor'], spec['sources'][0]) from err
             except ImportError as err:
                 logging.debug(err)
-                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: ctor import check failed. Source File: %s", task_name, spec['source']) from err
+                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: ctor import check failed. Source File: %s", task_name, spec['sources'][0]) from err
 
         return task_descriptions
 

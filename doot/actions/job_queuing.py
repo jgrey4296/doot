@@ -108,7 +108,7 @@ class JobQueueAction(Action_p):
         for i,x in enumerate(args):
             sub = DootTaskSpec.build(dict(
                 name=base.subtask(i),
-                source=DootTaskName.build(x),
+                sources=[DootTaskName.build(x)],
                 required_for=[head],
                 depends_on=[],
                 ))
@@ -164,7 +164,7 @@ class JobQueueHead(Action_p):
                                                  actions=[],
                                                  queue_behaviour="auto")),
                          DootTaskSpec.build(dict(name=head_name.subtask("1"),
-                                                 source=DootTaskName.build(base),
+                                                 sources=[DootTaskName.build(base)],
                                                  depends_on=[head_name],
                                                  extra=inject or {},
                                                  queue_behaviour="auto"))

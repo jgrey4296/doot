@@ -92,7 +92,7 @@ class JobExpandAction(JobInjector):
         for i, arg in enumerate(build_queue):
                 # TODO change job subtask naming scheme
                 base_dict = dict(name=_basename.subtask(prefix, i),
-                                 source=base,
+                                 sources=[base],
                                  actions = actions or [],
                                  required_for=[base_head],
                                  print_levels=_printL or {},

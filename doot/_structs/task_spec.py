@@ -4,12 +4,14 @@
 See EOF for license/metadata/notes as applicable
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 import datetime
 import enum
 import functools as ftz
+import importlib
 import itertools as itz
 import logging as logmod
 import pathlib as pl
@@ -17,39 +19,44 @@ import re
 import time
 import types
 import weakref
-from dataclasses import InitVar, dataclass, field, _MISSING_TYPE
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping, Self,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar, Literal,
-                    cast, final, overload, runtime_checkable, Generator)
+from dataclasses import _MISSING_TYPE, InitVar, dataclass, field, fields
+from importlib.metadata import EntryPoint
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Literal, Mapping, Match,
+                    MutableMapping, Protocol, Self, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
-import more_itertools as mitz
-##-- end lib imports
+# ##-- 3rd party imports
+from pydantic import (BaseModel, BeforeValidator, Field, ValidationError,
+                      ValidationInfo, ValidatorFunctionWrapHandler,
+                      WrapValidator, field_validator, model_validator)
+from tomlguard import TomlGuard
+from typing_extensions import Annotated
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+from doot._abstract.structs import SpecStruct_p
+from doot._abstract.task import Task_i
+from doot._structs.action_spec import DootActionSpec
+from doot._structs.artifact import DootTaskArtifact
+from doot._structs.code_ref import DootCodeReference
+from doot._structs.relation_spec import RelationSpec
+from doot._structs.task_name import DootTaskName
+from doot.enums import (LocationMeta, RelationMeta, ReportEnum, TaskFlags,
+                        TaskQueueMeta)
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-from pydantic import BaseModel, Field, model_validator, field_validator, BeforeValidator, WrapValidator, ValidationInfo, ValidatorFunctionWrapHandler
-from typing_extensions import Annotated
-from dataclasses import fields
-import importlib
-from importlib.metadata import EntryPoint
-from tomlguard import TomlGuard
-import doot
-import doot.errors
-from doot.enums import TaskFlags, ReportEnum, TaskQueueMeta, RelationMeta, LocationMeta
-from doot._structs.task_name import DootTaskName
-from doot._structs.code_ref import DootCodeReference
-from doot._structs.action_spec import DootActionSpec
-from doot._structs.artifact import DootTaskArtifact
-from doot._abstract.structs import SpecStruct_p
-from doot._abstract.task import Task_i
-from doot._structs.relation_spec import RelationSpec
 
 def _prepare_action_group(deps:list[str], handler:ValidatorFunctionWrapHandler, info:ValidationInfo) -> list[RelationSpec|DootActionSpec]:
     """
@@ -91,6 +98,39 @@ class _SpecUtils_m:
             case _:
                 raise TypeError("Can't instantiate onto something not a task spec", data)
 
+    def instantiate_transformer(self, target:DootTaskArtifact|tuple[DootTaskArtifact, DootTaskArtifact]) -> None|DootTaskSpec:
+        """ Create an instantiated transformer spec.
+          ie     : ?.txt -> spec -> ?.blah
+          becomes: a.txt -> spec -> a.blah
+
+          can be given one artifact, which will be used for matching on pre and post,
+          or a tuple, which specifies an exact transform
+
+          TODO: handle ?/?.txt, */?.txt, blah/*/?.txt, path/blah.?
+        """
+        match target:
+            case DootTaskArtifact():
+                pre, post = target, target
+            case (DootTaskArtifact() as pre, DootTaskArtifact() as post):
+                pass
+
+        instance = self.instantiate_onto(None)
+        match self.transformer_of():
+            case None:
+                raise doot.errors.DootTaskTrackingError("Tried to transformer instantiate a non-transformer", self.name)
+            case (x, y) if pre in x.target or post in y.target:
+                # exact transform
+                # replace x with pre in depends_on
+                instance.depends_on.remove(x)
+                instance.depends_on.append(x.instantiate(pre))
+                # replace y with post in required_for
+                instance.required_for.remove(y)
+                instance.required_for.append(y.instantiate(post))
+            case _:
+                return None
+
+        return instance
+
     def make(self, ensure:type=Any) -> Task_i:
         """ Create actual task instance """
         task_ctor = self.ctor.try_import(ensure=ensure)
@@ -114,7 +154,7 @@ class _SpecUtils_m:
         # build $head$
         head : DootTaskSpec = DootTaskSpec.build({
             "name"            : self.name.job_head(),
-            "source"          : None,
+            "sources"         : self.sources[:] + [self.name, None],
             "actions"         : self.cleanup,
             "print_levels"    : self.print_levels,
             "extra"           : self.extra,
@@ -217,50 +257,20 @@ class _SpecUtils_m:
 
         raise ValueError("This shouldn't be possible")
 
-    def instantiate_transformer(self, target:DootTaskArtifact|tuple[DootTaskArtifact, DootTaskArtifact]) -> None|DootTaskSpec:
-        """ Create an instantiated transformer spec.
-          ie     : ?.txt -> spec -> ?.blah
-          becomes: a.txt -> spec -> a.blah
-
-          can be given one artifact, which will be used for matching on pre and post,
-          or a tuple, which specifies an exact transform
-
-          TODO: handle ?/?.txt, */?.txt, blah/*/?.txt, path/blah.?
-        """
-        match target:
-            case DootTaskArtifact():
-                pre, post = target, target
-            case (DootTaskArtifact() as pre, DootTaskArtifact() as post):
-                pass
-
-        instance = self.instantiate_onto(None)
-        match self.transformer_of():
-            case None:
-                raise doot.errors.DootTaskTrackingError("Tried to transformer instantiate a non-transformer", self.name)
-            case (x, y) if pre in x.target or post in y.target:
-                # exact transform
-                # replace x with pre in depends_on
-                instance.depends_on.remove(x)
-                instance.depends_on.append(x.instantiate(pre))
-                # replace y with post in required_for
-                instance.required_for.remove(y)
-                instance.required_for.append(y.instantiate(post))
-            case _:
-                return None
-
-        return instance
-
 class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra="allow"):
     """ The information needed to describe a generic task.
     Optional things are shoved into 'extra', so things can use .on_fail on the tomlguard
 
     the cli parser can understand cli=[{}] specs
-    actions                      : list[ [args] | {do="", args=[], **kwargs} ]
+    actions                      : list[ [args] | {do='', args=[], **kwargs} ]
+
+    Notes:
+      sources = [root, ... grandparent, parent]. 'None' indicates halt on climbing source chain
 
     """
     name                         : str|DootTaskName
     doc                          : list[str]                                                               = []
-    source                       : DootTaskName|pl.Path|None                                               = None
+    sources                      : list[DootTaskName|pl.Path|None]                                         = []
 
     # Action Groups:
     actions                      : ActionGroup                                                             = []
@@ -289,6 +299,8 @@ class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra=
     @staticmethod
     def build(data:TomlGuard|dict|DootTaskName|str) -> Self:
         match data:
+            case TomlGuard() | dict() if "source" in data:
+                raise ValueError("source is deprecated, use 'sources'", data)
             case TomlGuard() | dict():
                 return DootTaskSpec.model_validate(data)
             case DootTaskName():
@@ -390,13 +402,34 @@ class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra=
             case _:
                 raise ValueError("Queue Behaviour needs to be a str or a TaskQueueMeta enum", val)
 
-    @field_validator("source", mode="before")
-    def _validate_source(cls, val):
+    @field_validator("sources", mode="before")
+    def _validate_sources(cls, val):
+        """ builds the soures list, converting strings to task names,
+
+          """
         match val:
-            case DootTaskName() | pl.Path | None:
-                return val
-            case str():
-                return DootTaskName.build(val)
+            case None:
+                val = []
+            case list():
+                pass
+            case _:
+                val = [val]
+
+        result = []
+        for x in val:
+            match x:
+                case "None" | None:
+                    result.append(None)
+                case DootTaskName() | pl.Path():
+                    result.append(x)
+                case str():
+                    try:
+                        name = DootTaskName.build(x)
+                        result.append(name)
+                    except (ValueError, ValidationError):
+                        result.append(pl.Path(x))
+
+        return result
 
     def __hash__(self):
         return hash(str(self.name))
@@ -416,30 +449,35 @@ class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra=
 
     def specialize_from(self, data:dict|DootTaskSpec) -> DootTaskSpec:
         """
-          apply data over the top of self
+          apply data over the top of self.
+          a *single* application, as a spec on it's own has no means to look up other specs,
+          which is the tracker's responsibility.
+
+          so source chain: [root..., self, data]
         """
         match data:
+            case dict():
+                specialized = dict(self)
+                specialized.update(data)
+                return DootTaskSpec.build(specialized)
             case DootTaskSpec() if self is data:
                 # specializing on self, just instantiate a name
-                specialized = dict(self)
-                specialized['name']   = data.name.instantiate()
-                specialized['source'] = self.name
+                specialized           = dict(self)
+                specialized['name']   = self.name.instantiate()
+                # Otherwise theres interference:
+                specialized['sources'] = self.sources[:] + [self.name]
                 return DootTaskSpec.build(specialized)
-            case DootTaskSpec(source=DootTaskName() as source) if not source <= self.name:
-                raise doot.errors.DootTaskTrackingError("Tried to specialize a task that isn't based on this task", str(data.name), str(self.name), str(data.source))
+            case DootTaskSpec(sources=[*xs, DootTaskName() as x] ) if not x <= self.name:
+                raise doot.errors.DootTaskTrackingError("Tried to specialize a task that isn't based on this task", str(data.name), str(self.name), str(data.sources))
             case DootTaskSpec(ctor=ctor) if self.ctor != ctor and ctor != DootTaskSpec._default_ctor:
                 raise doot.errors.DootTaskTrackingError("Unknown ctor for spec", data.ctor)
             case DootTaskSpec():
                 specialized = dict(self)
                 specialized.update({k:v for k,v in dict(data).items() if k in data.model_fields_set})
-            case dict():
-                specialized = dict(self)
-                specialized.update(data)
-                return DootTaskSpec.build(specialized)
 
         # Then special updates
         specialized['name']   = data.name.instantiate()
-        specialized['source'] = self.name
+        specialized['sources'] = self.sources[:] + [self.name, data.name]
 
         specialized['actions']      = self.actions      + data.actions
         specialized["depends_on"]   = self.depends_on   + data.depends_on

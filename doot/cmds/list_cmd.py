@@ -108,7 +108,7 @@ class ListCmd(BaseCommand):
             printer.info(fmt_str,
                          spec.name,
                          spec.ctor,
-                         spec.source)
+                         spec.sources)
 
     def _print_group_matches(self, tasks):
         max_key = len(max(tasks.keys(), key=len))
@@ -124,9 +124,9 @@ class ListCmd(BaseCommand):
                 continue
 
             groups[spec.name.group].append((spec.name.task,
-                                                  spec.ctor.__module__,
-                                                  spec.ctor.__name__,
-                                                  spec.source))
+                                            spec.ctor.__module__,
+                                            spec.ctor.__name__,
+                                            spec.sources))
 
         printer.info("Tasks for Matching Groups: %s", pattern, extra={"colour":"cyan"})
         for group, tasks in groups.items():
@@ -147,8 +147,8 @@ class ListCmd(BaseCommand):
 
 
             groups[spec.name.group].append((spec.name.task,
-                                                  (spec.doc[0] if bool(spec.doc) else "")[:60],
-                                                  spec.source))
+                                            (spec.doc[0] if bool(spec.doc) else "")[:60],
+                                            spec.sources))
 
         for group, tasks in groups.items():
             printer.info("*   %s::", group, extra={"colour":"magenta"})
@@ -169,7 +169,7 @@ class ListCmd(BaseCommand):
             if TaskFlags.DISABLED in spec.flags:
                 continue
 
-            sources[spec.source].append((spec.name.task,
+            sources[spec.sources[0]].append((spec.name.task,
                                          spec.ctor.__module__,
                                          spec.ctor.__name__,
                                         ))
