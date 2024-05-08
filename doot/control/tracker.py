@@ -125,7 +125,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
                 case TaskStatus_e.ARTIFACT: # Add dependencies of an artifact to the stack
                     match self.incomplete_dependencies(focus):
                         case [] if not bool(focus):
-                            logging.warning("An Artifact has no incomplete dependencies, yet doesn't exist", focus)
+                            logging.warning("An Artifact has no incomplete dependencies, yet doesn't exist: %s", focus)
                             self.set_status(focus, TaskStatus_e.HALTED)
                             self.queue_entry(focus)
                         case [*xs]:

@@ -182,7 +182,7 @@ class Location(BaseModel, arbitrary_types_allowed=True):
             # abstract artifacts never exist
             return False
 
-        return self.target.exists()
+        return self.path.exists()
 
     def keys(self) -> set[str]:
         return self._expansion_keys
