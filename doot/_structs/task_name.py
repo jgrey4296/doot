@@ -82,9 +82,7 @@ class DootTaskName(StructuredName):
             case DootTaskName():
                 return name
             case str() if cls._separator not in name:
-                logging.debug("Taskname has no group, setting default")
-                group = "default"
-                task = name
+                raise ValueError("TaskName has no group", name)
             case str():
                 group, task = name.split(doot.constants.patterns.TASK_SEP)
             case {"name": DootTaskName() as name}:
@@ -215,7 +213,7 @@ class DootTaskName(StructuredName):
                 return DootTaskName(head=self.head[:], tail=self.tail[:x] + [DootTaskName._root_marker])
 
     def add_root(self):
-        return self.subtask("")
+        return self.subtask(DootTaskName._root_marker)
 
     def subtask(self, *subtasks, subgroups:list[str]|None=None, **kwargs) -> DootTaskName:
         """ generate an extended name, with more information
