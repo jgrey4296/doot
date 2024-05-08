@@ -102,7 +102,7 @@ class _TaskProperties_m(ParamSpecMaker_m):
     def __hash__(self):
         return hash(self.name)
 
-    def __lt__(self, other:Task_i) -> bool:
+    def __lt__(self, other:DootTaskName|Task_i) -> bool:
         """ Task A < Task B if A ∈ B.run_after or B ∈ A.runs_before  """
         return any(other.name in x.target for x in self.spec.depends_on)
 

@@ -46,7 +46,7 @@ from doot.enums import TaskFlags, ReportEnum, LocationMeta, TaskQueueMeta
 from doot._structs.task_name import DootTaskName
 from doot._structs.code_ref import DootCodeReference
 from doot._structs.task_spec import DootTaskSpec
-from doot._abstract.structs import StubStruct_p
+from doot._abstract.protocols import StubStruct_p
 
 TaskFlagNames : Final[str]               = [x.name for x in TaskFlags]
 

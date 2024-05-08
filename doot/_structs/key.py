@@ -45,7 +45,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot._structs.code_ref import DootCodeReference
-from doot._abstract.structs import SpecStruct_p
+from doot._abstract.protocols import SpecStruct_p
 from doot.utils.chain_get import DootKeyGetter
 from doot.utils.decorators import DootDecorator, DecorationUtils
 
@@ -325,7 +325,7 @@ class DootKey(abc.ABC):
         return str(self)
 
     @property
-    def direct(self):
+    def direct(self) -> str:
         return str(self).removesuffix("_")
 
     @property
@@ -430,7 +430,7 @@ class DootNonKey(str, DootKey):
             case dict() | TomlGuard():
                 return self in other
             case _:
-                raise TypeError("Uknown DootKey target for within", other)
+                raise TypeError("Unknown DootKey target for within", other)
 
     @property
     def indirect(self) -> DootKey:

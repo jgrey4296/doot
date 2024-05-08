@@ -39,7 +39,7 @@ from doot.enums import TaskStatus_e
 from doot._abstract.reporter import Reporter_p
 from doot._abstract.policy import FailPolicy_p
 from doot._abstract.task import Task_i
-from doot._abstract.structs import ArtifactStruct_p, SpecStruct_p
+from doot._abstract.protocols import ArtifactStruct_p, SpecStruct_p
 
 class TaskTracker_i:
     """
@@ -49,28 +49,40 @@ class TaskTracker_i:
     """
 
     @abstractmethod
-    def register_spec(self, task:SpecStruct_p|Task_i):
-        raise NotImplementedError()
+    def register_spec(self, *specs:"DootTaskSpec") -> None:
+        pass
 
     @abstractmethod
-    def queue_entry(self, task:str) -> None:
-        raise NotImplementedError()
+    def queue_entry(self, name:str|DootTaskName|"DootTaskArtifact"|"DootTaskSpec"|Task_i, *, initial:bool=False) -> None|DootTaskName|"DootTaskArtifact":
+        pass
 
     @abstractmethod
-    def set_status(self, task:str|DootTaskName|SpecStruct_p|Task_i|ArtifactStruct_p, state:TaskStatus_e) -> None:
-        raise notimplementederror()
+    def get_status(self, task:DootTaskName|DootTaskArtifact) -> TaskStatus_e:
+        pass
 
     @abstractmethod
-    def next_for(self, target:str) -> Task_i|ArtifactStruct_p|None:
-        raise NotImplementedError()
+    def set_status(self, task:str|DootTaskName|"DootTaskArtifact"|Task_i, state:TaskStatus_e) -> None:
+        pass
+
+    @abstractmethod
+    def next_for(self, target:None|DootTaskName|str) -> None|Task_i|"DootTaskArtifact":
+        pass
 
     @abstractmethod
     def build_network(self) -> None:
         pass
+
 class TaskRunner_i:
     """
     Run tasks, actions, and jobs
     """
+    @abstractmethod
+    def __enter__(self) -> Any:
+        pass
+
+    @abstractmethod
+    def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
+        pass
 
     @abstractmethod
     def __init__(self, *, tracker:TaskTracker_i, reporter:Reporter_p, policy:FailPolicy_p|None=None):
@@ -78,4 +90,4 @@ class TaskRunner_i:
 
     @abstractmethod
     def __call__(self, *tasks:str) -> bool:
-        raise NotImplementedError()
+        pass

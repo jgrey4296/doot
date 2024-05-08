@@ -42,7 +42,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.enums import TaskFlags, ReportEnum
-from doot._abstract.structs import SpecStruct_p
+from doot._abstract.protocols import SpecStruct_p
 from doot._structs.code_ref import DootCodeReference
 
 ALIASES = doot.aliases.action

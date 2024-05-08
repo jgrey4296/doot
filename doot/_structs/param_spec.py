@@ -43,7 +43,7 @@ from tomlguard import TomlGuard
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract.structs import ParamStruct_p
+from doot._abstract.protocols import ParamStruct_p
 from doot.enums import ReportEnum, TaskFlags
 
 # ##-- end 1st party imports

@@ -29,8 +29,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.enums import TaskFlags, TaskStatus_e, ActionResponseEnum
-from doot._abstract.structs import StubStruct_p, SpecStruct_p, ParamStruct_p
-from doot._structs.task_name import DootTaskName
+from doot._abstract.protocols import StubStruct_p, SpecStruct_p, ParamStruct_p
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -43,22 +42,14 @@ class Action_p(Protocol):
     """
     _toml_kwargs : ClassVar[list[str]] = []
 
-    @abc.abstractmethod
     def __call__(self, spec:"DootActionSpec", task_state:dict) -> dict|bool|ActionResponseEnum|None:
         raise NotImplementedError()
 
-class _TaskBase_i:
+class Task_i:
     """ Core Interface for Tasks """
 
     _version         : str       = "0.1"
     _help            : list[str] = []
-
-    @classmethod
-    @property
-    @abc.abstractmethod
-    def param_specs(cls) -> list[ParamStruct_p]:
-        """  make class parameter specs  """
-        pass
 
     @abc.abstractmethod
     def __init__(self, spec:SpecStruct_p):
@@ -71,7 +62,7 @@ class _TaskBase_i:
 
     @property
     @abc.abstractmethod
-    def name(self) -> DootTaskName:
+    def name(self) -> "DootTaskName":
         pass
 
     @abc.abstractmethod
@@ -79,23 +70,12 @@ class _TaskBase_i:
         pass
 
     @abc.abstractmethod
-    def __lt__(self, other:_TaskBase_i) -> bool:
+    def __lt__(self, other:"DootTaskName"|Task_i) -> bool:
         """ Task A < Task B iff A ∈ B.run_after   """
         pass
 
     @abc.abstractmethod
     def __eq__(self, other):
-        pass
-
-    @property
-    @abc.abstractmethod
-    def short_doc(self) -> str:
-        """ Generate Job Class 1 line help string """
-        pass
-
-    @property
-    @abc.abstractmethod
-    def doc(self) -> list[str]:
         pass
 
     @property
@@ -111,65 +91,8 @@ class _TaskBase_i:
         """
         pass
 
-    @classmethod
-    @abc.abstractmethod
-    def class_help(cls) -> str:
-        pass
-
-    @classmethod
-    @abc.abstractmethod
-    def stub_class(cls, stub:StubStruct_p):
-        """
-        Specialize a StubStruct_p to describe this class
-        """
-        pass
-
-    @abc.abstractmethod
-    def stub_instance(self, stub:StubStruct_p):
-        """
-          Specialize a StubStruct_p with the settings of this specific instance
-        """
-        pass
-
-    @property
-    @abc.abstractmethod
-    def is_stale(self) -> bool:
-        """ Query whether the task's artifacts have become stale and need to be rebuilt"""
-        pass
-
-class Task_i(_TaskBase_i):
-    """
-    holds task information and state, produces actions to execute.
-
-    """
-
-    @classmethod
-    @abc.abstractmethod
-    def class_help(cls):
-        """ Task *class* help. """
-        pass
-
-    @property
-    @abc.abstractmethod
-    def actions(self) -> Generator[Action_p]:
-        """lazy creation of action instances"""
-        pass
-
 class Job_i(Task_i):
     """
     builds tasks
     """
-
-    @classmethod
-    @abc.abstractmethod
-    def class_help(cls) -> str:
-        """ Job *class* help. """
-        pass
-
-    @abc.abstractmethod
-    def default_task(self, name:str|DootTaskName|None, extra:None|dict|TomlGuard) -> SpecStruct_p:
-        raise NotImplementedError(self.__class__, "default_task")
-
-    @abc.abstractmethod
-    def specialize_task(self, task:SpecStruct_p) -> SpecStruct_p|None:
-        raise NotImplementedError(self.__class__, "specialize_task")
+    pass

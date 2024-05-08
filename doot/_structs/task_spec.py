@@ -42,7 +42,7 @@ from typing_extensions import Annotated
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract.structs import SpecStruct_p
+from doot._abstract.protocols import SpecStruct_p
 from doot._abstract.task import Task_i
 from doot._structs.action_spec import DootActionSpec
 from doot._structs.artifact import DootTaskArtifact

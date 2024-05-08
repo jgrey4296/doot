@@ -32,7 +32,6 @@ logging = logmod.getLogger(__name__)
 
 from tomlguard import TomlGuard
 from doot.enums import ReportEnum
-from doot._structs.trace import DootTraceRecord
 
 class Reporter_p(abc.ABC):
     """
@@ -40,11 +39,11 @@ class Reporter_p(abc.ABC):
     """
 
     @abc.abstractmethod
-    def __init__(self, reporters:list[ReportLine_i]=None):
+    def __init__(self, reporters:list[ReportLine_p]=None):
         pass
 
     @abc.abstractmethod
-    def _default_formatter(self, trace:DootTraceRecord) -> str:
+    def _default_formatter(self, trace:"DootTraceRecord") -> str:
         pass
 
     @abc.abstractmethod
@@ -58,5 +57,5 @@ class ReportLine_p(abc.ABC):
     """
 
     @abc.abstractmethod
-    def __call__(self, trace:DootTraceRecord) -> None|str:
+    def __call__(self, trace:"DootTraceRecord") -> None|str:
         pass

@@ -177,7 +177,7 @@ class Location(BaseModel, arbitrary_types_allowed=True):
     def check(self, meta:LocationMeta) -> bool:
         return meta in self.meta
 
-    def exists(self):
+    def exists(self) -> bool:
         if not self.check(LocationMeta.abstract):
             # abstract artifacts never exist
             return False
