@@ -62,21 +62,22 @@ printer = logmod.getLogger("doot._printer")
 
 class EDGE_E(enum.Enum):
     """ Enum describing the possible edges of the task tracker's task network """
-    TASK               = enum.auto()
-    ARTIFACT           = enum.auto()
-    TASK_CROSS         = enum.auto() # Task to artifact
-    ARTIFACT_CROSS     = enum.auto() # artifact to task
+    TASK                                                     = enum.auto()
+    ARTIFACT                                                 = enum.auto()
+    TASK_CROSS                                               = enum.auto() # Task to artifact
+    ARTIFACT_CROSS                                           = enum.auto() # artifact to task
 
-ROOT                  : Final[str]                  = "root::_" # Root node of dependency graph
-EXPANDED              : Final[str]                  = "expanded"  # Node attribute name
-REACTIVE_ADD          : Final[str]                  = "reactive-add"
-ARTIFACT_EDGES        : Final[set[EDGE_E]]          = {EDGE_E.ARTIFACT, EDGE_E.TASK_CROSS}
-ARTIFACT_STATUSES     : Final[set[TaskStatus_e]]    = {TaskStatus_e.ARTIFACT, TaskStatus_e.EXISTS, TaskStatus_e.HALTED, TaskStatus_e.FAILED}
-DECLARE_PRIORITY      : Final[int]                  = 10
-MIN_PRIORITY          : Final[int]                  = -10
+ROOT                           : Final[str]                  = "root::_" # Root node of dependency graph
+EXPANDED                       : Final[str]                  = "expanded"  # Node attribute name
+REACTIVE_ADD                   : Final[str]                  = "reactive-add"
+ARTIFACT_EDGES                 : Final[set[EDGE_E]]          = {EDGE_E.ARTIFACT, EDGE_E.TASK_CROSS}
+ARTIFACT_STATUSES              : Final[set[TaskStatus_e]]    = {TaskStatus_e.ARTIFACT, TaskStatus_e.EXISTS, TaskStatus_e.HALTED, TaskStatus_e.FAILED}
+DECLARE_PRIORITY               : Final[int]                  = 10
+MIN_PRIORITY                   : Final[int]                  = -10
+INITAL_SOURCE_CHAIN_COUNT      : Final[int]                  = 10
 
-ActionElem            : TypeAlias                   = DootTaskName|DootTaskArtifact|DootActionSpec|RelationSpec
-ActionGroup           : TypeAlias                   = list[ActionElem]
+ActionElem                     : TypeAlias                   = DootTaskName|DootTaskArtifact|DootActionSpec|RelationSpec
+ActionGroup                    : TypeAlias                   = list[ActionElem]
 
 class _TrackerStore:
     """ Stores and manipulates specs, tasks, and artifacts """
@@ -122,21 +123,36 @@ class _TrackerStore:
         return None
 
     def _get_task_source_chain(self, name:DootTaskName) -> list[DootTaskSpec]:
+        """ get the chain of sources for a task.
+          this traces from an instance back towards the root,
+          returning [root, ... grandparent, parent, instance].
+
+          traces with the *last* value in spec.sources.
+        """
         assert(TaskFlags.CONCRETE not in name)
         spec                          = self.specs[name]
         chain   : list[DootTaskSpec]  = []
         current : None|DootTaskSpec   = spec
+        count   : int = INITAL_SOURCE_CHAIN_COUNT
         while current is not None:
+            if 0 > count:
+                raise doot.errors.DootTaskTrackingError("BUilding a source chain grew to large", name)
+            count -= 1
             match current: # Determine the base
-                case DootTaskSpec(source=pl.Path()|None):
+                case DootTaskSpec(name=name) if TaskFlags.JOB_HEAD in name:
+                    # job heads are generated, so don't have a source chain
                     chain.append(current)
                     current = None
-                case DootTaskSpec(source=DootTaskName() as src):
+                case DootTaskSpec(sources=[pl.Path()]|[]):
+                    chain.append(current)
+                    current = None
+                case DootTaskSpec(sources=[*xs, DootTaskName() as src]):
                     chain.append(current)
                     current = self.specs.get(src, None)
                 case _:
-                    raise doot.errors.DootTaskTrackingError("Unknown spec customization attempt", spec)
+                    raise doot.errors.DootTaskTrackingError("Unknown spec customization attempt", spec, current, chain)
 
+        chain.reverse()
         return chain
 
     def _instantiate_spec(self, name:DootTaskName, *, add_cli:bool=False, extra:None|dict|tomlguard.TomlGuard=None) -> DootTaskName:
@@ -162,7 +178,7 @@ class _TrackerStore:
             case [*xs]:
                 # (reversed because the chain goes from spec -> ancestor)
                 # and you want to instantiate descendents onto ancestors
-                instance_spec = ftz.reduce(lambda x, y: y.instantiate_onto(x), reversed(xs[:-1]), xs[-1])
+                instance_spec = ftz.reduce(lambda x, y: y.instantiate_onto(x), xs)
 
         assert(instance_spec is not None)
         if add_cli:
@@ -227,19 +243,24 @@ class _TrackerStore:
 
     def _insert_cli_args_into_spec(self, spec:DootTaskSpec) -> DootTaskSpec:
         """ Takes a task spec, and inserts matching cli args into it if necessary """
+        printer.info("Applying CLI Args to: %s", spec.name)
         spec_extra : dict = dict(spec.extra.items() or [])
+        if 'cli' not in spec_extra:
+            # spec doesn't have any cli params
+            return spec
+        del spec_extra['cli']
 
         for cli in spec.extra.on_fail([]).cli():
             if cli.name not in spec_extra:
                 spec_extra[cli.name] = cli.default
 
-        match spec.source:
-            case None:
+        match spec.sources:
+            case []:
                 source = spec.name
-            case pl.Path():
+            case [pl.Path()]:
                 source = spec.name
-            case DootTaskName():
-                source = spec.source
+            case [*xs, DootTaskName() as x]:
+                source = x
 
         if source not in doot.args.on_fail({}).tasks():
             return spec.specialize_from(spec_extra)
@@ -273,22 +294,30 @@ class _TrackerStore:
         if bool(missing):
             raise doot.errors.DootTaskTrackingError("Resources were missing", missing)
 
-    def _make_task(self, name:DootTaskName) -> DootTaskName:
+    def _make_task(self, name:DootTaskName, *, task_obj:Task_i=None) -> DootTaskName:
         """ Build a Concrete Spec's Task object """
         if not isinstance(name, DootTaskName):
             raise doot.errors.DootTaskTrackingError("Tried to add a not-task", name)
-        if TaskFlags.CONCRETE not in self.specs[name].flags:
+        if TaskFlags.CONCRETE not in name:
             raise doot.errors.DootTaskTrackingError("Tried to add a task using a non-concrete spec", name)
+        if name not in self.network.nodes:
+            raise doot.errors.DootTaskTrackingError("Tried to add a non-network task ", name)
         if name in self.tasks:
             return name
 
         logging.debug("Constructing Task Object: %s", name)
-        spec = self.specs[name]
-        task : Task_i = spec.make()
+        match task_obj:
+            case None:
+                spec = self.specs[name]
+                task : Task_i = spec.make()
+            case Task_i():
+                task = task_obj
+            case _:
+                raise doot.errors.DootTaskTrackingError("Supplied task object isn't a task_i", task_obj)
 
         # Store it
-        self.tasks[task.name] = task
-        return task.name
+        self.tasks[name] = task
+        return name
 
     def _register_artifacts(self, name:DootTaskName) -> None:
         """ Register the artifacts in a spec """
@@ -360,10 +389,10 @@ class _TrackerStore:
         match task, status:
             case DootTaskName(), _ if task == self._root_node:
                 pass
-            case DootTaskArtifact(), TaskStatus_e() if status in ARTIFACT_STATUSES:
-                self._artifact_status[task] = status
             case str(), TaskStatus_e() if task in self.tasks:
                 self.tasks[task].status = status
+            case DootTaskArtifact(), TaskStatus_e() if status in ARTIFACT_STATUSES:
+                self._artifact_status[task] = status
             case DootTaskName(), TaskStatus_e() if task in self.tasks:
                 self.tasks[task].status = status
             case Task_i(), TaskStatus_e() if task.name in self.tasks:
@@ -408,7 +437,7 @@ class _TrackerNetwork:
                 self.network.nodes[name][REACTIVE_ADD] = False
                 self._root_node.meta                  |= TaskFlags.CONCRETE
             case DootTaskName() if TaskFlags.CONCRETE not in name:
-                raise ValueError("Nodes should only be instantiated spec names")
+                raise ValueError("Nodes should only be instantiated spec names", name)
             case _ if name in self.network.nodes:
                 return
             case _:
@@ -436,7 +465,7 @@ class _TrackerNetwork:
         for x in itz.chain(self.network.pred[artifact], self.network.succ[artifact]):
             match x:
                 case DootTaskName() if TaskFlags.TRANSFORMER in x:
-                    existing_transformers.add(self.specs[x].source)
+                    existing_transformers.add(self.specs[x].sources[-1])
                 case _:
                     pass
 
@@ -532,9 +561,9 @@ class _TrackerNetwork:
                     assert(conc in artifact)
                     self.connect(conc, artifact)
                     to_expand.add(conc)
-                pass
 
         logging.debug("<-- Artifact Expansion Complete: %s", artifact)
+        self.network.nodes[artifact][EXPANDED] = True
         return to_expand
 
     def concrete_edges(self, name:DootTaskName|DootTaskArtifact) -> tomlguard.TomlGuard:
@@ -608,13 +637,13 @@ class _TrackerNetwork:
 
         for node, data in self.network.nodes.items():
             match node:
-                case DootTaskName() if not data[EXPANDED]:
+                case DootTaskName() | DootTaskArtifact() if not data[EXPANDED]:
                     raise doot.errors.DootTaskTrackingError("Network isn't fully expanded", node)
                 case DootTaskName() if TaskFlags.CONCRETE not in node:
                     raise doot.errors.DootTaskTrackingError("Abstract Node in network", node)
                 case DootTaskArtifact() if LocationMeta.glob in node:
-                    bad_nodes = [x for x in self.network.pred if x in self.specs]
-                    if bool(bad_node):
+                    bad_nodes = [x for x in self.network.pred[node] if x in self.specs]
+                    if bool(bad_nodes):
                         raise doot.errors.DootTaskTrackingError("Glob Artifact Node is a successor to a task", node, bad_nodes)
 
     def build_network(self) -> None:
@@ -626,12 +655,12 @@ class _TrackerNetwork:
         # TODO network could be built in total, or on demand
         """
         logging.debug("-> Building Task Network")
-        queue     = [x for x,y in self.network.pred[self._root_node].items() if not y.get(EXPANDED, False)]
+        queue     = [x for x in self.network.pred[self._root_node].keys()]
         processed = { self._root_node }
-        logging.debug("Initial Network Queue: %s", queue)
+        printer.info("Initial Network Queue: %s", queue)
         while bool(queue): # expand tasks
-            logging.debug("- Processing: %s", queue[-1])
-            match queue.pop():
+            printer.info("- Processing: %s", queue[-1])
+            match (current:=queue.pop()):
                 case x if x in processed or self.network.nodes[x].get(EXPANDED, False):
                     logging.debug("- Processed already")
                     processed.add(x)
@@ -714,18 +743,20 @@ class _TrackerQueue_boltons:
                 pass
         return focus
 
-    def queue_entry(self, name:str|DootTaskName|DootTaskArtifact|DootTaskSpec|Task_i) -> None|DootTaskName|DootTaskArtifact:
+    def queue_entry(self, name:str|DootTaskName|DootTaskArtifact|DootTaskSpec|Task_i, *, initial:bool=False) -> None|DootTaskName|DootTaskArtifact:
         """
           Queue a task by name|spec|Task_i.
           registers and instantiates the relevant spec, inserts it into the network
           Does *not* rebuild the network
 
           returns a task name if the network has changed, else None.
+
+          kwarg 'initial' signifies the enty is a starting target, adding cli args if necessary and linking to the root.
         """
 
         match name:
             case str():
-                return self.queue_entry(DootTaskName.build(name))
+                return self.queue_entry(DootTaskName.build(name), initial=initial)
             case DootTaskName() if name == self._root_node:
                 return None
             case DootTaskName() if name in self.active_set:
@@ -739,23 +770,29 @@ class _TrackerQueue_boltons:
                 self.connect(spec.name, False)
                 t_name = self._make_task(spec.name)
             case Task_i() as task if task.name not in self.tasks:
-                t_name = task.name
                 self.register_spec(task.spec)
-                self.connect(t_name, False)
-                self.tasks[t_name] = task
+                instance = self._instantiate_spec(task.name)
+                task.spec = self.specs[instance]
+                self.connect(instance, None if initial else False)
+                t_name = self._make_task(instance, task_obj=task)
             case DootTaskName() if name in self.tasks:
                 t_name  = self.tasks[name].name
-            case  DootTaskName() if name in self.network:
+            case DootTaskName() if name in self.network:
                 t_name = self._make_task(name)
             case DootTaskName() if name in self.concrete and bool(self.concrete[name]):
                 instance = self.concrete[name][-1]
                 assert(instance in self.network)
                 # self.connect(instance, False)
                 t_name   = self._make_task(instance)
+            case DootTaskName() if name in self.specs and initial:
+                assert(TaskFlags.CONCRETE not in DootTaskName.build(name))
+                instance : DootTaskName = self._instantiate_spec(name, add_cli=initial)
+                self.connect(instance, None)
+                t_name = self._make_task(instance)
             case DootTaskName() if name in self.specs:
                 assert(TaskFlags.CONCRETE not in DootTaskName.build(name))
                 instance : DootTaskName = self._instantiate_spec(name)
-                self.connect(instance, None)
+                self.connect(instance, False)
                 t_name = self._make_task(instance)
             case _:
                 raise doot.errors.DootTaskTrackingError("Unrecognized queue argument provided, it may not be registered", name)
