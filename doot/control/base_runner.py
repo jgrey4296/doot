@@ -73,10 +73,11 @@ class BaseRunner(TaskRunner_i):
         self._exit_msg                                        = "---------- Task Loop Finished ----------"
 
     def __enter__(self) -> Any:
-        printer.info("Building Task Network")
+        printer.info("Building Task Network...")
         self.tracker.build_network()
-        printer.info("Task Network Built")
-        printer.info("Validating Task Network")
+        printer.info("Task Network Built. %s Nodes, %s Edges, %s Edges from Root.",
+                     len(self.tracker.network.nodes), len(self.tracker.edges), len(self.tracker.pred[self.tracker._root_node]))
+        printer.info("Validating Task Network...")
         self.tracker.validate_network()
         printer.info("Validation Complete")
         printer.info(self._enter_msg, extra={"colour" : "green"})

@@ -243,7 +243,7 @@ class _TrackerStore:
 
     def _insert_cli_args_into_spec(self, spec:DootTaskSpec) -> DootTaskSpec:
         """ Takes a task spec, and inserts matching cli args into it if necessary """
-        printer.info("Applying CLI Args to: %s", spec.name)
+        logging.debug("Applying CLI Args to: %s", spec.name)
         spec_extra : dict = dict(spec.extra.items() or [])
         if 'cli' not in spec_extra:
             # spec doesn't have any cli params
@@ -657,9 +657,9 @@ class _TrackerNetwork:
         logging.debug("-> Building Task Network")
         queue     = [x for x in self.network.pred[self._root_node].keys()]
         processed = { self._root_node }
-        printer.info("Initial Network Queue: %s", queue)
+        logging.info("Initial Network Queue: %s", queue)
         while bool(queue): # expand tasks
-            printer.info("- Processing: %s", queue[-1])
+            logging.debug("- Processing: %s", queue[-1])
             match (current:=queue.pop()):
                 case x if x in processed or self.network.nodes[x].get(EXPANDED, False):
                     logging.debug("- Processed already")

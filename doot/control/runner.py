@@ -40,6 +40,7 @@ from doot.enums import ReportEnum, ActionResponseEnum as ActRE
 from doot._abstract import Job_i, Task_i, FailPolicy_p
 from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i, Action_p, Reporter_p
 from doot.structs import DootTaskArtifact, DootTaskSpec, DootActionSpec, DootTaskName
+from doot._structs.relation_spec import RelationSpec
 from doot.control.base_runner import BaseRunner, logctx
 from doot.utils.signal_handler import SignalHandler
 
@@ -181,17 +182,22 @@ class DootRunner(BaseRunner, TaskRunner_i):
         for action in actions:
             result = None
             match action:
+                case RelationSpec(target=DootTaskArtifact()):
+                    pass
+                case RelationSpec(target=DootTaskName()):
+                    pass
                 case DootActionSpec():
                     result = self._execute_action(executed_count, action, task)
-                case DootTaskArtifact():
-                    pass
-                case DootTaskName():
-                    pass
                 case _:
                     self.reporter.add_trace(task.spec, flags=ReportEnum.FAIL | ReportEnum.TASK)
-                    raise doot.errors.DootTaskError("Task %s Failed: Produced a bad action: %s", task.shortname, action, task=task.spec)
+                    raise doot.errors.DootTaskError("Task %s Failed: Produced a bad action: %s", task.shortname, repr(action), task=task.spec)
 
             match result:
+                case True:
+                    continue
+                case False:
+                    group_result = ActRE.FAIL
+                    break
                 case None:
                     continue
                 case list():
@@ -213,6 +219,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 case [*xs]:
                     for spec in xs:
                         self.tracker.queue_entry(spec)
+                    self.tracker.build_network()
                     printer.info("Queued %s Subtasks for %s", len(xs), task.shortname)
 
         return executed_count, group_result

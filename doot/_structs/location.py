@@ -178,11 +178,12 @@ class Location(BaseModel, arbitrary_types_allowed=True):
         return meta in self.meta
 
     def exists(self) -> bool:
-        if not self.check(LocationMeta.abstract):
-            # abstract artifacts never exist
-            return False
-
-        return self.path.exists()
+        # if not self.check(LocationMeta.abstract):
+        #     # abstract artifacts never exist
+        #     return False
+        expanded = doot.locs[self.path]
+        logging.debug("Testing for existence: %s", expanded)
+        return expanded.exists()
 
     def keys(self) -> set[str]:
         return self._expansion_keys
