@@ -185,7 +185,6 @@ class Key_p(Protocol):
     def to_type(self, spec, state, type_=Any, **kwargs) -> str:
         pass
 
-
 @runtime_checkable
 class Location_p(Protocol):
     key                 : None|str|Key_p
@@ -205,12 +204,55 @@ class Location_p(Protocol):
     def keys(self) -> set[str]:
         pass
 
-
 @runtime_checkable
-class InstantiableSpecification(Protocol):
+class InstantiableSpecification_p(Protocol):
 
     def instantiate_onto(self, data:None|Self) -> Self:
         pass
 
     def make(self):
+        pass
+
+@runtime_checkable
+class ExecutableTask(Protocol):
+    """ Runners pass off to Tasks/Jobs implementing this protocol
+      instead of using their default logic
+    """
+
+    def setup(self):
+        """ """
+        pass
+
+    def expand(self) -> list[Task_i|"DootTaskSpec"]:
+        """ For expanding a job into tasks """
+        pass
+
+    def execute(self):
+        """ For executing a task """
+        pass
+
+    def teardown(self):
+        """ For Cleaning up the task """
+        pass
+
+    def check_entry(self) -> bool:
+        """ For signifiying whether to expand/execute this object """
+        pass
+
+    def execute_action_group(self, group_name:str) -> "ActRE"|list:
+        """ Optional but recommended """
+        pass
+
+    def execute_action(self):
+        """ For executing a single action """
+        pass
+
+    def current_status(self) -> TaskStatus_e:
+        pass
+
+    def force_status(self, status:TaskStatus_e):
+        pass
+    def current_priority(self) -> int:
+        pass
+    def decrement_priority(self):
         pass
