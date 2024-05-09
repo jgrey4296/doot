@@ -53,6 +53,7 @@ class TaskStatus_e(enum.Enum):
     EXISTS          = enum.auto() # The path the artifact expands to exists.
 
     # Task Object Exists
+    DISABLED        = enum.auto() # Artificial state for if a spec or task has been disabled.
     INIT            = enum.auto() # Task Object has been created.
     WAIT            = enum.auto() # Task is awaiting dependency check and pass
     READY           = enum.auto() # Dependencies are done, ready to execute/expand.
@@ -218,3 +219,16 @@ class EdgeTypes_e(EnumBuilder_m, enum.Enum):
     ARTIFACT_CROSS                                           = enum.auto() # artifact to task
 
     default = TASK
+
+class ExecutionPolicy_e(EnumBuilder_m, enum.Enum):
+    """ How the task execution will be ordered
+      PRIORITY : Priority Queue with retry, job expansion, dynamic walk of network.
+      DEPTH    : No (priority,retry,jobs). basic DFS of the pre-run dependency network
+      BREADTH  : No (priority,retry,jobs). basic BFS of the pre-run dependency-network
+
+    """
+    PRIORITY = enum.auto() # By Task Priority
+    DEPTH    = enum.auto() # Depth First Search
+    BREADTH  = enum.auto() # Breadth First Search
+
+    default = PRIORITY

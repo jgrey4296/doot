@@ -127,7 +127,7 @@ class TestTrackerStore:
         retrieved = obj.tasks[result]
         assert(isinstance(retrieved, Task_i))
 
-    def test_task_status(self):
+    def test_task_get_default_status(self):
         obj = BaseTracker()
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
         name = spec.name
@@ -137,14 +137,12 @@ class TestTrackerStore:
         obj.network.add_node(instance)
         result   = obj._make_task(instance)
         status   = obj.get_status(result)
-        assert(status is TaskStatus_e.WAIT)
+        assert(status is TaskStatus_e.default)
 
-    def test_task_status_fail_missing_task(self):
+    def test_task_status_missing_task(self):
         obj = BaseTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
-        name = spec.name
-        with pytest.raises(doot.errors.DootTaskTrackingError):
-            obj.get_status(name)
+        name = doot.structs.DootTaskName.build("basic::task")
+        assert(obj.get_status(name) == TaskStatus_e.NAMED)
 
     def test_set_status(self):
         obj = BaseTracker()
@@ -155,16 +153,14 @@ class TestTrackerStore:
         # Mock entry in network:
         obj.network.add_node(instance)
         result = obj._make_task(instance)
-        assert(obj.get_status(result) is TaskStatus_e.WAIT)
-        obj.set_status(result, TaskStatus_e.SUCCESS)
+        assert(obj.get_status(result) is TaskStatus_e.default)
+        assert(obj.set_status(result, TaskStatus_e.SUCCESS) is True)
         assert(obj.get_status(result) is TaskStatus_e.SUCCESS)
 
-    def test_set_status_fail_missing_task(self):
+    def test_set_status_missing_task(self):
         obj = BaseTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
-        name = spec.name
-        with pytest.raises(doot.errors.DootTaskTrackingError):
-            obj.set_status(name, TaskStatus_e.SUCCESS)
+        name = doot.structs.DootTaskName.build("basic::task")
+        assert(obj.set_status(name, TaskStatus_e.SUCCESS) is False)
 
 class TestTrackerNetwork:
 

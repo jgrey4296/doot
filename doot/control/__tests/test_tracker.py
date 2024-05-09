@@ -77,14 +77,14 @@ class TestTracker:
         spec = doot.structs.DootTaskSpec.build({"name":"basic::Task"})
         obj.register_spec(spec)
         t_name = obj.queue_entry(spec.name)
-        assert(obj.get_status(t_name) is TaskStatus_e.WAIT)
+        assert(obj.get_status(t_name) is TaskStatus_e.default)
         obj.build_network()
         match obj.next_for():
             case Task_i():
                 assert(True)
             case _:
                 assert(False)
-        assert(obj.get_status(t_name) is TaskStatus_e.READY)
+        assert(obj.get_status(t_name) is TaskStatus_e.RUNNING)
 
 
     def test_next_simple_dependendency(self):
@@ -92,8 +92,8 @@ class TestTracker:
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
         dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
-        t_name = obj.queue_entry(spec.name, initial=True)
-        assert(obj.get_status(t_name) is TaskStatus_e.WAIT)
+        t_name = obj.queue_entry(spec.name, from_user=True)
+        assert(obj.get_status(t_name) is TaskStatus_e.default)
         obj.build_network()
         match obj.next_for():
             case Task_i() as result:
@@ -109,8 +109,8 @@ class TestTracker:
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
         dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
-        t_name = obj.queue_entry(spec.name, initial=True)
-        assert(obj.get_status(t_name) is TaskStatus_e.WAIT)
+        t_name = obj.queue_entry(spec.name, from_user=True)
+        assert(obj.get_status(t_name) is TaskStatus_e.default)
         obj.build_network()
         dep_inst = obj.next_for()
         assert(dep.name < dep_inst.name)
@@ -121,7 +121,7 @@ class TestTracker:
                 assert(True)
             case _:
                 assert(False)
-        assert(obj.get_status(t_name) is TaskStatus_e.READY)
+        assert(obj.get_status(t_name) is TaskStatus_e.RUNNING)
 
 
     def test_next_artificial_success(self):
@@ -131,7 +131,7 @@ class TestTracker:
         obj.register_spec(spec, dep)
         t_name   = obj.queue_entry(spec.name)
         dep_inst = obj.queue_entry(dep.name)
-        assert(obj.get_status(t_name) is TaskStatus_e.WAIT)
+        assert(obj.get_status(t_name) is TaskStatus_e.default)
         obj.build_network()
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.SUCCESS)
@@ -141,7 +141,7 @@ class TestTracker:
                 assert(True)
             case _:
                 assert(False)
-        assert(obj.get_status(t_name) is TaskStatus_e.READY)
+        assert(obj.get_status(t_name) is TaskStatus_e.RUNNING)
 
 
     def test_next_halt(self):
@@ -149,9 +149,9 @@ class TestTracker:
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
         dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
-        t_name   = obj.queue_entry(spec.name, initial=True)
+        t_name   = obj.queue_entry(spec.name, from_user=True)
         dep_inst = obj.queue_entry(dep.name)
-        assert(obj.get_status(t_name) is TaskStatus_e.WAIT)
+        assert(obj.get_status(t_name) is TaskStatus_e.default)
         obj.build_network()
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.HALTED)
@@ -164,9 +164,9 @@ class TestTracker:
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
         dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
-        t_name   = obj.queue_entry(spec.name, initial=True)
+        t_name   = obj.queue_entry(spec.name, from_user=True)
         dep_inst = obj.queue_entry(dep.name)
-        assert(obj.get_status(t_name) is TaskStatus_e.WAIT)
+        assert(obj.get_status(t_name) is TaskStatus_e.default)
         obj.build_network()
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.FAILED)

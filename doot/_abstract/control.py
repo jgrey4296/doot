@@ -34,12 +34,22 @@ from abc import abstractmethod
 from typing import Generator, NewType
 from collections import deque, defaultdict
 
-from doot.enums import TaskStatus_e
+from doot.enums import TaskStatus_e, ExecutionPolicy_e
 
 from doot._abstract.reporter import Reporter_p
 from doot._abstract.policy import FailPolicy_p
 from doot._abstract.task import Task_i
 from doot._abstract.protocols import ArtifactStruct_p, SpecStruct_p
+
+# ## Types
+AbstractId                     : TypeAlias                   = "DootTaskName|DootTaskArtifact"
+ConcreteId                     : TypeAlias                   = "DootTaskName|DootTaskArtifact"
+AnyId                          : TypeAlis                    = "DootTaskName|DootTaskArtifact"
+AbstractSpec                   : TypeAlias                   = "DootTaskSpec"
+ConcreteSpec                   : TypeAlias                   = "DootTaskSpec"
+AnySpec                        : TypeAlias                   = "DootTaskSpec"
+Depth                          : TypeAlias                   = int
+PlanEntry                      : TypeAlias                   = tuple[Depth, ConcreteId, str]
 
 class TaskTracker_i:
     """
@@ -49,27 +59,31 @@ class TaskTracker_i:
     """
 
     @abstractmethod
-    def register_spec(self, *specs:"DootTaskSpec") -> None:
+    def register_spec(self, *specs:AnySpec)-> None:
         pass
 
     @abstractmethod
-    def queue_entry(self, name:str|DootTaskName|"DootTaskArtifact"|"DootTaskSpec"|Task_i, *, initial:bool=False) -> None|DootTaskName|"DootTaskArtifact":
+    def queue_entry(self, name:str|AnyId|ConcreteSpec|Task_i, *, from_user:bool=False, status:None|TaskStatus_e=None) -> None|Node:
         pass
 
     @abstractmethod
-    def get_status(self, task:DootTaskName|DootTaskArtifact) -> TaskStatus_e:
+    def get_status(self, task:ConcreteId) -> TaskStatus_e:
         pass
 
     @abstractmethod
-    def set_status(self, task:str|DootTaskName|"DootTaskArtifact"|Task_i, state:TaskStatus_e) -> None:
+    def set_status(self, task:ConcreteId|Task_i, state:TaskStatus_e) -> bool:
         pass
 
     @abstractmethod
-    def next_for(self, target:None|DootTaskName|str) -> None|Task_i|"DootTaskArtifact":
+    def next_for(self, target:None|str|ConcreteId) -> None|Task_i|"DootTaskArtifact":
         pass
 
     @abstractmethod
     def build_network(self) -> None:
+        pass
+
+    @abstractmethod
+    def generate_plan(self, *, policy:None|ExecutionPolicy_e=None) -> list[PlanEntry]:
         pass
 
 class TaskRunner_i:

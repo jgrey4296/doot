@@ -76,7 +76,7 @@ class BaseRunner(TaskRunner_i):
         printer.info("Building Task Network...")
         self.tracker.build_network()
         printer.info("Task Network Built. %s Nodes, %s Edges, %s Edges from Root.",
-                     len(self.tracker.network.nodes), len(self.tracker.edges), len(self.tracker.pred[self.tracker._root_node]))
+                     len(self.tracker.network.nodes), len(self.tracker.network.edges), len(self.tracker.network.pred[self.tracker._root_node]))
         printer.info("Validating Task Network...")
         self.tracker.validate_network()
         printer.info("Validation Complete")
