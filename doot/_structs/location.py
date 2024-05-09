@@ -64,9 +64,6 @@ class Location(BaseModel, arbitrary_types_allowed=True):
     path                : pl.Path
     meta                : LocationMeta  = LocationMeta.default
     _expansion_keys     : set[str]      = set()
-    _abstract_path      : bool          = False
-    _abstract_stem      : bool          = False
-    _abstract_suffix    : bool          = False
 
     _toml_str_prefix    : ClassVar[str] = doot.constants.patterns.FILE_DEP_PREFIX
     _artifact_key           : ClassVar[str] = DootKey.build("!!Artifact!!")
@@ -116,7 +113,6 @@ class Location(BaseModel, arbitrary_types_allowed=True):
             self.meta |= LocationMeta.abstract | LocationMeta.expandable
             self._expansion_keys.update(keys)
 
-        self._determine_abstractions()
         return self
 
     def __contains__(self, other:LocationMeta|Location|pl.Path) -> bool:
@@ -154,33 +150,24 @@ class Location(BaseModel, arbitrary_types_allowed=True):
         stem        = abs_stem or self.path.stem == path.stem
         return  suffix and stem
 
-    @property
+    @ftz.cached_property
     def abstracts(self) -> tuple[bool, bool, bool]:
         """ Return three bools,
           for is abstract [parent, stem, suffix]
         """
-        return (
-            self._abstract_path,
-            self._abstract_stem,
-            self._abstract_suffix
-            )
-
-    def _determine_abstractions(self):
-        """ figure out what is abstract in this location """
         if LocationMeta.abstract not in self.meta:
-            return
+            return (False, False, False)
         path, stem, suff      = str(self.path.parent), self.path.stem, self.path.suffix
-        self._abstract_path   = bool(GLOB in path or SOLO in path or DootKey._pattern.search(path))
-        self._abstract_stem   = bool(GLOB in stem or SOLO in stem or DootKey._pattern.search(stem))
-        self._abstract_suffix = bool(GLOB in suff or SOLO in suff or DootKey._pattern.search(suff))
+        _path   = bool(GLOB in path or SOLO in path or DootKey._pattern.search(path))
+        _stem   = bool(GLOB in stem or SOLO in stem or DootKey._pattern.search(stem))
+        _suffix = bool(GLOB in suff or SOLO in suff or DootKey._pattern.search(suff))
+
+        return (_path, _stem, _suffix)
 
     def check(self, meta:LocationMeta) -> bool:
         return meta in self.meta
 
     def exists(self) -> bool:
-        # if not self.check(LocationMeta.abstract):
-        #     # abstract artifacts never exist
-        #     return False
         expanded = doot.locs[self.path]
         logging.debug("Testing for existence: %s", expanded)
         return expanded.exists()

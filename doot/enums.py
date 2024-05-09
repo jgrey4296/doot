@@ -35,24 +35,40 @@ logging = logmod.getLogger(__name__)
 
 class TaskStatus_e(enum.Enum):
     """
-      Enumeration of the different states a task can be in.
-      The state is stored in a TaskTracker_i, not the task itself
+      Enumeration of the different states a task/artifact can be in.
+      The state is stored in the task object itself.
+
+      Before a task object hsa been created, the tracker
+      provides the status according to what specs exist for the task name.
+
     """
-    TEARDOWN        = enum.auto()
-    SUCCESS         = enum.auto()
-    FAILED          = enum.auto()
-    HALTED          = enum.auto()
-    WAIT            = enum.auto()
-    READY           = enum.auto()
-    RUNNING         = enum.auto()
-    EXISTS          = enum.auto()
-    INIT            = enum.auto()
+    # Pre-Task Object Creation statuses:
+    NAMED           = enum.auto() # A Name, missing a spec
+    DECLARED        = enum.auto() # Abstract Spec Exists
 
-    SKIPPED         = enum.auto()
+    DEFINED         = enum.auto() # Spec has been instantiated into the dependency network
+    ARTIFACT        = enum.auto() # Default artifact status.
 
-    DEFINED         = enum.auto()
-    DECLARED        = enum.auto()
-    ARTIFACT        = enum.auto()
+    STALE           = enum.auto() # Artifact exists, but is too old.
+    EXISTS          = enum.auto() # The path the artifact expands to exists.
+
+    # Task Object Exists
+    INIT            = enum.auto() # Task Object has been created.
+    WAIT            = enum.auto() # Task is awaiting dependency check and pass
+    READY           = enum.auto() # Dependencies are done, ready to execute/expand.
+    RUNNING         = enum.auto() # Has been given to the runner, waiting for a status update.
+    SKIPPED         = enum.auto() # Runner has signaled the task was skipped.
+    HALTED          = enum.auto() # Task has reached minimum priority, timing out.
+    FAILED          = enum.auto() # Runner has signaled Failure.
+    SUCCESS         = enum.auto() # Runner has signaled success.
+    TEARDOWN        = enum.auto() # Task is ready to be killed
+    DEAD            = enum.auto() # Task is done.
+
+    # Base Task uses the default to set its state on __init__
+
+    default         = INIT
+    pre_set         = {NAMED, DECLARED, DEFINED, ARTIFACT}
+    artifact_set    = {ARTIFACT, EXISTS, HALTED, FAILED}
 
 class TaskFlags(FlagsBuilder_m, enum.Flag):
     """
@@ -83,7 +99,9 @@ class TaskFlags(FlagsBuilder_m, enum.Flag):
     default      = TASK
 
 class ReportEnum(enum.Flag):
-    """ Flags to mark what a reporter reports """
+    """ Flags to mark what a reporter reports
+      For categorizing the most common parts of Reporting.
+    """
     INIT     = enum.auto()
     SUCCEED  = enum.auto()
     FAIL     = enum.auto()
@@ -102,24 +120,31 @@ class ReportEnum(enum.Flag):
     CONFIG   = enum.auto()
     ARTIFACT = enum.auto()
 
+    OTHER    = enum.auto()
+    #
     default  = enum.auto()
 
 class ActionResponseEnum(EnumBuilder_m, enum.Enum):
+    """
+      Description of how a Action went.
+    """
 
     SUCCEED  = enum.auto()
     FAIL     = enum.auto()
     SKIP     = enum.auto()
+
+    # Aliases
     SUCCESS  = SUCCEED
 
 class LoopControl(enum.Enum):
     """
-      A Simple enum to descrbe results for testing in a maybe recursive loop
+      Describes how to continue an accumulating loop.
       (like walking a a tree)
 
-    accept  : is a result, and descend if recursive
-    keep    : is a result, don't descend
-    discard : not a result, descend
-    reject  : not a result, don't descend
+    yesAnd     : is a result, and try others.
+    yes        : is a result, don't try others, Finish.
+    noBut      : not a result, try others.
+    no         : not a result, don't try others, Finish.
     """
     yesAnd  = enum.auto()
     yes     = enum.auto()
@@ -138,10 +163,11 @@ class LocationMeta(FlagsBuilder_m, enum.Flag):
     glob         = enum.auto()
     expandable   = enum.auto()
 
+    # Aliases
     file         = artifact
     location     = directory
-
     indefinite   = abstract
+
     default      = directory
 
 class TaskQueueMeta(EnumBuilder_m, enum.Enum):
@@ -159,7 +185,6 @@ class TaskQueueMeta(EnumBuilder_m, enum.Enum):
     reactiveFail = enum.auto()
     auto         = onRegister
 
-
 class RelationMeta(enum.Enum):
     """
       What types of task relation there can be,
@@ -167,15 +192,29 @@ class RelationMeta(enum.Enum):
       + synonyms
 
     """
+    # Core:
     dependencyOf     = enum.auto()
     dependantOf      = enum.auto()
 
+    # dependency Aliases
     dependsOn        = dependencyOf
+    productOf        = dependencyOf
+    pre              = dependencyOf
+    dep              = dependencyOf
+    # Dependant aliases
     requirementFor   = dependantOf
     resultsIn        = dependantOf
-    productOf        = dependencyOf
-
-    dep              = dependencyOf
+    post             = dependantOf
     req              = dependantOf
 
-    default          = dep
+    # Default
+    default          = dependencyOf
+
+class EdgeTypes_e(EnumBuilder_m, enum.Enum):
+    """ Enum describing the possible edges of the task tracker's task network """
+    TASK                                                     = enum.auto()
+    ARTIFACT                                                 = enum.auto()
+    TASK_CROSS                                               = enum.auto() # Task to artifact
+    ARTIFACT_CROSS                                           = enum.auto() # artifact to task
+
+    default = TASK

@@ -175,7 +175,7 @@ class DootTaskName(StructuredName):
             case _:
                 return super().__contains__(other)
 
-    @property
+    @ftz.cached_property
     def group(self) -> str:
         fmt = "{}"
         if len(self.head) > 1:
@@ -183,11 +183,11 @@ class DootTaskName(StructuredName):
             fmt = '"{}"'
         return fmt.format(self.head_str())
 
-    @property
+    @ftz.cached_property
     def task(self) -> str:
         return self._subseparator.join([str(x) if not isinstance(x, UUID) else "${}$".format(hex(x.time_low)) for x in self.tail])
 
-    @property
+    @ftz.cached_property
     def readable(self):
         group = self.group
         tail = self._subseparator.join([str(x) if not isinstance(x, UUID) else "<UUID>" for x in self.tail])

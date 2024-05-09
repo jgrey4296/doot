@@ -320,11 +320,11 @@ class DootKey(abc.ABC):
             case x:
                 raise doot.errors.DootKeyError("Key Called with Bad Key Expansion Type", self, x)
 
-    @property
+    @ftz.cached_property
     def form(self) -> str:
         return str(self)
 
-    @property
+    @ftz.cached_property
     def direct(self) -> str:
         return str(self).removesuffix("_")
 
@@ -432,7 +432,7 @@ class DootNonKey(str, DootKey):
             case _:
                 raise TypeError("Unknown DootKey target for within", other)
 
-    @property
+    @ftz.cached_property
     def indirect(self) -> DootKey:
         if not self.is_indirect:
             return DootSimpleKey("{}_".format(super().__str__()))
@@ -477,17 +477,17 @@ class DootSimpleKey(str, DootKey):
             case _:
                 return False
 
-    @property
+    @ftz.cached_property
     def indirect(self):
         if not self.is_indirect:
             return DootSimpleKey("{}_".format(super().__str__()))
         return self
 
-    @property
+    @ftz.cached_property
     def is_indirect(self):
         return str(self).endswith("_")
 
-    @property
+    @ftz.cached_property
     def form(self):
         """ Return the key in its use form, ie: wrapped in braces """
         return "{{{}}}".format(str(self))
@@ -667,7 +667,7 @@ class DootMultiKey(DootKey):
     def keys(self) -> set(DootSimpleKey):
         return self._keys
 
-    @property
+    @ftz.cached_property
     def form(self):
         """ Return the key in its use form """
         return str(self)

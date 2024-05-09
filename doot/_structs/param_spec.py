@@ -111,7 +111,7 @@ class DootParamSpec(BaseModel, arbitrary_types_allowed=True):
             case _:
                  return val
 
-    @property
+    @ftz.cached_property
     def short(self):
         if self.positional:
             return self.name
@@ -121,15 +121,15 @@ class DootParamSpec(BaseModel, arbitrary_types_allowed=True):
 
         return self.name[0]
 
-    @property
+    @ftz.cached_property
     def inverse(self):
         return f"no-{self.name}"
 
-    @property
+    @ftz.cached_property
     def repeatable(self):
         return self.type_ in DootParamSpec._repeatable_types and not self.positional
 
-    @property
+    @ftz.cached_property
     def key_str(self):
         if self.invisible or self.positional:
             return ""
@@ -139,7 +139,7 @@ class DootParamSpec(BaseModel, arbitrary_types_allowed=True):
 
         return f"{self.prefix}{self.name}"
 
-    @property
+    @ftz.cached_property
     def short_key_str(self):
         if self.invisible or self.positional:
             return ""

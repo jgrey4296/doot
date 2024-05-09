@@ -99,11 +99,11 @@ class DootCodeReference(StructuredName):
     def __iter__(self):
         return iter(self._mixins)
 
-    @property
+    @ftz.cached_property
     def module(self):
         return self._subseparator.join(self.head)
 
-    @property
+    @ftz.cached_property
     def value(self):
         return self._subseparator.join(self.tail)
 

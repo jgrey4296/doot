@@ -99,45 +99,6 @@ class _TaskProperties_m(ParamSpecMaker_m):
     def is_stale(self):
         return False
 
-    def __hash__(self):
-        return hash(self.name)
-
-    def __lt__(self, other:DootTaskName|Task_i) -> bool:
-        """ Task A < Task B if A ∈ B.run_after or B ∈ A.runs_before  """
-        return any(other.name in x.target for x in self.spec.depends_on)
-
-    def __eq__(self, other):
-        match other:
-            case str() | DootTaskName():
-                return self.name == other
-            case Task_i():
-                return self.name == other.name
-            case _:
-                return False
-
-    def add_execution_record(self, arg):
-        """ Record some execution record information for display or debugging """
-        self._records.append(arg)
-
-    def log(self, msg, level=logmod.DEBUG, prefix=None) -> None:
-        """
-        utility method to log a message, useful as tasks are running
-        """
-        prefix : str       = prefix or ""
-        lines  : list[str] = []
-        match msg:
-            case str():
-                lines.append(msg)
-            case types.LambdaType():
-                lines.append(msg())
-            case [types.LambdaType()]:
-                lines += msg[0]()
-            case list():
-                lines += msg
-
-        for line in lines:
-            logging.log(level, prefix + str(line))
-
 @doot.check_protocol
 class DootTask(_TaskProperties_m, Task_i):
     """
@@ -151,7 +112,7 @@ class DootTask(_TaskProperties_m, Task_i):
     _default_flags                                = TaskFlags.TASK
     _help                                         = ["The Simplest Task"]
     COMPLETE_STATES  : Final[set[TaskStatus_e]]   = {TaskStatus_e.SUCCESS, TaskStatus_e.EXISTS}
-    INITIAL_STATE    : Final[TaskStatus_e]        = TaskStatus_e.WAIT
+    INITIAL_STATE    : Final[TaskStatus_e]        = TaskStatus_e.INIT
 
     def __init__(self, spec, *, job=None, action_ctor=None, **kwargs):
         self.spec        : SpecStruct_p        = spec
@@ -172,6 +133,22 @@ class DootTask(_TaskProperties_m, Task_i):
 
     def __bool__(self):
         return self.status in DootTask.COMPLETE_STATES
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __lt__(self, other:DootTaskName|Task_i) -> bool:
+        """ Task A < Task B if A ∈ B.run_after or B ∈ A.runs_before  """
+        return any(other.name in x.target for x in self.spec.depends_on)
+
+    def __eq__(self, other):
+        match other:
+            case str() | DootTaskName():
+                return self.name == other
+            case Task_i():
+                return self.name == other.name
+            case _:
+                return False
 
     @classmethod
     def class_help(cls):
@@ -245,3 +222,26 @@ class DootTask(_TaskProperties_m, Task_i):
                 raise x
             case [*xs]:
                 raise ImportError("Multiple Action Spec import failures", xs)
+
+    def add_execution_record(self, arg):
+        """ Record some execution record information for display or debugging """
+        self._records.append(arg)
+
+    def log(self, msg, level=logmod.DEBUG, prefix=None) -> None:
+        """
+        utility method to log a message, useful as tasks are running
+        """
+        prefix : str       = prefix or ""
+        lines  : list[str] = []
+        match msg:
+            case str():
+                lines.append(msg)
+            case types.LambdaType():
+                lines.append(msg())
+            case [types.LambdaType()]:
+                lines += msg[0]()
+            case list():
+                lines += msg
+
+        for line in lines:
+            logging.log(level, prefix + str(line))

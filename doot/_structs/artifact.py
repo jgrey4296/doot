@@ -78,11 +78,11 @@ class DootTaskArtifact(Location, arbitrary_types_allowed=True):
     def __bool__(self):
         return self.exists()
 
-    @property
+    @ftz.cached_property
     def is_concrete(self):
         return not self.check(LocationMeta.abstract)
 
-    @property
+    @ftz.cached_property
     def parent(self):
         return self.path.parent
 
