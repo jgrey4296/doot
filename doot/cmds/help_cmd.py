@@ -33,7 +33,7 @@ printer = logmod.getLogger("doot._printer")
 
 import doot
 from doot.cmds.base_cmd import BaseCommand
-from doot.structs import DootParamSpec, DootTaskSpec, DootCodeReference
+from doot.structs import ParamSpec, DootTaskSpec, CodeReference
 from collections import defaultdict
 
 NON_DEFAULT_KEY : Final[str] = doot.constants.misc.NON_DEFAULT_KEY
@@ -95,7 +95,7 @@ class HelpCmd(BaseCommand):
         match spec.ctor:
             case None:
                 ctor = None
-            case DootCodeReference():
+            case CodeReference():
                 ctor = spec.ctor.try_import()
             case _:
                 ctor = spec.ctor
@@ -142,7 +142,7 @@ class HelpCmd(BaseCommand):
         if cli_has_params and cli_has_non_default and ctor is not None:
             self._print_current_param_assignments(ctor.param_specs, doot.args.tasks[task_name])
 
-    def _print_current_param_assignments(self, specs:list[DootParamSpec], args:TomlGuard):
+    def _print_current_param_assignments(self, specs:list[ParamSpec], args:TomlGuard):
         if not bool(specs):
             return
 
@@ -151,7 +151,7 @@ class HelpCmd(BaseCommand):
         results = []
         max_param_len = 5 + ftz.reduce(max, map(len, map(lambda x: x.name, specs)), 0)
         fmt_str = f"%-{max_param_len}s %s : %s"
-        for spec in sorted(specs, key=DootParamSpec.key_func):
+        for spec in sorted(specs, key=ParamSpec.key_func):
             if spec.invisible:
                 continue
             value = args._table().get(spec.name, spec.default)

@@ -45,7 +45,7 @@ from doot.enums import TaskFlags, ReportEnum, LocationMeta
 from doot._structs.location import Location, GLOB, SOLO, REC_GLOB
 from doot._structs.key import DootKey
 
-class DootTaskArtifact(Location, arbitrary_types_allowed=True):
+class TaskArtifact(Location, arbitrary_types_allowed=True):
     """
       An concrete or abstract artifact a task can produce or consume.
 
@@ -66,11 +66,11 @@ class DootTaskArtifact(Location, arbitrary_types_allowed=True):
     def __hash__(self):
         return hash(str(self))
 
-    def __eq__(self, other:str|pl.Path|DootTaskArtifact|Any):
+    def __eq__(self, other:str|pl.Path|TaskArtifact|Any):
         match other:
             case str() | pl.Path():
                 return pl.Path(other) == self.path
-            case DootTaskArtifact():
+            case TaskArtifact():
                 return self.path == other.path
             case _:
                 return False
@@ -91,7 +91,7 @@ class DootTaskArtifact(Location, arbitrary_types_allowed=True):
         raise NotImplementedError('TODO')
 
 
-    def match_with(self, other:pl.Path|DootTaskArtifact) -> None|DootTaskArtifact:
+    def match_with(self, other:pl.Path|TaskArtifact) -> None|TaskArtifact:
         """ An abstract location, given a concrete other location,
           will apply parts of it onto itself, where it has wildcards
 
@@ -143,8 +143,8 @@ class DootTaskArtifact(Location, arbitrary_types_allowed=True):
 
         base = pl.Path().joinpath(*result)
         if a_suff:
-            return DootTaskArtifact(path=base.with_suffix(suffix),
+            return TaskArtifact(path=base.with_suffix(suffix),
                                     key=self.key)
 
-        return DootTaskArtifact(path=base.with_suffix(self.path.suffix),
+        return TaskArtifact(path=base.with_suffix(self.path.suffix),
                                 key=self.key)

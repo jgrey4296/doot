@@ -88,7 +88,7 @@ class TestTrackerArtifacts:
             tracker.add_task(task)
 
         next_task = tracker.next_for("default::task1")
-        assert(isinstance(next_task, doot.structs.DootTaskArtifact))
+        assert(isinstance(next_task, doot.structs.TaskArtifact))
 
     @pytest.mark.xfail
     def test_task_artifact_exists(self, ctor, mocker):
@@ -105,7 +105,7 @@ class TestTrackerArtifacts:
             tracker.add_task(task)
 
         next_task = tracker.next_for("default::task1")
-        assert(isinstance(next_task, doot.structs.DootTaskArtifact))
+        assert(isinstance(next_task, doot.structs.TaskArtifact))
 
     @pytest.mark.skip
     def test_task_artifact_doesnt_exists(self, ctor, mocker):
@@ -119,7 +119,7 @@ class TestTrackerArtifacts:
             tracker.add_task(task)
 
         next_task = tracker.next_for("default::task1")
-        assert(isinstance(next_task, doot.structs.DootTaskArtifact))
+        assert(isinstance(next_task, doot.structs.TaskArtifact))
 
     @pytest.mark.xfail
     def test_task_artifact_partial_exists(self, ctor, mocker):
@@ -137,7 +137,7 @@ class TestTrackerArtifacts:
             tracker.add_task(task)
 
         next_task = tracker.next_for("default::task1")
-        assert(isinstance(next_task, doot.structs.DootTaskArtifact))
+        assert(isinstance(next_task, doot.structs.TaskArtifact))
 
 @pytest.mark.parametrize("ctor", [DootTracker])
 class TestTrackerInsertion:
@@ -200,8 +200,8 @@ class TestTrackerInsertion:
     @pytest.mark.skip
     def test_task_post_registration(self, ctor, mocker):
         mock_task = mock_gen.mock_task("test_task")
-        mock_task.required_for.append(doot.structs.DootTaskName.build("example"))
-        mock_task.required_for.append(doot.structs.DootTaskName.build("blah"))
+        mock_task.required_for.append(doot.structs.TaskName.build("example"))
+        mock_task.required_for.append(doot.structs.TaskName.build("blah"))
 
         tracker = ctor()
         tracker.add_task(mock_task)
@@ -213,8 +213,8 @@ class TestTrackerInsertion:
     @pytest.mark.skip
     def test_declared_set(self, ctor, mocker):
         mock_task = mock_gen.mock_task("test_task")
-        mock_task.depends_on   += map(doot.structs.DootTaskName.build, ["subtask", "sub2"])
-        mock_task.required_for += map(doot.structs.DootTaskName.build, ["example", "blah"])
+        mock_task.depends_on   += map(doot.structs.TaskName.build, ["subtask", "sub2"])
+        mock_task.required_for += map(doot.structs.TaskName.build, ["example", "blah"])
 
         tracker = ctor()
         tracker.add_task(mock_task)

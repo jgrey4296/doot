@@ -42,7 +42,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot._abstract import Action_p
-from doot.structs import DootKey, DootTaskSpec, DootTaskName, DootCodeReference
+from doot.structs import DootKey, DootTaskSpec, TaskName, CodeReference
 
 class JobQueueAction(Action_p):
     """
@@ -55,7 +55,7 @@ class JobQueueAction(Action_p):
     @DootKey.dec.args
     @DootKey.dec.types("from_", hint={"type_":list|DootTaskSpec|None})
     @DootKey.dec.redirects_many("from_multi_")
-    @DootKey.dec.types("after", hint={"type_":list|DootTaskName|str|None, "on_fail":None})
+    @DootKey.dec.types("after", hint={"type_":list|TaskName|str|None, "on_fail":None})
     @DootKey.dec.taskname
     def __call__(self, spec, state, _args, _from, _from_multi, _after, _basename) -> list:
         # TODO maybe expand args
@@ -90,13 +90,13 @@ class JobQueueAction(Action_p):
             case "$head$":
                 return [base.head_task()]
             case str():
-                return [DootTaskName.build(afters)]
+                return [TaskName.build(afters)]
             case list():
                 for x in afters:
                     if x == "$head$":
                         result.append(base.head_task())
                     else:
-                        result.append(DootTaskName.build(x))
+                        result.append(TaskName.build(x))
 
         return result
 
@@ -108,7 +108,7 @@ class JobQueueAction(Action_p):
         for i,x in enumerate(args):
             sub = DootTaskSpec.build(dict(
                 name=base.subtask(i),
-                sources=[DootTaskName.build(x)],
+                sources=[TaskName.build(x)],
                 required_for=[head],
                 depends_on=[],
                 ))
@@ -159,12 +159,12 @@ class JobQueueHead(Action_p):
         head            = []
 
         match base:
-            case str() | DootTaskName():
+            case str() | TaskName():
                 head += [DootTaskSpec.build(dict(name=head_name,
                                                  actions=[],
                                                  queue_behaviour="auto")),
                          DootTaskSpec.build(dict(name=head_name.subtask("1"),
-                                                 sources=[DootTaskName.build(base)],
+                                                 sources=[TaskName.build(base)],
                                                  depends_on=[head_name],
                                                  extra=inject or {},
                                                  queue_behaviour="auto"))

@@ -43,7 +43,7 @@ import doot.errors
 from doot.enums import TaskFlags, ReportEnum
 
 
-class DootTraceRecord(BaseModel):
+class TraceRecord(BaseModel):
     message : str
     flags   : ReportEnum
     args    : list[Any]                = []
@@ -59,7 +59,7 @@ class DootTraceRecord(BaseModel):
             case ReportEnum():
                 return val
             case _:
-                raise ValueError("Bad flags for DootTraceRecord", val)
+                raise ValueError("Bad flags for TraceRecord", val)
 
 
     def __str__(self):

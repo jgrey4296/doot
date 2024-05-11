@@ -18,45 +18,45 @@ import tomlguard
 import doot
 doot._test_setup()
 
-from doot._structs.code_ref import DootCodeReference
+from doot._structs.code_ref import CodeReference
 from doot.task.base_task import DootTask
 
-class TestDootCodeReference:
+class TestCodeReference:
 
     def test_basic(self):
-        ref = DootCodeReference.build("doot.task.base_task:DootTask")
-        assert(isinstance(ref, DootCodeReference))
+        ref = CodeReference.build("doot.task.base_task:DootTask")
+        assert(isinstance(ref, CodeReference))
 
 
     def test_head(self):
-        ref = DootCodeReference.build("doot.task.base_task:DootTask")
+        ref = CodeReference.build("doot.task.base_task:DootTask")
         assert(ref.head == ["doot", "task", "base_task"])
 
 
     def test_tail(self):
-        ref = DootCodeReference.build("doot.task.base_task:DootTask")
+        ref = CodeReference.build("doot.task.base_task:DootTask")
         assert(ref.tail == ["DootTask"])
 
 
     def test_import(self):
-        ref = DootCodeReference.build("doot.task.base_task:DootTask")
+        ref = CodeReference.build("doot.task.base_task:DootTask")
         imported = ref.try_import()
         assert(isinstance(imported, type))
         assert(imported == DootTask)
 
     def test_import_module_fail(self):
-        ref = DootCodeReference.build("doot.taskSSSSS.base_task:DootTask")
+        ref = CodeReference.build("doot.taskSSSSS.base_task:DootTask")
         with pytest.raises(ImportError):
             imported = ref.try_import()
 
     def test_import_class_fail(self):
-        ref = DootCodeReference.build("doot.task.base_task:DootTaskSSSSSS")
+        ref = CodeReference.build("doot.task.base_task:DootTaskSSSSSS")
         with pytest.raises(ImportError):
             imported = ref.try_import()
 
     @pytest.mark.skip(reason="mixins obsolete")
     def test_add_mixin(self):
-        ref = DootCodeReference.build("doot.task.base_task:DootTask")
+        ref = CodeReference.build("doot.task.base_task:DootTask")
         assert(not bool(ref._mixins))
         ref_plus = ref.add_mixins("doot.mixins.job.terse:TerseBuilder_M")
         assert(ref is not ref_plus)
@@ -65,7 +65,7 @@ class TestDootCodeReference:
 
     @pytest.mark.skip(reason="mixins obsolete")
     def test_build_mixin(self):
-        ref      = DootCodeReference.build("doot.task.base_task:DootTask")
+        ref      = CodeReference.build("doot.task.base_task:DootTask")
         ref_plus = ref.add_mixins("doot.mixins.job.terse:TerseBuilder_M")
         result   = ref_plus.try_import()
         assert(result != DootTask)

@@ -32,12 +32,12 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 from doot._abstract.reporter import Reporter_p
-from doot._structs.trace import DootTraceRecord
-from doot._structs.artifact import DootTaskArtifact
+from doot._structs.trace import TraceRecord
+from doot._structs.artifact import TaskArtifact
 from doot._structs.task_spec import DootTaskSpec
-from doot._structs.action_spec import DootActionSpec
+from doot._structs.action_spec import ActionSpec
 from doot._structs.relation_spec import RelationSpec
-from doot._structs.task_name import DootTaskName
+from doot._structs.task_name import TaskName
 from doot._abstract.task import Task_i
 
 # ##-- end 1st party imports
@@ -49,10 +49,10 @@ logging = logmod.getLogger(__name__)
 class BaseReporter(Reporter_p):
 
     def __init__(self, reporters:list[ReportLine_i]=None):
-        self._full_trace     : list[DootTraceRecord]       = []
+        self._full_trace     : list[TraceRecord]       = []
         self._reporters      : list[ReportLine_i] = list(reporters or [self._default_formatter])
 
-    def _default_formatter(self, trace:DootTraceRecord) -> str:
+    def _default_formatter(self, trace:TraceRecord) -> str:
         return str(trace)
 
     def __str__(self):
@@ -62,9 +62,9 @@ class BaseReporter(Reporter_p):
         match msg:
             case str():
                 pass
-            case DootTaskArtifact():
+            case TaskArtifact():
                 msg = str(msg)
-            case DootActionSpec():
+            case ActionSpec():
                 msg = str(msg)
             case RelationSpec():
                 msg = str(msg)
@@ -73,4 +73,4 @@ class BaseReporter(Reporter_p):
             case Task_i():
                 msg = msg.shortname
 
-        self._full_trace.append(DootTraceRecord(message=msg, flags=flags, args=args))
+        self._full_trace.append(TraceRecord(message=msg, flags=flags, args=args))

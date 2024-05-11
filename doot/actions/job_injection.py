@@ -44,7 +44,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot._abstract import Action_p
-from doot.structs import DootKey, DootTaskSpec, DootTaskName, DootCodeReference
+from doot.structs import DootKey, DootTaskSpec, TaskName, CodeReference
 from doot.mixins.path_manip import PathManip_m
 
 class JobInjector(Action_p):
@@ -122,7 +122,7 @@ class JobPrependActions(Action_p):
 
     @DootKey.dec.types("_onto", "add_actions")
     def __call__(self, spec, state, _onto, _actions):
-        action_specs = [DootActionSpec.build(x) for x in _actions]
+        action_specs = [ActionSpec.build(x) for x in _actions]
         for x in _onto:
             actions = action_specs + x.actions
             x.actions = actions
@@ -131,7 +131,7 @@ class JobAppendActions(Action_p):
 
     @DootKey.dec.types("_onto", "add_actions")
     def __call__(self, spec, state, _onto, _actions):
-        actions_specs = [DootActionSpec.build(x) for x in _actions]
+        actions_specs = [ActionSpec.build(x) for x in _actions]
         for x in _onto:
             x.actions += action_specs
 

@@ -39,7 +39,7 @@ import importlib
 import tomlguard
 import doot
 import doot.errors
-from doot.structs import DootTaskSpec, DootTaskName, DootCodeReference
+from doot.structs import DootTaskSpec, TaskName, CodeReference
 from doot._abstract import TaskLoader_p, Job_i, Task_i
 
 DEFAULT_TASK_GROUP        = doot.constants.names.DEFAULT_TASK_GROUP
@@ -209,7 +209,7 @@ class DootTaskLoader(TaskLoader_p):
                         raise doot.errors.DootTaskLoadError("Task Name Overloaded: %s : %s", task_name, group)
                     case {"name": task_name, "ctor": str() as task_alias} if task_alias in self.task_builders: # build named plugin type
                         logging.info("Building Task from short name: %s : %s", task_name, task_alias)
-                        task_iden                   : DootCodeReference       = DootCodeReference.from_alias(task_alias, "task", self.plugins)
+                        task_iden                   : CodeReference       = CodeReference.from_alias(task_alias, "task", self.plugins)
                         spec['ctor'] = task_iden
                         task_spec = DootTaskSpec.build(spec)
                         if str(task_spec.name) in task_descriptions:

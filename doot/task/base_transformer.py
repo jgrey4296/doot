@@ -35,7 +35,7 @@ import doot.errors
 from doot._abstract import Job_i, Task_i
 from doot.enums import TaskFlags
 from doot.errors import DootDirAbsent
-from doot.structs import DootCodeReference, DootTaskName, DootTaskSpec
+from doot.structs import CodeReference, TaskName, DootTaskSpec
 from doot.task.base_task import DootTask
 
 # ##-- end 1st party imports

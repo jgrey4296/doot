@@ -37,7 +37,7 @@ from doot.cmds.base_cmd import BaseCommand
 from doot._abstract import TaskRunner_i
 from doot.utils.plugin_selector import plugin_selector
 from doot.task.check_locs import CheckLocsTask
-from doot.structs import DootCodeReference
+from doot.structs import CodeReference
 
 printer                  = logmod.getLogger("doot._printer")
 
@@ -61,6 +61,7 @@ class RunCmd(BaseCommand):
             self.build_param(name="step", default=False),
             self.build_param(name="interrupt", default=False),
             self.build_param(name="dry-run", default=False),
+            self.build_param(name="confirm", default=False),
             self.build_param(name="target", type=list[str], default=[], positional=True),
             ]
 
@@ -80,16 +81,16 @@ class RunCmd(BaseCommand):
             if target not in tracker:
                 printer.warn("- %s specified as run target, but it doesn't exist")
             else:
-                tracker.queue_entry(target, initial=True)
+                tracker.queue_entry(target, from_user=True)
 
         for target in doot.args.on_fail({}).tasks().keys():
             try:
-                tracker.queue_entry(target, initial=True)
+                tracker.queue_entry(target, from_user=True)
             except doot.errors.DootTaskTrackingError as err:
                 printer.warn("Failed to Queue Target: %s", target)
                 logging.debug(err)
 
-        tracker.queue_entry(CheckLocsTask(), initial=True)
+        tracker.queue_entry(CheckLocsTask(), from_user=True)
 
         match interrupt_handler:
             case _ if not doot.args.cmd.args.interrupt:
@@ -99,7 +100,7 @@ class RunCmd(BaseCommand):
             case bool():
                 interrupt = interrupt_handler
             case str():
-                interrupt = DootCodeReference.build(interrupt_handler).try_import()
+                interrupt = CodeReference.build(interrupt_handler).try_import()
 
         printer.info("- %s Tasks Queued: %s", len(tracker.active_set), " ".join(str(x) for x in tracker.active_set))
         with runner:

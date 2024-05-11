@@ -35,7 +35,7 @@ import doot.errors
 from doot._abstract import Job_i, Task_i
 from doot.enums import TaskFlags
 from doot.errors import DootDirAbsent
-from doot.structs import DootCodeReference, DootTaskName, DootTaskSpec
+from doot.structs import CodeReference, TaskName, DootTaskSpec
 from doot.task.base_task import DootTask
 
 # ##-- end 1st party imports
@@ -61,14 +61,14 @@ class DootJob(Job_i, DootTask):
         assert(spec is not None), "Spec is empty"
         super(DootJob, self).__init__(spec)
 
-    def default_task(self, name:str|DootTaskName|None, extra:None|dict|TomlGuard) -> DootTaskSpec:
+    def default_task(self, name:str|TaskName|None, extra:None|dict|TomlGuard) -> DootTaskSpec:
         task_name = None
         match name:
             case None:
                 task_name = self.name.subtask(SUBTASKED_HEAD)
             case str():
                 task_name = self.name.subtask(name)
-            case DootTaskName():
+            case TaskName():
                 task_name = name
             case _:
                 raise doot.errors.DootTaskError("Bad value used to make a subtask in %s : %s", self.shortname, name)

@@ -39,7 +39,7 @@ import doot.enums
 import doot.errors
 from doot.cmds.base_cmd import BaseCommand
 from doot._abstract import PluginLoader_p, Task_i
-from doot.structs import TaskStub, DootTaskName, DootCodeReference
+from doot.structs import TaskStub, TaskName, CodeReference
 from doot.task.base_job import DootJob
 from doot.task.base_task import DootTask
 from doot._structs.key import HELP_HINT
@@ -75,7 +75,7 @@ class StubCmd(BaseCommand):
 
     def _import_task_class(self, ctor_name):
         try:
-            code_ref = DootCodeReference.build(ctor_name)
+            code_ref = CodeReference.build(ctor_name)
             return code_ref.try_import()
         except ImportError as err:
             raise doot.errors.DootTaskLoadError(ctor_name)
@@ -114,14 +114,14 @@ class StubCmd(BaseCommand):
         This creates a toml stub using default values, as best it can
         """
         logging.info("Building Task Toml Stub")
-        task_iden                   : DootCodeReference       = DootCodeReference.from_alias(doot.args.on_fail("task").cmd.args.ctor(), "task", plugins)
+        task_iden                   : CodeReference       = CodeReference.from_alias(doot.args.on_fail("task").cmd.args.ctor(), "task", plugins)
 
         if (name:=doot.args.on_fail((None,)).cmd.args.name()) is None:
             raise doot.errors.DootCommandError("No Name Provided for Stub")
 
         # Create stub toml, with some basic information
         stub                          = TaskStub(ctor=task_iden)
-        stub['name'].default          = DootTaskName.build(name)
+        stub['name'].default          = TaskName.build(name)
 
         # add ctor specific fields,
         # such as for dir_walker: roots [], exts [], recursive bool, subtask "", head_task ""
@@ -207,7 +207,7 @@ class StubCmd(BaseCommand):
 
         printer.info("")
         printer.info("- For Custom Python Actions, implement the following in the .tasks directory")
-        printer.info("def custom_action(spec:DootActionSpec, task_state:dict) -> None|bool|dict:...")
+        printer.info("def custom_action(spec:ActionSpec, task_state:dict) -> None|bool|dict:...")
 
     def _stub_cli_arg(self):
         printer.info("# - CLI Arg Form. Add to task spec: cli=[]")

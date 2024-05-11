@@ -71,8 +71,8 @@ name                 = "mytask" # combined together, this means this specific ta
 version              = "0.1"    # <str>
 ctor                 = "task"   # <type> the python class this task uses. See the plugins listed in 'doot plugins'
 doc                  = ["Text to help understand what this task does"] # <list[str]>
-required_for         = []                   # <list[DootTaskArtifact]> see below
-depends_on           = []                   # <list[DootTaskArtifact]> see below
+required_for         = []                   # <list[TaskArtifact]> see below
+depends_on           = []                   # <list[TaskArtifact]> see below
 actions              = []                   # <list[Any]> See below
 ```
 
@@ -100,7 +100,7 @@ You can get help on writing an action using `doot stub --Actions {action}`. eg: 
 { do="write!", args=[] }
 
 - For Custom Python Actions, implement the following in the .tasks director
-def custom_action(spec:DootActionSpec, task_state:dict) -> None|bool|dict:...
+def custom_action(spec:ActionSpec, task_state:dict) -> None|bool|dict:...
 ```
 
 When specifying values in toml you can use direct keys, or indirect keys.

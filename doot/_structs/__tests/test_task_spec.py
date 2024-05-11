@@ -202,7 +202,7 @@ class TestTaskSpecInstantiation:
         base_task     = structs.DootTaskSpec.build({"name": "agroup::base", "a": 0})
         override_task = structs.DootTaskSpec.build({"name": "agroup::atask", "b": 2, "sources": "agroup::not.base"})
 
-        assert(not base_task.name < structs.DootTaskName.build(override_task.sources[-1]))
+        assert(not base_task.name < structs.TaskName.build(override_task.sources[-1]))
         with pytest.raises(doot.errors.DootTaskTrackingError):
             base_task.specialize_from(override_task)
 
@@ -243,7 +243,7 @@ class TestTaskSpecInstantiation:
         instance = base_task.specialize_from(override_task)
         assert(instance is not base_task)
         assert(instance is not override_task)
-        assert(not isinstance(instance.ctor, structs.DootTaskName))
+        assert(not isinstance(instance.ctor, structs.TaskName))
         assert(instance.ctor == base_task.ctor)
         assert(instance.flags == instance.name.meta)
 

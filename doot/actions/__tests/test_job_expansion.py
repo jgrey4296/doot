@@ -19,17 +19,17 @@ import doot
 doot._test_setup()
 from doot.actions.job_expansion import JobExpandAction, JobMatchAction
 import doot.errors
-from doot.structs import DootKey, DootActionSpec, DootTaskName
+from doot.structs import DootKey, ActionSpec, TaskName
 
 class TestJobExpansion:
 
     @pytest.fixture(scope="function")
     def spec(self):
-        return DootActionSpec.build({"do": "job.expand", "args":[], "update_":"specs"})
+        return ActionSpec.build({"do": "job.expand", "args":[], "update_":"specs"})
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": DootTaskName.build("agroup::basic")}
+        return {"_task_name": TaskName.build("agroup::basic")}
 
     def test_initial(self, spec, state):
         obj = JobExpandAction()
@@ -80,11 +80,11 @@ class TestJobMatcher:
 
     @pytest.fixture(scope="function")
     def spec(self):
-        return DootActionSpec.build({"do": "action", "args":["test::simple", "test::other"], "update_":"specs"})
+        return ActionSpec.build({"do": "action", "args":["test::simple", "test::other"], "update_":"specs"})
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": DootTaskName.build("agroup::basic")}
+        return {"_task_name": TaskName.build("agroup::basic")}
 
     def test_initial(self):
         pass
@@ -93,11 +93,11 @@ class TestJobGenerate:
 
     @pytest.fixture(scope="function")
     def spec(self):
-        return DootActionSpec.build({"do": "action", "args":["test::simple", "test::other"], "update_":"specs"})
+        return ActionSpec.build({"do": "action", "args":["test::simple", "test::other"], "update_":"specs"})
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": DootTaskName.build("agroup::basic")}
+        return {"_task_name": TaskName.build("agroup::basic")}
 
     def test_initial(self):
         pass

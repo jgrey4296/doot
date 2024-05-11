@@ -18,7 +18,7 @@ import tomlguard
 import doot
 doot._test_setup()
 from doot._structs import stub
-from doot._structs.task_name import DootTaskName
+from doot._structs.task_name import TaskName
 
 class TestTaskStub:
 
@@ -79,7 +79,7 @@ class TestTaskStubPart:
         assert(obj.comment == "a simple stub part")
 
     def test_name_reduce(self):
-        obj = stub.TaskStubPart(key="name", default=DootTaskName.build("blah::bloo"))
+        obj = stub.TaskStubPart(key="name", default=TaskName.build("blah::bloo"))
         res_s = str(obj).split("\n")
         assert(res_s[0] == "[[tasks.blah]]")
         assert(res_s[1] == f"{'name':<20} = \"bloo\"")

@@ -43,11 +43,11 @@ import doot
 import doot.errors
 from doot.enums import TaskFlags, ReportEnum
 from doot._abstract.protocols import SpecStruct_p
-from doot._structs.code_ref import DootCodeReference
+from doot._structs.code_ref import CodeReference
 
 ALIASES = doot.aliases.action
 
-class DootActionSpec(BaseModel, arbitrary_types_allowed=True):
+class ActionSpec(BaseModel, arbitrary_types_allowed=True):
     """
       When an action isn't a full blown class, it gets wrapped in this,
       which passes the action spec to the callable.
@@ -57,7 +57,7 @@ class DootActionSpec(BaseModel, arbitrary_types_allowed=True):
       path:/usr/bin/python  -> Path(/usr/bin/python)
 
     """
-    do         : None|DootCodeReference               = None
+    do         : None|CodeReference               = None
     args       : list[Any]                            = []
     kwargs     : TomlGuard                            = Field(default_factory=TomlGuard)
     inState    : set[str]                             = set()
@@ -65,21 +65,21 @@ class DootActionSpec(BaseModel, arbitrary_types_allowed=True):
     fun        : None|Callable                        = None
 
     @staticmethod
-    def build(data:dict|list|TomlGuard|DootActionSpec, *, fun=None) -> DootActionSpec:
+    def build(data:dict|list|TomlGuard|ActionSpec, *, fun=None) -> ActionSpec:
         match data:
-            case DootActionSpec():
+            case ActionSpec():
                 return data
             case list():
-                action_spec = DootActionSpec(
+                action_spec = ActionSpec(
                     args=data,
                     fun=fun if callable(fun) else None
                     )
                 return action_spec
 
             case dict() | TomlGuard():
-                kwargs = TomlGuard({x:y for x,y in data.items() if x not in DootActionSpec.model_fields})
+                kwargs = TomlGuard({x:y for x,y in data.items() if x not in ActionSpec.model_fields})
                 fun    = data.get('fun', fun)
-                action_spec = DootActionSpec(
+                action_spec = ActionSpec(
                     do=data.get('do', None),
                     args=data.get('args',[]),
                     kwargs=kwargs,
@@ -97,10 +97,10 @@ class DootActionSpec(BaseModel, arbitrary_types_allowed=True):
             case None:
                 return None
             case str() if val in ALIASES:
-                return DootCodeReference.build(ALIASES[val])
+                return CodeReference.build(ALIASES[val])
             case str():
-                return DootCodeReference.build(val)
-            case DootCodeReference():
+                return CodeReference.build(val)
+            case CodeReference():
                 return val
             case _:
                 raise TypeError("Unrecognized action spec do type", val)

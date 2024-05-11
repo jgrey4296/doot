@@ -34,7 +34,7 @@ from doot._abstract import (FailPolicy_p, Job_i, Task_i, TaskRunner_i,
                             TaskTracker_i)
 from doot.control.base_tracker import BaseTracker
 from doot.enums import TaskStatus_e, ExecutionPolicy_e, EdgeType_e
-from doot.structs import (DootCodeReference, DootTaskArtifact, DootTaskName,
+from doot.structs import (CodeReference, TaskArtifact, TaskName,
                           DootTaskSpec)
 from doot.task.base_task import DootTask
 
@@ -45,7 +45,7 @@ logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
-Node      : TypeAlias      = DootTaskName|DootTaskArtifact
+Node      : TypeAlias      = TaskName|TaskArtifact
 Depth     : TypeAlias      = int
 PlanEntry : TypeAlias      = tuple[Depth, Node, str]
 MAX_LOOP  : Final[int]     = 100
@@ -151,9 +151,10 @@ class DootTracker(BaseTracker, TaskTracker_i):
                 case None:
                     continue
                 case Task_i() as spec:
+                    logging.info("Plan Next: %s", str(spec.name))
                     plan.append((0, spec.name, str(spec.name)))
                     self.set_status(spec, TaskStatus_e.SUCCESS)
-                case DootTaskArtifact() as art:
+                case TaskArtifact() as art:
                     plan.append((1, art, str(art)))
                     self.set_status(art, TaskStatus_e.EXISTS)
                 case x:
@@ -188,7 +189,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
         """ Write the task network out as jsonl  """
         raise NotImplementedError()
 
-    def next_for(self, target:None|str|DootTaskName=None) -> None|Task_i|DootTaskArtifact:
+    def next_for(self, target:None|str|TaskName=None) -> None|Task_i|TaskArtifact:
         """ ask for the next task that can be performed
 
           Returns a Task or Artifact that needs to be executed or created
@@ -202,18 +203,18 @@ class DootTracker(BaseTracker, TaskTracker_i):
         if target and target not in self.active_set:
             self.queue_entry(target, silent=True)
 
-        focus : None|str|DootTaskName|DootTaskArtifact = None
+        focus : None|str|TaskName|TaskArtifact = None
         count = MAX_LOOP
         while bool(self) and 0 < (count:=count-1):
-            focus  : DootTaskName|DootTaskArtifact = self.deque_entry()
-            status : TaskStatus_e                  = self.get_status(focus)
+            focus  : TaskName|TaskArtifact = self.deque_entry()
+            status : TaskStatus_e          = self.get_status(focus)
             match focus:
-                case DootTaskName():
+                case TaskName():
                     logging.debug("Tracker Head: %s (Task). State: %s, Priority: %s", focus, self.get_status(focus), self.tasks[focus].priority)
-                case DootTaskArtifact():
+                case TaskArtifact():
                     logging.debug("Tracker Head: %s (Artifact). State: %s, Priority: %s", focus, self.get_status(focus), self._artifact_status[focus])
 
-            logging.debug("Tracker Active Set: %s", self.active_set)
+            logging.debug("Tracker Active Set: %s", sorted(self.active_set, key=lambda x: self.specs[x].priority))
 
             match status:
                 case TaskStatus_e.DEAD:

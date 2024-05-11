@@ -36,7 +36,7 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doot.structs import DootTraceRecord
+from doot.structs import TraceRecord
 from doot.reporters.base_reporter import BaseReporter
 from doot._abstract import Reporter_p
 

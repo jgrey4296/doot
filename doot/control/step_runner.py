@@ -108,7 +108,7 @@ class DootStepRunner(DootRunner):
                 return True
             case abstract.Task_i() if abstract.Task_i not in self._conf_types:
                 return True
-            case structs.DootActionSpec() if structs.DootActionSpec not in self._conf_types:
+            case structs.ActionSpec() if structs.ActionSpec not in self._conf_types:
                 return True
 
         printer.info("")
@@ -184,7 +184,7 @@ class DootStepRunner(DootRunner):
                 self.set_confirm_type("task")
             case [abstract.Task_i]:
                 self.set_confirm_type("action")
-            case [structs.DootActionSpec]:
+            case [structs.ActionSpec]:
                 self.set_confirm_type("all")
                 pass
 
@@ -193,7 +193,7 @@ class DootStepRunner(DootRunner):
     def _do_up(self, *args):
         printer.info("Up")
         match self._conf_types:
-            case [structs.DootActionSpec]:
+            case [structs.ActionSpec]:
                 self.set_confirm_type("task")
             case [abstract.Task_i]:
                 self.set_confirm_type("job")
@@ -224,7 +224,7 @@ class DootStepRunner(DootRunner):
         printer.info("%20s : %s", "CLI Args", dict(doot.args))
         for arg in args:
             match arg:
-                case structs.DootActionSpec():
+                case structs.ActionSpec():
                     printer.info("%20s : %s", "Action", str(arg.do))
                     printer.info("%20s : %s", "Action Spec kwargs", dict(arg.kwargs))
                 case abstract.Task_i():
@@ -247,7 +247,7 @@ class DootStepRunner(DootRunner):
             case "task":
                 self._conf_types = [abstract.Task_i]
             case "action":
-                self._conf_types = [structs.DootActionSpec]
+                self._conf_types = [structs.ActionSpec]
             case "all":
                 self._conf_types = [True]
 """

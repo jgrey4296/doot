@@ -43,14 +43,14 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.enums import TaskFlags, ReportEnum, LocationMeta, TaskQueueMeta
-from doot._structs.task_name import DootTaskName
-from doot._structs.code_ref import DootCodeReference
+from doot._structs.task_name import TaskName
+from doot._structs.code_ref import CodeReference
 from doot._structs.task_spec import DootTaskSpec
 from doot._abstract.protocols import StubStruct_p
 
 TaskFlagNames : Final[str]               = [x.name for x in TaskFlags]
 
-DEFAULT_CTOR  : Final[DootCodeReference] = DootCodeReference.build(doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS])
+DEFAULT_CTOR  : Final[CodeReference] = CodeReference.build(doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS])
 
 class TaskStub(BaseModel, arbitrary_types_allowed=True):
     """ Stub Task Spec for description in toml
@@ -64,7 +64,7 @@ class TaskStub(BaseModel, arbitrary_types_allowed=True):
     # str(obj) -> will now generate toml, including a "blah" key
 
     """
-    ctor       : str|DootCodeReference|type                     = DEFAULT_CTOR
+    ctor       : str|CodeReference|type                     = DEFAULT_CTOR
     parts      : dict[str, TaskStubPart]                        = {}
 
     # Don't copy these from DootTaskSpec blindly
@@ -80,7 +80,7 @@ class TaskStub(BaseModel, arbitrary_types_allowed=True):
 
     @model_validator(mode="after")
     def initial_values(self):
-        self['name'].default     = DootTaskName.build(doot.constants.names.DEFAULT_STUB_TASK_NAME)
+        self['name'].default     = TaskName.build(doot.constants.names.DEFAULT_STUB_TASK_NAME)
         self['version'].default  = "0.1"
         # Auto populate the stub with what fields are defined in a TaskSpec:
         for dcfield, data in DootTaskSpec.model_fields.items():
@@ -171,7 +171,7 @@ class TaskStubPart(BaseModel, arbitrary_types_allowed=True):
           eg: lowercasing the python bool from False to false for toml
         """
         # shortcut on being the name:
-        if isinstance(self.default, DootTaskName) and self.key == "name":
+        if isinstance(self.default, TaskName) and self.key == "name":
             return f"[[tasks.{self.default.group}]]\n{'name':<20} = \"{self.default.task}\""
 
         key_str     = self._key_str()

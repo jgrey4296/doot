@@ -102,7 +102,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         logging.debug("Core Overlord Initialisation complete")
 
     @property
-    def param_specs(self) -> list[DootParamSpec]:
+    def param_specs(self) -> list[ParamSpec]:
         return [
            self.build_param(name="version" , prefix="--"),
            self.build_param(name="help"    , prefix="--"),

@@ -35,7 +35,7 @@ from doot.enums import ReportEnum
 
 class Reporter_p(abc.ABC):
     """
-      Holds ReportLine_i's, and stores DootTraceRecords
+      Holds ReportLine_i's, and stores TraceRecords
     """
 
     @abc.abstractmethod
@@ -43,7 +43,7 @@ class Reporter_p(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def _default_formatter(self, trace:"DootTraceRecord") -> str:
+    def _default_formatter(self, trace:"TraceRecord") -> str:
         pass
 
     @abc.abstractmethod
@@ -57,5 +57,5 @@ class ReportLine_p(abc.ABC):
     """
 
     @abc.abstractmethod
-    def __call__(self, trace:"DootTraceRecord") -> None|str:
+    def __call__(self, trace:"TraceRecord") -> None|str:
         pass

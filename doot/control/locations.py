@@ -32,7 +32,7 @@ import re
 import tomlguard
 import doot
 from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
-from doot.structs import DootTaskArtifact, DootKey, Location
+from doot.structs import TaskArtifact, DootKey, Location
 from doot._structs.key import DootSimpleKey, DootMultiKey, DootNonKey
 from doot.mixins.path_manip import PathManip_m
 from doot.enums import LocationMeta
@@ -77,7 +77,7 @@ class DootLocations(PathManip_m):
             return None
         return self[DootKey.build(key, strict=True)]
 
-    def __getitem__(self, val:str|DootKey|pl.Path|DootTaskArtifact) -> pl.Path:
+    def __getitem__(self, val:str|DootKey|pl.Path|TaskArtifact) -> pl.Path:
         """
           eg: doot.locs['{data}/somewhere']
           A public utility method to easily convert paths.
@@ -96,7 +96,7 @@ class DootLocations(PathManip_m):
             case _:
                 raise DootLocationExpansionError("Unrecognized location expansion argument", val)
 
-    def __contains__(self, key:str|DootKey|pl.Path|DootTaskArtifact):
+    def __contains__(self, key:str|DootKey|pl.Path|TaskArtifact):
         """ Test whether a key is a registered location """
         return key in self._data
 

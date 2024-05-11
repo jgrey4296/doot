@@ -42,7 +42,7 @@ class Action_p(Protocol):
     """
     _toml_kwargs : ClassVar[list[str]] = []
 
-    def __call__(self, spec:"DootActionSpec", task_state:dict) -> dict|bool|ActionResponseEnum|None:
+    def __call__(self, spec:"ActionSpec", task_state:dict) -> dict|bool|ActionResponseEnum|None:
         raise NotImplementedError()
 
 class Task_i:
@@ -62,7 +62,7 @@ class Task_i:
 
     @property
     @abc.abstractmethod
-    def name(self) -> "DootTaskName":
+    def name(self) -> "TaskName":
         pass
 
     @abc.abstractmethod
@@ -70,7 +70,7 @@ class Task_i:
         pass
 
     @abc.abstractmethod
-    def __lt__(self, other:"DootTaskName"|Task_i) -> bool:
+    def __lt__(self, other:"TaskName"|Task_i) -> bool:
         """ Task A < Task B iff A ∈ B.run_after   """
         pass
 

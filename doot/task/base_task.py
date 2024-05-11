@@ -40,8 +40,8 @@ from doot.actions.base_action import DootBaseAction
 from doot.enums import TaskFlags, TaskQueueMeta, TaskStatus_e
 from doot.errors import DootTaskError, DootTaskLoadError
 from doot.mixins.param_spec import ParamSpecMaker_m
-from doot.structs import (DootActionSpec, DootCodeReference, DootTaskArtifact,
-                          DootTaskName)
+from doot.structs import (ActionSpec, CodeReference, TaskArtifact,
+                          TaskName)
 from doot._structs.relation_spec import RelationSpec
 
 # ##-- end 1st party imports
@@ -59,7 +59,7 @@ class _TaskProperties_m(ParamSpecMaker_m):
 
     @classmethod
     @property
-    def param_specs(cls) -> list[DootParamSpec]:
+    def param_specs(cls) -> list[ParamSpec]:
         """  make class parameter specs  """
         return [
             cls.build_param(name="help", default=False, invisible=True, prefix="--"),
@@ -79,7 +79,7 @@ class _TaskProperties_m(ParamSpecMaker_m):
         return str(self.spec.name.readable)
 
     @property
-    def name(self) -> DootTaskName:
+    def name(self) -> TaskName:
         return self.spec.name
 
     @property
@@ -137,13 +137,13 @@ class DootTask(_TaskProperties_m, Task_i):
     def __hash__(self):
         return hash(self.name)
 
-    def __lt__(self, other:DootTaskName|Task_i) -> bool:
+    def __lt__(self, other:TaskName|Task_i) -> bool:
         """ Task A < Task B if A ∈ B.run_after or B ∈ A.runs_before  """
         return any(other.name in x.target for x in self.spec.depends_on)
 
     def __eq__(self, other):
         match other:
-            case str() | DootTaskName():
+            case str() | TaskName():
                 return self.name == other
             case Task_i():
                 return self.name == other.name
@@ -202,15 +202,15 @@ class DootTask(_TaskProperties_m, Task_i):
                 match action_spec:
                     case RelationSpec():
                         pass
-                    case DootActionSpec() if action_spec.fun is not None:
+                    case ActionSpec() if action_spec.fun is not None:
                         pass
-                    case DootActionSpec() if action_spec.do is not None:
+                    case ActionSpec() if action_spec.do is not None:
                         try:
                             action_ctor = action_spec.do.try_import()
                             action_spec.set_function(action_ctor)
                         except ImportError as err:
                             failed.append(err)
-                    case DootActionSpec():
+                    case ActionSpec():
                         action_spec.set_function(self.action_ctor)
                     case _:
                         failed.append(doot.errors.DootTaskError("Unknown element in action group: ", action_spec, self.shortname))

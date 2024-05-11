@@ -44,11 +44,11 @@ import doot
 import doot.errors
 from doot._abstract.protocols import SpecStruct_p
 from doot._abstract.task import Task_i
-from doot._structs.action_spec import DootActionSpec
-from doot._structs.artifact import DootTaskArtifact
-from doot._structs.code_ref import DootCodeReference
+from doot._structs.action_spec import ActionSpec
+from doot._structs.artifact import TaskArtifact
+from doot._structs.code_ref import CodeReference
 from doot._structs.relation_spec import RelationSpec
-from doot._structs.task_name import DootTaskName
+from doot._structs.task_name import TaskName
 from doot.enums import (LocationMeta, RelationMeta, ReportEnum, TaskFlags,
                         TaskQueueMeta)
 
@@ -58,7 +58,7 @@ from doot.enums import (LocationMeta, RelationMeta, ReportEnum, TaskFlags,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-def _prepare_action_group(deps:list[str], handler:ValidatorFunctionWrapHandler, info:ValidationInfo) -> list[RelationSpec|DootActionSpec]:
+def _prepare_action_group(deps:list[str], handler:ValidatorFunctionWrapHandler, info:ValidationInfo) -> list[RelationSpec|ActionSpec]:
     """
       Prepares action groups / dependencies,
       converting toml specified strings, list, and dicts to Artifacts (ie:files), Task Names, ActionSpecs
@@ -75,16 +75,16 @@ def _prepare_action_group(deps:list[str], handler:ValidatorFunctionWrapHandler, 
     relation_type = RelationMeta.requirementFor if info.field_name in DootTaskSpec._dependant_groups else RelationMeta.dependencyOf
     for x in deps:
         match x:
-            case DootActionSpec() | RelationSpec():
+            case ActionSpec() | RelationSpec():
                 results.append(x)
             case { "do": action  }:
-                results.append(DootActionSpec.build(x))
+                results.append(ActionSpec.build(x))
             case _:
                 results.append(RelationSpec.build(x, relation=relation_type))
 
     return handler(results)
 
-ActionGroup = Annotated[list[DootActionSpec|RelationSpec], WrapValidator(_prepare_action_group)]
+ActionGroup = Annotated[list[ActionSpec|RelationSpec], WrapValidator(_prepare_action_group)]
 
 class _SpecUtils_m:
 
@@ -98,7 +98,7 @@ class _SpecUtils_m:
             case _:
                 raise TypeError("Can't instantiate onto something not a task spec", data)
 
-    def instantiate_transformer(self, target:DootTaskArtifact|tuple[DootTaskArtifact, DootTaskArtifact]) -> None|DootTaskSpec:
+    def instantiate_transformer(self, target:TaskArtifact|tuple[TaskArtifact, TaskArtifact]) -> None|DootTaskSpec:
         """ Create an instantiated transformer spec.
           ie     : ?.txt -> spec -> ?.blah
           becomes: a.txt -> spec -> a.blah
@@ -109,9 +109,9 @@ class _SpecUtils_m:
           TODO: handle ?/?.txt, */?.txt, blah/*/?.txt, path/blah.?
         """
         match target:
-            case DootTaskArtifact():
+            case TaskArtifact():
                 pre, post = target, target
-            case (DootTaskArtifact() as pre, DootTaskArtifact() as post):
+            case (TaskArtifact() as pre, TaskArtifact() as post):
                 pass
 
         instance = self.instantiate_onto(None)
@@ -222,9 +222,9 @@ class _SpecUtils_m:
         pre, post = None, None
         for x in self.depends_on:
             match x:
-                case RelationSpec(target=DootTaskArtifact() as target) if LocationMeta.glob in target:
+                case RelationSpec(target=TaskArtifact() as target) if LocationMeta.glob in target:
                     pass
-                case RelationSpec(target=DootTaskArtifact() as target) if LocationMeta.abstract in target:
+                case RelationSpec(target=TaskArtifact() as target) if LocationMeta.abstract in target:
                     if pre is not None:
                         self._transform = False
                         return None
@@ -234,9 +234,9 @@ class _SpecUtils_m:
 
         for y in self.required_for:
             match x:
-                case RelationSpec(target=DootTaskArtifact() as target) if LocationMeta.glob in target:
+                case RelationSpec(target=TaskArtifact() as target) if LocationMeta.glob in target:
                     pass
-                case RelationSpec(target=DootTaskArtifact() as target) if LocationMeta.abstract in target:
+                case RelationSpec(target=TaskArtifact() as target) if LocationMeta.abstract in target:
                     if post is not None:
                         self._transform = False
                         return None
@@ -268,9 +268,9 @@ class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra=
       sources = [root, ... grandparent, parent]. 'None' indicates halt on climbing source chain
 
     """
-    name                         : str|DootTaskName
+    name                         : str|TaskName
     doc                          : list[str]                                                               = []
-    sources                      : list[DootTaskName|pl.Path|None]                                         = []
+    sources                      : list[TaskName|pl.Path|None]                                         = []
 
     # Action Groups:
     actions                      : ActionGroup                                                             = []
@@ -283,7 +283,7 @@ class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra=
     # Any additional information:
     version                      : str                                                                     = doot.__version__ # TODO: make dict?
     priority                     : int                                                                     = 10
-    ctor                         : DootCodeReference                                                       = Field(default=None, validate_default=True)
+    ctor                         : CodeReference                                                       = Field(default=None, validate_default=True)
     queue_behaviour              : TaskQueueMeta                                                           = TaskQueueMeta.default
     print_levels                 : TomlGuard                                                               = Field(default_factory=TomlGuard)
     flags                        : TaskFlags                                                               = TaskFlags.default
@@ -297,23 +297,23 @@ class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra=
     _dependant_groups    : ClassVar[list[str]]  = ["required_for", "cleanup", "on_fail"]
 
     @staticmethod
-    def build(data:TomlGuard|dict|DootTaskName|str) -> Self:
+    def build(data:TomlGuard|dict|TaskName|str) -> Self:
         match data:
             case TomlGuard() | dict() if "source" in data:
                 raise ValueError("source is deprecated, use 'sources'", data)
             case TomlGuard() | dict():
                 return DootTaskSpec.model_validate(data)
-            case DootTaskName():
+            case TaskName():
                 return DootTaskSpec(name=data)
             case str():
-                return DootTaskSpec(name=DootTaskName.build(data))
+                return DootTaskSpec(name=TaskName.build(data))
 
     @model_validator(mode="before")
     def _convert_toml_keys(cls, data:dict) -> dict:
         """ converts a-key into a_key, and joins group+name """
         cleaned = {k.replace("-","_") : v  for k,v in data.items()}
-        if "group" in cleaned and DootTaskName._separator not in cleaned["name"]:
-            cleaned['name'] = DootTaskName._separator.join([cleaned['group'], cleaned['name']])
+        if "group" in cleaned and TaskName._separator not in cleaned["name"]:
+            cleaned['name'] = TaskName._separator.join([cleaned['group'], cleaned['name']])
             del cleaned['group']
         return cleaned
 
@@ -343,13 +343,13 @@ class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra=
     @field_validator("name", mode="before")
     def _validate_name(cls, val):
         match val:
-            case DootTaskName():
+            case TaskName():
                 return val
             case str():
-                name = DootTaskName.build(val)
+                name = TaskName.build(val)
                 return name
             case _:
-                raise TypeError("A DootTaskSpec Name should be a str or DootTaskName", val)
+                raise TypeError("A DootTaskSpec Name should be a str or TaskName", val)
 
     @field_validator("flags", mode="before")
     def _validate_flags(cls, val):
@@ -366,15 +366,15 @@ class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra=
 
                 default_alias = DootTaskSpec._default_ctor
                 coderef_str   = doot.aliases.task[default_alias]
-                return DootCodeReference.build(coderef_str)
+                return CodeReference.build(coderef_str)
             case EntryPoint():
-                return DootCodeReference.build(val)
-            case DootCodeReference():
+                return CodeReference.build(val)
+            case CodeReference():
                 return val
             case type()|str():
-                return DootCodeReference.build(val)
+                return CodeReference.build(val)
             case _:
-                return DootCodeReference.build(val)
+                return CodeReference.build(val)
 
     @field_validator("print_levels", mode="before")
     def _validate_print_levels(cls, val):
@@ -420,11 +420,11 @@ class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra=
             match x:
                 case "None" | None:
                     result.append(None)
-                case DootTaskName() | pl.Path():
+                case TaskName() | pl.Path():
                     result.append(x)
                 case str():
                     try:
-                        name = DootTaskName.build(x)
+                        name = TaskName.build(x)
                         result.append(name)
                     except (ValueError, ValidationError):
                         result.append(pl.Path(x))
@@ -467,7 +467,7 @@ class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra=
                 # Otherwise theres interference:
                 specialized['sources'] = self.sources[:] + [self.name]
                 return DootTaskSpec.build(specialized)
-            case DootTaskSpec(sources=[*xs, DootTaskName() as x] ) if not x <= self.name:
+            case DootTaskSpec(sources=[*xs, TaskName() as x] ) if not x <= self.name:
                 raise doot.errors.DootTaskTrackingError("Tried to specialize a task that isn't based on this task", str(data.name), str(self.name), str(data.sources))
             case DootTaskSpec(ctor=ctor) if self.ctor != ctor and ctor != DootTaskSpec._default_ctor:
                 raise doot.errors.DootTaskTrackingError("Unknown ctor for spec", data.ctor)

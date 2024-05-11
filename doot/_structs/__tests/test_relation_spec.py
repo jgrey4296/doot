@@ -34,7 +34,7 @@ doot._test_setup()
 import doot.errors
 from doot._structs.relation_spec import RelationSpec
 from doot._structs.location import Location
-from doot.structs import DootTaskName
+from doot.structs import TaskName
 from doot.enums import LocationMeta, RelationMeta
 
 class TestRelationSpec:
@@ -76,31 +76,31 @@ class TestRelationSpec:
     def test_task_dep(self):
         obj = RelationSpec.build("agroup::atask")
         assert(isinstance(obj, RelationSpec))
-        assert(isinstance(obj.target, DootTaskName))
+        assert(isinstance(obj.target, TaskName))
 
 
     def test_dict_task(self):
         obj = RelationSpec.build({"task": "agroup::atask"})
         assert(isinstance(obj, RelationSpec))
-        assert(isinstance(obj.target, DootTaskName))
+        assert(isinstance(obj.target, TaskName))
 
 
     def test_dict_task_with_metadata(self):
         obj = RelationSpec.build({"task": "agroup::atask", "keys":["a", "b", "c"]})
         assert(isinstance(obj, RelationSpec))
-        assert(isinstance(obj.target, DootTaskName))
+        assert(isinstance(obj.target, TaskName))
         assert(obj.constraints == ["a", "b", "c"])
 
 
     def test_build_as_dependency(self):
         obj = RelationSpec.build({"task": "agroup::atask"}, relation=RelationMeta.dependsOn)
         assert(isinstance(obj, RelationSpec))
-        assert(isinstance(obj.target, DootTaskName))
+        assert(isinstance(obj.target, TaskName))
         assert(obj.relation is RelationMeta.dep)
 
 
     def test_build_as_requirement(self):
         obj = RelationSpec.build({"task": "agroup::atask"}, relation=RelationMeta.requirementFor)
         assert(isinstance(obj, RelationSpec))
-        assert(isinstance(obj.target, DootTaskName))
+        assert(isinstance(obj.target, TaskName))
         assert(obj.relation is RelationMeta.req)

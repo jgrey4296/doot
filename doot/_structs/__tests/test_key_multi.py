@@ -19,7 +19,7 @@ from tomlguard import TomlGuard
 import doot
 doot._test_setup()
 from doot.control.locations import DootLocations
-from doot.structs import DootKey, DootActionSpec
+from doot.structs import DootKey, ActionSpec
 from doot._structs import key as dkey
 
 KEY_BASES               : Final[str] = ["bob", "bill", "blah", "other"]
@@ -40,7 +40,7 @@ class TestMultiKey:
     def test_to_path_expansion(self, mocker, key, target):
         mocker.patch.dict("doot.__dict__", locs=TEST_LOCS)
         obj           = DootKey.build(key, strict=False)
-        spec          = mocker.Mock(params={}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={}, spec=ActionSpec)
         state         = {"aweg": "qqqq"}
         result        = obj.to_path(spec, state)
         assert(isinstance(result, pl.Path))
@@ -49,7 +49,7 @@ class TestMultiKey:
     @pytest.mark.parametrize("key,target", [("{blah}/bloo", "doot/bloo"), ("test !!! {blah}", "test !!! doot"), ("{aweg}-{blah}", "BOO-doot") ])
     def test_expansion(self, mocker, key, target):
         obj           = DootKey.build(key, strict=False)
-        spec          = mocker.Mock(params={}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={}, spec=ActionSpec)
         state         = {"blah": "doot", "aweg": "BOO"}
         result        = obj.expand(spec, state)
         assert(isinstance(result, str))

@@ -42,9 +42,9 @@ from doot._abstract.task import Task_i
 from doot._abstract.protocols import ArtifactStruct_p, SpecStruct_p
 
 # ## Types
-AbstractId                     : TypeAlias                   = "DootTaskName|DootTaskArtifact"
-ConcreteId                     : TypeAlias                   = "DootTaskName|DootTaskArtifact"
-AnyId                          : TypeAlis                    = "DootTaskName|DootTaskArtifact"
+AbstractId                     : TypeAlias                   = "TaskName|TaskArtifact"
+ConcreteId                     : TypeAlias                   = "TaskName|TaskArtifact"
+AnyId                          : TypeAlis                    = "TaskName|TaskArtifact"
 AbstractSpec                   : TypeAlias                   = "DootTaskSpec"
 ConcreteSpec                   : TypeAlias                   = "DootTaskSpec"
 AnySpec                        : TypeAlias                   = "DootTaskSpec"
@@ -75,7 +75,7 @@ class TaskTracker_i:
         pass
 
     @abstractmethod
-    def next_for(self, target:None|str|ConcreteId) -> None|Task_i|"DootTaskArtifact":
+    def next_for(self, target:None|str|ConcreteId) -> None|Task_i|"TaskArtifact":
         pass
 
     @abstractmethod

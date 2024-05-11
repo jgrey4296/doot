@@ -39,7 +39,7 @@ import doot
 import doot.errors
 from doot.enums import TaskFlags
 from doot.cmds.base_cmd import BaseCommand
-from doot.structs import DootParamSpec
+from doot.structs import ParamSpec
 
 INDENT : Final[str] = " "*8
 
@@ -49,7 +49,7 @@ class ListCmd(BaseCommand):
     _help      = ["A simple command to list all loaded task heads."]
 
     @property
-    def param_specs(self) -> list[DootParamSpec]:
+    def param_specs(self) -> list[ParamSpec]:
         return super().param_specs + [
             self.build_param(name="all",                                          default=True,                   desc="List all loaded tasks, by group"),
             self.build_param(name="dependencies",                                 default=False,                  desc="List task dependencies",                 prefix="--"),

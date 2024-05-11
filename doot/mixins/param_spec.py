@@ -38,11 +38,11 @@ from uuid import UUID, uuid1
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doot._structs.param_spec import DootParamSpec
+from doot._structs.param_spec import ParamSpec
 
 class ParamSpecMaker_m:
 
     @staticmethod
-    def build_param(*args:Any, **kwargs:Any) -> DootParamSpec:
+    def build_param(*args:Any, **kwargs:Any) -> ParamSpec:
         """ Utility method for easily making paramspecs """
-        return DootParamSpec(*args, **kwargs)
+        return ParamSpec(*args, **kwargs)

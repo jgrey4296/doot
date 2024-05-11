@@ -37,7 +37,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from doot._abstract import Reporter_p
-from doot.structs import DootTraceRecord
+from doot.structs import TraceRecord
 from doot.enums import ReportEnum
 from doot.reporters.base_reporter import BaseReporter
 

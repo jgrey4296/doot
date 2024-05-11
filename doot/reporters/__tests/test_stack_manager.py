@@ -17,7 +17,7 @@ doot._test_setup()
 
 from doot._abstract import Reporter_p
 from doot.reporters.stack_manager import DootReportManagerStack
-from doot.structs import DootTraceRecord
+from doot.structs import TraceRecord
 from doot.enums import ReportEnum
 
 logging = logmod.root
@@ -46,7 +46,7 @@ class TestReportStackManager:
         assert(not bool(manager._full_trace))
         manager.add_trace("test")
         assert(bool(manager._full_trace))
-        assert(isinstance(manager._full_trace[0], DootTraceRecord))
+        assert(isinstance(manager._full_trace[0], TraceRecord))
 
     def test_multi_add(self):
         manager = DootReportManagerStack()
@@ -55,7 +55,7 @@ class TestReportStackManager:
         manager.add_trace("test")
         manager.add_trace("test")
         assert(len(manager._full_trace) == 3)
-        assert(all(isinstance(x, DootTraceRecord) for x in manager._full_trace))
+        assert(all(isinstance(x, TraceRecord) for x in manager._full_trace))
 
 
     def test_str(self):

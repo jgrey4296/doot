@@ -42,7 +42,7 @@ import random
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.structs import DootKey, DootTaskSpec, DootTaskName, DootCodeReference
+from doot.structs import DootKey, DootTaskSpec, TaskName, CodeReference
 from doot.actions.base_action import DootBaseAction
 from doot.actions.job_expansion import JobGenerate, JobExpandAction, JobMatchAction
 from doot.actions.job_injection import JobPrependActions, JobAppendActions, JobInjector, JobInjectPathParts, JobInjectShadowAction, JobSubNamer
@@ -64,7 +64,7 @@ class JobWalkAction(Walker_m, DootBaseAction):
         rec     = recursive or False
         roots   = [DootKey.build(x).to_path(spec, state) for x in roots]
         match fn:
-            case DootCodeReference():
+            case CodeReference():
                 accept_fn = fn.try_import()
             case None:
                 accept_fn = lambda x: True
@@ -90,7 +90,7 @@ class JobLimitAction(DootBaseAction):
         match method:
             case None:
                 limited = random.sample(_from, count)
-            case DootCodeReference():
+            case CodeReference():
                 fn      = method.try_import()
                 limited = fn(spec, state, _from)
 

@@ -39,7 +39,7 @@ logging = logmod.getLogger(__name__)
 
 import importlib
 from importlib.metadata import EntryPoint
-from doot.structs import DootCodeReference
+from doot.structs import CodeReference
 import doot.errors
 
 def plugin_selector(plugins:TomlGuard, *, target="default", fallback=None) -> type:
@@ -49,7 +49,7 @@ def plugin_selector(plugins:TomlGuard, *, target="default", fallback=None) -> ty
 
     if target != "default":
         try:
-            name = DootCodeReference.build(target)
+            name = CodeReference.build(target)
             return name.try_import()
         except ImportError as err:
             # raise doot.errors.DootInvalidConfig("Import Failed: %s : %s", target, err.msg) from err

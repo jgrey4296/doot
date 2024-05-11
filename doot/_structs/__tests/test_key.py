@@ -19,7 +19,7 @@ from tomlguard import TomlGuard
 import doot
 doot._test_setup()
 from doot.control.locations import DootLocations
-from doot.structs import DootKey, DootActionSpec
+from doot.structs import DootKey, ActionSpec
 from doot._structs import key as dkey
 
 KEY_BASES               : Final[str] = ["bob", "bill", "blah", "other"]
@@ -72,7 +72,7 @@ class TestSimpleGet:
 
     @pytest.fixture(scope="function")
     def spec(self):
-        return DootActionSpec(kwargs=TomlGuard({"y": "aweg", "z_": "bloo", "a": 2}))
+        return ActionSpec(kwargs=TomlGuard({"y": "aweg", "z_": "bloo", "a": 2}))
 
     def test_initial(self, spec):
         key = DootKey.build("z_")
@@ -142,7 +142,7 @@ class TestKeyParameterized:
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_redirect(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(params={f"{name}_": "blah"}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={f"{name}_": "blah"}, spec=ActionSpec)
         assert(obj.indirect in spec.params)
         result        = obj.redirect(spec)
         assert(isinstance(result, DootKey))
@@ -151,7 +151,7 @@ class TestKeyParameterized:
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_redirect_to_list_fail(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(params={f"{name}_": ["blah", "bloo"]}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={f"{name}_": ["blah", "bloo"]}, spec=ActionSpec)
         assert(obj.indirect in spec.params)
         with pytest.raises(TypeError):
             result        = obj.redirect(spec)
@@ -159,7 +159,7 @@ class TestKeyParameterized:
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(params={f"{name}_": ["blah", "bloo"]}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={f"{name}_": ["blah", "bloo"]}, spec=ActionSpec)
         assert(obj.indirect in spec.params)
         result        = obj.redirect_multi(spec)
         assert(isinstance(result, list))
@@ -168,14 +168,14 @@ class TestKeyParameterized:
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_expand_from_spec(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(params={f"{obj}": "blah"}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={f"{obj}": "blah"}, spec=ActionSpec)
         result        = obj.expand(spec, {})
         assert(result == "blah")
 
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_expand_from_state(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(params={}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={}, spec=ActionSpec)
         state         = {f"{obj}": "blah"}
         result        = obj.expand(spec, state)
         assert(result == "blah")
@@ -183,7 +183,7 @@ class TestKeyParameterized:
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_expansion_prefers_spec_over_state(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(params={f"{obj}": "bloo"}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={f"{obj}": "bloo"}, spec=ActionSpec)
         state         = {f"{obj}": "blah"}
         result        = obj.expand(spec, state)
         assert(result == "bloo")
@@ -191,7 +191,7 @@ class TestKeyParameterized:
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_expansion_prefers_redirect_over_other(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(params={"aweg": "bloo", obj.indirect : "aweg"}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={"aweg": "bloo", obj.indirect : "aweg"}, spec=ActionSpec)
         state         = {f"{obj}": "blah"}
         result        = obj.expand(spec, state)
         assert(result == "bloo")
@@ -199,7 +199,7 @@ class TestKeyParameterized:
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_expansion_of_missing_returns_form(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(params={}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={}, spec=ActionSpec)
         state         = {}
         result        = obj.expand(spec, state)
         assert(result == obj.form)
@@ -207,7 +207,7 @@ class TestKeyParameterized:
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_recursive_expansion(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(params={f"{name}": dkey.DootSimpleKey("key1")}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={f"{name}": dkey.DootSimpleKey("key1")}, spec=ActionSpec)
         state         = {"key1": dkey.DootSimpleKey("key2"), "key2": "aweg"}
         result        = obj.expand(spec, state)
         assert(result == "aweg")
@@ -216,7 +216,7 @@ class TestKeyParameterized:
     @pytest.mark.parametrize("value,type", [([1,2,3], list)])
     def test_expansion_flattening(self, mocker, name, value, type):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(params={}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={}, spec=ActionSpec)
         state         = {name: value}
         result        = obj.expand(spec, state)
         assert(isinstance(result, str))
@@ -226,7 +226,7 @@ class TestKeyParameterized:
     @pytest.mark.parametrize("value,type", [([1,2,3], list)])
     def test_to_type_expansion(self, mocker, name, value, type):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(params={}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={}, spec=ActionSpec)
         state         = {name: value}
         result        = obj.to_type(spec, state)
         assert(isinstance(result, type))
@@ -236,7 +236,7 @@ class TestKeyParameterized:
     @pytest.mark.parametrize("value,type", [([1,2,3], list)])
     def test_to_type_on_fail(self, mocker, name, value, type):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(params={}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={}, spec=ActionSpec)
         state         = {}
         result        = obj.to_type(spec, state, on_fail="blah")
         # assert(isinstance(result, type))
@@ -246,7 +246,7 @@ class TestKeyParameterized:
     @pytest.mark.parametrize("value,type", [([1,2,3], list)])
     def test_to_type_on_fail_nop(self, mocker, name, value, type):
         obj           = dkey.DootSimpleKey(name)
-        spec          = mocker.Mock(params={}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={}, spec=ActionSpec)
         state         = {name : value}
         result        = obj.to_type(spec, state, on_fail="blah")
         # assert(isinstance(result, type))
@@ -256,7 +256,7 @@ class TestKeyParameterized:
     def test_to_path_expansion(self, mocker, key, target):
         mocker.patch.dict("doot.__dict__", locs=TEST_LOCS)
         obj           = DootKey.build(key)
-        spec          = mocker.Mock(params={}, spec=DootActionSpec)
+        spec          = mocker.Mock(params={}, spec=ActionSpec)
         state         = {}
         result        = obj.to_path(spec, state)
         assert(isinstance(result, pl.Path))
@@ -264,7 +264,7 @@ class TestKeyParameterized:
 
     @pytest.mark.parametrize("name", MULTI_KEYS + NON_PATH_MUTI_KEYS)
     def test_set_default_expansion(self, name):
-        spec  = DootActionSpec(kwargs=TomlGuard({"x": "aweg", "y_": "a"}))
+        spec  = ActionSpec(kwargs=TomlGuard({"x": "aweg", "y_": "a"}))
         state = {"a": "bloo", "b_": "blee"}
         obj   = dkey.DootKey.build(name, strict=False)
         obj.set_expansion_hint("str")
@@ -274,7 +274,7 @@ class TestKeySimple:
 
     @pytest.fixture(scope="function")
     def spec(self):
-        return DootActionSpec(kwargs=TomlGuard({"x": "aweg", "y_": "a"}))
+        return ActionSpec(kwargs=TomlGuard({"x": "aweg", "y_": "a"}))
 
     @pytest.fixture(scope="function")
     def state(self):

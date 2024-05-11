@@ -44,7 +44,7 @@ import string
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot._structs.code_ref import DootCodeReference
+from doot._structs.code_ref import CodeReference
 from doot._abstract.protocols import SpecStruct_p
 from doot.utils.chain_get import DootKeyGetter
 from doot.utils.decorators import DootDecorator, DecorationUtils
@@ -387,7 +387,7 @@ class DootKey(abc.ABC):
     def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[DootKey]=None, on_fail=Any, locs:DootLocations=None, **kwargs) -> str:
         pass
 
-    def to_coderef(self, spec:None|SpecStruct_p, state) -> None|DootCodeReference:
+    def to_coderef(self, spec:None|SpecStruct_p, state) -> None|CodeReference:
         match spec:
             case _ if hasattr(spec, "params"):
                 kwargs = spec.params
@@ -400,7 +400,7 @@ class DootKey(abc.ABC):
             return None
         try:
             expanded = self.expand(spec, state)
-            ref = DootCodeReference.build(expanded)
+            ref = CodeReference.build(expanded)
             return ref
         except doot.errors.DootError:
             return None
@@ -716,6 +716,6 @@ class DootPathMultiKey(DootMultiKey):
 
 class DootImportKey(DootSimpleKey):
     """ a key to specify a key is used for importing
-    ie: str expands -> DootCodeReference.build -> .try_import
+    ie: str expands -> CodeReference.build -> .try_import
     """
     pass

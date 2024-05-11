@@ -35,7 +35,7 @@ from doot.actions.job_injection import (JobInjectPathParts,
                                         JobInjectShadowAction)
 from doot.errors import DootTaskError, DootTaskFailed
 from doot.mixins.path_manip import PathManip_m
-from doot.structs import DootCodeReference, DootKey
+from doot.structs import CodeReference, DootKey
 
 # ##-- end 1st party imports
 
@@ -73,7 +73,7 @@ class AddStateFn(Action_p):
         for kwarg, val in kwargs:
             key = DootKey.build(val, explicit=True)
             val = key.expand(spec, state)
-            ref = DootCodeReference.build(val)
+            ref = CodeReference.build(val)
             result[kwarg] = ref.try_import()
 
         return result

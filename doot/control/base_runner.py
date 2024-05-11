@@ -43,9 +43,9 @@ import doot.errors
 from doot.enums import ReportEnum, ActionResponseEnum as ActRE, TaskStatus_e
 from doot._abstract import Job_i, Task_i, FailPolicy_p
 from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i, Action_p, Reporter_p
-from doot.structs import DootTaskArtifact, DootActionSpec
+from doot.structs import TaskArtifact, ActionSpec
 from doot.utils.signal_handler import SignalHandler
-from doot.structs import DootTaskSpec, DootActionSpec
+from doot.structs import DootTaskSpec, ActionSpec
 from doot.utils.log_context import DootLogContext
 
 dry_run                                      = doot.args.on_fail(False).cmd.args.dry_run()
@@ -107,7 +107,7 @@ class BaseRunner(TaskRunner_i):
             case doot.errors.DootError():
                 raise self._signal_failure
 
-    def _handle_task_success(self, task:None|Task_i|DootTaskArtifact):
+    def _handle_task_success(self, task:None|Task_i|TaskArtifact):
         """ The basic success handler. just informs the tracker of the success """
         logging.debug("Task Succeeded: %s", task)
         match task:
@@ -159,7 +159,7 @@ class BaseRunner(TaskRunner_i):
         match task:
             case None:
                 return
-            case DootTaskArtifact():
+            case TaskArtifact():
                 return
 
         with logctx(task.spec.print_levels.on_fail(sleep_level).sleep()) as p:
@@ -167,7 +167,7 @@ class BaseRunner(TaskRunner_i):
             p.info("[Sleeping (%s)...]", sleep_len, extra={"colour":"white"})
             time.sleep(sleep_len)
 
-    def _notify_artifact(self, art:DootTaskArtifact) -> None:
+    def _notify_artifact(self, art:TaskArtifact) -> None:
         """ A No-op for when the tracker gives an artifact """
         printer.info("---- Artifact: %s", art)
         self.reporter.add_trace(art, flags=ReportEnum.ARTIFACT)

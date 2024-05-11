@@ -15,7 +15,7 @@ import pytest
 import doot
 doot._test_setup()
 import doot.errors
-from doot.structs import DootKey, DootTaskSpec, DootActionSpec, DootTaskName
+from doot.structs import DootKey, DootTaskSpec, ActionSpec, TaskName
 import doot.actions.job_actions as JA
 
 printer = logmod.getLogger("doot._printer")
@@ -25,11 +25,11 @@ class TestJobActions:
 
     @pytest.fixture(scope="function")
     def spec(self):
-        return DootActionSpec.build({"do": "basic", "args":["test::simple", "test::other"], "update_":"specs"})
+        return ActionSpec.build({"do": "basic", "args":["test::simple", "test::other"], "update_":"specs"})
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": DootTaskName.build("agroup::basic")}
+        return {"_task_name": TaskName.build("agroup::basic")}
 
     @pytest.fixture(scope="function")
     def cleanup(self):
@@ -48,7 +48,7 @@ class TestJobActions:
         assert(all(isinstance(x, DootTaskSpec) for x in result))
 
     def test_basic_expander(self, spec, state):
-        state.update(dict(_task_name=DootTaskName.build("agroup::basic"),
+        state.update(dict(_task_name=TaskName.build("agroup::basic"),
                           inject={"replace":["aKey"]},
                           base="base::task"))
 
@@ -62,7 +62,7 @@ class TestJobActions:
         assert(len(result['specs']) == 3)
 
     def test_expander_with_dict_injection(self, spec, state):
-        state.update(dict(_task_name=DootTaskName.build("agroup::basic"),
+        state.update(dict(_task_name=TaskName.build("agroup::basic"),
                           inject={"replace": ["aKey"], "copy":{"other":"blah"}},
                           base="base::task"))
 

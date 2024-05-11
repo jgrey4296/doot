@@ -17,32 +17,32 @@ logging = logmod.root
 import tomlguard
 import doot
 doot._test_setup()
-from doot._structs.action_spec import DootActionSpec
+from doot._structs.action_spec import ActionSpec
 
 class TestActionSpec:
 
     def test_initial(self):
-        obj = DootActionSpec()
-        assert(isinstance(obj, DootActionSpec))
+        obj = ActionSpec()
+        assert(isinstance(obj, ActionSpec))
 
     def test_build_from_dict(self):
-        obj = DootActionSpec.build({"do":"basic"})
-        assert(isinstance(obj, DootActionSpec))
+        obj = ActionSpec.build({"do":"basic"})
+        assert(isinstance(obj, ActionSpec))
         assert(str(obj.do) == doot.aliases.action['basic'])
 
     def test_build_from_list(self):
-        obj = DootActionSpec.build({"do":"basic"})
-        assert(isinstance(obj, DootActionSpec))
+        obj = ActionSpec.build({"do":"basic"})
+        assert(isinstance(obj, ActionSpec))
         assert(str(obj.do) == doot.aliases.action['basic'])
 
     def test_build_nop(self):
-        obj = DootActionSpec.build([])
-        obj2 = DootActionSpec.build(obj)
+        obj = ActionSpec.build([])
+        obj2 = ActionSpec.build(obj)
         assert(obj is obj2)
 
     def test_call(self, mocker):
         fun_mock = mocker.Mock()
-        obj = DootActionSpec(fun=fun_mock)
+        obj = ActionSpec(fun=fun_mock)
 
         obj({})
         fun_mock.assert_called_once()

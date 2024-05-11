@@ -61,7 +61,7 @@ def mock_task(name, spec=None, actions:int=1, **kwargs):
                        state={},
                        **kwargs)
     task_m.spec = spec or mock_task_spec(name=name, action_count=actions)
-    _add_prop(task_m, "name", structs.DootTaskName.build(name))
+    _add_prop(task_m, "name", structs.TaskName.build(name))
     _add_prop(task_m, "actions", task_m.spec.actions)
     return task_m
 
@@ -89,13 +89,13 @@ def mock_task_spec(name="agroup::mockSpec", pre=None, post=None, action_count=1,
                        cleanup=[],
                        print_levels=tomlguard.TomlGuard({}),
                        )
-    spec_m.name = structs.DootTaskName.build(name)
+    spec_m.name = structs.TaskName.build(name)
     return spec_m
 
 def mock_action_specs(num=1) -> list:
     results = []
     for x in range(num):
-        action_spec_m = MagicMock(spec=structs.DootActionSpec(),
+        action_spec_m = MagicMock(spec=structs.ActionSpec(),
                                   args=[],
                                   kwargs=tomlguard.TomlGuard())
         type(action_spec_m).__call__ = MagicMock(return_value=None)
@@ -130,12 +130,12 @@ def mock_task_ctor(name="APretendClass", module="pretend", params=None):
     return mock_ctor
 
 def mock_code_ref(returns=None):
-    code_ref_m  = MagicMock(spec=structs.DootCodeReference())
+    code_ref_m  = MagicMock(spec=structs.CodeReference())
     code_ref_m.try_import = MagicMock(return_value=returns)
     return code_ref_m
 
 def mock_param_spec(name, val, type=Any):
-    m = MagicMock(spec=structs.DootParamSpec(name=name, type=type), default=val, positional=False, prefix="-")
+    m = MagicMock(spec=structs.ParamSpec(name=name, type=type), default=val, positional=False, prefix="-")
 
     return m
 

@@ -52,7 +52,7 @@ from doot.enums import ReportEnum, TaskFlags
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class DootParamSpec(BaseModel, arbitrary_types_allowed=True):
+class ParamSpec(BaseModel, arbitrary_types_allowed=True):
     """ Describes a command line parameter to use in the parser
       When `positional`, will not match against a string starting with `prefix`
       consumed in doot._abstract.parser.ArgParser_i's
@@ -77,7 +77,7 @@ class DootParamSpec(BaseModel, arbitrary_types_allowed=True):
     _pad               : ClassVar[int]             = 15
 
     @classmethod
-    def build(cls:BaseModel, data:TomlGuard|dict) -> DootParamSpec:
+    def build(cls:BaseModel, data:TomlGuard|dict) -> ParamSpec:
         param =  cls.model_validate(data)
         return param
 
@@ -127,7 +127,7 @@ class DootParamSpec(BaseModel, arbitrary_types_allowed=True):
 
     @ftz.cached_property
     def repeatable(self):
-        return self.type_ in DootParamSpec._repeatable_types and not self.positional
+        return self.type_ in ParamSpec._repeatable_types and not self.positional
 
     @ftz.cached_property
     def key_str(self):
@@ -164,7 +164,7 @@ class DootParamSpec(BaseModel, arbitrary_types_allowed=True):
             return False
 
         match val, self.positional:
-            case DootParamSpec(), _:
+            case ParamSpec(), _:
                 return val is self
             case str(), False:
                 [head, *_] = self._split_name_from_value(val)

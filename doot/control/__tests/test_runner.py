@@ -41,7 +41,7 @@ from doot._abstract import (Action_p, Job_i, Reporter_p, ReportLine_p, Task_i,
 from doot.control.runner import DootRunner
 from doot.control.tracker import DootTracker
 from doot.enums import TaskStatus_e
-from doot.structs import DootActionSpec, DootTaskSpec, DootKey
+from doot.structs import ActionSpec, DootTaskSpec, DootKey
 
 # ##-- end 1st party imports
 
@@ -103,7 +103,7 @@ class TestRunner:
         task.spec.print_levels = mocker.Mock()
         task.spec.sleep = 0.0
         task.spec.actions = [
-            DootActionSpec.build({"do":None, "fun": lambda *xs: None})
+            ActionSpec.build({"do":None, "fun": lambda *xs: None})
             ]
         return task
 

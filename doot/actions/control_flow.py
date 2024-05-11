@@ -35,7 +35,7 @@ import shutil
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 
-from doot.structs import DootKey, DootCodeReference
+from doot.structs import DootKey, CodeReference
 from doot.mixins.path_manip import PathManip_m
 from doot.actions.base_action import DootBaseAction
 from doot.utils.action_decorators import ControlFlow

@@ -33,7 +33,7 @@ import sh
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
-from doot.structs import DootKey, DootTaskName
+from doot.structs import DootKey, TaskName
 
 printer = logmod.getLogger("doot._printer")
 STATE_TASK_NAME_K : Final[str] = doot.constants.patterns.STATE_TASK_NAME_K
@@ -55,7 +55,7 @@ class _DootPostBox:
     default_subkey                        = "_default"
 
     @staticmethod
-    def put(key:DootTaskName, val):
+    def put(key:TaskName, val):
         subbox = str(key.last())
         box    = str(key.root())
         match val:
@@ -67,7 +67,7 @@ class _DootPostBox:
                 _DootPostBox.boxes[box][subbox].append(val)
 
     @staticmethod
-    def get(key:DootTaskName, subkey=Any) -> list|dict:
+    def get(key:TaskName, subkey=Any) -> list|dict:
         box    = str(key.root())
         subbox = str(key.last())
         match subbox:
@@ -138,7 +138,7 @@ class GetPostAction(Action_p):
         updates = {}
         for key,subkey in kwargs.items():
             state_key          = DootKey.build(key, explicit=True).expand(spec, state)
-            target_box         = DootTaskName.build(subkey)
+            target_box         = TaskName.build(subkey)
             updates[state_key] = _DootPostBox.get(target_box)
 
         return updates

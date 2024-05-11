@@ -44,7 +44,7 @@ import doot.errors
 from doot.enums import TaskFlags, ReportEnum
 from doot._structs.structured_name import StructuredName, aware_splitter
 
-class DootTaskName(StructuredName):
+class TaskName(StructuredName):
     """
       A Task Name.
       Infers metadata(TaskFlags) from the string data it is made of.
@@ -72,20 +72,20 @@ class DootTaskName(StructuredName):
     _root_marker        : ClassVar[str]           = ""  # TODO move to constants.toml
 
     @classmethod
-    def build(cls, name:str|dict|DootTaskName, *, args=None):
+    def build(cls, name:str|dict|TaskName, *, args=None):
         """ build a name from the various ways it can be specificed.
           handles a single string of the group and taskname,
           or a dict that specifies taskname and maybe the groupname
 
         """
         match name:
-            case DootTaskName():
+            case TaskName():
                 return name
             case str() if cls._separator not in name:
                 raise ValueError("TaskName has no group", name)
             case str():
                 group, task = name.split(doot.constants.patterns.TASK_SEP)
-            case {"name": DootTaskName() as name}:
+            case {"name": TaskName() as name}:
                 return name
             case {"name": str() as name} if cls._separator not in name:
                 logging.debug("Taskname has no group, setting default")
@@ -98,7 +98,7 @@ class DootTaskName(StructuredName):
             case _:
                 raise ValueError("Unrecognized name format: %s", name)
 
-        return DootTaskName(head=[group], tail=[task], args=args or {})
+        return TaskName(head=[group], tail=[task], args=args or {})
 
     @field_validator("head", mode="before")
     def _process_head(cls, head):
@@ -133,26 +133,26 @@ class DootTaskName(StructuredName):
 
     @model_validator(mode="after")
     def check_metdata(self) -> Self:
-        if self.head[-1] == DootTaskName._job_marker:
+        if self.head[-1] == TaskName._job_marker:
             self.meta |= TaskFlags.JOB
-        if self.tail[0] == DootTaskName._internal_marker:
+        if self.tail[0] == TaskName._internal_marker:
             self.meta |= TaskFlags.INTERNAL
-        if DootTaskName._gen_marker in self.tail:
+        if TaskName._gen_marker in self.tail:
             self.meta |= TaskFlags.CONCRETE
-        if DootTaskName._head_marker in self.tail:
+        if TaskName._head_marker in self.tail:
             self.meta |= TaskFlags.JOB_HEAD
 
         if TaskFlags.CONCRETE in self.meta and 'uuid' not in self.args:
             raise ValueError("Instanced Name lacks a stored uuid", self)
-        if TaskFlags.CONCRETE in self.meta and DootTaskName._gen_marker not in self.tail:
+        if TaskFlags.CONCRETE in self.meta and TaskName._gen_marker not in self.tail:
             raise ValueError("Specialized Name lacks the specialized keyword in its tail", self)
-        if TaskFlags.INTERNAL in self.meta and not self.tail[0] == DootTaskName._internal_marker:
+        if TaskFlags.INTERNAL in self.meta and not self.tail[0] == TaskName._internal_marker:
             raise ValueError("Internal Name lacks a prefix underscore", self)
 
         return self
     @model_validator(mode="after")
     def _process_roots(self) -> Self:
-        indices = [y for x,y in zip(self.tail[:-1], range(0, len(self.tail))) if x == DootTaskName._root_marker]
+        indices = [y for x,y in zip(self.tail[:-1], range(0, len(self.tail))) if x == TaskName._root_marker]
         if bool(indices):
             min_i, max_i = min(indices), max(indices)
             self._roots = (min_i, max_i)
@@ -200,7 +200,7 @@ class DootTaskName(StructuredName):
         """ match version constraints of two task names against each other """
         raise NotImplementedError()
 
-    def root(self, *, top=False) -> DootTaskName:
+    def root(self, *, top=False) -> TaskName:
         """
         Strip off detail information to get the basic task name for id purposes
         """
@@ -208,14 +208,14 @@ class DootTaskName(StructuredName):
             case [-1, -1]:
                 return self
             case [x, _] if top:
-                return DootTaskName(head=self.head[:], tail=self.tail[:x] + [DootTaskName._root_marker])
+                return TaskName(head=self.head[:], tail=self.tail[:x] + [TaskName._root_marker])
             case [_, x]:
-                return DootTaskName(head=self.head[:], tail=self.tail[:x] + [DootTaskName._root_marker])
+                return TaskName(head=self.head[:], tail=self.tail[:x] + [TaskName._root_marker])
 
     def add_root(self):
-        return self.subtask(DootTaskName._root_marker)
+        return self.subtask(TaskName._root_marker)
 
-    def subtask(self, *subtasks, subgroups:list[str]|None=None, **kwargs) -> DootTaskName:
+    def subtask(self, *subtasks, subgroups:list[str]|None=None, **kwargs) -> TaskName:
         """ generate an extended name, with more information
         eg: a.group::simple.task
         ->  a.group::simple.task.targeting.something
@@ -229,7 +229,7 @@ class DootTaskName(StructuredName):
         subs = []
         subgroups = subgroups or []
         match [x for x in subtasks if x != None]:
-            case [int() as i, DootTaskName() as x]:
+            case [int() as i, TaskName() as x]:
                 subs.append(str(i))
                 subs.append(x.task.removeprefix(self.task + "."))
             case [str() as x]:
@@ -239,13 +239,13 @@ class DootTaskName(StructuredName):
             case [*xs]:
                 subs = xs
 
-        return DootTaskName(head=self.head + subgroups,
+        return TaskName(head=self.head + subgroups,
                             tail=self.tail + subs,
                             meta=self.meta,
                             args=args,
                             _root=self.root())
 
-    def job_head(self) -> DootTaskName:
+    def job_head(self) -> TaskName:
         """ generate a canonical head/completion task name for this name
         eg: group::simple.task.$gen$.<UUID>
         ->  group::simple.task.$gen$.<UUID>.$head$
@@ -254,7 +254,7 @@ class DootTaskName(StructuredName):
         if TaskFlags.JOB_HEAD in self.meta:
             return self
 
-        return self.subtask(DootTaskName._head_marker)
+        return self.subtask(TaskName._head_marker)
 
     def instantiate(self, *, prefix=None):
         """ Generate a concrete instance of this name with a UUID appended,
@@ -266,9 +266,9 @@ class DootTaskName(StructuredName):
         uuid = uuid1()
         match prefix:
             case None:
-                return self.subtask(DootTaskName._gen_marker, uuid, uuid=uuid)
+                return self.subtask(TaskName._gen_marker, uuid, uuid=uuid)
             case _:
-                return self.subtask(prefix, DootTaskName._gen_marker, uuid, uuid=uuid)
+                return self.subtask(prefix, TaskName._gen_marker, uuid, uuid=uuid)
 
     def last(self):
         return self.tail[-1]

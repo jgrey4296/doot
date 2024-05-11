@@ -41,7 +41,7 @@ import random
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.structs import DootKey, DootTaskSpec, DootTaskName, DootCodeReference
+from doot.structs import DootKey, DootTaskSpec, TaskName, CodeReference
 from doot.actions.base_action import DootBaseAction
 from doot.actions.job_injection import JobInjector
 
@@ -108,7 +108,7 @@ class JobExpandAction(JobInjector):
 
         return { _update : result }
 
-    def _prep_base(self, base:DootTaskName|list[DootActionSpec]) -> tuple[list, DootTaskName|None]:
+    def _prep_base(self, base:TaskName|list[ActionSpec]) -> tuple[list, TaskName|None]:
         """
           base can be the literal name of a task (base="group::task") to build off,
           or an indirect key to a list of actions (base_="sub_actions")
@@ -120,11 +120,11 @@ class JobExpandAction(JobInjector):
             case list():
                 actions = base
                 base    = None
-            case DootTaskName():
+            case TaskName():
                 actions = []
             case str():
                 actions = []
-                base    = DootTaskName.build(base)
+                base    = TaskName.build(base)
             case None:
                 actions = []
                 base    = None
@@ -150,12 +150,12 @@ class JobMatchAction(DootBaseAction):
         match prepfn:
             case None:
                 fn = lambda x: x.extra.fpath.suffix
-            case DootCodeReference():
+            case CodeReference():
                 fn = prepfn.try_import()
 
         for x in _onto:
             match fn(x):
                 case str() as key if key in mapping:
-                    x.ctor = DootTaskName.build(mapping[key])
+                    x.ctor = TaskName.build(mapping[key])
                 case _:
                     pass
