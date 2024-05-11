@@ -32,8 +32,8 @@ import doot
 import doot.errors
 from doot._abstract import (FailPolicy_p, Job_i, Task_i, TaskRunner_i,
                             TaskTracker_i)
-from doot.control.base_tracker import EDGE_E, MIN_PRIORITY, ROOT, BaseTracker
-from doot.enums import TaskStatus_e, ExecutionPolicy_e
+from doot.control.base_tracker import BaseTracker
+from doot.enums import TaskStatus_e, ExecutionPolicy_e, EdgeType_e
 from doot.structs import (DootCodeReference, DootTaskArtifact, DootTaskName,
                           DootTaskSpec)
 from doot.task.base_task import DootTask
@@ -48,6 +48,7 @@ printer = logmod.getLogger("doot._printer")
 Node      : TypeAlias      = DootTaskName|DootTaskArtifact
 Depth     : TypeAlias      = int
 PlanEntry : TypeAlias      = tuple[Depth, Node, str]
+MAX_LOOP  : Final[int]     = 100
 
 @doot.check_protocol
 class DootTracker(BaseTracker, TaskTracker_i):
@@ -60,6 +61,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
 
     the `network` stores nodes as full names of tasks
     """
+    _node_sort : ClassVar[callable] = lambda x: str(x)
 
     def __init__(self, shadowing:bool=False):
         super().__init__()
@@ -71,12 +73,12 @@ class DootTracker(BaseTracker, TaskTracker_i):
           as a list of the edges it will move through.
           not taking into account priority or status.
         """
-        # Reversed because directed graphs expect a graph in the other direction.
-        # but that would make a tasks dependencies 'successors',
-        # which is confusing for a dependency network
+        logging.debug("Generating DFS Plan")
         plan  : list[PlanEntry]      = []
-        stack : list[PlanEntry]      = [(0, x, "Initial Task") for x in self.network.pred[self._root_node]]
+        # Reverse the sort because its a stack
+        stack : list[PlanEntry]      = [(0, x, "Initial Task") for x in sorted(self.network.pred[self._root_node], key=DootTracker._node_sort, reverse=True)]
         found_count                                = defaultdict(lambda: 0)
+        logging.debug("Initial DFS Stack: %s", stack)
         while bool(stack):
             depth, node, desc = stack[-1]
             node_type = "Branch" if bool(self.network.pred[node]) else "Leaf"
@@ -84,7 +86,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
                 case 0:
                     found_count[node] += 1
                     plan.append((depth, node, f"{depth}: Enter {node_type} {desc}: {node.readable}"))
-                    stack += [(depth+1, x, "Dependency") for x in self.network.pred[node]]
+                    stack += [(depth+1, x, "Dependency") for x in sorted(self.network.pred[node], key=DootTracker._node_sort, reverse=True)]
                 case 1: # exit
                     found_count[node] += 1
                     if node_type != "Leaf":
@@ -101,12 +103,11 @@ class DootTracker(BaseTracker, TaskTracker_i):
           as a list of the edges it will move through.
           not taking into account priority or status.
         """
-        # Reversed because directed graphs expect a graph in the other direction.
-        # but that would make a tasks dependencies 'successors',
-        # which is confusing for a dependency network
+        logging.debug("Generating BFS Plan")
         plan  : list[PlanEntry]      = []
-        queue : list[PlanEntry]      = [(0, x, "Initial Task") for x in self.network.pred[self._root_node]]
+        queue : list[PlanEntry]      = [(0, x, "Initial Task") for x in sorted(self.network.pred[self._root_node], key=DootTracker._node_sort)]
         found_count                  = defaultdict(lambda: 0)
+        logging.debug("Initial BFS Queue: %s", queue)
         while bool(queue):
             depth, node, desc = queue.pop(0)
             node_type = "Branch" if bool(self.network.pred[node]) else "Leaf"
@@ -114,7 +115,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
                 case 0:
                     found_count[node] += 1
                     plan.append((depth, node, f"{depth}: Enter {node_type} {desc}: {node.readable}"))
-                    queue += [(depth+1, x, "Dependency") for x in self.network.pred[node]]
+                    queue += [(depth+1, x, "Dependency") for x in sorted(self.network.pred[node], key=DootTracker._node_sort)]
                     queue += [(depth, node, desc)]
                 case 1: # exit
                     if all(found_count[y] > 1 for y in self.network.pred[node]):
@@ -134,9 +135,43 @@ class DootTracker(BaseTracker, TaskTracker_i):
         return plan
 
     def _priority_plan(self) -> list[PlanEntry]:
-        raise NotImplementedError()
+        """ Runs the tracker in actual, until no more queued tasks.
+          Pretends that all tasks/artifacts result in success
+          Does not expand jobs
+
+          Afterwards, restores the original state of the queue, and artifacts,
+          then re-queues original tasks
+          """
+        plan                                         = []
+        original_tasks    : set[Node]                = set(self.active_set)
+        original_statuses : dict[Node, TaskStatus_e] = {x: self.get_status(x) for x in itz.chain(self.specs.keys(), self.artifacts.keys())}
+
+        while bool(self):
+            match self.next_for():
+                case None:
+                    continue
+                case Task_i() as spec:
+                    plan.append((0, spec.name, str(spec.name)))
+                    self.set_status(spec, TaskStatus_e.SUCCESS)
+                case DootTaskArtifact() as art:
+                    plan.append((1, art, str(art)))
+                    self.set_status(art, TaskStatus_e.EXISTS)
+                case x:
+                    raise doot.errors.DootTaskTrackingError("Unrecognised reponse while building plan", x)
+
+        self.clear_queue()
+        self.tasks = {}
+        for x in self.artifacts.keys():
+            self.set_status(x, TaskStatus_e.ARTIFACT)
+        for x in original_tasks:
+            self.queue_entry(x)
+
+        return plan
 
     def generate_plan(self, *, policy:None|ExecutionPolicy_e=None) -> list[PlanEntry]:
+        """ Generate an ordered list of tasks that would be executed.
+          Does not expand jobs.
+          """
         match policy:
             case None | ExecutionPolicy_e.DEPTH:
                  return self._dfs_plan()
@@ -144,6 +179,8 @@ class DootTracker(BaseTracker, TaskTracker_i):
                 return self._bfs_plan()
             case ExecutionPolicy_e.PRIORITY:
                 return self._priority_plan()
+            case _:
+                raise doot.errors.DootTaskTrackingError("Unknown plan generation form", policy)
 
 
 
@@ -152,7 +189,13 @@ class DootTracker(BaseTracker, TaskTracker_i):
         raise NotImplementedError()
 
     def next_for(self, target:None|str|DootTaskName=None) -> None|Task_i|DootTaskArtifact:
-        """ ask for the next task that can be performed """
+        """ ask for the next task that can be performed
+
+          Returns a Task or Artifact that needs to be executed or created
+          Returns None if it loops too many times trying to find a target,
+          or if theres nothing left in the queue
+
+        """
         if not self.network_is_valid:
             raise doot.errors.DootTaskTrackingError("Network is in an invalid state")
 
@@ -160,7 +203,8 @@ class DootTracker(BaseTracker, TaskTracker_i):
             self.queue_entry(target, silent=True)
 
         focus : None|str|DootTaskName|DootTaskArtifact = None
-        while bool(self):
+        count = MAX_LOOP
+        while bool(self) and 0 < (count:=count-1):
             focus  : DootTaskName|DootTaskArtifact = self.deque_entry()
             status : TaskStatus_e                  = self.get_status(focus)
             match focus:
@@ -184,7 +228,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
                     logging.info("Task Succeeded: %s", focus)
                     self.execution_trace.append(focus)
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
-                    for succ in [x for x in self.network.succ[focus] if self.get_status(x) ]:
+                    for succ in [x for x in self.network.succ[focus] if self.get_status(x) in TaskStatus_e.success_set]:
                         if nx.has_path(self.network, focus, succ):
                             self.queue_entry(succ)
 
@@ -222,21 +266,24 @@ class DootTracker(BaseTracker, TaskTracker_i):
                             for x in xs:
                                 self.queue_entry(x)
                 case TaskStatus_e.INIT:
-                    logging.info("Task Object Initialising")
+                    logging.info("Task Object Initialising: %s", focus)
                     self.queue_entry(focus, status=TaskStatus_e.WAIT)
 
                 case TaskStatus_e.STALE:
                     logging.info("Artifact is Stale: %s", focus)
                     for pred in self.network.pred[focus]:
                         self.queue_entry(pred)
+                case TaskStatus_e.ARTIFACT if bool(focus):
+                    self.queue_entry(focus, status=TaskStatus_e.EXISTS)
                 case TaskStatus_e.ARTIFACT: # Add dependencies of an artifact to the stack
                     match self.incomplete_dependencies(focus):
-                        case [] if bool(focus):
-                            self.queue_entry(focus, status=TaskStatus_e.EXISTS)
                         case []:
-                            path = doot.locs[focus.path]
-                            logging.warning("An Artifact has no incomplete dependencies, yet doesn't exist: %s (expanded: %s : exists: %s)", focus, path, path.exists())
+                            assert(not bool(focus))
+                            path = focus.to_path()
+                            logging.warning("An Artifact has no incomplete dependencies, yet doesn't exist: %s (expanded: %s)", focus, path)
                             self.queue_entry(focus, status=TaskStatus_e.HALTED)
+                            # Returns the artifact, the runner can try to create it, then override the halt
+                            return focus
                         case [*xs]:
                             logging.info("Artifact Blocked, queuing producer tasks, count: %s", len(xs))
                             self.queue_entry(focus)

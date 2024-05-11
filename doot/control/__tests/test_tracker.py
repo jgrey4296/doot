@@ -49,11 +49,11 @@ import doot.structs
 from doot._abstract import Task_i
 from doot.control.base_tracker import BaseTracker
 from doot.control.tracker import DootTracker
-from doot.enums import TaskStatus_e
+from doot.enums import TaskStatus_e, ExecutionPolicy_e
 
 # ##-- end 1st party imports
 
-class TestTracker:
+class TestTrackerNext:
 
     def test_basic(self):
         obj = DootTracker()
@@ -89,7 +89,7 @@ class TestTracker:
 
     def test_next_simple_dependendency(self):
         obj  = DootTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
+        spec = doot.structs.DootTaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
         t_name = obj.queue_entry(spec.name, from_user=True)
@@ -106,7 +106,7 @@ class TestTracker:
 
     def test_next_dependency_success_produces_ready_state_(self):
         obj  = DootTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
+        spec = doot.structs.DootTaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
         t_name = obj.queue_entry(spec.name, from_user=True)
@@ -126,7 +126,7 @@ class TestTracker:
 
     def test_next_artificial_success(self):
         obj  = DootTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
+        spec = doot.structs.DootTaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
         t_name   = obj.queue_entry(spec.name)
@@ -146,7 +146,7 @@ class TestTracker:
 
     def test_next_halt(self):
         obj  = DootTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
+        spec = doot.structs.DootTaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
         t_name   = obj.queue_entry(spec.name, from_user=True)
@@ -161,7 +161,7 @@ class TestTracker:
 
     def test_next_fail(self):
         obj  = DootTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
+        spec = doot.structs.DootTaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
         t_name   = obj.queue_entry(spec.name, from_user=True)
@@ -172,3 +172,150 @@ class TestTracker:
         obj.set_status(dep_inst, TaskStatus_e.FAILED)
         assert(obj.next_for() == None)
         assert(all(x.status == TaskStatus_e.FAILED for x in obj.tasks.values()))
+
+
+class TestTrackerWalk:
+
+    @pytest.fixture(scope="function")
+    def specs(self):
+        head = []
+        tail = []
+
+        head += [
+            doot.structs.DootTaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep.1", "basic::dep.2"]}),
+            doot.structs.DootTaskSpec.build({"name":"basic::beta", "depends_on":["basic::dep.3"]}),
+            doot.structs.DootTaskSpec.build({"name":"basic::solo", "depends_on":[]}),
+        ]
+        tail += [
+            doot.structs.DootTaskSpec.build({"name":"basic::dep.1"}),
+            doot.structs.DootTaskSpec.build({"name":"basic::dep.2"}),
+            doot.structs.DootTaskSpec.build({"name":"basic::dep.3"}),
+            doot.structs.DootTaskSpec.build({"name":"basic::dep.4", "required_for":["basic::dep.2"]}),
+        ]
+        return (head, tail)
+
+
+    def test_basic(self):
+        obj = DootTracker()
+        assert(isinstance(obj, DootTracker))
+
+
+    def test_empty(self):
+        obj = DootTracker()
+        result = obj.generate_plan()
+        assert(len(result) == 0)
+
+
+    def test_simple_plan_dfs(self, specs):
+        """ Generate a plan by dfs """
+        expectation = [
+            "basic::alpha",
+            "basic::dep.1",
+            "basic::dep.2",
+            "basic::dep.4",
+            "basic::dep.2",
+            "basic::alpha",
+            "basic::beta",
+            "basic::dep.3",
+            "basic::beta",
+        ]
+        head, tail = specs
+        obj      = DootTracker()
+        obj.register_spec(*head, *tail)
+        t1_name = obj.queue_entry(head[0].name, from_user=True)
+        t2_name = obj.queue_entry(head[1].name, from_user=True)
+        assert(obj.get_status(t1_name) is TaskStatus_e.default)
+        assert(obj.get_status(t2_name) is TaskStatus_e.default)
+        obj.build_network()
+        result = obj.generate_plan()
+        assert(len(result) == len(expectation))
+        for x,y in zip(result, expectation):
+            expected_name = doot.structs.DootTaskName.build(y)
+            assert(expected_name < x[1])
+
+
+    def test_simple_plan_bfs(self, specs):
+        expectation = [
+            "basic::alpha",
+            "basic::beta",
+            "basic::dep.1",
+            "basic::dep.2",
+            "basic::dep.3",
+            "basic::dep.4",
+            "basic::dep.1",
+            "basic::dep.3",
+            "basic::beta",
+            "basic::dep.4",
+            "basic::dep.2",
+            "basic::alpha",
+            ]
+        head, tail = specs
+        obj      = DootTracker()
+        obj.register_spec(*head, *tail)
+        t1_name = obj.queue_entry(head[0].name, from_user=True)
+        t2_name = obj.queue_entry(head[1].name, from_user=True)
+        assert(obj.get_status(t1_name) is TaskStatus_e.default)
+        assert(obj.get_status(t2_name) is TaskStatus_e.default)
+        obj.build_network()
+        result = obj.generate_plan(policy=ExecutionPolicy_e.BREADTH)
+        assert(len(result) == len(expectation))
+        for x,y in zip(result, expectation):
+            expected_name = doot.structs.DootTaskName.build(y)
+            assert(expected_name < x[1])
+
+    def test_simple_plan_priority(self, specs):
+        expectation = [
+            "basic::dep.4",
+            "basic::dep.1",
+            "basic::dep.3",
+            "basic::dep.2",
+            "basic::beta",
+            "basic::alpha",
+            ]
+        head, tail = specs
+        obj      = DootTracker()
+        obj.register_spec(*head, *tail)
+        t1_name = obj.queue_entry(head[0].name, from_user=True)
+        t2_name = obj.queue_entry(head[1].name, from_user=True)
+        assert(obj.get_status(t1_name) is TaskStatus_e.default)
+        assert(obj.get_status(t2_name) is TaskStatus_e.default)
+        obj.build_network()
+        result = obj.generate_plan(policy=ExecutionPolicy_e.PRIORITY)
+        assert(len(result) == len(expectation))
+        for x,y in zip(result, expectation):
+            expected_name = doot.structs.DootTaskName.build(y)
+            assert(expected_name < x[1])
+
+
+    def test_simple_plan_priority_repeated(self, specs):
+        expectation = [
+            "basic::dep.4",
+            "basic::dep.1",
+            "basic::dep.3",
+            "basic::dep.2",
+            "basic::beta",
+            "basic::alpha",
+            ]
+        head, tail = specs
+        obj      = DootTracker()
+        obj.register_spec(*head, *tail)
+        t1_name = obj.queue_entry(head[0].name, from_user=True)
+        t2_name = obj.queue_entry(head[1].name, from_user=True)
+        assert(obj.get_status(t1_name) is TaskStatus_e.default)
+        assert(obj.get_status(t2_name) is TaskStatus_e.default)
+        obj.build_network()
+
+        original_tasks = set(obj.active_set)
+        original_statuses : dict[Node, TaskStatus_e] = {x: obj.get_status(x) for x in itz.chain(obj.specs.keys(), obj.artifacts.keys())}
+
+        for i in range(5):
+            logging.warning("Starting to generate plan: %s", i)
+            result = obj.generate_plan(policy=ExecutionPolicy_e.PRIORITY)
+            assert(len(result) == len(expectation))
+            for x,y in zip(result, expectation):
+                expected_name = doot.structs.DootTaskName.build(y)
+                assert(expected_name < x[1])
+
+            assert(obj.active_set == original_tasks)
+            post_statuses = {x: obj.get_status(x) for x in itz.chain(obj.specs.keys(), obj.artifacts.keys())}
+            assert(all(k==k2 and x==y for (k,x),(k2,y) in zip(original_statuses.items(), post_statuses.items())))

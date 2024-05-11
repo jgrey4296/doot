@@ -68,8 +68,26 @@ class TaskStatus_e(enum.Enum):
     # Base Task uses the default to set its state on __init__
 
     default         = INIT
-    pre_set         = {NAMED, DECLARED, DEFINED, ARTIFACT}
-    artifact_set    = {ARTIFACT, EXISTS, HALTED, FAILED}
+
+    @classmethod
+    @property
+    def pre_set(cls):
+        return {cls.NAMED, cls.DECLARED, cls.DEFINED, cls.ARTIFACT}
+
+    @classmethod
+    @property
+    def success_set(cls):
+        return {cls.SUCCESS, cls.EXISTS, cls.TEARDOWN, cls.DEAD}
+
+    @classmethod
+    @property
+    def fail_set(cls):
+        return {cls.SKIPPED, cls.HALTED, cls.FAILED}
+
+    @classmethod
+    @property
+    def artifact_set(cls):
+        return {cls.ARTIFACT, cls.EXISTS, cls.HALTED, cls.FAILED}
 
 class TaskFlags(FlagsBuilder_m, enum.Flag):
     """
@@ -210,14 +228,21 @@ class RelationMeta(enum.Enum):
     # to deprecate:
     dependantOf      = requirementFor
 
-class EdgeTypes_e(EnumBuilder_m, enum.Enum):
+class EdgeType_e(EnumBuilder_m, enum.Enum):
     """ Enum describing the possible edges of the task tracker's task network """
-    TASK                                                     = enum.auto()
-    ARTIFACT                                                 = enum.auto()
-    TASK_CROSS                                               = enum.auto() # Task to artifact
-    ARTIFACT_CROSS                                           = enum.auto() # artifact to task
 
-    default = TASK
+    TASK              = enum.auto() # task to task
+    ARTIFACT_UP       = enum.auto() # abstract to concrete artifact
+    ARTIFACT_DOWN     = enum.auto() # concrete to abstract artifact
+    TASK_CROSS        = enum.auto() # Task to artifact
+    ARTIFACT_CROSS    = enum.auto() # artifact to task
+
+    default           = TASK
+
+    @classmethod
+    @property
+    def artifact_edge_set(cls):
+        return  {cls.ARTIFACT_UP, cls.ARTIFACT_DOWN, cls.TASK_CROSS}
 
 class ExecutionPolicy_e(EnumBuilder_m, enum.Enum):
     """ How the task execution will be ordered

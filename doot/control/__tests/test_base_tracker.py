@@ -33,6 +33,7 @@ from uuid import UUID
 # ##-- 3rd party imports
 import pytest
 from tomlguard import TomlGuard
+import networkx as nx
 
 # ##-- end 3rd party imports
 
@@ -62,6 +63,27 @@ class TestTrackerStore:
         obj.register_spec(spec)
         assert(bool(obj.specs))
 
+
+    def test_register_spec_instantiates(self):
+        obj = BaseTracker()
+        spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
+        assert(not bool(obj.specs))
+        assert(not bool(obj.concrete[spec.name]))
+        obj.register_spec(spec)
+        assert(bool(obj.specs))
+        assert(bool(obj.concrete[spec.name]))
+
+
+    def test_register_is_idempotent(self):
+        obj = BaseTracker()
+        spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
+        assert(not bool(obj.specs))
+        assert(not bool(obj.concrete[spec.name]))
+        for i in range(5):
+            obj.register_spec(spec)
+            assert(len(obj.specs) == 2)
+            assert(len(obj.concrete[spec.name]) == 1)
+
     def test_register_spec_with_artifacts(self):
         obj = BaseTracker()
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["file:>test.txt"], "required_for": ["file:>other.txt"]})
@@ -69,13 +91,6 @@ class TestTrackerStore:
         obj.register_spec(spec)
         assert(bool(obj.artifacts))
 
-    def test_register_spec_pass_on_duplicate(self):
-        obj = BaseTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
-        obj.register_spec(spec)
-        assert(len(obj.specs) == 1)
-        obj.register_spec(spec)
-        assert(len(obj.specs) == 1)
 
     def test_register_spec_ignores_disabled(self):
         obj = BaseTracker()
@@ -86,7 +101,7 @@ class TestTrackerStore:
 
     def test_register_transformer_spec(self):
         obj = BaseTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "flags":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
+        spec = doot.structs.DootTaskSpec.build({"name":"basic::transformer", "flags":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
         assert(len(obj.specs) == 0)
         assert(len(obj._transformer_specs) == 0)
         obj.register_spec(spec)
@@ -265,8 +280,7 @@ class TestTrackerNetworkBuild:
         obj  = BaseTracker()
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
         spec2 = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
-        obj.register_spec(spec)
-        obj.register_spec(spec2)
+        obj.register_spec(spec, spec2)
         assert(len(obj.network) == 1)
         assert(not bool(obj.network.adj[obj._root_node]))
         instance = obj._instantiate_spec(spec.name)
@@ -281,8 +295,7 @@ class TestTrackerNetworkBuild:
         obj   = BaseTracker()
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task", "required_for":["basic::req"]})
         spec2 = doot.structs.DootTaskSpec.build({"name":"basic::req"})
-        obj.register_spec(spec)
-        obj.register_spec(spec2)
+        obj.register_spec(spec, spec2)
         instance = obj._instantiate_spec(spec.name)
         assert(len(obj.network) == 1)
         assert(not bool(obj.network.adj[obj._root_node]))
@@ -293,14 +306,13 @@ class TestTrackerNetworkBuild:
         assert(obj.concrete[spec2.name][0] in obj.network.succ[instance])
         assert(instance in obj.network.pred[obj.concrete[spec2.name][0]])
 
+
     def test_build_dep_chain(self):
         obj  = BaseTracker()
         spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
         spec2 = doot.structs.DootTaskSpec.build({"name":"basic::dep", "depends_on":["basic::chained"]})
         spec3 = doot.structs.DootTaskSpec.build({"name":"basic::chained"})
-        obj.register_spec(spec)
-        obj.register_spec(spec2)
-        obj.register_spec(spec3)
+        obj.register_spec(spec, spec2, spec3)
         instance = obj._instantiate_spec(spec.name)
         assert(len(obj.network) == 1)
         assert(not bool(obj.network.adj[obj._root_node]))
@@ -312,12 +324,28 @@ class TestTrackerNetworkBuild:
         assert(obj.concrete[spec2.name][0] in obj.network.pred[instance])
         assert(obj.concrete[spec3.name][0] in obj.network.pred[obj.concrete[spec2.name][0]])
 
+
+    def test_build_dep_chain_with_artifact(self):
+        obj  = BaseTracker()
+        spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["file:>test.blah"]})
+        spec2 = doot.structs.DootTaskSpec.build({"name":"basic::dep", "required_for":["file:>test.blah"]})
+        obj.register_spec(spec, spec2)
+        instance = obj._instantiate_spec(spec.name)
+        assert(len(obj.network) == 1)
+        assert(not bool(obj.network.adj[obj._root_node]))
+        obj.connect(instance)
+        assert(len(obj.network) == 2)
+        obj.build_network()
+        obj.validate_network()
+        assert(len(obj.network) == 4)
+        # Check theres a path between the specs, via the artifact
+        assert(nx.has_path(obj.network, obj.concrete[spec2.name][0], instance))
+
     def test_build_dep_match_no_keys(self):
         obj   = BaseTracker()
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "keys":[]}], "test_key": "bloo"})
         spec2 = doot.structs.DootTaskSpec.build({"name":"basic::dep", "test_key": "blah"})
-        obj.register_spec(spec)
-        obj.register_spec(spec2)
+        obj.register_spec(spec, spec2)
         instance = obj._instantiate_spec(spec.name)
         assert(len(obj.network) == 1)
         assert(not bool(obj.network.adj[obj._root_node]))
@@ -332,8 +360,7 @@ class TestTrackerNetworkBuild:
         obj   = BaseTracker()
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "keys":["test_key"]}], "test_key": "bloo"})
         spec2 = doot.structs.DootTaskSpec.build({"name":"basic::dep", "test_key": "blah"})
-        obj.register_spec(spec)
-        obj.register_spec(spec2)
+        obj.register_spec(spec, spec2)
         instance = obj._instantiate_spec(spec.name)
         assert(len(obj.network) == 1)
         assert(not bool(obj.network.adj[obj._root_node]))
@@ -350,9 +377,7 @@ class TestTrackerNetworkBuild:
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "keys":["test_key"]}], "test_key": "bloo"})
         spec2 = doot.structs.DootTaskSpec.build({"name":"basic::dep", "depends_on": [{"task":"basic::chained", "keys":["test_key"]}], "test_key": "blah"})
         spec3 = doot.structs.DootTaskSpec.build({"name":"basic::chained", "test_key": "aweg"})
-        obj.register_spec(spec)
-        obj.register_spec(spec2)
-        obj.register_spec(spec3)
+        obj.register_spec(spec, spec2, spec3)
         instance = obj._instantiate_spec(spec.name)
         assert(len(obj.network) == 1)
         assert(not bool(obj.network.adj[obj._root_node]))
@@ -377,9 +402,7 @@ class TestTrackerNetworkBuild:
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task", "required_for":[{"task":"basic::dep", "keys":["test_key"]}], "test_key": "bloo"})
         spec2 = doot.structs.DootTaskSpec.build({"name":"basic::dep", "required_for": [{"task":"basic::chained", "keys":["test_key"]}], "test_key": "blah"})
         spec3 = doot.structs.DootTaskSpec.build({"name":"basic::chained", "test_key": "aweg"})
-        obj.register_spec(spec)
-        obj.register_spec(spec2)
-        obj.register_spec(spec3)
+        obj.register_spec(spec, spec2, spec3)
         instance = obj._instantiate_spec(spec.name)
         assert(len(obj.network) == 1)
         assert(not bool(obj.network.adj[obj._root_node]))
@@ -456,8 +479,7 @@ class TestTrackerNetworkBuild:
         producer     = doot.structs.DootTaskSpec.build({"name":"basic::producer", "required_for":["file:>blah.txt"]})
         dep_artifact = consumer.depends_on[0].target
         req_artifact = producer.required_for[0].target
-        obj.register_spec(consumer)
-        obj.register_spec(producer)
+        obj.register_spec(consumer, producer)
         prod = obj._instantiate_spec(producer.name)
         con  = obj._instantiate_spec(consumer.name)
         assert(len(obj.artifacts) == 2)
@@ -566,8 +588,7 @@ class TestTrackerQueue:
         obj   = BaseTracker()
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task"})
         spec2 = doot.structs.DootTaskSpec.build({"name":"basic::other"})
-        obj.register_spec(spec)
-        obj.register_spec(spec2)
+        obj.register_spec(spec, spec2)
         instance = obj.queue_entry(spec.name)
         instance2 = obj.queue_entry(spec2.name)
         assert(instance in obj.active_set)
@@ -593,8 +614,7 @@ class TestTrackerQueue:
         obj   = BaseTracker()
         spec  = doot.structs.DootTaskSpec.build({"name":"basic::task"})
         spec2 = doot.structs.DootTaskSpec.build({"name":"basic::other"})
-        obj.register_spec(spec)
-        obj.register_spec(spec2)
+        obj.register_spec(spec, spec2)
         instance  = obj.queue_entry(spec.name)
         instance2 = obj.queue_entry(spec2.name)
         assert(instance in obj.active_set)
@@ -622,8 +642,7 @@ class TestTrackerInternals:
         obj       = BaseTracker()
         base_spec = doot.structs.DootTaskSpec.build({"name":"basic::task"})
         spec      = doot.structs.DootTaskSpec.build({"name":"test::spec"})
-        obj.register_spec(base_spec)
-        obj.register_spec(spec)
+        obj.register_spec(base_spec, spec)
         special = obj._instantiate_spec(spec.name)
         assert(spec is not special)
         assert(spec is not base_spec)
@@ -635,14 +654,28 @@ class TestTrackerInternals:
         base_spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["example::dep"], "blah": 2, "bloo": 5})
         dep_spec = doot.structs.DootTaskSpec.build({"name": "example::dep"})
         spec    = doot.structs.DootTaskSpec.build({"name":"test::spec", "sources": "basic::task", "bloo": 15})
-        obj.register_spec(base_spec)
-        obj.register_spec(dep_spec)
-        obj.register_spec(spec)
+        obj.register_spec(base_spec, dep_spec, spec)
         special = obj._instantiate_spec(spec.name)
         assert(spec.name < special)
         assert(spec is not base_spec)
         assert(isinstance(special, doot.structs.DootTaskName))
         assert(special in obj.concrete[spec.name])
+
+
+    def test_instantiate_spec_match_reuse(self):
+        obj = BaseTracker()
+        spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["example::dep"], "blah": 2, "bloo": 5})
+        obj.register_spec(spec)
+        instances = set()
+        for i in range(5):
+            instance = obj._instantiate_spec(spec.name)
+            assert(isinstance(instance, doot.structs.DootTaskName))
+            assert(instance in obj.concrete[spec.name])
+            instances.add(instance)
+            assert(spec.name < instance)
+            assert(obj.specs[instance] is not obj.specs[spec.name])
+            assert(len(obj.concrete[spec.name]) == 1)
+        assert(len(instances) == 1)
 
     def test_instantiate_job_top(self):
         obj = BaseTracker()
@@ -664,9 +697,7 @@ class TestTrackerInternals:
         base_spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "blah": 2, "bloo": 5})
         dep_spec = doot.structs.DootTaskSpec.build({"name": "example::dep", "sources":"basic::task", "bloo":10, "aweg":15 })
         spec    = doot.structs.DootTaskSpec.build({"name":"test::spec", "sources": "example::dep", "aweg": 20})
-        obj.register_spec(base_spec)
-        obj.register_spec(dep_spec)
-        obj.register_spec(spec)
+        obj.register_spec(base_spec, dep_spec, spec)
         special = obj._instantiate_spec(spec.name)
         assert(spec.name < special)
         assert(spec is not base_spec)
@@ -675,11 +706,9 @@ class TestTrackerInternals:
     def test_instantiate_spec_name_change(self):
         obj       = BaseTracker()
         base_spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["example::dep"], "blah": 2, "bloo": 5})
-        obj.register_spec(base_spec)
         dep_spec = doot.structs.DootTaskSpec.build({"name": "example::dep"})
-        obj.register_spec(dep_spec)
         spec    = doot.structs.DootTaskSpec.build({"name":"test::spec", "sources": "basic::task", "bloo": 15})
-        obj.register_spec(spec)
+        obj.register_spec(base_spec, dep_spec, spec)
         special = obj._instantiate_spec(spec.name)
         assert(spec.name < special)
         assert(spec is not base_spec)
@@ -690,11 +719,9 @@ class TestTrackerInternals:
     def test_instantiate_spec_extra_merge(self):
         obj = BaseTracker()
         base_spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["example::dep"], "blah": 2, "bloo": 5})
-        obj.register_spec(base_spec)
         dep_spec = doot.structs.DootTaskSpec.build({"name": "example::dep"})
-        obj.register_spec(dep_spec)
         spec    = doot.structs.DootTaskSpec.build({"name":"test::spec", "sources": "basic::task", "bloo": 15, "aweg": "aweg"})
-        obj.register_spec(spec)
+        obj.register_spec(base_spec, dep_spec, spec)
         special = obj._instantiate_spec(spec.name)
         assert(spec.name < special)
         assert(spec is not base_spec)
@@ -706,13 +733,10 @@ class TestTrackerInternals:
     def test_instantiate_spec_depends_merge(self):
         obj = BaseTracker()
         base_spec = doot.structs.DootTaskSpec.build({"name":"basic::task", "depends_on":["example::dep"]})
-        obj.register_spec(base_spec)
         dep_spec = doot.structs.DootTaskSpec.build({"name": "example::dep"})
-        obj.register_spec(dep_spec)
         dep_spec2 = doot.structs.DootTaskSpec.build({"name": "another::dep"})
-        obj.register_spec(dep_spec2)
         spec    = doot.structs.DootTaskSpec.build({"name":"test::spec", "sources": "basic::task", "depends_on":["another::dep"]})
-        obj.register_spec(spec)
+        obj.register_spec(base_spec, dep_spec, dep_spec2, spec)
         special = obj._instantiate_spec(spec.name)
         assert(spec.name < special)
         assert(spec is not base_spec)
@@ -730,9 +754,7 @@ class TestTrackerInternals:
             "test_key": "bloo"})
         spec2 = doot.structs.DootTaskSpec.build({"name":"basic::dep", "depends_on": [{"task":"basic::chained", "keys":["test_key"]}], "test_key": "blah"})
         spec3 = doot.structs.DootTaskSpec.build({"name":"basic::chained", "test_key": "aweg"})
-        obj.register_spec(spec)
-        obj.register_spec(spec2)
-        obj.register_spec(spec3)
+        obj.register_spec(spec, spec2, spec3)
         instance = obj._instantiate_spec(spec.name)
         assert(len(obj.network) == 1)
         assert(not bool(obj.network.adj[obj._root_node]))
