@@ -138,7 +138,7 @@ class BaseRunner(TaskRunner_i):
             case doot.errors.DootTaskError() as err:
                 self._signal_failure = err
                 printer.warning("%s %s", fail_prefix, err)
-                self.tracker.set_status(err.task, TaskStatus_e.HALTED)
+                self.tracker.set_status(err.task, TaskStatus_e.FAILED)
             case doot.errors.DootError() as err:
                 self._signal_failure = err
                 printer.warning("%s %s", fail_prefix, err)
@@ -169,5 +169,5 @@ class BaseRunner(TaskRunner_i):
 
     def _notify_artifact(self, art:TaskArtifact) -> None:
         """ A No-op for when the tracker gives an artifact """
-        printer.info("---- Artifact: %s", art)
+        printer.info("---- Artifact: %s : %s", art, art.to_path())
         self.reporter.add_trace(art, flags=ReportEnum.ARTIFACT)

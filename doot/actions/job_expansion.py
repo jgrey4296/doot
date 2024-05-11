@@ -76,6 +76,7 @@ class JobExpandAction(JobInjector):
 
         result          = []
         build_queue     = []
+        root            = _basename.root()
         base_head       = _basename.job_head()
         actions, base   = self._prep_base(template)
         match _from:
@@ -91,7 +92,7 @@ class JobExpandAction(JobInjector):
 
         for i, arg in enumerate(build_queue):
                 # TODO change job subtask naming scheme
-                base_dict = dict(name=_basename.subtask(prefix, i),
+                base_dict = dict(name=root.subtask(prefix, i),
                                  sources=[base],
                                  actions = actions or [],
                                  required_for=[base_head],

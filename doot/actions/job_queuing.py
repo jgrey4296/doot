@@ -104,10 +104,11 @@ class JobQueueAction(Action_p):
 
     def _build_args(self, base, args) -> list:
         result = []
+        root   = base.root()
         head   = base.job_head()
         for i,x in enumerate(args):
             sub = DootTaskSpec.build(dict(
-                name=base.subtask(i),
+                name=root.subtask(i),
                 sources=[TaskName.build(x)],
                 required_for=[head],
                 depends_on=[],
@@ -118,6 +119,7 @@ class JobQueueAction(Action_p):
 
     def _build_from_multi(self, base, froms, spec, state) -> list:
         result  = []
+        root    = base.root()
         head    = base.job_head()
         as_keys = []
         match froms:
@@ -155,6 +157,7 @@ class JobQueueHead(Action_p):
     @DootKey.dec.types("inject")
     @DootKey.dec.taskname
     def __call__(self, spec, state, base, inject, _basename):
+        root            = _basename.root()
         head_name       = _basename.job_head()
         head            = []
 
@@ -163,7 +166,7 @@ class JobQueueHead(Action_p):
                 head += [DootTaskSpec.build(dict(name=head_name,
                                                  actions=[],
                                                  queue_behaviour="auto")),
-                         DootTaskSpec.build(dict(name=head_name.subtask("1"),
+                         DootTaskSpec.build(dict(name=root.job_head().subtask("1"),
                                                  sources=[TaskName.build(base)],
                                                  depends_on=[head_name],
                                                  extra=inject or {},

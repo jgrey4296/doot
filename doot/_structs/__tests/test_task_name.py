@@ -237,20 +237,21 @@ class TestTaskNameExtension:
         assert(str(simple) == "basic::tail")
         sub    = simple.instantiate()
         assert(sub.group == "basic")
-        assert(len(sub.tail) == 3)
+        assert(len(sub.tail) == 4)
         assert(sub.tail[0] == "tail")
-        assert(sub.tail[1] == doot.constants.patterns.SPECIALIZED_ADD)
+        assert(sub.tail[2] == doot.constants.patterns.SPECIALIZED_ADD)
 
     def test_instantiate_name_with_prefix(self):
         simple = TaskName.build("basic::tail")
         assert(str(simple) == "basic::tail")
         sub    = simple.instantiate(prefix="blah")
-        assert("basic::tail.blah" in sub)
+        assert("basic::tail..blah" in sub)
         assert(sub.group == "basic")
-        assert(len(sub.tail) == 4)
+        assert(len(sub.tail) == 5)
         assert(sub.tail[0] == "tail")
-        assert(sub.tail[1] == "blah")
-        assert(sub.tail[2] == doot.constants.patterns.SPECIALIZED_ADD)
+        assert(sub.tail[1] == TaskName._root_marker)
+        assert(sub.tail[2] == "blah")
+        assert(sub.tail[3] == doot.constants.patterns.SPECIALIZED_ADD)
         assert(isinstance(sub.last(), UUID))
 
     def test_subtask_0(self):

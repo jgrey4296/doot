@@ -554,7 +554,6 @@ class _TrackerNetwork:
 
         logging.debug("<-- Artifact Expansion Complete: %s", artifact)
         self.network.nodes[artifact][EXPANDED] = True
-        logging.warning("TODO: match artifact to requirements and expand")
         return to_expand
 
     def concrete_edges(self, name:ConcreteId) -> tomlguard.TomlGuard:
@@ -796,7 +795,6 @@ class _TrackerQueue_boltons:
                 self.connect(instance, None if from_user else False)
                 prepped_name = instance
             case TaskName() if name in self.specs:
-                assert(TaskFlags.CONCRETE not in name)
                 instance : TaskName = self._instantiate_spec(name)
                 self.connect(instance, None if from_user else False)
                 prepped_name = instance

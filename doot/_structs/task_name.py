@@ -266,9 +266,9 @@ class TaskName(StructuredName):
         uuid = uuid1()
         match prefix:
             case None:
-                return self.subtask(TaskName._gen_marker, uuid, uuid=uuid)
+                return self.subtask(TaskName._root_marker, TaskName._gen_marker, uuid, uuid=uuid)
             case _:
-                return self.subtask(prefix, TaskName._gen_marker, uuid, uuid=uuid)
+                return self.subtask(TaskName._root_marker, prefix, TaskName._gen_marker, uuid, uuid=uuid)
 
     def last(self):
         return self.tail[-1]
