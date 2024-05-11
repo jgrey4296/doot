@@ -74,7 +74,7 @@ class TestTrackerNext:
 
     def test_next_for_no_connections(self):
         obj  = DootTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::Task"})
+        spec = doot.structs.TaskSpec.build({"name":"basic::Task"})
         obj.register_spec(spec)
         t_name = obj.queue_entry(spec.name)
         assert(obj.get_status(t_name) is TaskStatus_e.default)
@@ -89,8 +89,8 @@ class TestTrackerNext:
 
     def test_next_simple_dependendency(self):
         obj  = DootTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
-        dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
+        spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
+        dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
         t_name = obj.queue_entry(spec.name, from_user=True)
         assert(obj.get_status(t_name) is TaskStatus_e.default)
@@ -106,8 +106,8 @@ class TestTrackerNext:
 
     def test_next_dependency_success_produces_ready_state_(self):
         obj  = DootTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
-        dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
+        spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
+        dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
         t_name = obj.queue_entry(spec.name, from_user=True)
         assert(obj.get_status(t_name) is TaskStatus_e.default)
@@ -126,8 +126,8 @@ class TestTrackerNext:
 
     def test_next_artificial_success(self):
         obj  = DootTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
-        dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
+        spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
+        dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
         t_name   = obj.queue_entry(spec.name)
         dep_inst = obj.queue_entry(dep.name)
@@ -146,8 +146,8 @@ class TestTrackerNext:
 
     def test_next_halt(self):
         obj  = DootTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
-        dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
+        spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
+        dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
         t_name   = obj.queue_entry(spec.name, from_user=True)
         dep_inst = obj.queue_entry(dep.name)
@@ -161,8 +161,8 @@ class TestTrackerNext:
 
     def test_next_fail(self):
         obj  = DootTracker()
-        spec = doot.structs.DootTaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
-        dep  = doot.structs.DootTaskSpec.build({"name":"basic::dep"})
+        spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
+        dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
         t_name   = obj.queue_entry(spec.name, from_user=True)
         dep_inst = obj.queue_entry(dep.name)
@@ -182,15 +182,15 @@ class TestTrackerWalk:
         tail = []
 
         head += [
-            doot.structs.DootTaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep.1", "basic::dep.2"]}),
-            doot.structs.DootTaskSpec.build({"name":"basic::beta", "depends_on":["basic::dep.3"]}),
-            doot.structs.DootTaskSpec.build({"name":"basic::solo", "depends_on":[]}),
+            doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep.1", "basic::dep.2"]}),
+            doot.structs.TaskSpec.build({"name":"basic::beta", "depends_on":["basic::dep.3"]}),
+            doot.structs.TaskSpec.build({"name":"basic::solo", "depends_on":[]}),
         ]
         tail += [
-            doot.structs.DootTaskSpec.build({"name":"basic::dep.1"}),
-            doot.structs.DootTaskSpec.build({"name":"basic::dep.2"}),
-            doot.structs.DootTaskSpec.build({"name":"basic::dep.3"}),
-            doot.structs.DootTaskSpec.build({"name":"basic::dep.4", "required_for":["basic::dep.2"]}),
+            doot.structs.TaskSpec.build({"name":"basic::dep.1"}),
+            doot.structs.TaskSpec.build({"name":"basic::dep.2"}),
+            doot.structs.TaskSpec.build({"name":"basic::dep.3"}),
+            doot.structs.TaskSpec.build({"name":"basic::dep.4", "required_for":["basic::dep.2"]}),
         ]
         return (head, tail)
 

@@ -33,7 +33,7 @@ printer = logmod.getLogger("doot._printer")
 
 import doot
 from doot.cmds.base_cmd import BaseCommand
-from doot.structs import ParamSpec, DootTaskSpec, CodeReference
+from doot.structs import ParamSpec, TaskSpec, CodeReference
 from collections import defaultdict
 
 NON_DEFAULT_KEY : Final[str] = doot.constants.misc.NON_DEFAULT_KEY
@@ -90,7 +90,7 @@ class HelpCmd(BaseCommand):
         printer.info("\n------------------------------")
         printer.info("Call a command by doing 'doot [cmd] [args]'. Eg: doot list --help")
 
-    def print_task_spec(self, count, spec:DootTaskSpec):
+    def print_task_spec(self, count, spec:TaskSpec):
         task_name = spec.name
         match spec.ctor:
             case None:

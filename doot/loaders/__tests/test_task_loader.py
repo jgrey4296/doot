@@ -21,7 +21,7 @@ import doot
 from doot.enums import TaskFlags
 doot._test_setup()
 
-from doot.structs import DootTaskSpec
+from doot.structs import TaskSpec
 from doot._abstract.task import Task_i
 from doot.utils.mock_gen import mock_entry_point, mock_task_ctor
 
@@ -59,7 +59,7 @@ class TestTaskLoader:
         assert(isinstance(result, tomlguard.TomlGuard))
         assert(len(result) == 1)
         assert("basic::test" in result)
-        assert(isinstance(result['basic::test'], DootTaskSpec))
+        assert(isinstance(result['basic::test'], TaskSpec))
 
     def test_multi_load(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_sources")

@@ -39,7 +39,7 @@ doot._test_setup()
 import doot.errors
 from doot._abstract import ArgParser_i, Task_i, Command_i
 from doot.parsers.flexible import DootFlexibleParser
-from doot.structs import CodeReference, ParamSpec, DootTaskSpec
+from doot.structs import CodeReference, ParamSpec, TaskSpec
 
 # ##-- end 1st party imports
 
@@ -57,7 +57,7 @@ class TestArgParser:
         return self.make_spec_mock(mocker)
 
     def make_spec_mock(self, mocker):
-        task_mock                 = mocker.MagicMock(spec=DootTaskSpec, ctor=mocker.MagicMock(spec=CodeReference))
+        task_mock                 = mocker.MagicMock(spec=TaskSpec, ctor=mocker.MagicMock(spec=CodeReference))
         ctor_mock                 = mocker.Mock()
         ctor_mock.param_specs     = []
         task_mock.ctor.try_import = mocker.Mock(return_value=ctor_mock)

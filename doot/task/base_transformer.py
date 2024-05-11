@@ -35,7 +35,7 @@ import doot.errors
 from doot._abstract import Job_i, Task_i
 from doot.enums import TaskFlags
 from doot.errors import DootDirAbsent
-from doot.structs import CodeReference, TaskName, DootTaskSpec
+from doot.structs import CodeReference, TaskName, TaskSpec
 from doot.task.base_task import DootTask
 
 # ##-- end 1st party imports
@@ -53,7 +53,7 @@ class DootTransformer(DootTask):
     _help = ["A Basic Task Constructor"]
     _default_flags = TaskFlags.TRANSFORMER
 
-    def __init__(self, spec:DootTaskSpec):
+    def __init__(self, spec:TaskSpec):
         assert(spec is not None), "Spec is empty"
         super(DootJob, self).__init__(spec)
 

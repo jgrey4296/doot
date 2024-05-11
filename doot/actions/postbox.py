@@ -57,7 +57,7 @@ class _DootPostBox:
     @staticmethod
     def put(key:TaskName, val):
         subbox = str(key.last())
-        box    = str(key.root())
+        box    = str(key.root(top=True))
         match val:
             case None | [] | {} | dict() if not bool(val):
                 pass
@@ -68,7 +68,7 @@ class _DootPostBox:
 
     @staticmethod
     def get(key:TaskName, subkey=Any) -> list|dict:
-        box    = str(key.root())
+        box    = str(key.root(top=True))
         subbox = str(key.last())
         match subbox:
             case "" | "-":
@@ -82,7 +82,7 @@ class _DootPostBox:
 
     @staticmethod
     def clear_box(key):
-        box    = str(key.root())
+        box    = str(key.root(top=True))
         subbox = str(key.last())
         match subbox:
             case x if x == Any:
@@ -106,12 +106,12 @@ class PutPostAction(Action_p):
     @DootKey.dec.kwargs
     @DootKey.dec.taskname
     def __call__(self, spec, state, args, kwargs, _basename) -> dict|bool|None:
-        target = _basename.root().subtask(_DootPostBox.default_subkey)
+        target = _basename.root(top=True).subtask(_DootPostBox.default_subkey)
         for statekey in args:
             data = DootKey.build(statekey).to_type(spec, state)
             _DootPostBox.put(target, data)
 
-        root = _basename.root()
+        root = _basename.root(top=True)
         for subbox,statekey in kwargs.items():
             box  = root.subtask(subbox)
             match statekey:
@@ -150,7 +150,7 @@ class ClearPostAction(Action_p):
     @DootKey.dec.expands("key", hint={"on_fail":Any})
     @DootKey.dec.taskname
     def __call__(self, spec, state, key, _basename):
-        from_task = _basename.root().subtask(key)
+        from_task = _basename.root(top=True).subtask(key)
         _DootPostBox.clear_box(from_task)
         return
 
@@ -163,7 +163,7 @@ class SummarizePostAction(Action_p):
     @DootKey.dec.types("from", hint={"type_":str|None})
     @DootKey.dec.types("full", hint={"type_":bool, "on_fail":False})
     def __call__(self, spec, state, _from, full) -> dict|bool|None:
-        from_task = _from or TASK_NAME.to_type(spec, state).root()
+        from_task = _from or TASK_NAME.to_type(spec, state).root(top=True)
         data   = _DootPostBox.get(from_task)
         if full:
             for x in data:

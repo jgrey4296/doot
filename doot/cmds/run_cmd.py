@@ -104,4 +104,14 @@ class RunCmd(BaseCommand):
 
         printer.info("- %s Tasks Queued: %s", len(tracker.active_set), " ".join(str(x) for x in tracker.active_set))
         with runner:
+            if doot.args.on_fail(False).cmd.args.confirm():
+                plan = tracker.generate_plan()
+                for i,(depth,node,desc) in enumerate(plan):
+                    printer.info("Step %-4s: %s",i, node)
+                match input("Confirm Execution Plan (Y/*): "):
+                    case "Y":
+                        pass
+                    case _:
+                        printer.info("Cancelling")
+                        return
             runner(handler=interrupt)

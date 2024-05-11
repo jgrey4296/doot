@@ -65,7 +65,7 @@ class TestJobExpansion:
         result = obj(spec, state)
         assert(isinstance(result, dict))
         assert(isinstance(result[spec.kwargs['update_']], list))
-        assert(result['specs'][0].sources == ["test::task"])
+        assert(result['specs'][0].sources == ["test::task", None])
         assert(len(result['specs'][0].actions) == 0)
 
     def test_taskname_template(self, spec, state):

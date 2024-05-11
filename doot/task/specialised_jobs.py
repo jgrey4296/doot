@@ -38,7 +38,7 @@ from doot.task.base_job import DootJob
 class GroupJob(DootJob):
     """ A Group of task specs, none of which require params """
 
-    def __init__(self, spec:DootTaskSpec):
+    def __init__(self, spec:TaskSpec):
         super().__init__(spec)
         self.name       = name.replace(" ", "_")
         self.tasks      = list(args)

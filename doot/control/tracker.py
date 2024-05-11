@@ -35,7 +35,7 @@ from doot._abstract import (FailPolicy_p, Job_i, Task_i, TaskRunner_i,
 from doot.control.base_tracker import BaseTracker
 from doot.enums import TaskStatus_e, ExecutionPolicy_e, EdgeType_e
 from doot.structs import (CodeReference, TaskArtifact, TaskName,
-                          DootTaskSpec)
+                          TaskSpec)
 from doot.task.base_task import DootTask
 
 # ##-- end 1st party imports

@@ -36,7 +36,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot._abstract import ArgParser_i
-from doot.structs import ParamSpec, DootTaskSpec, TaskName
+from doot.structs import ParamSpec, TaskSpec, TaskName
 
 # ##-- end 1st party imports
 
@@ -99,7 +99,7 @@ class DootFlexibleParser(ArgParser_i):
         self.head_args                                                    = self._build_defaults_dict(doot_specs)
         self.head_arg_specs                                               = doot_specs
         self.registered_cmds  : dict[str, Command_i]                      = cmds
-        self.registered_tasks : dict[TaskName, DootTaskSpec]          = tasks
+        self.registered_tasks : dict[TaskName, TaskSpec]          = tasks
         self.focus                                                        = self.PS.HEAD
 
         remaining                                                         = args[1:]
@@ -190,7 +190,7 @@ class DootFlexibleParser(ArgParser_i):
             if default_task is None:
                 return args
             task                     = self.registered_tasks[default_task]
-            assert(isinstance(task, DootTaskSpec))
+            assert(isinstance(task, TaskSpec))
             task_name                 = default_task
             spec_params               = [ParamSpec.build(x) for x in task.extra.on_fail([], list).cli()]
             ctor_params               = task.ctor.try_import().param_specs
@@ -203,7 +203,7 @@ class DootFlexibleParser(ArgParser_i):
         while bool(args) and args[0] in self.registered_tasks:
             task_name                 = TaskName.build(args.pop(0))
             task                      = self.registered_tasks[str(task_name)]
-            assert(isinstance(task, DootTaskSpec))
+            assert(isinstance(task, TaskSpec))
             spec_params               = [ParamSpec.build(x) for x in task.extra.on_fail([], list).cli()]
             ctor_params               = task.ctor.try_import().param_specs
             current_specs             = list(sorted(spec_params + ctor_params, key=ParamSpec.key_func))

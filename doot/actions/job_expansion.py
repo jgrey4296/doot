@@ -41,13 +41,13 @@ import random
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.structs import DootKey, DootTaskSpec, TaskName, CodeReference
+from doot.structs import DootKey, TaskSpec, TaskName, CodeReference
 from doot.actions.base_action import DootBaseAction
 from doot.actions.job_injection import JobInjector
 
 class JobGenerate(DootBaseAction):
     """ Run a custom function to generate task specs
-      Function is in the form: fn(spec, state) -> list[DootTaskSpec]
+      Function is in the form: fn(spec, state) -> list[TaskSpec]
     """
 
     @DootKey.dec.references("fn")
@@ -93,7 +93,7 @@ class JobExpandAction(JobInjector):
         for i, arg in enumerate(build_queue):
                 # TODO change job subtask naming scheme
                 base_dict = dict(name=root.subtask(prefix, i),
-                                 sources=[base],
+                                 sources=[base, None],
                                  actions = actions or [],
                                  required_for=[base_head],
                                  print_levels=_printL or {},
@@ -104,7 +104,7 @@ class JobExpandAction(JobInjector):
                     case dict() as val:
                         base_dict.update(val)
 
-                new_spec  = DootTaskSpec.build(base_dict)
+                new_spec  = TaskSpec.build(base_dict)
                 result.append(new_spec)
 
         return { _update : result }

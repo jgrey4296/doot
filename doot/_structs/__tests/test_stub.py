@@ -38,7 +38,7 @@ class TestTaskStub:
         """ check a stub has the default components of a TaskSpec  """
         obj = stub.TaskStub.build()
 
-        default_keys = set(stub.DootTaskSpec.model_fields.keys())
+        default_keys = set(stub.TaskSpec.model_fields.keys())
 
         default_keys -= set(stub.TaskStub.skip_parts)
 
@@ -66,7 +66,7 @@ class TestTaskStub:
         as_str = obj.to_toml()
         loaded = tomlguard.read(as_str)
         # FIXME: currently splits the name so its not basic::stub, but 'stub', so fails building
-        spec   = stub.DootTaskSpec.build(loaded.tasks.basic[0])
+        spec   = stub.TaskSpec.build(loaded.tasks.basic[0])
 
 class TestTaskStubPart:
 

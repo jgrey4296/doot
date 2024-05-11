@@ -66,7 +66,7 @@ class TraceRecord(BaseModel):
         match self.message:
             case str():
                 return self.message.format(*self.args)
-            case DootTaskSpec():
+            case TaskSpec():
                 return str(self.message.name)
             case _:
                 return str(self.message)

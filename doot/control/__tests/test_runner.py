@@ -41,7 +41,7 @@ from doot._abstract import (Action_p, Job_i, Reporter_p, ReportLine_p, Task_i,
 from doot.control.runner import DootRunner
 from doot.control.tracker import DootTracker
 from doot.enums import TaskStatus_e
-from doot.structs import ActionSpec, DootTaskSpec, DootKey
+from doot.structs import ActionSpec, TaskSpec, DootKey
 
 # ##-- end 1st party imports
 
@@ -99,7 +99,7 @@ class TestRunner:
     def make_task_mock(self, mocker, name):
         task                    = mocker.MagicMock(spec=Task_i, state={})
         task.name = name
-        task.spec               = DootTaskSpec.build({"name": name})
+        task.spec               = TaskSpec.build({"name": name})
         task.spec.print_levels = mocker.Mock()
         task.spec.sleep = 0.0
         task.spec.actions = [
@@ -110,7 +110,7 @@ class TestRunner:
     def make_job_mock(self, mocker, name):
         task                    = mocker.MagicMock(spec=Job_i, state={})
         task.name = name
-        task.spec               = DootTaskSpec.build({"name": name})
+        task.spec               = TaskSpec.build({"name": name})
         task.spec.print_levels = mocker.Mock()
         task.spec.sleep = 0.1
         return task

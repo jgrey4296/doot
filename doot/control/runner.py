@@ -39,7 +39,7 @@ import doot.errors
 from doot.enums import ReportEnum, ActionResponseEnum as ActRE
 from doot._abstract import Job_i, Task_i, FailPolicy_p
 from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i, Action_p, Reporter_p
-from doot.structs import TaskArtifact, DootTaskSpec, ActionSpec, TaskName
+from doot.structs import TaskArtifact, TaskSpec, ActionSpec, TaskName
 from doot._structs.relation_spec import RelationSpec
 from doot.control.base_runner import BaseRunner, logctx
 from doot.utils.signal_handler import SignalHandler
@@ -259,7 +259,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 case dict(): # update the task's state
                     task.state.update({str(k):v for k,v in result.items()})
                     result = ActRE.SUCCESS
-                case list() if all(isinstance(x, (TaskName, DootTaskSpec)) for x in result):
+                case list() if all(isinstance(x, (TaskName, TaskSpec)) for x in result):
                     pass
                 case False | ActRE.FAIL:
                     self.reporter.add_trace(action, flags=ReportEnum.FAIL | ReportEnum.ACTION)

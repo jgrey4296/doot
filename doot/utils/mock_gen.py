@@ -78,7 +78,7 @@ def mock_task_spec(name="agroup::mockSpec", pre=None, post=None, action_count=1,
     extra = extra or {}
     if "sleep" not in extra:
         extra['sleep'] = 0.1
-    spec_m = MagicMock(structs.DootTaskSpec(name=name),
+    spec_m = MagicMock(structs.TaskSpec(name=name),
                        actions=mock_action_specs(num=action_count),
                        extra=tomlguard.TomlGuard(extra),
                        priority=10,

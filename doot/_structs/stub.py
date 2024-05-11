@@ -45,7 +45,7 @@ import doot.errors
 from doot.enums import TaskFlags, ReportEnum, LocationMeta, TaskQueueMeta
 from doot._structs.task_name import TaskName
 from doot._structs.code_ref import CodeReference
-from doot._structs.task_spec import DootTaskSpec
+from doot._structs.task_spec import TaskSpec
 from doot._abstract.protocols import StubStruct_p
 
 TaskFlagNames : Final[str]               = [x.name for x in TaskFlags]
@@ -54,7 +54,7 @@ DEFAULT_CTOR  : Final[CodeReference] = CodeReference.build(doot.aliases.task[doo
 
 class TaskStub(BaseModel, arbitrary_types_allowed=True):
     """ Stub Task Spec for description in toml
-    Automatically Adds default keys from DootTaskSpec
+    Automatically Adds default keys from TaskSpec
 
     This essentially wraps a dict, adding toml stubs parts as you access keys.
     eg:
@@ -67,7 +67,7 @@ class TaskStub(BaseModel, arbitrary_types_allowed=True):
     ctor       : str|CodeReference|type                     = DEFAULT_CTOR
     parts      : dict[str, TaskStubPart]                        = {}
 
-    # Don't copy these from DootTaskSpec blindly
+    # Don't copy these from TaskSpec blindly
     skip_parts : ClassVar[set[str]]          = set(["name", "extra", "ctor", "source", "version"])
 
     @classmethod
@@ -83,7 +83,7 @@ class TaskStub(BaseModel, arbitrary_types_allowed=True):
         self['name'].default     = TaskName.build(doot.constants.names.DEFAULT_STUB_TASK_NAME)
         self['version'].default  = "0.1"
         # Auto populate the stub with what fields are defined in a TaskSpec:
-        for dcfield, data in DootTaskSpec.model_fields.items():
+        for dcfield, data in TaskSpec.model_fields.items():
             if dcfield in TaskStub.skip_parts:
                 continue
 

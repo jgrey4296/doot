@@ -45,7 +45,7 @@ from doot._abstract import Job_i, Task_i, FailPolicy_p
 from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i, Action_p, Reporter_p
 from doot.structs import TaskArtifact, ActionSpec
 from doot.utils.signal_handler import SignalHandler
-from doot.structs import DootTaskSpec, ActionSpec
+from doot.structs import TaskSpec, ActionSpec
 from doot.utils.log_context import DootLogContext
 
 dry_run                                      = doot.args.on_fail(False).cmd.args.dry_run()

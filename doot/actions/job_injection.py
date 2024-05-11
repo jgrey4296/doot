@@ -44,7 +44,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot._abstract import Action_p
-from doot.structs import DootKey, DootTaskSpec, TaskName, CodeReference
+from doot.structs import DootKey, TaskSpec, TaskName, CodeReference
 from doot.mixins.path_manip import PathManip_m
 
 class JobInjector(Action_p):
@@ -67,7 +67,7 @@ class JobInjector(Action_p):
             case list():
                 for x in onto:
                     x.extra = TomlGuard(dict(**x.extra, **injection))
-            case DootTaskSpec():
+            case TaskSpec():
                 onto.extra = TomlGuard(dict(**x.extra, **injection))
 
     def build_injection(self, spec, state, inject, replacement=None, post:dict|None=None) -> None|TomlGuard:
@@ -151,7 +151,7 @@ class JobInjectPathParts(PathManip_m):
                     data = dict(x.extra)
                     data.update(self._calc_path_parts(x.extra[_key], root_paths))
                     x.extra = TomlGuard(data)
-            case DootTaskSpec():
+            case TaskSpec():
                 data = dict(x.extra)
                 data.update(self._calc_path_parts(onto.extra[_key], root_paths))
                 _onto.extra = TomlGuard(data)
@@ -171,7 +171,7 @@ class JobInjectShadowAction(PathManip_m):
                 for x in _onto:
                     rel_path = self._shadow_path(x.extra[_key], _shadow)
                     x.extra = TomlGuard(dict(**x.extra, **{"shadow_path": rel_path}))
-            case DootTaskSpec():
+            case TaskSpec():
                 rel_path = self._shadow_path(onto.extra[_key], _shadow)
                 onto.extra = TomlGuard(dict(**onto.extra, **{"shadow_path": rel_path}))
 
@@ -189,7 +189,7 @@ class JobSubNamer(Action_p):
                 for i,x in enumerate(_onto):
                     val = x.extra[_key]
                     x.name = _basename.subtask(i, self._gen_subname(val))
-            case DootTaskSpec():
+            case TaskSpec():
                 onto.name = _basename.subtask(self._gen_subname(val))
 
     def _gen_subname(self, val):

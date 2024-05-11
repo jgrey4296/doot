@@ -18,7 +18,7 @@ import pytest
 import doot
 doot._test_setup()
 import doot.errors
-from doot.structs import ParamSpec, DootTaskSpec
+from doot.structs import ParamSpec, TaskSpec
 
 class TestParamSpec:
 

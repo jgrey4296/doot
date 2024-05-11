@@ -35,5 +35,5 @@ from doot._structs.location import Location
 from doot._structs.param_spec import ParamSpec
 from doot._structs.stub import TaskStub, TaskStubPart
 from doot._structs.task_name import TaskName
-from doot._structs.task_spec import DootTaskSpec
+from doot._structs.task_spec import TaskSpec
 from doot._structs.trace import TraceRecord

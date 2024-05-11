@@ -223,7 +223,7 @@ class ExecutableTask(Protocol):
         """ """
         pass
 
-    def expand(self) -> list[Task_i|"DootTaskSpec"]:
+    def expand(self) -> list[Task_i|"TaskSpec"]:
         """ For expanding a job into tasks """
         pass
 

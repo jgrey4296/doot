@@ -34,7 +34,7 @@ from uuid import UUID, uuid1
 from doot._abstract.reporter import Reporter_p
 from doot._structs.trace import TraceRecord
 from doot._structs.artifact import TaskArtifact
-from doot._structs.task_spec import DootTaskSpec
+from doot._structs.task_spec import TaskSpec
 from doot._structs.action_spec import ActionSpec
 from doot._structs.relation_spec import RelationSpec
 from doot._structs.task_name import TaskName
@@ -68,7 +68,7 @@ class BaseReporter(Reporter_p):
                 msg = str(msg)
             case RelationSpec():
                 msg = str(msg)
-            case DootTaskSpec():
+            case TaskSpec():
                 msg = msg.name.readable
             case Task_i():
                 msg = msg.shortname

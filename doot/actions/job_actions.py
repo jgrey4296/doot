@@ -42,7 +42,7 @@ import random
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.structs import DootKey, DootTaskSpec, TaskName, CodeReference
+from doot.structs import DootKey, TaskSpec, TaskName, CodeReference
 from doot.actions.base_action import DootBaseAction
 from doot.actions.job_expansion import JobGenerate, JobExpandAction, JobMatchAction
 from doot.actions.job_injection import JobPrependActions, JobAppendActions, JobInjector, JobInjectPathParts, JobInjectShadowAction, JobSubNamer

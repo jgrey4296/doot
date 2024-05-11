@@ -72,7 +72,7 @@ def _prepare_action_group(deps:list[str], handler:ValidatorFunctionWrapHandler, 
     if deps is None:
         return results
 
-    relation_type = RelationMeta.requirementFor if info.field_name in DootTaskSpec._dependant_groups else RelationMeta.dependencyOf
+    relation_type = RelationMeta.requirementFor if info.field_name in TaskSpec._dependant_groups else RelationMeta.dependencyOf
     for x in deps:
         match x:
             case ActionSpec() | RelationSpec():
@@ -88,17 +88,17 @@ ActionGroup = Annotated[list[ActionSpec|RelationSpec], WrapValidator(_prepare_ac
 
 class _SpecUtils_m:
 
-    def instantiate_onto(self, data:None|DootTaskSpec) -> DootTaskSpec:
+    def instantiate_onto(self, data:None|TaskSpec) -> TaskSpec:
         """ apply self over the top of data """
         match data:
             case None:
                 return self.specialize_from(self)
-            case DootTaskSpec():
+            case TaskSpec():
                 return data.specialize_from(self)
             case _:
                 raise TypeError("Can't instantiate onto something not a task spec", data)
 
-    def instantiate_transformer(self, target:TaskArtifact|tuple[TaskArtifact, TaskArtifact]) -> None|DootTaskSpec:
+    def instantiate_transformer(self, target:TaskArtifact|tuple[TaskArtifact, TaskArtifact]) -> None|TaskSpec:
         """ Create an instantiated transformer spec.
           ie     : ?.txt -> spec -> ?.blah
           becomes: a.txt -> spec -> a.blah
@@ -136,7 +136,7 @@ class _SpecUtils_m:
         task_ctor = self.ctor.try_import(ensure=ensure)
         return task_ctor(self)
 
-    def job_top(self) -> None|DootTaskSpec:
+    def job_top(self) -> None|TaskSpec:
         """
           Generate a top spec for a job, taking the jobs cleanup actions
           and using them as the head's main action.
@@ -152,7 +152,7 @@ class _SpecUtils_m:
             return None
 
         # build $head$
-        head : DootTaskSpec = DootTaskSpec.build({
+        head : TaskSpec = TaskSpec.build({
             "name"            : self.name.job_head(),
             "sources"         : self.sources[:] + [self.name, None],
             "actions"         : self.cleanup,
@@ -164,7 +164,7 @@ class _SpecUtils_m:
             })
         return head
 
-    def match_with_constraints(self, control:DootTaskSpec, *, relation:None|RelationSpec=None) -> bool:
+    def match_with_constraints(self, control:TaskSpec, *, relation:None|RelationSpec=None) -> bool:
         """ Test this spec to see if it matches a spec,
           when using a given relation and a given controlling spec to source values from
 
@@ -257,7 +257,7 @@ class _SpecUtils_m:
 
         raise ValueError("This shouldn't be possible")
 
-class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra="allow"):
+class TaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra="allow"):
     """ The information needed to describe a generic task.
     Optional things are shoved into 'extra', so things can use .on_fail on the tomlguard
 
@@ -302,11 +302,11 @@ class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra=
             case TomlGuard() | dict() if "source" in data:
                 raise ValueError("source is deprecated, use 'sources'", data)
             case TomlGuard() | dict():
-                return DootTaskSpec.model_validate(data)
+                return TaskSpec.model_validate(data)
             case TaskName():
-                return DootTaskSpec(name=data)
+                return TaskSpec(name=data)
             case str():
-                return DootTaskSpec(name=TaskName.build(data))
+                return TaskSpec(name=TaskName.build(data))
 
     @model_validator(mode="before")
     def _convert_toml_keys(cls, data:dict) -> dict:
@@ -349,7 +349,7 @@ class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra=
                 name = TaskName.build(val)
                 return name
             case _:
-                raise TypeError("A DootTaskSpec Name should be a str or TaskName", val)
+                raise TypeError("A TaskSpec Name should be a str or TaskName", val)
 
     @field_validator("flags", mode="before")
     def _validate_flags(cls, val):
@@ -364,7 +364,7 @@ class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra=
         match val:
             case None:
 
-                default_alias = DootTaskSpec._default_ctor
+                default_alias = TaskSpec._default_ctor
                 coderef_str   = doot.aliases.task[default_alias]
                 return CodeReference.build(coderef_str)
             case EntryPoint():
@@ -379,10 +379,10 @@ class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra=
     @field_validator("print_levels", mode="before")
     def _validate_print_levels(cls, val):
         match val:
-            case dict() | TomlGuard() if any(x not in DootTaskSpec._allowed_print_locs for x in val.keys()):
-                raise ValueError("Print targets must be those declared in doot.constants.printer.PRINT_LOCATIONS", val.keys(), DootTaskSpec._allowed_print_locs)
-            case dict() | TomlGuard() if any(x not in DootTaskSpec._allowed_print_levels for x in val.values()):
-                raise ValueError("Print levels must be standard logging levels", val.values(), DootTaskSpec._allowed_print_levels)
+            case dict() | TomlGuard() if any(x not in TaskSpec._allowed_print_locs for x in val.keys()):
+                raise ValueError("Print targets must be those declared in doot.constants.printer.PRINT_LOCATIONS", val.keys(), TaskSpec._allowed_print_locs)
+            case dict() | TomlGuard() if any(x not in TaskSpec._allowed_print_levels for x in val.values()):
+                raise ValueError("Print levels must be standard logging levels", val.values(), TaskSpec._allowed_print_levels)
             case dict():
                 return TomlGuard(val)
             case TomlGuard():
@@ -447,7 +447,7 @@ class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra=
         # TODO: use introspection on the model to get any fields annotated as an ActionGroup
         return [self.depends_on, self.setup, self.actions, self.cleanup, self.on_fail]
 
-    def specialize_from(self, data:dict|DootTaskSpec) -> DootTaskSpec:
+    def specialize_from(self, data:dict|TaskSpec) -> TaskSpec:
         """
           apply data over the top of self.
           a *single* application, as a spec on it's own has no means to look up other specs,
@@ -459,19 +459,19 @@ class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra=
             case dict():
                 specialized = dict(self)
                 specialized.update(data)
-                return DootTaskSpec.build(specialized)
-            case DootTaskSpec() if self is data:
+                return TaskSpec.build(specialized)
+            case TaskSpec() if self is data:
                 # specializing on self, just instantiate a name
                 specialized           = dict(self)
                 specialized['name']   = self.name.instantiate()
                 # Otherwise theres interference:
                 specialized['sources'] = self.sources[:] + [self.name]
-                return DootTaskSpec.build(specialized)
-            case DootTaskSpec(sources=[*xs, TaskName() as x] ) if not x <= self.name:
+                return TaskSpec.build(specialized)
+            case TaskSpec(sources=[*xs, TaskName() as x] ) if not x <= self.name:
                 raise doot.errors.DootTaskTrackingError("Tried to specialize a task that isn't based on this task", str(data.name), str(self.name), str(data.sources))
-            case DootTaskSpec(ctor=ctor) if self.ctor != ctor and ctor != DootTaskSpec._default_ctor:
+            case TaskSpec(ctor=ctor) if self.ctor != ctor and ctor != TaskSpec._default_ctor:
                 raise doot.errors.DootTaskTrackingError("Unknown ctor for spec", data.ctor)
-            case DootTaskSpec():
+            case TaskSpec():
                 specialized = dict(self)
                 specialized.update({k:v for k,v in dict(data).items() if k in data.model_fields_set})
 
@@ -489,4 +489,4 @@ class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra=
         specialized['flags']        = self.flags | data.flags
 
         logging.debug("Specialized Task: %s on top of: %s", data.name.readable, self.name)
-        return DootTaskSpec.build(specialized)
+        return TaskSpec.build(specialized)

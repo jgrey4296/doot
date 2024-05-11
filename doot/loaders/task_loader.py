@@ -39,7 +39,7 @@ import importlib
 import tomlguard
 import doot
 import doot.errors
-from doot.structs import DootTaskSpec, TaskName, CodeReference
+from doot.structs import TaskSpec, TaskName, CodeReference
 from doot._abstract import TaskLoader_p, Job_i, Task_i
 
 DEFAULT_TASK_GROUP        = doot.constants.names.DEFAULT_TASK_GROUP
@@ -69,7 +69,7 @@ def apply_group_and_source(group, source, x):
 @doot.check_protocol
 class DootTaskLoader(TaskLoader_p):
     """
-    load toml defined tasks, and create doot.structs.DootTaskSpecs of them
+    load toml defined tasks, and create doot.structs.TaskSpecs of them
     """
     tasks         : dict[str, tuple(dict, Job_i)] = {}
     cmd_names     : set[str]                         = set()
@@ -192,12 +192,12 @@ class DootTaskLoader(TaskLoader_p):
         return raw_specs
 
 
-    def _build_task_specs(self, group_specs:list[dict], command_names) -> list[DootTaskSpec]:
+    def _build_task_specs(self, group_specs:list[dict], command_names) -> list[TaskSpec]:
         """
-        convert raw dicts into DootTaskSpec objects,
+        convert raw dicts into TaskSpec objects,
           checking nothing tries to shadow a command name or other task name
         """
-        task_descriptions : dict[str, DootTaskSpec] = {}
+        task_descriptions : dict[str, TaskSpec] = {}
         dont_allow_overloads = lambda task_name, group_name: not allow_overloads and task_name in task_descriptions and group_name == task_descriptions[task_name][0]['group']
         for spec in group_specs:
             task_alias = "task"
@@ -211,14 +211,14 @@ class DootTaskLoader(TaskLoader_p):
                         logging.info("Building Task from short name: %s : %s", task_name, task_alias)
                         task_iden                   : CodeReference       = CodeReference.from_alias(task_alias, "task", self.plugins)
                         spec['ctor'] = task_iden
-                        task_spec = DootTaskSpec.build(spec)
+                        task_spec = TaskSpec.build(spec)
                         if str(task_spec.name) in task_descriptions:
                             logging.warning("Overloading Task: %s : %s", str(task_spec.name), task_alias)
 
                         task_descriptions[str(task_spec.name)] = task_spec
                     case {"name": task_name}:
                         logging.info("Building Task: %s", task_name)
-                        task_spec = DootTaskSpec.build(spec)
+                        task_spec = TaskSpec.build(spec)
                         if str(task_spec.name) in task_descriptions:
                             logging.warning("Overloading Task: %s : %s", str(task_spec.name), str(task_spec.ctor))
 

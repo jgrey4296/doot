@@ -45,9 +45,9 @@ from doot._abstract.protocols import ArtifactStruct_p, SpecStruct_p
 AbstractId                     : TypeAlias                   = "TaskName|TaskArtifact"
 ConcreteId                     : TypeAlias                   = "TaskName|TaskArtifact"
 AnyId                          : TypeAlis                    = "TaskName|TaskArtifact"
-AbstractSpec                   : TypeAlias                   = "DootTaskSpec"
-ConcreteSpec                   : TypeAlias                   = "DootTaskSpec"
-AnySpec                        : TypeAlias                   = "DootTaskSpec"
+AbstractSpec                   : TypeAlias                   = "TaskSpec"
+ConcreteSpec                   : TypeAlias                   = "TaskSpec"
+AnySpec                        : TypeAlias                   = "TaskSpec"
 Depth                          : TypeAlias                   = int
 PlanEntry                      : TypeAlias                   = tuple[Depth, ConcreteId, str]
 

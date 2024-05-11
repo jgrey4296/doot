@@ -33,7 +33,7 @@ import doot
 import doot.errors
 from doot._abstract import Job_i
 from doot.enums import LocationMeta
-from doot.structs import DootTaskSpec, ActionSpec, DootKey
+from doot.structs import TaskSpec, ActionSpec, DootKey
 from doot.task.base_task import DootTask
 
 # ##-- end 1st party imports
@@ -56,7 +56,7 @@ class CheckLocsTask(DootTask):
     def __init__(self, spec=None):
         locations = [doot.locs[f"{{{x}}}"] for x in doot.locs if not doot.locs.metacheck(x, LocationMeta.file)]
         actions   = [ActionSpec.build({"args": [x], "fun":self.checklocs }) for x in locations]
-        spec      = DootTaskSpec.build({
+        spec      = TaskSpec.build({
             "name"         : CheckLocsTask.task_name,
             "actions"      : actions,
             "print_levels" : print_levels,

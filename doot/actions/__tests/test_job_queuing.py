@@ -19,7 +19,7 @@ import doot
 doot._test_setup()
 from doot.actions.job_queuing import JobQueueAction, JobQueueHead, JobChainer
 import doot.errors
-from doot.structs import DootKey, ActionSpec, TaskName, DootTaskSpec
+from doot.structs import DootKey, ActionSpec, TaskName, TaskSpec
 
 class TestJobQueue:
 
@@ -40,19 +40,19 @@ class TestJobQueue:
         obj = JobQueueAction()
         result = obj(spec, state)
         assert(isinstance( result, list ))
-        assert(all(isinstance(x, DootTaskSpec) for x in result))
+        assert(all(isinstance(x, TaskSpec) for x in result))
 
     def test_from_multi_arg(self, spec, state):
         obj = JobQueueAction()
         result = obj(spec, state)
         assert(isinstance( result, list ))
-        assert(all(isinstance(x, DootTaskSpec) for x in result))
+        assert(all(isinstance(x, TaskSpec) for x in result))
 
     def test_args(self, spec, state):
         obj = JobQueueAction()
         result = obj(spec, state)
         assert(isinstance( result, list ))
-        assert(all(isinstance(x, DootTaskSpec) for x in result))
+        assert(all(isinstance(x, TaskSpec) for x in result))
 
 class TestJobQueueHead:
 

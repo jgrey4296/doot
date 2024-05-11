@@ -37,7 +37,7 @@ doot._test_setup()
 # ##-- 1st party imports
 import doot._abstract
 from doot.control.locations import DootLocations
-from doot.structs import DootTaskSpec
+from doot.structs import TaskSpec
 from doot.task.check_locs import CheckLocsTask
 
 # ##-- end 1st party imports

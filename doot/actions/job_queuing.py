@@ -42,7 +42,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot._abstract import Action_p
-from doot.structs import DootKey, DootTaskSpec, TaskName, CodeReference
+from doot.structs import DootKey, TaskSpec, TaskName, CodeReference
 
 class JobQueueAction(Action_p):
     """
@@ -53,14 +53,14 @@ class JobQueueAction(Action_p):
     """
 
     @DootKey.dec.args
-    @DootKey.dec.types("from_", hint={"type_":list|DootTaskSpec|None})
+    @DootKey.dec.types("from_", hint={"type_":list|TaskSpec|None})
     @DootKey.dec.redirects_many("from_multi_")
     @DootKey.dec.types("after", hint={"type_":list|TaskName|str|None, "on_fail":None})
     @DootKey.dec.taskname
     def __call__(self, spec, state, _args, _from, _from_multi, _after, _basename) -> list:
         # TODO maybe expand args
         subtasks                   = []
-        queue : list[DootTaskSpec] = []
+        queue : list[TaskSpec] = []
         _after                     = self._expand_afters(_after, _basename)
 
         if _args:
@@ -74,11 +74,11 @@ class JobQueueAction(Action_p):
 
         for sub in queue:
             match sub:
-                case DootTaskSpec():
+                case TaskSpec():
                     sub.depends_on += _after
                     subtasks.append(sub)
                 case x:
-                    raise doot.errors.DootActionError("Tried to queue a not DootTaskSpec", x)
+                    raise doot.errors.DootActionError("Tried to queue a not TaskSpec", x)
 
         return subtasks
 
@@ -107,7 +107,7 @@ class JobQueueAction(Action_p):
         root   = base.root()
         head   = base.job_head()
         for i,x in enumerate(args):
-            sub = DootTaskSpec.build(dict(
+            sub = TaskSpec.build(dict(
                 name=root.subtask(i),
                 sources=[TaskName.build(x)],
                 required_for=[head],
@@ -129,12 +129,12 @@ class JobQueueAction(Action_p):
                 as_keys += [DootKey.build(x) for x in xs]
 
         for key in as_keys:
-            match key.to_type(spec, state, type_=list|DootTaskSpec|None):
+            match key.to_type(spec, state, type_=list|TaskSpec|None):
                 case None:
                     pass
                 case list() as l:
                     result += l
-                case DootTaskSpec() as s:
+                case TaskSpec() as s:
                     result.append(s)
 
         return result
@@ -163,19 +163,19 @@ class JobQueueHead(Action_p):
 
         match base:
             case str() | TaskName():
-                head += [DootTaskSpec.build(dict(name=head_name,
+                head += [TaskSpec.build(dict(name=head_name,
                                                  actions=[],
                                                  queue_behaviour="auto")),
-                         DootTaskSpec.build(dict(name=root.job_head().subtask("1"),
+                         TaskSpec.build(dict(name=root.job_head().subtask("1"),
                                                  sources=[TaskName.build(base)],
                                                  depends_on=[head_name],
                                                  extra=inject or {},
                                                  queue_behaviour="auto"))
                     ]
             case list():
-                head += [DootTaskSpec.build(dict(name=head_name, actions=base, extra=inject or {}, queue_behaviour="auto"))]
+                head += [TaskSpec.build(dict(name=head_name, actions=base, extra=inject or {}, queue_behaviour="auto"))]
             case None:
-                head += [DootTaskSpec.build(dict(name=head_name, queue_behaviour="auto"))]
+                head += [TaskSpec.build(dict(name=head_name, queue_behaviour="auto"))]
 
         return head
 
@@ -197,6 +197,6 @@ class JobChainer(Action_p):
                     for x in l:
                         x.required_for += []
 
-                case DootTaskSpec() as s:
+                case TaskSpec() as s:
                     s.required_for += []
                     pass

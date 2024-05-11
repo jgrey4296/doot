@@ -50,7 +50,7 @@ from doot._abstract import FailPolicy_p, Job_i, Task_i, TaskRunner_i, TaskTracke
 from doot._structs.relation_spec import RelationSpec
 from doot.enums import TaskFlags, TaskQueueMeta, TaskStatus_e, LocationMeta, RelationMeta, EdgeType_e
 from doot.structs import (ActionSpec, CodeReference, TaskArtifact,
-                          TaskName, DootTaskSpec)
+                          TaskName, TaskSpec)
 from doot.task.base_task import DootTask
 
 # ##-- end 1st party imports
@@ -71,9 +71,9 @@ INITAL_SOURCE_CHAIN_COUNT      : Final[int]                  = 10
 AbstractId                     : TypeAlias                   = TaskName|TaskArtifact
 ConcreteId                     : TypeAlias                   = TaskName|TaskArtifact
 AnyId                          : TypeAlias                   = TaskName|TaskArtifact
-AbstractSpec                   : TypeAlias                   = DootTaskSpec
-ConcreteSpec                   : TypeAlias                   = DootTaskSpec
-AnySpec                        : TypeAlias                   = DootTaskSpec
+AbstractSpec                   : TypeAlias                   = TaskSpec
+ConcreteSpec                   : TypeAlias                   = TaskSpec
+AnySpec                        : TypeAlias                   = TaskSpec
 
 ActionElem                     : TypeAlias                   = ActionSpec|RelationSpec
 ActionGroup                    : TypeAlias                   = list[ActionElem]
@@ -130,24 +130,28 @@ class _TrackerStore:
         """
         assert(TaskFlags.CONCRETE not in name)
         spec                          = self.specs[name]
-        chain   : list[DootTaskSpec]  = []
-        current : None|DootTaskSpec   = spec
+        chain   : list[TaskSpec]  = []
+        current : None|TaskSpec   = spec
         count   : int = INITAL_SOURCE_CHAIN_COUNT
         while current is not None:
             if 0 > count:
-                raise doot.errors.DootTaskTrackingError("BUilding a source chain grew to large", name)
+                raise doot.errors.DootTaskTrackingError("Building a source chain grew to large", name)
             count -= 1
             match current: # Determine the base
-                case DootTaskSpec(name=name) if TaskFlags.JOB_HEAD in name:
+                case TaskSpec(name=name) if TaskFlags.JOB_HEAD in name:
                     # job heads are generated, so don't have a source chain
                     chain.append(current)
                     current = None
-                case DootTaskSpec(sources=[pl.Path()]|[]):
+                case TaskSpec(sources=[pl.Path()]|[]):
                     chain.append(current)
                     current = None
-                case DootTaskSpec(sources=[*xs, TaskName() as src]):
+                case TaskSpec(sources=[*xs, TaskName() as src]):
                     chain.append(current)
                     current = self.specs.get(src, None)
+                case TaskSpec(sources=[*xs, None]):
+                    # Stop the chain search
+                    chain.append(current)
+                    current = None
                 case _:
                     raise doot.errors.DootTaskTrackingError("Unknown spec customization attempt", spec, current, chain)
 
@@ -233,7 +237,7 @@ class _TrackerStore:
         match spec.instantiate_transformer(artifact):
             case None:
                 return None
-            case DootTaskSpec() as instance:
+            case TaskSpec() as instance:
                 assert(TaskFlags.CONCRETE | TaskFlags.TRANSFORMER in instance.flags)
                 assert(TaskFlags.CONCRETE | TaskFlags.TRANSFORMER in instance.name)
                 self.concrete[name].append(instance.name)
@@ -355,7 +359,7 @@ class _TrackerStore:
             match spec.job_top():
                 case None:
                     pass
-                case DootTaskSpec() as head:
+                case TaskSpec() as head:
                     self.register_spec(head)
                     logging.debug("Registered Head Spec: %s", head.name.readable)
             # If the spec is abstract, create an initial concrete version
@@ -766,7 +770,7 @@ class _TrackerQueue_boltons:
         match name:
             case str():
                 return self.queue_entry(TaskName.build(name), from_user=from_user)
-            case DootTaskSpec() as spec:
+            case TaskSpec() as spec:
                 self.register_spec(spec)
                 return self.queue_entry(spec.name, from_user=from_user, status=status)
             case Task_i() as task if task.name not in self.tasks:
