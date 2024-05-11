@@ -150,6 +150,8 @@ class Location(BaseModel, arbitrary_types_allowed=True):
         stem        = abs_stem or self.path.stem == path.stem
         return  suffix and stem
 
+    def __call__(self) -> pl.Path:
+        return self.to_path()
     @ftz.cached_property
     def abstracts(self) -> tuple[bool, bool, bool]:
         """ Return three bools,
@@ -168,9 +170,11 @@ class Location(BaseModel, arbitrary_types_allowed=True):
         return meta in self.meta
 
     def exists(self) -> bool:
-        expanded = doot.locs[self.path]
+        expanded = self.to_path()
         logging.debug("Testing for existence: %s", expanded)
         return expanded.exists()
-
     def keys(self) -> set[str]:
         return self._expansion_keys
+
+    def to_path(self):
+        return doot.locs[self.path]

@@ -138,6 +138,36 @@ class TestTaskSpecValidation:
         obj = structs.DootTaskSpec.build({"name":"simple::test", "print-levels": {}})
         assert("print_levels" in obj.model_fields_set)
 
+
+    def test_match_with_constraints_pass(self):
+        spec1 = structs.DootTaskSpec.build({"name":"simple::test"})
+        spec2 = structs.DootTaskSpec.build({"name":"simple::test"})
+        assert(spec1.match_with_constraints(spec2))
+
+
+    def test_match_with_constraints_instanced(self):
+        spec1 = structs.DootTaskSpec.build({"name":"simple::test"}).instantiate_onto(None)
+        spec2 = structs.DootTaskSpec.build({"name":"simple::test"})
+        assert(spec1.match_with_constraints(spec2))
+
+
+    def test_match_with_constraints_with_value(self):
+        spec1 = structs.DootTaskSpec.build({"name":"simple::test", "blah":5}).instantiate_onto(None)
+        spec2 = structs.DootTaskSpec.build({"name":"simple::test", "blah":5})
+        assert(spec1.match_with_constraints(spec2))
+
+
+    def test_match_with_constraints_with_value_fail(self):
+        spec1 = structs.DootTaskSpec.build({"name":"simple::test", "blah":10}).instantiate_onto(None)
+        spec2 = structs.DootTaskSpec.build({"name":"simple::test", "blah":5})
+        assert(not spec1.match_with_constraints(spec2))
+
+
+    def test_match_with_contraints_missing_value_from_control(self):
+        spec1 = structs.DootTaskSpec.build({"name":"simple::test", "blah":5}).instantiate_onto(None)
+        spec2 = structs.DootTaskSpec.build({"name":"simple::test", "blah":5, "bloo": 10})
+        assert(not spec1.match_with_constraints(spec2))
+
 class TestTaskSpecInstantiation:
 
     def test_instantiation(self):

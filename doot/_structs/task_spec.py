@@ -72,7 +72,7 @@ def _prepare_action_group(deps:list[str], handler:ValidatorFunctionWrapHandler, 
     if deps is None:
         return results
 
-    relation_type = RelationMeta.dependsOn if info.field_name not in DootTaskSpec._dependant_groups else RelationMeta.dependantOf
+    relation_type = RelationMeta.requirementFor if info.field_name in DootTaskSpec._dependant_groups else RelationMeta.dependencyOf
     for x in deps:
         match x:
             case DootActionSpec() | RelationSpec():
@@ -173,12 +173,12 @@ class _SpecUtils_m:
           """
         match relation:
             case None:
-                assert(control.name < self.name)
+                assert(control.name <= self.name)
                 constraints = control.extra.keys()
             case RelationSpec(constraints=None):
                 return True
             case RelationSpec(constraints=constraints):
-                assert(relation.target < self.name)
+                assert(relation.target <= self.name)
 
         extra         = self.extra
         control_extra = control.extra
@@ -293,7 +293,7 @@ class DootTaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra=
     _allowed_print_locs   : ClassVar[list[str]] = doot.constants.printer.PRINT_LOCATIONS
     _allowed_print_levels : ClassVar[list[str]] = ["INFO", "WARNING", "DEBUG", "EXCEPTION", "WARN"]
     _action_group_wipe    : ClassVar[dict]      = {"required_for": [], "setup": [], "actions": [], "depends_on": []}
-    # Action Groups that are dependant on, rather than are dependencies of, the task:
+    # Action Groups that are dependant on, rather than are dependencies of, this task:
     _dependant_groups    : ClassVar[list[str]]  = ["required_for", "cleanup", "on_fail"]
 
     @staticmethod

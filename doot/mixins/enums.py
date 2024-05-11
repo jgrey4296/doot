@@ -51,6 +51,10 @@ class EnumBuilder_m:
         except KeyError:
             logging.warning("Can't Create a flag of (%s):%s. Available: %s", cls, val, list(cls.__members__.keys()))
 
+    @classmethod
+    def get_default(cls) -> Self:
+        return cls.default
+
 class FlagsBuilder_m:
 
     @classmethod
