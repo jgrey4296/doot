@@ -188,14 +188,13 @@ class TaskQueueMeta(EnumBuilder_m, enum.Enum):
 
 class RelationMeta(enum.Enum):
     """
-      What types of task relation there can be,
-      in the form X {rel} Y,
-      + synonyms
+      What types+synonyms of task relation there can be,
+      in the form ? {rel} Y,
 
     """
     # Core:
     dependencyOf     = enum.auto()
-    dependantOf      = enum.auto()
+    requirementFor   = enum.auto()
 
     # dependency Aliases
     dependsOn        = dependencyOf
@@ -203,13 +202,13 @@ class RelationMeta(enum.Enum):
     pre              = dependencyOf
     dep              = dependencyOf
     # Dependant aliases
-    requirementFor   = dependantOf
-    resultsIn        = dependantOf
-    post             = dependantOf
-    req              = dependantOf
+    resultsIn        = requirementFor
+    post             = requirementFor
+    req              = requirementFor
 
-    # Default
     default          = dependencyOf
+    # to deprecate:
+    dependantOf      = requirementFor
 
 class EdgeTypes_e(EnumBuilder_m, enum.Enum):
     """ Enum describing the possible edges of the task tracker's task network """

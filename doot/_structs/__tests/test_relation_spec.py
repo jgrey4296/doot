@@ -100,7 +100,7 @@ class TestRelationSpec:
 
 
     def test_build_as_requirement(self):
-        obj = RelationSpec.build({"task": "agroup::atask"}, relation=RelationMeta.dependantOf)
+        obj = RelationSpec.build({"task": "agroup::atask"}, relation=RelationMeta.requirementFor)
         assert(isinstance(obj, RelationSpec))
         assert(isinstance(obj.target, DootTaskName))
         assert(obj.relation is RelationMeta.req)

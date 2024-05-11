@@ -57,14 +57,14 @@ class RelationSpec(BaseModel):
       with any associated metadata.
 
     in the sentence {X} {relation} {Y},
-      this encodes {Y} and {relation}.
+      this spec encodes {Y} and {relation}.
 
     {X} is the TaskSpec which holds this relation,
       and so is implicit.
 
-      eg: baking dependsOn   mixing
-          baking produces    cake
-          baking requiredFor party
+      eg: baking dependsOn      mixing. relation=dependsOn, target=mixing.
+          baking produces       cake.   r=produces, t=cake.
+          baking requirementFor party.  r=requirementFor, t=party.
 
     """
 
@@ -109,6 +109,8 @@ class RelationSpec(BaseModel):
                 raise ValueError("Unparsable target str")
 
 
+    def __str__(self):
+        return f"<? {self.relation.name}> {self.target}"
     def __contains__(self, query:TaskFlags|LocationMeta) -> bool:
         match self.target, query:
              case DootTaskName(), TaskFlags():
@@ -120,6 +122,7 @@ class RelationSpec(BaseModel):
         """ a helper to make an edge for the tracker.
           uses the current target, unless an instance is provided
           """
+        logging.info("Relation to edge: (rel:%s) (target:%s) (other:%s) (instance:%s)", self.relation, self.target, other, instance)
         match self.relation:
             case RelationMeta.dep:
                 return (instance or self.target, other)
