@@ -80,7 +80,7 @@ class PluginsCmd(BaseCommand):
             printer.info(fmt_str,
                          spec.name,
                          spec.ctor,
-                         spec.source)
+                         spec.sources)
 
     def _print_group_matches(self, plugins):
         max_key = len(max(plugins.keys(), key=len))

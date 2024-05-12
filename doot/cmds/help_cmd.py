@@ -63,7 +63,7 @@ class HelpCmd(BaseCommand):
                 cmd_targets  +=  [x for x in plugins.command if x.name == doot.args.cmd.args.target]
             case {"target": target}:
                 # Print help of just the specified target(s)
-                task_targets +=  [y for x,y in tasks.items() if target in x ]
+                task_targets +=  [y for x,y in tasks.items() if x in target]
                 cmd_targets  +=  [x for x in plugins.command if x.name == doot.args.cmd.args.target]
             case {"help": True}:
                 printer.info(self.help)
@@ -107,7 +107,7 @@ class HelpCmd(BaseCommand):
         lines.append("------------------------------")
         lines.append(f"ver    : {spec.version}")
         lines.append(f"Group  : {spec.name.group}")
-        lines.append(f"Source : {spec.source}")
+        lines.append(f"Source : {spec.sources}")
 
         if ctor is not None:
             lines.append(ctor.class_help())

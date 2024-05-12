@@ -22,7 +22,7 @@ Jobs takes pre-existing tasks and applies them to multiple targets
 Tasks perform a collection of actions on a particular target
 Actions apply a single step of that task to the target
 
-Jobs and Tasks fit into DootTaskSpec's
+Jobs and Tasks fit into TaskSpec's
 Actions are defined in toml as a list of:
 1) a list of arguments to the task's intrinsic actions, or
 2) a dict of { ctor = <str>, args = <list> }, or
