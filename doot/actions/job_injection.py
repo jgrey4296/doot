@@ -66,9 +66,9 @@ class JobInjector(Action_p):
         match onto:
             case list():
                 for x in onto:
-                    x.extra = TomlGuard(dict(**x.extra, **injection))
+                    x.model_extra.update(dict(**x.extra, **injection))
             case TaskSpec():
-                onto.extra = TomlGuard(dict(**x.extra, **injection))
+                onto.model_extra.update(dict(**x.extra, **injection))
 
     def build_injection(self, spec, state, inject, replacement=None, post:dict|None=None) -> None|TomlGuard:
         match inject:
@@ -150,11 +150,11 @@ class JobInjectPathParts(PathManip_m):
                 for x in _onto:
                     data = dict(x.extra)
                     data.update(self._calc_path_parts(x.extra[_key], root_paths))
-                    x.extra = TomlGuard(data)
+                    x.model_extra.update(data)
             case TaskSpec():
                 data = dict(x.extra)
                 data.update(self._calc_path_parts(onto.extra[_key], root_paths))
-                _onto.extra = TomlGuard(data)
+                _onto.model_extra.update(data)
 
 class JobInjectShadowAction(PathManip_m):
     """
@@ -170,10 +170,10 @@ class JobInjectShadowAction(PathManip_m):
             case list():
                 for x in _onto:
                     rel_path = self._shadow_path(x.extra[_key], _shadow)
-                    x.extra = TomlGuard(dict(**x.extra, **{"shadow_path": rel_path}))
+                    x.model_extra.update(dict(**x.extra, **{"shadow_path": rel_path}))
             case TaskSpec():
                 rel_path = self._shadow_path(onto.extra[_key], _shadow)
-                onto.extra = TomlGuard(dict(**onto.extra, **{"shadow_path": rel_path}))
+                onto.model_extra.update(dict(**onto.extra, **{"shadow_path": rel_path}))
 
 class JobSubNamer(Action_p):
     """
