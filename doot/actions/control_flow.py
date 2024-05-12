@@ -141,7 +141,7 @@ class RelativeCheck(PathManip_m, DootBaseAction):
 class LogAction(DootBaseAction):
 
     @DootKey.dec.types("level", hint={"type_":str, "on_fail":"INFO"})
-    @DootKey.dec.expands("msg")
+    @DootKey.dec.expands("msg", hint={"rec":True})
     def __call__(self, spec, state, level, msg):
         level        = logmod.getLevelName(level)
         printer.log(level, "%s", msg)
