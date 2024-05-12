@@ -45,6 +45,7 @@ from doot.enums import TaskFlags, ReportEnum
 
 PAD           : Final[int] = 15
 TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
+TailEntry     : TypeAlias  = str|int|UUID
 
 def aware_splitter(x, sep=".") -> list[str]:
     match x:
@@ -61,7 +62,7 @@ class StructuredName(BaseModel):
 
     """
     head             : list[str]              = []
-    tail             : list[str|int|UUID]     = []
+    tail             : list[TailEntry]        = []
 
     _separator       : ClassVar[str]          = doot.constants.patterns.TASK_SEP
     _subseparator    : ClassVar[str]          = "."
@@ -159,8 +160,8 @@ class StructuredName(BaseModel):
                 tail_matches = all(x==y for x,y in zip(self.tail, other.tail))
                 return head_matches and tail_matches
 
-    def tail_str(self):
+    def tail_str(self) -> str:
         return self._subseparator.join(str(x) for x in self.tail)
 
-    def head_str(self):
+    def head_str(self) -> str:
         return self._subseparator.join(str(x) for x in self.head)

@@ -423,7 +423,7 @@ class TestTrackerNetworkBuild:
 
     def test_build_with_head_dep(self):
         obj   = BaseTracker()
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["basic::dep.$head$"], "test_key": "bloo"})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["basic::dep..$head$"], "test_key": "bloo"})
         spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "flags": ["JOB"]})
         obj.register_spec(spec, spec2)
         instance = obj._instantiate_spec(spec.name)

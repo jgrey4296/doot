@@ -42,7 +42,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.enums import TaskFlags, ReportEnum
-from doot._structs.structured_name import StructuredName, aware_splitter
+from doot._structs.structured_name import StructuredName, aware_splitter, TailEntry
 
 class TaskName(StructuredName):
     """
@@ -88,9 +88,7 @@ class TaskName(StructuredName):
             case {"name": TaskName() as name}:
                 return name
             case {"name": str() as name} if cls._separator not in name:
-                logging.debug("Taskname has no group, setting default")
-                group = "default"
-                task  = name
+                raise ValueError("TaskName has no group", name)
             case {"name": str() as name}:
                 group , task = name.split(doot.constants.patterns.TASK_SEP)
             case { "group": str() as group, "name": str() as task}:
@@ -129,7 +127,9 @@ class TaskName(StructuredName):
             case _:
                 raise ValueError("Bad Task Tail Value", tail)
 
-        return tail
+        root_set = {TaskName._root_marker}
+        filtered = [x for x,y in zip(tail, itz.chain(tail[1:], [None])) if {x,y} != root_set ]
+        return filtered
 
     @model_validator(mode="after")
     def check_metdata(self) -> Self:
@@ -152,7 +152,8 @@ class TaskName(StructuredName):
         return self
     @model_validator(mode="after")
     def _process_roots(self) -> Self:
-        indices = [y for x,y in zip(self.tail[:-1], range(0, len(self.tail))) if x == TaskName._root_marker]
+        # filter out double root markers
+        indices = [i for i,x in enumerate(self.tail[:-1]) if x == TaskName._root_marker]
         if bool(indices):
             min_i, max_i = min(indices), max(indices)
             self._roots = (min_i, max_i)
@@ -208,25 +209,31 @@ class TaskName(StructuredName):
             case [-1, -1]:
                 return self
             case [x, _] if top:
-                return TaskName(head=self.head[:], tail=self.tail[:x] + [TaskName._root_marker])
+                return TaskName(head=self.head[:], tail=self.tail[:x])
             case [_, x]:
-                return TaskName(head=self.head[:], tail=self.tail[:x] + [TaskName._root_marker])
+                return TaskName(head=self.head[:], tail=self.tail[:x])
 
-    def add_root(self):
-        return self.subtask(TaskName._root_marker)
+    def add_root(self) -> TaskName:
+        """ Add a root marker if the last element isn't already a root marker """
+        match self.last():
+            case x if x == TaskName._root_marker:
+                return self
+            case _:
+                return self.subtask()
 
     def subtask(self, *subtasks, subgroups:list[str]|None=None, **kwargs) -> TaskName:
         """ generate an extended name, with more information
         eg: a.group::simple.task
-        ->  a.group::simple.task.targeting.something
+        ->  a.group::simple.task..targeting.something
 
         propagates args
+        adds a root marker to recover the original
         """
 
         args = self.args.copy() if self.args else {}
         if bool(kwargs):
             args.update(kwargs)
-        subs = []
+        subs = [TaskName._root_marker]
         subgroups = subgroups or []
         match [x for x in subtasks if x != None]:
             case [int() as i, TaskName() as x]:
@@ -237,18 +244,18 @@ class TaskName(StructuredName):
             case [int() as x]:
                 subs.append(str(x))
             case [*xs]:
-                subs = xs
+                subs += xs
 
         return TaskName(head=self.head + subgroups,
-                            tail=self.tail + subs,
-                            meta=self.meta,
-                            args=args,
-                            _root=self.root())
+                        tail=self.tail + subs,
+                        meta=self.meta,
+                        args=args,
+                        )
 
     def job_head(self) -> TaskName:
         """ generate a canonical head/completion task name for this name
-        eg: group::simple.task.$gen$.<UUID>
-        ->  group::simple.task.$gen$.<UUID>.$head$
+        eg: group::simple.task..$gen$.<UUID>
+        ->  group::simple.task..$gen$.<UUID>..$head$
 
         """
         if TaskFlags.JOB_HEAD in self.meta:
@@ -256,19 +263,21 @@ class TaskName(StructuredName):
 
         return self.subtask(TaskName._head_marker)
 
-    def instantiate(self, *, prefix=None):
+    def instantiate(self, *, prefix=None) -> TaskName:
         """ Generate a concrete instance of this name with a UUID appended,
         optionally can add a prefix
           # TODO possibly do $gen$.{prefix?}.<UUID>
 
-          ie: a.task.group::task.name.{prefix?}.$gen$.<UUID>
+          ie: a.task.group::task.name..{prefix?}.$gen$.<UUID>
         """
         uuid = uuid1()
         match prefix:
             case None:
-                return self.subtask(TaskName._root_marker, TaskName._gen_marker, uuid, uuid=uuid)
+                return self.subtask(TaskName._gen_marker, uuid, uuid=uuid)
             case _:
-                return self.subtask(TaskName._root_marker, prefix, TaskName._gen_marker, uuid, uuid=uuid)
+                return self.subtask(prefix, TaskName._gen_marker, uuid, uuid=uuid)
 
-    def last(self):
-        return self.tail[-1]
+    def last(self) -> None|TailEntry:
+        if bool(self.tail):
+            return self.tail[-1]
+        return None
