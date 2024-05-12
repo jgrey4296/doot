@@ -214,7 +214,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
                 case TaskArtifact():
                     logging.debug("Tracker Head: %s (Artifact). State: %s, Priority: %s", focus, self.get_status(focus), self._artifact_status[focus])
 
-            logging.debug("Tracker Active Set: %s", sorted(self.active_set, key=lambda x: self.specs[x].priority))
+            logging.debug("Tracker Active Set Size: %s", len(self.active_set))
 
             match status:
                 case TaskStatus_e.DEAD:

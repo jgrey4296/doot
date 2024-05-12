@@ -46,8 +46,9 @@ import doot._abstract as abstract
 from doot.control.runner import DootRunner
 from doot.utils.signal_handler import SignalHandler
 
-dry_run      = doot.args.on_fail(False).cmd.args.dry_run()
-SLEEP_LENGTH = doot.config.on_fail(0.2, int|float).settings.tasks.sleep.task()
+dry_run                     = doot.args.on_fail(False).cmd.args.dry_run()
+SLEEP_LENGTH                = doot.config.on_fail(0.2, int|float).settings.tasks.sleep.task()
+MAX_LOG_ACTIVE : Final[int] = 100
 
 @doot.check_protocol
 class DootStepRunner(DootRunner):
@@ -156,7 +157,10 @@ class DootStepRunner(DootRunner):
     def _do_quit(self, *args):
         printer.info("::- Quitting Doot")
         self.tracker.clear_queue()
-        printer.info("Tracker Queue: %s", self.tracker.active_set)
+        if len(self.tracker.active_set) < MAX_LOG_ACTIVE:
+            printer.info("Tracker Queue: %s", self.tracker.active_set)
+        else:
+            printer.info("Tracker Queue: %s", len(self.tracker_set))
         self._has_quit = True
         return False
 
