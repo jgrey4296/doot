@@ -15,6 +15,7 @@ import itertools as itz
 import logging as logmod
 import pathlib as pl
 import sys
+from collections import defaultdict
 from importlib.resources import files
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Mapping, Match,
@@ -152,6 +153,19 @@ def _update_import_path():
         if source.exists() and source.is_dir():
             logging.debug("Adding task code directory to Import Path: %s", source)
             sys.path.append(str(source))
+
+def _update_aliases(data:dict|TG.TomlGuard):
+    global aliases
+    if not bool(data):
+        return
+
+    base = defaultdict(dict)
+    base.update(dict(aliases._table()))
+    for key,eps in data.items():
+        update = {x.name:x.value for x in eps}
+        base[key].update(update)
+
+    aliases = TG.TomlGuard(base)
 
 def _test_setup():
     """

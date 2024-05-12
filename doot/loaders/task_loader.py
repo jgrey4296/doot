@@ -236,7 +236,7 @@ class DootTaskLoader(TaskLoader_p):
                 raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Class Name: '%s'. Source File: %s", task_name, task_alias, spec['sources'][0], err.args) from err
             except ValueError as err:
                 logging.debug(err)
-                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Module/Class Split failed on: '%s'. Source File: %s", task_name, task_alias, spec['sources'][0]) from err
+                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: '%s'. Source File: %s. Message:\n %s", task_name, task_alias, spec['sources'][0], str(err)) from err
             except TypeError as err:
                 logging.debug(err)
                 raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Type constructor: '%s'. Source File: %s", task_name, spec['ctor'], spec['sources'][0]) from err

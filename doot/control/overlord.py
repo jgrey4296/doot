@@ -132,6 +132,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
             self.plugin_loader    = self.loaders.get(plugin_loader_key, DootPluginLoader())
             self.plugin_loader.setup(extra_config)
             self.plugins : TomlGuard = self.plugin_loader.load()
+            doot._update_aliases(self.plugins)
         except doot.errors.DootPluginError as err:
             printer.warning("Plugins Not Loaded Due to Error: %s", err)
             self.plugins = tomlguard.TomlGuard()
