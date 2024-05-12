@@ -201,8 +201,8 @@ class DootFlexibleParser(ArgParser_i):
             return args
 
         while bool(args) and args[0] in self.registered_tasks:
-            task_name                 = TaskName.build(args.pop(0))
-            task                      = self.registered_tasks[str(task_name)]
+            task_name                 = args.pop(0)
+            task                      = self.registered_tasks[task_name]
             assert(isinstance(task, TaskSpec))
             spec_params               = [ParamSpec.build(x) for x in task.extra.on_fail([], list).cli()]
             ctor_params               = task.ctor.try_import().param_specs
@@ -221,8 +221,8 @@ class DootFlexibleParser(ArgParser_i):
                     case [] if args[0].startswith(PARAM_ASSIGN_PREFIX):
                         # No matches, its a free cli arg.
                         try:
-                            key, *values     = args[0].split("=")
-                            task_args[key.removeprefix("--")] = values
+                            key, value = args[0].split("=")
+                            task_args[key.removeprefix("--")] = value
                             args.pop(0)
                         except ValueError:
                             raise doot.errors.DootParseError("Arg failed to split into key=value", args[0])

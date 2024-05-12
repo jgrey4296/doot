@@ -248,27 +248,16 @@ class _TrackerStore:
         """ Takes a task spec, and inserts matching cli args into it if necessary """
         logging.debug("Applying CLI Args to: %s", spec.name)
         spec_extra : dict = dict(spec.extra.items() or [])
-        if 'cli' not in spec_extra:
-            # spec doesn't have any cli params
-            return spec
-        del spec_extra['cli']
+        if 'cli' in spec_extra:
+            del spec_extra['cli']
 
+        # Apply any cli defined args
         for cli in spec.extra.on_fail([]).cli():
             if cli.name not in spec_extra:
                 spec_extra[cli.name] = cli.default
 
-        match spec.sources:
-            case []:
-                source = spec.name
-            case [pl.Path()]:
-                source = spec.name
-            case [*xs, TaskName() as x]:
-                source = x
-
-        if source not in doot.args.on_fail({}).tasks():
-            return spec.specialize_from(spec_extra)
-
-        for key,val in doot.args.tasks[str(source)].items():
+        source = str(spec.name.root())
+        for key,val in doot.args.on_fail({}).tasks[source]().items():
             spec_extra[key] = val
 
         cli_spec = spec.specialize_from(spec_extra)
@@ -775,7 +764,7 @@ class _TrackerQueue_boltons:
                 return self.queue_entry(spec.name, from_user=from_user, status=status)
             case Task_i() as task if task.name not in self.tasks:
                 self.register_spec(task.spec)
-                instance = self._instantiate_spec(task.name)
+                instance = self._instantiate_spec(task.name, add_cli=from_user)
                 # update the task with its concrete spec
                 task.spec = self.specs[instance]
                 self.connect(instance, None if from_user else False)
@@ -799,7 +788,7 @@ class _TrackerQueue_boltons:
                 self.connect(instance, None if from_user else False)
                 prepped_name = instance
             case TaskName() if name in self.specs:
-                instance : TaskName = self._instantiate_spec(name)
+                instance : TaskName = self._instantiate_spec(name, add_cli=from_user)
                 self.connect(instance, None if from_user else False)
                 prepped_name = instance
             case _:
