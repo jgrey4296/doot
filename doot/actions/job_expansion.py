@@ -78,7 +78,7 @@ class JobExpandAction(JobInjector):
         build_queue     = []
         root            = _basename.root()
         base_head       = _basename.job_head()
-        actions, base   = self._prep_base(template)
+        actions, sources = self._prep_base(template)
         match _from:
             case int():
                 build_queue += range(_from)
@@ -93,7 +93,7 @@ class JobExpandAction(JobInjector):
         for i, arg in enumerate(build_queue):
                 # TODO change job subtask naming scheme
                 base_dict = dict(name=root.subtask(prefix, i),
-                                 sources=[base, None],
+                                 sources=sources,
                                  actions = actions or [],
                                  required_for=[base_head],
                                  print_levels=_printL or {},
@@ -119,20 +119,22 @@ class JobExpandAction(JobInjector):
         """
         match base:
             case list():
-                actions = base
-                base    = None
+                assert(all(isisntance(x, dict) for x in base))
+                actions  = base
+                sources  = [None]
             case TaskName():
                 actions = []
+                sources = [base]
             case str():
                 actions = []
-                base    = TaskName.build(base)
+                sources = [TaskName.build(base)]
             case None:
                 actions = []
-                base    = None
+                sources = [None]
             case _:
                 raise doot.errors.DootActionError("Unrecognized base type", base)
 
-        return actions, base
+        return actions, sources
 
 class JobMatchAction(DootBaseAction):
     """
