@@ -43,6 +43,6 @@ from doot._structs.param_spec import ParamSpec
 class ParamSpecMaker_m:
 
     @staticmethod
-    def build_param(*args:Any, **kwargs:Any) -> ParamSpec:
+    def build_param(**kwargs:Any) -> ParamSpec:
         """ Utility method for easily making paramspecs """
-        return ParamSpec(*args, **kwargs)
+        return ParamSpec(**kwargs)
