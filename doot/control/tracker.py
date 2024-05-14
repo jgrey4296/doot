@@ -219,6 +219,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
             match status:
                 case TaskStatus_e.DEAD:
                     logging.warning("Task is Dead: %s", focus)
+                    del self.tasks[focus]
                 case TaskStatus_e.DISABLED:
                     logging.info("Task Disabled: %s", focus)
                 case TaskStatus_e.TEARDOWN:
