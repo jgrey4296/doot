@@ -31,7 +31,7 @@ eg:
 [settings.general]
 notify                   = { say-on-exit = false }
 loaders                  = { commands="default", task="default", parser="default"}
-location_check           = { make_missing = true, print_levels={action="WARNING", execute="WARNING" } }
+location_check           = { make_missing = true }
 
 [settings.tasks]
 sources = [".tasks"] # Files or directories where task specs can be loaded from, expanded according to [[locations]] keys

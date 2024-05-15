@@ -40,11 +40,10 @@ from doot.task.base_task import DootTask
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = logmod.getLogger("doot._printer")
+printer = logmod.getLogger("doot._printer.checkloc")
 ##-- end logging
 
 make_missing = doot.config.on_fail(False).settings.general.location_check.make_missing()
-print_levels = doot.config.on_fail(TomlGuard(), TomlGuard).settings.general.location_check.print_levels(TomlGuard)
 
 @doot.check_protocol
 class CheckLocsTask(DootTask):
@@ -59,7 +58,6 @@ class CheckLocsTask(DootTask):
         spec      = TaskSpec.build({
             "name"         : CheckLocsTask.task_name,
             "actions"      : actions,
-            "print_levels" : print_levels,
             "priority"     : 100,
                                            })
         super().__init__(spec)

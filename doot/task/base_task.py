@@ -173,9 +173,6 @@ class DootTask(_TaskProperties_m, Task_i):
         stub['required_for'].priority   = -90
         stub['depends_on'].priority     = -100
 
-        stub['print_levels'].type_       = f"Dict: {PRINT_LOCATIONS}"
-        stub['print_levels'].default    = {"head":"INFO","build":"INFO","sleep":"INFO","action":"INFO", "execute":"INFO"}
-
         stub['priority'].default        = 10
         stub['queue_behaviour'].default = "default"
         stub['queue_behaviour'].comment = " | ".join({x.name for x in TaskQueueMeta})

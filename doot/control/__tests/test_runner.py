@@ -100,7 +100,6 @@ class TestRunner:
         task                    = mocker.MagicMock(spec=Task_i, state={})
         task.name = name
         task.spec               = TaskSpec.build({"name": name})
-        task.spec.print_levels = mocker.Mock()
         task.spec.sleep = 0.0
         task.spec.actions = [
             ActionSpec.build({"do":None, "fun": lambda *xs: None})
@@ -111,7 +110,6 @@ class TestRunner:
         task                    = mocker.MagicMock(spec=Job_i, state={})
         task.name = name
         task.spec               = TaskSpec.build({"name": name})
-        task.spec.print_levels = mocker.Mock()
         task.spec.sleep = 0.1
         return task
 

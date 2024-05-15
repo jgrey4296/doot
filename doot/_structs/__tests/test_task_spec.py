@@ -117,14 +117,6 @@ class TestTaskSpec:
 
 class TestTaskSpecValidation:
 
-    def test_print_level_fail_on_loc(self):
-        with pytest.raises(ValueError):
-            structs.TaskSpec.build({"name":"simple::test", "print_levels":{"blah":"INFO"}})
-
-    def test_print_level_fail_on_level(self):
-        with pytest.raises(ValueError):
-            structs.TaskSpec.build({"name":"simple::test", "print_levels":{"head":"blah"}})
-
     def test_flag_build(self):
         obj = structs.TaskSpec.build({"name":"simple::test"})
         assert(obj.flags == TaskFlags.default)
@@ -135,33 +127,28 @@ class TestTaskSpecValidation:
         assert(obj.flags == TaskFlags.default | TaskFlags.JOB)
 
     def test_toml_key_modification(self):
-        obj = structs.TaskSpec.build({"name":"simple::test", "print-levels": {}})
-        assert("print_levels" in obj.model_fields_set)
-
+        obj = structs.TaskSpec.build({"name":"simple::test", "blah": {}})
+        assert("blah" in obj.model_fields_set)
 
     def test_match_with_constraints_pass(self):
         spec1 = structs.TaskSpec.build({"name":"simple::test"})
         spec2 = structs.TaskSpec.build({"name":"simple::test"})
         assert(spec1.match_with_constraints(spec2))
 
-
     def test_match_with_constraints_instanced(self):
         spec1 = structs.TaskSpec.build({"name":"simple::test"}).instantiate_onto(None)
         spec2 = structs.TaskSpec.build({"name":"simple::test"})
         assert(spec1.match_with_constraints(spec2))
-
 
     def test_match_with_constraints_with_value(self):
         spec1 = structs.TaskSpec.build({"name":"simple::test", "blah":5}).instantiate_onto(None)
         spec2 = structs.TaskSpec.build({"name":"simple::test", "blah":5})
         assert(spec1.match_with_constraints(spec2))
 
-
     def test_match_with_constraints_with_value_fail(self):
         spec1 = structs.TaskSpec.build({"name":"simple::test", "blah":10}).instantiate_onto(None)
         spec2 = structs.TaskSpec.build({"name":"simple::test", "blah":5})
         assert(not spec1.match_with_constraints(spec2))
-
 
     def test_match_with_contraints_missing_value_from_control(self):
         spec1 = structs.TaskSpec.build({"name":"simple::test", "blah":5}).instantiate_onto(None)
@@ -224,16 +211,6 @@ class TestTaskSpecInstantiation:
         assert(instance is not base_task)
         assert(instance is not override_task)
         assert(bool(instance.actions))
-        assert(instance.flags == instance.name.meta)
-
-    def test_specialize_override_print_levels(self):
-        base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "print_levels": {"head":"DEBUG"}})
-        override_task = structs.TaskSpec.build({"name": "agroup::atask", "b": 2, "print_levels": {"head":"WARNING"}, "sources":"agroup::base"})
-
-        instance = base_task.specialize_from(override_task)
-        assert(instance is not base_task)
-        assert(instance is not override_task)
-        assert(instance.print_levels.head == "WARNING")
         assert(instance.flags == instance.name.meta)
 
     def test_specialize_source_as_taskname(self):

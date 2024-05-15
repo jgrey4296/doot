@@ -87,7 +87,6 @@ def mock_task_spec(name="agroup::mockSpec", pre=None, post=None, action_count=1,
                        required_for=post or [],
                        setup=[],
                        cleanup=[],
-                       print_levels=tomlguard.TomlGuard({}),
                        )
     spec_m.name = structs.TaskName.build(name)
     return spec_m

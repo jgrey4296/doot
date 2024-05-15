@@ -156,7 +156,6 @@ class _SpecUtils_m:
             "name"            : self.name.job_head(),
             "sources"         : self.sources[:] + [self.name, None],
             "actions"         : self.cleanup,
-            "print_levels"    : self.print_levels,
             "extra"           : self.extra,
             "queue_behaviour" : TaskQueueMeta.reactive,
             "depends_on"      : [self.name],
@@ -285,13 +284,11 @@ class TaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra="all
     priority                     : int                                                                     = 10
     ctor                         : CodeReference                                                       = Field(default=None, validate_default=True)
     queue_behaviour              : TaskQueueMeta                                                           = TaskQueueMeta.default
-    print_levels                 : TomlGuard                                                               = Field(default_factory=TomlGuard)
     flags                        : TaskFlags                                                               = TaskFlags.default
     _transform                   : None|Literal[False]|tuple[RelationSpec, RelationSpec]                            = None
     # task specific extras to use in state
     _default_ctor         : ClassVar[str]       = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
     _allowed_print_locs   : ClassVar[list[str]] = doot.constants.printer.PRINT_LOCATIONS
-    _allowed_print_levels : ClassVar[list[str]] = ["INFO", "WARNING", "DEBUG", "EXCEPTION", "WARN"]
     _action_group_wipe    : ClassVar[dict]      = {"required_for": [], "setup": [], "actions": [], "depends_on": []}
     # Action Groups that are dependant on, rather than are dependencies of, this task:
     _dependant_groups    : ClassVar[list[str]]  = ["required_for", "cleanup", "on_fail"]
@@ -375,22 +372,6 @@ class TaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra="all
                 return CodeReference.build(val)
             case _:
                 return CodeReference.build(val)
-
-    @field_validator("print_levels", mode="before")
-    def _validate_print_levels(cls, val):
-        match val:
-            case dict() | TomlGuard() if any(x not in TaskSpec._allowed_print_locs for x in val.keys()):
-                raise ValueError("Print targets must be those declared in doot.constants.printer.PRINT_LOCATIONS", val.keys(), TaskSpec._allowed_print_locs)
-            case dict() | TomlGuard() if any(x not in TaskSpec._allowed_print_levels for x in val.values()):
-                raise ValueError("Print levels must be standard logging levels", val.values(), TaskSpec._allowed_print_levels)
-            case dict():
-                return TomlGuard(val)
-            case TomlGuard():
-                return val
-            case None:
-                return TomlGuard({})
-            case _:
-                raise TypeError("print_levels must be a dict or TomlGuard", val)
 
     @field_validator("queue_behaviour", mode="before")
     def _validate_queue_behaviour(cls, val):

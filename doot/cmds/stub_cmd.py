@@ -90,8 +90,6 @@ class StubCmd(BaseCommand):
                 self._stub_cli_arg()
             case {"Flags": True}:
                 self._list_flags()
-            case {"printer": True}:
-                self._stub_printer_settings()
             case _:
                 self._stub_task_toml(tasks, plugins)
 
@@ -224,8 +222,6 @@ class StubCmd(BaseCommand):
 
         printer.info("{ %s }", "".join(stub))
 
-    def _stub_printer_settings(self):
-        printer.info("print_levels = { %s }", ", ".join(f'{x}="INFO"' for x in PRINT_LOCATIONS))
 
     def _list_flags(self):
         printer.info("Task Flags: ")

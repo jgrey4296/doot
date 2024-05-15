@@ -1,34 +1,46 @@
 ## base_action.py -*- mode: python -*-
-##-- imports
+# Imports:
 from __future__ import annotations
 
-# import abc
+# ##-- stdlib imports
 import datetime
-# import enum
+import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
 import pathlib as pl
 import re
+import sys
 import time
 import types
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
-##-- end imports
-
-printer = logmod.getLogger("doot._printer")
-
 from time import sleep
-import sys
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
+from uuid import UUID, uuid1
+
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
 import sh
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
 import doot
-from doot.structs import DootKey
-from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
+from doot.errors import DootTaskError, DootTaskFailed
+from doot.structs import DootKey
+
+# ##-- end 1st party imports
+
+##-- logging
+printer = logmod.getLogger("doot._printer")
+cmd_l   = printer.getChild("cmd")
+fail_l  = printer.getChild("fail")
+##-- end logging
 
 class SpeakTimeAction(Action_p):
     """
@@ -57,10 +69,10 @@ class SpeakTimeAction(Action_p):
                 case _:
                     return False
         except sh.CommandNotFound as err:
-            printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], args)
+            fail_l.error("Shell Commmand '%s' Not Action: %s", err.args[0], args)
             return False
         except sh.ErrorReturnCode:
-            printer.error("Shell Command '%s' exited with code: %s for args: %s", args[0], result.exit_code, args)
+            fail_l.error("Shell Command '%s' exited with code: %s for args: %s", args[0], result.exit_code, args)
             return False
 
 

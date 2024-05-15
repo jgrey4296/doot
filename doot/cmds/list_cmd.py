@@ -3,10 +3,10 @@
 """
 
 """
-##-- imports
+# Imports:
 from __future__ import annotations
 
-import types
+# ##-- stdlib imports
 import abc
 import datetime
 import enum
@@ -16,30 +16,40 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
+import types
+from collections import defaultdict
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 from weakref import ref
 
-##-- end imports
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
+from tomlguard import TomlGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+from doot.cmds.base_cmd import BaseCommand
+from doot.enums import TaskFlags
+from doot.structs import ParamSpec
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-##-- end logging
-
 printer = logmod.getLogger("doot._printer")
-
-from collections import defaultdict
-from tomlguard import TomlGuard
-import doot
-import doot.errors
-from doot.enums import TaskFlags
-from doot.cmds.base_cmd import BaseCommand
-from doot.structs import ParamSpec
+help_l  = printer.getChild("help")
+cmd_l   = printer.getChild("cmd")
+##-- end logging
 
 INDENT : Final[str] = " "*8
 
@@ -72,7 +82,7 @@ class ListCmd(BaseCommand):
             raise doot.errors.DootCommandError("ListCmd Needs a Matcher, or all")
 
         if not bool(tasks):
-            printer.info("No Tasks Defined", extra={"colour": "red"})
+            help_l.info("No Tasks Defined", extra={"colour": "red"})
             return
 
         match dict(doot.args.cmd.args): # type: ignore
@@ -96,7 +106,7 @@ class ListCmd(BaseCommand):
         fmt_str = f"%-{max_key}s :: %-25s <%s>"
         pattern = doot.args.cmd.args.pattern.lower()
         matches = {x for x in tasks.keys() if pattern in x.lower()}
-        printer.info("Tasks for Pattern: %s", pattern)
+        cmd_l.info("Tasks for Pattern: %s", pattern)
         for key in matches:
             spec = tasks[key]
             if TaskFlags.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
@@ -104,8 +114,7 @@ class ListCmd(BaseCommand):
             if TaskFlags.DISABLED in spec.flags:
                 continue
 
-
-            printer.info(fmt_str,
+            cmd_l.info(fmt_str,
                          spec.name,
                          spec.ctor,
                          spec.sources)
@@ -128,14 +137,14 @@ class ListCmd(BaseCommand):
                                             spec.ctor.__name__,
                                             spec.sources))
 
-        printer.info("Tasks for Matching Groups: %s", pattern, extra={"colour":"cyan"})
+        cmd_l.info("Tasks for Matching Groups: %s", pattern, extra={"colour":"cyan"})
         for group, tasks in groups.items():
-            printer.info("*   %s::", group)
+            cmd_l.info("*   %s::", group)
             for task in tasks:
                 printer.info(fmt_str, *task)
 
     def _print_all_by_group(self, tasks):
-        printer.info("Defined Task Generators by Group:", extra={"colour":"cyan"})
+        cmd_l.info("Defined Task Generators by Group:", extra={"colour":"cyan"})
         max_key = len(max(tasks.keys(), key=len))
         fmt_str = f"{INDENT}%-{max_key}s :: %-60s :: <Source: %s>"
         groups  = defaultdict(list)
@@ -151,15 +160,15 @@ class ListCmd(BaseCommand):
                                             spec.sources))
 
         for group, tasks in groups.items():
-            printer.info("*   %s::", group, extra={"colour":"magenta"})
+            cmd_l.info("*   %s::", group, extra={"colour":"magenta"})
             for task in tasks:
                 printer.info(fmt_str, *task)
 
-        printer.info("")
-        printer.info("Full Task Name: {group}::{task}", extra={"colour":"cyan"})
+        cmd_l.info("")
+        cmd_l.info("Full Task Name: {group}::{task}", extra={"colour":"cyan"})
 
     def _print_all_by_source(self, tasks):
-        printer.info("Defined Task Generators by Source File:", extra={"colour":"cyan"})
+        cmd_l.info("Defined Task Generators by Source File:", extra={"colour":"cyan"})
         max_key = len(max(tasks.keys(), key=len))
         fmt_str = f"{INDENT}%-{max_key}s :: %s.%-25s"
         sources = defaultdict(list)
@@ -175,19 +184,19 @@ class ListCmd(BaseCommand):
                                         ))
 
         for source, tasks in sources.items():
-            printer.info(":: %s ::", source, extra={"colour":"red"})
+            cmd_l.info(":: %s ::", source, extra={"colour":"red"})
             for task in tasks:
                 printer.info(fmt_str, *task)
 
     def _print_just_groups(self, tasks):
-        printer.info("Defined Task Groups:", extra={"colour":"cyan"})
+        cmd_l.info("Defined Task Groups:", extra={"colour":"cyan"})
 
         group_set = set(spec.name.group for spec in tasks.values())
         for group in group_set:
             printer.info("- %s", group)
 
     def _print_locations(self):
-        printer.info("Defined Locations: ")
+        cmd_l.info("Defined Locations: ")
 
         for x in sorted(doot.locs):
             printer.info("-- %-25s : %s", x, doot.locs.get(x))

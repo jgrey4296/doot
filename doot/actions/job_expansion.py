@@ -63,11 +63,11 @@ class JobExpandAction(JobInjector):
       'inject' provides an injection dict, with $arg$ being the entry from the source list
     """
 
-    @DootKey.dec.types("from", "inject", "template", "print_levels")
+    @DootKey.dec.types("from", "inject", "template")
     @DootKey.dec.expands("prefix")
     @DootKey.dec.redirects("update_")
     @DootKey.dec.taskname
-    def __call__(self, spec, state, _from, inject, template, _printL, prefix, _update, _basename):
+    def __call__(self, spec, state, _from, inject, template, prefix, _update, _basename):
         match prefix:
             case "{prefix}":
                 prefix = "{Anon}"
@@ -96,7 +96,6 @@ class JobExpandAction(JobInjector):
                                  sources=sources,
                                  actions = actions or [],
                                  required_for=[base_head],
-                                 print_levels=_printL or {},
                                  )
                 match self.build_injection(spec, state, inject, replacement=arg):
                     case None:
