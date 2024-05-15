@@ -252,7 +252,9 @@ class ExecutableTask(Protocol):
 
     def force_status(self, status:TaskStatus_e):
         pass
+
     def current_priority(self) -> int:
         pass
+
     def decrement_priority(self):
         pass

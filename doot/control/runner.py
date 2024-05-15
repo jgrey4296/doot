@@ -218,7 +218,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
                     for spec in xs:
                         self.tracker.queue_entry(spec)
                     self.tracker.build_network()
-                    queue_l.info("Action Group %s Queued %s Subtasks for %s", group, len(xs), task.shortname)
+                    queue_l.info("Queued %s Subtasks for %s", len(xs), task.shortname)
 
         return executed_count, group_result
 

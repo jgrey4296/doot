@@ -59,7 +59,7 @@ class CheckLocsTask(DootTask):
             "name"         : CheckLocsTask.task_name,
             "actions"      : actions,
             "priority"     : 100,
-                                           })
+        })
         super().__init__(spec)
 
     @DootKey.dec.args
