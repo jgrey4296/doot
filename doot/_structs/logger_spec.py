@@ -102,7 +102,7 @@ class LoggerSpec(BaseModel):
                     nested.append(LoggerSpec.build(x, name=name))
                 return LoggerSpec(name=name, nested=nested)
             case TomlGuard():
-                as_dict = data._table()
+                as_dict = data._table().copy()
                 if name:
                     as_dict['name'] = name
                 return LoggerSpec.model_validate(data)
@@ -121,11 +121,15 @@ class LoggerSpec(BaseModel):
 
     @field_validator("target")
     def _validate_target(cls, val):
-        if val in ["file", "stdout", "stderr"]:
-            return val
-        if isinstance(val, pl.Path):
-            return val
-        raise ValueError("Unknown target value for LoggerSpec", self.target)
+        match val:
+            case str() if val in ["file", "stdout", "stderr"]:
+                return val
+            case pl.Path():
+                return val
+            case None:
+                return "stdout"
+            case _:
+                raise ValueError("Unknown target value for LoggerSpec", self.target)
 
     @ftz.cached_property
     def fullname(self) -> str:
@@ -151,6 +155,10 @@ class LoggerSpec(BaseModel):
             filter = _AnyFilter(allow=self.allow, reject=self.filter)
 
         match self.target:
+            case _ if bool(self.nested):
+                for subspec in self.nested:
+                    subspec.apply()
+                return
             case "file":
                 handler   = self._build_filehandler()
                 formatter = DootColourStripFormatter(fmt=self.format)
@@ -168,10 +176,6 @@ class LoggerSpec(BaseModel):
                 assert(self.colour)
                 handler = self._build_errorhandler()
                 formatter = DootColourStripFormatter(fmt=self.format)
-            case _ if bool(self.nested):
-                for subspec in self.nested:
-                    subspec.apply()
-                return
             case None:
                 handler   = self._build_streamhandler()
                 formatter = DootColourStripFormatter(fmt=self.format)
