@@ -15,6 +15,7 @@ import re
 import sys
 import time
 import types
+import os
 from importlib.metadata import EntryPoint
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Mapping, Match,
@@ -55,6 +56,7 @@ help_l     = printer.getChild("help")
 shutdown_l = printer.getChild("shutdown")
 ##-- end logging
 
+env = os.environ
 plugin_loader_key  : Final[str]   = doot.constants.entrypoints.DEFAULT_PLUGIN_LOADER_KEY
 command_loader_key : Final[str]   = doot.constants.entrypoints.DEFAULT_COMMAND_LOADER_KEY
 task_loader_key    : Final[str]   = doot.constants.entrypoints.DEFAULT_TASK_LOADER_KEY
@@ -250,6 +252,8 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
 
     def _announce_exit(self, message:str):
         match sys.platform:
+            case _ if "PRE_COMMIT" in env:
+                return
             case "linux":
                 sh.espeak(message)
             case "darwin":
@@ -276,7 +280,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
             case None if say_on_exit:
                 shutdown_l.info("Doot Shutting Down Normally")
                 self._record_defaulted_config_values()
-                self._announce_exit()
+                self._announce_exit("Doot Finished")
             case None:
                 shutdown_l.info("Doot Shutting Down Normally")
                 self._record_defaulted_config_values()
