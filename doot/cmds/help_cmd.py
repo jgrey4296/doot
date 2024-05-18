@@ -78,7 +78,7 @@ class HelpCmd(BaseCommand):
         if len(cmd_targets) == 1:
             cmd_class = cmd_targets[0].load()()
             printer.info(cmd_class.help)
-            if bool(doot.args.cmd[NON_DEFAULT_KEY]):
+            if bool(doot.args.cmd.args[NON_DEFAULT_KEY]):
                 self._print_current_param_assignments(cmd_class.param_specs, doot.args.cmd.args)
 
         elif bool(task_targets):
@@ -151,7 +151,6 @@ class HelpCmd(BaseCommand):
             self._print_current_param_assignments(ctor.param_specs, doot.args.tasks[task_name])
 
     def _print_current_param_assignments(self, specs:list[ParamSpec], args:TomlGuard):
-
         printer.info("")
         printer.info("%s Current Param Assignments:", GROUP_INDENT)
 

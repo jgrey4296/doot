@@ -79,7 +79,6 @@ class DootFlexibleParser(ArgParser_i):
         self.head_args                          = None
         self.cmd_name                           = None
         self.cmd_args                           = {}
-        self.non_default_cmd_args               = []
         self.tasks_args                         = []
         self.extras                             = {}
         self.force_help                         = False
@@ -127,7 +126,7 @@ class DootFlexibleParser(ArgParser_i):
         # TODO ensure duplicated tasks have different args
         data = {
             "head"   : {"name": self.head_call, "args": self.head_args },
-            "cmd"    : {"name" : self.cmd_name, "args" : self.cmd_args, NON_DEFAULT_KEY: self.non_default_cmd_args },
+            "cmd"    : {"name" : self.cmd_name, "args" : self.cmd_args },
             "tasks"  : { name : args for name,args in self.tasks_args  },
             "extras" : self.extras
             }
@@ -177,10 +176,10 @@ class DootFlexibleParser(ArgParser_i):
                     x.maybe_consume(args, self.cmd_args)
                 case [*xs] if all(y.positional for y in xs):
                     self._consume_next_positional(args, self.cmd_args, xs)
-                case [*xs] if len(y for y in xs if not y.positional):
+                case [*xs] if len(list(y for y in xs if not y.positional)):
                     raise doot.errors.DootParseError("Multiple possible cmd args", head, args[0])
 
-        self.non_default_cmd_args = self._calc_non_default(self._build_defaults_dict(current_specs), self.cmd_args)
+        self.cmd_args[NON_DEFAULT_KEY] = self._calc_non_default(self._build_defaults_dict(current_specs), self.cmd_args)
         return args
 
     def process_task(self, args) -> list[str]:

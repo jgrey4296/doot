@@ -64,13 +64,11 @@ announce_voice     : Final[str]   = doot.constants.misc.ANNOUNCE_VOICE
 DEFAULT_CLI_CMD    : Final[str]   = doot.constants.misc.DEFAULT_CLI_CMD
 HEADER_MSG         : Final[str]   = doot.constants.printer.doot_header
 
-
 preferred_cmd_loader              = doot.config.on_fail("default").settings.general.loaders.command()
 preferred_task_loader             = doot.config.on_fail("default").settings.general.loaders.task()
 preferred_parser                  = doot.config.on_fail("default").settings.general.loaders.parser()
 
 defaulted_file                    = doot.config.on_fail(pl.Path("{logs}.doot_defaults.toml"), pl.Path).report.defaulted_file(pl.Path)
-
 
 @doot.check_protocol
 class DootOverlord(ParamSpecMaker_m, Overlord_p):
@@ -108,6 +106,30 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         self._load_tasks(extra_config)
         self._parse_args()
         setup_l.debug("Core Overlord Initialisation complete")
+
+    def __call__(self, cmd=None) -> int:
+
+        if not doot.args.on_fail((None,)).cmd.args.suppress_header():
+            header_l.info(HEADER_MSG, extra={"colour": "green"})
+
+        if doot.args.on_fail(False).head.args.debug():
+            breakpoint()
+            pass
+
+        # perform head args
+        if self._cli_arg_response():
+            return
+
+        # Do the cmd
+        setup_l.debug("Overlord Calling: %s", cmd or doot.args.on_fail("Unknown").cmd.name())
+        try:
+            cmd = self._get_cmd(cmd)
+            cmd(self.tasks, self.plugins)
+        except doot.errors.DootError as err:
+            self._errored = err
+            raise err
+        else:
+            return 0
 
     @property
     def param_specs(self) -> list[ParamSpec]:
@@ -226,69 +248,35 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
 
         return self.current_cmd
 
-    def __call__(self, cmd=None) -> int:
+    def _announce_exit(self, message:str):
+        match sys.platform:
+            case "linux":
+                sh.espeak(message)
+            case "darwin":
+                sh.say("-v", "Moira", "-r", "50", message)
 
-        if not doot.args.on_fail((None,)).cmd.args.suppress_header():
-            header_l.info(HEADER_MSG, extra={"colour": "green"})
-
-        if doot.args.on_fail(False).head.args.debug():
-            breakpoint()
-            pass
-
-        # perform head args
-        if self._cli_arg_response():
-            return
-
-        # Do the cmd
-        setup_l.debug("Overlord Calling: %s", cmd or doot.args.on_fail("Unknown").cmd.name())
-        try:
-            cmd = self._get_cmd(cmd)
-            cmd(self.tasks, self.plugins)
-        except doot.errors.DootError as err:
-            self._errored = err
-            raise err
-        else:
-            return 0
+    def _record_defaulted_config_values(self):
+        defaulted_toml = tomlguard.TomlGuard.report_defaulted()
+        expanded_path = doot.locs[defaulted_file]
+        with open(expanded_path, 'w') as f:
+            f.write("# default values used:\n")
+            f.write("\n".join(defaulted_toml) + "\n\n")
 
     def shutdown(self):
         """ Doot has finished normally, so report on what was done """
         if self.current_cmd is not None and hasattr(self.current_cmd, "shutdown"):
             self.current_cmd.shutdown(self._errored, self.tasks, self.plugins)
 
+        say_on_exit = doot.config.on_fail(False).settings.general.notify.say_on_exit()
+
         match self._errored:
-            case doot.errors.DootError():
-                pass
-            case None:
-                shutdown_l.info("Shutting Doot Down Normally")
+            case doot.errors.DootError() if say_on_exit:
                 self._record_defaulted_config_values()
-
-        self._announce_exit()
-
-    def _announce_exit(self):
-        match sys.platform:
-            case "linux":
-                pass
-            case "darwin":
-                if doot.config is not None:
-                    announce_exit        = doot.config.on_fail(announce_exit, bool|str).settings.general.notify.say_on_exit()
-                    announce_voice       = doot.config.on_fail(announce_voice, str).setttings.general.notify.announce_voice()
-
-                match result, announce_exit:
-                    case 0, str() as say_text:
-                        cmd = sh.say("-v", announce_voice, "-r", "50", say_text)
-                    case 0, True:
-                        cmd = sh.say("-v", announce_voice, "-r", "50", "Doot Has Finished")
-                    case _, True|str():
-                        cmd = sh.say("-v", announce_voice, "-r", "50", "Doot Encountered a problem")
-                    case _, _:
-                        cmd = None
-                if cmd is not None:
-                    cmd.execute()
-
-    def _record_defaulted_config_values(self):
-
-        defaulted_toml = tomlguard.TomlGuard.report_defaulted()
-        expanded_path = doot.locs[defaulted_file]
-        with open(expanded_path, 'w') as f:
-            f.write("# default values used:\n")
-            f.write("\n".join(defaulted_toml) + "\n\n")
+                self._announce_exit("Doot encountered an error")
+            case None if say_on_exit:
+                shutdown_l.info("Doot Shutting Down Normally")
+                self._record_defaulted_config_values()
+                self._announce_exit()
+            case None:
+                shutdown_l.info("Doot Shutting Down Normally")
+                self._record_defaulted_config_values()

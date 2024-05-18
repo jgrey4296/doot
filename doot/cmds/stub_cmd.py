@@ -60,17 +60,17 @@ class StubCmd(BaseCommand):
     @property
     def param_specs(self) -> list:
         return super().param_specs + [
-            self.build_param("file-target", type=str,     default=""),
-            self.build_param("Config",                    default=False,           desc="Stub a doot.toml",                  prefix="-"),
-            self.build_param("Actions",                   default=False,           desc="Help Stub Actions",                 prefix="-"),
-            self.build_param("cli",                       default=False,           desc="Generate a stub cli arg dict",      prefix="-"),
-            self.build_param("printer",                   default=False,           desc="Generate a stub cli arg dict",      prefix="-"),
+            self.build_param(name="file-target", type=str,     default=""),
+            self.build_param(name="Config",                    default=False,           desc="Stub a doot.toml",                  prefix="-"),
+            self.build_param(name="Actions",                   default=False,           desc="Help Stub Actions",                 prefix="-"),
+            self.build_param(name="cli",                       default=False,           desc="Generate a stub cli arg dict",      prefix="-"),
+            self.build_param(name="printer",                   default=False,           desc="Generate a stub cli arg dict",      prefix="-"),
 
-            self.build_param("Flags",                     default=False,           desc="Help Stub Task Flags",              prefix="-"),
+            self.build_param(name="Flags",                     default=False,           desc="Help Stub Task Flags",              prefix="-"),
 
-            self.build_param("name",        type=str,     default=None,            desc="The Name of the new task",                          positional=True),
-            self.build_param("ctor",        type=str,     default="task",          desc="The short type name of the task generator",         positional=True),
-            self.build_param("suppress-header",           default=True, invisible=True)
+            self.build_param(name="name",        type=str,     default=None,            desc="The Name of the new task",                          positional=True),
+            self.build_param(name="ctor",        type=str,     default="task",          desc="The short type name of the task generator",         positional=True),
+            self.build_param(name="suppress-header",           default=True, invisible=True)
             ]
 
     def _import_task_class(self, ctor_name):
@@ -119,7 +119,10 @@ class StubCmd(BaseCommand):
 
         # Create stub toml, with some basic information
         stub                          = TaskStub(ctor=task_iden)
-        stub['name'].default          = TaskName.build(name)
+        try:
+            stub['name'].default          = TaskName.build(name)
+        except ValueError:
+            raise doot.errors.DootError("Provide a valid TaskName")
 
         # add ctor specific fields,
         # such as for dir_walker: roots [], exts [], recursive bool, subtask "", head_task ""

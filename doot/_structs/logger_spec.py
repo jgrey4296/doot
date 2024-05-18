@@ -105,7 +105,7 @@ class LoggerSpec(BaseModel):
                 as_dict = data._table().copy()
                 if name:
                     as_dict['name'] = name
-                return LoggerSpec.model_validate(data)
+                return LoggerSpec.model_validate(as_dict)
             case dict():
                 if name:
                     data['name'] = name

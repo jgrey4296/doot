@@ -132,7 +132,7 @@ class DootLogConfig:
 
     def _setup_print_children(self):
         basename      = doot.constants.printer.PRINTER_NAME
-        subprint_data = doot.config.logging.subprinters
+        subprint_data = doot.config.on_fail({}).logging.subprinters()
         for name in doot.constants.printer.PRINTER_CHILDREN:
             if name not in subprint_data:
                 continue
