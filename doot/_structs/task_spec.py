@@ -148,7 +148,7 @@ class _SpecUtils_m:
             return None
         if TaskFlags.CONCRETE in self.flags:
             return None
-        if self.name.job_head() is self.name:
+        if self.name.job_head() == self.name:
             return None
 
         # build $head$
