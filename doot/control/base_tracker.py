@@ -350,7 +350,7 @@ class _TrackerStore:
                     pass
                 case TaskSpec() as head:
                     self.register_spec(head)
-                    logging.debug("Registered Head Spec: %s", head.name.readable)
+                    logging.info("Registered Head Spec: %s", head.name.readable)
             # If the spec is abstract, create an initial concrete version
             if not bool(spec.flags & (TaskFlags.TRANSFORMER|TaskFlags.CONCRETE)):
                 logging.debug("Instantiating Initial Concrete for abstract: %s", spec.name)
@@ -801,8 +801,18 @@ class _TrackerQueue_boltons:
             return None
         assert(prepped_name in self.network)
         final_name      : None|TaskName|TaskArtifact = None
-        target_priority : int                                = self._declare_priority
+        target_priority : int                        = self._declare_priority
         match prepped_name:
+            case TaskName() if TaskFlags.JOB_HEAD in prepped_name:
+                assert(TaskFlags.CONCRETE in prepped_name)
+                assert(prepped_name in self.specs)
+                final_name      = self._make_task(prepped_name)
+                target_priority = self.tasks[final_name].priority
+            case TaskName() if TaskFlags.JOB in prepped_name:
+                assert(TaskFlags.CONCRETE in prepped_name)
+                assert(prepped_name in self.specs)
+                final_name      = self._make_task(prepped_name)
+                target_priority = self.tasks[final_name].priority
             case TaskName():
                 assert(TaskFlags.CONCRETE in prepped_name)
                 assert(prepped_name in self.specs)

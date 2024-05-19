@@ -36,7 +36,7 @@ import doot.errors
 from doot._abstract import (FailPolicy_p, Job_i, Task_i, TaskRunner_i,
                             TaskTracker_i)
 from doot.control.base_tracker import BaseTracker
-from doot.enums import EdgeType_e, ExecutionPolicy_e, TaskStatus_e
+from doot.enums import EdgeType_e, ExecutionPolicy_e, TaskStatus_e, TaskFlags
 from doot.structs import CodeReference, TaskArtifact, TaskName, TaskSpec
 from doot.task.base_task import DootTask
 
@@ -233,12 +233,17 @@ class DootTracker(BaseTracker, TaskTracker_i):
                     track_l.debug("Tearing Down: %s", focus)
                     self.active_set.remove(focus)
                     self.set_status(focus, TaskStatus_e.DEAD)
+                case TaskStatus_e.SUCCESS if TaskFlags.JOB in focus:
+                    track_l.debug("Job Object Success, queing head: %s", focus)
+                    self.queue_entry(focus.root().job_head())
+                    self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
+                    self.build_network()
                 case TaskStatus_e.SUCCESS | TaskStatus_e.EXISTS:
                     track_l.info("Task Succeeded: %s", focus)
                     self.execution_trace.append(focus)
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
                     for succ in [x for x in self.network.succ[focus] if self.get_status(x) in TaskStatus_e.success_set]:
-                        if nx.has_path(self.network, focus, succ):
+                        if nx.has_path(self.network, succ, self._root_node):
                             self.queue_entry(succ)
 
                     # TODO self._reactive_queue(focus)
@@ -263,7 +268,6 @@ class DootTracker(BaseTracker, TaskTracker_i):
                     track_l.info("Task Ready to run, informing runner: %s", focus)
                     self.queue_entry(focus, status=TaskStatus_e.RUNNING)
                     return self.tasks[focus]
-
                 case TaskStatus_e.WAIT: # Add dependencies of a task to the stack
                     track_l.info("Checking Task Dependencies: %s", focus)
                     match self.incomplete_dependencies(focus):
