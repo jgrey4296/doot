@@ -141,6 +141,8 @@ class TaskName(StructuredName):
             self.meta |= TaskFlags.CONCRETE
         if TaskName._head_marker in self.tail:
             self.meta |= TaskFlags.JOB_HEAD
+            self.meta ^= TaskFlags.JOB
+
 
         if TaskFlags.CONCRETE in self.meta and 'uuid' not in self.args:
             raise ValueError("Instanced Name lacks a stored uuid", self)
