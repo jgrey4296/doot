@@ -181,6 +181,7 @@ class LocationMeta(FlagsBuilder_m, enum.Flag):
     protected    = enum.auto()
     glob         = enum.auto()
     expandable   = enum.auto()
+    remote       = enum.auto()
 
     # Aliases
     file         = artifact

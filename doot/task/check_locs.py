@@ -53,7 +53,7 @@ class CheckLocsTask(DootTask):
     task_name = "_locations::check"
 
     def __init__(self, spec=None):
-        locations = [doot.locs[f"{{{x}}}"] for x in doot.locs if not doot.locs.metacheck(x, LocationMeta.file)]
+        locations = [doot.locs[f"{{{x}}}"] for x in doot.locs if not doot.locs.metacheck(x, LocationMeta.file) and not doot.locs.metacheck(x, LocationMeta.remote)]
         actions   = [ActionSpec.build({"args": [x], "fun":self.checklocs }) for x in locations]
         spec      = TaskSpec.build({
             "name"         : CheckLocsTask.task_name,

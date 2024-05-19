@@ -148,7 +148,7 @@ class JobInjectPathParts(PathManip_m):
         match _onto:
             case list():
                 for x in _onto:
-                    data = dict(x.extra)
+                    data = x.params
                     data.update(self._calc_path_parts(x.extra[_key], root_paths))
                     x.model_extra.update(data)
             case TaskSpec():

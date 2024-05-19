@@ -118,7 +118,7 @@ class JobExpandAction(JobInjector):
         """
         match base:
             case list():
-                assert(all(isinstance(x, dict) for x in base))
+                assert(all(isinstance(x, (dict, TomlGuard)) for x in base))
                 actions  = base
                 sources  = [None]
             case TaskName():
