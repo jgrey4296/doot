@@ -57,7 +57,7 @@ class _DootPostBox:
     @staticmethod
     def put(key:TaskName, val):
         subbox = str(key.last())
-        box    = str(key.root(top=True))
+        box    = str(key.root())
         match val:
             case None | [] | {} | dict() if not bool(val):
                 pass
@@ -68,11 +68,9 @@ class _DootPostBox:
 
     @staticmethod
     def get(key:TaskName, subkey=Any) -> list|dict:
-        box    = str(key.root(top=True))
+        box    = str(key.root())
         subbox = str(key.last())
         match subbox:
-            case "" | "-":
-                return _DootPostBox.boxes[box][_DootPostBox.default_subkey][:]
             case x if x == Any:
                 return _DootPostBox.boxes[box][_DootPostBox.default_subkey][:]
             case "*" | None:
@@ -82,7 +80,7 @@ class _DootPostBox:
 
     @staticmethod
     def clear_box(key):
-        box    = str(key.root(top=True))
+        box    = str(key.root())
         subbox = str(key.last())
         match subbox:
             case x if x == Any:
@@ -106,14 +104,13 @@ class PutPostAction(Action_p):
     @DootKey.dec.kwargs
     @DootKey.dec.taskname
     def __call__(self, spec, state, args, kwargs, _basename) -> dict|bool|None:
-        target = _basename.root(top=True).subtask(_DootPostBox.default_subkey)
+        target = _basename.root().subtask(_DootPostBox.default_subkey)
         for statekey in args:
             data = DootKey.build(statekey).to_type(spec, state)
             _DootPostBox.put(target, data)
 
-        root = _basename.root(top=True)
-        for subbox,statekey in kwargs.items():
-            box  = root.subtask(subbox)
+        for box_str,statekey in kwargs.items():
+            box = TaskName.build(box_str)
             match statekey:
                 case str():
                     data = DootKey.build(statekey).to_type(spec, state)
@@ -136,9 +133,9 @@ class GetPostAction(Action_p):
     @DootKey.dec.kwargs
     def __call__(self, spec, state, kwargs) -> dict|bool|None:
         updates = {}
-        for key,subkey in kwargs.items():
+        for key,box_str in kwargs.items():
             state_key          = DootKey.build(key, explicit=True).expand(spec, state)
-            target_box         = TaskName.build(subkey)
+            target_box         = TaskName.build(box_str)
             updates[state_key] = _DootPostBox.get(target_box)
 
         return updates
