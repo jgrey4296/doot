@@ -498,12 +498,9 @@ class _TrackerNetwork:
         to_expand.update(self._expand_job_head(spec))
 
         # Connect Relations
-        for rel in chain(deps, reqs, indirect_deps):
+        for rel in (x for x in chain(deps, reqs, indirect_deps) if not isinstance(x, ActionSpec)):
             relevant_edges = spec_succ if rel.forward_dir_p() else spec_pred
             match rel:
-                case ActionSpec():
-                    # Action specs are no-ops in the tracker
-                    continue
                 case RelationSpec(target=TaskArtifact() as target):
                     assert(target in self.artifacts)
                     self.connect(*rel.to_edge(name))
