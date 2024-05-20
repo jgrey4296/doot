@@ -75,7 +75,7 @@ class TaskTracker_i:
         pass
 
     @abstractmethod
-    def next_for(self, target:None|str|ConcreteId) -> None|Task_i|"TaskArtifact":
+    def next_for(self, target:None|str|ConcreteId=None) -> None|Task_i|"TaskArtifact":
         pass
 
     @abstractmethod
