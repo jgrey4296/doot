@@ -16,6 +16,8 @@ line-length    = 100
 indent-width   = 4
 target-version = "py311"
 
+cache-dir = ".temp/ruff_cache"
+
 [lint]
 select = [
        "E", "F", "W", "B", "N", "UP",
