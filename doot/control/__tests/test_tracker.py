@@ -173,6 +173,59 @@ class TestTrackerNext:
         assert(obj.next_for() == None)
         assert(all(x.status == TaskStatus_e.FAILED for x in obj.tasks.values()))
 
+    def test_next_job_head(self):
+        obj       = DootTracker()
+        job_spec  = doot.structs.TaskSpec.build({"name":"basic::job", "flags": ["JOB"], "cleanup":["basic::task"]})
+        task_spec = doot.structs.TaskSpec.build({"name":"basic::task", "test_key": "bloo"})
+        obj.register_spec(job_spec)
+        obj.register_spec(task_spec)
+        obj.queue_entry(job_spec, from_user=True)
+        assert(job_spec.name in obj.concrete)
+        assert(job_spec.name.job_head() in obj.concrete)
+        conc_job_body = obj.concrete[job_spec.name][-1]
+        conc_job_head = obj.concrete[job_spec.name.job_head()][0]
+        obj.build_network()
+        assert(bool(obj.active_set))
+        # head is in network
+        assert(conc_job_head in obj.network.nodes)
+        assert(obj.next_for().name == conc_job_body)
+        obj.set_status(conc_job_body, TaskStatus_e.SUCCESS)
+        result = obj.next_for()
+        assert(task_spec.name < result.name)
+        # A new job head hasn't been built
+        assert(len(obj.concrete[job_spec.name.job_head()]) == 1)
+
+
+    def test_next_job_head_with_subtasks(self):
+        obj       = DootTracker()
+        job_spec  = doot.structs.TaskSpec.build({"name":"basic::job", "flags": ["JOB"]})
+        sub_spec1 = doot.structs.TaskSpec.build({"name":"basic::task.1", "test_key": "bloo", "required_for": ["basic::job.$head$"]})
+        sub_spec2 = doot.structs.TaskSpec.build({"name":"basic::task.2", "test_key": "blah", "required_for": ["basic::job.$head$"]})
+        obj.register_spec(job_spec)
+        obj.queue_entry(job_spec, from_user=True)
+        assert(job_spec.name in obj.concrete)
+        assert(job_spec.name.job_head() in obj.concrete)
+        conc_job_body = obj.concrete[job_spec.name][-1]
+        conc_job_head = obj.concrete[job_spec.name.job_head()][0]
+        obj.build_network()
+        assert(conc_job_head in obj.network.nodes)
+        assert(bool(obj.active_set))
+        job_body = obj.next_for()
+        assert(job_body.name == conc_job_body)
+        # Check head hasn't been added to network:
+        assert(conc_job_head in obj.network.nodes)
+        # Add Tasks that the body generates:
+        obj.queue_entry(sub_spec1)
+        obj.queue_entry(sub_spec2)
+        obj.build_network()
+        # Artificially set priority of job body to force handling its success
+        job_body.priority = 11
+        obj._queue.add(job_body.name, priority=job_body.priority)
+        obj.set_status(conc_job_body, TaskStatus_e.SUCCESS)
+        result = obj.next_for()
+        # Next task is one of the new subtasks
+        assert(any(x < result.name for x in [sub_spec1.name, sub_spec2.name]))
+
 
 class TestTrackerWalk:
 

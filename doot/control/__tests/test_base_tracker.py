@@ -64,6 +64,18 @@ class TestTrackerStore:
         assert(bool(obj.specs))
 
 
+    def test_register_job_spec(self):
+        obj = BaseTracker()
+        spec = doot.structs.TaskSpec.build({"name":"basic::task", "ctor":"doot.task.base_job:DootJob"})
+        assert(not bool(obj.specs))
+        obj.register_spec(spec)
+        assert(bool(obj.specs))
+        assert(spec.name in obj.specs)
+        assert(spec.name.job_head() in obj.specs)
+        conc_spec = obj.concrete[spec.name][0]
+        assert(conc_spec.job_head() not in obj.specs)
+
+
     def test_register_spec_instantiates(self):
         obj = BaseTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::task"})
