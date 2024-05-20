@@ -234,7 +234,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
                     self.active_set.remove(focus)
                     self.set_status(focus, TaskStatus_e.DEAD)
                 case TaskStatus_e.SUCCESS if TaskFlags.JOB in focus:
-                    track_l.debug("Job Object Success, queing head: %s", focus)
+                    track_l.debug("Job Object Success, queuing head: %s", focus)
                     self.queue_entry(focus.root().job_head())
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
                     self.build_network()

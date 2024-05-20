@@ -104,10 +104,13 @@ class _TrackerStore:
     def _maybe_reuse_instantiation(self, name:TaskName, *, add_cli:bool=False, extra:bool=False) -> None|ConcreteId:
         """ if an existing concrete spec exists, use it if it has no conflicts """
         if TaskFlags.CONCRETE in name:
+            logging.debug("Not reusing instantiation because name is concrete: %s", name)
             return None
         if name not in self.specs:
+            logging.debug("Not reusing instantiation because name doesn't have a matching spec: %s", name)
             return None
         if extra or add_cli:
+            logging.debug("Not reusing instantiation because extra or cli args were requested: %s", name)
             return None
 
 
@@ -213,24 +216,28 @@ class _TrackerStore:
             case [] | None:
                 pass
             case [*xs] if not bool(dep.constraints):
-                successful_matches = xs
+                successful_matches = [x for x in xs if x != control]
             case [*xs]:
                 # concrete instances exist, match on them
-                potentials = [self.specs[x] for x in xs]
+                potentials = [self.specs[x] for x in xs if x != control]
                 successful_matches += [x.name for x in potentials if x.match_with_constraints(control_spec, relation=dep)]
 
         match successful_matches:
             case []: # No matches, instantiate
-                extra    : dict                   = control_spec.build_relevant_data(dep)
-                instance : TaskName           = self._instantiate_spec(dep.target, extra=extra)
+                extra    : dict     = control_spec.build_relevant_data(dep)
+                instance : TaskName = self._instantiate_spec(dep.target, extra=extra)
                 return instance
             case [x]: # One match, connect it
                 assert(x in self.specs)
                 assert(TaskFlags.CONCRETE in x)
                 instance : TaskName = x
                 return instance
-            case [*xs]:
-                raise doot.errors.DootTaskTrackingError("multiple matches occured, this shouldn't be possible", dep, control, xs)
+            case [*xs, x]: # TODO check this.
+                # Use most recent instance?
+                assert(x in self.specs)
+                assert(TaskFlags.CONCRETE in x)
+                instance : TaskName = x
+                return instance
 
     def _instantiate_transformer(self, name:AbstractId, artifact:TaskArtifact) -> None|ConcreteId:
         spec = self.specs[name]
@@ -325,7 +332,9 @@ class _TrackerStore:
                     pass
 
     def register_spec(self, *specs:AnySpec) -> None:
-        """ Register task specs, abstract or concrete """
+        """ Register task specs, abstract or concrete.
+        An initial concrete instance will be created for any abstract spec.
+        """
         for spec in specs:
             if spec.name in self.specs:
                 continue
@@ -349,6 +358,7 @@ class _TrackerStore:
                 case None:
                     pass
                 case TaskSpec() as head:
+                    assert(TaskFlags.CONCRETE not in spec.flags)
                     self.register_spec(head)
                     logging.info("Registered Head Spec: %s", head.name.readable)
             # If the spec is abstract, create an initial concrete version
@@ -484,9 +494,12 @@ class _TrackerNetwork:
 
         logging.debug("--> Expanding Task: %s : Pre(%s), Post(%s), IndirecPre:(%s)",
                       name, [str(x) for x in deps], [str(x) for x in reqs], [str(x) for x in indirect_deps])
+        # Connect a jobs $head$
+        to_expand.update(self._expand_job_head(spec))
 
-        for rel, is_dep_p in chain(zip(deps, cycle([True])), zip(reqs, cycle([False])), zip(indirect_deps, cycle([True]))):
-            relevant_edges = spec_pred if is_dep_p else spec_succ
+        # Connect Relations
+        for rel in chain(deps, reqs, indirect_deps):
+            relevant_edges = spec_succ if rel.forward_dir_p() else spec_pred
             match rel:
                 case ActionSpec():
                     # Action specs are no-ops in the tracker
@@ -495,7 +508,7 @@ class _TrackerNetwork:
                     assert(target in self.artifacts)
                     self.connect(*rel.to_edge(name))
                     to_expand.add(target)
-                case RelationSpec(target=TaskName()) if rel.match_simple_edge(relevant_edges.keys()):
+                case RelationSpec(target=TaskName()) if rel.match_simple_edge(relevant_edges.keys(), exclude=[name]):
                     # already linked, ignore.
                     continue
                 case RelationSpec(target=TaskName()):
@@ -512,6 +525,21 @@ class _TrackerNetwork:
 
         logging.debug("<-- Task Expansion Complete: %s", name)
         return to_expand
+
+    def _expand_job_head(self, spec:TaskSpec) -> list[TaskName]:
+        if TaskFlags.JOB not in spec.name:
+            return []
+
+        logging.debug("Expanding Job Head for: %s", spec.name)
+        root = spec.name.root()
+        head_name = root.job_head()
+        match [x for x in self.network.succ[spec.name] if head_name < x]:
+            case []: # No head yet, add it
+                conc_head = self.concrete[head_name][0]
+                self.connect(spec.name, conc_head)
+                return [conc_head]
+            case [*xs, x]: # Use the most recent head
+                return [x]
 
     def _expand_artifact(self, artifact:TaskArtifact) -> set[ConcreteId]:
         """ expand artifacts, instantaiting related tasks/transformers,
@@ -779,7 +807,7 @@ class _TrackerQueue_boltons:
                 prepped_name  = self.tasks[name].name
             case TaskName() if name in self.network:
                 prepped_name = name
-            case TaskName() if (instance:=self._maybe_reuse_instantiation(name, add_cli=from_user)) is not None:
+            case TaskName() if not from_user and (instance:=self._maybe_reuse_instantiation(name)) is not None:
                 prepped_name = instance
                 self.connect(instance, None if from_user else False)
             case TaskName() if name in self.specs and from_user:

@@ -144,9 +144,7 @@ class _SpecUtils_m:
         """
         if TaskFlags.JOB not in self.flags:
             return None
-        if TaskFlags.JOB_HEAD in self.flags:
-            return None
-        if TaskFlags.CONCRETE in self.flags:
+        if (TaskFlags.CONCRETE | TaskFlags.JOB_HEAD) & self.flags:
             return None
         if self.name.job_head() == self.name:
             return None
@@ -158,9 +156,11 @@ class _SpecUtils_m:
             "actions"         : self.cleanup,
             "extra"           : self.extra,
             "queue_behaviour" : TaskQueueMeta.reactive,
-            "depends_on"      : [self.name],
-            "flags"           : self.flags | TaskFlags.JOB_HEAD,
+            "depends_on"      : [self.name] + [x for x in self.cleanup if isinstance(x, RelationSpec)],
+            "flags"           : (self.flags | TaskFlags.JOB_HEAD) & ~TaskFlags.JOB,
             })
+        assert(TaskFlags.JOB not in head.name)
+        assert(TaskFlags.JOB not in head.flags)
         return head
 
     def match_with_constraints(self, control:TaskSpec, *, relation:None|RelationSpec=None) -> bool:
@@ -291,7 +291,7 @@ class TaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra="all
     _allowed_print_locs   : ClassVar[list[str]] = doot.constants.printer.PRINT_LOCATIONS
     _action_group_wipe    : ClassVar[dict]      = {"required_for": [], "setup": [], "actions": [], "depends_on": []}
     # Action Groups that are dependant on, rather than are dependencies of, this task:
-    _dependant_groups    : ClassVar[list[str]]  = ["required_for", "cleanup", "on_fail"]
+    _dependant_groups    : ClassVar[list[str]]  = ["required_for", "on_fail"]
 
     @staticmethod
     def build(data:TomlGuard|dict|TaskName|str) -> Self:
@@ -360,7 +360,6 @@ class TaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra="all
     def _validate_ctor(cls, val):
         match val:
             case None:
-
                 default_alias = TaskSpec._default_ctor
                 coderef_str   = doot.aliases.task[default_alias]
                 return CodeReference.build(coderef_str)

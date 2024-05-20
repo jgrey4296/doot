@@ -129,7 +129,7 @@ class RelationSpec(BaseModel):
             case RelationMeta.req:
                 return (other, instance or self.target)
 
-    def match_simple_edge(self, edges:list[TaskName]) -> bool:
+    def match_simple_edge(self, edges:list[TaskName], *, exclude:None|list=None) -> bool:
         """ Given a list of existing edges,
           return true if any of them are an instantiated version of
           this relations target.
@@ -138,7 +138,11 @@ class RelationSpec(BaseModel):
           """
         if not bool(self.constraints):
             return False
+
+        exclude = exclude or []
         for x in edges:
+            if x in exclude:
+                continue
             if self.target < x:
                 return True
 
@@ -180,3 +184,7 @@ class RelationSpec(BaseModel):
                 return RelationSpec(target=result,
                                     relation=self.relation,
                                     constraints=self.constraints)
+
+    def forward_dir_p(self) -> bool:
+        " is this relation's direction predecessor -> successor? "
+        return self.relation is RelationMeta.req

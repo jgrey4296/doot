@@ -210,6 +210,8 @@ class RelationMeta(enum.Enum):
       What types+synonyms of task relation there can be,
       in the form ? {rel} Y,
 
+      eg: cake dependsOn baking.
+      or: baking requirementFor cake.
     """
     # Core:
     dependencyOf     = enum.auto()

@@ -241,7 +241,6 @@ class TestTaskNameExtension:
         assert(sub.tail[0] == "tail")
         assert(sub.tail[2] == doot.constants.patterns.SPECIALIZED_ADD)
 
-
     def test_instantiate_name_twice(self):
         simple = TaskName.build("basic::tail")
         assert(str(simple) == "basic::tail")
@@ -291,7 +290,6 @@ class TestTaskNameExtension:
         head               = simple.job_head()
         assert(head.last() == TaskName._head_marker)
 
-
     def test_head_on_instance(self):
         simple             = TaskName.build("basic.sub.test::tail")
         instance           = simple.instantiate()
@@ -321,12 +319,10 @@ class TestNameRoots:
         assert(str(simple) != str(simple2))
         assert(str(added_root) == str(simple2))
 
-
     def test_root_auto_filter(self):
         simple  = TaskName.build("basic::tail..a")
         simple2 = TaskName.build("basic::tail....a")
         assert(simple == simple2)
-
 
     def test_root_auto_filter_last(self):
         simple  = TaskName.build("basic::tail..")
