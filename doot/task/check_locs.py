@@ -2,32 +2,48 @@
 
 """
 
-##-- std imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
+import datetime
+import enum
+import functools as ftz
+import itertools as itz
 import logging as logmod
 import pathlib as pl
 import shutil
-from typing import ClassVar
 from functools import partial
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
+from uuid import UUID, uuid1
 
-##-- end std imports
+# ##-- end stdlib imports
 
+# ##-- 3rd party imports
 from tomlguard import TomlGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
 import doot
 import doot.errors
-from doot.structs import DootTaskSpec
 from doot._abstract import Job_i
-from doot.task.base_task import DootTask
 from doot.enums import LocationMeta
+from doot.structs import TaskSpec, ActionSpec, DootKey
+from doot.task.base_task import DootTask
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = logmod.getLogger("doot._printer")
+printer = logmod.getLogger("doot._printer.checkloc")
 ##-- end logging
 
 make_missing = doot.config.on_fail(False).settings.general.location_check.make_missing()
-print_levels = doot.config.on_fail(TomlGuard(), TomlGuard).settings.general.location_check.print_levels(TomlGuard)
 
 @doot.check_protocol
 class CheckLocsTask(DootTask):
@@ -37,17 +53,18 @@ class CheckLocsTask(DootTask):
     task_name = "_locations::check"
 
     def __init__(self, spec=None):
-        locations = [[doot.locs[f"{{{x}}}"]] for x in doot.locs if not doot.locs.metacheck(x, LocationMeta.file)]
-        spec      = DootTaskSpec.build({
+        locations = [doot.locs[f"{{{x}}}"] for x in doot.locs if not doot.locs.metacheck(x, LocationMeta.file) and not doot.locs.metacheck(x, LocationMeta.remote)]
+        actions   = [ActionSpec.build({"args": [x], "fun":self.checklocs }) for x in locations]
+        spec      = TaskSpec.build({
             "name"         : CheckLocsTask.task_name,
-            "actions"      : locations,
-            "print_levels" : print_levels,
+            "actions"      : actions,
             "priority"     : 100,
-                                           })
-        super().__init__(spec, action_ctor=self.checklocs)
+        })
+        super().__init__(spec)
 
-    def checklocs(self, spec, state):
-        exists_p = spec.args[0].exists()
+    @DootKey.dec.args
+    def checklocs(self, spec, state, args):
+        exists_p = args[0].exists()
         if exists_p:
             printer.info("Base Location Exists : %s", spec.args[0])
         else:
@@ -55,4 +72,3 @@ class CheckLocsTask(DootTask):
             if make_missing:
                 printer.info("Making Directory: %s", spec.args[0])
                 spec.args[0].mkdir(parents=True)
-        return

@@ -41,13 +41,14 @@ from collections import defaultdict
 import doot
 import doot.structs as structs
 import doot.errors
-from doot.enums import TaskStateEnum, ReportEnum, TaskFlags
+from doot.enums import TaskStatus_e, ReportEnum, TaskFlags
 import doot._abstract as abstract
 from doot.control.runner import DootRunner
 from doot.utils.signal_handler import SignalHandler
 
-dry_run      = doot.args.on_fail(False).cmd.args.dry_run()
-SLEEP_LENGTH = doot.config.on_fail(0.2, int|float).settings.tasks.sleep.task()
+dry_run                     = doot.args.on_fail(False).cmd.args.dry_run()
+SLEEP_LENGTH                = doot.config.on_fail(0.2, int|float).settings.tasks.sleep.task()
+MAX_LOG_ACTIVE : Final[int] = 100
 
 @doot.check_protocol
 class DootStepRunner(DootRunner):
@@ -69,8 +70,8 @@ class DootStepRunner(DootRunner):
                      "s"  : "print_state"
                      }
 
-    def __init__(self:Self, *, tracker:abstract.TaskTracker_i, reporter:abstract.Reporter_i, policy=None):
-        super().__init__(tracker=tracker, reporter=reporter, policy=policy)
+    def __init__(self:Self, *, tracker:abstract.TaskTracker_i, reporter:abstract.Reporter_p):
+        super().__init__(tracker=tracker, reporter=reporter)
         self._conf_types = []
         self._override_level = "INFO"
         self._has_quit = False
@@ -108,7 +109,7 @@ class DootStepRunner(DootRunner):
                 return True
             case abstract.Task_i() if abstract.Task_i not in self._conf_types:
                 return True
-            case structs.DootActionSpec() if structs.DootActionSpec not in self._conf_types:
+            case structs.ActionSpec() if structs.ActionSpec not in self._conf_types:
                 return True
 
         printer.info("")
@@ -156,7 +157,10 @@ class DootStepRunner(DootRunner):
     def _do_quit(self, *args):
         printer.info("::- Quitting Doot")
         self.tracker.clear_queue()
-        printer.info("Tracker Queue: %s", self.tracker.active_set)
+        if len(self.tracker.active_set) < MAX_LOG_ACTIVE:
+            printer.info("Tracker Queue: %s", self.tracker.active_set)
+        else:
+            printer.info("Tracker Queue: %s", len(self.tracker_set))
         self._has_quit = True
         return False
 
@@ -184,7 +188,7 @@ class DootStepRunner(DootRunner):
                 self.set_confirm_type("task")
             case [abstract.Task_i]:
                 self.set_confirm_type("action")
-            case [structs.DootActionSpec]:
+            case [structs.ActionSpec]:
                 self.set_confirm_type("all")
                 pass
 
@@ -193,7 +197,7 @@ class DootStepRunner(DootRunner):
     def _do_up(self, *args):
         printer.info("Up")
         match self._conf_types:
-            case [structs.DootActionSpec]:
+            case [structs.ActionSpec]:
                 self.set_confirm_type("task")
             case [abstract.Task_i]:
                 self.set_confirm_type("job")
@@ -210,7 +214,7 @@ class DootStepRunner(DootRunner):
         self._set_print_level(self._override_level)
 
     def _do_print_warn(self, *args):
-        self._override_level = "WARN"
+        self._override_level = "WARNING"
         printer.warning("Overring Printer to: %s", self._override_level)
         self._set_print_level(self._override_level)
 
@@ -224,7 +228,7 @@ class DootStepRunner(DootRunner):
         printer.info("%20s : %s", "CLI Args", dict(doot.args))
         for arg in args:
             match arg:
-                case structs.DootActionSpec():
+                case structs.ActionSpec():
                     printer.info("%20s : %s", "Action", str(arg.do))
                     printer.info("%20s : %s", "Action Spec kwargs", dict(arg.kwargs))
                 case abstract.Task_i():
@@ -247,7 +251,7 @@ class DootStepRunner(DootRunner):
             case "task":
                 self._conf_types = [abstract.Task_i]
             case "action":
-                self._conf_types = [structs.DootActionSpec]
+                self._conf_types = [structs.ActionSpec]
             case "all":
                 self._conf_types = [True]
 """

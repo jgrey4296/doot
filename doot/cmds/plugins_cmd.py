@@ -37,7 +37,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.cmds.base_cmd import BaseCommand
-from doot.structs import DootParamSpec
+from doot.structs import ParamSpec
 
 
 INDENT : Final[str] = " "*8
@@ -48,7 +48,7 @@ class PluginsCmd(BaseCommand):
     _help      = ["A simple command to list all loaded plugins."]
 
     @property
-    def param_specs(self) -> list[DootParamSpec]:
+    def param_specs(self) -> list[ParamSpec]:
         return super().param_specs + [
             self.build_param(name="all",                  default=True,                   desc="List all loaded tasks, by group"),
             self.build_param(name="groups",    type=bool, default=False,                  desc="List just the groups tasks fall into",   prefix="--"),
@@ -80,7 +80,7 @@ class PluginsCmd(BaseCommand):
             printer.info(fmt_str,
                          spec.name,
                          spec.ctor,
-                         spec.source)
+                         spec.sources)
 
     def _print_group_matches(self, plugins):
         max_key = len(max(plugins.keys(), key=len))

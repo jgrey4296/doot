@@ -2,12 +2,12 @@
 """
 Utility classes for building tasks with a bit of structure
 """
-##-- imports
+# Imports:
 from __future__ import annotations
 
-# import abc
-# import datetime
-# import enum
+# ##-- stdlib imports
+import datetime
+import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
@@ -15,29 +15,34 @@ import pathlib as pl
 import re
 import time
 import types
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
-# from uuid import UUID, uuid1
-# from weakref import ref
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
+from uuid import UUID, uuid1
 
-##-- end imports
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
+from tomlguard import TomlGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+from doot._abstract import Job_i, Task_i
+from doot.enums import TaskFlags
+from doot.errors import DootDirAbsent
+from doot.structs import CodeReference, TaskName, TaskSpec
+from doot.task.base_task import DootTask
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-from tomlguard import TomlGuard
-import doot
-import doot.errors
-from doot.enums import TaskFlags
-from doot.structs import DootTaskSpec, TaskStub, TaskStubPart, DootTaskName, DootCodeReference, DootStructuredName
-from doot._abstract import Job_i, Task_i
-from doot.errors import DootDirAbsent
-from doot.task.base_task import DootTask
 
 SUBTASKED_HEAD = doot.constants.patterns.SUBTASKED_HEAD
 
@@ -52,24 +57,24 @@ class DootJob(Job_i, DootTask):
     _help = ["A Basic Task Constructor"]
     _default_flags = TaskFlags.JOB
 
-    def __init__(self, spec:DootTaskSpec):
+    def __init__(self, spec:TaskSpec):
         assert(spec is not None), "Spec is empty"
         super(DootJob, self).__init__(spec)
 
-    def default_task(self, name:str|DootTaskName|None, extra:None|dict|TomlGuard) -> DootTaskSpec:
+    def default_task(self, name:str|TaskName|None, extra:None|dict|TomlGuard) -> TaskSpec:
         task_name = None
         match name:
             case None:
-                task_name = self.fullname.subtask(SUBTASKED_HEAD)
+                task_name = self.name.subtask(SUBTASKED_HEAD)
             case str():
-                task_name = self.fullname.subtask(name)
-            case DootTaskName():
+                task_name = self.name.subtask(name)
+            case TaskName():
                 task_name = name
             case _:
-                raise doot.errors.DootTaskError("Bad value used to make a subtask in %s : %s", self.name, name)
+                raise doot.errors.DootTaskError("Bad value used to make a subtask in %s : %s", self.shortname, name)
 
         assert(task_name is not None)
-        return DootTaskSpec(name=task_name, extra=TomlGuard(extra))
+        return TaskSpec(name=task_name, extra=TomlGuard(extra))
 
     def is_stale(self, task:Task_i):
         return False
@@ -91,7 +96,7 @@ class DootJob(Job_i, DootTask):
 
     def stub_instance(self, stub) -> TaskStub:
         stub                      = self.__class__.stub_class(stub)
-        stub['name'].default      = self.fullname
+        stub['name'].default      = self.shortname
         if bool(self.doc):
             stub['doc'].default   = [f"\"{x}\"" for x in self.doc]
         return stub

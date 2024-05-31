@@ -21,7 +21,7 @@ from tomlguard import TomlGuard
 import doot
 doot._test_setup()
 from doot.control.locations import DootLocations
-from doot.structs import DootKey, DootActionSpec
+from doot.structs import DootKey, ActionSpec
 from doot._structs import key as dkey
 from doot.utils.decorators import DootDecorator as DDec, DecorationUtils as DecU
 
@@ -37,7 +37,7 @@ class TestKeyDecorators:
 
     @pytest.fixture(scope="function")
     def spec(self):
-        return DootActionSpec(kwargs=TomlGuard({"x": "aweg", "y_": "a"}))
+        return ActionSpec(kwargs=TomlGuard({"x": "aweg", "y_": "a"}))
 
     @pytest.fixture(scope="function")
     def state(self):
@@ -124,7 +124,7 @@ class TestKeyDecoratorsCalls:
 
     @pytest.fixture(scope="function")
     def spec(self):
-        return DootActionSpec(kwargs=TomlGuard({"x": "aweg", "y_": "a"}))
+        return ActionSpec(kwargs=TomlGuard({"x": "aweg", "y_": "a"}))
 
     @pytest.fixture(scope="function")
     def state(self):

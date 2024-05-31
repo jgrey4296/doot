@@ -37,14 +37,15 @@ logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
+from pydantic import BaseModel, Field, model_validator, field_validator
 import decorator
 import abc
 import string
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot._structs.code_ref import DootCodeReference
-from doot._abstract.structs import SpecStruct_p
+from doot._structs.code_ref import CodeReference
+from doot._abstract.protocols import SpecStruct_p
 from doot.utils.chain_get import DootKeyGetter
 from doot.utils.decorators import DootDecorator, DecorationUtils
 
@@ -171,8 +172,8 @@ class DootFormatter(string.Formatter):
         match kwargs.get(self.SPEC, None):
             case None:
                 kwargs['_spec'] = {}
-            case SpecStruct_p():
-                kwargs['_spec'] = kwargs[self.SPEC].params
+            case x if hasattr(x, "params"):
+                kwargs['_spec'] = x.params
             case x:
                 raise TypeError("Bad Spec Type in Format Call", x)
 
@@ -233,8 +234,9 @@ class DootKey(abc.ABC):
       DootMultiKeys are containers of a string `value`, and a list of SimpleKeys the value contains.
       So DootKey.build("{blah}/{bloo}") -> DootMultiKey("{blah}/{bloo}", [DootSimpleKey("blah", DootSimpleKey("bloo")]) -> .form == "{blah}/{bloo}"
     """
-    dec   = KeyDecorator
-    kwrap = KeyDecorator
+    dec      : ClassVar[type]      = KeyDecorator
+    kwrap    : ClassVar[type]      = KeyDecorator
+    _pattern : ClassVar[re.Pattern] = PATTERN
 
     @staticmethod
     def build(s:str|DootKey|pl.Path|dict, *, strict=False, explicit=False, exp_hint:str|dict=None, help=None) -> DootKey:
@@ -318,12 +320,12 @@ class DootKey(abc.ABC):
             case x:
                 raise doot.errors.DootKeyError("Key Called with Bad Key Expansion Type", self, x)
 
-    @property
+    @ftz.cached_property
     def form(self) -> str:
         return str(self)
 
-    @property
-    def direct(self):
+    @ftz.cached_property
+    def direct(self) -> str:
         return str(self).removesuffix("_")
 
     @property
@@ -385,9 +387,9 @@ class DootKey(abc.ABC):
     def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[DootKey]=None, on_fail=Any, locs:DootLocations=None, **kwargs) -> str:
         pass
 
-    def to_coderef(self, spec:None|SpecStruct_p, state) -> None|DootCodeReference:
+    def to_coderef(self, spec:None|SpecStruct_p, state) -> None|CodeReference:
         match spec:
-            case SpecStruct_p():
+            case _ if hasattr(spec, "params"):
                 kwargs = spec.params
             case None:
                 kwargs = {}
@@ -398,7 +400,7 @@ class DootKey(abc.ABC):
             return None
         try:
             expanded = self.expand(spec, state)
-            ref = DootCodeReference.build(expanded)
+            ref = CodeReference.build(expanded)
             return ref
         except doot.errors.DootError:
             return None
@@ -428,9 +430,9 @@ class DootNonKey(str, DootKey):
             case dict() | TomlGuard():
                 return self in other
             case _:
-                raise TypeError("Uknown DootKey target for within", other)
+                raise TypeError("Unknown DootKey target for within", other)
 
-    @property
+    @ftz.cached_property
     def indirect(self) -> DootKey:
         if not self.is_indirect:
             return DootSimpleKey("{}_".format(super().__str__()))
@@ -475,17 +477,17 @@ class DootSimpleKey(str, DootKey):
             case _:
                 return False
 
-    @property
+    @ftz.cached_property
     def indirect(self):
         if not self.is_indirect:
             return DootSimpleKey("{}_".format(super().__str__()))
         return self
 
-    @property
+    @ftz.cached_property
     def is_indirect(self):
         return str(self).endswith("_")
 
-    @property
+    @ftz.cached_property
     def form(self):
         """ Return the key in its use form, ie: wrapped in braces """
         return "{{{}}}".format(str(self))
@@ -519,9 +521,9 @@ class DootSimpleKey(str, DootKey):
             return self
 
         match spec:
-            case SpecStruct_p():
+            case _ if hasattr(spec, "params"):
                 kwargs = spec.params
-            case None:
+            case _:
                 kwargs = {}
 
         match kwargs.get(self.indirect, self):
@@ -540,7 +542,7 @@ class DootSimpleKey(str, DootKey):
             return [self]
 
         match spec:
-            case SpecStruct_p():
+            case _ if hasattr(spec, "params"):
                 kwargs = spec.params
             case None:
                 kwargs = {}
@@ -559,7 +561,7 @@ class DootSimpleKey(str, DootKey):
         target            = self.redirect(spec)
 
         match spec:
-            case SpecStruct_p():
+            case _ if hasattr(spec, "params"):
                 kwargs = spec.params
             case None:
                 kwargs = {}
@@ -634,7 +636,7 @@ class DootKwargsKey(DootArgsKey):
 
     def to_type(self, spec:None|SpecStruct_p=None, state=None, *args, **kwargs) -> dict:
         match spec:
-            case SpecStruct_p():
+            case _ if hasattr(spec, "params"):
                 return spec.params
             case None:
                 return {}
@@ -665,7 +667,7 @@ class DootMultiKey(DootKey):
     def keys(self) -> set(DootSimpleKey):
         return self._keys
 
-    @property
+    @ftz.cached_property
     def form(self):
         """ Return the key in its use form """
         return str(self)
@@ -714,6 +716,6 @@ class DootPathMultiKey(DootMultiKey):
 
 class DootImportKey(DootSimpleKey):
     """ a key to specify a key is used for importing
-    ie: str expands -> DootCodeReference.build -> .try_import
+    ie: str expands -> CodeReference.build -> .try_import
     """
     pass

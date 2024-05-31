@@ -41,13 +41,13 @@ import random
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.structs import DootKey, DootTaskSpec, DootTaskName, DootCodeReference
+from doot.structs import DootKey, TaskSpec, TaskName, CodeReference
 from doot.actions.base_action import DootBaseAction
 from doot.actions.job_injection import JobInjector
 
 class JobGenerate(DootBaseAction):
     """ Run a custom function to generate task specs
-      Function is in the form: fn(spec, state) -> list[DootTaskSpec]
+      Function is in the form: fn(spec, state) -> list[TaskSpec]
     """
 
     @DootKey.dec.references("fn")
@@ -63,11 +63,11 @@ class JobExpandAction(JobInjector):
       'inject' provides an injection dict, with $arg$ being the entry from the source list
     """
 
-    @DootKey.dec.types("from", "inject", "template", "print_levels")
+    @DootKey.dec.types("from", "inject", "template")
     @DootKey.dec.expands("prefix")
     @DootKey.dec.redirects("update_")
     @DootKey.dec.taskname
-    def __call__(self, spec, state, _from, inject, template, _printL, prefix, _update, _basename):
+    def __call__(self, spec, state, _from, inject, template, prefix, _update, _basename):
         match prefix:
             case "{prefix}":
                 prefix = "{Anon}"
@@ -76,8 +76,9 @@ class JobExpandAction(JobInjector):
 
         result          = []
         build_queue     = []
-        base_head       = _basename.task_head()
-        actions, base   = self._prep_base(template)
+        root            = _basename.root()
+        base_head       = root.job_head()
+        actions, sources = self._prep_base(template)
         match _from:
             case int():
                 build_queue += range(_from)
@@ -90,19 +91,24 @@ class JobExpandAction(JobInjector):
                 return self.ActRE.FAIL
 
         for i, arg in enumerate(build_queue):
-                injection = self.build_injection(spec, state, inject, replacement=arg)
-                new_spec  = DootTaskSpec.build(dict(name=_basename.subtask(prefix, i),
-                                                    ctor=base,
-                                                    actions = actions or [],
-                                                    required_for=[base_head],
-                                                    extra=injection,
-                                                    print_levels=_printL or {},
-                                                    ))
+                # TODO change job subtask naming scheme
+                base_dict = dict(name=root.subtask(prefix, i),
+                                 sources=sources,
+                                 actions = actions or [],
+                                 required_for=[base_head],
+                                 )
+                match self.build_injection(spec, state, inject, replacement=arg):
+                    case None:
+                        pass
+                    case dict() as val:
+                        base_dict.update(val)
+
+                new_spec  = TaskSpec.build(base_dict)
                 result.append(new_spec)
 
         return { _update : result }
 
-    def _prep_base(self, base:DootTaskName|list[DootActionSpec]) -> tuple[list, DootTaskName|None]:
+    def _prep_base(self, base:TaskName|list[ActionSpec]) -> tuple[list, TaskName|None]:
         """
           base can be the literal name of a task (base="group::task") to build off,
           or an indirect key to a list of actions (base_="sub_actions")
@@ -112,20 +118,22 @@ class JobExpandAction(JobInjector):
         """
         match base:
             case list():
-                actions = base
-                base    = None
-            case DootTaskName():
+                assert(all(isinstance(x, (dict, TomlGuard)) for x in base))
+                actions  = base
+                sources  = [None]
+            case TaskName():
                 actions = []
+                sources = [base]
             case str():
                 actions = []
-                base    = DootTaskName.build(base)
+                sources = [TaskName.build(base)]
             case None:
                 actions = []
-                base    = None
+                sources = [None]
             case _:
                 raise doot.errors.DootActionError("Unrecognized base type", base)
 
-        return actions, base
+        return actions, sources
 
 class JobMatchAction(DootBaseAction):
     """
@@ -144,12 +152,12 @@ class JobMatchAction(DootBaseAction):
         match prepfn:
             case None:
                 fn = lambda x: x.extra.fpath.suffix
-            case DootCodeReference():
+            case CodeReference():
                 fn = prepfn.try_import()
 
         for x in _onto:
             match fn(x):
                 case str() as key if key in mapping:
-                    x.ctor = DootTaskName.build(mapping[key])
+                    x.ctor = TaskName.build(mapping[key])
                 case _:
                     pass

@@ -43,7 +43,7 @@ import doot
 import doot.errors
 from doot.mixins.task.human_numbers import Human_M
 from doot.task.base_task import DootTask
-from doot.structs import DootActionSpec
+from doot.structs import ActionSpec
 
 class SimpleTaskExample(Human_M, DootTask):
     """
@@ -53,8 +53,8 @@ class SimpleTaskExample(Human_M, DootTask):
     def __init__(self, spec, *, job=None, action_ctor=None, **kwargs):
         super().__init__(spec, job=job, **kwargs)
         self._extra_actions = []
-        self._extra_actions.append(DootActionSpec(do="custom head", fun=self._head))
-        self._extra_actions.append(DootActionSpec(do="custom tail", fun=self._tail))
+        self._extra_actions.append(ActionSpec(do="custom head", fun=self._head))
+        self._extra_actions.append(ActionSpec(do="custom tail", fun=self._tail))
 
     @property
     def actions(self):

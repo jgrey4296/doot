@@ -1,3 +1,4 @@
+<!-- <!--  CHANGELOG.md -*- mode: GFM -*-
 ---
 title: ChangeLog
 ---

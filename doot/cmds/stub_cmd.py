@@ -39,7 +39,7 @@ import doot.enums
 import doot.errors
 from doot.cmds.base_cmd import BaseCommand
 from doot._abstract import PluginLoader_p, Task_i
-from doot.structs import TaskStub, DootTaskName, DootCodeReference
+from doot.structs import TaskStub, TaskName, CodeReference
 from doot.task.base_job import DootJob
 from doot.task.base_task import DootTask
 from doot._structs.key import HELP_HINT
@@ -60,22 +60,22 @@ class StubCmd(BaseCommand):
     @property
     def param_specs(self) -> list:
         return super().param_specs + [
-            self.build_param("file-target", type=str,     default=""),
-            self.build_param("Config",                    default=False,           desc="Stub a doot.toml",                  prefix="-"),
-            self.build_param("Actions",                   default=False,           desc="Help Stub Actions",                 prefix="-"),
-            self.build_param("cli",                       default=False,           desc="Generate a stub cli arg dict",      prefix="-"),
-            self.build_param("printer",                   default=False,           desc="Generate a stub cli arg dict",      prefix="-"),
+            self.build_param(name="file-target", type=str,     default=""),
+            self.build_param(name="Config",                    default=False,           desc="Stub a doot.toml",                  prefix="-"),
+            self.build_param(name="Actions",                   default=False,           desc="Help Stub Actions",                 prefix="-"),
+            self.build_param(name="cli",                       default=False,           desc="Generate a stub cli arg dict",      prefix="-"),
+            self.build_param(name="printer",                   default=False,           desc="Generate a stub cli arg dict",      prefix="-"),
 
-            self.build_param("Flags",                     default=False,           desc="Help Stub Task Flags",              prefix="-"),
+            self.build_param(name="Flags",                     default=False,           desc="Help Stub Task Flags",              prefix="-"),
 
-            self.build_param("name",        type=str,     default=None,            desc="The Name of the new task",                          positional=True),
-            self.build_param("ctor",        type=str,     default="task",          desc="The short type name of the task generator",         positional=True),
-            self.build_param("suppress-header",           default=True, invisible=True)
+            self.build_param(name="name",        type=str,     default=None,            desc="The Name of the new task",                          positional=True),
+            self.build_param(name="ctor",        type=str,     default="task",          desc="The short type name of the task generator",         positional=True),
+            self.build_param(name="suppress-header",           default=True, invisible=True)
             ]
 
     def _import_task_class(self, ctor_name):
         try:
-            code_ref = DootCodeReference.build(ctor_name)
+            code_ref = CodeReference.build(ctor_name)
             return code_ref.try_import()
         except ImportError as err:
             raise doot.errors.DootTaskLoadError(ctor_name)
@@ -90,8 +90,6 @@ class StubCmd(BaseCommand):
                 self._stub_cli_arg()
             case {"Flags": True}:
                 self._list_flags()
-            case {"printer": True}:
-                self._stub_printer_settings()
             case _:
                 self._stub_task_toml(tasks, plugins)
 
@@ -114,14 +112,17 @@ class StubCmd(BaseCommand):
         This creates a toml stub using default values, as best it can
         """
         logging.info("Building Task Toml Stub")
-        task_iden                   : DootCodeReference       = DootCodeReference.from_alias(doot.args.on_fail("task").cmd.args.ctor(), "task", plugins)
+        task_iden                   : CodeReference       = CodeReference.from_alias(doot.args.on_fail("task").cmd.args.ctor(), "task", plugins)
 
         if (name:=doot.args.on_fail((None,)).cmd.args.name()) is None:
             raise doot.errors.DootCommandError("No Name Provided for Stub")
 
         # Create stub toml, with some basic information
         stub                          = TaskStub(ctor=task_iden)
-        stub['name'].default          = DootTaskName.build(name)
+        try:
+            stub['name'].default          = TaskName.build(name)
+        except ValueError:
+            raise doot.errors.DootError("Provide a valid TaskName")
 
         # add ctor specific fields,
         # such as for dir_walker: roots [], exts [], recursive bool, subtask "", head_task ""
@@ -207,7 +208,7 @@ class StubCmd(BaseCommand):
 
         printer.info("")
         printer.info("- For Custom Python Actions, implement the following in the .tasks directory")
-        printer.info("def custom_action(spec:DootActionSpec, task_state:dict) -> None|bool|dict:...")
+        printer.info("def custom_action(spec:ActionSpec, task_state:dict) -> None|bool|dict:...")
 
     def _stub_cli_arg(self):
         printer.info("# - CLI Arg Form. Add to task spec: cli=[]")
@@ -224,8 +225,6 @@ class StubCmd(BaseCommand):
 
         printer.info("{ %s }", "".join(stub))
 
-    def _stub_printer_settings(self):
-        printer.info("print_levels = { %s }", ", ".join(f'{x}="INFO"' for x in PRINT_LOCATIONS))
 
     def _list_flags(self):
         printer.info("Task Flags: ")

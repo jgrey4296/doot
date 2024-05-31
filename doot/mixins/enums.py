@@ -51,10 +51,19 @@ class EnumBuilder_m:
         except KeyError:
             logging.warning("Can't Create a flag of (%s):%s. Available: %s", cls, val, list(cls.__members__.keys()))
 
+    @classmethod
+    def get_default(cls) -> Self:
+        return cls.default
+
 class FlagsBuilder_m:
 
     @classmethod
     def build(cls, vals:str|list|dict) -> Self:
+        """ Assemble a flag from names.
+          a str is just the flag,
+          a list treats each name as a true falg
+          a dict is {name=bool}
+          """
         match vals:
             case str():
                 vals = [vals]

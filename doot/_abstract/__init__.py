@@ -22,5 +22,5 @@ from .task import Action_p, Task_i, Job_i
 
 from .dbm import DBManager_p
 from .parser import ArgParser_i
-from .reporter import Reporter_i, ReportLine_i
+from .reporter import Reporter_p, ReportLine_p
 from .policy import FailPolicy_p

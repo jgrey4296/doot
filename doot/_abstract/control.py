@@ -34,12 +34,22 @@ from abc import abstractmethod
 from typing import Generator, NewType
 from collections import deque, defaultdict
 
-from doot.enums import TaskStateEnum
+from doot.enums import TaskStatus_e, ExecutionPolicy_e
 
-from doot._abstract.reporter import ReportLine_i, Reporter_i
+from doot._abstract.reporter import Reporter_p
 from doot._abstract.policy import FailPolicy_p
 from doot._abstract.task import Task_i
-from doot._abstract.structs import ArtifactStruct_p, SpecStruct_p
+from doot._abstract.protocols import ArtifactStruct_p, SpecStruct_p
+
+# ## Types
+AbstractId                     : TypeAlias                   = "TaskName|TaskArtifact"
+ConcreteId                     : TypeAlias                   = "TaskName|TaskArtifact"
+AnyId                          : TypeAlis                    = "TaskName|TaskArtifact"
+AbstractSpec                   : TypeAlias                   = "TaskSpec"
+ConcreteSpec                   : TypeAlias                   = "TaskSpec"
+AnySpec                        : TypeAlias                   = "TaskSpec"
+Depth                          : TypeAlias                   = int
+PlanEntry                      : TypeAlias                   = tuple[Depth, ConcreteId, str]
 
 class TaskTracker_i:
     """
@@ -47,57 +57,51 @@ class TaskTracker_i:
     and have failed.
     Does not execute anything itself
     """
-    state_e : TypeAlias = TaskStateEnum
 
     @abstractmethod
-    def __bool__(self) -> bool:
-        raise NotImplementedError()
+    def register_spec(self, *specs:AnySpec)-> None:
+        pass
 
     @abstractmethod
-    def __len__(self) -> int:
-        raise NotImplementedError()
+    def queue_entry(self, name:str|AnyId|ConcreteSpec|Task_i, *, from_user:bool=False, status:None|TaskStatus_e=None) -> None|Node:
+        pass
 
     @abstractmethod
-    def __iter__(self) -> Generator:
-        raise NotImplementedError()
+    def get_status(self, task:ConcreteId) -> TaskStatus_e:
+        pass
 
     @abstractmethod
-    def __contains__(self, target:str) -> bool:
-        raise NotImplementedError()
+    def set_status(self, task:ConcreteId|Task_i, state:TaskStatus_e) -> bool:
+        pass
 
     @abstractmethod
-    def add_task(self, task:SpecStruct_p|Task_i):
-        raise NotImplementedError()
+    def next_for(self, target:None|str|ConcreteId=None) -> None|Task_i|"TaskArtifact":
+        pass
 
     @abstractmethod
-    def queue_task(self, task:str) -> None:
-        raise NotImplementedError()
+    def build_network(self) -> None:
+        pass
 
     @abstractmethod
-    def update_state(self, task:str|DootTaskName|SpecStruct_p|Task_i|ArtifactStruct_p, state:TaskStateEnum) -> None:
-        raise notimplementederror()
-
-    @abstractmethod
-    def next_for(self, target:str) -> Task_i|ArtifactStruct_p|None:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def declared_set(self) -> set[str]:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def defined_set(self) -> set[str]:
-        raise NotImplementedError()
+    def generate_plan(self, *, policy:None|ExecutionPolicy_e=None) -> list[PlanEntry]:
+        pass
 
 class TaskRunner_i:
     """
     Run tasks, actions, and jobs
     """
+    @abstractmethod
+    def __enter__(self) -> Any:
+        pass
 
     @abstractmethod
-    def __init__(self, *, tracker:TaskTracker_i, reporter:Reporter_i, policy:FailPolicy_p|None=None):
+    def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
+        pass
+
+    @abstractmethod
+    def __init__(self, *, tracker:TaskTracker_i, reporter:Reporter_p, policy:FailPolicy_p|None=None):
         pass
 
     @abstractmethod
     def __call__(self, *tasks:str) -> bool:
-        raise NotImplementedError()
+        pass

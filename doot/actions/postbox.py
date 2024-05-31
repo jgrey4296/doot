@@ -33,7 +33,7 @@ import sh
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
-from doot.structs import DootKey, DootTaskName
+from doot.structs import DootKey, TaskName
 
 printer = logmod.getLogger("doot._printer")
 STATE_TASK_NAME_K : Final[str] = doot.constants.patterns.STATE_TASK_NAME_K
@@ -55,7 +55,7 @@ class _DootPostBox:
     default_subkey                        = "_default"
 
     @staticmethod
-    def put(key:DootTaskName, val):
+    def put(key:TaskName, val):
         subbox = str(key.last())
         box    = str(key.root())
         match val:
@@ -67,12 +67,10 @@ class _DootPostBox:
                 _DootPostBox.boxes[box][subbox].append(val)
 
     @staticmethod
-    def get(key:DootTaskName, subkey=Any) -> list|dict:
+    def get(key:TaskName, subkey=Any) -> list|dict:
         box    = str(key.root())
         subbox = str(key.last())
         match subbox:
-            case "" | "-":
-                return _DootPostBox.boxes[box][_DootPostBox.default_subkey][:]
             case x if x == Any:
                 return _DootPostBox.boxes[box][_DootPostBox.default_subkey][:]
             case "*" | None:
@@ -99,7 +97,7 @@ class PutPostAction(Action_p):
     'args' are pushed to the default subbox
     'kwargs' are pushed to the kwarg specific subbox
 
-    eg: {do="post.put", args=["{key}", "{key}"], subbox="{key}"}
+    eg: {do="post.put", args=["{key}", "{key}"], "group::task.sub..subbox"="{key}"}
     """
 
     @DootKey.dec.args
@@ -111,9 +109,8 @@ class PutPostAction(Action_p):
             data = DootKey.build(statekey).to_type(spec, state)
             _DootPostBox.put(target, data)
 
-        root = _basename.root()
-        for subbox,statekey in kwargs.items():
-            box  = root.subtask(subbox)
+        for box_str,statekey in kwargs.items():
+            box = TaskName.build(box_str)
             match statekey:
                 case str():
                     data = DootKey.build(statekey).to_type(spec, state)
@@ -129,16 +126,16 @@ class GetPostAction(Action_p):
       Read data from the inter-task postbox of a task tree
       The arguments of the action are held in self.spec
 
-      stateKey="group::task.{subbox}"
-      eg: data="bib::format.-"
+      stateKey="group::task.sub..{subbox}"
+      eg: data="bib::format..-"
     """
 
     @DootKey.dec.kwargs
     def __call__(self, spec, state, kwargs) -> dict|bool|None:
         updates = {}
-        for key,subkey in kwargs.items():
+        for key,box_str in kwargs.items():
             state_key          = DootKey.build(key, explicit=True).expand(spec, state)
-            target_box         = DootTaskName.build(subkey)
+            target_box         = TaskName.build(box_str)
             updates[state_key] = _DootPostBox.get(target_box)
 
         return updates
@@ -150,7 +147,7 @@ class ClearPostAction(Action_p):
     @DootKey.dec.expands("key", hint={"on_fail":Any})
     @DootKey.dec.taskname
     def __call__(self, spec, state, key, _basename):
-        from_task = _basename.root().subtask(key)
+        from_task = _basename.root(top=True).subtask(key)
         _DootPostBox.clear_box(from_task)
         return
 
@@ -163,7 +160,7 @@ class SummarizePostAction(Action_p):
     @DootKey.dec.types("from", hint={"type_":str|None})
     @DootKey.dec.types("full", hint={"type_":bool, "on_fail":False})
     def __call__(self, spec, state, _from, full) -> dict|bool|None:
-        from_task = _from or TASK_NAME.to_type(spec, state).root()
+        from_task = _from or TASK_NAME.to_type(spec, state).root(top=True)
         data   = _DootPostBox.get(from_task)
         if full:
             for x in data:

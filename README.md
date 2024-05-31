@@ -1,3 +1,4 @@
+<!-- <!--  README.md -*- mode: GFM -*-
 ![doot](https://github.com/jgrey4296/doot/assets/5943270/170a5631-6175-4d92-8d66-e26aa2c2e472)
 # doot
 Version : 0.7.2  
@@ -30,7 +31,7 @@ eg:
 [settings.general]
 notify                   = { say-on-exit = false }
 loaders                  = { commands="default", task="default", parser="default"}
-location_check           = { make_missing = true, print_levels={action="WARN", execute="WARN" } }
+location_check           = { make_missing = true }
 
 [settings.tasks]
 sources = [".tasks"] # Files or directories where task specs can be loaded from, expanded according to [[locations]] keys
@@ -38,7 +39,7 @@ code    = []         # Directories where task specific code can be imported from
 sleep   = { task=0.2, subtask=1, batch=1 }
 
 [logging]
-stream  = { level="WARN",  allow=["doot"], format="{levelname:<8} : {message}", colour=true }
+stream  = { level="WARNING",  allow=["doot"], format="{levelname:<8} : {message}", colour=true }
 file    = { level="DEBUG", allow=["doot"], format="{levelname:<8} : {message:<20} :|: (module:{module} line:{lineno} fn:{funcName})" }
 printer = { level="INFO", colour=true}
 
@@ -70,8 +71,8 @@ name                 = "mytask" # combined together, this means this specific ta
 version              = "0.1"    # <str>
 ctor                 = "task"   # <type> the python class this task uses. See the plugins listed in 'doot plugins'
 doc                  = ["Text to help understand what this task does"] # <list[str]>
-required_for         = []                   # <list[DootTaskArtifact]> see below
-depends_on           = []                   # <list[DootTaskArtifact]> see below
+required_for         = []                   # <list[TaskArtifact]> see below
+depends_on           = []                   # <list[TaskArtifact]> see below
 actions              = []                   # <list[Any]> See below
 ```
 
@@ -99,7 +100,7 @@ You can get help on writing an action using `doot stub --Actions {action}`. eg: 
 { do="write!", args=[] }
 
 - For Custom Python Actions, implement the following in the .tasks director
-def custom_action(spec:DootActionSpec, task_state:dict) -> None|bool|dict:...
+def custom_action(spec:ActionSpec, task_state:dict) -> None|bool|dict:...
 ```
 
 When specifying values in toml you can use direct keys, or indirect keys.

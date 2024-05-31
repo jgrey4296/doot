@@ -2,12 +2,12 @@
 """
 
 """
-##-- imports
+# Imports:
 from __future__ import annotations
 
-# import abc
-# import datetime
-# import enum
+# ##-- stdlib imports
+import datetime
+import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
@@ -15,31 +15,36 @@ import pathlib as pl
 import re
 import time
 import types
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
-# from uuid import UUID, uuid1
-# from weakref import ref
+from collections import defaultdict
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
+from uuid import UUID, uuid1
 
-##-- end imports
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
+from tomlguard import TomlGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+from doot._abstract import TaskRunner_i
+from doot.cmds.base_cmd import BaseCommand
+from doot.structs import CodeReference
+from doot.task.check_locs import CheckLocsTask
+from doot.utils.plugin_selector import plugin_selector
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
+printer = logmod.getLogger("doot._printer")
+cmd_l   = printer.getChild("cmd")
 ##-- end logging
-
-from collections import defaultdict
-from tomlguard import TomlGuard
-import doot
-from doot.cmds.base_cmd import BaseCommand
-from doot._abstract import ReportLine_i, TaskRunner_i, Reporter_i
-from doot.utils.plugin_selector import plugin_selector
-from doot.task.check_locs import CheckLocsTask
-from doot.structs import DootCodeReference
-
-printer                  = logmod.getLogger("doot._printer")
 
 tracker_target           = doot.config.on_fail("default", str).commands.run.tracker()
 runner_target            = doot.config.on_fail("default", str).commands.run.runner()
@@ -61,6 +66,7 @@ class RunCmd(BaseCommand):
             self.build_param(name="step", default=False),
             self.build_param(name="interrupt", default=False),
             self.build_param(name="dry-run", default=False),
+            self.build_param(name="confirm", default=False),
             self.build_param(name="target", type=list[str], default=[], positional=True),
             ]
 
@@ -71,26 +77,25 @@ class RunCmd(BaseCommand):
         reporter               = plugin_selector(plugins.on_fail([], list).reporter(), target=reporter_target)(report_lines)
         tracker                = plugin_selector(plugins.on_fail([], list).tracker(), target=tracker_target)()
         runner                 = plugin_selector(plugins.on_fail([], list).runner(), target=runner_target)(tracker=tracker, reporter=reporter)
-        printer.info("- Building Task Dependency Network")
+        cmd_l.info("Registering Task Specs: %s", len(tasks))
         for task in tasks.values():
-            tracker.add_task(task)
-        tracker.add_task(CheckLocsTask())
+            tracker.register_spec(task)
 
-        printer.info("- Task Dependency Network Built")
-
+        cmd_l.info("Queuing Initial Tasks")
         for target in doot.args.on_fail([], list).cmd.args.target():
             if target not in tracker:
-                printer.warn("- %s specified as run target, but it doesn't exist")
+                cmd_l.warn("%s specified as run target, but it doesn't exist", target)
             else:
-                tracker.queue_task(target)
+                tracker.queue_entry(target, from_user=True)
 
         for target in doot.args.on_fail({}).tasks().keys():
-            if target not in tracker:
-                printer.warn(- "%s specified as run target, but it doesn't exist")
-            else:
-                tracker.queue_task(target)
+            try:
+                tracker.queue_entry(target, from_user=True)
+            except doot.errors.DootTaskTrackingError as err:
+                cmd_l.warn("Failed to Queue Target: %s", target)
+                logging.debug(err)
 
-        tracker.queue_task(CheckLocsTask.task_name)
+        tracker.queue_entry(CheckLocsTask(), from_user=True)
 
         match interrupt_handler:
             case _ if not doot.args.cmd.args.interrupt:
@@ -100,8 +105,18 @@ class RunCmd(BaseCommand):
             case bool():
                 interrupt = interrupt_handler
             case str():
-                interrupt = DootCodeReference.build(interrupt_handler).try_import()
+                interrupt = CodeReference.build(interrupt_handler).try_import()
 
-        printer.info("- %s Tasks Queued: %s", len(tracker.active_set), " ".join(tracker.active_set))
+        cmd_l.info("%s Tasks Queued: %s", len(tracker.active_set), " ".join(str(x) for x in tracker.active_set))
         with runner:
+            if doot.args.on_fail(False).cmd.args.confirm():
+                plan = tracker.generate_plan()
+                for i,(depth,node,desc) in enumerate(plan):
+                    cmd_l.info("Step %-4s: %s",i, node)
+                match input("Confirm Execution Plan (Y/*): "):
+                    case "Y":
+                        pass
+                    case _:
+                        cmd_l.info("Cancelling")
+                        return
             runner(handler=interrupt)

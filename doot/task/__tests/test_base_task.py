@@ -18,7 +18,7 @@ logging = logmod.root
 import tomlguard
 import doot
 doot._test_setup()
-from doot.structs import DootTaskSpec, TaskStub
+from doot.structs import TaskSpec, TaskStub
 from doot.task.base_task import DootTask
 import doot._abstract
 
@@ -39,24 +39,24 @@ basic_action = lambda x: ftz.partial(lambda val, state: logging.info("Got: %s : 
 class TestBaseTask:
 
     def test_initial(self):
-        task = DootTask(DootTaskSpec(name="basic::example"), job=None)
+        task = DootTask(TaskSpec(name="basic::example"), job=None)
         assert(isinstance(task, doot._abstract.Task_i))
 
 
     def test_lambda_action(self):
-        task         = DootTask(DootTaskSpec.build({"name":"basic::example", "action_ctor":basic_action}), job=None)
+        task         = DootTask(TaskSpec.build({"name":"basic::example", "action_ctor":basic_action}), job=None)
         assert(isinstance(task, doot._abstract.Task_i))
 
 
     def test_expand_lambda_action(self):
-        task                = DootTask(DootTaskSpec.build({"name":"basic::example", "action_ctor":basic_action, "actions": [{"do": "doot.actions.base_action:DootBaseAction", "args":["blah"]}]}), job=None)
+        task                = DootTask(TaskSpec.build({"name":"basic::example", "action_ctor":basic_action, "actions": [{"do": "doot.actions.base_action:DootBaseAction", "args":["blah"]}]}), job=None)
         actions             = list(task.actions)
         assert(len(actions) == 1)
 
 
     def test_run_lambda_action(self, caplog):
         caplog.set_level("DEBUG", logger="doot._printer")
-        task         = DootTask(DootTaskSpec.build({"name":"basic::example", "action_ctor":basic_action, "actions": [{"do": "doot.actions.base_action:DootBaseAction", "args":["blah"]}]}), job=None)
+        task         = DootTask(TaskSpec.build({"name":"basic::example", "action_ctor":basic_action, "actions": [{"do": "doot.actions.base_action:DootBaseAction", "args":["blah"]}]}), job=None)
         actions      = list(task.actions)
         result       = actions[0]({"example": "state"})
         assert(result == {"count": 1})
@@ -66,7 +66,7 @@ class TestBaseTask:
 
     def test_expand_action_str(self, caplog):
         caplog.set_level("DEBUG", logger="doot._printer")
-        task         = DootTask(DootTaskSpec.build({"name":"basic::example", "action_ctor": "test_base_task:basic_action", "actions": [{"do": "doot.actions.base_action:DootBaseAction", "args":["blah"]}]}), job=None)
+        task         = DootTask(TaskSpec.build({"name":"basic::example", "action_ctor": "test_base_task:basic_action", "actions": [{"do": "doot.actions.base_action:DootBaseAction", "args":["blah"]}]}), job=None)
         actions      = list(task.actions)
         result       = actions[0]({"example": "state"})
         assert(result == {"count" : 1})
@@ -81,7 +81,7 @@ class TestBaseTask:
     def test_toml_instance_stub(self):
         """ build the next simplest stub from an instance of the task """
         stub_obj = TaskStub(ctor=DootTask)
-        task     = DootTask(DootTaskSpec.build({"name" : "basic::example", "flags" : ["TASK", "IDEMPOTENT"]}), job=None)
+        task     = DootTask(TaskSpec.build({"name" : "basic::example", "flags" : ["TASK", "IDEMPOTENT"]}), job=None)
         stub     = task.stub_instance(stub_obj)
         assert(str(stub['name'].default) == "basic::example")
         as_str = stub.to_toml()
@@ -89,12 +89,12 @@ class TestBaseTask:
     def test_toml_instance_stub_rebuild(self):
         """ take a stub and turn it into a task spec  """
         stub_obj         = TaskStub(ctor=DootTask)
-        task             = DootTask(DootTaskSpec.build({"name" : "basic::example", "flags" : ["TASK", "IDEMPOTENT"]}), job=None)
+        task             = DootTask(TaskSpec.build({"name" : "basic::example", "flags" : ["TASK", "IDEMPOTENT"]}), job=None)
         stub             = task.stub_instance(stub_obj)
         as_str           = stub.to_toml()
         loaded           = tomlguard.read(as_str)
-        as_dict          = dict(loaded.tasks.basic[0])
+        as_dict          = dict(loaded)
         as_dict['group'] = "basic"
-        new_spec         = DootTaskSpec.build(as_dict)
-        assert(isinstance(new_spec, DootTaskSpec))
+        new_spec         = TaskSpec.build(as_dict)
+        assert(isinstance(new_spec, TaskSpec))
         assert(str(new_spec.name) == str(task.spec.name))

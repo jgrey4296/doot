@@ -39,7 +39,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.cmds.base_cmd import BaseCommand
-from doot.structs import DootParamSpec
+from doot.structs import ParamSpec
 from doot.utils.plugin_selector import plugin_selector
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -55,7 +55,7 @@ class GraphCmd(BaseCommand):
     _help      = ["Create a graph representation of the task network"]
 
     @property
-    def param_specs(self) -> list[DootParamSpec]:
+    def param_specs(self) -> list[ParamSpec]:
         return super().param_specs + [
             self.build_param(name="all",                                          default=True,                   desc="List all loaded tasks, by group"),
             self.build_param(name="dependencies",                                 default=False,                  desc="List task dependencies",                 prefix="--"),

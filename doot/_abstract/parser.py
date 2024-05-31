@@ -32,21 +32,9 @@ logging = logmod.getLogger(__name__)
 
 from abc import abstractmethod
 from tomlguard import TomlGuard
+from jgdv.structs.regex import RegexEqual
 
-from doot._abstract.structs import ParamStruct_p
-
-@dataclass
-class _RegexEqual(str):
-    """ https://martinheinz.dev/blog/78 """
-    string : str
-    match :  re.Match = None
-
-    def __eq__(self, pattern):
-        self.match = re.search(pattern, self.string)
-        return self.match is not None
-
-    def __getitem__(self, group):
-        return self.match[group]
+from doot._abstract.protocols import ParamStruct_p
 
 class ArgParser_i:
     """
@@ -55,12 +43,6 @@ class ArgParser_i:
     along the way it determines the cmds and tasks that have been chosne
     """
 
-    def __init__(self):
-        self.specs = []
-
-    def add_param_specs(self, specs:list):
-        self.specs += specs
-
     @abstractmethod
     def parse(self, args:list[str], doot_arg_specs:list[ParamStruct_p], cmds:TomlGuard, tasks:TomlGuard) -> TomlGuard:
-        raise NotImplementedError()
+        pass

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from abc import abstractmethod
 from tomlguard import TomlGuard
 
-from doot._abstract.structs import ParamStruct_p
+from doot._abstract.protocols import ParamStruct_p
 
 class Command_i:
     """

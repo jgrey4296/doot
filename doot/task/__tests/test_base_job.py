@@ -18,27 +18,27 @@ logging = logmod.root
 import doot
 doot._test_setup()
 from doot.enums import TaskFlags
-from doot.structs import DootTaskSpec, TaskStub
+from doot.structs import TaskSpec, TaskStub
 from doot.task.base_job import DootJob
 import doot._abstract
 
 class TestBaseJob:
 
     def test_initial(self):
-        job = DootJob(DootTaskSpec.build({"name": "basic::example", "flags": ["JOB"]}))
+        job = DootJob(TaskSpec.build({"name": "basic::example", "flags": ["JOB"]}))
         assert(isinstance(job, doot._abstract.Task_i))
         assert(TaskFlags.JOB in job.spec.flags)
 
     def test_paramspecs(self):
-        job = DootJob(DootTaskSpec.build({"name": "basic::example"}))
+        job = DootJob(TaskSpec.build({"name": "basic::example"}))
         param_specs = job.param_specs
         assert(isinstance(param_specs, list))
         assert(len(param_specs) == 3)
 
     def test_spec(self):
         ##-- setup
-        job1 = DootJob(DootTaskSpec.build({"name" :"basic::example"}))
-        job2 = DootJob(DootTaskSpec.build({"name" :"other.group::blah"}))
+        job1 = DootJob(TaskSpec.build({"name" :"basic::example"}))
+        job2 = DootJob(TaskSpec.build({"name" :"other.group::blah"}))
         ##-- end setup
         assert(str(job1.name) == "basic::example")
         assert(str(job2.name) == "\"other.group\"::blah")

@@ -35,16 +35,17 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doot._abstract import Reporter_i, ReportLine_i
-from doot.structs import DootTraceRecord
+from doot._abstract import Reporter_p, ReportLine_p
+from doot.structs import TraceRecord
+from doot.reporters.base_reporter import BaseReporter
 
-class DootReportManagerStack(Reporter_i):
+class DootReportManagerStack(BaseReporter):
     """
     A Stack of Reporters to try using.
     The First one that returns a DootTrace is used.
     """
 
-    def __init__(self, reporters:list[ReportLine_i]=None):
+    def __init__(self, reporters:list[ReportLine_p]=None):
         super().__init__(reporters)
 
     def __str__(self):

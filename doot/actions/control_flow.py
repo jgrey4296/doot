@@ -35,7 +35,7 @@ import shutil
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 
-from doot.structs import DootKey, DootCodeReference
+from doot.structs import DootKey, CodeReference
 from doot.mixins.path_manip import PathManip_m
 from doot.actions.base_action import DootBaseAction
 from doot.utils.action_decorators import ControlFlow
@@ -141,7 +141,7 @@ class RelativeCheck(PathManip_m, DootBaseAction):
 class LogAction(DootBaseAction):
 
     @DootKey.dec.types("level", hint={"type_":str, "on_fail":"INFO"})
-    @DootKey.dec.expands("msg")
+    @DootKey.dec.expands("msg", hint={"rec":True})
     def __call__(self, spec, state, level, msg):
         level        = logmod.getLevelName(level)
         printer.log(level, "%s", msg)
