@@ -1,12 +1,12 @@
 """
 
 """
-##-- imports
+# Imports:
 from __future__ import annotations
 
-# import abc
-# import datetime
-# import enum
+# ##-- stdlib imports
+import datetime
+import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
@@ -15,54 +15,62 @@ import re
 import sys
 import time
 import types
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
-
-# from uuid import UUID, uuid1
-# from weakref import ref
-
-##-- end imports
-
-##-- logging
-logging = logmod.getLogger(__name__)
-printer = logmod.getLogger("doot._printer")
-##-- end logging
-
+import os
 from importlib.metadata import EntryPoint
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
+from uuid import UUID, uuid1
 
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
 import sh
-import sys
+import tomlguard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
 import doot
 import doot.errors
-import tomlguard
-from doot._abstract import (ArgParser_i, Command_i, CommandLoader_p,
-                            Overlord_p, Task_i, Job_i, TaskLoader_p)
-
-from doot.utils.plugin_selector import plugin_selector
+from doot._abstract import (ArgParser_i, Command_i, CommandLoader_p, Job_i,
+                            Overlord_p, Task_i, TaskLoader_p)
 from doot.errors import DootInvalidConfig, DootParseError
 from doot.loaders.cmd_loader import DootCommandLoader
 from doot.loaders.plugin_loader import DootPluginLoader
 from doot.loaders.task_loader import DootTaskLoader
-from doot.parsers.flexible import DootFlexibleParser
 from doot.mixins.param_spec import ParamSpecMaker_m
+from doot.parsers.flexible import DootFlexibleParser
+from doot.utils.plugin_selector import plugin_selector
 
-plugin_loader_key  : Final = doot.constants.entrypoints.DEFAULT_PLUGIN_LOADER_KEY
-command_loader_key : Final = doot.constants.entrypoints.DEFAULT_COMMAND_LOADER_KEY
-task_loader_key    : Final = doot.constants.entrypoints.DEFAULT_TASK_LOADER_KEY
-announce_exit      : bool  = doot.constants.misc.ANNOUNCE_EXIT
-announce_voice     : str   = doot.constants.misc.ANNOUNCE_VOICE
+# ##-- end 1st party imports
 
-DEFAULT_CLI_CMD    : Final = doot.constants.misc.DEFAULT_CLI_CMD
+##-- logging
+logging    = logmod.getLogger(__name__)
+printer    = logmod.getLogger("doot._printer")
+header_l   = printer.getChild("header")
+setup_l    = printer.getChild("setup")
+help_l     = printer.getChild("help")
+shutdown_l = printer.getChild("shutdown")
+##-- end logging
 
-preferred_cmd_loader       = doot.config.on_fail("default").settings.general.loaders.command()
-preferred_task_loader      = doot.config.on_fail("default").settings.general.loaders.task()
-preferred_parser           = doot.config.on_fail("default").settings.general.loaders.parser()
+env = os.environ
+plugin_loader_key  : Final[str]   = doot.constants.entrypoints.DEFAULT_PLUGIN_LOADER_KEY
+command_loader_key : Final[str]   = doot.constants.entrypoints.DEFAULT_COMMAND_LOADER_KEY
+task_loader_key    : Final[str]   = doot.constants.entrypoints.DEFAULT_TASK_LOADER_KEY
+announce_exit      : Final[bool]  = doot.constants.misc.ANNOUNCE_EXIT
+announce_voice     : Final[str]   = doot.constants.misc.ANNOUNCE_VOICE
 
-defaulted_file             = doot.config.on_fail(pl.Path(".doot_defaults.toml"), pl.Path).report.defaulted_file(pl.Path)
+DEFAULT_CLI_CMD    : Final[str]   = doot.constants.misc.DEFAULT_CLI_CMD
+HEADER_MSG         : Final[str]   = doot.constants.printer.doot_header
+
+preferred_cmd_loader              = doot.config.on_fail("default").settings.general.loaders.command()
+preferred_task_loader             = doot.config.on_fail("default").settings.general.loaders.task()
+preferred_parser                  = doot.config.on_fail("default").settings.general.loaders.parser()
+
+defaulted_file                    = doot.config.on_fail(pl.Path("{logs}.doot_defaults.toml"), pl.Path).report.defaulted_file(pl.Path)
 
 @doot.check_protocol
 class DootOverlord(ParamSpecMaker_m, Overlord_p):
@@ -99,10 +107,34 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         self._load_commands(extra_config)
         self._load_tasks(extra_config)
         self._parse_args()
-        logging.debug("Core Overlord Initialisation complete")
+        setup_l.debug("Core Overlord Initialisation complete")
+
+    def __call__(self, cmd=None) -> int:
+
+        if not doot.args.on_fail((None,)).cmd.args.suppress_header():
+            header_l.info(HEADER_MSG, extra={"colour": "green"})
+
+        if doot.args.on_fail(False).head.args.debug():
+            breakpoint()
+            pass
+
+        # perform head args
+        if self._cli_arg_response():
+            return
+
+        # Do the cmd
+        setup_l.debug("Overlord Calling: %s", cmd or doot.args.on_fail("Unknown").cmd.name())
+        try:
+            cmd = self._get_cmd(cmd)
+            cmd(self.tasks, self.plugins)
+        except doot.errors.DootError as err:
+            self._errored = err
+            raise err
+        else:
+            return 0
 
     @property
-    def param_specs(self) -> list[DootParamSpec]:
+    def param_specs(self) -> list[ParamSpec]:
         return [
            self.build_param(name="version" , prefix="--"),
            self.build_param(name="help"    , prefix="--"),
@@ -132,8 +164,9 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
             self.plugin_loader    = self.loaders.get(plugin_loader_key, DootPluginLoader())
             self.plugin_loader.setup(extra_config)
             self.plugins : TomlGuard = self.plugin_loader.load()
+            doot._update_aliases(self.plugins)
         except doot.errors.DootPluginError as err:
-            printer.warning("Plugins Not Loaded Due to Error: %s", err)
+            setup_l.warning("Plugins Not Loaded Due to Error: %s", err)
             self.plugins = tomlguard.TomlGuard()
 
     def _load_commands(self, extra_config):
@@ -151,7 +184,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
             self.cmd_loader.setup(self.plugins, extra_config)
             self.cmds = self.cmd_loader.load()
         except doot.errors.DootPluginError as err:
-            printer.warning("Commands Not Loaded due to Error: %s", err)
+            setup_l.warning("Commands Not Loaded due to Error: %s", err)
             self.cmds = tomlguard.TomlGuard()
 
     def _load_tasks(self, extra_config):
@@ -185,7 +218,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
           print version, and help.
         """
         if doot.args.on_fail(False).head.args.verbose() and self.log_config:
-            printer.info("Switching to Verbose Output")
+            setup_l.info("Switching to Verbose Output")
             self.log_config.set_level("NOTSET")
             pass
 
@@ -194,11 +227,11 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         logging.info("Tasks: %s", self.tasks.keys())
 
         if doot.args.on_fail(False).head.args.version():
-            printer.info("\n\n----- Doot Version: %s\n\n", doot.__version__)
+            help_l.info("\n\n----- Doot Version: %s\n\n", doot.__version__)
             return True
 
         if doot.args.on_fail(False).head.args.help():
-            printer.info(self.help)
+            help_l.info(self.help)
 
             return True
 
@@ -217,72 +250,37 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
 
         return self.current_cmd
 
-    def __call__(self, cmd=None) -> int:
+    def _announce_exit(self, message:str):
+        match sys.platform:
+            case _ if "PRE_COMMIT" in env:
+                return
+            case "linux":
+                sh.espeak(message)
+            case "darwin":
+                sh.say("-v", "Moira", "-r", "50", message)
 
-        if not doot.args.on_fail((None,)).cmd.args.suppress_header():
-            printer.info("----------------------------------------------", extra={"colour" : "green"})
-            printer.info("-------------------- Doot --------------------", extra={"colour" : "yellow"})
-            printer.info("----------------------------------------------", extra={"colour": "green"})
-
-        if doot.args.on_fail(False).head.args.debug():
-            breakpoint()
-            pass
-
-        # perform head args
-        if self._cli_arg_response():
-            return
-
-        # Do the cmd
-        logging.info("Overlord Calling: %s", cmd or doot.args.on_fail("Unknown").cmd.name())
-        try:
-            cmd = self._get_cmd(cmd)
-            cmd(self.tasks, self.plugins)
-        except doot.errors.DootError as err:
-            self._errored = err
-            raise err
-        else:
-            return 0
+    def _record_defaulted_config_values(self):
+        defaulted_toml = tomlguard.TomlGuard.report_defaulted()
+        expanded_path = doot.locs[defaulted_file]
+        with open(expanded_path, 'w') as f:
+            f.write("# default values used:\n")
+            f.write("\n".join(defaulted_toml) + "\n\n")
 
     def shutdown(self):
         """ Doot has finished normally, so report on what was done """
         if self.current_cmd is not None and hasattr(self.current_cmd, "shutdown"):
             self.current_cmd.shutdown(self._errored, self.tasks, self.plugins)
 
+        say_on_exit = doot.config.on_fail(False).settings.general.notify.say_on_exit()
+
         match self._errored:
-            case doot.errors.DootError():
-                pass
-            case None:
-                logging.info("Shutting Doot Down Normally")
+            case doot.errors.DootError() if say_on_exit:
                 self._record_defaulted_config_values()
-
-        self._announce_exit()
-
-    def _announce_exit(self):
-        match sys.platform:
-            case "linux":
-                pass
-            case "darwin":
-                if doot.config is not None:
-                    announce_exit        = doot.config.on_fail(announce_exit, bool|str).settings.general.notify.say_on_exit()
-                    announce_voice       = doot.config.on_fail(announce_voice, str).setttings.general.notify.announce_voice()
-
-                match result, announce_exit:
-                    case 0, str() as say_text:
-                        cmd = sh.say("-v", announce_voice, "-r", "50", say_text)
-                    case 0, True:
-                        cmd = sh.say("-v", announce_voice, "-r", "50", "Doot Has Finished")
-                    case _, True|str():
-                        cmd = sh.say("-v", announce_voice, "-r", "50", "Doot Encountered a problem")
-                    case _, _:
-                        cmd = None
-                if cmd is not None:
-                    cmd.execute()
-
-    def _record_defaulted_config_values(self):
-
-        defaulted_toml = tomlguard.TomlGuard.report_defaulted()
-        with open(defaulted_file, 'w') as f:
-            f.write("# default values used:\n")
-            f.write("\n".join(defaulted_toml) + "\n\n")
-            # f.write("[.directories]\n")
-            # f.write("\n".join(defaulted_locs))
+                self._announce_exit("Doot encountered an error")
+            case None if say_on_exit:
+                shutdown_l.info("Doot Shutting Down Normally")
+                self._record_defaulted_config_values()
+                self._announce_exit("Doot Finished")
+            case None:
+                shutdown_l.info("Doot Shutting Down Normally")
+                self._record_defaulted_config_values()

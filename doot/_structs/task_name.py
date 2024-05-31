@@ -21,7 +21,7 @@ import weakref
 # from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
+                    Iterable, Iterator, Mapping, Match, MutableMapping, Self,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable, Generator)
 from uuid import UUID, uuid1
@@ -36,97 +36,132 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from pydantic import field_validator, model_validator
 import importlib
 from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.enums import TaskFlags, ReportEnum
-from doot._structs.structured_name import StructuredName, aware_splitter
+from doot._structs.structured_name import StructuredName, aware_splitter, TailEntry
 
-TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
-
-@dataclass(eq=False, slots=True)
-class DootTaskName(StructuredName):
+class TaskName(StructuredName):
     """
       A Task Name.
+      Infers metadata(TaskFlags) from the string data it is made of.
+      a trailing '+' in the head makes it a job
+      a leading '_' in the tail makes it an internal name, eg: group::_.task
+      having a '$gen$' makes it a concrete name
+      having a '$head$' makes it a job head
+      Two separators in a row marks a recall point for root()
+
+      TODO: parameters
 
     """
 
-    separator          : str                     = field(default=doot.constants.patterns.TASK_SEP, kw_only=True)
-    version_constraint : None|str                = field(default=None)
-    meta               : TaskFlags               = field(default=TaskFlags.default)
-    args               : dict                    = field(default_factory=dict)
+    meta                : TaskFlags               = TaskFlags.default
+    args                : dict                    = {}
+    version_constraint  : None|str                = None
+
+    _roots              : tuple[int, int]         = (-1,-1)
+
+    _separator          : ClassVar[str]           = doot.constants.patterns.TASK_SEP
+    _gen_marker         : ClassVar[str]           = doot.constants.patterns.SPECIALIZED_ADD
+    _internal_marker    : ClassVar[str]           = doot.constants.patterns.INTERNAL_TASK_PREFIX
+    _head_marker        : ClassVar[str]           = doot.constants.patterns.SUBTASKED_HEAD
+    _job_marker         : ClassVar[str]           = "+" # TODO move to constants.toml
+    _root_marker        : ClassVar[str]           = ""  # TODO move to constants.toml
 
     @classmethod
-    def build(cls, name:str|dict|DootTaskName, *, args=None):
+    def build(cls, name:str|dict|TaskName, *, args=None):
         """ build a name from the various ways it can be specificed.
           handles a single string of the group and taskname,
           or a dict that specifies taskname and maybe the groupname
 
         """
-        groupHead = []
-        taskHead  = []
         match name:
-            case DootTaskName():
+            case TaskName():
                 return name
-            case str() if doot.constants.patterns.TASK_SEP in name:
-                try:
-                    groupHead_r, taskHead_r = name.split(doot.constants.patterns.TASK_SEP)
-                    groupHead = groupHead_r.split(".")
-                    taskHead = taskHead_r.split(".")
-                except ValueError:
-                    raise doot.errors.DootConfigError("Provided Task Name can't be split correctly, check it is of the form group::name", name)
+            case str() if cls._separator not in name:
+                raise ValueError("TaskName has no group", name)
             case str():
-                groupHead.append("default")
-                taskHead.append(name)
-            case {"name": str() as name} if doot.constants.patterns.TASK_SEP in name:
-                try:
-                    groupHead_r, taskHead_r = name.split(doot.constants.patterns.TASK_SEP)
-                    groupHead = groupHead_r.split(".")
-                    taskHead = taskHead_r.split(".")
-                except ValueError:
-                    raise doot.errors.DootConfigError("Provided Task Name can't be split correctly, check it is of the form group::name", name)
-            case { "group": str() as group, "name": str() as name }:
-                groupHead.append(group)
-                taskHead.append(name)
+                group, task = name.split(doot.constants.patterns.TASK_SEP)
+            case {"name": TaskName() as name}:
+                return name
+            case {"name": str() as name} if cls._separator not in name:
+                raise ValueError("TaskName has no group", name)
             case {"name": str() as name}:
-                groupHead.append("default")
-                taskHead.append(name)
-            case {"name": DootTaskName() as name}:
-                return name
+                group , task = name.split(doot.constants.patterns.TASK_SEP)
+            case { "group": str() as group, "name": str() as task}:
+                pass
             case _:
-                raise doot.errors.DootError("Unrecognized name format: %s", name)
+                raise ValueError("Unrecognized name format: %s", name)
 
+        return TaskName(head=[group], tail=[task], args=args or {})
 
-        return DootTaskName(groupHead, taskHead, args=args)
+    @field_validator("head", mode="before")
+    def _process_head(cls, head):
+        """ ensure the head is in its component parts """
+        match head:
+            case list():
+                head = [x.replace('"',"").replace("'","") for x in head]
+                head = ftz.reduce(lambda x, y: x + y, map(aware_splitter, head))
+            case _:
+                raise ValueError("Bad Task Head Value", head)
 
-    def __post_init__(self):
-        sub_split = ftz.partial(aware_splitter, sep=self.subseparator)
-        match self.head:
-            case ["tasks", x] if x.startswith('"') and x.endswith('"'):
-                self.head = ftz.reduce(lambda x, y: x + y, map(aware_splitter, x[1:-1]))
+        match head:
             case ["tasks", *xs]:
-                self.head = ftz.reduce(lambda x, y: x + y, map(aware_splitter, xs))
-            case list():
-                self.head = ftz.reduce(lambda x, y: x + y, map(aware_splitter, self.head))
-            case str():
-                self.head = self.head.split(self.subseparator)
-            case None | []:
-                self.head = ["default"]
+                return xs
+            case _:
+                 return head
 
-        match self.tail:
+    @field_validator("tail", mode="before")
+    def _process_tail(cls, tail):
+        """ ensure the tail is in its component parts """
+        match tail:
             case list():
-                self.tail = ftz.reduce(lambda x, y: x + y, map(aware_splitter, self.tail))
+                tail = ftz.reduce(lambda x, y: x + y, map(aware_splitter, tail))
             case str():
-                self.tail = self.tail.split(self.subseparator)
+                tail = tail.split(cls._subseparator)
             case None | []:
-                self.tail = ["default"]
+                tail = ["default"]
+            case _:
+                raise ValueError("Bad Task Tail Value", tail)
 
-        if self.tail[0].startswith(doot.constants.patterns.INTERNAL_TASK_PREFIX):
+        root_set = {TaskName._root_marker}
+        filtered = [x for x,y in zip(tail, itz.chain(tail[1:], [None])) if {x,y} != root_set ]
+        return filtered
+
+    @model_validator(mode="after")
+    def check_metdata(self) -> Self:
+        if self.head[-1] == TaskName._job_marker:
+            self.meta |= TaskFlags.JOB
+        if self.tail[0] == TaskName._internal_marker:
             self.meta |= TaskFlags.INTERNAL
+        if TaskName._gen_marker in self.tail:
+            self.meta |= TaskFlags.CONCRETE
+        if TaskName._head_marker in self.tail:
+            self.meta |= TaskFlags.JOB_HEAD
+            self.meta &= ~TaskFlags.JOB
+
+        if TaskFlags.CONCRETE in self.meta and 'uuid' not in self.args:
+            raise ValueError("Instanced Name lacks a stored uuid", self)
+        if TaskFlags.CONCRETE in self.meta and TaskName._gen_marker not in self.tail:
+            raise ValueError("Specialized Name lacks the specialized keyword in its tail", self)
+        if TaskFlags.INTERNAL in self.meta and not self.tail[0] == TaskName._internal_marker:
+            raise ValueError("Internal Name lacks a prefix underscore", self)
+
+        return self
+    @model_validator(mode="after")
+    def _process_roots(self) -> Self:
+        # filter out double root markers
+        indices = [i for i,x in enumerate(self.tail[:-1]) if x == TaskName._root_marker]
+        if bool(indices):
+            min_i, max_i = min(indices), max(indices)
+            self._roots = (min_i, max_i)
+        return self
 
     def __str__(self) -> str:
-        return "{}{}{}".format(self.group, self.separator, self.task)
+        return "{}{}{}".format(self.group, self._separator, self.task)
 
     def __repr__(self) -> str:
         name = str(self)
@@ -135,20 +170,14 @@ class DootTaskName(StructuredName):
     def __hash__(self):
         return hash(str(self))
 
-    def __contains__(self, other) -> bool:
+    def __contains__(self, other):
         match other:
-            case str():
-                return other in str(self)
-            case DootTaskName() if not other.version_constraint:
-                return str(self) in str(other)
-            case DootTaskName():
-                self_vc  = self.version_constraint
-                other_vc = other.version_constraint
-                # check < | <= | > | >= | != | =
-                # of self_vc to other_vc
-                raise NotImplementedError()
+            case TaskFlags():
+                return other in self.meta
+            case _:
+                return super().__contains__(other)
 
-    @property
+    @ftz.cached_property
     def group(self) -> str:
         fmt = "{}"
         if len(self.head) > 1:
@@ -156,48 +185,100 @@ class DootTaskName(StructuredName):
             fmt = '"{}"'
         return fmt.format(self.head_str())
 
-    @property
+    @ftz.cached_property
     def task(self) -> str:
-        return self.subseparator.join([str(x) if not isinstance(x, UUID) else "${}$".format(x.hex) for x in self.tail])
+        return self._subseparator.join([str(x) if not isinstance(x, UUID) else "${}$".format(hex(x.time_low)) for x in self.tail])
 
-    @property
+    @ftz.cached_property
     def readable(self):
         group = self.group
-        tail = self.subseparator.join([str(x) if not isinstance(x, UUID) else "<UUID>" for x in self.tail])
-        return "{}{}{}".format(group, self.separator, tail)
+        tail = self._subseparator.join([str(x) if not isinstance(x, UUID) else "<UUID>" for x in self.tail])
+        return "{}{}{}".format(group, self._separator, tail)
 
-    def root(self) -> DootTaskName:
-        return DootTaskName.build(f"{self.head_str()}{self.separator}{self.tail[0]}")
+    def is_instance(self) -> bool:
+        return TaskFlags.CONCRETE in self.meta
 
-    def task_head(self) -> DootTaskName:
-        if self.tail[-1] == doot.constants.patterns.SUBTASKED_HEAD:
-            return self
+    def match_version(self, other) -> bool:
+        """ match version constraints of two task names against each other """
+        raise NotImplementedError()
 
-        return self.subtask(doot.constants.patterns.SUBTASKED_HEAD)
+    def root(self, *, top=False) -> TaskName:
+        """
+        Strip off detail information to get the basic task name for id purposes
+        """
+        match self._roots:
+            case [-1, -1]:
+                return self
+            case [x, _] if top:
+                return TaskName(head=self.head[:], tail=self.tail[:x])
+            case [_, x]:
+                return TaskName(head=self.head[:], tail=self.tail[:x])
 
-    def subtask(self, *subtasks, subgroups:list[str]|None=None) -> DootTaskName:
-        args = self.args.copy() if self.args else None
-        subs = []
+    def add_root(self) -> TaskName:
+        """ Add a root marker if the last element isn't already a root marker """
+        match self.last():
+            case x if x == TaskName._root_marker:
+                return self
+            case _:
+                return self.subtask()
+
+    def subtask(self, *subtasks, subgroups:list[str]|None=None, **kwargs) -> TaskName:
+        """ generate an extended name, with more information
+        eg: a.group::simple.task
+        ->  a.group::simple.task..targeting.something
+
+        propagates args
+        adds a root marker to recover the original
+        """
+
+        args = self.args.copy() if self.args else {}
+        if bool(kwargs):
+            args.update(kwargs)
+        subs = [TaskName._root_marker]
+        subgroups = subgroups or []
         match [x for x in subtasks if x != None]:
-            case [int() as i, DootTaskName() as x]:
+            case [int() as i, TaskName() as x]:
                 subs.append(str(i))
                 subs.append(x.task.removeprefix(self.task + "."))
             case [str() as x]:
                 subs.append(x)
+            case [int() as x]:
+                subs.append(str(x))
             case [*xs]:
-                subs = xs
+                subs += xs
 
-        return DootTaskName(self.head + (subgroups or []),
-                            self.tail + subs,
-                            meta=self.meta,
-                            args=args)
+        return TaskName(head=self.head + subgroups,
+                        tail=self.tail + subs,
+                        meta=self.meta,
+                        args=args,
+                        )
 
-    def specialize(self, *, info=None):
-        match info:
+    def job_head(self) -> TaskName:
+        """ generate a canonical head/completion task name for this name
+        eg: group::simple.task..$gen$.<UUID>
+        ->  group::simple.task..$gen$.<UUID>..$head$
+
+        """
+        if TaskFlags.JOB_HEAD in self.meta:
+            return self
+
+        return self.subtask(TaskName._head_marker)
+
+    def instantiate(self, *, prefix=None) -> TaskName:
+        """ Generate a concrete instance of this name with a UUID appended,
+        optionally can add a prefix
+          # TODO possibly do $gen$.{prefix?}.<UUID>
+
+          ie: a.task.group::task.name..{prefix?}.$gen$.<UUID>
+        """
+        uuid = uuid1()
+        match prefix:
             case None:
-                return self.subtask(doot.constants.patterns.SPECIALIZED_ADD, uuid1())
+                return self.subtask(TaskName._gen_marker, uuid, uuid=uuid)
             case _:
-                return self.subtask(doot.constants.patterns.SPECIALIZED_ADD, info, uuid1())
+                return self.subtask(prefix, TaskName._gen_marker, uuid, uuid=uuid)
 
-    def last(self):
-        return self.tail[-1]
+    def last(self) -> None|TailEntry:
+        if bool(self.tail):
+            return self.tail[-1]
+        return None

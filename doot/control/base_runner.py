@@ -4,9 +4,10 @@
 See EOF for license/metadata/notes as applicable
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
@@ -18,35 +19,47 @@ import re
 import time
 import types
 import weakref
+from collections import defaultdict
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
+# ##-- 3rd party imports
 import more_itertools as mitz
-##-- end lib imports
 
-##-- logging
-logging = logmod.getLogger(__name__)
-printer = logmod.getLogger("doot._printer")
-##-- end logging
+# ##-- end 3rd party imports
 
-from collections import defaultdict
+# ##-- 1st party imports
 import doot
 import doot.errors
-from doot.enums import ReportEnum, ActionResponseEnum as ActRE, TaskStateEnum
-from doot._abstract import Job_i, Task_i, FailPolicy_p
-from doot._abstract import TaskTracker_i, TaskRunner_i, Task_i, ReportLine_i, Action_p, Reporter_i
-from doot.structs import DootTaskArtifact, DootActionSpec
-from doot.utils.signal_handler import SignalHandler
-from doot.structs import DootTaskSpec, DootActionSpec
+from doot._abstract import (Action_p, FailPolicy_p, Job_i, Reporter_p, Task_i,
+                            TaskRunner_i, TaskTracker_i)
+from doot.enums import ActionResponseEnum as ActRE
+from doot.enums import ReportEnum, TaskStatus_e
+from doot.structs import ActionSpec, TaskArtifact, TaskSpec
 from doot.utils.log_context import DootLogContext
+from doot.utils.signal_handler import SignalHandler
+
+# ##-- end 1st party imports
+
+##-- logging
+logging    = logmod.getLogger(__name__)
+printer    = logmod.getLogger("doot._printer")
+setup_l    = printer.getChild("setup")
+taskloop_l = printer.getChild("task_loop")
+report_l   = printer.getChild("report")
+success_l  = printer.getChild("success")
+fail_l     = printer.getChild("fail")
+sleep_l    = printer.getChild("sleep")
+artifact_l = printer.getChild("artifact")
+##-- end logging
 
 dry_run                                      = doot.args.on_fail(False).cmd.args.dry_run()
 head_level           : Final[str]            = doot.constants.printer.DEFAULT_HEAD_LEVEL
@@ -56,7 +69,9 @@ sleep_level          : Final[str]            = doot.constants.printer.DEFAULT_SL
 execute_level        : Final[str]            = doot.constants.printer.DEFAULT_EXECUTE_LEVEL
 enter_level          : Final[str]            = doot.constants.printer.DEFAULT_ENTER_LEVEL
 max_steps            : Final[str]            = doot.config.on_fail(100_000).settings.tasks.max_steps()
-fail_prefix          : Final[str]            = doot.constants.printer.FAILURE_PREFIX
+fail_prefix          : Final[str]            = doot.constants.printer.fail_prefix
+loop_entry_msg       : Final[str]            = doot.constants.printer.loop_entry
+loop_exit_msg        : Final[str]            = doot.constants.printer.loop_exit
 
 default_SLEEP_LENGTH : Fina[int|float]       = doot.config.on_fail(0.2, int|float).settings.tasks.sleep.task()
 logctx               : Final[DootLogContext] = DootLogContext(printer)
@@ -64,26 +79,30 @@ logctx               : Final[DootLogContext] = DootLogContext(printer)
 class BaseRunner(TaskRunner_i):
     """ An incomplete implementation for runners to extend """
 
-    def __init__(self:Self, *, tracker:TaskTracker_i, reporter:Reporter_i, policy=None):
+    def __init__(self:Self, *, tracker:TaskTracker_i, reporter:Reporter_p):
         self.tracker                                          = tracker
         self.reporter                                         = reporter
-        self.policy                                           = policy
         self.step                                             = 0
         self._signal_failure : None|doot.errors.DootError     = None
-        self._enter_msg                                       = "---------- Task Loop Starting ----------"
-        self._exit_msg                                        = "---------- Task Loop Finished ----------"
+        self._enter_msg                                       = loop_entry_msg
+        self._exit_msg                                        = loop_exit_msg
 
     def __enter__(self) -> Any:
-        printer.info("- Validating Task Network, building remaining abstract tasks: %s", self.tracker.late_count)
-        self.tracker.validate()
-        printer.info(self._enter_msg, extra={"colour" : "green"})
+        setup_l.info("Building Task Network...")
+        self.tracker.build_network()
+        setup_l.info("Task Network Built. %s Nodes, %s Edges, %s Edges from Root.",
+                     len(self.tracker.network.nodes), len(self.tracker.network.edges), len(self.tracker.network.pred[self.tracker._root_node]))
+        setup_l.info("Validating Task Network...")
+        self.tracker.validate_network()
+        setup_l.info("Validation Complete")
+        taskloop_l.info(self._enter_msg, extra={"colour" : "green"})
         return
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
         # TODO handle exc_types?
         printer.setLevel("INFO")
-        printer.info("")
-        printer.info(self._exit_msg, extra={"colour":"green"})
+        taskloop_l.info("")
+        taskloop_l.info(self._exit_msg, extra={"colour":"green"})
         self._finish()
         return
 
@@ -91,25 +110,29 @@ class BaseRunner(TaskRunner_i):
         """finish running tasks, summarizing results using the reporter
           separate from __exit__ to allow it to be overridden
         """
-        logging.info("Task Running Completed")
+        report_l.info("Task Running Completed")
         if self.step >= max_steps:
-            printer.info("Runner Hit the Step Limit: %s", max_steps)
+            report_l.info("Runner Hit the Step Limit: %s", max_steps)
 
-        printer.info("Final Summary: ")
-        printer.info(str(self.reporter), extra={"colour":"magenta"})
+        report_l.info("Final Summary: ")
+        report_l.info(str(self.reporter), extra={"colour":"magenta"})
         match self._signal_failure:
             case None:
                 return
             case doot.errors.DootError():
                 raise self._signal_failure
 
-    def _handle_task_success(self, task:None|Task_i|DootTaskArtifact):
+    def _handle_task_success(self, task:None|Task_i|TaskArtifact):
         """ The basic success handler. just informs the tracker of the success """
-        if task:
-            self.tracker.update_state(task, self.tracker.state_e.SUCCESS)
+        success_l.debug("(Task): %s", task)
+        match task:
+            case None:
+                pass
+            case _:
+                self.tracker.set_status(task, TaskStatus_e.SUCCESS)
         return task
 
-    def _handle_failure(self, task:None|Task_i, failure:Error) -> None:
+    def _handle_failure(self, task:Task_i, failure:Error) -> None:
         """ The basic failure handler.
           Triggers a breakpoint on DootTaskInterrupt,
           otherwise informs the tracker of the failure.
@@ -125,24 +148,24 @@ class BaseRunner(TaskRunner_i):
                 pass
             case doot.errors.DootTaskFailed() as err:
                 self._signal_failure = err
-                printer.warning("%s %s", fail_prefix, err)
-                self.tracker.update_state(err.task.name, self.tracker.state_e.HALTED)
+                fail_l.warning("%s %s", fail_prefix, err)
+                self.tracker.set_status(err.task, TaskStatus_e.HALTED)
             case doot.errors.DootTaskError() as err:
                 self._signal_failure = err
-                printer.warning("%s %s", fail_prefix, err)
-                self.tracker.update_state(err.task.name, self.tracker.state_e.HALTED)
+                fail_l.warning("%s %s", fail_prefix, err)
+                self.tracker.set_status(err.task, TaskStatus_e.FAILED)
             case doot.errors.DootError() as err:
                 self._signal_failure = err
-                printer.warning("%s %s", fail_prefix, err)
-                self.tracker.update_state(task, self.tracker.state_e.FAILED)
+                fail_l.warning("%s %s", fail_prefix, err)
+                self.tracker.set_status(task, TaskStatus_e.FAILED)
             case doot.errors.DootTaskTrackingError() as err:
                 self._signal_failure = err
-                printer.warning("%s %s", fail_prefix, err)
-                self.tracker.update_state(task, self.tracker.state_e.FAILED)
+                fail_l.warning("%s %s", fail_prefix, err)
+                self.tracker.set_status(task, TaskStatus_e.FAILED)
             case _:
                 self._signal_failure = doot.errors.DootError("Unknown Failure")
-                printer.exception("%s Unknown failure occurred: %s", fail_prefix, failure)
-                self.tracker.update_state(task, self.tracker.state_e.FAILED)
+                fail_l.exception("%s Unknown failure occurred: %s", fail_prefix, failure)
+                self.tracker.set_status(task, TaskStatus_e.FAILED)
 
     def _sleep(self, task):
         """
@@ -151,15 +174,14 @@ class BaseRunner(TaskRunner_i):
         match task:
             case None:
                 return
-            case DootTaskArtifact():
+            case TaskArtifact():
                 return
 
-        with logctx(task.spec.print_levels.on_fail(sleep_level).sleep()) as p:
-            sleep_len = task.spec.extra.on_fail(default_SLEEP_LENGTH, int|float).sleep()
-            p.info("[Sleeping (%s)...]", sleep_len, extra={"colour":"white"})
-            time.sleep(sleep_len)
+        sleep_len = task.spec.extra.on_fail(default_SLEEP_LENGTH, int|float).sleep()
+        sleep_l.debug("[Sleeping (%s)...]", sleep_len, extra={"colour":"white"})
+        time.sleep(sleep_len)
 
-    def _notify_artifact(self, art:DootTaskArtifact) -> None:
+    def _notify_artifact(self, art:TaskArtifact) -> None:
         """ A No-op for when the tracker gives an artifact """
-        printer.info("---- Artifact: %s", art)
+        artifact_l.info("---- Artifact: %s : %s", art, art.to_path())
         self.reporter.add_trace(art, flags=ReportEnum.ARTIFACT)

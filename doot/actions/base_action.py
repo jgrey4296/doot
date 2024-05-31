@@ -1,10 +1,10 @@
 ## base_action.py -*- mode: Py -*-
-##-- imports
+# Imports:
 from __future__ import annotations
 
-# import abc
-# import datetime
-# import enum
+# ##-- stdlib imports
+import datetime
+import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
@@ -12,24 +12,28 @@ import pathlib as pl
 import re
 import time
 import types
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
-# from uuid import UUID, uuid1
-# from weakref import ref
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
+from uuid import UUID, uuid1
 
-##-- end imports
+# ##-- end stdlib imports
 
-printer = logmod.getLogger("doot._printer")
-
+# ##-- 1st party imports
 import doot
-from doot.errors import DootTaskError, DootTaskFailed
-from doot.structs import DootActionSpec
 from doot._abstract import Action_p
 from doot.enums import ActionResponseEnum
+from doot.errors import DootTaskError, DootTaskFailed
+from doot.structs import ActionSpec
+
+# ##-- end 1st party imports
+
+##-- logging
+printer = logmod.getLogger("doot._printer")
+
+##-- end logging
 
 class DootBaseAction(Action_p):
     """
@@ -40,11 +44,10 @@ class DootBaseAction(Action_p):
     """
     ActRE = ActionResponseEnum
 
-
     def __str__(self):
         return f"Base Action"
 
-    def __call__(self, spec:DootActionSpec, state:dict) -> dict|bool|None:
+    def __call__(self, spec:ActionSpec, state:dict) -> dict|bool|None:
         printer.debug("Base Action Called: %s", state.get("count", 0))
         printer.info(" ".join(spec.args))
         return { "count" : state.get("count", 0) + 1 }

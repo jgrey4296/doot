@@ -47,7 +47,7 @@ import decorator
 import doot
 import doot.errors
 from doot.enums import LocationMeta
-from doot._abstract.structs import SpecStruct_p
+from doot._abstract.protocols import SpecStruct_p
 
 DOOT_ANNOTATIONS : Final[str]                = "__DOOT_ANNOTATIONS__"
 KEYS_HANDLED   : Final[str]                = "_doot_keys_handler"

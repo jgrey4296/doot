@@ -19,7 +19,7 @@ from tomlguard import TomlGuard
 import doot
 doot._test_setup()
 from doot.control.locations import DootLocations
-from doot.structs import DootKey, DootActionSpec
+from doot.structs import DootKey, ActionSpec
 from doot._structs import key as dkey
 
 KEY_BASES               : Final[str] = ["bob", "bill", "blah", "other"]
@@ -33,7 +33,7 @@ class TestPathExpansion:
 
     @pytest.fixture(scope="function")
     def spec(self):
-        return DootActionSpec(kwargs=TomlGuard({"y": "aweg", "z_": "bloo"}))
+        return ActionSpec(kwargs=TomlGuard({"y": "aweg", "z_": "bloo"}))
 
     @pytest.fixture(scope="function")
     def setup_locs(self, mocker):

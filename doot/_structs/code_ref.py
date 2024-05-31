@@ -36,6 +36,7 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from pydantic import field_validator, model_validator
 import importlib
 from importlib.metadata import EntryPoint
 from tomlguard import TomlGuard
@@ -43,63 +44,49 @@ import doot
 import doot.errors
 from doot._structs.structured_name import StructuredName
 
-@dataclass(eq=False, slots=True)
-class DootCodeReference(StructuredName):
+class CodeReference(StructuredName):
     """
       A reference to a class or function. can be created from a string (so can be used from toml),
       or from the actual object (from in python)
     """
-    separator : str                              = field(default=doot.constants.patterns.IMPORT_SEP, kw_only=True)
-    _mixins   : list[DootCodeReference]          = field(default_factory=list, kw_only=True)
-    _type     : None|type                        = field(default=None, kw_only=True)
+    _mixins   : list[CodeReference]          = []
+    _type     : None|type                        = None
+
+    _separator : ClassVar[str]                    = doot.constants.patterns.IMPORT_SEP
 
     @classmethod
     def build(cls, name:str|type|EntryPoint):
         match name:
+            case str() if cls._separator not in name:
+                raise ValueError("a separator needs to be used", name, cls._separator)
             case str():
-                return cls._from_str(name)
+                groupHead_r, taskHead_r = name.split(cls._separator)
+                return cls(head=[groupHead_r], tail=[taskHead_r])
             case type():
-                groupHead = name.__module__
-                codeHead  = name.__name__
-                ref = cls(groupHead, codeHead, _type=name)
+                group, code = name.__module__, name.__name__
+                ref = cls(head=[group], tail=[code], _type=name)
                 return ref
             case EntryPoint():
-                loaded = ctor.load()
-                groupHead = loaded.__module__
-                codeHead  = loaded.__name__
-                ref = cls(groupHead, codeHead, _type=loaded)
+                loaded      = ctor.load()
+                group, code = loaded.__module__, loaded.__name__
+                ref         = cls(head=[group], tail=[code], _type=loaded)
                 return ref
-
-    @classmethod
-    def _from_str(cls, name:str):
-        if doot.constants.patterns.TASK_SEP in name:
-            raise doot.errors.DootError("Code References should use a single colon, not double")
-
-        if ":" in name:
-            try:
-                groupHead_r, taskHead_r = name.split(":")
-                groupHead = groupHead_r.split(".")
-                taskHead = taskHead_r.split(".")
-            except ValueError:
-                raise doot.errors.DootConfigError("Code ref can't be split correctly, ensure its of the form x.y.z:ClassName", name)
-        else:
-            groupHead = None
-            taskHead  = name
-
-        return DootCodeReference(groupHead, taskHead)
+            case _:
+                raise ValueError("Bad Value used to try to build a coderef", name)
 
     @staticmethod
-    def from_alias(alias:str, group:str, plugins:TomlGuard) -> DootCodeReference:
+    def from_alias(alias:str, group:str, plugins:TomlGuard) -> CodeReference:
         if group not in plugins:
-            return DootCodeReference._from_str(alias)
+            raise ValueError("Plugin Group not found for CodeRef dealiasing", group, alias, plugins)
+
         match [x for x in plugins[group] if x.name == alias]:
             case [x, *xs]:
-                return DootCodeReference._from_str(x.value)
+                return CodeReference.build(x.value)
             case _:
-                return DootCodeReference._from_str(alias)
+                return CodeReference.build(alias)
 
     def __str__(self) -> str:
-        return "{}{}{}".format(self.module, self.separator, self.value)
+        return "{}{}{}".format(self.module, self._separator, self.value)
 
     def __repr__(self) -> str:
         code_path = str(self)
@@ -112,31 +99,31 @@ class DootCodeReference(StructuredName):
     def __iter__(self):
         return iter(self._mixins)
 
-    @property
+    @ftz.cached_property
     def module(self):
-        return self.subseparator.join(self.head)
+        return self._subseparator.join(self.head)
 
-    @property
+    @ftz.cached_property
     def value(self):
-        return self.subseparator.join(self.tail)
+        return self._subseparator.join(self.tail)
 
-    def add_mixins(self, *mixins:str|DootCodeReference|type, plugins:TomlGuard=None) -> DootCodeReference:
+    def add_mixins(self, *mixins:str|CodeReference|type, plugins:TomlGuard=None) -> CodeReference:
         to_add = self._mixins[:]
         for mix in mixins:
             match mix:
-                case DootCodeReference():
+                case CodeReference():
                     ref = mix
                 case str() if plugins is not None:
-                    ref = DootCodeReference.from_alias(mix, "mixin", plugins)
+                    ref = CodeReference.from_alias(mix, "mixin", plugins)
                 case str() | type():
-                    ref = DootCodeReference.build(mix)
+                    ref = CodeReference.build(mix)
                 case _:
                     raise TypeError("Unrecognised mixin type", mix)
 
             if ref not in to_add:
                 to_add.append(ref)
 
-        new_ref = DootCodeReference(head=self.head[:], tail=self.tail[:], _mixins=to_add, _type=self._type)
+        new_ref = CodeReference(head=self.head[:], tail=self.tail[:], _mixins=to_add, _type=self._type)
         return new_ref
 
     def try_import(self, ensure:type=Any) -> Any:
@@ -153,7 +140,7 @@ class DootCodeReference(StructuredName):
                 mixins = []
                 for mix in self._mixins:
                     match mix:
-                        case DootCodeReference():
+                        case CodeReference():
                             mixins.append(mix.try_import())
                         case type():
                             mixins.append(mix)
@@ -181,7 +168,7 @@ class DootCodeReference(StructuredName):
 
         return base_alias, mixins
 
-    def _calculate_minimal_mixins(self, plugins:TomlGuard) -> list[DootCodeReference]:
+    def _calculate_minimal_mixins(self, plugins:TomlGuard) -> list[CodeReference]:
         found          = set()
         minimal_mixins = []
         for mixin in reversed(sorted(map(lambda x: x.try_import(), self), key=lambda x:  len(x.mro()))):
@@ -191,4 +178,4 @@ class DootCodeReference(StructuredName):
             found.update(mixin.mro())
             minimal_mixins.append(mixin)
 
-        return [DootCodeReference.build(x) for x in minimal_mixins]
+        return [CodeReference.build(x) for x in minimal_mixins]

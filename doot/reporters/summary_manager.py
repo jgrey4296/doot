@@ -36,11 +36,12 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doot._abstract import Reporter_i, ReportLine_i
-from doot.structs import DootTraceRecord
+from doot._abstract import Reporter_p
+from doot.structs import TraceRecord
 from doot.enums import ReportEnum
+from doot.reporters.base_reporter import BaseReporter
 
-class DootReportManagerSummary(Reporter_i):
+class DootReportManagerSummary(BaseReporter):
     """
     Groups job,task,action success and failures, returns information on them
 

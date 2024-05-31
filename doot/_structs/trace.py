@@ -36,26 +36,37 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from pydantic import BaseModel, Field, model_validator, field_validator
 import importlib
 from tomlguard import TomlGuard
 import doot.errors
 from doot.enums import TaskFlags, ReportEnum
 
-PAD           : Final[int] = 15
-TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
 
-@dataclass
-class DootTraceRecord:
-    message : str                      = field()
-    flags   : None|ReportEnum          = field()
-    args    : list[Any]                = field(default_factory=list)
-    time    : datetime.datetime        = field(default_factory=datetime.datetime.now)
+class TraceRecord(BaseModel):
+    message : str
+    flags   : ReportEnum
+    args    : list[Any]                = []
+    time    : datetime.datetime        = Field(default_factory=datetime.datetime.now)
+
+    @field_validator("flags", mode="before")
+    def _valdiate_flags(cls, val):
+        match val:
+            case None:
+                return ReportEnum.default
+            case str() | list():
+                return ReportEnum.build(val)
+            case ReportEnum():
+                return val
+            case _:
+                raise ValueError("Bad flags for TraceRecord", val)
+
 
     def __str__(self):
         match self.message:
             case str():
                 return self.message.format(*self.args)
-            case DootTaskSpec():
+            case TaskSpec():
                 return str(self.message.name)
             case _:
                 return str(self.message)

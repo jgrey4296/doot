@@ -2,367 +2,375 @@
 """
 
 """
-##-- imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
+import datetime
+import enum
+import functools as ftz
+import itertools as itz
 import logging as logmod
+import pathlib as pl
 import unittest
 import warnings
-import pathlib as pl
-from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
-                    Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
-                    TypeVar, cast)
-##-- end imports
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
+from uuid import UUID, uuid1
+
+# ##-- end stdlib imports
+
 logging = logmod.root
 
+# ##-- stdlib imports
+from uuid import UUID
+
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
 import pytest
+from tomlguard import TomlGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
 import doot
+
+# ##-- end 1st party imports
+
 doot._test_setup()
 
+# ##-- 1st party imports
 import doot.errors
 import doot.structs
-from doot.control.tracker import DootTracker
 from doot._abstract import Task_i
-from doot.utils import mock_gen
+from doot.control.base_tracker import BaseTracker
+from doot.control.tracker import DootTracker
+from doot.enums import TaskStatus_e, ExecutionPolicy_e
 
-@pytest.mark.parametrize("ctor", [DootTracker])
-class TestTrackerBasic:
+# ##-- end 1st party imports
 
-    def test_initial(self, ctor):
-        tracker = ctor()
-        assert(tracker is not None)
+class TestTrackerNext:
 
-    @pytest.mark.skip("TODO")
-    def test_clear(self, ctor):
-        pass
+    def test_basic(self):
+        obj = DootTracker()
+        assert(isinstance(obj, DootTracker))
 
-    @pytest.mark.skip("TODO")
-    def test_validate(self, ctor):
-        pass
 
-    @pytest.mark.skip("TODO")
-    def test_task_state(self, ctor):
-        pass
-
-    @pytest.mark.skip("TODO")
-    def test_update_task_state(self, ctor):
-        pass
-
-@pytest.mark.parametrize("ctor", [DootTracker])
-class TestTrackerArtifacts:
-
-    @pytest.mark.xfail
-    def test_task_exact_artifact_dependency(self, ctor, mocker):
-        tracker = ctor()
-        for task in mock_gen.task_network({"task1"     : [[pl.Path("test.file")], []],
-                                           "subtask"   : [[], [pl.Path("blah.other")]],
-                                           "subtask2"  : [[], [pl.Path("test.file")]],
-
-                                          }):
-            tracker.add_task(task)
-
-        next_task = tracker.next_for("default::task1")
-        assert(next_task.name == "default::subtask2")
-
-    @pytest.mark.skip
-    def test_task_inexact_artifact_dependency(self, ctor, mocker):
-        tracker = ctor()
-        for task in mock_gen.task_network({"task1"     : [[pl.Path("*.file")], []],
-                                           "subtask"   : [[], [pl.Path("blah.other")]],
-                                           "subtask2"  : [[], [pl.Path("test.file")]],
-
-                                          }):
-            tracker.add_task(task)
-
-        next_task = tracker.next_for("default::task1")
-        assert(isinstance(next_task, doot.structs.DootTaskArtifact))
-
-    @pytest.mark.xfail
-    def test_task_artifact_exists(self, ctor, mocker):
-        """
-          check that if artifacts exist, tasks that generate them aren't queued
-        """
-        mocker.patch.object(pl.Path, "exists", return_value=True)
-        tracker = ctor()
-        for task in mock_gen.task_network({"task1"     : [[pl.Path("*.file")], []],
-                                           "subtask"   : [[], [pl.Path("blah.other")]],
-                                           "subtask2"  : [[], [pl.Path("test.file")]],
-
-                                          }):
-            tracker.add_task(task)
-
-        next_task = tracker.next_for("default::task1")
-        assert(isinstance(next_task, doot.structs.DootTaskArtifact))
-
-    @pytest.mark.skip
-    def test_task_artifact_doesnt_exists(self, ctor, mocker):
-        mocker.patch.object(pl.Path, "exists", return_value=False)
-        tracker = ctor()
-        for task in mock_gen.task_network({"task1"     : [[pl.Path("*.file")], []],
-                                           "subtask"   : [[], [pl.Path("blah.other")]],
-                                           "subtask2"  : [[], [pl.Path("test.file")]],
-
-                                          }):
-            tracker.add_task(task)
-
-        next_task = tracker.next_for("default::task1")
-        assert(isinstance(next_task, doot.structs.DootTaskArtifact))
-
-    @pytest.mark.xfail
-    def test_task_artifact_partial_exists(self, ctor, mocker):
-
-        def temp_exists(self):
-            return not "*" in self.stem
-
-        mocker.patch.object(pl.Path, "exists", new=temp_exists)
-        tracker = ctor()
-        for task in mock_gen.task_network({"task1"     : [[pl.Path("*.file")], []],
-                                           "subtask"   : [[], [pl.Path("blah.other")]],
-                                           "subtask2"  : [[], [pl.Path("test.file")]],
-
-                                          }):
-            tracker.add_task(task)
-
-        next_task = tracker.next_for("default::task1")
-        assert(isinstance(next_task, doot.structs.DootTaskArtifact))
-
-@pytest.mark.parametrize("ctor", [DootTracker])
-class TestTrackerInsertion:
-
-    def test_add_task(self, ctor, mocker):
-        mock_task = mock_gen.mock_task("task1")
-        tracker = ctor()
-        tracker.add_task(mock_task)
-
-        assert("default::task1" in tracker.tasks)
-        assert(tracker.task_graph.nodes['default::task1']['state'] == tracker.state_e.DEFINED)
-
-    def test_duplicate_add_fail(self, ctor, mocker):
-        """ dont add a duplicately named task, or its dependencies """
-        task1 = mock_gen.mock_task("task1")
-        task2 = mock_gen.mock_task("task1")
-
-        tracker = ctor()
-        tracker.add_task(task1)
+    def test_next_for_fails_with_unbuilt_network(self):
+        obj = DootTracker()
         with pytest.raises(doot.errors.DootTaskTrackingError):
-            tracker.add_task(task2)
+            obj.next_for()
 
-        assert("default::task1" in tracker.tasks)
 
-    def test_duplicate_add(self, ctor, mocker):
-        task1 = mock_gen.mock_task("task1")
-        task2 = mock_gen.mock_task("task1")
+    def test_next_for_empty(self):
+        obj = DootTracker()
+        obj.build_network()
+        assert(obj.next_for() is None)
 
-        tracker = ctor(shadowing=True)
-        tracker.add_task(task1)
-        tracker.add_task(task2)
 
-        assert("default::task1" in tracker.tasks)
+    def test_next_for_no_connections(self):
+        obj  = DootTracker()
+        spec = doot.structs.TaskSpec.build({"name":"basic::Task"})
+        obj.register_spec(spec)
+        t_name = obj.queue_entry(spec.name)
+        assert(obj.get_status(t_name) is TaskStatus_e.default)
+        obj.build_network()
+        match obj.next_for():
+            case Task_i():
+                assert(True)
+            case _:
+                assert(False)
+        assert(obj.get_status(t_name) is TaskStatus_e.RUNNING)
 
-    def test_warn_on_undefined(self, ctor, mocker, caplog):
-        """ create a task with undefined dependencies, it should just warn not error """
-        tracker = ctor()
-        for task in mock_gen.task_network({"task1"     : [["subtask", "subtask2"], []]}):
-            tracker.add_task(task)
 
-        assert(tracker.next_for("default::task1").name == "default::task1")
-        assert(bool([x for x in caplog.records if x.levelname == "WARNING"]))
-        assert("Tried to Schedule a Declared but Undefined Task: subtask" in caplog.messages)
-        assert("Tried to Schedule a Declared but Undefined Task: subtask2" in caplog.messages)
+    def test_next_simple_dependendency(self):
+        obj  = DootTracker()
+        spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
+        dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
+        obj.register_spec(spec, dep)
+        t_name = obj.queue_entry(spec.name, from_user=True)
+        assert(obj.get_status(t_name) is TaskStatus_e.default)
+        obj.build_network()
+        match obj.next_for():
+            case Task_i() as result:
+                assert(dep.name < result.name)
+                assert(True)
+            case _:
+                assert(False)
+        assert(obj.get_status(t_name) is TaskStatus_e.WAIT)
 
-    @pytest.mark.skip
-    def test_task_prior_registration(self, ctor, mocker):
-        mock_task = mock_gen.mock_task("test_task")
-        mock_task.spec.depends_on.append("example")
-        mock_task.spec.depends_on.append("blah")
 
-        tracker = ctor()
-        tracker.add_task(mock_task)
+    def test_next_dependency_success_produces_ready_state_(self):
+        obj  = DootTracker()
+        spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
+        dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
+        obj.register_spec(spec, dep)
+        t_name = obj.queue_entry(spec.name, from_user=True)
+        assert(obj.get_status(t_name) is TaskStatus_e.default)
+        obj.build_network()
+        dep_inst = obj.next_for()
+        assert(dep.name < dep_inst.name)
+        obj.set_status(dep_inst.name, TaskStatus_e.SUCCESS)
+        match obj.next_for():
+            case Task_i() as result:
+                assert(spec.name < result.name)
+                assert(True)
+            case _:
+                assert(False)
+        assert(obj.get_status(t_name) is TaskStatus_e.RUNNING)
 
-        assert(tracker.task_graph.nodes['example']['state'] == tracker.state_e.DECLARED)
-        assert(tracker.task_graph.nodes['blah']['state'] == tracker.state_e.DECLARED)
-        assert("example" in tracker.task_graph)
-        assert("blah" in tracker.task_graph)
 
-    @pytest.mark.skip
-    def test_task_post_registration(self, ctor, mocker):
-        mock_task = mock_gen.mock_task("test_task")
-        mock_task.required_for.append(doot.structs.DootTaskName.build("example"))
-        mock_task.required_for.append(doot.structs.DootTaskName.build("blah"))
+    def test_next_artificial_success(self):
+        obj  = DootTracker()
+        spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
+        dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
+        obj.register_spec(spec, dep)
+        t_name   = obj.queue_entry(spec.name)
+        dep_inst = obj.queue_entry(dep.name)
+        assert(obj.get_status(t_name) is TaskStatus_e.default)
+        obj.build_network()
+        # Force the dependency to success without getting it from next_for:
+        obj.set_status(dep_inst, TaskStatus_e.SUCCESS)
+        match obj.next_for():
+            case Task_i() as result:
+                assert(spec.name < result.name)
+                assert(True)
+            case _:
+                assert(False)
+        assert(obj.get_status(t_name) is TaskStatus_e.RUNNING)
 
-        tracker = ctor()
-        tracker.add_task(mock_task)
-        assert(tracker.task_graph.nodes['default::example']['state'] == tracker.state_e.DECLARED)
-        assert(tracker.task_graph.nodes['default::blah']['state'] == tracker.state_e.DECLARED)
-        assert("default::example" in tracker.task_graph)
-        assert("default::blah" in tracker.task_graph)
 
-    @pytest.mark.skip
-    def test_declared_set(self, ctor, mocker):
-        mock_task = mock_gen.mock_task("test_task")
-        mock_task.depends_on   += map(doot.structs.DootTaskName.build, ["subtask", "sub2"])
-        mock_task.required_for += map(doot.structs.DootTaskName.build, ["example", "blah"])
+    def test_next_halt(self):
+        obj  = DootTracker()
+        spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
+        dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
+        obj.register_spec(spec, dep)
+        t_name   = obj.queue_entry(spec.name, from_user=True)
+        dep_inst = obj.queue_entry(dep.name)
+        assert(obj.get_status(t_name) is TaskStatus_e.default)
+        obj.build_network()
+        # Force the dependency to success without getting it from next_for:
+        obj.set_status(dep_inst, TaskStatus_e.HALTED)
+        assert(obj.next_for() == None)
+        assert(all(x.status == TaskStatus_e.HALTED for x in obj.tasks.values()))
 
-        tracker = ctor()
-        tracker.add_task(mock_task)
-        declared = tracker.declared_set()
-        assert(declared == {"__root", "default::test_task", "default::subtask","default::sub2", "default::example", "default::blah"})
 
-    def test_defined_set(self, ctor, mocker):
-        mock_task = mock_gen.mock_task("test_task")
+    def test_next_fail(self):
+        obj  = DootTracker()
+        spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
+        dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
+        obj.register_spec(spec, dep)
+        t_name   = obj.queue_entry(spec.name, from_user=True)
+        dep_inst = obj.queue_entry(dep.name)
+        assert(obj.get_status(t_name) is TaskStatus_e.default)
+        obj.build_network()
+        # Force the dependency to success without getting it from next_for:
+        obj.set_status(dep_inst, TaskStatus_e.FAILED)
+        assert(obj.next_for() == None)
+        assert(all(x.status == TaskStatus_e.FAILED for x in obj.tasks.values()))
 
-        tracker = ctor()
-        tracker.add_task(mock_task)
+    def test_next_job_head(self):
+        obj       = DootTracker()
+        job_spec  = doot.structs.TaskSpec.build({"name":"basic::job", "flags": ["JOB"], "cleanup":["basic::task"]})
+        task_spec = doot.structs.TaskSpec.build({"name":"basic::task", "test_key": "bloo"})
+        obj.register_spec(job_spec)
+        obj.register_spec(task_spec)
+        obj.queue_entry(job_spec, from_user=True)
+        assert(job_spec.name in obj.concrete)
+        assert(job_spec.name.job_head() in obj.concrete)
+        conc_job_body = obj.concrete[job_spec.name][-1]
+        conc_job_head = obj.concrete[job_spec.name.job_head()][0]
+        obj.build_network()
+        assert(bool(obj.active_set))
+        # head is in network
+        assert(conc_job_head in obj.network.nodes)
+        assert(obj.next_for().name == conc_job_body)
+        obj.set_status(conc_job_body, TaskStatus_e.SUCCESS)
+        result = obj.next_for()
+        assert(task_spec.name < result.name)
+        # A new job head hasn't been built
+        assert(len(obj.concrete[job_spec.name.job_head()]) == 1)
 
-        defined = tracker.defined_set()
-        assert(defined == {"default::test_task"})
 
-    def test_contains_defined(self, ctor, mocker):
-        mock_task = mock_gen.mock_task("test_task")
-        mock_task.depends_on = ["example", "blah"]
+    def test_next_job_head_with_subtasks(self):
+        obj       = DootTracker()
+        job_spec  = doot.structs.TaskSpec.build({"name":"basic::job", "flags": ["JOB"]})
+        sub_spec1 = doot.structs.TaskSpec.build({"name":"basic::task.1", "test_key": "bloo", "required_for": ["basic::job.$head$"]})
+        sub_spec2 = doot.structs.TaskSpec.build({"name":"basic::task.2", "test_key": "blah", "required_for": ["basic::job.$head$"]})
+        obj.register_spec(job_spec)
+        obj.queue_entry(job_spec, from_user=True)
+        assert(job_spec.name in obj.concrete)
+        assert(job_spec.name.job_head() in obj.concrete)
+        conc_job_body = obj.concrete[job_spec.name][-1]
+        conc_job_head = obj.concrete[job_spec.name.job_head()][0]
+        obj.build_network()
+        assert(conc_job_head in obj.network.nodes)
+        assert(bool(obj.active_set))
+        job_body = obj.next_for()
+        assert(job_body.name == conc_job_body)
+        # Check head hasn't been added to network:
+        assert(conc_job_head in obj.network.nodes)
+        # Add Tasks that the body generates:
+        obj.queue_entry(sub_spec1)
+        obj.queue_entry(sub_spec2)
+        obj.build_network()
+        # Artificially set priority of job body to force handling its success
+        job_body.priority = 11
+        obj._queue.add(job_body.name, priority=job_body.priority)
+        obj.set_status(conc_job_body, TaskStatus_e.SUCCESS)
+        result = obj.next_for()
+        # Next task is one of the new subtasks
+        assert(any(x < result.name for x in [sub_spec1.name, sub_spec2.name]))
 
-        tracker = ctor()
-        tracker.add_task(mock_task)
-        # defined Task is contained
-        assert("default::test_task" in tracker)
 
-    def test_not_contains_declared(self, ctor, mocker):
-        mock_task = mock_gen.mock_task("test_task", pre=["example", "blah"])
+class TestTrackerWalk:
 
-        tracker = ctor()
-        tracker.add_task(mock_task)
-        assert("example" not in tracker)
-        assert("blah" not in tracker)
+    @pytest.fixture(scope="function")
+    def specs(self):
+        head = []
+        tail = []
 
-    @pytest.mark.skip("TODO")
-    def test_late_count(self, ctor):
-        pass
+        head += [
+            doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep.1", "basic::dep.2"]}),
+            doot.structs.TaskSpec.build({"name":"basic::beta", "depends_on":["basic::dep.3"]}),
+            doot.structs.TaskSpec.build({"name":"basic::solo", "depends_on":[]}),
+        ]
+        tail += [
+            doot.structs.TaskSpec.build({"name":"basic::dep.1"}),
+            doot.structs.TaskSpec.build({"name":"basic::dep.2"}),
+            doot.structs.TaskSpec.build({"name":"basic::dep.3"}),
+            doot.structs.TaskSpec.build({"name":"basic::dep.4", "required_for":["basic::dep.2"]}),
+        ]
+        return (head, tail)
 
-@pytest.mark.parametrize("ctor", [DootTracker])
-class TestTrackerUpdate:
 
-    def test_task_order(self, ctor, mocker):
-        tasks = mock_gen.task_network({
-            "task1"   : [["default::subtask", "default::subtask2"], []],
-            "subtask" : [["default::subsub"], []],
-            "subtask2": [["default::subsub"], []],
-            "subsub"  : [[], []]
-         })
+    def test_basic(self):
+        obj = DootTracker()
+        assert(isinstance(obj, DootTracker))
 
-        tracker  = ctor()
-        for task in tasks:
-            tracker.add_task(task)
 
-        next_task = tracker.next_for("default::task1")
-        assert(next_task.name == "default::subsub")
-        tracker.update_state(next_task, tracker.state_e.SUCCESS)
+    def test_empty(self):
+        obj = DootTracker()
+        result = obj.generate_plan()
+        assert(len(result) == 0)
 
-        next_task_2 = tracker.next_for()
-        assert(next_task_2.name in {"default::subtask", "default::subtask2"})
-        tracker.update_state(next_task_2, tracker.state_e.SUCCESS)
 
-        next_task_3 = tracker.next_for()
-        assert(next_task_3.name in {"default::subtask", "default::subtask2"} - {next_task_2.name})
-        tracker.update_state(next_task_3, tracker.state_e.SUCCESS)
+    def test_simple_plan_dfs(self, specs):
+        """ Generate a plan by dfs """
+        expectation = [
+            "basic::alpha",
+            "basic::dep.1",
+            "basic::dep.2",
+            "basic::dep.4",
+            "basic::dep.2",
+            "basic::alpha",
+            "basic::beta",
+            "basic::dep.3",
+            "basic::beta",
+        ]
+        head, tail = specs
+        obj      = DootTracker()
+        obj.register_spec(*head, *tail)
+        t1_name = obj.queue_entry(head[0].name, from_user=True)
+        t2_name = obj.queue_entry(head[1].name, from_user=True)
+        assert(obj.get_status(t1_name) is TaskStatus_e.default)
+        assert(obj.get_status(t2_name) is TaskStatus_e.default)
+        obj.build_network()
+        result = obj.generate_plan()
+        assert(len(result) == len(expectation))
+        for x,y in zip(result, expectation):
+            expected_name = doot.structs.TaskName.build(y)
+            assert(expected_name < x[1])
 
-        next_task_4 = tracker.next_for()
-        assert(next_task_4.name in "default::task1")
 
-    def test_task_iter(self, ctor, mocker):
-        tasks = mock_gen.task_network({
-            "task1"   : [["default::subtask", "default::subtask2", "default::subtask3"], []],
-            "subtask" : [["default::subsub"], []],
-            "subtask2": [["default::subsub"], []],
-            "subtask3": [["default::subsub"], []],
-            "subsub"  : [[], []]
-         })
+    def test_simple_plan_bfs(self, specs):
+        expectation = [
+            "basic::alpha",
+            "basic::beta",
+            "basic::dep.1",
+            "basic::dep.2",
+            "basic::dep.3",
+            "basic::dep.4",
+            "basic::dep.1",
+            "basic::dep.3",
+            "basic::beta",
+            "basic::dep.4",
+            "basic::dep.2",
+            "basic::alpha",
+            ]
+        head, tail = specs
+        obj      = DootTracker()
+        obj.register_spec(*head, *tail)
+        t1_name = obj.queue_entry(head[0].name, from_user=True)
+        t2_name = obj.queue_entry(head[1].name, from_user=True)
+        assert(obj.get_status(t1_name) is TaskStatus_e.default)
+        assert(obj.get_status(t2_name) is TaskStatus_e.default)
+        obj.build_network()
+        result = obj.generate_plan(policy=ExecutionPolicy_e.BREADTH)
+        assert(len(result) == len(expectation))
+        for x,y in zip(result, expectation):
+            expected_name = doot.structs.TaskName.build(y)
+            assert(expected_name < x[1])
 
-        tasks[0].priority = 0
+    def test_simple_plan_priority(self, specs):
+        expectation = [
+            "basic::dep.4",
+            "basic::dep.1",
+            "basic::dep.3",
+            "basic::dep.2",
+            "basic::beta",
+            "basic::alpha",
+            ]
+        head, tail = specs
+        obj      = DootTracker()
+        obj.register_spec(*head, *tail)
+        t1_name = obj.queue_entry(head[0].name, from_user=True)
+        t2_name = obj.queue_entry(head[1].name, from_user=True)
+        assert(obj.get_status(t1_name) is TaskStatus_e.default)
+        assert(obj.get_status(t2_name) is TaskStatus_e.default)
+        obj.build_network()
+        result = obj.generate_plan(policy=ExecutionPolicy_e.PRIORITY)
+        assert(len(result) == len(expectation))
+        for x,y in zip(result, expectation):
+            expected_name = doot.structs.TaskName.build(y)
+            assert(expected_name < x[1])
 
-        tracker             = ctor()
-        for task in tasks:
-            tracker.add_task(task)
-
-        result_tasks = []
-        tracker.queue_task("default::task1")
-        for x in tracker:
-            if x:
-                result_tasks.append(x.name)
-                tracker.update_state(x.name, tracker.state_e.SUCCESS)
-
-        assert(len(result_tasks) == 5)
-
-    def test_task_iter_state_changed(self, ctor, mocker):
-        tracker  = ctor()
-        for task in mock_gen.task_network({"task1"   : [["default::subtask", "default::subtask2", "default::subtask3"], []],
-                                           "subtask" : [["default::subsub"], []],
-                                           "subtask2": [["default::subsub"], []],
-                                           "subtask3": [["default::subsub"], []],
-                                           "subsub"  : [[], []]
-                                          }):
-            tracker.add_task(task)
-
-        tracker.update_state("default::subtask2", tracker.state_e.SUCCESS)
-        tasks = []
-        tracker.queue_task("default::task1")
-        for x in tracker:
-            if x:
-                tasks.append(x.name)
-                tracker.update_state(x.name, tracker.state_e.SUCCESS)
-
-        assert("default::subtask2" not in tasks)
-        assert(len(tasks) == 4)
 
     @pytest.mark.xfail
-    def test_task_failure(self, ctor, mocker, caplog):
-        tracker = ctor()
-        for task in mock_gen.task_network({"task1"   : [["default::subtask"], []],
-                                           "subtask" : [["default::subsub"], []],
-                                          }):
-            tracker.add_task(task)
+    def test_simple_plan_priority_repeated(self, specs):
+        """ TODO: fix indeterminacy of priority sorting """
+        expectation = [
+            "basic::dep.4",
+            "basic::dep.1",
+            "basic::dep.3",
+            "basic::dep.2",
+            "basic::beta",
+            "basic::alpha",
+            ]
+        head, tail = specs
+        obj      = DootTracker()
+        obj.register_spec(*head, *tail)
+        t1_name = obj.queue_entry(head[0].name, from_user=True)
+        t2_name = obj.queue_entry(head[1].name, from_user=True)
+        assert(obj.get_status(t1_name) is TaskStatus_e.default)
+        assert(obj.get_status(t2_name) is TaskStatus_e.default)
+        obj.build_network()
 
-        result = tracker.next_for("default::task1")
-        assert(result.name == "default::subtask")
-        tracker.update_state(result, tracker.state_e.SUCCESS)
-        assert(tracker.next_for().name == "default::task1")
-        assert("Tried to Schedule a Declared but Undefined Task: subsub" in caplog.messages)
+        original_tasks = set(obj.active_set)
+        original_statuses : dict[Node, TaskStatus_e] = {x: obj.get_status(x) for x in itz.chain(obj.specs.keys(), obj.artifacts.keys())}
 
-    def test_post_task_order(self, ctor, mocker):
-        tracker = ctor()
-        for task in mock_gen.task_network({"task1"     : [["default::subtask", "default::subtask2"], []],
-                                           "subtask"   : [["default::subsub"], ["default::sidesuper"]],
-                                           "subtask2"  : [[], []],
-                                           "subsub"    : [[], []],
-                                           "sidesuper" : [[], []],
+        for i in range(5):
+            logging.warning("Starting to generate plan: %s", i)
+            result = obj.generate_plan(policy=ExecutionPolicy_e.PRIORITY)
+            assert(len(result) == len(expectation))
+            for x,y in zip(result, expectation):
+                expected_name = doot.structs.TaskName.build(y)
+                assert(expected_name < x[1])
 
-                                          }):
-            tracker.add_task(task)
-
-        next_task = tracker.next_for("default::task1")
-        assert(next_task.name == "default::subtask2")
-        tracker.update_state(next_task, tracker.state_e.SUCCESS)
-
-        next_task_2 = tracker.next_for()
-        assert(next_task_2.name == "default::subsub")
-        tracker.update_state(next_task_2, tracker.state_e.SUCCESS)
-
-        next_task_3 = tracker.next_for()
-        assert(next_task_3.name == "default::subtask")
-        tracker.update_state(next_task_3, tracker.state_e.SUCCESS)
-
-        next_task_4 = tracker.next_for()
-        assert(next_task_4.name == "default::task1" )
-
-class TestTrackerPersistence:
-
-    @pytest.mark.skip("TODO")
-    def test_all_state(self):
-        pass
-
-    @pytest.mark.skip("TODO")
-    def test_write(self):
-        pass
-
-    @pytest.mark.skip("TODO")
-    def test_read(self):
-        pass
+            assert(obj.active_set == original_tasks)
+            post_statuses = {x: obj.get_status(x) for x in itz.chain(obj.specs.keys(), obj.artifacts.keys())}
+            assert(all(k==k2 and x==y for (k,x),(k2,y) in zip(original_statuses.items(), post_statuses.items())))

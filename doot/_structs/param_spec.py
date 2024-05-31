@@ -4,13 +4,15 @@
 See EOF for license/metadata/notes as applicable
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
 import functools as ftz
+import importlib
 import itertools as itz
 import logging as logmod
 import pathlib as pl
@@ -20,82 +22,96 @@ import types
 import weakref
 # from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from types import GenericAlias
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
+# ##-- 3rd party imports
 import more_itertools as mitz
-##-- end lib imports
+from pydantic import (BaseModel, Field, InstanceOf,
+                      field_validator, model_validator)
+from tomlguard import TomlGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+from doot._abstract.protocols import ParamStruct_p
+from doot.enums import ReportEnum, TaskFlags
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-import importlib
-from tomlguard import TomlGuard
-import doot
-import doot.errors
-from doot.enums import TaskFlags, ReportEnum
-from doot._abstract.structs import ParamStruct_p
-
-PAD           : Final[int] = 15
-TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
-
-@dataclass
-class DootParamSpec(ParamStruct_p):
+class ParamSpec(BaseModel, arbitrary_types_allowed=True):
     """ Describes a command line parameter to use in the parser
       When `positional`, will not match against a string starting with `prefix`
       consumed in doot._abstract.parser.ArgParser_i's
       produced using doot._abstract.parser.ParamSpecMaker_m classes,
       like tasks, and jobs
     """
-    name              : str                       = field()
-    type              : type                      = field(default=bool)
 
-    prefix            : str                       = field(default="-")
+    name               : str
+    type_              : InstanceOf[type]|Callable = Field(default=bool, alias="type")
 
-    default           : Any                       = field(default=False)
-    desc              : str                       = field(default="An undescribed parameter")
-    constraints       : list                      = field(default_factory=list)
-    invisible         : bool                      = field(default=False)
-    positional        : bool|int                  = field(default=False)
-    _short            : None|str                  = field(default=None)
+    default            : Any                       = False
+    desc               : str                       = "An undescribed parameter"
+    constraints        : list                      = []
+    invisible          : bool                      = False
+    positional         : bool|int                  = False
+    prefix             : str                       = "-"
+    separator          : str                       = "="
 
-    _repeatable_types : ClassVar[list[Any]]       = [list, int]
-
-    separator         : str                       = field(default="=")
-    _consumed         : int                       = field(default=0)
+    _short             : None|str                  = None
+    _consumed          : int                       = 0
+    _repeatable_types  : ClassVar[list[Any]]       = [list, int]
+    _pad               : ClassVar[int]             = 15
 
     @classmethod
-    def build(cls, data:TomlGuard|dict) -> DootParamSpec:
-        param =  cls(**data)
-        match param:
-            case DootParamSpec(type="int"):
-                param.type = int
-            case DootParamSpec(type="float"):
-                param.type = float
-            case DootParamSpec(type="bool"):
-                param.type = bool
-            case DootParamSpec(type="str"):
-                param.type = str
-            case DootParamSpec(type="list"):
-                param.type = list
-
-        if param.default == "None":
-            param.default = None
-
+    def build(cls:BaseModel, data:TomlGuard|dict) -> ParamSpec:
+        param =  cls.model_validate(data)
         return param
 
     @staticmethod
     def key_func(x):
         return (x.positional != 0, x.prefix)
 
-    @property
+    @field_validator("type_", mode="before")
+    def validate_type(cls, val):
+        match val:
+            case "int":
+                return int
+            case "float":
+                return float
+            case "bool":
+                return bool
+            case "str":
+                return str
+            case "list":
+                return list
+            case type():
+                return val
+            case _:
+                return Any
+
+    @field_validator("default")
+    def validate_default(cls, val):
+        match val:
+            case "None":
+                return None
+            case _:
+                 return val
+
+    @ftz.cached_property
     def short(self):
         if self.positional:
             return self.name
@@ -105,15 +121,15 @@ class DootParamSpec(ParamStruct_p):
 
         return self.name[0]
 
-    @property
+    @ftz.cached_property
     def inverse(self):
         return f"no-{self.name}"
 
-    @property
+    @ftz.cached_property
     def repeatable(self):
-        return self.type in DootParamSpec._repeatable_types and not self.positional
+        return self.type_ in ParamSpec._repeatable_types and not self.positional
 
-    @property
+    @ftz.cached_property
     def key_str(self):
         if self.invisible or self.positional:
             return ""
@@ -123,7 +139,7 @@ class DootParamSpec(ParamStruct_p):
 
         return f"{self.prefix}{self.name}"
 
-    @property
+    @ftz.cached_property
     def short_key_str(self):
         if self.invisible or self.positional:
             return ""
@@ -148,7 +164,7 @@ class DootParamSpec(ParamStruct_p):
             return False
 
         match val, self.positional:
-            case DootParamSpec(), _:
+            case ParamSpec(), _:
                 return val is self
             case str(), False:
                 [head, *_] = self._split_name_from_value(val)
@@ -166,9 +182,9 @@ class DootParamSpec(ParamStruct_p):
 
         parts = [self.key_str or f"[{self.name}]"]
 
-        parts.append(" " * (PAD-len(parts[0])))
-        match self.type:
-            case type() if self.type == bool:
+        parts.append(" " * (self._pad - len(parts[0])))
+        match self.type_:
+            case type() if self.type_ == bool:
                 parts.append(f"{'(bool)': <10}:")
             case str() if bool(self.default):
                 parts.append(f"{'(str)': <10}:")
@@ -205,14 +221,19 @@ class DootParamSpec(ParamStruct_p):
         # Figure out the key and value
         match prefixed, is_assign:
             case _, True if self.prefix != doot.constants.patterns.PARAM_ASSIGN_PREFIX:
-                raise doot.errors.DootParseError("Assignment parameters should be prefixed with the PARAM_ASSIGN_PREFIX", doot.constants.patterns.PARAM_ASSIGN_PREFIX)
-            case True, False if self.type.__name__ != "bool" and not bool(args):
-                raise doot.errors.DootParseError("key lacks a following value", focus, self.type.__name__)
+                raise doot.errors.DootParseError(
+                    "Assignment parameters should be prefixed with the PARAM_ASSIGN_PREFIX",
+                    doot.constants.patterns.PARAM_ASSIGN_PREFIX,
+                )
+            case True, False if self.type_.__name__ != "bool" and not bool(args):
+                raise doot.errors.DootParseError(
+                    "key lacks a following value", focus, self.type_.__name__
+                )
             case True, True: # --key=val
                 key, val = focus.split(self.separator)
                 key = key.removeprefix(self.prefix)
                 vals.append(val)
-            case True, False if self.type.__name__ == "bool": # --key
+            case True, False if self.type_.__name__ == "bool": # --key
                 key = focus.removeprefix(self.prefix)
             case True, False: # -key val
                 key = focus.removeprefix(self.prefix)
@@ -228,10 +249,10 @@ class DootParamSpec(ParamStruct_p):
         """
         vals = vals or []
         # TODO if constraints, check against them
-        logging.debug("Matching: %s : %s : %s", self.type.__name__, key, vals)
+        logging.debug("Matching: %s : %s : %s", self.type_.__name__, key, vals)
 
         # Use type.__name__ because you can't match on type. ("case str" fails, expecting "case str()")
-        match self.type.__name__:
+        match self.type_.__name__:
             case "list":
                 if self.name not in data or data[self.name] == self.default:
                     data[self.name] = []
@@ -240,20 +261,28 @@ class DootParamSpec(ParamStruct_p):
                 if self.name not in data or data[self.name] == self.default:
                     data[self.name] = set()
                 data[self.name].update(vals)
+            case "Any":
+                data[self.name] = vals[0]
             case _ if data.get(self.name, self.default) != self.default:
-                raise doot.errors.DootParseError("Trying to re-set an arg already set: %s : %s", self.name, vals)
+                raise doot.errors.DootParseError(
+                    "Trying to re-set an arg already set: %s : %s", self.name, vals
+                )
             ##-- handle bools and inversion
             case "bool" if bool(vals):
-                raise doot.errors.DootParseError("Bool Arguments shouldn't have values: %s : %s", self.name, vals)
+                raise doot.errors.DootParseError(
+                    "Bool Arguments shouldn't have values: %s : %s", self.name, vals
+                )
             case "bool" if key == self.inverse:
                 data[self.name] = False
             case "bool":
                 data[self.name] = True
             ##-- end handle bools and inversion
             case _ if not bool(vals):
-                raise doot.errors.DootParseError("Non-Bool Arguments should have values: %s : %s", self.name, vals)
+                raise doot.errors.DootParseError(
+                    "Non-Bool Arguments should have values: %s : %s", self.name, vals
+                )
             case _ if len(vals) == 1:
-                data[self.name] = self.type(vals[0])
+                data[self.name] = self.type_(vals[0])
             case _:
                 raise doot.errors.DootParseError("Can't understand value: %s : %s", self.name, vals)
 
@@ -264,14 +293,14 @@ class DootParamSpec(ParamStruct_p):
         end_index = None if "--" not in vals else vals.index("--")
 
         match self.positional:
-            case True if self.type != list:
+            case True if self.type_ != list:
                 data[self.name] = vals[0]
             case True:
                 consume_these      = vals[:end_index]
                 pop_count          = len(consume_these)
                 data[self.name]    = consume_these
             case 1:
-                data[self.name] = self.type(vals[0])
+                data[self.name] = self.type_(vals[0])
                 pop_count = 1
             case x:
                 t = min(x, end_index or len(vals))
@@ -280,11 +309,20 @@ class DootParamSpec(ParamStruct_p):
                 data[self.name]    = consume_these
 
         if 1 < pop_count < self.positional:
-            raise doot.errors.DootParseError("Not Enough positional args provided", self.name, self.positional, vals)
+            raise doot.errors.DootParseError(
+                "Not Enough positional args provided", self.name, self.positional, vals
+            )
         elif 1 < self.positional < pop_count:
-            raise doot.errors.DootParseError("Too Many positional args provided", self.name, self.positional, vals)
-        elif 1 < pop_count and self.type != list:
-            raise doot.errors.DootParseError("Multi positional args should be of type list", self.name, self.positional, self.type)
+            raise doot.errors.DootParseError(
+                "Too Many positional args provided", self.name, self.positional, vals
+            )
+        elif 1 < pop_count and self.type_ != list:
+            raise doot.errors.DootParseError(
+                "Multi positional args should be of type list",
+                self.name,
+                self.positional,
+                self.type_,
+            )
 
         return pop_count
 

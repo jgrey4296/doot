@@ -34,7 +34,7 @@ class TestBaseAction:
     def test_call_action(self, caplog, mocker):
         action = DootBaseAction()
         state  = { "count" : 0  }
-        spec   = mocker.Mock(spec=doot.structs.DootActionSpec)
+        spec   = mocker.Mock(spec=doot.structs.ActionSpec)
         spec.args = []
         result = action(spec, state)
         assert(result['count'] == 1)

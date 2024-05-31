@@ -36,17 +36,18 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from pydantic import BaseModel, Field, model_validator, field_validator
 import importlib
 from tomlguard import TomlGuard
+import doot
 import doot.errors
 from doot.enums import TaskFlags, ReportEnum
-from doot._abstract.structs import SpecStruct_p
+from doot._abstract.protocols import SpecStruct_p
+from doot._structs.code_ref import CodeReference
 
-PAD           : Final[int] = 15
-TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
+ALIASES = doot.aliases.action
 
-@dataclass
-class DootActionSpec(SpecStruct_p):
+class ActionSpec(BaseModel, arbitrary_types_allowed=True):
     """
       When an action isn't a full blown class, it gets wrapped in this,
       which passes the action spec to the callable.
@@ -56,38 +57,53 @@ class DootActionSpec(SpecStruct_p):
       path:/usr/bin/python  -> Path(/usr/bin/python)
 
     """
-    do         : None|str                   = field(default=None)
-    args       : list[Any]                  = field(default_factory=list)
-    kwargs     : TomlGuard                  = field(default_factory=TomlGuard)
-    inState    : set[str]                   = field(default_factory=set)
-    outState   : set[str]                   = field(default_factory=set)
-    fun        : None|Callable              = field(default=None)
+    do         : None|CodeReference               = None
+    args       : list[Any]                            = []
+    kwargs     : TomlGuard                            = Field(default_factory=TomlGuard)
+    inState    : set[str]                             = set()
+    outState   : set[str]                             = set()
+    fun        : None|Callable                        = None
 
     @staticmethod
-    def build(data:dict|list|TomlGuard|DootActionSpec, *, fun=None) -> DootActionSpec:
+    def build(data:dict|list|TomlGuard|ActionSpec, *, fun=None) -> ActionSpec:
         match data:
-            case DootActionSpec():
+            case ActionSpec():
                 return data
             case list():
-                action_spec = DootActionSpec(
+                action_spec = ActionSpec(
                     args=data,
                     fun=fun if callable(fun) else None
                     )
                 return action_spec
 
             case dict() | TomlGuard():
-                kwargs = TomlGuard({x:y for x,y in data.items() if x not in DootActionSpec.__dataclass_fields__.keys()})
-                action_spec = DootActionSpec(
-                    do=data['do'],
+                kwargs = TomlGuard({x:y for x,y in data.items() if x not in ActionSpec.model_fields})
+                fun    = data.get('fun', fun)
+                action_spec = ActionSpec(
+                    do=data.get('do', None),
                     args=data.get('args',[]),
                     kwargs=kwargs,
                     inState=set(data.get('inState', set())),
                     outState=set(data.get('outState', set())),
-                    fun=fun if callable(fun) else None
+                    fun=fun,
                     )
                 return action_spec
             case _:
                 raise doot.errors.DootActionError("Unrecognized specification data", data)
+
+    @field_validator("do", mode="before")
+    def _validate_do(cls, val):
+        match val:
+            case None:
+                return None
+            case str() if val in ALIASES:
+                return CodeReference.build(ALIASES[val])
+            case str():
+                return CodeReference.build(val)
+            case CodeReference():
+                return val
+            case _:
+                raise TypeError("Unrecognized action spec do type", val)
 
     def __str__(self):
         result = []
@@ -123,7 +139,7 @@ class DootActionSpec(SpecStruct_p):
     def set_function(self, fun:Action_p|Callable):
         """
           Sets the function of the action spec.
-          if given a class, the class it built,
+          if given a class, the class is built,
           if given a callable, that is used directly.
 
         """

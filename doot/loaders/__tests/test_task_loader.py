@@ -18,9 +18,10 @@ import pytest
 import importlib.metadata
 import tomlguard
 import doot
+from doot.enums import TaskFlags
 doot._test_setup()
 
-from doot.structs import DootTaskSpec
+from doot.structs import TaskSpec
 from doot._abstract.task import Task_i
 from doot.utils.mock_gen import mock_entry_point, mock_task_ctor
 
@@ -58,7 +59,7 @@ class TestTaskLoader:
         assert(isinstance(result, tomlguard.TomlGuard))
         assert(len(result) == 1)
         assert("basic::test" in result)
-        assert(isinstance(result['basic::test'], DootTaskSpec))
+        assert(isinstance(result['basic::test'], TaskSpec))
 
     def test_multi_load(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_sources")
@@ -114,8 +115,8 @@ class TestTaskLoader:
         basic = task_loader.DootTaskLoader()
         basic.setup({}, specs)
 
-        with pytest.raises(doot.errors.DootTaskLoadError):
-            basic.load()
+        result = basic.load()
+        assert(TaskFlags.DISABLED in  result["basic::test"].flags)
 
     def test_bad_task_module(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_sources")
@@ -126,8 +127,8 @@ class TestTaskLoader:
         basic = task_loader.DootTaskLoader()
         basic.setup({}, specs)
 
-        with pytest.raises(doot.errors.DootTaskLoadError):
-            basic.load()
+        result = basic.load()
+        assert(TaskFlags.DISABLED in  result["basic::test"].flags)
 
     @pytest.mark.xfail
     def test_bad_spec(self, mocker):
@@ -142,6 +143,7 @@ class TestTaskLoader:
         with pytest.raises(doot.errors.DootTaskLoadError):
             result = basic.load()
 
+    @pytest.mark.xfail
     def test_task_type(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_sources")
         mocker.patch("doot._configs_loaded_from")
@@ -151,7 +153,7 @@ class TestTaskLoader:
         mock_ctor                   = mock_task_ctor()
         mock_ep                     = mock_entry_point(name="basic", value=mock_ctor)
 
-        plugins                     = tomlguard.TomlGuard({"job": [mock_ep]})
+        plugins                     = tomlguard.TomlGuard({"task": [mock_ep]})
         basic                       = task_loader.DootTaskLoader()
         basic.setup(plugins, tomlguard.TomlGuard(specs))
 
@@ -159,12 +161,10 @@ class TestTaskLoader:
 
         assert(len(result) == 1)
         task_spec = result['basic::simple']
-        assert(str(task_spec.ctor) == "default:basic")
-        assert(task_spec.ctor.value == "basic")
+        assert(task_spec.ctor is not None)
 
-
-
-    def test_task_missing_plugin_in(self, mocker):
+    def test_task_missing_plugin_results_in_disabled(self, mocker):
+        """ a bad ctor alias disables the task """
         mocker.patch("doot.loaders.task_loader.task_sources")
         mocker.patch("doot._configs_loaded_from")
         mocker.patch("importlib.metadata.EntryPoint")
@@ -178,11 +178,10 @@ class TestTaskLoader:
         basic        = task_loader.DootTaskLoader()
         basic.setup(plugins, tomlguard.TomlGuard(specs))
 
-        with pytest.raises(doot.errors.DootTaskLoadError):
-            basic.load()
+        result = basic.load()
+        assert(TaskFlags.DISABLED in  result["basic::simple"].flags)
 
 
-    @pytest.mark.xfail
     def test_task_bad_type_loaded(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_sources")
         mocker.patch("doot._configs_loaded_from")

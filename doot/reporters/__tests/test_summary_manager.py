@@ -18,8 +18,8 @@ doot._test_setup()
 
 from doot.reporters.summary_manager import DootReportManagerSummary
 from doot.enums import ReportEnum
-from doot.structs import DootTraceRecord
-from doot._abstract import Reporter_i, ReportLine_i
+from doot.structs import TraceRecord
+from doot._abstract import Reporter_p
 
 logging = logmod.root
 
@@ -39,14 +39,14 @@ class TestSummaryReporter:
 
     def test_initial(self):
         manager = DootReportManagerSummary()
-        assert(isinstance(manager, Reporter_i))
+        assert(isinstance(manager, Reporter_p))
 
     def test_add_basic_trace(self):
         manager = DootReportManagerSummary()
         assert(not bool(manager._full_trace))
         manager.add_trace("test")
         assert(bool(manager._full_trace))
-        assert(isinstance(manager._full_trace[0], DootTraceRecord))
+        assert(isinstance(manager._full_trace[0], TraceRecord))
 
     def test_multi_add(self):
         manager = DootReportManagerSummary()
@@ -55,7 +55,7 @@ class TestSummaryReporter:
         manager.add_trace("test")
         manager.add_trace("test")
         assert(len(manager._full_trace) == 3)
-        assert(all(isinstance(x, DootTraceRecord) for x in manager._full_trace))
+        assert(all(isinstance(x, TraceRecord) for x in manager._full_trace))
 
     @pytest.mark.skip("TODO")
     def test_str(self):

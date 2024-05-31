@@ -44,7 +44,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot._abstract import Action_p
-from doot.structs import DootKey, DootTaskSpec, DootTaskName, DootCodeReference
+from doot.structs import DootKey, TaskSpec, TaskName, CodeReference
 from doot.mixins.path_manip import PathManip_m
 
 class JobInjector(Action_p):
@@ -66,9 +66,9 @@ class JobInjector(Action_p):
         match onto:
             case list():
                 for x in onto:
-                    x.extra = TomlGuard(dict(**x.extra, **injection))
-            case DootTaskSpec():
-                onto.extra = TomlGuard(dict(**x.extra, **injection))
+                    x.model_extra.update(dict(**x.extra, **injection))
+            case TaskSpec():
+                onto.model_extra.update(dict(**x.extra, **injection))
 
     def build_injection(self, spec, state, inject, replacement=None, post:dict|None=None) -> None|TomlGuard:
         match inject:
@@ -122,7 +122,7 @@ class JobPrependActions(Action_p):
 
     @DootKey.dec.types("_onto", "add_actions")
     def __call__(self, spec, state, _onto, _actions):
-        action_specs = [DootActionSpec.build(x) for x in _actions]
+        action_specs = [ActionSpec.build(x) for x in _actions]
         for x in _onto:
             actions = action_specs + x.actions
             x.actions = actions
@@ -131,7 +131,7 @@ class JobAppendActions(Action_p):
 
     @DootKey.dec.types("_onto", "add_actions")
     def __call__(self, spec, state, _onto, _actions):
-        actions_specs = [DootActionSpec.build(x) for x in _actions]
+        actions_specs = [ActionSpec.build(x) for x in _actions]
         for x in _onto:
             x.actions += action_specs
 
@@ -148,13 +148,13 @@ class JobInjectPathParts(PathManip_m):
         match _onto:
             case list():
                 for x in _onto:
-                    data = dict(x.extra)
+                    data = x.params
                     data.update(self._calc_path_parts(x.extra[_key], root_paths))
-                    x.extra = TomlGuard(data)
-            case DootTaskSpec():
+                    x.model_extra.update(data)
+            case TaskSpec():
                 data = dict(x.extra)
                 data.update(self._calc_path_parts(onto.extra[_key], root_paths))
-                _onto.extra = TomlGuard(data)
+                _onto.model_extra.update(data)
 
 class JobInjectShadowAction(PathManip_m):
     """
@@ -170,10 +170,10 @@ class JobInjectShadowAction(PathManip_m):
             case list():
                 for x in _onto:
                     rel_path = self._shadow_path(x.extra[_key], _shadow)
-                    x.extra = TomlGuard(dict(**x.extra, **{"shadow_path": rel_path}))
-            case DootTaskSpec():
+                    x.model_extra.update(dict(**x.extra, **{"shadow_path": rel_path}))
+            case TaskSpec():
                 rel_path = self._shadow_path(onto.extra[_key], _shadow)
-                onto.extra = TomlGuard(dict(**onto.extra, **{"shadow_path": rel_path}))
+                onto.model_extra.update(dict(**onto.extra, **{"shadow_path": rel_path}))
 
 class JobSubNamer(Action_p):
     """
@@ -189,7 +189,7 @@ class JobSubNamer(Action_p):
                 for i,x in enumerate(_onto):
                     val = x.extra[_key]
                     x.name = _basename.subtask(i, self._gen_subname(val))
-            case DootTaskSpec():
+            case TaskSpec():
                 onto.name = _basename.subtask(self._gen_subname(val))
 
     def _gen_subname(self, val):

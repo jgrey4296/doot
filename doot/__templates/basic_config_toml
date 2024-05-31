@@ -1,0 +1,60 @@
+# -*- mode:conf-toml; -*-
+[settings.general]
+notify                   = { say-on-exit = false }
+loaders                  = { commands="default", task="default", parser="default"}
+location_check           = { make_missing = true }
+
+[settings.tasks]
+sources   = [".tasks"] # Files or directories where task specs can be loaded from, expanded according to [[locations]] keys
+code      = []         # Directories where task specific code can be imported from, expanded according to [[locations]] keys
+sleep     = { task=0.2, subtask=1, batch=1 }
+max_steps = 100_000
+
+[logging]
+# Standard loggers. See LoggerSpec.
+stream  = { level="WARNING",  allow=["doot"], format="{levelname:<8} : {message}", colour=true }
+file    = { level="DEBUG",    allow=["doot"], format="{levelname:<8} : {message:<20} :|: (module:{module} line:{lineno} fn:{funcName})" }
+printer = { level="INFO",     format="{message}", colour=true, propagate=false}
+
+[logging.subprinters]
+# See LoggerSpec and doot.constants.printer.PRINTER_CHILDREN
+#     action_exec, action_group, artifact, cmd, fail, header, help, queue,
+#     report, skip, sleep, success, task, task_header, task_loop, task_state,
+#     track, setup, shutdown
+cmd          = {level="INFO", format="-- Cmd: {message}"}
+setup        = {level="INFO", format="-- Setup: {message}", propagate=false}
+shutdown     = {level="WARNING", format="-- Shutdown: {message}", propagate=false}
+success      = {level="WARNING", format="-- Success {message}"}
+fail         = {target="stdout", format="!!!! {message}", propagate=false}
+track        = {level="WARNING", format="-- Tracking: {message}"}
+task_header  = {format="---{message}", colour=true, target="stdout"}
+task         = {}
+task_state   = {level="WARNING", format="Task State: {message}"}
+action_group = {level="WARNING", format="Action Group: {message}"}
+action_exec  = {level="WARNING", format="--------> Action Execution: {message}", target="stdout", colour=true}
+queue        = {format="++++ {message}"}
+report       = {level="INFO", format="{message}", target="stdout", colour=true}
+
+[logging.extra]
+# See LoggerSpec. can be used to control any logger if you know its name
+"doot._printer.checkloc" = {level="WARNING"}
+
+[plugins]
+# Allows for defining shorthands
+command        = { other-run = "doot.cmds.run_cmd:RunCmd", tasks = "doot.cmds.list_cmd:ListCmd" }
+report-line    = {}
+reporter       = {}
+action         = {}
+task           = {}
+
+[commands]
+run = { tracker = "default", runner = "default", reporter= "default", report-line = []}
+
+[[locations]]
+src     = "src"
+codegen = {loc="{src}/_codegen", cleanable=true}
+temp    = {loc=".temp", cleanable=true}
+logs    = "{temp}/logs"
+build   = "{temp}/build"
+docs    = "docs"
+data    = "data"
