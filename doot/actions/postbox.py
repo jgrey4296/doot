@@ -97,7 +97,7 @@ class PutPostAction(Action_p):
     'args' are pushed to the default subbox
     'kwargs' are pushed to the kwarg specific subbox
 
-    eg: {do="post.put", args=["{key}", "{key}"], subbox="{key}"}
+    eg: {do="post.put", args=["{key}", "{key}"], "group::task.sub..subbox"="{key}"}
     """
 
     @DootKey.dec.args
@@ -126,8 +126,8 @@ class GetPostAction(Action_p):
       Read data from the inter-task postbox of a task tree
       The arguments of the action are held in self.spec
 
-      stateKey="group::task.{subbox}"
-      eg: data="bib::format.-"
+      stateKey="group::task.sub..{subbox}"
+      eg: data="bib::format..-"
     """
 
     @DootKey.dec.kwargs
