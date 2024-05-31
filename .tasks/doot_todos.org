@@ -1,0 +1,890 @@
+#+TITLE: Doot Todos
+
+* Doot                                           :doot:
+** Actions                                      :actions:
+*** actions don't bother to run if the keys they return are already present
+*** add postbox decorators like keys
+*** create a pandas/seaborn/matplotlib chart
+***** create subclass actions: artifactReader, artifactWriter
+*** [#A] job actions
+#+NAME: example
+#+begin_src toml :results output
+[[tasks.example]]
+name = "builder"
+ctor = "job"
+actions = [
+        {do="job.walk", roots_="roots", exts_="exts", update_="files"},
+        {do="job.namer",          from_="files", update_="names"},
+        {do="job.expand",         from_="files", base="example::base", update_="subtasks"},
+        {do="job.limit",          from_="files", count=20, update_="files"},
+        {do="inject:shadow_path", from_="subtasks", fpath="fpath" }
+        {do="job.queue",          from_="subtasks"},
+]
+#+end_src
+
+
+**** expander
+**** matcher
+**** DONE walker
+**** DONE limiter
+**** DONE setup
+**** DONE shadower
+**** DONE subtasker
+**** chaining
+*** predicate/skip tests
+staleness, recency, size, contains, hashcmp...
+*** regex filter shell action to replace called sed
+*** shell action fail handler
+*** shell output redirection
+*** task on-fail actions
+*** QUEUED [#B] test postbox
+*** DONE DootKey action decorator
+#+NAME: example
+#+begin_src python :results output
+	@DootKeyWrap.path("from", as="different")
+    @DootKeyWrap.expand("target")
+    @DootKeyWrap.redirect("update_")
+    def an_action(spec, state, different, target, update):
+        # do stuff
+        return { update : target }
+#+end_src
+
+would allow automatic annotation for stubbing,
+type declarations,
+
+for multiples:?
+#+begin_src python
+  @DootKeyWrap.paths("from", "to", "other")
+  def an_action(spec, state, from, to, other):
+      pass
+#+end_src
+
+get spec args:
+#+begin_src python
+  @DootKeyWrap.args
+  def an_action(spec, state, args):
+      pass
+#+end_src
+
+typechecking:
+#+begin_src python
+  @DootKeyWrap.type("db", type_=BibtexDataBase)
+  def an_action(spec, state, db:BibTexDataBase):
+      pass
+#+end_src
+
+require it be in the spec/state,
+or require a return
+#+begin_src python
+  @DootKeyWrap.require("update_")
+  @DootKeyWrap.returns("val")
+  def an_action(spec, state):
+      pass
+#+end_src
+*** DONE write protection
+** Commands                                     :commands:
+*** here command
+*** help command print toml cli's separate
+*** help command add mixin's as targets
+*** locs_cmd print matches
+*** locs_cmd print by source
+*** stub templates registration / env var location
+*** locs command includes metadata
+*** list command json output
+for nushell
+** DBLP                                         :dblp:
+*** ISSNs
+**** Journal of Political Economy: 00223808
+https://www.jstor.org/journal/jpoliecon
+
+**** AI Magazine: 2371-9621, 0738-4602
+https://dblp.org/db/journals/aim/index.html
+
+**** Artificial Intelligence: 0004-3702
+https://dblp.org/db/journals/ai/index.html
+
+**** JASSS: 1460-7425
+https://dblp.org/db/journals/jasss/index.html
+
+**** computers in human behavior: 0747-5632
+https://dblp.org/db/journals/chb/index.html
+
+**** ACM Transactions on Programming Languages and Systems (TOPLAS) : 0164-0925, 1558-4592
+https://dblp.org/db/journals/toplas/index.html
+
+**** Foundations and Trends in Programming Languages: 2325-1107, 2325-1131
+https://dblp.org/db/journals/ftpl/index.html
+
+**** Journal of Programming Languages: 0963-9306
+https://dblp.org/db/journals/jpl/index.html
+
+**** Organization Science: 1047-7039, 1526-5455
+https://dblp.org/db/journals/orgsci/index.html
+
+**** International Journal of Human-Computer Interaction: 1044-7318, 1532-7590
+https://dblp.org/db/journals/ijhci/index.html
+
+*** Proceedings
+
+**** ACM-SIGACT Symposium on Principles of Programming Languages (POPL)
+https://dblp.org/db/conf/popl/index.html
+
+**** ACM-SIGPLAN Symposium on Programming Language Design and Implementation (PLDI)
+https://dblp.org/db/conf/pldi/index.html
+
+**** History of Programming Languages (HOPL)
+https://dblp.org/db/conf/hopl/index.html
+
+**** Language Design and Programming Methodology
+https://dblp.org/db/conf/ldpm/index.html
+
+**** Workshop on Evaluation and Usability of Programming Languages and Tools (PLATEAU)
+https://dblp.org/db/conf/plateau/index.html
+
+**** Symposium on Programming Languages and Software Tools (SPLST)
+https://dblp.org/db/conf/splst/index.html
+** Dootle                                       :dootle:
+*** cmds
+**** pre-commit yaml stub
+*** actions                                    :actions:
+**** dot
+**** downloader
+**** ocr
+**** pdf
+**** plantuml
+**** xml
+**** rng
+**** calender write
+**** csv read / write
+*** android
+*** bibtex
+**** middlewares
+***** ideal stemmer
+***** library location enforcer
+***** field lowercaser
+***** year checker
+***** title split
+***** output name formatting
+***** ISBN formatting
+***** pdf metadata application
+***** Url way-backer / checker
+***** &amp; -> \&
+***** reporters - author/editor counts, year entries, types, entries with files
+***** journal/booktitle caps normalization
+***** warn on missing doi/tags/url
+***** DONE bibtex metadata task
+*** bookmarks
+**** alchemy fns
+
+*** epub
+**** compile
+**** split
+
+*** godot
+*** latex
+*** python
+**** DONE increment version
+**** DONE pip build
+**** local install
+**** pipreqs
+**** code line count
+**** coverage
+*** sphinx
+**** build
+**** serve
+*** pelican
+*** spiders
+**** tests
+**** locations integration
+*** tags
+**** clean
+
+*** encryption
+*** gradle
+*** clingo
+
+*** Twitter archive processing
+*** org -> html
+*** html -> epub** Experiments                 :experiment:
+*** TDMQ option instead of individual task listing
+*** floweaver                                  :add:
+https://github.com/ricklupton/floweaver
+
+*** DONE isbn
+https://github.com/JNRowe/pyisbn
+https://github.com/WhyNotHugo/python-barcode
+https://github.com/TorKlingberg/isbn_hyphenate
+*** railroad diagrams
+https://github.com/tabatkins/railroad-diagrams
+*** readthedocs
+https://docs.readthedocs.io/en/stable/
+*** quote images -> text
+*** wayback
+https://akamhy.github.io/waybackpy/
+*** control
+**** date tracker
+*** docs
+** Mixins                                       :mixins:
+*** runner fail handler
+*** KILL job : generate tasks from postbox entries
+*** KILL task setup/cleanup dependency mixin
+*** DONE job pattern matcher
+** Other
+*** QUEUED logging secret filter
+*** refactor doot log setup to jgdv
+*** make dootkey resolution order explicit
+mamba goes: RCfile -> env -> cli -> api
+https://mamba.readthedocs.io/en/latest/user_guide/configuration.html
+
+*** active_when conditions
+*** backup list cache
+****** make jobs resumable
+*** cli target lister
+*** date tracker
+*** [#A] doot memory guard
+possibly use https://psutil.readthedocs.io/en/latest/
+#+NAME: memory
+#+begin_src python :results output
+	def memory():
+    """
+    Get node total memory and memory usage
+      from https://stackoverflow.com/questions/17718449/
+    """
+    with open('/proc/meminfo', 'r') as mem:
+        ret = {}
+        tmp = 0
+        for i in mem:
+            sline = i.split()
+            if str(sline[0]) == 'MemTotal:':
+                ret['total'] = int(sline[1])
+            elif str(sline[0]) in ('MemFree:', 'Buffers:', 'Cached:'):
+                tmp += int(sline[1])
+        ret['free'] = tmp
+        ret['used'] = int(ret['total']) - int(ret['free'])
+    return ret
+#+end_src
+
+
+*** read/write as implicit dependencies
+*** task name params
+so "a.group::task.{arg=val}"?
+*** same task different args
+*** staleness / date checking
+*** Task Runners Feature Comparison
+push / pull
+declarative, imperative
+
+**** Ansible
+https://en.wikipedia.org/wiki/Ansible_(software)
+https://access.redhat.com/documentation/en-us/red_hat_ansible_automation_platform/2.4
+
+:pros:
+
+:END:
+:cons:
+
+:END:
+**** Ant
+https://ant.apache.org/manual/index.html
+
+:concepts:
+:END:
+
+:pros:
+- stdlib
+:END:
+:cons:
+- java
+- xml
+:END:
+**** Cargo
+https://doc.rust-lang.org/cargo/
+
+:pros:
+
+:END:
+:cons:
+
+:END:
+**** CMake
+https://cmake.org/documentation/
+
+:pros:
+
+:END:
+:cons:
+
+:END:
+**** Collective Knowledge
+https://cknowledge.io/docs/
+
+:pros:
+
+:END:
+:cons:
+
+:END:
+**** Common Workflow Language
+https://www.commonwl.org/
+https://www.commonwl.org/user_guide/
+
+:pros:
+
+:END:
+:cons:
+- yaml
+:END:
+
+#+begin_src cwl
+cwlVersion: v1.0
+class: CommandLineTool
+baseCommand: echo
+stdout: output.txt
+inputs:
+  message:
+    type: string
+    inputBinding:
+      position: 1
+outputs:
+  output:
+    type: stdout
+
+#+end_src
+
+**** Doit
+https://pydoit.org/contents.html
+
+:pros:
+- just python
+:END:
+:cons:
+- relies on raw dicts
+
+:END:
+
+#+begin_src python
+  def task_do_something():
+      # Setup code here
+
+      # Task Spec:
+      return {
+          'actions'  : [...],
+          'file_dep' : [...],
+          'targets'  : [...],
+          }
+#+end_src
+
+**** Gradle
+https://gradle.org/
+
+:concepts:
+- settings script
+- build script
+- project
+- subproject
+- actionable tasks
+- lifecycle tasks
+- plugins
+- artifact
+- capability
+- component
+- configuration
+:END:
+
+
+:pros:
+- plugins
+- daemon
+:END:
+:cons:
+- groovy
+- gradlew
+- unclear syntax
+- documentation
+- constrained to jvm projects
+:END:
+**** Grunt
+https://gruntjs.com/
+
+:concepts:
+- package.json
+- gruntfile
+- alias tasks
+- multi tasks
+- basic tasks
+- custom tasks
+:END:
+
+
+:pros:
+- plugins
+:END:
+:cons:
+- javascript
+:END:
+
+#+begin_src javascript
+ module.exports = function(grunt) {
+
+  // Project configuration.
+  grunt.initConfig({
+    pkg: grunt.file.readJSON('package.json'),
+    uglify: {
+      options: {
+        banner: '/*! <%= pkg.name %> <%= grunt.template.today("yyyy-mm-dd") %> */\n'
+      },
+      build: {
+        src: 'src/<%= pkg.name %>.js',
+        dest: 'build/<%= pkg.name %>.min.js'
+      }
+    }
+  });
+
+  // Load the plugin that provides the "uglify" task.
+  grunt.loadNpmTasks('grunt-contrib-uglify');
+
+  // Default task(s).
+  grunt.registerTask('default', ['uglify']);
+
+};
+#+end_src
+
+**** Gulp
+https://gulpjs.com/
+
+:concepts:
+- gulpfile
+- tasks : async functions
+- public tasks
+- private tasks
+:END:
+
+
+:pros:
+- combinator based
+:END:
+:cons :
+- javascript
+:END:
+
+#+begin_src javascript
+function defaultTask(cb){
+    // do stuff
+    cb();
+}
+
+exports.default = defaulTask
+#+end_src
+
+**** Scrapy
+https://scrapy.org/
+
+:concepts:
+- spiders
+- middleware
+- pipeline
+- runner
+- contracts
+:END:
+
+:dataflow:
+1) The Engine gets the initial Requests to crawl from the Spider.
+2) The Engine schedules the Requests in the Scheduler and asks for the next Requests to crawl.
+3) The Scheduler returns the next Requests to the Engine.
+4) process_request through downloader middlewares,
+5) download.
+6) process_response through downloader middlewares.
+7) process_spider_input through spider middlewares.
+8) process_spider_output of new Requests and scraped items.
+9) The Engine sends processed items to Item Pipelines, and send processed Requests to the Scheduler and asks for possible next Requests to crawl.
+10) The process repeats (from step 3) until there are no more requests from the Scheduler.
+:END:
+
+
+:pros:
+- non-blocking,
+- modular
+:END:
+:cons:
+- overrules logging
+:END:
+
+
+**** Twisted
+**** Jenkins
+https://www.jenkins.io/doc/
+https://www.jenkins.io/doc/book/pipeline/syntax/
+
+:concepts:
+- jenkinsfile
+- pipelines
+- sections
+- directives
+- steps
+- agents
+:END:
+
+
+:pros:
+- can be declarative or scripted
+:END:
+:cons:
+- groovy
+:END:
+
+#+begin_src jenkins
+pipeline {
+    agent any
+    options {
+        // Timeout counter starts AFTER agent is allocated
+        timeout(time: 1, unit: 'SECONDS')
+    }
+    stages {
+        stage('Example') {
+            steps {
+                echo 'Hello World'
+            }
+        }
+    }
+}
+
+#+end_src
+**** kubernetes
+https://kubernetes.io/docs/home/
+
+:concepts:
+
+:END:
+
+**** OPA
+https://www.openpolicyagent.org/
+
+:concepts:
+- permissions
+- agents
+- roles
+- policy
+- rules
+:END:
+
+:pros:
+
+:END:
+:cons:
+- rego
+:END:
+
+
+**** Luigi
+https://luigi.readthedocs.io/en/stable/design_and_limitations.html
+
+:concepts:
+Target         - has .exists(), possible .open
+Task           - .run(), .output(), .requires()
+Parameter      -
+Events         -
+Event Handlers -
+:END:
+:pros:
+- Straightforward command-line integration.
+- As little boilerplate as possible.
+- Focus on job scheduling and dependency resolution.
+- A file system abstraction where code doesn’t have to care about where files are located.
+- Atomic file system operations through this abstraction. If a task crashes it won’t lead to a broken state.
+- The dependencies are decentralized. No big config file in XML.
+- A web server that renders the dependency graph and does locking, etc for free.
+- Trivial to extend with new file systems, file formats, and job types.
+- Date algebra included.
+- Lots of unit tests of the most basic stuff.
+:END:
+:cons:
+- Its focus is on batch processing so it’s probably less useful for near real-time pipelines or continuously running processes.
+- The assumption is that each task is a sizable chunk of work. While you can probably schedule a few thousand jobs, it’s not meant to scale beyond tens of thousands.
+- Luigi does not support distribution of execution. When you have workers running thousands of jobs daily, this starts to matter, because the worker nodes get overloaded. There are some ways to mitigate this (trigger from many nodes, use resources), but none of them are ideal.
+- Luigi does not come with built-in triggering, and you still need to rely on something like crontab to trigger workflows periodically.
+:END:
+
+#+begin_src python
+  import luigi
+
+  class MyTask(luigi.Task):
+      param = luigi.Parameter(default=42)
+
+      def requires(self) -> Task|list[Task]:
+          return SomeOtherTask(self.param)
+
+      def run(self):
+          with self.output().open('w'):
+              ...
+
+      def output(self):
+          return luigi.LocalTarget("/temp/foo/bar-%s.txt" % self.param)
+
+
+@luigi.Task.event_handler(luidi.Event.SUCCESS)
+def celebrate_success(task):
+    ...
+#+end_src
+
+
+**** Make
+https://www.gnu.org/software/make/manual/make.html
+
+:pros:
+- rule based
+:END:
+:cons:
+- esoteric
+- relies on whitespace
+- complex var expansion
+:END:
+
+#+begin_src make
+objects = main.o kbd.o command.o display.o \
+          insert.o search.o files.o utils.o
+
+edit : $(objects)
+        cc -o edit $(objects)
+main.o : main.c defs.h
+        cc -c main.c
+kbd.o : kbd.c defs.h command.h
+        cc -c kbd.c
+command.o : command.c defs.h command.h
+        cc -c command.c
+display.o : display.c defs.h buffer.h
+        cc -c display.c
+insert.o : insert.c defs.h buffer.h
+        cc -c insert.c
+search.o : search.c defs.h buffer.h
+        cc -c search.c
+files.o : files.c defs.h buffer.h command.h
+        cc -c files.c
+utils.o : utils.c defs.h
+        cc -c utils.c
+clean :
+        rm edit $(objects)
+#+end_src
+
+
+**** Maven
+https://maven.apache.org/
+
+:pros:
+
+:END:
+:cons:
+
+:END:
+**** Meson
+https://en.wikipedia.org/wiki/Meson_(software)
+https://mesonbuild.com/
+
+:pros:
+
+:END:
+:cons:
+
+:END:
+**** Nix
+https://nixos.org/learn
+
+:concepts:
+- creates and composes file derivations
+:END:
+
+
+:pros:
+:END:
+:cons:
+
+:END:
+**** Rake
+https://docs.seattlerb.org/rake/
+
+:pros:
+
+:END:
+:cons:
+
+:END:
+**** Scons
+https://scons.org/documentation.html
+https://scons-cookbook.readthedocs.io/en/latest/
+
+:pros:
+- python
+- order independent
+:END:
+:cons:
+- documentation
+- not explicit
+:END:
+**** SnakeMake
+https://snakemake.readthedocs.io/en/stable/
+
+:concepts:
+
+:END:
+
+:pros:
+- reproducible
+- linter
+- modular
+- auto install of dependencies
+- tool wrappers
+- cluster execution
+- tabular config
+- reports
+- generates unit tests
+- handover to other task runners
+:END:
+:cons:
+- dsl, uncertain where python ends and snakemake begins
+- top down
+:END:
+
+#+begin_src snakemake
+rule bwa_map:
+    input:
+        "data/genome.fa",
+        "data/samples/A.fastq"
+    output:
+        "mapped_reads/A.bam"
+    shell:
+        "bwa mem {input} | samtools view -Sb - > {output}"
+
+#+end_src
+
+**** Toil
+https://toil.ucsc-cgl.org/
+https://github.com/DataBiosphere/toil
+
+:concepts:
+- leader : decides jobs by traversing job graph
+- job store : handles files shared between components, maintains state
+- worker : temporary processes, can run on to successors
+- batch system : schedules jobs
+- node provisioner : creates worker nodes
+- stats and logger :
+
+- jobs : atomic unit of work
+- workflow : extends job
+- jobDescription : metadata
+:END:
+
+
+:pros:
+- uses cwl, wdl, python
+:END:
+:cons:
+
+:END:
+
+#+begin_src python
+from toil.common import Toil
+from toil.job import Job
+
+
+def helloWorld(message, memory="1G", cores=1, disk="1G"):
+    return f"Hello, world!, here's a message: {message}"
+
+
+if __name__ == "__main__":
+    parser = Job.Runner.getDefaultArgumentParser()
+    options = parser.parse_args()
+    options.clean = "always"
+    with Toil(options) as toil:
+        output = toil.start(Job.wrapFn(helloWorld, "You did it!"))
+    print(output)
+
+#+end_src
+
+**** WDL
+https://docs.openwdl.org/en/latest/
+https://github.com/openwdl/wdl
+https://openwdl.org/getting-started/
+https://github.com/openwdl/wdl/blob/wdl-1.1/SPEC.md
+
+:concepts:
+- workflow
+- task
+- call
+- command
+- output
+:END:
+
+:pros:
+
+:END:
+:cons:
+
+:END:
+
+#+begin_src wdl
+workflow write_simple_file {
+  call write_file
+}
+task write_file {
+  String message
+  command { echo ${message} > wdl-helloworld-output.txt }
+  output { File test = "wdl-helloworld-output.txt" }
+}
+#+end_src
+*** tracker.contains : artifact checks
+*** tracker handling of adding unambiguous group-less task names
+*** tracker writing/reading
+*** update task spec version
+#+begin_src toml :results output
+[[tasks.group]]
+name = "blah"
+# Old:
+version = "0.1"
+# New:
+version = {"task": "0.1", "doot": ">0.5.1", "dootle" : "<0.2.1" ... }
+# and check the version on build
+# similarly:
+depends_on = ["another::task, 0.2.1","and::another, >0.1"]
+#+end_src
+
+*** use cli param constraints in cli parsing
+*** policies
+**** breaker
+**** bulkhead
+**** retry
+**** timeout
+**** cache
+**** fallback
+**** cleanup
+**** debug
+**** pretend
+**** accept
+*** queue cleanup task
+*** symlink nonlocal task files into .tasks
+*** queue tasks without groups when no ambiguity
+*** ensure idempotency of tracker add_task/queue_task
+*** using action annotations to modify tracker network dependencies
+*** pre-run, print task plan from built network
+*** cli args
+currently doot/control/base_tracker.py : 243
+uses match spec.source
+*** boltons.priorityQueue subclass
+override 'add' to call get_priority on the *task* before calling super().add
+*** move task spec instantiation logic to TaskSpecFactory
+*** DONE extract logctx,logcolour,logconfig to new package
+added to jgdv
+*** DONE fix doot.toml stubbing when pyproject.toml exists
+*** DONE pre-commit print colour disabler
+*** DONE refactor sname
+** Corana
+*** archiving
+*** binary
+*** json
+*** metadata
+*** spiders
+*** swda
+*** xml
+*** docs
+** QUEUED readthedocs
+
+
+* Links
