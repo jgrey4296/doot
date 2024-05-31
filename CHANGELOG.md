@@ -1,59 +1,414 @@
-<!-- <!--  CHANGELOG.md -*- mode: GFM -*-
----
-title: ChangeLog
----
+# Changelog
 
+All notable changes to this project will be documented in this file.
 
-# 0.2.3 : 2023-12-10
-Initial ... release.
+(Generated using [git-cliff](https://git-cliff.org/)
 
-# 0.3.0 : 2023-12-21
-- Add reactive and auto queue behaviour for tasks.
-- Rewrite action argument expansion, using DootKey
-- bugfixes
-# 0.3.1 : 2024-01-04
-- refactor task specs to use mixins
-- improve arg parser
-- change file name prefix to "file:>"
-# 0.4.0 : 2024-01-20
-- refactor tasker -> job
-- refactor walker 'filter_fn' -> 'accept_fn'
-- add skipfile action
-- add touch file action
-- add de/compress actions
-- add DootKey.redirect_multi
-- add DootKey and Locations chaining/on_fail
-- add postbox subboxs
-- add postbox -> task expander mixin for job
-- add headonly mixin
-- add basic injection of cli params
-# 0.5.0 : 2024-02-06
-- add symlink handling to keys
-- add shell baking and pipelining
-- add pathParts action
-- add setup actions mixin
-- add cli param parsing / stubbing
-- add key decorators for action authoring
-# 0.6.0 : 2024-02-23
-- improve cli param parsing
-- add signal handler and logging recognition of pre-commmit
-- add general expander mixin
-- refactor mixin names to {}_M
-- refactor walker and postbox expanders
-# 0.7.0 : 2024-04-15
-- bug fixes
-- add job actions
-- add json actions
-- refactor constants and aliases to toml
-- add ext check action
-- io.write data coercion to str
-- default log dir
-- write protection
-- add decorators
-- task action groups
-- location metadata
-# 0.7.1 : 2024-04-17
-- bug fixes
-- refactor control flow actions
-# 0.7.2 : 2024-04-20
-- bug fixes
+## [0.8.0] - 2024-05-31
+
+### Features
+
+- Modelines, linting config
+- TaskSpec.match_with_constraints
+- Tracker constraint matching
+- Tracker artifact dependency expansion
+- Base transformer
+- Protocols
+- Plan generation, plus tests
+- Tracker cleanup of dead tasks
+- Todo org file
+- Branch 'dependency-refactor' into linux-main
+- Branch 'linux-main'
+
+### Bug Fixes
+
+- Cli arg expansion
+- Typos
+- Cli override of params
+- Job injection
+- Aliases after plugin load
+- Limit logging of tracker active set
+- Log action expansion
+- Job expansion sources
+- Typo
+- Cli param handling
+- Exit announcement
+- Job_head name removes JOB
+- Equality test
+- Postbox
+- Job head tracking
+- Next_for api
+
+### Refactoring
+
+- TaskStateEnum -> TaskStatus_e
+- Structs from dataclasses -> pydantic
+- Reporter to have a base implementation
+- Minor abstract and struct changes
+- Separate into tracker, network, queue
+- TomlLocation -> Location
+- Artifact to be a subclass of Locationj
+- DependencySpec -> RelationSpec
+- TaskName roots implementation
+- Task name access
+- Action spec construction
+- Remove use of mock_gen in test_flexible
+- Taskname creation without a group
+- Task spec to have a sources list
+- Base protocols
+- Task status progression
+- Relation enum names
+- Common names
+- Common names
+- Logging
+
+### Testing
+
+- Tracking of job heads
+
+## [0.7.2] - 2024-04-20
+
+### Bug Fixes
+
+- Wrong variable
+
+### Dependencies
+
+- Version 0.7.1 -> 0.7.2
+
+### Refactoring
+
+- Stubbing, removing mixins
+
+### [Merge]
+
+- Branch 'linux-main'
+
+## [0.7.1] - 2024-04-17
+
+### Bug Fixes
+
+- Typos and bugs
+
+### Dependencies
+
+- Version 0.7.0 -> 0.7.1
+
+### Refactoring
+
+- Decorators
+- Control flow actions
+- Tracker
+- Runner
+- Job expansion and queuing
+
+### Testing
+
+- Update to passing
+
+## [0.7.0] - 2024-04-15
+
+### Features
+
+- Job actions can build subtasks
+- Json actions
+- Tracker handling of str ctor
+- Job actions implementations and tests
+- Job actions
+- Human numbers as util class
+- Extension check action
+- _test_setup
+- Key .basic, .direct
+- Location checks don't build file locations
+- Coercion to str for io.write
+- Log dir and log naming
+- Decorators
+- Taskspec entry conditions
+- Jgdv as dependency
+
+### Bug Fixes
+
+- Missing import
+- Edge case
+- Locs access
+- Task name str production
+- Release task state after use
+- Typos
+- Typo
+- Typos
+- Doot.toml stubbing
+- Job expansion name conflicts
+- Tracker doesn't overwrite spec.extra now if args already exist
+- Outdated import
+- Is_write_protected
+- Failure handling in base_runner
+
+### Dependencies
+
+- Wiki
+- Version 0.6.1 -> 0.7.0
+
+### Refactoring
+
+- Constants and aliases to toml
+- Postbox to use tasknames
+- Job build in preference of job actions
+- Key get logic to separate class
+- Job actions to separate files
+- Build as static method, make as instance method
+- Path parts generation
+- Mixins
+- Import ordering to avoid cycles
+- Artifact
+- Locations
+- Queue_behaviour
+- Key getter.get -> chained_get
+- Task_name building
+- Tests
+- Stubs to dootle
+- Imports
+- Runner/task action groups
+- Locations to have normOnLoad
+- Max_steps to config settings.tasks
+- Enum usage
+
+### Testing
+
+- Update
+- Key basic and get logic
+- Job injection
+- Job actions
+- Skip tests awaiting refactor
+
+## [0.6.1] - 2024-02-24
+
+### Bug Fixes
+
+- Bumpver
+- Bumpver
+
+### Dependencies
+
+- Version 0.6.0 -> 0.6.1
+
+## [0.6.0] - 2024-02-23
+
+### Features
+
+- Signal handler disabling for pre-commit
+- Printer level stubbing
+- Handle config failures
+- Util retrievers for expanders
+- Merge branch 'linux-main'
+
+### Bug Fixes
+
+- Postbox subkey expansion
+- Walker unique name creation
+- Task loading failure messaging
+- Missing argument in summarizepost
+- Source expansion
+- Path expansion in io actions
+- Signal handler construction
+
+### Dependencies
+
+- Version 0.5.2 -> 0.6.0
+
+### Refactoring
+
+- Mixin names
+- Structured names
+- Task state to taskbase
+- Base tracker to separate private and public methods
+
+### Testing
+
+- Update
+
+## [0.5.2] - 2024-02-14
+
+### Features
+
+- Basic distribution tasks
+
+### Bug Fixes
+
+- Typo
+- Build_head missing keys handling
+- Subtask dependency linking
+- Shell tty out bool
+- Typo and config bug
+
+### Dependencies
+
+- Version 0.5.1 -> 0.5.2
+
+### Refactoring
+
+- Job:limit to separate file
+
+## [0.5.1] - 2024-02-06
+
+### Bug Fixes
+
+- Remove breakpoint left in
+
+### Dependencies
+
+- Version 0.5.0 -> 0.5.1
+
+## [0.5.0] - 2024-02-06
+
+### Features
+
+- Symlink handling to key.to_path
+- Shell action baked shell envs
+- PathParts state mod action
+- Setup actions mixin
+- Cli param stubbing
+- Key decorators
+- Shell baking for pipelining
+
+### Bug Fixes
+
+- Key expansion order: cli->spec->state->locs
+
+### Dependencies
+
+- Version 0.4.0 -> 0.5.0
+
+### Refactoring
+
+- Locations.update
+- Compression and json out of io.py
+- Action args to use key decorators
+- Doot.locs.expand -> normalize
+
+## [0.4.0] - 2024-01-20
+
+### Features
+
+- Subtask sub_generator control
+- Skipfile action, touch file action
+- De/compression actions
+- Dootkey.redirect_multi
+- Move action
+- Headonly mixin
+- Job matcher/limiter
+- Subkeys for postboxes
+- Cli replacement of params in tracker
+- Postbox -> task expander
+
+### Bug Fixes
+
+- None access
+- Typo
+
+### Dependencies
+
+- Version 0.3.1 -> 0.4.0
+
+### Refactoring
+
+- Key and location expansion
+- Tracker task adding
+- Tasker -> job
+- Runner
+- Tracker
+- Filter_fn -> accept_fn
+
+## [0.3.1] - 2024-01-04
+
+### Features
+
+- Bumpver config
+- Miniwalker to default plugins
+- Fleixble parser to defaults
+- Run time mixins
+
+### Bug Fixes
+
+- Typo
+- Typo
+
+### Refactoring
+
+- Dootkey -> structs
+- Specialisations -> mixins
+- Mixin use + tests
+- Code aliases
+- Stubbing
+- Test mocking
+- Old arg parser
+
+## [0.3.0] - 2023-12-21
+
+### Features
+
+- Plugins listing command
+- Globber implementation
+- Action spec, with state checking
+- Default time announce action
+- Step cmd implementation
+- Bool handling in stub->toml
+- Fstem for globber
+- Io,postbox,state actions
+- String expansion function
+- Backupaction
+- Clean command implementation
+- Actions
+- Actions
+- New flexible arg parser
+- Flexible cli parsing
+- Lazy tree shadow
+- Dependency
+- Debug and typecheck actions
+- Bumpver setup
+- Auto and reactive queue behaviour
+
+### Bug Fixes
+
+- Task spec specialization
+- Runner tests
+- Specializing print levels
+- String expansion
+- Tree walking hitting directories
+- Config var access
+- Task prep bad logic
+- Task prep
+- Task building again
+- Typo
+
+### Refactoring
+
+- Reporting
+- Location checking
+- Templates
+- Mixins
+- Remove obsolete
+- Check dirs -> check locs
+- Print and action level control
+- Print control
+- Globber -> walker
+- Action file names
+- State retreival
+- Task source config
+- Structs to separate submodule
+- Expansions into a single file
+- Default plugins to separate file
+- Taskspec runs_before/after -> require-for/depends-on
+- Tomler -> tomlguard
+- Structuredname -> codereference & taskname
+- Action argument expansion
+- Arg expansion. Add DootKey
+- Shell arg expansion
+
+### Testing
+
+- Reporters
+- Fixing failures
+- Fixing failures
+- Update
+
+<!-- generated by git-cliff -->
