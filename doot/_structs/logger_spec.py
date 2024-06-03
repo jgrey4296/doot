@@ -209,3 +209,14 @@ class LoggerSpec(BaseModel):
 
         filename = datetime.datetime.now().strftime(self.filename_fmt)
         return log_dir / filename
+
+    def set_level(self, level:int|str):
+        match level:
+            case str():
+                level = logmod._nameToLevel.get(level, 0)
+            case int():
+                pass
+        logger = self.get()
+        logger.setLevel(level)
+        for handler in logger.handlers:
+            handler.setLevel(level)
