@@ -136,32 +136,52 @@ class _SpecUtils_m:
         task_ctor = self.ctor.try_import(ensure=ensure)
         return task_ctor(self)
 
-    def job_top(self) -> None|TaskSpec:
+    def job_top(self) -> list[TaskSpec]:
         """
           Generate a top spec for a job, taking the jobs cleanup actions
           and using them as the head's main action.
+          Cleanup relations are turning into the head's dependencies
           Depends on the job, and its reactively queued.
+
+          Returns a list to allow for sequencing:
+          ie: job -> [subtasks] -> job_head -> [cleanup dependencies] -> job cleanup
+
         """
+        tasks = []
         if TaskFlags.JOB not in self.flags:
-            return None
+            return tasks
         if (TaskFlags.CONCRETE | TaskFlags.JOB_HEAD) & self.flags:
-            return None
+            return tasks
         if self.name.job_head() == self.name:
-            return None
+            return tasks
 
         # build $head$
         head : TaskSpec = TaskSpec.build({
             "name"            : self.name.job_head(),
             "sources"         : self.sources[:] + [self.name, None],
-            "actions"         : self.cleanup,
             "extra"           : self.extra,
             "queue_behaviour" : TaskQueueMeta.reactive,
-            "depends_on"      : [self.name] + [x for x in self.cleanup if isinstance(x, RelationSpec)],
+            "depends_on"      : [self.name],
+            "required_for"    : [self.name.job_head().subtask("cleanup")] if bool(self.cleanup) else [],
             "flags"           : (self.flags | TaskFlags.JOB_HEAD) & ~TaskFlags.JOB,
             })
         assert(TaskFlags.JOB not in head.name)
         assert(TaskFlags.JOB not in head.flags)
-        return head
+        tasks.append(head)
+        if not bool(self.cleanup):
+            return tasks
+
+        cleanup : TaskSpec = TaskSpec.build({
+            "name"            : self.name.job_head().subtask("cleanup"),
+            "sources"         : self.sources[:] + [self.name, None],
+            "actions"         : [x for x in self.cleanup if isinstance(x, ActionSpec)],
+            "extra"           : self.extra,
+            "queue_behaviour" : TaskQueueMeta.reactive,
+            "depends_on"      : [self.name, self.name.job_head()] + [x for x in self.cleanup if isinstance(x, RelationSpec)],
+            "flags"           : (self.flags | TaskFlags.TASK) & ~TaskFlags.JOB,
+            })
+        tasks.append(cleanup)
+        return tasks
 
     def match_with_constraints(self, control:TaskSpec, *, relation:None|RelationSpec=None) -> bool:
         """ Test this spec to see if it matches a spec,

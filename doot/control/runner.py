@@ -215,9 +215,14 @@ class DootRunner(BaseRunner, TaskRunner_i):
                     fail_l.warning("%s Tried to Queue additional tasks from a bad action group: %s", fail_prefix, task)
                     group_result = ActRE.FAIL
                 case [*xs]:
+                    new_nodes = []
                     for spec in xs:
-                        self.tracker.queue_entry(spec)
-                    self.tracker.build_network()
+                        match self.tracker.queue_entry(spec):
+                            case None:
+                                queue_l.warning("Queuing a generated spec failed: %s", spec.name)
+                            case TaskName() as x:
+                                new_nodes.append(x)
+                    self.tracker.build_network(sources=new_nodes)
                     queue_l.info("Queued %s Subtasks for %s", len(xs), task.shortname)
 
         return executed_count, group_result
