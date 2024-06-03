@@ -25,6 +25,20 @@ class TestTaskArtifact:
         basic = TaskArtifact.build(pl.Path("a/b/c"))
         assert(basic is not None)
 
+
+    def test_priority(self):
+        basic = TaskArtifact.build(pl.Path("a/b/c"))
+        assert(basic is not None)
+        assert(basic.priority == 10)
+
+
+    def test_priority_decrement(self):
+        basic = TaskArtifact.build(pl.Path("a/b/c"))
+        assert(basic is not None)
+        assert(basic.priority == 10)
+        basic.priority -= 1
+        assert(basic.priority == 9)
+
     def test_self_eq(self):
         basic = TaskArtifact.build(pl.Path("a/b/c"))
         assert(basic is basic)
