@@ -236,6 +236,8 @@ class DootTracker(BaseTracker, TaskTracker_i):
                 case TaskStatus_e.SUCCESS if TaskFlags.JOB in focus:
                     track_l.debug("Job Object Success, queuing head: %s", focus)
                     self.queue_entry(focus.root().job_head())
+                    if (cleanup:=focus.root().job_head().subtask("cleanup")) in self.specs:
+                        self.queue_entry(cleanup)
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
                     self.build_network()
                 case TaskStatus_e.SUCCESS | TaskStatus_e.EXISTS:
@@ -245,9 +247,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
                     for succ in [x for x in self.network.succ[focus] if self.get_status(x) in TaskStatus_e.success_set]:
                         if nx.has_path(self.network, succ, self._root_node):
                             self.queue_entry(succ)
-
                     # TODO self._reactive_queue(focus)
-
                 case TaskStatus_e.FAILED:  # propagate failure
                     self.active_set.remove(focus)
                     fail_l.warning("Task Failed, Propagating from: %s to: %s", focus, list(self.network.succ[focus]))

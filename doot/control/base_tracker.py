@@ -344,6 +344,9 @@ class _TrackerStore:
 
             self.specs[spec.name] = spec
             logging.debug("Registered Spec: %s", spec.name)
+
+            # Register the head and cleanup specs:
+            self.register_spec(*spec.job_top())
             self._register_artifacts(spec.name)
             # Register Requirements:
             for rel in spec.required_for:
@@ -353,6 +356,7 @@ class _TrackerStore:
                         self._requirements[target].append(rel.invert(spec.name))
                     case _: # Ignore action specs
                         pass
+
             # If the spec is abstract, create an initial concrete version
             if not bool(spec.flags & (TaskFlags.TRANSFORMER|TaskFlags.CONCRETE)):
                 logging.debug("Instantiating Initial Concrete for abstract: %s", spec.name)
@@ -812,11 +816,6 @@ class _TrackerQueue_boltons:
                 instance : TaskName = self._instantiate_spec(name, add_cli=from_user)
                 self.connect(instance, None if from_user else False)
                 prepped_name = instance
-                # Register the head and cleanup specs:
-                for x in self.specs[prepped_name.root()].job_top():
-                    self.queue_entry(x)
-                else:
-                    logging.info("Registered Job Head and Cleanup Sequence")
             case _:
                 raise doot.errors.DootTaskTrackingError("Unrecognized queue argument provided, it may not be registered", name)
 
