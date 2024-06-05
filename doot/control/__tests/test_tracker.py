@@ -191,7 +191,10 @@ class TestTrackerNext:
         assert(obj.next_for().name == conc_job_body)
         obj.set_status(conc_job_body, TaskStatus_e.SUCCESS)
         result = obj.next_for()
-        assert(task_spec.name < result.name)
+        assert(job_spec.name.job_head() < result.name)
+        obj.set_status(result.name, TaskStatus_e.SUCCESS)
+        result = obj.next_for()
+        assert(result is not None)
         # A new job head hasn't been built
         assert(len(obj.concrete[job_spec.name.job_head()]) == 1)
 
