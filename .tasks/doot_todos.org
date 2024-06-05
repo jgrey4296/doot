@@ -39,50 +39,6 @@ staleness, recency, size, contains, hashcmp...
 *** [∅] shell output redirection
 *** [∅] task on-fail actions
 *** QUEUED test postbox
-*** DONE DootKey action decorator
-#+NAME: example
-#+begin_src python :results output
-	@DootKeyWrap.path("from", as="different")
-    @DootKeyWrap.expand("target")
-    @DootKeyWrap.redirect("update_")
-    def an_action(spec, state, different, target, update):
-        # do stuff
-        return { update : target }
-#+end_src
-
-would allow automatic annotation for stubbing,
-type declarations,
-
-for multiples:?
-#+begin_src python
-  @DootKeyWrap.paths("from", "to", "other")
-  def an_action(spec, state, from, to, other):
-      pass
-#+end_src
-
-get spec args:
-#+begin_src python
-  @DootKeyWrap.args
-  def an_action(spec, state, args):
-      pass
-#+end_src
-
-typechecking:
-#+begin_src python
-  @DootKeyWrap.type("db", type_=BibtexDataBase)
-  def an_action(spec, state, db:BibTexDataBase):
-      pass
-#+end_src
-
-require it be in the spec/state,
-or require a return
-#+begin_src python
-  @DootKeyWrap.require("update_")
-  @DootKeyWrap.returns("val")
-  def an_action(spec, state):
-      pass
-#+end_src
-*** DONE write protection
 ** Commands                                     :commands:
 *** [∅] here command
 *** [∅] help command print toml cli's separate
@@ -97,7 +53,6 @@ for nushell
 *** [∅] runner fail handler
 *** KILL job : generate tasks from postbox entries
 *** KILL task setup/cleanup dependency mixin
-*** DONE job pattern matcher
 ** Other
 *** QUEUED logging secret filter
 *** [∅] refactor doot log setup to jgdv
@@ -739,11 +694,6 @@ uses match spec.source
 *** NO boltons.priorityQueue subclass
 override 'add' to call get_priority on the *task* before calling super().add
 *** [∅] move task spec instantiation logic to TaskSpecFactory
-*** DONE extract logctx,logcolour,logconfig to new package
-added to jgdv
-*** DONE fix doot.toml stubbing when pyproject.toml exists
-*** DONE pre-commit print colour disabler
-*** DONE refactor sname
 *** [∅] job expansion naming scheme
 ** QUEUED readthedocs
 * [[file:/media/john/data/github/python/dootle/.tasks/dootle_todos.org::*Dootle][Dootle]]
