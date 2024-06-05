@@ -157,7 +157,7 @@ class TestKeyParameterized:
             result        = obj.redirect(spec)
 
     @pytest.mark.parametrize("name", KEY_BASES)
-    def test_(self, mocker, name):
+    def test_redirect_multi(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
         spec          = mocker.Mock(params={f"{name}_": ["blah", "bloo"]}, spec=ActionSpec)
         assert(obj.indirect in spec.params)

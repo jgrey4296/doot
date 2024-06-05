@@ -41,7 +41,7 @@ import random
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.structs import DootKey, TaskSpec, TaskName, CodeReference
+from doot.structs import DootKey, TaskSpec, TaskName, CodeReference, Location
 from doot.actions.base_action import DootBaseAction
 from doot.actions.job_injection import JobInjector
 
@@ -66,11 +66,12 @@ class JobExpandAction(JobInjector):
     @DootKey.dec.types("from", "inject", "template")
     @DootKey.dec.expands("prefix")
     @DootKey.dec.redirects("update_")
+    @DootKey.dec.types("__expansion_count__", hint={"on_fail": 0})
     @DootKey.dec.taskname
-    def __call__(self, spec, state, _from, inject, template, prefix, _update, _basename):
+    def __call__(self, spec, state, _from, inject, template, prefix, _update, _count, _basename):
         match prefix:
             case "{prefix}":
-                prefix = "{Anon}"
+                prefix = "{JobGenerated}"
             case _:
                 pass
 
@@ -82,31 +83,34 @@ class JobExpandAction(JobInjector):
         match _from:
             case int():
                 build_queue += range(_from)
+            case str() | pl.Path() | Location():
+                build_queue.append(_from)
             case list():
                 build_queue += _from
             case None:
                 build_queue += [1]
             case _:
                 printer.warning("Tried to expand a non-list of args")
-                return self.ActRE.FAIL
+                return ActRE.FAIL
 
-        for i, arg in enumerate(build_queue):
-                # TODO change job subtask naming scheme
-                base_dict = dict(name=root.subtask(prefix, i),
-                                 sources=sources,
-                                 actions = actions or [],
-                                 required_for=[base_head],
-                                 )
-                match self.build_injection(spec, state, inject, replacement=arg):
-                    case None:
-                        pass
-                    case dict() as val:
-                        base_dict.update(val)
+        for arg in build_queue:
+            _count += 1
+            # TODO change job subtask naming scheme
+            base_dict = dict(name=root.subtask(prefix, _count),
+                             sources=sources,
+                             actions = actions or [],
+                             required_for=[base_head],
+                             )
+            match self.build_injection(spec, state, inject, replacement=arg):
+                case None:
+                    pass
+                case dict() as val:
+                    base_dict.update(val)
 
-                new_spec  = TaskSpec.build(base_dict)
-                result.append(new_spec)
+            new_spec  = TaskSpec.build(base_dict)
+            result.append(new_spec)
 
-        return { _update : result }
+        return { _update : result , "__expansion_count__":  _count }
 
     def _prep_base(self, base:TaskName|list[ActionSpec]) -> tuple[list, TaskName|None]:
         """

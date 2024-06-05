@@ -88,6 +88,7 @@ class RunCmd(BaseCommand):
             else:
                 tracker.queue_entry(target, from_user=True)
 
+        tracker.queue_entry(CheckLocsTask(), from_user=True)
         for target in doot.args.on_fail({}).tasks().keys():
             try:
                 tracker.queue_entry(target, from_user=True)
@@ -95,7 +96,6 @@ class RunCmd(BaseCommand):
                 cmd_l.warn("Failed to Queue Target: %s", target)
                 logging.debug(err)
 
-        tracker.queue_entry(CheckLocsTask(), from_user=True)
 
         match interrupt_handler:
             case _ if not doot.args.cmd.args.interrupt:

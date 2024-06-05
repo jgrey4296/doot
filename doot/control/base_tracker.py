@@ -353,14 +353,6 @@ class _TrackerStore:
                         self._requirements[target].append(rel.invert(spec.name))
                     case _: # Ignore action specs
                         pass
-            # If its a job, register the $head$
-            match spec.job_top():
-                case None:
-                    pass
-                case TaskSpec() as head:
-                    assert(TaskFlags.CONCRETE not in spec.flags)
-                    self.register_spec(head)
-                    logging.info("Registered Head Spec: %s", head.name.readable)
             # If the spec is abstract, create an initial concrete version
             if not bool(spec.flags & (TaskFlags.TRANSFORMER|TaskFlags.CONCRETE)):
                 logging.debug("Instantiating Initial Concrete for abstract: %s", spec.name)
@@ -404,7 +396,7 @@ class _TrackerStore:
         return True
 
 class _TrackerNetwork:
-    """ the network of tasks and their dependencies """
+    """ the network of concrete tasks and their dependencies """
 
     def __init__(self):
         super().__init__()
@@ -524,11 +516,14 @@ class _TrackerNetwork:
         return to_expand
 
     def _expand_job_head(self, spec:TaskSpec) -> list[TaskName]:
+        """
+
+        """
         if TaskFlags.JOB not in spec.name:
             return []
 
         logging.debug("Expanding Job Head for: %s", spec.name)
-        root = spec.name.root()
+        root      = spec.name.root()
         head_name = root.job_head()
         match [x for x in self.network.succ[spec.name] if head_name < x]:
             case []: # No head yet, add it
@@ -671,7 +666,7 @@ class _TrackerNetwork:
 
         return incomplete
 
-    def build_network(self) -> None:
+    def build_network(self, *, sources:None|list[ConcreteId]=None) -> None:
         """
         for each task queued (ie: connected to the root node)
         expand its dependencies and add into the network, until no mode nodes to expand.
@@ -680,7 +675,11 @@ class _TrackerNetwork:
         # TODO network could be built in total, or on demand
         """
         logging.debug("-> Building Task Network")
-        queue     = list(self.network.pred[self._root_node].keys())
+        match sources:
+            case None:
+                queue = list(self.network.pred[self._root_node].keys())
+            case [*xs]:
+                queue = list(sources)
         processed = { self._root_node }
         logging.info("Initial Network Queue: %s", queue)
         while bool(queue): # expand tasks
@@ -765,7 +764,8 @@ class _TrackerQueue_boltons:
                 self.tasks[focus].priority -= 1
                 logging.debug("Task %s: Priority Decrement to: %s", focus, self.tasks[focus].priority)
             case TaskArtifact() as focus:
-                pass
+                focus.priority -= 1
+
         return focus
 
     def queue_entry(self, name:str|AnyId|ConcreteSpec|Task_i, *, from_user:bool=False, status:TaskStatus_e=None) -> None|ConcreteId:
@@ -807,24 +807,24 @@ class _TrackerQueue_boltons:
             case TaskName() if not from_user and (instance:=self._maybe_reuse_instantiation(name)) is not None:
                 prepped_name = instance
                 self.connect(instance, None if from_user else False)
-            case TaskName() if name in self.specs and from_user:
+            case TaskName() if name in self.specs:
                 assert(TaskFlags.CONCRETE not in TaskName.build(name))
                 instance : TaskName = self._instantiate_spec(name, add_cli=from_user)
                 self.connect(instance, None if from_user else False)
                 prepped_name = instance
-            case TaskName() if name in self.specs:
-                instance : TaskName = self._instantiate_spec(name, add_cli=from_user)
-                self.connect(instance, None if from_user else False)
-                prepped_name = instance
+                # Register the head and cleanup specs:
+                for x in self.specs[prepped_name.root()].job_top():
+                    self.queue_entry(x)
+                else:
+                    logging.info("Registered Job Head and Cleanup Sequence")
             case _:
                 raise doot.errors.DootTaskTrackingError("Unrecognized queue argument provided, it may not be registered", name)
 
         ## --
-
-
         if prepped_name is None:
             return None
         assert(prepped_name in self.network)
+
         final_name      : None|TaskName|TaskArtifact = None
         target_priority : int                        = self._declare_priority
         match prepped_name:
@@ -846,6 +846,7 @@ class _TrackerQueue_boltons:
             case TaskArtifact():
                 assert(prepped_name in self.artifacts)
                 final_name = prepped_name
+                target_priority = prepped_name.priority
 
         self.active_set.add(final_name)
         self._queue.add(final_name, priority=target_priority)

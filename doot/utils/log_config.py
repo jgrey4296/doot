@@ -155,3 +155,8 @@ class DootLogConfig:
                     print("Could not build LoggerSpec for {}".format(name))
                 case LoggerSpec() as spec:
                     spec.apply()
+
+
+    def set_level(self, level):
+        self.stream_initial_spec.set_level(level)
+        self.printer_initial_spec.set_level(level)

@@ -1,12 +1,13 @@
 #+TITLE: Doot Todos
+#+STARTUP: agenda
 
 * Doot                                           :doot:
 ** Actions                                      :actions:
-*** actions don't bother to run if the keys they return are already present
-*** add postbox decorators like keys
-*** create a pandas/seaborn/matplotlib chart
+*** [∅] actions don't bother to run if the keys they return are already present
+*** [∅] add postbox decorators like keys
+*** [∅] create a pandas/seaborn/matplotlib chart
 ***** create subclass actions: artifactReader, artifactWriter
-*** [#A] job actions
+*** [∅] [#A] job actions
 #+NAME: example
 #+begin_src toml :results output
 [[tasks.example]]
@@ -31,13 +32,13 @@ actions = [
 **** DONE shadower
 **** DONE subtasker
 **** chaining
-*** predicate/skip tests
+*** [∅] predicate/skip tests
 staleness, recency, size, contains, hashcmp...
-*** regex filter shell action to replace called sed
-*** shell action fail handler
-*** shell output redirection
-*** task on-fail actions
-*** QUEUED [#B] test postbox
+*** [∅] regex filter shell action to replace called sed
+*** [∅] shell action fail handler
+*** [∅] shell output redirection
+*** [∅] task on-fail actions
+*** QUEUED test postbox
 *** DONE DootKey action decorator
 #+NAME: example
 #+begin_src python :results output
@@ -83,32 +84,32 @@ or require a return
 #+end_src
 *** DONE write protection
 ** Commands                                     :commands:
-*** here command
-*** help command print toml cli's separate
-*** help command add mixin's as targets
-*** locs_cmd print matches
-*** locs_cmd print by source
-*** stub templates registration / env var location
-*** locs command includes metadata
-*** list command json output
+*** [∅] here command
+*** [∅] help command print toml cli's separate
+*** [∅] help command add mixin's as targets
+*** [∅] locs_cmd print matches
+*** [∅] locs_cmd print by source
+*** [∅] stub templates registration / env var location
+*** [∅] locs command includes metadata
+*** [∅] list command json output
 for nushell
 ** Mixins                                       :mixins:
-*** runner fail handler
+*** [∅] runner fail handler
 *** KILL job : generate tasks from postbox entries
 *** KILL task setup/cleanup dependency mixin
 *** DONE job pattern matcher
 ** Other
 *** QUEUED logging secret filter
-*** refactor doot log setup to jgdv
-*** make dootkey resolution order explicit
+*** [∅] refactor doot log setup to jgdv
+*** [∅] make dootkey resolution order explicit
 mamba goes: RCfile -> env -> cli -> api
 https://mamba.readthedocs.io/en/latest/user_guide/configuration.html
 
-*** active_when conditions
-*** backup list cache
+*** [∅] active_when conditions
+*** [∅] backup list cache
 ****** make jobs resumable
-*** cli target lister
-*** date tracker
+*** [∅] cli target lister
+*** [∅] date tracker
 *** [#A] doot memory guard
 possibly use https://psutil.readthedocs.io/en/latest/
 #+NAME: memory
@@ -133,12 +134,12 @@ possibly use https://psutil.readthedocs.io/en/latest/
 #+end_src
 
 
-*** read/write as implicit dependencies
-*** task name params
+*** [∅] read/write as implicit dependencies
+*** [∅] task name params
 so "a.group::task.{arg=val}"?
-*** same task different args
-*** staleness / date checking
-*** Task Runners Feature Comparison
+*** [∅] same task different args
+*** [∅] staleness / date checking
+*** [∅] Task Runners Feature Comparison
 push / pull
 declarative, imperative
 
@@ -698,10 +699,10 @@ task write_file {
   output { File test = "wdl-helloworld-output.txt" }
 }
 #+end_src
-*** tracker.contains : artifact checks
-*** tracker handling of adding unambiguous group-less task names
-*** tracker writing/reading
-*** update task spec version
+*** [∅] tracker.contains : artifact checks
+*** [∅] tracker handling of adding unambiguous group-less task names
+*** [∅] tracker writing/reading
+*** [∅] update task spec version
 #+begin_src toml :results output
 [[tasks.group]]
 name = "blah"
@@ -714,8 +715,8 @@ version = {"task": "0.1", "doot": ">0.5.1", "dootle" : "<0.2.1" ... }
 depends_on = ["another::task, 0.2.1","and::another, >0.1"]
 #+end_src
 
-*** use cli param constraints in cli parsing
-*** policies
+*** [∅] use cli param constraints in cli parsing
+*** [∅] policies
 **** breaker
 **** bulkhead
 **** retry
@@ -726,23 +727,24 @@ depends_on = ["another::task, 0.2.1","and::another, >0.1"]
 **** debug
 **** pretend
 **** accept
-*** queue cleanup task
-*** symlink nonlocal task files into .tasks
-*** queue tasks without groups when no ambiguity
-*** ensure idempotency of tracker add_task/queue_task
-*** using action annotations to modify tracker network dependencies
-*** pre-run, print task plan from built network
-*** cli args
+*** [∅] queue cleanup task
+*** [∅] symlink nonlocal task files into .tasks
+*** [∅] queue tasks without groups when no ambiguity
+*** [∅] ensure idempotency of tracker add_task/queue_task
+*** [∅] using action annotations to modify tracker network dependencies
+*** [∅] pre-run, print task plan from built network
+*** [∅] cli args
 currently doot/control/base_tracker.py : 243
 uses match spec.source
-*** boltons.priorityQueue subclass
+*** NO boltons.priorityQueue subclass
 override 'add' to call get_priority on the *task* before calling super().add
-*** move task spec instantiation logic to TaskSpecFactory
+*** [∅] move task spec instantiation logic to TaskSpecFactory
 *** DONE extract logctx,logcolour,logconfig to new package
 added to jgdv
 *** DONE fix doot.toml stubbing when pyproject.toml exists
 *** DONE pre-commit print colour disabler
 *** DONE refactor sname
+*** [∅] job expansion naming scheme
 ** QUEUED readthedocs
 * [[file:/media/john/data/github/python/dootle/.tasks/dootle_todos.org::*Dootle][Dootle]]
 * [[file:/media/john/data/github/python/corana/.tasks/corana_todos.org::*Corana][Corana]]

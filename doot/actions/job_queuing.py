@@ -59,7 +59,7 @@ class JobQueueAction(Action_p):
     @DootKey.dec.taskname
     def __call__(self, spec, state, _args, _from, _from_multi, _after, _basename) -> list:
         # TODO maybe expand args
-        subtasks                   = []
+        subtasks               = []
         queue : list[TaskSpec] = []
         _after                     = self._expand_afters(_after, _basename)
 
@@ -117,18 +117,13 @@ class JobQueueAction(Action_p):
 
         return result
 
-    def _build_from_multi(self, base, froms, spec, state) -> list:
+    def _build_from_multi(self, base:TaskName, froms:list[DootKey], spec, state) -> list:
         result  = []
         root    = base.root()
         head    = base.job_head()
-        as_keys = []
-        match froms:
-            case None:
-                pass
-            case [*xs]:
-                as_keys += [DootKey.build(x) for x in xs]
+        assert(all(isinstance(x, DootKey) for x in froms))
 
-        for key in as_keys:
+        for key in froms:
             match key.to_type(spec, state, type_=list|TaskSpec|None):
                 case None:
                     pass

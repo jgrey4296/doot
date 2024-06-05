@@ -57,6 +57,8 @@ class TaskArtifact(Location, arbitrary_types_allowed=True):
 
     """
 
+    priority : int = 10
+
     def __repr__(self):
         return f"<TaskArtifact: {self.path} : {self.meta}>"
 
