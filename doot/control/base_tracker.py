@@ -446,7 +446,9 @@ class _TrackerNetwork:
         local_nodes.update(self.network.succ[artifact].keys())
 
         # ignore unrelated artifacts
-        abstraction_test = lambda x: artifact in x and x in self._transformer_specs
+        def abstraction_test(x):
+            return artifact in x and x in self._transformer_specs
+
         for abstract in [x for x in self._abstract_artifacts if abstraction_test(x)]:
             # And get transformers of related artifacts
             available_transformers.update(self._transformer_specs[abstract])

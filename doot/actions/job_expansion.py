@@ -154,10 +154,11 @@ class JobMatchAction(DootBaseAction):
     @DootKey.dec.types("mapping")
     def __call__(self, spec, state, _onto, prepfn, mapping):
         match prepfn:
-            case None:
-                fn = lambda x: x.extra.fpath.suffix
             case CodeReference():
                 fn = prepfn.try_import()
+            case None:
+                def fn(x):
+                    return x.extra.fpath.suffix
 
         for x in _onto:
             match fn(x):

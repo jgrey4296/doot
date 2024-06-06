@@ -53,6 +53,10 @@ from doot.mixins.path_manip import Walker_m
 class JobWalkAction(Walker_m, DootBaseAction):
     """
       Triggers a directory walk to build tasks from
+
+      starts at each element in `roots`,
+      files must match with a suffix in `exts`, if bool(exts)
+      potential files are used that pass `fn`,
     """
 
     @DootKey.dec.types("roots", "exts")
@@ -67,7 +71,8 @@ class JobWalkAction(Walker_m, DootBaseAction):
             case CodeReference():
                 accept_fn = fn.try_import()
             case None:
-                accept_fn = lambda x: True
+                def accept_fn(x):
+                    return True
 
         results = [x for x in self.walk_all(roots, exts, rec=rec, fn=accept_fn)]
         return { _update : results }
