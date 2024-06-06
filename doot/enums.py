@@ -170,6 +170,16 @@ class LoopControl(enum.Enum):
     noBut   = enum.auto()
     no      = enum.auto()
 
+    @classmethod
+    @property
+    def loop_yes_set(cls):
+        return  {cls.yesAnd, cls.yes, True}
+
+    @classmethod
+    @property
+    def loop_no_set(cls):
+        return  {cls.no, cls.noBut, False, None}
+
 class LocationMeta(FlagsBuilder_m, enum.Flag):
     """ Available metadata attachable to a location """
 
