@@ -115,9 +115,9 @@ class ListCmd(BaseCommand):
                 continue
 
             cmd_l.info(fmt_str,
-                         spec.name,
-                         spec.ctor,
-                         spec.sources)
+                       spec.name,
+                       spec.ctor,
+                       [str(x) for x in spec.sources])
 
     def _print_group_matches(self, tasks):
         max_key = len(max(tasks.keys(), key=len))
@@ -179,9 +179,9 @@ class ListCmd(BaseCommand):
                 continue
 
             sources[spec.sources[0]].append((spec.name.task,
-                                         spec.ctor.__module__,
-                                         spec.ctor.__name__,
-                                        ))
+                                             spec.ctor.__module__,
+                                             spec.ctor.__name__,
+                                            ))
 
         for source, tasks in sources.items():
             cmd_l.info(":: %s ::", source, extra={"colour":"red"})
