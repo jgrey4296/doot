@@ -91,15 +91,17 @@ class DootShellAction(Action_p):
     @DootKey.dec.args
     @DootKey.dec.types("background", "notty", hint={"type_":bool, "on_fail":False})
     @DootKey.dec.types("env", hint={"on_fail":sh, "type_":sh.Command|None})
+    @DootKey.dec.paths("cwd", hint={"on_fail":None, "type_":pl.Path|None})
     @DootKey.dec.redirects("update_")
-    def __call__(self, spec, state, args, background, notty, env, _update) -> dict|bool|None:
+    def __call__(self, spec, state, args, background, notty, env, cwd, _update) -> dict|bool|None:
         result     = None
+        cwd        = cwd or pl.Path.cwd()
         try:
             # Build the command by getting it from env, :
             cmd                     = getattr(env, DootKey.build(args[0], explicit=True).expand(spec, state))
             keys                    = [DootKey.build(x, explicit=True) for x in args[1:]]
             expanded                = [x.expand(spec, state, locs=doot.locs) for x in keys]
-            result                  = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=not notty)
+            result                  = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=not notty, _cwd=cwd )
             assert(result.exit_code == 0)
 
             printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, args[0], args[1:])
