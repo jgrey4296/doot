@@ -4,6 +4,63 @@ All notable changes to this project will be documented in this file.
 
 (Generated using [git-cliff](https://git-cliff.org/)
 
+## [0.8.4] - 2024-06-10
+
+### Features
+
+- Loop_yes_set and loop_no_set
+- Tolerance for backup task time test
+- Cleanup as a dependant group of a task
+- Branch 'linux-main'
+
+### Bug Fixes
+
+- Alias typo of zip.new
+- Action decorator bug
+
+### Dependencies
+
+- Wiki commit
+- Version 0.8.3 -> 0.8.4
+
+### Refactoring
+
+- Remove lambda assignments
+- Relation spec to have constraints and injections
+- Task spec
+
+## [0.8.3] - 2024-06-05
+
+### Dependencies
+
+- Version 0.8.2 -> 0.8.3
+
+## [0.8.2] - 2024-06-05
+
+### Bug Fixes
+
+- Missing set_level for logging
+- Job head queueing
+- Job expansion subtask count
+
+### Dependencies
+
+- Version 0.8.1 -> 0.8.2
+
+### [Merge]
+
+- Branch 'linux-main'
+
+## [0.8.1] - 2024-05-31
+
+### Bug Fixes
+
+- Readme header
+
+### Dependencies
+
+- Version 0.8.0 -> 0.8.1
+
 ## [0.8.0] - 2024-05-31
 
 ### Features
@@ -39,6 +96,13 @@ All notable changes to this project will be documented in this file.
 - Job head tracking
 - Next_for api
 
+### Dependencies
+
+- Agenda
+- Wiki
+- Changelog
+- Version 0.7.2 -> 0.8.0
+
 ### Refactoring
 
 - TaskStateEnum -> TaskStatus_e
@@ -64,7 +128,13 @@ All notable changes to this project will be documented in this file.
 
 ### Testing
 
+- Update
+- Update
 - Tracking of job heads
+
+### [lint]
+
+- Imports
 
 ## [0.7.2] - 2024-04-20
 

@@ -2,7 +2,7 @@
 
 [project]
 name            = "doot"
-version         = "0.8.3"
+version         = "0.8.4"
 description     = "An opinionated, TOML based task runner"
 readme          = "README.md"
 requires-python = ">=3.11"
@@ -100,7 +100,7 @@ log_file_format = "%(asctime)s %(levelname)s %(name)s : %(message)s"
 ##-- bumpver
 # https://github.com/mbarkhau/bumpver
 [tool.bumpver]
-current_version    = "0.8.3"
+current_version    = "0.8.4"
 version_pattern    = "MAJOR.MINOR.PATCH"
 commit_message     = "[bump]: version {old_version} -> {new_version}"
 tag_message        = "{new_version}"
