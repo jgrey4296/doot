@@ -308,7 +308,7 @@ class TestKeyDecoratorAnnotations:
         def simple(spec, state):
             pass
 
-        unwrapped = DecU._unwrap(simple)
+        unwrapped = DecU.unwrap(simple)
         assert(not hasattr(unwrapped, DecU._annot))
         DecU.annotate(unwrapped, {"test"})
         assert(isinstance(getattr(unwrapped, DecU._annot), set))

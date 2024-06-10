@@ -76,6 +76,11 @@ class KeyDecorator:
     """
 
     @staticmethod
+    def get_keys(fn) -> list[DootKey]:
+        fn = DecorationUtils.unwrap(fn)
+        return getattr(fn, DecorationUtils._keys, [])
+
+    @staticmethod
     def taskname(fn):
         keys = [DootKey.build(STATE_TASK_NAME_K, exp_hint="type")]
         return DecorationUtils.prepare_expansion(keys, fn)
@@ -110,7 +115,7 @@ class KeyDecorator:
 
     @staticmethod
     def kwargs(fn):
-        """ mark an action as using spec.args """
+        """ mark an action as using all kwargs"""
         keys = [DootKwargsKey("kwargs")]
         return DecorationUtils.prepare_expansion(keys, fn)
 

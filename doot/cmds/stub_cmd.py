@@ -2,48 +2,54 @@
 """
 
 """
-##-- default imports
+# Imports:
 from __future__ import annotations
 
-import types
+# ##-- stdlib imports
 import abc
 import datetime
 import enum
 import functools as ftz
+import importlib
 import itertools as itz
 import logging as logmod
 import pathlib as pl
 import re
 import time
+import types
+from collections import defaultdict
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
+from importlib.resources import files
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 from weakref import ref
 
-##-- end default imports
+# ##-- end stdlib imports
+
+# ##-- 1st party imports
+import doot
+import doot.enums
+import doot.errors
+from doot._abstract import PluginLoader_p, Task_i
+from doot._structs.key import HELP_HINT, DootKey
+from doot.cmds.base_cmd import BaseCommand
+from doot.structs import CodeReference, TaskName, TaskStub
+from doot.task.base_job import DootJob
+from doot.task.base_task import DootTask
+from doot.utils.decorators import DecorationUtils
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
-from collections import defaultdict
-import importlib
-from importlib.resources import files
-import doot
-import doot.enums
-import doot.errors
-from doot.cmds.base_cmd import BaseCommand
-from doot._abstract import PluginLoader_p, Task_i
-from doot.structs import TaskStub, TaskName, CodeReference
-from doot.task.base_job import DootJob
-from doot.task.base_task import DootTask
-from doot._structs.key import HELP_HINT
-from doot.utils.decorators import KEY_ANNOTS
 
 ##-- data
 data_path = files(doot.constants.paths.TEMPLATE_PATH).joinpath(doot.constants.paths.TOML_TEMPLATE)
@@ -186,9 +192,7 @@ class StubCmd(BaseCommand):
                         printer.info(x)
 
             loaded = getattr(loaded, "__call__", loaded)
-            loaded = getattr(loaded, "__wrapped__", loaded)
-
-            match getattr(loaded, KEY_ANNOTS, []):
+            match DootKey.dec.get_keys(loaded):
                 case []:
                     printer.info("-- No Declared Kwargs")
                 case [*xs]:

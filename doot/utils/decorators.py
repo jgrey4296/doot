@@ -50,19 +50,24 @@ from doot.enums import LocationMeta
 from doot._abstract.protocols import SpecStruct_p
 
 DOOT_ANNOTATIONS : Final[str]                = "__DOOT_ANNOTATIONS__"
-KEYS_HANDLED   : Final[str]                = "_doot_keys_handler"
-ORIG_ARGS      : Final[str]                = "_doot_orig_args"
-KEY_ANNOTS     : Final[str]                = "_doot_keys"
-FUNC_WRAPPED   : Final[str]                = "__wrapped__"
-PARAM_PREFIX   : Final[str] = "_"
-PARAM_SUFFIX   : Final[str] = "_ex"
+KEYS_HANDLED     : Final[str]                = "_doot_keys_handler"
+ORIG_ARGS        : Final[str]                = "_doot_orig_args"
+KEY_ANNOTATIONS  : Final[str]                = "_doot_keys"
+FUNC_WRAPPED     : Final[str]                = "__wrapped__"
+PARAM_PREFIX     : Final[str]                = "_"
+PARAM_SUFFIX     : Final[str]                = "_ex"
 
 class DecorationUtils:
+    """
+      utilities for decorators
+    """
 
-    _annot = DOOT_ANNOTATIONS
+    _annot        = DOOT_ANNOTATIONS
+    _keys         = KEY_ANNOTATIONS
+    _wrapped_flag = KEYS_HANDLED
 
     @staticmethod
-    def _unwrap(fn:callable) -> callable:
+    def unwrap(fn:callable) -> callable:
         # if not hasattr(fn, FUNC_WRAPPED):
         #     return fn
 
@@ -71,6 +76,9 @@ class DecorationUtils:
 
     @staticmethod
     def verify_signature(fn, head:list, tail:list=None) -> bool:
+        """
+          Inspect the signature of a function, an check the parameter names are correct
+        """
         match fn:
             case inspect.Signature():
                 sig = fn
@@ -79,6 +87,7 @@ class DecorationUtils:
 
         params      = list(sig.parameters)
         tail        = tail or []
+
         for x,y in zip(params, head):
             if x != y:
                 logging.debug("Mismatch in signature head: %s != %s", x, y)
@@ -101,7 +110,11 @@ class DecorationUtils:
 
         return True
 
+    @staticmethod
     def verify_action_signature(fn:Signature|callable, args:list) -> bool:
+        """
+          verify that a callable signature is [self?, spec, state, *keys]
+        """
         match fn:
             case inspect.Signature():
                 sig = fn
@@ -116,32 +129,9 @@ class DecorationUtils:
 
         return DecorationUtils.verify_signature(sig, head_sig, args)
 
-
     @staticmethod
     def manipulate_signature(fn, args) -> callable:
-        pass
-
-    @staticmethod
-    def has_annotations(fn, *keys) -> bool:
-        if not hasattr(fn, DOOT_ANNOTATIONS):
-            return False
-
-        annots = getattr(fn, DOOT_ANNOTATIONS)
-        return all(key in annots for key in keys)
-
-    @staticmethod
-    def annotate(fn:callable, annots:dict|set) -> callable:
-        match annots:
-            case dict():
-                fn.__dict__.update(annots)
-            case set():
-                if not hasattr(fn, DOOT_ANNOTATIONS):
-                    setattr(fn, DOOT_ANNOTATIONS, set())
-
-                annotations = getattr(fn, DOOT_ANNOTATIONS)
-                annotations.update(annots)
-        return fn
-
+        raise NotImplementedError()
 
     @staticmethod
     def truncate_signature(fn):
@@ -152,21 +142,70 @@ class DecorationUtils:
 
           TODO: could take a callable as the prototype to build the signature from
         """
-        sig = inspect.signature(fn)
-        min_index = len(sig.parameters) - len(getattr(fn, KEY_ANNOTS))
-        newsig = sig.replace(parameters=list(sig.parameters.values())[:min_index])
+        sig              = inspect.signature(fn)
+        min_index        = len(sig.parameters) - len(getattr(fn, DecorationUtils._keys))
+        newsig           = sig.replace(parameters=list(sig.parameters.values())[:min_index])
         fn.__signature__ = newsig
         return fn
 
     @staticmethod
+    def has_annotations(fn, *keys) -> bool:
+        """
+          test a function for doot annotations
+          unwraps a function if necessary
+        """
+        unwrapped = DecorationUtils.unwrap(fn)
+        if not hasattr(unwrapped, DecorationUtils._annot):
+            return False
+
+        annots = getattr(unwrapped, DecorationUtils._annot)
+        return all(key in annots for key in keys)
+
+    @staticmethod
+    def annotate(fn:callable, annots:dict|set) -> callable:
+        """
+          Annotate a function with additional information
+          applies update to the wrapper and wrapped
+
+          a dict updates the function dict directory,
+          a set gets added to DecorationUtils._annot
+        """
+        unwrapped = DecorationUtils.unwrap(fn)
+        match annots:
+            case dict():
+                unwrapped.__dict__.update(annots)
+                if fn is not unwrapped:
+                    fn.__dict__.update(annots)
+                return fn
+            case set() if not hasattr(unwrapped, DecorationUtils._annot):
+                new_set = set()
+                setattr(unwrapped, DecorationUtils._annot, new_set)
+                if fn is not unwrapped:
+                    setattr(fn, DecorationUtils._annot, new_set)
+            case set():
+                pass
+            case _:
+                raise TypeError("Tried to annotate a function with an unknown type", annots)
+
+        annotations = getattr(unwrapped, DecorationUtils._annot)
+        annotations.update(annots)
+
+        return fn
+
+    @staticmethod
     def _update_key_annotations(fn, keys:list[DootKey]) -> True:
-        """ update the declared expansion keys on the wrapped action """
-        sig = inspect.signature(fn)
+        """ update the declared expansion keys on an action
+          If the action has been wrapped already, annotations will be applied to both the wrapper and wrapped.
+        """
+        unwrapped = DecorationUtils.unwrap(fn)
+        sig = inspect.signature(unwrapped)
 
         # prepend annotations, so written decorator order is the same as written arg order:
         # (ie: @wrap(x) @wrap(y) @wrap(z) def fn (x, y, z), even though z's decorator is applied first
-        new_annotations = keys + getattr(fn, KEY_ANNOTS, [])
-        setattr(fn, KEY_ANNOTS, new_annotations)
+        new_annotations = keys + getattr(unwrapped, DecorationUtils._keys, [])
+        setattr(unwrapped, DecorationUtils._keys, new_annotations)
+        if unwrapped is not fn:
+            setattr(fn, DecorationUtils._keys, new_annotations)
 
         if not DecorationUtils.verify_action_signature(sig, new_annotations):
             raise doot.errors.DootKeyError("Annotations do not match signature", sig)
@@ -179,21 +218,21 @@ class DecorationUtils:
           and idempotently adds the expansion decorator
         """
         is_func = True
-        match DecorationUtils._unwrap(fn):
-            case x if DecorationUtils.has_annotations(x, KEYS_HANDLED):
-                DecorationUtils._update_key_annotations(x, keys)
-                return fn
-            case orig:
-                is_func = inspect.signature(orig).parameters.get("self", None) is None
-                DecorationUtils._update_key_annotations(x, keys)
-                DecorationUtils.annotate(orig, {KEYS_HANDLED})
+        DecorationUtils._update_key_annotations(fn, keys)
 
+        if DecorationUtils.has_annotations(fn, DecorationUtils._wrapped_flag):
+            # keys are handled, so the fn already has an expander, no need to add one
+            return fn
+
+        is_func = inspect.signature(fn).parameters.get("self", None) is None
         match is_func:
             case False:
                 wrapper = DecorationUtils.add_method_expander(fn)
             case True:
                 wrapper = DecorationUtils.add_fn_expander(fn)
 
+        # mark the function as having a wrapper installed
+        DecorationUtils.annotate(fn, {DecorationUtils._wrapped_flag})
         return wrapper
 
     @staticmethod
@@ -202,7 +241,7 @@ class DecorationUtils:
         @ftz.wraps(fn)
         def method_action_expansions(self, spec, state, *call_args, **kwargs):
             try:
-                expansions = [x(spec, state) for x in getattr(fn, KEY_ANNOTS)]
+                expansions = [x(spec, state) for x in getattr(fn, DecorationUtils._keys)]
             except KeyError as err:
                 printer.warning("Action State Expansion Failure: %s", err)
                 return False
@@ -218,7 +257,7 @@ class DecorationUtils:
         @ftz.wraps(fn)
         def fn_action_expansions(spec, state, *call_args, **kwargs):
             try:
-                expansions = [x(spec, state) for x in getattr(fn, KEY_ANNOTS)]
+                expansions = [x(spec, state) for x in getattr(fn, DecorationUtils._keys)]
             except KeyError as err:
                 printer.warning("Action State Expansion Failure: %s", err)
                 return False
@@ -234,7 +273,6 @@ class DootDecorator(abc.ABC):
       implement self._wrapper to add a wrapper around the fn.
       TODO: set self._idempotent=True to only add a wrapper once
       """
-
 
     def __init__(self):
         self._idempotent  = False
@@ -252,20 +290,22 @@ class DootDecorator(abc.ABC):
 
         match DecorationUtils.verify_signature(fn, ["self"]):
             case True:
+
                 @ftz.wraps(fn)
                 def decorated(obj, *args, **kwargs):
                     return self._wrapper(self._prep_method(fn, obj), *args, **kwargs, _obj=obj)
 
             case False:
+
                 @ftz.wraps(fn)
                 def decorated(*args, **kwargs):
                     return self._wrapper(fn, *args ,**kwargs)
-
 
         return decorated
 
     def _decorate_class(self, cls):
         original = cls.__call__
+
         @ftz.wraps(cls.__call__)
         def decorated(obj, *args, **kwargs):
             return self._wrapper(self._prep_method(original, obj), *args, **kwargs, _obj=original)
