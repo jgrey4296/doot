@@ -136,8 +136,6 @@ class DootRunner(BaseRunner, TaskRunner_i):
         try:
             logmod.debug("-- Expanding Job %s: %s", self.step, job.shortname)
             task_header_l.info("> Job %s: %s", self.step, job.shortname, extra={"colour":"magenta"})
-            # TODO queue $head$ ?
-
             self.reporter.add_trace(job.spec, flags=ReportEnum.JOB | ReportEnum.INIT)
 
             self._execute_action_group(job.spec.setup, job, group="setup")

@@ -1,0 +1,6 @@
+* Triage
+** TRIAGE refactor decoration and decorators + test
+   [[/media/john/data/github/python/doot/doot/utils/decorators.py::60][Location]]
+   :context:
+        <2024-06-10 Mon> class DecorationUtils:
+   :END:

@@ -320,6 +320,7 @@ class TestTrackerNetworkBuild:
 
 
     def test_build_dep_chain(self):
+        """Check basic::task triggers basic::dep, which triggers basic::chained"""
         obj  = BaseTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["basic::dep"]})
         spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "depends_on":["basic::chained"]})
@@ -338,6 +339,7 @@ class TestTrackerNetworkBuild:
 
 
     def test_build_dep_chain_with_artifact(self):
+        """check basic::task triggers basic::dep via the intermediary of the artifact test.blah"""
         obj  = BaseTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["file:>test.blah"]})
         spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "required_for":["file:>test.blah"]})
@@ -352,9 +354,9 @@ class TestTrackerNetworkBuild:
         # Check theres a path between the specs, via the artifact
         assert(nx.has_path(obj.network, obj.concrete[spec2.name][0], instance))
 
-    def test_build_dep_match_no_keys(self):
+    def test_build_dep_match_no_constraints(self):
         obj   = BaseTracker()
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "keys":[]}], "test_key": "bloo"})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "constraints":[]}], "test_key": "bloo"})
         spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "test_key": "blah"})
         obj.register_spec(spec, spec2)
         instance = obj._instantiate_spec(spec.name)
@@ -367,10 +369,10 @@ class TestTrackerNetworkBuild:
         assert(len(obj.network) == 3)
         assert(obj.concrete[spec2.name][0] in obj.network.pred[instance])
 
-    def test_build_dep_match_with_key(self):
+    def test_build_dep_match_with_constraint(self):
         obj   = BaseTracker()
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "keys":["test_key"]}], "test_key": "bloo"})
-        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "test_key": "blah"})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "constraints":["test_key"]}], "test_key": "bloo"})
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "test_key": "bloo"})
         obj.register_spec(spec, spec2)
         instance = obj._instantiate_spec(spec.name)
         assert(len(obj.network) == 1)
@@ -383,10 +385,57 @@ class TestTrackerNetworkBuild:
         assert(spec2.name  < pred)
         assert(spec.test_key == obj.specs[pred].test_key)
 
-    def test_build_dep_chain(self):
+    def test_build_dep_match_with_constraint_fail(self):
         obj   = BaseTracker()
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "keys":["test_key"]}], "test_key": "bloo"})
-        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "depends_on": [{"task":"basic::chained", "keys":["test_key"]}], "test_key": "blah"})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "constraints":["test_key"]}], "test_key": "bloo"})
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "test_key": "blah"})
+        obj.register_spec(spec, spec2)
+        instance = obj._instantiate_spec(spec.name)
+        assert(len(obj.network) == 1)
+        assert(not bool(obj.network.adj[obj._root_node]))
+        obj.connect(instance)
+        assert(len(obj.network) == 2)
+        with pytest.raises(doot.errors.DootTaskTrackingError):
+            obj.build_network()
+
+    def test_build_dep_match_with_injection(self):
+        obj   = BaseTracker()
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "injections":{"inj_key":"test_key"}}], "test_key": "bloo"})
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep"})
+        obj.register_spec(spec, spec2)
+        instance = obj._instantiate_spec(spec.name)
+        assert(len(obj.network) == 1)
+        assert(not bool(obj.network.adj[obj._root_node]))
+        obj.connect(instance)
+        assert(len(obj.network) == 2)
+        obj.build_network()
+        assert(len(obj.network) == 3)
+        pred = list(obj.network.pred[instance])[0]
+        assert(spec2.name  < pred)
+        assert(spec.test_key == obj.specs[pred].inj_key)
+
+
+    def test_build_dep_match_with_injection_fail(self):
+        obj   = BaseTracker()
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "injections":{"inj_key":"bad_key"}}], "test_key": "bloo"})
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep"})
+        obj.register_spec(spec, spec2)
+        instance = obj._instantiate_spec(spec.name)
+        assert(len(obj.network) == 1)
+        assert(not bool(obj.network.adj[obj._root_node]))
+        obj.connect(instance)
+        assert(len(obj.network) == 2)
+        with pytest.raises(doot.errors.DootTaskTrackingError):
+            obj.build_network()
+
+    def test_build_dep_chain_transitive_injection(self):
+        """
+          check a injections can be chained.
+          test_key=bloo should be carried from basic::task to basic::dep to basic::chained
+        """
+        obj   = BaseTracker()
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "injections":{"test_key":"test_key"}}], "test_key": "bloo"})
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "depends_on": [{"task":"basic::chained", "injections":{"test_key":"test_key"}}], "test_key": "blah"})
         spec3 = doot.structs.TaskSpec.build({"name":"basic::chained", "test_key": "aweg"})
         obj.register_spec(spec, spec2, spec3)
         instance = obj._instantiate_spec(spec.name)
@@ -408,11 +457,15 @@ class TestTrackerNetworkBuild:
         assert(obj.specs[pred2].sources[-1] == spec3.name)
         assert(obj.specs[pred2].test_key != spec3.test_key)
 
-    def test_build_req_chain(self):
+    def test_build_req_chain_with_transitive_injections(self):
+        """ Construct a requirement, rather than dependency, chain,
+          passing the injection up the chain
+          """
         obj   = BaseTracker()
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "required_for":[{"task":"basic::dep", "keys":["test_key"]}], "test_key": "bloo"})
-        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "required_for": [{"task":"basic::chained", "keys":["test_key"]}], "test_key": "blah"})
-        spec3 = doot.structs.TaskSpec.build({"name":"basic::chained", "test_key": "aweg"})
+        # Abstract specs
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "required_for":[{"task":"basic::req", "injections":{"test_key":"test_key"}}], "test_key": "bloo"})
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::req", "required_for": [{"task":"basic::chained", "injections":{"test_key":"test_key"}}]})
+        spec3 = doot.structs.TaskSpec.build({"name":"basic::chained"})
         obj.register_spec(spec, spec2, spec3)
         instance = obj._instantiate_spec(spec.name)
         assert(len(obj.network) == 1)
@@ -421,17 +474,12 @@ class TestTrackerNetworkBuild:
         assert(len(obj.network) == 2)
         obj.build_network()
         assert(len(obj.network) == 4)
-        succ1 = list(obj.network.succ[instance])[1] # note: index 1 this time, to skip root
+        succ1 = [x for x in obj.network.succ[instance] if x != obj._root_node][0]
         assert(spec2.name  < succ1)
-        assert(spec.test_key == obj.specs[succ1].test_key)
-        assert(obj.specs[succ1].sources[-1] == spec2.name)
-        assert(obj.specs[succ1].test_key != spec2.test_key)
+        # Test concrete specs have carried the injection:
+        assert(obj.specs[obj.concrete[spec2.name][1]].test_key == spec.test_key)
+        assert(obj.specs[obj.concrete[spec3.name][1]].test_key == spec.test_key)
 
-        succ2 = list(obj.network.succ[succ1])[0]
-        assert(spec3.name  < succ2)
-        assert(spec.test_key == obj.specs[succ2].test_key)
-        assert(obj.specs[succ2].sources[-1] == spec3.name)
-        assert(obj.specs[succ2].test_key != spec3.test_key)
 
     def test_build_with_head_dep(self):
         obj   = BaseTracker()
@@ -759,12 +807,14 @@ class TestTrackerInternals:
 
     def test_concrete_edges(self):
         obj   = BaseTracker()
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task",
-            "depends_on":[{"task":"basic::dep", "keys":["test_key"]}],
+        spec  = doot.structs.TaskSpec.build({
+            "name":"basic::task",
+            "depends_on":[{"task":"basic::dep", "injections":{"test_key":"test_key"}}],
             "required_for": ["basic::chained"],
-            "test_key": "bloo"})
-        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "depends_on": [{"task":"basic::chained", "keys":["test_key"]}], "test_key": "blah"})
-        spec3 = doot.structs.TaskSpec.build({"name":"basic::chained", "test_key": "aweg"})
+            "test_key": "bloo"
+                                            })
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "depends_on": [{"task":"basic::chained", "injections":{"test_key":"test_key"}}], "test_key": "blah"})
+        spec3 = doot.structs.TaskSpec.build({"name":"basic::chained"})
         obj.register_spec(spec, spec2, spec3)
         instance = obj._instantiate_spec(spec.name)
         assert(len(obj.network) == 1)

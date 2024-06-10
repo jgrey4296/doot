@@ -41,12 +41,6 @@ from doot.structs import CodeReference, DootKey
 
 printer = logmod.getLogger("doot._printer")
 
-##-- expansion keys
-UPDATE : Final[DootKey] = DootKey.build("update_")
-FORMAT : Final[DootKey] = DootKey.build("format")
-FROM   : Final[DootKey] = DootKey.build("from")
-##-- end expansion keys
-
 class AddStateAction(Action_p):
     """
       add to task state in the task description toml,
@@ -82,7 +76,6 @@ class PushState(Action_p):
     """
       state[update_] += [state[x] for x in spec.args]
     """
-    _toml_kwargs = [UPDATE]
 
     @DootKey.dec.args
     @DootKey.dec.redirects("update_")
