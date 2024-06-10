@@ -194,23 +194,22 @@ class DootTask(_TaskProperties_m, Task_i):
         """
         logging.debug("Preparing Actions: %s", self.shortname)
         failed = []
-        for group in self.spec.action_groups:
-            for action_spec in group:
-                match action_spec:
-                    case RelationSpec():
-                        pass
-                    case ActionSpec() if action_spec.fun is not None:
-                        pass
-                    case ActionSpec() if action_spec.do is not None:
-                        try:
-                            action_ctor = action_spec.do.try_import()
-                            action_spec.set_function(action_ctor)
-                        except ImportError as err:
-                            failed.append(err)
-                    case ActionSpec():
-                        action_spec.set_function(self.action_ctor)
-                    case _:
-                        failed.append(doot.errors.DootTaskError("Unknown element in action group: ", action_spec, self.shortname))
+        for action_spec in self.spec.action_group_elements():
+            match action_spec:
+                case RelationSpec():
+                    pass
+                case ActionSpec() if action_spec.fun is not None:
+                    pass
+                case ActionSpec() if action_spec.do is not None:
+                    try:
+                        action_ctor = action_spec.do.try_import()
+                        action_spec.set_function(action_ctor)
+                    except ImportError as err:
+                        failed.append(err)
+                case ActionSpec():
+                    action_spec.set_function(self.action_ctor)
+                case _:
+                    failed.append(doot.errors.DootTaskError("Unknown element in action group: ", action_spec, self.shortname))
 
         match failed:
             case []:

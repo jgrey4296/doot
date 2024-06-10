@@ -86,17 +86,66 @@ def _prepare_action_group(deps:list[str], handler:ValidatorFunctionWrapHandler, 
 
 ActionGroup = Annotated[list[ActionSpec|RelationSpec], WrapValidator(_prepare_action_group)]
 
-class _SpecUtils_m:
+class _JobUtils_m:
+    """Additional utilities mixin for job based task specs"""
 
-    def instantiate_onto(self, data:None|TaskSpec) -> TaskSpec:
-        """ apply self over the top of data """
-        match data:
-            case None:
-                return self.specialize_from(self)
-            case TaskSpec():
-                return data.specialize_from(self)
-            case _:
-                raise TypeError("Can't instantiate onto something not a task spec", data)
+    def job_top(self) -> list[TaskSpec]:
+        """
+          Generate a top spec for a job, taking the jobs cleanup actions
+          and using them as the head's main action.
+          Cleanup relations are turning into the head's dependencies
+          Depends on the job, and its reactively queued.
+
+          Equivalent to:
+          await job.depends_on()
+          await job.setup()
+          subtasks = job.actions()
+          await subtasks
+          job.head()
+          await job.cleanup()
+        """
+        tasks = []
+        if TaskFlags.JOB not in self.flags:
+            return tasks
+        if (TaskFlags.CONCRETE | TaskFlags.JOB_HEAD) & self.flags:
+            return tasks
+        if self.name.job_head() == self.name:
+            return tasks
+
+        head_actions      = self.extra.on_fail([], list).head_actions()
+        head_dependencies = [x for x in head_actions if isinstance(x, RelationSpec)]
+
+        # build $head$
+        head : TaskSpec = TaskSpec.build({
+            "name"            : self.name.job_head(),
+            "sources"         : self.sources[:] + [self.name, None],
+            "extra"           : self.extra,
+            "queue_behaviour" : TaskQueueMeta.reactive,
+            "depends_on"      : [self.name] + head_dependencies,
+            "required_for"    : [self.name.job_head().subtask("cleanup")] if bool(self.cleanup) else [],
+            "flags"           : (self.flags | TaskFlags.JOB_HEAD) & ~TaskFlags.JOB,
+            "actions"         : head_actions,
+            })
+        assert(TaskFlags.JOB not in head.name)
+        assert(TaskFlags.JOB not in head.flags)
+        tasks.append(head)
+        if not bool(self.cleanup):
+            return tasks
+
+        cleanup : TaskSpec = TaskSpec.build({
+            "name"            : self.name.job_head().subtask("cleanup"),
+            "sources"         : self.sources[:] + [self.name, None],
+            "actions"         : [x for x in self.cleanup if isinstance(x, ActionSpec)],
+            "extra"           : self.extra,
+            "queue_behaviour" : TaskQueueMeta.reactive,
+            "depends_on"      : [self.name, self.name.job_head()] + [x for x in self.cleanup if isinstance(x, RelationSpec)],
+            "flags"           : (self.flags | TaskFlags.TASK) & ~TaskFlags.JOB,
+            })
+        tasks.append(cleanup)
+        return tasks
+
+class _TransformerUtils_m:
+    """Utilities for artifact transformers"""
 
     def instantiate_transformer(self, target:TaskArtifact|tuple[TaskArtifact, TaskArtifact]) -> None|TaskSpec:
         """ Create an instantiated transformer spec.
@@ -130,93 +179,6 @@ class _SpecUtils_m:
                 return None
 
         return instance
-
-    def make(self, ensure:type=Any) -> Task_i:
-        """ Create actual task instance """
-        task_ctor = self.ctor.try_import(ensure=ensure)
-        return task_ctor(self)
-
-    def job_top(self) -> list[TaskSpec]:
-        """
-          Generate a top spec for a job, taking the jobs cleanup actions
-          and using them as the head's main action.
-          Cleanup relations are turning into the head's dependencies
-          Depends on the job, and its reactively queued.
-
-          Returns a list to allow for sequencing:
-          ie: job -> [subtasks] -> job_head -> [cleanup dependencies] -> job cleanup
-
-        """
-        tasks = []
-        if TaskFlags.JOB not in self.flags:
-            return tasks
-        if (TaskFlags.CONCRETE | TaskFlags.JOB_HEAD) & self.flags:
-            return tasks
-        if self.name.job_head() == self.name:
-            return tasks
-
-        # build $head$
-        head : TaskSpec = TaskSpec.build({
-            "name"            : self.name.job_head(),
-            "sources"         : self.sources[:] + [self.name, None],
-            "extra"           : self.extra,
-            "queue_behaviour" : TaskQueueMeta.reactive,
-            "depends_on"      : [self.name],
-            "required_for"    : [self.name.job_head().subtask("cleanup")] if bool(self.cleanup) else [],
-            "flags"           : (self.flags | TaskFlags.JOB_HEAD) & ~TaskFlags.JOB,
-            })
-        assert(TaskFlags.JOB not in head.name)
-        assert(TaskFlags.JOB not in head.flags)
-        tasks.append(head)
-        if not bool(self.cleanup):
-            return tasks
-
-        cleanup : TaskSpec = TaskSpec.build({
-            "name"            : self.name.job_head().subtask("cleanup"),
-            "sources"         : self.sources[:] + [self.name, None],
-            "actions"         : [x for x in self.cleanup if isinstance(x, ActionSpec)],
-            "extra"           : self.extra,
-            "queue_behaviour" : TaskQueueMeta.reactive,
-            "depends_on"      : [self.name, self.name.job_head()] + [x for x in self.cleanup if isinstance(x, RelationSpec)],
-            "flags"           : (self.flags | TaskFlags.TASK) & ~TaskFlags.JOB,
-            })
-        tasks.append(cleanup)
-        return tasks
-
-    def match_with_constraints(self, control:TaskSpec, *, relation:None|RelationSpec=None) -> bool:
-        """ Test this spec to see if it matches a spec,
-          when using a given relation and a given controlling spec to source values from
-
-          if not given a relation, acts as a coherence check between
-          self(a concrete spec) and control(the abstract source spec)
-          """
-        match relation:
-            case None:
-                assert(control.name <= self.name)
-                constraints = control.extra.keys()
-            case RelationSpec(constraints=None):
-                return True
-            case RelationSpec(constraints=constraints):
-                assert(relation.target <= self.name)
-
-        extra         = self.extra
-        control_extra = control.extra
-        for k in constraints:
-            if k not in extra:
-                return False
-            if extra[k] != control_extra[k]:
-                return False
-        else:
-            return True
-
-    def build_relevant_data(self, context:RelationSpec) -> dict:
-        """ Builds a dict of the data a matching spec will need, according
-          to a relations constraints.
-        """
-        if not bool(context.constraints):
-            return {}
-        extra = self.extra
-        return {k:extra[k] for k in context.constraints}
 
     def transformer_of(self) -> None|tuple[RelationSpec, RelationSpec]:
         """ If this spec can transform an artifact,
@@ -276,7 +238,73 @@ class _SpecUtils_m:
 
         raise ValueError("This shouldn't be possible")
 
-class TaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra="allow"):
+class _SpecUtils_m:
+    """General utilities mixin for task specs"""
+
+    def instantiate_onto(self, data:None|TaskSpec) -> TaskSpec:
+        """ apply self over the top of data """
+        match data:
+            case None:
+                return self.specialize_from(self)
+            case TaskSpec():
+                return data.specialize_from(self)
+            case _:
+                raise TypeError("Can't instantiate onto something not a task spec", data)
+
+    def make(self, ensure:type=Any) -> Task_i:
+        """ Create actual task instance """
+        task_ctor = self.ctor.try_import(ensure=ensure)
+        return task_ctor(self)
+
+    def match_with_constraints(self, control:TaskSpec, *, relation:None|RelationSpec=None) -> bool:
+        """ Test {self} against a {control}.
+          relation provides the constraining keys that {self} must have in common with {control}.
+
+          if not given a relation, then just check self and control dont conflict.
+          """
+        match relation:
+            case RelationSpec(constraints=None, injections=None):
+                return True
+            case RelationSpec(constraints=constraints, injections=injections):
+                assert(relation.target <= self.name)
+            case None:
+                assert(control.name <= self.name)
+                constraints = control.extra.keys()
+                injections  = {}
+
+        injections    = injections or {}
+        constraints   = constraints or []
+        extra         = self.extra
+        control_extra = control.extra
+        if bool(injections) and not bool(injections.values() & control_extra.keys()):
+            return False
+
+        for k in constraints:
+            if k not in extra:
+                return False
+            if extra[k] != control_extra[k]:
+                return False
+
+        for k,v in injections.items():
+            if extra.get(k, None) != control_extra.get(v, None):
+                return False
+        else:
+            return True
+
+    def build_injection(self, context:RelationSpec) -> None|dict:
+        """ Builds a dict of the data a matching spec will need, according
+          to a relations injections.
+        """
+        if not bool(context.injections):
+            return None
+
+        extra = self.extra
+        if bool((missing:=context.injections.values() - extra.keys())):
+            raise doot.errors.DootTaskTrackingError("Can not inject keys not found in the control spec", missing)
+
+        return {k:extra[v] for k,v in context.injections.items()}
+
+class TaskSpec(_JobUtils_m, _TransformerUtils_m, _SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra="allow"):
     """ The information needed to describe a generic task.
     Optional things are shoved into 'extra', so things can use .on_fail on the tomlguard
 
@@ -380,6 +408,7 @@ class TaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra="all
     def _validate_ctor(cls, val):
         match val:
             case None:
+
                 default_alias = TaskSpec._default_ctor
                 coderef_str   = doot.aliases.task[default_alias]
                 return CodeReference.build(coderef_str)
@@ -444,8 +473,16 @@ class TaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra="all
 
     @property
     def action_groups(self):
-        # TODO: use introspection on the model to get any fields annotated as an ActionGroup
         return [self.depends_on, self.setup, self.actions, self.cleanup, self.on_fail]
+
+    def action_group_elements(self) -> Iterable[ActionSpec|RelationSpec]:
+        queue = [self.depends_on, self.setup, self.actions, self.required_for]
+        if TaskFlags.JOB not in self.flags:
+            queue += [self.cleanup]
+
+        for group in queue:
+            for elem in group:
+                yield elem
 
     def specialize_from(self, data:dict|TaskSpec) -> TaskSpec:
         """
@@ -469,7 +506,7 @@ class TaskSpec(_SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra="all
                 return TaskSpec.build(specialized)
             case TaskSpec(sources=[*xs, TaskName() as x] ) if not x <= self.name:
                 raise doot.errors.DootTaskTrackingError("Tried to specialize a task that isn't based on this task", str(data.name), str(self.name), str(data.sources))
-            case TaskSpec(ctor=ctor) if self.ctor != ctor and ctor != TaskSpec._default_ctor:
+            case TaskSpec(ctor=ctor) if self.ctor not in [ctor, TaskSpec._default_ctor]:
                 raise doot.errors.DootTaskTrackingError("Unknown ctor for spec", data.ctor)
             case TaskSpec():
                 specialized = dict(self)
