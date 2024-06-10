@@ -43,6 +43,38 @@ class TestRelationSpec:
         obj = RelationSpec.build("group::a.test")
         assert(isinstance(obj, RelationSpec))
 
+
+    def test_constraint_build(self):
+        obj = RelationSpec.build({"task":"group::a.test", "constraints": ["a" ,"b", "c"]})
+        assert(isinstance(obj, RelationSpec))
+        assert(obj.constraints == ["a", "b", "c"])
+
+
+    def test_constraints_independent(self):
+        constraints = ["a", "b", "c"]
+        obj = RelationSpec.build({"task":"group::a.test", "constraints": constraints})
+        assert(isinstance(obj, RelationSpec))
+        assert(obj.constraints == ["a", "b", "c"])
+        constraints.append("d")
+        assert(obj.constraints == ["a", "b", "c"])
+        assert(id(obj.constraints) != id(constraints))
+
+
+    def test_injections(self):
+        injections = { "a" : "b", "c": "d" }
+        obj = RelationSpec.build({"task":"group::a.test", "injections": injections})
+        assert(isinstance(obj, RelationSpec))
+        assert(obj.injections == {"a": "b", "c": "d"})
+
+
+    def test_injections_independent(self):
+        injections = { "a" : "b", "c": "d" }
+        obj = RelationSpec.build({"task":"group::a.test", "injections": injections})
+        assert(isinstance(obj, RelationSpec))
+        assert(obj.injections == {"a": "b", "c": "d"})
+        injections['e'] = 5
+        assert(obj.injections == {"a": "b", "c": "d"})
+
     def test_location_dep(self):
         obj = RelationSpec.build(pl.Path("a/file.txt"))
         assert(isinstance(obj, RelationSpec))
@@ -86,7 +118,7 @@ class TestRelationSpec:
 
 
     def test_dict_task_with_metadata(self):
-        obj = RelationSpec.build({"task": "agroup::atask", "keys":["a", "b", "c"]})
+        obj = RelationSpec.build({"task": "agroup::atask", "constraints":["a", "b", "c"]})
         assert(isinstance(obj, RelationSpec))
         assert(isinstance(obj.target, TaskName))
         assert(obj.constraints == ["a", "b", "c"])
@@ -103,4 +135,5 @@ class TestRelationSpec:
         obj = RelationSpec.build({"task": "agroup::atask"}, relation=RelationMeta.requirementFor)
         assert(isinstance(obj, RelationSpec))
         assert(isinstance(obj.target, TaskName))
+        assert(obj.target == "agroup::atask")
         assert(obj.relation is RelationMeta.req)

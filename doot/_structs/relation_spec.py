@@ -51,28 +51,31 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 class RelationSpec(BaseModel):
-    """
-    The main encoding for dependencies and dependents.
-    A declaration that a TaskName, Artifact is a dependency,
-      with any associated metadata.
+    """ ? is {self.relation} to {self.target}
 
-    in the sentence {X} {relation} {Y},
-      this spec encodes {Y} and {relation}.
-
-    {X} is the TaskSpec which holds this relation,
-      and so is implicit.
+     Encodes a relation between an implicit subject, (who owns this relationspec)
+      and the object of the relation (who is contained within the relationspec)
 
       eg: baking dependsOn      mixing. relation=dependsOn, target=mixing.
           baking produces       cake.   r=produces, t=cake.
           baking requirementFor party.  r=requirementFor, t=party.
 
+
+      May carry additional information:
+      - constraints : a list of keys that much match between the task specs of the two tasks
+      - injections  : a mapping of { obj.key : sub.key } that will be injected into the object
+
+      NOTE: injections *do not* do expansion, they will just copy the value, allowing expansion to occur later.
+      So: injection={'a': '{taskkey}/b'} won't work, but {'a':'{taskkey}/b', 'taskkey':'taskkey'} will.
+      Or: injection={'a': '{otherkey}/b', 'otherkey':'taskkey'}
     """
 
     # What the Relation end point is:
     target        : TaskName|TaskArtifact
-    relation      : RelationMeta        = RelationMeta.dependsOn
-    constraints   : None|list[str]      = None # constraints on spec field matches
-    _meta         : dict()              = {} # Misc metadata
+    relation      : RelationMeta             = RelationMeta.dependsOn
+    constraints   : None|list[str]           = None # constraints on spec field matches
+    injections    : None|dict                = None
+    _meta         : dict()                   = {} # Misc metadata
 
     @staticmethod
     def build(data:RelationSpec|TomlGuard|dict|TaskName|str, *, relation:None|RelationMeta=None) -> RelationSpec:
@@ -86,9 +89,10 @@ class RelationSpec(BaseModel):
                 return RelationSpec(target=TaskArtifact.build(data), relation=relation)
             case {"file": str()|pl.Path() as x}:
                 return RelationSpec(target=TaskArtifact.build(data), relation=relation)
-            case {"task": taskname }:
-                keys = data.get("keys", None)
-                return RelationSpec(target=taskname, constraints=keys, relation=relation)
+            case {"task": taskname}:
+                constraints = data.get("constraints", None)
+                injections  = data.get("injections" , None)
+                return RelationSpec(target=taskname, constraints=constraints, injections=injections, relation=relation)
             case str() | pl.Path():
                 return RelationSpec(target=data, relation=relation)
             case _:
@@ -136,7 +140,7 @@ class RelationSpec(BaseModel):
 
           Return False if this relation has constraints.
           """
-        if not bool(self.constraints):
+        if bool(self.constraints) or bool(self.injections):
             return False
 
         exclude = exclude or []

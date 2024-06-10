@@ -113,10 +113,14 @@ class _TrackerStore:
             logging.debug("Not reusing instantiation because extra or cli args were requested: %s", name)
             return None
 
+        if not bool(self.concrete[name]):
+            logging.debug("Not reusing instantiation because there is no instantiation to reuse: %s", name)
+            return None
 
         existing_abstract = self.specs[name]
         match [x for x in self.concrete[name] if self.specs[x].match_with_constraints(existing_abstract)]:
             case []:
+                logging.debug("Not reusing instantiation because existing specs dont match with constraints: %s", name)
                 return None
             case [x, *xs]:
                 logging.debug("Reusing Concrete Spec: %s for %s", x, name)
@@ -167,6 +171,7 @@ class _TrackerStore:
           """
         match self._maybe_reuse_instantiation(name, add_cli=add_cli, extra=bool(extra)):
             case None:
+                logging.debug("Could not reuse an instantiation of: %s", name)
                 pass
             case TaskName() as existing:
                 logging.debug("Reusing instantiation: %s for %s", existing, name)
@@ -215,17 +220,20 @@ class _TrackerStore:
                 raise doot.errors.DootTaskTrackingError("Unknown target declared in Constrained Relation", control, dep.target)
             case [] | None:
                 pass
-            case [*xs] if not bool(dep.constraints):
+            case [*xs] if not bool(dep.constraints) and not bool(dep.injections):
                 successful_matches = [x for x in xs if x != control]
             case [*xs]:
                 # concrete instances exist, match on them
-                potentials = [self.specs[x] for x in xs if x != control]
+                potentials : list[TaskSpec] = [self.specs[x] for x in xs if x != control]
                 successful_matches += [x.name for x in potentials if x.match_with_constraints(control_spec, relation=dep)]
+
 
         match successful_matches:
             case []: # No matches, instantiate
-                extra    : dict     = control_spec.build_relevant_data(dep)
+                extra    : None|dict     = control_spec.build_injection(dep)
                 instance : TaskName = self._instantiate_spec(dep.target, extra=extra)
+                if not self.specs[instance].match_with_constraints(control_spec, relation=dep):
+                    raise doot.errors.DootTaskTrackingError("Could not instantiate a spec that passes constraints", dep, control)
                 return instance
             case [x]: # One match, connect it
                 assert(x in self.specs)
@@ -414,7 +422,6 @@ class _TrackerNetwork:
 
     def _add_node(self, name:ConcreteId) -> None:
         """idempotent"""
-        logging.debug("Inserting ConcreteId into network: %s", name)
         match name:
             case x if x is self._root_node:
                 self.network.add_node(name)
@@ -425,8 +432,16 @@ class _TrackerNetwork:
                 raise ValueError("Nodes should only be instantiated spec names", name)
             case _ if name in self.network.nodes:
                 return
-            case _:
+            case TaskArtifact():
                 # Add node with metadata
+                logging.debug("Inserting Artifact into network: %s", name)
+                self.network.add_node(name)
+                self.network.nodes[name][EXPANDED]     = False
+                self.network.nodes[name][REACTIVE_ADD] = False
+                self.network_is_valid = False
+            case TaskName():
+                # Add node with metadata
+                logging.debug("Inserting ConcreteId into network: %s", name)
                 self.network.add_node(name)
                 self.network.nodes[name][EXPANDED]     = False
                 self.network.nodes[name][REACTIVE_ADD] = False
@@ -486,17 +501,17 @@ class _TrackerNetwork:
         assert(not self.network.nodes[name].get(EXPANDED, False))
         spec                                                  = self.specs[name]
         spec_pred, spec_succ                                  = self.network.pred[name], self.network.succ[name]
-        deps, reqs                                            = spec.depends_on, spec.required_for
         indirect_deps : list[tuple[ConcreteId, RelationSpec]] = self._requirements[spec.sources[-1]]
         to_expand                                             = set()
 
         logging.debug("--> Expanding Task: %s : Pre(%s), Post(%s), IndirecPre:(%s)",
-                      name, [str(x) for x in deps], [str(x) for x in reqs], [str(x) for x in indirect_deps])
-        # Connect a jobs $head$
+                      name, len(spec.depends_on), len(spec.required_for), len(indirect_deps))
+        # (maybe) Connect a jobs $head$
         to_expand.update(self._expand_job_head(spec))
-
         # Connect Relations
-        for rel in (x for x in chain(deps, reqs, indirect_deps) if not isinstance(x, ActionSpec)):
+        for rel in itz.chain(spec.action_group_elements(), indirect_deps):
+            if not isinstance(rel, RelationSpec):
+                continue
             relevant_edges = spec_succ if rel.forward_dir_p() else spec_pred
             match rel:
                 case RelationSpec(target=TaskArtifact() as target):
@@ -511,8 +526,6 @@ class _TrackerNetwork:
                     instance = self._instantiate_relation(rel, control=name)
                     self.connect(*rel.to_edge(name, instance=instance))
                     to_expand.add(instance)
-                case _:
-                    raise doot.errors.DootTaskTrackingError("Unknown dependency or requirement", rel, spec)
         else:
             assert(name in self.network.nodes)
             self.network.nodes[name][EXPANDED] = True
