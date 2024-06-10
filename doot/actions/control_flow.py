@@ -162,11 +162,12 @@ class AssertInstalled(DootBaseAction):
     """
 
     @DootKey.dec.args
-    def __call__(self, spec, state, args) -> dict|bool|None:
+    @DootKey.dec.types("env", hint={"on_fail":sh, "type_":sh.Command|None})
+    def __call__(self, spec, state, args, env) -> dict|bool|None:
         failures = []
         for prog in args:
             try:
-                getattr(sh, prog)
+                getattr(env, prog)
             except sh.CommandNotFound:
                 failures.append(prog)
 
