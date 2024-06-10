@@ -234,16 +234,23 @@ class BackupAction(PathManip_m):
     """
 
     @DootKey.dec.paths("from", "to")
+    @DootKey.dec.types("tolerance", hint={"type_":int, "on_fail":10_000_000})
     @DootKey.dec.taskname
-    def __call__(self, spec, state, _from, to, _name) -> dict|bool|None:
+    def __call__(self, spec, state, _from, to, tolerance, _name) -> dict|bool|None:
         source_loc = _from
         dest_loc   = to
 
         if self._is_write_protected(dest_loc):
             raise doot.errors.DootLocationError("Tried to write a protected location", dest_loc)
 
-        if dest_loc.exists() and source_loc.stat().st_mtime_ns <= dest_loc.stat().st_mtime_ns:
-            return True
+        # ExFat FS has lower resolution timestamps
+        # So guard by having a tolerance:
+        source_ns       = source_loc.stat().st_mtime_ns
+        dest_ns         = dest_loc.stat().st_mtime_ns
+        difference      = int(max(source_ns, dest_ns) - min(source_ns, dest_ns))
+        below_tolerance = difference <= tolerance
+        if dest_loc.exists() and below_tolerance:
+            return
 
         printer.warning("Backing up : %s", source_loc)
         printer.warning("Destination: %s", dest_loc)
