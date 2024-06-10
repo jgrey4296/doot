@@ -51,7 +51,9 @@ class PathManip_m:
     """
 
     def _calc_path_parts(self, fpath, roots) -> dict:
-        """ take a path, and get a dict of bits to add to state from it """
+        """ take a path, and get a dict of bits to add to state from it
+          if no roots are provided use cwd
+        """
         assert(fpath is not None)
 
         temp_stem  = fpath
@@ -81,13 +83,15 @@ class PathManip_m:
 
         return results
 
-    def _get_relative(self, fpath, roots) -> pl.Path:
+    def _get_relative(self, fpath, roots=None) -> pl.Path:
+        """ Get relative path of fpath.
+          if no roots are provided, default to using cwd
+        """
         logging.debug("Finding Relative Path of: %s using %s", fpath, roots)
         if not fpath.is_absolute():
             return fpath
 
-        if not bool(roots):
-            return None
+        roots = roots or [pl.Path.cwd()]
 
         for root_path in roots:
             try:
