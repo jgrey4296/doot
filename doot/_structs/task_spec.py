@@ -338,8 +338,8 @@ class TaskSpec(_JobUtils_m, _TransformerUtils_m, _SpecUtils_m, BaseModel, arbitr
     _default_ctor         : ClassVar[str]       = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
     _allowed_print_locs   : ClassVar[list[str]] = doot.constants.printer.PRINT_LOCATIONS
     _action_group_wipe    : ClassVar[dict]      = {"required_for": [], "setup": [], "actions": [], "depends_on": []}
-    # Action Groups that are dependant on, rather than are dependencies of, this task:
-    _dependant_groups    : ClassVar[list[str]]  = ["required_for", "on_fail"]
+    # Action Groups that are depended on, rather than are dependencies of, this task:
+    _dependant_groups    : ClassVar[list[str]]  = ["required_for", "on_fail", "cleanup"]
 
     @staticmethod
     def build(data:TomlGuard|dict|TaskName|str) -> Self:

@@ -1,4 +1,4 @@
-## pyproject.toml -*- mode: Conf[TOML] -*-
+## pyproject.toml -*- mode: conf-toml -*-
 
 [project]
 name            = "doot"
@@ -106,7 +106,7 @@ commit_message     = "[bump]: version {old_version} -> {new_version}"
 tag_message        = "{new_version}"
 tag_scope          = "default"
 commit             = true
-# tag                = true
+tag                = true
 # push             = true
 # pre_commit_hook  = ""
 # post_commit_hook = ""
