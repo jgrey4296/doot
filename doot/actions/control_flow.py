@@ -57,28 +57,27 @@ class PredicateCheck(DootBaseAction):
 @ControlFlow()
 class FileExistsCheck(DootBaseAction):
     """ Continue only if a file exists. invertable with `not`.
-      converts to a failure with fail=true
+      converts to a failure instead of skip with fail=true
       """
 
     @DootKey.dec.args
     @DootKey.dec.types("not", hint={"type_":bool, "on_fail": False})
     @DootKey.dec.types("fail", hint={"type_":bool, "on_fail": False})
     def __call__(self, spec, state, args, _invert, _fail) -> dict|bool|None:
-        result = self.ActRE.SKIP
-        if _fail:
-            result = self.ActRE.FAIL
+        fail    = self.ActRE.FAIL if _fail else self.ActRE.SKIP
 
         for arg in args:
             path = DootKey.build(arg, explicit=True).to_path(spec, state, on_fail=None)
-            match bool(path and path.exists()), _invert:
-                case False, True:
+            exists = bool(path and path.exists())
+            if _invert:
+                exists = not exists
+            match exists:
+                case True:
                     continue
-                case False, False:
-                    return result
-                case True, True:
-                    return result
-                case True, False:
-                    continue
+                case False:
+                    return fail
+
+        return None
 
 @ControlFlow()
 class SuffixCheck(DootBaseAction):
