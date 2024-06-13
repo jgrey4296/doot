@@ -44,7 +44,7 @@ import shutil
 import tomlguard as TG
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
-from doot.enums import ActionResponseEnum
+from doot.enums import ActionResponse_e
 from doot._abstract import Action_p
 from doot.structs import DootKey
 from doot.actions.postbox import _DootPostBox
@@ -93,7 +93,7 @@ class TarDecompressAction(Action_p):
         output = to
         if not ".tar.gz" in target.name:
             printer.warning("Decompression target isn't a .tar.gz", target)
-            return ActionResponseEnum.FAIL
+            return ActionResponse_e.FAIL
 
         DECOMP_CMD(target, "-C", output)
 
@@ -107,7 +107,7 @@ class TarListAction(Action_p):
         target = _from
         if "".join(target.suffixes) != ".tar.gz":
             printer.warning("Trying to list the contents of a non-tar archive")
-            return ActionResponseEnum.FAIL
+            return ActionResponse_e.FAIL
 
         result = sh.tar("--list", "-f", str(target))
         lines = result.split("\n")

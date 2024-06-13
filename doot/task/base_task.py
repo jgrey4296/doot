@@ -37,7 +37,7 @@ import doot
 import doot.errors
 from doot._abstract import Action_p, Job_i, PluginLoader_p, Task_i
 from doot.actions.base_action import DootBaseAction
-from doot.enums import TaskFlags, TaskQueueMeta, TaskStatus_e
+from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e
 from doot.errors import DootTaskError, DootTaskLoadError
 from doot.mixins.param_spec import ParamSpecMaker_m
 from doot.structs import (ActionSpec, CodeReference, TaskArtifact,
@@ -109,7 +109,7 @@ class DootTask(_TaskProperties_m, Task_i):
       Actions are imported upon task creation.
     """
     action_ctor                                   = DootBaseAction
-    _default_flags                                = TaskFlags.TASK
+    _default_flags                                = TaskMeta_f.TASK
     _help                                         = ["The Simplest Task"]
     COMPLETE_STATES  : Final[set[TaskStatus_e]]   = {TaskStatus_e.SUCCESS, TaskStatus_e.EXISTS}
     INITIAL_STATE    : Final[TaskStatus_e]        = TaskStatus_e.INIT
@@ -118,7 +118,7 @@ class DootTask(_TaskProperties_m, Task_i):
         self.spec        : SpecStruct_p        = spec
         self.priority    : int                 = self.spec.priority
         self.status      : TaskStatus_e        = DootTask.INITIAL_STATE
-        self.flags       : TaskFlags           = TaskFlags.TASK
+        self.flags       : TaskMeta_f           = TaskMeta_f.TASK
         self.state       : dict                = dict(spec.extra)
         self.action_ctor : callable            = action_ctor
         self._records    : list[Any]           = []
@@ -175,8 +175,8 @@ class DootTask(_TaskProperties_m, Task_i):
 
         stub['priority'].default        = 10
         stub['queue_behaviour'].default = "default"
-        stub['queue_behaviour'].comment = " | ".join({x.name for x in TaskQueueMeta})
-        stub['flags'].comment = " | ".join({x.name for x in TaskFlags})
+        stub['queue_behaviour'].comment = " | ".join({x.name for x in QueueMeta_e})
+        stub['flags'].comment = " | ".join({x.name for x in TaskMeta_f})
         return stub
 
     def stub_instance(self, stub) -> TaskStub:

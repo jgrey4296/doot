@@ -35,7 +35,7 @@ from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationE
 from doot.structs import TaskArtifact, DootKey, Location
 from doot._structs.key import DootSimpleKey, DootMultiKey, DootNonKey
 from doot.mixins.path_manip import PathManip_m
-from doot.enums import LocationMeta
+from doot.enums import LocationMeta_f
 
 KEY_PAT        = doot.constants.patterns.KEY_PATTERN
 MAX_EXPANSIONS = doot.constants.patterns.MAX_KEY_EXPANSIONS
@@ -56,7 +56,7 @@ class DootLocations(PathManip_m):
       locs['{temp}/somewhere']
       will expand 'temp' (if it is a registered location)
       """
-    locmeta = LocationMeta
+    locmeta = LocationMeta_f
 
     def __init__(self, root:Pl.Path):
         self._root    : pl.Path()               = root.expanduser().absolute()
@@ -154,7 +154,7 @@ class DootLocations(PathManip_m):
         """
         return self._normalize(path, root=self.root)
 
-    def metacheck(self, key:str|DootKey, meta:LocationMeta) -> bool:
+    def metacheck(self, key:str|DootKey, meta:LocationMeta_f) -> bool:
         """ check if any key provided has the applicable meta flags """
         match key:
             case DootNonKey():
@@ -202,7 +202,7 @@ class DootLocations(PathManip_m):
                 case _ if k in base_keys:
                     logging.debug("Skipping Location update of: %s", k)
                     pass
-                case Location() as l if l.check(LocationMeta.normOnLoad):
+                case Location() as l if l.check(LocationMeta_f.normOnLoad):
                     raw[l.key] = Location.build(v, key=k, target=self.normalize(l.path))
                     new_keys.add(l.key)
                 case Location() as l:

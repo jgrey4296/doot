@@ -32,7 +32,7 @@ import shutil
 import tomlguard as TG
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
-from doot.enums import ActionResponseEnum
+from doot.enums import ActionResponse_e
 from doot.mixins.path_manip import PathManip_m
 from doot.structs import DootKey
 from doot.actions.postbox import _DootPostBox

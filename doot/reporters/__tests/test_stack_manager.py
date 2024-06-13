@@ -18,7 +18,7 @@ doot._test_setup()
 from doot._abstract import Reporter_p
 from doot.reporters.stack_manager import DootReportManagerStack
 from doot.structs import TraceRecord
-from doot.enums import ReportEnum
+from doot.enums import Report_f
 
 logging = logmod.root
 
@@ -81,47 +81,47 @@ class TestReportStackManager:
     def test_custom_filter(self):
         class SimpleFilter:
             def __call__(self, add_trace):
-                if ReportEnum.TASK in add_trace.flags:
+                if Report_f.TASK in add_trace.flags:
                     return str(add_trace)
 
         manager = DootReportManagerStack([SimpleFilter()])
-        manager.add_trace("first", flags=ReportEnum.TASK)
-        manager.add_trace("second", flags=ReportEnum.JOB)
-        manager.add_trace("third", flags=ReportEnum.TASK)
+        manager.add_trace("first", flags=Report_f.TASK)
+        manager.add_trace("second", flags=Report_f.JOB)
+        manager.add_trace("third", flags=Report_f.TASK)
         assert(str(manager) == "first\nthird")
 
 
     def test_multi_filter(self):
         class SimpleTaskFilter:
             def __call__(self, add_trace):
-                if add_trace.flags in ReportEnum.TASK:
+                if add_trace.flags in Report_f.TASK:
                     return str(add_trace)
 
         class SimpleActionFilter:
             def __call__(self, add_trace):
-                if add_trace.flags in ReportEnum.ACTION:
+                if add_trace.flags in Report_f.ACTION:
                     return str(add_trace)
 
         manager = DootReportManagerStack([ SimpleTaskFilter(), SimpleActionFilter() ])
-        manager.add_trace("first", flags=ReportEnum.TASK)
-        manager.add_trace("second", flags=ReportEnum.JOB)
-        manager.add_trace("third", flags=ReportEnum.ACTION)
+        manager.add_trace("first", flags=Report_f.TASK)
+        manager.add_trace("second", flags=Report_f.JOB)
+        manager.add_trace("third", flags=Report_f.ACTION)
         assert(str(manager) == "first\nthird")
 
 
     def test_combined_filter_formatter(self):
         class SimpleTaskFilter:
             def __call__(self, add_trace):
-                if add_trace.flags in ReportEnum.TASK:
+                if add_trace.flags in Report_f.TASK:
                     return str(add_trace)
 
         class SimpleActionFilter:
             def __call__(self, add_trace):
-                if add_trace.flags in ReportEnum.ACTION:
+                if add_trace.flags in Report_f.ACTION:
                     return "- {}".format(add_trace)
 
         manager = DootReportManagerStack([ SimpleTaskFilter(), SimpleActionFilter() ])
-        manager.add_trace("first", flags=ReportEnum.TASK)
-        manager.add_trace("second", flags=ReportEnum.JOB)
-        manager.add_trace("third", flags=ReportEnum.ACTION)
+        manager.add_trace("first", flags=Report_f.TASK)
+        manager.add_trace("second", flags=Report_f.JOB)
+        manager.add_trace("third", flags=Report_f.ACTION)
         assert(str(manager) == "first\n- third")

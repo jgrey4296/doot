@@ -41,7 +41,7 @@ from unittest.mock import PropertyMock, MagicMock, create_autospec
 from importlib.metadata import EntryPoint
 import tomlguard
 from doot import structs
-from doot.enums import TaskQueueMeta
+from doot.enums import QueueMeta_e
 from doot._abstract import Task_i, Job_i, Command_i, TaskTracker_i, TaskRunner_i
 
 def _add_prop(m, name, val):
@@ -82,7 +82,7 @@ def mock_task_spec(name="agroup::mockSpec", pre=None, post=None, action_count=1,
                        actions=mock_action_specs(num=action_count),
                        extra=tomlguard.TomlGuard(extra),
                        priority=10,
-                       queue_behaviour=TaskQueueMeta.default,
+                       queue_behaviour=QueueMeta_e.default,
                        depends_on=pre or [],
                        required_for=post or [],
                        setup=[],

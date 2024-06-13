@@ -41,8 +41,8 @@ import doot
 import doot.errors
 from doot._abstract import (Action_p, FailPolicy_p, Job_i, Reporter_p, Task_i,
                             TaskRunner_i, TaskTracker_i)
-from doot.enums import ActionResponseEnum as ActRE
-from doot.enums import ReportEnum, TaskStatus_e
+from doot.enums import ActionResponse_e as ActRE
+from doot.enums import Report_f, TaskStatus_e
 from doot.structs import ActionSpec, TaskArtifact, TaskSpec
 from doot.utils.log_context import DootLogContext
 from doot.utils.signal_handler import SignalHandler
@@ -184,4 +184,4 @@ class BaseRunner(TaskRunner_i):
     def _notify_artifact(self, art:TaskArtifact) -> None:
         """ A No-op for when the tracker gives an artifact """
         artifact_l.info("---- Artifact: %s : %s", art, art.to_path())
-        self.reporter.add_trace(art, flags=ReportEnum.ARTIFACT)
+        self.reporter.add_trace(art, flags=Report_f.ARTIFACT)

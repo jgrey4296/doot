@@ -28,7 +28,7 @@ from tomlguard import TomlGuard
 
 import doot
 import doot.errors
-from doot.enums import TaskFlags, TaskStatus_e, ActionResponseEnum
+from doot.enums import TaskMeta_f, TaskStatus_e, ActionResponse_e
 from doot._abstract.protocols import StubStruct_p, SpecStruct_p, ParamStruct_p
 
 ##-- logging
@@ -42,7 +42,7 @@ class Action_p(Protocol):
     """
     _toml_kwargs : ClassVar[list[str]] = []
 
-    def __call__(self, spec:"ActionSpec", task_state:dict) -> dict|bool|ActionResponseEnum|None:
+    def __call__(self, spec:"ActionSpec", task_state:dict) -> dict|bool|ActionResponse_e|None:
         raise NotImplementedError()
 
 class Task_i:

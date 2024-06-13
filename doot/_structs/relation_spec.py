@@ -42,7 +42,7 @@ from doot._abstract.protocols import SpecStruct_p
 from doot._structs.artifact import TaskArtifact
 from doot._structs.code_ref import CodeReference
 from doot._structs.task_name import TaskName
-from doot.enums import RelationMeta
+from doot.enums import RelationMeta_e
 
 # ##-- end 1st party imports
 
@@ -72,14 +72,14 @@ class RelationSpec(BaseModel):
 
     # What the Relation end point is:
     target        : TaskName|TaskArtifact
-    relation      : RelationMeta             = RelationMeta.dependsOn
+    relation      : RelationMeta_e             = RelationMeta_e.dependsOn
     constraints   : None|list[str]           = None # constraints on spec field matches
     injections    : None|dict                = None
     _meta         : dict()                   = {} # Misc metadata
 
     @staticmethod
-    def build(data:RelationSpec|TomlGuard|dict|TaskName|str, *, relation:None|RelationMeta=None) -> RelationSpec:
-        relation = relation or RelationMeta.default
+    def build(data:RelationSpec|TomlGuard|dict|TaskName|str, *, relation:None|RelationMeta_e=None) -> RelationSpec:
+        relation = relation or RelationMeta_e.default
         match data:
             case RelationSpec():
                 return data
@@ -115,11 +115,11 @@ class RelationSpec(BaseModel):
 
     def __str__(self):
         return f"<? {self.relation.name}> {self.target}"
-    def __contains__(self, query:TaskFlags|LocationMeta) -> bool:
+    def __contains__(self, query:TaskMeta_f|LocationMeta_f) -> bool:
         match self.target, query:
-             case TaskName(), TaskFlags():
+             case TaskName(), TaskMeta_f():
                  return query in self.target
-             case TaskArtifact(), LocationMeta():
+             case TaskArtifact(), LocationMeta_f():
                  return query in self.target
 
     def to_edge(self, other:TaskName|TaskArtifact, *, instance:None|TaskName=None) -> tuple[TaskName|TaskArtifact, TaskName|TaskArtifact]:
@@ -128,9 +128,9 @@ class RelationSpec(BaseModel):
           """
         logging.info("Relation to edge: (rel:%s) (target:%s) (other:%s) (instance:%s)", self.relation, self.target, other, instance)
         match self.relation:
-            case RelationMeta.dep:
+            case RelationMeta_e.dep:
                 return (instance or self.target, other)
-            case RelationMeta.req:
+            case RelationMeta_e.req:
                 return (other, instance or self.target)
 
     def match_simple_edge(self, edges:list[TaskName], *, exclude:None|list=None) -> bool:
@@ -157,10 +157,10 @@ class RelationSpec(BaseModel):
           get Y required for X
         """
         match self.relation:
-            case RelationMeta.dep:
-                relation = RelationMeta.req
+            case RelationMeta_e.dep:
+                relation = RelationMeta_e.req
             case _:
-                relation = RelationMeta.dep
+                relation = RelationMeta_e.dep
 
         return RelationSpec(target=source, constraints=self.constraints, relation=relation)
 
@@ -173,9 +173,9 @@ class RelationSpec(BaseModel):
                 raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target", self.target, target)
             case TaskArtifact(), TaskName():
                 raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target", self.target, target)
-            case TaskName(), TaskName() if TaskFlags.CONCRETE in self.target or TaskFlags.CONCRETE not in target:
+            case TaskName(), TaskName() if TaskMeta_f.CONCRETE in self.target or TaskMeta_f.CONCRETE not in target:
                 raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target status", self.target, target)
-            case TaskName(), TaskName() if LocationMeta.abstract not in self.target or LocationMeta.abstract in target:
+            case TaskName(), TaskName() if LocationMeta_f.abstract not in self.target or LocationMeta_f.abstract in target:
                 raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target status", self.target, target)
             case _, _:
                 pass
@@ -191,4 +191,4 @@ class RelationSpec(BaseModel):
 
     def forward_dir_p(self) -> bool:
         " is this relation's direction predecessor -> successor? "
-        return self.relation is RelationMeta.req
+        return self.relation is RelationMeta_e.req

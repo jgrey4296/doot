@@ -232,5 +232,5 @@ class StubCmd(BaseCommand):
 
     def _list_flags(self):
         printer.info("Task Flags: ")
-        for x in sorted(doot.enums.TaskFlags, key=lambda x: x.name):
+        for x in sorted(doot.enums.TaskMeta_f, key=lambda x: x.name):
             printer.info("-- %s", x.name)

@@ -42,13 +42,13 @@ import importlib
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.enums import TaskFlags, ReportEnum, LocationMeta, TaskQueueMeta
+from doot.enums import TaskMeta_f, Report_f, LocationMeta_f, QueueMeta_e
 from doot._structs.task_name import TaskName
 from doot._structs.code_ref import CodeReference
 from doot._structs.task_spec import TaskSpec
 from doot._abstract.protocols import StubStruct_p
 
-TaskFlagNames : Final[str]               = [x.name for x in TaskFlags]
+TaskFlagNames : Final[str]               = [x.name for x in TaskMeta_f]
 
 DEFAULT_CTOR  : Final[CodeReference] = CodeReference.build(doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS])
 
@@ -209,11 +209,11 @@ class TaskStubPart(BaseModel, arbitrary_types_allowed=True):
         match self.default:
             case "" if isinstance(self.type_, enum.EnumMeta):
                 val_str = f'[ "{self.type_.default.name}" ]'
-            case enum.Flag(): # TaskFlags() | LocationMeta():
-                parts = [x.name for x in TaskFlags if x in self.default]
+            case enum.Flag(): # TaskMeta_f() | LocationMeta_f():
+                parts = [x.name for x in TaskMeta_f if x in self.default]
                 joined = ", ".join(map(lambda x: f"\"{x}\"", parts))
                 val_str = f"[ {joined} ]"
-            case TaskQueueMeta():
+            case QueueMeta_e():
                 val_str = '"{}"'.format(self.default.name)
             case bool():
                 val_str = str(self.default).lower()

@@ -41,13 +41,13 @@ import importlib
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.enums import TaskFlags, ReportEnum
+from doot.enums import TaskMeta_f, Report_f
 from doot._structs.structured_name import StructuredName, aware_splitter, TailEntry
 
 class TaskName(StructuredName):
     """
       A Task Name.
-      Infers metadata(TaskFlags) from the string data it is made of.
+      Infers metadata(TaskMeta_f) from the string data it is made of.
       a trailing '+' in the head makes it a job
       a leading '_' in the tail makes it an internal name, eg: group::_.task
       having a '$gen$' makes it a concrete name
@@ -58,7 +58,7 @@ class TaskName(StructuredName):
 
     """
 
-    meta                : TaskFlags               = TaskFlags.default
+    meta                : TaskMeta_f               = TaskMeta_f.default
     args                : dict                    = {}
     version_constraint  : None|str                = None
 
@@ -134,20 +134,20 @@ class TaskName(StructuredName):
     @model_validator(mode="after")
     def check_metdata(self) -> Self:
         if self.head[-1] == TaskName._job_marker:
-            self.meta |= TaskFlags.JOB
+            self.meta |= TaskMeta_f.JOB
         if self.tail[0] == TaskName._internal_marker:
-            self.meta |= TaskFlags.INTERNAL
+            self.meta |= TaskMeta_f.INTERNAL
         if TaskName._gen_marker in self.tail:
-            self.meta |= TaskFlags.CONCRETE
+            self.meta |= TaskMeta_f.CONCRETE
         if TaskName._head_marker in self.tail:
-            self.meta |= TaskFlags.JOB_HEAD
-            self.meta &= ~TaskFlags.JOB
+            self.meta |= TaskMeta_f.JOB_HEAD
+            self.meta &= ~TaskMeta_f.JOB
 
-        if TaskFlags.CONCRETE in self.meta and 'uuid' not in self.args:
+        if TaskMeta_f.CONCRETE in self.meta and 'uuid' not in self.args:
             raise ValueError("Instanced Name lacks a stored uuid", self)
-        if TaskFlags.CONCRETE in self.meta and TaskName._gen_marker not in self.tail:
+        if TaskMeta_f.CONCRETE in self.meta and TaskName._gen_marker not in self.tail:
             raise ValueError("Specialized Name lacks the specialized keyword in its tail", self)
-        if TaskFlags.INTERNAL in self.meta and not self.tail[0] == TaskName._internal_marker:
+        if TaskMeta_f.INTERNAL in self.meta and not self.tail[0] == TaskName._internal_marker:
             raise ValueError("Internal Name lacks a prefix underscore", self)
 
         return self
@@ -172,7 +172,7 @@ class TaskName(StructuredName):
 
     def __contains__(self, other):
         match other:
-            case TaskFlags():
+            case TaskMeta_f():
                 return other in self.meta
             case _:
                 return super().__contains__(other)
@@ -196,7 +196,7 @@ class TaskName(StructuredName):
         return "{}{}{}".format(group, self._separator, tail)
 
     def is_instance(self) -> bool:
-        return TaskFlags.CONCRETE in self.meta
+        return TaskMeta_f.CONCRETE in self.meta
 
     def match_version(self, other) -> bool:
         """ match version constraints of two task names against each other """
@@ -259,7 +259,7 @@ class TaskName(StructuredName):
         ->  group::simple.task..$gen$.<UUID>..$head$
 
         """
-        if TaskFlags.JOB_HEAD in self.meta:
+        if TaskMeta_f.JOB_HEAD in self.meta:
             return self
 
         return self.subtask(TaskName._head_marker)

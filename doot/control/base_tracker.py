@@ -48,7 +48,7 @@ import doot
 import doot.errors
 from doot._abstract import FailPolicy_p, Job_i, Task_i, TaskRunner_i, TaskTracker_i
 from doot._structs.relation_spec import RelationSpec
-from doot.enums import TaskFlags, TaskQueueMeta, TaskStatus_e, LocationMeta, RelationMeta, EdgeType_e
+from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e, LocationMeta_f, RelationMeta_e, EdgeType_e
 from doot.structs import (ActionSpec, CodeReference, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
@@ -103,7 +103,7 @@ class _TrackerStore:
 
     def _maybe_reuse_instantiation(self, name:TaskName, *, add_cli:bool=False, extra:bool=False) -> None|ConcreteId:
         """ if an existing concrete spec exists, use it if it has no conflicts """
-        if TaskFlags.CONCRETE in name:
+        if TaskMeta_f.CONCRETE in name:
             logging.debug("Not reusing instantiation because name is concrete: %s", name)
             return None
         if name not in self.specs:
@@ -135,7 +135,7 @@ class _TrackerStore:
 
           traces with the *last* value in spec.sources.
         """
-        assert(TaskFlags.CONCRETE not in name)
+        assert(TaskMeta_f.CONCRETE not in name)
         spec                          = self.specs[name]
         chain   : list[TaskSpec]  = []
         current : None|TaskSpec   = spec
@@ -145,7 +145,7 @@ class _TrackerStore:
                 raise doot.errors.DootTaskTrackingError("Building a source chain grew to large", name)
             count -= 1
             match current: # Determine the base
-                case TaskSpec(name=name) if TaskFlags.JOB_HEAD in name:
+                case TaskSpec(name=name) if TaskMeta_f.JOB_HEAD in name:
                     # job heads are generated, so don't have a source chain
                     chain.append(current)
                     current = None
@@ -200,7 +200,7 @@ class _TrackerStore:
             # apply additional settings onto the instance
             instance_spec = instance_spec.specialize_from(extra)
 
-        assert(TaskFlags.CONCRETE in instance_spec.flags)
+        assert(TaskMeta_f.CONCRETE in instance_spec.flags)
         # Map abstract -> concrete
         self.concrete[name].append(instance_spec.name)
         # register the actual concrete spec
@@ -237,13 +237,13 @@ class _TrackerStore:
                 return instance
             case [x]: # One match, connect it
                 assert(x in self.specs)
-                assert(TaskFlags.CONCRETE in x)
+                assert(TaskMeta_f.CONCRETE in x)
                 instance : TaskName = x
                 return instance
             case [*xs, x]: # TODO check this.
                 # Use most recent instance?
                 assert(x in self.specs)
-                assert(TaskFlags.CONCRETE in x)
+                assert(TaskMeta_f.CONCRETE in x)
                 instance : TaskName = x
                 return instance
 
@@ -253,8 +253,8 @@ class _TrackerStore:
             case None:
                 return None
             case TaskSpec() as instance:
-                assert(TaskFlags.CONCRETE | TaskFlags.TRANSFORMER in instance.flags)
-                assert(TaskFlags.CONCRETE | TaskFlags.TRANSFORMER in instance.name)
+                assert(TaskMeta_f.CONCRETE | TaskMeta_f.TRANSFORMER in instance.flags)
+                assert(TaskMeta_f.CONCRETE | TaskMeta_f.TRANSFORMER in instance.name)
                 self.concrete[name].append(instance.name)
                 self.register_spec(instance)
                 return instance.name
@@ -286,7 +286,7 @@ class _TrackerStore:
           """
         if not isinstance(name, TaskName):
             raise doot.errors.DootTaskTrackingError("Tried to add a not-task", name)
-        if TaskFlags.CONCRETE not in name:
+        if TaskMeta_f.CONCRETE not in name:
             raise doot.errors.DootTaskTrackingError("Tried to add a task using a non-concrete spec", name)
         if name not in self.network.nodes:
             raise doot.errors.DootTaskTrackingError("Tried to add a non-network task ", name)
@@ -322,7 +322,7 @@ class _TrackerStore:
                 self._transformer_specs[pre.target].append(spec.name)
                 self._transformer_specs[post.target].append(spec.name)
 
-        if TaskFlags.CONCRETE in spec.flags:
+        if TaskMeta_f.CONCRETE in spec.flags:
             return
 
         for rel in spec.depends_on + spec.required_for:
@@ -332,7 +332,7 @@ class _TrackerStore:
                     # Link artifact to its source task
                     self.artifacts[art].add(spec.name)
                     # Add it to the relevant abstract/concrete set
-                    if LocationMeta.abstract in art:
+                    if LocationMeta_f.abstract in art:
                         self._abstract_artifacts.add(art)
                     else:
                         self._concrete_artifacts.add(art)
@@ -346,7 +346,7 @@ class _TrackerStore:
         for spec in specs:
             if spec.name in self.specs:
                 continue
-            if TaskFlags.DISABLED in spec.flags:
+            if TaskMeta_f.DISABLED in spec.flags:
                 logging.debug("Ignoring Registration of disabled task: %s", spec.name.readable)
                 continue
 
@@ -359,14 +359,14 @@ class _TrackerStore:
             # Register Requirements:
             for rel in spec.required_for:
                 match rel:
-                    case RelationSpec(target=target, relation=RelationMeta.req) if TaskFlags.CONCRETE not in spec.name:
+                    case RelationSpec(target=target, relation=RelationMeta_e.req) if TaskMeta_f.CONCRETE not in spec.name:
                         logging.debug("Registering Requirement: %s : %s", target, rel.invert(spec.name))
                         self._requirements[target].append(rel.invert(spec.name))
                     case _: # Ignore action specs
                         pass
 
             # If the spec is abstract, create an initial concrete version
-            if not bool(spec.flags & (TaskFlags.TRANSFORMER|TaskFlags.CONCRETE)):
+            if not bool(spec.flags & (TaskMeta_f.TRANSFORMER|TaskMeta_f.CONCRETE)):
                 logging.debug("Instantiating Initial Concrete for abstract: %s", spec.name)
                 self._instantiate_spec(spec.name)
 
@@ -427,8 +427,8 @@ class _TrackerNetwork:
                 self.network.add_node(name)
                 self.network.nodes[name][EXPANDED]     = True
                 self.network.nodes[name][REACTIVE_ADD] = False
-                self._root_node.meta                  |= TaskFlags.CONCRETE
-            case TaskName() if TaskFlags.CONCRETE not in name:
+                self._root_node.meta                  |= TaskMeta_f.CONCRETE
+            case TaskName() if TaskMeta_f.CONCRETE not in name:
                 raise ValueError("Nodes should only be instantiated spec names", name)
             case _ if name in self.network.nodes:
                 return
@@ -497,7 +497,7 @@ class _TrackerNetwork:
         *without* expanding those new nodes.
         returns a list of the new nodes tasknames
         """
-        assert(TaskFlags.CONCRETE in name)
+        assert(TaskMeta_f.CONCRETE in name)
         assert(not self.network.nodes[name].get(EXPANDED, False))
         spec                                                  = self.specs[name]
         spec_pred, spec_succ                                  = self.network.pred[name], self.network.succ[name]
@@ -538,7 +538,7 @@ class _TrackerNetwork:
         """
 
         """
-        if TaskFlags.JOB not in spec.name:
+        if TaskMeta_f.JOB not in spec.name:
             return []
 
         logging.debug("Expanding Job Head for: %s", spec.name)
@@ -574,7 +574,7 @@ class _TrackerNetwork:
         match artifact.is_concrete:
             case True:
                 logging.debug("-- Connecting concrete artifact to parent abstracts")
-                for abstract in [x for x in self._abstract_artifacts if artifact in x and LocationMeta.glob in x]:
+                for abstract in [x for x in self._abstract_artifacts if artifact in x and LocationMeta_f.glob in x]:
                     self.connect(artifact, abstract)
                     to_expand.add(abstract)
             case False:
@@ -664,9 +664,9 @@ class _TrackerNetwork:
             match node:
                 case TaskName() | TaskArtifact() if not data[EXPANDED]:
                     raise doot.errors.DootTaskTrackingError("Network isn't fully expanded", node)
-                case TaskName() if TaskFlags.CONCRETE not in node:
+                case TaskName() if TaskMeta_f.CONCRETE not in node:
                     raise doot.errors.DootTaskTrackingError("Abstract ConcreteId in network", node)
-                case TaskArtifact() if LocationMeta.glob in node:
+                case TaskArtifact() if LocationMeta_f.glob in node:
                     bad_nodes = [x for x in self.network.pred[node] if x in self.specs]
                     if bool(bad_nodes):
                         raise doot.errors.DootTaskTrackingError("Glob Artifact ConcreteId is a successor to a task", node, bad_nodes)
@@ -746,11 +746,11 @@ class _TrackerQueue_boltons:
             return
 
         match task.spec.queue_behaviour:
-            case TaskQueueMeta.auto:
+            case QueueMeta_e.auto:
                 self.queue_entry(task.name)
-            case TaskQueueMeta.reactive:
+            case QueueMeta_e.reactive:
                 self.network.nodes[task.name][REACTIVE_ADD] = True
-            case TaskQueueMeta.default:
+            case QueueMeta_e.default:
                 # Waits for explicit _queue
                 pass
             case _:
@@ -827,7 +827,7 @@ class _TrackerQueue_boltons:
                 prepped_name = instance
                 self.connect(instance, None if from_user else False)
             case TaskName() if name in self.specs:
-                assert(TaskFlags.CONCRETE not in TaskName.build(name))
+                assert(TaskMeta_f.CONCRETE not in TaskName.build(name))
                 instance : TaskName = self._instantiate_spec(name, add_cli=from_user)
                 self.connect(instance, None if from_user else False)
                 prepped_name = instance
@@ -842,18 +842,18 @@ class _TrackerQueue_boltons:
         final_name      : None|TaskName|TaskArtifact = None
         target_priority : int                        = self._declare_priority
         match prepped_name:
-            case TaskName() if TaskFlags.JOB_HEAD in prepped_name:
-                assert(TaskFlags.CONCRETE in prepped_name)
+            case TaskName() if TaskMeta_f.JOB_HEAD in prepped_name:
+                assert(TaskMeta_f.CONCRETE in prepped_name)
                 assert(prepped_name in self.specs)
                 final_name      = self._make_task(prepped_name)
                 target_priority = self.tasks[final_name].priority
-            case TaskName() if TaskFlags.JOB in prepped_name:
-                assert(TaskFlags.CONCRETE in prepped_name)
+            case TaskName() if TaskMeta_f.JOB in prepped_name:
+                assert(TaskMeta_f.CONCRETE in prepped_name)
                 assert(prepped_name in self.specs)
                 final_name      = self._make_task(prepped_name)
                 target_priority = self.tasks[final_name].priority
             case TaskName():
-                assert(TaskFlags.CONCRETE in prepped_name)
+                assert(TaskMeta_f.CONCRETE in prepped_name)
                 assert(prepped_name in self.specs)
                 final_name      = self._make_task(prepped_name)
                 target_priority = self.tasks[final_name].priority

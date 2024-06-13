@@ -44,7 +44,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot._abstract.protocols import ParamStruct_p
-from doot.enums import ReportEnum, TaskFlags
+from doot.enums import Report_f, TaskMeta_f
 
 # ##-- end 1st party imports
 

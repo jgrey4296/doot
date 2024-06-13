@@ -17,7 +17,7 @@ logging = logmod.root
 
 import doot
 doot._test_setup()
-from doot.enums import TaskFlags
+from doot.enums import TaskMeta_f
 from doot.structs import TaskSpec, TaskStub
 from doot.task.base_job import DootJob
 import doot._abstract
@@ -27,7 +27,7 @@ class TestBaseJob:
     def test_initial(self):
         job = DootJob(TaskSpec.build({"name": "basic::example", "flags": ["JOB"]}))
         assert(isinstance(job, doot._abstract.Task_i))
-        assert(TaskFlags.JOB in job.spec.flags)
+        assert(TaskMeta_f.JOB in job.spec.flags)
 
     def test_paramspecs(self):
         job = DootJob(TaskSpec.build({"name": "basic::example"}))

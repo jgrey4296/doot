@@ -39,7 +39,7 @@ logging = logmod.getLogger(__name__)
 
 import doot
 from doot.structs import DootKey
-from doot.enums import LoopControl, LocationMeta
+from doot.enums import LoopControl_e, LocationMeta_f
 
 MARKER : Final[str] = doot.constants.paths.MARKER_FILE_NAME
 walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
@@ -121,7 +121,7 @@ class PathManip_m:
         return None
 
     def _is_write_protected(self, fpath) -> bool:
-        for key in filter(lambda x: doot.locs.metacheck(x, LocationMeta.protected), doot.locs):
+        for key in filter(lambda x: doot.locs.metacheck(x, LocationMeta_f.protected), doot.locs):
             base = getattr(doot.locs, key)
             if fpath.is_relative_to(base):
                 return True
@@ -152,7 +152,7 @@ class Walker_m:
     """ A Mixin for walking directories,
       written for py<3.12
       """
-    control_e = LoopControl
+    control_e = LoopControl_e
 
     def walk_all(self, roots, exts, rec=False, fn=None) -> Generator[dict]:
         """

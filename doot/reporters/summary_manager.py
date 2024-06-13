@@ -38,7 +38,7 @@ logging = logmod.getLogger(__name__)
 
 from doot._abstract import Reporter_p
 from doot.structs import TraceRecord
-from doot.enums import ReportEnum
+from doot.enums import Report_f
 from doot.reporters.base_reporter import BaseReporter
 
 class DootReportManagerSummary(BaseReporter):
@@ -59,25 +59,25 @@ class DootReportManagerSummary(BaseReporter):
             }
 
         for trace in self._full_trace:
-            if ReportEnum.ARTIFACT in trace.flags:
+            if Report_f.ARTIFACT in trace.flags:
                 result['artifacts'] += 1
                 continue
 
             category = None
             ended   = None
 
-            if ReportEnum.JOB in trace.flags:
+            if Report_f.JOB in trace.flags:
                 category = "jobs"
-            elif ReportEnum.ACTION in trace.flags:
+            elif Report_f.ACTION in trace.flags:
                 category = "actions"
-            elif ReportEnum.TASK in trace.flags:
+            elif Report_f.TASK in trace.flags:
                 category = "tasks"
 
-            if ReportEnum.FAIL in trace.flags:
+            if Report_f.FAIL in trace.flags:
                 ended = "fail"
-            elif ReportEnum.SUCCEED in trace.flags:
+            elif Report_f.SUCCEED in trace.flags:
                 ended = "success"
-            elif ReportEnum.SKIP in trace.flags:
+            elif Report_f.SKIP in trace.flags:
                 ended = "skip"
 
             if category is None or ended is None:

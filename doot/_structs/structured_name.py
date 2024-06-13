@@ -41,10 +41,10 @@ import importlib
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.enums import TaskFlags, ReportEnum
+from doot.enums import TaskMeta_f, Report_f
 
 PAD           : Final[int] = 15
-TaskFlagNames : Final[str] = [x.name for x in TaskFlags]
+TaskFlagNames : Final[str] = [x.name for x in TaskMeta_f]
 TailEntry     : TypeAlias  = str|int|UUID
 
 def aware_splitter(x, sep=".") -> list[str]:

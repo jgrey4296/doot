@@ -46,7 +46,7 @@ from typing import Type
 import decorator
 import doot
 import doot.errors
-from doot.enums import LocationMeta
+from doot.enums import LocationMeta_f
 from doot._abstract.protocols import SpecStruct_p
 
 DOOT_ANNOTATIONS : Final[str]                = "__DOOT_ANNOTATIONS__"

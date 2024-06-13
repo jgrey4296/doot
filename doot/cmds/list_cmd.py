@@ -39,7 +39,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.cmds.base_cmd import BaseCommand
-from doot.enums import TaskFlags
+from doot.enums import TaskMeta_f
 from doot.structs import ParamSpec
 
 # ##-- end 1st party imports
@@ -109,9 +109,9 @@ class ListCmd(BaseCommand):
         cmd_l.info("Tasks for Pattern: %s", pattern)
         for key in matches:
             spec = tasks[key]
-            if TaskFlags.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
+            if TaskMeta_f.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
                 continue
-            if TaskFlags.DISABLED in spec.flags:
+            if TaskMeta_f.DISABLED in spec.flags:
                 continue
 
             cmd_l.info(fmt_str,
@@ -127,9 +127,9 @@ class ListCmd(BaseCommand):
         for name, spec in tasks.items():
             if pattern not in name:
                 continue
-            if TaskFlags.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
+            if TaskMeta_f.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
                 continue
-            if TaskFlags.DISABLED in spec.flags:
+            if TaskMeta_f.DISABLED in spec.flags:
                 continue
 
             groups[spec.name.group].append((spec.name.task,
@@ -149,9 +149,9 @@ class ListCmd(BaseCommand):
         fmt_str = f"{INDENT}%-{max_key}s :: %-60s :: <Source: %s>"
         groups  = defaultdict(list)
         for spec in tasks.values():
-            if TaskFlags.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
+            if TaskMeta_f.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
                 continue
-            if TaskFlags.DISABLED in spec.flags:
+            if TaskMeta_f.DISABLED in spec.flags:
                 continue
 
 
@@ -173,9 +173,9 @@ class ListCmd(BaseCommand):
         fmt_str = f"{INDENT}%-{max_key}s :: %s.%-25s"
         sources = defaultdict(list)
         for key, spec in tasks.items():
-            if TaskFlags.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
+            if TaskMeta_f.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
                 continue
-            if TaskFlags.DISABLED in spec.flags:
+            if TaskMeta_f.DISABLED in spec.flags:
                 continue
 
             sources[spec.sources[0]].append((spec.name.task,
