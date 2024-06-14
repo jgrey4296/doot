@@ -34,7 +34,8 @@ actions = [
 ** [∅] shell action fail handler
 ** [∅] shell output redirection
 ** [∅] task on-fail actions
-** QUEUED test postbox
+** DONE test postbox
+- State "DONE"       from "QUEUED"     [2024-06-15 Sat 00:48]
 * Commands :commands:
 ** [∅] help command print toml cli's separate
 ** [∅] locs_cmd print matches
