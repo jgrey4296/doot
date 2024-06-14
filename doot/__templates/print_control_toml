@@ -1,0 +1,24 @@
+# -*- mode:conf-toml; -*-
+
+[logging.subprinters]
+# See LoggerSpec and doot.constants.printer.PRINTER_CHILDREN
+#     action_exec, action_group, artifact, cmd, fail, header, help, queue,
+#     report, skip, sleep, success, task, task_header, task_loop, task_state,
+#     track, setup, shutdown
+cmd          = {level="INFO", format="-- Cmd: {message}"}
+setup        = {level="INFO", format="-- Setup: {message}", propagate=false}
+shutdown     = {level="WARNING", format="-- Shutdown: {message}", propagate=false}
+success      = {level="WARNING", format="-- Success {message}"}
+fail         = {target="stdout", format="!!!! {message}", propagate=false}
+track        = {level="WARNING", format="-- Tracking: {message}"}
+task_header  = {format="---{message}", colour=true, target="stdout"}
+task         = {}
+task_state   = {level="WARNING", format="Task State: {message}"}
+action_group = {level="WARNING", format="Action Group: {message}"}
+action_exec  = {level="WARNING", format="--------> Action Execution: {message}", target="stdout", colour=true}
+queue        = {format="++++ {message}"}
+report       = {level="INFO", format="{message}", target="stdout", colour=true}
+
+[logging.extra]
+# See LoggerSpec. can be used to control any logger if you know its name
+"doot._printer.checkloc" = {level="WARNING"}

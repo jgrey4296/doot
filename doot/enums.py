@@ -176,10 +176,12 @@ class RelationMeta_e(enum.Enum):
     productOf        = dependencyOf
     pre              = dependencyOf
     dep              = dependencyOf
+    after            = dependencyOf
     # Dependant aliases
     resultsIn        = requirementFor
     post             = requirementFor
     req              = requirementFor
+    before           = requirementFor
 
     default          = dependencyOf
     # to deprecate:

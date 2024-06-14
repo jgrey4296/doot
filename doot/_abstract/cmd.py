@@ -11,9 +11,9 @@ from typing import TYPE_CHECKING
 from abc import abstractmethod
 from tomlguard import TomlGuard
 
-from doot._abstract.protocols import ParamStruct_p
+from doot._abstract.protocols import CLIParamProvider_p
 
-class Command_i:
+class Command_i(CLIParamProvider_p):
     """
     holds command information and performs it
     """

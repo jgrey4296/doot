@@ -625,6 +625,19 @@ class TestTrackerQueue:
         assert(instance in obj.active_set)
         assert(bool(obj._queue))
 
+
+    def test_queue_task_idempotnent(self, mocker):
+        obj   = BaseTracker()
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task"})
+        obj.register_spec(spec)
+        assert(not bool(obj._queue))
+        instance = obj.queue_entry(spec.name)
+        assert(instance in obj.active_set)
+        assert(bool(obj._queue))
+        assert(len(obj.active_set) == 1)
+        instance = obj.queue_entry(spec.name)
+        assert(len(obj.active_set) == 1)
+
     def test_queue_task_fail_when_not_registered(self):
         obj   = BaseTracker()
         spec  = doot.structs.TaskSpec.build({"name":"basic::task"})

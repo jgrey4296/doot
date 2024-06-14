@@ -1,6 +1,130 @@
+#+TITLE: Doot Triage Agenda
+
 * Triage
 ** TRIAGE refactor decoration and decorators + test
    [[/media/john/data/github/python/doot/doot/utils/decorators.py::60][Location]]
    :context:
         <2024-06-10 Mon> class DecorationUtils:
+   :END:
+** TRIAGE jobs may need to queue edges as well as head
+   [[/media/john/data/github/python/doot/doot/control/tracker.py::237][Location]]
+   :context:
+        <2024-06-10 Mon>                     track_l.debug("Job Object Success, queuing head: %s", focus)
+   :END:
+** TRIAGE queue cleanup tasks, not just success_set
+   [[/media/john/data/github/python/doot/doot/control/tracker.py::244][Location]]
+   :context:
+        <2024-06-10 Mon>                     track_l.info("Task Succeeded: %s", focus)
+   :END:
+** TRIAGE sh _ok_code
+   [[/media/john/data/github/python/doot/doot/actions/shell.py::104][Location]]
+   :context:
+        <2024-06-10 Mon>             result                  = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=not notty, _cwd=cwd )
+   :END:
+** [∅] check complex file passing dependencies
+#+begin_src toml :results output
+  # maybe:
+actions = [  { do="job.queue", args=[["export::_.by.year", "--fpath={fpath}"], ["compile::pdf", "--fpath={fpath}"]] } ]
+#+end_src
+
+#+begin_src toml
+  # or:
+depends_on = [ {task="export::_.by.year", fpath_="fpath", other_val="{blah}"} ]
+#+end_src
+** [∅] job cleanup state sharing
+** [∅] task network testing
+    - doot.__tests.full_network_tests
+      just sequence difference tasks and run them, from toml
+** [∅] introspect on task_spec to get action group elements
+instead of using the static groups
+** [∅] shell action -> external ?
+** TRIAGE refactor errors structure
+   [[/media/john/data/github/python/doot/doot/errors.py::30][Location]]
+   :context:
+        <2024-06-13 Thu> class DootError(Exception):
+   :END:
+** TRIAGE lower checklocs printing level
+   [[/media/john/data/github/python/doot/doot/task/check_locs.py::49][Location]]
+   :context:
+        <2024-06-13 Thu> class CheckLocsTask(DootTask):
+   :END:
+** TRIAGE apply protocols to implementations
+   [[/media/john/data/github/python/doot/doot/_abstract/protocols.py::48][Location]]
+   :context:
+        <2024-06-13 Thu> class ArtifactStruct_p(Protocol):
+   :END:
+** TRIAGE this build network may be unnecessary
+   [[/media/john/data/github/python/doot/doot/control/runner.py::223][Location]]
+   :context:
+        <2024-06-14 Fri>                     self.tracker.build_network(sources=new_nodes)
+   :END:
+** TRIAGE the tracker should auto-update a job $head$'s dependencies
+   [[/media/john/data/github/python/doot/doot/control/runner.py::223][Location]]
+   :context:
+        <2024-06-14 Fri>                     self.tracker.build_network(sources=new_nodes)
+   :END:
+** TRIAGE jobgenerate should auto-add the $head$ as a dependent
+   [[/media/john/data/github/python/doot/doot/actions/job_expansion.py::57][Location]]
+   :context:
+        <2024-06-14 Fri>         return { _update : list(fn(spec, state)) }
+   :END:
+** TRIAGE write something on postboxes
+   [[/media/john/data/github/python/doot/wiki_/lets_talk_about_state.md::46][Location]]
+   :context:
+        <2024-06-14 Fri> ## Passing State between tasks: PostBoxes
+   :END:
+** TRIAGE fix relation types
+   [[/media/john/data/github/python/doot/doot/enums.py::162][Location]]
+   :context:
+        <2024-06-14 Fri> class RelationMeta_e(enum.Enum):
+   :END:
+** TRIAGE add a plantuml diagram for the state machine of task statuses
+   [[/media/john/data/github/python/doot/wiki_/architecture/enums.md::54][Location]]
+   :context:
+        <2024-06-14 Fri> ### TaskStatus_e
+   :END:
+** TRIAGE describe doot errors
+   [[/media/john/data/github/python/doot/wiki_/architecture/errors.md::1][Location]]
+   :context:
+        <2024-06-14 Fri> # Doot Errors
+   :END:
+** TRIAGE describe doot structs
+   [[/media/john/data/github/python/doot/wiki_/architecture/structs.md::2][Location]]
+   :context:
+        <2024-06-14 Fri> # Doot Structs
+   :END:
+** TRIAGE describe task state progression
+   [[/media/john/data/github/python/doot/wiki_/architecture/task_state.md::1][Location]]
+   :context:
+        <2024-06-14 Fri> # Task State
+   :END:
+** TRIAGE describe the task queue
+   [[/media/john/data/github/python/doot/wiki_/architecture/the_task_queue.md::1][Location]]
+   :context:
+        <2024-06-14 Fri> # The Task Queue
+   :END:
+** TRIAGE describe authoring tasks
+   [[/media/john/data/github/python/doot/wiki_/authoring/authoring_tasks.md::1][Location]]
+   :context:
+        <2024-06-14 Fri> # Authoring Tasks
+   :END:
+** TRIAGE describe extending doot
+   [[/media/john/data/github/python/doot/wiki_/extending/extending_doot.md::1][Location]]
+   :context:
+        <2024-06-14 Fri> # Extending Doot
+   :END:
+** TRIAGE describe the task toml format
+   [[/media/john/data/github/python/doot/wiki_/files/tasks-toml.md::1][Location]]
+   :context:
+        <2024-06-14 Fri>
+   :END:
+** TRIAGE describe the doot toml format
+   [[/media/john/data/github/python/doot/wiki_/files/the-doot-toml.md::1][Location]]
+   :context:
+        <2024-06-14 Fri> # The doot.toml file
+   :END:
+** TRIAGE write lets talk about names
+   [[/media/john/data/github/python/doot/wiki_/lets_talk_about_names.md::1][Location]]
+   :context:
+        <2024-06-14 Fri> # Lets talk about Names
    :END:

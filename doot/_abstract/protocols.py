@@ -109,9 +109,8 @@ class CLIParamProvider_p(Protocol):
       Things that can provide parameter specs for CLI parsing
     """
 
-    @classmethod
     @property
-    def param_specs(cls) -> list[ParamStruct_p]:
+    def param_specs(self) -> list[ParamStruct_p]:
         """  make class parameter specs  """
         pass
 
