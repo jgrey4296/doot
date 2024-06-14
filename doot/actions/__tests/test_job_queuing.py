@@ -54,32 +54,6 @@ class TestJobQueue:
         assert(isinstance( result, list ))
         assert(all(isinstance(x, TaskSpec) for x in result))
 
-class TestJobQueueHead:
-
-    @pytest.fixture(scope="function")
-    def spec(self):
-        return ActionSpec.build({"do": "basic", "args":["test::simple", "test::other"], "update_":"specs"})
-
-    @pytest.fixture(scope="function")
-    def state(self):
-        return {"_task_name": TaskName.build("agroup::basic")}
-
-    def test_initial(self, spec, state):
-        obj = JobQueueHead()
-        result = obj(spec, state)
-        assert(isinstance( result, list ))
-
-
-    def test_base_as_name(self, spec, state):
-        obj = JobQueueHead()
-        result = obj(spec, state)
-        assert(isinstance( result, list ))
-
-
-    def test_base_as_list(self, spec, state):
-        obj = JobQueueHead()
-        result = obj(spec, state)
-        assert(isinstance( result, list ))
 
 class TestJobChainer:
 

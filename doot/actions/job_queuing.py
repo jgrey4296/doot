@@ -152,6 +152,7 @@ class JobQueueHead(Action_p):
     @DootKey.dec.types("inject")
     @DootKey.dec.taskname
     def __call__(self, spec, state, base, inject, _basename):
+        raise DeprecationWarning("This Is No Longer needed")
         root            = _basename.root()
         head_name       = _basename.job_head()
         head            = []
