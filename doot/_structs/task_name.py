@@ -44,7 +44,116 @@ import doot.errors
 from doot.enums import TaskMeta_f, Report_f
 from doot._structs.structured_name import StructuredName, aware_splitter, TailEntry
 
-class TaskName(StructuredName):
+class _TaskNameOps_m:
+    """ Operations Mixin for manipulating TaskNames """
+
+    def is_instance(self) -> bool:
+        """ utility method to test if this name refers to a concrete task """
+        return TaskMeta_f.CONCRETE in self.meta
+
+    def match_version(self, other) -> bool:
+        """ match version constraints of two task names against each other """
+        raise NotImplementedError()
+
+    def has_root(self) -> bool:
+        """ Test for if the name has a a root marker, not at the end of the name"""
+        match self._roots:
+            case [-1, -1]:
+                return False
+            case _:
+                return True
+
+    def root(self, *, top=False) -> TaskName:
+        """
+        Strip off one root marker's worth of the name, or to the top marker.
+        eg:
+        root(test::a.b.c..<UUID>.sub..other) => test::a.b.c..<UUID>.sub.
+        root(test::a.b.c..<UUID>.sub..other, top=True) => test::a.b.c.
+
+        """
+        match self._roots:
+            case [-1, -1]:
+                return self
+            case [x, _] if top:
+                return TaskName(head=self.head[:], tail=self.tail[:x])
+            case [_, x]:
+                return TaskName(head=self.head[:], tail=self.tail[:x])
+
+    def add_root(self) -> TaskName:
+        """ Add a root marker if the last element isn't already a root marker
+        eg: group::a.b.c => group.a.b.c.
+        (note the trailing '.')
+        """
+        match self.last():
+            case x if x == TaskName._root_marker:
+                return self
+            case _:
+                return self.subtask()
+
+    def subtask(self, *subtasks, subgroups:list[str]|None=None, **kwargs) -> TaskName:
+        """ generate an extended name, with more information
+        eg: a.group::simple.task
+        ->  a.group::simple.task..targeting.something
+
+        adds a root marker to recover the original
+        """
+
+        args = self.args.copy() if self.args else {}
+        if bool(kwargs):
+            args.update(kwargs)
+        subs = [TaskName._root_marker]
+        subgroups = subgroups or []
+        match [x for x in subtasks if x != None]:
+            case [int() as i, TaskName() as x]:
+                subs.append(str(i))
+                subs.append(x.task.removeprefix(self.task + "."))
+            case [str() as x]:
+                subs.append(x)
+            case [int() as x]:
+                subs.append(str(x))
+            case [*xs]:
+                subs += xs
+
+        return TaskName(head=self.head + subgroups,
+                        tail=self.tail + subs,
+                        meta=self.meta,
+                        args=args,
+                        )
+
+    def job_head(self) -> TaskName:
+        """ generate a canonical head/completion task name for this name
+        eg: (concrete) group::simple.task..$gen$.<UUID> ->  group::simple.task..$gen$.<UUID>..$head$
+        eg: (abstract) group::simple.task. -> group::simple.task..$head$
+
+        """
+        if TaskMeta_f.JOB_HEAD in self.meta:
+            return self
+
+        return self.subtask(TaskName._head_marker)
+
+    def instantiate(self, *, prefix=None) -> TaskName:
+        """ Generate a concrete instance of this name with a UUID appended,
+        optionally can add a prefix
+          # TODO possibly do $gen$.{prefix?}.<UUID>
+
+          ie: a.task.group::task.name..{prefix?}.$gen$.<UUID>
+        """
+        uuid = uuid1()
+        match prefix:
+            case None:
+                return self.subtask(TaskName._gen_marker, uuid, uuid=uuid)
+            case _:
+                return self.subtask(prefix, TaskName._gen_marker, uuid, uuid=uuid)
+
+    def last(self) -> None|TailEntry:
+        """
+        Get the last value of the task/tail
+        """
+        if bool(self.tail):
+            return self.tail[-1]
+        return None
+
+class TaskName(StructuredName, _TaskNameOps_m):
     """
       A Task Name.
       Infers metadata(TaskMeta_f) from the string data it is made of.
@@ -151,6 +260,7 @@ class TaskName(StructuredName):
             raise ValueError("Internal Name lacks a prefix underscore", self)
 
         return self
+
     @model_validator(mode="after")
     def _process_roots(self) -> Self:
         # filter out double root markers
@@ -171,6 +281,9 @@ class TaskName(StructuredName):
         return hash(str(self))
 
     def __contains__(self, other):
+        """
+        Test if self contains a certain meta flag, or if self conceptually includes other
+        """
         match other:
             case TaskMeta_f():
                 return other in self.meta
@@ -179,6 +292,7 @@ class TaskName(StructuredName):
 
     @ftz.cached_property
     def group(self) -> str:
+        """ Format the group string of the task name """
         fmt = "{}"
         if len(self.head) > 1:
             # fmt = "tasks.\"{}\""
@@ -187,98 +301,16 @@ class TaskName(StructuredName):
 
     @ftz.cached_property
     def task(self) -> str:
+        """
+        Format with a minimal about of UUID information to tell different tasks apart
+        """
         return self._subseparator.join([str(x) if not isinstance(x, UUID) else "${}$".format(hex(x.time_low)) for x in self.tail])
 
     @ftz.cached_property
     def readable(self):
+        """ format this name to a readable form
+        ie: elide uuids as just <UUID>
+        """
         group = self.group
         tail = self._subseparator.join([str(x) if not isinstance(x, UUID) else "<UUID>" for x in self.tail])
         return "{}{}{}".format(group, self._separator, tail)
-
-    def is_instance(self) -> bool:
-        return TaskMeta_f.CONCRETE in self.meta
-
-    def match_version(self, other) -> bool:
-        """ match version constraints of two task names against each other """
-        raise NotImplementedError()
-
-    def root(self, *, top=False) -> TaskName:
-        """
-        Strip off detail information to get the basic task name for id purposes
-        """
-        match self._roots:
-            case [-1, -1]:
-                return self
-            case [x, _] if top:
-                return TaskName(head=self.head[:], tail=self.tail[:x])
-            case [_, x]:
-                return TaskName(head=self.head[:], tail=self.tail[:x])
-
-    def add_root(self) -> TaskName:
-        """ Add a root marker if the last element isn't already a root marker """
-        match self.last():
-            case x if x == TaskName._root_marker:
-                return self
-            case _:
-                return self.subtask()
-
-    def subtask(self, *subtasks, subgroups:list[str]|None=None, **kwargs) -> TaskName:
-        """ generate an extended name, with more information
-        eg: a.group::simple.task
-        ->  a.group::simple.task..targeting.something
-
-        propagates args
-        adds a root marker to recover the original
-        """
-
-        args = self.args.copy() if self.args else {}
-        if bool(kwargs):
-            args.update(kwargs)
-        subs = [TaskName._root_marker]
-        subgroups = subgroups or []
-        match [x for x in subtasks if x != None]:
-            case [int() as i, TaskName() as x]:
-                subs.append(str(i))
-                subs.append(x.task.removeprefix(self.task + "."))
-            case [str() as x]:
-                subs.append(x)
-            case [int() as x]:
-                subs.append(str(x))
-            case [*xs]:
-                subs += xs
-
-        return TaskName(head=self.head + subgroups,
-                        tail=self.tail + subs,
-                        meta=self.meta,
-                        args=args,
-                        )
-
-    def job_head(self) -> TaskName:
-        """ generate a canonical head/completion task name for this name
-        eg: group::simple.task..$gen$.<UUID>
-        ->  group::simple.task..$gen$.<UUID>..$head$
-
-        """
-        if TaskMeta_f.JOB_HEAD in self.meta:
-            return self
-
-        return self.subtask(TaskName._head_marker)
-
-    def instantiate(self, *, prefix=None) -> TaskName:
-        """ Generate a concrete instance of this name with a UUID appended,
-        optionally can add a prefix
-          # TODO possibly do $gen$.{prefix?}.<UUID>
-
-          ie: a.task.group::task.name..{prefix?}.$gen$.<UUID>
-        """
-        uuid = uuid1()
-        match prefix:
-            case None:
-                return self.subtask(TaskName._gen_marker, uuid, uuid=uuid)
-            case _:
-                return self.subtask(prefix, TaskName._gen_marker, uuid, uuid=uuid)
-
-    def last(self) -> None|TailEntry:
-        if bool(self.tail):
-            return self.tail[-1]
-        return None
