@@ -14,7 +14,7 @@ import warnings
 import pytest
 import doot
 doot._test_setup()
-from doot.structs import DootKey
+from doot.structs import DootKey, Keyed
 from doot.utils.testing_fixtures import wrap_locs
 from doot.utils import action_decorators as decs
 from doot.utils.decorators import DecorationUtils as DU
@@ -118,7 +118,7 @@ class TestDecorators:
     def test_key_decoration_survives_annotation(self):
 
         @decs.RunsDry()
-        @DootKey.dec.expands("blah")
+        @Keyed.expands("blah")
         def simple(spec, state, blah):
             return blah
 
@@ -129,7 +129,7 @@ class TestDecorators:
     def test_wrapper_survives_key_decoration(self):
 
         @decs.DryRunSwitch(override=True)
-        @DootKey.dec.expands("blah")
+        @Keyed.expands("blah")
         def simple(spec:dict, state:dict, blah:str) -> str:
             """ a simple test func """
             return blah
@@ -143,7 +143,7 @@ class TestDecorators:
         @decs.DryRunSwitch(override=True)
         class SimpleAction:
 
-            @DootKey.dec.expands("blah")
+            @Keyed.expands("blah")
             def __call__(self, spec:dict, state:dict, blah:str) -> str:
                 """ a simple test func """
                 return blah
@@ -157,7 +157,7 @@ class TestDecorators:
         class SimpleAction:
 
             @decs.DryRunSwitch(override=True)
-            @DootKey.dec.expands("blah")
+            @Keyed.expands("blah")
             def __call__(self, spec:dict, state:dict, blah:str) -> str:
                 """ a simple test func """
                 return blah
@@ -206,7 +206,7 @@ class TestDecorators:
         doot.locs.update({"blah" : dict(loc="blah", protected=True) })
 
         @decs.IOWriter()
-        @DootKey.dec.paths("to")
+        @Keyed.paths("to")
         def simple(spec, state, to):
             return "blah"
 
@@ -219,7 +219,7 @@ class TestDecorators:
         doot.locs.update({"blah" : dict(loc="blah", protected=False) })
 
         @decs.IOWriter()
-        @DootKey.dec.paths("to")
+        @Keyed.paths("to")
         def simple(spec, state, to):
             "a simple docstring "
             return "blah"

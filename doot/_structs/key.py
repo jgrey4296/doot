@@ -4,10 +4,11 @@
 See EOF for license/metadata/notes as applicable
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
-# import abc
+# ##-- stdlib imports
+import abc
 import datetime
 import enum
 import functools as ftz
@@ -15,39 +16,48 @@ import itertools as itz
 import logging as logmod
 import pathlib as pl
 import re
+import string
 import time
 import types
 import weakref
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
+# ##-- 3rd party imports
+import decorator
 import more_itertools as mitz
-##-- end lib imports
+from pydantic import BaseModel, Field, field_validator, model_validator
+from tomlguard import TomlGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+from doot._abstract.protocols import Key_p, SpecStruct_p
+from doot._structs.code_ref import CodeReference
+from doot.utils.chain_get import DootKeyGetter
+from doot.utils.decorators import DecorationUtils, DootDecorator
+from doot.utils.key_formatter import KeyFormatter
+
+# ##-- end 1st party imports
+
+##-- type checking
+if TYPE_CHECKING:
+    DootLocations:TypeAlias = Any
+    DootKey:TypeAlias = Key_p
+##-- end type checking
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
-
-from pydantic import BaseModel, Field, model_validator, field_validator
-import decorator
-import abc
-import string
-from tomlguard import TomlGuard
-import doot
-import doot.errors
-from doot._structs.code_ref import CodeReference
-from doot._abstract.protocols import SpecStruct_p
-from doot.utils.chain_get import DootKeyGetter
-from doot.utils.decorators import DootDecorator, DecorationUtils
 
 KEY_PATTERN                                = doot.constants.patterns.KEY_PATTERN
 MAX_KEY_EXPANSIONS                         = doot.constants.patterns.MAX_KEY_EXPANSIONS
@@ -58,177 +68,8 @@ FAIL_PATTERN   : Final[re.Pattern]         = re.compile("[^a-zA-Z_{}/0-9-]")
 EXPANSION_HINT : Final[str]                = "_doot_expansion_hint"
 HELP_HINT      : Final[str]                = "_doot_help_hint"
 
-class KeyDecorator:
-    """ Decorators for actions
-    KeyDecorator is accessible as DootKey.kwrap
 
-    It registers arguments on an action and extracts them from the spec and state automatically.
-
-    provides: expands/paths/types/requires/returns/args/kwargs/redirects/redirects_many
-
-    The kwarg 'hint' takes a dict and passes the contents to the relevant expansion method as kwargs
-
-    arguments are added to the tail of the action args, in order of the decorators.
-    the name of the expansion is expected to be the name of the action parameter,
-    with a "_" prepended if the name would conflict with a keyword., or with "_ex" as a suffix
-    eg: @DootKey.kwrap.paths("from") -> def __call__(self, spec, state, _from):...
-    or: @DootKey.kwrap.paths("from") -> def __call__(self, spec, state, from_ex):...
-    """
-
-    @staticmethod
-    def get_keys(fn) -> list[DootKey]:
-        fn = DecorationUtils.unwrap(fn)
-        return getattr(fn, DecorationUtils._keys, [])
-
-    @staticmethod
-    def taskname(fn):
-        keys = [DootKey.build(STATE_TASK_NAME_K, exp_hint="type")]
-        return DecorationUtils.prepare_expansion(keys, fn)
-
-    @staticmethod
-    def expands(*args, hint:dict|None=None, **kwargs):
-        """ mark an action as using expanded string keys """
-        exp_hint = {"expansion": "str", "kwargs" : hint or {} }
-        keys     = [DootKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
-        return ftz.partial(DecorationUtils.prepare_expansion, keys)
-
-    @staticmethod
-    def paths(*args, hint:dict|None=None, **kwargs):
-        """ mark an action as using expanded path keys """
-        exp_hint = {"expansion": "path", "kwargs" : hint or {} }
-        keys = [DootKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
-        return ftz.partial(DecorationUtils.prepare_expansion, keys)
-
-    @staticmethod
-    def types(*args, hint:dict|None=None, **kwargs):
-        """ mark an action as using raw type keys """
-        exp_hint = {"expansion": "type", "kwargs" : hint or {} }
-        keys = [DootKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
-        return ftz.partial(DecorationUtils.prepare_expansion, keys)
-
-    @staticmethod
-    def args(fn):
-        """ mark an action as using spec.args """
-        # TODO handle expansion hint for the args
-        keys = [DootArgsKey("args")]
-        return DecorationUtils.prepare_expansion(keys, fn)
-
-    @staticmethod
-    def kwargs(fn):
-        """ mark an action as using all kwargs"""
-        keys = [DootKwargsKey("kwargs")]
-        return DecorationUtils.prepare_expansion(keys, fn)
-
-    @staticmethod
-    def redirects(*args):
-        """ mark an action as using redirection keys """
-        keys = [DootKey.build(x, exp_hint="redirect") for x in args]
-        return ftz.partial(DecorationUtils.prepare_expansion, keys)
-
-    @staticmethod
-    def redirects_many(*args, **kwargs):
-        """ mark an action as using redirection key lists """
-        keys = [DootKey.build(x, exp_hint="redirect_multi") for x in args]
-        return ftz.partial(DecorationUtils.prepare_expansion, keys)
-
-    @staticmethod
-    def requires(*args, **kwargs):
-        """ TODO mark an action as requiring certain keys to be passed in """
-        keys = [DootKey.build(x, **kwargs) for x in args]
-        # return ftz.partial(DecorationUtils.prepare_expansion, keys)
-        return lambda x: x
-
-    @staticmethod
-    def returns(*args, **kwargs):
-        """ mark an action as needing to return certain keys """
-        keys = [DootKey.build(x, **kwargs) for x in args]
-        # return ftz.partial(DecorationUtils.prepare_expansion, keys)
-        return lambda x: x
-
-    @staticmethod
-    def references(*args, **kwargs):
-        """ mark keys to use as to_coderef imports """
-        exp_hint = {"expansion": "coderef", "kwargs" : {} }
-        keys = [DootKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
-        return ftz.partial(DecorationUtils.prepare_expansion, keys)
-
-class DootFormatter(string.Formatter):
-    """
-      A Formatter for expanding arguments based on action spec kwargs, and task state, and cli args
-    """
-    _fmt                = None
-
-    SPEC   : Final[str] = "_spec"
-    INSIST : Final[str] = "_insist"
-    STATE  : Final[str] = "_state"
-    LOCS   : Final[str] = "_locs"
-    REC    : Final[str] = "_rec"
-
-    @staticmethod
-    def fmt(fmt:str|DootKey|pl.Path, /, *args, **kwargs) -> str:
-        if not DootFormatter._fmt:
-            DootFormatter._fmt = DootFormatter()
-
-        return DootFormatter._fmt.format(fmt, *args, **kwargs)
-
-    def format(self, fmt:str|DootKey|pl.Path, /, *args, **kwargs) -> str:
-        """ expand and coerce keys """
-        self._depth = 0
-        match kwargs.get(self.SPEC, None):
-            case None:
-                kwargs['_spec'] = {}
-            case x if hasattr(x, "params"):
-                kwargs['_spec'] = x.params
-            case x:
-                raise TypeError("Bad Spec Type in Format Call", x)
-
-        match fmt:
-            case DootKey():
-                fmt = fmt.form
-                result = self.vformat(fmt, args, kwargs)
-            case str():
-                result = self.vformat(fmt, args, kwargs)
-            # case pl.Path():
-            #     result = str(ftz.reduce(pl.Path.joinpath, [self.vformat(x, args, kwargs) for x in fmt.parts], pl.Path()))
-            case _:
-                raise TypeError("Unrecognized expansion type", fmt)
-
-        return result
-
-    def get_value(self, key, args, kwargs):
-        """ lowest level handling of keys being expanded """
-        logging.debug("Expanding: %s", key)
-        if isinstance(key, int):
-            return args[key]
-
-        insist                = kwargs.get(self.INSIST, False)
-        spec  : dict          = kwargs.get(self.SPEC, None) or {}
-        state : dict          = kwargs.get(self.STATE, None) or {}
-        locs  : DootLocations = kwargs.get(self.LOCS,  None)
-        depth_check           = self._depth < MAX_KEY_EXPANSIONS
-        rec_allowed           = kwargs.get(self.REC, False) and depth_check
-
-        match (replacement:=DootKeyGetter.chained_get(key, spec, state, locs)):
-            case None if insist:
-                raise KeyError("Key Expansion Not Found")
-            case None:
-                return DootKey.build(key).form
-            case DootKey() if depth_check:
-                self._depth += 1
-                return self.vformat(replacement.form, args, kwargs)
-            case str() if rec_allowed:
-                self._depth += 1
-                return self.vformat(str(replacement), args, kwargs)
-            case str():
-                return replacement
-            case pl.Path() if depth_check:
-                self._depth += 1
-                return ftz.reduce(pl.Path.joinpath, map(lambda x: self.vformat(x, args, kwargs), replacement.parts), pl.Path())
-            case _:
-                return str(replacement)
-                # raise TypeError("Replacement Value isn't a string", args, kwargs)
-
-class DootKey(abc.ABC):
+class DootKey(abc.ABC, Key_p):
     """ A shared, non-functional base class for DootKeys and variants like DootMultiKey.
       Use DootKey.build for constructing keys
       build takes an 'exp_hint' kwarg dict, which can specialize the expansion
@@ -239,9 +80,11 @@ class DootKey(abc.ABC):
       DootMultiKeys are containers of a string `value`, and a list of SimpleKeys the value contains.
       So DootKey.build("{blah}/{bloo}") -> DootMultiKey("{blah}/{bloo}", [DootSimpleKey("blah", DootSimpleKey("bloo")]) -> .form == "{blah}/{bloo}"
     """
-    dec      : ClassVar[type]      = KeyDecorator
-    kwrap    : ClassVar[type]      = KeyDecorator
     _pattern : ClassVar[re.Pattern] = PATTERN
+
+    @property
+    def dec(self):
+        raise DeprecationWarning("Use Keyed")
 
     @staticmethod
     def build(s:str|DootKey|pl.Path|dict, *, strict=False, explicit=False, exp_hint:str|dict=None, help=None) -> DootKey:
@@ -346,7 +189,7 @@ class DootKey(abc.ABC):
 
           The Process is:
           1) redirect the given key if necessary
-          2) Expand each part of the keypath, using DootFormatter
+          2) Expand each part of the keypath, using KeyFormatter
           3) normalize it
 
           If necessary, a fallback chain, and on_fail value can be provided
@@ -355,7 +198,7 @@ class DootKey(abc.ABC):
         key : pl.Path        = pl.Path(self.redirect(spec).form)
 
         try:
-            expanded         : list       = [DootFormatter.fmt(x, _spec=spec, _state=state, _rec=True, _locs=locs) for x in key.parts]
+            expanded         : list       = [KeyFormatter.fmt(x, _spec=spec, _state=state, _rec=True, _locs=locs) for x in key.parts]
             expanded_as_path : pl.Path    = pl.Path().joinpath(*expanded) # allows ("a", "b/c") -> "a/b/c"
 
             if bool(matches:=PATTERN.findall(str(expanded_as_path))):
@@ -509,7 +352,7 @@ class DootSimpleKey(str, DootKey):
     def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[DootKey]=None, on_fail=Any, locs:DootLocations=None, **kwargs) -> str:
         key = self.redirect(spec)
         try:
-            return DootFormatter.fmt(key, _spec=spec, _state=state, _rec=rec, _locs=locs, _insist=insist)
+            return KeyFormatter.fmt(key, _spec=spec, _state=state, _rec=rec, _locs=locs, _insist=insist)
         except (KeyError, TypeError) as err:
             if bool(chain):
                 return chain[0].expand(spec, state, rec=rec, chain=chain[1:], on_fail=on_fail)
@@ -679,7 +522,7 @@ class DootMultiKey(DootKey):
 
     def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[DootKey]=None, on_fail=Any, locs=None, **kwargs) -> str:
         try:
-            return DootFormatter.fmt(self.value, _spec=spec, _state=state, _rec=rec, _insist=insist, _locs=locs)
+            return KeyFormatter.fmt(self.value, _spec=spec, _state=state, _rec=rec, _insist=insist, _locs=locs)
         except (KeyError, TypeError) as err:
             if bool(chain):
                 return chain[0].expand(spec, state, rec=rec, chain=chain[1:], on_fail=on_fail)

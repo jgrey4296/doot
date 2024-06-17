@@ -64,7 +64,6 @@ HELP_HINT      : Final[str]                = "_doot_help_hint"
 
 class Keyed:
     """ Decorators for actions
-    KeyDecorator is accessible as DootKey.dec
 
     It registers arguments on an action and extracts them from the spec and state automatically.
 
@@ -81,6 +80,7 @@ class Keyed:
 
     @staticmethod
     def get_keys(fn) -> list[DootKey]:
+        """ Retrieve key annotations from a decorated function """
         fn = DecorationUtils.unwrap(fn)
         return getattr(fn, DecorationUtils._keys, [])
 
