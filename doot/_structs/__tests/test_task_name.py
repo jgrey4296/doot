@@ -319,6 +319,16 @@ class TestNameRoots:
         assert(str(simple) != str(simple2))
         assert(str(added_root) == str(simple2))
 
+
+    def test_has_root(self):
+        simple  = TaskName.build("basic::tail")
+        simple2 = TaskName.build("basic::tail..blah")
+        added_root = simple.subtask("bloo")
+        assert(not simple.has_root())
+        assert(simple2.has_root())
+        assert(added_root.has_root())
+
+
     def test_root_auto_filter(self):
         simple  = TaskName.build("basic::tail..a")
         simple2 = TaskName.build("basic::tail....a")
