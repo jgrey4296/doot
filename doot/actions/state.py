@@ -35,7 +35,7 @@ from doot.actions.job_injection import (JobInjectPathParts,
                                         JobInjectShadowAction)
 from doot.errors import DootTaskError, DootTaskFailed
 from doot.mixins.path_manip import PathManip_m
-from doot.structs import CodeReference, DootKey
+from doot.structs import CodeReference, DootKey, Keyed
 
 # ##-- end 1st party imports
 
@@ -47,7 +47,7 @@ class AddStateAction(Action_p):
       adds kwargs directly, without expansion
     """
 
-    @DootKey.dec.kwargs
+    @Keyed.kwargs
     def __call__(self, spec, state:dict, kwargs) -> dict|bool|None:
         result = {}
         for k,v in kwargs.items():
@@ -61,7 +61,7 @@ class AddStateFn(Action_p):
       with expansion
     """
 
-    @DootKey.dec.kwargs
+    @Keyed.kwargs
     def __call__(self, spec, state:dict, kwargs) -> dict|bool|None:
         result = {}
         for kwarg, val in kwargs:
@@ -77,8 +77,8 @@ class PushState(Action_p):
       state[update_] += [state[x] for x in spec.args]
     """
 
-    @DootKey.dec.args
-    @DootKey.dec.redirects("update_")
+    @Keyed.args
+    @Keyed.redirects("update_")
     def __call__(self, spec, state, args, _update) -> dict|bool|None:
         data     = data_key.to_type(spec, state, type_=list|set|None, on_fail=[])
 
@@ -99,8 +99,8 @@ class AddNow(Action_p):
       Add the current date, as a string, to the state
     """
 
-    @DootKey.dec.expands("format")
-    @DootKey.dec.redirects("update_")
+    @Keyed.expands("format")
+    @Keyed.redirects("update_")
     def __call__(self, spec, state, format, _update):
         now      = datetime.datetime.now()
         return { _update : now.strftime(format) }
@@ -108,17 +108,17 @@ class AddNow(Action_p):
 class PathParts(PathManip_m):
     """ take a path and add fstem, fpar, fname to state """
 
-    @DootKey.dec.paths("from")
-    @DootKey.dec.types("roots")
-    @DootKey.dec.returns("fstem", "fpar", "fname", "fext", "pstem")
+    @Keyed.paths("from")
+    @Keyed.types("roots")
+    @Keyed.returns("fstem", "fpar", "fname", "fext", "pstem")
     def __call__(self, spec, state, _from, roots):
         root_paths = self._build_roots(spec, state, roots)
         return self._calc_path_parts(_from, root_paths)
 
 class ShadowPath(PathManip_m):
 
-    @DootKey.dec.paths("shadow_root")
-    @DootKey.dec.types("base", hint={"type_":pl.Path})
+    @Keyed.paths("shadow_root")
+    @Keyed.types("base", hint={"type_":pl.Path})
     def __call__(self, spec, state, shadow_root, base):
         shadow_dir = self._shadow_path(base, shadow_root)
         return { "shadow_path" : shadow_dir }

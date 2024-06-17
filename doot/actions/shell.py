@@ -15,7 +15,7 @@ import doot
 from doot.errors import DootTaskError
 from doot._abstract import Action_p
 from doot.actions.base_action import DootBaseAction
-from doot.structs import DootKey
+from doot.structs import DootKey, Keyed
 
 BACKGROUND = DootKey.build("background")
 UPDATE     = DootKey.build("update_")
@@ -24,10 +24,10 @@ ENV        = DootKey.build("shenv_")
 
 class DootShellBake:
 
-    @DootKey.dec.args
-    @DootKey.dec.types("in_", hint={"on_fail":None, "type_":sh.Command|bool|None})
-    @DootKey.dec.types("env", hint={"on_fail":sh, "type_":sh.Command|bool|None})
-    @DootKey.dec.redirects("update_")
+    @Keyed.args
+    @Keyed.types("in_", hint={"on_fail":None, "type_":sh.Command|bool|None})
+    @Keyed.types("env", hint={"on_fail":sh, "type_":sh.Command|bool|None})
+    @Keyed.redirects("update_")
     def __call__(self, spec, state, args, _in, env, _update):
         if not env:
             env = sh
@@ -60,8 +60,8 @@ class DootShellBake:
 
 class DootShellBakedRun:
 
-    @DootKey.dec.types("in_", hint={"on_fail":None, "type_":sh.Command|None})
-    @DootKey.dec.redirects("update_")
+    @Keyed.types("in_", hint={"on_fail":None, "type_":sh.Command|None})
+    @Keyed.redirects("update_")
     def __call__(self, spec, state, _in, _update):
         try:
             result = _in()
@@ -88,11 +88,11 @@ class DootShellAction(Action_p):
     can use a pre-baked sh passed into what "shenv_" points to
     """
 
-    @DootKey.dec.args
-    @DootKey.dec.types("background", "notty", hint={"type_":bool, "on_fail":False})
-    @DootKey.dec.types("env", hint={"on_fail":sh, "type_":sh.Command|None})
-    @DootKey.dec.paths("cwd", hint={"on_fail":None, "type_":pl.Path|None})
-    @DootKey.dec.redirects("update_")
+    @Keyed.args
+    @Keyed.types("background", "notty", hint={"type_":bool, "on_fail":False})
+    @Keyed.types("env", hint={"on_fail":sh, "type_":sh.Command|None})
+    @Keyed.paths("cwd", hint={"on_fail":None, "type_":pl.Path|None})
+    @Keyed.redirects("update_")
     def __call__(self, spec, state, args, background, notty, env, cwd, _update) -> dict|bool|None:
         result     = None
         cwd        = cwd or pl.Path.cwd()

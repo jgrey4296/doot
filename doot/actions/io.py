@@ -34,7 +34,7 @@ import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot.enums import ActionResponse_e
 from doot.mixins.path_manip import PathManip_m
-from doot.structs import DootKey
+from doot.structs import DootKey, Keyed
 from doot.actions.postbox import _DootPostBox
 from doot.utils.action_decorators import IOWriter
 
@@ -61,9 +61,9 @@ class AppendAction(PathManip_m):
     """
     sep = "\n--------------------\n"
 
-    @DootKey.dec.args
-    @DootKey.dec.types("sep", hint={"on_fail":None})
-    @DootKey.dec.paths("to")
+    @Keyed.args
+    @Keyed.types("sep", hint={"on_fail":None})
+    @Keyed.paths("to")
     def __call__(self, spec, state, args, sep, to):
         sep          = sep or AppendAction.sep
         loc          = to
@@ -91,8 +91,8 @@ class WriteAction(PathManip_m):
       doot.locs object
     """
 
-    @DootKey.dec.types("from")
-    @DootKey.dec.paths("to")
+    @Keyed.types("from")
+    @Keyed.paths("to")
     def __call__(self, spec, state, _from, to) -> dict|bool|None:
         data = _from
         loc  = to
@@ -127,10 +127,10 @@ class ReadAction(PathManip_m):
       Reads data from the doot.locs location to  return for the state
       The arguments of the action are held in self.spec
     """
-    @DootKey.dec.paths("from")
-    @DootKey.dec.redirects("update_")
-    @DootKey.dec.types("as_bytes", hint={"on_fail":False})
-    @DootKey.dec.types("type", hint={"type_":str, "on_fail":"read"})
+    @Keyed.paths("from")
+    @Keyed.redirects("update_")
+    @Keyed.types("as_bytes", hint={"on_fail":False})
+    @Keyed.types("type", hint={"type_":str, "on_fail":"read"})
     def __call__(self, spec, state, _from, _update, as_bytes, _type) -> dict|bool|None:
         loc = _from
         read_binary = as_bytes
@@ -156,8 +156,8 @@ class CopyAction(PathManip_m):
       The arguments of the action are held in self.spec
     """
 
-    @DootKey.dec.types("from", hint={"type_":str|pl.Path|list})
-    @DootKey.dec.paths("to")
+    @Keyed.types("from", hint={"type_":str|pl.Path|list})
+    @Keyed.paths("to")
     def __call__(self, spec, state, _from, to) -> dict|bool|None:
         dest_loc   = to
         match _from:
@@ -187,7 +187,7 @@ class MoveAction(PathManip_m):
       The arguments of the action are held in self.spec
     """
 
-    @DootKey.dec.paths("from", "to")
+    @Keyed.paths("from", "to")
     def __call__(self, spec, state, _from, to) -> dict|bool|None:
         source     = _from
         dest_loc   = to
@@ -207,7 +207,7 @@ class DeleteAction(PathManip_m):
     """
       delete a file / directory specified in spec.args
     """
-    @DootKey.dec.types("recursive", "lax", hint={"type_":bool, "on_fail":False})
+    @Keyed.types("recursive", "lax", hint={"type_":bool, "on_fail":False})
     def __call__(self, spec, state, recursive, lax):
         rec = recursive
         for arg in spec.args:
@@ -233,9 +233,9 @@ class BackupAction(PathManip_m):
       The arguments of the action are held in self.spec
     """
 
-    @DootKey.dec.paths("from", "to")
-    @DootKey.dec.types("tolerance", hint={"type_":int, "on_fail":10_000_000})
-    @DootKey.dec.taskname
+    @Keyed.paths("from", "to")
+    @Keyed.types("tolerance", hint={"type_":int, "on_fail":10_000_000})
+    @Keyed.taskname
     def __call__(self, spec, state, _from, to, tolerance, _name) -> dict|bool|None:
         source_loc = _from
         dest_loc   = to
@@ -264,7 +264,7 @@ class EnsureDirectory(PathManip_m):
       if they don't, build them
     """
 
-    @DootKey.dec.args
+    @Keyed.args
     def __call__(self, spec, state, args):
         for arg in args:
             loc = DootKey.build(arg, explicit=True).to_path(spec, state)
@@ -275,8 +275,8 @@ class EnsureDirectory(PathManip_m):
 
 class UserInput(PathManip_m):
 
-    @DootKey.dec.types("prompt", hint={"type_":str, "on_fail":"?::- "})
-    @DootKey.dec.redirects("update_")
+    @Keyed.types("prompt", hint={"type_":str, "on_fail":"?::- "})
+    @Keyed.redirects("update_")
     def __call__(self, spec, state, prompt, _update):
         result = input(prompt)
         return { _update : result }
@@ -287,10 +287,10 @@ class SimpleFind(PathManip_m):
     A Simple glob on a path
     """
 
-    @DootKey.dec.paths("from")
-    @DootKey.dec.types("rec", hint={"on_fail":False})
-    @DootKey.dec.expands("pattern")
-    @DootKey.dec.redirects("update_")
+    @Keyed.paths("from")
+    @Keyed.types("rec", hint={"on_fail":False})
+    @Keyed.expands("pattern")
+    @Keyed.redirects("update_")
     def __call__(self, spec, state, _from, rec, pattern, _update):
         from_loc = _from
         match rec:
@@ -302,7 +302,7 @@ class SimpleFind(PathManip_m):
 
 class TouchFileAction(PathManip_m):
 
-    @DootKey.dec.args
+    @Keyed.args
     def __call__(self, spec, state, args):
         for target in [DootKey.build(x, exp_hint="path") for x in args]:
             target(spec, state).touch()
@@ -313,9 +313,9 @@ class LinkAction(PathManip_m):
       for x,y in spec.args:
       x.to_path().symlink_to(y.to_path())
     """
-    @DootKey.dec.paths("link", "to", hint={"on_fail":None})
-    @DootKey.dec.args
-    @DootKey.dec.types("force", hint={"type_":bool, "on_fail":False})
+    @Keyed.paths("link", "to", hint={"on_fail":None})
+    @Keyed.args
+    @Keyed.types("force", hint={"type_":bool, "on_fail":False})
     def __call__(self, spec, state, link, to, args, force):
         if link is not None and to is not None:
             self._do_link(spec, state, spec.kwargs.link, spec.kwargs.to, force)
@@ -354,8 +354,8 @@ class LinkAction(PathManip_m):
 class ListFiles(PathManip_m):
     """ add a list of all files in a path (recursively) to the state """
 
-    @DootKey.dec.paths("from")
-    @DootKey.dec.redirects("update_")
+    @Keyed.paths("from")
+    @Keyed.redirects("update_")
     def __call__(self, spec, state, _from, _update):
         target = _from
         base   = target.parent

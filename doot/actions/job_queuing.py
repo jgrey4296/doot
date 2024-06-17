@@ -4,45 +4,48 @@
 See EOF for license/metadata/notes as applicable
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
-# import abc
+# ##-- stdlib imports
 import datetime
 import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
 import pathlib as pl
+import random
 import re
 import time
 import types
 import weakref
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
+# ##-- 3rd party imports
 import more_itertools as mitz
-##-- end lib imports
+from tomlguard import TomlGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+from doot._abstract import Action_p
+from doot.structs import CodeReference, DootKey, TaskName, TaskSpec, Keyed
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
-
-import random
-from tomlguard import TomlGuard
-import doot
-import doot.errors
-from doot._abstract import Action_p
-from doot.structs import DootKey, TaskSpec, TaskName, CodeReference
 
 class JobQueueAction(Action_p):
     """
@@ -52,11 +55,11 @@ class JobQueueAction(Action_p):
       2) Queue Expanded TaskSpecs: {do='job.queue', from_="state_key" }
     """
 
-    @DootKey.dec.args
-    @DootKey.dec.types("from_", hint={"type_":list|TaskSpec|None})
-    @DootKey.dec.redirects_many("from_multi_")
-    @DootKey.dec.types("after", hint={"type_":list|TaskName|str|None, "on_fail":None})
-    @DootKey.dec.taskname
+    @Keyed.args
+    @Keyed.types("from_", hint={"type_":list|TaskSpec|None})
+    @Keyed.redirects_many("from_multi_")
+    @Keyed.types("after", hint={"type_":list|TaskName|str|None, "on_fail":None})
+    @Keyed.taskname
     def __call__(self, spec, state, _args, _from, _from_multi, _after, _basename) -> list:
         # TODO maybe expand args
         subtasks               = []
@@ -99,8 +102,6 @@ class JobQueueAction(Action_p):
                         result.append(TaskName.build(x))
 
         return result
-
-
 
     def _build_args(self, base, args) -> list:
         result = []
@@ -148,9 +149,9 @@ class JobQueueAction(Action_p):
 class JobQueueHead(Action_p):
     """ Queue the head/on_completion task of this job"""
 
-    @DootKey.dec.types("base")
-    @DootKey.dec.types("inject")
-    @DootKey.dec.taskname
+    @Keyed.types("base")
+    @Keyed.types("inject")
+    @Keyed.taskname
     def __call__(self, spec, state, base, inject, _basename):
         raise DeprecationWarning("This Is No Longer needed")
         root            = _basename.root()
@@ -185,7 +186,7 @@ class JobChainer(Action_p):
       {do="job.chain.->", unpack={literal=[key, key, key], by-name=[taskname, taskname]}},
     """
 
-    @DootKey.dec.kwargs
+    @Keyed.kwargs
     def __call__(self, spec, state, kwargs):
         for k,v in kwargs.items():
             match DootKey.build(k).to_type(spec, state):

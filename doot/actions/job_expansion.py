@@ -4,54 +4,57 @@
 See EOF for license/metadata/notes as applicable
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
-# import abc
+# ##-- stdlib imports
 import datetime
 import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
 import pathlib as pl
+import random
 import re
 import time
 import types
 import weakref
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
+# ##-- 3rd party imports
 import more_itertools as mitz
-##-- end lib imports
+from tomlguard import TomlGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+from doot.actions.base_action import DootBaseAction
+from doot.actions.job_injection import JobInjector
+from doot.structs import CodeReference, DootKey, Location, TaskName, TaskSpec, Keyed
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
-import random
-from tomlguard import TomlGuard
-import doot
-import doot.errors
-from doot.structs import DootKey, TaskSpec, TaskName, CodeReference, Location
-from doot.actions.base_action import DootBaseAction
-from doot.actions.job_injection import JobInjector
-
 class JobGenerate(DootBaseAction):
     """ Run a custom function to generate task specs
       Function is in the form: fn(spec, state) -> list[TaskSpec]
     """
 
-    @DootKey.dec.references("fn")
-    @DootKey.dec.redirects("update_")
+    @Keyed.references("fn")
+    @Keyed.redirects("update_")
     def __call__(self, spec, state, _fn_ref, _update):
         fn = _fn_ref.try_import()
         return { _update : list(fn(spec, state)) }
@@ -63,11 +66,11 @@ class JobExpandAction(JobInjector):
       'inject' provides an injection dict, with $arg$ being the entry from the source list
     """
 
-    @DootKey.dec.types("from", "inject", "template")
-    @DootKey.dec.expands("prefix")
-    @DootKey.dec.redirects("update_")
-    @DootKey.dec.types("__expansion_count__", hint={"on_fail": 0})
-    @DootKey.dec.taskname
+    @Keyed.types("from", "inject", "template")
+    @Keyed.expands("prefix")
+    @Keyed.redirects("update_")
+    @Keyed.types("__expansion_count__", hint={"on_fail": 0})
+    @Keyed.taskname
     def __call__(self, spec, state, _from, inject, template, prefix, _update, _count, _basename):
         match prefix:
             case "{prefix}":
@@ -149,14 +152,15 @@ class JobMatchAction(DootBaseAction):
       defaults to getting spec.extra.fpath.suffix
     """
 
-    @DootKey.dec.types("onto_")
-    @DootKey.dec.references("prepfn")
-    @DootKey.dec.types("mapping")
+    @Keyed.types("onto_")
+    @Keyed.references("prepfn")
+    @Keyed.types("mapping")
     def __call__(self, spec, state, _onto, prepfn, mapping):
         match prepfn:
             case CodeReference():
                 fn = prepfn.try_import()
             case None:
+
                 def fn(x):
                     return x.extra.fpath.suffix
 

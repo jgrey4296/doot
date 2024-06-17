@@ -33,7 +33,7 @@ import doot
 import doot.errors
 from doot._abstract import Job_i
 from doot.enums import LocationMeta_f
-from doot.structs import TaskSpec, ActionSpec, DootKey
+from doot.structs import TaskSpec, ActionSpec, DootKey, Keyed
 from doot.task.base_task import DootTask
 
 # ##-- end 1st party imports
@@ -62,7 +62,7 @@ class CheckLocsTask(DootTask):
         })
         super().__init__(spec)
 
-    @DootKey.dec.args
+    @Keyed.args
     def checklocs(self, spec, state, args):
         exists_p = args[0].exists()
         if exists_p:

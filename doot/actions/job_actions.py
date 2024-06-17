@@ -4,51 +4,56 @@
 See EOF for license/metadata/notes as applicable
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
-# import abc
+# ##-- stdlib imports
 import datetime
 import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
 import pathlib as pl
+import random
 import re
 import time
 import types
 import weakref
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
+# ##-- 3rd party imports
 import more_itertools as mitz
-##-- end lib imports
+from tomlguard import TomlGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+from doot.actions.base_action import DootBaseAction
+from doot.actions.job_expansion import (JobExpandAction, JobGenerate,
+                                        JobMatchAction)
+from doot.actions.job_injection import (JobAppendActions, JobInjector,
+                                        JobInjectPathParts,
+                                        JobInjectShadowAction,
+                                        JobPrependActions, JobSubNamer)
+from doot.actions.job_queuing import JobChainer, JobQueueAction, JobQueueHead
+from doot.mixins.path_manip import Walker_m
+from doot.structs import CodeReference, DootKey, TaskName, TaskSpec, Keyed
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
-
-
-import random
-from tomlguard import TomlGuard
-import doot
-import doot.errors
-from doot.structs import DootKey, TaskSpec, TaskName, CodeReference
-from doot.actions.base_action import DootBaseAction
-from doot.actions.job_expansion import JobGenerate, JobExpandAction, JobMatchAction
-from doot.actions.job_injection import JobPrependActions, JobAppendActions, JobInjector, JobInjectPathParts, JobInjectShadowAction, JobSubNamer
-from doot.actions.job_queuing import JobQueueAction, JobQueueHead, JobChainer
-from doot.mixins.path_manip import Walker_m
-
 
 class JobWalkAction(Walker_m, DootBaseAction):
     """
@@ -59,10 +64,10 @@ class JobWalkAction(Walker_m, DootBaseAction):
       potential files are used that pass `fn`,
     """
 
-    @DootKey.dec.types("roots", "exts")
-    @DootKey.dec.types("recursive", hint={"type_": bool|None})
-    @DootKey.dec.references("fn")
-    @DootKey.dec.redirects("update_")
+    @Keyed.types("roots", "exts")
+    @Keyed.types("recursive", hint={"type_": bool|None})
+    @Keyed.references("fn")
+    @Keyed.redirects("update_")
     def __call__(self, spec, state, roots, exts, recursive, fn, _update):
         exts    = {y for x in (exts or []) for y in [x.lower(), x.upper()]}
         rec     = recursive or False
@@ -71,6 +76,7 @@ class JobWalkAction(Walker_m, DootBaseAction):
             case CodeReference():
                 accept_fn = fn.try_import()
             case None:
+
                 def accept_fn(x):
                     return True
 
@@ -85,9 +91,9 @@ class JobLimitAction(DootBaseAction):
 
     """
 
-    @DootKey.dec.types("from_", "count")
-    @DootKey.dec.references("method")
-    @DootKey.dec.redirects("from_")
+    @Keyed.types("from_", "count")
+    @Keyed.references("method")
+    @Keyed.redirects("from_")
     def __call__(self, spec, state, _from, count, method, _update):
         if count == -1:
             return

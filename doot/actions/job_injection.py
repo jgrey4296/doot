@@ -6,46 +6,49 @@
 See EOF for license/metadata/notes as applicable
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
-# import abc
+# ##-- stdlib imports
 import datetime
 import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
 import pathlib as pl
+import random
 import re
 import time
 import types
 import weakref
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
+# ##-- 3rd party imports
 import more_itertools as mitz
-##-- end lib imports
+from tomlguard import TomlGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+from doot._abstract import Action_p
+from doot.mixins.path_manip import PathManip_m
+from doot.structs import CodeReference, DootKey, TaskName, TaskSpec, Keyed
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
-
-import random
-from tomlguard import TomlGuard
-import doot
-import doot.errors
-from doot._abstract import Action_p
-from doot.structs import DootKey, TaskSpec, TaskName, CodeReference
-from doot.mixins.path_manip import PathManip_m
 
 class JobInjector(Action_p):
     """
@@ -60,7 +63,7 @@ class JobInjector(Action_p):
 
     """
 
-    @DootKey.dec.types("onto", "inject")
+    @Keyed.types("onto", "inject")
     def __call__(self, spec, state, onto, inject):
         injection = self.build_injection(spec, state, inject)
         match onto:
@@ -120,7 +123,7 @@ class JobInjector(Action_p):
 
 class JobPrependActions(Action_p):
 
-    @DootKey.dec.types("_onto", "add_actions")
+    @Keyed.types("_onto", "add_actions")
     def __call__(self, spec, state, _onto, _actions):
         action_specs = [ActionSpec.build(x) for x in _actions]
         for x in _onto:
@@ -129,7 +132,7 @@ class JobPrependActions(Action_p):
 
 class JobAppendActions(Action_p):
 
-    @DootKey.dec.types("_onto", "add_actions")
+    @Keyed.types("_onto", "add_actions")
     def __call__(self, spec, state, _onto, _actions):
         actions_specs = [ActionSpec.build(x) for x in _actions]
         for x in _onto:
@@ -141,8 +144,8 @@ class JobInjectPathParts(PathManip_m):
       taskspec in the `onto` list, using each spec's `key`
     """
 
-    @DootKey.dec.types("onto", "roots")
-    @DootKey.dec.redirects("key_")
+    @Keyed.types("onto", "roots")
+    @Keyed.redirects("key_")
     def __call__(self, spec, state, _onto, roots, _key):
         root_paths = self._build_roots(spec, state, roots)
         match _onto:
@@ -162,9 +165,9 @@ class JobInjectShadowAction(PathManip_m):
       returns the *directory* of the shadow target
     """
 
-    @DootKey.dec.types("onto")
-    @DootKey.dec.paths("shadow_root")
-    @DootKey.dec.redirects("key_")
+    @Keyed.types("onto")
+    @Keyed.paths("shadow_root")
+    @Keyed.redirects("key_")
     def __call__(self, spec, state, _onto, _shadow, _key):
         match _onto:
             case list():
@@ -180,9 +183,9 @@ class JobSubNamer(Action_p):
       Apply the name {basename}.{i}.{key} to each taskspec in {onto}
     """
 
-    @DootKey.dec.taskname
-    @DootKey.dec.expands("keylit")
-    @DootKey.dec.types("onto")
+    @Keyed.taskname
+    @Keyed.expands("keylit")
+    @Keyed.types("onto")
     def __call__(self, spec, state, _basename, _key, _onto):
         match _onto:
             case list():
