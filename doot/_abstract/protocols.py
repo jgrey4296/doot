@@ -161,27 +161,24 @@ class Nameable_p(Protocol):
 @runtime_checkable
 class Key_p(Protocol):
 
-    @property
-    def form(self) -> str:
+    def __call__(self, **kwargs) -> Any:
+        """ curried full expansion """
         pass
 
-    @property
-    def direct(self) -> str:
+    def __format__(self, spec) -> str:
+        """ no expansion str formatting """
         pass
 
-    def redirect(self, spec=None) -> Key_p:
+    def format(self, fmt, *, spec=None, state=None) -> str:
+        """ expansion str formatting """
         pass
 
-    def to_path(self, spec=None, state=None, *, chain:list[Key_p]=None, locs:DootLocations=None, on_fail:None|str|pl.Path|Key_p=Any, symlinks:bool=False) -> pl.Path:
+    def expand(self, *, fmt=None, spec=None, state=None, on_fail=Any, locs:DootLocations=None, **kwargs) -> Any:
+        """ full controllable expansion """
+        # todo: re-add expansion chaining
         pass
 
     def within(self, other:str|dict|TomlGuard) -> bool:
-        pass
-
-    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[DootKey]=None, on_fail=Any, locs:DootLocations=None, **kwargs) -> str:
-        pass
-
-    def to_type(self, spec, state, type_=Any, **kwargs) -> str:
         pass
 
 @runtime_checkable
