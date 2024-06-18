@@ -32,7 +32,9 @@ import doot
 doot._test_setup()
 
 from doot.structs import ActionSpec
-from doot._structs.key import KeyFormatter
+from doot.utils.key_formatter import KeyFormatter
+from doot._structs.key import DootNonKey, DootSimpleKey
+from doot._structs import dkey
 
 class TestKeyFormatter:
 
@@ -53,14 +55,12 @@ class TestKeyFormatter:
         result = fmt.format("{b}", _spec=spec, _state={})
         assert(result == "{b}")
 
-
     def test_multi(self, mocker):
         fmt = KeyFormatter()
         spec = mocker.Mock(params={"a":"blah"}, spec=ActionSpec)
         state = {"b": "aweg"}
         result = fmt.format("{a}:{b}", _spec=spec, _state=state)
         assert(result == "blah:aweg")
-
 
     def test_indirect(self, mocker):
         fmt = KeyFormatter()
@@ -69,7 +69,6 @@ class TestKeyFormatter:
         result = fmt.format("{a}", _spec=spec, _state=state)
         assert(result == "blah")
 
-
     def test_recursive(self, mocker):
         fmt = KeyFormatter()
         spec = mocker.Mock(params={"a":"this is a {b}"}, spec=ActionSpec)
@@ -77,14 +76,12 @@ class TestKeyFormatter:
         result = fmt.format("{a}", _spec=spec, _state=state, _rec=True)
         assert(result == "this is a aweg blah")
 
-
     def test_recursive_missing(self, mocker):
         fmt = KeyFormatter()
         spec = mocker.Mock(params={"a":"this is a {b}"}, spec=ActionSpec)
         state = {"b": "aweg {c}", "c": "blah {d}"}
         result = fmt.format("{a}", _spec=spec, _state=state, _rec=True)
         assert(result == "this is a aweg blah {d}")
-
 
     @pytest.mark.xfail
     def test_not_str_fails(self, mocker):
@@ -94,8 +91,48 @@ class TestKeyFormatter:
         with pytest.raises(TypeError):
             fmt.format("{a}", _spec=spec, _state=state, _rec=True)
 
+class TestKeySubclassFormatting:
 
-    def test_empty_format(self):
+    def test_str_format(self):
+        key = Dkey.SimpleDKey("x")
+        result = "{}".format(key)
+        assert(result == "{x}")
+
+    def test_str_format_named(self):
+        key = Dkey.SimpleDKey("x")
+        result = "{key: <5}".format(key=key)
+        assert(result == "{x}  ")
+
+    def test_format_with_spec(self):
+        spec = ActionSpec.build({"do":"log", "x":"blah"})
+        key = Dkey.SimpleDKey("x")
+        result = key.expand(spec)
+        assert(result == "blah")
+
+    def test_format_alt_with_arg_spec(self):
+        spec = ActionSpec.build({"do":"log", "x":"blah"})
+        key = Dkey.SimpleDKey("x")
+        result = key.expand(spec)
+        assert(result == "blah")
+
+    def test_format_method_with_arg_spec(self):
+        spec = ActionSpec.build({"do":"log", "x":"blah"})
+        key = Dkey.SimpleDKey("x")
+        result = key.format(spec=spec)
+        assert(result == "blah")
+
+    def test_format_fn(self):
+        key = Dkey.SimpleDKey("x")
+        result = format(key)
+        assert(result == "{x}")
+
+    def test_format_fn_with_format_spec(self):
+        key = Dkey.SimpleDKey("x")
+        result = format(key, " <5")
+        assert(result == "{x}  ")
+
+    def test_nonkey_format(self):
         fmt = KeyFormatter()
-        result = fmt.format(".")
-        assert(result == ".")
+        key = dkey.NonDKey("x")
+        result = fmt.format(key)
+        assert(result == "x")
