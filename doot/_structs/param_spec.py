@@ -52,7 +52,7 @@ from doot.enums import Report_f, TaskMeta_f
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class ParamSpec(BaseModel, ParamStruct_p, Buildable_p, metaclass=ProtcolModelMeta, arbitrary_types_allowed=True):
+class ParamSpec(BaseModel, ParamStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
     """ Describes a command line parameter to use in the parser
       When `positional`, will not match against a string starting with `prefix`
       consumed in doot._abstract.parser.ArgParser_i's
