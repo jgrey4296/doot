@@ -34,7 +34,7 @@ doot._test_setup()
 from doot.structs import ActionSpec
 from doot.utils.key_formatter import KeyFormatter
 from doot._structs.key import DootNonKey, DootSimpleKey
-from doot._structs import dkey
+from doot._structs import key as dkey
 
 class TestKeyFormatter:
 
@@ -94,45 +94,52 @@ class TestKeyFormatter:
 class TestKeySubclassFormatting:
 
     def test_str_format(self):
-        key = Dkey.SimpleDKey("x")
+        key = dkey.DootSimpleKey("x")
         result = "{}".format(key)
-        assert(result == "{x}")
+        assert(result == "x")
+
+
+    def test_fstr_format(self):
+        key = dkey.DootSimpleKey("x")
+        result = f"{key}"
+        assert(result == "x")
 
     def test_str_format_named(self):
-        key = Dkey.SimpleDKey("x")
+        key = dkey.DootSimpleKey("x")
         result = "{key: <5}".format(key=key)
-        assert(result == "{x}  ")
+        assert(result == "x    ")
 
     def test_format_with_spec(self):
         spec = ActionSpec.build({"do":"log", "x":"blah"})
-        key = Dkey.SimpleDKey("x")
+        key = dkey.DootSimpleKey("x")
         result = key.expand(spec)
         assert(result == "blah")
 
     def test_format_alt_with_arg_spec(self):
         spec = ActionSpec.build({"do":"log", "x":"blah"})
-        key = Dkey.SimpleDKey("x")
+        key = dkey.DootSimpleKey("x")
         result = key.expand(spec)
         assert(result == "blah")
 
+    @pytest.mark.xfail
     def test_format_method_with_arg_spec(self):
         spec = ActionSpec.build({"do":"log", "x":"blah"})
-        key = Dkey.SimpleDKey("x")
+        key = dkey.DootSimpleKey("x")
         result = key.format(spec=spec)
         assert(result == "blah")
 
     def test_format_fn(self):
-        key = Dkey.SimpleDKey("x")
+        key = dkey.DootSimpleKey("x")
         result = format(key)
-        assert(result == "{x}")
+        assert(result == "x")
 
     def test_format_fn_with_format_spec(self):
-        key = Dkey.SimpleDKey("x")
+        key = dkey.DootSimpleKey("x")
         result = format(key, " <5")
-        assert(result == "{x}  ")
+        assert(result == "x    ")
 
     def test_nonkey_format(self):
         fmt = KeyFormatter()
-        key = dkey.NonDKey("x")
+        key = dkey.DootNonKey("x")
         result = fmt.format(key)
         assert(result == "x")

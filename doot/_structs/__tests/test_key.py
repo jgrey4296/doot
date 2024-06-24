@@ -189,7 +189,7 @@ class TestKeyParameterized:
         assert(result == "bloo")
 
     @pytest.mark.parametrize("name", KEY_BASES)
-    def test_expansion_prefers_redirect_over_other(self, mocker, name):
+    def test_expansion_prefers_direct_over_other(self, mocker, name):
         obj           = dkey.DootSimpleKey(name)
         spec          = mocker.Mock(params={"aweg": "bloo", obj.indirect : "aweg"}, spec=ActionSpec)
         state         = {f"{obj}": "blah"}

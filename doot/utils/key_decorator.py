@@ -38,12 +38,11 @@ from tomlguard import TomlGuard
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._structs.key import dkey.DKey, DootArgsKey, DootKwargsKey
+from doot._structs.key import DootKey, DootArgsKey, DootKwargsKey
 from doot._abstract.protocols import Key_p, SpecStruct_p
 from doot._structs.code_ref import CodeReference
 from doot.utils.chain_get import DootKeyGetter
 from doot.utils.decorators import DecorationUtils, DootDecorator
-from doot._structs import dkey
 
 # ##-- end 1st party imports
 
@@ -72,40 +71,40 @@ class Keyed:
     arguments are added to the tail of the action args, in order of the decorators.
     the name of the expansion is expected to be the name of the action parameter,
     with a "_" prepended if the name would conflict with a keyword., or with "_ex" as a suffix
-    eg: @dkey.DKey.kwrap.paths("from") -> def __call__(self, spec, state, _from):...
-    or: @dkey.DKey.kwrap.paths("from") -> def __call__(self, spec, state, from_ex):...
+    eg: @DootKey.dec.paths("from") -> def __call__(self, spec, state, _from):...
+    or: @DootKey.dec.paths("from") -> def __call__(self, spec, state, from_ex):...
     """
 
     @staticmethod
-    def get_keys(fn) -> list[dkey.DKey]:
+    def get_keys(fn) -> list[DootKey]:
         """ Retrieve key annotations from a decorated function """
         fn = DecorationUtils.unwrap(fn)
         return getattr(fn, DecorationUtils._keys, [])
 
     @staticmethod
     def taskname(fn):
-        keys = [dkey.DKey.build(STATE_TASK_NAME_K, exp_hint="type")]
+        keys = [DootKey.build(STATE_TASK_NAME_K, exp_hint="type")]
         return DecorationUtils.prepare_expansion(keys, fn)
 
     @staticmethod
     def expands(*args, hint:dict|None=None, **kwargs):
         """ mark an action as using expanded string keys """
         exp_hint = {"expansion": "str", "kwargs" : hint or {} }
-        keys     = [dkey.DKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
+        keys     = [DootKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
         return ftz.partial(DecorationUtils.prepare_expansion, keys)
 
     @staticmethod
     def paths(*args, hint:dict|None=None, **kwargs):
         """ mark an action as using expanded path keys """
         exp_hint = {"expansion": "path", "kwargs" : hint or {} }
-        keys = [dkey.DKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
+        keys = [DootKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
         return ftz.partial(DecorationUtils.prepare_expansion, keys)
 
     @staticmethod
     def types(*args, hint:dict|None=None, **kwargs):
         """ mark an action as using raw type keys """
         exp_hint = {"expansion": "type", "kwargs" : hint or {} }
-        keys = [dkey.DKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
+        keys = [DootKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
         return ftz.partial(DecorationUtils.prepare_expansion, keys)
 
     @staticmethod
@@ -124,20 +123,26 @@ class Keyed:
     @staticmethod
     def redirects(*args):
         """ mark an action as using redirection keys """
-        keys = [dkey.DKey.build(x, exp_hint="redirect") for x in args]
+        keys = [DootKey.build(x, exp_hint="redirect") for x in args]
+        return ftz.partial(DecorationUtils.prepare_expansion, keys)
+
+    @staticmethod
+    def redirects_many(*args, **kwargs):
+        """ mark an action as using redirection key lists """
+        keys = [DootKey.build(x, exp_hint="redirect_multi") for x in args]
         return ftz.partial(DecorationUtils.prepare_expansion, keys)
 
     @staticmethod
     def requires(*args, **kwargs):
         """ TODO mark an action as requiring certain keys to be passed in """
-        keys = [dkey.DKey.build(x, **kwargs) for x in args]
+        keys = [DootKey.build(x, **kwargs) for x in args]
         # return ftz.partial(DecorationUtils.prepare_expansion, keys)
         return lambda x: x
 
     @staticmethod
     def returns(*args, **kwargs):
         """ mark an action as needing to return certain keys """
-        keys = [dkey.DKey.build(x, **kwargs) for x in args]
+        keys = [DootKey.build(x, **kwargs) for x in args]
         # return ftz.partial(DecorationUtils.prepare_expansion, keys)
         return lambda x: x
 
@@ -145,7 +150,7 @@ class Keyed:
     def references(*args, **kwargs):
         """ mark keys to use as to_coderef imports """
         exp_hint = {"expansion": "coderef", "kwargs" : {} }
-        keys = [dkey.DKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
+        keys = [DootKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
         return ftz.partial(DecorationUtils.prepare_expansion, keys)
 
     @staticmethod
