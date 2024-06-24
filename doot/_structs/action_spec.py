@@ -39,7 +39,7 @@ from tomlguard import TomlGuard
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract.protocols import SpecStruct_p
+from doot._abstract.protocols import SpecStruct_p, ProtocolModelMeta, Buildable_p
 from doot._structs.code_ref import CodeReference
 from doot.enums import Report_f, TaskMeta_f
 
@@ -51,7 +51,7 @@ logging = logmod.getLogger(__name__)
 
 ALIASES = doot.aliases.action
 
-class ActionSpec(BaseModel, arbitrary_types_allowed=True):
+class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
     """
       When an action isn't a full blown class, it gets wrapped in this,
       which passes the action spec to the callable.

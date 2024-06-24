@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 """
 
 See EOF for license/metadata/notes as applicable
@@ -23,7 +23,7 @@ import weakref
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Mapping, Match,
                     MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
+                    TypeGuard, TypeVar, cast, final, overload, Self,
                     runtime_checkable)
 from uuid import UUID, uuid1
 
@@ -40,11 +40,11 @@ from tomlguard import TomlGuard
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract.protocols import Key_p, SpecStruct_p
+from doot._abstract.protocols import Key_p, SpecStruct_p, Buildable_p
 from doot._structs.code_ref import CodeReference
 from doot.utils.chain_get import DootKeyGetter
 from doot.utils.decorators import DecorationUtils, DootDecorator
-from doot.utils.key_formatter import KeyFormatter
+from doot.utils.dkey_formatter import DKeyFormatter
 
 # ##-- end 1st party imports
 
@@ -65,16 +65,92 @@ STATE_TASK_NAME_K                          = doot.constants.patterns.STATE_TASK_
 
 PATTERN        : Final[re.Pattern]         = re.compile(KEY_PATTERN)
 FAIL_PATTERN   : Final[re.Pattern]         = re.compile("[^a-zA-Z_{}/0-9-]")
+FMT_PATTERN    : Final[re.Pattern]         = re.compile("[wdi]+")
 EXPANSION_HINT : Final[str]                = "_doot_expansion_hint"
 HELP_HINT      : Final[str]                = "_doot_help_hint"
 
-# def __call__(self, **kwargs) -> Any:
-# def __format__(self, spec) -> str:
-# def format(self, fmt, *, spec=None, state=None) -> str:
-# def expand(self, *, fmt=None, spec=None, state=None, on_fail=Any, locs:DootLocations=None, **kwargs) -> Any:
-# def within(self, other:str|dict|TomlGuard) -> bool:
+def identity(x):
+    return x
 
-class DKey(abc.ABC, Key_p):
+class DKeyFactory_m(Buildable_p):
+
+    @staticmethod
+    def build(s:str|DKey|pl.Path|dict, *, explicit=False, ehint:type|str|None=None, help=None) -> DKey:
+        """ Make an appropriate DKey based on input value
+          if explicit, only keys wrapped in {} are made, everything else is returned untouched
+          ehint sets expansion parameters
+        """
+        result = s
+        match s:
+            case DKey(): # already a dkey, return
+                return s
+            case str() if len(s_keys := DKeyFormatter.Parse(s)) == 1: # one explicit key
+                result = SimpleDKey(s)
+            case str() if not bool(s_keys) and explicit: # no subkeys, {explicit} mandated
+                result = NonDKey(s)
+            case str() if bool(s_keys): # {subkeys} found
+                result = MultiDKey(s)
+            case str():
+                result = SimpleDKey(s)
+            case _:
+                raise TypeError("Bad Type to build a Doot Key Out of", s)
+
+        result.set_ehint(ehint)
+        result.set_help(help)
+        return result
+
+    def set_help(self, help:None|str) -> Self:
+        match help:
+            case None:
+                return
+            case str:
+                self._help = help
+
+        return self
+
+    def set_ehint(self, etype:None|str|dict) -> Self:
+        """ pre-register expansion parameters """
+        match etype:
+            case None | "":
+                self._etype = identity
+            case "str":
+                self._etype = str
+            case "path":
+                self._etype = pl.Path
+            case "key":
+                self._etype = DKey.build
+            case type():
+                self._etype = etype
+            case _:
+                raise doot.errors.DootKeyError("Bad Key Expansion Type Declared", self, etype)
+
+        return self
+
+    def set_fparams(self, params:str) -> Self:
+        self._fparams = params
+        return self
+
+class DKeyFormatting_m:
+
+    def format(self, fmt, *, spec=None, state=None) -> str:
+        return DKeyFormatter.fmt(self, fmt)
+
+class DKeyExpansion_m:
+
+    def expand(self, *, fmt=None, spec=None, state=None, on_fail=None, locs:DootLocations=None, **kwargs) -> Any:
+        expanded = DKeyFormatter.expand(self, spec=spec, state=state, locs=locs)
+        if expanded is None:
+            return on_fail
+
+        match self._etype(expanded):
+            case pl.Path() as x:
+                return doot.locs[x]
+            case str() as x:
+                return x
+            case x:
+                return x
+
+class DKey(abc.ABC, DKeyFactory_m, DKeyExpansion_m, DKeyFormatting_m, Key_p):
     """ A shared, non-functional base class for DootKeys and variants like MultiDKey.
       Use DKey.build for constructing keys
       build takes an 'exp_hint' kwarg dict, which can specialize the expansion
@@ -87,10 +163,6 @@ class DKey(abc.ABC, Key_p):
     """
     _pattern : ClassVar[re.Pattern] = PATTERN
 
-    @property
-    def dec(self):
-        raise DeprecationWarning("Use Keyed")
-
     @abc.abstractmethod
     def __format__(self, spec) -> str:
         pass
@@ -99,91 +171,13 @@ class DKey(abc.ABC, Key_p):
     def format(self, fmt, *, spec=None, state=None) -> str:
         pass
 
+    def keys(self) -> list[DKey]:
+        return self._keys
+
+    @property
     @abc.abstractmethod
-    def expand(self, *, fmt=None, spec=None, state=None, on_fail=Any, locs:DootLocations=None, **kwargs) -> Any:
+    def _keys(self) -> list[DKey]:
         pass
-
-    @staticmethod
-    def build(s:str|DKey|pl.Path|dict, *, strict=False, explicit=False, exp_hint:str|dict=None, help=None) -> DKey:
-        """ Make an appropriate DKey based on input value
-          Can only create MultiKeys if strict = False,
-          if explicit, only keys wrapped in {} are made, everything else is returned untouched
-          if strict, then only simple keys can be returned
-        """
-        # TODO annotate with 'help'
-        # TODO store expansion args on build
-        match exp_hint:
-            case "path":
-                is_path = True
-            case {"expansion": "path"}:
-                is_path = True
-            case _:
-                is_path = False
-        result = s
-        match s:
-            case { "path": x }:
-                result = PathMultiDKey(x)
-                exp_hint = "path"
-            case pl.Path():
-                result = PathMultiDKey(s)
-                exp_hint = "path"
-            case SimpleDKey() if strict:
-                result = s
-            case DKey():
-                result = s
-            case str() if not (s_keys := PATTERN.findall(s)) and not explicit and not is_path:
-                result = SimpleDKey(s)
-            case str() if is_path and not bool(s_keys):
-                result = PathDKey(s)
-            case str() if is_path and len(s_keys) == 1 and s_keys[0] == s[1:-1]:
-                result = PathDKey(s[1:-1])
-            case str() if is_path and len(s_keys) > 1:
-                result = PathMultiDKey(s)
-            case str() if not s_keys and explicit:
-                result = NonDKey(s)
-            case str() if len(s_keys) == 1 and s_keys[0] == s[1:-1]:
-                result = SimpleDKey(s[1:-1])
-            case str() if not strict:
-                result = MultiDKey(s)
-            case _:
-                raise TypeError("Bad Type to build a Doot Key Out of", s)
-
-        if exp_hint is not None:
-            result.set_expansion_hint(exp_hint)
-
-        return result
-
-    def set_help(self, help:str):
-        setattr(self, HELP_HINT, help)
-
-    def set_expansion_hint(self, etype:str|dict):
-        match etype:
-            case "str" | "path" | "type" | "redirect" | "redirect_multi":
-                setattr(self, EXPANSION_HINT, {"expansion": etype, "kwargs": {}})
-            case {"expansion": str(), "kwargs": dict()}:
-                setattr(self, EXPANSION_HINT, etype)
-            case _:
-                raise doot.errors.DootKeyError("Bad Key Expansion Type Declared", self, etype)
-
-    def __call__(self, spec, state):
-        """ Expand the key using the registered expansion hint """
-        match getattr(self, EXPANSION_HINT, False):
-            case False:
-                raise doot.errors.DootKeyError("No Default Key Expansion Type Declared", self)
-            case {"expansion": "str", "kwargs": kwargs}:
-                return self.expand(spec, state, **kwargs)
-            case {"expansion": "path", "kwargs": kwargs}:
-                return self.to_path(spec, state, **kwargs)
-            case {"expansion" : "type", "kwargs" : kwargs}:
-                return self.to_type(spec, state, **kwargs)
-            case {"expansion": "redirect"}:
-                return self.redirect(spec)
-            case {"expansion": "redirect_multi"}:
-                return self.redirect_multi(spec)
-            case {"expansion": "coderef"}:
-                return self.to_coderef(spec, state)
-            case x:
-                raise doot.errors.DootKeyError("Key Called with Bad Key Expansion Type", self, x)
 
     @property
     def is_indirect(self) -> bool:
@@ -191,9 +185,6 @@ class DKey(abc.ABC, Key_p):
 
     def within(self, other:str|dict|TomlGuard) -> bool:
         return False
-
-    def keys(self) -> list[DKey]:
-        raise NotImplementedError()
 
 class NonDKey(str, DKey):
     """
@@ -217,12 +208,12 @@ class NonDKey(str, DKey):
         return str(self)
 
     def __format__(self, spec) -> str:
-        return format(str(self), spec)
+        return format(str(self), spec.replace("d","").replace("w","").replace("i",""))
 
     def format(self, fmt, *, spec=None, state=None) -> str:
         return self.format(fmt)
 
-    def expand(self, spec=None, state=None, *, on_fail=Any, locs:DootLocations=None, **kwargs) -> str:
+    def expand(self, *, fmt=None, spec=None, state=None, on_fail=None, locs:DootLocations=None) -> str:
         return str(self)
 
     def within(self, other:str|dict|TomlGuard) -> bool:
@@ -234,15 +225,13 @@ class NonDKey(str, DKey):
             case _:
                 raise TypeError("Unknown DKey target for within", other)
 
-    @ftz.cached_property
-    def indirect(self) -> DKey:
-        if not self.is_indirect:
-            return SimpleDKey("{}_".format(super().__str__()))
-        return self
-
     @property
     def is_indirect(self):
         return False
+
+    @property
+    def _keys(self) -> list:
+        return []
 
 class SimpleDKey(str, DKey):
     """
@@ -250,11 +239,20 @@ class SimpleDKey(str, DKey):
       ie: {x}. not {x}{y}, or {x}.blah.
     """
 
-    def __repr__(self):
-        return "<SimpleDKey: {}>".format(str(self))
+    def __new__(cls, data):
+        keys = set(x[0] for x in DKeyFormatter.Parse(data))
+        if 1 < len(keys):
+            raise ValueError("Simple Keys should not have subkeys")
+        data, _, fparams = data.removeprefix("{").removesuffix("}").partition(":")
+        obj = super().__new__(cls, data)
+        obj.set_fparams(fparams)
+        return obj
 
     def __hash__(self):
         return super().__hash__()
+
+    def __repr__(self):
+        return "<SimpleDKey: {}>".format(str(self))
 
     def __eq__(self, other):
         match other:
@@ -266,25 +264,45 @@ class SimpleDKey(str, DKey):
     def __call__(self, **kwargs) -> Any:
         raise NotImplementedError()
 
-    def __format__(self, spec):
-        return format(self.form, spec)
+    def __format__(self, spec:str) -> str:
+        """
+          Extends standard string format spec language:
+            [[fill]align][sign][z][#][0][width][grouping_option][. precision][type]
+            (https://docs.python.org/3/library/string.html#format-specification-mini-language)
 
-    def format(self, fmt, * spec=None, state=None) -> str:
-        return self.expand(*args, **kwargs)
+          Using the # alt form to declare keys are wrapped.
+          eg: for key = DKey('test'), ikey = DKey('test_')
+          f'{key}'   -> 'test'
+          f'{key:w}' -> '{test}'
+          f'{key:i}  ->  'test_'
+          f'{key:wi} -> '{test_}'
 
-    def expand(self, *, fmt=None, spec=None, state=None, on_fail=Any, locs:DootLocations=None, **kwargs) -> Any:
-        key = self.format("{!_}", spec=spec)
-        try:
-            return KeyFormatter.fmt(key, _spec=spec, _state=state, _rec=rec, _locs=locs, _insist=insist)
-        except (KeyError, TypeError) as err:
-            if on_fail != Any:
-                return on_fail
-            else:
-                raise err
+          f'{ikey:d} -> 'test'
+
+        """
+        if not bool(spec):
+            return str(self)
+        wrap     = 'w' in spec
+        indirect = 'i' in spec
+        direct   = 'd' in spec
+        remaining = FMT_PATTERN.sub("", spec)
+        assert(not (direct and indirect))
+
+        # format
+        result = str(self)
+        if direct:
+            result = result.removesuffix("_")
+        elif indirect and not result.endswith("_"):
+            result = f"{result}_"
+
+        if wrap:
+            result = "".join(["{", result, "}"])
+
+        return format(result, remaining)
 
     @ftz.cached_property
     def is_indirect(self):
-        return str(self).endswith("_")
+        return self.endswith("_")
 
     def within(self, other:str|dict|TomlGuard) -> bool:
         match other:
@@ -295,123 +313,73 @@ class SimpleDKey(str, DKey):
             case _:
                 raise TypeError("Uknown DKey target for within", other)
 
-class PathDKey(SimpleDKey):
-    """ A Key that always expands as a str of a path """
+    @property
+    def _keys(self) -> list[DKey]:
+        return []
 
-    def expand(self, spec=None, state=None, *, on_fail=Any, locs=None, **kwargs) -> str:
-        return str(self.to_path(spec, state, chain=chain, on_fail=on_fail, locs=locs))
+class MultiDKey(str, DKey):
 
-    def __repr__(self):
-        return "<PathDKey: {}>".format(str(self))
+    def __new__(cls, data):
+        obj = super().__new__(cls, data)
+        return obj
 
-    def __call__(self, spec, state):
-        """ Expand the key using the registered expansion hint """
-        match getattr(self, EXPANSION_HINT, False):
-            case False:
-                return self.to_path(spec, state)
-            case {"expansion": "str", "kwargs": kwargs}:
-                return self.expand(spec, state, **kwargs)
-            case {"expansion": "path", "kwargs": kwargs}:
-                return self.to_path(spec, state, **kwargs)
-            case {"expansion": "redirect"}:
-                return self.redirect(spec)
-            case {"expansion": "redirect_multi"}:
-                return self.redirect_multi(spec)
-            case x:
-                raise doot.errors.DootKeyError("Key Called with Bad Key Expansion Type", self, x)
-
-class ArgsDKey(str, DKey):
-    """ A Key representing the action spec's args """
-
-    def __call__(self, spec, state, **kwargs):
-        return self.to_type(spec, state)
-
-    def __repr__(self):
-        return "<ArgsDKey>"
-
-    def expand(self, *args, **kwargs):
-        raise doot.errors.DootKeyError("Args Key doesn't expand")
-
-class KwargsDKey(ArgsDKey):
-    """ A Key representing all of an action spec's kwargs """
-
-    def __repr__(self):
-        return "<ArgsDKey>"
-
-    def to_type(self, spec:None|SpecStruct_p=None, state=None, *args, **kwargs) -> dict:
-        match spec:
-            case _ if hasattr(spec, "params"):
-                return spec.params
-            case None:
-                return {}
-
-class MultiDKey(DKey):
-    """ A string or path of multiple keys """
-
-    def __init__(self, val:str|pl.Path):
-        self.value : str|pl.Path        = val
-        self._keys : set[SimpleDKey] = set(SimpleDKey(x) for x in PATTERN.findall(str(val)))
-
-    def __str__(self):
-        return str(self.value)
+    def __hash__(self):
+        return super().__hash__()
 
     def __repr__(self):
         return "<MultiDKey: {}>".format(str(self))
 
-    def __hash__(self):
-        return hash(str(self))
-
     def __eq__(self, other):
         match other:
-            case DKey() | str() | pl.Path():
+            case DKey() | str():
                 return str(self) == str(other)
             case _:
                 return False
 
-    def keys(self) -> set(SimpleDKey):
-        return self._keys
+    def __call__(self, **kwargs) -> Any:
+        raise NotImplementedError()
 
-    def expand(self, spec=None, state=None, *, on_fail=Any, locs=None, **kwargs) -> str:
-        try:
-            return KeyFormatter.fmt(self.value, _spec=spec, _state=state, _rec=rec, _insist=insist, _locs=locs)
-        except (KeyError, TypeError) as err:
-            if bool(chain):
-                return chain[0].expand(spec, state, rec=rec, chain=chain[1:], on_fail=on_fail)
-            elif on_fail != Any:
-                return on_fail
-            else:
-                raise err
+    def __format__(self, spec:str):
+        """
+          Multi keys have no special formatting
+
+          ... except stripping dkey particular format specs out of the result?
+        """
+        return str(self)
+
+    @ftz.cached_property
+    def is_indirect(self):
+        """ Multi keys can't be indirect """
+        return False
 
     def within(self, other:str|dict|TomlGuard) -> bool:
-        return str(self) in other
+        match other:
+            case str():
+                return self.form in other
+            case dict() | TomlGuard():
+                return self in other
+            case _:
+                raise TypeError("Uknown DKey target for within", other)
 
-class PathMultiDKey(MultiDKey):
-    """ A MultiKey that always expands as a str of a path """
+    def keys(self):
+        return self._keys
 
-    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[DKey]=None, on_fail=Any, locs=None, **kwargs) -> str:
-        return str(self.to_path(spec, state, chain=chain, on_fail=on_fail, locs=locs))
+    @ftz.cached_property
+    def _keys(self) -> list[DKey]:
+        keys = set()
+        for data in DKeyFormatter.Parse(self):
+            keys.add(SimpleDKey(data[0]).set_fparams(data[1]).set_ehint(data[2]))
+        if not bool(keys):
+            raise ValueError("MultiDKey's must have subkeys", self)
+        return list(keys)
 
-    def __repr__(self):
-        return "<PathMultiDKey: {}>".format(str(self))
-
-    def __call__(self, spec, state):
-        """ Expand the key using the registered expansion hint """
-        match getattr(self, EXPANSION_HINT, False):
-            case False:
-                return self.to_path(spec, state)
-            case {"expansion": "str", "kwargs": kwargs}:
-                return self.expand(spec, state, **kwargs)
-            case {"expansion": "path", "kwargs": kwargs}:
-                return self.to_path(spec, state, **kwargs)
-            case {"expansion": "redirect"}:
-                return self.redirect(spec)
-            case {"expansion": "redirect_multi"}:
-                return self.redirect_multi(spec)
+    def expand(self, *, fmt=None, spec=None, state=None, on_fail=None, locs:DootLocations=None, **kwargs) -> Any:
+        """ Expand subkeys, format the multi key  """
+        expanded = DKeyFormatter.expand(self, spec=spec, state=state, locs=locs)
+        match self._etype(expanded):
+            case pl.Path() as x:
+                return doot.locs[x]
+            case str() as x:
+                return x
             case x:
-                raise doot.errors.DootKeyError("Key Called with Bad Key Expansion Type", self, x)
-
-class ImportDKey(SimpleDKey):
-    """ a key to specify a key is used for importing
-    ie: str expands -> CodeReference.build -> .try_import
-    """
-    pass
+                return x

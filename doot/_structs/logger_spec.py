@@ -4,19 +4,21 @@
 See EOF for license/metadata/notes as applicable
 """
 
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 import datetime
 import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
+import os
 import pathlib as pl
 import re
 import time
 import types
 import weakref
-import os
 from sys import stderr, stdout
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Mapping, Match,
@@ -24,10 +26,22 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     TypeGuard, TypeVar, cast, final, overload,
                     runtime_checkable)
 from uuid import UUID, uuid1
-from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
-import doot
+
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
+from pydantic import (BaseModel, Field, ValidationError, field_validator,
+                      model_validator)
 from tomlguard import TomlGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
 from doot.utils.log_colour import DootColourFormatter, DootColourStripFormatter
+from doot._abstract.protocols import Buildable_p, ProtocolModelMeta
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -63,7 +77,7 @@ class _AnyFilter:
         return not rejected
 
 
-class LoggerSpec(BaseModel):
+class LoggerSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
     """
       A Spec for toml defined logging control.
       Allows user to name a logger, set its level, format,

@@ -38,7 +38,7 @@ from tomlguard import TomlGuard
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract.protocols import SpecStruct_p
+from doot._abstract.protocols import Buildable_p, ProtocolModelMeta
 from doot._structs.artifact import TaskArtifact
 from doot._structs.code_ref import CodeReference
 from doot._structs.task_name import TaskName
@@ -50,7 +50,7 @@ from doot.enums import RelationMeta_e
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class RelationSpec(BaseModel):
+class RelationSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
     """ ? is {self.relation} to {self.target}
 
      Encodes a relation between an implicit subject, (who owns this relationspec)

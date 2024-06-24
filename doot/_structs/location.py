@@ -42,12 +42,13 @@ from pydantic import BaseModel, model_validator, field_validator
 import doot
 from doot.enums import LocationMeta_f
 from doot._structs.key import DootKey
+from doot._abstract.protocols import ProtocolModelMeta, Location_p, Buildable_p
 
 GLOB     : Final[str] = "*"
 REC_GLOB : Final[str] = "**"
 SOLO     : Final[str] = "?"
 
-class Location(BaseModel, arbitrary_types_allowed=True):
+class Location(BaseModel, Location_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
     """ A Location to be used by tasks in Doot.
       ie: a path, with metadata.
 

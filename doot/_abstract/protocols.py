@@ -30,6 +30,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from tomlguard import TomlGuard
+from pydantic import BaseModel
 
 # ##-- end 3rd party imports
 
@@ -44,31 +45,34 @@ from doot.enums import ActionResponse_e, TaskMeta_f, TaskStatus_e
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-@runtime_checkable
-class ArtifactStruct_p(Protocol):
-    """ Base class for artifacts, for type matching """
+class ProtocolModelMeta(type(Protocol), type(BaseModel)):
+    """ Use as the metaclass for pydantic models which are explicit Protocol implementers
+
+      eg:
+
+      class Example(BaseModel, ExampleProtocol, metaclass=ProtocolModelMeta):...
+
+    """
     pass
-
-@runtime_checkable
-class StubStruct_p(Protocol):
-    """ Base class for stubs, for type matching """
-
-    def to_toml(self) -> str:
-        pass
-
-@runtime_checkable
-class ParamStruct_p(Protocol):
-    """ Base class for param specs, for type matching """
-
-    def maybe_consume(self, args:list[str], data:dict) -> int:
-        pass
 
 @runtime_checkable
 class SpecStruct_p(Protocol):
     """ Base class for specs, for type matching """
 
     @property
-    def params(self) -> dict|TomlGuard:
+    def params(self) -> dict:
+        pass
+
+@runtime_checkable
+class ArtifactStruct_p(Protocol):
+    """ Base class for artifacts, for type matching """
+    pass
+
+@runtime_checkable
+class ParamStruct_p(Protocol):
+    """ Base class for param specs, for type matching """
+
+    def maybe_consume(self, args:list[str], data:dict) -> int:
         pass
 
 @runtime_checkable
@@ -101,6 +105,13 @@ class TomlStubber_p(Protocol):
 
     @property
     def doc(self) -> list[str]:
+        pass
+
+@runtime_checkable
+class StubStruct_p(Protocol):
+    """ Base class for stubs, for type matching """
+
+    def to_toml(self) -> str:
         pass
 
 @runtime_checkable
@@ -145,6 +156,7 @@ class Buildable_p(Protocol):
 
 @runtime_checkable
 class Nameable_p(Protocol):
+    """ The protocol for structured names """
 
     def __hash__(self):
         pass
@@ -179,6 +191,9 @@ class Key_p(Protocol):
         pass
 
     def within(self, other:str|dict|TomlGuard) -> bool:
+        pass
+
+    def keys(self) -> list[Key_p]:
         pass
 
 @runtime_checkable

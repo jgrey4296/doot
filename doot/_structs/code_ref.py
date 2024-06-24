@@ -43,8 +43,9 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot._structs.structured_name import StructuredName
+from doot._abstract.protocols import Buildable_p
 
-class CodeReference(StructuredName):
+class CodeReference(StructuredName, Buildable_p):
     """
       A reference to a class or function. can be created from a string (so can be used from toml),
       or from the actual object (from in python)
