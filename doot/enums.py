@@ -204,16 +204,16 @@ class DKeyMark_e(EnumBuilder_m, enum.Enum):
       Enums for how to use/build a dkey
 
     """
-    FREE     = enum.auto()
-    PATH     = enum.auto()
-    REDIRECT = enum.auto()
-    STR      = enum.auto()
-    CODE     = enum.auto()
-    TASK     = enum.auto()
-    ARGS     = enum.auto()
-    KWARGS   = enum.auto()
-    POSTBOX  = enum.auto()
-    NULL     = enum.auto()
+    FREE     = enum.auto() # -> Any
+    PATH     = enum.auto() # -> pl.Path
+    REDIRECT = enum.auto() # -> DKey
+    STR      = enum.auto() # -> str
+    CODE     = enum.auto() # -> coderef
+    TASK     = enum.auto() # -> taskname
+    ARGS     = enum.auto() # -> list
+    KWARGS   = enum.auto() # -> dict
+    POSTBOX  = enum.auto() # -> list
+    NULL     = enum.auto() # -> None
 
     default  = FREE
 
