@@ -43,6 +43,7 @@ import doot.errors
 from doot.enums import DKeyMark_e
 from doot._abstract.protocols import Key_p, SpecStruct_p, Buildable_p
 from doot._structs.code_ref import CodeReference
+from doot._structs.task_name import TaskName
 from doot.utils.chain_get import DootKeyGetter
 from doot.utils.decorators import DecorationUtils, DootDecorator
 from doot.utils.dkey_formatter import DKeyFormatter
@@ -69,7 +70,8 @@ FAIL_PATTERN   : Final[re.Pattern]         = re.compile("[^a-zA-Z_{}/0-9-]")
 FMT_PATTERN    : Final[re.Pattern]         = re.compile("[wdi]+")
 EXPANSION_HINT : Final[str]                = "_doot_expansion_hint"
 HELP_HINT      : Final[str]                = "_doot_help_hint"
-CHECKTYPE      : TypeAlias =               None|type|types.GenericAlias|types.UnionType
+CHECKTYPE      : TypeAlias                 = None|type|types.GenericAlias|types.UnionType
+MARKTYPE       : TypeAlias                 = None|str|type|DKeyMark_e
 
 def identity(x):
     return x
@@ -90,39 +92,73 @@ class DKeyMeta(type(str)):
         return any(x in candidates for x in sub.mro())
 
 class DKey(metaclass=DKeyMeta):
-    """ A shared, non-functional base class for DootKeys and variants like MultiDKey.
-      Use DKey.build for constructing keys
-      build takes an 'exp_hint' kwarg dict, which can specialize the expansion
+    """ A shared base class for DKeys and variants.
+      Implements __new__ to create the correct key type, from a string, dynamically.
 
-      DootSimpleKeys are strings, wrapped in {} when used in toml.
-      so DKey.build('blah') -> SingleDKey('blah') -> SingleDKey('blah').form =='{blah}' -> [toml] aValue = '{blah}'
+      kwargs:
+      explicit = insists that keys in the string are wrapped in braces '{akey} {anotherkey}'.
+      mark     = pre-register expansion parameters / type etc
+      check    = dictate a type that expanding this key must match
+      fparams  = str formatting instructions for the key
 
-      DootMultiKeys are containers of a string `value`, and a list of SimpleKeys the value contains.
-      So DKey.build('{blah}/{bloo}') -> MultiDKey('{blah}/{bloo}', [SingleDKey('blah', SingleDKey('bloo')]) -> .form == '{blah}/{bloo}'
+      Eg:
+      DKey('blah')
+      -> SingleDKey('blah')
+      -> SingleDKey('blah').format('w')
+      -> '{blah}'
+      -> [toml] aValue = '{blah}'
+
+      Because cls.__new__ calls __init__ automatically for return values of type cls,
+      DKey is the factory, but all DKeys are subclasses of DKeyBase,
+      to allow control over __init__.
       """
     mark = DKeyMark_e
 
-    def __new__(cls, data:str|DKey|pl.Path|dict, *, explicit=False, fparams=None, check:CHECKTYPE=None, ehint:type|str|None=None, help=None, mark:DKeyMark_e=None) -> DKey:
-        result = data
-        match data:
-            case DKey(): # already a dkey, return
-                return data
-            case str() if len(s_keys := DKeyFormatter.Parse(data)) == 1: # one explicit key
-                data, _, fparams = data.removeprefix("{").removesuffix("}").partition(":")
-                result = str.__new__(SingleDKey, data)
-                result.__init__(data, fparams=fparams, ehint=ehint, check=check, help=help)
-            case str() if not bool(s_keys) and explicit: # no subkeys, {explicit} mandated
-                result = str.__new__(NonDKey, data)
-                result.__init__(data)
-            case str() if bool(s_keys): # {subkeys} found
-                result = str.__new__(MultiDKey, data)
-                subkeys = [DKey(x[0], fparams=x[1], ehint=x[2]) for x in s_keys]
-                result.__init__(data, subkeys=subkeys, ehint=ehint)
-            case str():
-                result = str.__new__(SingleDKey, data)
-                result.__init__(data, fparams=fparams, ehint=ehint, check=check, help=help)
-            case _:
-                raise TypeError("Bad Type to build a Doot Key Out of", s)
+    def __new__(cls, data:str|DKey|pl.Path|dict, *, explicit=False, fparams=None, mark:MARKTYPE=None, **kwargs) -> DKey:
+        if isinstance(data, DKey):
+            return data
+
+        s_keys           = DKeyFormatter.Parse(data)
+        data, fparams = data, fparams or ""
+
+        # TODO handle conversion parameters in data
+
+        # Discriminate by mark:
+        ctor = SingleDKey
+        match mark:
+            case _ if explicit and len(s_keys) < 1:
+                ctor =  NonDKey
+            case None | DKeyMark_e.STR | DKeyMark_e.FREE if 1 < len(s_keys):
+                ctor =  MultiDKey
+            case DKeyMark_e.STR:
+                ctor =  SingleDKey
+            case DKeyMark_e.PATH:
+                ctor =  PathMultiDKey
+            case DKeyMark_e.REDIRECT:
+                ctor =  RedirectionDKey
+            case DKeyMark_e.CODE:
+                ctor =  ImportDKey
+            case DKeyMark_e.TASK:
+                ctor =  SingleDKey
+            case DKeyMark_e.ARGS:
+                ctor =  ArgsDKey
+            case DKeyMark_e.KWARGS:
+                ctor =  KwargsDKey
+            case DKeyMark_e.POSTBOX:
+                ctor =  SingleDKey
+            case DKeyMark_e.NULL:
+                ctor =  NonDKey
+            case type() if mark is pl.Path:
+                ctor =  PathMultiDKey
+            case type():
+                ctor =  SingleDKey
+
+        if not issubclass(ctor, MultiDKey) and  len(s_keys) < 2:
+            data, _, fparams = data.removeprefix("{").removesuffix("}").partition(":")
+
+        # Build the key from ctor + init it
+        result           = str.__new__(ctor, data)
+        result.__init__(data, fparams=fparams, mark=mark, **kwargs)
 
         return result
 
@@ -140,14 +176,14 @@ class DKeyFormatting_m:
 class DKeyExpansion_m:
     """ general expansion for dkeys """
 
-    def expand(self, *, fmt=None, spec=None, state=None, on_fail=None, locs:DootLocations=None, **kwargs) -> Any:
-        expanded = DKeyFormatter.expand(self, spec=spec, state=state, locs=locs)
+    def expand(self, *sources, fmt=None, on_fail=None, **kwargs) -> Any:
+        expanded = DKeyFormatter.expand(self, sources=sources)
         result   = None
         match expanded:
             case None:
-                result = on_fail
+                result = on_fail or self._exp_fallback
             case _:
-                result = self._etype(expanded)
+                result = self._exp_type(expanded)
 
         self._check_expansion(result)
         match result:
@@ -174,20 +210,48 @@ class DKeyExpansion_m:
             case type() if not isinstance(value, self._typecheck):
                 raise TypeError("Expansion value does not match required type", self._typecheck, value, self)
             case _:
-                raise TypeError("Unkown type specified for expansion type constraint", self._typecheck)
+                pass
 
 ##-- end expansion and formatting
 
 class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, str):
+    """
+      Base class characteristics of DKeys.
+      adds:
+      `_mark`
+      `_exp_type`
+      `_typecheck`
+
+      plus some util methods
+
+    """
+
+    _mark         : DKeyMark_e                  = DKey.mark.default
+    _exp_type     : type|callable               = str
+    _typecheck    : CHECKTYPE                   = Any
+    _exp_fallback : Any                         = None
+    _fparams      : None|str                    = None
+    _help         : None|str                    = None
+
+    __hash__                                    = str.__hash__
 
     def __new__(cls, *args, **kwargs):
-        """ Blocks creation of DKey's except through DKey itself """
+        """ Blocks creation of DKey's except through DKey itself,
+          unless 'force=True' kwarg (for testing).
+        """
         if not kwargs.get('force', False):
             raise RuntimeError("Don't build DKey subclasses directly")
         del kwargs['force']
         obj = str.__new__(cls, *args)
         obj.__init__(*args, **kwargs)
         return obj
+
+    def __init__(self, data, fparams:None|str=None, check:CHECKTYPE=None, help:None|str=None, mark:MARKTYPE=None, fallback=None, **kwargs):
+        super().__init__(data)
+        self.set_expansion(mark, check)
+        self.set_fparams(fparams)
+        self.set_help(help)
+        self._exp_fallback = fallback
 
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self}>"
@@ -209,49 +273,6 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, str):
             case _:
                 return False
 
-    def set_help(self, help:None|str) -> Self:
-        match help:
-            case None:
-                return
-            case str:
-                self._help = help
-
-        return self
-
-    def set_ehint(self, etype:None|str|dict) -> Self:
-        """ pre-register expansion parameters """
-        match etype:
-            case type() if issubclass(etype, Buildable_p):
-                self._etype = etype.build
-            case None | "":
-                self._etype = identity
-            case "str":
-                self._etype = str
-            case "path":
-                self._etype = pl.Path
-            case "key":
-                self._etype = DKey.build
-            case type():
-                self._etype = etype
-            case _:
-                raise doot.errors.DootKeyError("Bad Key Expansion Type Declared", self, etype)
-
-        return self
-
-    def set_fparams(self, params:str) -> Self:
-        self._fparams = params
-        return self
-
-    def set_typecheck(self, check:CHECKTYPE) -> Self:
-        match check:
-            case None:
-                self._typecheck = Any
-            case type() | types.GenericAlias() | types.UnionType():
-                self._typecheck = check
-            case _:
-                raise TypeError("Bad TypeCheck type", check)
-        return self
-
     def _consume_format_params(self, spec:str) -> tuple(str, bool, bool, bool):
         """
           return (consumed, wrap, direct)
@@ -263,56 +284,83 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, str):
         assert(not (direct and indirect))
         return remaining, wrap, (direct or (not indirect))
 
-##-- core
+    def set_help(self, help:None|str) -> Self:
+        match help:
+            case None:
+                pass
+            case str():
+                self._help = help
 
-class NonDKey(DKeyBase):
-    """
-      Just a string, not a key. But this lets you call no-ops for key specific methods
-    """
+        return self
 
-    __hash__ = str.__hash__
+    def set_fparams(self, params:str) -> Self:
+        match params:
+            case None:
+                pass
+            case str() if bool(params):
+                self._fparams = params
+        return self
 
-    def __init__(self, data, **kwargs):
-        super().__init__()
-        self.set_fparams(None)
-        self.set_ehint(None)
-        self.set_help(None)
-        self.set_typecheck(None)
+    def set_expansion(self, mark:MARKTYPE, check:CHECKTYPE) -> Self:
+        """ pre-register expansion parameters """
+        self._mark = mark
+        match mark:
+            case None | DKeyMark_e.FREE:
+                self._exp_type  = identity
+                self._typecheck = check or Any
+            case DKeyMark_e.NULL | DKeyMark_e.STR:
+                self._exp_type  = str
+                self._typecheck = str
+            case str():
+                self._mark = DKeyMark_e.FREE
+                # Try to build a DKeyMark_e, then recurse
 
-    def __call__(self, *args, **kwargs) -> str:
-        return str(self)
+                # else try making a coderefer from it
+                raise NotImplementedError()
+            case DKeyMark_e.PATH:
+                self._exp_type  = pl.Path
+                self._typecheck = pl.Path
+            case DKeyMark_e.REDIRECT:
+                self._exp_type  = DKey
+                self._typecheck = DKey
+            case DKeyMark_e.CODE:
+                self._exp_type  = CodeReference.build
+                self._typecheck = CodeReference
+            case DKeyMark_e.TASK:
+                self._exp_type  = TaskName.build
+                self._typecheck = TaskName
+            case DKeyMark_e.ARGS:
+                self._exp_type  = list
+                self._typecheck = list
+            case DKeyMark_e.KWARGS:
+                self._exp_type  = dict
+                self._typecheck = dict
+            case DKeyMark_e.POSTBOX:
+                self._exp_type  = list
+                self._typecheck = check or list
+            case type() if issubclass(mark, Buildable_p):
+                self._mark = DKeyMark_e.FREE
+                self._exp_type  = mark.build
+                self._typecheck = check or mark
+            case type():
+                self._mark = DKeyMark_e.FREE
+                self._exp_type  = mark
+                self._typecheck = check or mark
+            case _:
+                raise doot.errors.DootKeyError("Bad Key Expansion Type Declared", self, etype)
 
-    def __format__(self, spec) -> str:
-        rem, _, _ = self._consume_format_params(spec)
-        return format(str(self), rem)
+        return self
 
-    def format(self, fmt, *, spec=None, state=None) -> str:
-        return self.format(fmt)
-
-    def expand(self, *, fmt=None, spec=None, state=None, on_fail=None, locs:DootLocations=None) -> str:
-        return str(self)
-
-    @property
-    def _keys(self) -> list:
+    def keys(self) -> list:
         return []
+
+##-- core
 
 class SingleDKey(DKeyBase):
     """
       A Single key with no extras.
       ie: {x}. not {x}{y}, or {x}.blah.
     """
-
-    __hash__ = str.__hash__
-
-    def __init__(self, data, fparams:None|str=None, ehint:None|str=None, check:CHECKTYPE=None, help:None|str=None, **kwargs):
-        super().__init__()
-        self.set_fparams(fparams)
-        self.set_ehint(ehint)
-        self.set_help(help)
-        self.set_typecheck(check)
-
-    # def __repr__(self):
-    #     return "<SingleDKey: {}>".format(str(self))
 
     def __call__(self, **kwargs) -> Any:
         raise NotImplementedError()
@@ -349,22 +397,13 @@ class SingleDKey(DKeyBase):
 
         return format(result, rem)
 
-    @property
-    def _keys(self) -> list[DKey]:
-        return []
-
 class MultiDKey(DKeyBase):
 
-    __hash__ = str.__hash__
-
-    def __init__(self, data, *, subkeys:list[DKey]|set[DKey]=None, ehint:None|type=None, **kwargs):
-        assert(bool(subkeys))
-        super().__init__()
-        self._subkeys = subkeys
-        self.set_fparams(None)
-        self.set_ehint(ehint)
-        self.set_help(None)
-        self.set_typecheck(None)
+    def __init__(self, data:str|pl.Path, *, mark:MARKTYPE=None, **kwargs):
+        super().__init__(data, mark=mark, **kwargs)
+        s_keys           = DKeyFormatter.Parse(data)
+        self._subkeys    = [DKey(x[0], fparams=x[1], mark=x[2]) for x in s_keys]
+        assert(bool(self._subkeys))
 
     def __call__(self, **kwargs) -> Any:
         raise NotImplementedError()
@@ -381,16 +420,43 @@ class MultiDKey(DKeyBase):
     def keys(self):
         return self._subkeys
 
-    def expand(self, *, fmt=None, spec=None, state=None, on_fail=None, locs:DootLocations=None, **kwargs) -> Any:
-        """ Expand subkeys, format the multi key  """
-        expanded = DKeyFormatter.expand(self, spec=spec, state=state, locs=locs)
-        match self._etype(expanded):
+    def expand(self, *sources, fmt=None, on_fail=None, **kwargs) -> Any:
+        """ Expand subkeys, format the multi key
+          Takes a variable number of sources (dicts, tomlguards, specs, dootlocations..)
+        """
+        expanded = DKeyFormatter.expand(self, sources=sources)
+        match self._exp_type(expanded):
             case pl.Path() as x:
                 return doot.locs[x]
             case str() as x:
                 return x
             case x:
                 return x
+
+class NonDKey(DKeyBase):
+    """
+      Just a string, not a key. But this lets you call no-ops for key specific methods
+    """
+    _mark = DKey.mark.NULL
+
+    def __init__(self, data, **kwargs):
+        """
+          ignores all kwargs
+        """
+        super().__init__(data)
+
+    def __call__(self, *args, **kwargs) -> str:
+        return str(self)
+
+    def __format__(self, spec) -> str:
+        rem, _, _ = self._consume_format_params(spec)
+        return format(str(self), rem)
+
+    def format(self, fmt) -> str:
+        return format(self, fmt)
+
+    def expand(self, *args, **kwargs) -> str:
+        return str(self)
 
 ##-- end core
 
@@ -401,45 +467,45 @@ class RedirectionDKey(SingleDKey):
       A Key for getting a redirected key.
       eg: RedirectionDKey(key_) -> SingleDKey(value)
     """
-    pass
+
+    _mark = DKey.mark.REDIRECT
+
+    def expand(self, *sources, on_fail=None, **kwargs):
+        expanded = DKeyFormatter.redirect(self, sources=sources)
+        result = None
+        match expanded:
+            case None:
+                result = on_fail or self._exp_fallback
+            case _:
+                result = self._exp_type(expanded)
+
+        self._check_expansion(result)
+        return result
+
+
 class ArgsDKey(SingleDKey):
     """ A Key representing the action spec's args """
-
-    def __call__(self, spec, state, **kwargs):
-        return self.to_type(spec, state)
-
-    def __repr__(self):
-        return "<ArgsDKey>"
-
-    def expand(self, *args, **kwargs):
-        raise doot.errors.DootKeyError("Args Key doesn't expand")
+    _mark = DKey.mark.ARGS
 
 class KwargsDKey(SingleDKey):
     """ A Key representing all of an action spec's kwargs """
 
-    def __repr__(self):
-        return "<ArgsDKey>"
-
-    def to_type(self, spec:None|SpecStruct_p=None, state=None, *args, **kwargs) -> dict:
-        match spec:
-            case _ if hasattr(spec, "params"):
-                return spec.params
-            case None:
-                return {}
+    _mark = DKey.mark.KWARGS
 
 class ImportDKey(SingleDKey):
     """
       Subclass for dkey's which expand to CodeReferences
     """
-    pass
+    _mark = DKey.mark.CODE
 
 class PathMultiDKey(MultiDKey):
     """
     A MultiKey that always expands as a path
     """
-    pass
+    _mark = DKey.mark.PATH
 
 class PostBoxDKey(SingleDKey):
     """ A DKey which expands from postbox tasknames  """
-    pass
+    _mark = DKey.mark.POSTBOX
+
 ##-- end subclasses

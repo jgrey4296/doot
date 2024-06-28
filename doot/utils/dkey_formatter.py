@@ -176,8 +176,8 @@ class DKeyFormatterEntry_m:
             case _:
                 raise TypeError("Unknown type found", key)
 
-    def __call__(self, *, spec=None, state=None, locs=None, fallback=None, rec=None) -> Self:
-        self.sources       = [spec, state, locs or doot.locs]
+    def __call__(self, *, sources=None, fallback=None, rec=None) -> Self:
+        self.sources       = sources
         self.fallback      = fallback
         if self.rec_remaining == 0:
             self.rec_remaining = rec or MAX_KEY_EXPANSIONS
@@ -195,37 +195,33 @@ class DKeyFormatterEntry_m:
 class DKeyFormatter_Expansion_m:
 
     @classmethod
-    def expand(cls, key:Key_p|pl.Path, /, *args, **kwargs) -> None|Any:
+    def expand(cls, key:Key_p|pl.Path, *, sources=None, **kwargs) -> None|Any:
         """ static method to a singleton key formatter """
         if not cls._instance:
             cls._instance = cls()
 
-        spec                   = kwargs.get('spec', None)
-        state                  = kwargs.get('state', None)
-        locs                   = kwargs.get('locs', doot.locs)
         fallback               = kwargs.get("on_fail", None)
-
-        with cls._instance(spec=spec, state=state, locs=locs, fallback=fallback) as fmt:
+        with cls._instance(sources=sources, fallback=fallback) as fmt:
             return fmt._expand(key)
 
 
     @classmethod
-    def redirect(cls, key:Key_p|pl.Path, /, *args, **kwargs) -> None|Any:
+    def redirect(cls, key:Key_p|pl.Path, *, sources=None, **kwargs) -> None|Any:
         """ static method to a singleton key formatter """
         if not cls._instance:
             cls._instance = cls()
 
-        spec                   = kwargs.get('spec', None)
-        state                  = kwargs.get('state', None)
-        locs                   = kwargs.get('locs', doot.locs)
         fallback               = kwargs.get("on_fail", None)
+        with cls._instance(sources=sources, fallback=fallback) as fmt:
+             return fmt._expand(key, depth=1)
 
-        with cls._instance(spec=spec, state=state, locs=locs, fallback=fallback) as fmt:
-            raise NotImplementedError()
 
-
-    def _expand(self, key:Key_p|str|pl.Path, *, depth:int=0, on_fail=None) -> None|Any:
+    def _expand(self, key:Key_p|str|pl.Path, *, depth:int=MAX_KEY_EXPANSIONS, on_fail=None) -> None|Any:
         result = None
+        if depth <= 0:
+            logging.debug("No more expansions allowed: %s", key)
+            return key
+
         match key:
             case Key_p() if bool(key.keys()):
                 result = self._multi_expand(key, depth=depth)
@@ -242,7 +238,7 @@ class DKeyFormatter_Expansion_m:
             case _:
                 return result
 
-    def _str_expand(self, key:str, *, depth:int=0, on_fail=None) -> None|Any:
+    def _str_expand(self, key:str, *, depth:int=MAX_KEY_EXPANSIONS, on_fail=None) -> None|Any:
         """
 
         """
@@ -250,20 +246,20 @@ class DKeyFormatter_Expansion_m:
             case []:
                 return chained_get(key, *self.sources)
             case [*xs]:
-                expansion_dict = { f"{x:d}" : self._expand(x, on_fail=f"{x:w}", depth=depth+1) for x in xs }
+                expansion_dict = { f"{x:d}" : self._expand(x, on_fail=f"{x:w}", depth=depth-1) for x in xs }
                 expanded = key.format_map(expansion_dict)
                 return expanded
 
-    def _single_expand(self, key:Key_p|str|pl.Path, *, depth:int=-1) -> None|Any:
+    def _single_expand(self, key:Key_p|str|pl.Path, *, depth:int=MAX_KEY_EXPANSIONS) -> None|Any:
         """
         """
-        remaining_depth   = MAX_KEY_EXPANSIONS - depth
+        remaining_depth   = depth
         # list[(keystr, lift_result_to_key))
         echain            = [(f"{key:d}", False), (f"{key:i}", True)]
         expanded          = [None]
 
         if remaining_depth <= 0:
-            logging.debug("Hit Expansion Max Depth: %s", key)
+            logging.debug("No more expansions allowed: %s", key)
             return key
 
         for i in range(remaining_depth):
@@ -277,7 +273,7 @@ class DKeyFormatter_Expansion_m:
                 case None:
                     continue
                 case Key_p() as k:
-                    mexp = self._expand(k, depth=depth+1)
+                    mexp = self._expand(k, depth=depth-1)
                     expanded.append(mexp)
                     echain.append((mexp, lift))
                 case str() as exp if lift:
@@ -288,13 +284,13 @@ class DKeyFormatter_Expansion_m:
 
         return expanded[-1]
 
-    def _multi_expand(self, key:Key_p|str|pl.Path, *, depth:int=0) -> None|Any:
-        remaining_depth = MAX_KEY_EXPANSIONS - depth
+    def _multi_expand(self, key:Key_p|str|pl.Path, *, depth:int=MAX_KEY_EXPANSIONS) -> None|Any:
+        remaining_depth = depth
         if remaining_depth <= 0:
-            logging.debug("Hit Expansion Max Depth: %s", key)
+            logging.debug("No More Expansions allowed: %s", key)
             return key
 
-        expansion_dict = { f"{x:d}" : self._expand(x, on_fail=f"{x:w}", depth=depth+1) for x in key.keys() }
+        expansion_dict = { f"{x:d}" : self._expand(x, on_fail=f"{x:w}", depth=depth-1) for x in key.keys() }
         expanded = key.format_map(expansion_dict)
         return expanded
 
