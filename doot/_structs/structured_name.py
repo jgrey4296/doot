@@ -61,7 +61,7 @@ def aware_splitter(x, sep=".") -> list[str]:
         case _:
             return [x]
 
-class StructuredName(BaseModel, Nameable_p, metaclass=ProtocolModelMeta):
+class StructuredName(BaseModel, Nameable_p, Buildable_p, metaclass=ProtocolModelMeta):
     """ A Complex name class for identifying tasks and classes.
 
       Classes are the standard form used in importlib: "module.path:ClassName"

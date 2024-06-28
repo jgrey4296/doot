@@ -40,21 +40,6 @@ from doot.utils.action_decorators import IOWriter
 
 # TODO using doot.config.settings.general.protect to disallow write/delete/backup/copy
 
-##-- expansion keys
-TO_KEY             : Final[DootKey] = DootKey.build("to")
-FROM_KEY           : Final[DootKey] = DootKey.build("from")
-UPDATE             : Final[DootKey] = DootKey.build("update_")
-PROMPT             : Final[DootKey] = DootKey.build("prompt")
-PATTERN            : Final[DootKey] = DootKey.build("pattern")
-SEP                : Final[DootKey] = DootKey.build("sep")
-TYPE_KEY           : Final[DootKey] = DootKey.build("type")
-AS_BYTES           : Final[DootKey] = DootKey.build("as_bytes")
-FILE_TARGET        : Final[DootKey] = DootKey.build("file")
-RECURSIVE          : Final[DootKey] = DootKey.build("recursive")
-LAX                : Final[DootKey] = DootKey.build("lax")
-##-- end expansion keys
-
-
 class AppendAction(PathManip_m):
     """
       Pre/Ap-pend data from the state to a file
@@ -81,8 +66,6 @@ class AppendAction(PathManip_m):
                 printer.info("Appending %s chars to %s", len(arg), loc)
                 f.write(sep)
                 f.write(arg)
-
-
 
 @IOWriter()
 class WriteAction(PathManip_m):
@@ -120,13 +103,12 @@ class WriteAction(PathManip_m):
                 printer.info("Writing %s chars to %s", len(as_str), loc)
                 loc.write_text(as_str)
 
-
-
 class ReadAction(PathManip_m):
     """
       Reads data from the doot.locs location to  return for the state
       The arguments of the action are held in self.spec
     """
+
     @Keyed.paths("from")
     @Keyed.redirects("update_")
     @Keyed.types("as_bytes", hint={"on_fail":False})
@@ -149,7 +131,6 @@ class ReadAction(PathManip_m):
                 case unk:
                     raise TypeError("Unknown read type", unk)
 
-
 class CopyAction(PathManip_m):
     """
       copy a file somewhere
@@ -167,7 +148,6 @@ class CopyAction(PathManip_m):
                 expanded = list(map(lambda x: DootKey.build(x, strict=False).to_path(spec, state), _from))
             case _:
                 raise doot.errors.DootActionError("Unrecognized type for copy sources", _from)
-
 
         if any(self._is_write_protected(x) for x in expanded):
             raise doot.errors.DootLocationError("Tried to write a protected location", x)
@@ -207,6 +187,7 @@ class DeleteAction(PathManip_m):
     """
       delete a file / directory specified in spec.args
     """
+
     @Keyed.types("recursive", "lax", hint={"type_":bool, "on_fail":False})
     def __call__(self, spec, state, recursive, lax):
         rec = recursive
@@ -225,7 +206,6 @@ class DeleteAction(PathManip_m):
             else:
                 printer.info("Deleting File: %s", loc)
                 loc.unlink(missing_ok=lax)
-
 
 class BackupAction(PathManip_m):
     """
@@ -257,7 +237,6 @@ class BackupAction(PathManip_m):
         _DootPostBox.put(_name, dest_loc)
         shutil.copy2(source_loc,dest_loc)
 
-
 class EnsureDirectory(PathManip_m):
     """
       ensure the directories passed as arguments exist
@@ -272,7 +251,6 @@ class EnsureDirectory(PathManip_m):
                 printer.info("Building Directory: %s", loc)
             loc.mkdir(parents=True, exist_ok=True)
 
-
 class UserInput(PathManip_m):
 
     @Keyed.types("prompt", hint={"type_":str, "on_fail":"?::- "})
@@ -280,7 +258,6 @@ class UserInput(PathManip_m):
     def __call__(self, spec, state, prompt, _update):
         result = input(prompt)
         return { _update : result }
-
 
 class SimpleFind(PathManip_m):
     """
@@ -299,7 +276,6 @@ class SimpleFind(PathManip_m):
             case False:
                 return { _update : list(from_loc.glob(pattern)) }
 
-
 class TouchFileAction(PathManip_m):
 
     @Keyed.args
@@ -307,12 +283,12 @@ class TouchFileAction(PathManip_m):
         for target in [DootKey.build(x, exp_hint="path") for x in args]:
             target(spec, state).touch()
 
-
 class LinkAction(PathManip_m):
     """
       for x,y in spec.args:
       x.to_path().symlink_to(y.to_path())
     """
+
     @Keyed.paths("link", "to", hint={"on_fail":None})
     @Keyed.args
     @Keyed.types("force", hint={"type_":bool, "on_fail":False})
@@ -349,7 +325,6 @@ class LinkAction(PathManip_m):
             x_path.unlink()
         printer.info("Linking: %s -> %s", x_path, y_path)
         x_path.symlink_to(y_path)
-
 
 class ListFiles(PathManip_m):
     """ add a list of all files in a path (recursively) to the state """
