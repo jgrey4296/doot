@@ -68,11 +68,6 @@ instead of using the static groups
    :context:
         <2024-06-14 Fri>         return { _update : list(fn(spec, state)) }
    :END:
-** TRIAGE write something on postboxes
-   [[/media/john/data/github/python/doot/wiki_/lets_talk_about_state.md::46][Location]]
-   :context:
-        <2024-06-14 Fri> ## Passing State between tasks: PostBoxes
-   :END:
 ** TRIAGE fix relation types
    [[/media/john/data/github/python/doot/doot/enums.py::162][Location]]
    :context:
@@ -127,4 +122,71 @@ instead of using the static groups
    [[/media/john/data/github/python/doot/wiki_/lets_talk_about_names.md::1][Location]]
    :context:
         <2024-06-14 Fri> # Lets talk about Names
+   :END:
+** TRIAGE auto-cleanup old log files
+   [[/media/john/data/github/python/doot/::7][Location]]
+   :context:
+        <2024-06-14 Fri>   drwxr-xr-- 18 john john 4.0K Jun 13 22:06 doot
+   :END:
+** TRIAGE implement taskname.match_version
+   [[/media/john/data/github/python/doot/doot/_structs/task_name.py::54][Location]]
+   :context:
+        <2024-06-14 Fri>     def match_version(self, other) -> bool:
+   :END:
+** TRIAGE should taskname.instantiate do $gen$.{prefix}.<UUID> or {prefix}.$gen$.<UUID>?
+   [[/media/john/data/github/python/doot/doot/_structs/task_name.py::137][Location]]
+   :context:
+        <2024-06-15 Sat>           # TODO possibly do $gen$.{prefix?}.<UUID>
+   :END:
+** TRIAGE add a post.clear action
+   [[/media/john/data/github/python/doot/doot/__data/aliases.toml::89][Location]]
+   :context:
+        <2024-06-15 Sat> "post.get"                    =  "doot.actions.postbox:GetPostAction"
+   :END:
+** OKAY factor key decorator to separate file
+   [[/media/john/data/github/python/doot/doot/_structs/key.py::64][Location]]
+   :context:
+        <2024-06-15 Sat> class KeyDecorator:
+   :END:
+using dependency injection to not have circular dependency
+** TRIAGE check this reformatting is correct
+   [[/media/john/data/github/python/doot/doot/utils/key_formatter.py::124][Location]]
+   :context:
+        <2024-06-17 Mon>                 return "{{{}}}".format(key)
+   :END:
+non-key's may be being wrapped incorrectly
+** TRIAGE should redirections be preferred?
+   [[/media/john/data/github/python/doot/doot/_structs/__tests/test_key.py::192][Location]]
+   :context:
+        <2024-06-21 Fri>     def test_expansion_prefers_direct_over_other(self, mocker, name):
+   :END:
+** TRIAGE in 3.12, convert to a DKeyPath here
+   [[/media/john/data/github/python/doot/doot/_structs/dkey.py::110][Location]]
+   :context:
+        <2024-06-21 Fri>     def Expand(key:str|Key_p|pl.Path, *args, **kwargs) -> Any:
+   :END:
+** TRIAGE py3.12 refactor locations to be subclasses of path
+   [[/media/john/data/github/python/doot/doot/_abstract/protocols.py::199][Location]]
+   :context:
+        <2024-06-21 Fri> class Location_p(Protocol):
+   :END:
+** TRIAGE implement dkey decorators
+   [[/media/john/data/github/python/doot/doot/utils/dkey_decorator.py::132][Location]]
+   :context:
+        <2024-06-25 Tue>         # return ftz.partial(DecorationUtils.prepare_expansion, keys)
+   :END:
+** TRIAGE implement postbox dkey
+   [[/media/john/data/github/python/doot/doot/_structs/dkey.py::440][Location]]
+   :context:
+        <2024-06-25 Tue> class PostBoxDKey(SingleDKey):
+   :END:
+** TRIAGE dkey.__new__ for marks
+   [[/media/john/data/github/python/doot/doot/_structs/dkey.py::110][Location]]
+   :context:
+        <2024-06-25 Tue>             case str() if len(s_keys := DKeyFormatter.Parse(data)) == 1: # one explicit key
+   :END:
+** TRIAGE deprecated dkeyed.expands for .formats
+   [[/media/john/data/github/python/doot/doot/utils/dkey_decorator.py::100][Location]]
+   :context:
+        <2024-06-25 Tue>         """ mark an action as using expanded string keys """
    :END:
