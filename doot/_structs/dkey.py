@@ -253,6 +253,9 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, str):
         self.set_help(help)
         self._exp_fallback = fallback
 
+    def __call__(self, *args, **kwargs) -> Any:
+        return self.expand(*args, **kwargs)
+
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self}>"
 
@@ -362,9 +365,6 @@ class SingleDKey(DKeyBase):
       ie: {x}. not {x}{y}, or {x}.blah.
     """
 
-    def __call__(self, **kwargs) -> Any:
-        raise NotImplementedError()
-
     def __format__(self, spec:str) -> str:
         """
           Extends standard string format spec language:
@@ -405,9 +405,6 @@ class MultiDKey(DKeyBase):
         self._subkeys    = [DKey(x[0], fparams=x[1], mark=x[2]) for x in s_keys]
         assert(bool(self._subkeys))
 
-    def __call__(self, **kwargs) -> Any:
-        raise NotImplementedError()
-
     def __format__(self, spec:str):
         """
           Multi keys have no special formatting
@@ -444,9 +441,6 @@ class NonDKey(DKeyBase):
           ignores all kwargs
         """
         super().__init__(data)
-
-    def __call__(self, *args, **kwargs) -> str:
-        return str(self)
 
     def __format__(self, spec) -> str:
         rem, _, _ = self._consume_format_params(spec)
@@ -507,5 +501,16 @@ class PathMultiDKey(MultiDKey):
 class PostBoxDKey(SingleDKey):
     """ A DKey which expands from postbox tasknames  """
     _mark = DKey.mark.POSTBOX
+
+    def expand(self, *sources, on_fail=None, **kwargs):
+        # expand key to a task name
+        target = None
+        # get from postbox
+        result = None
+        self._check_expansion(result)
+        # return result
+        raise NotImplementedError()
+
+
 
 ##-- end subclasses
