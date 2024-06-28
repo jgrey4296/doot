@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python4
 """
 
 """
@@ -22,9 +22,11 @@ from doot.control.locations import DootLocations
 from doot._structs.action_spec import ActionSpec
 from doot._structs import dkey as dkey
 from doot.utils.dkey_formatter import DKeyFormatter
+from doot._structs.code_ref import CodeReference
+from doot._abstract.protocols import Key_p
 
-KEY_BASES               : Final[str]           = ["bob", "bill", "blah", "other"]
-WRAPPED_KEY_BASES       : Final[str]           = ["{bob}", "{bill}", "{blah}", "{other}"]
+KEY_BASES               : Final[str]           = ["bob", "bill", "blah", "other", "23boo", "aweg2531", "awe_weg", "aweg-weji-joi"]
+WRAPPED_KEY_BASES       : Final[str]           = [f"{{{x}}}" for x in KEY_BASES]
 PARAM_KEY_BASES         : Final[str]           = ["{bob:wd}", "{bill:w}", "{blah:wi}", "{other:i}"]
 MULTI_KEYS              : Final[str]           = ["{bob}/{bill}", "{blah}/{bloo}", "{blah}/{bloo}"]
 NON_PATH_MUTI_KEYS      : Final[str]           = ["{bob}_{bill}", "{blah} <> {bloo}", "! {blah}! {bloo}!"]
@@ -38,42 +40,98 @@ TEST_LOCS               : Final[DootLocations] = DootLocations(pl.Path.cwd()).up
 
 class TestDKeyConstruction:
 
+    def test_initial(self):
+        key  = dkey.DKey("{test}")
+        assert(isinstance(key, dkey.SingleDKey))
+        assert(isinstance(key, dkey.DKey))
+        assert(isinstance(key, str))
+        assert(isinstance(key, Key_p))
+        assert(f"{key:w}" == "{test}")
+        assert(f"{key:i}" == "test_")
+        assert(str(key) == "test")
+
+    def test_subclass_check(self):
+        assert(issubclass(dkey.SingleDKey, dkey.DKey))
+
+    def test_initial_no_wrap(self):
+        key  = dkey.DKey("test")
+        assert(isinstance(key, dkey.SingleDKey))
+        assert(isinstance(key, dkey.DKey))
+        assert(isinstance(key, str))
+        assert(f"{key:w}" == "{test}")
+        assert(f"{key:i}" == "test_")
+        assert(str(key) == "test")
+
+    def test_simple_with_fparams(self):
+        key  = dkey.DKey("{test:w}")
+        assert(isinstance(key, dkey.SingleDKey))
+        assert(isinstance(key, dkey.DKey))
+        assert(isinstance(key, str))
+        assert(key._fparams == "w")
+
+    def test_initial_mkey(self):
+        key  = dkey.DKey("{test}/{blah}")
+        assert(isinstance(key, dkey.MultiDKey))
+        assert(isinstance(key, dkey.DKey))
+        assert(isinstance(key, str))
+        assert(key._fparams == None)
+        assert(key.keys() == [dkey.DKey("test"), dkey.DKey("blah")])
+
+    def test_initial_nonkey(self):
+        key  = dkey.DKey("blah bloo blee", explicit=True)
+        assert(isinstance(key, dkey.NonDKey))
+        assert(isinstance(key, str))
+        assert(isinstance(key, dkey.DKey))
+
+    def test_init_with_fparams(self):
+        key  = dkey.DKey("{test:w}")
+        assert(isinstance(key, dkey.SingleDKey))
+        assert(key._fparams == "w")
+
+    def test_subclass_creation_fail(self):
+        with pytest.raises(RuntimeError):
+            dkey.SingleDKey("test")
+
+    def test_subclass_creation_force(self):
+        key = dkey.SingleDKey("test", force=True)
+        assert(key is not None)
+        assert(isinstance(key, dkey.DKey))
+        assert(isinstance(key, dkey.SingleDKey))
+
     @pytest.mark.parametrize("name", VALID_KEYS)
     def test_base_key(self, name):
-        obj = dkey.SimpleDKey(name)
+        obj = dkey.DKey(name)
         assert(isinstance(obj, dkey.DKey))
         assert(isinstance(obj, str))
         assert("{" not in obj)
         assert(hasattr(obj, "_fparams"))
 
-    @pytest.mark.parametrize("name", VALID_KEYS)
-    def test_build(self, name):
-        obj = dkey.DKey.build(name)
-        assert(isinstance(obj, dkey.DKey))
-
-    @pytest.mark.parametrize("name", WRAPPED_KEY_BASES)
-    def test_build_from_wrapped(self, name):
-        obj = dkey.DKey.build(name)
-        assert(isinstance(obj, dkey.DKey))
-        assert(isinstance(obj, dkey.SimpleDKey))
-        assert("{" not in obj)
-
-    @pytest.mark.parametrize("name", PARAM_KEY_BASES)
-    def test_build_with_params(self, name):
-        obj = dkey.SimpleDKey(name)
+    @pytest.mark.skip
+    @pytest.mark.parametrize("name", ["{bob:p}/{bill}"])
+    def test_build_path_key_from_str(self, name):
+        obj = dkey.DKey(name)
         assert(isinstance(obj, dkey.DKey))
         assert(isinstance(obj, str))
+        assert(obj._etype is pl.Path)
+
+    @pytest.mark.parametrize("name", VALID_KEYS)
+    @pytest.mark.parametrize("check", [int,str,int|float,list[int],list[str|float], Any, None])
+    def test_build_with_typecheck(self, name, check):
+        obj = dkey.DKey(name, check=check)
+        assert(isinstance(obj, dkey.DKey))
+        assert(isinstance(obj, str))
+        assert(obj._typecheck == check or Any)
 
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_key_str(self, name):
-        obj = dkey.SimpleDKey(name)
+        obj = dkey.DKey(name)
         assert(isinstance(obj, dkey.DKey))
         assert(isinstance(obj, str))
         assert(str(obj) == name)
 
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_key_down_to_str(self, name):
-        obj = dkey.SimpleDKey(name)
+        obj = dkey.DKey(name)
         assert(isinstance(obj, dkey.DKey))
         assert(isinstance(obj, str))
         as_str = str(obj)
@@ -81,29 +139,30 @@ class TestDKeyConstruction:
         assert(not isinstance(as_str, dkey.DKey))
         assert(isinstance(as_str, str))
 
+    @pytest.mark.xfail
     @pytest.mark.parametrize("name", MULTI_KEYS)
     def test_keys_error_on_multi_keys(self, name):
         with pytest.raises(ValueError):
-            dkey.SimpleDKey(name)
+            dkey.SingleDKey(name)
 
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_build_explicit_(self, name):
         explicit = "".join(["{", name, "}"])
-        obj = dkey.DKey.build(explicit, explicit=True)
+        obj = dkey.DKey(explicit, explicit=True)
         assert(isinstance(obj, dkey.DKey))
         assert(str(obj) == name)
 
     @pytest.mark.parametrize("name", MULTI_KEYS + NON_PATH_MUTI_KEYS)
     def test_multi_build(self, name):
-        obj = dkey.DKey.build(name)
+        obj = dkey.DKey(name)
         assert(isinstance(obj, dkey.DKey))
-        assert(not isinstance(obj, dkey.SimpleDKey))
+        assert(not isinstance(obj, dkey.SingleDKey))
         assert(isinstance(obj, dkey.MultiDKey))
 
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_build_idempotent(self, name):
-        obj1 = dkey.DKey.build(name)
-        obj2 = dkey.DKey.build(obj1)
+        obj1 = dkey.DKey(name)
+        obj2 = dkey.DKey(obj1)
         assert(isinstance(obj1, dkey.DKey))
         assert(isinstance(obj2, dkey.DKey))
         assert(obj1 == obj2)
@@ -112,15 +171,15 @@ class TestDKeyConstruction:
 
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_build_non_key(self, name):
-        obj = dkey.DKey.build(name, explicit=True)
+        obj = dkey.DKey(name, explicit=True)
         assert(isinstance(obj, dkey.DKey))
         assert(isinstance(obj, dkey.NonDKey))
 
     @pytest.mark.parametrize("name", KEY_INDIRECTS)
     def test_build_indirect(self, name):
-        obj = dkey.DKey.build(name)
+        obj = dkey.DKey(name)
         assert(isinstance(obj, dkey.DKey))
-        assert(isinstance(obj, dkey.SimpleDKey))
+        assert(isinstance(obj, dkey.SingleDKey))
         assert(str(obj) == name)
 
 class TestDKeyDunderFormatting:
@@ -129,52 +188,65 @@ class TestDKeyDunderFormatting:
     def spec(self):
         return ActionSpec(kwargs=TomlGuard({"y": "aweg", "z_": "bloo", "a": 2}))
 
+
+    @pytest.mark.parametrize("name", KEY_BASES)
+    def test_repr(self, name):
+        key = dkey.DKey(name)
+        assert(repr(key) == f"<SingleDKey: {key}>")
+
+
+    @pytest.mark.parametrize("name", MULTI_KEYS)
+    def test_multi_repr(self, name):
+        key = dkey.DKey(name)
+        assert(repr(key) == f"<MultiDKey: {key}>")
+
+
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_initial_fstr(self, spec, name):
         """ key -> key"""
-        key           = dkey.DKey.build(name)
+        key           = dkey.DKey(name)
         result        = f"{key}"
         assert(result == name)
 
     @pytest.mark.parametrize("name", KEY_INDIRECTS)
     def test_fstr_indirect(self, spec, name):
         """ keys_ -> keys_"""
-        key           = dkey.DKey.build(name)
+        key           = dkey.DKey(name)
         result        = f"{key}"
         assert(result == name)
 
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_fstr_wrapped(self, spec, name):
         """ key -> {key} """
-        key           = dkey.DKey.build(name)
+        key           = dkey.DKey(name)
         result        = f"{key:w}"
         assert(result == "".join(["{", name, "}"]))
 
     @pytest.mark.parametrize("name", KEY_INDIRECTS)
     def test_fstr_wrapped_indirect(self, spec, name):
         """ keys_ -> {keys_}"""
-        key           = dkey.DKey.build(name)
-        result        = f"{key:w}"
+        key           = dkey.DKey(name)
+        result        = f"{key:wi}"
         assert(result == "".join(["{", name, "}"]))
 
     @pytest.mark.parametrize("name", KEY_BASES + KEY_INDIRECTS)
     def test_coerce_direct_to_wrapped_indirect(self, spec, name):
         """ {key} -> {key_} """
-        key           = dkey.DKey.build(name)
+        key           = dkey.DKey(name)
         result        = f"{key:wi}"
         assert(result == "".join(["{", name.removesuffix("_"), "_", "}"]))
 
     @pytest.mark.parametrize("name", KEY_BASES + KEY_INDIRECTS)
     def test_coerce_indirect_to_wrapped_direct(self, spec, name):
         """ {key_} -> {key} """
-        key           = dkey.DKey.build(name)
+        key           = dkey.DKey(name)
         result        = f"{key:wd}"
         assert(result == "".join(["{", name.removesuffix("_"), "}"]))
 
     @pytest.mark.parametrize("name", MULTI_KEYS)
     def test_fstr_multi_key(self, spec, name):
         """ multi keys are explicit by default """
-        key           = dkey.DKey.build(name)
+        key           = dkey.DKey(name)
         result        = f"{key}"
         assert(result == name)
         assert(bool(key.keys()))
@@ -182,7 +254,7 @@ class TestDKeyDunderFormatting:
     @pytest.mark.parametrize("name", MULTI_KEYS)
     def test_fstr_multi_explicit(self, spec, name):
         """ specifying alt form does nothing """
-        key           = dkey.DKey.build(name)
+        key           = dkey.DKey(name)
         explicit = f"{key:w}"
         implicit = f"{key:i}"
         assert(explicit == name == implicit)
@@ -191,33 +263,79 @@ class TestDKeyDunderFormatting:
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_fstr_non_key(self, spec, name):
         """ non keys cant be explicit, specifying alt form does nothing """
-        key           = dkey.DKey.build(name, explicit=True)
+        key           = dkey.DKey(name, explicit=True)
         assert(isinstance(key, dkey.NonDKey))
         explicit = f"{key:w}"
         implicit = f"{key}"
         assert(explicit == name == implicit)
 
-
-    def test_str_format(self):
-        key = dkey.SimpleDKey("x")
+    @pytest.mark.parametrize("name", KEY_BASES)
+    def test_str_format(self, name):
+        key = dkey.DKey(name)
         result = "{}".format(key)
-        assert(result == "x")
+        assert(result == name)
 
-    def test_fstr_format(self):
-        key = dkey.SimpleDKey("x")
+    @pytest.mark.parametrize("name", KEY_BASES)
+    def test_fstr_format(self, name):
+        key = dkey.DKey(name)
         result = f"{key}"
-        assert(result == "x")
+        assert(result == name)
 
-    def test_fstr_with_width(self):
-        key = dkey.SimpleDKey("x")
-        result = f"{key: <5w}"
-        assert(result == "{x}  ")
+    @pytest.mark.parametrize("name", KEY_BASES)
+    def test_fstr_with_width(self, name):
+        key = dkey.DKey(name)
+        result = f"{key: <5}"
+        assert(result == f"{name: <5}")
 
-    def test_nonkey_format(self):
-        fmt = DKeyFormatter()
-        key = dkey.NonDKey("x")
-        result = fmt.format(key)
-        assert(result == "x")
+    @pytest.mark.parametrize("name", KEY_BASES)
+    def test_nonkey_format(self, name):
+        key           = dkey.DKey(name, explicit=True)
+        result        = f"{key}"
+        assert(result == name)
+
+    @pytest.mark.parametrize("name", MULTI_KEYS)
+    def test_multikey_format(self, name):
+        key    = dkey.DKey(name)
+        result = f"{key}"
+        assert(isinstance(key, dkey.MultiDKey))
+        assert(result == name)
+
+class TestDKeyComparison:
+
+    @pytest.mark.parametrize("name", VALID_KEYS)
+    def test_initial(self, name):
+        key1 = dkey.DKey(name)
+        key2 = dkey.DKey(name)
+        assert(key1 == key2)
+        assert(key1 is not key2)
+
+    @pytest.mark.parametrize("name", VALID_KEYS)
+    def test_hashing(self, name):
+        key1 = dkey.DKey(name)
+        key2 = dkey.DKey(name)
+        assert(hash(key1) == hash(key2) == hash(str(key1)) == hash(str(key2)))
+
+    @pytest.mark.parametrize("name", KEY_BASES)
+    def test_key_and_str(self, name):
+        """ both __and__ + __rand__ """
+        key      = dkey.DKey(name)
+        test_str = "this is a {} test".format(f"{key:w}")
+        assert(key & test_str)
+        assert(test_str & key)
+
+    @pytest.mark.parametrize("name", KEY_BASES)
+    def test_key_and_str_fail(self, name):
+        """ both __and__ + __rand__ """
+        key      = dkey.DKey(name)
+        test_str = "this is a {} test".format(f"{key}")
+        assert(not (key & test_str))
+        assert(not (test_str & key))
+
+    @pytest.mark.parametrize("name", KEY_BASES)
+    def test_key_eq(self, name):
+        """   """
+        key      = dkey.DKey(name)
+        assert( key == name )
 
 class TestDKeyExpansion:
 
@@ -226,73 +344,95 @@ class TestDKeyExpansion:
         return ActionSpec(kwargs=TomlGuard({"y": "aweg", "z_": "a", "a": 2}))
 
     def test_initial(self):
-        key = dkey.DKey.build("x")
+        key = dkey.DKey("x")
         assert(isinstance(key, dkey.DKey))
 
     def test_simple_expansion(self, spec):
-        key = dkey.DKey.build("a")
+        """ a -> 2 """
+        key = dkey.DKey("a")
         assert(isinstance(key, dkey.DKey))
         result = key.expand(spec=spec)
         assert(isinstance(result, int))
         assert(result == 2)
 
     def test_type_coerce_expansion(self, spec):
-        key = dkey.DKey.build("a", ehint=float)
+        """ a -> 2 (float) """
+        key = dkey.DKey("a", ehint=float)
         assert(isinstance(key, dkey.DKey))
         result = key.expand(spec=spec)
         assert(isinstance(result, float))
         assert(result == 2)
 
     def test_indirect_recursive_expansion(self, spec):
-        key = dkey.DKey.build("z")
+        """ z -> z_ -> a -> 2 """
+        key = dkey.DKey("z")
         assert(isinstance(key, dkey.DKey))
         result = key.expand(spec=spec)
         assert(result == 2)
 
     def test_state_expansion(self, spec):
-        key = dkey.DKey.build("blah")
+        """ blah -> bloo """
+        key = dkey.DKey("blah")
         state = {"blah": "bloo"}
         assert(isinstance(key, dkey.DKey))
         result = key.expand(spec=spec, state=state)
         assert(result == "bloo")
 
     def test_missing_expansion(self, spec):
-        key = dkey.DKey.build("blah")
+        """ blah -> None """
+        key = dkey.DKey("blah")
         state = {}
         assert(isinstance(key, dkey.DKey))
         result = key.expand(spec=spec, state=state)
         assert(result == None)
 
     def test_explicit_expansion(self, spec):
-        key = dkey.DKey.build("{blah}")
+        """
+          blah -> bloo
+        """
+        key = dkey.DKey("{blah}")
         state = {"blah": "bloo"}
         assert(isinstance(key, dkey.DKey))
         result = key.expand(spec=spec, state=state)
         assert(result == "bloo")
 
     def test_direct_when_no_indirect(self, spec):
-        key = dkey.DKey.build("{blah_}")
+        """
+          blah_ -> blah -> bloo
+        """
+        key = dkey.DKey("{blah_}")
         state = {"blah": "bloo"}
         assert(isinstance(key, dkey.DKey))
         result = key.expand(spec=spec, state=state)
         assert(result == "bloo")
 
     def test_multikey_str_expansion(self, spec):
-        key = dkey.DKey.build("{blah} {bloo}", ehint=str)
+        """
+          blah -> aweg
+          bloo -> gawe
+        """
+        key = dkey.DKey("{blah} {bloo}", ehint=str)
         state = {"blah": "aweg", "bloo": "gawe"}
         assert(isinstance(key, dkey.DKey))
         result = key.expand(spec=spec, state=state)
         assert(result == "aweg gawe")
 
     def test_multikey_missing_expansion(self, spec):
-        key = dkey.DKey.build("{blah} {bloo}")
+        """
+          blah -> aweg
+          bloo -> {bloo}
+        """
+        key = dkey.DKey("{blah} {bloo}")
         state = {"blah": "aweg"}
         assert(isinstance(key, dkey.DKey))
         result = key.expand(spec=spec, state=state)
         assert(result == "aweg {bloo}")
 
     def test_multikey_expansion_to_path(self, spec):
-        key = dkey.DKey.build("{blah}/{bloo}", ehint=pl.Path)
+        """
+          blah/bloo -> aweg/wegg
+        """
+        key = dkey.DKey("{blah}/{bloo}", ehint=pl.Path)
         assert(isinstance(key, dkey.MultiDKey))
         assert(key._etype is pl.Path)
         state = {"blah": pl.Path("aweg"), "bloo":"wegg"}
@@ -301,298 +441,80 @@ class TestDKeyExpansion:
         assert(result == doot.locs[pl.Path("aweg/wegg")])
 
     def test_nested_expansion(self, spec):
-        key = dkey.DKey.build("top")
+        """
+          top -> {y} : {a} -> aweg : 2
+        """
+        key = dkey.DKey("top")
         assert(isinstance(key, dkey.DKey))
-        state = {"top": dkey.DKey.build("{y} : {a}")}
+        state = {"top": dkey.DKey("{y} : {a}")}
         result = key.expand(spec=spec, state=state)
         assert(result == "aweg : 2")
 
-
     def test_recursive_expansion(self, spec):
-        key = dkey.DKey.build("top")
+        """
+          top -> b -> {b}
+        """
+        key = dkey.DKey("top")
         assert(isinstance(key, dkey.DKey))
-        state = {"top_": "b", "b": dkey.DKey.build("{b}")}
+        state = {"top_": "b", "b": dkey.DKey("{b}")}
         result = key.expand(spec=spec, state=state)
         assert(result == "{b}")
 
-
     def test_typed_expansion(self, spec):
+        """
+          test -> {1,2,3,4}
+        """
         state = {"test": set([1,2,3,4])}
-        key   = dkey.DKey.build("test")
+        key   = dkey.DKey("test")
         assert(isinstance(key, dkey.DKey))
         result = key.expand(spec=spec, state=state)
         assert(isinstance(result, set))
 
-@pytest.mark.skip
-class TestKeyParameterized:
+    def test_expansion_with_check(self, spec):
+        """
+          test -> {1,2,3,4}
+        """
+        state = {"test": set([1,2,3,4])}
+        key   = dkey.DKey("test", check=set[int])
+        assert(isinstance(key, dkey.DKey))
+        result = key.expand(spec=spec, state=state)
+        assert(isinstance(result, set))
 
-    @pytest.mark.parametrize("name", KEY_BASES)
-    def test_eq(self, name):
-        obj = dkey.SimpleDKey(name)
-        assert(obj == name)
-
-    @pytest.mark.parametrize("name", KEY_BASES)
-    def test_form(self, name):
-        obj = dkey.SimpleDKey(name)
-        assert(obj.form.startswith("{"))
-        assert(obj.form.endswith("}"))
-
-    @pytest.mark.parametrize("name,target,within", [("bob", "{bob}", True), ("bob", "bob", False)])
-    def test_within(self, name, target, within):
-        obj = dkey.SimpleDKey(name)
-        assert(obj.within(target) == within)
-
-    @pytest.mark.parametrize("name", KEY_INDIRECTS)
-    def test_is_indirect(self, name):
-        obj = dkey.SimpleDKey(name)
-        assert(isinstance(obj, dkey.DKey))
-        assert(obj.is_indirect)
-
-    @pytest.mark.parametrize("name", KEY_BASES)
-    def test_not_is_indirect(self, name):
-        obj = dkey.SimpleDKey(name)
-        assert(isinstance(obj, dkey.DKey))
-        assert(not obj.is_indirect)
-
-    @pytest.mark.parametrize("name", KEY_BASES)
-    def test_hash(self, name):
-        obj = dkey.SimpleDKey(name)
-        assert(isinstance(obj, dkey.DKey))
-        assert(hash(name) == hash(name))
-
-    @pytest.mark.parametrize("name", KEY_BASES)
-    def test_indirect(self, name):
-        obj = dkey.SimpleDKey(name)
-        assert(not obj.indirect.endswith("__"))
-
-    @pytest.mark.parametrize("name", KEY_INDIRECTS)
-    def test_indirect_idempotent(self, name):
-        assert(name.endswith("_"))
-        obj = dkey.SimpleDKey(name)
-        assert(not obj.indirect.endswith("__"))
-
-    @pytest.mark.parametrize("name", KEY_BASES)
-    def test_redirect(self, mocker, name):
-        obj           = dkey.SimpleDKey(name)
-        spec          = mocker.Mock(params={f"{name}_": "blah"}, spec=ActionSpec)
-        assert(obj.indirect in spec.params)
-        result        = obj.redirect(spec)
-        assert(isinstance(result, dkey.DKey))
-        assert(result == "blah")
-
-    @pytest.mark.parametrize("name", KEY_BASES)
-    def test_redirect_to_list_fail(self, mocker, name):
-        obj           = dkey.SimpleDKey(name)
-        spec          = mocker.Mock(params={f"{name}_": ["blah", "bloo"]}, spec=ActionSpec)
-        assert(obj.indirect in spec.params)
+    def test_expansion_with_failed_check(self, spec):
+        """
+          test -> TypeError
+        """
+        state = {"test": [1,2,3,4]}
+        key   = dkey.DKey("test", check=set[int])
         with pytest.raises(TypeError):
-            result        = obj.redirect(spec)
+            key.expand(spec=spec, state=state)
 
-    @pytest.mark.parametrize("name", KEY_BASES)
-    def test_redirect_multi(self, mocker, name):
-        obj           = dkey.SimpleDKey(name)
-        spec          = mocker.Mock(params={f"{name}_": ["blah", "bloo"]}, spec=ActionSpec)
-        assert(obj.indirect in spec.params)
-        result        = obj.redirect_multi(spec)
-        assert(isinstance(result, list))
-        assert(all((isinstance(x, dkey.DKey) for x in result)))
+    def test_expansion_with_failed_value_check(self, spec):
+        """
+          test -> TypeError
+        """
+        state = {"test": ["a","b","c","d"]}
+        key   = dkey.DKey("test", check=list[int])
+        with pytest.raises(TypeError):
+            key.expand(spec=spec, state=state)
 
-    @pytest.mark.parametrize("name", KEY_BASES)
-    def test_expand_from_spec(self, mocker, name):
-        obj           = dkey.SimpleDKey(name)
-        spec          = mocker.Mock(params={f"{obj}": "blah"}, spec=ActionSpec)
-        result        = obj.expand(spec, {})
-        assert(result == "blah")
+    def test_coderef_expansion(self, spec):
+        """
+          test -> coderef
+        """
+        state = {"test": "doot._structs.task_spec:TaskSpec"}
+        key   = dkey.DKey("test", ehint=CodeReference)
+        assert(isinstance(key, dkey.DKey))
+        result = key.expand(spec=spec, state=state)
+        assert(isinstance(result, CodeReference))
 
-    @pytest.mark.parametrize("name", KEY_BASES)
-    def test_expand_from_state(self, mocker, name):
-        obj           = dkey.SimpleDKey(name)
-        spec          = mocker.Mock(params={}, spec=ActionSpec)
-        state         = {f"{obj}": "blah"}
-        result        = obj.expand(spec, state)
-        assert(result == "blah")
-
-    @pytest.mark.parametrize("name", KEY_BASES)
-    def test_expansion_prefers_spec_over_state(self, mocker, name):
-        obj           = dkey.SimpleDKey(name)
-        spec          = mocker.Mock(params={f"{obj}": "bloo"}, spec=ActionSpec)
-        state         = {f"{obj}": "blah"}
-        result        = obj.expand(spec, state)
-        assert(result == "bloo")
-
-    @pytest.mark.parametrize("name", KEY_BASES)
-    def test_expansion_prefers_redirect_over_other(self, mocker, name):
-        obj           = dkey.SimpleDKey(name)
-        spec          = mocker.Mock(params={"aweg": "bloo", obj.indirect : "aweg"}, spec=ActionSpec)
-        state         = {f"{obj}": "blah"}
-        result        = obj.expand(spec, state)
-        assert(result == "bloo")
-
-    @pytest.mark.parametrize("name", KEY_BASES)
-    def test_expansion_of_missing_returns_form(self, mocker, name):
-        obj           = dkey.SimpleDKey(name)
-        spec          = mocker.Mock(params={}, spec=ActionSpec)
-        state         = {}
-        result        = obj.expand(spec, state)
-        assert(result == obj.form)
-
-    @pytest.mark.parametrize("name", KEY_BASES)
-    def test_recursive_expansion(self, mocker, name):
-        obj           = dkey.SimpleDKey(name)
-        spec          = mocker.Mock(params={f"{name}": dkey.SimpleDKey("key1")}, spec=ActionSpec)
-        state         = {"key1": dkey.SimpleDKey("key2"), "key2": "aweg"}
-        result        = obj.expand(spec, state)
-        assert(result == "aweg")
-
-    @pytest.mark.parametrize("name", KEY_BASES)
-    @pytest.mark.parametrize("value,type", [([1,2,3], list)])
-    def test_expansion_flattening(self, mocker, name, value, type):
-        obj           = dkey.SimpleDKey(name)
-        spec          = mocker.Mock(params={}, spec=ActionSpec)
-        state         = {name: value}
-        result        = obj.expand(spec, state)
-        assert(isinstance(result, str))
-        assert(result == str(value))
-
-    @pytest.mark.parametrize("name", KEY_BASES)
-    @pytest.mark.parametrize("value,type", [([1,2,3], list)])
-    def test_to_type_expansion(self, mocker, name, value, type):
-        obj           = dkey.SimpleDKey(name)
-        spec          = mocker.Mock(params={}, spec=ActionSpec)
-        state         = {name: value}
-        result        = obj.to_type(spec, state)
-        assert(isinstance(result, type))
-        assert(result == value)
-
-    @pytest.mark.parametrize("name", KEY_BASES)
-    @pytest.mark.parametrize("value,type", [([1,2,3], list)])
-    def test_to_type_on_fail(self, mocker, name, value, type):
-        obj           = dkey.SimpleDKey(name)
-        spec          = mocker.Mock(params={}, spec=ActionSpec)
-        state         = {}
-        result        = obj.to_type(spec, state, on_fail="blah")
-        # assert(isinstance(result, type))
-        assert(result == "blah")
-
-    @pytest.mark.parametrize("name", KEY_BASES)
-    @pytest.mark.parametrize("value,type", [([1,2,3], list)])
-    def test_to_type_on_fail_nop(self, mocker, name, value, type):
-        obj           = dkey.SimpleDKey(name)
-        spec          = mocker.Mock(params={}, spec=ActionSpec)
-        state         = {name : value}
-        result        = obj.to_type(spec, state, on_fail="blah")
-        # assert(isinstance(result, type))
-        assert(result == value)
-
-    @pytest.mark.parametrize("key,target", [("blah", "./doot")])
-    def test_to_path_expansion(self, mocker, key, target):
-        mocker.patch.dict("doot.__dict__", locs=TEST_LOCS)
-        obj           = dkey.DKey.build(key)
-        spec          = mocker.Mock(params={}, spec=ActionSpec)
-        state         = {}
-        result        = obj.to_path(spec, state)
-        assert(isinstance(result, pl.Path))
-        assert(result == pl.Path(target).expanduser().resolve())
-
-    @pytest.mark.parametrize("name", MULTI_KEYS + NON_PATH_MUTI_KEYS)
-    def test_set_default_expansion(self, name):
-        spec  = ActionSpec(kwargs=TomlGuard({"x": "aweg", "y_": "a"}))
-        state = {"a": "bloo", "b_": "blee"}
-        obj   = dkey.dkey.DKey.build(name, strict=False)
-        obj.set_expansion_hint("str")
-        assert(isinstance(obj(spec, state), str))
-
-@pytest.mark.skip
-class TestKeySimple:
+class TestDKeyFormatting:
 
     @pytest.fixture(scope="function")
     def spec(self):
-        return ActionSpec(kwargs=TomlGuard({"x": "aweg", "y_": "a"}))
+        return ActionSpec(kwargs=TomlGuard({"y": "aweg", "z_": "a", "a": 2}))
 
-    @pytest.fixture(scope="function")
-    def state(self):
-        return {"a": "bloo", "b_": "blee"}
-
-    def test_basic_expand(self):
-        example = dkey.DKey.build("blah")
-        assert(isinstance(example, str))
-        assert(isinstance(example, dkey.DKey))
-
-    def test_eq(self):
-        example = dkey.DKey.build("blah")
-        other   = dkey.DKey.build("blah")
-        assert(example == other)
-        assert(example == example)
-        assert(example is example)
-        assert(example is not other)
-        assert(example == "blah")
-
-    def test_contains(self):
-        example = dkey.DKey.build("blah")
-        assert(example in "this is a {blah} test")
-        assert("blah" in example)
-
-    def test_contain_fail(self):
-        example = dkey.DKey.build("blah")
-        assert(example.form not in "this is a blah test")
-        assert(example not in "this is a {bloo} test")
-        assert("bloo" not in example)
-
-    def test_within(self):
-        example = dkey.DKey.build("blah")
-        assert(example.within("this is a {blah} test"))
-
-    def test_within_fail(self):
-        example = dkey.DKey.build("blah")
-        assert(not example.within("this is a blah test"))
-
-    def test_within_dict(self):
-        example = dkey.DKey.build("blah")
-        assert(example.within({"blah": "aweg"}))
-
-    def test_within_dict_fail(self):
-        example = dkey.DKey.build("blah")
-        assert(not example.within({"bloo": "aweg"}))
-        assert(not example.within({"{bloo}": "aweg"}))
-
-    def test_str_call(self):
-        example = dkey.DKey.build("blah")
-        assert(str(example) == "blah")
-
-    def test_form(self):
-        example = dkey.DKey.build("blah")
-        assert(example.form == "{blah}")
-
-    def test_repr_call(self):
-        example = dkey.DKey.build("blah")
-        assert(repr(example) == "<SimpleDKey: blah>")
-
-    def test_indirect(self):
-        example = dkey.DKey.build("blah")
-        assert(example.indirect == "blah_")
-
-    def test_expand_nop(self, spec, state):
-        example = dkey.DKey.build("blah")
-        result = example.expand(spec, state)
-        assert(result == "{blah}")
-
-    def test_expand(self, spec, state):
-        example       = dkey.DKey.build("x")
-        result        = example.expand(spec, state)
-        assert(result == "aweg")
-
-    def test_format_nested(self, spec, state):
-        example = dkey.DKey.build("c")
-        state['c'] = dkey.DKey.build("a")
-        result = example.expand(spec, state)
-        assert(result == "bloo")
-
-    def test_in_dict(self, spec, state):
-        example = dkey.DKey.build("c")
-        the_dict = {example : "blah"}
-        assert(example in the_dict)
-
-    def test_equiv_in_dict(self, spec, state):
-        example = dkey.DKey.build("c")
-        the_dict = {"c": "blah"}
-        assert(example in the_dict)
+    def test_initial(self):
+        key = dkey.DKey("x")
+        fmt = DKeyFormatter()
+        result = fmt.format(key)

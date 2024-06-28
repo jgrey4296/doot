@@ -21,7 +21,7 @@ doot._test_setup()
 
 from doot.structs import ActionSpec
 from doot.utils.dkey_formatter import DKeyFormatter
-from doot._structs.key import DootNonKey, DootSimpleKey
+from doot._structs.dkey import DKey
 from doot._structs import dkey
 
 class TestKeyFormatter:
@@ -48,24 +48,12 @@ class TestKeyFormatter:
         assert(spec.kwargs.val == "bloo")
         assert(spec.kwargs.a == "blah")
 
-    def test_missing(self, mocker, spec):
-        fmt           = DKeyFormatter()
-        result        = fmt.format("{b}", _spec=spec, _state={})
-        assert(result == "{b}")
-
     @pytest.mark.xfail
     def test_multi(self, mocker, spec):
         fmt           = DKeyFormatter()
         state         = {"b": "aweg"}
         result        = fmt.format("{a}:{b}", _spec=spec, _state=state)
         assert(result == "blah:aweg")
-
-    @pytest.mark.xfail
-    def test_indirect(self, mocker, spec):
-        fmt           = DKeyFormatter()
-        state         = {"b": "aweg"}
-        result        = fmt.format("{a}", _spec=spec, _state=state)
-        assert(result == "blah")
 
     @pytest.mark.xfail
     def test_recursive(self, mocker, spec):

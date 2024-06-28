@@ -44,8 +44,9 @@ class TestKeyConstruction:
         assert(isinstance(obj, dkey.DootMultiKey))
         assert(not isinstance(obj, str))
 
-    def test_multi(self):
-        obj = dkey.DootMultiKey("{blah}/{bloo}")
+    @pytest.mark.parametrize("name", MULTI_KEYS)
+    def test_multi(self, name):
+        obj = dkey.DootMultiKey(name)
         assert(isinstance(obj, DootKey))
         assert(isinstance(obj, dkey.DootMultiKey))
 
@@ -126,7 +127,7 @@ class TestKeyParameterized:
     def test_hash(self, name):
         obj = dkey.DootSimpleKey(name)
         assert(isinstance(obj, DootKey))
-        assert(hash(name) == hash(name))
+        assert(hash(obj) == hash(name))
 
     @pytest.mark.parametrize("name", KEY_BASES)
     def test_indirect(self, name):
