@@ -43,7 +43,7 @@ from doot._abstract.protocols import Key_p, SpecStruct_p
 from doot._structs.code_ref import CodeReference
 from doot.utils.chain_get import DootKeyGetter
 from doot.utils.decorators import DecorationUtils, DootDecorator
-from doot._structs import dkey
+from doot._structs.dkey import DKey
 
 # ##-- end 1st party imports
 
@@ -54,6 +54,8 @@ logging = logmod.getLogger(__name__)
 KEY_PATTERN                                = doot.constants.patterns.KEY_PATTERN
 MAX_KEY_EXPANSIONS                         = doot.constants.patterns.MAX_KEY_EXPANSIONS
 STATE_TASK_NAME_K                          = doot.constants.patterns.STATE_TASK_NAME_K
+ARGS_K         : Final[str]                = "args"
+KWARGS_K       : Final[str]                = "kwargs"
 
 PATTERN        : Final[re.Pattern]         = re.compile(KEY_PATTERN)
 FAIL_PATTERN   : Final[re.Pattern]         = re.compile("[^a-zA-Z_{}/0-9-]")
@@ -72,82 +74,82 @@ class DKeyed:
     arguments are added to the tail of the action args, in order of the decorators.
     the name of the expansion is expected to be the name of the action parameter,
     with a "_" prepended if the name would conflict with a keyword., or with "_ex" as a suffix
-    eg: @dkey.DKey.kwrap.paths("from") -> def __call__(self, spec, state, _from):...
-    or: @dkey.DKey.kwrap.paths("from") -> def __call__(self, spec, state, from_ex):...
+    eg: @DKey.kwrap.paths("from") -> def __call__(self, spec, state, _from):...
+    or: @DKey.kwrap.paths("from") -> def __call__(self, spec, state, from_ex):...
     """
 
     @staticmethod
-    def get_keys(fn) -> list[dkey.DKey]:
+    def get_keys(fn) -> list[DKey]:
         """ Retrieve key annotations from a decorated function """
         fn = DecorationUtils.unwrap(fn)
         return getattr(fn, DecorationUtils._keys, [])
 
     @staticmethod
     def taskname(fn):
-        keys = [dkey.DKey.build(STATE_TASK_NAME_K, exp_hint="type")]
+        keys = [DKey(STATE_TASK_NAME_K, mark=DKey.mark.TASK)]
         return DecorationUtils.prepare_expansion(keys, fn)
 
     @staticmethod
-    def expands(*args, hint:dict|None=None, **kwargs):
+    def formats(*args, **kwargs):
+        keys     = [DKey(x, mark=DKey.mark.STR, **kwargs) for x in args]
+        return ftz.partial(DecorationUtils.prepare_expansion, keys)
+
+    @staticmethod
+    def expands(*args, **kwargs):
         """ mark an action as using expanded string keys """
-        exp_hint = {"expansion": "str", "kwargs" : hint or {} }
-        keys     = [dkey.DKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
-        return ftz.partial(DecorationUtils.prepare_expansion, keys)
+        return DKeyed.formats(*args, **kwargs)
 
     @staticmethod
-    def paths(*args, hint:dict|None=None, **kwargs):
+    def paths(*args, **kwargs):
         """ mark an action as using expanded path keys """
-        exp_hint = {"expansion": "path", "kwargs" : hint or {} }
-        keys = [dkey.DKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
+        keys = [DKey(x, mark=DKey.mark.PATH, **kwargs) for x in args]
         return ftz.partial(DecorationUtils.prepare_expansion, keys)
 
     @staticmethod
-    def types(*args, hint:dict|None=None, **kwargs):
+    def types(*args, **kwargs):
         """ mark an action as using raw type keys """
-        exp_hint = {"expansion": "type", "kwargs" : hint or {} }
-        keys = [dkey.DKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
+        keys = [DKey(x, mark=DKey.mark.FREE, **kwargs) for x in args]
         return ftz.partial(DecorationUtils.prepare_expansion, keys)
 
     @staticmethod
     def args(fn):
         """ mark an action as using spec.args """
-        # TODO handle expansion hint for the args
-        keys = [DootArgsKey("args")]
+        keys = [DKey(ARGS_K, mark=DKey.mark.ARGS)]
         return DecorationUtils.prepare_expansion(keys, fn)
 
     @staticmethod
     def kwargs(fn):
         """ mark an action as using all kwargs"""
-        keys = [DootKwargsKey("kwargs")]
+        keys = [DKey(KWARGS_K, mark=DKey.mark.KWARGS)]
         return DecorationUtils.prepare_expansion(keys, fn)
 
     @staticmethod
     def redirects(*args):
         """ mark an action as using redirection keys """
-        keys = [dkey.DKey.build(x, exp_hint="redirect") for x in args]
+        keys = [DKey(x, mark=DKey.mark.REDIRECT) for x in args]
         return ftz.partial(DecorationUtils.prepare_expansion, keys)
 
     @staticmethod
     def requires(*args, **kwargs):
-        """ TODO mark an action as requiring certain keys to be passed in """
-        keys = [dkey.DKey.build(x, **kwargs) for x in args]
+        """ mark an action as requiring certain keys to be passed in """
+        keys = [DKey.build(x, mark=DKey.mark.NULL, **kwargs) for x in args]
         # return ftz.partial(DecorationUtils.prepare_expansion, keys)
         return lambda x: x
 
     @staticmethod
     def returns(*args, **kwargs):
         """ mark an action as needing to return certain keys """
-        keys = [dkey.DKey.build(x, **kwargs) for x in args]
+        keys = [DKey.build(x, mark=DKey.mark.NULL, **kwargs) for x in args]
         # return ftz.partial(DecorationUtils.prepare_expansion, keys)
         return lambda x: x
 
     @staticmethod
     def references(*args, **kwargs):
         """ mark keys to use as to_coderef imports """
-        exp_hint = {"expansion": "coderef", "kwargs" : {} }
-        keys = [dkey.DKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
+        keys = [DKey(x, mark=DKey.mark.CODE, **kwargs) for x in args]
         return ftz.partial(DecorationUtils.prepare_expansion, keys)
 
     @staticmethod
     def postbox(*args, **kwargs):
-        raise NotImplementedError()
+        keys = [DKey(x, mark=DKey.mark.POSTBOX, **kwargs) for x in args]
+        return ftz.partial(DecorationUtils.prepare_expansion, keys)

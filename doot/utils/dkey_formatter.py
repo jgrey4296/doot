@@ -195,7 +195,7 @@ class DKeyFormatterEntry_m:
 class DKeyFormatter_Expansion_m:
 
     @classmethod
-    def expand(cls, key:Key_p|pl.Path, /, *args, **kwargs) -> str:
+    def expand(cls, key:Key_p|pl.Path, /, *args, **kwargs) -> None|Any:
         """ static method to a singleton key formatter """
         if not cls._instance:
             cls._instance = cls()
@@ -207,6 +207,22 @@ class DKeyFormatter_Expansion_m:
 
         with cls._instance(spec=spec, state=state, locs=locs, fallback=fallback) as fmt:
             return fmt._expand(key)
+
+
+    @classmethod
+    def redirect(cls, key:Key_p|pl.Path, /, *args, **kwargs) -> None|Any:
+        """ static method to a singleton key formatter """
+        if not cls._instance:
+            cls._instance = cls()
+
+        spec                   = kwargs.get('spec', None)
+        state                  = kwargs.get('state', None)
+        locs                   = kwargs.get('locs', doot.locs)
+        fallback               = kwargs.get("on_fail", None)
+
+        with cls._instance(spec=spec, state=state, locs=locs, fallback=fallback) as fmt:
+            raise NotImplementedError()
+
 
     def _expand(self, key:Key_p|str|pl.Path, *, depth:int=0, on_fail=None) -> None|Any:
         result = None
@@ -420,7 +436,8 @@ class DKeyFormatter_ExpansionPlus_m:
 
 class DKeyFormatter(string.Formatter, DKeyFormatter_Expansion_m, DKeyFormatterEntry_m):
     """
-      A Formatter for expanding arguments based on action spec kwargs, and task state, and cli args
+      A Formatter to extend string formatting with options useful for dkey's
+      and doot specs/state.
 
     """
 
@@ -440,11 +457,6 @@ class DKeyFormatter(string.Formatter, DKeyFormatter_Expansion_m, DKeyFormatterEn
 
     def format(self, key:str|Key_p, /, *args, **kwargs) -> str:
         """ format keys as strings """
-        # Parse fmt args
-        # do dkey specific formatting
-        # pass to general format
-        self._depth = kwargs.get("depth_", MAX_KEY_EXPANSIONS)
-
         match key:
             case Key_p():
                 fmt = f"{key}"
@@ -503,4 +515,5 @@ class DKeyFormatter(string.Formatter, DKeyFormatter_Expansion_m, DKeyFormatterEn
                 return ascii(value)
             case "e": # e for _expand
                 return self._expand(value)
+
         raise ValueError("Unknown conversion specifier {0!s}".format(conversion))
