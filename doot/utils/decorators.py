@@ -4,50 +4,51 @@
 See EOF for license/metadata/notes as applicable
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
-# import abc
+# ##-- stdlib imports
+import abc
+import builtins
 import datetime
 import enum
 import functools as ftz
+import inspect
 import itertools as itz
+import keyword
 import logging as logmod
 import pathlib as pl
 import re
 import time
 import types
 import weakref
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, Type, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
+# ##-- 3rd party imports
+import decorator
 import more_itertools as mitz
-##-- end lib imports
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+from doot._abstract.protocols import SpecStruct_p, Key_p
+from doot.enums import LocationMeta_f
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-##-- end logging
-
 printer = logmod.getLogger("doot._printer")
-
-import keyword
-import inspect
-import abc
-import builtins
-from typing import Type
-import decorator
-import doot
-import doot.errors
-from doot.enums import LocationMeta_f
-from doot._abstract.protocols import SpecStruct_p
+##-- end logging
 
 DOOT_ANNOTATIONS : Final[str]                = "__DOOT_ANNOTATIONS__"
 KEYS_HANDLED     : Final[str]                = "_doot_keys_handler"
@@ -193,7 +194,7 @@ class DecorationUtils:
         return fn
 
     @staticmethod
-    def _update_key_annotations(fn, keys:list[DootKey]) -> True:
+    def _update_key_annotations(fn, keys:list[Key_p]) -> True:
         """ update the declared expansion keys on an action
           If the action has been wrapped already, annotations will be applied to both the wrapper and wrapped.
         """
@@ -213,7 +214,7 @@ class DecorationUtils:
         return True
 
     @staticmethod
-    def prepare_expansion(keys:list[DootKey], fn):
+    def prepare_expansion(keys:list[Key_p], fn):
         """ used as a partial fn. adds declared keys to a function,
           and idempotently adds the expansion decorator
         """

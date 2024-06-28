@@ -190,9 +190,6 @@ class Key_p(Protocol):
         # todo: re-add expansion chaining
         pass
 
-    def within(self, other:str|dict|TomlGuard) -> bool:
-        pass
-
     def keys(self) -> list[Key_p]:
         pass
 

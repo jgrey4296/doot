@@ -199,6 +199,24 @@ class ExecutionPolicy_e(EnumBuilder_m, enum.Enum):
     BREADTH  = enum.auto() # Breadth First Search
 
     default = PRIORITY
+class DKeyMark_e(EnumBuilder_m, enum.Enum):
+    """
+      Enums for how to use/build a dkey
+
+    """
+    FREE     = enum.auto()
+    PATH     = enum.auto()
+    REDIRECT = enum.auto()
+    STR      = enum.auto()
+    CODE     = enum.auto()
+    TASK     = enum.auto()
+    ARGS     = enum.auto()
+    KWARGS   = enum.auto()
+    POSTBOX  = enum.auto()
+    NULL     = enum.auto()
+
+    default  = FREE
+
 ##-- end enums
 
 ##-- flags
