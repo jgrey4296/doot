@@ -170,6 +170,12 @@ class Nameable_p(Protocol):
     def __contains__(self, other) -> bool:
         pass
 
+    def head_str(self) -> str:
+        pass
+
+    def tail_str(self) -> str:
+        pass
+
 @runtime_checkable
 class Key_p(Protocol):
 
@@ -185,7 +191,7 @@ class Key_p(Protocol):
         """ expansion str formatting """
         pass
 
-    def expand(self, *, fmt=None, spec=None, state=None, on_fail=Any, locs:DootLocations=None, **kwargs) -> Any:
+    def expand(self, *, fmt=None, spec=None, state=None, fallback=Any, locs:DootLocations=None, **kwargs) -> Any:
         """ full controllable expansion """
         # todo: re-add expansion chaining
         pass
@@ -218,11 +224,9 @@ class InstantiableSpecification_p(Protocol):
     def instantiate_onto(self, data:None|Self) -> Self:
         pass
 
-    def make(self):
-        pass
 
 @runtime_checkable
-class ExecutableTask(Protocol):
+class ExecutableTask_p(Protocol):
     """ Runners pass off to Tasks/Jobs implementing this protocol
       instead of using their default logic
     """
@@ -265,4 +269,29 @@ class ExecutableTask(Protocol):
         pass
 
     def decrement_priority(self):
+        pass
+
+
+@runtime_checkable
+class Decorator_p(Protocol):
+
+    def __call__(self, fn):
+        pass
+
+    def _target_method(self, fn) -> Callable:
+        pass
+
+    def _target_fn(self, fn) -> Callable:
+        pass
+
+    def _target_class(self, fn:type) -> type:
+        pass
+
+    def _is_marked(self, fn) -> bool:
+        pass
+
+    def _apply_mark(self, fn) -> Callable:
+        pass
+
+    def _update_annotations(self, fn) -> None:
         pass
