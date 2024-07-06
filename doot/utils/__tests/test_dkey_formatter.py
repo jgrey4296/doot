@@ -76,3 +76,164 @@ class TestDKeyFormatter:
         state = {"b": "aweg {c}", "c": [1,2,3]}
         with pytest.raises(TypeError):
             fmt.format("{a}", _spec=spec, _state=state, _rec=True)
+
+
+class TestDKeyFormatter_Expansion:
+
+    @pytest.fixture(scope="function")
+    def sources(self):
+        return [
+            { "a": "blah", "testrec": DKey("subrec")},
+            { "b" : "bloo", "subrec": "aweg" },
+            { "c_": "a" },
+            { "complex": [1,2,3,4], "indcomplex_": "complex" },
+            ]
+
+
+    def test_initial(self, mocker, spec):
+        fmt           = DKeyFormatter()
+        assert(isinstance(fmt, DKeyFormatter))
+        assert(isinstance(spec, ActionSpec))
+        assert(spec.kwargs.val == "bloo")
+        assert(spec.kwargs.a == "blah")
+
+
+    def test_single_expansion(self, sources):
+        fmt           = DKeyFormatter()
+        with fmt(sources=sources) as ctx:
+            result = ctx._single_expand(DKey("a"))
+
+        assert(result == "blah")
+
+
+    def test_single_expansion_to_complex_type(self, sources):
+        fmt           = DKeyFormatter()
+        with fmt(sources=sources) as ctx:
+            result = ctx._single_expand(DKey("complex"))
+
+        assert(result == [1,2,3,4])
+
+
+    def test_indirect_expansion(self, sources):
+        fmt           = DKeyFormatter()
+        with fmt(sources=sources) as ctx:
+            result = ctx._expand(DKey("c_"))
+
+        assert(result == "blah")
+
+
+    def test_indirect_expansion_to_complex_type(self, sources):
+        fmt           = DKeyFormatter()
+        with fmt(sources=sources) as ctx:
+            result = ctx._expand(DKey("indcomplex_"))
+
+        assert(result == [1,2,3,4])
+
+
+    def test_redirection(self, sources):
+        fmt           = DKeyFormatter()
+        with fmt(sources=sources) as ctx:
+            ctx.rec_remaining = 1
+            result = ctx._try_redirection(DKey("c_"))
+
+        assert(isinstance(result, list))
+        assert(len(result) == 1)
+        assert(result[0] == "a")
+
+
+    def test_recursive_expansion(self, sources):
+        fmt           = DKeyFormatter()
+        with fmt(sources=sources) as ctx:
+            result = ctx._expand(DKey("testrec"))
+
+        assert(result == "aweg")
+
+
+    def test_multikey_expansion(self, sources):
+        fmt           = DKeyFormatter()
+        key = DKey("blah :: {b} {b}")
+        assert(isinstance(key, MultiDKey))
+        with fmt(sources=sources) as ctx:
+            result = ctx._multi_expand(key)
+
+        assert(result == "blah :: bloo bloo")
+
+
+    def test_multikey_multi_expansion(self, sources):
+        fmt           = DKeyFormatter()
+        key = DKey("blah :: {b} :: {a}")
+        assert(isinstance(key, MultiDKey))
+        assert(len(key.keys()) == 2)
+        with fmt(sources=sources) as ctx:
+            result = ctx._multi_expand(key)
+
+        assert(result == "blah :: bloo :: blah")
+
+
+    def test_multikey_recursive_expansion(self, sources):
+        fmt           = DKeyFormatter()
+        key = DKey("blah :: {testrec} {b}")
+        assert(isinstance(key, MultiDKey))
+        with fmt(sources=sources) as ctx:
+            result = ctx._multi_expand(key)
+
+        assert(result == "blah :: aweg bloo")
+
+
+    @pytest.mark.xfail
+    def test_multikey_failure_on_complex_type(self, sources):
+        fmt           = DKeyFormatter()
+        key = DKey("blah :: {complex}")
+        assert(isinstance(key, MultiDKey))
+        with pytest.raises(ValueError), fmt(sources=sources) as ctx:
+            result = ctx._multi_expand(key)
+
+
+
+    def test_str_expansion_recursive(self, sources):
+        fmt           = DKeyFormatter()
+        key = "blah :: {testrec}"
+        assert(not isinstance(key, DKey))
+        with fmt(sources=sources) as ctx:
+            result = ctx._str_expand(key)
+
+        assert(result == "blah :: aweg")
+
+
+    def test_str_expansion(self, sources):
+        fmt           = DKeyFormatter()
+        key = "blah :: {a}"
+        assert(not isinstance(key, DKey))
+        with fmt(sources=sources) as ctx:
+            result = ctx._str_expand(key)
+
+        assert(result == "blah :: blah")
+
+
+
+class TestDKeyFormatter_Formatting:
+
+    def test_initial(self, mocker, spec):
+        fmt           = DKeyFormatter()
+        assert(isinstance(fmt, DKeyFormatter))
+        assert(isinstance(spec, ActionSpec))
+        assert(spec.kwargs.val == "bloo")
+        assert(spec.kwargs.a == "blah")
+
+
+    def test_simple_format(self, mocker, spec):
+        fmt           = DKeyFormatter()
+        result = fmt.format("test")
+        assert(result == "test")
+
+
+    def test_simple_key_replace(self, mocker, spec):
+        fmt           = DKeyFormatter()
+        result = fmt.format("{test}", test="aweg")
+        assert(result == "aweg")
+
+
+    def test_simple_key_wrap(self, mocker, spec):
+        fmt           = DKeyFormatter()
+        result = fmt.format("{test:w}", test="aweg")
+        assert(result == "{aweg}")

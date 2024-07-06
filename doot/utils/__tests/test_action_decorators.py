@@ -40,7 +40,8 @@ class TestDecorators:
         def simple(spec:dict, state:dict) -> str:
             return "blah"
 
-        assert(DU.has_annotations(simple, doot.constants.decorations.RUN_DRY_SWITCH))
+        dec = decs.DryRunSwitch()
+        assert(dec._is_marked(simple))
         assert(simple({}, {}) == "blah")
 
     def test_override_dry_run(self):
@@ -50,7 +51,8 @@ class TestDecorators:
         def simple(spec:dict, state:dict) -> str:
             return "blah"
 
-        assert(DU.has_annotations(simple, doot.constants.decorations.RUN_DRY_SWITCH))
+        dec = decs.DryRunSwitch()
+        assert(dec._is_marked(simple))
         assert(simple({}, {}) is None)
 
     def test_wrap_method(self):
@@ -61,10 +63,11 @@ class TestDecorators:
             def __call__(self, spec, state):
                 return "blah"
 
+        dec = decs.DryRunSwitch()
         # class is annotated
-        assert(DU.has_annotations(SimpleClass, doot.constants.decorations.RUN_DRY_SWITCH))
+        assert(dec._is_marked(SimpleClass))
         # Instance is annotated
-        assert(DU.has_annotations(SimpleClass(), doot.constants.decorations.RUN_DRY_SWITCH))
+        assert(dec._is_marked(SimpleClass()))
         assert(SimpleClass()({}, {}) == "blah")
 
     def test_wrap_method_override_dry(self):
@@ -75,10 +78,11 @@ class TestDecorators:
             def __call__(self, spec, state):
                 return "blah"
 
+        dec = decs.DryRunSwitch()
         # class is annotated
-        assert(DU.has_annotations(SimpleClass, doot.constants.decorations.RUN_DRY_SWITCH))
+        assert(dec._is_marked(SimpleClass))
         # Instance is annotated
-        assert(DU.has_annotations(SimpleClass(), doot.constants.decorations.RUN_DRY_SWITCH))
+        assert(dec._is_marked(SimpleClass()))
         assert(SimpleClass()({}, {}) is None)
 
     def test_annotate_fn(self):
@@ -182,6 +186,8 @@ class TestDecorators:
             def __call__(self, spec, state):
                 return "blah"
 
+        dec = decs.DryRunSwitch()
+        assert(dec._is_marked(SimpleSuper))
         assert(SimpleSuper()({}, {}) is None)
         assert(SimpleChild()({}, {}) == "blah")
 

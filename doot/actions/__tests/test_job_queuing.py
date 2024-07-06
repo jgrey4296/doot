@@ -54,6 +54,12 @@ class TestJobQueue:
         assert(isinstance( result, list ))
         assert(all(isinstance(x, TaskSpec) for x in result))
 
+    def test_basic(self, spec, state):
+        jqa    = JobQueueAction()
+        result = jqa(spec, state)
+        assert(isinstance(result, list))
+        assert(len(result) == 2)
+        assert(all(isinstance(x, TaskSpec) for x in result))
 
 class TestJobChainer:
 

@@ -35,17 +35,6 @@ class TestJobActions:
     def cleanup(self):
         pass
 
-    def test_initial(self, spec, state):
-        jqa    = JA.JobQueueAction()
-        result = jqa(spec, state)
-        assert(isinstance(result, list))
-
-    def test_basic(self, spec, state):
-        jqa    = JA.JobQueueAction()
-        result = jqa(spec, state)
-        assert(isinstance(result, list))
-        assert(len(result) == 2)
-        assert(all(isinstance(x, TaskSpec) for x in result))
 
     def test_basic_expander(self, spec, state):
         state.update(dict(_task_name=TaskName.build("agroup::basic"),

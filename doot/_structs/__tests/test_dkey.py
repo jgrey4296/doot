@@ -40,7 +40,7 @@ TEST_LOCS               : Final[DootLocations] = DootLocations(pl.Path.cwd()).up
 
 class TestDKeyConstruction:
 
-    def test_initial(self):
+    def test_sanity(self):
         key  = dkey.DKey("{test}")
         assert(isinstance(key, dkey.SingleDKey))
         assert(isinstance(key, dkey.DKey))
@@ -311,7 +311,7 @@ class TestDKeyDunderFormatting:
 class TestDKeyComparison:
 
     @pytest.mark.parametrize("name", VALID_KEYS)
-    def test_initial(self, name):
+    def test_sanity(self, name):
         key1 = dkey.DKey(name)
         key2 = dkey.DKey(name)
         assert(key1 == key2)
@@ -351,7 +351,7 @@ class TestDKeyExpansion:
     def spec(self):
         return ActionSpec(kwargs=TomlGuard({"y": "aweg", "z_": "a", "a": 2}))
 
-    def test_initial(self):
+    def test_sanity(self):
         key = dkey.DKey("x")
         assert(isinstance(key, dkey.DKey))
 
@@ -381,17 +381,6 @@ class TestDKeyExpansion:
         assert(result == pl.Path("2").resolve())
 
 
-    @pytest.mark.xfail
-    def test_expansion_with_type_spec_in_str(self, spec):
-        """ check setting expansion parameters directly from the initial string
-          {a!s} -> 2:str
-          """
-        key = dkey.DKey("{a:s}")
-        assert(isinstance(key, dkey.DKey))
-        result = key.expand(spec)
-        assert(isinstance(result, str))
-        assert(result == "2")
-
     def test_type_coerce_expansion(self, spec):
         """ a -> 2 (float) """
         key = dkey.DKey("a", mark=float)
@@ -410,7 +399,7 @@ class TestDKeyExpansion:
 
     def test_indirect_recursive_to_str(self, spec):
         """ z -> z_ -> a -> 2 """
-        key = dkey.DKey("z", mark=dkey.DKey.mark.STR)
+        key = dkey.DKey("{z}", mark=dkey.DKey.mark.STR)
         assert(isinstance(key, dkey.DKey))
         result = key.expand(spec)
         assert(result == "2")
@@ -429,7 +418,7 @@ class TestDKeyExpansion:
         state = {}
         assert(isinstance(key, dkey.DKey))
         result = key.expand(spec, state)
-        assert(result == None)
+        assert(result is None)
 
 
     def test_missing_expansion_with_fallback(self, spec):
@@ -496,13 +485,27 @@ class TestDKeyExpansion:
 
     def test_multikey_expansion_to_path(self, spec):
         """
-          blah/bloo -> aweg/wegg
+          {blah}/{bloo} -> aweg/wegg
         """
         key = dkey.DKey("{blah}/{bloo}", mark=dkey.DKey.mark.PATH)
         assert(isinstance(key, dkey.MultiDKey))
         assert(isinstance(key, dkey.PathMultiDKey))
         assert(key._exp_type is pl.Path)
         state = {"blah": pl.Path("aweg"), "bloo":"wegg"}
+        result = key.expand(spec, state)
+        assert(isinstance(result, pl.Path))
+        assert(result == pl.Path("aweg/wegg").resolve())
+
+
+    def test_multikey_recursive_expansion(self, spec):
+        """
+          blah/bloo -> {other}/wegg -> aweg/wegg
+        """
+        key = dkey.DKey("{blah}/{bloo}", mark=dkey.DKey.mark.PATH)
+        assert(isinstance(key, dkey.MultiDKey))
+        assert(isinstance(key, dkey.PathMultiDKey))
+        assert(key._exp_type is pl.Path)
+        state = {"blah": "{other}", "bloo":"wegg", "other": "aweg"}
         result = key.expand(spec, state)
         assert(isinstance(result, pl.Path))
         assert(result == pl.Path("aweg/wegg").resolve())
@@ -521,7 +524,7 @@ class TestDKeyExpansion:
         """
           top -> b -> {b}
         """
-        key = dkey.DKey("top")
+        key = dkey.DKey("top", mark=str)
         assert(isinstance(key, dkey.DKey))
         state = {"top_": "b", "b": dkey.DKey("{b}")}
         result = key.expand(spec, state)
@@ -576,16 +579,87 @@ class TestDKeyExpansion:
         assert(isinstance(result, CodeReference))
 
 
+    @pytest.mark.xfail
+    def test_expansion_with_type_spec_in_str(self, spec):
+        """ check setting expansion parameters directly from the initial string
+          {a!s} -> 2:str
+          """
+        key = dkey.DKey("{a!s}")
+        assert(isinstance(key, dkey.DKey))
+        result = key.expand(spec)
+        assert(isinstance(result, str))
+        assert(result == "2")
+
+
+class TestDKeyRedirection:
+
+    @pytest.fixture(scope="function")
+    def spec(self):
+        return ActionSpec(kwargs=TomlGuard({"y": "aweg", "z_": "a", "a": 2}))
+
+    def test_sanity(self):
+        key = dkey.DKey("x")
+        assert(isinstance(key, dkey.DKey))
+
+
     def test_redirection(self, spec):
         """
           test_ -> blah
         """
         state = {"test_": "blah", "blah": 23}
-        key   = dkey.DKey("test", mark=dkey.DKey.mark.REDIRECT)
-        assert(isinstance(key, dkey.DKey))
+        key   = dkey.DKey("test_", mark=dkey.DKey.mark.REDIRECT)
+        assert(isinstance(key, dkey.RedirectionDKey))
+        result = key.redirect(spec, state)
+        assert(result is not None)
+        assert(isinstance(result, list))
+        assert(result[0] == "blah")
+
+
+    def test_redirection_null(self, spec):
+        """
+          test_ -> test_
+        """
+        state = { "blah": 23}
+        key   = dkey.DKey("test_", mark=dkey.DKey.mark.REDIRECT)
+        assert(isinstance(key, dkey.RedirectionDKey))
+        result = key.redirect(spec, state)
+        assert(result is not None)
+        assert(isinstance(result, list))
+        assert(result[0] == "test_")
+
+
+    def test_redirection_multi(self, spec):
+        """
+          test_ -> [a, b, c]
+        """
+        state = { "test_": ["a", "b", "c"], "blah": 23, "a":10, "b":15, "c":25}
+        key   = dkey.DKey("test_", mark=dkey.DKey.mark.REDIRECT)
+        assert(isinstance(key, dkey.RedirectionDKey))
+        result = key.redirect(spec, state, multi=True)
+        assert(result is not None)
+        assert(isinstance(result, list))
+        assert(len(result) == 3)
+        assert(result[0] == "a")
+        assert(result[1] == "b")
+        assert(result[2] == "c")
+
+
+    def test_redirection_expand_multi_in_ctor(self, spec):
+        """
+          test_ -> [a, b, c]
+        """
+        state = { "test_": ["a", "b", "c"], "blah": 23, "a":10, "b":15, "c":25}
+        key   = dkey.DKey("test_", mark=dkey.DKey.mark.REDIRECT, multi=True)
+        assert(isinstance(key, dkey.RedirectionDKey))
         result = key.expand(spec, state)
-        assert(isinstance(result, dkey.DKey))
-        assert(result == "blah")
+        assert(result is not None)
+        assert(isinstance(result, list))
+        assert(len(result) == 3)
+        assert(result[0] == "a")
+        assert(result[1] == "b")
+        assert(result[2] == "c")
+
+
 
 class TestDKeyFormatting:
 
@@ -593,7 +667,7 @@ class TestDKeyFormatting:
     def spec(self):
         return ActionSpec(kwargs=TomlGuard({"y": "aweg", "z_": "a", "a": 2}))
 
-    def test_initial(self):
+    def test_sanity(self):
         key = dkey.DKey("x")
         fmt = DKeyFormatter()
         result = fmt.format(key)
