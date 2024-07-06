@@ -18,20 +18,10 @@ import doot
 doot._test_setup()
 from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
 from doot.control.locations import DootLocations
+from doot.structs import DKey
+from doot._structs.dkey import NonDKey
 
 logging = logmod.root
-
-##-- pytest reminder
-# caplog
-# mocker.patch | patch.object | patch.multiple | patch.dict | stopall | stop | spy | stub
-# pytest.mark.filterwarnings
-# pytest.parameterize
-# pytest.skip | skipif | xfail
-# with pytest.deprecated_call
-# with pytest.raises
-# with pytest.warns(warntype)
-
-##-- end pytest reminder
 
 class TestLocations:
 

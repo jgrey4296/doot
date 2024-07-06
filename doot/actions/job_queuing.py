@@ -38,7 +38,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot._abstract import Action_p
-from doot.structs import CodeReference, DootKey, TaskName, TaskSpec, Keyed
+from doot.structs import CodeReference, DKey, TaskName, TaskSpec, DKeyed
 
 # ##-- end 1st party imports
 
@@ -49,19 +49,24 @@ printer = logmod.getLogger("doot._printer")
 
 class JobQueueAction(Action_p):
     """
-      Queues a list of tasks into the tracker.
+      Queues a list of tasks/specs into the tracker.
 
       1) Queue Named Tasks: {do='job.queue', args=['group::task'] }
-      2) Queue Expanded TaskSpecs: {do='job.queue', from_="state_key" }
+      2) Queue Expanded TaskSpecs: {do='job.queue', from_='state_key' }
+
+
+      tasks can be specified by name in `args`
+      and from prior expansion state vars with `from_` (accepts a list)
+
+      `after` can be used to specify additional `depends_on` entries.
+      (the job head is specified using `$head$`)
     """
 
-    @Keyed.args
-    @Keyed.types("from_", hint={"type_":list|TaskSpec|None})
-    @Keyed.redirects_many("from_multi_")
-    @Keyed.types("after", hint={"type_":list|TaskName|str|None, "on_fail":None})
-    @Keyed.taskname
-    def __call__(self, spec, state, _args, _from, _from_multi, _after, _basename) -> list:
-        # TODO maybe expand args
+    @DKeyed.args
+    @DKeyed.redirects("from_", multi=True)
+    @DKeyed.types("after", check=list|TaskName|str|None, fallback=None)
+    @DKeyed.taskname
+    def __call__(self, spec, state, _args, _from, _after, _basename) -> list:
         subtasks               = []
         queue : list[TaskSpec] = []
         _after                     = self._expand_afters(_after, _basename)
@@ -149,9 +154,9 @@ class JobQueueAction(Action_p):
 class JobQueueHead(Action_p):
     """ Queue the head/on_completion task of this job"""
 
-    @Keyed.types("base")
-    @Keyed.types("inject")
-    @Keyed.taskname
+    @DKeyed.types("base")
+    @DKeyed.types("inject")
+    @DKeyed.taskname
     def __call__(self, spec, state, base, inject, _basename):
         raise DeprecationWarning("This Is No Longer needed")
         root            = _basename.root()
@@ -186,10 +191,10 @@ class JobChainer(Action_p):
       {do="job.chain.->", unpack={literal=[key, key, key], by-name=[taskname, taskname]}},
     """
 
-    @Keyed.kwargs
+    @DKeyed.kwargs
     def __call__(self, spec, state, kwargs):
         for k,v in kwargs.items():
-            match DootKey.build(k).to_type(spec, state):
+            match DKey(k).expand(spec, state):
                 case list() as l:
                     for x in l:
                         x.required_for += []

@@ -44,7 +44,6 @@ from doot.enums import DKeyMark_e
 from doot._abstract.protocols import Key_p, SpecStruct_p, Buildable_p
 from doot._structs.code_ref import CodeReference
 from doot._structs.task_name import TaskName
-from doot.utils.chain_get import DootKeyGetter
 from doot.utils.decorators import DecorationUtils, DootDecorator
 from doot.utils.dkey_formatter import DKeyFormatter
 
@@ -53,7 +52,6 @@ from doot.utils.dkey_formatter import DKeyFormatter
 ##-- type checking
 if TYPE_CHECKING:
     DootLocations:TypeAlias = Any
-    DootKey:TypeAlias = Key_p
 ##-- end type checking
 
 ##-- logging

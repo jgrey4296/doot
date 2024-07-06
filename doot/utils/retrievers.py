@@ -35,7 +35,7 @@ import more_itertools as mitz
 
 # ##-- 1st party imports
 import doot
-from doot.structs import DootKey, Keyed
+from doot.structs import DKeyed
 
 # ##-- end 1st party imports
 
@@ -48,7 +48,7 @@ def id_retriever(spec, state) -> list[dict]:
     """ A Null retriever, retruns to dicts to create subtasks from """
     return []
 
-@Keyed.types("files", "exts")
+@DKeyed.types("files", "exts")
 def cli_retriever(spec, state, files, exts):
     """ A CLI retriever, eg: for pre-commit.
       gets the cli arg list "files", and makes a dict that can be used with

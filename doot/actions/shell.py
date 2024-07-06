@@ -15,25 +15,25 @@ import doot
 from doot.errors import DootTaskError
 from doot._abstract import Action_p
 from doot.actions.base_action import DootBaseAction
-from doot.structs import DootKey, Keyed
+from doot.structs import DKey, DKeyed
 
-BACKGROUND = DootKey.build("background")
-UPDATE     = DootKey.build("update_")
-NOTTY      = DootKey.build("notty")
-ENV        = DootKey.build("shenv_")
+BACKGROUND = DKey("background")
+UPDATE     = DKey("update_")
+NOTTY      = DKey("notty")
+ENV        = DKey("shenv_")
 
 class DootShellBake:
 
-    @Keyed.args
-    @Keyed.types("in_", hint={"on_fail":None, "type_":sh.Command|bool|None})
-    @Keyed.types("env", hint={"on_fail":sh, "type_":sh.Command|bool|None})
-    @Keyed.redirects("update_")
+    @DKeyed.args
+    @DKeyed.types("in_", fallback=None, check=sh.Command|bool|None)
+    @DKeyed.types("env", fallback=sh, check=sh.Command|bool|None)
+    @DKeyed.redirects("update_")
     def __call__(self, spec, state, args, _in, env, _update):
         if not env:
             env = sh
         try:
-            cmd                     = getattr(env, DootKey.build(args[0], explicit=True).expand(spec, state))
-            keys                    = [DootKey.build(x, explicit=True) for x in args[1:]]
+            cmd                     = getattr(env, DKey(args[0], explicit=True).expand(spec, state))
+            keys                    = [DKey(x, explicit=True) for x in args[1:]]
             expanded                = [x.expand(spec, state, locs=doot.locs) for x in keys]
             match _in:
                 case False | None:
@@ -60,8 +60,8 @@ class DootShellBake:
 
 class DootShellBakedRun:
 
-    @Keyed.types("in_", hint={"on_fail":None, "type_":sh.Command|None})
-    @Keyed.redirects("update_")
+    @DKeyed.types("in_", fallback=None, check=sh.Command|None)
+    @DKeyed.redirects("update_")
     def __call__(self, spec, state, _in, _update):
         try:
             result = _in()
@@ -88,18 +88,18 @@ class DootShellAction(Action_p):
     can use a pre-baked sh passed into what "shenv_" points to
     """
 
-    @Keyed.args
-    @Keyed.types("background", "notty", hint={"type_":bool, "on_fail":False})
-    @Keyed.types("env", hint={"on_fail":sh, "type_":sh.Command|None})
-    @Keyed.paths("cwd", hint={"on_fail":None, "type_":pl.Path|None})
-    @Keyed.redirects("update_")
+    @DKeyed.args
+    @DKeyed.types("background", "notty", check=bool, fallback=False)
+    @DKeyed.types("env", fallback=sh, check=sh.Command|None)
+    @DKeyed.paths("cwd", fallback=None, check=pl.Path|None)
+    @DKeyed.redirects("update_")
     def __call__(self, spec, state, args, background, notty, env, cwd, _update) -> dict|bool|None:
         result     = None
         cwd        = cwd or pl.Path.cwd()
         try:
             # Build the command by getting it from env, :
-            cmd                     = getattr(env, DootKey.build(args[0], explicit=True).expand(spec, state))
-            keys                    = [DootKey.build(x, explicit=True) for x in args[1:]]
+            cmd                     = getattr(env, DKey(args[0], explicit=True).expand(spec, state))
+            keys                    = [DKey(x, explicit=True) for x in args[1:]]
             expanded                = [x.expand(spec, state, locs=doot.locs) for x in keys]
             result                  = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=not notty, _cwd=cwd )
             assert(result.exit_code == 0)
@@ -140,7 +140,7 @@ class DootInteractiveAction(Action_p):
 
             cmd      = getattr(sh, spec.args[0])
             args     = spec.args[1:]
-            keys     = [DootKey.build(x, explicit=True) for x in args]
+            keys     = [DKey(x, explicit=True) for x in args]
             expanded = [x.expand(spec, state, locs=doot.locs) for x in keys]
             result   = cmd(*expanded, _return_cmd=True, _bg=spec.kwargs.on_fail(False, bool).background(), _out=self.interact, _out_bufsize=0, _tty_in=True, _unify_ttys=True)
             assert(result.exit_code == 0)

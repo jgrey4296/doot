@@ -19,7 +19,7 @@ import doot
 doot._test_setup()
 from doot.actions.job_expansion import JobExpandAction, JobMatchAction
 import doot.errors
-from doot.structs import DootKey, ActionSpec, TaskName
+from doot.structs import DKey, ActionSpec, TaskName
 
 class TestJobExpansion:
 

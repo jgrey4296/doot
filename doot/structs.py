@@ -37,7 +37,5 @@ from doot._structs.task_name import TaskName
 from doot._structs.task_spec import TaskSpec
 from doot._structs.trace import TraceRecord
 
-from doot._structs.key import DootKey
 from doot._structs.dkey import DKey
-from doot.utils.key_decorator import Keyed
 from doot.utils.dkey_decorator import DKeyed

@@ -55,11 +55,6 @@ and formating controls:
 :#_     : indirect key form: {key_}
 :...!   : bang at end of format spec means insist on expansion
 
-Used for DootKey.__format__
-format(DootKey, spec)
-DootKey._expand
-and '{spec}'.format(DootKey)
-
 Keys can have a number of forms:
 {x}  : Direct Expansion form
 {x_} : Indirect Expansion form

@@ -41,8 +41,9 @@ logging = logmod.getLogger(__name__)
 from pydantic import BaseModel, model_validator, field_validator
 import doot
 from doot.enums import LocationMeta_f
-from doot._structs.key import DootKey
+from doot._structs.dkey import DKey
 from doot._abstract.protocols import ProtocolModelMeta, Location_p, Buildable_p
+from doot.utils.dkey_formatter import DKeyFormatter
 
 GLOB     : Final[str] = "*"
 REC_GLOB : Final[str] = "**"
@@ -61,16 +62,16 @@ class Location(BaseModel, Location_p, Buildable_p, metaclass=ProtocolModelMeta, 
       while will be incorporated into a RelationSpec,
       with an anonymous key.
     """
-    key                 : None|str|DootKey
+    key                 : None|str|DKey
     path                : pl.Path
     meta                : LocationMeta_f  = LocationMeta_f.default
     _expansion_keys     : set[str]      = set()
 
     _toml_str_prefix    : ClassVar[str] = doot.constants.patterns.FILE_DEP_PREFIX
-    _artifact_key           : ClassVar[str] = DootKey.build("!!Artifact!!")
+    _artifact_key           : ClassVar[str] = DKey("!!Artifact!!")
 
     @classmethod
-    def build(cls, data:dict|str, *, key:None|str|DootKey=None, target:pl.Path=None):
+    def build(cls, data:dict|str, *, key:None|str|DKey=None, target:pl.Path=None):
         match data:
             case Location():
                 return cls(key=key or data.key, path=(target or data.path), meta=data.meta)
@@ -110,9 +111,9 @@ class Location(BaseModel, Location_p, Buildable_p, metaclass=ProtocolModelMeta, 
             self.meta |= LocationMeta_f.abstract
         if GLOB in t_str:
             self.meta |= LocationMeta_f.abstract | LocationMeta_f.glob
-        if (keys:=DootKey._pattern.findall(t_str)):
+        if (keys:=DKeyFormatter.Parse(t_str)):
             self.meta |= LocationMeta_f.abstract | LocationMeta_f.expandable
-            self._expansion_keys.update(keys)
+            self._expansion_keys.update([x[0] for x in keys])
 
         return self
 
@@ -161,9 +162,9 @@ class Location(BaseModel, Location_p, Buildable_p, metaclass=ProtocolModelMeta, 
         if LocationMeta_f.abstract not in self.meta:
             return (False, False, False)
         path, stem, suff      = str(self.path.parent), self.path.stem, self.path.suffix
-        _path   = bool(GLOB in path or SOLO in path or DootKey._pattern.search(path))
-        _stem   = bool(GLOB in stem or SOLO in stem or DootKey._pattern.search(stem))
-        _suffix = bool(GLOB in suff or SOLO in suff or DootKey._pattern.search(suff))
+        _path   = bool(GLOB in path or SOLO in path or bool(DKeyFormatter.Parse(path)))
+        _stem   = bool(GLOB in stem or SOLO in stem or bool(DKeyFormatter.Parse(stem)))
+        _suffix = bool(GLOB in suff or SOLO in suff or bool(DKeyFormatter.Parse(suff)))
 
         return (_path, _stem, _suffix)
 

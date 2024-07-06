@@ -74,25 +74,25 @@ class DKeyed:
     arguments are added to the tail of the action args, in order of the decorators.
     the name of the expansion is expected to be the name of the action parameter,
     with a "_" prepended if the name would conflict with a keyword., or with "_ex" as a suffix
-    eg: @DKey.kwrap.paths("from") -> def __call__(self, spec, state, _from):...
-    or: @DKey.kwrap.paths("from") -> def __call__(self, spec, state, from_ex):...
+    eg: @DKeyed.paths("from") -> def __call__(self, spec, state, _from):...
+    or: @DKeyed.paths("from") -> def __call__(self, spec, state, from_ex):...
     """
 
     @staticmethod
     def get_keys(fn) -> list[DKey]:
         """ Retrieve key annotations from a decorated function """
-        fn = DecorationUtils.unwrap(fn)
-        return getattr(fn, DecorationUtils._keys, [])
+        dec = DKeyExpansionDecorator([])
+        return dec.get_annotations(fn)
 
     @staticmethod
     def taskname(fn):
         keys = [DKey(STATE_TASK_NAME_K, mark=DKey.mark.TASK)]
-        return DecorationUtils.prepare_expansion(keys, fn)
+        return DKeyExpansionDecorator(keys)(fn)
 
     @staticmethod
     def formats(*args, **kwargs):
         keys     = [DKey(x, mark=DKey.mark.STR, **kwargs) for x in args]
-        return ftz.partial(DecorationUtils.prepare_expansion, keys)
+        return DKeyExpansionDecorator(keys)
 
     @staticmethod
     def expands(*args, **kwargs):

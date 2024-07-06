@@ -35,9 +35,9 @@ from weakref import ref
 import doot
 import doot.enums
 import doot.errors
-from doot.structs import Keyed
+from doot.structs import DKeyed
 from doot._abstract import PluginLoader_p, Task_i
-from doot._structs.key import HELP_HINT, DootKey
+from doot._structs.dkey import DKey
 from doot.cmds.base_cmd import BaseCommand
 from doot.structs import CodeReference, TaskName, TaskStub
 from doot.task.base_job import DootJob
@@ -192,7 +192,7 @@ class StubCmd(BaseCommand):
                         printer.info(x)
 
             loaded = getattr(loaded, "__call__", loaded)
-            match Keyed.get_keys(loaded):
+            match DKeyed.get_keys(loaded):
                 case []:
                     printer.info("-- No Declared Kwargs")
                 case [*xs]:

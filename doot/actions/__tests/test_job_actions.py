@@ -15,7 +15,7 @@ import pytest
 import doot
 doot._test_setup()
 import doot.errors
-from doot.structs import DootKey, TaskSpec, ActionSpec, TaskName
+from doot.structs import DKey, TaskSpec, ActionSpec, TaskName
 import doot.actions.job_actions as JA
 
 printer = logmod.getLogger("doot._printer")

@@ -32,9 +32,10 @@ import re
 import tomlguard
 import doot
 from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
-from doot.structs import TaskArtifact, DootKey, Location
-from doot._structs.key import DootSimpleKey, DootMultiKey, DootNonKey
+from doot.structs import TaskArtifact, Location
+from doot._structs.dkey import DKey, MultiDKey, NonDKey, SingleDKey
 from doot.mixins.path_manip import PathManip_m
+from doot.utils.dkey_formatter import DKeyFormatter
 from doot.enums import LocationMeta_f
 
 KEY_PAT        = doot.constants.patterns.KEY_PATTERN
@@ -126,26 +127,26 @@ class DootLocations(PathManip_m):
         self._loc_ctx = None
         return False
 
-    def get(self, key:DootSimpleKey|str, on_fail:None|str|pl.Path=Any) -> None|pl.Path:
+    def get(self, key:None|DKey|str, fallback:None|False|str|pl.Path=Any) -> None|pl.Path:
         """
-          convert a *simple* key of one value to a path.
+          convert a *simple* str name of *one* toml location to a path.
           does *not* recursively expand returned paths
-          More complex expansion is handled in DootKey and subclasses
+          More complex expansion is handled in DKey, or using item access of Locations
         """
-        assert(isinstance(key,(DootSimpleKey,str))), (str(key), type(key))
         match key:
-            case DootNonKey():
-                return pl.Path(key.form)
-            case str() | DootSimpleKey() if key in self._data:
-                return self._data[key].path
-            case _ if on_fail is None:
+            case None:
                 return None
-            case _ if on_fail != Any:
-                return self.get(on_fail)
-            case DootSimpleKey():
-                return pl.Path(key.form)
+            case str() if key in self._data:
+                return self._data[f"{key}"].path
+            case _ if fallback is False:
+                raise DootLocationError("Key Not found", key)
+            case _ if fallback != Any:
+                return self.get(fallback)
+            case DKey():
+                return pl.Path(f"{key:w}")
             case _:
                 return pl.Path(key)
+
 
     def normalize(self, path:pl.Path, symlinks:bool=False) -> pl.Path:
         """
@@ -154,21 +155,21 @@ class DootLocations(PathManip_m):
         """
         return self._normalize(path, root=self.root)
 
-    def metacheck(self, key:str|DootKey, meta:LocationMeta_f) -> bool:
+    def metacheck(self, key:str|DKey, meta:LocationMeta_f) -> bool:
         """ check if any key provided has the applicable meta flags """
         match key:
-            case DootNonKey():
+            case NonDKey():
                 return False
-            case DootSimpleKey() if key in self._data:
+            case DKey() if key in self._data:
                 return self._data[key].check(meta)
-            case DootMultiKey():
-                 for k in DootKey.build(key):
+            case MultiDKey():
+                 for k in DKey(key):
                      if k not in self._data:
                          continue
                      if self._data[k].check(meta):
                          return True
             case str():
-                return self.metacheck(DootKey.build(key), meta)
+                return self.metacheck(DKey(key), meta)
         return False
 
     @property

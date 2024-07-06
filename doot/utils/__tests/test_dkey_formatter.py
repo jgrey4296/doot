@@ -21,19 +21,20 @@ doot._test_setup()
 
 from doot.structs import ActionSpec
 from doot.utils.dkey_formatter import DKeyFormatter
-from doot._structs.dkey import DKey
+from doot._structs.dkey import DKey, MultiDKey
 from doot._structs import dkey
 
-class TestKeyFormatter:
+@pytest.fixture(scope="function")
+def spec():
+    return ActionSpec.build({"do":"log", "args":[1,2,3], "val":"bloo", "a":"blah"})
 
-    @pytest.fixture(scope="function")
-    def spec(self):
-        return ActionSpec.build({"do":"log", "args":[1,2,3], "val":"bloo", "a":"blah"})
+@pytest.fixture(scope="function")
+def setup_locs( mocker):
+    new_locs = TomlGuard({"p1": "test1", "p2": "test2/sub"})
+    return mocker.patch.object(doot.locs, "_data", new_locs)
 
-    @pytest.fixture(scope="function")
-    def setup_locs(self, mocker):
-        new_locs = TomlGuard({"p1": "test1", "p2": "test2/sub"})
-        return mocker.patch.object(doot.locs, "_data", new_locs)
+
+class TestDKeyFormatter:
 
     def test_parsing(self):
         val = "{bob}"

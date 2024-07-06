@@ -35,7 +35,7 @@ import shutil
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 
-from doot.structs import DootKey, CodeReference, Keyed
+from doot.structs import DKey, CodeReference, DKeyed
 from doot.mixins.path_manip import PathManip_m
 from doot.actions.base_action import DootBaseAction
 from doot.utils.action_decorators import ControlFlow
@@ -49,7 +49,7 @@ class PredicateCheck(DootBaseAction):
 
     """
 
-    @Keyed.references("pred")
+    @DKeyed.references("pred")
     def __call__(self, spec, state, _pred) -> dict|bool|None:
         predicate = _pred.try_import()
         return predicate(spec,state)
@@ -60,14 +60,14 @@ class FileExistsCheck(DootBaseAction):
       converts to a failure instead of skip with fail=true
       """
 
-    @Keyed.args
-    @Keyed.types("not", hint={"type_":bool, "on_fail": False})
-    @Keyed.types("fail", hint={"type_":bool, "on_fail": False})
+    @DKeyed.args
+    @DKeyed.types("not", check=bool, fallback=False)
+    @DKeyed.types("fail", check=bool, fallback=False)
     def __call__(self, spec, state, args, _invert, _fail) -> dict|bool|None:
         fail    = self.ActRE.FAIL if _fail else self.ActRE.SKIP
 
         for arg in args:
-            path = DootKey.build(arg, explicit=True).to_path(spec, state, on_fail=None)
+            path = DKey(arg, explicit=True, mark=pl.Path).expand(spec, state, on_fail=None)
             exists = bool(path and path.exists())
             if _invert:
                 exists = not exists
@@ -85,17 +85,17 @@ class SuffixCheck(DootBaseAction):
       invertable, failable
       """
 
-    @Keyed.args
-    @Keyed.types("exts", hint={"type_":list})
-    @Keyed.types("not", hint={"type_":bool, "on_fail": False})
-    @Keyed.types("fail", hint={"type_":bool, "on_fail": False})
+    @DKeyed.args
+    @DKeyed.types("exts", check=list)
+    @DKeyed.types("not", check=book, fallback=False)
+    @DKeyed.types("fail", check=bool, fallback=False)
     def __call__(self, spec, state, args, exts, _invert, _fail):
         result = self.ActRE.SKIP
         if _fail:
             result = self.ActRE.FAIL
 
         for arg in args:
-            path = DootKey.build(arg, explicit=True).to_path(spec, state, on_fail=None)
+            path = DKey(arg, explicit=True, mark=pl.Path).expand(spec, state, on_fail=None)
             match path.suffix in exts, _invert:
                 case False, True:
                     continue
@@ -112,10 +112,10 @@ class RelativeCheck(PathManip_m, DootBaseAction):
       invertable. Skips by default, can fail
     """
 
-    @Keyed.args
-    @Keyed.types("bases", hint={"type_":list})
-    @Keyed.types("not", hint={"type_":bool, "on_fail":False})
-    @Keyed.types("fail", hint={"type_":bool, "on_fail": False})
+    @DKeyed.args
+    @DKeyed.types("bases", check=list)
+    @DKeyed.types("not", check=bool, fallback=False)
+    @DKeyed.types("fail", check=bool, fallback=False)
     def __call__(self, spec, state, args, _bases, _invert, _fail):
         result = self.ActRE.SKIP
         if _fail:
@@ -124,7 +124,7 @@ class RelativeCheck(PathManip_m, DootBaseAction):
         roots = self._build_roots(spec, state, _bases)
         try:
             for arg in args:
-                path = DootKey.build(arg, explicit=True).to_path(spec, state, on_fail=None)
+                path = DKey(arg, explicit=True, mark=pl.Path).expand(spec, state, on_fail=None)
                 match self._get_relative(path, roots), _invert:
                     case None, True:
                         return
@@ -139,8 +139,8 @@ class RelativeCheck(PathManip_m, DootBaseAction):
 
 class LogAction(DootBaseAction):
 
-    @Keyed.types("level", hint={"type_":str, "on_fail":"INFO"})
-    @Keyed.expands("msg", hint={"rec":True})
+    @DKeyed.types("level", check=str, fallback="INFO")
+    @DKeyed.expands("msg")
     def __call__(self, spec, state, level, msg):
         level        = logmod.getLevelName(level)
         printer.log(level, "%s", msg)
@@ -149,7 +149,7 @@ class LogAction(DootBaseAction):
 class StalenessCheck(DootBaseAction):
     """ Skip the rest of the task if old hasn't been modified since new was modifed """
 
-    @Keyed.paths("old", "new")
+    @DKeyed.paths("old", "new")
     def __call__(self, spec, state, old, new) -> dict|bool|None:
         if new.exists() and (old.stat().st_mtime_ns <= new.stat().st_mtime_ns):
             return self.ActRE.SKIP
@@ -160,8 +160,8 @@ class AssertInstalled(DootBaseAction):
     Easily check a program can be found and used
     """
 
-    @Keyed.args
-    @Keyed.types("env", hint={"on_fail":sh, "type_":sh.Command|None})
+    @DKeyed.args
+    @DKeyed.types("env", fallback=sh, check=sh.Command|None)
     def __call__(self, spec, state, args, env) -> dict|bool|None:
         failures = []
         for prog in args:
@@ -180,6 +180,6 @@ class AssertInstalled(DootBaseAction):
 class WaitAction:
     """ An action that waits for some amount of time """
 
-    @Keyed.types("count")
+    @DKeyed.types("count")
     def __call__(self, spec, state, count):
         sleep(count)

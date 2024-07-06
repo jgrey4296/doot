@@ -19,7 +19,7 @@ import doot
 doot._test_setup()
 from doot.actions.job_queuing import JobQueueAction, JobQueueHead, JobChainer
 import doot.errors
-from doot.structs import DootKey, ActionSpec, TaskName, TaskSpec
+from doot.structs import DKey, ActionSpec, TaskName, TaskSpec
 
 class TestJobQueue:
 

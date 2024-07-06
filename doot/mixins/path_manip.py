@@ -38,7 +38,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import doot
-from doot.structs import DootKey
+from doot.structs import DKey
 from doot.enums import LoopControl_e, LocationMeta_f
 
 MARKER : Final[str] = doot.constants.paths.MARKER_FILE_NAME
@@ -78,8 +78,8 @@ class PathManip_m:
         results = []
 
         for root in roots:
-            root_key = DootKey.build(root, explicit=True)
-            results.append(root_key.to_path(spec, state))
+            root_key = DKey(root, explicit=True, mark=pl.Path)
+            results.append(root_key.expand(spec, state))
 
         return results
 
