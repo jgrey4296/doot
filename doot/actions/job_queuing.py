@@ -75,10 +75,7 @@ class JobQueueAction(Action_p):
             queue += self._build_args(_basename, _args)
 
         if _from:
-            queue += self._build_from(_basename, _from)
-
-        if _from_multi:
-            queue += self._build_from_multi(_basename, _from_multi, spec, state)
+            queue += self._build_from_list(_basename, _from, spec,state)
 
         for sub in queue:
             match sub:
@@ -90,21 +87,19 @@ class JobQueueAction(Action_p):
 
         return subtasks
 
-    def _expand_afters(self, afters, base):
+    def _expand_afters(self, afters:list|str|None, base:TaskName) -> list[TaskName]:
         result = []
         match afters:
-            case None:
-                return []
-            case "$head$":
-                return [base.head_task()]
             case str():
-                return [TaskName.build(afters)]
-            case list():
-                for x in afters:
-                    if x == "$head$":
-                        result.append(base.head_task())
-                    else:
-                        result.append(TaskName.build(x))
+                afters = [afters]
+            case None:
+                afters = []
+
+        for x in afters:
+            if x == "$head$":
+                result.append(base.head_task())
+            else:
+                result.append(TaskName.build(x))
 
         return result
 
@@ -123,14 +118,16 @@ class JobQueueAction(Action_p):
 
         return result
 
-    def _build_from_multi(self, base:TaskName, froms:list[DootKey], spec, state) -> list:
+    def _build_from_list(self, base:TaskName, froms:list[DKey], spec, state) -> list:
         result  = []
         root    = base.root()
         head    = base.job_head()
-        assert(all(isinstance(x, DootKey) for x in froms))
+        assert(all(isinstance(x, DKey) for x in froms))
 
         for key in froms:
-            match key.to_type(spec, state, type_=list|TaskSpec|None):
+            if key == "from_":
+                continue
+            match key.expand(spec, state, check=list|TaskSpec|None):
                 case None:
                     pass
                 case list() as l:
@@ -140,7 +137,7 @@ class JobQueueAction(Action_p):
 
         return result
 
-    def _build_from(self, base, _from) -> list:
+    def _build_from(self, base, _from:list) -> list:
         result = []
         head = base.job_head()
         match _from:

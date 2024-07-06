@@ -82,6 +82,13 @@ class DKeyMeta(type(str)):
       are DKey's, despite there not being an actual subclass relation between them
     """
 
+    def __call__(cls, *args, **kwargs):
+        """ Runs on class instance creation
+        skips running cls.__init__, allowing cls.__new__ control
+        """
+        # TODO maybe move dkey discrimination to here
+        return cls.__new__(cls, *args, **kwargs)
+
     def __instancecheck__(cls, instance):
         return any(x.__instancecheck__(instance) for x in {DKeyBase})
 
@@ -113,8 +120,15 @@ class DKey(metaclass=DKeyMeta):
     mark = DKeyMark_e
 
     def __new__(cls, data:str|DKey|pl.Path|dict, *, explicit=False, fparams=None, mark:MARKTYPE=None, **kwargs) -> DKey:
+        assert(cls is DKey)
         if isinstance(data, DKey):
             return data
+
+        match data:
+            case pl.Path():
+                data = str(data)
+            case _:
+                pass
 
         s_keys           = DKeyFormatter.Parse(data)
         data, fparams = data, fparams or ""
@@ -124,12 +138,6 @@ class DKey(metaclass=DKeyMeta):
         # Discriminate by mark:
         ctor = SingleDKey
         match mark:
-            case _ if explicit and len(s_keys) < 1:
-                ctor =  NonDKey
-            case None | DKeyMark_e.STR | DKeyMark_e.FREE if 1 < len(s_keys):
-                ctor =  MultiDKey
-            case DKeyMark_e.STR:
-                ctor =  SingleDKey
             case DKeyMark_e.PATH:
                 ctor =  PathMultiDKey
             case DKeyMark_e.REDIRECT:
@@ -146,10 +154,18 @@ class DKey(metaclass=DKeyMeta):
                 ctor =  SingleDKey
             case DKeyMark_e.NULL:
                 ctor =  NonDKey
+            case DKeyMark_e.STR:
+                ctor =  MultiDKey
+            # case _ if len(s_keys) == 1 and (len(s_keys[0][0] + s_keys[0][1]) + 2) == len(data):
+            #     ctor = SingleDKey
+            case _ if 2 <= len(s_keys):
+                ctor =  MultiDKey
             case type() if mark is pl.Path:
                 ctor =  PathMultiDKey
             case type():
                 ctor =  SingleDKey
+            case _ if explicit and len(s_keys) < 1:
+                ctor =  NonDKey
 
         if not issubclass(ctor, MultiDKey) and  len(s_keys) < 2:
             data, _, fparams = data.removeprefix("{").removesuffix("}").partition(":")
@@ -174,27 +190,34 @@ class DKeyFormatting_m:
 class DKeyExpansion_m:
     """ general expansion for dkeys """
 
-    def expand(self, *sources, fmt=None, on_fail=None, **kwargs) -> Any:
-        expanded = DKeyFormatter.expand(self, sources=sources)
-        result   = None
-        match expanded:
+    def expand(self, *sources, fmt=None, fallback=None, max=None, check=None, **kwargs) -> None|Any:
+        match DKeyFormatter.expand(self, sources=sources, fallback=fallback or self._exp_fallback, max=max):
             case None:
-                result = on_fail or self._exp_fallback
-            case _:
-                result = self._exp_type(expanded)
-
-        self._check_expansion(result)
-        match result:
-            case pl.Path() as x:
-                return doot.locs[x]
-            case str() as x:
-                return x
+                return None
+            case DKey() as x if self._exp_type is str:
+                return f"{x:w}"
             case x:
-                return x
+                expanded = self._exp_type(x)
+                self._check_expansion(expanded, override=check)
+                return expanded
 
-    def _check_expansion(self, value):
+    def redirect(self, *sources, multi=False) -> list[DKey]:
+        """
+          Always returns a list of keys, even if the key is itself
+        """
+        match DKeyFormatter.redirect(self, sources=sources):
+            case []:
+                return [self]
+            case [*xs] if multi:
+                return [DKey(x) for x in xs]
+            case [x]:
+                return [DKey(x)]
+            case x:
+                raise TypeError("bad redirection type", x, self)
+
+    def _check_expansion(self, value, override=None):
         """ typecheck an expansion result """
-        match self._typecheck:
+        match override or self._typecheck:
             case x if x is Any:
                 pass
             case types.GenericAlias():
@@ -304,12 +327,13 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, str):
 
     def set_expansion(self, mark:MARKTYPE, check:CHECKTYPE) -> Self:
         """ pre-register expansion parameters """
-        self._mark = mark
+        if mark is not None:
+            self._mark = mark
         match mark:
             case None | DKeyMark_e.FREE:
                 self._exp_type  = identity
                 self._typecheck = check or Any
-            case DKeyMark_e.NULL | DKeyMark_e.STR:
+            case DKeyMark_e.STR:
                 self._exp_type  = str
                 self._typecheck = str
             case str():
@@ -318,31 +342,17 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, str):
 
                 # else try making a coderefer from it
                 raise NotImplementedError()
-            case DKeyMark_e.PATH:
-                self._exp_type  = pl.Path
-                self._typecheck = pl.Path
-            case DKeyMark_e.REDIRECT:
-                self._exp_type  = DKey
-                self._typecheck = DKey
-            case DKeyMark_e.CODE:
-                self._exp_type  = CodeReference.build
-                self._typecheck = CodeReference
             case DKeyMark_e.TASK:
                 self._exp_type  = TaskName.build
                 self._typecheck = TaskName
-            case DKeyMark_e.ARGS:
-                self._exp_type  = list
-                self._typecheck = list
-            case DKeyMark_e.KWARGS:
-                self._exp_type  = dict
-                self._typecheck = dict
-            case DKeyMark_e.POSTBOX:
-                self._exp_type  = list
-                self._typecheck = check or list
             case type() if issubclass(mark, Buildable_p):
                 self._mark = DKeyMark_e.FREE
                 self._exp_type  = mark.build
                 self._typecheck = check or mark
+            case type() if issubclass(mark, pl.Path):
+                self._mark = DKeyMark_e.PATH
+                self._exp_type = pl.Path
+                self._typecheck = pl.Path
             case type():
                 self._mark = DKeyMark_e.FREE
                 self._exp_type  = mark
@@ -353,6 +363,7 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, str):
         return self
 
     def keys(self) -> list:
+        """ Get subkeys of this key. by default, an empty list """
         return []
 
 ##-- core
@@ -401,7 +412,6 @@ class MultiDKey(DKeyBase):
         super().__init__(data, mark=mark, **kwargs)
         s_keys           = DKeyFormatter.Parse(data)
         self._subkeys    = [DKey(x[0], fparams=x[1], mark=x[2]) for x in s_keys]
-        assert(bool(self._subkeys))
 
     def __format__(self, spec:str):
         """
@@ -415,18 +425,21 @@ class MultiDKey(DKeyBase):
     def keys(self):
         return self._subkeys
 
-    def expand(self, *sources, fmt=None, on_fail=None, **kwargs) -> Any:
+    def expand(self, *sources, fmt=None, fallback=None, **kwargs) -> None|Any:
         """ Expand subkeys, format the multi key
           Takes a variable number of sources (dicts, tomlguards, specs, dootlocations..)
         """
-        expanded = DKeyFormatter.expand(self, sources=sources)
-        match self._exp_type(expanded):
+        match super().expand(*sources, fallback=fallback):
             case pl.Path() as x:
-                return doot.locs[x]
-            case str() as x:
-                return x
+                return doot.locs.normalize(x)
             case x:
                 return x
+
+
+    def set_expansion(self, mark:MARKTYPE, check:CHECKTYPE) -> Self:
+        self._exp_type = str
+        self._typecheck = str | pl.Path
+        return self
 
 class NonDKey(DKeyBase):
     """
@@ -450,6 +463,11 @@ class NonDKey(DKeyBase):
     def expand(self, *args, **kwargs) -> str:
         return str(self)
 
+    def set_expansion(self, *args) -> Self:
+        self._exp_type  = str
+        self._typecheck = str
+        return self
+
 ##-- end core
 
 ##-- subclasses
@@ -462,27 +480,58 @@ class RedirectionDKey(SingleDKey):
 
     _mark = DKey.mark.REDIRECT
 
-    def expand(self, *sources, on_fail=None, **kwargs):
-        expanded = DKeyFormatter.redirect(self, sources=sources)
-        result = None
-        match expanded:
-            case None:
-                result = on_fail or self._exp_fallback
-            case _:
-                result = self._exp_type(expanded)
+    def __init__(self, data, multi=False, **kwargs):
+        super().__init__(data, **kwargs)
+        self.multi = multi
 
-        self._check_expansion(result)
-        return result
+    def expand(self, *sources, fallback=None, **kwargs) -> DKey|list[DKey]:
+        match self.redirect(*sources, multi=self.multi, **kwargs):
+            case list() as xs if not self.multi:
+                return xs[0]
+            case list() as xs:
+                return xs
 
+    def set_expansion(self, *args) -> Self:
+        self._exp_type  = DKey
+        self._typecheck = DKey | list[DKey]
+        return self
 
 class ArgsDKey(SingleDKey):
     """ A Key representing the action spec's args """
     _mark = DKey.mark.ARGS
 
+    def set_expansion(self, *args) -> Self:
+        self._exp_type  = list
+        self._typecheck = list
+        return self
+
+    def expand(self, *sources, fmt=None, fallback=None, **kwargs) -> list:
+        for source in sources:
+            if not isinstance(source, SpecStruct_p):
+                continue
+
+            return source.args
+
+        return []
+
 class KwargsDKey(SingleDKey):
     """ A Key representing all of an action spec's kwargs """
 
     _mark = DKey.mark.KWARGS
+
+    def set_expansion(self, *args) -> Self:
+        self._exp_type  = dict
+        self._typecheck = dict
+        return self
+
+    def expand(self, *sources, fmt=None, fallback=None, **kwargs) -> dict:
+        for source in sources:
+            if not isinstance(source, SpecStruct_p):
+                continue
+
+            return source.kwargs
+
+        return dict()
 
 class ImportDKey(SingleDKey):
     """
@@ -490,17 +539,27 @@ class ImportDKey(SingleDKey):
     """
     _mark = DKey.mark.CODE
 
+    def set_expansion(self, *args) -> Self:
+        self._exp_type  = CodeReference.build
+        self._typecheck = CodeReference
+        return self
+
 class PathMultiDKey(MultiDKey):
     """
     A MultiKey that always expands as a path
     """
     _mark = DKey.mark.PATH
 
+    def set_expansion(self, *args) -> Self:
+        self._exp_type  = pl.Path
+        self._typecheck = pl.Path
+        return self
+
 class PostBoxDKey(SingleDKey):
     """ A DKey which expands from postbox tasknames  """
     _mark = DKey.mark.POSTBOX
 
-    def expand(self, *sources, on_fail=None, **kwargs):
+    def expand(self, *sources, fallback=None, **kwargs):
         # expand key to a task name
         target = None
         # get from postbox
@@ -509,6 +568,9 @@ class PostBoxDKey(SingleDKey):
         # return result
         raise NotImplementedError()
 
-
+    def set_expansion(self, *args) -> Self:
+        self._exp_type  = list
+        self._typecheck = check or list
+        return self
 
 ##-- end subclasses

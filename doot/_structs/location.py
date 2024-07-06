@@ -153,7 +153,8 @@ class Location(BaseModel, Location_p, Buildable_p, metaclass=ProtocolModelMeta, 
         return  suffix and stem
 
     def __call__(self) -> pl.Path:
-        return self.to_path()
+        return self.expand()
+
     @ftz.cached_property
     def abstracts(self) -> tuple[bool, bool, bool]:
         """ Return three bools,
@@ -172,11 +173,12 @@ class Location(BaseModel, Location_p, Buildable_p, metaclass=ProtocolModelMeta, 
         return meta in self.meta
 
     def exists(self) -> bool:
-        expanded = self.to_path()
+        expanded = self.expand()
         logging.debug("Testing for existence: %s", expanded)
         return expanded.exists()
+
     def keys(self) -> set[str]:
         return self._expansion_keys
 
-    def to_path(self):
+    def expand(self):
         return doot.locs[self.path]

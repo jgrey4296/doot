@@ -171,7 +171,6 @@ class TaskName(StructuredName, _TaskNameOps_m):
       Two separators in a row marks a recall point for root()
 
       TODO: parameters
-
     """
 
     meta                : TaskMeta_f               = TaskMeta_f.default

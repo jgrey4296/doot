@@ -17,6 +17,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     cast, final, overload, runtime_checkable)
 from uuid import UUID, uuid1
 from weakref import ref
+import functools as ftz
 
 ##-- end imports
 
@@ -68,36 +69,54 @@ class DootLocations(PathManip_m):
         keys = ", ".join(iter(self))
         return f"<DootLocations : {str(self.root)} : ({keys})>"
 
-    def __getattr__(self, key) -> pl.Path:
+    def __getattr__(self, key:str) -> pl.Path:
         """
-          get a location by name from loaded toml
+          locs.simplename -> expansion of 'simplename'
+          where 'simplename' has been registered via toml
+
           delegates to __getitem__
           eg: locs.temp
           """
         if key == "__self__":
             return None
-        return self[DootKey.build(key, strict=True)]
 
-    def __getitem__(self, val:str|DootKey|pl.Path|TaskArtifact) -> pl.Path:
+        return self.normalize(self.get(key, fallback=False))
+
+    def __getitem__(self, val:pl.Path|str) -> pl.Path:
         """
-          eg: doot.locs['{data}/somewhere']
-          A public utility method to easily convert paths.
-          delegates to DootKey's path expansion
+          doot.locs['{data}/somewhere']
+          or doot.locs[pl.Path('{data}/somewhere')]
 
-          Get a location using item access for extending a stored path.
-          eg: locs['{temp}/imgs/blah.jpg']
+          A public utility method to easily use toml loaded paths
+          expands explicit keys in the string or path
+
         """
-        match DootKey.build(val, explicit=True):
-            case DootNonKey() as key:
-                return key.to_path(locs=self)
-            case DootSimpleKey() as key:
-                return key.to_path(locs=self)
-            case DootMultiKey() as key:
-                return key.to_path(locs=self)
-            case _:
-                raise DootLocationExpansionError("Unrecognized location expansion argument", val)
+        match val:
+            case DKey() if 0 < len(val.keys()):
+                raise TypeError("Expand Multi Keys directly", val)
+            case DKey():
+               result = self.get(val)
+               return result
+            case pl.Path():
+                # extract keys
+                keys = DKeyFormatter.Parse(str(val))
+            case str():
+                # extract keys
+                keys = DKeyFormatter.Parse(val)
 
-    def __contains__(self, key:str|DootKey|pl.Path|TaskArtifact):
+        if not bool(keys):
+            return pl.Path(val)
+
+        assert(bool(keys))
+        # expand keys
+        expanded = {x[0] : self.get(x[0], fallback=False) for x in keys}
+        # combine keys ino a full path
+        mapped = pl.Path(str(val).format_map(expanded))
+
+        assert(isinstance(mapped, pl.Path)), mapped
+        return mapped
+
+    def __contains__(self, key:str|DKey|pl.Path|TaskArtifact):
         """ Test whether a key is a registered location """
         return key in self._data
 
