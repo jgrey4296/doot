@@ -311,7 +311,7 @@ class LinkAction(PathManip_m):
 
     def _do_link(self, spec, state, x, y, force):
         x_key  = DKey(x, explicit=True, mark=pl.Path)
-        y_key  = DKey(y, explicit=True, mark=p..Path)
+        y_key  = DKey(y, explicit=True, mark=p.Path)
         x_path = x_key.expand(spec, state, symlinks=True)
         y_path = y_key.expand(spec, state)
         # TODO when py3.12: use follow_symlinks=False
