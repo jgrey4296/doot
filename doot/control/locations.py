@@ -85,36 +85,36 @@ class DootLocations(PathManip_m):
     def __getitem__(self, val:pl.Path|str) -> pl.Path:
         """
           doot.locs['{data}/somewhere']
-          or doot.locs[pl.Path('{data}/somewhere')]
+          or doot.locs[pl.Path('data/other/somewhere')]
 
           A public utility method to easily use toml loaded paths
           expands explicit keys in the string or path
 
         """
+        last = None
         match val:
             case DKey() if 0 < len(val.keys()):
                 raise TypeError("Expand Multi Keys directly", val)
             case DKey():
-               result = self.get(val)
-               return result
+                current = self.get(val)
             case pl.Path():
-                # extract keys
-                keys = DKeyFormatter.Parse(str(val))
+                current = str(val)
             case str():
-                # extract keys
-                keys = DKeyFormatter.Parse(val)
+                current = val
 
-        if not bool(keys):
-            return pl.Path(val)
+        while current != last:
+            last = current
+            keys = DKeyFormatter.Parse(current)
+            if not bool(keys):
+                continue
+            assert(bool(keys))
+            # expand keys
+            expanded = {x[0] : self.get(x[0], fallback=False) for x in keys}
+            # combine keys ino a full path
+            current = current.format_map(expanded)
 
-        assert(bool(keys))
-        # expand keys
-        expanded = {x[0] : self.get(x[0], fallback=False) for x in keys}
-        # combine keys ino a full path
-        mapped = pl.Path(str(val).format_map(expanded))
-
-        assert(isinstance(mapped, pl.Path)), mapped
-        return mapped
+        assert(current is not None)
+        return pl.Path(current)
 
     def __contains__(self, key:str|DKey|pl.Path|TaskArtifact):
         """ Test whether a key is a registered location """

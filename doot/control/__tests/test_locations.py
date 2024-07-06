@@ -192,7 +192,17 @@ class TestLocationsGetItem:
         assert(bool(simple._data))
 
         assert(isinstance(simple['{a}'], pl.Path))
-        assert(simple['{a}'] == pl.Path("{other}"))
+        assert(simple['{a}'] == pl.Path("bloo"))
+
+
+    def test_getitem_expansion_multi_recursive(self):
+        simple = DootLocations(pl.Path.cwd())
+        assert(not bool(simple._data))
+        simple.update({"a": "{other}", "other": "{aweg}/bloo", "aweg":"aweg/{blah}", "blah":"blah/jojo"})
+        assert(bool(simple._data))
+
+        assert(isinstance(simple['{a}'], pl.Path))
+        assert(simple['{a}'] == pl.Path("aweg/blah/jojo/bloo"))
 
     def test_getitem_expansion_in_item(self):
         simple = DootLocations(pl.Path.cwd())
