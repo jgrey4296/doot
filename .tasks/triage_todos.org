@@ -170,7 +170,7 @@ non-key's may be being wrapped incorrectly
    :context:
         <2024-06-21 Fri> class Location_p(Protocol):
    :END:
-** TRIAGE implement dkey decorators
+** OKAY implement dkey decorators
    [[/media/john/data/github/python/doot/doot/utils/dkey_decorator.py::132][Location]]
    :context:
         <2024-06-25 Tue>         # return ftz.partial(DecorationUtils.prepare_expansion, keys)
@@ -181,7 +181,7 @@ non-key's may be being wrapped incorrectly
         <2024-06-25 Tue> class PostBoxDKey(SingleDKey):
    :END:
 ** TRIAGE dkey.__new__ for marks
-   [[/media/john/data/github/python/doot/doot/_structs/dkey.py::110][Location]]
+[[/media/john/data/github/python/doot/doot/_structs/dkey.py::110][Location]]
    :context:
         <2024-06-25 Tue>             case str() if len(s_keys := DKeyFormatter.Parse(data)) == 1: # one explicit key
    :END:
@@ -189,4 +189,9 @@ non-key's may be being wrapped incorrectly
    [[/media/john/data/github/python/doot/doot/utils/dkey_decorator.py::100][Location]]
    :context:
         <2024-06-25 Tue>         """ mark an action as using expanded string keys """
+   :END:
+** OKAY further develop decorator class
+   [[/media/john/data/github/python/doot/doot/utils/decorators.py::61][Location]]
+   :context:
+        <2024-06-28 Fri> class DecorationUtils:
    :END:
