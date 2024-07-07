@@ -363,47 +363,6 @@ class TestDKeyExpansion:
         assert(isinstance(result, int))
         assert(result == 2)
 
-    def test_mark_expansion(self, spec):
-        """ a -> 2:str """
-        key = dkey.DKey("a", mark=dkey.DKey.mark.STR)
-        assert(isinstance(key, dkey.DKey))
-        result = key.expand(spec)
-        assert(isinstance(result, str))
-        assert(result == "2")
-
-
-    def test_mark_expansion_to_path(self, spec):
-        """ a -> 2:str """
-        key = dkey.DKey("{a}", mark=dkey.DKey.mark.PATH)
-        assert(isinstance(key, dkey.DKey))
-        result = key.expand(spec)
-        assert(isinstance(result, pl.Path))
-        assert(result == pl.Path("2").resolve())
-
-
-    def test_type_coerce_expansion(self, spec):
-        """ a -> 2 (float) """
-        key = dkey.DKey("a", mark=float)
-        assert(isinstance(key, dkey.DKey))
-        result = key.expand(spec)
-        assert(isinstance(result, float))
-        assert(result == 2)
-
-    def test_indirect_recursive_expansion(self, spec):
-        """ z -> z_ -> a -> 2 """
-        key = dkey.DKey("z")
-        assert(isinstance(key, dkey.DKey))
-        result = key.expand(spec)
-        assert(result == 2)
-
-
-    def test_indirect_recursive_to_str(self, spec):
-        """ z -> z_ -> a -> 2 """
-        key = dkey.DKey("{z}", mark=dkey.DKey.mark.STR)
-        assert(isinstance(key, dkey.DKey))
-        result = key.expand(spec)
-        assert(result == "2")
-
     def test_state_expansion(self, spec):
         """ blah -> bloo """
         key = dkey.DKey("blah")
@@ -419,7 +378,6 @@ class TestDKeyExpansion:
         assert(isinstance(key, dkey.DKey))
         result = key.expand(spec, state)
         assert(result is None)
-
 
     def test_missing_expansion_with_fallback(self, spec):
         """ blah -> None """
@@ -439,87 +397,6 @@ class TestDKeyExpansion:
         result = key.expand(spec, state)
         assert(result == "bloo")
 
-    def test_direct_when_no_indirect(self, spec):
-        """
-          blah_ -> blah -> bloo
-        """
-        key = dkey.DKey("{blah_}")
-        state = {"blah": "bloo"}
-        assert(isinstance(key, dkey.DKey))
-        result = key.expand(spec, state)
-        assert(result == "bloo")
-
-    def test_multikey_str_expansion(self, spec):
-        """
-          blah -> aweg
-          bloo -> gawe
-        """
-        key = dkey.DKey("{blah} {bloo}", mark=dkey.DKey.mark.STR)
-        state = {"blah": "aweg", "bloo": "gawe"}
-        assert(isinstance(key, dkey.DKey))
-        result = key.expand(spec, state)
-        assert(result == "aweg gawe")
-
-    def test_multikey_missing_expansion(self, spec):
-        """
-          blah -> aweg
-          bloo -> {bloo}
-        """
-        key = dkey.DKey("{blah} {bloo}")
-        state = {"blah": "aweg"}
-        assert(isinstance(key, dkey.DKey))
-        result = key.expand(spec, state)
-        assert(result == "aweg {bloo}")
-
-
-    def test_multikey_with_nonstr_expansions(self, spec):
-        """
-          blah -> aweg
-          bloo -> {bloo}
-        """
-        key = dkey.DKey("{blah} {bloo}")
-        state = {"blah": "aweg", "bloo": 23}
-        assert(isinstance(key, dkey.DKey))
-        result = key.expand(spec, state)
-        assert(result == "aweg 23")
-
-    def test_multikey_expansion_to_path(self, spec):
-        """
-          {blah}/{bloo} -> aweg/wegg
-        """
-        key = dkey.DKey("{blah}/{bloo}", mark=dkey.DKey.mark.PATH)
-        assert(isinstance(key, dkey.MultiDKey))
-        assert(isinstance(key, dkey.PathMultiDKey))
-        assert(key._exp_type is pl.Path)
-        state = {"blah": pl.Path("aweg"), "bloo":"wegg"}
-        result = key.expand(spec, state)
-        assert(isinstance(result, pl.Path))
-        assert(result == pl.Path("aweg/wegg").resolve())
-
-
-    def test_multikey_recursive_expansion(self, spec):
-        """
-          blah/bloo -> {other}/wegg -> aweg/wegg
-        """
-        key = dkey.DKey("{blah}/{bloo}", mark=dkey.DKey.mark.PATH)
-        assert(isinstance(key, dkey.MultiDKey))
-        assert(isinstance(key, dkey.PathMultiDKey))
-        assert(key._exp_type is pl.Path)
-        state = {"blah": "{other}", "bloo":"wegg", "other": "aweg"}
-        result = key.expand(spec, state)
-        assert(isinstance(result, pl.Path))
-        assert(result == pl.Path("aweg/wegg").resolve())
-
-    def test_nested_expansion(self, spec):
-        """
-          top -> {y} : {a} -> aweg : 2
-        """
-        key = dkey.DKey("top")
-        assert(isinstance(key, dkey.DKey))
-        state = {"top": dkey.DKey("{y} : {a}")}
-        result = key.expand(spec, state)
-        assert(result == "aweg : 2")
-
     def test_recursive_expansion(self, spec):
         """
           top -> b -> {b}
@@ -530,15 +407,72 @@ class TestDKeyExpansion:
         result = key.expand(spec, state)
         assert(result == "{b}")
 
-    def test_typed_expansion(self, spec):
+
+    def test_expansion_with_none_sources(self, spec):
         """
-          test -> {1,2,3,4}
+          top -> b -> {b}
         """
-        state = {"test": set([1,2,3,4])}
-        key   = dkey.DKey("test")
+        key = dkey.DKey("top", mark=str)
+        assert(isinstance(key, dkey.DKey))
+        state = {"top_": "b", "b": dkey.DKey("{b}")}
+        result = key.expand(None, spec, state)
+        assert(result == "{b}")
+
+class TestDKeyMarkExpansion:
+
+    @pytest.fixture(scope="function")
+    def spec(self):
+        return ActionSpec(kwargs=TomlGuard({"y": "aweg", "z_": "a", "a": 2, "simple":"aweg"}))
+
+    def test_mark_expansion(self, spec):
+        """ a -> 2:str """
+        key = dkey.DKey("a", mark=dkey.DKey.mark.STR)
+        assert(isinstance(key, dkey.DKey))
+        result = key.expand(spec)
+        assert(isinstance(result, str))
+        assert(result == "2")
+
+    def test_mark_expansion_to_path(self, spec):
+        """ simple -> aweg:pl.Path"""
+        key = dkey.DKey("{simple}", mark=dkey.DKey.mark.PATH)
+        assert(isinstance(key, dkey.DKey))
+        assert(isinstance(key, dkey.PathSingleDKey))
+        result = key.expand(spec)
+        assert(isinstance(result, pl.Path))
+        assert(result == pl.Path("aweg").resolve())
+
+    def test_mark_expansion_to_path_multi(self, spec):
+        """ simple -> aweg:pl.Path"""
+        key = dkey.DKey("{simple}/{a}", mark=dkey.DKey.mark.PATH)
+        assert(isinstance(key, dkey.DKey))
+        assert(isinstance(key, dkey.PathMultiDKey))
+        result = key.expand(spec)
+        assert(isinstance(result, pl.Path))
+        assert(result == pl.Path("aweg/2").resolve())
+
+    def test_coderef_expansion(self, spec):
+        """
+          test -> coderef
+        """
+        state = {"test": "doot._structs.task_spec:TaskSpec"}
+        key   = dkey.DKey("test", mark=dkey.DKey.mark.CODE)
         assert(isinstance(key, dkey.DKey))
         result = key.expand(spec, state)
-        assert(isinstance(result, set))
+        assert(isinstance(result, CodeReference))
+
+class TestDKeyExpansionTypeControl:
+
+    @pytest.fixture(scope="function")
+    def spec(self):
+        return ActionSpec(kwargs=TomlGuard({"y": "aweg", "z_": "a", "a": 2}))
+
+    def test_type_coerce_expansion(self, spec):
+        """ a -> 2 (float) """
+        key = dkey.DKey("a", mark=float)
+        assert(isinstance(key, dkey.DKey))
+        result = key.expand(spec)
+        assert(isinstance(result, float))
+        assert(result == 2.0)
 
     def test_expansion_with_check(self, spec):
         """
@@ -568,16 +502,15 @@ class TestDKeyExpansion:
         with pytest.raises(TypeError):
             key.expand(spec, state)
 
-    def test_coderef_expansion(self, spec):
+    def test_typed_expansion(self, spec):
         """
-          test -> coderef
+          test -> {1,2,3,4}
         """
-        state = {"test": "doot._structs.task_spec:TaskSpec"}
-        key   = dkey.DKey("test", mark=dkey.DKey.mark.CODE)
+        state = {"test": set([1,2,3,4])}
+        key   = dkey.DKey("test")
         assert(isinstance(key, dkey.DKey))
         result = key.expand(spec, state)
-        assert(isinstance(result, CodeReference))
-
+        assert(isinstance(result, set))
 
     @pytest.mark.xfail
     def test_expansion_with_type_spec_in_str(self, spec):
@@ -590,6 +523,123 @@ class TestDKeyExpansion:
         assert(isinstance(result, str))
         assert(result == "2")
 
+class TestDKeyExpansionIndirect:
+
+    @pytest.fixture(scope="function")
+    def spec(self):
+        return ActionSpec(kwargs=TomlGuard({"y": "aweg", "z_": "a", "a": 2}))
+
+    def test_indirect_recursive_expansion(self, spec):
+        """ z -> z_ -> a -> 2 """
+        key = dkey.DKey("z")
+        assert(isinstance(key, dkey.DKey))
+        result = key.expand(spec)
+        assert(result == 2)
+
+    def test_indirect_recursive_to_str(self, spec):
+        """ z -> z_ -> a -> 2 """
+        key = dkey.DKey("{z}", mark=dkey.DKey.mark.STR)
+        assert(isinstance(key, dkey.DKey))
+        result = key.expand(spec)
+        assert(result == "2")
+
+    def test_direct_when_no_indirect(self, spec):
+        """
+          blah_ -> blah -> bloo
+        """
+        key = dkey.DKey("{blah_}")
+        state = {"blah": "bloo"}
+        assert(isinstance(key, dkey.DKey))
+        result = key.expand(spec, state)
+        assert(result == "bloo")
+
+    def test_nested_expansion(self, spec):
+        """
+          top -> {y} : {a} -> aweg : 2
+        """
+        key = dkey.DKey("top")
+        assert(isinstance(key, dkey.DKey))
+        state = {"top": dkey.DKey("{y} : {a}")}
+        result = key.expand(spec, state)
+        assert(result == "aweg : 2")
+
+class TestDKeyMultiKeyExpansion:
+
+    @pytest.fixture(scope="function")
+    def spec(self):
+        return ActionSpec(kwargs=TomlGuard({"y": "aweg", "z_": "a", "a": 2}))
+
+    def test_multikey_str_expansion(self, spec):
+        """
+          blah -> aweg
+          bloo -> gawe
+        """
+        key = dkey.DKey("{blah} {bloo}", mark=dkey.DKey.mark.STR)
+        state = {"blah": "aweg", "bloo": "gawe"}
+        assert(isinstance(key, dkey.DKey))
+        result = key.expand(spec, state)
+        assert(result == "aweg gawe")
+
+    def test_multikey_missing_expansion(self, spec):
+        """
+          blah -> aweg
+          bloo -> {bloo}
+        """
+        key = dkey.DKey("{blah} {bloo}")
+        state = {"blah": "aweg"}
+        assert(isinstance(key, dkey.DKey))
+        result = key.expand(spec, state)
+        assert(result == "aweg {bloo}")
+
+    def test_multikey_with_nonstr_expansions(self, spec):
+        """
+          blah -> aweg
+          bloo -> {bloo}
+        """
+        key = dkey.DKey("{blah} {bloo}")
+        state = {"blah": "aweg", "bloo": 23}
+        assert(isinstance(key, dkey.DKey))
+        result = key.expand(spec, state)
+        assert(result == "aweg 23")
+
+    def test_multikey_expansion_to_path(self, spec):
+        """
+          {blah}/{bloo} -> aweg/wegg
+        """
+        key = dkey.DKey("{blah}/{bloo}", mark=dkey.DKey.mark.PATH)
+        assert(isinstance(key, dkey.MultiDKey))
+        assert(isinstance(key, dkey.PathMultiDKey))
+        assert(key._exp_type is pl.Path)
+        state = {"blah": pl.Path("aweg"), "bloo":"wegg"}
+        result = key.expand(spec, state)
+        assert(isinstance(result, pl.Path))
+        assert(result == pl.Path("aweg/wegg").resolve())
+
+    def test_multikey_path_direct_fallback_to_indirect(self, spec):
+        """
+          {main} -> {main_} -> {blah}/{bloo} -> aweg/wegg
+        """
+        key = dkey.DKey("main", mark=dkey.DKey.mark.PATH)
+        state = {"main_":"redir", "redir": "{blah}/{bloo}", "blah": pl.Path("aweg"), "bloo":"wegg"}
+        assert(isinstance(key, dkey.SingleDKey))
+        assert(isinstance(key, dkey.PathSingleDKey))
+        assert(key._exp_type is pl.Path)
+        result = key.expand(spec, state)
+        assert(isinstance(result, pl.Path))
+        assert(result == pl.Path("aweg/wegg").resolve())
+
+    def test_multikey_recursive_expansion(self, spec):
+        """
+          blah/bloo -> {other}/wegg -> aweg/wegg
+        """
+        key = dkey.DKey("{blah}/{bloo}", mark=dkey.DKey.mark.PATH)
+        assert(isinstance(key, dkey.MultiDKey))
+        assert(isinstance(key, dkey.PathMultiDKey))
+        assert(key._exp_type is pl.Path)
+        state = {"blah": "{other}", "bloo":"wegg", "other": "aweg"}
+        result = key.expand(spec, state)
+        assert(isinstance(result, pl.Path))
+        assert(result == pl.Path("aweg/wegg").resolve())
 
 class TestDKeyRedirection:
 
@@ -600,7 +650,6 @@ class TestDKeyRedirection:
     def test_sanity(self):
         key = dkey.DKey("x")
         assert(isinstance(key, dkey.DKey))
-
 
     def test_redirection(self, spec):
         """
@@ -614,7 +663,6 @@ class TestDKeyRedirection:
         assert(isinstance(result, list))
         assert(result[0] == "blah")
 
-
     def test_redirection_null(self, spec):
         """
           test_ -> test_
@@ -626,7 +674,6 @@ class TestDKeyRedirection:
         assert(result is not None)
         assert(isinstance(result, list))
         assert(result[0] == "test_")
-
 
     def test_redirection_multi(self, spec):
         """
@@ -643,6 +690,15 @@ class TestDKeyRedirection:
         assert(result[1] == "b")
         assert(result[2] == "c")
 
+    def test_redirection_path(self, spec):
+        """
+          test -> test_ -> simple
+        """
+        key   = dkey.DKey("test", mark=dkey.DKey.mark.PATH)
+        state = { "test_": "simple", "simple": "blah"}
+        assert(isinstance(key, dkey.DKey))
+        redir = key.redirect(state)
+        assert(redir[0] == "simple")
 
     def test_redirection_expand_multi_in_ctor(self, spec):
         """
@@ -658,8 +714,6 @@ class TestDKeyRedirection:
         assert(result[0] == "a")
         assert(result[1] == "b")
         assert(result[2] == "c")
-
-
 
 class TestDKeyFormatting:
 
