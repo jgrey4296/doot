@@ -71,7 +71,7 @@ class DootLocations(PathManip_m):
 
     def __getattr__(self, key:str) -> pl.Path:
         """
-          locs.simplename -> expansion of 'simplename'
+          locs.simplename -> normalized expansion
           where 'simplename' has been registered via toml
 
           delegates to __getitem__
@@ -114,7 +114,7 @@ class DootLocations(PathManip_m):
             current = current.format_map(expanded)
 
         assert(current is not None)
-        return pl.Path(current)
+        return self.normalize(pl.Path(current))
 
     def __contains__(self, key:str|DKey|pl.Path|TaskArtifact):
         """ Test whether a key is a registered location """

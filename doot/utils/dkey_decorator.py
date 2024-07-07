@@ -68,8 +68,7 @@ class DKeyed:
 
     It registers arguments on an action and extracts them from the spec and state automatically.
 
-    provides: expands/paths/types/requires/returns/args/kwargs/redirects/redirects_many
-
+    provides: expands/paths/types/requires/returns/args/kwargs/redirects
     The kwarg 'hint' takes a dict and passes the contents to the relevant expansion method as kwargs
 
     arguments are added to the tail of the action args, in order of the decorators.
@@ -127,7 +126,7 @@ class DKeyed:
     @staticmethod
     def redirects(*args, **kwargs):
         """ mark an action as using redirection keys """
-        keys = [DKey(x, mark=DKey.mark.REDIRECT, **kwargs) for x in args]
+        keys = [DKey(x, mark=DKey.mark.REDIRECT, ctor=DKey, **kwargs) for x in args]
         return DKeyExpansionDecorator(keys)
 
     @staticmethod
@@ -209,7 +208,7 @@ class DKeyExpansionDecorator(Decorator_p):
             try:
                 expansions = [x(spec, state) for x in getattr(fn, data_key)]
             except KeyError as err:
-                printer.warning("Action State Expansion Failure: %s", err)
+                printer.warning("Action State method Expansion Failure: %s", err)
                 return False
             else:
                 all_args = (*call_args, *expansions)
@@ -226,7 +225,7 @@ class DKeyExpansionDecorator(Decorator_p):
             try:
                 expansions = [x(spec, state) for x in getattr(fn, data_key)]
             except KeyError as err:
-                printer.warning("Action State Expansion Failure: %s", err)
+                printer.warning("Action State fn Expansion Failure: %s", err)
                 return False
             else:
                 all_args = (*call_args, *expansions)

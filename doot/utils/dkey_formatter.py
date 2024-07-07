@@ -158,7 +158,7 @@ class DKeyFormatterEntry_m:
     @classmethod
     def Parse(cls, key:Key_p|pl.Path) -> list:
         """ Use the python c formatter parser to extract keys from a string
-          of form (literal, key, format, conversion)
+          of form (key, format, conversion)
 
           see: cpython Lib/string.py
           and: cpython Objects/stringlib/unicode_format.h
@@ -170,6 +170,7 @@ class DKeyFormatterEntry_m:
             case None:
                 return []
             case str() | Key_p():
+                # formatter.parse returns tuples of (literal, key, format, conversion)
                 result = [x[1:] for x in cls._instance.parse(key) if x[1] is not None]
                 return result
             case _:
@@ -233,15 +234,14 @@ class DKeyFormatter_Expansion_m:
             logging.debug("Expansion Loop (%s): %s %s", self.rec_remaining, current, type(current))
             self.rec_remaining -= count
             last                = current
-            current             = self._try_redirection(current)[0]
             match current:
-                case Key_p() if bool(current.keys()):
+                case Key_p() if current.multi:
                     current = self._multi_expand(current)
-                case Key_p() if current._mark is DKeyMark_e.PATH:
-                    current = self._str_expand(current)
                 case Key_p():
+                    current = self._try_redirection(current)[0]
                     current = self._single_expand(current)
                 case str():
+                    current = self._try_redirection(current)[0]
                     current = self._str_expand(current) or current
                 case _:
                     break
@@ -270,6 +270,7 @@ class DKeyFormatter_Expansion_m:
                 logging.debug("Redirected %s to %s", key, k)
                 return [k]
             case _:
+                logging.debug("No Redirection found for %s", keystr)
                 return [key]
 
     def _single_expand(self, key:Key_p) -> None|Any:
@@ -284,6 +285,8 @@ class DKeyFormatter_Expansion_m:
         match chained_get(key_str, *self.sources):
             case None:
                 return None
+            case Key_p() as x:
+                return x
             case x if x == key_str:
                 # Got the key back, wrap it and maybe return it
                 return key
@@ -337,7 +340,7 @@ class DKeyFormatter(string.Formatter, DKeyFormatter_Expansion_m, DKeyFormatterEn
         locs                   = kwargs.get('locs', doot.locs)
         fallback               = kwargs.get("fallback", None)
 
-        with cls._instance(spec=spec, state=state, locs=locs, fallback=fallback) as fmt:
+        with cls._instance(key=key, sources=[spec, state, locs], fallback=fallback) as fmt:
             return fmt.format(key, *args, **kwargs)
 
     def format(self, key:str|Key_p, /, *args, **kwargs) -> str:

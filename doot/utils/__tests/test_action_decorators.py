@@ -122,7 +122,7 @@ class TestDecorators:
     def test_key_decoration_survives_annotation(self):
 
         @decs.RunsDry()
-        @DKeyed.expands("blah")
+        @DKeyed.formats("blah")
         def simple(spec, state, blah):
             return blah
 

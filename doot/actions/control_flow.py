@@ -67,7 +67,7 @@ class FileExistsCheck(DootBaseAction):
         fail    = self.ActRE.FAIL if _fail else self.ActRE.SKIP
 
         for arg in args:
-            path = DKey(arg, explicit=True, mark=pl.Path).expand(spec, state, on_fail=None)
+            path = DKey(arg, explicit=True, mark=DKey.mark.PATH).expand(spec, state, on_fail=None)
             exists = bool(path and path.exists())
             if _invert:
                 exists = not exists
@@ -87,7 +87,7 @@ class SuffixCheck(DootBaseAction):
 
     @DKeyed.args
     @DKeyed.types("exts", check=list)
-    @DKeyed.types("not", check=book, fallback=False)
+    @DKeyed.types("not", check=bool, fallback=False)
     @DKeyed.types("fail", check=bool, fallback=False)
     def __call__(self, spec, state, args, exts, _invert, _fail):
         result = self.ActRE.SKIP
@@ -95,7 +95,7 @@ class SuffixCheck(DootBaseAction):
             result = self.ActRE.FAIL
 
         for arg in args:
-            path = DKey(arg, explicit=True, mark=pl.Path).expand(spec, state, on_fail=None)
+            path = DKey(arg, explicit=True, mark=DKey.mark.PATH).expand(spec, state, on_fail=None)
             match path.suffix in exts, _invert:
                 case False, True:
                     continue
@@ -124,7 +124,7 @@ class RelativeCheck(PathManip_m, DootBaseAction):
         roots = self._build_roots(spec, state, _bases)
         try:
             for arg in args:
-                path = DKey(arg, explicit=True, mark=pl.Path).expand(spec, state, on_fail=None)
+                path = DKey(arg, explicit=True, mark=DKey.mark.PATH).expand(spec, state, on_fail=None)
                 match self._get_relative(path, roots), _invert:
                     case None, True:
                         return

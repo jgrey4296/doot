@@ -127,7 +127,7 @@ class JobQueueAction(Action_p):
         for key in froms:
             if key == "from_":
                 continue
-            match key.expand(spec, state, check=list|TaskSpec|None):
+            match key.expand(spec, state):
                 case None:
                     pass
                 case list() as l:
