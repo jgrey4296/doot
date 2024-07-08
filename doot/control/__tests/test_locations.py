@@ -141,7 +141,7 @@ class TestLocationsGetItem:
         result_alt = simple['a']
         assert(result == result_alt)
         assert(isinstance(result, pl.Path))
-        assert(result == pl.Path("a"))
+        assert(result == doot.locs.normalize(pl.Path("a")))
 
     def test_getitem_str_key_expansion(self):
         """
@@ -150,7 +150,7 @@ class TestLocationsGetItem:
         simple = DootLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
         result = simple.__getitem__("{a}")
-        assert(result == pl.Path("blah"))
+        assert(result == doot.locs.normalize(pl.Path("blah")))
 
     def test_getitem_str_key_no_match_errors(self):
         """
@@ -168,7 +168,7 @@ class TestLocationsGetItem:
         simple = DootLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
         result = simple.__getitem__(pl.Path("a/b/c"))
-        assert(result == pl.Path("a/b/c"))
+        assert(result == doot.locs.normalize(pl.Path("a/b/c")))
 
     def test_getitem_path_with_keys(self):
         """
@@ -177,11 +177,11 @@ class TestLocationsGetItem:
         simple = DootLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
         result = simple.__getitem__(pl.Path("{a}/b/c"))
-        assert(result == pl.Path("blah/b/c"))
+        assert(result == doot.locs.normalize(pl.Path("blah/b/c")))
 
     def test_getitem_fail_with_multikey(self):
         simple = DootLocations(pl.Path.cwd()).update({"a": "{other}/blah", "other": "bloo"})
-        key = DKey("{a}", mark=pl.Path)
+        key = DKey("{a}", ctor=pl.Path)
         with pytest.raises(TypeError):
             simple[key]
 
@@ -192,7 +192,7 @@ class TestLocationsGetItem:
         assert(bool(simple._data))
 
         assert(isinstance(simple['{a}'], pl.Path))
-        assert(simple['{a}'] == pl.Path("bloo"))
+        assert(simple['{a}'] == doot.locs.normalize(pl.Path("bloo")))
 
 
     def test_getitem_expansion_multi_recursive(self):
@@ -202,7 +202,7 @@ class TestLocationsGetItem:
         assert(bool(simple._data))
 
         assert(isinstance(simple['{a}'], pl.Path))
-        assert(simple['{a}'] == pl.Path("aweg/blah/jojo/bloo"))
+        assert(simple['{a}'] == doot.locs.normalize(pl.Path("aweg/blah/jojo/bloo")))
 
     def test_getitem_expansion_in_item(self):
         simple = DootLocations(pl.Path.cwd())
@@ -211,7 +211,7 @@ class TestLocationsGetItem:
         assert(bool(simple._data))
 
         assert(isinstance(simple['{other}'], pl.Path))
-        assert(simple['{other}'] == pl.Path("bloo"))
+        assert(simple['{other}'] == doot.locs.normalize(pl.Path("bloo")))
 
 class TestLlocationsGetAttr:
 
