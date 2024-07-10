@@ -62,11 +62,12 @@ class TestJobInjection:
         assert(injection['a'] == 5)
 
     def test_copy_indirect(self, spec, state):
-        """ a copied indirect key will copy its redirected value """
-        spec.kwargs._table().update({"a_": "b"})
-        state.update({"b": 5})
+        """ copied indirect key will copy its redirected value
+          a_ -> {a:5}
+          """
+        state.update({"a_": "b", "b": 5})
         inj = ji.JobInjector()
-        injection = inj.build_injection(spec, state, dict(copy=["a_"]))
+        injection = inj.build_injection(spec, state, dict(copy=["a"]))
         assert("a" in injection)
         assert("a_" not in injection)
         assert(injection['a'] == 5)

@@ -191,6 +191,7 @@ class TestDKeyConstruction:
         obj = dkey.DKey(name)
         assert(isinstance(obj, dkey.DKey))
         assert(isinstance(obj, dkey.SingleDKey))
+        assert(isinstance(obj, dkey.RedirectionDKey))
         assert(str(obj) == name)
 
 class TestDKeyDunderFormatting:
@@ -432,6 +433,15 @@ class TestDKeyExpansion:
         result = key.expand(None, spec, state)
         assert(result == "{b}")
 
+
+    def test_misc(self):
+        key = dkey.DKey("simple", check=set|list)
+        assert(key.expand({"simple": set([1,2,3,4])}) is not None)
+        with pytest.raises(TypeError):
+            key.expand({"simple": 2})
+        assert(key.expand({}, fallback=set(["bob"])) == set(["bob"]))
+        assert(key.expand() is None)
+
 class TestDKeyMarkExpansion:
 
     @pytest.fixture(scope="function")
@@ -566,13 +576,14 @@ class TestDKeyExpansionIndirect:
 
     def test_direct_when_no_indirect(self, spec):
         """
-          blah_ -> blah -> bloo
+          blah_ -> blah
         """
         key = dkey.DKey("{blah_}")
         state = {"blah": "bloo"}
-        assert(isinstance(key, dkey.DKey))
-        result = key.expand(spec, state)
-        assert(result == "bloo")
+        result = key.expand(state)
+        assert(isinstance(result, dkey.DKey))
+        assert(not isinstance(result, dkey.RedirectionDKey))
+        assert(result == "blah")
 
     def test_nested_expansion(self, spec):
         """
@@ -684,6 +695,32 @@ class TestDKeyRedirection:
         assert(isinstance(result, list))
         assert(result[0] == "blah")
 
+
+    def test_redirect_prefers_indirect_key_over_direct(self):
+        """
+          test_ -> blah
+        """
+        state = {"test_": "blah", "blah": 23}
+        key   = dkey.DKey("test_", mark=dkey.DKey.mark.REDIRECT)
+        assert(isinstance(key, dkey.RedirectionDKey))
+        result = key.expand({"test": "aweg"}, state)
+        assert(result is not None)
+        assert(isinstance(result, dkey.DKey))
+        assert(result == "blah")
+
+
+    def test_expansion_is_redirection(self, spec):
+        """
+          test_ -> blah
+        """
+        state = {"test_": "blah", "blah": 23}
+        key   = dkey.DKey("test_", mark=dkey.DKey.mark.REDIRECT)
+        assert(isinstance(key, dkey.RedirectionDKey))
+        result = key.expand(spec, state)
+        assert(result is not None)
+        assert(isinstance(result, dkey.DKey))
+        assert(result == "blah")
+
     def test_redirection_null(self, spec):
         """
           test_ -> test_
@@ -694,7 +731,9 @@ class TestDKeyRedirection:
         result = key.redirect(spec, state)
         assert(result is not None)
         assert(isinstance(result, list))
-        assert(result[0] == "test_")
+        assert(not isinstance(result[0], dkey.RedirectionDKey))
+        assert(result[0] == "test")
+
 
     def test_redirection_multi(self, spec):
         """
