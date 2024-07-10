@@ -38,7 +38,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import doot
-from doot.structs import DootKey
+from doot.structs import DKey
 from doot.enums import LoopControl_e, LocationMeta_f
 
 MARKER : Final[str] = doot.constants.paths.MARKER_FILE_NAME
@@ -50,11 +50,12 @@ class PathManip_m:
       A Mixin for common path manipulations
     """
 
-    def _calc_path_parts(self, fpath, roots) -> dict:
+    def _calc_path_parts(self, fpath:pl.Path, roots:list[pl.Path]) -> dict:
         """ take a path, and get a dict of bits to add to state from it
           if no roots are provided use cwd
         """
         assert(fpath is not None)
+        assert(isinstance(roots, list))
 
         temp_stem  = fpath
         # This handles "a/b/c.tar.gz"
@@ -70,7 +71,7 @@ class PathManip_m:
             'pstem'   : fpath.parent.stem,
             }
 
-    def _build_roots(self, spec, state, roots) -> list[pl.Path]:
+    def _build_roots(self, spec, state, roots:None|list) -> list[pl.Path]:
         """
         convert roots from keys to paths
         """
@@ -78,12 +79,12 @@ class PathManip_m:
         results = []
 
         for root in roots:
-            root_key = DootKey.build(root, explicit=True)
-            results.append(root_key.to_path(spec, state))
+            root_key = DKey(root, explicit=True, mark=DKey.mark.PATH)
+            results.append(root_key.expand(spec, state))
 
         return results
 
-    def _get_relative(self, fpath, roots=None) -> pl.Path:
+    def _get_relative(self, fpath, roots:None|list[pl.Path]=None) -> pl.Path:
         """ Get relative path of fpath.
           if no roots are provided, default to using cwd
         """

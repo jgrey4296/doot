@@ -70,7 +70,7 @@ preferred_cmd_loader              = doot.config.on_fail("default").settings.gene
 preferred_task_loader             = doot.config.on_fail("default").settings.general.loaders.task()
 preferred_parser                  = doot.config.on_fail("default").settings.general.loaders.parser()
 
-defaulted_file                    = doot.config.on_fail(pl.Path("{logs}.doot_defaults.toml"), pl.Path).report.defaulted_file(pl.Path)
+defaulted_file                    = doot.config.on_fail(pl.Path("{logs}/.doot_defaults.toml"), pl.Path).report.defaulted_file(pl.Path)
 
 @doot.check_protocol
 class DootOverlord(ParamSpecMaker_m, Overlord_p):

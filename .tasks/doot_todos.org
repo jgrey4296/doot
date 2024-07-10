@@ -36,6 +36,11 @@ actions = [
 ** [∅] task on-fail actions
 ** DONE test postbox
 - State "DONE"       from "QUEUED"     [2024-06-15 Sat 00:48]
+*** OKAY write something on postboxes
+   [[/media/john/data/github/python/doot/wiki_/lets_talk_about_state.md::46][Location]]
+   :context:
+        <2024-06-14 Fri> ## Passing State between tasks: PostBoxes
+   :END:
 * Commands :commands:
 ** [∅] help command print toml cli's separate
 ** [∅] locs_cmd print matches
@@ -48,6 +53,7 @@ for nushell
 * Mixins :mixins:
 ** [∅] runner fail handler
 ** DEAD job : generate tasks from postbox entries
+unnecessary as you can post.get then job.expand
 ** DEAD task setup/cleanup dependency mixin
 * QUEUED readthedocs
 * Refactors

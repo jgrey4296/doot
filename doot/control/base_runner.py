@@ -183,5 +183,5 @@ class BaseRunner(TaskRunner_i):
 
     def _notify_artifact(self, art:TaskArtifact) -> None:
         """ A No-op for when the tracker gives an artifact """
-        artifact_l.info("---- Artifact: %s : %s", art, art.to_path())
+        artifact_l.info("---- Artifact: %s : %s", art, art.expand())
         self.reporter.add_trace(art, flags=Report_f.ARTIFACT)

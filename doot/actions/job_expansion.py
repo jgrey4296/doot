@@ -39,7 +39,7 @@ import doot
 import doot.errors
 from doot.actions.base_action import DootBaseAction
 from doot.actions.job_injection import JobInjector
-from doot.structs import CodeReference, DootKey, Location, TaskName, TaskSpec, Keyed
+from doot.structs import CodeReference, DKey, Location, TaskName, TaskSpec, DKeyed
 
 # ##-- end 1st party imports
 
@@ -53,8 +53,8 @@ class JobGenerate(DootBaseAction):
       Function is in the form: fn(spec, state) -> list[TaskSpec]
     """
 
-    @Keyed.references("fn")
-    @Keyed.redirects("update_")
+    @DKeyed.references("fn")
+    @DKeyed.redirects("update_")
     def __call__(self, spec, state, _fn_ref, _update):
         fn = _fn_ref.try_import()
         return { _update : list(fn(spec, state)) }
@@ -66,11 +66,11 @@ class JobExpandAction(JobInjector):
       'inject' provides an injection dict, with $arg$ being the entry from the source list
     """
 
-    @Keyed.types("from", "inject", "template")
-    @Keyed.expands("prefix")
-    @Keyed.redirects("update_")
-    @Keyed.types("__expansion_count__", hint={"on_fail": 0})
-    @Keyed.taskname
+    @DKeyed.types("from", "inject", "template")
+    @DKeyed.formats("prefix")
+    @DKeyed.redirects("update_")
+    @DKeyed.types("__expansion_count", fallback=0)
+    @DKeyed.taskname
     def __call__(self, spec, state, _from, inject, template, prefix, _update, _count, _basename):
         match prefix:
             case "{prefix}":
@@ -113,7 +113,7 @@ class JobExpandAction(JobInjector):
             new_spec  = TaskSpec.build(base_dict)
             result.append(new_spec)
 
-        return { _update : result , "__expansion_count__":  _count }
+        return { _update : result , "__expansion_count":  _count }
 
     def _prep_base(self, base:TaskName|list[ActionSpec]) -> tuple[list, TaskName|None]:
         """
@@ -152,9 +152,9 @@ class JobMatchAction(DootBaseAction):
       defaults to getting spec.extra.fpath.suffix
     """
 
-    @Keyed.types("onto_")
-    @Keyed.references("prepfn")
-    @Keyed.types("mapping")
+    @DKeyed.types("onto_")
+    @DKeyed.references("prepfn")
+    @DKeyed.types("mapping")
     def __call__(self, spec, state, _onto, prepfn, mapping):
         match prepfn:
             case CodeReference():

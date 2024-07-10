@@ -17,6 +17,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     cast, final, overload, runtime_checkable)
 from uuid import UUID, uuid1
 from weakref import ref
+import functools as ftz
 
 ##-- end imports
 
@@ -32,9 +33,10 @@ import re
 import tomlguard
 import doot
 from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
-from doot.structs import TaskArtifact, DootKey, Location
-from doot._structs.key import DootSimpleKey, DootMultiKey, DootNonKey
+from doot.structs import TaskArtifact, Location
+from doot._structs.dkey import DKey, MultiDKey, NonDKey, SingleDKey
 from doot.mixins.path_manip import PathManip_m
+from doot.utils.dkey_formatter import DKeyFormatter
 from doot.enums import LocationMeta_f
 
 KEY_PAT        = doot.constants.patterns.KEY_PATTERN
@@ -67,36 +69,54 @@ class DootLocations(PathManip_m):
         keys = ", ".join(iter(self))
         return f"<DootLocations : {str(self.root)} : ({keys})>"
 
-    def __getattr__(self, key) -> pl.Path:
+    def __getattr__(self, key:str) -> pl.Path:
         """
-          get a location by name from loaded toml
+          locs.simplename -> normalized expansion
+          where 'simplename' has been registered via toml
+
           delegates to __getitem__
           eg: locs.temp
           """
         if key == "__self__":
             return None
-        return self[DootKey.build(key, strict=True)]
 
-    def __getitem__(self, val:str|DootKey|pl.Path|TaskArtifact) -> pl.Path:
+        return self.normalize(self.get(key, fallback=False))
+
+    def __getitem__(self, val:pl.Path|str) -> pl.Path:
         """
-          eg: doot.locs['{data}/somewhere']
-          A public utility method to easily convert paths.
-          delegates to DootKey's path expansion
+          doot.locs['{data}/somewhere']
+          or doot.locs[pl.Path('data/other/somewhere')]
 
-          Get a location using item access for extending a stored path.
-          eg: locs['{temp}/imgs/blah.jpg']
+          A public utility method to easily use toml loaded paths
+          expands explicit keys in the string or path
+
         """
-        match DootKey.build(val, explicit=True):
-            case DootNonKey() as key:
-                return key.to_path(locs=self)
-            case DootSimpleKey() as key:
-                return key.to_path(locs=self)
-            case DootMultiKey() as key:
-                return key.to_path(locs=self)
-            case _:
-                raise DootLocationExpansionError("Unrecognized location expansion argument", val)
+        last = None
+        match val:
+            case DKey() if 0 < len(val.keys()):
+                raise TypeError("Expand Multi Keys directly", val)
+            case DKey():
+                current = self.get(val)
+            case pl.Path():
+                current = str(val)
+            case str():
+                current = val
 
-    def __contains__(self, key:str|DootKey|pl.Path|TaskArtifact):
+        while current != last:
+            last = current
+            keys = DKeyFormatter.Parse(current)
+            if not bool(keys):
+                continue
+            assert(bool(keys))
+            # expand keys
+            expanded = {x[0] : self.get(x[0], fallback=False) for x in keys}
+            # combine keys ino a full path
+            current = current.format_map(expanded)
+
+        assert(current is not None)
+        return self.normalize(pl.Path(current))
+
+    def __contains__(self, key:str|DKey|pl.Path|TaskArtifact):
         """ Test whether a key is a registered location """
         return key in self._data
 
@@ -126,26 +146,26 @@ class DootLocations(PathManip_m):
         self._loc_ctx = None
         return False
 
-    def get(self, key:DootSimpleKey|str, on_fail:None|str|pl.Path=Any) -> None|pl.Path:
+    def get(self, key:None|DKey|str, fallback:None|False|str|pl.Path=Any) -> None|pl.Path:
         """
-          convert a *simple* key of one value to a path.
+          convert a *simple* str name of *one* toml location to a path.
           does *not* recursively expand returned paths
-          More complex expansion is handled in DootKey and subclasses
+          More complex expansion is handled in DKey, or using item access of Locations
         """
-        assert(isinstance(key,(DootSimpleKey,str))), (str(key), type(key))
         match key:
-            case DootNonKey():
-                return pl.Path(key.form)
-            case str() | DootSimpleKey() if key in self._data:
-                return self._data[key].path
-            case _ if on_fail is None:
+            case None:
                 return None
-            case _ if on_fail != Any:
-                return self.get(on_fail)
-            case DootSimpleKey():
-                return pl.Path(key.form)
+            case str() if key in self._data:
+                return self._data[f"{key}"].path
+            case _ if fallback is False:
+                raise DootLocationError("Key Not found", key)
+            case _ if fallback != Any:
+                return self.get(fallback)
+            case DKey():
+                return pl.Path(f"{key:w}")
             case _:
                 return pl.Path(key)
+
 
     def normalize(self, path:pl.Path, symlinks:bool=False) -> pl.Path:
         """
@@ -154,21 +174,21 @@ class DootLocations(PathManip_m):
         """
         return self._normalize(path, root=self.root)
 
-    def metacheck(self, key:str|DootKey, meta:LocationMeta_f) -> bool:
+    def metacheck(self, key:str|DKey, meta:LocationMeta_f) -> bool:
         """ check if any key provided has the applicable meta flags """
         match key:
-            case DootNonKey():
+            case NonDKey():
                 return False
-            case DootSimpleKey() if key in self._data:
+            case DKey() if key in self._data:
                 return self._data[key].check(meta)
-            case DootMultiKey():
-                 for k in DootKey.build(key):
+            case MultiDKey():
+                 for k in DKey(key):
                      if k not in self._data:
                          continue
                      if self._data[k].check(meta):
                          return True
             case str():
-                return self.metacheck(DootKey.build(key), meta)
+                return self.metacheck(DKey(key), meta)
         return False
 
     @property

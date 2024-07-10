@@ -43,7 +43,7 @@ from tomlguard import TomlGuard
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract.protocols import ParamStruct_p
+from doot._abstract.protocols import ParamStruct_p, ProtocolModelMeta, Buildable_p
 from doot.enums import Report_f, TaskMeta_f
 
 # ##-- end 1st party imports
@@ -52,7 +52,7 @@ from doot.enums import Report_f, TaskMeta_f
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class ParamSpec(BaseModel, arbitrary_types_allowed=True):
+class ParamSpec(BaseModel, ParamStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
     """ Describes a command line parameter to use in the parser
       When `positional`, will not match against a string starting with `prefix`
       consumed in doot._abstract.parser.ArgParser_i's

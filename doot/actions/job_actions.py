@@ -46,7 +46,7 @@ from doot.actions.job_injection import (JobAppendActions, JobInjector,
                                         JobPrependActions, JobSubNamer)
 from doot.actions.job_queuing import JobChainer, JobQueueAction, JobQueueHead
 from doot.mixins.path_manip import Walker_m
-from doot.structs import CodeReference, DootKey, TaskName, TaskSpec, Keyed
+from doot.structs import CodeReference, DKey, TaskName, TaskSpec, DKeyed
 
 # ##-- end 1st party imports
 
@@ -64,14 +64,14 @@ class JobWalkAction(Walker_m, DootBaseAction):
       potential files are used that pass `fn`,
     """
 
-    @Keyed.types("roots", "exts")
-    @Keyed.types("recursive", hint={"type_": bool|None})
-    @Keyed.references("fn")
-    @Keyed.redirects("update_")
+    @DKeyed.types("roots", "exts")
+    @DKeyed.types("recursive", check=bool|None, fallback=False)
+    @DKeyed.references("fn")
+    @DKeyed.redirects("update_")
     def __call__(self, spec, state, roots, exts, recursive, fn, _update):
         exts    = {y for x in (exts or []) for y in [x.lower(), x.upper()]}
         rec     = recursive or False
-        roots   = [DootKey.build(x).to_path(spec, state) for x in roots]
+        roots   = [DKey(x, mark=DKey.mark.PATH).expand(spec, state) for x in roots]
         match fn:
             case CodeReference():
                 accept_fn = fn.try_import()
@@ -91,9 +91,9 @@ class JobLimitAction(DootBaseAction):
 
     """
 
-    @Keyed.types("from_", "count")
-    @Keyed.references("method")
-    @Keyed.redirects("from_")
+    @DKeyed.types("from_", "count")
+    @DKeyed.references("method")
+    @DKeyed.redirects("from_")
     def __call__(self, spec, state, _from, count, method, _update):
         if count == -1:
             return

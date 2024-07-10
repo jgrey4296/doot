@@ -43,7 +43,7 @@ import doot
 import doot.errors
 from doot.enums import TaskMeta_f, Report_f, LocationMeta_f
 from doot._structs.location import Location, GLOB, SOLO, REC_GLOB
-from doot._structs.key import DootKey
+from doot._structs.dkey import DKey
 
 class TaskArtifact(Location, arbitrary_types_allowed=True):
     """

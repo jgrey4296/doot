@@ -42,7 +42,7 @@ from typing_extensions import Annotated
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract.protocols import SpecStruct_p
+from doot._abstract.protocols import SpecStruct_p, ProtocolModelMeta, Buildable_p
 from doot._abstract.task import Task_i
 from doot._structs.action_spec import ActionSpec
 from doot._structs.artifact import TaskArtifact
@@ -304,7 +304,7 @@ class _SpecUtils_m:
 
         return {k:extra[v] for k,v in context.injections.items()}
 
-class TaskSpec(_JobUtils_m, _TransformerUtils_m, _SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra="allow"):
+class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True, extra="allow"):
     """ The information needed to describe a generic task.
     Optional things are shoved into 'extra', so things can use .on_fail on the tomlguard
 

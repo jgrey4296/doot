@@ -291,7 +291,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
                     match self.incomplete_dependencies(focus):
                         case []:
                             assert(not bool(focus))
-                            path = focus.to_path()
+                            path = focus.expand()
                             fail_l.warning("An Artifact has no incomplete dependencies, yet doesn't exist: %s (expanded: %s)", focus, path)
                             self.queue_entry(focus, status=TaskStatus_e.HALTED)
                             # Returns the artifact, the runner can try to create it, then override the halt

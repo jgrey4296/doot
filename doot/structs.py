@@ -30,7 +30,6 @@ from uuid import UUID, uuid1
 from doot._structs.action_spec import ActionSpec
 from doot._structs.artifact import TaskArtifact
 from doot._structs.code_ref import CodeReference
-from doot._structs.key import DootKey
 from doot._structs.location import Location
 from doot._structs.param_spec import ParamSpec
 from doot._structs.stub import TaskStub, TaskStubPart
@@ -38,4 +37,5 @@ from doot._structs.task_name import TaskName
 from doot._structs.task_spec import TaskSpec
 from doot._structs.trace import TraceRecord
 
-from doot.utils.key_decorator import Keyed
+from doot._structs.dkey import DKey
+from doot.utils.dkey_decorator import DKeyed
