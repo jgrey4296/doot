@@ -271,7 +271,7 @@ class DKeyFormatter_Expansion_m:
                 return [k]
             case _:
                 logging.debug("No Redirection found for %s", keystr)
-                return [key]
+                return [self.format_field(key, "d")]
 
     def _single_expand(self, key:Key_p) -> None|Any:
         """

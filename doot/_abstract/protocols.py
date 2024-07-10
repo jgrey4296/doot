@@ -191,7 +191,7 @@ class Key_p(Protocol):
         """ expansion str formatting """
         pass
 
-    def expand(self, *, fmt=None, spec=None, state=None, fallback=Any, locs:DootLocations=None, **kwargs) -> Any:
+    def expand(self, *sources, fallback=Any, max=None, check=None, **kwargs) -> Any:
         """ full controllable expansion """
         # todo: re-add expansion chaining
         pass

@@ -69,7 +69,7 @@ class JobExpandAction(JobInjector):
     @DKeyed.types("from", "inject", "template")
     @DKeyed.formats("prefix")
     @DKeyed.redirects("update_")
-    @DKeyed.types("__expansion_count__", fallback=0)
+    @DKeyed.types("__expansion_count", fallback=0)
     @DKeyed.taskname
     def __call__(self, spec, state, _from, inject, template, prefix, _update, _count, _basename):
         match prefix:
@@ -113,7 +113,7 @@ class JobExpandAction(JobInjector):
             new_spec  = TaskSpec.build(base_dict)
             result.append(new_spec)
 
-        return { _update : result , "__expansion_count__":  _count }
+        return { _update : result , "__expansion_count":  _count }
 
     def _prep_base(self, base:TaskName|list[ActionSpec]) -> tuple[list, TaskName|None]:
         """

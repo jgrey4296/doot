@@ -135,44 +135,48 @@ class DKey(metaclass=DKeyMeta):
             case DKeyMark_e():
                 pass
             case type():
-                raise TypeError("TODO")
+                raise TypeError("use dkey(...ctor=type)")
 
         s_keys    = DKeyFormatter.Parse(data)
         fparams   = fparams or ""
-        ctor      = SingleDKey
+        key_ctor      = SingleDKey
         # TODO handle conversion parameters in data
         match len(s_keys):
             case 0 if explicit or mark is DKeyMark_e.NULL:
-                ctor = NonDKey
+                key_ctor = NonDKey
+            case 0 if not explicit and data.endswith("_"):
+                key_ctor = RedirectionDKey
+            case 1 if s_keys[0][0].endswith("_"):
+                key_ctor = RedirectionDKey
             case 0 | 1:
                 pass
             case _:
-                ctor = MultiDKey
+                key_ctor = MultiDKey
 
         # Specialty keys
         match mark:
             case DKeyMark_e.REDIRECT:
-                ctor = RedirectionDKey
+                key_ctor = RedirectionDKey
             case DKeyMark_e.PATH:
                 if len(s_keys) < 2 and not explicit:
-                    ctor = PathSingleDKey
+                    key_ctor = PathSingleDKey
                 else:
-                    ctor  = PathMultiDKey
+                    key_ctor  = PathMultiDKey
             case DKeyMark_e.CODE:
-                ctor =  ImportDKey
+                key_ctor =  ImportDKey
             case DKeyMark_e.TASK:
-                ctor =  SingleDKey
+                key_ctor =  SingleDKey
             case DKeyMark_e.ARGS:
-                ctor =  ArgsDKey
+                key_ctor =  ArgsDKey
             case DKeyMark_e.KWARGS:
-                ctor =  KwargsDKey
+                key_ctor =  KwargsDKey
 
 
-        if not issubclass(ctor, MultiDKey) and len(s_keys) == 1:
+        if not issubclass(key_ctor, MultiDKey) and len(s_keys) == 1:
             data, fparams = s_keys[0][0], s_keys[0][1]
 
-        # Build the key from ctor + init it
-        result           = str.__new__(ctor, data)
+        # Build the key from key_ctor + init it
+        result           = str.__new__(key_ctor, data)
         result.__init__(data, fparams=fparams, mark=mark, **kwargs)
 
         return result
@@ -191,7 +195,7 @@ class DKeyFormatting_m:
 class DKeyExpansion_m:
     """ general expansion for dkeys """
 
-    def expand(self, *sources, fmt=None, fallback=None, max=None, check=None, **kwargs) -> None|Any:
+    def expand(self, *sources, fallback=None, max=None, check=None, **kwargs) -> None|Any:
         match DKeyFormatter.expand(self, sources=sources, fallback=fallback or self._exp_fallback, max=max or self._max_expansions):
             case None:
                 return None
@@ -208,7 +212,7 @@ class DKeyExpansion_m:
         """
         match DKeyFormatter.redirect(self, sources=sources):
             case []:
-                return [DKey(str(self))]
+                return [DKey(f"{self:d}")]
             case [*xs] if multi:
                 return [DKey(x) for x in xs]
             case [x]:
@@ -453,7 +457,7 @@ class NonDKey(DKeyBase):
 
 ##-- end core
 
-##-- subclasses
+##-- specialisations
 
 class RedirectionDKey(SingleDKey):
     """
@@ -472,7 +476,7 @@ class RedirectionDKey(SingleDKey):
         self._typecheck = DKey | list[DKey]
         return self
 
-    def expand(self, *sources, fmt=None, fallback=None, max=None, check=None, **kwargs) -> None|Any:
+    def expand(self, *sources, fallback=None, max=None, check=None, **kwargs) -> None|Any:
         match super().redirect(*sources, multi=self.multi_redir):
             case list() as xs if self.multi_redir:
                 return xs
@@ -488,7 +492,7 @@ class ArgsDKey(SingleDKey):
         self._typecheck = list
         return self
 
-    def expand(self, *sources, fmt=None, fallback=None, **kwargs) -> list:
+    def expand(self, *sources, **kwargs) -> list:
         for source in sources:
             if not isinstance(source, SpecStruct_p):
                 continue
@@ -507,14 +511,14 @@ class KwargsDKey(SingleDKey):
         self._typecheck = dict
         return self
 
-    def expand(self, *sources, fmt=None, fallback=None, **kwargs) -> dict:
+    def expand(self, *sources, fallback=None, **kwargs) -> dict:
         for source in sources:
             if not isinstance(source, SpecStruct_p):
                 continue
 
             return source.kwargs
 
-        return dict()
+        return fallback or dict()
 
 class ImportDKey(SingleDKey):
     """
@@ -535,7 +539,7 @@ class PathSingleDKey(SingleDKey):
         self._typecheck = pl.Path
         return self
 
-    def expand(self, *sources, fmt=None, fallback=None, **kwargs) -> None|Any:
+    def expand(self, *sources, fallback=None, **kwargs) -> None|Any:
         """ Expand subkeys, format the multi key
           Takes a variable number of sources (dicts, tomlguards, specs, dootlocations..)
         """
@@ -556,7 +560,7 @@ class PathMultiDKey(MultiDKey):
         self._typecheck = pl.Path
         return self
 
-    def expand(self, *sources, fmt=None, fallback=None, **kwargs) -> None|Any:
+    def expand(self, *sources, fallback=None, **kwargs) -> None|Any:
         """ Expand subkeys, format the multi key
           Takes a variable number of sources (dicts, tomlguards, specs, dootlocations..)
         """
@@ -584,4 +588,4 @@ class PostBoxDKey(SingleDKey):
         self._typecheck = check or list
         return self
 
-##-- end subclasses
+##-- end specialisations
