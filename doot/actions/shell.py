@@ -9,6 +9,7 @@ logging = logmod.getLogger(__name__)
 
 printer = logmod.getLogger("doot._printer")
 
+import pathlib as pl
 import sys
 import sh
 import doot
