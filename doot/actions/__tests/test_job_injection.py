@@ -19,7 +19,7 @@ import doot
 doot._test_setup()
 from doot.actions import job_injection as ji
 import doot.errors
-from doot.structs import DootKey, ActionSpec, TaskName
+from doot.structs import DKey, ActionSpec, TaskName
 
 class TestJobInjection:
     """
@@ -37,7 +37,7 @@ class TestJobInjection:
     def test_copy(self, spec, state):
         """ the injection copies the value over directly """
         state.update({"a": 2})
-        inj = ji.JobInjector()
+        inj       = ji.JobInjector()
         injection = inj.build_injection(spec, state, dict(copy=["a"]))
         assert("a" in injection)
         assert(injection['a'] == 2)
@@ -48,6 +48,8 @@ class TestJobInjection:
         inj = ji.JobInjector()
         injection = inj.build_injection(spec, state, dict(copy=["a"]))
         assert("a" in injection)
+        assert("x" not in injection)
+        assert("y" not in injection)
         assert(injection['a'] == "{x} : {y}")
 
     def test_expand(self, spec, state):
@@ -59,12 +61,13 @@ class TestJobInjection:
         assert("a" in injection)
         assert(injection['a'] == 5)
 
-    def test_copy_doesnt_expand(self, spec, state):
-        """ a copied indirect key will copy its redirected value """
-        spec.kwargs._table().update({"a_": "b"})
-        state.update({"b": 5})
+    def test_copy_indirect(self, spec, state):
+        """ copied indirect key will copy its redirected value
+          a_ -> {a:5}
+          """
+        state.update({"a_": "b", "b": 5})
         inj = ji.JobInjector()
-        injection = inj.build_injection(spec, state, dict(copy=["a_"]))
+        injection = inj.build_injection(spec, state, dict(copy=["a"]))
         assert("a" in injection)
         assert("a_" not in injection)
         assert(injection['a'] == 5)

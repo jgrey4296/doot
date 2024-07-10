@@ -33,7 +33,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot._abstract import Job_i, Task_i
-from doot.enums import TaskFlags
+from doot.enums import TaskMeta_f
 from doot.errors import DootDirAbsent
 from doot.structs import CodeReference, TaskName, TaskSpec
 from doot.task.base_task import DootTask
@@ -55,7 +55,7 @@ class DootJob(Job_i, DootTask):
 
     """
     _help = ["A Basic Task Constructor"]
-    _default_flags = TaskFlags.JOB
+    _default_flags = TaskMeta_f.JOB
 
     def __init__(self, spec:TaskSpec):
         assert(spec is not None), "Spec is empty"

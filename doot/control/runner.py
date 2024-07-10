@@ -38,8 +38,8 @@ from doot._abstract import (Action_p, FailPolicy_p, Job_i, Reporter_p, Task_i,
                             TaskRunner_i, TaskTracker_i)
 from doot._structs.relation_spec import RelationSpec
 from doot.control.base_runner import BaseRunner, logctx
-from doot.enums import ActionResponseEnum as ActRE
-from doot.enums import ReportEnum
+from doot.enums import ActionResponse_e as ActRE
+from doot.enums import Report_f
 from doot.structs import ActionSpec, TaskArtifact, TaskName, TaskSpec
 from doot.utils.signal_handler import SignalHandler
 
@@ -136,7 +136,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
         try:
             logmod.debug("-- Expanding Job %s: %s", self.step, job.shortname)
             task_header_l.info("> Job %s: %s", self.step, job.shortname, extra={"colour":"magenta"})
-            self.reporter.add_trace(job.spec, flags=ReportEnum.JOB | ReportEnum.INIT)
+            self.reporter.add_trace(job.spec, flags=Report_f.JOB | Report_f.INIT)
 
             self._execute_action_group(job.spec.setup, job, group="setup")
             self._execute_action_group(job.spec.actions, job, allow_queue=True, group="actions")
@@ -147,18 +147,18 @@ class DootRunner(BaseRunner, TaskRunner_i):
         finally:
             # cleanup actions are *not* run here, as they've been added to the auto-gen $head$ and queued
             job.state.clear()
-            self.reporter.add_trace(job.spec, flags=ReportEnum.JOB | ReportEnum.SUCCEED)
+            self.reporter.add_trace(job.spec, flags=Report_f.JOB | Report_f.SUCCEED)
             task_header_l.info("< Job %s: %s", self.step, job.shortname, extra={"colour":"magenta"})
 
     def _execute_task(self, task:Task_i) -> None:
         """ execute a single task's actions """
         try:
             task_header_l.info("> Task %s :  %s", self.step, task.shortname, extra={"colour":"magenta"})
-            self.reporter.add_trace(task.spec, flags=ReportEnum.TASK | ReportEnum.INIT)
+            self.reporter.add_trace(task.spec, flags=Report_f.TASK | Report_f.INIT)
 
             self._execute_action_group(task.spec.setup, task, group="setup")
             self._execute_action_group(task.spec.actions, task, group="action")
-            self.reporter.add_trace(task.spec, flags=ReportEnum.TASK | ReportEnum.SUCCEED)
+            self.reporter.add_trace(task.spec, flags=Report_f.TASK | Report_f.SUCCEED)
         except doot.errors.DootError as err:
             self._execute_action_group(task.spec.on_fail, task, group="on_fail")
             raise err
@@ -185,7 +185,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 case ActionSpec():
                     result = self._execute_action(executed_count, action, task)
                 case _:
-                    self.reporter.add_trace(task.spec, flags=ReportEnum.FAIL | ReportEnum.TASK)
+                    self.reporter.add_trace(task.spec, flags=Report_f.FAIL | Report_f.TASK)
                     raise doot.errors.DootTaskError("Task %s Failed: Produced a bad action: %s", task.shortname, repr(action), task=task.spec)
 
             match result:
@@ -234,7 +234,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
         """
         result                     = None
         task.state['_action_step'] = count
-        self.reporter.add_trace(action, flags=ReportEnum.ACTION | ReportEnum.INIT)
+        self.reporter.add_trace(action, flags=Report_f.ACTION | Report_f.INIT)
         actexec_l.info( "Action %s.%s: %s", self.step, count, action.do or action.fun, extra={"colour":"cyan"})
 
         actexec_l.debug("Action Executing for Task: %s", task.shortname)
@@ -256,14 +256,14 @@ class DootRunner(BaseRunner, TaskRunner_i):
             case list() if all(isinstance(x, (TaskName, TaskSpec)) for x in result):
                 pass
             case False | ActRE.FAIL:
-                self.reporter.add_trace(action, flags=ReportEnum.FAIL | ReportEnum.ACTION)
+                self.reporter.add_trace(action, flags=Report_f.FAIL | Report_f.ACTION)
                 raise doot.errors.DootTaskFailed("Task %s: Action Failed: %s", task.shortname, action.do, task=task.spec)
             case _:
-                self.reporter.add_trace(action, flags=ReportEnum.FAIL | ReportEnum.ACTION)
+                self.reporter.add_trace(action, flags=Report_f.FAIL | Report_f.ACTION)
                 raise doot.errors.DootTaskError("Task %s: Action %s Failed: Returned an unplanned for value: %s", task.shortname, action.do, result, task=task.spec)
 
         action.verify_out(task.state)
-        self.reporter.add_trace(action, flags=ReportEnum.ACTION | ReportEnum.SUCCEED)
+        self.reporter.add_trace(action, flags=Report_f.ACTION | Report_f.SUCCEED)
         return result
 
     def _test_conditions(self, task:Task_i) -> bool:

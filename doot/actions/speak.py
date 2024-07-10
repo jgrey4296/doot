@@ -32,7 +32,7 @@ import sh
 import doot
 from doot._abstract import Action_p
 from doot.errors import DootTaskError, DootTaskFailed
-from doot.structs import DootKey
+from doot.structs import DKey, DKeyed
 
 # ##-- end 1st party imports
 
@@ -58,7 +58,7 @@ class SpeakTimeAction(Action_p):
         now = datetime.datetime.now()
         return now.strftime(self.time_format)
 
-    @DootKey.dec.args
+    @DKeyed.args
     def __call__(self, spec, state, args):
         try:
             match sys.platform:

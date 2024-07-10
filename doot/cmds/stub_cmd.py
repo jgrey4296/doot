@@ -35,8 +35,9 @@ from weakref import ref
 import doot
 import doot.enums
 import doot.errors
+from doot.structs import DKeyed
 from doot._abstract import PluginLoader_p, Task_i
-from doot._structs.key import HELP_HINT, DootKey
+from doot._structs.dkey import DKey
 from doot.cmds.base_cmd import BaseCommand
 from doot.structs import CodeReference, TaskName, TaskStub
 from doot.task.base_job import DootJob
@@ -49,7 +50,6 @@ from doot.utils.decorators import DecorationUtils
 logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
-
 
 ##-- data
 data_path = files(doot.constants.paths.TEMPLATE_PATH).joinpath(doot.constants.paths.TOML_TEMPLATE)
@@ -192,7 +192,7 @@ class StubCmd(BaseCommand):
                         printer.info(x)
 
             loaded = getattr(loaded, "__call__", loaded)
-            match DootKey.dec.get_keys(loaded):
+            match DKeyed.get_keys(loaded):
                 case []:
                     printer.info("-- No Declared Kwargs")
                 case [*xs]:
@@ -229,8 +229,7 @@ class StubCmd(BaseCommand):
 
         printer.info("{ %s }", "".join(stub))
 
-
     def _list_flags(self):
         printer.info("Task Flags: ")
-        for x in sorted(doot.enums.TaskFlags, key=lambda x: x.name):
+        for x in sorted(doot.enums.TaskMeta_f, key=lambda x: x.name):
             printer.info("-- %s", x.name)

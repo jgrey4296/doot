@@ -30,13 +30,14 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from tomlguard import TomlGuard
+from pydantic import BaseModel
 
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.enums import ActionResponseEnum, TaskFlags, TaskStatus_e
+from doot.enums import ActionResponse_e, TaskMeta_f, TaskStatus_e
 
 # ##-- end 1st party imports
 
@@ -44,31 +45,34 @@ from doot.enums import ActionResponseEnum, TaskFlags, TaskStatus_e
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-@runtime_checkable
-class ArtifactStruct_p(Protocol):
-    """ Base class for artifacts, for type matching """
+class ProtocolModelMeta(type(Protocol), type(BaseModel)):
+    """ Use as the metaclass for pydantic models which are explicit Protocol implementers
+
+      eg:
+
+      class Example(BaseModel, ExampleProtocol, metaclass=ProtocolModelMeta):...
+
+    """
     pass
-
-@runtime_checkable
-class StubStruct_p(Protocol):
-    """ Base class for stubs, for type matching """
-
-    def to_toml(self) -> str:
-        pass
-
-@runtime_checkable
-class ParamStruct_p(Protocol):
-    """ Base class for param specs, for type matching """
-
-    def maybe_consume(self, args:list[str], data:dict) -> int:
-        pass
 
 @runtime_checkable
 class SpecStruct_p(Protocol):
     """ Base class for specs, for type matching """
 
     @property
-    def params(self) -> dict|TomlGuard:
+    def params(self) -> dict:
+        pass
+
+@runtime_checkable
+class ArtifactStruct_p(Protocol):
+    """ Base class for artifacts, for type matching """
+    pass
+
+@runtime_checkable
+class ParamStruct_p(Protocol):
+    """ Base class for param specs, for type matching """
+
+    def maybe_consume(self, args:list[str], data:dict) -> int:
         pass
 
 @runtime_checkable
@@ -104,14 +108,20 @@ class TomlStubber_p(Protocol):
         pass
 
 @runtime_checkable
+class StubStruct_p(Protocol):
+    """ Base class for stubs, for type matching """
+
+    def to_toml(self) -> str:
+        pass
+
+@runtime_checkable
 class CLIParamProvider_p(Protocol):
     """
       Things that can provide parameter specs for CLI parsing
     """
 
-    @classmethod
     @property
-    def param_specs(cls) -> list[ParamStruct_p]:
+    def param_specs(self) -> list[ParamStruct_p]:
         """  make class parameter specs  """
         pass
 
@@ -146,6 +156,7 @@ class Buildable_p(Protocol):
 
 @runtime_checkable
 class Nameable_p(Protocol):
+    """ The protocol for structured names """
 
     def __hash__(self):
         pass
@@ -159,30 +170,33 @@ class Nameable_p(Protocol):
     def __contains__(self, other) -> bool:
         pass
 
+    def head_str(self) -> str:
+        pass
+
+    def tail_str(self) -> str:
+        pass
+
 @runtime_checkable
 class Key_p(Protocol):
 
-    @property
-    def form(self) -> str:
+    def __call__(self, **kwargs) -> Any:
+        """ curried full expansion """
         pass
 
-    @property
-    def direct(self) -> str:
+    def __format__(self, spec) -> str:
+        """ no expansion str formatting """
         pass
 
-    def redirect(self, spec=None) -> Key_p:
+    def format(self, fmt, *, spec=None, state=None) -> str:
+        """ expansion str formatting """
         pass
 
-    def to_path(self, spec=None, state=None, *, chain:list[Key_p]=None, locs:DootLocations=None, on_fail:None|str|pl.Path|Key_p=Any, symlinks:bool=False) -> pl.Path:
+    def expand(self, *sources, fallback=Any, max=None, check=None, **kwargs) -> Any:
+        """ full controllable expansion """
+        # todo: re-add expansion chaining
         pass
 
-    def within(self, other:str|dict|TomlGuard) -> bool:
-        pass
-
-    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[DootKey]=None, on_fail=Any, locs:DootLocations=None, **kwargs) -> str:
-        pass
-
-    def to_type(self, spec, state, type_=Any, **kwargs) -> str:
+    def keys(self) -> list[Key_p]:
         pass
 
 @runtime_checkable
@@ -210,11 +224,9 @@ class InstantiableSpecification_p(Protocol):
     def instantiate_onto(self, data:None|Self) -> Self:
         pass
 
-    def make(self):
-        pass
 
 @runtime_checkable
-class ExecutableTask(Protocol):
+class ExecutableTask_p(Protocol):
     """ Runners pass off to Tasks/Jobs implementing this protocol
       instead of using their default logic
     """
@@ -257,4 +269,29 @@ class ExecutableTask(Protocol):
         pass
 
     def decrement_priority(self):
+        pass
+
+
+@runtime_checkable
+class Decorator_p(Protocol):
+
+    def __call__(self, fn):
+        pass
+
+    def _target_method(self, fn) -> Callable:
+        pass
+
+    def _target_fn(self, fn) -> Callable:
+        pass
+
+    def _target_class(self, fn:type) -> type:
+        pass
+
+    def _is_marked(self, fn) -> bool:
+        pass
+
+    def _apply_mark(self, fn) -> Callable:
+        pass
+
+    def _update_annotations(self, fn) -> None:
         pass

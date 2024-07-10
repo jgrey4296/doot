@@ -42,15 +42,15 @@ from typing_extensions import Annotated
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract.protocols import SpecStruct_p
+from doot._abstract.protocols import SpecStruct_p, ProtocolModelMeta, Buildable_p
 from doot._abstract.task import Task_i
 from doot._structs.action_spec import ActionSpec
 from doot._structs.artifact import TaskArtifact
 from doot._structs.code_ref import CodeReference
 from doot._structs.relation_spec import RelationSpec
 from doot._structs.task_name import TaskName
-from doot.enums import (LocationMeta, RelationMeta, ReportEnum, TaskFlags,
-                        TaskQueueMeta)
+from doot.enums import (LocationMeta_f, RelationMeta_e, Report_f, TaskMeta_f,
+                        QueueMeta_e)
 
 # ##-- end 1st party imports
 
@@ -64,7 +64,7 @@ def _prepare_action_group(deps:list[str], handler:ValidatorFunctionWrapHandler, 
       converting toml specified strings, list, and dicts to Artifacts (ie:files), Task Names, ActionSpecs
 
       As a wrap handler, it has the context of what field is being processed,
-      this allows it to set the correct RelationMeta type
+      this allows it to set the correct RelationMeta_e type
 
       # TODO handle callables?
     """
@@ -72,7 +72,7 @@ def _prepare_action_group(deps:list[str], handler:ValidatorFunctionWrapHandler, 
     if deps is None:
         return results
 
-    relation_type = RelationMeta.requirementFor if info.field_name in TaskSpec._dependant_groups else RelationMeta.dependencyOf
+    relation_type = RelationMeta_e.requirementFor if info.field_name in TaskSpec._dependant_groups else RelationMeta_e.dependencyOf
     for x in deps:
         match x:
             case ActionSpec() | RelationSpec():
@@ -105,9 +105,9 @@ class _JobUtils_m:
           await job.cleanup()
         """
         tasks = []
-        if TaskFlags.JOB not in self.flags:
+        if TaskMeta_f.JOB not in self.flags:
             return tasks
-        if (TaskFlags.CONCRETE | TaskFlags.JOB_HEAD) & self.flags:
+        if (TaskMeta_f.CONCRETE | TaskMeta_f.JOB_HEAD) & self.flags:
             return tasks
         if self.name.job_head() == self.name:
             return tasks
@@ -120,14 +120,14 @@ class _JobUtils_m:
             "name"            : self.name.job_head(),
             "sources"         : self.sources[:] + [self.name, None],
             "extra"           : self.extra,
-            "queue_behaviour" : TaskQueueMeta.reactive,
+            "queue_behaviour" : QueueMeta_e.reactive,
             "depends_on"      : [self.name] + head_dependencies,
             "required_for"    : [self.name.job_head().subtask("cleanup")] if bool(self.cleanup) else [],
-            "flags"           : (self.flags | TaskFlags.JOB_HEAD) & ~TaskFlags.JOB,
+            "flags"           : (self.flags | TaskMeta_f.JOB_HEAD) & ~TaskMeta_f.JOB,
             "actions"         : head_actions,
             })
-        assert(TaskFlags.JOB not in head.name)
-        assert(TaskFlags.JOB not in head.flags)
+        assert(TaskMeta_f.JOB not in head.name)
+        assert(TaskMeta_f.JOB not in head.flags)
         tasks.append(head)
         if not bool(self.cleanup):
             return tasks
@@ -137,9 +137,9 @@ class _JobUtils_m:
             "sources"         : self.sources[:] + [self.name, None],
             "actions"         : [x for x in self.cleanup if isinstance(x, ActionSpec)],
             "extra"           : self.extra,
-            "queue_behaviour" : TaskQueueMeta.reactive,
+            "queue_behaviour" : QueueMeta_e.reactive,
             "depends_on"      : [self.name, self.name.job_head()] + [x for x in self.cleanup if isinstance(x, RelationSpec)],
-            "flags"           : (self.flags | TaskFlags.TASK) & ~TaskFlags.JOB,
+            "flags"           : (self.flags | TaskMeta_f.TASK) & ~TaskMeta_f.JOB,
             })
         tasks.append(cleanup)
         return tasks
@@ -198,14 +198,14 @@ class _TransformerUtils_m:
             case None:
                 pass
 
-        assert(TaskFlags.TRANSFORMER in self.flags)
+        assert(TaskMeta_f.TRANSFORMER in self.flags)
 
         pre, post = None, None
         for x in self.depends_on:
             match x:
-                case RelationSpec(target=TaskArtifact() as target) if LocationMeta.glob in target:
+                case RelationSpec(target=TaskArtifact() as target) if LocationMeta_f.glob in target:
                     pass
-                case RelationSpec(target=TaskArtifact() as target) if LocationMeta.abstract in target:
+                case RelationSpec(target=TaskArtifact() as target) if LocationMeta_f.abstract in target:
                     if pre is not None:
                         self._transform = False
                         return None
@@ -215,9 +215,9 @@ class _TransformerUtils_m:
 
         for y in self.required_for:
             match x:
-                case RelationSpec(target=TaskArtifact() as target) if LocationMeta.glob in target:
+                case RelationSpec(target=TaskArtifact() as target) if LocationMeta_f.glob in target:
                     pass
-                case RelationSpec(target=TaskArtifact() as target) if LocationMeta.abstract in target:
+                case RelationSpec(target=TaskArtifact() as target) if LocationMeta_f.abstract in target:
                     if post is not None:
                         self._transform = False
                         return None
@@ -304,7 +304,7 @@ class _SpecUtils_m:
 
         return {k:extra[v] for k,v in context.injections.items()}
 
-class TaskSpec(_JobUtils_m, _TransformerUtils_m, _SpecUtils_m, BaseModel, arbitrary_types_allowed=True, extra="allow"):
+class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True, extra="allow"):
     """ The information needed to describe a generic task.
     Optional things are shoved into 'extra', so things can use .on_fail on the tomlguard
 
@@ -331,8 +331,8 @@ class TaskSpec(_JobUtils_m, _TransformerUtils_m, _SpecUtils_m, BaseModel, arbitr
     version                      : str                                                                     = doot.__version__ # TODO: make dict?
     priority                     : int                                                                     = 10
     ctor                         : CodeReference                                                       = Field(default=None, validate_default=True)
-    queue_behaviour              : TaskQueueMeta                                                           = TaskQueueMeta.default
-    flags                        : TaskFlags                                                               = TaskFlags.default
+    queue_behaviour              : QueueMeta_e                                                           = QueueMeta_e.default
+    flags                        : TaskMeta_f                                                               = TaskMeta_f.default
     _transform                   : None|Literal[False]|tuple[RelationSpec, RelationSpec]                            = None
     # task specific extras to use in state
     _default_ctor         : ClassVar[str]       = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
@@ -366,7 +366,7 @@ class TaskSpec(_JobUtils_m, _TransformerUtils_m, _SpecUtils_m, BaseModel, arbitr
     def _validate_metadata(self):
         self.flags |= self.name.meta
         if self.extra.on_fail(False).disabled():
-            self.flags |= TaskFlags.DISABLED
+            self.flags |= TaskMeta_f.DISABLED
         try:
             match self.ctor.try_import():
                 case x if issubclass(x, Task_i):
@@ -376,10 +376,10 @@ class TaskSpec(_JobUtils_m, _TransformerUtils_m, _SpecUtils_m, BaseModel, arbitr
                     pass
         except ImportError as err:
             logging.warning("Ctor Import Failed for: %s : %s", self.name, self.ctor)
-            self.flags |= TaskFlags.DISABLED
+            self.flags |= TaskMeta_f.DISABLED
             self.ctor = None
 
-        if TaskFlags.TRANSFORMER not in self.flags:
+        if TaskMeta_f.TRANSFORMER not in self.flags:
             self._transform = False
 
         self.name.meta |= self.flags
@@ -399,10 +399,10 @@ class TaskSpec(_JobUtils_m, _TransformerUtils_m, _SpecUtils_m, BaseModel, arbitr
     @field_validator("flags", mode="before")
     def _validate_flags(cls, val):
         match val:
-            case TaskFlags():
+            case TaskMeta_f():
                 return val
             case str()|list():
-                return TaskFlags.build(val)
+                return TaskMeta_f.build(val)
 
     @field_validator("ctor", mode="before")
     def _validate_ctor(cls, val):
@@ -424,12 +424,12 @@ class TaskSpec(_JobUtils_m, _TransformerUtils_m, _SpecUtils_m, BaseModel, arbitr
     @field_validator("queue_behaviour", mode="before")
     def _validate_queue_behaviour(cls, val):
         match val:
-            case TaskQueueMeta():
+            case QueueMeta_e():
                 return val
             case str():
-                return TaskQueueMeta.build(val)
+                return QueueMeta_e.build(val)
             case _:
-                raise ValueError("Queue Behaviour needs to be a str or a TaskQueueMeta enum", val)
+                raise ValueError("Queue Behaviour needs to be a str or a QueueMeta_e enum", val)
 
     @field_validator("sources", mode="before")
     def _validate_sources(cls, val):
@@ -477,7 +477,7 @@ class TaskSpec(_JobUtils_m, _TransformerUtils_m, _SpecUtils_m, BaseModel, arbitr
 
     def action_group_elements(self) -> Iterable[ActionSpec|RelationSpec]:
         queue = [self.depends_on, self.setup, self.actions, self.required_for]
-        if TaskFlags.JOB not in self.flags:
+        if TaskMeta_f.JOB not in self.flags:
             queue += [self.cleanup]
 
         for group in queue:

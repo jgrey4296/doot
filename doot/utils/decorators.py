@@ -4,50 +4,51 @@
 See EOF for license/metadata/notes as applicable
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
-# import abc
+# ##-- stdlib imports
+import abc
+import builtins
 import datetime
 import enum
 import functools as ftz
+import inspect
 import itertools as itz
+import keyword
 import logging as logmod
 import pathlib as pl
 import re
 import time
 import types
 import weakref
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, Type, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
+# ##-- 3rd party imports
+import decorator
 import more_itertools as mitz
-##-- end lib imports
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+from doot._abstract.protocols import SpecStruct_p, Key_p, Decorator_p
+from doot.enums import LocationMeta_f
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-##-- end logging
-
 printer = logmod.getLogger("doot._printer")
-
-import keyword
-import inspect
-import abc
-import builtins
-from typing import Type
-import decorator
-import doot
-import doot.errors
-from doot.enums import LocationMeta
-from doot._abstract.protocols import SpecStruct_p
+##-- end logging
 
 DOOT_ANNOTATIONS : Final[str]                = "__DOOT_ANNOTATIONS__"
 KEYS_HANDLED     : Final[str]                = "_doot_keys_handler"
@@ -193,7 +194,7 @@ class DecorationUtils:
         return fn
 
     @staticmethod
-    def _update_key_annotations(fn, keys:list[DootKey]) -> True:
+    def _update_key_annotations(fn, keys:list[Key_p]) -> True:
         """ update the declared expansion keys on an action
           If the action has been wrapped already, annotations will be applied to both the wrapper and wrapped.
         """
@@ -211,29 +212,6 @@ class DecorationUtils:
             raise doot.errors.DootKeyError("Annotations do not match signature", sig)
 
         return True
-
-    @staticmethod
-    def prepare_expansion(keys:list[DootKey], fn):
-        """ used as a partial fn. adds declared keys to a function,
-          and idempotently adds the expansion decorator
-        """
-        is_func = True
-        DecorationUtils._update_key_annotations(fn, keys)
-
-        if DecorationUtils.has_annotations(fn, DecorationUtils._wrapped_flag):
-            # keys are handled, so the fn already has an expander, no need to add one
-            return fn
-
-        is_func = inspect.signature(fn).parameters.get("self", None) is None
-        match is_func:
-            case False:
-                wrapper = DecorationUtils.add_method_expander(fn)
-            case True:
-                wrapper = DecorationUtils.add_fn_expander(fn)
-
-        # mark the function as having a wrapper installed
-        DecorationUtils.annotate(fn, {DecorationUtils._wrapped_flag})
-        return wrapper
 
     @staticmethod
     def add_method_expander(fn):
@@ -266,6 +244,29 @@ class DecorationUtils:
 
         # -
         return fn_action_expansions
+
+    @staticmethod
+    def prepare_expansion(keys:list[Key_p], fn):
+        """ used as a partial fn. adds declared keys to a function,
+          and idempotently adds the expansion decorator
+        """
+        is_func = True
+        DecorationUtils._update_key_annotations(fn, keys)
+
+        if DecorationUtils.has_annotations(fn, DecorationUtils._wrapped_flag):
+            # keys are handled, so the fn already has an expander, no need to add one
+            return fn
+
+        is_func = inspect.signature(fn).parameters.get("self", None) is None
+        match is_func:
+            case False:
+                wrapper = DecorationUtils.add_method_expander(fn)
+            case True:
+                wrapper = DecorationUtils.add_fn_expander(fn)
+
+        # mark the function as having a wrapper installed
+        DecorationUtils.annotate(fn, {DecorationUtils._wrapped_flag})
+        return wrapper
 
 class DootDecorator(abc.ABC):
     """ Base Class for decorators that annotate action callables
@@ -315,3 +316,80 @@ class DootDecorator(abc.ABC):
 
     def _prep_method(self, fn, obj):
         return ftz.partial(fn, obj)
+
+
+
+
+class MetaDecorator(Decorator_p):
+    """
+    Utility class for adding metadata to functions/methods/classes
+    """
+
+    def __init__(self, *, prefix=None, mark=None, data=None):
+        self._data              = []
+        self._annotation_prefix = prefix  or "__DOOT_ANNOTATIONS__"
+        self._mark_suffix       = mark    or "_meta_annotation"
+        self._data_suffix       = data    or "_meta_data"
+        self._mark_key          = f"{self._annotation_prefix}:{self._mark_suffix}"
+        self._data_key          = f"{self._annotation_prefix}:{self._data_suffix}"
+
+    def __call__(self, fn):
+        orig = fn
+        fn   = self._unwrap(fn)
+        # update annotations
+        total_annotations = self._update_annotations(fn)
+
+        if self._is_marked(fn):
+            self._update_annotations(orig)
+            return orig
+
+        if isinstance(fn, type):
+            self._target_class(fn)
+            self._apply_mark(fn.__call__)
+            return self._apply_mark(fn)
+
+        # add wrapper
+        is_func = inspect.signature(fn).parameters.get("self", None) is None
+        match is_func:
+            case False:
+                wrapper = self._target_method(fn)
+            case True:
+                wrapper = self._target_fn(fn)
+
+        return self._apply_mark(wrapper)
+
+    def _target_class(self, cls) -> type:
+        original = cls.__call__
+        cls.__call__ = self._target_method(cls.__call__)
+        return cls
+
+    def _target_method(self, fn):
+        return fn
+
+    def _target_fn(self, fn):
+        return fn
+
+    def get_annotations(self, fn):
+        fn = self._unwrap(fn)
+        return getattr(fn, self._data_key, [])
+
+    def _unwrap(self, fn) -> Callable:
+        return inspect.unwrap(fn)
+
+    def _update_annotations(self, fn) -> list:
+        # prepend annotations, so written decorator order is the same as written arg order:
+        # (ie: @wrap(x) @wrap(y) @wrap(z) def fn (x, y, z), even though z's decorator is applied first
+        new_annotations = self._data + getattr(fn, self._data_key, [])
+        setattr(fn, self._data_key, new_annotations)
+        return new_annotations
+
+    def _is_marked(self, fn) -> bool:
+        match fn:
+            case type():
+                return hasattr(fn, self._mark_key) or hasattr(fn.__call__, self._mark_key)
+            case _:
+                return hasattr(fn, self._mark_key)
+
+    def _apply_mark(self, fn:Callable) -> Callable:
+        setattr(fn, self._mark_key, True)
+        return fn

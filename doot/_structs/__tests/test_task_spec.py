@@ -21,7 +21,7 @@ import doot.errors
 doot._test_setup()
 from doot import structs
 from doot.task.base_job import DootJob
-from doot.enums import TaskFlags
+from doot.enums import TaskMeta_f
 
 DEFAULT_CTOR = doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS]
 
@@ -89,7 +89,7 @@ class TestTaskSpec:
     def test_disabled_spec(self):
         obj = structs.TaskSpec.build({"name": "agroup::atask", "disabled":True})
         assert(isinstance(obj, structs.TaskSpec))
-        assert(TaskFlags.DISABLED in obj.flags)
+        assert(TaskMeta_f.DISABLED in obj.flags)
 
     def test_sources_empty(self):
         obj = structs.TaskSpec.build({"name": "agroup::atask"})
@@ -119,12 +119,12 @@ class TestTaskSpecValidation:
 
     def test_flag_build(self):
         obj = structs.TaskSpec.build({"name":"simple::test"})
-        assert(obj.flags == TaskFlags.default)
-        assert(obj.flags == TaskFlags.TASK)
+        assert(obj.flags == TaskMeta_f.default)
+        assert(obj.flags == TaskMeta_f.TASK)
 
     def test_flag_build_multi(self):
         obj = structs.TaskSpec.build({"name":"simple::test", "flags": ["TASK", "JOB"]})
-        assert(obj.flags == TaskFlags.default | TaskFlags.JOB)
+        assert(obj.flags == TaskMeta_f.default | TaskMeta_f.JOB)
 
     def test_toml_key_modification(self):
         obj = structs.TaskSpec.build({"name":"simple::test", "blah": {}})

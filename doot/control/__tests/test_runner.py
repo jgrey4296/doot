@@ -41,7 +41,7 @@ from doot._abstract import (Action_p, Job_i, Reporter_p, ReportLine_p, Task_i,
 from doot.control.runner import DootRunner
 from doot.control.tracker import DootTracker
 from doot.enums import TaskStatus_e
-from doot.structs import ActionSpec, TaskSpec, DootKey
+from doot.structs import ActionSpec, TaskSpec, DKey
 
 # ##-- end 1st party imports
 

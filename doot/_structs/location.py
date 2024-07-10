@@ -40,14 +40,16 @@ logging = logmod.getLogger(__name__)
 
 from pydantic import BaseModel, model_validator, field_validator
 import doot
-from doot.enums import LocationMeta
-from doot._structs.key import DootKey
+from doot.enums import LocationMeta_f
+from doot._structs.dkey import DKey
+from doot._abstract.protocols import ProtocolModelMeta, Location_p, Buildable_p
+from doot.utils.dkey_formatter import DKeyFormatter
 
 GLOB     : Final[str] = "*"
 REC_GLOB : Final[str] = "**"
 SOLO     : Final[str] = "?"
 
-class Location(BaseModel, arbitrary_types_allowed=True):
+class Location(BaseModel, Location_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
     """ A Location to be used by tasks in Doot.
       ie: a path, with metadata.
 
@@ -60,16 +62,16 @@ class Location(BaseModel, arbitrary_types_allowed=True):
       while will be incorporated into a RelationSpec,
       with an anonymous key.
     """
-    key                 : None|str|DootKey
+    key                 : None|str|DKey
     path                : pl.Path
-    meta                : LocationMeta  = LocationMeta.default
+    meta                : LocationMeta_f  = LocationMeta_f.default
     _expansion_keys     : set[str]      = set()
 
     _toml_str_prefix    : ClassVar[str] = doot.constants.patterns.FILE_DEP_PREFIX
-    _artifact_key           : ClassVar[str] = DootKey.build("!!Artifact!!")
+    _artifact_key           : ClassVar[str] = DKey("!!Artifact!!")
 
     @classmethod
-    def build(cls, data:dict|str, *, key:None|str|DootKey=None, target:pl.Path=None):
+    def build(cls, data:dict|str, *, key:None|str|DKey=None, target:pl.Path=None):
         match data:
             case Location():
                 return cls(key=key or data.key, path=(target or data.path), meta=data.meta)
@@ -77,7 +79,7 @@ class Location(BaseModel, arbitrary_types_allowed=True):
                 # prefixed str: file:>a/simple/path.txt
                 assert(target is None)
                 the_path = pl.Path(data.removeprefix(cls._toml_str_prefix))
-                meta     = LocationMeta.file
+                meta     = LocationMeta_f.file
                 return cls(key=key or cls._artifact_key, path=the_path, meta=meta)
             case str() | pl.Path():
                 assert(target is None)
@@ -85,19 +87,19 @@ class Location(BaseModel, arbitrary_types_allowed=True):
             case {"loc": target_s}:
                 key    = key or data.get("key")
                 target = target or pl.Path(target_s.removeprefix(cls._toml_str_prefix))
-                meta   = LocationMeta.build({x:y for x,y in data.items() if x != "loc"})
+                meta   = LocationMeta_f.build({x:y for x,y in data.items() if x != "loc"})
                 if target_s.startswith(cls._toml_str_prefix):
-                    meta |= LocationMeta.file
+                    meta |= LocationMeta_f.file
                 return cls(key=key, path=target, meta=meta)
             case {"file": target_s}:
                 key    = key or data.get("key", key)
                 target = target or pl.Path(target_s.removeprefix(cls._toml_str_prefix))
-                meta   = LocationMeta.build({x:y for x,y in data.items() if x != "loc"})
-                meta |= LocationMeta.file
+                meta   = LocationMeta_f.build({x:y for x,y in data.items() if x != "loc"})
+                meta |= LocationMeta_f.file
                 return cls(key=key, path=target, meta=meta)
             case dict() if target is not None:
                 key = key or data.get("key", key)
-                meta   = LocationMeta.build({x:y for x,y in data.items()})
+                meta   = LocationMeta_f.build({x:y for x,y in data.items()})
                 return cls(key=key, path=target, meta=meta)
             case _:
                 raise ValueError("Bad data for Location", data, key, target)
@@ -106,16 +108,16 @@ class Location(BaseModel, arbitrary_types_allowed=True):
     def _validate_metadata(self):
         t_str = str(self.path)
         if SOLO in t_str:
-            self.meta |= LocationMeta.abstract
+            self.meta |= LocationMeta_f.abstract
         if GLOB in t_str:
-            self.meta |= LocationMeta.abstract | LocationMeta.glob
-        if (keys:=DootKey._pattern.findall(t_str)):
-            self.meta |= LocationMeta.abstract | LocationMeta.expandable
-            self._expansion_keys.update(keys)
+            self.meta |= LocationMeta_f.abstract | LocationMeta_f.glob
+        if (keys:=DKeyFormatter.Parse(t_str)):
+            self.meta |= LocationMeta_f.abstract | LocationMeta_f.expandable
+            self._expansion_keys.update([x[0] for x in keys])
 
         return self
 
-    def __contains__(self, other:LocationMeta|Location|pl.Path) -> bool:
+    def __contains__(self, other:LocationMeta_f|Location|pl.Path) -> bool:
         """ whether a definite artifact is matched by self, an abstract artifact
           a/b/c.py ∈ a/b/*.py
           ________ ∈ a/*/c.py
@@ -125,7 +127,7 @@ class Location(BaseModel, arbitrary_types_allowed=True):
 
         """
         match other:
-            case LocationMeta():
+            case LocationMeta_f():
                 return self.check(other)
             case Location():
                 path = other.path
@@ -134,7 +136,7 @@ class Location(BaseModel, arbitrary_types_allowed=True):
             case _:
                 return False
 
-        if not self.check(LocationMeta.abstract):
+        if not self.check(LocationMeta_f.abstract):
             return False
 
         for x,y in zip(self.path.parent.parts, path.parent.parts):
@@ -151,30 +153,32 @@ class Location(BaseModel, arbitrary_types_allowed=True):
         return  suffix and stem
 
     def __call__(self) -> pl.Path:
-        return self.to_path()
+        return self.expand()
+
     @ftz.cached_property
     def abstracts(self) -> tuple[bool, bool, bool]:
         """ Return three bools,
           for is abstract [parent, stem, suffix]
         """
-        if LocationMeta.abstract not in self.meta:
+        if LocationMeta_f.abstract not in self.meta:
             return (False, False, False)
         path, stem, suff      = str(self.path.parent), self.path.stem, self.path.suffix
-        _path   = bool(GLOB in path or SOLO in path or DootKey._pattern.search(path))
-        _stem   = bool(GLOB in stem or SOLO in stem or DootKey._pattern.search(stem))
-        _suffix = bool(GLOB in suff or SOLO in suff or DootKey._pattern.search(suff))
+        _path   = bool(GLOB in path or SOLO in path or bool(DKeyFormatter.Parse(path)))
+        _stem   = bool(GLOB in stem or SOLO in stem or bool(DKeyFormatter.Parse(stem)))
+        _suffix = bool(GLOB in suff or SOLO in suff or bool(DKeyFormatter.Parse(suff)))
 
         return (_path, _stem, _suffix)
 
-    def check(self, meta:LocationMeta) -> bool:
+    def check(self, meta:LocationMeta_f) -> bool:
         return meta in self.meta
 
     def exists(self) -> bool:
-        expanded = self.to_path()
+        expanded = self.expand()
         logging.debug("Testing for existence: %s", expanded)
         return expanded.exists()
+
     def keys(self) -> set[str]:
         return self._expansion_keys
 
-    def to_path(self):
+    def expand(self):
         return doot.locs[self.path]

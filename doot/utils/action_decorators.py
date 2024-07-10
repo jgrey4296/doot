@@ -39,7 +39,7 @@ logging = logmod.getLogger(__name__)
 
 import doot
 import doot.errors
-from doot.utils.decorators import DootDecorator
+from doot.utils.decorators import DootDecorator, MetaDecorator
 
 RUN_DRY_SWITCH                               = doot.constants.decorations.RUN_DRY_SWITCH
 RUN_DRY                                      = doot.constants.decorations.RUN_DRY
@@ -52,17 +52,26 @@ ANNOUNCER                                    = doot.constants.decorations.ANNOUN
 
 dry_run_active                               = doot.args.on_fail(False).cmd.args.dry_run()
 
-class DryRunSwitch(DootDecorator):
+class DryRunSwitch(MetaDecorator):
     """ Mark an action callable/class as to be skipped in dry runs """
 
     def __init__(self, *, override:bool=False):
+        super().__init__(mark="_dry_run_able")
         self._override = override
-        self._annotations = {RUN_DRY_SWITCH}
 
-    def _wrapper(self, fn, *args, _obj=None, **kwargs):
-        if dry_run_active or self._override:
-            return None
-        return fn(*args, **kwargs)
+    def _target_method(self, fn):
+        override_active = self._override
+
+        @ftz.wraps(fn)
+        def wrapper(*args, **kwargs):
+            if dry_run_active or override_active:
+                return None
+            return fn(*args, **kwargs)
+
+        return wrapper
+
+    def _target_fn(self, fn):
+        return self._target_method(fn)
 
 class RunsDry(DootDecorator):
     """ mark an action that makes no changes to the system, on an honour system """
@@ -98,7 +107,7 @@ class IOWriter(DootDecorator):
 
     def _wrapper(self, fn, spec, state, *args, _obj=None, **kwargs):
         for x in [y for y in getattr(fn, '_doot_keys', []) if y in self._targets]:
-            if doot.locs._is_write_protected(x.to_path(spec, state)):
+            if doot.locs._is_write_protected(x.expand(spec, state)):
                 raise doot.errors.DootTaskError("A Target to an IOWriter action is marked as protected")
 
         return fn(spec, state, *args, **kwargs)

@@ -4,13 +4,14 @@
 See EOF for license/metadata/notes as applicable
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
-# import abc
+# ##-- stdlib imports
 import datetime
 import enum
 import functools as ftz
+import importlib
 import itertools as itz
 import logging as logmod
 import pathlib as pl
@@ -18,36 +19,39 @@ import re
 import time
 import types
 import weakref
-# from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
+# ##-- 3rd party imports
 import more_itertools as mitz
-##-- end lib imports
+from pydantic import BaseModel, Field, field_validator, model_validator
+from tomlguard import TomlGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+from doot._abstract.protocols import SpecStruct_p, ProtocolModelMeta, Buildable_p
+from doot._structs.code_ref import CodeReference
+from doot.enums import Report_f, TaskMeta_f
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from pydantic import BaseModel, Field, model_validator, field_validator
-import importlib
-from tomlguard import TomlGuard
-import doot
-import doot.errors
-from doot.enums import TaskFlags, ReportEnum
-from doot._abstract.protocols import SpecStruct_p
-from doot._structs.code_ref import CodeReference
-
 ALIASES = doot.aliases.action
 
-class ActionSpec(BaseModel, arbitrary_types_allowed=True):
+class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
     """
       When an action isn't a full blown class, it gets wrapped in this,
       which passes the action spec to the callable.
@@ -57,7 +61,7 @@ class ActionSpec(BaseModel, arbitrary_types_allowed=True):
       path:/usr/bin/python  -> Path(/usr/bin/python)
 
     """
-    do         : None|CodeReference               = None
+    do         : None|CodeReference                   = None
     args       : list[Any]                            = []
     kwargs     : TomlGuard                            = Field(default_factory=TomlGuard)
     inState    : set[str]                             = set()
@@ -77,8 +81,8 @@ class ActionSpec(BaseModel, arbitrary_types_allowed=True):
                 return action_spec
 
             case dict() | TomlGuard():
-                kwargs = TomlGuard({x:y for x,y in data.items() if x not in ActionSpec.model_fields})
-                fun    = data.get('fun', fun)
+                kwargs      = TomlGuard({x:y for x,y in data.items() if x not in ActionSpec.model_fields})
+                fun         = data.get('fun', fun)
                 action_spec = ActionSpec(
                     do=data.get('do', None),
                     args=data.get('args',[]),

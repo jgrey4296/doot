@@ -41,9 +41,9 @@ import importlib
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.enums import TaskFlags, ReportEnum, LocationMeta
+from doot.enums import TaskMeta_f, Report_f, LocationMeta_f
 from doot._structs.location import Location, GLOB, SOLO, REC_GLOB
-from doot._structs.key import DootKey
+from doot._structs.dkey import DKey
 
 class TaskArtifact(Location, arbitrary_types_allowed=True):
     """
@@ -82,7 +82,7 @@ class TaskArtifact(Location, arbitrary_types_allowed=True):
 
     @ftz.cached_property
     def is_concrete(self):
-        return not self.check(LocationMeta.abstract)
+        return not self.check(LocationMeta_f.abstract)
 
     @ftz.cached_property
     def parent(self):
@@ -105,7 +105,7 @@ class TaskArtifact(Location, arbitrary_types_allowed=True):
           a/**/?.blah + a/b/c/d.txt -> a/b/c/d.blah
 
         """
-        if LocationMeta.abstract not in self:
+        if LocationMeta_f.abstract not in self:
             return None
 
         a_path, a_stem, a_suff = self.abstracts

@@ -31,7 +31,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from tomlguard import TomlGuard
-from doot.enums import ReportEnum
+from doot.enums import Report_f
 
 class Reporter_p(abc.ABC):
     """

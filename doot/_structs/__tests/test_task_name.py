@@ -20,7 +20,7 @@ import doot
 doot._test_setup()
 
 from doot._structs.task_name import TaskName
-from doot.enums import TaskFlags
+from doot.enums import TaskMeta_f
 from doot.task.base_task import DootTask
 
 class TestTaskName:
@@ -39,22 +39,22 @@ class TestTaskName:
         simple = TaskName.build("basic.+::tail")
         assert(simple.head == [ "basic", "+"])
         assert(simple.tail == ["tail"])
-        assert(TaskFlags.JOB in simple)
+        assert(TaskMeta_f.JOB in simple)
 
     def test_build_internal_job(self):
         simple = TaskName.build("basic.+::_.tail")
         assert(simple.head == [ "basic", "+"])
         assert(simple.tail == ["_", "tail"])
-        assert(TaskFlags.JOB in simple)
-        assert(TaskFlags.INTERNAL in simple)
+        assert(TaskMeta_f.JOB in simple)
+        assert(TaskMeta_f.INTERNAL in simple)
 
     def test_internal(self):
         simple = TaskName.build("agroup::_.internal.task")
-        assert(TaskFlags.INTERNAL in simple)
+        assert(TaskMeta_f.INTERNAL in simple)
 
     def test_no_internal(self):
         simple = TaskName.build("agroup::_internal.task")
-        assert(TaskFlags.INTERNAL not in simple)
+        assert(TaskMeta_f.INTERNAL not in simple)
 
     def test_name_with_leading_tasks(self):
         simple = TaskName.build("tasks.basic::tail")
@@ -318,6 +318,16 @@ class TestNameRoots:
         assert(added_root == simple2)
         assert(str(simple) != str(simple2))
         assert(str(added_root) == str(simple2))
+
+
+    def test_has_root(self):
+        simple  = TaskName.build("basic::tail")
+        simple2 = TaskName.build("basic::tail..blah")
+        added_root = simple.subtask("bloo")
+        assert(not simple.has_root())
+        assert(simple2.has_root())
+        assert(added_root.has_root())
+
 
     def test_root_auto_filter(self):
         simple  = TaskName.build("basic::tail..a")

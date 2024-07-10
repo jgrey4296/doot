@@ -41,8 +41,10 @@ printer = logmod.getLogger("doot._printer")
 import bdb
 import doot
 import doot.errors
+from doot.structs import DKey
 
 def action_debugger(spec, state):
+    """ A Simple entry function for debugging spec and state """
     def pstate():
         printer.info("Printing State:")
         printer.info(state)
@@ -58,11 +60,13 @@ def action_debugger(spec, state):
     return None
 
 def typecheck(spec, state):
+    """ a simple action to check the expansion of certain keys """
     for key,target_type in spec.kwargs:
         try:
-            value = state[key]
+            d_key      = DKey(key)
+            value      = d_key.expand(state)
             value_type = type(value)
-            fullname = "{}:{}".format(value_type.__module__, value_type.__name__)
+            fullname   = value_type.__qualname__
             if target_type != fullname:
                 raise doot.errors.DootActionStateError("Type Error: state.%s : %s != %s", key, fullname, target_type)
 

@@ -16,7 +16,7 @@ import doot
 doot._test_setup()
 
 from doot._structs.location import Location
-from doot.enums import LocationMeta
+from doot.enums import LocationMeta_f
 
 logging = logmod.root
 
@@ -49,29 +49,29 @@ class TestLocation:
 
     def test_metadata(self):
         obj = Location.build({"key":"test", "loc":"test/blah", "protected":True})
-        assert(LocationMeta.protected in obj)
+        assert(LocationMeta_f.protected in obj)
 
     def test_metadata_opposite(self):
         obj = Location.build({"key":"test", "loc":"test/blah", "protected":False})
-        assert(LocationMeta.protected not in obj)
+        assert(LocationMeta_f.protected not in obj)
 
     def test_meta_abstract_solo(self):
         obj = Location.build({"key":"test", "loc":"test/?.txt"})
-        assert(LocationMeta.abstract in obj)
-        assert(LocationMeta.glob not in obj)
+        assert(LocationMeta_f.abstract in obj)
+        assert(LocationMeta_f.glob not in obj)
         assert(obj.abstracts == (False, True, False))
 
     def test_meta_glob(self):
         obj = Location.build({"key":"test", "loc":"test/*/blah.txt"})
-        assert(LocationMeta.abstract in obj)
-        assert(LocationMeta.glob in obj)
+        assert(LocationMeta_f.abstract in obj)
+        assert(LocationMeta_f.glob in obj)
         assert(obj.abstracts == (True, False, False))
 
     def test_meta_expansion(self):
         obj = Location.build({"key":"test", "loc":"test/{fname}.txt"})
-        assert(LocationMeta.abstract in obj)
-        assert(LocationMeta.glob not in obj)
-        assert(LocationMeta.expandable in obj)
+        assert(LocationMeta_f.abstract in obj)
+        assert(LocationMeta_f.glob not in obj)
+        assert(LocationMeta_f.expandable in obj)
         assert(bool(obj.keys()))
         assert("fname" in obj.keys())
         assert(obj.abstracts == (False, True, False))

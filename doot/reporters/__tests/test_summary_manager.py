@@ -17,7 +17,7 @@ import doot
 doot._test_setup()
 
 from doot.reporters.summary_manager import DootReportManagerSummary
-from doot.enums import ReportEnum
+from doot.enums import Report_f
 from doot.structs import TraceRecord
 from doot._abstract import Reporter_p
 
@@ -60,7 +60,7 @@ class TestSummaryReporter:
     @pytest.mark.skip("TODO")
     def test_str(self):
         manager = DootReportManagerSummary()
-        manager.add_trace("test", flags=ReportEnum.SUCCEED | ReportEnum.TASK)
-        manager.add_trace("test", flags=ReportEnum.FAIL    | ReportEnum.JOB)
-        manager.add_trace("test", flags=ReportEnum.SUCCEED | ReportEnum.ACTION)
+        manager.add_trace("test", flags=Report_f.SUCCEED | Report_f.TASK)
+        manager.add_trace("test", flags=Report_f.FAIL    | Report_f.JOB)
+        manager.add_trace("test", flags=Report_f.SUCCEED | Report_f.ACTION)
         assert(isinstance(manager) == "    - Jobs: 0/1\n    - Tasks  : 1/0\n    - Actions: 1/0")

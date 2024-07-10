@@ -4,61 +4,69 @@
 See EOF for license/metadata/notes as applicable
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
-# import abc
+# ##-- stdlib imports
 import datetime
 import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
 import pathlib as pl
+import random
 import re
 import time
 import types
 import weakref
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
+# ##-- 3rd party imports
 import more_itertools as mitz
-##-- end lib imports
+from tomlguard import TomlGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+from doot._abstract import Action_p
+from doot.structs import CodeReference, DKey, TaskName, TaskSpec, DKeyed
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
-import random
-from tomlguard import TomlGuard
-import doot
-import doot.errors
-from doot._abstract import Action_p
-from doot.structs import DootKey, TaskSpec, TaskName, CodeReference
-
 class JobQueueAction(Action_p):
     """
-      Queues a list of tasks into the tracker.
+      Queues a list of tasks/specs into the tracker.
 
       1) Queue Named Tasks: {do='job.queue', args=['group::task'] }
-      2) Queue Expanded TaskSpecs: {do='job.queue', from_="state_key" }
+      2) Queue Expanded TaskSpecs: {do='job.queue', from_='state_key' }
+
+
+      tasks can be specified by name in `args`
+      and from prior expansion state vars with `from_` (accepts a list)
+
+      `after` can be used to specify additional `depends_on` entries.
+      (the job head is specified using `$head$`)
     """
 
-    @DootKey.dec.args
-    @DootKey.dec.types("from_", hint={"type_":list|TaskSpec|None})
-    @DootKey.dec.redirects_many("from_multi_")
-    @DootKey.dec.types("after", hint={"type_":list|TaskName|str|None, "on_fail":None})
-    @DootKey.dec.taskname
-    def __call__(self, spec, state, _args, _from, _from_multi, _after, _basename) -> list:
-        # TODO maybe expand args
+    @DKeyed.args
+    @DKeyed.redirects("from_", multi=True)
+    @DKeyed.types("after", check=list|TaskName|str|None, fallback=None)
+    @DKeyed.taskname
+    def __call__(self, spec, state, _args, _from, _after, _basename) -> list:
         subtasks               = []
         queue : list[TaskSpec] = []
         _after                     = self._expand_afters(_after, _basename)
@@ -67,10 +75,7 @@ class JobQueueAction(Action_p):
             queue += self._build_args(_basename, _args)
 
         if _from:
-            queue += self._build_from(_basename, _from)
-
-        if _from_multi:
-            queue += self._build_from_multi(_basename, _from_multi, spec, state)
+            queue += self._build_from_list(_basename, _from, spec,state)
 
         for sub in queue:
             match sub:
@@ -82,25 +87,21 @@ class JobQueueAction(Action_p):
 
         return subtasks
 
-    def _expand_afters(self, afters, base):
+    def _expand_afters(self, afters:list|str|None, base:TaskName) -> list[TaskName]:
         result = []
         match afters:
-            case None:
-                return []
-            case "$head$":
-                return [base.head_task()]
             case str():
-                return [TaskName.build(afters)]
-            case list():
-                for x in afters:
-                    if x == "$head$":
-                        result.append(base.head_task())
-                    else:
-                        result.append(TaskName.build(x))
+                afters = [afters]
+            case None:
+                afters = []
+
+        for x in afters:
+            if x == "$head$":
+                result.append(base.head_task())
+            else:
+                result.append(TaskName.build(x))
 
         return result
-
-
 
     def _build_args(self, base, args) -> list:
         result = []
@@ -117,14 +118,16 @@ class JobQueueAction(Action_p):
 
         return result
 
-    def _build_from_multi(self, base:TaskName, froms:list[DootKey], spec, state) -> list:
+    def _build_from_list(self, base:TaskName, froms:list[DKey], spec, state) -> list:
         result  = []
         root    = base.root()
         head    = base.job_head()
-        assert(all(isinstance(x, DootKey) for x in froms))
+        assert(all(isinstance(x, DKey) for x in froms))
 
         for key in froms:
-            match key.to_type(spec, state, type_=list|TaskSpec|None):
+            if key == "from_":
+                continue
+            match key.expand(spec, state):
                 case None:
                     pass
                 case list() as l:
@@ -134,7 +137,7 @@ class JobQueueAction(Action_p):
 
         return result
 
-    def _build_from(self, base, _from) -> list:
+    def _build_from(self, base, _from:list) -> list:
         result = []
         head = base.job_head()
         match _from:
@@ -148,10 +151,11 @@ class JobQueueAction(Action_p):
 class JobQueueHead(Action_p):
     """ Queue the head/on_completion task of this job"""
 
-    @DootKey.dec.types("base")
-    @DootKey.dec.types("inject")
-    @DootKey.dec.taskname
+    @DKeyed.types("base")
+    @DKeyed.types("inject")
+    @DKeyed.taskname
     def __call__(self, spec, state, base, inject, _basename):
+        raise DeprecationWarning("This Is No Longer needed")
         root            = _basename.root()
         head_name       = _basename.job_head()
         head            = []
@@ -184,10 +188,10 @@ class JobChainer(Action_p):
       {do="job.chain.->", unpack={literal=[key, key, key], by-name=[taskname, taskname]}},
     """
 
-    @DootKey.dec.kwargs
+    @DKeyed.kwargs
     def __call__(self, spec, state, kwargs):
         for k,v in kwargs.items():
-            match DootKey.build(k).to_type(spec, state):
+            match DKey(k).expand(spec, state):
                 case list() as l:
                     for x in l:
                         x.required_for += []

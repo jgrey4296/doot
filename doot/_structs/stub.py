@@ -4,13 +4,15 @@
 See EOF for license/metadata/notes as applicable
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
 import functools as ftz
+import importlib
 import itertools as itz
 import logging as logmod
 import pathlib as pl
@@ -19,40 +21,45 @@ import time
 import types
 import weakref
 # from copy import deepcopy
-from dataclasses import InitVar, dataclass, field, MISSING
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from dataclasses import MISSING, InitVar, dataclass, field
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, GenericAlias, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
+# ##-- 3rd party imports
 import more_itertools as mitz
-##-- end lib imports
+from pydantic import (BaseModel, Field, InstanceOf, field_validator,
+                      model_validator)
+from tomlguard import TomlGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+from doot._abstract.protocols import (Buildable_p, ProtocolModelMeta,
+                                      StubStruct_p)
+from doot._structs.code_ref import CodeReference
+from doot._structs.task_name import TaskName
+from doot._structs.task_spec import TaskSpec
+from doot.enums import LocationMeta_f, QueueMeta_e, Report_f, TaskMeta_f
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from typing import GenericAlias
-from pydantic import BaseModel, Field, model_validator, field_validator, InstanceOf
-import importlib
-from tomlguard import TomlGuard
-import doot
-import doot.errors
-from doot.enums import TaskFlags, ReportEnum, LocationMeta, TaskQueueMeta
-from doot._structs.task_name import TaskName
-from doot._structs.code_ref import CodeReference
-from doot._structs.task_spec import TaskSpec
-from doot._abstract.protocols import StubStruct_p
-
-TaskFlagNames : Final[str]               = [x.name for x in TaskFlags]
+TaskFlagNames : Final[str]               = [x.name for x in TaskMeta_f]
 
 DEFAULT_CTOR  : Final[CodeReference] = CodeReference.build(doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS])
 
-class TaskStub(BaseModel, arbitrary_types_allowed=True):
+class TaskStub(BaseModel, StubStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
     """ Stub Task Spec for description in toml
     Automatically Adds default keys from TaskSpec
 
@@ -92,7 +99,6 @@ class TaskStub(BaseModel, arbitrary_types_allowed=True):
                 self.parts[dcfield].default = data.default_factory()
             else:
                 self.parts[dcfield].default= data.default
-
 
         return self
 
@@ -160,7 +166,6 @@ class TaskStubPart(BaseModel, arbitrary_types_allowed=True):
     comment   : str                            = ""
     priority  : int                            = 0
 
-
     def __lt__(self, other):
         return self.priority < other.priority
 
@@ -209,11 +214,11 @@ class TaskStubPart(BaseModel, arbitrary_types_allowed=True):
         match self.default:
             case "" if isinstance(self.type_, enum.EnumMeta):
                 val_str = f'[ "{self.type_.default.name}" ]'
-            case enum.Flag(): # TaskFlags() | LocationMeta():
-                parts = [x.name for x in TaskFlags if x in self.default]
+            case enum.Flag(): # TaskMeta_f() | LocationMeta_f():
+                parts = [x.name for x in TaskMeta_f if x in self.default]
                 joined = ", ".join(map(lambda x: f"\"{x}\"", parts))
                 val_str = f"[ {joined} ]"
-            case TaskQueueMeta():
+            case QueueMeta_e():
                 val_str = '"{}"'.format(self.default.name)
             case bool():
                 val_str = str(self.default).lower()

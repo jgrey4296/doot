@@ -40,12 +40,12 @@ from pydantic import BaseModel, Field, model_validator, field_validator
 import importlib
 from tomlguard import TomlGuard
 import doot.errors
-from doot.enums import TaskFlags, ReportEnum
+from doot.enums import TaskMeta_f, Report_f
 
 
 class TraceRecord(BaseModel):
     message : str
-    flags   : ReportEnum
+    flags   : Report_f
     args    : list[Any]                = []
     time    : datetime.datetime        = Field(default_factory=datetime.datetime.now)
 
@@ -53,10 +53,10 @@ class TraceRecord(BaseModel):
     def _valdiate_flags(cls, val):
         match val:
             case None:
-                return ReportEnum.default
+                return Report_f.default
             case str() | list():
-                return ReportEnum.build(val)
-            case ReportEnum():
+                return Report_f.build(val)
+            case Report_f():
                 return val
             case _:
                 raise ValueError("Bad flags for TraceRecord", val)
@@ -71,10 +71,10 @@ class TraceRecord(BaseModel):
             case _:
                 return str(self.message)
 
-    def __contains__(self, other:ReportEnum) -> bool:
+    def __contains__(self, other:Report_f) -> bool:
         return all([x in self.flags for x in other])
 
-    def __eq__(self, other:ReportEnum) -> bool:
+    def __eq__(self, other:Report_f) -> bool:
         return self.flags == other
 
     def some(self, other:reportPositionEnum) -> bool:

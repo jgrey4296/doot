@@ -18,7 +18,7 @@ import pytest
 import importlib.metadata
 import tomlguard
 import doot
-from doot.enums import TaskFlags
+from doot.enums import TaskMeta_f
 doot._test_setup()
 
 from doot.structs import TaskSpec
@@ -116,7 +116,7 @@ class TestTaskLoader:
         basic.setup({}, specs)
 
         result = basic.load()
-        assert(TaskFlags.DISABLED in  result["basic::test"].flags)
+        assert(TaskMeta_f.DISABLED in  result["basic::test"].flags)
 
     def test_bad_task_module(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_sources")
@@ -128,7 +128,7 @@ class TestTaskLoader:
         basic.setup({}, specs)
 
         result = basic.load()
-        assert(TaskFlags.DISABLED in  result["basic::test"].flags)
+        assert(TaskMeta_f.DISABLED in  result["basic::test"].flags)
 
     @pytest.mark.xfail
     def test_bad_spec(self, mocker):
@@ -179,7 +179,7 @@ class TestTaskLoader:
         basic.setup(plugins, tomlguard.TomlGuard(specs))
 
         result = basic.load()
-        assert(TaskFlags.DISABLED in  result["basic::simple"].flags)
+        assert(TaskMeta_f.DISABLED in  result["basic::simple"].flags)
 
 
     def test_task_bad_type_loaded(self, mocker):

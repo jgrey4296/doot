@@ -48,14 +48,14 @@ import jsonlines
 import tomlguard as TG
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
-from doot.enums import ActionResponseEnum
+from doot.enums import ActionResponse_e
 from doot._abstract import Action_p
-from doot.structs import DootKey
+from doot.structs import DKey, DKeyed
 
 
 ##-- expansion keys
-FROM_KEY           : Final[DootKey] = DootKey.build("from")
-UPDATE             : Final[DootKey] = DootKey.build("update_")
+FROM_KEY           : Final[DKey] = DKey("from")
+UPDATE             : Final[DKey] = DKey("update_")
 ##-- end expansion keys
 
 class ReadJson(Action_p):
@@ -64,8 +64,8 @@ class ReadJson(Action_p):
     """
     _toml_kwargs = [FROM_KEY, UPDATE]
 
-    @DootKey.dec.paths("from")
-    @DootKey.dec.redirects("update_")
+    @DKeyed.paths("from")
+    @DKeyed.redirects("update_")
     def __call__(self, spec, state, _from, _update):
         if _from.suffix != ".json":
             printer.warning("Read Json expected a .json file, got: %s", _from)
@@ -77,18 +77,18 @@ class ReadJson(Action_p):
 class ParseJson(Action_p):
     """ parse a string as json """
 
-    @DootKey.dec.types("from")
-    @DootKey.dec.redirects("update_")
+    @DKeyed.types("from")
+    @DKeyed.redirects("update_")
     def __call__(self, spec, state, _from, _update):
         return { _update : json.loads(_from) }
 
 class ReadJsonLines(Action_p):
     """ read a .jsonl file, or some of it, and add it to the task state  """
 
-    @DootKey.dec.paths("from")
-    @DootKey.dec.types("offset", hint={"default":0})
-    @DootKey.dec.types("count", hint={"default":math.inf})
-    @DootKey.dec.redirects("update_")
+    @DKeyed.paths("from")
+    @DKeyed.types("offset", fallback=0)
+    @DKeyed.types("count", fallback=math.inf)
+    @DKeyed.redirects("update_")
     def __call__(self, spec, state, _from, offset, count, _update):
         if _from.suffix != ".jsonl":
             printer.warning("Read JsonNL expects a .jsonl file, got: %s", _from)
@@ -111,8 +111,8 @@ class WriteJsonLines(Action_p):
       optionally gzip the file
     """
 
-    @DootKey.dec.types("from")
-    @DootKey.dec.paths("to")
+    @DKeyed.types("from")
+    @DKeyed.paths("to")
     def __call__(self, spec, state, _from, _to):
         if _to.suffix != ".jsonl":
             printer.warning("Write Json Lines expected a .jsonl file, got: %s", _to)
@@ -124,8 +124,8 @@ class WriteJsonLines(Action_p):
 class WriteJson(Action_p):
     """ Write a dict as a .json file  """
 
-    @DootKey.dec.types("from")
-    @DootKey.dec.paths("to")
+    @DKeyed.types("from")
+    @DKeyed.paths("to")
     def __call__(self, spec, state, _from, _to):
         if _to.suffix != ".json":
             printer.warning("Write Json Expected a .json file, got: %s", _to)

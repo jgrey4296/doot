@@ -32,8 +32,8 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot._abstract import Job_i
-from doot.enums import LocationMeta
-from doot.structs import TaskSpec, ActionSpec, DootKey
+from doot.enums import LocationMeta_f
+from doot.structs import TaskSpec, ActionSpec, DKeyed
 from doot.task.base_task import DootTask
 
 # ##-- end 1st party imports
@@ -53,7 +53,7 @@ class CheckLocsTask(DootTask):
     task_name = "_locations::check"
 
     def __init__(self, spec=None):
-        locations = [doot.locs[f"{{{x}}}"] for x in doot.locs if not doot.locs.metacheck(x, LocationMeta.file) and not doot.locs.metacheck(x, LocationMeta.remote)]
+        locations = [doot.locs[f"{{{x}}}"] for x in doot.locs if not doot.locs.metacheck(x, LocationMeta_f.file) and not doot.locs.metacheck(x, LocationMeta_f.remote)]
         actions   = [ActionSpec.build({"args": [x], "fun":self.checklocs }) for x in locations]
         spec      = TaskSpec.build({
             "name"         : CheckLocsTask.task_name,
@@ -62,11 +62,11 @@ class CheckLocsTask(DootTask):
         })
         super().__init__(spec)
 
-    @DootKey.dec.args
+    @DKeyed.args
     def checklocs(self, spec, state, args):
         exists_p = args[0].exists()
         if exists_p:
-            printer.info("Base Location Exists : %s", spec.args[0])
+            printer.debug("Base Location Exists : %s", spec.args[0])
         else:
             printer.warning("Base Location Missing: %s", spec.args[0])
             if make_missing:

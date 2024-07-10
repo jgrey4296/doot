@@ -35,7 +35,7 @@ from doot.actions.job_injection import (JobInjectPathParts,
                                         JobInjectShadowAction)
 from doot.errors import DootTaskError, DootTaskFailed
 from doot.mixins.path_manip import PathManip_m
-from doot.structs import CodeReference, DootKey
+from doot.structs import CodeReference, DKey, DKeyed
 
 # ##-- end 1st party imports
 
@@ -47,12 +47,12 @@ class AddStateAction(Action_p):
       adds kwargs directly, without expansion
     """
 
-    @DootKey.dec.kwargs
+    @DKeyed.kwargs
     def __call__(self, spec, state:dict, kwargs) -> dict|bool|None:
         result = {}
         for k,v in kwargs.items():
-            key = DootKey.build(v, explicit=True)
-            val = key.to_type(spec, state)
+            key = DKey(v, explicit=True)
+            val = key.expand(spec, state)
             result[k] = val
         return result
 
@@ -61,11 +61,11 @@ class AddStateFn(Action_p):
       with expansion
     """
 
-    @DootKey.dec.kwargs
+    @DKeyed.kwargs
     def __call__(self, spec, state:dict, kwargs) -> dict|bool|None:
         result = {}
         for kwarg, val in kwargs:
-            key = DootKey.build(val, explicit=True)
+            key = DKey(val, explicit=True)
             val = key.expand(spec, state)
             ref = CodeReference.build(val)
             result[kwarg] = ref.try_import()
@@ -77,12 +77,12 @@ class PushState(Action_p):
       state[update_] += [state[x] for x in spec.args]
     """
 
-    @DootKey.dec.args
-    @DootKey.dec.redirects("update_")
+    @DKeyed.args
+    @DKeyed.redirects("update_")
     def __call__(self, spec, state, args, _update) -> dict|bool|None:
-        data     = data_key.to_type(spec, state, type_=list|set|None, on_fail=[])
+        data     = data_key.expand(spec, state, check=list|set|None, fallback=[])
 
-        arg_keys = (DootKey.build(arg, explicit=True).to_type(spec, state) for arg in args)
+        arg_keys = (DKey(arg, explicit=True).expand(spec, state) for arg in args)
         to_add   = map(lambda x: x if isinstance(x, list) else [x],
                        filter(lambda x: x is not None, arg_keys))
 
@@ -99,8 +99,8 @@ class AddNow(Action_p):
       Add the current date, as a string, to the state
     """
 
-    @DootKey.dec.expands("format")
-    @DootKey.dec.redirects("update_")
+    @DKeyed.expands("format")
+    @DKeyed.redirects("update_")
     def __call__(self, spec, state, format, _update):
         now      = datetime.datetime.now()
         return { _update : now.strftime(format) }
@@ -108,17 +108,17 @@ class AddNow(Action_p):
 class PathParts(PathManip_m):
     """ take a path and add fstem, fpar, fname to state """
 
-    @DootKey.dec.paths("from")
-    @DootKey.dec.types("roots")
-    @DootKey.dec.returns("fstem", "fpar", "fname", "fext", "pstem")
+    @DKeyed.paths("from")
+    @DKeyed.types("roots")
+    @DKeyed.returns("fstem", "fpar", "fname", "fext", "pstem")
     def __call__(self, spec, state, _from, roots):
         root_paths = self._build_roots(spec, state, roots)
         return self._calc_path_parts(_from, root_paths)
 
 class ShadowPath(PathManip_m):
 
-    @DootKey.dec.paths("shadow_root")
-    @DootKey.dec.types("base", hint={"type_":pl.Path})
+    @DKeyed.paths("shadow_root")
+    @DKeyed.types("base", check=pl.Path)
     def __call__(self, spec, state, shadow_root, base):
         shadow_dir = self._shadow_path(base, shadow_root)
         return { "shadow_path" : shadow_dir }

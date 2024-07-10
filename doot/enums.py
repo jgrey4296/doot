@@ -33,6 +33,8 @@ from doot.mixins.enums import EnumBuilder_m, FlagsBuilder_m
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+##-- enums
+
 class TaskStatus_e(enum.Enum):
     """
       Enumeration of the different states a task/artifact can be in.
@@ -89,7 +91,137 @@ class TaskStatus_e(enum.Enum):
     def artifact_set(cls):
         return {cls.ARTIFACT, cls.EXISTS, cls.HALTED, cls.FAILED}
 
-class TaskFlags(FlagsBuilder_m, enum.Flag):
+class ActionResponse_e(EnumBuilder_m, enum.Enum):
+    """
+      Description of how a Action went.
+    """
+
+    SUCCEED  = enum.auto()
+    FAIL     = enum.auto()
+    SKIP     = enum.auto()
+
+    # Aliases
+    SUCCESS  = SUCCEED
+
+class QueueMeta_e(EnumBuilder_m, enum.Enum):
+    """ available ways a task can be activated for running
+      onRegister/auto     : activates automatically when added to the task network
+      reactive            : activates if an adjacent node completes
+
+      default             : activates only if uses queues the task, or its a dependencyOf
+
+    """
+
+    default      = enum.auto()
+    onRegister   = enum.auto()
+    reactive     = enum.auto()
+    reactiveFail = enum.auto()
+    auto         = onRegister
+
+class LoopControl_e(enum.Enum):
+    """
+      Describes how to continue an accumulating loop.
+      (like walking a a tree)
+
+    yesAnd     : is a result, and try others.
+    yes        : is a result, don't try others, Finish.
+    noBut      : not a result, try others.
+    no         : not a result, don't try others, Finish.
+    """
+    yesAnd  = enum.auto()
+    yes     = enum.auto()
+    noBut   = enum.auto()
+    no      = enum.auto()
+
+    @classmethod
+    @property
+    def loop_yes_set(cls):
+        return  {cls.yesAnd, cls.yes, True}
+
+    @classmethod
+    @property
+    def loop_no_set(cls):
+        return  {cls.no, cls.noBut, False, None}
+
+class EdgeType_e(EnumBuilder_m, enum.Enum):
+    """ Enum describing the possible edges of the task tracker's task network """
+
+    TASK              = enum.auto() # task to task
+    ARTIFACT_UP       = enum.auto() # abstract to concrete artifact
+    ARTIFACT_DOWN     = enum.auto() # concrete to abstract artifact
+    TASK_CROSS        = enum.auto() # Task to artifact
+    ARTIFACT_CROSS    = enum.auto() # artifact to task
+
+    default           = TASK
+
+    @classmethod
+    @property
+    def artifact_edge_set(cls):
+        return  {cls.ARTIFACT_UP, cls.ARTIFACT_DOWN, cls.TASK_CROSS}
+
+class RelationMeta_e(enum.Enum):
+    """
+      What types+synonyms of task relation there can be,
+      in the form ? {rel} Y,
+
+      eg: cake dependsOn baking.
+      or: baking requirementFor cake.
+    """
+    # Core:
+    dependencyOf     = enum.auto()
+    requirementFor   = enum.auto()
+
+    # dependency Aliases
+    dependsOn        = dependencyOf
+    productOf        = dependencyOf
+    pre              = dependencyOf
+    dep              = dependencyOf
+    after            = dependencyOf
+    # Dependant aliases
+    resultsIn        = requirementFor
+    post             = requirementFor
+    req              = requirementFor
+    before           = requirementFor
+
+    default          = dependencyOf
+    # to deprecate:
+    dependantOf      = requirementFor
+
+class ExecutionPolicy_e(EnumBuilder_m, enum.Enum):
+    """ How the task execution will be ordered
+      PRIORITY : Priority Queue with retry, job expansion, dynamic walk of network.
+      DEPTH    : No (priority,retry,jobs). basic DFS of the pre-run dependency network
+      BREADTH  : No (priority,retry,jobs). basic BFS of the pre-run dependency-network
+
+    """
+    PRIORITY = enum.auto() # By Task Priority
+    DEPTH    = enum.auto() # Depth First Search
+    BREADTH  = enum.auto() # Breadth First Search
+
+    default = PRIORITY
+class DKeyMark_e(EnumBuilder_m, enum.Enum):
+    """
+      Enums for how to use/build a dkey
+
+    """
+    FREE     = enum.auto() # -> Any
+    PATH     = enum.auto() # -> pl.Path
+    REDIRECT = enum.auto() # -> DKey
+    STR      = enum.auto() # -> str
+    CODE     = enum.auto() # -> coderef
+    TASK     = enum.auto() # -> taskname
+    ARGS     = enum.auto() # -> list
+    KWARGS   = enum.auto() # -> dict
+    POSTBOX  = enum.auto() # -> list
+    NULL     = enum.auto() # -> None
+
+    default  = FREE
+
+##-- end enums
+
+##-- flags
+
+class TaskMeta_f(FlagsBuilder_m, enum.Flag):
     """
       Flags describing properties of a task,
       stored in the Task_i instance itself.
@@ -117,7 +249,27 @@ class TaskFlags(FlagsBuilder_m, enum.Flag):
 
     default      = TASK
 
-class ReportEnum(enum.Flag):
+class LocationMeta_f(FlagsBuilder_m, enum.Flag):
+    """ Available metadata attachable to a location """
+
+    abstract     = enum.auto()
+    artifact     = enum.auto()
+    directory    = enum.auto()
+    cleanable    = enum.auto()
+    normOnLoad   = enum.auto()
+    protected    = enum.auto()
+    glob         = enum.auto()
+    expandable   = enum.auto()
+    remote       = enum.auto()
+
+    # Aliases
+    file         = artifact
+    location     = directory
+    indefinite   = abstract
+
+    default      = directory
+
+class Report_f(enum.Flag):
     """ Flags to mark what a reporter reports
       For categorizing the most common parts of Reporting.
     """
@@ -141,131 +293,6 @@ class ReportEnum(enum.Flag):
 
     OTHER    = enum.auto()
     #
+
     default  = enum.auto()
-
-class ActionResponseEnum(EnumBuilder_m, enum.Enum):
-    """
-      Description of how a Action went.
-    """
-
-    SUCCEED  = enum.auto()
-    FAIL     = enum.auto()
-    SKIP     = enum.auto()
-
-    # Aliases
-    SUCCESS  = SUCCEED
-
-class LoopControl(enum.Enum):
-    """
-      Describes how to continue an accumulating loop.
-      (like walking a a tree)
-
-    yesAnd     : is a result, and try others.
-    yes        : is a result, don't try others, Finish.
-    noBut      : not a result, try others.
-    no         : not a result, don't try others, Finish.
-    """
-    yesAnd  = enum.auto()
-    yes     = enum.auto()
-    noBut   = enum.auto()
-    no      = enum.auto()
-
-    @classmethod
-    @property
-    def loop_yes_set(cls):
-        return  {cls.yesAnd, cls.yes, True}
-
-    @classmethod
-    @property
-    def loop_no_set(cls):
-        return  {cls.no, cls.noBut, False, None}
-
-class LocationMeta(FlagsBuilder_m, enum.Flag):
-    """ Available metadata attachable to a location """
-
-    abstract     = enum.auto()
-    artifact     = enum.auto()
-    directory    = enum.auto()
-    cleanable    = enum.auto()
-    normOnLoad   = enum.auto()
-    protected    = enum.auto()
-    glob         = enum.auto()
-    expandable   = enum.auto()
-    remote       = enum.auto()
-
-    # Aliases
-    file         = artifact
-    location     = directory
-    indefinite   = abstract
-
-    default      = directory
-
-class TaskQueueMeta(EnumBuilder_m, enum.Enum):
-    """ available ways a task can be activated for running
-      onRegister/auto     : activates automatically when added to the task network
-      reactive            : activates if an adjacent node completes
-
-      default             : activates only if uses queues the task, or its a dependencyOf
-
-    """
-
-    default      = enum.auto()
-    onRegister   = enum.auto()
-    reactive     = enum.auto()
-    reactiveFail = enum.auto()
-    auto         = onRegister
-
-class RelationMeta(enum.Enum):
-    """
-      What types+synonyms of task relation there can be,
-      in the form ? {rel} Y,
-
-      eg: cake dependsOn baking.
-      or: baking requirementFor cake.
-    """
-    # Core:
-    dependencyOf     = enum.auto()
-    requirementFor   = enum.auto()
-
-    # dependency Aliases
-    dependsOn        = dependencyOf
-    productOf        = dependencyOf
-    pre              = dependencyOf
-    dep              = dependencyOf
-    # Dependant aliases
-    resultsIn        = requirementFor
-    post             = requirementFor
-    req              = requirementFor
-
-    default          = dependencyOf
-    # to deprecate:
-    dependantOf      = requirementFor
-
-class EdgeType_e(EnumBuilder_m, enum.Enum):
-    """ Enum describing the possible edges of the task tracker's task network """
-
-    TASK              = enum.auto() # task to task
-    ARTIFACT_UP       = enum.auto() # abstract to concrete artifact
-    ARTIFACT_DOWN     = enum.auto() # concrete to abstract artifact
-    TASK_CROSS        = enum.auto() # Task to artifact
-    ARTIFACT_CROSS    = enum.auto() # artifact to task
-
-    default           = TASK
-
-    @classmethod
-    @property
-    def artifact_edge_set(cls):
-        return  {cls.ARTIFACT_UP, cls.ARTIFACT_DOWN, cls.TASK_CROSS}
-
-class ExecutionPolicy_e(EnumBuilder_m, enum.Enum):
-    """ How the task execution will be ordered
-      PRIORITY : Priority Queue with retry, job expansion, dynamic walk of network.
-      DEPTH    : No (priority,retry,jobs). basic DFS of the pre-run dependency network
-      BREADTH  : No (priority,retry,jobs). basic BFS of the pre-run dependency-network
-
-    """
-    PRIORITY = enum.auto() # By Task Priority
-    DEPTH    = enum.auto() # Depth First Search
-    BREADTH  = enum.auto() # Breadth First Search
-
-    default = PRIORITY
+##-- end flags

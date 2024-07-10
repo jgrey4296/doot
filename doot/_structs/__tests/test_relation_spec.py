@@ -35,7 +35,7 @@ import doot.errors
 from doot._structs.relation_spec import RelationSpec
 from doot._structs.location import Location
 from doot.structs import TaskName
-from doot.enums import LocationMeta, RelationMeta
+from doot.enums import LocationMeta_f, RelationMeta_e
 
 class TestRelationSpec:
 
@@ -84,14 +84,14 @@ class TestRelationSpec:
         obj = RelationSpec.build("file:>a/file.txt")
         assert(isinstance(obj, RelationSpec))
         assert(isinstance(obj.target, Location))
-        assert(LocationMeta.file in obj.target)
+        assert(LocationMeta_f.file in obj.target)
 
     def test_abstract_file_dep(self):
         obj = RelationSpec.build("file:>a/?.txt")
         assert(isinstance(obj, RelationSpec))
         assert(isinstance(obj.target, Location))
-        assert(LocationMeta.file in obj.target)
-        assert(LocationMeta.abstract in obj.target)
+        assert(LocationMeta_f.file in obj.target)
+        assert(LocationMeta_f.abstract in obj.target)
 
     def test_dict_loc_dep(self):
         obj = RelationSpec.build({"loc": "a/file.txt"})
@@ -102,7 +102,7 @@ class TestRelationSpec:
         obj = RelationSpec.build({"loc": "a/*.txt"})
         assert(isinstance(obj, RelationSpec))
         assert(isinstance(obj.target, Location))
-        assert(LocationMeta.abstract in obj.target)
+        assert(LocationMeta_f.abstract in obj.target)
 
 
     def test_task_dep(self):
@@ -125,15 +125,15 @@ class TestRelationSpec:
 
 
     def test_build_as_dependency(self):
-        obj = RelationSpec.build({"task": "agroup::atask"}, relation=RelationMeta.dependsOn)
+        obj = RelationSpec.build({"task": "agroup::atask"}, relation=RelationMeta_e.dependsOn)
         assert(isinstance(obj, RelationSpec))
         assert(isinstance(obj.target, TaskName))
-        assert(obj.relation is RelationMeta.dep)
+        assert(obj.relation is RelationMeta_e.dep)
 
 
     def test_build_as_requirement(self):
-        obj = RelationSpec.build({"task": "agroup::atask"}, relation=RelationMeta.requirementFor)
+        obj = RelationSpec.build({"task": "agroup::atask"}, relation=RelationMeta_e.requirementFor)
         assert(isinstance(obj, RelationSpec))
         assert(isinstance(obj.target, TaskName))
         assert(obj.target == "agroup::atask")
-        assert(obj.relation is RelationMeta.req)
+        assert(obj.relation is RelationMeta_e.req)

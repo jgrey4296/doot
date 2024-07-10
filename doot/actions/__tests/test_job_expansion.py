@@ -19,7 +19,7 @@ import doot
 doot._test_setup()
 from doot.actions.job_expansion import JobExpandAction, JobMatchAction
 import doot.errors
-from doot.structs import DootKey, ActionSpec, TaskName
+from doot.structs import DKey, ActionSpec, TaskName
 
 class TestJobExpansion:
 
@@ -31,7 +31,11 @@ class TestJobExpansion:
     def state(self):
         return {"_task_name": TaskName.build("agroup::basic")}
 
-    def test_initial(self, spec, state):
+    def test_sanity(self, spec, state):
+        obj = JobExpandAction()
+        assert(isinstance(obj, JobExpandAction))
+
+    def test_empty_expansion(self, spec, state):
         obj = JobExpandAction()
         result = obj(spec, state)
         assert(isinstance(result, dict))
@@ -86,7 +90,7 @@ class TestJobMatcher:
     def state(self):
         return {"_task_name": TaskName.build("agroup::basic")}
 
-    def test_initial(self):
+    def test_sanity(self):
         pass
 
 class TestJobGenerate:
@@ -99,5 +103,5 @@ class TestJobGenerate:
     def state(self):
         return {"_task_name": TaskName.build("agroup::basic")}
 
-    def test_initial(self):
+    def test_sanity(self):
         pass
