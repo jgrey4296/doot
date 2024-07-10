@@ -139,11 +139,11 @@ class PutPostAction(Action_p):
                 box = _basename.root(top=True).subtask(box_str)
             match statekey:
                 case str():
-                    data = DKey(statekey, explicit=True).expand(spec, state)
+                    data = DKey(statekey).expand(spec, state)
                     _DootPostBox.put(box, data)
                 case [*xs]:
                     for x in statekey:
-                        data = DKey(x, explicit=True).expand(spec, state)
+                        data = DKey(x).expand(spec, state)
                         _DootPostBox.put(box, data)
 
 class GetPostAction(Action_p):

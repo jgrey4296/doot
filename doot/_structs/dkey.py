@@ -148,6 +148,8 @@ class DKey(metaclass=DKeyMeta):
                 key_ctor = RedirectionDKey
             case 1 if s_keys[0][0].endswith("_"):
                 key_ctor = RedirectionDKey
+            case 0 | 1 if explicit:
+                key_ctor = MultiDKey
             case 0 | 1:
                 pass
             case _:
@@ -172,7 +174,7 @@ class DKey(metaclass=DKeyMeta):
                 key_ctor =  KwargsDKey
 
 
-        if not issubclass(key_ctor, MultiDKey) and len(s_keys) == 1:
+        if not issubclass(key_ctor, MultiDKey) and len(s_keys) == 1 and not explicit:
             data, fparams = s_keys[0][0], s_keys[0][1]
 
         # Build the key from key_ctor + init it

@@ -143,10 +143,12 @@ class TestPutAction:
 
     @pytest.fixture(scope="function")
     def spec_implicit(self, mocker):
+        """ an implicit box target """
         return ActionSpec.build({"do":None, "args":[], "specific_box":"{aval}"})
 
     @pytest.fixture(scope="function")
     def spec_explicit(self, mocker):
+        """ an explicit box target """
         return ActionSpec.build({"do":None, "args":[], "simple::other.task..specific_box":"{aval}"})
 
     @pytest.fixture(scope="function")
@@ -166,7 +168,6 @@ class TestPutAction:
         assert('specific_box' in pb._DootPostBox.boxes['simple::task'])
         assert(pb._DootPostBox.boxes['simple::task']['specific_box'] == [1,2,3,4])
 
-
     def test_args_go_to_default_subbox(self, setup, spec_implicit, state):
         """
         Expands 'aval' into [1,2,3,4],
@@ -183,7 +184,6 @@ class TestPutAction:
         assert(pb._DootPostBox.boxes['simple::task']['specific_box'] == [1,2,3,4])
         assert(pb._DootPostBox.boxes['simple::task']['-'] == [1,2,3,4])
 
-
     def test_args_must_be_expansions(self, setup, spec_implicit, state):
         """
         Note that 'args' is *only* useable for expansions
@@ -199,8 +199,6 @@ class TestPutAction:
         assert('specific_box' in pb._DootPostBox.boxes['simple::task'])
         assert(pb._DootPostBox.boxes['simple::task']['specific_box'] == [1,2,3,4])
         assert('-' not in pb._DootPostBox.boxes['simple::task'])
-
-
 
     def test_explicit_task(self, setup, spec_explicit, state):
         """
@@ -244,7 +242,6 @@ class TestGetAction:
         result = action(spec_explicit, state)
         assert(isinstance(result, dict))
         assert(result['res_key'] == ["a", "b", "c", "d"])
-
 
     def test_implicit_fail(self, setup, spec_implicit, state):
         """

@@ -155,7 +155,7 @@ class TestDKeyConstruction:
         explicit = "".join(["{", name, "}"])
         obj = dkey.DKey(explicit, explicit=True)
         assert(isinstance(obj, dkey.DKey))
-        assert(str(obj) == name)
+        assert(str(obj) == explicit)
 
     @pytest.mark.parametrize("name", MULTI_KEYS + NON_PATH_MUTI_KEYS)
     def test_multi_build(self, name):
@@ -193,6 +193,10 @@ class TestDKeyConstruction:
         assert(isinstance(obj, dkey.SingleDKey))
         assert(isinstance(obj, dkey.RedirectionDKey))
         assert(str(obj) == name)
+
+    def test_integrated_str_keys(self):
+        obj = dkey.DKey("--{raise}", explicit=True)
+        assert(str(obj) == "--{raise}")
 
 class TestDKeyDunderFormatting:
 
@@ -447,6 +451,11 @@ class TestDKeyExpansion:
         key = dkey.DKey(pl.Path("a/test"), explicit=True, mark=dkey.DKey.mark.PATH)
         assert(isinstance(key, dkey.PathMultiDKey))
         assert(key.expand() is not None)
+
+    def test_expansion_explicit_key(self):
+        key = dkey.DKey("--{raise}", explicit=True)
+        result = key.expand({"raise":"minor"})
+        assert(result == "--minor")
 
 class TestDKeyMarkExpansion:
 
