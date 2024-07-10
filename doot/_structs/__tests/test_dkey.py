@@ -696,6 +696,18 @@ class TestDKeyRedirection:
         assert(result[0] == "blah")
 
 
+    def test_redirection_remark(self, spec):
+        """
+          test_ -> blah
+        """
+        state = {"test_": "blah", "blah": 23}
+        key   = dkey.DKey("test_", mark=dkey.DKey.mark.REDIRECT, re_mark=dkey.DKey.mark.PATH)
+        assert(isinstance(key, dkey.RedirectionDKey))
+        result = key.expand(spec, state)
+        assert(result is not None)
+        assert(result._mark == dkey.DKey.mark.PATH)
+
+
     def test_redirect_prefers_indirect_key_over_direct(self):
         """
           test_ -> blah

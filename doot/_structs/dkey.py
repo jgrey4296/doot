@@ -124,9 +124,9 @@ class DKey(metaclass=DKeyMeta):
         assert(isinstance(mark, DKeyMark_e | None)), mark
 
         match data:
-            case DKey():
+            case DKey() if mark is None or mark == data._mark:
                 return data
-            case pl.Path():
+            case DKey() | pl.Path():
                 data = str(data)
             case _:
                 pass
@@ -206,17 +206,17 @@ class DKeyExpansion_m:
                 self._check_expansion(expanded, override=check)
                 return expanded
 
-    def redirect(self, *sources, multi=False) -> list[DKey]:
+    def redirect(self, *sources, multi=False, re_mark=None) -> list[DKey]:
         """
           Always returns a list of keys, even if the key is itself
         """
         match DKeyFormatter.redirect(self, sources=sources):
             case []:
-                return [DKey(f"{self:d}")]
+                return [DKey(f"{self:d}", mark=re_mark)]
             case [*xs] if multi:
-                return [DKey(x) for x in xs]
+                return [DKey(x, mark=re_mark) for x in xs]
             case [x]:
-                return [DKey(x)]
+                return [DKey(x, mark=re_mark)]
             case x:
                 raise TypeError("bad redirection type", x, self)
 
@@ -467,9 +467,10 @@ class RedirectionDKey(SingleDKey):
 
     _mark = DKey.mark.REDIRECT
 
-    def __init__(self, data, multi=False, **kwargs):
+    def __init__(self, data, multi=False, re_mark=None, **kwargs):
         super().__init__(data, **kwargs)
         self.multi_redir = multi
+        self.re_mark = re_mark
 
     def set_expansion(self, *args) -> Self:
         self._exp_type  = DKey
@@ -477,7 +478,7 @@ class RedirectionDKey(SingleDKey):
         return self
 
     def expand(self, *sources, fallback=None, max=None, check=None, **kwargs) -> None|Any:
-        match super().redirect(*sources, multi=self.multi_redir):
+        match super().redirect(*sources, multi=self.multi_redir, re_mark=self.re_mark):
             case list() as xs if self.multi_redir:
                 return xs
             case [x, *xs]:
