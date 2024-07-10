@@ -130,7 +130,7 @@ class ZipAddAction(Zipper_m, Action_p):
     def __call__(self, spec, state, target, args):
         arg_paths = []
         for str in args:
-            key = DKey(x, mark=DKey.mark.PATH)
+            key = DKey(x, explicit=True, mark=DKey.mark.PATH)
             match key.expand(spec, state, on_fail=None):
                 case pl.Path() as x if not x.exists():
                     printer.warning("Can't add non-existent path to zip: %s", key)

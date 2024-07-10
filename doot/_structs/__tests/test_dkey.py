@@ -442,6 +442,12 @@ class TestDKeyExpansion:
         assert(key.expand({}, fallback=set(["bob"])) == set(["bob"]))
         assert(key.expand() is None)
 
+
+    def test_path_expansion_no_op(self):
+        key = dkey.DKey(pl.Path("a/test"), explicit=True, mark=dkey.DKey.mark.PATH)
+        assert(isinstance(key, dkey.PathMultiDKey))
+        assert(key.expand() is not None)
+
 class TestDKeyMarkExpansion:
 
     @pytest.fixture(scope="function")

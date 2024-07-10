@@ -141,11 +141,12 @@ class CopyAction(PathManip_m):
     @DKeyed.paths("to")
     def __call__(self, spec, state, _from, to) -> dict|bool|None:
         dest_loc   = to
+
         match _from:
             case str() | pl.Path():
-                expanded = [DKey(_from, mark=DKey.mark.PATH).expand(spec, state)]
+                expanded = [DKey(_from, explicit=True, mark=DKey.mark.PATH).expand(spec, state)]
             case list():
-                expanded = list(map(lambda x: DKey(x, mark=DKey.mark.PATH).expand(spec, state), _from))
+                expanded = list(map(lambda x: DKey(x, explicit=True, mark=DKey.mark.PATH).expand(spec, state), _from))
             case _:
                 raise doot.errors.DootActionError("Unrecognized type for copy sources", _from)
 
@@ -192,7 +193,7 @@ class DeleteAction(PathManip_m):
     def __call__(self, spec, state, recursive, lax):
         rec = recursive
         for arg in spec.args:
-            loc = DKey(arg, mark=DKey.mark.PATH).expand(spec, state)
+            loc = DKey(arg, explicit=True, mark=DKey.mark.PATH).expand(spec, state)
             if self._is_write_protected(loc):
                 raise doot.errors.DootLocationError("Tried to write a protected location", loc)
 
@@ -246,7 +247,7 @@ class EnsureDirectory(PathManip_m):
     @DKeyed.args
     def __call__(self, spec, state, args):
         for arg in args:
-            loc = DKey(arg, mark=DKey.mark.PATH).expand(spec, state)
+            loc = DKey(arg, explicit=True, mark=DKey.mark.PATH).expand(spec, state)
             if not loc.exists():
                 printer.info("Building Directory: %s", loc)
             loc.mkdir(parents=True, exist_ok=True)
@@ -280,7 +281,7 @@ class TouchFileAction(PathManip_m):
 
     @DKeyed.args
     def __call__(self, spec, state, args):
-        for target in [DKey(x, mark=DKey.mark.PATH) for x in args]:
+        for target in [DKey(x, explicit=True, mark=DKey.mark.PATH) for x in args]:
             target(spec, state).touch()
 
 class LinkAction(PathManip_m):
