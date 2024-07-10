@@ -195,3 +195,13 @@ non-key's may be being wrapped incorrectly
    :context:
         <2024-06-28 Fri> class DecorationUtils:
    :END:
+** TRIAGE refactor overlord into a ctx manager
+   [[/media/john/data/github/python/doot/doot/control/overlord.py::269][Location]]
+   :context:
+        <2024-07-06 Sat>     def shutdown(self):
+   :END:
+** TRIAGE use coderefs and dkey._check_expansion for typecheck action
+   [[/media/john/data/github/python/doot/doot/actions/util.py::63][Location]]
+   :context:
+        <2024-07-08 Mon>     for key,target_type in spec.kwargs:
+   :END:
