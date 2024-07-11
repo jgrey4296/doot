@@ -205,3 +205,8 @@ non-key's may be being wrapped incorrectly
    :context:
         <2024-07-08 Mon>     for key,target_type in spec.kwargs:
    :END:
+** TRIAGE refactor tracker.next_for into a statemachine
+   [[/media/john/data/github/python/doot/doot/control/tracker.py::199][Location]]
+   :context:
+        <2024-07-11 Thu>     def next_for(self, target:None|str|TaskName=None) -> None|Task_i|TaskArtifact:
+   :END:
