@@ -205,7 +205,7 @@ class TestDKeyConstruction:
 
     def test_conv_params_multi_path(self):
         obj = dkey.DKey("{aval!p}/{blah}")
-        assert(isinstance(obj, dkey.PathMultiDKey))
+        assert(isinstance(obj, dkey.MultiDKey))
 
     def test_conv_parms_redirect(self):
         obj = dkey.DKey("{aval!R}")
@@ -219,11 +219,9 @@ class TestDKeyConstruction:
         obj = dkey.DKey("{aval!t}")
         assert(isinstance(obj, dkey.TaskNameDKey))
 
-
     def test_conv_params_conflict(self):
         with pytest.raises(ValueError):
             dkey.DKey("{aval!p}", mark=dkey.DKey.mark.CODE)
-
 
 class TestDKeyDunderFormatting:
 
@@ -591,7 +589,6 @@ class TestDKeyExpansionTypeControl:
         assert(isinstance(result, str))
         assert(result == "2")
 
-
     def test_expansion_to_taskname(self):
         """
         test -> group::name
@@ -694,6 +691,31 @@ class TestDKeyMultiKeyExpansion:
         result = key.expand(spec, state)
         assert(isinstance(result, pl.Path))
         assert(result == pl.Path("aweg/wegg").resolve())
+
+    def test_multikey_path_with_prefix(self, spec):
+        """
+          --target={blah}/{bloo} -> --target=aweg/wegg
+        """
+        key = dkey.DKey("--target={blah!p}/{bloo}")
+        assert(isinstance(key, dkey.MultiDKey))
+        assert(not isinstance(key, dkey.PathMultiDKey))
+        state = {"blah": pl.Path("aweg"), "bloo":"wegg"}
+        result = key.expand(spec, state)
+        assert(isinstance(result, str))
+        base = doot.locs.normalize(pl.Path("aweg"))
+        assert(result == f"--target={base}/wegg")
+
+    def test_multikey_path_with_prefix_enforced_ctor(self, spec):
+        """
+          --target={blah}/{bloo} -> --target=aweg/wegg
+        """
+        key = dkey.DKey("--target={blah!p}/{bloo}", ctor=pl.Path)
+        assert(isinstance(key, dkey.MultiDKey))
+        assert(not isinstance(key, dkey.PathMultiDKey))
+        state = {"blah": pl.Path("aweg"), "bloo":"wegg"}
+        result = key.expand(spec, state)
+        assert(isinstance(result, pl.Path))
+        assert(result == pl.Path("--target={}/wegg".format(doot.locs.normalize(pl.Path("aweg")))))
 
     def test_multikey_path_direct_fallback_to_indirect(self, spec):
         """
@@ -842,7 +864,6 @@ class TestDKeyFormatting:
         fmt = DKeyFormatter()
         result = fmt.format(key)
         assert(result == "x")
-
 
     def test_format_with_type_conv(self):
         key           = dkey.DKey("{x}")
