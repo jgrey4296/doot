@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 (Generated using [git-cliff](https://git-cliff.org/)
 
-## [0.8.4] - 2024-06-10
+## [0.9.0] - 2024-07-11
 
 ### Features
 
@@ -12,22 +12,66 @@ All notable changes to this project will be documented in this file.
 - Tolerance for backup task time test
 - Cleanup as a dependant group of a task
 - Branch 'linux-main'
+- Env to installed check
+- Cwd for shell action
+- Pydantic compatible protocol
+- Dkey formatting and tests
+- Dkey functionality
+- Dkey implementation
+- Redirect dkey re_marking
+- Branch 'refactor-key' into linux-main
+- Branch 'linux-main'
+- Key type conversion
+- Branch 'linux-main'
+- Improved path expansion for keys
+- Branch 'linux-main'
+
+### Revert
+
+- Original key formatting implementation
 
 ### Bug Fixes
 
 - Alias typo of zip.new
 - Action decorator bug
+- Recursive location expansion
+- Dkey paths
+- Missing import
+- Explicit key expansion
 
 ### Dependencies
 
 - Wiki commit
 - Version 0.8.3 -> 0.8.4
+- Tests
+- Tests
+- Wiki
+- Version 0.8.4 -> 0.9.0
 
 ### Refactoring
 
 - Remove lambda assignments
 - Relation spec to have constraints and injections
 - Task spec
+- File exists check
+- Enum and flag names
+- Job.queue.head
+- Key decorator out to separate class
+- Task name methods to mixin
+- Key decorator -> Keyed
+- Add dkey stubs
+- Dkey
+- Key
+- Code to use dkey instead of key
+- Protocols
+- Dkey tests
+- Dkey new logic
+- Dkey ctor logic and expansion amounts
+
+### Testing
+
+- Postbox
+- Dkey
 
 ## [0.8.3] - 2024-06-05
 
