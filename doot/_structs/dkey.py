@@ -119,7 +119,7 @@ class DKey(metaclass=DKeyMeta):
       """
     mark = DKeyMark_e
 
-    def __new__(cls, data:str|DKey|pl.Path|dict, *, fparams=None, explicit=False, mark:MARKTYPE=None, **kwargs) -> DKey:
+    def __new__(cls, data:str|DKey|pl.Path|dict, *, fparams=None, cparams=None, explicit=False, mark:MARKTYPE=None, **kwargs) -> DKey:
         assert(cls is DKey)
         assert(isinstance(mark, DKeyMark_e | None)), mark
 
@@ -150,8 +150,8 @@ class DKey(metaclass=DKeyMeta):
                 key_ctor = MultiDKey
 
         # handle conversion parameters in data
-        conv_specs : set = "".join([x[2] for x in s_keys if x[2] is not None])
-        match DKeyFormatter.TypeConv(conv_specs):
+        first_key_conv = s_keys[0][2] if len(s_keys) == 1 else None
+        match DKeyFormatter.TypeConv(cparams or first_key_conv):
             case None:
                 pass
             case x if mark == x:
@@ -167,6 +167,8 @@ class DKey(metaclass=DKeyMeta):
                 raise TypeError("use dkey(...ctor=type)")
             case DKeyMark_e.REDIRECT:
                 key_ctor = RedirectionDKey
+            case DKeyMark_e.PATH if bool(s_keys) and data[0] not in "/~.{" and explicit:
+                key_ctor = MultiDKey
             case DKeyMark_e.PATH:
                 if len(s_keys) < 2 and not explicit:
                     key_ctor = PathSingleDKey
@@ -204,7 +206,8 @@ class DKeyExpansion_m:
     """ general expansion for dkeys """
 
     def expand(self, *sources, fallback=None, max=None, check=None, **kwargs) -> None|Any:
-        match DKeyFormatter.expand(self, sources=sources, fallback=fallback or self._exp_fallback, max=max or self._max_expansions):
+        expanded_keys = {x : x.expand(*sources) for x in self.keys()}
+        match DKeyFormatter.expand(self, sources=(expanded_keys, *sources), fallback=fallback or self._exp_fallback, max=max or self._max_expansions):
             case None:
                 return None
             case DKey() as x if self._exp_type is str:
@@ -417,7 +420,7 @@ class MultiDKey(DKeyBase):
     def __init__(self, data:str|pl.Path, *, mark:MARKTYPE=None, **kwargs):
         super().__init__(data, mark=mark, **kwargs)
         s_keys           = DKeyFormatter.Parse(data)
-        self._subkeys    = [DKey(x[0], fparams=x[1]) for x in s_keys]
+        self._subkeys    = [DKey(x[0], fparams=x[1], cparams=x[2]) for x in s_keys]
 
     def __format__(self, spec:str):
         """
@@ -606,7 +609,7 @@ class PostBoxDKey(SingleDKey):
 
     def set_expansion(self, *args) -> Self:
         self._exp_type  = list
-        self._typecheck = check or list
+        self._typecheck = list
         return self
 
 ##-- end specialisations

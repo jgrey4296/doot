@@ -107,7 +107,9 @@ from doot.utils.decorators import DecorationUtils, DootDecorator
 
 ##-- logging
 logging = logmod.getLogger(__name__)
+logging.disabled = True
 ##-- end logging
+
 
 KEY_PATTERN                                = doot.constants.patterns.KEY_PATTERN
 MAX_KEY_EXPANSIONS                         = 200 # doot.constants.patterns.MAX_KEY_EXPANSIONS
@@ -177,7 +179,7 @@ class DKeyFormatterEntry_m:
                 raise TypeError("Unknown type found", key)
 
     @classmethod
-    def TypeConv(cls, val:str) -> None|DKeyMark_e:
+    def TypeConv(cls, val:None|str) -> None|DKeyMark_e:
         """ convert a string of type conversions to a DKeyMark_e"""
         if not bool(val):
             return None
@@ -318,7 +320,7 @@ class DKeyFormatter_Expansion_m:
         """
         logging.debug("Multi Expansion: %s", key)
         expansion_dict = { f"{x}" : str(self._expand(x, fallback=f"{x:w}", count=0)) for x in key.keys() }
-        expanded       = f"{key}".format_map(expansion_dict)
+        expanded       = self.format(key, **expansion_dict)
 
         return expanded
 
