@@ -123,6 +123,7 @@ class DKey(metaclass=DKeyMeta):
         assert(cls is DKey)
         assert(isinstance(mark, DKeyMark_e | None)), mark
 
+        # Early escape
         match data:
             case DKey() if mark is None or mark == data._mark:
                 return data
@@ -131,16 +132,9 @@ class DKey(metaclass=DKeyMeta):
             case _:
                 pass
 
-        match mark:
-            case DKeyMark_e():
-                pass
-            case type():
-                raise TypeError("use dkey(...ctor=type)")
-
         s_keys    = DKeyFormatter.Parse(data)
         fparams   = fparams or ""
-        key_ctor      = SingleDKey
-        # TODO handle conversion parameters in data
+        key_ctor  = SingleDKey
         match len(s_keys):
             case 0 if explicit or mark is DKeyMark_e.NULL:
                 key_ctor = NonDKey
@@ -155,8 +149,22 @@ class DKey(metaclass=DKeyMeta):
             case _:
                 key_ctor = MultiDKey
 
+        # handle conversion parameters in data
+        conv_specs : set = "".join([x[2] for x in s_keys if x[2] is not None])
+        match DKeyFormatter.TypeConv(conv_specs):
+            case None:
+                pass
+            case x if mark == x:
+                pass
+            case x if mark is None:
+                mark = x
+            case x:
+                raise ValueError("Mismatch between extracted key mark and mark argument", x, mark)
+
         # Specialty keys
         match mark:
+            case type():
+                raise TypeError("use dkey(...ctor=type)")
             case DKeyMark_e.REDIRECT:
                 key_ctor = RedirectionDKey
             case DKeyMark_e.PATH:
@@ -167,14 +175,13 @@ class DKey(metaclass=DKeyMeta):
             case DKeyMark_e.CODE:
                 key_ctor =  ImportDKey
             case DKeyMark_e.TASK:
-                key_ctor =  SingleDKey
+                key_ctor =  TaskNameDKey
             case DKeyMark_e.ARGS:
                 key_ctor =  ArgsDKey
             case DKeyMark_e.KWARGS:
                 key_ctor =  KwargsDKey
 
-
-        if not issubclass(key_ctor, MultiDKey) and len(s_keys) == 1 and not explicit:
+        if not issubclass(key_ctor, MultiDKey) and bool(s_keys) and not explicit:
             data, fparams = s_keys[0][0], s_keys[0][1]
 
         # Build the key from key_ctor + init it
@@ -182,7 +189,6 @@ class DKey(metaclass=DKeyMeta):
         result.__init__(data, fparams=fparams, mark=mark, **kwargs)
 
         return result
-
 ##-- end meta
 
 ##-- expansion and formatting
@@ -406,13 +412,12 @@ class SingleDKey(DKeyBase):
 
         return format(result, rem)
 
-
 class MultiDKey(DKeyBase):
 
     def __init__(self, data:str|pl.Path, *, mark:MARKTYPE=None, **kwargs):
         super().__init__(data, mark=mark, **kwargs)
         s_keys           = DKeyFormatter.Parse(data)
-        self._subkeys    = [DKey(x[0], fparams=x[1], mark=x[2]) for x in s_keys]
+        self._subkeys    = [DKey(x[0], fparams=x[1]) for x in s_keys]
 
     def __format__(self, spec:str):
         """
@@ -460,6 +465,15 @@ class NonDKey(DKeyBase):
 ##-- end core
 
 ##-- specialisations
+
+class TaskNameDKey(SingleDKey):
+    _mark = DKey.mark.TASK
+
+    def set_expansion(self, *args) -> Self:
+        self._exp_type  = TaskName.build
+        self._typecheck = TaskName
+        return self
+
 
 class RedirectionDKey(SingleDKey):
     """
@@ -535,6 +549,9 @@ class ImportDKey(SingleDKey):
         return self
 
 class PathSingleDKey(SingleDKey):
+    """ for paths that are just a single key:
+    eg: `temp`
+    """
     _mark = DKey.mark.PATH
 
     def set_expansion(self, *args) -> Self:
@@ -554,7 +571,8 @@ class PathSingleDKey(SingleDKey):
 
 class PathMultiDKey(MultiDKey):
     """
-    A MultiKey that always expands as a path
+    A MultiKey that always expands as a path,
+    eg: `{temp}/{name}.log`
     """
     _mark = DKey.mark.PATH
 

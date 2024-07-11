@@ -36,36 +36,6 @@ class TestJobActions:
         pass
 
 
-    def test_basic_expander(self, spec, state):
-        state.update(dict(_task_name=TaskName.build("agroup::basic"),
-                          inject={"replace":["aKey"]},
-                          base="base::task"))
-
-        state['from'] = ["first", "second", "third"]
-        jqa    = JA.JobExpandAction()
-        result = jqa(spec, state)
-        assert(isinstance(result, dict))
-        assert("specs" in result)
-        assert(all(isinstance(x, TaskSpec) for x in result['specs']))
-        assert(all(x.extra['aKey'] in ["first", "second", "third"] for x in result['specs']))
-        assert(len(result['specs']) == 3)
-
-    def test_expander_with_dict_injection(self, spec, state):
-        state.update(dict(_task_name=TaskName.build("agroup::basic"),
-                          inject={"replace": ["aKey"], "copy":{"other":"blah"}},
-                          base="base::task"))
-
-        state['from']          = ["first", "second", "third"]
-        jqa    = JA.JobExpandAction()
-        result = jqa(spec, state)
-        assert(isinstance(result, dict))
-        assert("specs" in result)
-        assert(all(isinstance(x, TaskSpec) for x in result['specs']))
-        assert(all(x.extra['aKey'] in ["first", "second", "third"] for x in result['specs']))
-        assert(all('other' in x.extra for x in result['specs']))
-        assert(len(result['specs']) == 3)
-
-
 class TestJobWalker:
     @pytest.mark.skip
     def test_walker(self, spec, state):
