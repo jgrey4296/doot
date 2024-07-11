@@ -176,6 +176,25 @@ class DKeyFormatterEntry_m:
             case _:
                 raise TypeError("Unknown type found", key)
 
+    @classmethod
+    def TypeConv(cls, val:str) -> None|DKeyMark_e:
+        """ convert a string of type conversions to a DKeyMark_e"""
+        if not bool(val):
+            return None
+        if "p" in val: # PATH
+            return DKeyMark_e.PATH
+        if "R" in val: # Redirect
+            return DKeyMark_e.REDIRECT
+        if "m" in val and "r" in val: # multi redirect
+            # kwargs['multi'] = True
+            return DKeyMark_e.REDIRECT
+        if "c" in val: # coderef
+            return DKeyMark_e.CODE
+        if "t" in val: # taskname
+            return DKeyMark_e.TASK
+
+        return None
+
     def __call__(self, *, key=None, sources=None, fallback=None, rec=None) -> Self:
         if self._entered:
             raise RuntimeError("trying to enter an already entered formatter")
@@ -373,14 +392,12 @@ class DKeyFormatter(string.Formatter, DKeyFormatter_Expansion_m, DKeyFormatterEn
         match conversion:
             case None:
                 return value
-            case "s":
+            case "s" | "p" | "R" | "c" | "t":
                 return str(value)
             case "r":
                 return repr(value)
             case "a":
                 return ascii(value)
-            case "e": # e for _expand
-                return self._expand(value)
 
         raise ValueError("Unknown conversion specifier {0!s}".format(conversion))
 

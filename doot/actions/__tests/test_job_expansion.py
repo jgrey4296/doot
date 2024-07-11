@@ -19,7 +19,7 @@ import doot
 doot._test_setup()
 from doot.actions.job_expansion import JobExpandAction, JobMatchAction
 import doot.errors
-from doot.structs import DKey, ActionSpec, TaskName
+from doot.structs import DKey, ActionSpec, TaskName, TaskSpec
 
 class TestJobExpansion:
 
@@ -79,6 +79,37 @@ class TestJobExpansion:
         assert(isinstance(result, dict))
         assert(isinstance(result[spec.kwargs['update_']], list))
         assert(len(result['specs'][0].actions) == 3)
+
+
+    def test_basic_expander(self, spec, state):
+        state.update(dict(_task_name=TaskName.build("agroup::basic"),
+                          inject={"replace":["aKey"]},
+                          base="base::task"))
+
+        state['from'] = ["first", "second", "third"]
+        jqa    = JobExpandAction()
+        result = jqa(spec, state)
+        assert(isinstance(result, dict))
+        assert("specs" in result)
+        assert(all(isinstance(x, TaskSpec) for x in result['specs']))
+        assert(all(x.extra['aKey'] in ["first", "second", "third"] for x in result['specs']))
+        assert(len(result['specs']) == 3)
+
+    def test_expander_with_dict_injection(self, spec, state):
+        state.update(dict(_task_name=TaskName.build("agroup::basic"),
+                          inject={"replace": ["aKey"], "copy":{"other":"blah"}},
+                          base="base::task"))
+
+        state['from']          = ["first", "second", "third"]
+        jqa    = JobExpandAction()
+        result = jqa(spec, state)
+        assert(isinstance(result, dict))
+        assert("specs" in result)
+        assert(all(isinstance(x, TaskSpec) for x in result['specs']))
+        assert(all(x.extra['aKey'] in ["first", "second", "third"] for x in result['specs']))
+        assert(all('other' in x.extra for x in result['specs']))
+        assert(len(result['specs']) == 3)
+
 
 class TestJobMatcher:
 

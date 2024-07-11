@@ -24,6 +24,7 @@ from doot._structs import dkey as dkey
 from doot.utils.dkey_formatter import DKeyFormatter
 from doot._structs.code_ref import CodeReference
 from doot._abstract.protocols import Key_p
+from doot.structs import TaskName
 
 KEY_BASES               : Final[str]           = ["bob", "bill", "blah", "other", "23boo", "aweg2531", "awe_weg", "aweg-weji-joi"]
 WRAPPED_KEY_BASES       : Final[str]           = [f"{{{x}}}" for x in KEY_BASES]
@@ -197,6 +198,32 @@ class TestDKeyConstruction:
     def test_integrated_str_keys(self):
         obj = dkey.DKey("--{raise}", explicit=True)
         assert(str(obj) == "--{raise}")
+
+    def test_conv_params_path(self):
+        obj = dkey.DKey("{aval!p}")
+        assert(isinstance(obj, dkey.PathSingleDKey))
+
+    def test_conv_params_multi_path(self):
+        obj = dkey.DKey("{aval!p}/{blah}")
+        assert(isinstance(obj, dkey.PathMultiDKey))
+
+    def test_conv_parms_redirect(self):
+        obj = dkey.DKey("{aval!R}")
+        assert(isinstance(obj, dkey.RedirectionDKey))
+
+    def test_conv_params_code(self):
+        obj = dkey.DKey("{aval!c}")
+        assert(isinstance(obj, dkey.ImportDKey))
+
+    def test_conv_parms_taskname(self):
+        obj = dkey.DKey("{aval!t}")
+        assert(isinstance(obj, dkey.TaskNameDKey))
+
+
+    def test_conv_params_conflict(self):
+        with pytest.raises(ValueError):
+            dkey.DKey("{aval!p}", mark=dkey.DKey.mark.CODE)
+
 
 class TestDKeyDunderFormatting:
 
@@ -414,7 +441,6 @@ class TestDKeyExpansion:
         assert(result == "b")
         assert(isinstance(result, dkey.DKey))
 
-
     @pytest.mark.xfail
     def test_recursive_expansion_str(self, spec):
         """
@@ -426,7 +452,6 @@ class TestDKeyExpansion:
         result = key.expand(spec, state)
         assert(result == "b")
 
-
     def test_expansion_with_none_sources(self, spec):
         """
           top -> b -> {b}
@@ -437,7 +462,6 @@ class TestDKeyExpansion:
         result = key.expand(None, spec, state)
         assert(result == "{b}")
 
-
     def test_misc(self):
         key = dkey.DKey("simple", check=set|list)
         assert(key.expand({"simple": set([1,2,3,4])}) is not None)
@@ -445,7 +469,6 @@ class TestDKeyExpansion:
             key.expand({"simple": 2})
         assert(key.expand({}, fallback=set(["bob"])) == set(["bob"]))
         assert(key.expand() is None)
-
 
     def test_path_expansion_no_op(self):
         key = dkey.DKey(pl.Path("a/test"), explicit=True, mark=dkey.DKey.mark.PATH)
@@ -488,7 +511,6 @@ class TestDKeyMarkExpansion:
         result = key.expand(spec)
         assert(isinstance(result, pl.Path))
         assert(result == pl.Path("aweg/2").resolve())
-
 
     def test_cwd_build(self):
         obj = dkey.DKey(".", mark=dkey.DKey.mark.PATH, explicit=True)
@@ -568,6 +590,17 @@ class TestDKeyExpansionTypeControl:
         result = key.expand(spec)
         assert(isinstance(result, str))
         assert(result == "2")
+
+
+    def test_expansion_to_taskname(self):
+        """
+        test -> group::name
+        """
+        state = {"test": "group::name"}
+        key = dkey.DKey("test", mark=dkey.DKey.mark.TASK)
+        assert(isinstance(key, dkey.TaskNameDKey))
+        result = key.expand(state)
+        assert(isinstance(result, TaskName))
 
 class TestDKeyExpansionIndirect:
 
@@ -710,7 +743,6 @@ class TestDKeyRedirection:
         assert(isinstance(result, list))
         assert(result[0] == "blah")
 
-
     def test_redirection_remark(self, spec):
         """
           test_ -> blah
@@ -721,7 +753,6 @@ class TestDKeyRedirection:
         result = key.expand(spec, state)
         assert(result is not None)
         assert(result._mark == dkey.DKey.mark.PATH)
-
 
     def test_redirect_prefers_indirect_key_over_direct(self):
         """
@@ -734,7 +765,6 @@ class TestDKeyRedirection:
         assert(result is not None)
         assert(isinstance(result, dkey.DKey))
         assert(result == "blah")
-
 
     def test_expansion_is_redirection(self, spec):
         """
@@ -760,7 +790,6 @@ class TestDKeyRedirection:
         assert(isinstance(result, list))
         assert(not isinstance(result[0], dkey.RedirectionDKey))
         assert(result[0] == "test")
-
 
     def test_redirection_multi(self, spec):
         """
@@ -812,3 +841,11 @@ class TestDKeyFormatting:
         key = dkey.DKey("x")
         fmt = DKeyFormatter()
         result = fmt.format(key)
+        assert(result == "x")
+
+
+    def test_format_with_type_conv(self):
+        key           = dkey.DKey("{x}")
+        fmt           = DKeyFormatter()
+        result        = fmt.format("{x!p}", key)
+        assert(result == "x")
