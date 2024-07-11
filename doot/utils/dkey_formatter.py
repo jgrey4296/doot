@@ -338,7 +338,7 @@ class DKeyFormatter_Expansion_m:
                 # {keys}, so expand them
                 prepped = [(x[0], self.format_field(x[0], "w")) for x in xs]
                 expansion_dict = { x[0] : self._expand(x[0], fallback=x[1], count=0) for x in prepped}
-                expanded = key.format_map(expansion_dict)
+                expanded = self.format(key, **expansion_dict)
                 return expanded
             case _:
                 return key

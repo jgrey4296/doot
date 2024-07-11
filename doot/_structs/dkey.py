@@ -206,8 +206,8 @@ class DKeyExpansion_m:
     """ general expansion for dkeys """
 
     def expand(self, *sources, fallback=None, max=None, check=None, **kwargs) -> None|Any:
-        expanded_keys = {x : x.expand(*sources) for x in self.keys()}
-        match DKeyFormatter.expand(self, sources=(expanded_keys, *sources), fallback=fallback or self._exp_fallback, max=max or self._max_expansions):
+        expanded_keys = {x : x.expand(*sources, doot.locs) for x in self.keys()}
+        match DKeyFormatter.expand(self, sources=(expanded_keys, *sources, doot.locs), fallback=fallback or self._exp_fallback, max=max or self._max_expansions):
             case None:
                 return None
             case DKey() as x if self._exp_type is str:

@@ -152,7 +152,7 @@ class JobMatchAction(DootBaseAction):
       defaults to getting spec.extra.fpath.suffix
     """
 
-    @DKeyed.types("onto_")
+    @DKeyed.redirects("onto_")
     @DKeyed.references("prepfn")
     @DKeyed.types("mapping")
     def __call__(self, spec, state, _onto, prepfn, mapping):
@@ -164,7 +164,8 @@ class JobMatchAction(DootBaseAction):
                 def fn(x):
                     return x.extra.fpath.suffix
 
-        for x in _onto:
+        _onto_val = _onto.expands(spec, state)
+        for x in _onto_val:
             match fn(x):
                 case str() as key if key in mapping:
                     x.ctor = TaskName.build(mapping[key])

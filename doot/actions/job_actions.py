@@ -91,13 +91,14 @@ class JobLimitAction(DootBaseAction):
 
     """
 
-    @DKeyed.types("from_", "count")
+    @DKeyed.types("count")
     @DKeyed.references("method")
     @DKeyed.redirects("from_")
-    def __call__(self, spec, state, _from, count, method, _update):
+    def __call__(self, spec, state, count, method, _update):
         if count == -1:
             return
 
+        _from = _update.expand(spec, state)
         match method:
             case None:
                 limited = random.sample(_from, count)
