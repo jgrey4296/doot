@@ -93,12 +93,13 @@ class DootShellAction(Action_p):
 
     @DKeyed.args
     @DKeyed.types("background", "notty", check=bool, fallback=False)
-    @DKeyed.types("env", fallback=sh, check=sh.Command|None)
+    @DKeyed.types("env", fallback=None, check=sh.Command|None)
     @DKeyed.paths("cwd", fallback=None, check=pl.Path|None)
     @DKeyed.redirects("update_")
     def __call__(self, spec, state, args, background, notty, env, cwd, _update) -> dict|bool|None:
         result     = None
         cwd        = cwd or pl.Path.cwd()
+        env        = env or sh
         try:
             # Build the command by getting it from env, :
             cmd                     = getattr(env, DKey(args[0], explicit=True).expand(spec, state))
