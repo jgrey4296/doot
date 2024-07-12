@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 (Generated using [git-cliff](https://git-cliff.org/)
 
+## [0.9.1] - 2024-07-12
+
+### Bug Fixes
+
+- Mixed str/path key expansions
+- Shell command chaining
+
+### Dependencies
+
+- Version 0.9.0 -> 0.9.1
+
 ## [0.9.0] - 2024-07-11
 
 ### Features
