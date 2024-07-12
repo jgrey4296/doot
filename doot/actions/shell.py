@@ -26,7 +26,7 @@ ENV        = DKey("shenv_")
 class DootShellBake:
 
     @DKeyed.args
-    @DKeyed.types("in_", fallback=None, check=sh.Command|bool|None)
+    @DKeyed.redirects("in_")
     @DKeyed.types("env", fallback=sh, check=sh.Command|bool|None)
     @DKeyed.redirects("update_")
     def __call__(self, spec, state, args, _in, env, _update):
@@ -36,11 +36,12 @@ class DootShellBake:
             cmd                     = getattr(env, DKey(args[0], explicit=True).expand(spec, state))
             keys                    = [DKey(x, explicit=True) for x in args[1:]]
             expanded                = [x.expand(spec, state, locs=doot.locs) for x in keys]
-            match _in:
+
+            match _in.expand(spec, state, fallback=None, check=sh.Command|bool|None):
                 case False | None:
                     baked = cmd.bake(*expanded, _return_cmd=True, _tty_out=False)
-                case sh.Command():
-                    baked = cmd.bake(*expanded, _in=_in(), _return_cmd=True, _tty_out=False)
+                case sh.Command() as x:
+                    baked = cmd.bake(*expanded, _in=x(), _return_cmd=True, _tty_out=False)
                 case _:
                     raise DootTaskError("Bad pre-command for shell baking", _in)
 
@@ -61,11 +62,12 @@ class DootShellBake:
 
 class DootShellBakedRun:
 
-    @DKeyed.types("in_", fallback=None, check=sh.Command|None)
+    @DKeyed.redirects("in_")
     @DKeyed.redirects("update_")
     def __call__(self, spec, state, _in, _update):
         try:
-            result = _in()
+            cmd    = _in.expand(spec,state, check=sh.Command|None)
+            result = cmd()
             return { _update : result }
         except sh.CommandNotFound as err:
             printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], args)

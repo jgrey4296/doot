@@ -394,6 +394,25 @@ class TestDKeyExpansion:
         assert(isinstance(result, int))
         assert(result == 2)
 
+
+    def test_simple_str_expansion(self):
+        """ this is a {test} -> this is a blah """
+        key = dkey.DKey("this is a {test}", explicit=True, mark=dkey.DKey.mark.STR)
+        state = {"test": "blah"}
+        result = key.expand(state)
+        assert(isinstance(result, str))
+        assert(result == "this is a blah")
+
+
+    @pytest.mark.xfail
+    def test_simple_indirect_str_expansion(self):
+        """ a -> this is a {test} -> this is a blah """
+        key = dkey.DKey("target", mark=dkey.DKey.mark.STR)
+        state = {"test": "blah", "target" : "this is a {test!p}"}
+        result = key.expand(state)
+        assert(isinstance(result, str))
+        assert(result == "this is a {}".format(doot.locs.normalize(pl.Path("blah"))))
+
     def test_state_expansion(self, spec):
         """ blah -> bloo """
         key = dkey.DKey("blah")
