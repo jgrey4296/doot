@@ -122,6 +122,7 @@ tag                = false
 ]
 "doot/__init__.py" = ['^__version__\s+:\s+Final\[str\]\s+=\s+"{version}"']
 "README.md"        = ["^Version : {version}  "]
+"docs/conf.py"     = ["^release = '{version}'"]
 
 ##-- end bumpver
 
