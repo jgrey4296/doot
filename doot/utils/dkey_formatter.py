@@ -168,15 +168,18 @@ class DKeyFormatterEntry_m:
         if not cls._instance:
             cls._instance = cls()
 
-        match key:
-            case None:
-                return []
-            case str() | Key_p():
-                # formatter.parse returns tuples of (literal, key, format, conversion)
-                result = [x[1:] for x in cls._instance.parse(key) if x[1] is not None]
-                return result
-            case _:
-                raise TypeError("Unknown type found", key)
+        try:
+            match key:
+                case None:
+                    return []
+                case str() | Key_p():
+                    # formatter.parse returns tuples of (literal, key, format, conversion)
+                    result = [x[1:] for x in cls._instance.parse(key) if x[1] is not None]
+                    return result
+                case _:
+                    raise TypeError("Unknown type found", key)
+        except ValueError:
+            return []
 
     @classmethod
     def TypeConv(cls, val:None|str) -> None|DKeyMark_e:
