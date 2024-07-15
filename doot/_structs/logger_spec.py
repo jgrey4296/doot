@@ -13,6 +13,7 @@ import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
+import logging.handlers as l_handlers
 import os
 import pathlib as pl
 import re
@@ -49,6 +50,7 @@ logging = logmod.getLogger(__name__)
 
 env : dict = os.environ
 Regexp : TypeAlias = str
+MAX_FILES : Final[int] = 5
 
 class _AnyFilter:
     """
@@ -136,14 +138,14 @@ class LoggerSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
     @field_validator("target")
     def _validate_target(cls, val):
         match val:
-            case str() if val in ["file", "stdout", "stderr"]:
+            case str() if val in ["file", "stdout", "stderr", "rotate"]:
                 return val
             case pl.Path():
                 return val
             case None:
                 return "stdout"
             case _:
-                raise ValueError("Unknown target value for LoggerSpec", self.target)
+                raise ValueError("Unknown target value for LoggerSpec", val)
 
     @ftz.cached_property
     def fullname(self) -> str:
@@ -161,6 +163,10 @@ class LoggerSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
         log_file_path      = self.logfile()
         return logmod.FileHandler(log_file_path, mode='w')
 
+    def _build_rotatinghandler(self) -> logmod.Handler:
+        log_file_path      = self.logfile()
+        return l_handlers.RotatingFileHandler(log_file_path, backupCount=MAX_FILES)
+
     def apply(self, *, onto:None|logmod.Logger=None):
         logger = self.get()
         logger.setLevel("NOTSET")
@@ -175,6 +181,10 @@ class LoggerSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
                 return
             case "file":
                 handler   = self._build_filehandler()
+                formatter = DootColourStripFormatter(fmt=self.format)
+            case "rotate":
+                handler = self._build_rotatinghandler()
+                handler.doRollover()
                 formatter = DootColourStripFormatter(fmt=self.format)
             case "stdout" if not self.colour or "PRE_COMMIT" in env:
                 handler   = self._build_streamhandler()
@@ -221,7 +231,8 @@ class LoggerSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
         if not log_dir.exists():
             log_dir = pl.Path()
 
-        filename = datetime.datetime.now().strftime(self.filename_fmt)
+        # filename = datetime.datetime.now().strftime(self.filename_fmt)
+        filename = "doot.log"
         return log_dir / filename
 
     def set_level(self, level:int|str):
