@@ -27,11 +27,10 @@ class DootShellBake:
 
     @DKeyed.args
     @DKeyed.redirects("in_")
-    @DKeyed.types("env", fallback=sh, check=sh.Command|bool|None)
+    @DKeyed.types("env", fallback=None, check=sh.Command|None)
     @DKeyed.redirects("update_")
     def __call__(self, spec, state, args, _in, env, _update):
-        if not env:
-            env = sh
+        env = env or sh
         try:
             cmd                     = getattr(env, DKey(args[0], explicit=True).expand(spec, state))
             keys                    = [DKey(x, explicit=True) for x in args[1:]]
