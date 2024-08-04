@@ -60,7 +60,6 @@ class RelationSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
           baking produces       cake.   r=produces, t=cake.
           baking requirementFor party.  r=requirementFor, t=party.
 
-
       May carry additional information:
       - constraints : a list of keys that much match between the task specs of the two tasks
       - inject  : a mapping of { obj.key : sub.key } that will be injected into the object
@@ -72,10 +71,10 @@ class RelationSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
 
     # What the Relation end point is:
     target        : TaskName|TaskArtifact
-    relation      : RelationMeta_e             = RelationMeta_e.dependsOn
-    constraints   : None|list[str]             = None # constraints on spec field matches
-    inject        : None|dict                  = None
-    _meta         : dict()                     = {} # Misc metadata
+    relation      : RelationMeta_e                            = RelationMeta_e.dependsOn
+    constraints   : None|dict[str, str]             = None # constraints on spec field matches
+    inject        : None|dict                                 = None
+    _meta         : dict()                                    = {} # Misc metadata
 
     @staticmethod
     def build(data:RelationSpec|TomlGuard|dict|TaskName|str, *, relation:None|RelationMeta_e=None) -> RelationSpec:
@@ -112,9 +111,19 @@ class RelationSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
             case _:
                 raise ValueError("Unparsable target str")
 
+    @field_validator("constraints", mode="before")
+    def _validate_constraints(cls, val):
+         match val:
+             case list():
+                 return {x:x for x in val}
+             case None | dict():
+                 return val
+             case _:
+                 raise TypeError("Unknown constraints type", val)
 
     def __str__(self):
         return f"<? {self.relation.name} {self.target}>"
+
     def __repr__(self):
         return f"<RelationSpec: ? {self.relation.name} {self.target}>"
 

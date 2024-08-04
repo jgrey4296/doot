@@ -44,19 +44,25 @@ class TestRelationSpec:
         assert(isinstance(obj, RelationSpec))
 
 
-    def test_constraint_build(self):
+    def test_constraint_list_build(self):
         obj = RelationSpec.build({"task":"group::a.test", "constraints": ["a" ,"b", "c"]})
         assert(isinstance(obj, RelationSpec))
-        assert(obj.constraints == ["a", "b", "c"])
+        assert(obj.constraints == {"a":"a", "b":"b", "c":"c"})
+
+
+    def test_constraint_dict_build(self):
+        obj = RelationSpec.build({"task":"group::a.test", "constraints": {"a":"val", "b":"blah", "c":"other"}})
+        assert(isinstance(obj, RelationSpec))
+        assert(obj.constraints == {"a":"val", "b":"blah", "c":"other"})
 
 
     def test_constraints_independent(self):
         constraints = ["a", "b", "c"]
         obj = RelationSpec.build({"task":"group::a.test", "constraints": constraints})
         assert(isinstance(obj, RelationSpec))
-        assert(obj.constraints == ["a", "b", "c"])
+        assert(obj.constraints == {"a":"a", "b":"b", "c":"c"})
         constraints.append("d")
-        assert(obj.constraints == ["a", "b", "c"])
+        assert(obj.constraints == {"a":"a", "b":"b", "c":"c"})
         assert(id(obj.constraints) != id(constraints))
 
 
@@ -121,7 +127,7 @@ class TestRelationSpec:
         obj = RelationSpec.build({"task": "agroup::atask", "constraints":["a", "b", "c"]})
         assert(isinstance(obj, RelationSpec))
         assert(isinstance(obj.target, TaskName))
-        assert(obj.constraints == ["a", "b", "c"])
+        assert(obj.constraints == {"a":"a", "b":"b", "c":"c"})
 
 
     def test_build_as_dependency(self):

@@ -278,20 +278,20 @@ class _SpecUtils_m:
                 assert(relation.target <= self.name)
             case None:
                 assert(control.name <= self.name)
-                constraints = control.extra.keys()
-                inject  = {}
+                constraints = {x:x for x in control.extra.keys()}
+                inject      = {}
 
-        inject    = inject or {}
-        constraints   = constraints or []
-        extra         = self.extra
-        control_extra = control.extra
+        inject              = inject or {}
+        constraints         = constraints or {}
+        extra               = self.extra
+        control_extra       = control.extra
         if bool(inject) and not bool(inject.values() & control_extra.keys()):
             return False
 
-        for k in constraints:
-            if k not in extra:
+        for k,v in constraints.items():
+            if k not in extra or v not in control_extra:
                 return False
-            if extra[k] != control_extra[k]:
+            if extra[k] != control_extra[v]:
                 return False
 
         for k,v in inject.items():
