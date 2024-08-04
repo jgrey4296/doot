@@ -161,8 +161,9 @@ class AssertInstalled(DootBaseAction):
     """
 
     @DKeyed.args
-    @DKeyed.types("env", fallback=sh, check=sh.Command|None)
+    @DKeyed.types("env", fallback=None, check=sh.Command|None)
     def __call__(self, spec, state, args, env) -> dict|bool|None:
+        env = env or sh
         failures = []
         for prog in args:
             try:

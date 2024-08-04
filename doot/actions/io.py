@@ -53,7 +53,7 @@ class AppendAction(PathManip_m):
         sep          = sep or AppendAction.sep
         loc          = to
         args_keys    = [DKey(x, explicit=True) for x in args]
-        exp_args     = [k.expand(spec, state, insist=True, on_fail=None) for k in args_keys]
+        exp_args     = [k.expand(spec, state, fallback=None) for k in args_keys]
 
         if self._is_write_protected(loc):
             raise doot.errors.DootLocationError("Tried to write a protected location", loc)

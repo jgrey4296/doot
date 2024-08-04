@@ -210,3 +210,9 @@ non-key's may be being wrapped incorrectly
    :context:
         <2024-07-11 Thu>     def next_for(self, target:None|str|TaskName=None) -> None|Task_i|TaskArtifact:
    :END:
+** TRIAGE have commands add a handler to logging
+   [[/media/john/data/github/python/doot/doot/cmds/run_cmd.py::111][Location]]
+   :context:
+        <2024-07-15 Mon>         with runner:
+   :END:
+to (optionally) create a separate log file
