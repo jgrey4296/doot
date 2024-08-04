@@ -123,7 +123,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
         except doot.errors.DootError as err:
             self._handle_failure(task, err)
         except Exception as err:
-            fail_l.exception("Unknown, non-Doot failure occurred: %s", err)
+            fail_l.exception("Task: %s: Unknown, non-Doot failure occurred: %s", task, err)
             self.tracker.clear_queue()
             raise err
         else:

@@ -450,3 +450,18 @@ class TestTaskNameStructInteraction:
         duplicate            = TaskName.build("agroup::_.internal.task")
         the_set = {simple, duplicate}
         assert(len(the_set) == 1)
+
+
+    def test_name_in_set(self):
+        first = TaskName.build("agroup::_.internal.task")
+        second = TaskName. build("other.group::task.second")
+        the_set = {first, second}
+        assert(len(the_set) == 2)
+
+
+    def test_root_in_set(self):
+        first = TaskName.build("agroup::_.internal.task")
+        second = TaskName. build("other.group::task.second")
+        sub    = second.subtask("blah")
+        the_set = {first, second}
+        assert(sub.root() in the_set)

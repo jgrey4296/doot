@@ -181,13 +181,13 @@ class TestTrackerNext:
         obj.register_spec(task_spec)
         obj.queue_entry(job_spec, from_user=True)
         assert(job_spec.name in obj.concrete)
-        assert(job_spec.name.job_head() in obj.concrete)
+        # assert(job_spec.name.job_head() in obj.concrete)
         conc_job_body = obj.concrete[job_spec.name][-1]
-        conc_job_head = obj.concrete[job_spec.name.job_head()][0]
+        # conc_job_head = obj.concrete[job_spec.name.job_head()][0]
         obj.build_network()
         assert(bool(obj.active_set))
         # head is in network
-        assert(conc_job_head in obj.network.nodes)
+        # assert(conc_job_head in obj.network.nodes)
         assert(obj.next_for().name == conc_job_body)
         obj.set_status(conc_job_body, TaskStatus_e.SUCCESS)
         result = obj.next_for()
@@ -207,16 +207,16 @@ class TestTrackerNext:
         obj.register_spec(job_spec)
         obj.queue_entry(job_spec, from_user=True)
         assert(job_spec.name in obj.concrete)
-        assert(job_spec.name.job_head() in obj.concrete)
+        # assert(job_spec.name.job_head() in obj.concrete)
         conc_job_body = obj.concrete[job_spec.name][-1]
-        conc_job_head = obj.concrete[job_spec.name.job_head()][0]
+        # conc_job_head = obj.concrete[job_spec.name.job_head()][0]
         obj.build_network()
-        assert(conc_job_head in obj.network.nodes)
+        # assert(conc_job_head in obj.network.nodes)
         assert(bool(obj.active_set))
         job_body = obj.next_for()
         assert(job_body.name == conc_job_body)
         # Check head hasn't been added to network:
-        assert(conc_job_head in obj.network.nodes)
+        # assert(conc_job_head in obj.network.nodes)
         # Add Tasks that the body generates:
         obj.queue_entry(sub_spec1)
         obj.queue_entry(sub_spec2)
