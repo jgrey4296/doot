@@ -61,19 +61,19 @@ class TestRelationSpec:
 
 
     def test_injections(self):
-        injections = { "a" : "b", "c": "d" }
-        obj = RelationSpec.build({"task":"group::a.test", "injections": injections})
+        inject = { "a" : "b", "c": "d" }
+        obj = RelationSpec.build({"task":"group::a.test", "inject": inject})
         assert(isinstance(obj, RelationSpec))
-        assert(obj.injections == {"a": "b", "c": "d"})
+        assert(obj.inject == {"a": "b", "c": "d"})
 
 
     def test_injections_independent(self):
-        injections = { "a" : "b", "c": "d" }
-        obj = RelationSpec.build({"task":"group::a.test", "injections": injections})
+        inject = { "a" : "b", "c": "d" }
+        obj = RelationSpec.build({"task":"group::a.test", "inject": inject})
         assert(isinstance(obj, RelationSpec))
-        assert(obj.injections == {"a": "b", "c": "d"})
-        injections['e'] = 5
-        assert(obj.injections == {"a": "b", "c": "d"})
+        assert(obj.inject == {"a": "b", "c": "d"})
+        inject['e'] = 5
+        assert(obj.inject == {"a": "b", "c": "d"})
 
     def test_location_dep(self):
         obj = RelationSpec.build(pl.Path("a/file.txt"))
@@ -137,3 +137,13 @@ class TestRelationSpec:
         assert(isinstance(obj.target, TaskName))
         assert(obj.target == "agroup::atask")
         assert(obj.relation is RelationMeta_e.req)
+
+
+    def test_invert(self):
+        obj = RelationSpec.build({"task": "agroup::atask"})
+        assert(obj.relation == RelationMeta_e.dependencyOf)
+        inverted = obj.invert()
+        assert(obj is not inverted)
+        assert(obj.relation == RelationMeta_e.dependencyOf)
+        assert(inverted.target == obj.target)
+        assert(inverted.relation is not obj.relation)

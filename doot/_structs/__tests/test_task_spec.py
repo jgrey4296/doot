@@ -272,3 +272,7 @@ class TestTaskSpecInstantiation:
         assert(base_task.sources is not instance.sources)
         instance.sources.append("blah")
         assert("blah" not in base_task.sources)
+
+    @pytest.mark.skip
+    def test_cli_arg_application(self):
+        pass

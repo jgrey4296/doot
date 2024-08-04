@@ -89,17 +89,18 @@ class _TrackerStore:
         # TODO: Check first entry is always uncustomised
         self.concrete             : dict[AbstractId, list[ConcreteId]]            = defaultdict(lambda: [])
         # Mapping Artifact -> list[Spec] of solo transformer specs. Every abstractId has a spec in specs.
-        self._transformer_specs   : dict[TaskArtifact, list[AbstractId]]      = defaultdict(lambda: [])
+        self._transformer_specs   : dict[TaskArtifact, list[AbstractId]]          = defaultdict(lambda: [])
         # All (Concrete Specs) Task objects. Invariant: every key in tasks has a matching key in specs.
         self.tasks                : dict[ConcreteId, Task_i]                      = {}
         # Artifact -> list[TaskName] of related tasks
-        self.artifacts            : dict[TaskArtifact, list[AbstractId]]      = defaultdict(set)
-        self._artifact_status     : dict[TaskArtifact, TaskStatus_e]          = defaultdict(lambda: TaskStatus_e.ARTIFACT)
+        self.artifacts            : dict[TaskArtifact, list[AbstractId]]          = defaultdict(set)
+        self._artifact_status     : dict[TaskArtifact, TaskStatus_e]              = defaultdict(lambda: TaskStatus_e.ARTIFACT)
         # Artifact sets
-        self._abstract_artifacts  : set[TaskArtifact]                         = set()
-        self._concrete_artifacts  : set[TaskArtifact]                         = set()
+        self._abstract_artifacts  : set[TaskArtifact]                             = set()
+        self._concrete_artifacts  : set[TaskArtifact]                             = set()
         # requirements.
         self._requirements        : dict[ConcreteId, list[RelationSpec]]          = defaultdict(lambda: [])
+
 
     def _maybe_reuse_instantiation(self, name:TaskName, *, add_cli:bool=False, extra:bool=False) -> None|ConcreteId:
         """ if an existing concrete spec exists, use it if it has no conflicts """
@@ -171,7 +172,6 @@ class _TrackerStore:
           """
         match self._maybe_reuse_instantiation(name, add_cli=add_cli, extra=bool(extra)):
             case None:
-                logging.debug("Could not reuse an instantiation of: %s", name)
                 pass
             case TaskName() as existing:
                 logging.debug("Reusing instantiation: %s for %s", existing, name)
@@ -194,7 +194,7 @@ class _TrackerStore:
         assert(instance_spec is not None)
         if add_cli:
             # only add cli args explicitly. ie: when the task has been queued by the user
-            instance_spec = self._insert_cli_args_into_spec(instance_spec)
+            instance_spec = instance_spec.apply_cli_args()
 
         if extra:
             # apply additional settings onto the instance
@@ -209,31 +209,32 @@ class _TrackerStore:
         assert(instance_spec.name in self.specs)
         return instance_spec.name
 
-    def _instantiate_relation(self, dep:RelationSpec, *, control:ConcreteId) -> ConcreteId:
-        """ find a matching dependency/requirement according to a set of keys in the spec, or create a matching instance
+    def _instantiate_relation(self, rel:RelationSpec, *, control:ConcreteId) -> ConcreteId:
+        """ find a matching relendency/requirement according to a set of keys in the spec, or create a matching instance
           if theres no constraints, will just instantiate.
           """
+        logging.debug("Instantiating Relation: %s - %s -> %s", control, rel.relation.name, rel.target)
+        assert(control in self.specs)
         control_spec              = self.specs[control]
         successful_matches        = []
-        match self.concrete.get(dep.target, None):
-            case [] | None if dep.target not in self.specs:
-                raise doot.errors.DootTaskTrackingError("Unknown target declared in Constrained Relation", control, dep.target)
+        match self.concrete.get(rel.target, None):
+            case [] | None if rel.target not in self.specs:
+                raise doot.errors.DootTaskTrackingError("Unknown target declared in Constrained Relation", control, rel.target)
             case [] | None:
                 pass
-            case [*xs] if not bool(dep.constraints) and not bool(dep.injections):
+            case [*xs] if not bool(rel.constraints) and not bool(rel.inject):
                 successful_matches = [x for x in xs if x != control]
             case [*xs]:
                 # concrete instances exist, match on them
                 potentials : list[TaskSpec] = [self.specs[x] for x in xs if x != control]
-                successful_matches += [x.name for x in potentials if x.match_with_constraints(control_spec, relation=dep)]
-
+                successful_matches += [x.name for x in potentials if x.match_with_constraints(control_spec, relation=rel)]
 
         match successful_matches:
             case []: # No matches, instantiate
-                extra    : None|dict     = control_spec.build_injection(dep)
-                instance : TaskName = self._instantiate_spec(dep.target, extra=extra)
-                if not self.specs[instance].match_with_constraints(control_spec, relation=dep):
-                    raise doot.errors.DootTaskTrackingError("Could not instantiate a spec that passes constraints", dep, control)
+                extra    : None|dict     = control_spec.build_injection(rel)
+                instance : TaskName      = self._instantiate_spec(rel.target, extra=extra)
+                if not self.specs[instance].match_with_constraints(control_spec, relation=rel):
+                    raise doot.errors.DootTaskTrackingError("Could not instantiate a spec that passes constraints", rel, control)
                 return instance
             case [x]: # One match, connect it
                 assert(x in self.specs)
@@ -259,24 +260,6 @@ class _TrackerStore:
                 self.register_spec(instance)
                 return instance.name
 
-    def _insert_cli_args_into_spec(self, spec:ConcreteSpec) -> ConcreteSpec:
-        """ Takes a task spec, and inserts matching cli args into it if necessary """
-        logging.debug("Applying CLI Args to: %s", spec.name)
-        spec_extra : dict = dict(spec.extra.items() or [])
-        if 'cli' in spec_extra:
-            del spec_extra['cli']
-
-        # Apply any cli defined args
-        for cli in spec.extra.on_fail([]).cli():
-            if cli.name not in spec_extra:
-                spec_extra[cli.name] = cli.default
-
-        source = str(spec.name.root())
-        for key,val in doot.args.on_fail({}).tasks[source]().items():
-            spec_extra[key] = val
-
-        cli_spec = spec.specialize_from(spec_extra)
-        return cli_spec
 
     def _make_task(self, name:ConcreteId, *, task_obj:Task_i=None) -> ConcreteId:
         """ Build a Concrete Spec's Task object
@@ -325,7 +308,7 @@ class _TrackerStore:
         if TaskMeta_f.CONCRETE in spec.flags:
             return
 
-        for rel in spec.depends_on + spec.required_for:
+        for rel in spec.action_group_elements():
             match rel:
                 case RelationSpec(target=TaskArtifact() as art):
                     logging.debug("Registering Artifact Relation: %s, %s", art, spec.name)
@@ -357,7 +340,7 @@ class _TrackerStore:
             self.register_spec(*spec.job_top())
             self._register_artifacts(spec.name)
             # Register Requirements:
-            for rel in spec.required_for:
+            for rel in spec.action_group_elements():
                 match rel:
                     case RelationSpec(target=target, relation=RelationMeta_e.req) if TaskMeta_f.CONCRETE not in spec.name:
                         logging.debug("Registering Requirement: %s : %s", target, rel.invert(spec.name))
@@ -366,9 +349,9 @@ class _TrackerStore:
                         pass
 
             # If the spec is abstract, create an initial concrete version
-            if not bool(spec.flags & (TaskMeta_f.TRANSFORMER|TaskMeta_f.CONCRETE)):
-                logging.debug("Instantiating Initial Concrete for abstract: %s", spec.name)
-                self._instantiate_spec(spec.name)
+            # if not bool(spec.flags & (TaskMeta_f.TRANSFORMER|TaskMeta_f.CONCRETE)):
+            #     logging.debug("Instantiating Initial Concrete for abstract: %s", spec.name)
+            #     self._instantiate_spec(spec.name)
 
     def get_status(self, task:ConcreteId) -> TaskStatus_e:
         """ Get the status of a task or artifact """
@@ -492,7 +475,7 @@ class _TrackerNetwork:
 
         return to_expand
 
-    def _expand_task_node(self, name:TaskName) -> set[ConcreteId]:
+    def _expand_task_node(self, name:ConcreteId) -> set[ConcreteId]:
         """ expand a task node, instantiating and connecting to its dependencies and dependents,
         *without* expanding those new nodes.
         returns a list of the new nodes tasknames
@@ -542,15 +525,22 @@ class _TrackerNetwork:
             return []
 
         logging.debug("Expanding Job Head for: %s", spec.name)
-        root      = spec.name.root()
-        head_name = root.job_head()
-        match [x for x in self.network.succ[spec.name] if head_name < x]:
-            case []: # No head yet, add it
-                conc_head = self.concrete[head_name][0]
-                self.connect(spec.name, conc_head)
-                return [conc_head]
-            case [*xs, x]: # Use the most recent head
-                return [x]
+        head_name = spec.job_head_name()
+        head_instance = self._instantiate_spec(head_name, extra=spec.model_extra)
+        self.connect(spec.name, head_instance)
+        return [head_instance]
+        # match [x for x in self.network.succ[spec.name] if head_name < x]:
+        #     case []: # No head yet, add it
+        #         logging.debug("No Matching Head, instantiating")
+        #         head_instance = self._instantiate_spec(head_name, extra=spec.model_extra)
+        #         self.connect(spec.name, head_instance)
+        #         return [head_instance]
+        #     case [*xs, x]: # Use the most recent head
+        #         logging.debug("Reusing newest head")
+        #         return [x]
+        #     case [x]:
+        #         logging.debug("Reusing only head")
+        #         return [x]
 
     def _expand_artifact(self, artifact:TaskArtifact) -> set[ConcreteId]:
         """ expand artifacts, instantaiting related tasks/transformers,
@@ -673,6 +663,7 @@ class _TrackerNetwork:
 
     def incomplete_dependencies(self, focus:ConcreteId) -> list[ConcreteId]:
         """ Get all predecessors of a node that don't evaluate as complete """
+        assert(focus in self.network.nodes)
         incomplete = []
         for x in [x for x in self.network.pred[focus] if self.get_status(x) not in TaskStatus_e.success_set]:
             match x:
@@ -827,7 +818,7 @@ class _TrackerQueue_boltons:
                 prepped_name = instance
                 self.connect(instance, None if from_user else False)
             case TaskName() if name in self.specs:
-                assert(TaskMeta_f.CONCRETE not in TaskName.build(name))
+                assert(TaskMeta_f.CONCRETE not in TaskName.build(name)), name
                 instance : TaskName = self._instantiate_spec(name, add_cli=from_user)
                 self.connect(instance, None if from_user else False)
                 prepped_name = instance
