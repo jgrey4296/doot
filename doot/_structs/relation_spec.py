@@ -60,22 +60,21 @@ class RelationSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
           baking produces       cake.   r=produces, t=cake.
           baking requirementFor party.  r=requirementFor, t=party.
 
-
       May carry additional information:
       - constraints : a list of keys that much match between the task specs of the two tasks
-      - injections  : a mapping of { obj.key : sub.key } that will be injected into the object
+      - inject  : a mapping of { obj.key : sub.key } that will be injected into the object
 
-      NOTE: injections *do not* do expansion, they will just copy the value, allowing expansion to occur later.
+      NOTE: inject *do not* do expansion, they will just copy the value, allowing expansion to occur later.
       So: injection={'a': '{taskkey}/b'} won't work, but {'a':'{taskkey}/b', 'taskkey':'taskkey'} will.
       Or: injection={'a': '{otherkey}/b', 'otherkey':'taskkey'}
     """
 
     # What the Relation end point is:
     target        : TaskName|TaskArtifact
-    relation      : RelationMeta_e             = RelationMeta_e.dependsOn
-    constraints   : None|list[str]           = None # constraints on spec field matches
-    injections    : None|dict                = None
-    _meta         : dict()                   = {} # Misc metadata
+    relation      : RelationMeta_e                            = RelationMeta_e.dependsOn
+    constraints   : None|dict[str, str]             = None # constraints on spec field matches
+    inject        : None|dict                                 = None
+    _meta         : dict()                                    = {} # Misc metadata
 
     @staticmethod
     def build(data:RelationSpec|TomlGuard|dict|TaskName|str, *, relation:None|RelationMeta_e=None) -> RelationSpec:
@@ -91,8 +90,8 @@ class RelationSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
                 return RelationSpec(target=TaskArtifact.build(data), relation=relation)
             case {"task": taskname}:
                 constraints = data.get("constraints", None)
-                injections  = data.get("injections" , None)
-                return RelationSpec(target=taskname, constraints=constraints, injections=injections, relation=relation)
+                inject  = data.get("inject" , None)
+                return RelationSpec(target=taskname, constraints=constraints, inject=inject, relation=relation)
             case str() | pl.Path():
                 return RelationSpec(target=data, relation=relation)
             case _:
@@ -112,9 +111,22 @@ class RelationSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
             case _:
                 raise ValueError("Unparsable target str")
 
+    @field_validator("constraints", mode="before")
+    def _validate_constraints(cls, val):
+         match val:
+             case list():
+                 return {x:x for x in val}
+             case None | dict():
+                 return val
+             case _:
+                 raise TypeError("Unknown constraints type", val)
 
     def __str__(self):
-        return f"<? {self.relation.name}> {self.target}"
+        return f"<? {self.relation.name} {self.target}>"
+
+    def __repr__(self):
+        return f"<RelationSpec: ? {self.relation.name} {self.target}>"
+
     def __contains__(self, query:TaskMeta_f|LocationMeta_f) -> bool:
         match self.target, query:
              case TaskName(), TaskMeta_f():
@@ -140,7 +152,7 @@ class RelationSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
 
           Return False if this relation has constraints.
           """
-        if bool(self.constraints) or bool(self.injections):
+        if bool(self.constraints) or bool(self.inject):
             return False
 
         exclude = exclude or []
@@ -152,7 +164,7 @@ class RelationSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
 
         return False
 
-    def invert(self, source) -> RelationSpec:
+    def invert(self, source=None) -> RelationSpec:
         """ Instead of X depends on Y,
           get Y required for X
         """
@@ -162,7 +174,8 @@ class RelationSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
             case _:
                 relation = RelationMeta_e.dep
 
-        return RelationSpec(target=source, constraints=self.constraints, relation=relation)
+        assert(relation is not self.relation)
+        return RelationSpec(target=source or self.target, constraints=self.constraints, relation=relation)
 
     def instantiate(self, target:TaskName|TaskArtifact):
         """

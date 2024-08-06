@@ -58,6 +58,20 @@ from doot.enums import (LocationMeta_f, RelationMeta_e, Report_f, TaskMeta_f,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+def _dicts_to_relspecs(deps:list[dict], *, relation=RelationMeta_e.dependencyOf) -> list[ActionSpec|RelationSpec]:
+    results = []
+    for x in deps:
+        match x:
+            case ActionSpec() | RelationSpec():
+                results.append(x)
+            case { "do": action  }:
+                results.append(ActionSpec.build(x))
+            case _:
+                results.append(RelationSpec.build(x, relation=relation))
+
+    return results
+
+
 def _prepare_action_group(deps:list[str], handler:ValidatorFunctionWrapHandler, info:ValidationInfo) -> list[RelationSpec|ActionSpec]:
     """
       Prepares action groups / dependencies,
@@ -68,26 +82,20 @@ def _prepare_action_group(deps:list[str], handler:ValidatorFunctionWrapHandler, 
 
       # TODO handle callables?
     """
-    results = []
     if deps is None:
-        return results
+        return []
 
     relation_type = RelationMeta_e.requirementFor if info.field_name in TaskSpec._dependant_groups else RelationMeta_e.dependencyOf
-    for x in deps:
-        match x:
-            case ActionSpec() | RelationSpec():
-                results.append(x)
-            case { "do": action  }:
-                results.append(ActionSpec.build(x))
-            case _:
-                results.append(RelationSpec.build(x, relation=relation_type))
-
+    results = _dicts_to_relspecs(deps, relation=relation_type)
     return handler(results)
 
 ActionGroup = Annotated[list[ActionSpec|RelationSpec], WrapValidator(_prepare_action_group)]
 
 class _JobUtils_m:
     """Additional utilities mixin for job based task specs"""
+
+    def job_head_name(self) -> TaskName:
+        return self.name.root(top=True).job_head()
 
     def job_top(self) -> list[TaskSpec]:
         """
@@ -104,25 +112,26 @@ class _JobUtils_m:
           job.head()
           await job.cleanup()
         """
-        tasks = []
         if TaskMeta_f.JOB not in self.flags:
-            return tasks
+            return []
         if (TaskMeta_f.CONCRETE | TaskMeta_f.JOB_HEAD) & self.flags:
-            return tasks
-        if self.name.job_head() == self.name:
-            return tasks
+            return []
+        if (job_head:=self.job_head_name()) == self.name:
+            return []
 
-        head_actions      = self.extra.on_fail([], list).head_actions()
-        head_dependencies = [x for x in head_actions if isinstance(x, RelationSpec)]
+        tasks             = []
+        head_section      = _dicts_to_relspecs(self.extra.on_fail([], list).head_actions(), relation=RelationMeta_e.dependsOn)
+        head_dependencies = [x for x in head_section if isinstance(x, RelationSpec)]
+        head_actions      = [x for x in head_section if not isinstance(x, RelationSpec)]
 
         # build $head$
         head : TaskSpec = TaskSpec.build({
-            "name"            : self.name.job_head(),
+            "name"            : job_head,
             "sources"         : self.sources[:] + [self.name, None],
             "extra"           : self.extra,
             "queue_behaviour" : QueueMeta_e.reactive,
             "depends_on"      : [self.name] + head_dependencies,
-            "required_for"    : [self.name.job_head().subtask("cleanup")] if bool(self.cleanup) else [],
+            "required_for"    : [job_head.subtask("cleanup")] if bool(self.cleanup) else [],
             "flags"           : (self.flags | TaskMeta_f.JOB_HEAD) & ~TaskMeta_f.JOB,
             "actions"         : head_actions,
             })
@@ -133,12 +142,12 @@ class _JobUtils_m:
             return tasks
 
         cleanup : TaskSpec = TaskSpec.build({
-            "name"            : self.name.job_head().subtask("cleanup"),
+            "name"            : job_head.subtask("cleanup"),
             "sources"         : self.sources[:] + [self.name, None],
             "actions"         : [x for x in self.cleanup if isinstance(x, ActionSpec)],
             "extra"           : self.extra,
             "queue_behaviour" : QueueMeta_e.reactive,
-            "depends_on"      : [self.name, self.name.job_head()] + [x for x in self.cleanup if isinstance(x, RelationSpec)],
+            "depends_on"      : [self.name, job_head] + [x for x in self.cleanup if isinstance(x, RelationSpec)],
             "flags"           : (self.flags | TaskMeta_f.TASK) & ~TaskMeta_f.JOB,
             })
         tasks.append(cleanup)
@@ -263,29 +272,29 @@ class _SpecUtils_m:
           if not given a relation, then just check self and control dont conflict.
           """
         match relation:
-            case RelationSpec(constraints=None, injections=None):
+            case RelationSpec(constraints=None, inject=None):
                 return True
-            case RelationSpec(constraints=constraints, injections=injections):
+            case RelationSpec(constraints=constraints, inject=inject):
                 assert(relation.target <= self.name)
             case None:
                 assert(control.name <= self.name)
-                constraints = control.extra.keys()
-                injections  = {}
+                constraints = {x:x for x in control.extra.keys()}
+                inject      = {}
 
-        injections    = injections or {}
-        constraints   = constraints or []
-        extra         = self.extra
-        control_extra = control.extra
-        if bool(injections) and not bool(injections.values() & control_extra.keys()):
+        inject              = inject or {}
+        constraints         = constraints or {}
+        extra               = self.extra
+        control_extra       = control.extra
+        if bool(inject) and not bool(inject.values() & control_extra.keys()):
             return False
 
-        for k in constraints:
-            if k not in extra:
+        for k,v in constraints.items():
+            if k not in extra or v not in control_extra:
                 return False
-            if extra[k] != control_extra[k]:
+            if extra[k] != control_extra[v]:
                 return False
 
-        for k,v in injections.items():
+        for k,v in inject.items():
             if extra.get(k, None) != control_extra.get(v, None):
                 return False
         else:
@@ -293,16 +302,35 @@ class _SpecUtils_m:
 
     def build_injection(self, context:RelationSpec) -> None|dict:
         """ Builds a dict of the data a matching spec will need, according
-          to a relations injections.
+          to a relations inject.
         """
-        if not bool(context.injections):
+        if not bool(context.inject):
             return None
 
         extra = self.extra
-        if bool((missing:=context.injections.values() - extra.keys())):
-            raise doot.errors.DootTaskTrackingError("Can not inject keys not found in the control spec", missing)
 
-        return {k:extra[v] for k,v in context.injections.items()}
+        if bool((missing:=context.inject.values() - extra.keys())):
+            raise doot.errors.DootTaskTrackingError("Can not inject keys not found in the control spec", missing, self.name)
+
+        return {k:extra[v] for k,v in context.inject.items()}
+
+    def apply_cli_args(self, *, override=None) -> TaskSpec:
+        logging.debug("Applying CLI Args to: %s", self.name)
+        spec_extra : dict = dict(self.extra.items() or [])
+        if 'cli' in spec_extra:
+            del spec_extra['cli']
+
+        # Apply any cli defined args
+        for cli in self.extra.on_fail([]).cli():
+            if cli.name not in spec_extra:
+                spec_extra[cli.name] = cli.default
+
+        source = str(override or self.name.root(top=True))
+        for key,val in doot.args.on_fail({}).tasks[source]().items():
+            spec_extra[key] = val
+
+        cli_spec = self.specialize_from(spec_extra)
+        return cli_spec
 
 class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True, extra="allow"):
     """ The information needed to describe a generic task.
@@ -315,24 +343,24 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
       sources = [root, ... grandparent, parent]. 'None' indicates halt on climbing source chain
 
     """
-    name                         : str|TaskName
-    doc                          : list[str]                                                               = []
-    sources                      : list[TaskName|pl.Path|None]                                         = []
+    name                         : TaskName
+    doc                          : list[str]                              = []
+    sources                      : list[TaskName|pl.Path|None]            = []
 
     # Action Groups:
-    actions                      : ActionGroup                                                             = []
-    required_for                 : ActionGroup                                                             = []
-    depends_on                   : ActionGroup                                                             = []
-    setup                        : ActionGroup                                                             = []
-    cleanup                      : ActionGroup                                                             = []
-    on_fail                      : ActionGroup                                                             = []
+    actions                      : ActionGroup                            = []
+    required_for                 : ActionGroup                            = []
+    depends_on                   : ActionGroup                            = []
+    setup                        : ActionGroup                            = []
+    cleanup                      : ActionGroup                            = []
+    on_fail                      : ActionGroup                            = []
 
     # Any additional information:
-    version                      : str                                                                     = doot.__version__ # TODO: make dict?
-    priority                     : int                                                                     = 10
-    ctor                         : CodeReference                                                       = Field(default=None, validate_default=True)
-    queue_behaviour              : QueueMeta_e                                                           = QueueMeta_e.default
-    flags                        : TaskMeta_f                                                               = TaskMeta_f.default
+    version                      : str                                    = doot.__version__ # TODO: make dict?
+    priority                     : int                                    = 10
+    ctor                         : CodeReference                          = Field(default=None, validate_default=True)
+    queue_behaviour              : QueueMeta_e                            = QueueMeta_e.default
+    flags                        : TaskMeta_f                             = TaskMeta_f.default
     _transform                   : None|Literal[False]|tuple[RelationSpec, RelationSpec]                            = None
     # task specific extras to use in state
     _default_ctor         : ClassVar[str]       = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS

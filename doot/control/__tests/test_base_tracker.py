@@ -72,8 +72,9 @@ class TestTrackerStore:
         assert(bool(obj.specs))
         assert(spec.name in obj.specs)
         assert(spec.name.job_head() in obj.specs)
-        conc_spec = obj.concrete[spec.name][0]
-        assert(conc_spec.job_head() not in obj.specs)
+        assert(not bool(obj.concrete[spec.name]))
+        # conc_spec = obj.concrete[spec.name][0]
+        # assert(conc_spec.job_head() not in obj.specs)
 
 
     def test_register_spec_instantiates(self):
@@ -83,7 +84,7 @@ class TestTrackerStore:
         assert(not bool(obj.concrete[spec.name]))
         obj.register_spec(spec)
         assert(bool(obj.specs))
-        assert(bool(obj.concrete[spec.name]))
+        assert(not bool(obj.concrete[spec.name]))
 
 
     def test_register_is_idempotent(self):
@@ -93,8 +94,8 @@ class TestTrackerStore:
         assert(not bool(obj.concrete[spec.name]))
         for i in range(5):
             obj.register_spec(spec)
-            assert(len(obj.specs) == 2)
-            assert(len(obj.concrete[spec.name]) == 1)
+            assert(len(obj.specs) == 1)
+            assert(len(obj.concrete[spec.name]) == 0)
 
     def test_register_spec_with_artifacts(self):
         obj = BaseTracker()
@@ -400,7 +401,7 @@ class TestTrackerNetworkBuild:
 
     def test_build_dep_match_with_injection(self):
         obj   = BaseTracker()
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "injections":{"inj_key":"test_key"}}], "test_key": "bloo"})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "inject":{"inj_key":"test_key"}}], "test_key": "bloo"})
         spec2 = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, spec2)
         instance = obj._instantiate_spec(spec.name)
@@ -417,7 +418,7 @@ class TestTrackerNetworkBuild:
 
     def test_build_dep_match_with_injection_fail(self):
         obj   = BaseTracker()
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "injections":{"inj_key":"bad_key"}}], "test_key": "bloo"})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "inject":{"inj_key":"bad_key"}}], "test_key": "bloo"})
         spec2 = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, spec2)
         instance = obj._instantiate_spec(spec.name)
@@ -430,12 +431,12 @@ class TestTrackerNetworkBuild:
 
     def test_build_dep_chain_transitive_injection(self):
         """
-          check a injections can be chained.
+          check a inject can be chained.
           test_key=bloo should be carried from basic::task to basic::dep to basic::chained
         """
         obj   = BaseTracker()
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "injections":{"test_key":"test_key"}}], "test_key": "bloo"})
-        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "depends_on": [{"task":"basic::chained", "injections":{"test_key":"test_key"}}], "test_key": "blah"})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "inject":{"test_key":"test_key"}}], "test_key": "bloo"})
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "depends_on": [{"task":"basic::chained", "inject":{"test_key":"test_key"}}], "test_key": "blah"})
         spec3 = doot.structs.TaskSpec.build({"name":"basic::chained", "test_key": "aweg"})
         obj.register_spec(spec, spec2, spec3)
         instance = obj._instantiate_spec(spec.name)
@@ -463,8 +464,8 @@ class TestTrackerNetworkBuild:
           """
         obj   = BaseTracker()
         # Abstract specs
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "required_for":[{"task":"basic::req", "injections":{"test_key":"test_key"}}], "test_key": "bloo"})
-        spec2 = doot.structs.TaskSpec.build({"name":"basic::req", "required_for": [{"task":"basic::chained", "injections":{"test_key":"test_key"}}]})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "required_for":[{"task":"basic::req", "inject":{"test_key":"test_key"}}], "test_key": "bloo"})
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::req", "required_for": [{"task":"basic::chained", "inject":{"test_key":"test_key"}}]})
         spec3 = doot.structs.TaskSpec.build({"name":"basic::chained"})
         obj.register_spec(spec, spec2, spec3)
         instance = obj._instantiate_spec(spec.name)
@@ -477,8 +478,8 @@ class TestTrackerNetworkBuild:
         succ1 = [x for x in obj.network.succ[instance] if x != obj._root_node][0]
         assert(spec2.name  < succ1)
         # Test concrete specs have carried the injection:
-        assert(obj.specs[obj.concrete[spec2.name][1]].test_key == spec.test_key)
-        assert(obj.specs[obj.concrete[spec3.name][1]].test_key == spec.test_key)
+        assert(obj.specs[obj.concrete[spec2.name][0]].test_key == spec.test_key)
+        assert(obj.specs[obj.concrete[spec3.name][0]].test_key == spec.test_key)
 
 
     def test_build_with_head_dep(self):
@@ -822,11 +823,11 @@ class TestTrackerInternals:
         obj   = BaseTracker()
         spec  = doot.structs.TaskSpec.build({
             "name":"basic::task",
-            "depends_on":[{"task":"basic::dep", "injections":{"test_key":"test_key"}}],
+            "depends_on":[{"task":"basic::dep", "inject":{"test_key":"test_key"}}],
             "required_for": ["basic::chained"],
             "test_key": "bloo"
                                             })
-        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "depends_on": [{"task":"basic::chained", "injections":{"test_key":"test_key"}}], "test_key": "blah"})
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "depends_on": [{"task":"basic::chained", "inject":{"test_key":"test_key"}}], "test_key": "blah"})
         spec3 = doot.structs.TaskSpec.build({"name":"basic::chained"})
         obj.register_spec(spec, spec2, spec3)
         instance = obj._instantiate_spec(spec.name)

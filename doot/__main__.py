@@ -100,7 +100,7 @@ def main():
     except doot.errors.DootError as err:
         fail_prefix = doot.constants.printer.fail_prefix
         fail_l.error("%s", err.general_msg)
-        fail_l.error("---- %s", str(err))
+        fail_l.error("---- %s", err.__cause__)
     ##-- end handle doot errors
     ##-- handle todo errors
     except NotImplementedError as err:
