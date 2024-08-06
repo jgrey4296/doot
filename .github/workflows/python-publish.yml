@@ -20,9 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: Publishing
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4 # https://github.com/actions/checkout/
     - name: Set up Python
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5 # https://github.com/actions/setup-python/tree/v5.1.1
       with:
         python-version: '3.11'
     - name: Install dependencies
