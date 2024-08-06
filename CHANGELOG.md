@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 (Generated using [git-cliff](https://git-cliff.org/)
 
+## [0.10.0] - 2024-08-06
+
+### Features
+
+- Guard around key parsing
+- Rotating logfile handler
+- Branch 'cli_arg_fix' into linux-main
+
+### Bug Fixes
+
+- Shell action with no env
+- Walking paths
+- Sh decorators
+- Error logging
+- Job head generation and injection
+
+### Dependencies
+
+- Wiki
+- Version 0.9.1 -> 0.10.0
+
 ## [0.9.1] - 2024-07-12
 
 ### Bug Fixes

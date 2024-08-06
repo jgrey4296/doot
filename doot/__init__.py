@@ -53,7 +53,7 @@ fail_l          = printer.getChild("fail")
 __all__ = []
 
 # Global, single points of truth:
-__version__          : Final[str]         = "0.9.1"
+__version__          : Final[str]         = "0.10.0"
 
 # Can't be in doot.constants, because that isn't loaded yet
 CONSTANT_PREFIX      : Final[str]         = "doot.constants"
