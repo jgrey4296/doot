@@ -96,9 +96,11 @@ class ActionResponse_e(EnumBuilder_m, enum.Enum):
       Description of how a Action went.
     """
 
-    SUCCEED  = enum.auto()
-    FAIL     = enum.auto()
-    SKIP     = enum.auto()
+    SUCCEED    = enum.auto()
+    FAIL       = enum.auto()
+    SKIP       = enum.auto()
+    SKIP_GROUP = enum.auto()
+    SKIP_TASK  = enum.auto()
 
     # Aliases
     SUCCESS  = SUCCEED
@@ -199,6 +201,7 @@ class ExecutionPolicy_e(EnumBuilder_m, enum.Enum):
     BREADTH  = enum.auto() # Breadth First Search
 
     default = PRIORITY
+
 class DKeyMark_e(EnumBuilder_m, enum.Enum):
     """
       Enums for how to use/build a dkey

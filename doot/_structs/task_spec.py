@@ -361,6 +361,7 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
     ctor                         : CodeReference                          = Field(default=None, validate_default=True)
     queue_behaviour              : QueueMeta_e                            = QueueMeta_e.default
     flags                        : TaskMeta_f                             = TaskMeta_f.default
+    inject                       : list[str]                              = []
     _transform                   : None|Literal[False]|tuple[RelationSpec, RelationSpec]                            = None
     # task specific extras to use in state
     _default_ctor         : ClassVar[str]       = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS

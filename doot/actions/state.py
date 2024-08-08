@@ -110,7 +110,7 @@ class PathParts(PathManip_m):
 
     @DKeyed.paths("from")
     @DKeyed.types("roots")
-    @DKeyed.returns("fstem", "fpar", "fname", "fext", "pstem")
+    @DKeyed.returns("fstem", "fpar", "fname", "fext", "pstem", "rpath")
     def __call__(self, spec, state, _from, roots):
         root_paths = self._build_roots(spec, state, roots)
         return self._calc_path_parts(_from, root_paths)
