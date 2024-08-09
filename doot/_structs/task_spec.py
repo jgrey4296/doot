@@ -535,15 +535,13 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
                 return TaskSpec.build(specialized)
             case TaskSpec(sources=[*xs, TaskName() as x] ) if not x <= self.name:
                 raise doot.errors.DootTaskTrackingError("Tried to specialize a task that isn't based on this task", str(data.name), str(self.name), str(data.sources))
-            case TaskSpec(ctor=ctor) if self.ctor not in [ctor, TaskSpec._default_ctor]:
-                raise doot.errors.DootTaskTrackingError("Unknown ctor for spec", data.ctor)
             case TaskSpec():
                 specialized = dict(self)
                 specialized.update({k:v for k,v in dict(data).items() if k in data.model_fields_set})
 
         # Then special updates
-        specialized['name']   = data.name.instantiate()
-        specialized['sources'] = self.sources[:] + [self.name, data.name]
+        specialized['name']         = data.name.instantiate()
+        specialized['sources']      = self.sources[:] + [self.name, data.name]
 
         specialized['actions']      = self.actions      + data.actions
         specialized["depends_on"]   = self.depends_on   + data.depends_on
@@ -552,7 +550,8 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
         specialized["on_fail"]      = self.on_fail      + data.on_fail
         specialized["setup"]        = self.setup        + data.setup
 
-        specialized['flags']        = self.flags | data.flags
+        # Internal is only for initial specs, to control listing
+        specialized['flags']        = (self.flags | data.flags) ^ TaskMeta_f.INTERNAL
 
         logging.debug("Specialized Task: %s on top of: %s", data.name.readable, self.name)
         return TaskSpec.build(specialized)
