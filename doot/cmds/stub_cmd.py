@@ -185,6 +185,8 @@ class StubCmd(BaseCommand):
             loaded = matched[0].load()
             printer.info("- Action %s : %s", matched[0].name, matched[0].value)
             match getattr(loaded, "_toml_help", []):
+                case [] if bool(getattr(loaded, "__doc__")):
+                    printer.info(loaded.__doc__)
                 case []:
                     pass
                 case [*xs]:
@@ -200,7 +202,11 @@ class StubCmd(BaseCommand):
         else:
             printer.info("Available Actions:")
             for action in sorted(plugins.action, key=lambda x: x.name):
-                printer.info("-- %10s : %s", action.name, action.value)
+                printer.info("-- %-20s : %s", action.name, action.value)
+
+            printer.info("")
+            printer.info("- For Custom Python Actions, implement the following in the .tasks directory")
+            printer.info("def custom_action(spec:ActionSpec, task_state:dict) -> None|bool|dict:...")
 
         printer.info("")
         printer.info("-- Toml Form: ")
@@ -210,9 +216,6 @@ class StubCmd(BaseCommand):
         else:
             printer.info("{ do=\"action name/import path\", args=[], inState=[], outState=[] } # plus any kwargs a specific action uses")
 
-        printer.info("")
-        printer.info("- For Custom Python Actions, implement the following in the .tasks directory")
-        printer.info("def custom_action(spec:ActionSpec, task_state:dict) -> None|bool|dict:...")
 
     def _stub_cli_arg(self):
         printer.info("# - CLI Arg Form. Add to task spec: cli=[]")
