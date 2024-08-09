@@ -135,12 +135,18 @@ class CopyAction(PathManip_m):
     """
       copy a file somewhere
       The arguments of the action are held in self.spec
+
+      'from' can be a string, path or list, always coerced to paths
+      Can handle filename/ext globs
     """
 
     @DKeyed.types("from", check=str|pl.Path|list)
     @DKeyed.paths("to")
     def __call__(self, spec, state, _from, to) -> dict|bool|None:
         dest_loc   = to
+
+        if self._is_write_protected(dest_loc):
+            raise doot.errors.DootLocationError("Tried to write a protected location", to)
 
         match _from:
             case str() | pl.Path():
@@ -150,17 +156,29 @@ class CopyAction(PathManip_m):
             case _:
                 raise doot.errors.DootActionError("Unrecognized type for copy sources", _from)
 
-        if any(self._is_write_protected(x) for x in expanded):
-            raise doot.errors.DootLocationError("Tried to write a protected location", expanded)
-        if any(not x.exists() for x in expanded):
-            raise doot.errors.DootActionError("Tried to copy a file that doesn't exist")
-        if any((dest_loc/x.name).exists() for x in expanded):
-            raise doot.errors.DootActionError("Tried to copy a file that already exists at the destination")
         if len(expanded) > 1 and not dest_loc.is_dir():
-            raise doot.errors.DootActionError("Tried to copy multiple files to a non-directory")
+                raise doot.errors.DootActionError("Tried to copy multiple files to a non-directory")
 
         for arg in expanded:
-            shutil.copy2(arg, dest_loc)
+            match arg:
+                case pl.Path() if "*" in arg.name:
+                    if not dest_loc.is_dir():
+                        raise doot.errors.DootActionError("Tried to copy multiple files to a non-directory")
+                    for arg_sub in arg.parent.glob(arg.name):
+                        self._validate_source(arg_sub)
+                        shutil.copy2(arg_sub, dest_loc)
+                case pl.Path():
+                    self._validate_source(arg)
+                    shutil.copy2(arg, dest_loc)
+
+    def _validate_source(self, source:pl.Path):
+        match source:
+            case pl.Path() if not source.exists():
+                raise doot.errors.DootActionError("Tried to copy a file that doesn't exist", source)
+            case pl.Path():
+                return
+            case _:
+                raise doot.errors.DootActionError("CopyAction expected a path", source)
 
 class MoveAction(PathManip_m):
     """
@@ -226,11 +244,17 @@ class BackupAction(PathManip_m):
 
         # ExFat FS has lower resolution timestamps
         # So guard by having a tolerance:
-        source_ns       = source_loc.stat().st_mtime_ns
-        dest_ns         = dest_loc.stat().st_mtime_ns
+        source_ns       = source.stat().st_mtime_ns
+        match dest.exists():
+            case True:
+                dest_ns  = dest.stat().st_mtime_ns
+            case False:
+                dest_ns = 1
+        source_newer    = source_ns > dest_ns
         difference      = int(max(source_ns, dest_ns) - min(source_ns, dest_ns))
         below_tolerance = difference <= tolerance
-        if dest_loc.exists() and below_tolerance:
+
+        if dest_loc.exists() and ((not source_newer) or below_tolerance):
             return
 
         printer.warning("Backing up : %s", source_loc)
