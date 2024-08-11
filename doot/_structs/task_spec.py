@@ -94,6 +94,10 @@ ActionGroup = Annotated[list[ActionSpec|RelationSpec], WrapValidator(_prepare_ac
 class _JobUtils_m:
     """Additional utilities mixin for job based task specs"""
 
+    def get_source_names(self) -> list[TaskName]:
+        """ Get from the spec's sourcs just its source tasks """
+        return [x for x in self.sources if isinstance(x, TaskName)]
+
     def job_head_name(self) -> TaskName:
         return self.name.root(top=True).job_head()
 
@@ -275,7 +279,7 @@ class _SpecUtils_m:
             case RelationSpec(constraints=None, inject=None):
                 return True
             case RelationSpec(constraints=constraints, inject=inject):
-                assert(relation.target <= self.name)
+                assert(relation.target <= self.name or any(relation.target <= x for x in self.get_source_names()))
             case None:
                 assert(control.name <= self.name)
                 constraints = {x:x for x in control.extra.keys()}
@@ -307,12 +311,25 @@ class _SpecUtils_m:
         if not bool(context.inject):
             return None
 
+        inject_keys = set(context.inject.values())
         extra = self.extra
+        extra_keys = set(extra.keys())
+        match extra.on_fail(None).cli():
+            case None:
+                pass
+            case [*xs]:
+                extra_keys.update(x.name for x in xs)
 
-        if bool((missing:=context.inject.values() - extra.keys())):
+        if bool((missing:=inject_keys - extra_keys)):
             raise doot.errors.DootTaskTrackingError("Can not inject keys not found in the control spec", missing, self.name)
 
-        return {k:extra[v] for k,v in context.inject.items()}
+        try:
+            injection = {k:extra[v] for k,v in context.inject.items()}
+        except Exception:
+            breakpoint()
+            pass
+
+        return injection
 
     def apply_cli_args(self, *, override=None) -> TaskSpec:
         logging.debug("Applying CLI Args to: %s", self.name)
