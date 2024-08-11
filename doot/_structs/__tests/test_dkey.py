@@ -394,7 +394,6 @@ class TestDKeyExpansion:
         assert(isinstance(result, int))
         assert(result == 2)
 
-
     def test_simple_str_expansion(self):
         """ this is a {test} -> this is a blah """
         key = dkey.DKey("this is a {test}", explicit=True, mark=dkey.DKey.mark.STR)
@@ -402,7 +401,6 @@ class TestDKeyExpansion:
         result = key.expand(state)
         assert(isinstance(result, str))
         assert(result == "this is a blah")
-
 
     @pytest.mark.xfail
     def test_simple_indirect_str_expansion(self):
@@ -496,6 +494,19 @@ class TestDKeyExpansion:
         key = dkey.DKey("--{raise}", explicit=True)
         result = key.expand({"raise":"minor"})
         assert(result == "--minor")
+
+    def test_expansion_explicit_non_key(self):
+        """ raise -> minor """
+        key = dkey.DKey("raise", mark=dkey.DKey.mark.STR)
+        result = key.expand({"raise":"minor", "minor":"blah"})
+        assert(result == "minor")
+
+
+    def test_expansion_wit_explicit_key(self):
+        """ raise -> {minor} -> blah """
+        key = dkey.DKey("raise", mark=dkey.DKey.mark.STR)
+        result = key.expand({"raise":"{minor}", "minor":"blah"})
+        assert(result == "blah")
 
 class TestDKeyMarkExpansion:
 
