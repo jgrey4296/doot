@@ -251,6 +251,7 @@ class DKeyFormatter_Expansion_m:
             return result
 
     def _expand(self, key:Key_p|str, *, fallback=None, count=1) -> None|Any:
+        logging.debug("Entering Formatter for: %s", key)
         last               = None
         current            = key
 
@@ -265,8 +266,8 @@ class DKeyFormatter_Expansion_m:
                     current = self._try_redirection(current)[0]
                     current = self._single_expand(current)
                 case str():
-                    current = self._try_redirection(current)[0]
-                    current = self._str_expand(current) or current
+                    redirected = self._try_redirection(current)[0]
+                    current = self._str_expand(redirected) or current
                 case _:
                     break
 
@@ -334,13 +335,12 @@ class DKeyFormatter_Expansion_m:
         logging.debug("Str Expansion: %s", key)
         match self.Parse(key):
             case []:
-                # no {keys}, so treat it as am implicit single key
-                # TODO handle redirection
-                return chained_get(key, *self.sources)
+                # no {keys}, so return the original key
+                return key
             case [*xs]:
                 # {keys}, so expand them
                 prepped = [(x[0], self.format_field(x[0], "w")) for x in xs]
-                expansion_dict = { x[0] : self._expand(x[0], fallback=x[1], count=0) for x in prepped}
+                expansion_dict = { x[0] : self._single_expand(x[0]) or x[1] for x in prepped}
                 expanded = self.format(key, **expansion_dict)
                 return expanded
             case _:
