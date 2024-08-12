@@ -568,7 +568,7 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
         specialized["setup"]        = self.setup        + data.setup
 
         # Internal is only for initial specs, to control listing
-        specialized['flags']        = (self.flags | data.flags) ^ TaskMeta_f.INTERNAL
+        specialized['flags']        = (self.flags | data.flags) & (~TaskMeta_f.INTERNAL)
 
         logging.debug("Specialized Task: %s on top of: %s", data.name.readable, self.name)
         return TaskSpec.build(specialized)
