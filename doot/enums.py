@@ -217,6 +217,7 @@ class DKeyMark_e(EnumBuilder_m, enum.Enum):
     KWARGS   = enum.auto() # -> dict
     POSTBOX  = enum.auto() # -> list
     NULL     = enum.auto() # -> None
+    MULTI    = enum.auto()
 
     default  = FREE
 

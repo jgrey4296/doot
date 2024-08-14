@@ -86,7 +86,7 @@ class DKeyed:
 
     @staticmethod
     def taskname(fn):
-        keys = [DKey(STATE_TASK_NAME_K, mark=DKey.mark.TASK)]
+        keys = [DKey(STATE_TASK_NAME_K, implicit=True, mark=DKey.mark.TASK)]
         return DKeyExpansionDecorator(keys)(fn)
 
     @staticmethod
@@ -102,54 +102,54 @@ class DKeyed:
     @staticmethod
     def paths(*args, **kwargs):
         """ mark an action as using expanded path keys """
-        keys = [DKey(x, mark=DKey.mark.PATH, **kwargs) for x in args]
+        keys = [DKey(x, implicit=True, mark=DKey.mark.PATH, **kwargs) for x in args]
         return DKeyExpansionDecorator(keys)
 
     @staticmethod
     def types(*args, **kwargs):
         """ mark an action as using raw type keys """
-        keys = [DKey(x, mark=DKey.mark.FREE, **kwargs) for x in args]
+        keys = [DKey(x, implicit=True, mark=DKey.mark.FREE, **kwargs) for x in args]
         return DKeyExpansionDecorator(keys)
 
     @staticmethod
     def args(fn):
         """ mark an action as using spec.args """
-        keys = [DKey(ARGS_K, mark=DKey.mark.ARGS)]
+        keys = [DKey(ARGS_K, implicit=True, mark=DKey.mark.ARGS)]
         return DKeyExpansionDecorator(keys)(fn)
 
     @staticmethod
     def kwargs(fn):
         """ mark an action as using all kwargs"""
-        keys = [DKey(KWARGS_K, mark=DKey.mark.KWARGS)]
+        keys = [DKey(KWARGS_K, implicit=True, mark=DKey.mark.KWARGS)]
         return DKeyExpansionDecorator(keys)(fn)
 
     @staticmethod
     def redirects(*args, **kwargs):
         """ mark an action as using redirection keys """
-        keys = [DKey(x, mark=DKey.mark.REDIRECT, ctor=DKey, **kwargs) for x in args]
+        keys = [DKey(x, implicit=True, mark=DKey.mark.REDIRECT, ctor=DKey, **kwargs) for x in args]
         return DKeyExpansionDecorator(keys)
 
     @staticmethod
     def references(*args, **kwargs):
         """ mark keys to use as to_coderef imports """
-        keys = [DKey(x, mark=DKey.mark.CODE, **kwargs) for x in args]
+        keys = [DKey(x, implicit=True, mark=DKey.mark.CODE, **kwargs) for x in args]
         return DKeyExpansionDecorator(keys)
 
     @staticmethod
     def postbox(*args, **kwargs):
-        keys = [DKey(x, mark=DKey.mark.POSTBOX, **kwargs) for x in args]
+        keys = [DKey(x, implicit=True, mark=DKey.mark.POSTBOX, **kwargs) for x in args]
         return DKeyExpansionDecorator(keys)
 
     @staticmethod
     def requires(*args, **kwargs):
         """ mark an action as requiring certain keys to be passed in """
-        keys = [DKey(x, mark=DKey.mark.NULL, **kwargs) for x in args]
+        keys = [DKey(x, implicit=True, mark=DKey.mark.NULL, **kwargs) for x in args]
         return DKeyMetaDecorator(keys)
 
     @staticmethod
     def returns(*args, **kwargs):
         """ mark an action as needing to return certain keys """
-        keys = [DKey(x, mark=DKey.mark.NULL, **kwargs) for x in args]
+        keys = [DKey(x, implicit=True, mark=DKey.mark.NULL, **kwargs) for x in args]
         return DKeyMetaDecorator(keys)
 
 class DKeyExpansionDecorator(Decorator_p):

@@ -32,8 +32,8 @@ class DootShellBake:
     def __call__(self, spec, state, args, _in, env, _update):
         env = env or sh
         try:
-            cmd                     = getattr(env, DKey(args[0], explicit=True).expand(spec, state))
-            keys                    = [DKey(x, explicit=True) for x in args[1:]]
+            cmd                     = getattr(env, DKey(args[0]).expand(spec, state))
+            keys                    = [DKey(x) for x in args[1:]]
             expanded                = [x.expand(spec, state, locs=doot.locs) for x in keys]
 
             match _in.expand(spec, state, fallback=None, check=sh.Command|bool|None):
@@ -101,8 +101,8 @@ class DootShellAction(Action_p):
         env        = env or sh
         try:
             # Build the command by getting it from env, :
-            cmd                     = getattr(env, DKey(args[0], explicit=True).expand(spec, state))
-            keys                    = [DKey(x, explicit=True) for x in args[1:]]
+            cmd                     = getattr(env, DKey(args[0]).expand(spec, state))
+            keys                    = [DKey(x) for x in args[1:]]
             expanded                = [x.expand(spec, state, locs=doot.locs) for x in keys]
             result                  = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=not notty, _cwd=cwd )
             assert(result.exit_code == 0)
@@ -143,7 +143,7 @@ class DootInteractiveAction(Action_p):
 
             cmd      = getattr(sh, spec.args[0])
             args     = spec.args[1:]
-            keys     = [DKey(x, explicit=True) for x in args]
+            keys     = [DKey(x) for x in args]
             expanded = [x.expand(spec, state, locs=doot.locs) for x in keys]
             result   = cmd(*expanded, _return_cmd=True, _bg=spec.kwargs.on_fail(False, bool).background(), _out=self.interact, _out_bufsize=0, _tty_in=True, _unify_ttys=True)
             assert(result.exit_code == 0)

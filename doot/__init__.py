@@ -151,7 +151,7 @@ def _load_locations():
     locs   = DootLocations(pl.Path.cwd())
     # Load Initial locations
     for loc in config.on_fail([]).locations():
-        locs.update(loc)
+        locs.update(loc, strict=False)
 
 def _update_import_path():
     """ Add locations to the python path for task local code importing  """

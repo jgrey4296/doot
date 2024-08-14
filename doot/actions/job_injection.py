@@ -96,21 +96,21 @@ class JobInjector(Action_p):
         match copy:
             case dict():
                 for k,v in copy.items():
-                    as_key = DKey(v)
+                    as_key = DKey(v, implicit=True)
                     injection_dict[k] = as_key.expand(spec, state, max=1)
             case list():
                 for k in copy:
-                    as_key = DKey(k)
+                    as_key = DKey(k, implicit=True)
                     injection_dict[f'{as_key:d}'] = as_key.expand(spec, state, max=1)
 
         match expand:
             case dict():
                 for k,v in expand.items():
-                    as_key = DKey(v)
+                    as_key = DKey(v, implicit=True)
                     injection_dict[k] = as_key.expand(spec, state)
             case list():
                 for k in expand:
-                    as_key = DKey(k)
+                    as_key = DKey(k, implicit=True)
                     injection_dict[f'{as_key:d}'] = as_key.expand(spec, state)
 
         if replacement is not None:
