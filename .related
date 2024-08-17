@@ -13,3 +13,4 @@
 :wiki        : wiki_
 :git         : .git
 :hooks       : .git/hooks
+:logs        : .temp/logs

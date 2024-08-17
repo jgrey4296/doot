@@ -20,7 +20,7 @@ command        = { tasks="doot.cmds.list_cmd:ListCmd", pl="doot.cmds.plugins_cmd
 
 [logging]
 stream  = { level="WARNING", format="{levelname:<8} : {message}", filters=["doot"], target="stdout" }
-file    = { level="DEBUG",   format="{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})", filters=["doot"], target="file" }
+file    = { level="DEBUG",   format="{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})", filters=["doot"], target="rotate" }
 printer = { level="INFO",    format="{message}", colour=true, target="stdout", propagate=false }
 
 [logging.subprinters]
