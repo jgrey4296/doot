@@ -12,3 +12,4 @@
 :templates   : templates
 :wiki        : wiki_
 :git         : .git
+:hooks       : .git/hooks
