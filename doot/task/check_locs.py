@@ -53,7 +53,7 @@ class CheckLocsTask(DootTask):
     task_name = "_locations::check"
 
     def __init__(self, spec=None):
-        locations = [doot.locs[f"{{{x}}}"] for x in doot.locs if not doot.locs.metacheck(x, LocationMeta_f.file) and not doot.locs.metacheck(x, LocationMeta_f.remote)]
+        locations = [doot.locs[f"{{{x}}}"] for x in doot.locs if not doot.locs.metacheck(x, LocationMeta_f.file | LocationMeta_f.remote)]
         actions   = [ActionSpec.build({"args": [x], "fun":self.checklocs }) for x in locations]
         spec      = TaskSpec.build({
             "name"         : CheckLocsTask.task_name,
@@ -64,11 +64,15 @@ class CheckLocsTask(DootTask):
 
     @DKeyed.args
     def checklocs(self, spec, state, args):
-        exists_p = args[0].exists()
-        if exists_p:
-            printer.debug("Base Location Exists : %s", spec.args[0])
-        else:
+        try:
+            match args[0].exists():
+                case True:
+                    printer.debug("Base Location Exists : %s", spec.args[0])
+                case False if make_missing:
+                    printer.warning("Base Location Missing: %s", spec.args[0])
+                    printer.info("Making Directory: %s", spec.args[0])
+                    spec.args[0].mkdir(parents=True)
+                case False:
+                    printer.warning("Base Location Missing: %s", spec.args[0])
+        except PermissionError:
             printer.warning("Base Location Missing: %s", spec.args[0])
-            if make_missing:
-                printer.info("Making Directory: %s", spec.args[0])
-                spec.args[0].mkdir(parents=True)

@@ -61,7 +61,7 @@ class DootLocations(PathManip_m):
     locmeta = LocationMeta_f
 
     def __init__(self, root:Pl.Path):
-        self._root    : pl.Path()               = root.expanduser().absolute()
+        self._root    : pl.Path()               = root.expanduser().resolve()
         self._data    : dict[str, Location]     = dict()
         self._loc_ctx : None|DootLocations      = None
 
@@ -91,8 +91,7 @@ class DootLocations(PathManip_m):
           expands explicit keys in the string or path
 
         """
-        last = None
-        match val:
+        match val: # initial coercion
             case DKey() if 0 < len(val.keys()):
                 raise TypeError("Expand Multi Keys directly", val)
             case DKey():
@@ -102,16 +101,19 @@ class DootLocations(PathManip_m):
             case str():
                 current = val
 
+        last          = None
+        expanded_keys = set()
         while current != last:
             last = current
-            keys = DKeyFormatter.Parse(current)
-            if not bool(keys):
-                continue
-            assert(bool(keys))
-            # expand keys
-            expanded = {x[0] : self.get(x[0], fallback=False) for x in keys}
-            # combine keys ino a full path
-            current = current.format_map(expanded)
+            match DKeyFormatter.Parse(current):
+                case _, []:
+                    current = str(current)
+                case _, [*xs] if bool(conflict:=expanded_keys & {x.key for x in xs}):
+                    raise DootLocationExpansionError("Location Expansion recursion detected",val, conflict)
+                case _, [*xs]:
+                    expanded_keys.update(x.key for x in xs)
+                    expanded = {x.key : self.get(x.key, fallback=False) for x in xs}
+                    current = current.format_map(expanded)
 
         assert(current is not None)
         return self.normalize(pl.Path(current))
@@ -156,11 +158,13 @@ class DootLocations(PathManip_m):
             case None:
                 return None
             case str() if key in self._data:
-                return self._data[f"{key}"].path
+                return self._data[key].path
             case _ if fallback is False:
                 raise DootLocationError("Key Not found", key)
-            case _ if fallback != Any:
+            case _ if isinstance(fallback, (str, pl.Path)):
                 return self.get(fallback)
+            case _ if fallback is None:
+                return None
             case DKey():
                 return pl.Path(f"{key:w}")
             case _:
@@ -175,20 +179,20 @@ class DootLocations(PathManip_m):
         return self._normalize(path, root=self.root)
 
     def metacheck(self, key:str|DKey, meta:LocationMeta_f) -> bool:
-        """ check if any key provided has the applicable meta flags """
+        """ return True if key provided has the applicable meta flags """
         match key:
             case NonDKey():
                 return False
             case DKey() if key in self._data:
                 return self._data[key].check(meta)
             case MultiDKey():
-                 for k in DKey(key):
+                 for k in key:
                      if k not in self._data:
                          continue
                      if self._data[k].check(meta):
                          return True
             case str():
-                return self.metacheck(DKey(key), meta)
+                return self.metacheck(DKey(key, implicit=True), meta)
         return False
 
     @property
@@ -206,43 +210,42 @@ class DootLocations(PathManip_m):
             case dict():
                 pass
             case tomlguard.TomlGuard():
-                return self.update(extra._table())
+                return self.update(extra._table(), strict=strict)
             case DootLocations():
-                return self.update(extra._data)
+                return self.update(extra._data, strict=strict)
             case _:
-                raise doot.errors.DootLocationError("Tried to update locations with unknown type: %s", extra)
+                raise doot.errors.DootLocationError("Tried to update locations with unknown type", extra)
 
         raw          = dict(self._data.items())
         base_keys    = set(raw.keys())
-        new_keys     = set()
+        new_keys     = set(extra.keys())
+        conflicts    = (base_keys & new_keys)
+        if strict and bool(conflicts):
+            raise doot.errors.DootLocationError("Strict Location Update conflicts", conflicts)
+
         for k,v in extra.items():
             match Location.build(v, key=k):
-                case _ if k in new_keys and v != raw[k]:
-                    raise DootLocationError("Duplicated, non-matching Key", k)
-                case _ if k in base_keys:
-                    logging.debug("Skipping Location update of: %s", k)
-                    pass
                 case Location() as l if l.check(LocationMeta_f.normOnLoad):
                     raw[l.key] = Location.build(v, key=k, target=self.normalize(l.path))
-                    new_keys.add(l.key)
                 case Location() as l:
                     raw[l.key] = l
-                    new_keys.add(l.key)
                 case _:
-                    raise DootLocationError("Couldn't build a Location for: (%s : %s)", k, v)
+                    raise DootLocationError("Couldn't build a Location", k, v)
 
         logging.debug("Registered New Locations: %s", ", ".join(new_keys))
         self._data = raw
         return self
 
-    def ensure(self, *values, task="doot"):
+    def registered(self, *values, task="doot", strict=True) -> set:
         """ Ensure the values passed in are registered locations,
           error with DootDirAbsent if they aren't
         """
         missing = set(x for x in values if x not in self)
 
-        if bool(missing):
+        if strict and bool(missing):
             raise DootDirAbsent("Ensured Locations are missing for %s : %s", task, missing)
 
+        return missing
+
     def _clear(self):
-        self._data = tomlguard.TomlGuard()
+        self._data.clear()

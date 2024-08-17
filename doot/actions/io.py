@@ -52,7 +52,7 @@ class AppendAction(PathManip_m):
     def __call__(self, spec, state, args, sep, to):
         sep          = sep or AppendAction.sep
         loc          = to
-        args_keys    = [DKey(x, explicit=True) for x in args]
+        args_keys    = [DKey(x) for x in args]
         exp_args     = [k.expand(spec, state, fallback=None) for k in args_keys]
 
         if self._is_write_protected(loc):
@@ -150,9 +150,9 @@ class CopyAction(PathManip_m):
 
         match _from:
             case str() | pl.Path():
-                expanded = [DKey(_from, explicit=True, mark=DKey.mark.PATH).expand(spec, state)]
+                expanded = [DKey(_from, fallback=_from, mark=DKey.mark.PATH).expand(spec, state)]
             case list():
-                expanded = list(map(lambda x: DKey(x, explicit=True, mark=DKey.mark.PATH).expand(spec, state), _from))
+                expanded = list(map(lambda x: DKey(x, fallback=x, mark=DKey.mark.PATH).expand(spec, state), _from))
             case _:
                 raise doot.errors.DootActionError("Unrecognized type for copy sources", _from)
 
@@ -211,7 +211,7 @@ class DeleteAction(PathManip_m):
     def __call__(self, spec, state, recursive, lax):
         rec = recursive
         for arg in spec.args:
-            loc = DKey(arg, explicit=True, mark=DKey.mark.PATH).expand(spec, state)
+            loc = DKey(arg, mark=DKey.mark.PATH).expand(spec, state)
             if self._is_write_protected(loc):
                 raise doot.errors.DootLocationError("Tried to write a protected location", loc)
 
@@ -271,7 +271,7 @@ class EnsureDirectory(PathManip_m):
     @DKeyed.args
     def __call__(self, spec, state, args):
         for arg in args:
-            loc = DKey(arg, explicit=True, mark=DKey.mark.PATH).expand(spec, state)
+            loc = DKey(arg, mark=DKey.mark.PATH).expand(spec, state)
             if not loc.exists():
                 printer.info("Building Directory: %s", loc)
             loc.mkdir(parents=True, exist_ok=True)
@@ -305,7 +305,7 @@ class TouchFileAction(PathManip_m):
 
     @DKeyed.args
     def __call__(self, spec, state, args):
-        for target in [DKey(x, explicit=True, mark=DKey.mark.PATH) for x in args]:
+        for target in [DKey(x, mark=DKey.mark.PATH) for x in args]:
             target(spec, state).touch()
 
 class LinkAction(PathManip_m):
@@ -335,8 +335,8 @@ class LinkAction(PathManip_m):
                     raise TypeError("unrecognized link targets")
 
     def _do_link(self, spec, state, x, y, force):
-        x_key  = DKey(x, explicit=True, mark=DKey.mark.PATH)
-        y_key  = DKey(y, explicit=True, mark=DKey.mark.PATH)
+        x_key  = DKey(x, mark=DKey.mark.PATH)
+        y_key  = DKey(y, mark=DKey.mark.PATH)
         x_path = x_key.expand(spec, state, symlinks=True)
         y_path = y_key.expand(spec, state)
         # TODO when py3.12: use follow_symlinks=False

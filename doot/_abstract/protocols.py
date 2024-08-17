@@ -215,6 +215,9 @@ class Key_p(Protocol):
     def keys(self) -> list[Key_p]:
         pass
 
+    def _expansion_hook(self, value) -> Any:
+        pass
+
 @runtime_checkable
 class Location_p(Protocol):
     """ Something which describes a file system location,

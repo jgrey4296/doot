@@ -250,6 +250,6 @@ class DootTaskLoader(TaskLoader_p):
         logging.debug("Loading Location Updates: %s", source)
         for group in data:
             try:
-                doot.locs.update(group)
+                doot.locs.update(group, strict=False)
             except KeyError as err:
                 doot.printer.warning("Locations Already Defined: %s : %s", err.args[1], source)

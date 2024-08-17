@@ -107,9 +107,8 @@ from doot.utils.decorators import DecorationUtils, DootDecorator
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-logging.disabled = True
+logging.disabled = False
 ##-- end logging
-
 
 KEY_PATTERN                                = doot.constants.patterns.KEY_PATTERN
 MAX_KEY_EXPANSIONS                         = 200 # doot.constants.patterns.MAX_KEY_EXPANSIONS
@@ -121,26 +120,54 @@ FAIL_PATTERN   : Final[re.Pattern]         = re.compile("[^a-zA-Z_{}/0-9-]")
 EXPANSION_HINT : Final[str]                = "_doot_expansion_hint"
 HELP_HINT      : Final[str]                = "_doot_help_hint"
 
-def chained_get(key:Key_p, *sources:dict|SpecStruct_p|DootLocations) -> None|Any:
+def chained_get(key:Key_p, *sources:dict|SpecStruct_p|DootLocations, fallback=None) -> None|Any:
     """
       Get a key's value from an ordered sequence of potential sources.
       Try to get {key} then {key_} in order of sources passed in
     """
-    replacement = None
+    replacement = fallback
     for source in sources:
         match source:
-            case None:
+            case None | []:
                 continue
+            case list():
+                replacement = source.pop()
             case _ if hasattr(source, "get"):
-                replacement = source.get(key, None)
+                replacement = source.get(key, fallback)
             case SpecStruct_p():
                 params      = source.params
-                replacement = params.get(key, None)
+                replacement = params.get(key, fallback)
 
-        if replacement is not None:
+        if replacement is not fallback:
             return replacement
 
-    return None
+    return fallback
+
+
+class _DKeyParams(BaseModel):
+    """ Utility class for parsed string parameters """
+
+    prefix : None|str = ""
+    key    : None|str = ""
+    format : None|str = ""
+    conv   : None|str = ""
+
+    def __getitem__(self, i):
+        match i:
+            case 0:
+                return self.prefix
+            case 1:
+                return self.key
+            case 2:
+                return self.format
+            case 3:
+                return self.conv
+
+    def __bool__(self):
+        return bool(self.key)
+
+    def wrapped(self) -> str:
+        return "{%s}" % self.key
 
 class DKeyFormatterEntry_m:
     """ Mixin to make DKeyFormatter a singleton with static access
@@ -158,12 +185,16 @@ class DKeyFormatterEntry_m:
     _original_key : str | Key_p         = None
 
     @classmethod
-    def Parse(cls, key:Key_p|pl.Path) -> list:
+    def Parse(cls, key:Key_p|pl.Path) -> tuple(bool, list[_DKeyParams]):
         """ Use the python c formatter parser to extract keys from a string
-          of form (key, format, conversion)
+          of form (prefix, key, format, conversion)
+
+          Returns: (bool: non-key text), list[(key, format, conv)]
 
           see: cpython Lib/string.py
           and: cpython Objects/stringlib/unicode_format.h
+
+          eg: '{test:w} :: {blah}' -> False, [('test', Any, Any), ('blah', Any, Any)]
           """
         if not cls._instance:
             cls._instance = cls()
@@ -171,34 +202,16 @@ class DKeyFormatterEntry_m:
         try:
             match key:
                 case None:
-                    return []
+                    return True, []
                 case str() | Key_p():
                     # formatter.parse returns tuples of (literal, key, format, conversion)
-                    result = [x[1:] for x in cls._instance.parse(key) if x[1] is not None]
-                    return result
+                    result = list(_DKeyParams(prefix=x[0], key=x[1] or "", format=x[2] or "", conv=x[3] or "") for x in cls._instance.parse(key))
+                    non_key_text = any(bool(x.prefix) for x in result)
+                    return non_key_text, [x for x in result if bool(x)]
                 case _:
                     raise TypeError("Unknown type found", key)
         except ValueError:
-            return []
-
-    @classmethod
-    def TypeConv(cls, val:None|str) -> None|DKeyMark_e:
-        """ convert a string of type conversions to a DKeyMark_e"""
-        if not bool(val):
-            return None
-        if "p" in val: # PATH
-            return DKeyMark_e.PATH
-        if "R" in val: # Redirect
-            return DKeyMark_e.REDIRECT
-        if "m" in val and "r" in val: # multi redirect
-            # kwargs['multi'] = True
-            return DKeyMark_e.REDIRECT
-        if "c" in val: # coderef
-            return DKeyMark_e.CODE
-        if "t" in val: # taskname
-            return DKeyMark_e.TASK
-
-        return None
+            return True, []
 
     def __call__(self, *, key=None, sources=None, fallback=None, rec=None) -> Self:
         if self._entered:
@@ -212,6 +225,7 @@ class DKeyFormatterEntry_m:
 
     def __enter__(self) -> Any:
         logging.debug("Entering Expansion/Redirection for: %s", self._original_key)
+        logging.debug("Using Sources: %s", self.sources)
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
@@ -256,11 +270,11 @@ class DKeyFormatter_Expansion_m:
         current            = key
 
         while 0 < self.rec_remaining and last != current:
-            logging.debug("Expansion Loop (%s): %s %s", self.rec_remaining, current, type(current))
+            logging.debug("-- Expansion Loop (%s): %s %s", self.rec_remaining, current, type(current))
             self.rec_remaining -= count
             last                = current
             match current:
-                case Key_p() if current.multi:
+                case Key_p() if current.multi and count > 0:
                     current = self._multi_expand(current)
                 case Key_p():
                     current = self._try_redirection(current)[0]
@@ -273,11 +287,28 @@ class DKeyFormatter_Expansion_m:
 
         match current:
             case None:
-                return fallback or self.fallback
+                current = fallback or self.fallback
             case x if x is key:
-                return fallback or self.fallback
+                current = fallback or self.fallback
             case _:
-                return current
+                pass
+
+        if isinstance(key, Key_p) and current is not None:
+            exp_val = key._exp_type(current)
+            key._check_expansion(exp_val)
+            current = key._expansion_hook(exp_val)
+
+        logging.debug("Expanded (%s) -> (%s)", key, current)
+        return current
+
+    def _multi_expand(self, key:Key_p) -> Any:
+        """
+        expand a multi key
+        """
+        logging.debug("Multi Expansion: %s", key)
+        expanded_keys = { f"{x}" : str(self._expand(x, fallback=f"{x:w}", count=0)) for x in key.keys() }
+        expanded       = self.format(key, **expanded_keys)
+        return expanded
 
     def _try_redirection(self, key:str|Key_p) -> list[Key_p]:
         """ Try to redirect a key if necessary,
@@ -303,10 +334,7 @@ class DKeyFormatter_Expansion_m:
           Expand a single key up to {rec_remaining} times
         """
         logging.debug("Single Expansion: %s", key)
-        # list[(keystr, lift_result_to_key))
-        expanded          = [key]
         key_str           = self.format_field(key, "d")
-        # key_str, lift   = echain.pop()
         match chained_get(key_str, *self.sources):
             case None:
                 return None
@@ -314,19 +342,9 @@ class DKeyFormatter_Expansion_m:
                 return x
             case x if x == key_str:
                 # Got the key back, wrap it and maybe return it
-                return key
+                return "{%s}" % key
             case x:
                 return x
-
-    def _multi_expand(self, key:Key_p) -> Any:
-        """
-        expand a multi key
-        """
-        logging.debug("Multi Expansion: %s", key)
-        expansion_dict = { f"{x}" : str(self._expand(x, fallback=f"{x:w}", count=0)) for x in key.keys() }
-        expanded       = self.format(key, **expansion_dict)
-
-        return expanded
 
     def _str_expand(self, key:str, *, fallback=None) -> Any:
         """
@@ -334,13 +352,13 @@ class DKeyFormatter_Expansion_m:
         """
         logging.debug("Str Expansion: %s", key)
         match self.Parse(key):
-            case []:
+            case True, []:
                 # no {keys}, so return the original key
                 return key
-            case [*xs]:
+            case _, [*xs]:
                 # {keys}, so expand them
-                prepped = [(x[0], self.format_field(x[0], "w")) for x in xs]
-                expansion_dict = { x[0] : self._single_expand(x[0]) or x[1] for x in prepped}
+                prepped = [(self.format_field(x[1], "w"), x[1]) for x in xs]
+                expansion_dict = { x[1] : self._single_expand(x[1]) or x[0] for x in prepped}
                 expanded = self.format(key, **expansion_dict)
                 return expanded
             case _:
@@ -373,7 +391,6 @@ class DKeyFormatter(string.Formatter, DKeyFormatter_Expansion_m, DKeyFormatterEn
             case Key_p():
                 fmt = f"{key}"
             case str():
-                keys = DKeyFormatter.Parse(key)
                 fmt = key
             case pl.Path():
                 # result = str(ftz.reduce(pl.Path.joinpath, [self.vformat(x, args, kwargs) for x in fmt.parts], pl.Path()))
@@ -386,7 +403,7 @@ class DKeyFormatter(string.Formatter, DKeyFormatter_Expansion_m, DKeyFormatterEn
 
     def get_value(self, key, args, kwargs) -> str:
         """ lowest level handling of keys being expanded """
-        logging.debug("Expanding: %s. Args: %s. kwargs: %s", key, args, kwargs)
+        # logging.debug("Expanding: %s. Args: %s. kwargs: %s", key, args, kwargs)
         if isinstance(key, int):
             return args[key]
 
@@ -408,7 +425,7 @@ class DKeyFormatter(string.Formatter, DKeyFormatter_Expansion_m, DKeyFormatterEn
 
     @staticmethod
     def format_field(val, spec):
-        logging.debug("Formatting %s:%s", val, spec)
+        # logging.debug("Formatting %s:%s", val, spec)
         match val:
             case Key_p():
                 return format(val, spec)
@@ -424,6 +441,7 @@ class DKeyFormatter(string.Formatter, DKeyFormatter_Expansion_m, DKeyFormatterEn
             result = f"{result}_"
 
         if wrap:
-            result = "".join(["{", result, "}"])
+            # result = "".join(["{", result, "}"])
+            result = "{%s}" % result
 
         return format(result, remaining)
