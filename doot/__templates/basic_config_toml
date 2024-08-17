@@ -10,6 +10,9 @@ code      = []         # Directories where task specific code can be imported fr
 sleep     = { task=0.2, subtask=1, batch=1 }
 max_steps = 100_000
 
+[settings.commands]
+run = { tracker = "default", runner = "default", reporter= "default", report-line = []}
+
 [logging]
 # Standard loggers. See LoggerSpec.
 stream  = { level="WARNING",  allow=["doot"], format="{levelname:<8} : {message}", colour=true }
@@ -47,8 +50,6 @@ reporter       = {}
 action         = {}
 task           = {}
 
-[commands]
-run = { tracker = "default", runner = "default", reporter= "default", report-line = []}
 
 [[locations]]
 src     = "src"

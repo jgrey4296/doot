@@ -36,7 +36,7 @@ import shutil
 from doot.cmds.base_cmd import BaseCommand
 from collections import defaultdict
 
-clean_locs = doot.config.on_fail([], list).commands.clean.locs()
+clean_locs = doot.config.on_fail([], list).settings.commands.clean.locs()
 
 class CleanCmd(BaseCommand):
     """

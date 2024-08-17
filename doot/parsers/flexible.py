@@ -47,10 +47,12 @@ logging = logmod.getLogger(__name__)
 SEP : Final[str]          = "--"
 PARAM_ASSIGN_PREFIX       = doot.constants.patterns.PARAM_ASSIGN_PREFIX
 NON_DEFAULT_KEY           = doot.constants.misc.NON_DEFAULT_KEY
+NON_DEFAULT_KEY                   = doot.constants.misc.NON_DEFAULT_KEY
+DEFAULT_CLI_CMD    : Final[str]   = doot.constants.misc.DEFAULT_CLI_CMD
 
-default_task : Final[str] = doot.config.on_fail((None,)).general.settings.default_task(wrapper=TaskName.build)
+default_task       : Final[str]   = doot.config.on_fail((None,)).settings.tasks.default_task(wrapper=TaskName.build)
 
-default_cmd  : Final[str] = doot.config.on_fail("run", str).general.settings.default_cmd()
+default_cmd        : Final[str]   = doot.config.on_fail(DEFAULT_CLI_CMD, str).settings.general.default_cmd()
 
 class DootFlexibleParser(ArgParser_i):
     """

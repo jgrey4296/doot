@@ -46,11 +46,11 @@ printer = logmod.getLogger("doot._printer")
 cmd_l   = printer.getChild("cmd")
 ##-- end logging
 
-tracker_target           = doot.config.on_fail("default", str).commands.run.tracker()
-runner_target            = doot.config.on_fail("default", str).commands.run.runner()
-reporter_target          = doot.config.on_fail("default", str).commands.run.reporter()
-report_line_targets      = doot.config.on_fail([]).commands.run.report_line(wrapper=list)
-interrupt_handler        = doot.config.on_fail("doot.utils.signal_handler:SignalHandler", bool|str).commands.run.interrupt()
+tracker_target           = doot.config.on_fail("default", str).settings.commands.run.tracker()
+runner_target            = doot.config.on_fail("default", str).settings.commands.run.runner()
+reporter_target          = doot.config.on_fail("default", str).settings.commands.run.reporter()
+report_line_targets      = doot.config.on_fail([]).settings.commands.run.report_line(wrapper=list)
+interrupt_handler        = doot.config.on_fail("doot.utils.signal_handler:SignalHandler", bool|str).settings.commands.run.interrupt()
 
 @doot.check_protocol
 class RunCmd(BaseCommand):
