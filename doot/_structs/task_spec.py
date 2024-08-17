@@ -312,8 +312,8 @@ class _SpecUtils_m:
             return None
 
         inject_keys = set(context.inject.values())
-        extra = self.extra
-        extra_keys = set(extra.keys())
+        extra       = self.extra
+        extra_keys  = set(extra.keys())
         match extra.on_fail(None).cli():
             case None:
                 pass
