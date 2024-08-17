@@ -44,14 +44,15 @@ from doot.structs import ParamSpec, TaskSpec, TaskName
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-SEP : Final[str]                  = doot.constants.patterns.TASK_PARSE_SEP
-PARAM_ASSIGN_PREFIX               = doot.constants.patterns.PARAM_ASSIGN_PREFIX
-NON_DEFAULT_KEY                   = doot.constants.misc.NON_DEFAULT_KEY
-DEFAULT_CLI_CMD    : Final[str]   = doot.constants.misc.DEFAULT_CLI_CMD
+PARAM_ASSIGN_PREFIX : Final[str]  = doot.constants.patterns.PARAM_ASSIGN_PREFIX
+NON_DEFAULT_KEY     : Final[str]  = doot.constants.misc.NON_DEFAULT_KEY
+SEP                 : Final[str]  = doot.constants.patterns.TASK_PARSE_SEP
+DEFAULT_CLI_CMD     : Final[str]  = doot.constants.misc.DEFAULT_CLI_CMD
+EMPTY_CLI_CMD       : Final[str]  = doot.constants.misc.EMPTY_CLI_CMD
 
-default_task       : Final[str]   = doot.config.on_fail((None,)).settings.tasks.default_task(wrapper=TaskName.build)
-
-default_cmd        : Final[str]   = doot.config.on_fail(DEFAULT_CLI_CMD, str).settings.general.default_cmd()
+default_task        : Final[str]  = doot.config.on_fail((None,)).settings.tasks.default_task(wrapper=TaskName.build)
+default_cmd         : Final[str]  = doot.config.on_fail(DEFAULT_CLI_CMD, str).settings.general.default_cmd()
+empty_cmd           : Final[str]  = doot.config.on_fail(EMPTY_CLI_CMD, str).settings.general.empty_cmd()
 
 class DootFlexibleParser(ArgParser_i):
     """
@@ -95,14 +96,15 @@ class DootFlexibleParser(ArgParser_i):
           Parses the list of arguments against available registered parameter specs, cmds, and tasks.
         """
         logging.debug("Parsing args: %s", args)
+        self.registered_cmds  : dict[str, Command_i]                      = cmds
+        self.registered_tasks : dict[TaskName, TaskSpec]                  = tasks
         self.head_call                                                    = args[0]
         self.head_args                                                    = self._build_defaults_dict(doot_specs)
         self.head_arg_specs                                               = doot_specs
-        self.registered_cmds  : dict[str, Command_i]                      = cmds
-        self.registered_tasks : dict[TaskName, TaskSpec]          = tasks
         self.focus                                                        = self.PS.HEAD
 
         remaining                                                         = args[1:]
+
         while bool(remaining):
             match self.focus:
                 case self.PS.HEAD:
@@ -117,6 +119,12 @@ class DootFlexibleParser(ArgParser_i):
                 case self.PS.EXTRA:
                     remaining = self.process_extra(remaining)
 
+        if not bool(self.cmd_args):
+            # Default to the empty cmd
+            self.cmd_name = empty_cmd
+            self.cmd_args = self._build_defaults_dict(self.registered_cmds[empty_cmd].param_specs)
+
+        # Retarget if '--help' has been set to true
         if self.cmd_args.get('help', False) is True:
             self.cmd_args['target']      = self.cmd_name
             self.cmd_name                = "help"

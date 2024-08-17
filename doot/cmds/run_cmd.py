@@ -46,6 +46,7 @@ printer = logmod.getLogger("doot._printer")
 cmd_l   = printer.getChild("cmd")
 ##-- end logging
 
+# TODO make a decorator to register these onto the cmd
 tracker_target           = doot.config.on_fail("default", str).settings.commands.run.tracker()
 runner_target            = doot.config.on_fail("default", str).settings.commands.run.runner()
 reporter_target          = doot.config.on_fail("default", str).settings.commands.run.reporter()

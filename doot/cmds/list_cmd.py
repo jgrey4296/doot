@@ -75,7 +75,7 @@ class ListCmd(BaseCommand):
         """List task generators"""
         logging.debug("Starting to List Jobs/Tasks")
 
-        if (doot.args.cmd.args.pattern == ""     # type: ignore
+        if (doot.args.on_fail(None).cmd.args.pattern() == ""     # type: ignore
             and not bool(doot.args.tasks)        # type: ignore
             and not doot.args.cmd.args.by_source # type: ignore
             and not doot.args.cmd.args.all):     # type: ignore

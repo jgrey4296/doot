@@ -40,6 +40,7 @@ DEFAULT_TASK_PREFIX     = "task_"
 TASK_PARSE_SEP          = "--"
 
 [doot.constants.misc]
+EMPTY_CLI_CMD           = "list"
 DEFAULT_CLI_CMD         = "run"
 ANNOUNCE_EXIT           = false
 ANNOUNCE_VOICE          = "Moira"
