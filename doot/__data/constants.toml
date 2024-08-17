@@ -37,6 +37,7 @@ PARAM_ASSIGN_PREFIX     = "--"
 STATE_TASK_NAME_K       = "_task_name"
 STATE_ARG_EXPANSION     = "$arg$"
 DEFAULT_TASK_PREFIX     = "task_"
+TASK_PARSE_SEP          = "--"
 
 [doot.constants.misc]
 DEFAULT_CLI_CMD         = "run"

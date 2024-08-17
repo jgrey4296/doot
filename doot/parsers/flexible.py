@@ -44,9 +44,8 @@ from doot.structs import ParamSpec, TaskSpec, TaskName
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-SEP : Final[str]          = "--"
-PARAM_ASSIGN_PREFIX       = doot.constants.patterns.PARAM_ASSIGN_PREFIX
-NON_DEFAULT_KEY           = doot.constants.misc.NON_DEFAULT_KEY
+SEP : Final[str]                  = doot.constants.patterns.TASK_PARSE_SEP
+PARAM_ASSIGN_PREFIX               = doot.constants.patterns.PARAM_ASSIGN_PREFIX
 NON_DEFAULT_KEY                   = doot.constants.misc.NON_DEFAULT_KEY
 DEFAULT_CLI_CMD    : Final[str]   = doot.constants.misc.DEFAULT_CLI_CMD
 
