@@ -120,12 +120,12 @@ FAIL_PATTERN   : Final[re.Pattern]         = re.compile("[^a-zA-Z_{}/0-9-]")
 EXPANSION_HINT : Final[str]                = "_doot_expansion_hint"
 HELP_HINT      : Final[str]                = "_doot_help_hint"
 
-def chained_get(key:Key_p, *sources:dict|SpecStruct_p|DootLocations) -> None|Any:
+def chained_get(key:Key_p, *sources:dict|SpecStruct_p|DootLocations, fallback=None) -> None|Any:
     """
       Get a key's value from an ordered sequence of potential sources.
       Try to get {key} then {key_} in order of sources passed in
     """
-    replacement = None
+    replacement = fallback
     for source in sources:
         match source:
             case None | []:
@@ -133,15 +133,15 @@ def chained_get(key:Key_p, *sources:dict|SpecStruct_p|DootLocations) -> None|Any
             case list():
                 replacement = source.pop()
             case _ if hasattr(source, "get"):
-                replacement = source.get(key, None)
+                replacement = source.get(key, fallback)
             case SpecStruct_p():
                 params      = source.params
-                replacement = params.get(key, None)
+                replacement = params.get(key, fallback)
 
-        if replacement is not None:
+        if replacement is not fallback:
             return replacement
 
-    return None
+    return fallback
 
 
 class _DKeyParams(BaseModel):
@@ -166,6 +166,8 @@ class _DKeyParams(BaseModel):
     def __bool__(self):
         return bool(self.key)
 
+    def wrapped(self) -> str:
+        return "{%s}" % self.key
 
 class DKeyFormatterEntry_m:
     """ Mixin to make DKeyFormatter a singleton with static access
@@ -332,10 +334,7 @@ class DKeyFormatter_Expansion_m:
           Expand a single key up to {rec_remaining} times
         """
         logging.debug("Single Expansion: %s", key)
-        # list[(keystr, lift_result_to_key))
-        expanded          = [key]
         key_str           = self.format_field(key, "d")
-        # key_str, lift   = echain.pop()
         match chained_get(key_str, *self.sources):
             case None:
                 return None
@@ -359,7 +358,7 @@ class DKeyFormatter_Expansion_m:
             case _, [*xs]:
                 # {keys}, so expand them
                 prepped = [(self.format_field(x[1], "w"), x[1]) for x in xs]
-                expansion_dict = { x[1] : self._single_expand(x[1]) or x[1] for x in prepped}
+                expansion_dict = { x[1] : self._single_expand(x[1]) or x[0] for x in prepped}
                 expanded = self.format(key, **expansion_dict)
                 return expanded
             case _:
@@ -442,6 +441,7 @@ class DKeyFormatter(string.Formatter, DKeyFormatter_Expansion_m, DKeyFormatterEn
             result = f"{result}_"
 
         if wrap:
-            result = "".join(["{", result, "}"])
+            # result = "".join(["{", result, "}"])
+            result = "{%s}" % result
 
         return format(result, remaining)

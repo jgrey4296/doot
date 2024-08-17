@@ -163,6 +163,8 @@ class DootLocations(PathManip_m):
                 raise DootLocationError("Key Not found", key)
             case _ if isinstance(fallback, (str, pl.Path)):
                 return self.get(fallback)
+            case _ if fallback is None:
+                return None
             case DKey():
                 return pl.Path(f"{key:w}")
             case _:

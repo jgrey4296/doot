@@ -150,9 +150,9 @@ class CopyAction(PathManip_m):
 
         match _from:
             case str() | pl.Path():
-                expanded = [DKey(_from, mark=DKey.mark.PATH).expand(spec, state)]
+                expanded = [DKey(_from, fallback=_from, mark=DKey.mark.PATH).expand(spec, state)]
             case list():
-                expanded = list(map(lambda x: DKey(x, mark=DKey.mark.PATH).expand(spec, state), _from))
+                expanded = list(map(lambda x: DKey(x, fallback=x, mark=DKey.mark.PATH).expand(spec, state), _from))
             case _:
                 raise doot.errors.DootActionError("Unrecognized type for copy sources", _from)
 

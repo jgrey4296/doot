@@ -75,6 +75,7 @@ class FileExistsCheck(DootBaseAction):
                 case True:
                     continue
                 case False:
+                    printer.warning("Exists Check Failed: %s (inverted: %s)", path, _invert)
                     return fail
 
         return None

@@ -694,6 +694,18 @@ class TestDKeyExpansionMain:
         assert(exp == target)
 
     @pytest.mark.parametrize("name", ["a", "b"])
+    def test_path_marked_fallback(self, name):
+        """
+          name -> missing -> fallback
+        """
+        target = pl.Path("blah").resolve()
+        key   = dkey.DKey(name, mark=dkey.DKey.mark.PATH, fallback="blah", implicit=True)
+        state = {}
+        exp   = key.expand(state)
+        assert(isinstance(key, dkey.PathSingleDKey))
+        assert(exp == target)
+
+    @pytest.mark.parametrize("name", ["a", "b"])
     def test_string_expansion_with_subkey(self, name):
         """ this is a {name} blah. -> this is a test blah."""
         full_str = "this is a {%s} blah." % name
@@ -761,7 +773,7 @@ class TestDKeyExpansionMain:
         assert(exp == target)
 
     def test_cwd_build(self):
-        obj = dkey.DKey(".", mark=dkey.DKey.mark.PATH)
+        obj = dkey.DKey(".", fallback=".", mark=dkey.DKey.mark.PATH)
         assert(isinstance(obj, dkey.DKey))
         assert(isinstance(obj, dkey.PathSingleDKey))
         assert(obj.expand() == pl.Path.cwd())

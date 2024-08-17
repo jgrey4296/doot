@@ -632,8 +632,12 @@ class PathSingleDKey(SingleDKey, mark=DKeyMark_e.PATH):
         """
         return super().expand(*sources, doot.locs, fallback=fallback, **kwargs)
 
-    def _expansion_hook(self, value) -> pl.Path:
-        return doot.locs.normalize(pl.Path(value))
+    def _expansion_hook(self, value) -> pl.Path|None:
+        match value:
+            case None:
+                return None
+            case _:
+                return doot.locs.normalize(pl.Path(value))
 
 class PathMultiDKey(MultiDKey, mark=DKeyMark_e.PATH, tparam="p", multi=True):
     """
