@@ -119,7 +119,7 @@ class DootFlexibleParser(ArgParser_i):
                 case self.PS.EXTRA:
                     remaining = self.process_extra(remaining)
 
-        if not bool(self.cmd_args):
+        if not bool(self.cmd_args) and empty_cmd in self.registered_cmds:
             # Default to the empty cmd
             self.cmd_name = empty_cmd
             self.cmd_args = self._build_defaults_dict(self.registered_cmds[empty_cmd].param_specs)
