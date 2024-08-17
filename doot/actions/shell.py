@@ -32,8 +32,8 @@ class DootShellBake:
     def __call__(self, spec, state, args, _in, env, _update):
         env = env or sh
         try:
-            cmd                     = getattr(env, DKey(args[0], explicit=True).expand(spec, state))
-            keys                    = [DKey(x, explicit=True) for x in args[1:]]
+            cmd                     = getattr(env, DKey(args[0]).expand(spec, state))
+            keys                    = [DKey(x) for x in args[1:]]
             expanded                = [x.expand(spec, state, locs=doot.locs) for x in keys]
 
             match _in.expand(spec, state, fallback=None, check=sh.Command|bool|None):
@@ -93,19 +93,22 @@ class DootShellAction(Action_p):
     @DKeyed.args
     @DKeyed.types("background", "notty", check=bool, fallback=False)
     @DKeyed.types("env", fallback=None, check=sh.Command|None)
-    @DKeyed.paths("cwd", fallback=None, check=pl.Path|None)
+    @DKeyed.paths("cwd", fallback=".", check=pl.Path|None)
+    @DKeyed.types("exitcodes", fallback=[0])
     @DKeyed.redirects("update_")
-    def __call__(self, spec, state, args, background, notty, env, cwd, _update) -> dict|bool|None:
+    def __call__(self, spec, state, args, background, notty, env, cwd, exitcodes, _update) -> dict|bool|None:
         result     = None
-        cwd        = cwd or pl.Path.cwd()
         env        = env or sh
         try:
             # Build the command by getting it from env, :
-            cmd                     = getattr(env, DKey(args[0], explicit=True).expand(spec, state))
-            keys                    = [DKey(x, explicit=True) for x in args[1:]]
-            expanded                = [x.expand(spec, state, locs=doot.locs) for x in keys]
+            cmd                     = getattr(env, DKey(args[0]).expand(spec, state))
+            keys                    = [DKey(x) for x in args[1:]]
+            expanded                = [str(x.expand(spec, state, locs=doot.locs)) for x in keys]
             result                  = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=not notty, _cwd=cwd )
-            assert(result.exit_code == 0)
+            if result.exit_code not in exitcodes:
+                printer.warning("Shell Command Failed: %s", result.exit_code)
+                printer.warning(result.stderr)
+                return False
 
             printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, args[0], args[1:])
             if not _update:
@@ -114,6 +117,8 @@ class DootShellAction(Action_p):
 
             return { _update : result.stdout }
 
+        except sh.ForkException as err:
+            printer.error("Shell Command failed: %s", err)
         except sh.CommandNotFound as err:
             printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], args)
         except sh.ErrorReturnCode as err:
@@ -143,7 +148,7 @@ class DootInteractiveAction(Action_p):
 
             cmd      = getattr(sh, spec.args[0])
             args     = spec.args[1:]
-            keys     = [DKey(x, explicit=True) for x in args]
+            keys     = [DKey(x) for x in args]
             expanded = [x.expand(spec, state, locs=doot.locs) for x in keys]
             result   = cmd(*expanded, _return_cmd=True, _bg=spec.kwargs.on_fail(False, bool).background(), _out=self.interact, _out_bufsize=0, _tty_in=True, _unify_ttys=True)
             assert(result.exit_code == 0)

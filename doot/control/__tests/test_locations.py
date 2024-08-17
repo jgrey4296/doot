@@ -37,13 +37,43 @@ class TestLocations:
         assert(bool(simple._data))
         assert("blah" in simple)
 
-    @pytest.mark.skip
+    def test_registered(self):
+        simple = DootLocations(pl.Path.cwd())
+        assert(not bool(simple._data))
+        simple.update({"a": "blah"})
+        assert(bool(simple._data))
+        simple.registered("a")
+
+    def test_registered_fail(self):
+        simple = DootLocations(pl.Path.cwd())
+        assert(not bool(simple._data))
+        simple.update({"a": "blah"})
+        assert(bool(simple._data))
+
+        with pytest.raises(DootDirAbsent):
+            simple.registered("b")
+
     def test_update_conflict(self):
         simple = DootLocations(pl.Path.cwd())
         simple.update({"blah": "bloo"})
-
         with pytest.raises(DootLocationError):
             simple.update({"blah": "blah"})
+
+    def test_update_non_strict(self):
+        simple = DootLocations(pl.Path.cwd())
+        simple.update({"blah": "bloo"})
+        simple.update({"blah": "bloo"}, strict=False)
+
+    def test_update_overwrite(self):
+        target = pl.Path("aweg")
+        simple = DootLocations(pl.Path.cwd())
+        simple.update({"blah": "bloo"})
+        simple.update({"blah": "aweg"}, strict=False)
+        assert("blah" in simple)
+        assert(simple._data["blah"].path == target)
+        assert(simple.get('blah') == target)
+        result = simple['{blah}']
+        assert(result == target.resolve())
 
     def test_empty_repr(self):
         simple = DootLocations(pl.Path.cwd())
@@ -55,6 +85,24 @@ class TestLocations:
         simple.update({"a": "blah", "b": "aweg", "awegewag": "wejgio"})
         repr_str = repr(simple)
         assert(repr_str == f"<DootLocations : {str(pl.Path.cwd())} : (a, b, awegewag)>")
+
+    def test_context_manager(self):
+        simple = DootLocations(pl.Path.cwd())
+        assert(not bool(simple._data))
+        simple.update({"a": "blah"})
+        assert(bool(simple._data))
+        assert(simple.a == pl.Path("blah").resolve())
+
+        with simple(pl.Path("~/Desktop")) as ctx:
+            assert(ctx.a == pl.Path("~/Desktop/blah").expanduser().resolve())
+
+    def test_clear(self):
+        simple = DootLocations(pl.Path.cwd())
+        assert(not bool(simple._data))
+        simple.update({"a": "blah"})
+        assert("a" in simple)
+        simple._clear()
+        assert("a" not in simple)
 
 class TestLocationsBasicGet:
 
@@ -73,7 +121,7 @@ class TestLocationsBasicGet:
         """
         simple = DootLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
-        key = DKey("simple", explicit=True)
+        key = DKey("simple", implicit=False)
         assert(isinstance(key, NonDKey))
         result = simple.get(key)
         assert(result == pl.Path("simple"))
@@ -114,14 +162,15 @@ class TestLocationsBasicGet:
         """
         simple = DootLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
-        key = DKey("simple")
+        key = DKey("simple", implicit=True)
         result = simple.get(key)
         assert(result == pl.Path("{simple}"))
 
     def test_get_fallback(self):
         simple = DootLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
-        assert(simple.get("{b}", pl.Path("bloo")) == pl.Path("bloo"))
+        result = simple.get("{b}", pl.Path("bloo"))
+        assert(result == pl.Path("bloo"))
 
     def test_get_raise_error_with_false_fallback(self):
         simple = DootLocations(pl.Path.cwd())
@@ -137,8 +186,8 @@ class TestLocationsGetItem:
         """
         simple = DootLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
-        result = simple.__getitem__("a")
-        result_alt = simple['a']
+        result        = simple.__getitem__("a")
+        result_alt    = simple['a']
         assert(result == result_alt)
         assert(isinstance(result, pl.Path))
         assert(result == doot.locs.normalize(pl.Path("a")))
@@ -194,7 +243,6 @@ class TestLocationsGetItem:
         assert(isinstance(simple['{a}'], pl.Path))
         assert(simple['{a}'] == doot.locs.normalize(pl.Path("bloo")))
 
-
     def test_getitem_expansion_multi_recursive(self):
         simple = DootLocations(pl.Path.cwd())
         assert(not bool(simple._data))
@@ -246,8 +294,7 @@ class TestLlocationsGetAttr:
 
 class TestLocationsFails:
 
-    @pytest.mark.xfail
-    def test_getitem_expansion_failure(self):
+    def test_getitem_expansion_missing_key(self):
         simple = DootLocations(pl.Path.cwd())
         assert(not bool(simple._data))
         simple.update({"other": "bloo"})
@@ -256,26 +303,23 @@ class TestLocationsFails:
         with pytest.raises(DootLocationError):
             simple['{aweg}']
 
-    @pytest.mark.xfail
-    def test_attr_access_nested_expansion(self):
+    def test_attr_access_doesnt_expand_subkeys(self):
         simple = DootLocations(pl.Path.cwd())
         assert(not bool(simple._data))
         simple.update({"a": "{other}/blah", "other": "{aweg}/bloo/{awog}", "aweg": "first", "awog": "second"})
         assert(bool(simple._data))
-
-        assert(simple.a == pl.Path("first/bloo/second/blah").absolute())
+        result = simple.a
+        assert(result != pl.Path("first/bloo/second/blah").resolve())
+        assert(result == pl.Path("{other}/blah").resolve())
         assert(isinstance(simple.a, pl.Path))
 
-    @pytest.mark.xfail
-    def test_attr_access_expansion_overload(self):
+    def test_item_access_expansion_recursion_fail(self):
         simple = DootLocations(pl.Path.cwd())
         assert(not bool(simple._data))
         simple.update({"a": "{other}/blah", "other": "/bloo/{a}"})
-
         with pytest.raises(DootLocationExpansionError):
-            simple.a
+            simple['{a}']
 
-    @pytest.mark.xfail
     def test_get_returns_path(self):
         simple = DootLocations(pl.Path.cwd())
         assert(not bool(simple._data))
@@ -316,28 +360,3 @@ class TestLocationsUtils:
         result = simple.normalize(pl.Path("blah"))
         assert(result.is_absolute())
         assert(result == (pl.Path("~/desktop/") / "blah").expanduser().absolute())
-
-    def test_ensure_succeed(self):
-        simple = DootLocations(pl.Path.cwd())
-        assert(not bool(simple._data))
-        simple.update({"a": "blah"})
-        assert(bool(simple._data))
-        simple.ensure("a")
-
-    def test_ensure_fail(self):
-        simple = DootLocations(pl.Path.cwd())
-        assert(not bool(simple._data))
-        simple.update({"a": "blah"})
-        assert(bool(simple._data))
-
-        with pytest.raises(DootDirAbsent):
-            simple.ensure("b")
-
-    def test_context_manager(self):
-        simple = DootLocations(pl.Path.cwd())
-        assert(not bool(simple._data))
-        simple.update({"a": "blah"})
-        assert(bool(simple._data))
-
-        with simple(pl.Path("~/Desktop")) as ctx:
-            assert(ctx.a == (pl.Path("~/Desktop/") / "blah").expanduser().absolute())

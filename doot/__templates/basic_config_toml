@@ -3,12 +3,22 @@
 notify                   = { say-on-exit = false }
 loaders                  = { commands="default", task="default", parser="default"}
 location_check           = { make_missing = true }
+# default_cmd            = ""
+empty_cmd                = "list"
 
 [settings.tasks]
-sources   = [".tasks"] # Files or directories where task specs can be loaded from, expanded according to [[locations]] keys
-code      = []         # Directories where task specific code can be imported from, expanded according to [[locations]] keys
+# Files or directories where task specs can be loaded from, expanded according to [[locations]] keys
+sources   = [".tasks"]
+# Directories where task specific code can be imported from, expanded according to [[locations]] keys
+code      = []
 sleep     = { task=0.2, subtask=1, batch=1 }
 max_steps = 100_000
+# default_task = ""
+
+[settings.commands]
+# Override sub settings of a command
+run  = { tracker = "default", runner = "default", reporter= "default", report-line = []}
+list = { hide=[] }
 
 [logging]
 # Standard loggers. See LoggerSpec.
@@ -47,8 +57,6 @@ reporter       = {}
 action         = {}
 task           = {}
 
-[commands]
-run = { tracker = "default", runner = "default", reporter= "default", report-line = []}
 
 [[locations]]
 src     = "src"

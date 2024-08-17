@@ -63,7 +63,6 @@ task_loader_key    : Final[str]   = doot.constants.entrypoints.DEFAULT_TASK_LOAD
 announce_exit      : Final[bool]  = doot.constants.misc.ANNOUNCE_EXIT
 announce_voice     : Final[str]   = doot.constants.misc.ANNOUNCE_VOICE
 
-DEFAULT_CLI_CMD    : Final[str]   = doot.constants.misc.DEFAULT_CLI_CMD
 HEADER_MSG         : Final[str]   = doot.constants.printer.doot_header
 
 preferred_cmd_loader              = doot.config.on_fail("default").settings.general.loaders.command()
@@ -110,6 +109,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         setup_l.debug("Core Overlord Initialisation complete")
 
     def __call__(self, cmd=None) -> int:
+        """ The main run logic of the overlord """
 
         if not doot.args.on_fail((None,)).cmd.args.suppress_header():
             header_l.info(HEADER_MSG, extra={"colour": "green"})
@@ -216,6 +216,8 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
     def _cli_arg_response(self) -> bool:
         """ Overlord specific cli arg responses. modify verbosity,
           print version, and help.
+
+          return False for not continuing on to do the command
         """
         if doot.args.on_fail(False).head.args.verbose() and self.log_config:
             setup_l.info("Switching to Verbose Output")
@@ -241,7 +243,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         if self.current_cmd is not None:
             return self.current_cmd
 
-        target = cmd or doot.args.on_fail(DEFAULT_CLI_CMD).cmd.name()
+        target = cmd or doot.args.cmd.name
 
         self.current_cmd = self.cmds.get(target, None)
         if self.current_cmd is None:

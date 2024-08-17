@@ -66,11 +66,19 @@ class SpecStruct_p(Protocol):
 @runtime_checkable
 class ArtifactStruct_p(Protocol):
     """ Base class for artifacts, for type matching """
-    pass
+
+    def exists(self, *, data=None) -> bool:
+        pass
 
 @runtime_checkable
 class ParamStruct_p(Protocol):
-    """ Base class for param specs, for type matching """
+    """ Base class for CLI param specs, for type matching
+    when 'maybe_consume' is given a list of strs,
+    and a dictionary,
+    it can match on the args,
+    and return an updated diction and a list of values it didn't consume
+
+    """
 
     def maybe_consume(self, args:list[str], data:dict) -> int:
         pass
@@ -134,12 +142,16 @@ class UpToDate_p(Protocol):
 
 @runtime_checkable
 class ActionGrouper_p(Protocol):
+    """ For things have multiple named groups of actions """
 
     def get_group(self, name:str) -> None|list:
         pass
 
 @runtime_checkable
 class Loader_p(Protocol):
+    """ The protocol for something that will load something from the system, a file, etc
+    TODO add a type parameter
+    """
 
     def setup(self, extra_config:TomlGuard) -> Self:
         pass
@@ -149,6 +161,9 @@ class Loader_p(Protocol):
 
 @runtime_checkable
 class Buildable_p(Protocol):
+    """ For things that need building, but don't have a separate factory
+    TODO add type parameter
+    """
 
     @staticmethod
     def build(*args) -> Self:
@@ -178,6 +193,7 @@ class Nameable_p(Protocol):
 
 @runtime_checkable
 class Key_p(Protocol):
+    """ The protocol for a Key, something that used in a template system"""
 
     def __call__(self, **kwargs) -> Any:
         """ curried full expansion """
@@ -199,8 +215,14 @@ class Key_p(Protocol):
     def keys(self) -> list[Key_p]:
         pass
 
+    def _expansion_hook(self, value) -> Any:
+        pass
+
 @runtime_checkable
 class Location_p(Protocol):
+    """ Something which describes a file system location,
+    with a possible identifier, and metadata
+    """
     key                 : None|str|Key_p
     path                : pl.Path
     meta                : enum.EnumMeta
@@ -219,56 +241,20 @@ class Location_p(Protocol):
         pass
 
 @runtime_checkable
-class InstantiableSpecification_p(Protocol):
-
-    def instantiate_onto(self, data:None|Self) -> Self:
-        pass
-
-
-@runtime_checkable
-class ExecutableTask_p(Protocol):
-    """ Runners pass off to Tasks/Jobs implementing this protocol
-      instead of using their default logic
+class Factory_p(Protocol):
+    """
+      Factory protocol: {type}.build
     """
 
-    def setup(self):
-        """ """
+    @classmethod
+    def make(cls:type[T], *args, **kwargs) -> T:
         pass
 
-    def expand(self) -> list[Task_i|"TaskSpec"]:
-        """ For expanding a job into tasks """
-        pass
+@runtime_checkable
+class InstantiableSpecification_p(Protocol):
+    """ A Specification that can be instantiated further """
 
-    def execute(self):
-        """ For executing a task """
-        pass
-
-    def teardown(self):
-        """ For Cleaning up the task """
-        pass
-
-    def check_entry(self) -> bool:
-        """ For signifiying whether to expand/execute this object """
-        pass
-
-    def execute_action_group(self, group_name:str) -> "ActRE"|list:
-        """ Optional but recommended """
-        pass
-
-    def execute_action(self):
-        """ For executing a single action """
-        pass
-
-    def current_status(self) -> TaskStatus_e:
-        pass
-
-    def force_status(self, status:TaskStatus_e):
-        pass
-
-    def current_priority(self) -> int:
-        pass
-
-    def decrement_priority(self):
+    def instantiate_onto(self, data:None|Self) -> Self:
         pass
 
 

@@ -111,9 +111,9 @@ class Location(BaseModel, Location_p, Buildable_p, metaclass=ProtocolModelMeta, 
             self.meta |= LocationMeta_f.abstract
         if GLOB in t_str:
             self.meta |= LocationMeta_f.abstract | LocationMeta_f.glob
-        if (keys:=DKeyFormatter.Parse(t_str)):
+        if (keys:=DKeyFormatter.Parse(t_str)[1]):
             self.meta |= LocationMeta_f.abstract | LocationMeta_f.expandable
-            self._expansion_keys.update([x[0] for x in keys])
+            self._expansion_keys.update([x.key for x in keys])
 
         return self
 
@@ -163,14 +163,15 @@ class Location(BaseModel, Location_p, Buildable_p, metaclass=ProtocolModelMeta, 
         if LocationMeta_f.abstract not in self.meta:
             return (False, False, False)
         path, stem, suff      = str(self.path.parent), self.path.stem, self.path.suffix
-        _path   = bool(GLOB in path or SOLO in path or bool(DKeyFormatter.Parse(path)))
-        _stem   = bool(GLOB in stem or SOLO in stem or bool(DKeyFormatter.Parse(stem)))
-        _suffix = bool(GLOB in suff or SOLO in suff or bool(DKeyFormatter.Parse(suff)))
+        _path   = bool(GLOB in path or SOLO in path or bool(DKeyFormatter.Parse(path)[1]))
+        _stem   = bool(GLOB in stem or SOLO in stem or bool(DKeyFormatter.Parse(stem)[1]))
+        _suffix = bool(GLOB in suff or SOLO in suff or bool(DKeyFormatter.Parse(suff)[1]))
 
         return (_path, _stem, _suffix)
 
     def check(self, meta:LocationMeta_f) -> bool:
-        return meta in self.meta
+        """ return True if this location has any of the test flags """
+        return bool(self.meta & meta)
 
     def exists(self) -> bool:
         expanded = self.expand()

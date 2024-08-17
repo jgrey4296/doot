@@ -71,7 +71,7 @@ class _DootPostBox:
     whole_box_key                         = "*"
 
     @staticmethod
-    def put(key:TaskName, val):
+    def put(key:TaskName, val:None|list|set|Any):
         if not key.has_root():
             raise ValueError("Tried to use a postbox key with no subkey", key)
         subbox = str(key.last())
@@ -129,7 +129,7 @@ class PutPostAction(Action_p):
         logging.debug("PostBox Put: %s : args(%s) : kwargs(%s)", _basename, args, list(kwargs.keys()))
         target = _basename.root().subtask(_DootPostBox.default_subkey)
         for statekey in args:
-            data = DKey(statekey).expand(spec, state)
+            data = DKey(statekey, implicit=True).expand(spec, state)
             _DootPostBox.put(target, data)
 
         for box_str,statekey in kwargs.items():
@@ -139,7 +139,8 @@ class PutPostAction(Action_p):
                 box = _basename.root(top=True).subtask(box_str)
             match statekey:
                 case str():
-                    data = DKey(statekey).expand(spec, state)
+                    data_key = DKey(statekey)
+                    data     = data_key.expand(spec, state)
                     _DootPostBox.put(box, data)
                 case [*xs]:
                     for x in statekey:
@@ -159,8 +160,9 @@ class GetPostAction(Action_p):
     def __call__(self, spec, state, kwargs) -> dict|bool|None:
         updates = {}
         for key,box_str in kwargs.items():
-            state_key          = DKey(key, explicit=True).expand(spec, state)
-            target_box         = TaskName.build(box_str)
+            state_key          = DKey(key).expand(spec, state)
+            box_key            = DKey(box_str).expand(spec, state)
+            target_box         = TaskName.build(box_key)
             updates[state_key] = _DootPostBox.get(target_box)
 
         return updates

@@ -51,7 +51,7 @@ class AddStateAction(Action_p):
     def __call__(self, spec, state:dict, kwargs) -> dict|bool|None:
         result = {}
         for k,v in kwargs.items():
-            key = DKey(v, explicit=True)
+            key = DKey(v)
             val = key.expand(spec, state)
             result[k] = val
         return result
@@ -65,7 +65,7 @@ class AddStateFn(Action_p):
     def __call__(self, spec, state:dict, kwargs) -> dict|bool|None:
         result = {}
         for kwarg, val in kwargs:
-            key = DKey(val, explicit=True)
+            key = DKey(val)
             val = key.expand(spec, state)
             ref = CodeReference.build(val)
             result[kwarg] = ref.try_import()
@@ -82,7 +82,7 @@ class PushState(Action_p):
     def __call__(self, spec, state, args, _update) -> dict|bool|None:
         data     = data_key.expand(spec, state, check=list|set|None, fallback=[])
 
-        arg_keys = (DKey(arg, explicit=True).expand(spec, state) for arg in args)
+        arg_keys = (DKey(arg).expand(spec, state) for arg in args)
         to_add   = map(lambda x: x if isinstance(x, list) else [x],
                        filter(lambda x: x is not None, arg_keys))
 
@@ -110,7 +110,7 @@ class PathParts(PathManip_m):
 
     @DKeyed.paths("from")
     @DKeyed.types("roots")
-    @DKeyed.returns("fstem", "fpar", "fname", "fext", "pstem")
+    @DKeyed.returns("fstem", "fpar", "fname", "fext", "pstem", "rpath")
     def __call__(self, spec, state, _from, roots):
         root_paths = self._build_roots(spec, state, roots)
         return self._calc_path_parts(_from, root_paths)

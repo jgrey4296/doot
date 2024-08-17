@@ -29,6 +29,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import pytest
+import tomlguard
 
 # ##-- end 3rd party imports
 
@@ -66,11 +67,7 @@ class TestListCmd:
         assert("help" in names)
 
     def test_call_bad_cli_args(self, monkeypatch, mocker):
-        mock_obj                     = mocker.patch("doot.args")
-        doot.args.tasks              = []
-        doot.args.cmd.args.pattern   = ""
-        doot.args.cmd.args.all       = False
-        doot.args.cmd.args.by_source = False
+        doot.args = tomlguard.TomlGuard({"tasks": [], "cmd": {"args": {"pattern": "", "all": False, "by_source": False}}})
         obj = ListCmd()
 
         with pytest.raises(doot.errors.DootError):

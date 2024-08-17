@@ -1,27 +1,27 @@
 #+TITLE: Doot Triage Agenda
 
 * Triage
-** TRIAGE refactor decoration and decorators + test
+** TRIAGE refactor decoration and decorators + test :refactoring:
    [[/media/john/data/github/python/doot/doot/utils/decorators.py::60][Location]]
    :context:
         <2024-06-10 Mon> class DecorationUtils:
    :END:
-** TRIAGE jobs may need to queue edges as well as head
+** TRIAGE jobs may need to queue edges as well as head :jobs:
    [[/media/john/data/github/python/doot/doot/control/tracker.py::237][Location]]
    :context:
         <2024-06-10 Mon>                     track_l.debug("Job Object Success, queuing head: %s", focus)
    :END:
-** TRIAGE queue cleanup tasks, not just success_set
+** TRIAGE queue cleanup tasks, not just success_set :queue:
    [[/media/john/data/github/python/doot/doot/control/tracker.py::244][Location]]
    :context:
         <2024-06-10 Mon>                     track_l.info("Task Succeeded: %s", focus)
    :END:
-** TRIAGE sh _ok_code
+** TRIAGE sh _ok_code                            :actions:shell:
    [[/media/john/data/github/python/doot/doot/actions/shell.py::104][Location]]
    :context:
         <2024-06-10 Mon>             result                  = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=not notty, _cwd=cwd )
    :END:
-** [∅] check complex file passing dependencies
+** [∅] check complex file passing dependencies   :tracking:files:
 #+begin_src toml :results output
   # maybe:
 actions = [  { do="job.queue", args=[["export::_.by.year", "--fpath={fpath}"], ["compile::pdf", "--fpath={fpath}"]] } ]
@@ -31,114 +31,115 @@ actions = [  { do="job.queue", args=[["export::_.by.year", "--fpath={fpath}"], [
   # or:
 depends_on = [ {task="export::_.by.year", fpath_="fpath", other_val="{blah}"} ]
 #+end_src
-** [∅] job cleanup state sharing
-** [∅] task network testing
+** [∅] job cleanup state sharing                 :jobs:
+** [∅] task network testing                      :tracking:
     - doot.__tests.full_network_tests
       just sequence difference tasks and run them, from toml
-** [∅] introspect on task_spec to get action group elements
+** [∅] introspect on task_spec to get action group elements :tracking:
+- State "[⟙]"        from "[∅]"        [2024-08-06 Tue 02:52]
 instead of using the static groups
-** [∅] shell action -> external ?
-** TRIAGE refactor errors structure
+** [∅] shell action -> external ?                :actions:shell:
+** TRIAGE refactor errors structure              :errors:refactoring:
    [[/media/john/data/github/python/doot/doot/errors.py::30][Location]]
    :context:
         <2024-06-13 Thu> class DootError(Exception):
    :END:
-** TRIAGE lower checklocs printing level
+** TRIAGE lower checklocs printing level         :logging:
    [[/media/john/data/github/python/doot/doot/task/check_locs.py::49][Location]]
    :context:
         <2024-06-13 Thu> class CheckLocsTask(DootTask):
    :END:
-** TRIAGE apply protocols to implementations
+** TRIAGE apply protocols to implementations     :design:
    [[/media/john/data/github/python/doot/doot/_abstract/protocols.py::48][Location]]
    :context:
         <2024-06-13 Thu> class ArtifactStruct_p(Protocol):
    :END:
-** TRIAGE this build network may be unnecessary
+** TRIAGE this build network may be unnecessary  :tracking:
    [[/media/john/data/github/python/doot/doot/control/runner.py::223][Location]]
    :context:
         <2024-06-14 Fri>                     self.tracker.build_network(sources=new_nodes)
    :END:
-** TRIAGE the tracker should auto-update a job $head$'s dependencies
+** TRIAGE the tracker should auto-update a job $head$'s dependencies :tracking:
    [[/media/john/data/github/python/doot/doot/control/runner.py::223][Location]]
    :context:
         <2024-06-14 Fri>                     self.tracker.build_network(sources=new_nodes)
    :END:
-** TRIAGE jobgenerate should auto-add the $head$ as a dependent
+** TRIAGE jobgenerate should auto-add the $head$ as a dependent :tracking:
    [[/media/john/data/github/python/doot/doot/actions/job_expansion.py::57][Location]]
    :context:
         <2024-06-14 Fri>         return { _update : list(fn(spec, state)) }
    :END:
-** TRIAGE fix relation types
+** TRIAGE fix relation types                     :tracking:
    [[/media/john/data/github/python/doot/doot/enums.py::162][Location]]
    :context:
         <2024-06-14 Fri> class RelationMeta_e(enum.Enum):
    :END:
-** TRIAGE add a plantuml diagram for the state machine of task statuses
+** TRIAGE add a plantuml diagram for the state machine of task statuses :output:
    [[/media/john/data/github/python/doot/wiki_/architecture/enums.md::54][Location]]
    :context:
         <2024-06-14 Fri> ### TaskStatus_e
    :END:
-** TRIAGE describe doot errors
+** TRIAGE describe doot errors                   :errors:
    [[/media/john/data/github/python/doot/wiki_/architecture/errors.md::1][Location]]
    :context:
         <2024-06-14 Fri> # Doot Errors
    :END:
-** TRIAGE describe doot structs
+** TRIAGE describe doot structs                  :documentation:
    [[/media/john/data/github/python/doot/wiki_/architecture/structs.md::2][Location]]
    :context:
         <2024-06-14 Fri> # Doot Structs
    :END:
-** TRIAGE describe task state progression
+** TRIAGE describe task state progression        :documentation:
    [[/media/john/data/github/python/doot/wiki_/architecture/task_state.md::1][Location]]
    :context:
         <2024-06-14 Fri> # Task State
    :END:
-** TRIAGE describe the task queue
+** TRIAGE describe the task queue                :documentation:
    [[/media/john/data/github/python/doot/wiki_/architecture/the_task_queue.md::1][Location]]
    :context:
         <2024-06-14 Fri> # The Task Queue
    :END:
-** TRIAGE describe authoring tasks
+** TRIAGE describe authoring tasks               :documentation:
    [[/media/john/data/github/python/doot/wiki_/authoring/authoring_tasks.md::1][Location]]
    :context:
         <2024-06-14 Fri> # Authoring Tasks
    :END:
-** TRIAGE describe extending doot
+** TRIAGE describe extending doot                :documentation:
    [[/media/john/data/github/python/doot/wiki_/extending/extending_doot.md::1][Location]]
    :context:
         <2024-06-14 Fri> # Extending Doot
    :END:
-** TRIAGE describe the task toml format
+** TRIAGE describe the task toml format          :documentation:
    [[/media/john/data/github/python/doot/wiki_/files/tasks-toml.md::1][Location]]
    :context:
         <2024-06-14 Fri>
    :END:
-** TRIAGE describe the doot toml format
+** TRIAGE describe the doot toml format          :documentation:
    [[/media/john/data/github/python/doot/wiki_/files/the-doot-toml.md::1][Location]]
    :context:
         <2024-06-14 Fri> # The doot.toml file
    :END:
-** TRIAGE write lets talk about names
+** TRIAGE write lets talk about names            :documentation:
    [[/media/john/data/github/python/doot/wiki_/lets_talk_about_names.md::1][Location]]
    :context:
         <2024-06-14 Fri> # Lets talk about Names
    :END:
-** TRIAGE auto-cleanup old log files
+** TRIAGE auto-cleanup old log files             :logging:
    [[/media/john/data/github/python/doot/::7][Location]]
    :context:
         <2024-06-14 Fri>   drwxr-xr-- 18 john john 4.0K Jun 13 22:06 doot
    :END:
-** TRIAGE implement taskname.match_version
+** TRIAGE implement taskname.match_version       :tracking:
    [[/media/john/data/github/python/doot/doot/_structs/task_name.py::54][Location]]
    :context:
         <2024-06-14 Fri>     def match_version(self, other) -> bool:
    :END:
-** TRIAGE should taskname.instantiate do $gen$.{prefix}.<UUID> or {prefix}.$gen$.<UUID>?
+** TRIAGE should taskname.instantiate do $gen$.{prefix}.<UUID> or {prefix}.$gen$.<UUID>? :naming:
    [[/media/john/data/github/python/doot/doot/_structs/task_name.py::137][Location]]
    :context:
         <2024-06-15 Sat>           # TODO possibly do $gen$.{prefix?}.<UUID>
    :END:
-** TRIAGE add a post.clear action
+** TRIAGE add a post.clear action                :aliases:
    [[/media/john/data/github/python/doot/doot/__data/aliases.toml::89][Location]]
    :context:
         <2024-06-15 Sat> "post.get"                    =  "doot.actions.postbox:GetPostAction"
@@ -149,23 +150,23 @@ instead of using the static groups
         <2024-06-15 Sat> class KeyDecorator:
    :END:
 using dependency injection to not have circular dependency
-** TRIAGE check this reformatting is correct
+** TRIAGE check this reformatting is correct     :formatting:
    [[/media/john/data/github/python/doot/doot/utils/key_formatter.py::124][Location]]
    :context:
         <2024-06-17 Mon>                 return "{{{}}}".format(key)
    :END:
 non-key's may be being wrapped incorrectly
-** TRIAGE should redirections be preferred?
+** TRIAGE should redirections be preferred?      :state:
    [[/media/john/data/github/python/doot/doot/_structs/__tests/test_key.py::192][Location]]
    :context:
         <2024-06-21 Fri>     def test_expansion_prefers_direct_over_other(self, mocker, name):
    :END:
-** TRIAGE in 3.12, convert to a DKeyPath here
+** TRIAGE in 3.12, convert to a DKeyPath here    :path:
    [[/media/john/data/github/python/doot/doot/_structs/dkey.py::110][Location]]
    :context:
         <2024-06-21 Fri>     def Expand(key:str|Key_p|pl.Path, *args, **kwargs) -> Any:
    :END:
-** TRIAGE py3.12 refactor locations to be subclasses of path
+** TRIAGE py3.12 refactor locations to be subclasses of path :path:
    [[/media/john/data/github/python/doot/doot/_abstract/protocols.py::199][Location]]
    :context:
         <2024-06-21 Fri> class Location_p(Protocol):
@@ -175,17 +176,17 @@ non-key's may be being wrapped incorrectly
    :context:
         <2024-06-25 Tue>         # return ftz.partial(DecorationUtils.prepare_expansion, keys)
    :END:
-** TRIAGE implement postbox dkey
+** TRIAGE implement postbox dkey                 :postbox:
    [[/media/john/data/github/python/doot/doot/_structs/dkey.py::440][Location]]
    :context:
         <2024-06-25 Tue> class PostBoxDKey(SingleDKey):
    :END:
-** TRIAGE dkey.__new__ for marks
+** TRIAGE dkey.__new__ for marks                 :dkey:
 [[/media/john/data/github/python/doot/doot/_structs/dkey.py::110][Location]]
    :context:
         <2024-06-25 Tue>             case str() if len(s_keys := DKeyFormatter.Parse(data)) == 1: # one explicit key
    :END:
-** TRIAGE deprecated dkeyed.expands for .formats
+** TRIAGE deprecated dkeyed.expands for .formats :dkey:
    [[/media/john/data/github/python/doot/doot/utils/dkey_decorator.py::100][Location]]
    :context:
         <2024-06-25 Tue>         """ mark an action as using expanded string keys """
@@ -195,24 +196,49 @@ non-key's may be being wrapped incorrectly
    :context:
         <2024-06-28 Fri> class DecorationUtils:
    :END:
-** TRIAGE refactor overlord into a ctx manager
+** TRIAGE refactor overlord into a ctx manager   :refactoring:
    [[/media/john/data/github/python/doot/doot/control/overlord.py::269][Location]]
    :context:
         <2024-07-06 Sat>     def shutdown(self):
    :END:
-** TRIAGE use coderefs and dkey._check_expansion for typecheck action
+** TRIAGE use coderefs and dkey._check_expansion for typecheck action :dkey:
    [[/media/john/data/github/python/doot/doot/actions/util.py::63][Location]]
    :context:
         <2024-07-08 Mon>     for key,target_type in spec.kwargs:
    :END:
-** TRIAGE refactor tracker.next_for into a statemachine
+** TRIAGE refactor tracker.next_for into a statemachine :tracking:
    [[/media/john/data/github/python/doot/doot/control/tracker.py::199][Location]]
    :context:
         <2024-07-11 Thu>     def next_for(self, target:None|str|TaskName=None) -> None|Task_i|TaskArtifact:
    :END:
-** TRIAGE have commands add a handler to logging
+** TRIAGE have commands add a handler to logging :logging:
    [[/media/john/data/github/python/doot/doot/cmds/run_cmd.py::111][Location]]
    :context:
         <2024-07-15 Mon>         with runner:
    :END:
 to (optionally) create a separate log file
+** TRIAGE add 'default cmd' to overlord config   :cmds:
+   [[/media/john/data/github/python/doot/doot/control/overlord.py::112][Location]]
+   :context:
+        <2024-08-06 Tue>     def __call__(self, cmd=None) -> int:
+   :END:
+** TRIAGE use copyaction's logic for other file actions
+   [[/media/john/data/github/python/doot/doot/actions/io.py::214][Location]]
+   :context:
+        <2024-08-09 Fri>             loc = DKey(arg, explicit=True, mark=DKey.mark.PATH).expand(spec, state)
+   :END:
+** TRIAGE add a default header option to task spec
+   [[/media/john/data/github/python/doot/::7][Location]]
+   :context:
+        <2024-08-09 Fri>   drwxr-xr-- 18 john john 4.0K Aug  8 21:59 doot
+   :END:
+** TRIAGE insert cli defaults into instantiations
+   [[/media/john/data/github/python/doot/doot/_structs/task_spec.py::317][Location]]
+   :context:
+        <2024-08-09 Fri>     def apply_cli_args(self, *, override=None) -> TaskSpec:
+   :END:
+** TRIAGE allow shell to ignore return codes
+   [[/media/john/data/github/python/doot/doot/actions/shell.py::110][Location]]
+   :context:
+        <2024-08-11 Sun>             printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, args[0], args[1:])
+   :END:

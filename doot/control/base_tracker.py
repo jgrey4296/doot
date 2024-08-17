@@ -56,8 +56,9 @@ from doot.task.base_task import DootTask
 # ##-- end 1st party imports
 
 ##-- logging
-logging = logmod.getLogger(__name__)
-printer = logmod.getLogger("doot._printer")
+logging    = logmod.getLogger(__name__)
+printer    = logmod.getLogger("doot._printer")
+track_l    = printer.getChild("track")
 ##-- end logging
 
 ROOT                           : Final[str]                  = "root::_" # Root node of dependency graph
@@ -174,7 +175,7 @@ class _TrackerStore:
             case None:
                 pass
             case TaskName() as existing:
-                logging.debug("Reusing instantiation: %s for %s", existing, name)
+                track_l.debug("Reusing instantiation: %s for %s", existing, name)
                 return existing
 
         spec = self.specs[name]
@@ -190,7 +191,7 @@ class _TrackerStore:
                 # and you want to instantiate descendents onto ancestors
                 instance_spec = ftz.reduce(lambda x, y: y.instantiate_onto(x), xs)
 
-        logging.debug("Instantiating: %s into %s", name, instance_spec.name)
+        track_l.debug("Instantiating: %s into %s", name, instance_spec.name)
         assert(instance_spec is not None)
         if add_cli:
             # only add cli args explicitly. ie: when the task has been queued by the user
@@ -487,7 +488,7 @@ class _TrackerNetwork:
         indirect_deps : list[tuple[ConcreteId, RelationSpec]] = self._requirements[spec.sources[-1]]
         to_expand                                             = set()
 
-        logging.debug("--> Expanding Task: %s : Pre(%s), Post(%s), IndirecPre:(%s)",
+        track_l.debug("--> Expanding Task: %s : Pre(%s), Post(%s), IndirecPre:(%s)",
                       name, len(spec.depends_on), len(spec.required_for), len(indirect_deps))
         # (maybe) Connect a jobs $head$
         to_expand.update(self._expand_job_head(spec))
@@ -514,7 +515,7 @@ class _TrackerNetwork:
             self.network.nodes[name][EXPANDED] = True
 
 
-        logging.debug("<-- Task Expansion Complete: %s", name)
+        track_l.debug("<-- Task Expansion Complete: %s", name)
         return to_expand
 
     def _expand_job_head(self, spec:TaskSpec) -> list[TaskName]:
@@ -524,23 +525,15 @@ class _TrackerNetwork:
         if TaskMeta_f.JOB not in spec.name:
             return []
 
+        heads = [jhead for x in spec.get_source_names() if (jhead:=x.job_head()) in self.specs]
+        if not bool(heads):
+            return []
+
         logging.debug("Expanding Job Head for: %s", spec.name)
-        head_name = spec.job_head_name()
+        head_name = heads[-1]
         head_instance = self._instantiate_spec(head_name, extra=spec.model_extra)
         self.connect(spec.name, head_instance)
         return [head_instance]
-        # match [x for x in self.network.succ[spec.name] if head_name < x]:
-        #     case []: # No head yet, add it
-        #         logging.debug("No Matching Head, instantiating")
-        #         head_instance = self._instantiate_spec(head_name, extra=spec.model_extra)
-        #         self.connect(spec.name, head_instance)
-        #         return [head_instance]
-        #     case [*xs, x]: # Use the most recent head
-        #         logging.debug("Reusing newest head")
-        #         return [x]
-        #     case [x]:
-        #         logging.debug("Reusing only head")
-        #         return [x]
 
     def _expand_artifact(self, artifact:TaskArtifact) -> set[ConcreteId]:
         """ expand artifacts, instantaiting related tasks/transformers,

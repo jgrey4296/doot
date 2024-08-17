@@ -108,6 +108,7 @@ class TestPathInjection:
     def state(self):
         return {"_task_name": TaskName.build("agroup::basic")}
 
+    @pytest.mark.xfail
     def test_initial(self, spec ,state):
         obj = ji.JobInjectPathParts()
         # build task specs
@@ -117,8 +118,9 @@ class TestPathInjection:
 
         # expect these:
         expect = ["lpath", "fstem", "fparent", "fname", "fext", "pstem"]
+        assert(False)
 
-
+    @pytest.mark.xfail
     def test_inject_shadow(self, spec, state):
         state['shadow_root'] = "blah"
         obj = ji.JobInjectShadowAction()
@@ -129,14 +131,32 @@ class TestPathInjection:
 
         # expect these:
         expect = ["lpath", "fstem", "fparent", "fname", "fext", "pstem"]
-
+        assert(False)
 
 class TestNameInjection:
 
-    def test_initial(self):
-        pass
+    @pytest.mark.xfail
+    def test_initial(self, spec ,state):
+        obj = ji.JobInjectPathParts()
+        # build task specs
+        # set roots
+        # Call:
+        result = obj(spec, state)
+
+        # expect these:
+        expect = ["lpath", "fstem", "fparent", "fname", "fext", "pstem"]
+        assert(False)
 
 class TestActionInjection:
 
-    def test_initial(self):
-        pass
+    @pytest.mark.xfail
+    def test_initial(self, spec ,state):
+        obj = ji.JobInjectPathParts()
+        # build task specs
+        # set roots
+        # Call:
+        result = obj(spec, state)
+
+        # expect these:
+        expect = ["lpath", "fstem", "fparent", "fname", "fext", "pstem"]
+        assert(False)

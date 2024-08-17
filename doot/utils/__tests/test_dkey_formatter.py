@@ -33,205 +33,90 @@ def setup_locs( mocker):
     new_locs = TomlGuard({"p1": "test1", "p2": "test2/sub"})
     return mocker.patch.object(doot.locs, "_data", new_locs)
 
+class TestDKeyFormatterParsing:
 
-class TestDKeyFormatter:
-
-    def test_parsing(self):
+    def test_parsing_doesnt_modify_string(self):
         val = "{bob}"
-        result = DKeyFormatter.Parse(val)
-        assert(bool(result))
+        has_text, keys = DKeyFormatter.Parse(val)
+        assert(bool(keys))
         assert(val == "{bob}")
 
-    def test_initial(self, mocker, spec):
-        fmt           = DKeyFormatter()
-        assert(isinstance(fmt, DKeyFormatter))
-        assert(isinstance(spec, ActionSpec))
-        assert(spec.kwargs.val == "bloo")
-        assert(spec.kwargs.a == "blah")
+    def test_parsing_prefix(self):
+        val    = "--{bob}"
+        has_text, keys = DKeyFormatter.Parse(val)
+        assert(has_text)
+        assert(len(keys) == 1)
 
-    @pytest.mark.xfail
-    def test_multi(self, mocker, spec):
-        fmt           = DKeyFormatter()
-        state         = {"b": "aweg"}
-        result        = fmt.format("{a}:{b}", _spec=spec, _state=state)
-        assert(result == "blah:aweg")
+    def test_parsing_postfix(self):
+        val = "{bob}--"
+        has_text, keys = DKeyFormatter.Parse(val)
+        assert(has_text)
+        assert(bool(keys))
 
-    @pytest.mark.xfail
-    def test_recursive(self, mocker, spec):
-        fmt = DKeyFormatter()
-        state = {"b": "aweg {c}", "c": "blah"}
-        result = fmt.format("{a}", _spec=spec, _state=state, _rec=True)
-        assert(result == "this is a aweg blah")
+    def test_parsing_internal_text(self):
+        val = "{bob}--{bill}"
+        has_text, keys = DKeyFormatter.Parse(val)
+        assert(has_text)
+        assert(bool(keys))
 
-    @pytest.mark.xfail
-    def test_recursive_missing(self, mocker, spec):
-        fmt = DKeyFormatter()
-        state = {"b": "aweg {c}", "c": "blah {d}"}
-        result = fmt.format("{a}", _spec=spec, _state=state, _rec=True)
-        assert(result == "this is a aweg blah {d}")
+    def test_parsing_no_text(self):
+        val = "{bob}{bill}"
+        has_text, keys = DKeyFormatter.Parse(val)
+        assert(not has_text)
+        assert(bool(keys))
 
-    @pytest.mark.xfail
-    def test_not_str_fails(self, mocker, spec):
-        fmt = DKeyFormatter()
-        state = {"b": "aweg {c}", "c": [1,2,3]}
-        with pytest.raises(TypeError):
-            fmt.format("{a}", _spec=spec, _state=state, _rec=True)
+    def test_parsing_no_keys(self):
+        val = "bob bill"
+        has_text, keys = DKeyFormatter.Parse(val)
+        assert(has_text)
+        assert(not bool(keys))
 
+    def test_parsing_empty_str(self):
+        val = ""
+        has_text, keys = DKeyFormatter.Parse(val)
+        assert(not has_text)
+        assert(not bool(keys))
 
-class TestDKeyFormatter_Expansion:
+    def test_parsing_multi(self):
+        val = "{bob} {bill}"
+        has_text, keys = DKeyFormatter.Parse(val)
+        assert(len(keys) == 2)
 
-    @pytest.fixture(scope="function")
-    def sources(self):
-        return [
-            { "a": "blah", "testrec": DKey("subrec")},
-            { "b" : "bloo", "subrec": "aweg" },
-            { "c_": "a" },
-            { "complex": [1,2,3,4], "indcomplex_": "complex" },
-            ]
+    def test_parsing_format_params(self):
+        val = "{bob:w} {bill:p}"
+        has_text, keys = DKeyFormatter.Parse(val)
+        assert(len(keys) == 2)
+        for x in keys:
+            assert(x[2] in ["w", "p"])
+            assert(x[3] == "")
 
+    def test_parsing_conv_params(self):
+        val = "{bob!w} {bill!p}"
+        has_text, keys = DKeyFormatter.Parse(val)
+        assert(len(keys) == 2)
+        for x in keys:
+            assert(x[3] in ["w", "p"])
+            assert(x[2] == "")
 
-    def test_initial(self, mocker, spec):
-        fmt           = DKeyFormatter()
-        assert(isinstance(fmt, DKeyFormatter))
-        assert(isinstance(spec, ActionSpec))
-        assert(spec.kwargs.val == "bloo")
-        assert(spec.kwargs.a == "blah")
+    def test_parsing_mixed_params(self):
+        val = "{bob!a:w} {bill!b:p}"
+        has_text, keys = DKeyFormatter.Parse(val)
+        assert(len(keys) == 2)
+        for x in keys:
+            assert(x[3] in ["a", "b"])
+            assert(x[2] in ["w", "p"])
 
-
-    def test_single_expansion(self, sources):
-        fmt           = DKeyFormatter()
-        with fmt(sources=sources) as ctx:
-            result = ctx._single_expand(DKey("a"))
-
-        assert(result == "blah")
-
-
-    def test_single_expansion_to_complex_type(self, sources):
-        fmt           = DKeyFormatter()
-        with fmt(sources=sources) as ctx:
-            result = ctx._single_expand(DKey("complex"))
-
-        assert(result == [1,2,3,4])
-
-
-    def test_indirect_expansion(self, sources):
-        fmt           = DKeyFormatter()
-        with fmt(sources=sources) as ctx:
-            result = ctx._expand(DKey("c_"))
-
-        assert(result == "blah")
-
-
-    def test_indirect_expansion_to_complex_type(self, sources):
-        fmt           = DKeyFormatter()
-        with fmt(sources=sources) as ctx:
-            result = ctx._expand(DKey("indcomplex_"))
-
-        assert(result == [1,2,3,4])
-
-
-    def test_redirection(self, sources):
-        fmt           = DKeyFormatter()
-        with fmt(sources=sources) as ctx:
-            ctx.rec_remaining = 1
-            result = ctx._try_redirection(DKey("c_"))
-
-        assert(isinstance(result, list))
-        assert(len(result) == 1)
-        assert(result[0] == "a")
-
-
-    def test_recursive_expansion(self, sources):
-        fmt           = DKeyFormatter()
-        with fmt(sources=sources) as ctx:
-            result = ctx._expand(DKey("testrec"))
-
-        assert(result == "aweg")
-
-
-    def test_multikey_expansion(self, sources):
-        fmt           = DKeyFormatter()
-        key = DKey("blah :: {b} {b}")
-        assert(isinstance(key, MultiDKey))
-        with fmt(sources=sources) as ctx:
-            result = ctx._multi_expand(key)
-
-        assert(result == "blah :: bloo bloo")
-
-
-    def test_multikey_multi_expansion(self, sources):
-        fmt           = DKeyFormatter()
-        key = DKey("blah :: {b} :: {a}")
-        assert(isinstance(key, MultiDKey))
-        assert(len(key.keys()) == 2)
-        with fmt(sources=sources) as ctx:
-            result = ctx._multi_expand(key)
-
-        assert(result == "blah :: bloo :: blah")
-
-
-    def test_multikey_recursive_expansion(self, sources):
-        fmt           = DKeyFormatter()
-        key = DKey("blah :: {testrec} {b}")
-        assert(isinstance(key, MultiDKey))
-        with fmt(sources=sources) as ctx:
-            result = ctx._multi_expand(key)
-
-        assert(result == "blah :: aweg bloo")
-
-
-    @pytest.mark.xfail
-    def test_multikey_failure_on_complex_type(self, sources):
-        fmt           = DKeyFormatter()
-        key = DKey("blah :: {complex}")
-        assert(isinstance(key, MultiDKey))
-        with pytest.raises(ValueError), fmt(sources=sources) as ctx:
-            result = ctx._multi_expand(key)
-
-
-
-    def test_str_expansion_recursive(self, sources):
-        fmt           = DKeyFormatter()
-        key = "blah :: {testrec}"
-        assert(not isinstance(key, DKey))
-        with fmt(sources=sources) as ctx:
-            result = ctx._str_expand(key)
-
-        assert(result == "blah :: aweg")
-
-
-    def test_str_expansion(self, sources):
-        fmt           = DKeyFormatter()
-        key = "blah :: {a}"
-        assert(not isinstance(key, DKey))
-        with fmt(sources=sources) as ctx:
-            result = ctx._str_expand(key)
-
-        assert(result == "blah :: blah")
-
-
-
-class TestDKeyFormatter_Formatting:
-
-    def test_initial(self, mocker, spec):
-        fmt           = DKeyFormatter()
-        assert(isinstance(fmt, DKeyFormatter))
-        assert(isinstance(spec, ActionSpec))
-        assert(spec.kwargs.val == "bloo")
-        assert(spec.kwargs.a == "blah")
-
+class TestDKeyFormatter:
 
     def test_simple_format(self, mocker, spec):
         fmt           = DKeyFormatter()
         result = fmt.format("test")
         assert(result == "test")
 
-
     def test_simple_key_replace(self, mocker, spec):
         fmt           = DKeyFormatter()
         result = fmt.format("{test}", test="aweg")
         assert(result == "aweg")
-
 
     def test_simple_key_wrap(self, mocker, spec):
         fmt           = DKeyFormatter()

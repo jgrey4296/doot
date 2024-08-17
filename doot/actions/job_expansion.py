@@ -73,7 +73,7 @@ class JobExpandAction(JobInjector):
     @DKeyed.taskname
     def __call__(self, spec, state, _from, inject, template, prefix, _update, _count, _basename):
         match prefix:
-            case "{prefix}":
+            case "prefix":
                 prefix = "{JobGenerated}"
             case _:
                 pass
@@ -83,6 +83,11 @@ class JobExpandAction(JobInjector):
         root            = _basename.root()
         base_head       = root.job_head()
         actions, sources = self._prep_base(template)
+        match sources:
+            case [] | [None]:
+                base_subtask = root
+            case [*xs, x]:
+                base_subtask = x
         match _from:
             case int():
                 build_queue += range(_from)
@@ -99,7 +104,7 @@ class JobExpandAction(JobInjector):
         for arg in build_queue:
             _count += 1
             # TODO change job subtask naming scheme
-            base_dict = dict(name=root.subtask(prefix, _count),
+            base_dict = dict(name=base_subtask.subtask(prefix, _count),
                              sources=sources,
                              actions = actions or [],
                              required_for=[base_head],

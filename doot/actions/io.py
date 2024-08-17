@@ -52,7 +52,7 @@ class AppendAction(PathManip_m):
     def __call__(self, spec, state, args, sep, to):
         sep          = sep or AppendAction.sep
         loc          = to
-        args_keys    = [DKey(x, explicit=True) for x in args]
+        args_keys    = [DKey(x) for x in args]
         exp_args     = [k.expand(spec, state, fallback=None) for k in args_keys]
 
         if self._is_write_protected(loc):
@@ -135,6 +135,9 @@ class CopyAction(PathManip_m):
     """
       copy a file somewhere
       The arguments of the action are held in self.spec
+
+      'from' can be a string, path or list, always coerced to paths
+      Can handle filename/ext globs
     """
 
     @DKeyed.types("from", check=str|pl.Path|list)
@@ -142,25 +145,40 @@ class CopyAction(PathManip_m):
     def __call__(self, spec, state, _from, to) -> dict|bool|None:
         dest_loc   = to
 
+        if self._is_write_protected(dest_loc):
+            raise doot.errors.DootLocationError("Tried to write a protected location", to)
+
         match _from:
             case str() | pl.Path():
-                expanded = [DKey(_from, explicit=True, mark=DKey.mark.PATH).expand(spec, state)]
+                expanded = [DKey(_from, fallback=_from, mark=DKey.mark.PATH).expand(spec, state)]
             case list():
-                expanded = list(map(lambda x: DKey(x, explicit=True, mark=DKey.mark.PATH).expand(spec, state), _from))
+                expanded = list(map(lambda x: DKey(x, fallback=x, mark=DKey.mark.PATH).expand(spec, state), _from))
             case _:
                 raise doot.errors.DootActionError("Unrecognized type for copy sources", _from)
 
-        if any(self._is_write_protected(x) for x in expanded):
-            raise doot.errors.DootLocationError("Tried to write a protected location", expanded)
-        if any(not x.exists() for x in expanded):
-            raise doot.errors.DootActionError("Tried to copy a file that doesn't exist")
-        if any((dest_loc/x.name).exists() for x in expanded):
-            raise doot.errors.DootActionError("Tried to copy a file that already exists at the destination")
         if len(expanded) > 1 and not dest_loc.is_dir():
-            raise doot.errors.DootActionError("Tried to copy multiple files to a non-directory")
+                raise doot.errors.DootActionError("Tried to copy multiple files to a non-directory")
 
         for arg in expanded:
-            shutil.copy2(arg, dest_loc)
+            match arg:
+                case pl.Path() if "*" in arg.name:
+                    if not dest_loc.is_dir():
+                        raise doot.errors.DootActionError("Tried to copy multiple files to a non-directory")
+                    for arg_sub in arg.parent.glob(arg.name):
+                        self._validate_source(arg_sub)
+                        shutil.copy2(arg_sub, dest_loc)
+                case pl.Path():
+                    self._validate_source(arg)
+                    shutil.copy2(arg, dest_loc)
+
+    def _validate_source(self, source:pl.Path):
+        match source:
+            case pl.Path() if not source.exists():
+                raise doot.errors.DootActionError("Tried to copy a file that doesn't exist", source)
+            case pl.Path():
+                return
+            case _:
+                raise doot.errors.DootActionError("CopyAction expected a path", source)
 
 class MoveAction(PathManip_m):
     """
@@ -193,7 +211,7 @@ class DeleteAction(PathManip_m):
     def __call__(self, spec, state, recursive, lax):
         rec = recursive
         for arg in spec.args:
-            loc = DKey(arg, explicit=True, mark=DKey.mark.PATH).expand(spec, state)
+            loc = DKey(arg, mark=DKey.mark.PATH).expand(spec, state)
             if self._is_write_protected(loc):
                 raise doot.errors.DootLocationError("Tried to write a protected location", loc)
 
@@ -226,11 +244,17 @@ class BackupAction(PathManip_m):
 
         # ExFat FS has lower resolution timestamps
         # So guard by having a tolerance:
-        source_ns       = source_loc.stat().st_mtime_ns
-        dest_ns         = dest_loc.stat().st_mtime_ns
+        source_ns       = source.stat().st_mtime_ns
+        match dest.exists():
+            case True:
+                dest_ns  = dest.stat().st_mtime_ns
+            case False:
+                dest_ns = 1
+        source_newer    = source_ns > dest_ns
         difference      = int(max(source_ns, dest_ns) - min(source_ns, dest_ns))
         below_tolerance = difference <= tolerance
-        if dest_loc.exists() and below_tolerance:
+
+        if dest_loc.exists() and ((not source_newer) or below_tolerance):
             return
 
         printer.warning("Backing up : %s", source_loc)
@@ -247,7 +271,7 @@ class EnsureDirectory(PathManip_m):
     @DKeyed.args
     def __call__(self, spec, state, args):
         for arg in args:
-            loc = DKey(arg, explicit=True, mark=DKey.mark.PATH).expand(spec, state)
+            loc = DKey(arg, mark=DKey.mark.PATH).expand(spec, state)
             if not loc.exists():
                 printer.info("Building Directory: %s", loc)
             loc.mkdir(parents=True, exist_ok=True)
@@ -281,7 +305,7 @@ class TouchFileAction(PathManip_m):
 
     @DKeyed.args
     def __call__(self, spec, state, args):
-        for target in [DKey(x, explicit=True, mark=DKey.mark.PATH) for x in args]:
+        for target in [DKey(x, mark=DKey.mark.PATH) for x in args]:
             target(spec, state).touch()
 
 class LinkAction(PathManip_m):
@@ -311,8 +335,8 @@ class LinkAction(PathManip_m):
                     raise TypeError("unrecognized link targets")
 
     def _do_link(self, spec, state, x, y, force):
-        x_key  = DKey(x, explicit=True, mark=DKey.mark.PATH)
-        y_key  = DKey(y, explicit=True, mark=DKey.mark.PATH)
+        x_key  = DKey(x, mark=DKey.mark.PATH)
+        y_key  = DKey(y, mark=DKey.mark.PATH)
         x_path = x_key.expand(spec, state, symlinks=True)
         y_path = y_key.expand(spec, state)
         # TODO when py3.12: use follow_symlinks=False

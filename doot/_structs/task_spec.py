@@ -94,6 +94,10 @@ ActionGroup = Annotated[list[ActionSpec|RelationSpec], WrapValidator(_prepare_ac
 class _JobUtils_m:
     """Additional utilities mixin for job based task specs"""
 
+    def get_source_names(self) -> list[TaskName]:
+        """ Get from the spec's sourcs just its source tasks """
+        return [x for x in self.sources if isinstance(x, TaskName)]
+
     def job_head_name(self) -> TaskName:
         return self.name.root(top=True).job_head()
 
@@ -275,7 +279,7 @@ class _SpecUtils_m:
             case RelationSpec(constraints=None, inject=None):
                 return True
             case RelationSpec(constraints=constraints, inject=inject):
-                assert(relation.target <= self.name)
+                assert(relation.target <= self.name or any(relation.target <= x for x in self.get_source_names()))
             case None:
                 assert(control.name <= self.name)
                 constraints = {x:x for x in control.extra.keys()}
@@ -307,12 +311,21 @@ class _SpecUtils_m:
         if not bool(context.inject):
             return None
 
+        inject_keys = set(context.inject.values())
         extra = self.extra
+        extra_keys = set(extra.keys())
+        match extra.on_fail(None).cli():
+            case None:
+                pass
+            case [*xs]:
+                extra_keys.update(x.name for x in xs)
 
-        if bool((missing:=context.inject.values() - extra.keys())):
+        if bool((missing:=inject_keys - extra_keys)):
             raise doot.errors.DootTaskTrackingError("Can not inject keys not found in the control spec", missing, self.name)
 
-        return {k:extra[v] for k,v in context.inject.items()}
+        injection = {k:extra[v] for k,v in context.inject.items()}
+
+        return injection
 
     def apply_cli_args(self, *, override=None) -> TaskSpec:
         logging.debug("Applying CLI Args to: %s", self.name)
@@ -361,6 +374,7 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
     ctor                         : CodeReference                          = Field(default=None, validate_default=True)
     queue_behaviour              : QueueMeta_e                            = QueueMeta_e.default
     flags                        : TaskMeta_f                             = TaskMeta_f.default
+    inject                       : list[str]                              = []
     _transform                   : None|Literal[False]|tuple[RelationSpec, RelationSpec]                            = None
     # task specific extras to use in state
     _default_ctor         : ClassVar[str]       = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
@@ -534,15 +548,13 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
                 return TaskSpec.build(specialized)
             case TaskSpec(sources=[*xs, TaskName() as x] ) if not x <= self.name:
                 raise doot.errors.DootTaskTrackingError("Tried to specialize a task that isn't based on this task", str(data.name), str(self.name), str(data.sources))
-            case TaskSpec(ctor=ctor) if self.ctor not in [ctor, TaskSpec._default_ctor]:
-                raise doot.errors.DootTaskTrackingError("Unknown ctor for spec", data.ctor)
             case TaskSpec():
                 specialized = dict(self)
                 specialized.update({k:v for k,v in dict(data).items() if k in data.model_fields_set})
 
         # Then special updates
-        specialized['name']   = data.name.instantiate()
-        specialized['sources'] = self.sources[:] + [self.name, data.name]
+        specialized['name']         = data.name.instantiate()
+        specialized['sources']      = self.sources[:] + [self.name, data.name]
 
         specialized['actions']      = self.actions      + data.actions
         specialized["depends_on"]   = self.depends_on   + data.depends_on
@@ -551,7 +563,8 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
         specialized["on_fail"]      = self.on_fail      + data.on_fail
         specialized["setup"]        = self.setup        + data.setup
 
-        specialized['flags']        = self.flags | data.flags
+        # Internal is only for initial specs, to control listing
+        specialized['flags']        = (self.flags | data.flags) & (~TaskMeta_f.INTERNAL)
 
         logging.debug("Specialized Task: %s on top of: %s", data.name.readable, self.name)
         return TaskSpec.build(specialized)

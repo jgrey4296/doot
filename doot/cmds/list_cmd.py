@@ -51,12 +51,17 @@ help_l  = printer.getChild("help")
 cmd_l   = printer.getChild("cmd")
 ##-- end logging
 
-INDENT : Final[str] = " "*8
+INDENT     : Final[str]       = " "*8
+hide_names : Final[list[str]] = doot.config.on_fail([]).settings.commands.list.hide()
+hide_re    : re.Pattern = re.compile("^({})".format("|".join(hide_names)))
 
 @doot.check_protocol
 class ListCmd(BaseCommand):
     _name      = "list"
-    _help      = ["A simple command to list all loaded task heads."]
+    _help      = [
+        "A simple command to list all loaded task heads."
+        "Set settings.commands.list.hide with a list of regexs to ignore"
+                ]
 
     @property
     def param_specs(self) -> list[ParamSpec]:
@@ -74,8 +79,7 @@ class ListCmd(BaseCommand):
     def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
         """List task generators"""
         logging.debug("Starting to List Jobs/Tasks")
-
-        if (doot.args.cmd.args.pattern == ""     # type: ignore
+        if (doot.args.on_fail("").cmd.args.pattern() == ""     # type: ignore
             and not bool(doot.args.tasks)        # type: ignore
             and not doot.args.cmd.args.by_source # type: ignore
             and not doot.args.cmd.args.all):     # type: ignore
@@ -153,11 +157,13 @@ class ListCmd(BaseCommand):
                 continue
             if TaskMeta_f.DISABLED in spec.flags:
                 continue
-
+            if bool(hide_names) and hide_re.search(str(spec.name)):
+                continue
 
             groups[spec.name.group].append((spec.name.task,
                                             (spec.doc[0] if bool(spec.doc) else "")[:60],
-                                            spec.sources))
+                                            (spec.sources[0] if bool(spec.sources) else "None")
+                                           ))
 
         for group, tasks in groups.items():
             cmd_l.info("*   %s::", group, extra={"colour":"magenta"})

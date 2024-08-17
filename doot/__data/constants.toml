@@ -37,8 +37,10 @@ PARAM_ASSIGN_PREFIX     = "--"
 STATE_TASK_NAME_K       = "_task_name"
 STATE_ARG_EXPANSION     = "$arg$"
 DEFAULT_TASK_PREFIX     = "task_"
+TASK_PARSE_SEP          = "--"
 
 [doot.constants.misc]
+EMPTY_CLI_CMD           = "list"
 DEFAULT_CLI_CMD         = "run"
 ANNOUNCE_EXIT           = false
 ANNOUNCE_VOICE          = "Moira"

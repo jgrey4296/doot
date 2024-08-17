@@ -5,17 +5,18 @@ loaders                  = { commands="default", task="default", parser="default
 location_check           = { make_missing = true }
 
 [settings.tasks]
-sources = [".tasks", "~/.config/.templates/doot/py_upload"] # Files or directories where task specs can be loaded from, expanded according to [[locations]] keys
+sources = [".tasks", "~/.config/.templates/doot/py_upload", "~/.config/.templates/doot/repo_chores"] # Files or directories where task specs can be loaded from, expanded according to [[locations]] keys
 code    = []                                       # Directories where task specific code can be imported from, expanded according to [[locations]] keys
 sleep   = { tasks=0.2, subtask=1, batch=1 }
+
+[settings.commands]
+# Settings for commands, like telling the 'run' command what backends to use
+run  = { tracker = "default", runner = "default", reporter= "default", report-line = []}
+list = { hide=["simple::"] }
 
 [plugins]
 # Allows for defining aliases
 command        = { tasks="doot.cmds.list_cmd:ListCmd", pl="doot.cmds.plugins_cmd:PluginsCmd" }
-
-[commands]
-# Settings for commands, like telling the 'run' command what backends to use
-run = { tracker = "default", runner = "default", reporter= "default", report-line = []}
 
 [logging]
 stream  = { level="WARNING", format="{levelname:<8} : {message}", filters=["doot"], target="stdout" }
@@ -25,6 +26,7 @@ printer = { level="INFO",    format="{message}", colour=true, target="stdout", p
 [logging.subprinters]
 setup    = {level="WARNING", format="Setup: {message}", propagate=false}
 shutdown = {level="WARNING", format="Shutdown: {message}", propagate=false}
+
 [logging.extra]
 
 [[locations]]

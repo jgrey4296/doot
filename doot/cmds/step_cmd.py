@@ -43,10 +43,10 @@ from doot.task.check_locs import CheckLocsTask
 
 printer                  = logmod.getLogger("doot._printer")
 
-runner_target            = doot.config.on_fail("step", str).commands.step.runner()
-tracker_target           = doot.config.on_fail("default", str).commands.step.tracker()
-reporter_target          = doot.config.on_fail("default", str).commands.step.reporter()
-report_line_targets      = doot.config.on_fail([]).commands.run.report_line(wrapper=list)
+runner_target            = doot.config.on_fail("step", str).settings.commands.step.runner()
+tracker_target           = doot.config.on_fail("default", str).settings.commands.step.tracker()
+reporter_target          = doot.config.on_fail("default", str).settings.commands.step.reporter()
+report_line_targets      = doot.config.on_fail([]).settings.commands.run.report_line(wrapper=list)
 
 class StepCmd(BaseCommand):
     """

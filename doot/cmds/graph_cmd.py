@@ -47,7 +47,7 @@ import matplotlib.pyplot as plt
 printer                  = logmod.getLogger("doot._printer")
 
 INDENT : Final[str]      = " "*8
-tracker_target           = doot.config.on_fail("default", str).commands.run.tracker()
+tracker_target           = doot.config.on_fail("default", str).settings.commands.run.tracker()
 
 @doot.check_protocol
 class GraphCmd(BaseCommand):
