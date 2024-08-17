@@ -17,7 +17,8 @@ max_steps = 100_000
 
 [settings.commands]
 # Override sub settings of a command
-run = { tracker = "default", runner = "default", reporter= "default", report-line = []}
+run  = { tracker = "default", runner = "default", reporter= "default", report-line = []}
+list = { hide=[] }
 
 [logging]
 # Standard loggers. See LoggerSpec.

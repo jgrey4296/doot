@@ -323,11 +323,7 @@ class _SpecUtils_m:
         if bool((missing:=inject_keys - extra_keys)):
             raise doot.errors.DootTaskTrackingError("Can not inject keys not found in the control spec", missing, self.name)
 
-        try:
-            injection = {k:extra[v] for k,v in context.inject.items()}
-        except Exception:
-            breakpoint()
-            pass
+        injection = {k:extra[v] for k,v in context.inject.items()}
 
         return injection
 
