@@ -349,11 +349,6 @@ class _TrackerStore:
                     case _: # Ignore action specs
                         pass
 
-            # If the spec is abstract, create an initial concrete version
-            # if not bool(spec.flags & (TaskMeta_f.TRANSFORMER|TaskMeta_f.CONCRETE)):
-            #     logging.debug("Instantiating Initial Concrete for abstract: %s", spec.name)
-            #     self._instantiate_spec(spec.name)
-
     def get_status(self, task:ConcreteId) -> TaskStatus_e:
         """ Get the status of a task or artifact """
         match task:
