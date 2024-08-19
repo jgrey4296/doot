@@ -4,6 +4,57 @@ All notable changes to this project will be documented in this file.
 
 (Generated using [git-cliff](https://git-cliff.org/)
 
+## [0.11.0] - 2024-08-19
+
+### Features
+
+- Globbing for copy action
+- Docstring printing for stubbing actions
+- Dkey expansion tests
+- Track_l logging for tracker
+- .related
+- Empty cmd control
+- Hide names in list cmd
+- Branch 'linux-main'
+- Branch 'feature.tracker.edge.annotations'
+- Multikey expansion handling of subkey conflicts
+- Branch 'feature.multikey.subkey.conflicts'
+
+### Bug Fixes
+
+- Postbox
+- Task spec specialization
+- Dkey expansion
+- Job expansion
+- Spec injection building
+- Task spec flag init
+- Parser
+- Cleanup task tracking
+- Mutikey expansion
+
+### Dependencies
+
+- Pre-commit
+- Doot setup
+- .related
+- Version 0.10.0 -> 0.11.0
+
+### Refactoring
+
+- Agendas
+- Dkey expansion
+- Config commands -> config.settings.commands
+
+### [agenda]
+
+- Tag entries
+
+### [internal]
+
+- Add taskname query for relation spec
+- Improve taskname
+- Update tracker to use new task spec methods
+
 ## [0.10.0] - 2024-08-06
 
 ### Features
