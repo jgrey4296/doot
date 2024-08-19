@@ -98,10 +98,7 @@ class _JobUtils_m:
         """ Get from the spec's sourcs just its source tasks """
         return [x for x in self.sources if isinstance(x, TaskName)]
 
-    def job_head_name(self) -> TaskName:
-        return self.name.root(top=True).job_head()
-
-    def job_top(self) -> list[TaskSpec]:
+    def gen_job_head(self) -> list[TaskSpec]:
         """
           Generate a top spec for a job, taking the jobs cleanup actions
           and using them as the head's main action.
@@ -120,7 +117,7 @@ class _JobUtils_m:
             return []
         if (TaskMeta_f.CONCRETE | TaskMeta_f.JOB_HEAD) & self.flags:
             return []
-        if (job_head:=self.job_head_name()) == self.name:
+        if (job_head:=self.name.job_head()) is self.name:
             return []
 
         tasks             = []
@@ -135,27 +132,35 @@ class _JobUtils_m:
             "extra"           : self.extra,
             "queue_behaviour" : QueueMeta_e.reactive,
             "depends_on"      : [self.name] + head_dependencies,
-            "required_for"    : [job_head.subtask("cleanup")] if bool(self.cleanup) else [],
+            "required_for"    : [job_head.cleanup_name()],
+            "cleanup"         : self.cleanup[:],
             "flags"           : (self.flags | TaskMeta_f.JOB_HEAD) & ~TaskMeta_f.JOB,
             "actions"         : head_actions,
             })
         assert(TaskMeta_f.JOB not in head.name)
         assert(TaskMeta_f.JOB not in head.flags)
         tasks.append(head)
-        if not bool(self.cleanup):
-            return tasks
+        # tasks.append(self.gen_cleanup_task())
+        return tasks
+
+    def gen_cleanup_task(self) -> TaskSpec:
+        """ Generate a cleanup task, shifting the 'cleanup' actions and dependencies
+          to 'depends_on' and 'actions'
+        """
+        base_deps = [self.name] + [x for x in self.cleanup if isinstance(x, RelationSpec)]
+        actions   = [x for x in self.cleanup if isinstance(x, ActionSpec)]
 
         cleanup : TaskSpec = TaskSpec.build({
-            "name"            : job_head.subtask("cleanup"),
+            "name"            : self.name.cleanup_name(),
             "sources"         : self.sources[:] + [self.name, None],
-            "actions"         : [x for x in self.cleanup if isinstance(x, ActionSpec)],
+            "actions"         : actions,
             "extra"           : self.extra,
             "queue_behaviour" : QueueMeta_e.reactive,
-            "depends_on"      : [self.name, job_head] + [x for x in self.cleanup if isinstance(x, RelationSpec)],
+            "depends_on"      : base_deps,
             "flags"           : (self.flags | TaskMeta_f.TASK) & ~TaskMeta_f.JOB,
             })
-        tasks.append(cleanup)
-        return tasks
+        assert(not bool(cleanup.cleanup))
+        return cleanup
 
 class _TransformerUtils_m:
     """Utilities for artifact transformers"""
@@ -518,9 +523,10 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
         return [self.depends_on, self.setup, self.actions, self.cleanup, self.on_fail]
 
     def action_group_elements(self) -> Iterable[ActionSpec|RelationSpec]:
+        """ Get the elements of: depends_on, setup, actions, and require_for.
+          *never* cleanup, which generates its own task
+        """
         queue = [self.depends_on, self.setup, self.actions, self.required_for]
-        if TaskMeta_f.JOB not in self.flags:
-            queue += [self.cleanup]
 
         for group in queue:
             for elem in group:
