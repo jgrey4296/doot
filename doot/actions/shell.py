@@ -101,9 +101,9 @@ class DootShellAction(Action_p):
         env        = env or sh
         try:
             # Build the command by getting it from env, :
-            cmd                     = getattr(env, DKey(args[0]).expand(spec, state))
-            keys                    = [DKey(x) for x in args[1:]]
-            expanded                = [str(x.expand(spec, state, locs=doot.locs)) for x in keys]
+            cmd                     = getattr(env, DKey(args[0], fallback=args[0]).expand(spec, state))
+            keys                    = [DKey(x, mark=DKey.mark.MULTI, fallback=x) for x in args[1:]]
+            expanded                = [str(x.expand(spec, state)) for x in keys]
             result                  = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=not notty, _cwd=cwd )
             if result.exit_code not in exitcodes:
                 printer.warning("Shell Command Failed: %s", result.exit_code)
