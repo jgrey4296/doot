@@ -233,33 +233,32 @@ class DootTracker(BaseTracker, TaskTracker_i):
                     track_l.debug("Tearing Down: %s", focus)
                     self.active_set.remove(focus)
                     self.set_status(focus, TaskStatus_e.DEAD)
-                case TaskStatus_e.SUCCESS if TaskMeta_f.JOB in focus:
-                    track_l.debug("Job Object Success, queuing head: %s", focus)
-                    self.queue_entry(focus.root(top=True).job_head())
-                    if (cleanup:=focus.root(top=True).job_head().subtask("cleanup")) in self.specs:
-                        self.queue_entry(cleanup)
-                    self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
-                    self.build_network()
+                    cleanups = [x for x in self.network.succ[focus] if self.network.edges[focus, x].get("cleanup", False)]
+                    if bool(cleanups):
+                        self.queue_entry(cleanups[0])
                 case TaskStatus_e.SUCCESS | TaskStatus_e.EXISTS:
                     track_l.info("Task Succeeded: %s", focus)
                     self.execution_trace.append(focus)
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
-                    for succ in [x for x in self.network.succ[focus] if self.get_status(x) in TaskStatus_e.success_set]:
-                        if nx.has_path(self.network, succ, self._root_node):
-                            self.queue_entry(succ)
+                    heads = [x for x in self.network.succ[focus] if self.network.edges[focus, x].get("job_head", False)]
+                    if bool(heads):
+                        self.queue_entry(heads[0])
                 case TaskStatus_e.FAILED:  # propagate failure
                     self.active_set.remove(focus)
                     fail_l.warning("Task Failed, Propagating from: %s to: %s", focus, list(self.network.succ[focus]))
+                    self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
                     for succ in self.network.succ[focus]:
                         self.set_status(succ, TaskStatus_e.FAILED)
                 case TaskStatus_e.HALTED:  # remove and propagate halted status
-                    self.active_set.remove(focus)
                     fail_l.warning("Task Halted, Propagating from: %s to: %s", focus, list(self.network.succ[focus]))
                     for succ in self.network.succ[focus]:
+                        if self.network.edges[focus, succ].get("cleanup", False):
+                            pass
                         self.set_status(succ, TaskStatus_e.HALTED)
+                    self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
                 case TaskStatus_e.SKIPPED:
                     skip_l.info("Task was skipped: %s", focus)
-                    self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
+                    self.queue_entry(focus, status=TaskStatus_e.DEAD)
                 case TaskStatus_e.RUNNING:
                     track_l.info("Awaiting Runner to update status for: %s", focus)
                     self.queue_entry(focus)

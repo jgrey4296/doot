@@ -275,4 +275,66 @@ class TestTaskSpecInstantiation:
 
     @pytest.mark.skip
     def test_cli_arg_application(self):
+        """
+          TODO move the logic for cli arg application from tracker
+          into task spec
+        """
         pass
+
+
+class TestTaskGeneration:
+    """ eg: job heads and cleanup tasks
+
+    """
+
+    def test_basic(self):
+        base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0})
+        assert(isinstance(base_task, structs.TaskSpec))
+
+
+    def test_empty_cleanup_gen(self):
+        base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0})
+        cleanup_task  = base_task.gen_cleanup_task()
+        assert(isinstance(cleanup_task, structs.TaskSpec))
+        assert(not bool(cleanup_task.actions))
+        assert(base_task.name in cleanup_task.depends_on[0])
+
+
+    def test_cleanup_gen(self):
+        base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "cleanup": [{"do":"log", "msg":"blah"}]})
+        cleanup_task  = base_task.gen_cleanup_task()
+        assert(isinstance(cleanup_task, structs.TaskSpec))
+        assert(bool(cleanup_task.actions))
+        assert(base_task.name in cleanup_task.depends_on[0])
+
+
+    def test_instantiated_cleanup_gen(self):
+        base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "cleanup": [{"do":"log", "msg":"blah"}]})
+        instance      = base_task.specialize_from(base_task)
+        assert(TaskMeta_f.CONCRETE in instance.name)
+        cleanup_task  = base_task.gen_cleanup_task()
+        assert(isinstance(cleanup_task, structs.TaskSpec))
+        assert(bool(cleanup_task.actions))
+        assert(base_task.name in cleanup_task.depends_on[0])
+
+
+    def test_job_head_gen_empty_cleanup(self):
+        base_task     = structs.TaskSpec.build({"name": "agroup.+::base", "a": 0, "cleanup": []})
+        match base_task.gen_job_head():
+            case [structs.TaskSpec() as head]:
+               assert(structs.TaskName._head_marker in head.name)
+               assert(not bool(head.actions))
+               assert(base_task.name in head.depends_on[0])
+            case xs:
+                assert(False), xs
+
+
+    def test_job_head_gen(self):
+        base_task     = structs.TaskSpec.build({"name": "agroup.+::base", "a": 0, "cleanup": [{"do":"log", "msg":"blah"}], "head_actions":[{"do":"log","msg":"bloo"}]})
+        match base_task.gen_job_head():
+            case [structs.TaskSpec() as head]:
+               assert(structs.TaskName._head_marker in head.name)
+               assert(bool(head.actions))
+               assert(base_task.name in head.depends_on[0])
+            case _:
+                assert(False)

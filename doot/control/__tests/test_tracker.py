@@ -155,8 +155,13 @@ class TestTrackerNext:
         obj.build_network()
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.HALTED)
-        assert(obj.next_for() == None)
-        assert(all(x.status == TaskStatus_e.HALTED for x in obj.tasks.values()))
+        cleanup = obj.next_for()
+        assert(isinstance(cleanup, Task_i))
+        assert("$cleanup$" in cleanup.name)
+        for x in obj.tasks.values():
+            if "$cleanup$" in x.name:
+                continue
+            assert(x.status in [TaskStatus_e.HALTED, TaskStatus_e.DEAD])
 
 
     def test_next_fail(self):
@@ -170,8 +175,12 @@ class TestTrackerNext:
         obj.build_network()
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.FAILED)
-        assert(obj.next_for() == None)
-        assert(all(x.status == TaskStatus_e.FAILED for x in obj.tasks.values()))
+        cleanup = obj.next_for()
+        assert("$cleanup$" in cleanup.name)
+        for x in obj.tasks.values():
+            if "$cleanup$" in x.name:
+                continue
+            assert(x.status in [TaskStatus_e.DEAD])
 
     def test_next_job_head(self):
         obj       = DootTracker()
@@ -186,11 +195,14 @@ class TestTrackerNext:
         # conc_job_head = obj.concrete[job_spec.name.job_head()][0]
         obj.build_network()
         assert(bool(obj.active_set))
+        assert(obj.network_is_valid)
         # head is in network
         # assert(conc_job_head in obj.network.nodes)
         assert(obj.next_for().name == conc_job_body)
         obj.set_status(conc_job_body, TaskStatus_e.SUCCESS)
+        assert(obj.network_is_valid)
         result = obj.next_for()
+        assert(obj.network_is_valid)
         assert(job_spec.name.job_head() < result.name)
         obj.set_status(result.name, TaskStatus_e.SUCCESS)
         result = obj.next_for()
@@ -326,7 +338,13 @@ class TestTrackerWalk:
             "basic::dep.3",
             "basic::dep.2",
             "basic::beta",
+            "basic::dep.4..$cleanup$",
+            "basic::dep.1..$cleanup$",
+            "basic::dep.3..$cleanup$",
             "basic::alpha",
+            "basic::dep.2..$cleanup$",
+            "basic::beta..$cleanup$",
+            "basic::alpha..$cleanup$",
             ]
         head, tail = specs
         obj      = DootTracker()
@@ -352,7 +370,13 @@ class TestTrackerWalk:
             "basic::dep.3",
             "basic::dep.2",
             "basic::beta",
+            "basic::dep.4..$cleanup$",
+            "basic::dep.1..$cleanup$",
+            "basic::dep.3..$cleanup$",
             "basic::alpha",
+            "basic::dep.2..$cleanup$",
+            "basic::beta..$cleanup$",
+            "basic::alpha..$cleanup$",
             ]
         head, tail = specs
         obj      = DootTracker()

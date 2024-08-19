@@ -51,12 +51,34 @@ from doot.enums import Report_f, TaskMeta_f
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+CLEANUP_MARKER : Final[str] = "$cleanup$"
+
 class _TaskNameOps_m:
     """ Operations Mixin for manipulating TaskNames """
 
-    def is_instance(self) -> bool:
+    def job_head(self) -> TaskName:
+        """ generate a canonical head/completion task name for this name
+        eg: (concrete) group::simple.task..$gen$.<UUID> ->  group::simple.task..$gen$.<UUID>..$head$
+        eg: (abstract) group::simple.task. -> group::simple.task..$head$
+
+        """
+        stripped = self.uninstantiate()
+        if TaskMeta_f.JOB_HEAD in stripped:
+            return stripped
+
+        return stripped.subtask(TaskName._head_marker)
+
+    def cleanup_name(self) -> TaskName:
+        """ canonical cleanup name """
+        stripped = self.uninstantiate()
+        if  stripped.last() == CLEANUP_MARKER:
+            return stripped
+
+        return stripped.subtask(CLEANUP_MARKER)
+
+    def is_instantiated(self) -> bool:
         """ utility method to test if this name refers to a concrete task """
-        return TaskMeta_f.CONCRETE in self.meta
+        return TaskMeta_f.CONCRETE in self.meta and isinstance(self.last(), UUID)
 
     def match_version(self, other) -> bool:
         """ match version constraints of two task names against each other """
@@ -127,17 +149,6 @@ class _TaskNameOps_m:
                         args=args,
                         )
 
-    def job_head(self) -> TaskName:
-        """ generate a canonical head/completion task name for this name
-        eg: (concrete) group::simple.task..$gen$.<UUID> ->  group::simple.task..$gen$.<UUID>..$head$
-        eg: (abstract) group::simple.task. -> group::simple.task..$head$
-
-        """
-        if TaskMeta_f.JOB_HEAD in self.meta:
-            return self
-
-        return self.subtask(TaskName._head_marker)
-
     def instantiate(self, *, prefix=None) -> TaskName:
         """ Generate a concrete instance of this name with a UUID appended,
         optionally can add a prefix
@@ -145,12 +156,46 @@ class _TaskNameOps_m:
 
           ie: a.task.group::task.name..{prefix?}.$gen$.<UUID>
         """
+        if isinstance(self.last(), UUID):
+            return self
+
+        stripped = self.uninstantiate()
+
         uuid = uuid1()
         match prefix:
             case None:
-                return self.subtask(TaskName._gen_marker, uuid, uuid=uuid)
+                return stripped.subtask(TaskName._gen_marker, uuid)
             case _:
-                return self.subtask(prefix, TaskName._gen_marker, uuid, uuid=uuid)
+                return stripped.subtask(prefix, TaskName._gen_marker, uuid)
+
+    def uninstantiate(self) -> TaskName:
+        """ take a name and remove the $gen$.{prefix?}.<UUID> parts """
+        if not bool(self.args.get('uuids', None)):
+            return self
+
+        meta = self.meta & (~ TaskMeta_f.CONCRETE)
+        args = self.args.copy()
+        del args['uuids']
+
+        def filter_tail(x,y) -> bool:
+            if (gen_marker:=y == TaskName._gen_marker) and x == "" :
+                return False
+            if gen_marker or isinstance(x, UUID):
+                return False
+            if isinstance(y, UUID):
+                return False
+            return True
+
+        cleaned_tail = [x for x,y in zip(self.tail, self.tail[1:]) if filter_tail(x,y)]
+        if not isinstance(self.tail[-1], UUID):
+            cleaned_tail.append(self.tail[-1])
+
+        return TaskName(head=self.head,
+                        tail=cleaned_tail,
+                        meta=meta,
+                        args=args
+                        )
+
 
     def last(self) -> None|TailEntry:
         """
@@ -252,15 +297,17 @@ class TaskName(StructuredName, _TaskNameOps_m):
             self.meta |= TaskMeta_f.JOB
         if self.tail[0] == TaskName._internal_marker:
             self.meta |= TaskMeta_f.INTERNAL
-        if TaskName._gen_marker in self.tail:
+        if isinstance(self.last(), UUID):
             self.meta |= TaskMeta_f.CONCRETE
         if TaskName._head_marker in self.tail:
             self.meta |= TaskMeta_f.JOB_HEAD
             self.meta &= ~TaskMeta_f.JOB
 
-        if TaskMeta_f.CONCRETE in self.meta and 'uuid' not in self.args:
+        self.args['uuids'] = [x for x in self.tail if isinstance(x, UUID)]
+
+        if self.is_instantiated() and not bool(self.args['uuids']):
             raise ValueError("Instanced Name lacks a stored uuid", self)
-        if TaskMeta_f.CONCRETE in self.meta and TaskName._gen_marker not in self.tail:
+        if self.is_instantiated() and TaskName._gen_marker not in self.tail:
             raise ValueError("Specialized Name lacks the specialized keyword in its tail", self)
         if TaskMeta_f.INTERNAL in self.meta and not self.tail[0] == TaskName._internal_marker:
             raise ValueError("Internal Name lacks a prefix underscore", self)
@@ -295,6 +342,16 @@ class TaskName(StructuredName, _TaskNameOps_m):
                 return other in self.meta
             case _:
                 return super().__contains__(other)
+
+    def __lt__(self, other):
+        match other:
+            case TaskName() if self == other:
+                return False
+            case TaskName():
+                stripped = self.uninstantiate()
+                return super(TaskName, stripped).__lt__(other.uninstantiate().instantiate())
+            case _:
+                return super().__lt__(self, other)
 
     @ftz.cached_property
     def group(self) -> str:
