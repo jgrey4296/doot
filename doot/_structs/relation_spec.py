@@ -127,12 +127,14 @@ class RelationSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
     def __repr__(self):
         return f"<RelationSpec: ? {self.relation.name} {self.target}>"
 
-    def __contains__(self, query:TaskMeta_f|LocationMeta_f) -> bool:
+    def __contains__(self, query:TaskMeta_f|LocationMeta_f|TaskName) -> bool:
         match self.target, query:
-             case TaskName(), TaskMeta_f():
-                 return query in self.target
-             case TaskArtifact(), LocationMeta_f():
-                 return query in self.target
+            case TaskName(), TaskName():
+                return query in self.target
+            case TaskName(), TaskMeta_f():
+                return query in self.target
+            case TaskArtifact(), LocationMeta_f():
+                return query in self.target
 
     def to_edge(self, other:TaskName|TaskArtifact, *, instance:None|TaskName=None) -> tuple[TaskName|TaskArtifact, TaskName|TaskArtifact]:
         """ a helper to make an edge for the tracker.
