@@ -132,8 +132,6 @@ class DKey(metaclass=DKeyMeta):
           explicit : For marking a key as using explicit subkeys with extra text around it
           mark     : Enum for explicitly setting the key type
         """
-        if "explicit" in kwargs:
-            raise DeprecationWarning("explicit in dkey's is deprecated in favour of implicit", data)
         assert(cls is DKey)
         assert(isinstance(mark, DKeyMark_e | None)), mark
 
@@ -487,6 +485,8 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
                 return self._expansion_hook(x.expand(*sources, full=True, **kwargs))
             case [x] if not self._has_text:
                 return self._expansion_hook(x.expand(*sources, **kwargs))
+            case _ if any(isinstance(sub, PathSingleDKey) for sub in self._subkeys):
+                return super().expand(*sources, doot.locs, **kwargs)
             case _:
                 return super().expand(*sources, **kwargs)
 

@@ -18,6 +18,7 @@ logging = logmod.root
 from tomlguard import TomlGuard
 import doot
 doot._test_setup()
+from doot.utils.testing_fixtures import wrap_locs
 from doot.control.locations import DootLocations
 from doot._structs.action_spec import ActionSpec
 from doot._structs import dkey as dkey
@@ -123,8 +124,6 @@ class TestDKeyBasicConstruction:
         assert(mk._unnamed == "--blah={}/{}")
         result = mk.expand({"test": "aweg"})
         assert(result == target)
-
-
 
     def test_initial_nonkey(self):
         key  = dkey.DKey("blah bloo blee")
@@ -721,12 +720,13 @@ class TestDKeyExpansionMain:
         assert(exp == target)
 
     @pytest.mark.parametrize("name", ["a", "b"])
-    def test_multikey_with_subpath(self, name):
+    def test_multikey_with_subpath(self, name, wrap_locs):
         """ {name!p}/{name} -> {x}/{x} -> Path(y/y) """
-        target      = "--test=%s" % pl.Path("y/x").resolve()
-        path_marked = "--test={%s!p}/x" % name
+        wrap_locs.update({"changelog": "sub/changelog.md"})
+        target      = "--test=%s/x {missing}" % wrap_locs.changelog
+        path_marked = "--test={%s!p}/x {missing}" % name
         key         = dkey.DKey(path_marked, mark=dkey.DKey.mark.MULTI, implicit=False)
-        state       = {name :"{x}", "x": "y"}
+        state       = {name :"{changelog}"}
         exp         = key.expand(state)
         assert(isinstance(key, dkey.MultiDKey))
         assert(not isinstance(key, dkey.PathMultiDKey))

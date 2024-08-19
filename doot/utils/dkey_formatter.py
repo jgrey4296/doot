@@ -133,6 +133,8 @@ def chained_get(key:Key_p, *sources:dict|SpecStruct_p|DootLocations, fallback=No
             case list():
                 replacement = source.pop()
             case _ if hasattr(source, "get"):
+                if key not in source:
+                    continue
                 replacement = source.get(key, fallback)
             case SpecStruct_p():
                 params      = source.params
@@ -142,7 +144,6 @@ def chained_get(key:Key_p, *sources:dict|SpecStruct_p|DootLocations, fallback=No
             return replacement
 
     return fallback
-
 
 class _DKeyParams(BaseModel):
     """ Utility class for parsed string parameters """
@@ -213,6 +214,44 @@ class DKeyFormatterEntry_m:
         except ValueError:
             return True, []
 
+    @classmethod
+    def expand(cls, key:Key_p, *, sources=None, max=None, **kwargs) -> None|Any:
+        """ static method to a singleton key formatter """
+        if not cls._instance:
+            cls._instance = cls()
+
+        fallback               = kwargs.get("fallback", None)
+        with cls._instance(key=key, sources=sources, fallback=fallback, rec=max) as fmt:
+            result = fmt._expand(key)
+            logging.debug("Expansion Result: %s", result)
+            return result
+
+    @classmethod
+    def redirect(cls, key:Key_p, *, sources=None, **kwargs) -> list[Key_p|str]:
+        """ static method to a singleton key formatter """
+        if not cls._instance:
+            cls._instance = cls()
+
+        fallback               = kwargs.get("fallback", None)
+        with cls._instance(key=key, sources=sources, fallback=fallback, rec=1) as fmt:
+            result = fmt._try_redirection(key)
+            logging.debug("Redirection Result: %s", result)
+            return result
+
+    @classmethod
+    def fmt(cls, key:Key_p|str, /, *args, **kwargs) -> str:
+        """ static method to a singleton key formatter """
+        if not cls._instance:
+            cls._instance = cls()
+
+        spec                   = kwargs.get('spec', None)
+        state                  = kwargs.get('state', None)
+        locs                   = kwargs.get('locs', doot.locs)
+        fallback               = kwargs.get("fallback", None)
+
+        with cls._instance(key=key, sources=[spec, state, locs], fallback=fallback) as fmt:
+            return fmt.format(key, *args, **kwargs)
+
     def __call__(self, *, key=None, sources=None, fallback=None, rec=None) -> Self:
         if self._entered:
             raise RuntimeError("trying to enter an already entered formatter")
@@ -239,30 +278,6 @@ class DKeyFormatterEntry_m:
 class DKeyFormatter_Expansion_m:
 
     _multikey_expansion_types = (str, pl.Path)
-
-    @classmethod
-    def expand(cls, key:Key_p, *, sources=None, max=None, **kwargs) -> None|Any:
-        """ static method to a singleton key formatter """
-        if not cls._instance:
-            cls._instance = cls()
-
-        fallback               = kwargs.get("fallback", None)
-        with cls._instance(key=key, sources=sources, fallback=fallback, rec=max) as fmt:
-            result = fmt._expand(key)
-            logging.debug("Expansion Result: %s", result)
-            return result
-
-    @classmethod
-    def redirect(cls, key:Key_p, *, sources=None, **kwargs) -> list[Key_p|str]:
-        """ static method to a singleton key formatter """
-        if not cls._instance:
-            cls._instance = cls()
-
-        fallback               = kwargs.get("fallback", None)
-        with cls._instance(key=key, sources=sources, fallback=fallback, rec=1) as fmt:
-            result = fmt._try_redirection(key)
-            logging.debug("Redirection Result: %s", result)
-            return result
 
     def _expand(self, key:Key_p|str, *, fallback=None, count=1) -> None|Any:
         logging.debug("Entering Formatter for: %s", key)
@@ -312,7 +327,7 @@ class DKeyFormatter_Expansion_m:
         expanded        = self.format(key._unnamed, *expanded_keys)
         return expanded
 
-    def _try_redirection(self, key:str|Key_p) -> list[Key_p]:
+    def _try_redirection(self, key:Key_p) -> list[Key_p|str]:
         """ Try to redirect a key if necessary,
           if theres no redirection, return the key as a direct key
           """
@@ -331,13 +346,13 @@ class DKeyFormatter_Expansion_m:
                 logging.debug("No Redirection found for %s", keystr)
                 return [self.format_field(key, "d")]
 
-    def _single_expand(self, key:Key_p) -> None|Any:
+    def _single_expand(self, key:str|Key_p, fallback=None) -> None|Any:
         """
           Expand a single key up to {rec_remaining} times
         """
         logging.debug("Single Expansion: %s", key)
         key_str           = self.format_field(key, "d")
-        match chained_get(key_str, *self.sources):
+        match chained_get(key_str, *self.sources, fallback=fallback):
             case None:
                 return None
             case Key_p() as x:
@@ -359,9 +374,9 @@ class DKeyFormatter_Expansion_m:
                 return key
             case _, [*xs]:
                 # {keys}, so expand them
-                prepped = [(self.format_field(x[1], "w"), x[1]) for x in xs]
-                expansion_dict = { x[1] : self._single_expand(x[1]) or x[0] for x in prepped}
-                expanded = self.format(key, **expansion_dict)
+                anon           = self.format(key, **{x.key : "{}" for x in xs})
+                expansion_list = [ self._single_expand(x[1], fallback=x[1]) for x in xs]
+                expanded       = self.format(anon, *expansion_list)
                 return expanded
             case _:
                 return key
@@ -372,20 +387,6 @@ class DKeyFormatter(string.Formatter, DKeyFormatter_Expansion_m, DKeyFormatterEn
       and doot specs/state.
 
     """
-
-    @classmethod
-    def fmt(cls, key:Key_p|str, /, *args, **kwargs) -> str:
-        """ static method to a singleton key formatter """
-        if not cls._instance:
-            cls._instance = cls()
-
-        spec                   = kwargs.get('spec', None)
-        state                  = kwargs.get('state', None)
-        locs                   = kwargs.get('locs', doot.locs)
-        fallback               = kwargs.get("fallback", None)
-
-        with cls._instance(key=key, sources=[spec, state, locs], fallback=fallback) as fmt:
-            return fmt.format(key, *args, **kwargs)
 
     def format(self, key:str|Key_p, /, *args, **kwargs) -> str:
         """ format keys as strings """
