@@ -25,11 +25,6 @@ from uuid import UUID, uuid1
 
 logging = logmod.root
 
-# ##-- stdlib imports
-from uuid import UUID
-
-# ##-- end stdlib imports
-
 # ##-- 3rd party imports
 import pytest
 from tomlguard import TomlGuard
@@ -62,7 +57,7 @@ class TestTrackerStore:
         assert(not bool(obj.specs))
         obj.register_spec(spec)
         assert(bool(obj.specs))
-
+        assert(len(obj.specs) == 2)
 
     def test_register_job_spec(self):
         obj = BaseTracker()
@@ -73,37 +68,25 @@ class TestTrackerStore:
         assert(spec.name in obj.specs)
         assert(spec.name.job_head() in obj.specs)
         assert(not bool(obj.concrete[spec.name]))
-        # conc_spec = obj.concrete[spec.name][0]
-        # assert(conc_spec.job_head() not in obj.specs)
-
-
-    def test_register_spec_instantiates(self):
-        obj = BaseTracker()
-        spec = doot.structs.TaskSpec.build({"name":"basic::task"})
-        assert(not bool(obj.specs))
-        assert(not bool(obj.concrete[spec.name]))
-        obj.register_spec(spec)
-        assert(bool(obj.specs))
-        assert(not bool(obj.concrete[spec.name]))
-
 
     def test_register_is_idempotent(self):
-        obj = BaseTracker()
+        obj  = BaseTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::task"})
         assert(not bool(obj.specs))
         assert(not bool(obj.concrete[spec.name]))
-        for i in range(5):
+        assert(len(obj.specs) == 0)
+        for _ in range(5):
             obj.register_spec(spec)
-            assert(len(obj.specs) == 1)
+            assert(len(obj.specs) == 2) # the spec, and cleanup
             assert(len(obj.concrete[spec.name]) == 0)
 
     def test_register_spec_with_artifacts(self):
-        obj = BaseTracker()
+        obj  = BaseTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["file:>test.txt"], "required_for": ["file:>other.txt"]})
         assert(not bool(obj.artifacts))
         obj.register_spec(spec)
         assert(bool(obj.artifacts))
-
+        assert(len(obj.artifacts) == 2)
 
     def test_register_spec_ignores_disabled(self):
         obj = BaseTracker()
@@ -118,7 +101,7 @@ class TestTrackerStore:
         assert(len(obj.specs) == 0)
         assert(len(obj._transformer_specs) == 0)
         obj.register_spec(spec)
-        assert(len(obj.specs) == 1)
+        assert(len(obj.specs) == 2)
         assert(len(obj._transformer_specs) == 2)
         assert("?.txt" in obj._transformer_specs)
         assert("?.blah" in obj._transformer_specs)
@@ -220,6 +203,31 @@ class TestTrackerNetwork:
         assert(name2 in obj.network.succ[name1])
         assert(name1 in obj.network.pred[name2])
 
+    def test_connect_idempotent(self):
+        obj = BaseTracker()
+        name1 = doot.structs.TaskName.build("basic::task").instantiate()
+        name2 = doot.structs.TaskName.build("basic::other").instantiate()
+        # Mock the tasks:
+        obj.specs[name1] = True
+        obj.specs[name2] = True
+        obj.connect(name1, name2)
+        assert(len(obj.network.succ[name1]) == 1)
+        assert(len(obj.network.pred[name2]) == 1)
+        obj.connect(name1, name2)
+        assert(len(obj.network.succ[name1]) == 1)
+        assert(len(obj.network.pred[name2]) == 1)
+
+    def test_connect_tasks_must_be_instanced(self):
+        obj = BaseTracker()
+        name1 = doot.structs.TaskName.build("basic::task")
+        name2 = doot.structs.TaskName.build("basic::other")
+        # Mock the specs:
+        obj.specs[name1] = True
+        obj.specs[name2] = True
+
+        with pytest.raises(doot.errors.DootTaskTrackingError):
+            obj.connect(name1, name2)
+
     def test_connect_artifact(self):
         obj      = BaseTracker()
         name1    = doot.structs.TaskName.build("basic::task").instantiate()
@@ -263,20 +271,6 @@ class TestTrackerNetwork:
         assert(name2 in obj.network.succ[name1])
         assert(name1 in obj.network.pred[name2])
 
-    def test_connect_idempotent(self):
-        obj = BaseTracker()
-        name1 = doot.structs.TaskName.build("basic::task").instantiate()
-        name2 = doot.structs.TaskName.build("basic::other").instantiate()
-        # Mock the tasks:
-        obj.specs[name1] = True
-        obj.specs[name2] = True
-        obj.connect(name1, name2)
-        assert(len(obj.network.succ[name1]) == 1)
-        assert(len(obj.network.pred[name2]) == 1)
-        obj.connect(name1, name2)
-        assert(len(obj.network.succ[name1]) == 1)
-        assert(len(obj.network.pred[name2]) == 1)
-
 class TestTrackerNetworkBuild:
 
     def test_build_empty(self):
@@ -300,7 +294,7 @@ class TestTrackerNetworkBuild:
         obj.connect(instance)
         assert(len(obj.network) == 2)
         obj.build_network()
-        assert(len(obj.network) == 3)
+        assert(len(obj.network) == 5)
         assert(obj.concrete[spec2.name][0] in obj.network.pred[instance])
         assert(instance in obj.network.succ[obj.concrete[spec2.name][0]])
 
@@ -315,9 +309,22 @@ class TestTrackerNetworkBuild:
         obj.connect(instance)
         assert(len(obj.network) == 2)
         obj.build_network()
-        assert(len(obj.network) == 3)
+        assert(len(obj.network) == 5)
         assert(obj.concrete[spec2.name][0] in obj.network.succ[instance])
         assert(instance in obj.network.pred[obj.concrete[spec2.name][0]])
+
+
+    def test_build_cleanup_task_empty(self):
+        obj   = BaseTracker()
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task"})
+        obj.register_spec(spec)
+        instance = obj._instantiate_spec(spec.name)
+        instance_cleanup = instance.cleanup_name()
+        assert(len(obj.network) == 1)
+        obj.connect(instance)
+        assert(len(obj.network) == 2)
+        obj.build_network()
+        assert(len(obj.network) == 3)
 
 
     def test_build_dep_chain(self):
@@ -334,10 +341,9 @@ class TestTrackerNetworkBuild:
         assert(len(obj.network) == 2)
         obj.build_network()
         obj.validate_network()
-        assert(len(obj.network) == 4)
+        assert(len(obj.network) == 7)
         assert(obj.concrete[spec2.name][0] in obj.network.pred[instance])
         assert(obj.concrete[spec3.name][0] in obj.network.pred[obj.concrete[spec2.name][0]])
-
 
     def test_build_dep_chain_with_artifact(self):
         """check basic::task triggers basic::dep via the intermediary of the artifact test.blah"""
@@ -351,7 +357,7 @@ class TestTrackerNetworkBuild:
         assert(len(obj.network) == 2)
         obj.build_network()
         obj.validate_network()
-        assert(len(obj.network) == 4)
+        assert(len(obj.network) == 6)
         # Check theres a path between the specs, via the artifact
         assert(nx.has_path(obj.network, obj.concrete[spec2.name][0], instance))
 
@@ -367,7 +373,7 @@ class TestTrackerNetworkBuild:
         assert(len(obj.network) == 2)
         obj.build_network()
         obj.validate_network()
-        assert(len(obj.network) == 3)
+        assert(len(obj.network) == 5)
         assert(obj.concrete[spec2.name][0] in obj.network.pred[instance])
 
     def test_build_dep_match_with_constraint(self):
@@ -381,8 +387,8 @@ class TestTrackerNetworkBuild:
         obj.connect(instance)
         assert(len(obj.network) == 2)
         obj.build_network()
-        assert(len(obj.network) == 3)
-        pred = list(obj.network.pred[instance])[0]
+        assert(len(obj.network) == 5)
+        pred = next(iter(obj.network.pred[instance]))
         assert(spec2.name  < pred)
         assert(spec.test_key == obj.specs[pred].test_key)
 
@@ -410,11 +416,10 @@ class TestTrackerNetworkBuild:
         obj.connect(instance)
         assert(len(obj.network) == 2)
         obj.build_network()
-        assert(len(obj.network) == 3)
+        assert(len(obj.network) == 5)
         pred = list(obj.network.pred[instance])[0]
         assert(spec2.name  < pred)
         assert(spec.test_key == obj.specs[pred].inj_key)
-
 
     def test_build_dep_match_with_injection_fail(self):
         obj   = BaseTracker()
@@ -445,7 +450,7 @@ class TestTrackerNetworkBuild:
         obj.connect(instance)
         assert(len(obj.network) == 2)
         obj.build_network()
-        assert(len(obj.network) == 4)
+        assert(len(obj.network) == 7)
         pred1 = list(obj.network.pred[instance])[0]
         assert(spec2.name  < pred1)
         assert(spec.test_key == obj.specs[pred1].test_key)
@@ -474,13 +479,11 @@ class TestTrackerNetworkBuild:
         obj.connect(instance)
         assert(len(obj.network) == 2)
         obj.build_network()
-        assert(len(obj.network) == 4)
-        succ1 = [x for x in obj.network.succ[instance] if x != obj._root_node][0]
-        assert(spec2.name  < succ1)
+        assert(len(obj.network) == 7)
+        assert(any(spec2.name  < x for x in obj.network.succ[instance]))
         # Test concrete specs have carried the injection:
         assert(obj.specs[obj.concrete[spec2.name][0]].test_key == spec.test_key)
         assert(obj.specs[obj.concrete[spec3.name][0]].test_key == spec.test_key)
-
 
     def test_build_with_head_dep(self):
         obj   = BaseTracker()
@@ -626,7 +629,6 @@ class TestTrackerQueue:
         assert(instance in obj.active_set)
         assert(bool(obj._queue))
 
-
     def test_queue_task_idempotnent(self, mocker):
         obj   = BaseTracker()
         spec  = doot.structs.TaskSpec.build({"name":"basic::task"})
@@ -669,7 +671,6 @@ class TestTrackerQueue:
         val = obj.deque_entry()
         assert(val == instance)
         assert(instance in obj.active_set)
-
 
     def test_deque_artifact(self, mocker):
         obj      = BaseTracker()
@@ -734,7 +735,6 @@ class TestTrackerInternals:
         assert(isinstance(special, doot.structs.TaskName))
         assert(special in obj.concrete[spec.name])
 
-
     def test_instantiate_spec_match_reuse(self):
         obj = BaseTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["example::dep"], "blah": 2, "bloo": 5})
@@ -750,7 +750,7 @@ class TestTrackerInternals:
             assert(len(obj.concrete[spec.name]) == 1)
         assert(len(instances) == 1)
 
-    def test_instantiate_job_top(self):
+    def test_instantiate_job_head(self):
         obj = BaseTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::task", "ctor": "doot.task.base_job:DootJob", "depends_on":["example::dep"], "blah": 2, "bloo": 5})
         abs_head = spec.name.job_head()
@@ -763,7 +763,6 @@ class TestTrackerInternals:
         assert(spec.name < abs_head)
         assert(spec.name < instance)
         assert(instance < inst_head)
-        assert(inst_head not in obj.specs)
 
     def test_instantiate_spec_chain(self):
         obj = BaseTracker()
@@ -841,5 +840,5 @@ class TestTrackerInternals:
         assert(bool(result.pred.tasks))
         assert(spec2.name < result.pred.tasks[0])
         assert(bool(result.succ.tasks))
-        assert(spec3.name < result.succ.tasks[0])
+        assert(any(spec3.name < x for x in result.succ.tasks))
         assert(result.root is True)

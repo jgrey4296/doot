@@ -94,6 +94,67 @@ class TestTaskName:
         simple = TaskName.build("basic.sub.test::tail")
         assert(str(simple) == "\"basic.sub.test\"::tail")
 
+class TestTaskNamesCanonical:
+
+    def test_initial(self):
+        name = TaskName.build("simple::task")
+        assert(isinstance(name, TaskName))
+
+    def test_job_head(self):
+        name     = TaskName.build("simple::task")
+        job_head = name.job_head()
+        assert(isinstance(job_head, TaskName))
+        assert(job_head.last() == TaskName._head_marker)
+        assert(name < job_head)
+
+    def test_job_head_idempotent(self):
+        name       = TaskName.build("simple::task")
+        job_head   = name.job_head()
+        job_head_2 = job_head.job_head()
+        assert(job_head is job_head_2)
+
+    def test_instance_to_job_head(self):
+        name     = TaskName.build("simple::task")
+        instance = name.instantiate()
+        job_head = instance.job_head()
+        assert(isinstance(job_head, TaskName))
+        assert(job_head.last() == TaskName._head_marker)
+        assert(name < instance < job_head)
+
+    def test_job_head_to_instance(self):
+        name     = TaskName.build("simple::task")
+        job_head = name.job_head()
+        instance = job_head.instantiate()
+        assert(isinstance(instance, TaskName))
+        assert(isinstance(instance.last(), UUID))
+        assert(instance.root() == job_head)
+        assert(name < job_head < instance)
+
+    def test_cleanup(self):
+        name = TaskName.build("simple::task")
+        cleanup = name.cleanup_name()
+        assert(isinstance(cleanup, TaskName))
+        assert(cleanup.last() == "$cleanup$")
+        assert(name < cleanup)
+
+
+    def test_instance_to_cleanup(self):
+        name     = TaskName.build("simple::task")
+        instance = name.instantiate()
+        cleanup  = instance.cleanup_name()
+        assert(isinstance(cleanup, TaskName))
+        assert(cleanup.last() == "$cleanup$")
+        assert(name < instance < cleanup)
+
+
+    def test_cleanup_to_instance(self):
+        name     = TaskName.build("simple::task")
+        cleanup  = name.cleanup_name()
+        instance = cleanup.instantiate()
+        assert(isinstance(instance, TaskName))
+        assert(isinstance(instance.last(), UUID))
+        assert(name < cleanup < instance)
+
 class TestTaskNameComparison:
 
     def test_to_str_eq(self):
@@ -185,74 +246,54 @@ class TestTaskNameComparison:
         sub   = TaskName.build("basic.sub.test::tail.sub")
         assert(sub in simple)
 
-    def test_instance_contains_base_as_str(self):
-        simple = TaskName.build("basic::simple.task")
-        instance = simple.instantiate()
-        assert(str(simple) in instance)
-        assert( simple < instance )
+class TestTaskNameInstantiation:
 
-    def test_instance_contains_base_as_taskname(self):
-        simple = TaskName.build("basic::simple.task")
-        instance = simple.instantiate()
-        assert(instance in simple)
-        assert(simple < instance)
-
-    def test_base_doesnt_contain_instance(self):
-        simple = TaskName.build("basic::simple.task")
-        instance = simple.instantiate()
-        assert(simple not in instance)
-        assert(simple < instance)
-
-    def test_instance_lt_simple(self):
-        simple = TaskName.build("basic::simple.task")
-        instance = simple.instantiate()
-        assert(simple < instance)
-
-    def test_instance_le_simple(self):
-        simple = TaskName.build("basic::simple.task")
-        instance = simple.instantiate()
-        assert(simple <= instance)
-
-    def test_simple_not_le_instance(self):
-        simple = TaskName.build("basic::simple.task")
-        instance = simple.instantiate()
-        assert(not (instance <= simple))
-
-class TestTaskNameExtension:
-
-    def test_subtask(self):
-        simple = TaskName.build("basic.sub.test::tail")
-        assert(str(simple) == "\"basic.sub.test\"::tail")
-        sub    = simple.subtask("blah")
-        assert(str(sub) == "\"basic.sub.test\"::tail..blah")
-
-    def test_subtask_with_more_groups(self):
-        simple = TaskName.build("basic.sub.test::tail")
-        assert(str(simple) == "\"basic.sub.test\"::tail")
-        sub    = simple.subtask("blah", subgroups=["another", "subgroup"])
-        assert(str(sub) == "\"basic.sub.test.another.subgroup\"::tail..blah")
-
-    def test_instanitate_name(self):
+    def test_basic(self):
         simple = TaskName.build("basic::tail")
         assert(str(simple) == "basic::tail")
-        sub    = simple.instantiate()
-        assert(sub.group == "basic")
-        assert(len(sub.tail) == 4)
-        assert(sub.tail[0] == "tail")
-        assert(sub.tail[2] == doot.constants.patterns.SPECIALIZED_ADD)
+        inst1 = simple.instantiate()
+        assert(simple is not inst1)
+        assert(inst1.group == "basic")
+        assert(len(inst1.tail) == 4)
+        assert(inst1.tail[0] == "tail")
+        assert(inst1.tail[2] == doot.constants.patterns.SPECIALIZED_ADD)
+        assert(TaskMeta_f.CONCRETE not in simple)
+        assert(TaskMeta_f.CONCRETE in inst1)
 
-    def test_instantiate_name_twice(self):
+    def test_instance_root_is_base(self):
+        simple = TaskName.build("basic::tail")
+        inst1 = simple.instantiate()
+        rooted = inst1.root()
+        assert(simple == rooted)
+
+    def test_idempotentcy(self):
         simple = TaskName.build("basic::tail")
         assert(str(simple) == "basic::tail")
-        sub    = simple.instantiate()
-        sub2   = sub.instantiate()
-        assert(sub.group == "basic")
-        assert(len(sub.tail) == 4)
-        assert(sub.tail[0] == "tail")
-        assert(sub.tail[2] == doot.constants.patterns.SPECIALIZED_ADD)
-        assert(simple < sub < sub2)
+        inst1 = simple.instantiate()
+        inst2 = inst1.instantiate()
+        assert(inst1 is inst2)
+        assert(TaskMeta_f.CONCRETE in inst1)
 
-    def test_instantiate_name_with_prefix(self):
+    def test_subtask_overrides_idempotency(self):
+        simple = TaskName.build("basic::tail")
+        assert(str(simple) == "basic::tail")
+        inst1 = simple.instantiate()
+        inst2 = inst1.subtask("test").instantiate()
+        assert(inst1 is not inst2)
+
+    def test_subtask_root_is_parent(self):
+        simple = TaskName.build("basic::tail")
+        assert(str(simple) == "basic::tail")
+        inst1 = simple.instantiate()
+        middle = inst1.subtask("test")
+        inst2 = middle.instantiate()
+        rooted1 = inst1.root()
+        rooted2 = inst2.root()
+        assert(inst1 is not inst2)
+        assert(simple == rooted1)
+        assert(middle.uninstantiate() == rooted2)
+
+    def test_with_prefix(self):
         simple = TaskName.build("basic::tail")
         assert(str(simple) == "basic::tail")
         sub    = simple.instantiate(prefix="blah")
@@ -265,30 +306,44 @@ class TestTaskNameExtension:
         assert(sub.tail[3] == doot.constants.patterns.SPECIALIZED_ADD)
         assert(isinstance(sub.last(), UUID))
 
-    def test_subtask_0(self):
-        simple = TaskName.build("basic.sub.test::tail")
-        sub = simple.subtask(0)
-        assert(sub.tail == ["tail", TaskName._root_marker, "0"])
-        assert(str(sub) == '"basic.sub.test"::tail..0')
+    def test_instance_contains_base_str(self):
+        simple = TaskName.build("basic::simple.task")
+        instance = simple.instantiate()
+        assert(str(simple) in instance)
 
-    def test_subtask_1(self):
-        simple = TaskName.build("basic.sub.test::tail")
-        sub = simple.subtask(1)
-        assert(sub.tail == ["tail", TaskName._root_marker, "1"])
-        assert(str(sub) == '"basic.sub.test"::tail..1')
+    def test_base_contains_instance(self):
+        simple = TaskName.build("basic::simple.task")
+        instance = simple.instantiate()
+        assert(instance in simple)
 
-    def test_head(self):
+    def test_base_doesnt_contain_instance(self):
+        simple = TaskName.build("basic::simple.task")
+        instance = simple.instantiate()
+        assert(simple not in instance)
+        assert(simple < instance)
+
+    def test_lt_base(self):
+        simple = TaskName.build("basic::simple.task")
+        instance = simple.instantiate()
+        assert(simple < instance)
+
+    def test_instance_le_simple(self):
+        simple = TaskName.build("basic::simple.task")
+        instance = simple.instantiate()
+        assert(simple <= instance)
+
+    def test_simple_not_le_instance(self):
+        simple = TaskName.build("basic::simple.task")
+        instance = simple.subtask("blah")
+        assert(not (instance <= simple))
+
+    def test_job_head(self):
         simple = TaskName.build("basic.sub.test::tail")
         instance = simple.instantiate()
         sub = instance.job_head()
         assert(simple < sub)
         assert(sub in simple)
         assert(sub.last() == TaskName._head_marker)
-
-    def test_head_only_on_instances(self):
-        simple             = TaskName.build("basic.sub.test::tail")
-        head               = simple.job_head()
-        assert(head.last() == TaskName._head_marker)
 
     def test_head_on_instance(self):
         simple             = TaskName.build("basic.sub.test::tail")
@@ -307,6 +362,63 @@ class TestTaskNameExtension:
         assert(sub2.last() == TaskName._head_marker)
         assert(sub is sub2)
 
+
+    def test_uninstantiate(self):
+        simple             = TaskName.build("basic.sub.test::tail")
+        instance           = simple.instantiate()
+        stripped           = instance.uninstantiate()
+        assert(stripped != instance)
+        assert(stripped == simple)
+
+
+    def test_multi_uninstantiate(self):
+        simple             = TaskName.build("basic.sub.test::tail")
+        equivalent         = simple.subtask("blah")
+        instance           = simple.instantiate().subtask("blah").instantiate()
+        stripped           = instance.uninstantiate()
+        assert(stripped != instance)
+        assert(stripped == equivalent)
+
+
+    def test_uninstantiate_with_extra_tail(self):
+        simple             = TaskName.build("basic.sub.test::tail")
+        equivalent         = simple.subtask("blah").subtask("bloo")
+        instance           = simple.instantiate().subtask("blah").instantiate().subtask("bloo")
+        stripped           = instance.uninstantiate()
+        assert(stripped != instance)
+        assert(stripped == equivalent)
+
+class TestTaskNameExtension:
+
+    def test_subtask(self):
+        simple = TaskName.build("basic.sub.test::tail")
+        assert(str(simple) == "\"basic.sub.test\"::tail")
+        sub    = simple.subtask("blah")
+        assert(str(sub) == "\"basic.sub.test\"::tail..blah")
+
+    def test_subtask_with_more_groups(self):
+        simple = TaskName.build("basic.sub.test::tail")
+        assert(str(simple) == "\"basic.sub.test\"::tail")
+        sub    = simple.subtask("blah", subgroups=["another", "subgroup"])
+        assert(str(sub) == "\"basic.sub.test.another.subgroup\"::tail..blah")
+
+    def test_subtask_0(self):
+        simple = TaskName.build("basic.sub.test::tail")
+        sub = simple.subtask(0)
+        assert(sub.tail == ["tail", TaskName._root_marker, "0"])
+        assert(str(sub) == '"basic.sub.test"::tail..0')
+
+    def test_subtask_1(self):
+        simple = TaskName.build("basic.sub.test::tail")
+        sub = simple.subtask(1)
+        assert(sub.tail == ["tail", TaskName._root_marker, "1"])
+        assert(str(sub) == '"basic.sub.test"::tail..1')
+
+    def test_head_only_on_instances(self):
+        simple             = TaskName.build("basic.sub.test::tail")
+        head               = simple.job_head()
+        assert(head.last() == TaskName._head_marker)
+
 class TestNameRoots:
 
     def test_add_root(self):
@@ -319,7 +431,6 @@ class TestNameRoots:
         assert(str(simple) != str(simple2))
         assert(str(added_root) == str(simple2))
 
-
     def test_has_root(self):
         simple  = TaskName.build("basic::tail")
         simple2 = TaskName.build("basic::tail..blah")
@@ -327,7 +438,6 @@ class TestNameRoots:
         assert(not simple.has_root())
         assert(simple2.has_root())
         assert(added_root.has_root())
-
 
     def test_root_auto_filter(self):
         simple  = TaskName.build("basic::tail..a")
@@ -451,13 +561,11 @@ class TestTaskNameStructInteraction:
         the_set = {simple, duplicate}
         assert(len(the_set) == 1)
 
-
     def test_name_in_set(self):
         first = TaskName.build("agroup::_.internal.task")
         second = TaskName. build("other.group::task.second")
         the_set = {first, second}
         assert(len(the_set) == 2)
-
 
     def test_root_in_set(self):
         first = TaskName.build("agroup::_.internal.task")
