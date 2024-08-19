@@ -69,7 +69,7 @@ preferred_cmd_loader              = doot.config.on_fail("default").settings.gene
 preferred_task_loader             = doot.config.on_fail("default").settings.general.loaders.task()
 preferred_parser                  = doot.config.on_fail("default").settings.general.loaders.parser()
 
-defaulted_file                    = doot.config.on_fail(pl.Path("{logs}/.doot_defaults.toml"), pl.Path).report.defaulted_file(pl.Path)
+defaulted_file                    = doot.config.on_fail(pl.Path("{logs}/.doot_defaults.toml"), pl.Path).settings.general.defaulted_file(pl.Path)
 
 @doot.check_protocol
 class DootOverlord(ParamSpecMaker_m, Overlord_p):
@@ -264,6 +264,9 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
     def _record_defaulted_config_values(self):
         defaulted_toml = tomlguard.TomlGuard.report_defaulted()
         expanded_path = doot.locs[defaulted_file]
+        if not expanded_path.parent.exists():
+            shutdown_l.warning("Coulnd't log defaulted config values to: %s", expanded_path)
+            return
         with open(expanded_path, 'w') as f:
             f.write("# default values used:\n")
             f.write("\n".join(defaulted_toml) + "\n\n")

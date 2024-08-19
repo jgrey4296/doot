@@ -247,3 +247,8 @@ to (optionally) create a separate log file
    :context:
         <2024-08-19 Mon> class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
    :END:
+** TRIAGE add version requirement to doot.toml and task tomls
+   [[/media/john/data/github/python/doot/::7][Location]]
+   :context:
+        <2024-08-19 Mon>   drwxr-xr-- 17 john john 4.0K Aug 19 04:59 doot
+   :END:
