@@ -303,11 +303,13 @@ class DKeyFormatter_Expansion_m:
 
     def _multi_expand(self, key:Key_p) -> Any:
         """
-        expand a multi key
+        expand a multi key,
+          by formatting the anon key version using a sequenec of expanded subkeys,
+          this allows for duplicate keys to be used differenly in a single multikey
         """
         logging.debug("Multi Expansion: %s", key)
-        expanded_keys = { f"{x}" : str(self._expand(x, fallback=f"{x:w}", count=0)) for x in key.keys() }
-        expanded       = self.format(key, **expanded_keys)
+        expanded_keys   = [ str(self._expand(x, fallback=f"{x:w}", count=0)) for x in key.keys() ]
+        expanded        = self.format(key._unnamed, *expanded_keys)
         return expanded
 
     def _try_redirection(self, key:str|Key_p) -> list[Key_p]:

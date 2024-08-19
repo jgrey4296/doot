@@ -232,7 +232,7 @@ class DKeyFormatting_m:
     """ General formatting for dkeys """
 
     def format(self, fmt, *, spec=None, state=None) -> str:
-        return DKeyFormatter.fmt(self, fmt)
+        return DKeyFormatter.fmt(self, fmt, **(state or {}))
 
     def _consume_format_params(self, spec:str) -> tuple(str, bool, bool, bool):
         """
@@ -273,7 +273,7 @@ class DKeyExpansion_m:
     def expand(self, *sources, fallback=None, max=None, check=None, **kwargs) -> None|Any:
         logging.debug("Entering expansion for: %s", self)
         # expanded_keys = {x : x.expand(*sources) for x in self.keys()}
-        # expanded_keys = [x.expand(*sources) for x in self.keys()]
+        # match DKeyFormatter.expand(self, sources=(expanded_keys, *sources), fallback=fallback or self._exp_fallback, max=max or self._max_expansions):
         match DKeyFormatter.expand(self, sources=sources, fallback=fallback or self._exp_fallback, max=max or self._max_expansions):
             case None:
                 return None
@@ -466,7 +466,8 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
         super().__init__(data, mark=mark, **kwargs)
         has_text, s_keys = DKeyFormatter.Parse(data)
         self._has_text   = has_text
-        self._subkeys    = [DKey(x.key, fparams=x.format, cparams=x.conv, implicit=True) for x in s_keys]
+        self._subkeys = [DKey(key.key, fparams=key.format, cparams=key.conv, implicit=True) for key in s_keys]
+        self._unnamed = self.format("", state={key.key : "{}" for key in s_keys})
 
     def __format__(self, spec:str):
         """
@@ -524,6 +525,7 @@ class NonDKey(DKeyBase, mark=DKeyMark_e.NULL):
 
 ##-- specialisations
 
+
 class StrDKey(SingleDKey, mark=DKeyMark_e.STR, tparam="s"):
 
     def __init__(self, *args, **kwargs):
@@ -566,6 +568,14 @@ class RedirectionDKey(SingleDKey, mark=DKeyMark_e.REDIRECT, tparam="R"):
                 return x.expand(*sources)
             case [x, *xs]:
                 return x
+
+
+class ConflictDKey(SingleDKey):
+    """ Like a redirection key,
+      but for handling conflicts between subkeys in multikeys.
+
+      eg: MK(--aval={blah!p}/{blah})
+    """
 
 class ArgsDKey(SingleDKey, mark=DKeyMark_e.ARGS):
     """ A Key representing the action spec's args """

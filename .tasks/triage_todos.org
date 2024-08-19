@@ -242,3 +242,8 @@ to (optionally) create a separate log file
    :context:
         <2024-08-11 Sun>             printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, args[0], args[1:])
    :END:
+** TRIAGE let dkey's have fallback=Self
+   [[/media/john/data/github/python/doot/doot/_structs/dkey.py::459][Location]]
+   :context:
+        <2024-08-19 Mon> class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
+   :END:

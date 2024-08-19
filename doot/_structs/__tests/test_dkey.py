@@ -116,6 +116,16 @@ class TestDKeyBasicConstruction:
         assert(key.keys() == [dkey.DKey("test"), dkey.DKey("blah")])
         assert(str(key) == "{test}/{blah}")
 
+    def test_multikey_expansion_with_key_conflict(self):
+        mk          = dkey.DKey("--blah={test!p}/{test}", mark=dkey.DKey.mark.MULTI)
+        transformed = dkey.DKey("--blah={test!p}/{test2}", mark=dkey.DKey.mark.MULTI)
+        target      = "--blah=%s" % pl.Path("aweg/aweg").resolve()
+        assert(mk._unnamed == "--blah={}/{}")
+        result = mk.expand({"test": "aweg"})
+        assert(result == target)
+
+
+
     def test_initial_nonkey(self):
         key  = dkey.DKey("blah bloo blee")
         assert(isinstance(key, dkey.NonDKey))
@@ -519,6 +529,23 @@ class TestDKeyExpansionMain:
         assert(explicit_key.expand(state) == "y")
 
     @pytest.mark.parametrize("name", ["x"])
+    def test_basic_multikey_expansion(self, name):
+        """ name -> y """
+        implicit_key   = dkey.DKey(name, mark=dkey.DKey.mark.MULTI, implicit=True)
+        explicit_key   = dkey.DKey(("{%s}" % name), mark=dkey.DKey.mark.MULTI)
+        state = {name :"y"}
+        assert(implicit_key.expand(state) == "y")
+        assert(explicit_key.expand(state) == "y")
+
+    def test_multikey_no_keys_expansion(self):
+        """ blah test -> blah test """
+        implicit_key   = dkey.DKey("blah test", fallback="blah test", mark=dkey.DKey.mark.MULTI, implicit=True)
+        explicit_key   = dkey.DKey("blah test", fallback="blah test", mark=dkey.DKey.mark.MULTI)
+        state = {"test": "y"}
+        assert(implicit_key.expand(state) == "blah test")
+        assert(explicit_key.expand(state) == "blah test")
+
+    @pytest.mark.parametrize("name", ["x"])
     def test_basic_non_str_expansion(self, name):
         """ name -> 2 """
         key   = dkey.DKey(name, implicit=True)
@@ -684,13 +711,25 @@ class TestDKeyExpansionMain:
     @pytest.mark.parametrize("name", ["a", "b"])
     def test_path_marked_multikey(self, name):
         """ {name!p}/{name} -> {x}/{x} -> Path(y/y) """
-        path_marked = "{%s!p}/{%s}" % (name, name)
-        target = pl.Path("y/y").resolve()
+        target = pl.Path("y/x").resolve()
+        path_marked = "{%s!p}/x" % name
         key   = dkey.DKey(path_marked, implicit=False)
         state = {name :"{x}", "x": "y"}
         exp   = key.expand(state)
         assert(isinstance(key, dkey.MultiDKey))
         assert(isinstance(key, dkey.PathMultiDKey))
+        assert(exp == target)
+
+    @pytest.mark.parametrize("name", ["a", "b"])
+    def test_multikey_with_subpath(self, name):
+        """ {name!p}/{name} -> {x}/{x} -> Path(y/y) """
+        target      = "--test=%s" % pl.Path("y/x").resolve()
+        path_marked = "--test={%s!p}/x" % name
+        key         = dkey.DKey(path_marked, mark=dkey.DKey.mark.MULTI, implicit=False)
+        state       = {name :"{x}", "x": "y"}
+        exp         = key.expand(state)
+        assert(isinstance(key, dkey.MultiDKey))
+        assert(not isinstance(key, dkey.PathMultiDKey))
         assert(exp == target)
 
     @pytest.mark.parametrize("name", ["a", "b"])
@@ -718,9 +757,9 @@ class TestDKeyExpansionMain:
     @pytest.mark.parametrize("name", ["a", "b"])
     def test_string_expansion_with_multi_use_subkey(self, name):
         """ this is a {name} blah {name}. -> this is a test blah test."""
-        full_str = "this is a {%s} blah {%s}." % (name, name)
+        full_str = "this is a {%s} blah {c}." % name
         key      = dkey.DKey(full_str, implicit=False, mark=dkey.DKey.mark.STR)
-        state    = {name : "test"}
+        state    = {name : "test", "c": "test"}
         exp      = key.expand(state)
         assert(isinstance(key, dkey.MultiDKey))
         assert(exp == "this is a test blah test.")
