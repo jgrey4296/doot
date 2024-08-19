@@ -107,7 +107,7 @@ class DootShellAction(Action_p):
             result                  = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=not notty, _cwd=cwd )
             if result.exit_code not in exitcodes:
                 printer.warning("Shell Command Failed: %s", result.exit_code)
-                printer.warning(result.stderr)
+                printer.warning(result.stderr.decode())
                 return False
 
             printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, args[0], args[1:])
@@ -115,7 +115,7 @@ class DootShellAction(Action_p):
                 printer.info("%s", result, extra={"colour":"reset"})
                 return True
 
-            return { _update : result.stdout }
+            return { _update : result.stdout.decode() }
 
         except sh.ForkException as err:
             printer.error("Shell Command failed: %s", err)
