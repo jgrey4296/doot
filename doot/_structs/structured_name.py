@@ -153,8 +153,9 @@ class StructuredName(BaseModel, Nameable_p, Buildable_p, metaclass=ProtocolModel
 
     def __contains__(self, other) -> bool:
         """ test for conceptual containment of names
-        other(a.b.c) ∈ self(a.b) ?
-        ie: self < other
+          other in self
+          other(a.b.c) ∈ self(a.b) ?
+          ie: self < other
         """
         match other:
             case str():

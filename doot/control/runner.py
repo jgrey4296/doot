@@ -145,7 +145,6 @@ class DootRunner(BaseRunner, TaskRunner_i):
             self._execute_action_group(job.spec.on_fail, job, group="on_fail")
             raise err
         finally:
-            # cleanup actions are *not* run here, as they've been added to the auto-gen $head$ and queued
             job.state.clear()
             self.reporter.add_trace(job.spec, flags=Report_f.JOB | Report_f.SUCCEED)
             task_header_l.info("< Job %s: %s", self.step, job.shortname, extra={"colour":"magenta"})
@@ -163,8 +162,6 @@ class DootRunner(BaseRunner, TaskRunner_i):
             self._execute_action_group(task.spec.on_fail, task, group="on_fail")
             raise err
         finally:
-            # Cleanup Actions *are* run here, because tasks don't have subtasks they setup for
-            self._execute_action_group(task.spec.cleanup, task, group="cleanup")
             task.state.clear()
             task_header_l.debug("< Task: %s", task.shortname, extra={"colour":"cyan"})
 
