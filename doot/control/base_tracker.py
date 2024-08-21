@@ -57,8 +57,9 @@ from doot.task.base_task import DootTask
 
 ##-- logging
 logging    = logmod.getLogger(__name__)
-printer    = logmod.getLogger("doot._printer")
-track_l    = printer.getChild("track")
+printer    = doot.subprinter()
+track_l    = doot.subprinter("track")
+logging.disabled = True
 ##-- end logging
 
 ROOT                           : Final[str]                  = "root::_" # Root node of dependency graph

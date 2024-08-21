@@ -39,8 +39,9 @@ from doot.task.base_task import DootTask
 # ##-- end 1st party imports
 
 ##-- logging
-logging = logmod.getLogger(__name__)
-printer = logmod.getLogger("doot._printer.checkloc")
+logging   = logmod.getLogger(__name__)
+printer   = doot.subprinter()
+check_loc = doot.subprinter("check_loc")
 ##-- end logging
 
 make_missing = doot.config.on_fail(False).settings.general.location_check.make_missing()
@@ -54,7 +55,7 @@ class CheckLocsTask(DootTask):
 
     def __init__(self, spec=None):
         locations = [doot.locs[f"{{{x}}}"] for x in doot.locs if not doot.locs.metacheck(x, LocationMeta_f.file | LocationMeta_f.remote)]
-        actions   = [ActionSpec.build({"args": [x], "fun":self.checklocs }) for x in locations]
+        actions   = [ActionSpec.build({"args": locations, "fun":self.checklocs })]
         spec      = TaskSpec.build({
             "name"         : CheckLocsTask.task_name,
             "actions"      : actions,
@@ -64,15 +65,16 @@ class CheckLocsTask(DootTask):
 
     @DKeyed.args
     def checklocs(self, spec, state, args):
-        try:
-            match args[0].exists():
-                case True:
-                    printer.debug("Base Location Exists : %s", spec.args[0])
-                case False if make_missing:
-                    printer.warning("Base Location Missing: %s", spec.args[0])
-                    printer.info("Making Directory: %s", spec.args[0])
-                    spec.args[0].mkdir(parents=True)
-                case False:
-                    printer.warning("Base Location Missing: %s", spec.args[0])
-        except PermissionError:
-            printer.warning("Base Location Missing: %s", spec.args[0])
+        for loc in args:
+            try:
+                match loc.exists():
+                    case True:
+                        check_loc.debug("Base Location Exists : %s", loc)
+                    case False if make_missing:
+                        check_loc.warning("Base Location Missing: %s", loc)
+                        check_loc.info("Making Directory: %s", loc)
+                        loc.mkdir(parents=True)
+                    case False:
+                        check_loc.warning("Base Location Missing: %s", loc)
+            except PermissionError:
+                check_loc.warning("Base Location Missing: %s", loc)

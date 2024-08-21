@@ -288,7 +288,7 @@ class DKeyExpansionDecorator(Decorator_p):
 
         for x,y in zip(params, head):
             if x != y:
-                logging.debug("Mismatch in signature head: %s != %s", x, y)
+                logging.warning("Mismatch in signature head: %s != %s", x, y)
                 return False
 
         prefix_ig, suffix_ig = self._param_ignores
@@ -299,15 +299,15 @@ class DKeyExpansionDecorator(Decorator_p):
                 continue
 
             if keyword.iskeyword(key_str):
-                logging.debug("Key is a keyword, the function sig needs to use _{} or {}_ex: %s : %s", x, y)
+                logging.warning("Key is a keyword, the function sig needs to use _{} or {}_ex: %s : %s", x, y)
                 return False
 
             if not key_str.isidentifier():
-                logging.debug("Key is not an identifier, the function sig needs to use _{} or {}_ex: %s : %s", x,y)
+                logging.warning("Key is not an identifier, the function sig needs to use _{} or {}_ex: %s : %s", x,y)
                 return False
 
             if x != y:
-                logging.debug("Mismatch in signature tail: %s != %s", x, y)
+                logging.warning("Mismatch in signature tail: %s != %s", x, y)
                 return False
 
         return True

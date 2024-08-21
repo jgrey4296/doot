@@ -46,9 +46,9 @@ from doot.utils.log_config import DootLogConfig
 
 ##-- logging
 logging         = logmod.root
-printer         = logmod.getLogger("doot._printer")
-shutdown_l      = printer.getChild("shutdown")
-fail_l          = printer.getChild("fail")
+printer         = doot.subprinter()
+shutdown_l      = doot.subprinter("shutdown")
+fail_l          = doot.subprinter("fail")
 ##-- end logging
 
 template_path      = files("doot.__templates")
@@ -80,7 +80,7 @@ def main():
 
     ##-- handle doot errors
     except (doot.errors.DootEarlyExit, BdbQuit):
-        shutdown.warning("Early Exit Triggered")
+        shutdown_l.warning("Early Exit Triggered")
         result = 0
     except doot.errors.DootMissingConfigError as err:
         result = 0
@@ -91,7 +91,7 @@ def main():
             template = template_path.joinpath(doot.constants.paths.TOML_TEMPLATE)
             target = pl.Path(doot.constants.on_fail(["doot.toml"]).paths.DEFAULT_LOAD_TARGETS()[0])
             target.write_text(template.read_text())
-            shutdown.info("Doot Config File Stubbed: %s", target)
+            shutdown_l.info("Doot Config File Stubbed: %s", target)
     except doot.errors.DootTaskError as err:
         fail_prefix = doot.constants.printer.fail_prefix
         fail_l.error("%s %s : %s", fail_prefix, err.general_msg, err.task_name)
