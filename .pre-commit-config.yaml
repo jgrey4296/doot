@@ -24,7 +24,7 @@ repos:
       name: validate
       description: checks the commit msg has a tag at the start
       language: system
-      entry: mamba run "-n" "default" doot "precommit::validate"
+      entry: mamba run "-n" "doot-dev" doot "precommit::validate"
       stages: [commit-msg]
 # - repo: local
 #   hooks:
