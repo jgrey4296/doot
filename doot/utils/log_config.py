@@ -50,6 +50,8 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
+from tomlguard import TomlGuard
+
 # ##-- 1st party imports
 import doot
 from doot._structs.logger_spec import LoggerSpec
@@ -98,11 +100,12 @@ class DootLogConfig:
     def __init__(self):
         # Root Logger for everything
         self.root    = logmod.root
-        self.stream_initial_spec = LoggerSpec.build({"name": logmod.root.name,
-                                                     "level" : "WARNING",
-                                                     "target": "stdout",
-                                                     "format" : "{levelname}  : INIT : {message}",
-                                                    })
+        self.stream_initial_spec = LoggerSpec.build({
+            "name": logmod.root.name,
+            "level" : "WARNING",
+            "target": "stdout",
+            "format" : "{levelname}  : INIT : {message}",
+            })
         # EXCEPT this, which replaces 'print(x)'
         self.printer_initial_spec = LoggerSpec.build({
             "name": doot.constants.printer.PRINTER_NAME,
@@ -118,7 +121,9 @@ class DootLogConfig:
 
     def setup(self):
         """ a setup that uses config values """
-        assert(doot.config is not None)
+        if doot.config is None:
+            raise ValueError("Doot has not been configured")
+
         self.stream_initial_spec.clear()
         self.printer_initial_spec.clear()
         file_spec         = LoggerSpec.build(doot.config.on_fail({}).logging.file(), name=LoggerSpec.RootName)
@@ -131,22 +136,35 @@ class DootLogConfig:
         self._setup_logging_extra()
 
     def _setup_print_children(self):
-        basename      = doot.constants.printer.PRINTER_NAME
-        subprint_data = doot.config.on_fail({}).logging.subprinters()
-        for name in doot.constants.printer.PRINTER_CHILDREN:
-            if name not in subprint_data:
-                continue
-            fullname = "{}.{}".format(basename, name)
-            match LoggerSpec.build(subprint_data[name], name=fullname):
-                case None:
-                    print("Could not build LoggerSpec for {}".format(name))
-                case LoggerSpec() as spec:
-                    spec.apply()
+        basename            = doot.constants.printer.PRINTER_NAME
+        subprint_data       = doot.config.on_fail({}).logging.subprinters()
+        acceptable_names    = doot.constants.printer.PRINTER_CHILDREN
+        for data in subprint_data.items():
+            match data :
+                case ("default", TomlGuard()|dict() as spec_data):
+                    for name in {x for x in acceptable_names if x not in subprint_data}:
+                        match LoggerSpec.build(spec_data, name=name, base=basename):
+                            case None:
+                                print("Could not build LoggerSpec for {}".format(name))
+                            case LoggerSpec() as spec:
+                                spec.apply()
+                case (str() as name, _) if name not in subprint_data:
+                    print("Unknown Subprinter mentioned in config: ", name)
+                    pass
+                case (str(), False|None):
+                    # disable the subprinter
+                    LoggerSpec.build({"disabled":True}, name=name, base=basename).apply()
+                case (str() as name, TomlGuard()|dict() as spec_data):
+                    match LoggerSpec.build(spec_data, name=name, base=basename):
+                        case None:
+                            print("Could not build LoggerSpec for {}".format(name))
+                        case LoggerSpec() as spec:
+                            spec.apply()
 
 
     def _setup_logging_extra(self):
         """ read the doot config logging section
-          setting up each entry other than stream, file, and printer
+          setting up each entry other than stream, file, printer, and subprinters
         """
         extras = doot.config.on_fail({}).logging.extra()
         for key,data in extras.items():

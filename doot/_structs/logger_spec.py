@@ -48,10 +48,11 @@ from doot._abstract.protocols import Buildable_p, ProtocolModelMeta
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-env : dict = os.environ
-Regexp : TypeAlias = str
-MAX_FILES : Final[int] = 5
-
+env           : dict        = os.environ
+IS_PRE_COMMIT : Final[bool] = "PRE_COMMIT" in env
+Regexp        : TypeAlias   = str
+MAX_FILES     : Final[int]  = 5
+TARGETS       : Final[list[str]] = ["file", "stdout", "stderr", "rotate", "pass"]
 class _AnyFilter:
     """
       A Simple filter to reject based on:
@@ -64,22 +65,71 @@ class _AnyFilter:
         self.allowed    = allow or []
         self.rejections = reject or []
         self.allowed_re    = re.compile("^({})".format("|".join(self.allowed)))
+        if bool(self.allowed):
+            raise NotImplementedError("Logging Allows are not implemented yet")
 
     def __call__(self, record):
         if record.name in ["root", "__main__"]:
             return True
-        if not bool(self.allowed):
-            return True
-        if not bool(self.rejections):
+        if not (bool(self.allowed) or bool(self.rejections)):
             return True
 
         rejected = False
-        rejected |= record.name in self.rejections
-        rejected |= not self.name_re.match(record.name)
+        rejected |= any(x in record.name for x in self.rejections)
+        # rejected |= not self.name_re.match(record.name)
         return not rejected
 
+class HandlerBuilder_m:
+    """
+    Loggerspec Mixin for building handlers
+    """
 
-class LoggerSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
+    def _build_streamhandler(self) -> logmod.Handler:
+        return logmod.StreamHandler(stdout)
+
+    def _build_errorhandler(self) -> logmod.Handler:
+        return logmod.StreamHandler(stderr)
+
+    def _build_filehandler(self, path:pl.Path) -> logmod.Handler:
+        return logmod.FileHandler(log_file_path, mode='w')
+
+    def _build_rotatinghandler(self, path:pl.Path) -> logmod.Handler:
+        handler = l_handlers.RotatingFileHandler(path, backupCount=MAX_FILES)
+        handler.doRollover()
+        return handler
+
+    def _discriminate_handler(self, target:None|str|pl.Path) -> tuple[None|logmod.Handler, None|logmod.Formatter]:
+        handler, formatter = None, None
+
+        match target:
+            case "pass" | None:
+                return None, None
+            case "file":
+                log_file_path      = self.logfile()
+                handler            = self._build_filehandler(log_file_path)
+            case "rotate":
+                log_file_path      = self.logfile()
+                handler            = self._build_rotatinghandler(log_file_path)
+            case "stdout":
+                handler   = self._build_streamhandler()
+            case "stderr":
+                handler = self._build_errorhandler()
+            case _:
+                raise ValueError("Unknown logger spec target", target)
+
+        match self.colour or IS_PRE_COMMIT:
+            case _ if isinstance(handler, (logmod.FileHandler, l_handlers.RotatingFileHandler)):
+                formatter = DootColourStripFormatter(fmt=self.format)
+            case False:
+                formatter = DootColourStripFormatter(fmt=self.format)
+            case True:
+                formatter = DootColourFormatter(fmt=self.format)
+
+        assert(handler is not None)
+        assert(formatter is not None)
+        return handler, formatter
+
+class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolModelMeta):
     """
       A Spec for toml defined logging control.
       Allows user to name a logger, set its level, format,
@@ -91,23 +141,24 @@ class LoggerSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
     """
 
     name                       : str
-    base                       : None|str              = None
-    level                      : str|int               = logmod._nameToLevel.get("NOTSET", 0)
-    format                     : str                   = "{levelname:<8} : {message}"
-    filter                     : list[str]             = []
-    allow                      : list[str]             = []
-    colour                     : bool|str              = False
-    verbosity                  : int                   = 1
-    target                     : None|str|pl.Path      = None # stdout | stderr | file
-    filename_fmt               : None|str              = "doot-%Y-%m-%d::%H:%M.log"
-    propagate                  : None|bool             = False
-    clear_handlers             : bool                  = False
-    nested                     : list[LoggerSpec]      = []
+    disabled                   : bool                        = False
+    base                       : None|str                    = None
+    level                      : str|int                     = logmod._nameToLevel.get("WARNING", 0)
+    format                     : str                         = "{levelname:<8} : {message}"
+    filter                     : list[str]                   = []
+    allow                      : list[str]                   = []
+    colour                     : bool|str                    = False
+    verbosity                  : int                         = 1
+    target                     : None|str|list[str|pl.Path]  = None # stdout | stderr | file
+    filename_fmt               : None|str                    = "doot-%Y-%m-%d::%H:%M.log"
+    propagate                  : None|bool                   = False
+    clear_handlers             : bool                        = False
+    nested                     : list[LoggerSpec]            = []
 
-    RootName                   : ClassVar[str]         = "root"
+    RootName                   : ClassVar[str]               = "root"
 
     @staticmethod
-    def build(data:list|dict, *, name:None|str=None) -> LoggerSpec:
+    def build(data:list|dict, **kwargs) -> LoggerSpec:
         """
           Build a single spec, or multiple logger specs targeting the same logger
         """
@@ -115,17 +166,16 @@ class LoggerSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
             case list():
                 nested = []
                 for x in data:
-                    nested.append(LoggerSpec.build(x, name=name))
-                return LoggerSpec(name=name, nested=nested)
+                    nested.append(LoggerSpec.build(x, **kwargs))
+                return LoggerSpec(nested=nested, **kwargs)
             case TomlGuard():
                 as_dict = data._table().copy()
-                if name:
-                    as_dict['name'] = name
+                as_dict.update(kwargs)
                 return LoggerSpec.model_validate(as_dict)
             case dict():
-                if name:
-                    data['name'] = name
-                return LoggerSpec.model_validate(data)
+                as_dict = data.copy()
+                as_dict.update(kwargs)
+                return LoggerSpec.model_validate(as_dict)
 
     @field_validator("level")
     def _validate_level(cls, val):
@@ -138,7 +188,9 @@ class LoggerSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
     @field_validator("target")
     def _validate_target(cls, val):
         match val:
-            case str() if val in ["file", "stdout", "stderr", "rotate"]:
+            case [*xs] if all(x in TARGETS for x in xs):
+                return val
+            case str() if val in TARGETS:
                 return val
             case pl.Path():
                 return val
@@ -153,68 +205,56 @@ class LoggerSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
             return self.name
         return "{}.{}".format(self.base, self.name)
 
-    def _build_streamhandler(self) -> logmod.Handler:
-        return logmod.StreamHandler(stdout)
-
-    def _build_errorhandler(self) -> logmod.Handler:
-        return logmod.StreamHandler(stderr)
-
-    def _build_filehandler(self) -> logmod.Handler:
-        log_file_path      = self.logfile()
-        return logmod.FileHandler(log_file_path, mode='w')
-
-    def _build_rotatinghandler(self) -> logmod.Handler:
-        log_file_path      = self.logfile()
-        return l_handlers.RotatingFileHandler(log_file_path, backupCount=MAX_FILES)
-
     def apply(self, *, onto:None|logmod.Logger=None):
-        logger = self.get()
-        logger.setLevel("NOTSET")
-        filter = None
-        if bool(self.allow) or bool(self.filter):
-            filter = _AnyFilter(allow=self.allow, reject=self.filter)
+        """ Apply this spec (and nested specs) to the relevant logger """
+        handler_pairs : list[tuple[logmod.Handler, logmod.Formatter]] = []
+        logger                                                        = self.get()
+        logger.propagate                                              = self.propagate
+        logger.setLevel(logmod._nameToLevel.get("NOTSET", 0))
+        if self.disabled:
+            logger.disabled = True
+            return logger
 
         match self.target:
             case _ if bool(self.nested):
                 for subspec in self.nested:
                     subspec.apply()
-                return
-            case "file":
-                handler   = self._build_filehandler()
-                formatter = DootColourStripFormatter(fmt=self.format)
-            case "rotate":
-                handler = self._build_rotatinghandler()
-                handler.doRollover()
-                formatter = DootColourStripFormatter(fmt=self.format)
-            case "stdout" if not self.colour or "PRE_COMMIT" in env:
-                handler   = self._build_streamhandler()
-                formatter = DootColourStripFormatter(fmt=self.format)
-            case "stdout":
-                assert(self.colour)
-                handler = self._build_streamhandler()
-                formatter = DootColourFormatter(fmt=self.format)
-            case "stderr" if not self.colour:
-                handler = self._build_errorhandler()
-                formatter = DootColourStripFormatter(fmt=self.format)
-            case "stderr":
-                assert(self.colour)
-                handler = self._build_errorhandler()
-                formatter = DootColourStripFormatter(fmt=self.format)
-            case None:
-                handler   = self._build_streamhandler()
-                formatter = DootColourStripFormatter(fmt=self.format)
+                return logger
+            case None | []:
+                handler_pairs.append(self._discriminate_handler(None))
+            case [*xs]:
+                handler_pairs += [self._discriminate_handler(x) for x in xs]
+            case str() | pl.Path():
+                handler_pairs.append(self._discriminate_handler(self.target))
             case _:
                 raise ValueError("Unknown target value for LoggerSpec", self.target)
 
+        log_filter       = None
+        if bool(self.allow) or bool(self.filter):
+            log_filter = _AnyFilter(allow=self.allow, reject=self.filter)
 
-        handler.setLevel(self.level)
-        handler.setFormatter(formatter)
-        if filter is not None:
-            handler.addFilter(filter)
-
-        logger.addHandler(handler)
-        if self.propagate is not None:
-            logger.propagate = self.propagate
+        for pair in handler_pairs:
+            match pair:
+                case None, _:
+                    pass
+                case hand, None:
+                    hand.setLevel(self.level)
+                    if log_filter is not None:
+                        hand.addFilter(log_filter)
+                    logger.addHandler(hand)
+                case hand, fmt:
+                    hand.setLevel(self.level)
+                    hand.setFormatter(fmt)
+                    if log_filter is not None:
+                        hand.addFilter(log_filter)
+                    logger.addHandler(hand)
+                case _:
+                    pass
+        else:
+            if not bool(logger.handlers):
+                logger.setLevel(self.level)
+                logger.propagate = True
+            return logger
 
     def get(self) -> logmod.Logger:
         return logmod.getLogger(self.fullname)
@@ -231,8 +271,7 @@ class LoggerSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
         if not log_dir.exists():
             log_dir = pl.Path()
 
-        # filename = datetime.datetime.now().strftime(self.filename_fmt)
-        filename = "doot.log"
+        filename = datetime.datetime.now().strftime(self.filename_fmt)
         return log_dir / filename
 
     def set_level(self, level:int|str):
