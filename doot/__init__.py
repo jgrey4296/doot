@@ -109,12 +109,12 @@ def setup(targets:list[pl.Path]|False|None=None, prefix:str|None=TOOL_PREFIX) ->
         raise doot.errors.DootMissingConfigError("Pyproject has no doot config")
 
     config = config.remove_prefix(prefix)
+    log_config.setup(config)
     _load_constants()
     _load_aliases()
     _load_locations()
     _update_import_path()
     _configs_loaded_from   = existing_targets
-    log_config.setup(config)
 
     return config, locs
 
