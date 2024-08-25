@@ -31,6 +31,7 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 import more_itertools as mitz
 from tomlguard import TomlGuard
+from jgdv.structs.code_ref import CodeReference
 
 # ##-- end 3rd party imports
 
@@ -46,7 +47,7 @@ from doot.actions.job_injection import (JobAppendActions, JobInjector,
                                         JobPrependActions, JobSubNamer)
 from doot.actions.job_queuing import JobChainer, JobQueueAction, JobQueueHead
 from doot.mixins.path_manip import Walker_m
-from doot.structs import CodeReference, DKey, TaskName, TaskSpec, DKeyed
+from doot.structs import DKey, TaskName, TaskSpec, DKeyed
 
 # ##-- end 1st party imports
 

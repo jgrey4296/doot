@@ -32,10 +32,11 @@ printer = logmod.getLogger("doot._printer")
 from time import sleep
 import sh
 import shutil
+from jgdv.structs.code_ref import CodeReference
+
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
-
-from doot.structs import DKey, CodeReference, DKeyed
+from doot.structs import DKey, DKeyed
 from doot.mixins.path_manip import PathManip_m
 from doot.actions.base_action import DootBaseAction
 from doot.utils.action_decorators import ControlFlow

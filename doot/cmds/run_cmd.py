@@ -27,14 +27,13 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from tomlguard import TomlGuard
-
+from jgdv.structs.code_ref import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 from doot._abstract import TaskRunner_i
 from doot.cmds.base_cmd import BaseCommand
-from doot.structs import CodeReference
 from doot.task.check_locs import CheckLocsTask
 from doot.utils.plugin_selector import plugin_selector
 

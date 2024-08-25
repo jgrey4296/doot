@@ -92,6 +92,7 @@ import decorator
 import more_itertools as mitz
 from pydantic import BaseModel, Field, field_validator, model_validator
 from tomlguard import TomlGuard
+from jgdv.structs.code_ref import CodeReference
 
 # ##-- end 3rd party imports
 
@@ -100,7 +101,6 @@ import doot
 import doot.errors
 from doot.enums import DKeyMark_e
 from doot._abstract.protocols import Key_p, SpecStruct_p
-from doot._structs.code_ref import CodeReference
 from doot.utils.decorators import DecorationUtils, DootDecorator
 
 # ##-- end 1st party imports

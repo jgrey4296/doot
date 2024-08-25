@@ -39,7 +39,7 @@ logging = logmod.getLogger(__name__)
 
 import importlib
 from importlib.metadata import EntryPoint
-from doot.structs import CodeReference
+from jgdv.structs.code_ref import CodeReference
 import doot.errors
 
 def plugin_selector(plugins:TomlGuard, *, target="default", fallback=None) -> type:

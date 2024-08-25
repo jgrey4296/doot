@@ -26,7 +26,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from tomlguard import TomlGuard
-
+from jgdv.structs.code_ref import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -35,7 +35,7 @@ import doot.errors
 from doot._abstract import Job_i, Task_i
 from doot.enums import TaskMeta_f
 from doot.errors import DootDirAbsent
-from doot.structs import CodeReference, TaskName, TaskSpec
+from doot.structs import TaskName, TaskSpec
 from doot.task.base_task import DootTask
 
 # ##-- end 1st party imports

@@ -31,7 +31,7 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 import more_itertools as mitz
 from tomlguard import TomlGuard
-
+from jgdv.structs.code_ref import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -39,7 +39,7 @@ import doot
 import doot.errors
 from doot.actions.base_action import DootBaseAction
 from doot.actions.job_injection import JobInjector
-from doot.structs import CodeReference, DKey, Location, TaskName, TaskSpec, DKeyed
+from doot.structs import DKey, Location, TaskName, TaskSpec, DKeyed
 
 # ##-- end 1st party imports
 

@@ -26,15 +26,17 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 
 ##-- end imports
 
+from jgdv.structs.code_ref import CodeReference
+import doot
+from doot.cmds.base_cmd import BaseCommand
+from doot.structs import ParamSpec, TaskSpec
+from collections import defaultdict
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 ##-- end logging
 
-import doot
-from doot.cmds.base_cmd import BaseCommand
-from doot.structs import ParamSpec, TaskSpec, CodeReference
-from collections import defaultdict
 
 NON_DEFAULT_KEY : Final[str] = doot.constants.misc.NON_DEFAULT_KEY
 
