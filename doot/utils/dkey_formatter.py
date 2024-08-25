@@ -93,6 +93,7 @@ import more_itertools as mitz
 from pydantic import BaseModel, Field, field_validator, model_validator
 from tomlguard import TomlGuard
 from jgdv.structs.code_ref import CodeReference
+import sh
 
 # ##-- end 3rd party imports
 
@@ -289,6 +290,8 @@ class DKeyFormatter_Expansion_m:
             self.rec_remaining -= count
             last                = current
             match current:
+                case sh.Command():
+                    break
                 case Key_p() if current.multi and count > 0:
                     current = self._multi_expand(current)
                 case Key_p():

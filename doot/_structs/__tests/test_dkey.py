@@ -508,6 +508,20 @@ class TestDKeyExpansion:
         assert(result[1] == "b")
         assert(result[2] == "c")
 
+
+    def test_expansion_of_sh_command(self):
+        """
+          test_ -> [a, b, c]
+        """
+        import sh
+        from sh import ls
+        state = { "cmd":ls}
+        key   = dkey.DKey("cmd", implicit=True)
+        result = key.expand(state)
+        assert(result is not None)
+        assert(isinstance(result, sh.Command))
+        assert(result is ls)
+
 class TestDKeyExpansionMain:
 
     def test_initial(self):
