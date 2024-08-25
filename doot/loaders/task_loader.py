@@ -27,20 +27,21 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 
 ##-- end imports
 
+from collections import ChainMap
+import importlib
+import tomlguard
+from jgdv.structs.code_ref import CodeReference
+import doot
+import doot.errors
+from doot.structs import TaskSpec, TaskName
+from doot._abstract import TaskLoader_p, Job_i, Task_i
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 # If CLI:
 # logging = logmod.root
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
-
-from collections import ChainMap
-import importlib
-import tomlguard
-import doot
-import doot.errors
-from doot.structs import TaskSpec, TaskName, CodeReference
-from doot._abstract import TaskLoader_p, Job_i, Task_i
 
 DEFAULT_TASK_GROUP        = doot.constants.names.DEFAULT_TASK_GROUP
 IMPORT_SEP                = doot.constants.patterns.IMPORT_SEP
@@ -64,7 +65,6 @@ def apply_group_and_source(group, source, x):
                 x['sources'] = []
             x['sources'].append(str(source))
     return x
-
 
 @doot.check_protocol
 class DootTaskLoader(TaskLoader_p):
@@ -108,7 +108,6 @@ class DootTaskLoader(TaskLoader_p):
         logging.debug("Task Loader Setup with %s extra tasks", len(self.extra))
         return self
 
-
     def load(self) -> TomlGuard[tuple[dict, type[Task_i|Job_i]]]:
         start_time = time.perf_counter()
         logging.debug("---- Loading Tasks")
@@ -122,7 +121,6 @@ class DootTaskLoader(TaskLoader_p):
             except OSError as err:
                 logging.error("Failed to Load Config File: %s : %s", source, err.args)
                 continue
-
 
         if self.extra:
             logging.debug("Loading Tasks from extra values")
@@ -190,7 +188,6 @@ class DootTaskLoader(TaskLoader_p):
             self._load_location_updates(data.on_fail([]).locations(), path)
 
         return raw_specs
-
 
     def _build_task_specs(self, group_specs:list[dict], command_names) -> list[TaskSpec]:
         """

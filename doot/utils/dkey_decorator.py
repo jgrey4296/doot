@@ -34,6 +34,7 @@ import inspect
 import more_itertools as mitz
 from pydantic import BaseModel, Field, field_validator, model_validator
 from tomlguard import TomlGuard
+from jgdv.structs.code_ref import CodeReference
 
 # ##-- end 3rd party imports
 
@@ -41,7 +42,6 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot._abstract.protocols import Key_p, SpecStruct_p, Decorator_p
-from doot._structs.code_ref import CodeReference
 from doot.utils.decorators import DecorationUtils, DootDecorator
 from doot._structs.dkey import DKey
 

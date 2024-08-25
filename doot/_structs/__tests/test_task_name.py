@@ -88,6 +88,7 @@ class TestTaskName:
 
     def test_name_to_str(self):
         simple = TaskName.build("basic::tail")
+        assert(simple._separator == "::")
         assert(str(simple) == "basic::tail")
 
     def test_subgroups_str(self):

@@ -31,15 +31,19 @@ from weakref import ref
 
 # ##-- end stdlib imports
 
+# ##-- 3rd party imports
+from jgdv.structs.code_ref import CodeReference
+
+# ##-- end 3rd party imports
+
 # ##-- 1st party imports
 import doot
 import doot.enums
 import doot.errors
-from doot.structs import DKeyed
 from doot._abstract import PluginLoader_p, Task_i
 from doot._structs.dkey import DKey
 from doot.cmds.base_cmd import BaseCommand
-from doot.structs import CodeReference, TaskName, TaskStub
+from doot.structs import DKeyed, TaskName, TaskStub
 from doot.task.base_job import DootJob
 from doot.task.base_task import DootTask
 from doot.utils.decorators import DecorationUtils

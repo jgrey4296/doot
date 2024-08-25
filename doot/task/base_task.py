@@ -29,7 +29,7 @@ from weakref import ref
 
 # ##-- 3rd party imports
 import tomlguard
-
+from jgdv.structs.code_ref import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -40,7 +40,7 @@ from doot.actions.base_action import DootBaseAction
 from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e
 from doot.errors import DootTaskError, DootTaskLoadError
 from doot.mixins.param_spec import ParamSpecMaker_m
-from doot.structs import (ActionSpec, CodeReference, TaskArtifact,
+from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName)
 from doot._structs.relation_spec import RelationSpec
 

@@ -33,14 +33,13 @@ from uuid import UUID, uuid1
 import more_itertools as mitz
 from pydantic import BaseModel, Field, field_validator, model_validator
 from tomlguard import TomlGuard
-
+from jgdv.structs.code_ref import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 import doot.errors
 from doot._abstract.protocols import SpecStruct_p, ProtocolModelMeta, Buildable_p
-from doot._structs.code_ref import CodeReference
 from doot.enums import Report_f, TaskMeta_f
 
 # ##-- end 1st party imports

@@ -36,7 +36,7 @@ import more_itertools as mitz
 from pydantic import (BaseModel, Field, InstanceOf, field_validator,
                       model_validator)
 from tomlguard import TomlGuard
-
+from jgdv.structs.code_ref import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -44,7 +44,6 @@ import doot
 import doot.errors
 from doot._abstract.protocols import (Buildable_p, ProtocolModelMeta,
                                       StubStruct_p)
-from doot._structs.code_ref import CodeReference
 from doot._structs.task_name import TaskName
 from doot._structs.task_spec import TaskSpec
 from doot.enums import LocationMeta_f, QueueMeta_e, Report_f, TaskMeta_f
