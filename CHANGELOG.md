@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 (Generated using [git-cliff](https://git-cliff.org/)
 
+## [0.12.0] - 2024-08-25
+
+### Bug Fixes
+
+- Sh.command broke key expansion
+
+### Dependencies
+
+- Jgdv version
+- Wiki
+- Version 0.11.0 -> 0.12.0
+
+### Refactoring
+
+- Coderef and structuredname to jgdv
+- Log config and spec
+- Logging/printing use
+- Coderef and structuredname to jgdv
+- Factor log config and specs to jgdv
+
+### [Merge]
+
+- Branch 'factor.out.struct.name' into linux-main
+- Branch 'refactor.logging' into linux-main
+- Branch 'factor.out.log.config' into linux-main
+- Branch 'linux-main'
+
+### [data]
+
+- Update templates
+
 ## [0.11.0] - 2024-08-19
 
 ### Features
