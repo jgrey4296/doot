@@ -22,7 +22,6 @@ printing areas:
 
 [shutdown]
 
-
 """
 
 # Imports:
