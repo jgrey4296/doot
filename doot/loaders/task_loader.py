@@ -27,6 +27,15 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 
 ##-- end imports
 
+from collections import ChainMap
+import importlib
+import tomlguard
+from jgdv.structs.code_ref import CodeReference
+import doot
+import doot.errors
+from doot.structs import TaskSpec, TaskName
+from doot._abstract import TaskLoader_p, Job_i, Task_i
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 # If CLI:
@@ -177,8 +186,10 @@ class DootTaskLoader(TaskLoader_p):
                     raw_specs += map(ftz.partial(apply_group_and_source, group, task_file), val)
                 logging.info("Loaded Tasks from: %s", task_file)
                 self._load_location_updates(data.on_fail([]).locations(), task_file)
+
         else:
             return raw_specs
+
 
     def _build_task_specs(self, group_specs:list[dict], command_names) -> list[TaskSpec]:
         """

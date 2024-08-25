@@ -35,14 +35,13 @@ from uuid import UUID, uuid1
 import more_itertools as mitz
 from pydantic import field_validator, model_validator
 from tomlguard import TomlGuard
+from jgdv.structs.name.structured_name import (StructuredName, TailEntry, aware_splitter)
 
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._structs.structured_name import (StructuredName, TailEntry,
-                                           aware_splitter)
 from doot.enums import Report_f, TaskMeta_f
 
 # ##-- end 1st party imports

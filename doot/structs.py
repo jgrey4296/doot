@@ -29,7 +29,6 @@ from uuid import UUID, uuid1
 
 from doot._structs.action_spec import ActionSpec
 from doot._structs.artifact import TaskArtifact
-from doot._structs.code_ref import CodeReference
 from doot._structs.location import Location
 from doot._structs.param_spec import ParamSpec
 from doot._structs.stub import TaskStub, TaskStubPart

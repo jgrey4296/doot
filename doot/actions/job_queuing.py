@@ -31,14 +31,14 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 import more_itertools as mitz
 from tomlguard import TomlGuard
-
+from jgdv.structs.code_ref import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 import doot.errors
 from doot._abstract import Action_p
-from doot.structs import CodeReference, DKey, TaskName, TaskSpec, DKeyed
+from doot.structs import DKey, TaskName, TaskSpec, DKeyed
 
 # ##-- end 1st party imports
 

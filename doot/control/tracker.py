@@ -27,6 +27,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import networkx as nx
+from jgdv.structs.code_ref import CodeReference
 
 # ##-- end 3rd party imports
 
@@ -37,7 +38,7 @@ from doot._abstract import (FailPolicy_p, Job_i, Task_i, TaskRunner_i,
                             TaskTracker_i)
 from doot.control.base_tracker import BaseTracker
 from doot.enums import EdgeType_e, ExecutionPolicy_e, TaskStatus_e, TaskMeta_f
-from doot.structs import CodeReference, TaskArtifact, TaskName, TaskSpec
+from doot.structs import TaskArtifact, TaskName, TaskSpec
 from doot.task.base_task import DootTask
 
 # ##-- end 1st party imports
