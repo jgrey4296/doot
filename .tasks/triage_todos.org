@@ -276,7 +276,7 @@ to (optionally) create a separate log file
    :context:
         <2024-08-21 Wed>         """ Execute a group of actions, possibly queue any task specs they produced,
    :END:
-** TRIAGE task_spec.get_keys
+** OKAY task_spec.get_keys
    [[/media/john/data/github/python/doot/doot/_structs/task_spec.py::341][Location]]
    :context:
         <2024-09-04 Wed>         for cli in self.extra.on_fail([]).cli():

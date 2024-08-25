@@ -11,7 +11,7 @@ sleep   = { tasks=0.2, subtask=1, batch=1 }
 
 [settings.commands]
 # Settings for commands, like telling the 'run' command what backends to use
-run  = { tracker = "default", runner = "default", reporter= "default", report-line = []}
+run  = { tracker="default", runner="default", reporter= "default", report-line=[] }
 list = { hide=[] }
 
 [plugins]
