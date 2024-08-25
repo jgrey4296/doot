@@ -30,18 +30,17 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
+# ##-- 3rd party imports
+from jgdv.structs.code_ref import CodeReference
+
+# ##-- end 3rd party imports
+
 # ##-- 1st party imports
 import doot
 from doot.cmds.base_cmd import BaseCommand
-from doot.structs import CodeReference, ParamSpec, TaskSpec
+from doot.structs import ParamSpec, TaskSpec
 
 # ##-- end 1st party imports
-
-from jgdv.structs.code_ref import CodeReference
-import doot
-from doot.cmds.base_cmd import BaseCommand
-from doot.structs import ParamSpec, TaskSpec
-from collections import defaultdict
 
 ##-- logging
 logging = logmod.getLogger(__name__)
