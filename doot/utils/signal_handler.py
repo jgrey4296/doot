@@ -31,15 +31,16 @@ from uuid import UUID, uuid1
 import more_itertools as mitz
 ##-- end lib imports
 
-##-- logging
-logging = logmod.getLogger(__name__)
-##-- end logging
-
-printer = logmod.getLogger("doot._printer")
-
 import os
 import signal
 import doot
+
+##-- logging
+logging    = logmod.getLogger(__name__)
+printer    = doot.subprinter()
+setup_l    = doot.subprinter("setup")
+shutdown_l = doot.subprinter("shutdown")
+##-- end logging
 
 env : dict = os.environ
 
@@ -56,13 +57,13 @@ class SignalHandler:
 
     @staticmethod
     def install(sig=signal.SIGINT):
-        printer.debug("Installing Task Loop handler for: %s", signal.strsignal(sig))
+        setup_l.debug("Installing Task Loop handler for: %s", signal.strsignal(sig))
         # Install handler for Interrupt signal
         signal.signal(sig, SignalHandler.handle)
 
     @staticmethod
     def uninstall(sig=signal.SIGINT):
-        printer.debug("Uninstalling Task Loop handler for: %s", signal.strsignal(sig))
+        shutdown_l.debug("Uninstalling Task Loop handler for: %s", signal.strsignal(sig))
         signal.signal(sig, signal.SIG_DFL)
 
     def __enter__(self):

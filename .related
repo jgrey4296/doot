@@ -6,11 +6,16 @@
 
 :data        : data
 :docs        : docs
-:github      : .github/workflows
 :tasks       : .tasks
 :temp        : .temp
-:templates   : templates
 :wiki        : wiki_
 :git         : .git
 :hooks       : .git/hooks
+:workflows   : .github/workflows
 :logs        : .temp/logs
+:src         : doot
+:code        : doot
+:api         : doot/_abstract
+:structs     : doot/_structs
+:templates   : doot/__templates
+:data        : doot/__data

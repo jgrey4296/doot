@@ -45,12 +45,12 @@ from doot.task.base_task import DootTask
 
 ##-- logging
 logging    = logmod.getLogger(__name__)
-printer    = logmod.getLogger("doot._printer")
-track_l    = printer.getChild("track")
-fail_l     = printer.getChild("fail")
-skip_l     = printer.getChild("skip")
-task_l     = printer.getChild("task")
-artifact_l = printer.getChild("artifact")
+printer    = doot.subprinter()
+track_l    = doot.subprinter("track")
+fail_l     = doot.subprinter("fail")
+skip_l     = doot.subprinter("skip")
+task_l     = doot.subprinter("task")
+artifact_l = doot.subprinter("artifact")
 ##-- end logging
 
 Node      : TypeAlias      = TaskName|TaskArtifact
@@ -58,23 +58,18 @@ Depth     : TypeAlias      = int
 PlanEntry : TypeAlias      = tuple[Depth, Node, str]
 MAX_LOOP  : Final[int]     = 100
 
-@doot.check_protocol
-class DootTracker(BaseTracker, TaskTracker_i):
-    """
-    track dependencies in a networkx digraph,
-    predecessors of a node are its dependencies.
-      ie: SubDependency -> Dependency -> Task -> ROOT
+class TrackerPersistence_m:
+    """ Mixin for persisting the tracker """
 
-    tracks definite and indefinite artifacts as products and dependencies of tasks as well.
+    def write(self, target:pl.Path):
+        """ Write the task network out as jsonl  """
+        raise NotImplementedError()
 
-    the `network` stores nodes as full names of tasks
-    """
-    _node_sort : ClassVar[callable] = lambda x: str(x)
+    def read(self, target:pl.Path):
+        raise NotImplementedError()
 
-    def __init__(self, shadowing:bool=False):
-        super().__init__()
-        self.shadowing = False
-
+class TrackerPlanGen_m:
+    """ Mixin for generating plans """
 
     def _dfs_plan(self) -> list[PlanEntry]:
         """ Generates the Execution plan of queued tasks,
@@ -138,8 +133,6 @@ class DootTracker(BaseTracker, TaskTracker_i):
                 case _: # error
                     pass
 
-
-
         return plan
 
     def _priority_plan(self) -> list[PlanEntry]:
@@ -181,6 +174,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
         """ Generate an ordered list of tasks that would be executed.
           Does not expand jobs.
           """
+        logging.info("---- Generating Plan")
         match policy:
             case None | ExecutionPolicy_e.DEPTH:
                  return self._dfs_plan()
@@ -191,11 +185,22 @@ class DootTracker(BaseTracker, TaskTracker_i):
             case _:
                 raise doot.errors.DootTaskTrackingError("Unknown plan generation form", policy)
 
+@doot.check_protocol
+class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTracker_i):
+    """
+    track dependencies in a networkx digraph,
+    predecessors of a node are its dependencies.
+      ie: SubDependency -> Dependency -> Task -> ROOT
 
+    tracks definite and indefinite artifacts as products and dependencies of tasks as well.
 
-    def write(self, target:pl.Path):
-        """ Write the task network out as jsonl  """
-        raise NotImplementedError()
+    the `network` stores nodes as full names of tasks
+    """
+    _node_sort : ClassVar[callable] = lambda x: str(x)
+
+    def __init__(self, shadowing:bool=False):
+        super().__init__()
+        self.shadowing = False
 
     def next_for(self, target:None|str|TaskName=None) -> None|Task_i|TaskArtifact:
         """ ask for the next task that can be performed
@@ -205,6 +210,8 @@ class DootTracker(BaseTracker, TaskTracker_i):
           or if theres nothing left in the queue
 
         """
+        logging.info("---- Getting Next Task")
+        logging.debug("Tracker Active Set Size: %s", len(self.active_set))
         if not self.network_is_valid:
             raise doot.errors.DootTaskTrackingError("Network is in an invalid state")
 
@@ -213,7 +220,8 @@ class DootTracker(BaseTracker, TaskTracker_i):
 
         focus : None|str|TaskName|TaskArtifact = None
         count = MAX_LOOP
-        while bool(self) and 0 < (count:=count-1):
+        result = None
+        while (result is None) and bool(self) and 0 < (count:=count-1):
             focus  : TaskName|TaskArtifact = self.deque_entry()
             status : TaskStatus_e          = self.get_status(focus)
             match focus:
@@ -222,14 +230,13 @@ class DootTracker(BaseTracker, TaskTracker_i):
                 case TaskArtifact():
                     track_l.debug("Tracker Head: %s (Artifact). State: %s, Priority: %s", focus, self.get_status(focus), self._artifact_status[focus])
 
-            logging.debug("Tracker Active Set Size: %s", len(self.active_set))
 
             match status:
                 case TaskStatus_e.DEAD:
                     track_l.debug("Task is Dead: %s", focus)
                     del self.tasks[focus]
                 case TaskStatus_e.DISABLED:
-                    track_l.info("Task Disabled: %s", focus)
+                    track_l.warning("Task Disabled: %s", focus)
                 case TaskStatus_e.TEARDOWN:
                     track_l.debug("Tearing Down: %s", focus)
                     self.active_set.remove(focus)
@@ -238,7 +245,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
                     if bool(cleanups):
                         self.queue_entry(cleanups[0])
                 case TaskStatus_e.SUCCESS | TaskStatus_e.EXISTS:
-                    track_l.info("Task Succeeded: %s", focus)
+                    track_l.debug("Task Succeeded: %s", focus)
                     self.execution_trace.append(focus)
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
                     heads = [x for x in self.network.succ[focus] if self.network.edges[focus, x].get("job_head", False)]
@@ -261,14 +268,14 @@ class DootTracker(BaseTracker, TaskTracker_i):
                     skip_l.info("Task was skipped: %s", focus)
                     self.queue_entry(focus, status=TaskStatus_e.DEAD)
                 case TaskStatus_e.RUNNING:
-                    track_l.info("Awaiting Runner to update status for: %s", focus)
+                    track_l.debug("Waiting for Runner to update status for: %s", focus)
                     self.queue_entry(focus)
                 case TaskStatus_e.READY:   # return the task if its ready
-                    track_l.info("Task Ready to run, informing runner: %s", focus)
+                    track_l.debug("Task Ready to run, informing runner: %s", focus)
                     self.queue_entry(focus, status=TaskStatus_e.RUNNING)
-                    return self.tasks[focus]
+                    result = self.tasks[focus]
                 case TaskStatus_e.WAIT: # Add dependencies of a task to the stack
-                    track_l.info("Checking Task Dependencies: %s", focus)
+                    track_l.debug("Checking Task Dependencies: %s", focus)
                     match self.incomplete_dependencies(focus):
                         case []:
                             self.queue_entry(focus, status=TaskStatus_e.READY)
@@ -282,7 +289,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
                     self.queue_entry(focus, status=TaskStatus_e.WAIT)
 
                 case TaskStatus_e.STALE:
-                    artifact_l.info("Artifact is Stale: %s", focus)
+                    track_l.info("Artifact is Stale: %s", focus)
                     for pred in self.network.pred[focus]:
                         self.queue_entry(pred)
                 case TaskStatus_e.ARTIFACT if bool(focus):
@@ -295,7 +302,7 @@ class DootTracker(BaseTracker, TaskTracker_i):
                             fail_l.warning("An Artifact has no incomplete dependencies, yet doesn't exist: %s (expanded: %s)", focus, path)
                             self.queue_entry(focus, status=TaskStatus_e.HALTED)
                             # Returns the artifact, the runner can try to create it, then override the halt
-                            return focus
+                            result = focus
                         case [*xs]:
                             track_l.debug("Artifact Blocked, queuing producer tasks, count: %s", len(xs))
                             self.queue_entry(focus)
@@ -313,4 +320,6 @@ class DootTracker(BaseTracker, TaskTracker_i):
                 case x: # Error otherwise
                     raise doot.errors.DootTaskTrackingError("Unknown task state: ", x)
 
-        return None
+        else:
+            logging.info("---- Determined Next Task To Be: %s", result)
+            return result

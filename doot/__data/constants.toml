@@ -51,7 +51,7 @@ PRINTER_NAME            = "doot._printer"
 PRINTER_CHILDREN        = [
     "action_exec", "action_group", "artifact", "cmd", "fail", "header", "help", "queue",
     "report", "skip", "sleep", "success", "task", "task_header", "task_loop", "task_state",
-    "track", "setup", "shutdown"
+    "track", "setup", "shutdown", "check_loc", "cleanup", "expansion"
 ]
 PRINT_LOCATIONS         = ["head", "build", "action", "sleep", "execute", "enter"]
 DEFAULT_HEAD_LEVEL      = "INFO"

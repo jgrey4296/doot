@@ -52,7 +52,8 @@ from doot.utils.decorators import DecorationUtils
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = logmod.getLogger("doot._printer")
+printer = doot.subprinter()
+cmd_l   = doot.subprinter("cmd")
 ##-- end logging
 
 ##-- data
@@ -72,11 +73,12 @@ class StubCmd(BaseCommand):
         return super().param_specs + [
             self.build_param(name="file-target", type=str,     default=""),
             self.build_param(name="Config",                    default=False,           desc="Stub a doot.toml",                  prefix="-"),
-            self.build_param(name="Actions",                   default=False,           desc="Help Stub Actions",                 prefix="-"),
+            self.build_param(name="Flags",                     default=False,           desc="Help Stub Task Flags",              prefix="-"),
+
             self.build_param(name="cli",                       default=False,           desc="Generate a stub cli arg dict",      prefix="-"),
+            self.build_param(name="actions",                   default=False,           desc="Help Stub Actions",                 prefix="-"),
             self.build_param(name="printer",                   default=False,           desc="Generate a stub cli arg dict",      prefix="-"),
 
-            self.build_param(name="Flags",                     default=False,           desc="Help Stub Task Flags",              prefix="-"),
 
             self.build_param(name="name",        type=str,     default=None,            desc="The Name of the new task",                          positional=True),
             self.build_param(name="ctor",        type=str,     default="task",          desc="The short type name of the task generator",         positional=True),
@@ -94,34 +96,36 @@ class StubCmd(BaseCommand):
         match dict(doot.args.cmd.args):
             case {"Config": True}:
                 self._stub_doot_toml()
-            case {"Actions": True}:
+            case {"Flags": True}:
+                self._list_flags()
+            case {"actions": True}:
                 self._stub_actions(plugins)
             case {"cli": True}:
                 self._stub_cli_arg()
-            case {"Flags": True}:
-                self._list_flags()
+            case {"printer": True}:
+                self._list_printers()
             case _:
                 self._stub_task_toml(tasks, plugins)
 
     def _stub_doot_toml(self):
-        logging.info("Building Doot Toml Stub")
+        logging.info("---- Stubbing Doot Toml")
         doot_toml = pl.Path("doot.toml")
         data_text = data_path.read_text()
         if doot_toml.exists():
-            printer.info(data_text)
-            printer.warning("doot.toml it already exists, printed to stdout instead")
+            cmd_l.info(data_text)
+            cmd_l.warning("doot.toml it already exists, printed to stdout instead")
             return
 
         with open(task_file, "a") as f:
             f.write(data_text)
 
-        printer.info("doot.toml stub")
+        cmd_l.info("doot.toml stub")
 
     def _stub_task_toml(self, tasks, plugins):
         """
         This creates a toml stub using default values, as best it can
         """
-        logging.info("Building Task Toml Stub")
+        logging.info("---- Stubbing Task Toml")
         task_iden                   : CodeReference       = CodeReference.from_alias(doot.args.on_fail("task").cmd.args.ctor(), "task", plugins)
 
         if (name:=doot.args.on_fail((None,)).cmd.args.name()) is None:
@@ -172,58 +176,61 @@ class StubCmd(BaseCommand):
 
         # Output to printer/stdout, or file
         if doot.args.cmd.args.file_target == "":
-            printer.info(stub.to_toml())
+            cmd_l.info(stub.to_toml())
             return
 
         task_file = pl.Path(doot.args.cmd.args.file_target)
         if task_file.is_dir():
             task_file /= "stub_tasks.toml"
-        printer.info("Stubbing task %s into file: %s", stub['name'], task_file)
+        cmd_l.info("Stubbing task %s into file: %s", stub['name'], task_file)
         with open(task_file, "a") as f:
             f.write("\n")
             f.write(stub.to_toml())
 
     def _stub_actions(self, plugins):
+        logging.info("---- Stubbing Actions")
         matched = [x for x in plugins.action if x.name == doot.args.cmd.args.name or x.value == doot.args.cmd.args.name]
         if bool(matched):
             loaded = matched[0].load()
-            printer.info("- Action %s : %s", matched[0].name, matched[0].value)
+            cd_l.info("- Action %s : %s", matched[0].name, matched[0].value)
             match getattr(loaded, "_toml_help", []):
                 case [] if bool(getattr(loaded, "__doc__")):
-                    printer.info(loaded.__doc__)
+                    cmd_l.info(loaded.__doc__)
                 case []:
                     pass
                 case [*xs]:
                     for x in xs:
-                        printer.info(x)
+                        cmd_l.info(x)
 
             loaded = getattr(loaded, "__call__", loaded)
             match DKeyed.get_keys(loaded):
                 case []:
-                    printer.info("-- No Declared Kwargs")
+                    cmd_l.info("-- No Declared Kwargs")
                 case [*xs]:
-                    printer.info("-- Declared kwargs for action: %s", sorted([repr(x) for x in xs]))
+                    cmd_l.info("-- Declared kwargs for action: %s", sorted([repr(x) for x in xs]))
         else:
-            printer.info("Available Actions:")
+            cmd_l.info("Available Actions:")
             for action in sorted(plugins.action, key=lambda x: x.name):
-                printer.info("-- %-20s : %s", action.name, action.value)
+                cmd_l.info("-- %-20s : %s", action.name, action.value)
 
-            printer.info("")
-            printer.info("- For Custom Python Actions, implement the following in the .tasks directory")
-            printer.info("def custom_action(spec:ActionSpec, task_state:dict) -> None|bool|dict:...")
+            cmd_l.info("")
+            cmd_l.info("- For Custom Python Actions, implement the following in the .tasks directory")
+            cmd_l.info("def custom_action(spec:ActionSpec, task_state:dict) -> None|bool|dict:...")
 
-        printer.info("")
-        printer.info("-- Toml Form: ")
+        cmd_l.info("")
+        cmd_l.info("-- Toml Form: ")
         # TODO customize this with declared annotations
         if bool(matched):
-            printer.info("{ do=\"%s\", args=[] } # plus any kwargs a specific action uses", matched[0].name)
+            cmd_l.info("{ do=\"%s\", args=[] } # plus any kwargs a specific action uses", matched[0].name)
         else:
-            printer.info("{ do=\"action name/import path\", args=[], inState=[], outState=[] } # plus any kwargs a specific action uses")
+            cmd_l.info("{ do=\"action name/import path\", args=[], inState=[], outState=[] } # plus any kwargs a specific action uses")
 
 
     def _stub_cli_arg(self):
-        printer.info("# - CLI Arg Form. Add to task spec: cli=[]")
-        printer.info("")
+        logging.info("---- Printing CLI Arg info")
+
+        cmd_l.info("# - CLI Arg Form. Add to task spec: cli=[]")
+        cmd_l.info("")
         stub = []
         stub.append('name="')
         stub.append(doot.args.on_fail("default").cmd.args.name())
@@ -234,9 +241,31 @@ class StubCmd(BaseCommand):
         stub.append('desc="", ')
         stub.append('positional=false ')
 
-        printer.info("{ %s }", "".join(stub))
+        cmd_l.info("{ %s }", "".join(stub))
+
+    def _list_printers(self):
+        logging.info("---- Listing Printers/Logging info")
+        acceptable_names    = doot.constants.printer.PRINTER_CHILDREN
+
+        cmd_l.info("")
+        cmd_l.info("---- Logging Specs Toml Form:")
+        cmd_l.info("name = { level="", filter=[], target=[""], format="", colour=True, propagate=False, filename_fmt=""}")
+
+        cmd_l.info("")
+        cmd_l.info("--- Logging Targets:")
+        cmd_l.info("  %s", ", ".join(["file", "stdout", "stderr", "rotate"]))
+
+        cmd_l.info("")
+        cmd_l.info("--- Subprinters: ")
+        cmd_l.info("  %s", ", ".join(acceptable_names))
+
+        cmd_l.info("--- Notes: ")
+        cmd_l.info("  Format is the {} form of log formatting")
+        cmd_l.info("  Available variables are found here:")
+        cmd_l.info("  https://docs.python.org/3/library/logging.html#logrecord-attributes")
 
     def _list_flags(self):
-        printer.info("Task Flags: ")
+        logging.info("---- Listing Task Flags")
+        cmd_l.info("Task Flags: ")
         for x in sorted(doot.enums.TaskMeta_f, key=lambda x: x.name):
-            printer.info("-- %s", x.name)
+            cmd_l.info("-- %s", x.name)

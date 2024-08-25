@@ -37,9 +37,9 @@ from doot.structs import DKey, DKeyed
 # ##-- end 1st party imports
 
 ##-- logging
-printer = logmod.getLogger("doot._printer")
-cmd_l   = printer.getChild("cmd")
-fail_l  = printer.getChild("fail")
+printer = doot.subprinter()
+cmd_l   = doot.subprinter("cmd")
+fail_l  = doot.subprinter("fail")
 ##-- end logging
 
 class SpeakTimeAction(Action_p):

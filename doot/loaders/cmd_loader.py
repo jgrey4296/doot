@@ -30,9 +30,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-# If CLI:
-# logging = logmod.root
-# logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
 import tomlguard

@@ -46,9 +46,9 @@ from doot.structs import ParamSpec
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = logmod.getLogger("doot._printer")
-help_l  = printer.getChild("help")
-cmd_l   = printer.getChild("cmd")
+printer = doot.subprinter()
+help_l  = doot.subprinter("help")
+cmd_l   = doot.subprinter("cmd")
 ##-- end logging
 
 INDENT     : Final[str]       = " "*8
@@ -164,6 +164,7 @@ class ListCmd(BaseCommand):
                                             (spec.doc[0] if bool(spec.doc) else "")[:60],
                                             (spec.sources[0] if bool(spec.sources) else "None")
                                            ))
+
 
         for group, tasks in groups.items():
             cmd_l.info("*   %s::", group, extra={"colour":"magenta"})

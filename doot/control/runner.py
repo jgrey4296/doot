@@ -47,21 +47,16 @@ from doot.utils.signal_handler import SignalHandler
 
 ##-- logging
 logging       = logmod.getLogger(__name__)
-printer       = logmod.getLogger("doot._printer")
-fail_l        = printer.getChild("fail")
-skip_l        = printer.getChild("skip")
-task_header_l = printer.getChild("task_header")
-actgrp_l      = printer.getChild("action_group")
-queue_l       = printer.getChild("queue")
-actexec_l     = printer.getChild("action_exec")
-state_l       = printer.getChild("task_state")
+printer       = doot.subprinter()
+fail_l        = doot.subprinter("fail")
+skip_l        = doot.subprinter("skip")
+task_header_l = doot.subprinter("task_header")
+actgrp_l      = doot.subprinter("action_group")
+queue_l       = doot.subprinter("queue")
+actexec_l     = doot.subprinter("action_exec")
+state_l       = doot.subprinter("task_state")
 ##-- end logging
 
-head_level              : Final[str] = doot.constants.printer.DEFAULT_HEAD_LEVEL
-build_level             : Final[str] = doot.constants.printer.DEFAULT_BUILD_LEVEL
-action_level            : Final[str] = doot.constants.printer.DEFAULT_ACTION_LEVEL
-sleep_level             : Final[str] = doot.constants.printer.DEFAULT_SLEEP_LEVEL
-execute_level           : Final[str] = doot.constants.printer.DEFAULT_EXECUTE_LEVEL
 skip_msg                : Final[str] = doot.constants.printer.skip_by_condition_msg
 actgrp_prefix           : Final[str] = doot.constants.printer.action_group_prefix
 fail_prefix             : Final[str] = doot.constants.printer.fail_prefix
@@ -165,14 +160,17 @@ class DootRunner(BaseRunner, TaskRunner_i):
             task.state.clear()
             task_header_l.debug("< Task: %s", task.shortname, extra={"colour":"cyan"})
 
-    def _execute_action_group(self, actions:list, task:Task_i, allow_queue=False, group=None) -> tuple[int, ActRE]:
+    def _execute_action_group(self, actions:list, task:Task_i, allow_queue=False, group=None) -> None|tuple[int, ActRE]:
         """ Execute a group of actions, possibly queue any task specs they produced,
         and return a count of the actions run + the result
         """
-        actgrp_l.info("%s Action Group %s (%s) for : %s", actgrp_prefix, group, len(actions), task.shortname)
-        group_result     = ActRE.SUCCESS
-        to_queue         = []
-        executed_count   = 0
+        if not bool(actions):
+            return None
+
+        actgrp_l.debug("%s Action Group %s (%s) for : %s", actgrp_prefix, group, len(actions), task.shortname)
+        group_result              = ActRE.SUCCESS
+        to_queue : list[TaskSpec] = []
+        executed_count            = 0
 
         for action in actions:
             result : None|bool|list = None
@@ -264,8 +262,12 @@ class DootRunner(BaseRunner, TaskRunner_i):
         return result
 
     def _test_conditions(self, task:Task_i) -> bool:
-        """ run a task's depends_on group, coercing to a bool """
+        """ run a task's depends_on group, coercing to a bool
+        returns False if the runner should skip the rest of the task
+        """
         match self._execute_action_group(task.spec.depends_on, task, group="depends_on"):
+            case None:
+                return True
             case _, ActRE.SKIP | ActRE.FAIL:
                 return False
             case _, _:

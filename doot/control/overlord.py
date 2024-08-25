@@ -49,11 +49,11 @@ from doot.utils.plugin_selector import plugin_selector
 
 ##-- logging
 logging    = logmod.getLogger(__name__)
-printer    = logmod.getLogger("doot._printer")
-header_l   = printer.getChild("header")
-setup_l    = printer.getChild("setup")
-help_l     = printer.getChild("help")
-shutdown_l = printer.getChild("shutdown")
+printer    = doot.subprinter()
+header_l   = doot.subprinter("header")
+setup_l    = doot.subprinter("setup")
+help_l     = doot.subprinter("help")
+shutdown_l = doot.subprinter("shutdown")
 ##-- end logging
 
 env = os.environ
@@ -88,7 +88,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         print("lib @", os.path.dirname(os.path.abspath(__file__)))
 
     def __init__(self, *, loaders:dict[str, Loader_i]=None, config_filenames:tuple=('doot.toml', 'pyproject.toml'), extra_config:dict|TomlGuard=None, args:list=None, log_config:None|DootLogConfig=None):
-        logging.debug("Initialising Overlord")
+        logging.info("---- Initialising Overlord")
         self.args                                = args or sys.argv[:]
         self.BIN_NAME                            = self.args[0].split('/')[-1]
         self.loaders                             = loaders or dict()
@@ -106,12 +106,11 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         self._load_commands(extra_config)
         self._load_tasks(extra_config)
         self._parse_args()
-        setup_l.debug("Core Overlord Initialisation complete")
+        logging.info("---- Core Overlord Initialisation complete")
 
     def __call__(self, cmd=None) -> int:
         """ The main run logic of the overlord """
-
-        if not doot.args.on_fail((None,)).cmd.args.suppress_header():
+        if not doot.args.on_fail(False).cmd.args.suppress_header():
             header_l.info(HEADER_MSG, extra={"colour": "green"})
 
         if doot.args.on_fail(False).head.args.debug():
@@ -123,14 +122,15 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
             return
 
         # Do the cmd
-        setup_l.debug("Overlord Calling: %s", cmd or doot.args.on_fail("Unknown").cmd.name())
         try:
+            logging.info("---- Overlord Calling: %s", cmd or doot.args.on_fail("Unknown").cmd.name())
             cmd = self._get_cmd(cmd)
             cmd(self.tasks, self.plugins)
         except doot.errors.DootError as err:
             self._errored = err
             raise err
         else:
+            logging.info("---- Overlord Cmd Call Complete")
             return 0
 
     @property
@@ -166,7 +166,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
             self.plugins : TomlGuard = self.plugin_loader.load()
             doot._update_aliases(self.plugins)
         except doot.errors.DootPluginError as err:
-            setup_l.warning("Plugins Not Loaded Due to Error: %s", err)
+            shutdown_l.warning("Plugins Not Loaded Due to Error: %s", err)
             self.plugins = tomlguard.TomlGuard()
 
     def _load_commands(self, extra_config):
@@ -184,7 +184,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
             self.cmd_loader.setup(self.plugins, extra_config)
             self.cmds = self.cmd_loader.load()
         except doot.errors.DootPluginError as err:
-            setup_l.warning("Commands Not Loaded due to Error: %s", err)
+            shutdown_l.warning("Commands Not Loaded due to Error: %s", err)
             self.cmds = tomlguard.TomlGuard()
 
     def _load_tasks(self, extra_config):
@@ -220,12 +220,12 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
           return False for not continuing on to do the command
         """
         if doot.args.on_fail(False).head.args.verbose() and self.log_config:
-            setup_l.info("Switching to Verbose Output")
+            logging.info("Switching to Verbose Output")
             self.log_config.set_level("NOTSET")
             pass
 
         logging.info("CLI Args: %s", doot.args._table())
-        logging.info("Plugins: %s", dict(self.plugins))
+        logging.info("Plugins: %s", dict(self.plugins).keys())
         logging.info("Tasks: %s", self.tasks.keys())
 
         if doot.args.on_fail(False).head.args.version():
@@ -273,11 +273,11 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
 
     def shutdown(self):
         """ Doot has finished normally, so report on what was done """
+        logging.info("---- Overlord Shutting Down")
         if self.current_cmd is not None and hasattr(self.current_cmd, "shutdown"):
             self.current_cmd.shutdown(self._errored, self.tasks, self.plugins)
 
         say_on_exit = doot.config.on_fail(False).settings.general.notify.say_on_exit()
-
         match self._errored:
             case doot.errors.DootError() if say_on_exit:
                 self._record_defaulted_config_values()
