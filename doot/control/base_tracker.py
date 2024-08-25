@@ -40,7 +40,7 @@ import boltons.queueutils
 import more_itertools as mitz
 import networkx as nx
 import tomlguard
-
+from jgdv.structs.code_ref import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -49,7 +49,7 @@ import doot.errors
 from doot._abstract import FailPolicy_p, Job_i, Task_i, TaskRunner_i, TaskTracker_i
 from doot._structs.relation_spec import RelationSpec
 from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e, LocationMeta_f, RelationMeta_e, EdgeType_e
-from doot.structs import (ActionSpec, CodeReference, TaskArtifact,
+from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
 
@@ -57,8 +57,9 @@ from doot.task.base_task import DootTask
 
 ##-- logging
 logging    = logmod.getLogger(__name__)
-printer    = logmod.getLogger("doot._printer")
-track_l    = printer.getChild("track")
+printer    = doot.subprinter()
+track_l    = doot.subprinter("track")
+logging.disabled = True
 ##-- end logging
 
 ROOT                           : Final[str]                  = "root::_" # Root node of dependency graph

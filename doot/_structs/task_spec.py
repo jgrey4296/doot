@@ -36,7 +36,7 @@ from pydantic import (BaseModel, BeforeValidator, Field, ValidationError,
                       WrapValidator, field_validator, model_validator)
 from tomlguard import TomlGuard
 from typing_extensions import Annotated
-
+from jgdv.structs.code_ref import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -46,7 +46,6 @@ from doot._abstract.protocols import SpecStruct_p, ProtocolModelMeta, Buildable_
 from doot._abstract.task import Task_i
 from doot._structs.action_spec import ActionSpec
 from doot._structs.artifact import TaskArtifact
-from doot._structs.code_ref import CodeReference
 from doot._structs.relation_spec import RelationSpec
 from doot._structs.task_name import TaskName
 from doot.enums import (LocationMeta_f, RelationMeta_e, Report_f, TaskMeta_f,

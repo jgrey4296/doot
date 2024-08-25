@@ -2,30 +2,47 @@
 """
 
 """
-##-- imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
+import datetime
+import enum
 # import abc
 # import datetime
 # import enum
 import functools as ftz
+import importlib
 import itertools as itz
 import logging as logmod
 import pathlib as pl
 import re
 import time
 import types
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
+from collections import ChainMap
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
+from uuid import UUID, uuid1
 
-# from uuid import UUID, uuid1
-# from weakref import ref
+# ##-- end stdlib imports
 
-##-- end imports
+# ##-- 3rd party imports
+import tomlguard
+from jgdv.structs.code_ref import CodeReference
+from jgdv.util.time_ctx import TimeCtx
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+from doot._abstract import Job_i, Task_i, TaskLoader_p
+from doot.structs import TaskName, TaskSpec
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -33,14 +50,6 @@ logging = logmod.getLogger(__name__)
 # logging = logmod.root
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
-
-from collections import ChainMap
-import importlib
-import tomlguard
-import doot
-import doot.errors
-from doot.structs import TaskSpec, TaskName, CodeReference
-from doot._abstract import TaskLoader_p, Job_i, Task_i
 
 DEFAULT_TASK_GROUP        = doot.constants.names.DEFAULT_TASK_GROUP
 IMPORT_SEP                = doot.constants.patterns.IMPORT_SEP
@@ -64,7 +73,6 @@ def apply_group_and_source(group, source, x):
                 x['sources'] = []
             x['sources'].append(str(source))
     return x
-
 
 @doot.check_protocol
 class DootTaskLoader(TaskLoader_p):
@@ -108,38 +116,34 @@ class DootTaskLoader(TaskLoader_p):
         logging.debug("Task Loader Setup with %s extra tasks", len(self.extra))
         return self
 
-
     def load(self) -> TomlGuard[tuple[dict, type[Task_i|Job_i]]]:
-        start_time = time.perf_counter()
-        logging.debug("---- Loading Tasks")
-        raw_specs : list[dict] = []
-        logging.debug("Loading Tasks from Config")
-        for source in doot._configs_loaded_from:
-            try:
-                source_data : TomlGuard = tomlguard.load(source)
-                task_specs = source_data.on_fail({}).tasks()
-                raw_specs += self._load_raw_specs(task_specs, source)
-            except OSError as err:
-                logging.error("Failed to Load Config File: %s : %s", source, err.args)
-                continue
+        with TimeCtx(logger=logging, entry_msg="---- Loading Tasks",  exit_msg="---- Task Loading Time"):
+            raw_specs : list[dict] = []
+            logging.debug("Loading Tasks from Config")
+            for source in doot._configs_loaded_from:
+                try:
+                    source_data : TomlGuard = tomlguard.load(source)
+                    task_specs = source_data.on_fail({}).tasks()
+                    raw_specs += self._load_raw_specs(task_specs, source)
+                except OSError as err:
+                    logging.error("Failed to Load Config File: %s : %s", source, err.args)
+                    continue
 
+            if self.extra:
+                logging.debug("Loading Tasks from extra values")
+                raw_specs += self._load_raw_specs(self.extra, "(extra)")
 
-        if self.extra:
-            logging.debug("Loading Tasks from extra values")
-            raw_specs += self._load_raw_specs(self.extra, "(extra)")
+            logging.debug("Loading tasks from sources: %s", [str(x) for x in task_sources])
+            for path in task_sources:
+                raw_specs += self._load_specs_from_path(path)
 
-        logging.debug("Loading tasks from sources: %s", [str(x) for x in task_sources])
-        for path in task_sources:
-            raw_specs += self._load_specs_from_path(path)
-
-        logging.debug("Loaded %s Task Specs", len(raw_specs))
-        if bool(self.tasks):
-            logging.warning("Task Loader is overwriting already loaded tasks")
-        self.tasks = self._build_task_specs(raw_specs, self.cmd_names)
+            logging.debug("Loaded %s Task Specs", len(raw_specs))
+            if bool(self.tasks):
+                logging.warning("Task Loader is overwriting already loaded tasks")
+            self.tasks = self._build_task_specs(raw_specs, self.cmd_names)
 
         logging.debug("Task List Size: %s", len(self.tasks))
         logging.debug("Task List Names: %s", list(self.tasks.keys()))
-        logging.debug("---- Tasks Loaded in %s seconds", f"{time.perf_counter() - start_time:0.4f}")
         return tomlguard.TomlGuard(self.tasks)
 
     def _load_raw_specs(self, data:dict, source:pl.Path|Literal['(extra)']) -> list[dict]:
@@ -160,91 +164,97 @@ class DootTaskLoader(TaskLoader_p):
     def _load_specs_from_path(self, path) -> list[dict]:
         """ load a config file defined task_sources of tasks """
         raw_specs = []
-        # Load task spec path
-        if not path.exists():
-            pass
-        elif path.is_dir():
-            for task_file in [x for x in path.iterdir() if x.suffix == ".toml"]:
-                try:
-                    data = tomlguard.load(task_file)
-                except OSError as err:
-                    logging.error("Failed to Load Task File: %s : %s", task_file, err.filename)
-                    continue
+
+        targets = []
+        if path.is_dir():
+            targets += [x for x in path.iterdir() if x.suffix == ".toml"]
+        elif path.is_file():
+            targets.append(path)
+        else:
+            assert(not path.exists())
+
+        for task_file in targets:
+            try:
+                data = tomlguard.load(task_file)
+            except OSError as err:
+                logging.error("Failed to Load Task File: %s : %s", task_file, err.filename)
+                continue
+            else:
                 for group, val in data.on_fail({}).tasks().items():
                     # sets 'group' for each task if it hasn't been set already
                     raw_specs += map(ftz.partial(apply_group_and_source, group, task_file), val)
                 logging.info("Loaded Tasks from: %s", task_file)
                 self._load_location_updates(data.on_fail([]).locations(), task_file)
 
-        elif path.is_file():
-            try:
-                data = tomlguard.load(path)
-            except OSError as err:
-                logging.error("Failed to Load Task File: %s : %s", path, err.filename)
-                return raw_specs
-
-            for group, val in data.on_fail({}).tasks().items():
-                # sets 'group' for each task if it hasn't been set already
-                raw_specs += map(ftz.partial(apply_group_and_source, group, path), val)
-            logging.info("Loaded Tasks from: %s", path)
-            self._load_location_updates(data.on_fail([]).locations(), path)
-
-        return raw_specs
-
+        else:
+            return raw_specs
 
     def _build_task_specs(self, group_specs:list[dict], command_names) -> list[TaskSpec]:
         """
         convert raw dicts into TaskSpec objects,
           checking nothing tries to shadow a command name or other task name
         """
+        logging.info("---- Building Task Specs")
         task_descriptions : dict[str, TaskSpec] = {}
-        dont_allow_overloads = lambda task_name, group_name: not allow_overloads and task_name in task_descriptions and group_name == task_descriptions[task_name][0]['group']
+
+        def detect_overloads(task_name,  group_name):
+            if task_name not in task_descriptions:
+                return False
+
+            return group_name == task_descriptions[task_name][0]['group']
+
+        failures                                = []
         for spec in group_specs:
             task_alias = "task"
+            task_spec = None
             try:
                 match spec:
-                    # case {"name": task_name} if task_name in command_names:
-                    #     raise doot.errors.DootTaskLoadError("Name conflict: %s is already a Command", task_name)
-                    case {"name": task_name, "group": group} if dont_allow_overloads(task_name, group): # complain on overload
+                    case {"name": task_name, "group": group} if not allow_overloads and detect_overloads(task_name, group): # complain on overload
                         raise doot.errors.DootTaskLoadError("Task Name Overloaded: %s : %s", task_name, group)
                     case {"name": task_name, "ctor": str() as task_alias} if task_alias in self.task_builders: # build named plugin type
-                        logging.info("Building Task from short name: %s : %s", task_name, task_alias)
+                        logging.debug("Building Task from short name: %s : %s", task_name, task_alias)
                         task_iden                   : CodeReference       = CodeReference.from_alias(task_alias, "task", self.plugins)
                         spec['ctor'] = task_iden
                         task_spec = TaskSpec.build(spec)
                         if str(task_spec.name) in task_descriptions:
                             logging.warning("Overloading Task: %s : %s", str(task_spec.name), task_alias)
-
-                        task_descriptions[str(task_spec.name)] = task_spec
                     case {"name": task_name}:
-                        logging.info("Building Task: %s", task_name)
+                        logging.debug("Building Task: %s", task_name)
                         task_spec = TaskSpec.build(spec)
                         if str(task_spec.name) in task_descriptions:
                             logging.warning("Overloading Task: %s : %s", str(task_spec.name), str(task_spec.ctor))
-
-                        task_descriptions[str(task_spec.name)] = task_spec
-
                     case _: # Else complain
                         raise doot.errors.DootTaskLoadError("Task Spec missing, at least, needs at least a name and ctor: %s: %s", spec, spec['sources'][0] )
             except doot.errors.DootLocationError as err:
                 logging.warning("Task Spec '%s' Load Failure: Missing Location: '%s'. Source File: %s", task_name, str(err), spec['sources'][0])
             except ModuleNotFoundError as err:
+                failures.append(err)
                 logging.debug(err)
-                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Module Name: '%s'. Source File: %s", task_name, task_alias, spec['sources'][0]) from err
+                logging.error("Task Spec '%s' Load Failure: Bad Module Name: '%s'. Source File: %s", task_name, task_alias, spec['sources'][0])
             except AttributeError as err:
+                failures.append(err)
                 logging.debug(err)
-                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Class Name: '%s'. Source File: %s", task_name, task_alias, spec['sources'][0], err.args) from err
+                logging.error("Task Spec '%s' Load Failure: Bad Class Name: '%s'. Source File: %s", task_name, task_alias, spec['sources'][0], err.args)
             except ValueError as err:
+                failures.append(err)
                 logging.debug(err)
-                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: '%s'. Source File: %s. Message:\n %s", task_name, task_alias, spec['sources'][0], str(err)) from err
+                logging.error("Task Spec '%s' Load Failure: '%s'. Source File: %s. Message:\n %s", task_name, task_alias, spec['sources'][0], str(err))
             except TypeError as err:
+                failures.append(err)
                 logging.debug(err)
-                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: Bad Type constructor: '%s'. Source File: %s", task_name, spec['ctor'], spec['sources'][0]) from err
+                logging.error("Task Spec '%s' Load Failure: Bad Type constructor: '%s'. Source File: %s", task_name, spec['ctor'], spec['sources'][0])
             except ImportError as err:
+                failures.append(err)
                 logging.debug(err)
-                raise doot.errors.DootTaskLoadError("Task Spec '%s' Load Failure: ctor import check failed. Source File: %s", task_name, spec['sources'][0]) from err
+                logging.error("Task Spec '%s' Load Failure: ctor import check failed. Source File: %s", task_name, spec['sources'][0])
+            else:
+                assert(task_spec is not None)
+                task_descriptions[str(task_spec.name)] = task_spec
+        else:
+            if bool(failures):
+                raise doot.errors.DootTaskLoadError("Loading Task Specs Encountered Errors",  len(failures))
 
-        return task_descriptions
+            return task_descriptions
 
     def _load_location_updates(self, data:list[TomlGuard], source):
         logging.debug("Loading Location Updates: %s", source)

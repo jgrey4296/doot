@@ -252,3 +252,27 @@ to (optionally) create a separate log file
    :context:
         <2024-08-19 Mon>   drwxr-xr-- 17 john john 4.0K Aug 19 04:59 doot
    :END:
+** TRIAGE convert cli args parse to a data structure
+   [[/media/john/data/github/python/doot/doot/control/overlord.py::227][Location]]
+   :context:
+        <2024-08-20 Tue>         logging.info("CLI Args: %s", doot.args._table())
+   :END:
+** TRIAGE runner: add print task chain summary and offer user control
+   [[/media/john/data/github/python/doot/doot/control/base_runner.py::120][Location]]
+   :context:
+        <2024-08-21 Wed>         match self._signal_failure:
+   :END:
+
+   final summary:
+   task1 -> task2 -> job1 -> task3 -> task4 -> task5 -> ....
+   Explore? (Y/n) (with cli arg)
+** TRIAGE implement tracker write/load
+   [[/media/john/data/github/python/doot/doot/control/tracker.py::197][Location]]
+   :context:
+        <2024-08-21 Wed>         """ Write the task network out as jsonl  """
+   :END:
+** TRIAGE execute_action_group with a passed in logger
+   [[/media/john/data/github/python/doot/doot/control/runner.py::164][Location]]
+   :context:
+        <2024-08-21 Wed>         """ Execute a group of actions, possibly queue any task specs they produced,
+   :END:

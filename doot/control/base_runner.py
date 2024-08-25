@@ -44,37 +44,29 @@ from doot._abstract import (Action_p, FailPolicy_p, Job_i, Reporter_p, Task_i,
 from doot.enums import ActionResponse_e as ActRE
 from doot.enums import Report_f, TaskStatus_e
 from doot.structs import ActionSpec, TaskArtifact, TaskSpec
-from doot.utils.log_context import DootLogContext
 from doot.utils.signal_handler import SignalHandler
 
 # ##-- end 1st party imports
 
 ##-- logging
 logging    = logmod.getLogger(__name__)
-printer    = logmod.getLogger("doot._printer")
-setup_l    = printer.getChild("setup")
-taskloop_l = printer.getChild("task_loop")
-report_l   = printer.getChild("report")
-success_l  = printer.getChild("success")
-fail_l     = printer.getChild("fail")
-sleep_l    = printer.getChild("sleep")
-artifact_l = printer.getChild("artifact")
+printer    = doot.subprinter()
+setup_l    = doot.subprinter("setup")
+taskloop_l = doot.subprinter("task_loop")
+report_l   = doot.subprinter("report")
+success_l  = doot.subprinter("success")
+fail_l     = doot.subprinter("fail")
+sleep_l    = doot.subprinter("sleep")
+artifact_l = doot.subprinter("artifact")
 ##-- end logging
 
 dry_run                                      = doot.args.on_fail(False).cmd.args.dry_run()
-head_level           : Final[str]            = doot.constants.printer.DEFAULT_HEAD_LEVEL
-build_level          : Final[str]            = doot.constants.printer.DEFAULT_BUILD_LEVEL
-action_level         : Final[str]            = doot.constants.printer.DEFAULT_ACTION_LEVEL
-sleep_level          : Final[str]            = doot.constants.printer.DEFAULT_SLEEP_LEVEL
-execute_level        : Final[str]            = doot.constants.printer.DEFAULT_EXECUTE_LEVEL
-enter_level          : Final[str]            = doot.constants.printer.DEFAULT_ENTER_LEVEL
 max_steps            : Final[str]            = doot.config.on_fail(100_000).settings.tasks.max_steps()
 fail_prefix          : Final[str]            = doot.constants.printer.fail_prefix
 loop_entry_msg       : Final[str]            = doot.constants.printer.loop_entry
 loop_exit_msg        : Final[str]            = doot.constants.printer.loop_exit
 
 default_SLEEP_LENGTH : Fina[int|float]       = doot.config.on_fail(0.2, int|float).settings.tasks.sleep.task()
-logctx               : Final[DootLogContext] = DootLogContext(printer)
 
 class BaseRunner(TaskRunner_i):
     """ An incomplete implementation for runners to extend """
@@ -99,6 +91,7 @@ class BaseRunner(TaskRunner_i):
         return
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
+        logging.info("---- Exiting Runner Control")
         # TODO handle exc_types?
         printer.setLevel("INFO")
         taskloop_l.info("")
@@ -110,9 +103,9 @@ class BaseRunner(TaskRunner_i):
         """finish running tasks, summarizing results using the reporter
           separate from __exit__ to allow it to be overridden
         """
-        report_l.info("Task Running Completed")
+        logging.info("---- Running Completed")
         if self.step >= max_steps:
-            report_l.info("Runner Hit the Step Limit: %s", max_steps)
+            report_l.warning("Runner Hit the Step Limit: %s", max_steps)
 
         report_l.info("Final Summary: ")
         report_l.info(str(self.reporter), extra={"colour":"magenta"})

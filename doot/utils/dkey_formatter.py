@@ -92,6 +92,8 @@ import decorator
 import more_itertools as mitz
 from pydantic import BaseModel, Field, field_validator, model_validator
 from tomlguard import TomlGuard
+from jgdv.structs.code_ref import CodeReference
+import sh
 
 # ##-- end 3rd party imports
 
@@ -100,14 +102,13 @@ import doot
 import doot.errors
 from doot.enums import DKeyMark_e
 from doot._abstract.protocols import Key_p, SpecStruct_p
-from doot._structs.code_ref import CodeReference
 from doot.utils.decorators import DecorationUtils, DootDecorator
 
 # ##-- end 1st party imports
 
 ##-- logging
-logging = logmod.getLogger(__name__)
-logging.disabled = False
+printer = doot.subprinter()
+expan_l = printer.getChild("expansion")
 ##-- end logging
 
 KEY_PATTERN                                = doot.constants.patterns.KEY_PATTERN
@@ -223,7 +224,7 @@ class DKeyFormatterEntry_m:
         fallback               = kwargs.get("fallback", None)
         with cls._instance(key=key, sources=sources, fallback=fallback, rec=max) as fmt:
             result = fmt._expand(key)
-            logging.debug("Expansion Result: %s", result)
+            expan_l.debug("Expansion Result: %s", result)
             return result
 
     @classmethod
@@ -235,7 +236,7 @@ class DKeyFormatterEntry_m:
         fallback               = kwargs.get("fallback", None)
         with cls._instance(key=key, sources=sources, fallback=fallback, rec=1) as fmt:
             result = fmt._try_redirection(key)
-            logging.debug("Redirection Result: %s", result)
+            expan_l.debug("Redirection Result: %s", result)
             return result
 
     @classmethod
@@ -263,8 +264,8 @@ class DKeyFormatterEntry_m:
         return self
 
     def __enter__(self) -> Any:
-        logging.debug("Entering Expansion/Redirection for: %s", self._original_key)
-        logging.debug("Using Sources: %s", self.sources)
+        expan_l.debug("Entering Expansion/Redirection for: %s", self._original_key)
+        expan_l.debug("Using Sources: %s", self.sources)
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
@@ -280,15 +281,17 @@ class DKeyFormatter_Expansion_m:
     _multikey_expansion_types = (str, pl.Path)
 
     def _expand(self, key:Key_p|str, *, fallback=None, count=1) -> None|Any:
-        logging.debug("Entering Formatter for: %s", key)
+        expan_l.debug("Entering Formatter for: %s", key)
         last               = None
         current            = key
 
         while 0 < self.rec_remaining and last != current:
-            logging.debug("-- Expansion Loop (%s): %s %s", self.rec_remaining, current, type(current))
+            expan_l.debug("-- Expansion Loop (%s): %s %s", self.rec_remaining, current, type(current))
             self.rec_remaining -= count
             last                = current
             match current:
+                case sh.Command():
+                    break
                 case Key_p() if current.multi and count > 0:
                     current = self._multi_expand(current)
                 case Key_p():
@@ -313,7 +316,7 @@ class DKeyFormatter_Expansion_m:
             key._check_expansion(exp_val)
             current = key._expansion_hook(exp_val)
 
-        logging.debug("Expanded (%s) -> (%s)", key, current)
+        expan_l.debug("Expanded (%s) -> (%s)", key, current)
         return current
 
     def _multi_expand(self, key:Key_p) -> Any:
@@ -322,7 +325,7 @@ class DKeyFormatter_Expansion_m:
           by formatting the anon key version using a sequenec of expanded subkeys,
           this allows for duplicate keys to be used differenly in a single multikey
         """
-        logging.debug("Multi Expansion: %s", key)
+        expan_l.debug("Multi Expansion: %s", key)
         expanded_keys   = [ str(self._expand(x, fallback=f"{x:w}", count=0)) for x in key.keys() ]
         expanded        = self.format(key._unnamed, *expanded_keys)
         return expanded
@@ -334,23 +337,23 @@ class DKeyFormatter_Expansion_m:
         keystr = self.format_field(key, "i")
         match chained_get(keystr, *self.sources):
             case list() as ks:
-                logging.debug("Redirected %s to %s", key, ks)
+                expan_l.debug("Redirected %s to %s", key, ks)
                 return ks
             case Key_p() as k:
-                logging.debug("Redirected %s to %s", key, k)
+                expan_l.debug("Redirected %s to %s", key, k)
                 return [k]
             case str() as k:
-                logging.debug("Redirected %s to %s", key, k)
+                expan_l.debug("Redirected %s to %s", key, k)
                 return [k]
             case _:
-                logging.debug("No Redirection found for %s", keystr)
+                expan_l.debug("No Redirection found for %s", keystr)
                 return [self.format_field(key, "d")]
 
     def _single_expand(self, key:str|Key_p, fallback=None) -> None|Any:
         """
           Expand a single key up to {rec_remaining} times
         """
-        logging.debug("Single Expansion: %s", key)
+        expan_l.debug("Single Expansion: %s", key)
         key_str           = self.format_field(key, "d")
         match chained_get(key_str, *self.sources, fallback=fallback):
             case None:
@@ -367,7 +370,7 @@ class DKeyFormatter_Expansion_m:
         """
           Expand a raw string as either an implicit key or explicit multikey, into the sources
         """
-        logging.debug("Str Expansion: %s", key)
+        expan_l.debug("Str Expansion: %s", key)
         match self.Parse(key):
             case True, []:
                 # no {keys}, so return the original key
@@ -406,7 +409,6 @@ class DKeyFormatter(string.Formatter, DKeyFormatter_Expansion_m, DKeyFormatterEn
 
     def get_value(self, key, args, kwargs) -> str:
         """ lowest level handling of keys being expanded """
-        # logging.debug("Expanding: %s. Args: %s. kwargs: %s", key, args, kwargs)
         if isinstance(key, int):
             return args[key]
 
@@ -428,7 +430,6 @@ class DKeyFormatter(string.Formatter, DKeyFormatter_Expansion_m, DKeyFormatterEn
 
     @staticmethod
     def format_field(val, spec):
-        # logging.debug("Formatting %s:%s", val, spec)
         match val:
             case Key_p():
                 return format(val, spec)

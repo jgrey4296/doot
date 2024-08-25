@@ -12,20 +12,23 @@ sleep   = { tasks=0.2, subtask=1, batch=1 }
 [settings.commands]
 # Settings for commands, like telling the 'run' command what backends to use
 run  = { tracker = "default", runner = "default", reporter= "default", report-line = []}
-list = { hide=["simple::"] }
+list = { hide=[] }
 
 [plugins]
 # Allows for defining aliases
 command        = { tasks="doot.cmds.list_cmd:ListCmd", pl="doot.cmds.plugins_cmd:PluginsCmd" }
 
 [logging]
-stream  = { level="WARNING", format="{levelname:<8} : {message}", filters=["doot"], target="stdout" }
-file    = { level="DEBUG",   format="{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})", filters=["doot"], target="rotate" }
-printer = { level="INFO",    format="{message}", colour=true, target="stdout", propagate=false }
+# Standard loggers. See LoggerSpec.
+stream  = { level="WARNING", filter=["doot"],           target="stdout", format="{levelname:<8} : {message}"  }
+file    = { level="DEBUG",   filter=["tomlguard"],      target="rotate", format="{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})", filename_fmt="doot.log" }
+printer = { level="NOTSET", colour=true,                target=["stdout", "rotate"], format="{message}", filename_fmt="doot_printed.log" }
 
 [logging.subprinters]
-setup    = {level="WARNING", format="Setup: {message}", propagate=false}
-shutdown = {level="WARNING", format="Shutdown: {message}", propagate=false}
+default       = {level="INFO", disabled=false}
+shutdown      = {level="WARNING",    format="Shutdown: {message}", target="stdout"}
+cmd           = {level="INFO"}
+action_exec   = {level="INFO"}
 
 [logging.extra]
 

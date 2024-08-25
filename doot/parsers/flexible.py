@@ -105,19 +105,21 @@ class DootFlexibleParser(ArgParser_i):
 
         remaining                                                         = args[1:]
 
-        while bool(remaining):
-            match self.focus:
-                case self.PS.HEAD:
-                    remaining = self.process_head(remaining)
-                    self.focus = self.PS.CMD
-                case self.PS.CMD:
-                    remaining = self.process_cmd(remaining)
-                    self.focus = self.PS.TASK
-                case self.PS.TASK:
-                    remaining = self.process_task(remaining)
-                    self.focus = self.PS.EXTRA
-                case self.PS.EXTRA:
-                    remaining = self.process_extra(remaining)
+        from jgdv.util.time_ctx import TimeCtx
+        with TimeCtx(logger=logging, entry_msg="--- CLI Arg Parsing Start", exit_msg="---- CLI Arg Parsing Took", level=20):
+            while bool(remaining):
+                match self.focus:
+                    case self.PS.HEAD:
+                        remaining = self.process_head(remaining)
+                        self.focus = self.PS.CMD
+                    case self.PS.CMD:
+                        remaining = self.process_cmd(remaining)
+                        self.focus = self.PS.TASK
+                    case self.PS.TASK:
+                        remaining = self.process_task(remaining)
+                        self.focus = self.PS.EXTRA
+                    case self.PS.EXTRA:
+                        remaining = self.process_extra(remaining)
 
         if not bool(self.cmd_args) and empty_cmd in self.registered_cmds:
             # Default to the empty cmd

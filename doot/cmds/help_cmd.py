@@ -2,9 +2,12 @@
 """
 
 """
-##-- imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
+import datetime
+import enum
 # import abc
 # import datetime
 # import enum
@@ -15,33 +18,41 @@ import pathlib as pl
 import re
 import time
 import types
+from collections import defaultdict
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
-# from uuid import UUID, uuid1
-# from weakref import ref
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
+from uuid import UUID, uuid1
 
-##-- end imports
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
+from jgdv.structs.code_ref import CodeReference
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+from doot.cmds.base_cmd import BaseCommand
+from doot.structs import ParamSpec, TaskSpec
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = logmod.getLogger("doot._printer")
+printer = doot.subprinter()
+cmd_l   = doot.subprinter("cmd")
 ##-- end logging
-
-import doot
-from doot.cmds.base_cmd import BaseCommand
-from doot.structs import ParamSpec, TaskSpec, CodeReference
-from collections import defaultdict
 
 NON_DEFAULT_KEY : Final[str] = doot.constants.misc.NON_DEFAULT_KEY
 
 LINE_SEP        : Final[str] = "------------------------------"
 GROUP_INDENT    : Final[str] = "----"
 ITEM_INDENT     : Final[str] = "-"
-
 
 class HelpCmd(BaseCommand):
     _name      = "help"
@@ -77,23 +88,21 @@ class HelpCmd(BaseCommand):
         logging.debug("Matched %s commands, %s tasks", len(cmd_targets), len(task_targets))
         if len(cmd_targets) == 1:
             cmd_class = cmd_targets[0].load()()
-            printer.info(cmd_class.help)
+            cmd_l.info(cmd_class.help)
             if bool(doot.args.cmd.args[NON_DEFAULT_KEY]):
                 self._print_current_param_assignments(cmd_class.param_specs, doot.args.cmd.args)
-
         elif bool(task_targets):
             for i, spec in enumerate(task_targets):
                 self.print_task_spec(i, spec)
-
         else:
             # Print general help and list cmds
-            printer.info("Doot Help Command: No Target Specified/Matched")
-            printer.info("Available Command Targets: ")
+            cmd_l.info("Doot Help Command: No Target Specified/Matched")
+            cmd_l.info("Available Command Targets: ")
             for x in sorted(plugins.command, key=lambda x: x.name):
-                printer.info("-- %s", x.name)
+                cmd_l.info("-- %s", x.name)
 
-        printer.info("\n------------------------------")
-        printer.info("Call a command by doing 'doot [cmd] [args]'. Eg: doot list --help")
+        cmd_l.info("\n------------------------------")
+        cmd_l.info("Call a command by doing 'doot [cmd] [args]'. Eg: doot list --help")
 
     def print_task_spec(self, count, spec:TaskSpec):
         task_name = str(spec.name)
@@ -105,44 +114,43 @@ class HelpCmd(BaseCommand):
             case _:
                 ctor = spec.ctor
 
-        printer.info("")
-        printer.info(LINE_SEP)
-        printer.info(f"{count:4}: Task: {task_name}")
-        printer.info(LINE_SEP)
-        printer.info("ver     : %s", spec.version)
-        printer.info("Group   : %s", spec.name.group)
+        cmd_l.info("")
+        cmd_l.info(LINE_SEP)
+        cmd_l.info(f"{count:4}: Task: {task_name}")
+        cmd_l.info(LINE_SEP)
+        cmd_l.info("ver     : %s", spec.version)
+        cmd_l.info("Group   : %s", spec.name.group)
         sources = "; ".join([str(x) for x in spec.sources])
-        printer.info("Sources : %s", sources)
+        cmd_l.info("Sources : %s", sources)
 
         match spec.doc:
             case None:
                 pass
             case str():
-                printer.info("")
-                printer.info(spec.doc)
-                printer.info("")
+                cmd_l.info("")
+                cmd_l.info(spec.doc)
+                cmd_l.info("")
             case list() as xs:
-                printer.info("")
-                printer.info("\n".join(xs))
-                printer.info("")
+                cmd_l.info("")
+                cmd_l.info("\n".join(xs))
+                cmd_l.info("")
 
         if ctor is not None:
-            printer.info("%s Ctor Class:", GROUP_INDENT)
-            printer.info(ctor.class_help())
-            printer.info(GROUP_INDENT)
-
+            cmd_l.info("%s Ctor Class:", GROUP_INDENT)
+            cmd_l.info(ctor.class_help())
+            cmd_l.info(GROUP_INDENT)
 
         if bool(spec.extra):
-            printer.info("")
-            printer.info("%s Toml Parameters:", GROUP_INDENT)
+            cmd_l.info("")
+            cmd_l.info("%s Toml Parameters:", GROUP_INDENT)
             for kwarg,val in spec.extra:
-                printer.info("%s %-20s : %s", ITEM_INDENT, kwarg, val)
+                cmd_l.info("%s %-20s : %s", ITEM_INDENT, kwarg, val)
 
         if bool(spec.actions):
-            printer.info("")
-            printer.info("-- Task Actions: ")
+            cmd_l.info("")
+            cmd_l.info("-- Task Actions: ")
             for action in spec.actions:
-                printer.info("%s %-20s : Args=%-20s Kwargs=%s", ITEM_INDENT, action.do, action.args, dict(action.kwargs) )
+                cmd_l.info("%s %-20s : Args=%-20s Kwargs=%s", ITEM_INDENT, action.do, action.args, dict(action.kwargs) )
 
         cli_has_params      = task_name in doot.args.tasks
         cli_has_non_default = bool(doot.args.tasks[task_name][NON_DEFAULT_KEY])
@@ -151,12 +159,12 @@ class HelpCmd(BaseCommand):
             self._print_current_param_assignments(ctor.param_specs, doot.args.tasks[task_name])
 
     def _print_current_param_assignments(self, specs:list[ParamSpec], args:TomlGuard):
-        printer.info("")
-        printer.info("%s Current Param Assignments:", GROUP_INDENT)
+        cmd_l.info("")
+        cmd_l.info("%s Current Param Assignments:", GROUP_INDENT)
 
         assignments = sorted([x for x in specs if not x.invisible], key=ParamSpec.key_func)
         max_param_len = 5 + ftz.reduce(max, map(len, map(lambda x: x.name, specs)), 0)
         fmt_str = f"%s %-{max_param_len}s : %s "
         for key in args[NON_DEFAULT_KEY]:
             value = args[key]
-            printer.info(fmt_str, ITEM_INDENT, key, value)
+            cmd_l.info(fmt_str, ITEM_INDENT, key, value)

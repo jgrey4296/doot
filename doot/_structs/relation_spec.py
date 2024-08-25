@@ -32,7 +32,7 @@ from uuid import UUID, uuid1
 from pydantic import (BaseModel, Field, field_validator,
                       model_validator)
 from tomlguard import TomlGuard
-
+from jgdv.structs.code_ref import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -40,7 +40,6 @@ import doot
 import doot.errors
 from doot._abstract.protocols import Buildable_p, ProtocolModelMeta
 from doot._structs.artifact import TaskArtifact
-from doot._structs.code_ref import CodeReference
 from doot._structs.task_name import TaskName
 from doot.enums import RelationMeta_e
 

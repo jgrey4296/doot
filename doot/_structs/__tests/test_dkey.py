@@ -16,6 +16,8 @@ import pytest
 logging = logmod.root
 
 from tomlguard import TomlGuard
+from jgdv.structs.code_ref import CodeReference
+
 import doot
 doot._test_setup()
 from doot.utils.testing_fixtures import wrap_locs
@@ -23,7 +25,6 @@ from doot.control.locations import DootLocations
 from doot._structs.action_spec import ActionSpec
 from doot._structs import dkey as dkey
 from doot.utils.dkey_formatter import DKeyFormatter
-from doot._structs.code_ref import CodeReference
 from doot._abstract.protocols import Key_p
 from doot.structs import TaskName
 
@@ -506,6 +507,20 @@ class TestDKeyExpansion:
         assert(result[0] == "a")
         assert(result[1] == "b")
         assert(result[2] == "c")
+
+
+    def test_expansion_of_sh_command(self):
+        """
+          test_ -> [a, b, c]
+        """
+        import sh
+        from sh import ls
+        state = { "cmd":ls}
+        key   = dkey.DKey("cmd", implicit=True)
+        result = key.expand(state)
+        assert(result is not None)
+        assert(isinstance(result, sh.Command))
+        assert(result is ls)
 
 class TestDKeyExpansionMain:
 

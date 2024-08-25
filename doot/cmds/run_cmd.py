@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+ #!/usr/bin/env python3
 """
 
 """
@@ -27,14 +27,15 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from tomlguard import TomlGuard
-
+from jgdv.structs.code_ref import CodeReference
+from jgdv.util.time_ctx import TimeCtx
+from jgdv.structs.code_ref import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 from doot._abstract import TaskRunner_i
 from doot.cmds.base_cmd import BaseCommand
-from doot.structs import CodeReference
 from doot.task.check_locs import CheckLocsTask
 from doot.utils.plugin_selector import plugin_selector
 
@@ -42,8 +43,8 @@ from doot.utils.plugin_selector import plugin_selector
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = logmod.getLogger("doot._printer")
-cmd_l   = printer.getChild("cmd")
+printer = doot.subprinter()
+cmd_l   = doot.subprinter("cmd")
 ##-- end logging
 
 # TODO make a decorator to register these onto the cmd
@@ -72,13 +73,15 @@ class RunCmd(BaseCommand):
             ]
 
     def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
+        logging.info("---- Starting Run Cmd")
         # Note the final parens to construct:
         available_reporters    = plugins.on_fail([], list).report_line()
         report_lines           = [plugin_selector(available_reporters, target=x)() for x in report_line_targets]
         reporter               = plugin_selector(plugins.on_fail([], list).reporter(), target=reporter_target)(report_lines)
         tracker                = plugin_selector(plugins.on_fail([], list).tracker(), target=tracker_target)()
         runner                 = plugin_selector(plugins.on_fail([], list).runner(), target=runner_target)(tracker=tracker, reporter=reporter)
-        cmd_l.info("Registering Task Specs: %s", len(tasks))
+
+        logging.info("Registering Task Specs: %s", len(tasks))
         for task in tasks.values():
             tracker.register_spec(task)
 
@@ -103,21 +106,24 @@ class RunCmd(BaseCommand):
                 interrupt = None
             case None:
                 interrupt = None
-            case bool():
+            case True:
+                logging.debug("Setting default interrupt handler")
                 interrupt = interrupt_handler
             case str():
+                logging.debug("Loading custom interrupt handler")
                 interrupt = CodeReference.build(interrupt_handler).try_import()
 
         cmd_l.info("%s Tasks Queued: %s", len(tracker.active_set), " ".join(str(x) for x in tracker.active_set))
-        with runner:
-            if doot.args.on_fail(False).cmd.args.confirm():
-                plan = tracker.generate_plan()
-                for i,(depth,node,desc) in enumerate(plan):
-                    cmd_l.info("Step %-4s: %s",i, node)
-                match input("Confirm Execution Plan (Y/*): "):
-                    case "Y":
-                        pass
-                    case _:
-                        cmd_l.info("Cancelling")
-                        return
-            runner(handler=interrupt)
+        with TimeCtx(logger=logging, entry_msg="--- Runner Entry", exit_msg="---- Runner Exit", level=20):
+            with runner:
+                if doot.args.on_fail(False).cmd.args.confirm():
+                    plan = tracker.generate_plan()
+                    for i,(depth,node,desc) in enumerate(plan):
+                        cmd_l.info("Step %-4s: %s",i, node)
+                    match input("Confirm Execution Plan (Y/*): "):
+                        case "Y":
+                            pass
+                        case _:
+                            cmd_l.info("Cancelling")
+                            return
+                runner(handler=interrupt)

@@ -28,6 +28,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import tomlguard as TG
+from jgdv.logging import JGDVLogConfig
 
 # ##-- end 3rd party imports
 
@@ -50,8 +51,6 @@ setup_l         = printer.getChild("setup")
 fail_l          = printer.getChild("fail")
 ##-- end logging
 
-__all__ = []
-
 # Global, single points of truth:
 __version__          : Final[str]         = "0.11.0"
 
@@ -66,8 +65,12 @@ aliases              : TG.TomlGuard       = TG.TomlGuard()
 locs                 : DootLocData        = None # DootLocations(pl.Path()) # registered locations
 args                 : TG.TomlGuard       = TG.TomlGuard() # parsed arg access
 report               : Reporter_p         = None
+log_config           : JGDVLogConfig      = JGDVLogConfig()
 
 _configs_loaded_from : list[pl.Path]      = []
+
+def subprinter(name=None) -> logmod.Logger:
+    return log_config.subprinter(name)
 
 def setup(targets:list[pl.Path]|False|None=None, prefix:str|None=TOOL_PREFIX) -> tuple[TG.TomlGuard, DootLocData]:
     """
@@ -110,25 +113,29 @@ def setup(targets:list[pl.Path]|False|None=None, prefix:str|None=TOOL_PREFIX) ->
     _load_aliases()
     _load_locations()
     _update_import_path()
-
     _configs_loaded_from   = existing_targets
+    log_config.setup(config)
 
     return config, locs
 
 def _load_constants():
     """ Load the override constants if the loaded base config specifies one"""
     global constants
-    setup_l.debug("Loading Constants")
-    update_file = config.on_fail(None).settings.general.constants_file()
-    if update_file:
-        constants = TG.TomlGuard.load(pl.Path(update_file)).remove_prefix(CONSTANT_PREFIX)
+    match config.on_fail(None).settings.general.constants_file(wrapper=pl.Path):
+        case None:
+            pass
+        case pl.Path() as const_file if const_file.exists():
+            logging.info("---- Loading Constants")
+            constants = TG.TomlGuard.load(const_file).remove_prefix(CONSTANT_PREFIX)
 
 def _load_aliases():
     """ Load plugin aliases """
     global aliases
-    setup_l.debug("Loading Aliases")
-    update_file = config.on_fail(aliases_file).settings.general.aliases_file()
-    data        = TG.TomlGuard.load(pl.Path(update_file)).remove_prefix(ALIAS_PREFIX)
+    logging.info("---- Loading Aliases")
+    match config.on_fail(aliases_file).settings.general.aliases_file(wrapper=pl.Path):
+        case pl.Path() as update_file if update_file.exists():
+            data = TG.TomlGuard.load(update_file).remove_prefix(ALIAS_PREFIX)
+
     # Flatten the lists
     flat = {}
     for key,val in data:
@@ -143,7 +150,7 @@ def _load_aliases():
 def _load_locations():
     """ Load and update the DootLocations db """
     global locs
-    setup_l.debug("Loading Locations")
+    logging.info("---- Loading Locations")
     # ##-- 1st party imports
     from doot.control.locations import DootLocations
 
@@ -155,12 +162,12 @@ def _load_locations():
 
 def _update_import_path():
     """ Add locations to the python path for task local code importing  """
-    setup_l.debug("Updating Import Path")
+    logging.info("---- Updating Import Path")
     task_sources = config.on_fail([locs[".tasks"]], list).settings.tasks.sources(wrapper=lambda x: [locs[y] for y in x])
     task_code    = config.on_fail([locs[".tasks"]], list).settings.tasks.code(wrapper=lambda x: [locs[y] for y in x])
     for source in set(task_sources + task_code):
         if source.exists() and source.is_dir():
-            setup_l.debug("Adding task code directory to Import Path: %s", source)
+            logging.debug("Adding task code directory to Import Path: %s", source)
             sys.path.append(str(source))
 
 def _update_aliases(data:dict|TG.TomlGuard):
@@ -168,7 +175,7 @@ def _update_aliases(data:dict|TG.TomlGuard):
     if not bool(data):
         return
 
-    setup_l.debug("Updating Aliases")
+    logging.info("---- Updating Aliases")
     base = defaultdict(dict)
     base.update(dict(aliases._table()))
     for key,eps in data.items():

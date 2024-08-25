@@ -39,7 +39,7 @@ logging = logmod.getLogger(__name__)
 
 import importlib
 from importlib.metadata import EntryPoint
-from doot.structs import CodeReference
+from jgdv.structs.code_ref import CodeReference
 import doot.errors
 
 def plugin_selector(plugins:TomlGuard, *, target="default", fallback=None) -> type:
@@ -47,20 +47,19 @@ def plugin_selector(plugins:TomlGuard, *, target="default", fallback=None) -> ty
     with an available fallback constructor """
     logging.debug("Selecting plugin for target: %s", target)
 
-    if target != "default":
-        try:
-            name = CodeReference.build(target)
-            return name.try_import()
-        except ImportError as err:
-            # raise doot.errors.DootInvalidConfig("Import Failed: %s : %s", target, err.msg) from err
+    match target:
+        case "default":
             pass
-        except (AttributeError, KeyError) as err:
-            # raise doot.errors.DootInvalidConfig("Import Failed: Module has missing attritbue/key: %s", target) from err
-            pass
+        case x:
+            try:
+                name = CodeReference.build(target)
+                return name.try_import()
+            except ImportError as err:
+                pass
+            except (AttributeError, KeyError) as err:
+                pass
 
     match plugins:
-        case x if not isinstance(x, list):
-            return x
         case [] if fallback is not None:
             return fallback()
         case []:
@@ -73,3 +72,7 @@ def plugin_selector(plugins:TomlGuard, *, target="default", fallback=None) -> ty
             matching = [x for x in loaders if x.name == target]
             if bool(matching):
                 return matching[0].load()
+        case type():
+            return x
+        case _:
+            raise TypeError("Unknown type passed to plugin selector", plugins)

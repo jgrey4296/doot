@@ -35,20 +35,18 @@ from weakref import ref
 import sh
 import stackprinter
 import tomlguard as TG
-
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
-from doot.utils.log_config import DootLogConfig
 
 # ##-- end 1st party imports
 
 ##-- logging
 logging         = logmod.root
-printer         = logmod.getLogger("doot._printer")
-shutdown_l      = printer.getChild("shutdown")
-fail_l          = printer.getChild("fail")
+printer         = doot.subprinter()
+shutdown_l      = doot.subprinter("shutdown")
+fail_l          = doot.subprinter("fail")
 ##-- end logging
 
 template_path      = files("doot.__templates")
@@ -57,12 +55,9 @@ def main():
     result  = 1
     overlord = None
     try:
-        log_config = DootLogConfig()
         # --- Setup
         if not bool(doot.config):
             doot.setup()
-
-        log_config.setup()
 
         logging.info("Doot Calling Args: %s", sys.argv)
         # ##-- 1st party imports
@@ -72,7 +67,7 @@ def main():
         # ##-- end 1st party imports
         overlord  = DootOverlord(loaders={"plugin": DootPluginLoader().setup(sys.argv[:]) },
                                  config_filenames=[doot.constants.paths.DEFAULT_LOAD_TARGETS],
-                                 log_config=log_config,
+                                 log_config=doot.log_config,
                                  args=sys.argv[:])
 
         # --- Do whatever thats been triggered
@@ -80,7 +75,7 @@ def main():
 
     ##-- handle doot errors
     except (doot.errors.DootEarlyExit, BdbQuit):
-        shutdown.warning("Early Exit Triggered")
+        shutdown_l.warning("Early Exit Triggered")
         result = 0
     except doot.errors.DootMissingConfigError as err:
         result = 0
@@ -91,7 +86,7 @@ def main():
             template = template_path.joinpath(doot.constants.paths.TOML_TEMPLATE)
             target = pl.Path(doot.constants.on_fail(["doot.toml"]).paths.DEFAULT_LOAD_TARGETS()[0])
             target.write_text(template.read_text())
-            shutdown.info("Doot Config File Stubbed: %s", target)
+            shutdown_l.info("Doot Config File Stubbed: %s", target)
     except doot.errors.DootTaskError as err:
         fail_prefix = doot.constants.printer.fail_prefix
         fail_l.error("%s %s : %s", fail_prefix, err.general_msg, err.task_name)

@@ -25,7 +25,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import sh
-
+from jgdv.structs.code_ref import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -35,7 +35,7 @@ from doot.actions.job_injection import (JobInjectPathParts,
                                         JobInjectShadowAction)
 from doot.errors import DootTaskError, DootTaskFailed
 from doot.mixins.path_manip import PathManip_m
-from doot.structs import CodeReference, DKey, DKeyed
+from doot.structs import DKey, DKeyed
 
 # ##-- end 1st party imports
 

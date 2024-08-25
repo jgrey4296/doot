@@ -74,6 +74,7 @@ class TestListCmd:
             obj({}, {})
 
     def test_call_all_empty(self, caplog, mocker):
+        caplog.set_level(logmod.DEBUG, logger="_printer_")
         mocker.patch("doot.args")
         doot.args.cmd.args.pattern = ""
         doot.args.cmd.arg.all      = True
@@ -84,6 +85,7 @@ class TestListCmd:
         assert("No Tasks Defined" in message_set)
 
     def test_call_all_not_empty(self, caplog, mocker):
+        caplog.set_level(logmod.DEBUG, logger="_printer_")
         mocker.patch("doot.args")
         del doot.args.cmd.args.keys
         doot.args.cmd.args.__iter__.return_value = iter([("pattern", ""), ("all", True)])
@@ -110,6 +112,7 @@ class TestListCmd:
         assert(any(x.startswith("other  :: ") for x in message_set) )
 
     def test_list_even_with_ctor_failure(self, caplog, mocker):
+        caplog.set_level(logmod.DEBUG, logger="_printer_")
         mocker.patch("doot.args")
         del doot.args.cmd.args.keys
         doot.args.cmd.args.__iter__.return_value = iter([("pattern", ""), ("all", True)])
@@ -136,6 +139,7 @@ class TestListCmd:
         assert(any(x.startswith("ctor import failed") for x in message_set) )
 
     def test_call_target_not_empty(self, caplog, mocker):
+        caplog.set_level(logmod.DEBUG, logger="_printer_")
         mocker.patch("doot.args")
         del doot.args.cmd.args.keys
         doot.args.cmd.args.__iter__.return_value = iter([("pattern", "simple"), ("all", False)])
@@ -154,6 +158,7 @@ class TestListCmd:
         assert( any(x.startswith("blah::simple :: doot.task.base_task:doottask") for x in message_set) )
 
     def test_call_partial_target_not_empty(self, caplog, mocker):
+        caplog.set_level(logmod.DEBUG, logger="_printer_")
         mocker.patch("doot.args")
         del doot.args.cmd.args.keys
         doot.args.cmd.args.__iter__.return_value = iter([("pattern", "simp"), ("all", False)])
