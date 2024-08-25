@@ -44,7 +44,8 @@ from doot.utils.plugin_selector import plugin_selector
 import networkx as nx
 import matplotlib.pyplot as plt
 
-printer                  = logmod.getLogger("doot._printer")
+printer = doot.subprinter()
+
 
 INDENT : Final[str]      = " "*8
 tracker_target           = doot.config.on_fail("default", str).settings.commands.run.tracker()

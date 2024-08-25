@@ -49,7 +49,7 @@ from doot._structs.dkey import DKey
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = logmod.getLogger("doot._printer")
+printer = doot.subprinter()
 ##-- end logging
 
 KEY_PATTERN                                = doot.constants.patterns.KEY_PATTERN

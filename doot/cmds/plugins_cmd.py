@@ -26,12 +26,6 @@ from weakref import ref
 
 ##-- end imports
 
-##-- logging
-logging = logmod.getLogger(__name__)
-##-- end logging
-
-printer = logmod.getLogger("doot._printer")
-
 from collections import defaultdict
 from tomlguard import TomlGuard
 import doot
@@ -39,6 +33,10 @@ import doot.errors
 from doot.cmds.base_cmd import BaseCommand
 from doot.structs import ParamSpec
 
+##-- logging
+logging = logmod.getLogger(__name__)
+printer = doot.subprinter()
+##-- end logging
 
 INDENT : Final[str] = " "*8
 

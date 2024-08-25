@@ -26,15 +26,16 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 
 ##-- end imports
 
-##-- logging
-logging = logmod.getLogger(__name__)
-##-- end logging
-printer = logmod.getLogger("doot._printer")
 
 import doot
 import shutil
 from doot.cmds.base_cmd import BaseCommand
 from collections import defaultdict
+
+##-- logging
+logging = logmod.getLogger(__name__)
+printer = doot.subprinter()
+##-- end logging
 
 clean_locs = doot.config.on_fail([], list).settings.commands.clean.locs()
 

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 See EOF for license/metadata/notes as applicable
 """
 
@@ -33,17 +32,16 @@ from uuid import UUID, uuid1
 import more_itertools as mitz
 ##-- end lib imports
 
-##-- logging
-logging = logmod.getLogger(__name__)
-##-- end logging
-
-printer = logmod.getLogger("doot._printer")
-
 import doot
 import doot.errors
 from doot.mixins.task.human_numbers import Human_M
 from doot.task.base_task import DootTask
 from doot.structs import ActionSpec
+
+##-- logging
+logging = logmod.getLogger(__name__)
+printer = doot.subprinter()
+##-- end logging
 
 class SimpleTaskExample(Human_M, DootTask):
     """

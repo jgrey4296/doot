@@ -18,8 +18,10 @@ import doot.errors
 from doot.structs import DKey, TaskSpec, ActionSpec, TaskName
 import doot.actions.job_actions as JA
 
-printer = logmod.getLogger("doot._printer")
-logging = logmod.root
+##-- logging
+logging = logmod.getLogger(__name__)
+printer = doot.subprinter()
+##-- end logging
 
 class TestJobActions:
 
@@ -35,14 +37,14 @@ class TestJobActions:
     def cleanup(self):
         pass
 
-
 class TestJobWalker:
+
     @pytest.mark.skip
     def test_walker(self, spec, state):
         pass
 
-
 class TestJobLimiter:
+
     @pytest.mark.skip
     def test_limiter(self, spec, state):
         pass

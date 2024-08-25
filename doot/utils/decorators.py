@@ -47,7 +47,7 @@ from doot.enums import LocationMeta_f
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = logmod.getLogger("doot._printer")
+printer = doot.subprinter()
 ##-- end logging
 
 DOOT_ANNOTATIONS : Final[str]                = "__DOOT_ANNOTATIONS__"

@@ -39,7 +39,8 @@ from doot.structs import DKey, DKeyed
 
 # ##-- end 1st party imports
 
-printer = logmod.getLogger("doot._printer")
+printer = doot.subprinter()
+
 
 class AddStateAction(Action_p):
     """

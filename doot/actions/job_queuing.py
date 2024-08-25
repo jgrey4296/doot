@@ -44,7 +44,7 @@ from doot.structs import DKey, TaskName, TaskSpec, DKeyed
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = logmod.getLogger("doot._printer")
+printer = doot.subprinter()
 ##-- end logging
 
 class JobQueueAction(Action_p):

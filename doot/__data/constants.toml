@@ -47,7 +47,7 @@ ANNOUNCE_VOICE          = "Moira"
 NON_DEFAULT_KEY         = "_non_default"
 
 [doot.constants.printer]
-PRINTER_NAME            = "doot._printer"
+PRINTER_NAME            = "_printer_"
 PRINTER_CHILDREN        = [
     "action_exec", "action_group", "artifact", "cmd", "fail", "header", "help", "queue",
     "report", "skip", "sleep", "success", "task", "task_header", "task_loop", "task_state",

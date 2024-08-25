@@ -31,8 +31,7 @@ from doot.structs import ActionSpec
 # ##-- end 1st party imports
 
 ##-- logging
-printer = logmod.getLogger("doot._printer")
-
+printer = doot.subprinter()
 ##-- end logging
 
 class DootBaseAction(Action_p):

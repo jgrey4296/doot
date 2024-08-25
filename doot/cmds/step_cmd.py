@@ -41,7 +41,7 @@ from doot.cmds.base_cmd import BaseCommand
 from doot.utils.plugin_selector import plugin_selector
 from doot.task.check_locs import CheckLocsTask
 
-printer                  = logmod.getLogger("doot._printer")
+printer = doot.subprinter()
 
 runner_target            = doot.config.on_fail("step", str).settings.commands.step.runner()
 tracker_target           = doot.config.on_fail("default", str).settings.commands.step.tracker()

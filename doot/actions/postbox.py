@@ -42,8 +42,12 @@ from doot.structs import DKey, TaskName, DKeyed
 
 # ##-- end 1st party imports
 
+##-- logging
 logging = logmod.getLogger(__name__)
-printer = logmod.getLogger("doot._printer")
+printer = doot.subprinter()
+
+##-- end logging
+
 STATE_TASK_NAME_K : Final[str] = doot.constants.patterns.STATE_TASK_NAME_K
 
 ##-- expansion keys

@@ -3,12 +3,6 @@ from __future__ import annotations
 import logging as logmod
 ##-- end imports
 
-##-- logging
-logging = logmod.getLogger(__name__)
-##-- end logging
-
-printer = logmod.getLogger("doot._printer")
-
 import pathlib as pl
 import sys
 import sh
@@ -17,6 +11,11 @@ from doot.errors import DootTaskError
 from doot._abstract import Action_p
 from doot.actions.base_action import DootBaseAction
 from doot.structs import DKey, DKeyed
+
+##-- logging
+logging = logmod.getLogger(__name__)
+printer = doot.subprinter()
+##-- end logging
 
 BACKGROUND = DKey("background")
 UPDATE     = DKey("update_")
@@ -58,7 +57,6 @@ class DootShellBake:
 
         return False
 
-
 class DootShellBakedRun:
 
     @DKeyed.redirects("in_")
@@ -85,7 +83,6 @@ class DootShellAction(Action_p):
     """
     For actions in subshells.
     all other arguments are passed directly to the program, using `sh`
-
 
     can use a pre-baked sh passed into what "shenv_" points to
     """
@@ -159,7 +156,6 @@ class DootInteractiveAction(Action_p):
             printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], spec.args)
         except sh.ErrorReturnCode:
             printer.error("Shell Command '%s' exited with code: %s for args: %s", spec[0], result.exit_code, spec.args)
-
 
         return False
 

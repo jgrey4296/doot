@@ -33,15 +33,16 @@ from uuid import UUID, uuid1
 import more_itertools as mitz
 ##-- end lib imports
 
-##-- logging
-logging = logmod.getLogger(__name__)
-##-- end logging
-printer = logmod.getLogger("doot._printer")
 
 import bdb
 import doot
 import doot.errors
 from doot.structs import DKey
+
+##-- logging
+logging = logmod.getLogger(__name__)
+printer = doot.subprinter()
+##-- end logging
 
 def action_debugger(spec, state):
     """ A Simple entry function for debugging spec and state """

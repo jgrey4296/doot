@@ -41,7 +41,7 @@ from doot.structs import DKeyed
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = logmod.getLogger("doot._printer")
+printer = doot.subprinter()
 ##-- end logging
 
 def id_retriever(spec, state) -> list[dict]:

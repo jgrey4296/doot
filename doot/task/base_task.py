@@ -48,7 +48,7 @@ from doot._structs.relation_spec import RelationSpec
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = logmod.getLogger("doot._printer")
+printer = doot.subprinter()
 ##-- end logging
 
 TASK_ALISES                    = doot.aliases.task

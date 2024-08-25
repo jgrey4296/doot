@@ -45,7 +45,7 @@ from doot.structs import DKey, Location, TaskName, TaskSpec, DKeyed
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-printer = logmod.getLogger("doot._printer")
+printer = doot.subprinter()
 ##-- end logging
 
 class JobGenerate(DootBaseAction):

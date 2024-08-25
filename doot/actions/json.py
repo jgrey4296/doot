@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 See EOF for license/metadata/notes as applicable
 """
 
@@ -33,12 +32,6 @@ from uuid import UUID, uuid1
 import more_itertools as mitz
 ##-- end lib imports
 
-##-- logging
-logging = logmod.getLogger(__name__)
-##-- end logging
-
-printer = logmod.getLogger("doot._printer")
-
 import math
 import json
 from time import sleep
@@ -52,6 +45,10 @@ from doot.enums import ActionResponse_e
 from doot._abstract import Action_p
 from doot.structs import DKey, DKeyed
 
+##-- logging
+logging = logmod.getLogger(__name__)
+printer = doot.subprinter()
+##-- end logging
 
 ##-- expansion keys
 FROM_KEY           : Final[DKey] = DKey("from")
@@ -105,7 +102,6 @@ class ReadJsonLines(Action_p):
 
         return { _update : result }
 
-
 class WriteJsonLines(Action_p):
     """ Write a list of dicts as a .jsonl file
       optionally gzip the file
@@ -119,7 +115,6 @@ class WriteJsonLines(Action_p):
 
         with jsonlines.open(_to, mode='a') as writer:
             writer.write(_from)
-
 
 class WriteJson(Action_p):
     """ Write a dict as a .json file  """

@@ -46,9 +46,6 @@ aliases_file   = data_path.joinpath("aliases.toml")
 
 ##-- logging
 logging         = logmod.getLogger(__name__)
-printer         = logmod.getLogger("doot._printer")
-setup_l         = printer.getChild("setup")
-fail_l          = printer.getChild("fail")
 ##-- end logging
 
 # Global, single points of truth:
@@ -95,7 +92,7 @@ def setup(targets:list[pl.Path]|False|None=None, prefix:str|None=TOOL_PREFIX) ->
 
     logging.debug("Loading Doot Config, version: %s targets: %s", __version__, targets)
     if bool(config):
-        setup_l.warning("doot.setup called even though doot is already set up")
+        logging.warning("doot.setup called even though doot is already set up")
 
     if bool(targets) and not any([x.exists() for x in targets]):
         raise doot.errors.DootMissingConfigError("No Doot data found")
@@ -105,7 +102,7 @@ def setup(targets:list[pl.Path]|False|None=None, prefix:str|None=TOOL_PREFIX) ->
     try:
         config = TG.load(*existing_targets)
     except OSError as err:
-        fail_l.error("Failed to Load Config Files: %s", existing_targets)
+        logging.error("Failed to Load Config Files: %s", existing_targets)
         raise doot.errors.DootError() from err
 
     config = config.remove_prefix(prefix)

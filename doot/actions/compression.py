@@ -32,12 +32,6 @@ from uuid import UUID, uuid1
 import more_itertools as mitz
 ##-- end lib imports
 
-##-- logging
-logging = logmod.getLogger(__name__)
-##-- end logging
-
-printer = logmod.getLogger("doot._printer")
-
 from time import sleep
 import sh
 import shutil
@@ -49,6 +43,11 @@ from doot._abstract import Action_p
 from doot.structs import DKey, DKeyed
 from doot.actions.postbox import _DootPostBox
 from doot.mixins.zipper import Zipper_m
+
+##-- logging
+logging = logmod.getLogger(__name__)
+printer = doot.subprinter()
+##-- end logging
 
 ##-- expansion keys
 TO_KEY             : Final[DKey] = DKey("to")
@@ -97,7 +96,6 @@ class TarDecompressAction(Action_p):
 
         DECOMP_CMD(target, "-C", output)
 
-
 class TarListAction(Action_p):
     """ List the contents of a tar archive """
 
@@ -113,14 +111,12 @@ class TarListAction(Action_p):
         lines = result.split("\n")
         return { _update : lines }
 
-
 class ZipNewAction(Zipper_m, Action_p):
     """ Make a new zip archive """
 
     @DKeyed.paths("target")
     def __call__(self, spec, state, target):
          self.zip_create(target)
-
 
 class ZipAddAction(Zipper_m, Action_p):
     """ Add a file/directory to a zip archive """
@@ -141,7 +137,6 @@ class ZipAddAction(Zipper_m, Action_p):
 
         self.zip_add_paths(target, *arg_paths)
 
-
 class ZipGetAction(Zipper_m, Action_p):
     """ unpack a file/files/all files from a zip archive """
 
@@ -151,7 +146,6 @@ class ZipGetAction(Zipper_m, Action_p):
             raise doot.errors.DootActionError("Can't unzip to a file: %s", target)
 
         self.zip_unzip_to(target, zipf)
-
 
 class ZipListAction(Action_p):
     """ List the contents of a zip archive """

@@ -21,4 +21,4 @@ report       = {level="INFO", format="{message}", target="stdout", colour=true}
 
 [logging.extra]
 # See LoggerSpec. can be used to control any logger if you know its name
-"doot._printer.checkloc" = {level="WARNING"}
+"_printer_.checkloc" = {level="WARNING"}

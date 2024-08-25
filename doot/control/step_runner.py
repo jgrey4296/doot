@@ -32,11 +32,6 @@ from uuid import UUID, uuid1
 import more_itertools as mitz
 ##-- end lib imports
 
-##-- logging
-logging = logmod.getLogger(__name__)
-##-- end logging
-printer = logmod.getLogger("doot._printer")
-
 from collections import defaultdict
 import doot
 import doot.structs as structs
@@ -45,6 +40,12 @@ from doot.enums import TaskStatus_e, Report_f, TaskMeta_f
 import doot._abstract as abstract
 from doot.control.runner import DootRunner
 from doot.utils.signal_handler import SignalHandler
+
+##-- logging
+logging = logmod.getLogger(__name__)
+printer = doot.subprinter()
+
+##-- end logging
 
 dry_run                     = doot.args.on_fail(False).cmd.args.dry_run()
 SLEEP_LENGTH                = doot.config.on_fail(0.2, int|float).settings.tasks.sleep.task()
