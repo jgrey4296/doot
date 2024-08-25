@@ -35,12 +35,10 @@ from weakref import ref
 import sh
 import stackprinter
 import tomlguard as TG
-
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
-from doot.utils.log_config import DootLogConfig
 
 # ##-- end 1st party imports
 
@@ -57,12 +55,9 @@ def main():
     result  = 1
     overlord = None
     try:
-        log_config = DootLogConfig()
         # --- Setup
         if not bool(doot.config):
             doot.setup()
-
-        log_config.setup()
 
         logging.info("Doot Calling Args: %s", sys.argv)
         # ##-- 1st party imports
@@ -72,7 +67,7 @@ def main():
         # ##-- end 1st party imports
         overlord  = DootOverlord(loaders={"plugin": DootPluginLoader().setup(sys.argv[:]) },
                                  config_filenames=[doot.constants.paths.DEFAULT_LOAD_TARGETS],
-                                 log_config=log_config,
+                                 log_config=doot.log_config,
                                  args=sys.argv[:])
 
         # --- Do whatever thats been triggered

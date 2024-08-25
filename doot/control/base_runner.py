@@ -44,7 +44,6 @@ from doot._abstract import (Action_p, FailPolicy_p, Job_i, Reporter_p, Task_i,
 from doot.enums import ActionResponse_e as ActRE
 from doot.enums import Report_f, TaskStatus_e
 from doot.structs import ActionSpec, TaskArtifact, TaskSpec
-from doot.utils.log_context import DootLogContext
 from doot.utils.signal_handler import SignalHandler
 
 # ##-- end 1st party imports
@@ -68,7 +67,6 @@ loop_entry_msg       : Final[str]            = doot.constants.printer.loop_entry
 loop_exit_msg        : Final[str]            = doot.constants.printer.loop_exit
 
 default_SLEEP_LENGTH : Fina[int|float]       = doot.config.on_fail(0.2, int|float).settings.tasks.sleep.task()
-logctx               : Final[DootLogContext] = DootLogContext(printer)
 
 class BaseRunner(TaskRunner_i):
     """ An incomplete implementation for runners to extend """

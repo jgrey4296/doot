@@ -28,6 +28,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import tomlguard as TG
+from jgdv.logging import JGDVLogConfig
 
 # ##-- end 3rd party imports
 
@@ -64,18 +65,12 @@ aliases              : TG.TomlGuard       = TG.TomlGuard()
 locs                 : DootLocData        = None # DootLocations(pl.Path()) # registered locations
 args                 : TG.TomlGuard       = TG.TomlGuard() # parsed arg access
 report               : Reporter_p         = None
+log_config           : JGDVLogConfig      = JGDVLogConfig()
 
 _configs_loaded_from : list[pl.Path]      = []
 
-def subprinter(name:None|str=None) -> logmod.Logger:
-    """ Utility method to get a subprinter from the constant defined types
-    if no subprinter name is specified, return the printer itself
-    """
-    if not name:
-        return printer
-    if name not in constants.on_fail([]).printer.PRINTER_CHILDREN():
-        raise ValueError("Unknown Subprinter", name)
-    return printer.getChild(name)
+def subprinter(name=None) -> logmod.Logger:
+    return log_config.subprinter(name)
 
 def setup(targets:list[pl.Path]|False|None=None, prefix:str|None=TOOL_PREFIX) -> tuple[TG.TomlGuard, DootLocData]:
     """
@@ -118,8 +113,8 @@ def setup(targets:list[pl.Path]|False|None=None, prefix:str|None=TOOL_PREFIX) ->
     _load_aliases()
     _load_locations()
     _update_import_path()
-
     _configs_loaded_from   = existing_targets
+    log_config.setup(config)
 
     return config, locs
 

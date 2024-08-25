@@ -37,7 +37,7 @@ import doot.errors
 from doot._abstract import (Action_p, FailPolicy_p, Job_i, Reporter_p, Task_i,
                             TaskRunner_i, TaskTracker_i)
 from doot._structs.relation_spec import RelationSpec
-from doot.control.base_runner import BaseRunner, logctx
+from doot.control.base_runner import BaseRunner
 from doot.enums import ActionResponse_e as ActRE
 from doot.enums import Report_f
 from doot.structs import ActionSpec, TaskArtifact, TaskName, TaskSpec
