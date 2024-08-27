@@ -315,29 +315,31 @@ class LinkAction(PathManip_m):
     """
       for x,y in spec.args:
       x.expand().symlink_to(y.expand())
+
+      pass hard=True for a hardlink
     """
 
     @DKeyed.paths("link", "to", fallback=None)
     @DKeyed.args
-    @DKeyed.types("force", check=bool, fallback=False)
-    def __call__(self, spec, state, link, to, args, force):
+    @DKeyed.types("force", "hard", check=bool, fallback=False)
+    def __call__(self, spec, state, link, to, args, force, hard):
         if link is not None and to is not None:
-            self._do_link(spec, state, spec.kwargs.link, spec.kwargs.to, force)
+            self._do_link(spec, state, spec.kwargs.link, spec.kwargs.to, force, hard=hard)
 
         for arg in spec.args:
             match arg:
                 case [x,y]:
-                    self._do_link(spec, state, x,y, force)
+                    self._do_link(spec, state, x,y, force, hard=hard)
                 case {"link":x, "to":list() as ys}:
                     raise NotImplementedError()
                 case {"link":x, "to":y}:
-                    self._do_link(spec, state, x,y, force)
+                    self._do_link(spec, state, x,y, force, hard=hard)
                 case {"from":x, "to_rel":y}:
                     raise NotImplementedError()
                 case _:
                     raise TypeError("unrecognized link targets")
 
-    def _do_link(self, spec, state, x, y, force):
+    def _do_link(self, spec, state, x, y, force, hard=False):
         x_key  = DKey(x, mark=DKey.mark.PATH)
         y_key  = DKey(y, mark=DKey.mark.PATH)
         x_path = x_key.expand(spec, state, symlinks=True)
@@ -347,12 +349,16 @@ class LinkAction(PathManip_m):
             printer.warning("SKIP: A Symlink already exists: %s -> %s", x_path, x_path.resolve())
             return
         if not y_path.exists():
-            raise doot.errors.DootActionError("Symlink target does not exist", y_path)
+            raise doot.errors.DootActionError("Link target does not exist", y_path)
         if force and x_path.is_symlink():
             printer.warning("Forcing New Symlink")
             x_path.unlink()
-        printer.info("Linking: %s -> %s", x_path, y_path)
-        x_path.symlink_to(y_path)
+        if hard:
+            printer.info("Hard Linking: %s -> %s", x_path, y_path)
+            x_path.hardlink_to(y_path)
+        else:
+            printer.info("SymLinking: %s -> %s", x_path, y_path)
+            x_path.symlink_to(y_path)
 
 class ListFiles(PathManip_m):
     """ add a list of all files in a path (recursively) to the state """
