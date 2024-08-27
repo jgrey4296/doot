@@ -306,8 +306,10 @@ class TouchFileAction(PathManip_m):
 
     @DKeyed.args
     def __call__(self, spec, state, args):
-        for target in [DKey(x, mark=DKey.mark.PATH) for x in args]:
-            target(spec, state).touch()
+        for target in [DKey(x, fallback=None, mark=DKey.mark.PATH) for x in args]:
+            if (target_path:=target.expand(spec, state)) is None:
+                continue
+            target_path.touch()
 
 class LinkAction(PathManip_m):
     """
