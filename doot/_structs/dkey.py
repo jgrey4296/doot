@@ -133,7 +133,7 @@ class DKey(metaclass=DKeyMeta):
           mark     : Enum for explicitly setting the key type
         """
         assert(cls is DKey)
-        assert(isinstance(mark, DKeyMark_e | None)), mark
+        assert(isinstance(mark, MARKTYPE)), mark
 
         # Early escape
         match data:

@@ -285,7 +285,7 @@ class DKeyFormatter_Expansion_m:
         last               = None
         current            = key
 
-        while 0 < self.rec_remaining and last != current:
+        while 0 < self.rec_remaining and last is not current:
             expan_l.debug("-- Expansion Loop (%s): %s %s", self.rec_remaining, current, type(current))
             self.rec_remaining -= count
             last                = current
@@ -360,7 +360,7 @@ class DKeyFormatter_Expansion_m:
                 return None
             case Key_p() as x:
                 return x
-            case x if x == key_str:
+            case str() as x if x == key_str:
                 # Got the key back, wrap it and maybe return it
                 return "{%s}" % key
             case x:
