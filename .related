@@ -4,6 +4,8 @@
 ;; Others are :{name} : {path} pairs
 ;; paths are relative
 
+:doot        : doot.toml
+:pyproject   : pyproject.toml
 :data        : data
 :docs        : docs
 :tasks       : .tasks
@@ -19,3 +21,4 @@
 :structs     : doot/_structs
 :templates   : doot/__templates
 :data        : doot/__data
+:related     : .related
