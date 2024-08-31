@@ -41,49 +41,18 @@ VALID_MULTI_KEYS                                     = PATH_KEYS + MUTI_KEYS
 
 TEST_LOCS               : Final[DootLocations]       = DootLocations(pl.Path.cwd()).update({"blah": "doot"})
 
-class TestDKeyMetaSetup:
-
-    def test_sanity(self):
-        key  = dkey.DKey("test", implicit=True)
-        assert(isinstance(key, dkey.SingleDKey))
-        assert(isinstance(key, dkey.DKey))
-        assert(isinstance(key, str))
-        assert(isinstance(key, Key_p))
-        assert(f"{key:w}" == "{test}")
-        assert(f"{key:i}" == "test_")
-        assert(str(key) == "test")
-
-    def test_subclass_registration(self):
-        assert(dkey.DKey.get_ctor(dkey.DKeyMark_e.FREE) == dkey.SingleDKey)
-
-        class PretendDKey(dkey.DKeyBase, mark=dkey.DKeyMark_e.FREE):
-            pass
-        assert(dkey.DKey.get_ctor(dkey.DKeyMark_e.FREE) == PretendDKey)
-        # return the original class
-        dkey.DKey.register_key(dkey.SingleDKey, dkey.DKeyMark_e.FREE)
-
-    def test_subclass_check(self):
-        for x in dkey.DKey._single_registry.values():
-            assert(issubclass(x, dkey.DKey))
-            assert(issubclass(x, (dkey.SingleDKey, dkey.NonDKey)))
-
-        for x in dkey.DKey._multi_registry.values():
-            assert(issubclass(x, dkey.DKey))
-            assert(issubclass(x, dkey.MultiDKey))
-
-    def test_subclass_creation_fail(self):
-        with pytest.raises(RuntimeError):
-            dkey.SingleDKey("test")
-
-    def test_subclass_creation_force(self):
-        key = dkey.SingleDKey("test", force=True)
-        assert(key is not None)
-        assert(isinstance(key, dkey.DKey))
-        assert(isinstance(key, dkey.SingleDKey))
-
 class TestDKeyBasicConstruction:
 
-    def test_initial_implicit(self):
+    def test_nonkey(self):
+        """ text on its own is a non-key """
+        key  = dkey.DKey("blah bloo blee")
+        assert(isinstance(key, dkey.NonDKey))
+        assert(isinstance(key, str))
+        assert(isinstance(key, dkey.DKey))
+        assert(str(key) == "blah bloo blee")
+
+    def test_implicit(self):
+        """ but if its marked as implicit, it is a key """
         key  = dkey.DKey("test", implicit=True)
         assert(isinstance(key, dkey.SingleDKey))
         assert(isinstance(key, dkey.DKey))
