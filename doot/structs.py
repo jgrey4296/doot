@@ -27,6 +27,7 @@ from uuid import UUID, uuid1
 
 ##-- end builtin imports
 
+from doot._abstract.key import DKey
 from doot._structs.action_spec import ActionSpec
 from doot._structs.artifact import TaskArtifact
 from doot._structs.location import Location
@@ -36,5 +37,4 @@ from doot._structs.task_name import TaskName
 from doot._structs.task_spec import TaskSpec
 from doot._structs.trace import TraceRecord
 
-from doot._structs.dkey import DKey
 from doot.utils.dkey_decorator import DKeyed

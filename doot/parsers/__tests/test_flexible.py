@@ -46,7 +46,7 @@ from doot.structs import ParamSpec, TaskSpec
 logging = logmod.root
 
 @pytest.mark.parametrize("ctor", [DootFlexibleParser])
-class TestArgParser:
+class TestArgParserHead:
 
     @pytest.fixture(scope="function")
     def cmd_mock(self, mocker):
@@ -68,6 +68,138 @@ class TestArgParser:
     def test_initial(self, ctor):
         parser = ctor()
         assert(isinstance(parser, ArgParser_i))
+
+    def test_help_switch(self, ctor):
+        param = ParamSpec(name="help", prefix="--", type=bool)
+        parser   = ctor()
+        result   = parser.parse(["doot", "--help"],
+            doot_specs=[param], cmds={}, tasks={}
+            )
+
+        assert(result.head.args.help is True)
+
+
+    def test_help_short_switch(self, ctor):
+        param = ParamSpec(name="help", prefix="--", type=bool)
+        parser   = ctor()
+        result   = parser.parse(["doot", "--h"],
+            doot_specs=[param], cmds={}, tasks={}
+            )
+
+        assert(result.head.args.help is True)
+
+    def test_head_arg(self, ctor, mocker):
+        param = ParamSpec(name="key", type=bool)
+        parser   = ctor()
+        result   = parser.parse(["doot", "-key"],
+            doot_specs=[param], cmds={}, tasks={}
+            )
+
+        assert(result.head.args.key is True)
+
+    def test_short_arg(self, ctor, mocker):
+        param = ParamSpec(name="key", type=bool)
+        parser   = ctor()
+        result   = parser.parse(["doot", "-k"],
+            doot_specs=[param], cmds={}, tasks={}
+            )
+
+        assert(result.head.args.key is True)
+
+    def test_invert(self, ctor, mocker):
+        param = ParamSpec(name="key", type=bool)
+        parser   = ctor()
+        result   = parser.parse(["doot", "-no-key"],
+            doot_specs=[param], cmds={}, tasks={}
+            )
+
+        assert(result.head.args.key is False)
+
+    def test_multi(self, ctor, mocker):
+        param    = ParamSpec(name="key", type=bool)
+        param2   = ParamSpec(name="other", type=bool)
+        parser   = ctor()
+        result   = parser.parse(["doot", "-no-key", "-other"],
+            doot_specs=[param, param2], cmds={}, tasks={}
+            )
+
+        assert(result.head.args.key is False)
+        assert(result.head.args.other is True)
+
+    def test_default_value(self, ctor, mocker):
+        param    = ParamSpec(name="key", type=bool)
+        parser   = ctor()
+        result   = parser.parse(["doot"],
+            doot_specs=[param], cmds={}, tasks={}
+            )
+
+        assert(result.head.args.key is False)
+
+    def test_assign(self, ctor, mocker):
+        param    = ParamSpec(name="key", type=str, prefix="--")
+        parser   = ctor()
+        result   = parser.parse(["doot", "--key=blah"],
+            doot_specs=[param], cmds={}, tasks={}
+            )
+
+        assert(result.head.args.key == "blah")
+
+    def test_assign_fail_with_wrong_prefix(self, ctor, mocker):
+        param    = ParamSpec(name="key", type=str, prefix="-")
+        parser   = ctor()
+
+        with pytest.raises(doot.errors.DootParseError):
+            parser.parse(["doot", "--key=blah"],
+                doot_specs=[param], cmds={}, tasks={}
+                )
+
+    def test_follow_assign(self, ctor, mocker):
+        param    = ParamSpec(name="key", type=str)
+        parser   = ctor()
+        result   = parser.parse(["doot", "-key", "blah"],
+            doot_specs=[param], cmds={}, tasks={}
+            )
+
+        assert(result.head.args.key == "blah")
+
+    def test_prefix_change(self, ctor, mocker):
+        param    = ParamSpec(name="key", type=str, prefix="--")
+        parser   = ctor()
+        result   = parser.parse(["doot", "--key", "blah"],
+            doot_specs=[param], cmds={}, tasks={}
+            )
+
+        assert(result.head.args.key == "blah")
+
+    def test_separator_change(self, ctor, mocker):
+        param    = ParamSpec(name="key", type=str, separator="%%", prefix="--")
+        parser   = ctor()
+        result   = parser.parse(["doot", "--key%%blah"],
+            doot_specs=[param], cmds={}, tasks={}
+            )
+
+        assert(result.head.args.key == "blah")
+
+
+@pytest.mark.parametrize("ctor", [DootFlexibleParser])
+class TestArgParserCmd:
+
+    @pytest.fixture(scope="function")
+    def cmd_mock(self, mocker):
+        return mocker.MagicMock(spec=Command_i, param_specs=[ParamSpec(name="all")])
+
+    @pytest.fixture(scope="function")
+    def spec_mock(self, mocker):
+        return self.make_spec_mock(mocker)
+
+    def make_spec_mock(self, mocker):
+        task_mock                 = mocker.MagicMock(spec=TaskSpec, ctor=mocker.MagicMock(spec=CodeReference))
+        ctor_mock                 = mocker.Mock()
+        ctor_mock.param_specs     = []
+        task_mock.ctor.try_import = mocker.Mock(return_value=ctor_mock)
+        task_mock.extra           = TomlGuard({"cli": [ParamSpec(name="all")]})
+
+        return task_mock
 
     def test_cmd(self, ctor, mocker, cmd_mock):
         parser                     = ctor()
@@ -122,6 +254,81 @@ class TestArgParser:
         assert(result.on_fail(False).cmd.name() == "list")
         assert( "blah::bloo.blee" in result.tasks)
 
+    def test_positional_cmd_arg(self, ctor, mocker, cmd_mock, spec_mock):
+        cmd_mock.param_specs.append(ParamSpec(name="test", type=str, positional=True))
+        spec_mock.extra.cli.append(ParamSpec(name="key"))
+        parser = ctor()
+        result = parser.parse([
+            "doot", "example", "blah"
+                        ],
+            doot_specs=[], cmds={"example": cmd_mock}, tasks={"other": spec_mock},
+            )
+        assert(result.cmd.name == "example")
+        assert(result.cmd.args.test == "blah")
+
+    def test_positional_cmd_arg_seq(self, ctor, mocker, cmd_mock, spec_mock):
+        cmd_mock.param_specs.append(ParamSpec(name="first", type=str, positional=True))
+        cmd_mock.param_specs.append(ParamSpec(name="second", type=str, positional=True))
+
+        parser = ctor()
+        result = parser.parse([
+            "doot", "example", "blah", "bloo"
+                        ],
+            doot_specs=[], cmds={"example": cmd_mock}, tasks={}
+            )
+        assert(result.cmd.args.first == "blah")
+        assert(result.cmd.args.second == "bloo")
+
+    def test_cmd(self, ctor, mocker, cmd_mock):
+        cmd_mock.param_specs.append(ParamSpec(name="key"))
+        parser   = ctor()
+        result   = parser.parse(["doot", "list"],
+            doot_specs=[], cmds={"list" : cmd_mock}, tasks={}
+            )
+
+        assert(result.cmd.name == "list")
+        assert(result.cmd.args.key is False)
+
+    def test_cmd_arg(self, ctor, mocker, cmd_mock):
+        cmd_mock.param_specs.append(ParamSpec(name="key"))
+        parser   = ctor()
+        result   = parser.parse(["doot", "list", '-key'],
+            doot_specs=[], cmds={"list" : cmd_mock}, tasks={}
+            )
+
+        assert(result.cmd.name == "list")
+        assert(result.cmd.args.key is True)
+
+    def test_cmd_default(self, ctor, mocker, cmd_mock, spec_mock):
+        spec_mock.extra.cli.append(ParamSpec.build({"name":"key"}))
+
+        parser   = ctor()
+        result   = parser.parse(["doot" , "agroup::val"],
+            doot_specs=[], cmds={"run": cmd_mock }, tasks={"agroup::val": spec_mock}
+            )
+
+        assert(result.cmd.name == "run")
+
+@pytest.mark.parametrize("ctor", [DootFlexibleParser])
+class TestArgParserTask:
+
+    @pytest.fixture(scope="function")
+    def cmd_mock(self, mocker):
+        return mocker.MagicMock(spec=Command_i, param_specs=[ParamSpec(name="all")])
+
+    @pytest.fixture(scope="function")
+    def spec_mock(self, mocker):
+        return self.make_spec_mock(mocker)
+
+    def make_spec_mock(self, mocker):
+        task_mock                 = mocker.MagicMock(spec=TaskSpec, ctor=mocker.MagicMock(spec=CodeReference))
+        ctor_mock                 = mocker.Mock()
+        ctor_mock.param_specs     = []
+        task_mock.ctor.try_import = mocker.Mock(return_value=ctor_mock)
+        task_mock.extra           = TomlGuard({"cli": [ParamSpec(name="all")]})
+
+        return task_mock
+
     def test_task_args(self, ctor, mocker, cmd_mock, spec_mock):
         """ check tasks can recieve args """
         parser                                      = ctor()
@@ -168,31 +375,6 @@ class TestArgParser:
                 doot_specs=[], cmds={"run": cmd_mock}, tasks={"agroup::list": task_mock}
             )
 
-    def test_positional_cmd_arg(self, ctor, mocker, cmd_mock, spec_mock):
-        cmd_mock.param_specs.append(ParamSpec(name="test", type=str, positional=True))
-        spec_mock.extra.cli.append(ParamSpec(name="key"))
-        parser = ctor()
-        result = parser.parse([
-            "doot", "example", "blah"
-                        ],
-            doot_specs=[], cmds={"example": cmd_mock}, tasks={"other": spec_mock},
-            )
-        assert(result.cmd.name == "example")
-        assert(result.cmd.args.test == "blah")
-
-    def test_positional_cmd_arg_seq(self, ctor, mocker, cmd_mock, spec_mock):
-        cmd_mock.param_specs.append(ParamSpec(name="first", type=str, positional=True))
-        cmd_mock.param_specs.append(ParamSpec(name="second", type=str, positional=True))
-
-        parser = ctor()
-        result = parser.parse([
-            "doot", "example", "blah", "bloo"
-                        ],
-            doot_specs=[], cmds={"example": cmd_mock}, tasks={}
-            )
-        assert(result.cmd.args.first == "blah")
-        assert(result.cmd.args.second == "bloo")
-
     def test_positional_task_arg(self, ctor, mocker, cmd_mock, spec_mock):
         spec_mock.extra.cli.append(ParamSpec.build({"name":"test", "type":str, "positional":True, "default":""}))
 
@@ -218,136 +400,8 @@ class TestArgParser:
         assert(result.tasks['agroup::example'].first == "blah")
         assert(result.tasks['agroup::example'].second == "bloo")
 
-    def test_simple_head_arg(self, ctor, mocker):
-        param = ParamSpec(name="key", type=bool)
-        parser   = ctor()
-        result   = parser.parse(["doot", "-key"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
 
-        assert(result.head.args.key is True)
-
-
-    def test_simple_short_arg(self, ctor, mocker):
-        param = ParamSpec(name="key", type=bool)
-        parser   = ctor()
-        result   = parser.parse(["doot", "-k"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key is True)
-
-    def test_simple_invert(self, ctor, mocker):
-        param = ParamSpec(name="key", type=bool)
-        parser   = ctor()
-        result   = parser.parse(["doot", "-no-key"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key is False)
-
-    def test_simple_multi(self, ctor, mocker):
-        param    = ParamSpec(name="key", type=bool)
-        param2   = ParamSpec(name="other", type=bool)
-        parser   = ctor()
-        result   = parser.parse(["doot", "-no-key", "-other"],
-            doot_specs=[param, param2], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key is False)
-        assert(result.head.args.other is True)
-
-    def test_simple_default(self, ctor, mocker):
-        param    = ParamSpec(name="key", type=bool)
-        parser   = ctor()
-        result   = parser.parse(["doot"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key is False)
-
-    def test_simple_assign(self, ctor, mocker):
-        param    = ParamSpec(name="key", type=str, prefix="--")
-        parser   = ctor()
-        result   = parser.parse(["doot", "--key=blah"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key == "blah")
-
-
-    def test_assign_fail_with_wrong_prefix(self, ctor, mocker):
-        param    = ParamSpec(name="key", type=str, prefix="-")
-        parser   = ctor()
-
-        with pytest.raises(doot.errors.DootParseError):
-            parser.parse(["doot", "--key=blah"],
-                doot_specs=[param], cmds={}, tasks={}
-                )
-
-
-
-    def test_simple_follow_assign(self, ctor, mocker):
-        param    = ParamSpec(name="key", type=str)
-        parser   = ctor()
-        result   = parser.parse(["doot", "-key", "blah"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key == "blah")
-
-
-    def test_simple_prefix_change(self, ctor, mocker):
-        param    = ParamSpec(name="key", type=str, prefix="--")
-        parser   = ctor()
-        result   = parser.parse(["doot", "--key", "blah"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key == "blah")
-
-
-    def test_simple_separator_change(self, ctor, mocker):
-        param    = ParamSpec(name="key", type=str, separator="%%", prefix="--")
-        parser   = ctor()
-        result   = parser.parse(["doot", "--key%%blah"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key == "blah")
-
-    def test_simple_cmd(self, ctor, mocker, cmd_mock):
-        cmd_mock.param_specs.append(ParamSpec(name="key"))
-        parser   = ctor()
-        result   = parser.parse(["doot", "list"],
-            doot_specs=[], cmds={"list" : cmd_mock}, tasks={}
-            )
-
-        assert(result.cmd.name == "list")
-        assert(result.cmd.args.key is False)
-
-    def test_simple_cmd_arg(self, ctor, mocker, cmd_mock):
-        cmd_mock.param_specs.append(ParamSpec(name="key"))
-        parser   = ctor()
-        result   = parser.parse(["doot", "list", '-key'],
-            doot_specs=[], cmds={"list" : cmd_mock}, tasks={}
-            )
-
-        assert(result.cmd.name == "list")
-        assert(result.cmd.args.key is True)
-
-    def test_cmd_default(self, ctor, mocker, cmd_mock, spec_mock):
-        spec_mock.extra.cli.append(ParamSpec.build({"name":"key"}))
-
-        parser   = ctor()
-        result   = parser.parse(["doot" , "agroup::val"],
-            doot_specs=[], cmds={"run": cmd_mock }, tasks={"agroup::val": spec_mock}
-            )
-
-        assert(result.cmd.name == "run")
-
-
-    def test_simple_task(self, ctor, mocker, cmd_mock, spec_mock):
+    def test_task(self, ctor, mocker, cmd_mock, spec_mock):
         spec_mock.extra.cli.append(ParamSpec.build({"name":"key"}))
 
         parser               = ctor()
@@ -360,7 +414,7 @@ class TestArgParser:
         assert(result.tasks['agroup::list'].key is True)
 
 
-    def test_simple_task_sequence(self, ctor, mocker, cmd_mock):
+    def test_task_sequence(self, ctor, mocker, cmd_mock):
         spec_1 = self.make_spec_mock(mocker)
         spec_2 = self.make_spec_mock(mocker)
 

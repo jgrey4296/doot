@@ -14,6 +14,7 @@ Interfaces have names {}_i
 Interfaces need to be inherited from, and their __init__ method called.
 """
 
+from .key import DKey
 from .control import TaskTracker_i, TaskRunner_i
 from .loader import CommandLoader_p, PluginLoader_p, TaskLoader_p
 from .overlord import Overlord_p

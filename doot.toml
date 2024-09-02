@@ -25,11 +25,8 @@ file    = { level="DEBUG",   filter=["tomlguard"],      target="rotate", format=
 printer = { level="NOTSET", colour=true,                target=["stdout", "rotate"], format="{message}", filename_fmt="doot_printed.log" }
 
 [logging.subprinters]
-default       = {level="WARNING", disabled=false}
+default       = {level="INFO", disabled=false}
 shutdown      = {level="WARNING",    format="Shutdown: {message}", target="stdout"}
-cmd           = {level="INFO"}
-action_exec   = {level="INFO"}
-task          = {level="INFO"}
 
 [logging.extra]
 
