@@ -27,6 +27,7 @@ printer = { level="NOTSET", colour=true,                target=["stdout", "rotat
 [logging.subprinters]
 default       = {level="INFO", disabled=false}
 shutdown      = {level="WARNING",    format="Shutdown: {message}", target="stdout"}
+action_exec   = {level="WARNING"}
 
 [logging.extra]
 
