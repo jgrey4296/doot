@@ -1,4 +1,4 @@
-## pyproject.toml -*- mode: conf-toml -*-
+## pyproject.toml -*- mode: toml -*-
 
 [project]
 name            = "doot"
@@ -90,7 +90,8 @@ log_file        = ".temp/logs/pytest.log"
 log_cli         = false
 log_level       = "DEBUG"
 log_cli_level   = "INFO"
-log_format      = "%(levelname)s %(name)s : %(message)s"
+# log_format      = "%(levelname)s %(name)s : %(message)s"
+log_format      = "%(levelname)s %(module)s %(lineno)s : %(message)s"
 log_file_level  = "DEBUG"
 log_file_format = "%(asctime)s %(levelname)s %(name)s : %(message)s"
 
@@ -160,3 +161,55 @@ add_imports            = [
 ]
 
 ##-- end isort
+
+##-- coverage
+[tool.coverage.run]
+branch           = true # measure branch coverage
+# command_line   = "..."
+cover_pylib      = false # measure stdlib
+data_file        = ".temp/coverage/coverage_cache" # cache
+disable_warnings = []
+source           = ["doot"] # packages or dirs to measure
+include          = [] # files to measure. ignored if source is set.
+omit             = ["__tests/*"] # files to not measure
+relative_files   = false #
+timid            = false # simpler but slower tracing
+
+# [tool.coverage.paths] # specify equivalent paths
+# source = []
+
+[tool.coverage.report]
+# Regexes for lines to exclude from consideration
+exclude_also = [
+    # Don't complain about missing debug-only code:
+    "def __repr__",
+    "if self\\.debug",
+
+    # Don't complain if tests don't hit defensive assertion code:
+    "raise AssertionError",
+    "raise NotImplementedError",
+
+    # Don't complain if non-runnable code isn't run:
+    "if 0:",
+    "if __name__ == .__main__.:",
+
+    # Don't complain about abstract methods, they aren't run:
+    "@(abc\\.)?abstractmethod",
+    ]
+
+ignore_errors = true
+# fail_under = 20 # coverage percentage
+format = "text" # or "markdown", "total"
+show_missing = false # for in the report
+skip_empty = false # skip files like __init__.py
+
+[tool.coverage.html]
+directory = ".temp/coverage/html_report" # where to write output
+
+[tool.coverage.xml]
+output = ".temp/coverage/coverage.xml" # where to write output
+
+[tool.coverage.json]
+output = ".temp/coverage/coverage.json" # where to write output
+pretty_print = true
+##-- end coverage
