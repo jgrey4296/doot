@@ -145,10 +145,9 @@ class DKeyFormatterEntry_m:
         if not cls._instance:
             cls._instance = cls()
 
+        assert(key is not None)
         try:
             match key:
-                case None:
-                    return True, []
                 case str() | Key_p():
                     # formatter.parse returns tuples of (literal, key, format, conversion)
                     result = list(_DKeyParams(prefix=x[0], key=x[1] or "", format=x[2] or "", conv=x[3] or "") for x in cls._instance.parse(key))
@@ -165,7 +164,7 @@ class DKeyFormatterEntry_m:
         if not cls._instance:
             cls._instance = cls()
 
-        fallback               = kwargs.get("fallback", None)
+        fallback = kwargs.get("fallback", None)
         with cls._instance(key=key, sources=sources, fallback=fallback, rec=max, intent="expand") as fmt:
             result = fmt._expand(key)
             logging.debug("Expansion Result: %s", result)
@@ -177,13 +176,11 @@ class DKeyFormatterEntry_m:
         if not cls._instance:
             cls._instance = cls()
 
-        match key:
-            case DKey():
-                pass
-            case str():
-                key = DKey(key)
-        fallback               = kwargs.get("fallback", None)
-        with cls._instance(key=key, sources=sources, fallback=fallback, rec=1, intent="redirect") as fmt:
+        assert(isinstance(key, DKey))
+
+        if kwargs.get("fallback", None):
+            raise ValueError("Fallback values for redirection should be part of key construction", key)
+        with cls._instance(key=key, sources=sources, rec=1, intent="redirect") as fmt:
             result = fmt._try_redirection(key)
             logging.debug("Redirection Result: %s", result)
             return result
@@ -238,19 +235,15 @@ class DKeyFormatterEntry_m:
 
 class DKeyFormatter_Expansion_m:
 
-    def _expand(self, key:Key_p|str, *, fallback=None, count=1) -> None|Any:
+    def _expand(self, key:Key_p, *, fallback=None, count=1) -> None|Any:
         """
           Expand the key, returning fallback if it fails,
           counting each loop as `count` attempts
 
         """
-        current : DKey
+        assert(isinstance(key, Key_p))
+        current : DKey = key
         last    : set[str] = set()
-        match key:
-            case Key_p():
-                current = key
-            case _:
-                current = DKey(key)
 
         while 0 < self.rec_remaining and str(current) not in last:
             logging.debug("--- Loop (%s:%s) [%s] : %s", self._depth, MAX_KEY_EXPANSIONS - self.rec_remaining, key, repr(current))
@@ -295,7 +288,6 @@ class DKeyFormatter_Expansion_m:
           this allows for duplicate keys to be used differenly in a single multikey
         """
         logging.debug("multi(%s)", key)
-        # expanded_keys   = [ str(self._expand(x, fallback=f"{x:w}", count=0)) for x in key.keys() ]
         logging.debug("----> %s", key.keys())
         expanded_keys   = [ str(self._expand(x, fallback=f"{x:w}", count=0)) for x in key.keys() ]
         expanded        = self.format(key._unnamed, *expanded_keys)
@@ -306,7 +298,6 @@ class DKeyFormatter_Expansion_m:
         """ Try to redirect a key if necessary,
           if theres no redirection, return the key as a direct key
           """
-        # key_str = self.format_field(key, "i")
         key_str = f"{key:i}"
         match chained_get(key_str, *self.sources, *key.extra_sources()):
             case list() as ks:
@@ -318,6 +309,9 @@ class DKeyFormatter_Expansion_m:
             case str() as k:
                 logging.debug("(%s -> %s -> %s)", key, key_str, k)
                 return [DKey(k, implicit=True)]
+            case None if isinstance(key._exp_fallback, (str,DKey)):
+                logging.debug("%s -> %s -> %s (fallback)", key, key_str, key._exp_fallback)
+                return [DKey(key._exp_fallback, implicit=True)]
             case None:
                 logging.debug("(%s -> %s -> Ø)", key, key_str)
                 return [key]
@@ -328,19 +322,17 @@ class DKeyFormatter_Expansion_m:
         """
         assert(isinstance(key, Key_p))
         logging.debug("solo(%s)", key)
-        # key_str           = self.format_field(key, "d")
-        key_str             = f"{key:d}"
-        wrapped             = f"{key:w}"
+        key_str, key_wrap   = f"{key:d}", f"{key:w}"
         match chained_get(key_str, *self.sources, *key.extra_sources(), fallback=fallback):
             case None:
                 return None
             case Key_p() as x:
                 return x
-            case str() as x if x == wrapped:
+            case str() as x if x == key_wrap:
                 return DKey(x, mark=DKey.mark.NULL)
             case str() as x if x == key_str:
                 # Got the key back, wrap it and don't expand it any more
-                return "{%s}" % key
+                return "{%s}" % key_str
             case str() as x:
                 return DKey(x)
             case pl.Path() as x:

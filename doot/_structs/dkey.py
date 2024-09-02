@@ -138,11 +138,11 @@ class DKeyFormatting_m:
 class DKeyExpansion_m:
     """ general expansion for dkeys """
 
-    def redirect(self, *sources, multi=False, re_mark=None) -> list[DKey]:
+    def redirect(self, *sources, multi=False, re_mark=None, fallback=None, **kwargs) -> list[DKey]:
         """
           Always returns a list of keys, even if the key is itself
         """
-        match DKeyFormatter.redirect(self, sources=sources):
+        match DKeyFormatter.redirect(self, sources=sources, fallback=fallback):
             case []:
                 return [DKey(f"{self:d}", mark=re_mark)]
             case [*xs] if multi:
@@ -392,6 +392,8 @@ class NonDKey(DKeyBase, mark=DKeyMark_e.NULL):
           ignores all kwargs
         """
         super().__init__(data)
+        if kwargs.get('fallback', None) is not None:
+            raise ValueError("NonKeys can't have a fallback, did you mean to use an explicit key?", self)
 
     def __format__(self, spec) -> str:
         rem, _, _ = self._consume_format_params(spec)
@@ -401,6 +403,8 @@ class NonDKey(DKeyBase, mark=DKeyMark_e.NULL):
         return format(self, fmt)
 
     def expand(self, *args, **kwargs) -> str:
+        if kwargs.get('fallback', None) is not None:
+            raise ValueError("NonKeys can't have a fallback, did you mean to use an explicit key?", self)
         return str(self)
 
     def _update_expansion_params(self, *args) -> Self:
@@ -444,8 +448,8 @@ class RedirectionDKey(SingleDKey, mark=DKeyMark_e.REDIRECT, tparam="R"):
         self._exp_type  = DKey
         self._typecheck = DKey | list[DKey]
 
-    def expand(self, *sources, fallback=None, max=None, check=None, full:bool=False, **kwargs) -> None|Any:
-        match super().redirect(*sources, multi=self.multi_redir, re_mark=self.re_mark):
+    def expand(self, *sources, max=None, full:bool=False, **kwargs) -> None|Any:
+        match super().redirect(*sources, multi=self.multi_redir, re_mark=self.re_mark, **kwargs):
             case list() as xs if self.multi_redir and full:
                 return [x.expand(*sources) for x in xs]
             case list() as xs if self.multi_redir:
@@ -454,6 +458,7 @@ class RedirectionDKey(SingleDKey, mark=DKeyMark_e.REDIRECT, tparam="R"):
                 return x.expand(*sources)
             case [x, *xs]:
                 return x
+
 
 class ConflictDKey(SingleDKey):
     """ Like a redirection key,
