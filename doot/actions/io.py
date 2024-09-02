@@ -305,9 +305,12 @@ class SimpleFind(PathManip_m):
 class TouchFileAction(PathManip_m):
 
     @DKeyed.args
-    def __call__(self, spec, state, args):
+    @DKeyed.types("soft", fallback=False)
+    def __call__(self, spec, state, args, soft):
         for target in [DKey(x, fallback=None, mark=DKey.mark.PATH) for x in args]:
             if (target_path:=target.expand(spec, state)) is None:
+                continue
+            if soft and not target_path.exists():
                 continue
             target_path.touch()
 
