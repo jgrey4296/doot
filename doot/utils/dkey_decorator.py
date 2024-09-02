@@ -91,7 +91,7 @@ class DKeyed:
 
     @staticmethod
     def formats(*args, **kwargs):
-        keys     = [DKey(x, mark=DKey.mark.STR, **kwargs) for x in args]
+        keys     = [DKey(x, implicit=True, mark=DKey.mark.STR, **kwargs) for x in args]
         return DKeyExpansionDecorator(keys)
 
     @staticmethod

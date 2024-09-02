@@ -46,6 +46,7 @@ from doot.structs import ParamSpec, TaskSpec
 logging = logmod.getLogger(__name__)
 printer = doot.subprinter()
 cmd_l   = doot.subprinter("cmd")
+help_l  = doot.subprinter("help")
 ##-- end logging
 
 NON_DEFAULT_KEY : Final[str] = doot.constants.misc.NON_DEFAULT_KEY
@@ -82,7 +83,7 @@ class HelpCmd(BaseCommand):
                 task_targets +=  [y for x,y in tasks.items() if x in target]
                 cmd_targets  +=  [x for x in plugins.command if x.name == doot.args.cmd.args.target]
             case {"help": True}:
-                printer.info(self.help)
+                help_l.info(self.help)
                 return
 
         logging.debug("Matched %s commands, %s tasks", len(cmd_targets), len(task_targets))
