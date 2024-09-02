@@ -33,8 +33,8 @@ import re
 import tomlguard
 import doot
 from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
+from doot._structs.dkey import MultiDKey, NonDKey, SingleDKey, DKey
 from doot.structs import TaskArtifact, Location
-from doot._structs.dkey import DKey, MultiDKey, NonDKey, SingleDKey
 from doot.mixins.path_manip import PathManip_m
 from doot.utils.dkey_formatter import DKeyFormatter
 from doot.enums import LocationMeta_f
