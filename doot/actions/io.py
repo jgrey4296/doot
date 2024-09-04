@@ -75,7 +75,7 @@ class WriteAction(PathManip_m):
       doot.locs object
     """
 
-    @DKeyed.types("from", max_exp=1)
+    @DKeyed.types("from")
     @DKeyed.paths("to")
     def __call__(self, spec, state, _from, to) -> dict|bool|None:
         data = _from
