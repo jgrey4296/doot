@@ -53,19 +53,23 @@ printer = doot.subprinter()
 # logging = printer.getChild("expansion")
 ##-- end logging
 
-KEY_PATTERN                                = doot.constants.patterns.KEY_PATTERN
-MAX_KEY_EXPANSIONS                         = 200 # doot.constants.patterns.MAX_KEY_EXPANSIONS
-STATE_TASK_NAME_K                          = doot.constants.patterns.STATE_TASK_NAME_K
+KEY_PATTERN                                     = doot.constants.patterns.KEY_PATTERN
+MAX_KEY_EXPANSIONS                              = 200 # doot.constants.patterns.MAX_KEY_EXPANSIONS
+STATE_TASK_NAME_K                               = doot.constants.patterns.STATE_TASK_NAME_K
 
-FMT_PATTERN    : Final[re.Pattern]         = re.compile("[wdi]+")
-PATTERN        : Final[re.Pattern]         = re.compile(KEY_PATTERN)
-FAIL_PATTERN   : Final[re.Pattern]         = re.compile("[^a-zA-Z_{}/0-9-]")
-EXPANSION_HINT : Final[str]                = "_doot_expansion_hint"
-HELP_HINT      : Final[str]                = "_doot_help_hint"
-MAX_DEPTH      : Final[int]                = 10
+FMT_PATTERN         : Final[re.Pattern]         = re.compile("[wdi]+")
+PATTERN             : Final[re.Pattern]         = re.compile(KEY_PATTERN)
+FAIL_PATTERN        : Final[re.Pattern]         = re.compile("[^a-zA-Z_{}/0-9-]")
+EXPANSION_HINT      : Final[str]                = "_doot_expansion_hint"
+HELP_HINT           : Final[str]                = "_doot_help_hint"
+MAX_DEPTH           : Final[int]                = 10
+
+DEFAULT_COUNT       : Final[int]                = 1
+RECURSE_GUARD_COUNT : Final[int]                = 2
+PAUSE_COUNT         : Final[int]                = 0
 
 
-def chained_get(key:Key_p, *sources:dict|SpecStruct_p|DootLocations, fallback=None) -> None|Any:
+def chained_get(key:str, *sources:dict|SpecStruct_p|DootLocations, fallback=None) -> None|Any:
     """
       Get a key's value from an ordered sequence of potential sources.
       Try to get {key} then {key_} in order of sources passed in
@@ -84,6 +88,8 @@ def chained_get(key:Key_p, *sources:dict|SpecStruct_p|DootLocations, fallback=No
             case SpecStruct_p():
                 params      = source.params
                 replacement = params.get(key, fallback)
+            case _:
+                raise TypeError("Unknown Type in chained_get", source)
 
         if replacement is not fallback:
             return replacement
@@ -108,6 +114,8 @@ class _DKeyParams(BaseModel):
                 return self.format
             case 3:
                 return self.conv
+            case _:
+                raise ValueError("Tried to access a bad element of DKeyParams", i)
 
     def __bool__(self):
         return bool(self.key)
@@ -165,8 +173,8 @@ class DKeyFormatterEntry_m:
             cls._instance = cls()
 
         fallback = kwargs.get("fallback", None)
-        with cls._instance(key=key, sources=sources, fallback=fallback, rec=max, intent="expand") as fmt:
-            result = fmt._expand(key)
+        with cls._instance(key=key, sources=sources, rec=max, intent="expand") as fmt:
+            result = fmt._expand(key, fallback=fallback)
             logging.debug("Expansion Result: %s", result)
             return result
 
@@ -235,7 +243,7 @@ class DKeyFormatterEntry_m:
 
 class DKeyFormatter_Expansion_m:
 
-    def _expand(self, key:Key_p, *, fallback=None, count=1) -> None|Any:
+    def _expand(self, key:Key_p, *, fallback=None, count=DEFAULT_COUNT) -> None|Any:
         """
           Expand the key, returning fallback if it fails,
           counting each loop as `count` attempts
@@ -252,10 +260,12 @@ class DKeyFormatter_Expansion_m:
             match current:
                 case sh.Command():
                     break
-                case Key_p() if current._mark is DKey.mark.PATH and count != 2:
-                    with self(sources=self.sources + current.extra_sources()) as sub:
+                case Key_p() if current._mark is DKey.mark.NULL:
+                     continue
+                case Key_p() if current._mark is DKey.mark.PATH and count != RECURSE_GUARD_COUNT:
+                    with self(sources=self.sources + [x for x in current.extra_sources() if x not in self.sources]) as sub:
                         logging.debug("Handling Path key")
-                        current = sub._expand(current, count=2)
+                        current = sub._expand(current, count=RECURSE_GUARD_COUNT)
                 case Key_p() if current.multi:
                     current = self._multi_expand(current)
                 case Key_p():
@@ -266,15 +276,15 @@ class DKeyFormatter_Expansion_m:
 
         match current:
             case None:
-                current = fallback or self.fallback
+                current = fallback or key._fallback
             case x if str(x) == str(key):
-                current = fallback or self.fallback
+                current = fallback or key._fallback
             case _:
                 pass
 
-        if isinstance(key, Key_p) and current is not None:
+        if current is not None:
             logging.debug("Running Expansion Hook: (%s) -> (%s)", key, current)
-            exp_val = key._exp_type(current)
+            exp_val = key._expansion_type(current)
             key._check_expansion(exp_val)
             current = key._expansion_hook(exp_val)
 
@@ -289,8 +299,8 @@ class DKeyFormatter_Expansion_m:
         """
         logging.debug("multi(%s)", key)
         logging.debug("----> %s", key.keys())
-        expanded_keys   = [ str(self._expand(x, fallback=f"{x:w}", count=0)) for x in key.keys() ]
-        expanded        = self.format(key._unnamed, *expanded_keys)
+        expanded_keys   = [ str(self._expand(x, fallback=f"{x:w}", count=PAUSE_COUNT)) for x in key.keys() ]
+        expanded        = self.format(key._anon, *expanded_keys)
         logging.debug("<---- %s", key.keys())
         return DKey(expanded)
 
@@ -299,7 +309,7 @@ class DKeyFormatter_Expansion_m:
           if theres no redirection, return the key as a direct key
           """
         key_str = f"{key:i}"
-        match chained_get(key_str, *self.sources, *key.extra_sources()):
+        match chained_get(key_str, *self.sources, *[x for x in key.extra_sources() if x not in self.sources]):
             case list() as ks:
                 logging.debug("(%s -> %s -> %s)", key, key_str, ks)
                 return [DKey(x, implicit=True) for x in ks]
@@ -309,12 +319,14 @@ class DKeyFormatter_Expansion_m:
             case str() as k:
                 logging.debug("(%s -> %s -> %s)", key, key_str, k)
                 return [DKey(k, implicit=True)]
-            case None if isinstance(key._exp_fallback, (str,DKey)):
-                logging.debug("%s -> %s -> %s (fallback)", key, key_str, key._exp_fallback)
-                return [DKey(key._exp_fallback, implicit=True)]
+            case None if key._mark is DKey.mark.REDIRECT and isinstance(key._fallback, (str,DKey)):
+                logging.debug("%s -> %s -> %s (fallback)", key, key_str, key._fallback)
+                return [DKey(key._fallback, implicit=True)]
             case None:
                 logging.debug("(%s -> %s -> Ø)", key, key_str)
                 return [key]
+            case _:
+                raise TypeError("Reached an unknown response path for redirection", key)
 
     def _single_expand(self, key:Key_p, fallback=None) -> None|Any:
         """
@@ -323,20 +335,22 @@ class DKeyFormatter_Expansion_m:
         assert(isinstance(key, Key_p))
         logging.debug("solo(%s)", key)
         key_str, key_wrap   = f"{key:d}", f"{key:w}"
-        match chained_get(key_str, *self.sources, *key.extra_sources(), fallback=fallback):
+        match chained_get(key_str, *self.sources, *[x for x in key.extra_sources() if x not in self.sources], fallback=fallback):
             case None:
                 return None
             case Key_p() as x:
                 return x
+            case x if self.rec_remaining == 0:
+                return x
+            case str() as x if key._mark is DKey.mark.PATH:
+                return DKey(x, mark=DKey.mark.PATH)
             case str() as x if x == key_wrap:
                 return DKey(x, mark=DKey.mark.NULL)
             case str() as x if x == key_str:
                 # Got the key back, wrap it and don't expand it any more
                 return "{%s}" % key_str
-            case str() as x:
+            case str() | pl.Path() as x:
                 return DKey(x)
-            case pl.Path() as x:
-                return DKey(x, mark=DKey.mark.PATH)
             case x:
                 return x
 
@@ -365,7 +379,8 @@ class DKeyFormatter(string.Formatter, DKeyFormatter_Expansion_m, DKeyFormatterEn
 
     def get_value(self, key, args, kwargs) -> str:
         """ lowest level handling of keys being expanded """
-        if isinstance(key, int):
+        # This handles when the key is something like '1968'
+        if isinstance(key, int) and 0 <= key <= len(args):
             return args[key]
 
         return kwargs.get(key, key)
@@ -381,8 +396,8 @@ class DKeyFormatter(string.Formatter, DKeyFormatter_Expansion_m, DKeyFormatterEn
                 return repr(value)
             case "a":
                 return ascii(value)
-
-        raise ValueError("Unknown conversion specifier {0!s}".format(conversion))
+            case _:
+                raise ValueError("Unknown conversion specifier {0!s}".format(conversion))
 
     @staticmethod
     def format_field(val, spec) -> str:

@@ -106,7 +106,7 @@ class DKey(metaclass=DKeyMeta):
         has_text, s_keys = DKey._parser.Parse(data)
         use_multi_ctor   = len(s_keys) > 0
         match len(s_keys):
-            case 0 if not implicit:
+            case 0 if not implicit and mark is not DKey.mark.PATH:
                 mark = DKeyMark_e.NULL
             case 0:
                 # Handle Single, implicit Key variants
@@ -122,7 +122,7 @@ class DKey(metaclass=DKeyMeta):
                 raise ValueError("Implicit instruction for multikey", data)
             case _ if has_text and mark is None:
                 mark = DKey._conv_registry.get(DKeyMark_e.MULTI)
-            case x if x >= 1:
+            case x if x >= 1 and mark is None:
                 mark = DKeyMark_e.MULTI
 
         # Get the ctor from the mark

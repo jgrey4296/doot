@@ -77,7 +77,7 @@ class DootLocations(PathManip_m):
           delegates to __getitem__
           eg: locs.temp
           """
-        if key == "__self__":
+        if key.startswith("__") and key.endswith("__"):
             return None
 
         return self.normalize(self.get(key, fallback=False))
@@ -120,7 +120,11 @@ class DootLocations(PathManip_m):
 
     def __contains__(self, key:str|DKey|pl.Path|TaskArtifact):
         """ Test whether a key is a registered location """
-        return key in self._data
+        match key:
+            case DootLocations():
+                return False
+            case str() | pl.Path() | TaskArtifact():
+                return key in self._data
 
     def __iter__(self) -> Generator[str]:
         """ Iterate over the registered location names """

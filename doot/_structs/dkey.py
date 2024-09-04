@@ -156,10 +156,10 @@ class DKeyExpansion_m:
 
     def expand(self, *sources, fallback=None, max=None, check=None, **kwargs) -> None|Any:
         logging.debug("DKey expansion for: %s", self)
-        match DKeyFormatter.expand(self, sources=sources, fallback=fallback or self._exp_fallback, max=max or self._max_expansions):
+        match DKeyFormatter.expand(self, sources=sources, fallback=fallback or self._fallback, max=max or self._max_expansions):
             case None:
                 return None
-            case DKey() as x if self._exp_type is str:
+            case DKey() as x if self._expansion_type is str:
                 return f"{x:w}"
             case x:
                 return x
@@ -189,22 +189,22 @@ class DKeyExpansion_m:
         match self._mark:
             case None:
                 pass
-            case _ if self._exp_type is not identity:
+            case _ if self._expansion_type is not identity:
                 pass
             case DKeyMark_e.PATH:
-                self._exp_type  = pl.Path
+                self._expansion_type  = pl.Path
                 self._typecheck = pl.Path
             case DKeyMark_e.STR:
-                self._exp_type  = str
+                self._expansion_type  = str
                 self._typecheck = str
             case DKeyMark_e.TASK:
-                self._exp_type  = TaskName.build
+                self._expansion_type  = TaskName.build
                 self._typecheck = TaskName
 
-        match self._exp_type:
+        match self._expansion_type:
             case type() as x if issubclass(x, Buildable_p):
                 self._typecheck = x
-                self._exp_type  = x.build
+                self._expansion_type  = x.build
 
         return self
 
@@ -215,21 +215,21 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, str):
       Base class characteristics of DKeys.
       adds:
       `_mark`
-      `_exp_type`
+      `_expansion_type`
       `_typecheck`
 
       plus some util methods
 
     """
 
-    _mark         : DKeyMark_e                  = DKey.mark.default
-    _exp_type     : type|callable               = str
-    _typecheck    : CHECKTYPE                   = Any
-    _exp_fallback : Any                         = None
-    _fmt_params      : None|str                    = None
-    _help         : None|str                    = None
+    _mark               : DKeyMark_e                  = DKey.mark.default
+    _expansion_type     : type|callable               = str
+    _typecheck          : CHECKTYPE                   = Any
+    _fallback           : Any                         = None
+    _fmt_params         : None|str                    = None
+    _help               : None|str                    = None
 
-    __hash__                                    = str.__hash__
+    __hash__                                          = str.__hash__
 
     def __init_subclass__(cls, *, mark:None|MARKTYPE=None, tparam:None|str=None, multi=False):
         super().__init_subclass__()
@@ -249,11 +249,11 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, str):
 
     def __init__(self, data, fmt:None|str=None, mark:MARKTYPE=None, check:CHECKTYPE=None, ctor:None|type|callable=None, help:None|str=None, fallback=None, max_exp=None, **kwargs):
         super().__init__(data)
-        self._exp_type       = ctor or identity
-        self._typecheck      = check or Any
-        self._mark           = mark or DKeyMark_e.FREE
-        self._exp_fallback   = fallback
-        self._max_expansions = max_exp
+        self._expansion_type       = ctor or identity
+        self._typecheck            = check or Any
+        self._mark                 = mark or DKeyMark_e.FREE
+        self._fallback             = fallback
+        self._max_expansions       = max_exp
 
         self._update_expansion_params(mark)
         self.set_fmt_params(fmt)
@@ -353,7 +353,7 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
         has_text, s_keys = DKeyFormatter.Parse(data)
         self._has_text   = has_text
         self._subkeys    = s_keys
-        self._unnamed    = self.format("", state={key.key : "{}" for key in s_keys})
+        self._anon    = self.format("", state={key.key : "{}" for key in s_keys})
 
     def __format__(self, spec:str):
         """
@@ -392,7 +392,7 @@ class NonDKey(DKeyBase, mark=DKeyMark_e.NULL):
           ignores all kwargs
         """
         super().__init__(data)
-        if kwargs.get('fallback', None) is not None:
+        if (fb:=kwargs.get('fallback', None)) is not None and fb != self:
             raise ValueError("NonKeys can't have a fallback, did you mean to use an explicit key?", self)
 
     def __format__(self, spec) -> str:
@@ -403,13 +403,13 @@ class NonDKey(DKeyBase, mark=DKeyMark_e.NULL):
         return format(self, fmt)
 
     def expand(self, *args, **kwargs) -> str:
-        if kwargs.get('fallback', None) is not None:
+        if (fb:=kwargs.get('fallback', None)) is not None and fb != self:
             raise ValueError("NonKeys can't have a fallback, did you mean to use an explicit key?", self)
         return str(self)
 
     def _update_expansion_params(self, *args) -> Self:
-        self._exp_type  = str
-        self._typecheck = str
+        self._expansion_type  = str
+        self._typecheck       = str
         return self
 
 ##-- end core
@@ -420,7 +420,7 @@ class StrDKey(SingleDKey, mark=DKeyMark_e.STR, tparam="s"):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._exp_type  = str
+        self._expansion_type  = str
         self._typecheck = str
 
 class TaskNameDKey(SingleDKey, mark=DKeyMark_e.TASK, tparam="t"):
@@ -428,7 +428,7 @@ class TaskNameDKey(SingleDKey, mark=DKeyMark_e.TASK, tparam="t"):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._exp_type  = TaskName.build
+        self._expansion_type  = TaskName.build
         self._typecheck = TaskName
 
 class RedirectionDKey(SingleDKey, mark=DKeyMark_e.REDIRECT, tparam="R"):
@@ -445,7 +445,7 @@ class RedirectionDKey(SingleDKey, mark=DKeyMark_e.REDIRECT, tparam="R"):
         super().__init__(data, **kwargs)
         self.multi_redir = multi
         self.re_mark     = re_mark
-        self._exp_type  = DKey
+        self._expansion_type  = DKey
         self._typecheck = DKey | list[DKey]
 
     def expand(self, *sources, max=None, full:bool=False, **kwargs) -> None|Any:
@@ -473,7 +473,7 @@ class ArgsDKey(SingleDKey, mark=DKeyMark_e.ARGS):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._exp_type  = list
+        self._expansion_type  = list
         self._typecheck = list
 
     def expand(self, *sources, **kwargs) -> list:
@@ -492,7 +492,7 @@ class KwargsDKey(SingleDKey, mark=DKeyMark_e.KWARGS):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._exp_type  = dict
+        self._expansion_type  = dict
         self._typecheck = dict
 
     def expand(self, *sources, fallback=None, **kwargs) -> dict:
@@ -512,7 +512,7 @@ class ImportDKey(SingleDKey, mark=DKeyMark_e.CODE, tparam="c"):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._exp_type  = CodeReference.build
+        self._expansion_type  = CodeReference.build
         self._typecheck = CodeReference
 
 class PathSingleDKey(SingleDKey, mark=DKeyMark_e.PATH):
@@ -523,26 +523,38 @@ class PathSingleDKey(SingleDKey, mark=DKeyMark_e.PATH):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._exp_type  = pl.Path
+        self._expansion_type  = pl.Path
         self._typecheck = pl.Path
+        self._fallback = self._fallback or str(self)
+        self._relative = kwargs.get('relative', False)
 
     def extra_sources(self):
         return [doot.locs]
 
-    def expand(self, *sources, fallback=None, **kwargs) -> None|Any:
+    def expand(self, *sources, **kwargs) -> None|Pl.Path:
         """ Expand subkeys, format the multi key
           Takes a variable number of sources (dicts, tomlguards, specs, dootlocations..)
         """
         logging.debug("Single Path Expand")
-        return super().expand(*sources, doot.locs, fallback=fallback, **kwargs)
+        match super().expand(*sources, **kwargs):
+            case None | pl.Path() as x:
+                return x
+            case _:
+                raise TypeError("Path Key shouldn't be able to produce a non-path")
 
-    def _expansion_hook(self, value) -> pl.Path|None:
+    def _expansion_hook(self, value) -> None|pl.Path:
         match value:
             case None:
                 return None
-            case _:
+            case pl.Path() if self._relative and x.is_absolute():
+                raise ValueError("Produced an absolute path when it is marked as relative", x)
+            case pl.Path() if self._relative:
+                return x
+            case pl.Path() as x:
                 logging.debug("Normalizing Single Path Key: %s", value)
-                return doot.locs.normalize(pl.Path(value))
+                return doot.locs.normalize(x)
+            case x:
+                raise TypeError("Path Expansion did not produce a path", x)
 
 class PathMultiDKey(MultiDKey, mark=DKeyMark_e.PATH, tparam="p", multi=True):
     """
@@ -554,8 +566,9 @@ class PathMultiDKey(MultiDKey, mark=DKeyMark_e.PATH, tparam="p", multi=True):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # self._has_text = True # ensures keys expand fully
-        self._exp_type  = pl.Path
+        self._expansion_type  = pl.Path
         self._typecheck = pl.Path
+        self._relative  = kwargs.get('relative', False)
 
     def extra_sources(self):
         return [doot.locs]
@@ -567,15 +580,30 @@ class PathMultiDKey(MultiDKey, mark=DKeyMark_e.PATH, tparam="p", multi=True):
         subkeys = [DKey(key.key, fmt=key.format, conv=key.conv, implicit=True) for key in self._subkeys]
         return subkeys
 
-    def expand(self, *sources, fallback=None, **kwargs) -> None|Any:
+    def expand(self, *sources, fallback=None, **kwargs) -> None|pl.Path:
         """ Expand subkeys, format the multi key
           Takes a variable number of sources (dicts, tomlguards, specs, dootlocations..)
         """
-        return self._exp_type(super().expand(*sources, doot.locs, fallback=fallback, **kwargs))
+        match self._expansion_type(super().expand(*sources, fallback=fallback, **kwargs)):
+            case None | pl.Path() as x:
+                return x
+            case _:
+                raise TypeError("Path Key shouldn't be able to produce a non-path")
 
-    def _expansion_hook(self, value):
+    def _expansion_hook(self, value) -> None|pl.Path:
         logging.debug("Normalizing Multi path KEy: %s", value)
-        return doot.locs.normalize(pl.Path(value))
+        match value:
+            case None:
+                return None
+            case pl.Path() as x if self._relative and x.is_absolute():
+                raise ValueError("Produced an absolute path when it is marked as relative", x)
+            case pl.Path() as x  if self._relative:
+                return x
+            case pl.Path() as x:
+                logging.debug("Normalizing Single Path Key: %s", value)
+                return doot.locs.normalize(x)
+            case x:
+                raise TypeError("Path Expansion did not produce a path", x)
 
 class PostBoxDKey(SingleDKey, mark=DKeyMark_e.POSTBOX, tparam="b"):
     """ A DKey which expands from postbox tasknames  """
@@ -583,7 +611,7 @@ class PostBoxDKey(SingleDKey, mark=DKeyMark_e.POSTBOX, tparam="b"):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._exp_type  = list
+        self._expansion_type  = list
         self._typecheck = list
 
     def expand(self, *sources, fallback=None, **kwargs):

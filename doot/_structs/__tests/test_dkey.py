@@ -97,6 +97,14 @@ class TestDKeyBasicConstruction:
         assert(key._mark is dkey.DKey.mark.PATH)
         assert(isinstance(key, dkey.PathSingleDKey))
 
+    def test_re_mark_key(self):
+        """ explicit keys can also mark their type """
+        key = dkey.DKey("{simple!p}/blah", implicit=False)
+        assert(key._mark is dkey.DKey.mark.FREE)
+        assert(isinstance(key, dkey.MultiDKey))
+        re_marked = dkey.DKey(key, mark=dkey.DKey.mark.PATH)
+        assert(isinstance(re_marked, dkey.PathMultiDKey))
+
     def test_multi_key_with_path_subkey(self):
         """ typed keys within multikeys are allowed,
           it will just be all coerced to a string eventually
@@ -239,7 +247,7 @@ class TestDKeyWithParameters:
         assert(isinstance(key, dkey.DKey))
         assert(isinstance(key, str))
         assert(key._fmt_params is None)
-        assert(key._exp_type is dkey.identity)
+        assert(key._expansion_type is dkey.identity)
         assert(key._typecheck is Any)
 
     def test_simple_with_fparams(self):
@@ -277,7 +285,7 @@ class TestDKeyWithParameters:
         with pytest.raises(ValueError):
             dkey.DKey("{aval!p}", implicit=False, mark=dkey.DKey.mark.CODE)
 
-class TestDKeyDunderFormatting:
+class TestDKeyFormatting:
 
     @pytest.mark.parametrize("name", IMP_KEY_BASES)
     def test_repr(self, name):
@@ -317,6 +325,14 @@ class TestDKeyDunderFormatting:
         result        = f"{key}"
         assert(result == name)
         assert(bool(key.keys()))
+
+
+    def test_anon_format_multistring(self):
+        """ multi keys are explicit by default """
+        key           = dkey.DKey("head {test}/{blah} tail {bloo} end")
+        result        = "head {}/{} tail {} end"
+        assert(key._anon == result)
+
 
     @pytest.mark.parametrize("name", PATH_KEYS)
     def test_fstr_multi_explicit(self, name):
@@ -498,7 +514,6 @@ class TestDKeyExpansion:
         assert(isinstance(result, sh.Command))
         assert(result is ls)
 
-
     @pytest.mark.parametrize("name", ["a", "b"])
     def test_chain_expansion(self, name):
         """ name -> {x} -> y """
@@ -525,6 +540,21 @@ class TestDKeyExpansion:
         assert(isinstance(key, dkey.MultiDKey))
         assert(exp == "this is a test blah.")
 
+    def test_max_expansion_limit(self):
+        """ this is a {name} blah. -> this is a test blah."""
+        full_str = "this is a {name} blah."
+        state    = {"name": "test", "base": full_str}
+        key      = dkey.DKey("base", implicit=True, mark=dkey.DKey.mark.FREE)
+        assert(full_str != key.expand(state))
+        assert(full_str == key.expand(state, max=1))
+
+    def test_max_expansion_limit_in_ctor(self):
+        """ this is a {name} blah. -> this is a test blah."""
+        full_str = "this is a {name} blah."
+        state    = {"name": "test", "base": full_str}
+        key      = dkey.DKey("base", implicit=True, mark=dkey.DKey.mark.FREE, max_exp=1)
+        assert(full_str == key.expand(state))
+
 class TestDKeyMultikeyExpansion:
 
     def test_expansion_with_key_conflict(self):
@@ -533,7 +563,7 @@ class TestDKeyMultikeyExpansion:
         assert(isinstance(mk, dkey.MultiDKey))
         assert(not isinstance(mk, dkey.PathMultiDKey))
         target      = "--blah=%s" % doot.locs["aweg/aweg"]
-        assert(mk._unnamed == "--blah={}/{}")
+        assert(mk._anon == "--blah={}/{}")
         result = mk.expand({"test": "aweg"})
         assert(result == target)
 
@@ -618,35 +648,36 @@ class TestDKeyExpansionFallback:
 
     def test_expansion_fallback_overrides_ctor_fallback(self):
         state = {}
-        key = dkey.DKey("a_null_key", implicit=True, fallback="blah")
+        key = dkey.DKey("an_empty_key", implicit=True, fallback="blah")
+        assert(isinstance(key, dkey.SingleDKey))
         assert(key.expand(state) == "blah")
         assert(key.expand(state, fallback="bloo") == "bloo")
 
     def test_implicit_with_expansion_fallback(self):
         state = {}
-        key = dkey.DKey("a_null_key", implicit=True)
+        key = dkey.DKey("an_empty_key", implicit=True)
         assert(key.expand(state) is None)
         assert(key.expand(state, fallback="blah") == "blah")
 
     def test_explicit_with_ctor_fallback(self):
         state = {}
-        key = dkey.DKey("{a_null_key}", implicit=False, fallback="blah")
+        key = dkey.DKey("{an_empty_key}", implicit=False, fallback="blah")
         assert(key.expand(state) == "blah")
 
     def test_explicit_with_expansion_fallback(self):
         state = {}
-        key = dkey.DKey("{a_null_key}", implicit=False)
+        key = dkey.DKey("{an_empty_key}", implicit=False)
         assert(key.expand(state) is None)
         assert(key.expand(state, fallback="blah") == "blah")
 
     def test_multikey_with_ctor_fallback(self):
         state = {}
-        key = dkey.DKey("{a_null_key} {and_another}", implicit=False, fallback="blah")
+        key = dkey.DKey("{an_empty_key} {and_another}", implicit=False, fallback="blah")
         assert(key.expand(state, fallback="blah") == "blah")
 
     def test_multikey_with_expansion_fallback(self):
         state = {}
-        key = dkey.DKey("{a_null_key} {and_another}", implicit=False)
+        key = dkey.DKey("{an_empty_key} {and_another}", implicit=False)
         assert(key.expand(state) is None)
         assert(key.expand(state, fallback="blah") == "blah")
 
@@ -712,7 +743,6 @@ class TestDKeyRedirection:
     @pytest.mark.skip
     def test_redirection_multi(self):
         pass
-
 
     @pytest.mark.parametrize("name", ["a_", "b_", "blah_bloo_"])
     def test_redirect_expansion(self, name):
@@ -787,7 +817,6 @@ class TestDKeyExpansionTyping:
         state = {name :2}
         with pytest.raises(TypeError):
             key.expand(state)
-
 
 class TestDKeyPathKeys:
 
@@ -886,6 +915,28 @@ class TestDKeyPathKeys:
         assert(isinstance(obj, dkey.PathSingleDKey))
         assert(obj.expand() == pl.Path.cwd())
 
+    def test_cwd_without_fallback(self):
+        obj = dkey.DKey(".", mark=dkey.DKey.mark.PATH)
+        assert(isinstance(obj, dkey.DKey))
+        assert(isinstance(obj, dkey.PathSingleDKey))
+        assert(obj.expand() == pl.Path.cwd())
+
+    def test_multi_layer_path_key(self, wrap_locs):
+        wrap_locs.update({"data_drive": "/media/john/data", "pdf_source": "{data_drive}/library/pdfs"})
+        state = {}
+        obj = dkey.DKey("pdf_source!p", implicit=True)
+        assert(isinstance(obj, dkey.DKey))
+        assert(isinstance(obj, dkey.PathSingleDKey))
+        assert(obj.expand() == pl.Path("/media/john/data/library/pdfs"))
+
+    def test_retrieve_relative_path(self, wrap_locs):
+        wrap_locs.update({"data_drive": "/media/john/data", "pdf_source": "{data_drive}/library/pdfs"})
+        state = {"relpath": pl.Path("a/b/c"), "head_": "relpath"}
+        obj = dkey.DKey("relpath", implicit=True, mark=dkey.DKey.mark.FREE)
+        redir = dkey.DKey("head", implicit=True)
+        assert(isinstance(obj, dkey.DKey))
+        assert(isinstance(obj, dkey.SingleDKey))
+        assert(redir.expand(state) == str(pl.Path("a/b/c")))
 
 class TestDKeyCodeKeys:
 
