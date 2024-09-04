@@ -258,8 +258,8 @@ class BackupAction(PathManip_m):
         if dest_loc.exists() and ((not source_newer) or below_tolerance):
             return
 
-        printer.warning("Backing up : %s", source_loc)
-        printer.warning("Destination: %s", dest_loc)
+        printer.info("Backing up : %s", source_loc)
+        printer.debug("Destination: %s", dest_loc)
         _DootPostBox.put(_name, dest_loc)
         shutil.copy2(source_loc,dest_loc)
 
