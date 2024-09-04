@@ -546,9 +546,9 @@ class PathSingleDKey(SingleDKey, mark=DKeyMark_e.PATH):
         match value:
             case None:
                 return None
-            case pl.Path() if self._relative and x.is_absolute():
+            case pl.Path() as x if self._relative and x.is_absolute():
                 raise ValueError("Produced an absolute path when it is marked as relative", x)
-            case pl.Path() if self._relative:
+            case pl.Path() as x if self._relative:
                 return x
             case pl.Path() as x:
                 logging.debug("Normalizing Single Path Key: %s", value)
