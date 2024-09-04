@@ -202,6 +202,21 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
         super().__init__()
         self.shadowing = False
 
+    def propagate_state_and_cleanup(self, name:TaskName):
+        """ Propagate a task's state on to its cleanup task"""
+        logging.info("Queueing Cleanup Task and Propagating State to Cleanup: %s", name)
+        cleanups = [x for x in self.network.succ[name] if self.network.edges[name, x].get("cleanup", False)]
+        task = self.tasks[name]
+        match cleanups:
+            case [x, *xs]:
+                cleanup_id = self.queue_entry(cleanups[0])
+                cleanup_task = self.tasks[cleanup_id]
+                cleanup_task.state.update(task.state)
+                task.state.clear()
+            case _:
+                task.state.clear()
+
+
     def next_for(self, target:None|str|TaskName=None) -> None|Task_i|TaskArtifact:
         """ ask for the next task that can be performed
 
@@ -241,9 +256,7 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
                     track_l.debug("Tearing Down: %s", focus)
                     self.active_set.remove(focus)
                     self.set_status(focus, TaskStatus_e.DEAD)
-                    cleanups = [x for x in self.network.succ[focus] if self.network.edges[focus, x].get("cleanup", False)]
-                    if bool(cleanups):
-                        self.queue_entry(cleanups[0])
+                    self.propagate_state_and_cleanup(focus)
                 case TaskStatus_e.SUCCESS | TaskStatus_e.EXISTS:
                     track_l.debug("Task Succeeded: %s", focus)
                     self.execution_trace.append(focus)
