@@ -91,8 +91,7 @@ class DKey(metaclass=DKeyMeta):
         """
         assert(cls is DKey)
         assert(isinstance(mark, MARKTYPE)), mark
-
-        # Early escape
+        # Early escape check
         match data:
             case DKey() if mark is None or mark == data._mark:
                 return data
@@ -107,11 +106,16 @@ class DKey(metaclass=DKeyMeta):
         use_multi_ctor   = len(s_keys) > 0
         match len(s_keys):
             case 0 if not implicit and mark is not DKey.mark.PATH:
+                # Just Text,
                 mark = DKeyMark_e.NULL
+            case _ if mark is DKey.mark.MULTI:
+                # Explicit override
+                pass
             case 0:
                 # Handle Single, implicit Key variants
                 data, mark     = cls._parse_single_key_params_to_mark(data, conv, fallback=mark)
             case 1 if not has_text:
+                # One Key, no other text, so make a solo key
                 solo           = s_keys[0]
                 fparams        = solo.format
                 data, mark     = cls._parse_single_key_params_to_mark(solo.key, solo.conv, fallback=mark)
@@ -125,11 +129,11 @@ class DKey(metaclass=DKeyMeta):
             case x if x >= 1 and mark is None:
                 mark = DKeyMark_e.MULTI
 
-        # Get the ctor from the mark
-        key_ctor = DKey.get_ctor(mark, multi=use_multi_ctor)
+        # Get the initiator using the mark
+        key_init = DKey.get_initiator(mark, multi=use_multi_ctor)
 
-        # Build the key from key_ctor + init it
-        result           = str.__new__(key_ctor, data)
+        # Build a str with the key_init and data
+        result           = str.__new__(key_init, data)
         result.__init__(data, fmt=fparams, mark=mark, **kwargs)
 
         return result
@@ -162,7 +166,7 @@ class DKey(metaclass=DKeyMeta):
             case x, y if x == y:
                 return (key, x)
             case x, y:
-                raise ValueError("Conflicting conversion parameters", x, y)
+                raise ValueError("Conflicting conversion parameters", x, y, data)
 
 
     @staticmethod
@@ -187,7 +191,7 @@ class DKey(metaclass=DKeyMeta):
                 DKey._conv_registry[tparam] = mark
 
     @staticmethod
-    def get_ctor(mark, *, multi:bool=False) -> type:
+    def get_initiator(mark, *, multi:bool=False) -> type:
         match multi:
             case True:
                 ctor = DKey._multi_registry.get(mark, None)

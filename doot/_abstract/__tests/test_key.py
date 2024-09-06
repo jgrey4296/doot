@@ -41,11 +41,11 @@ class TestDKeyMetaSetup:
         assert(str(key) == "test")
 
     def test_subclass_registration(self):
-        assert(dkey.DKey.get_ctor(dkey.DKeyMark_e.FREE) == dkey.SingleDKey)
+        assert(dkey.DKey.get_initiator(dkey.DKeyMark_e.FREE) == dkey.SingleDKey)
 
         class PretendDKey(dkey.DKeyBase, mark=dkey.DKeyMark_e.FREE):
             pass
-        assert(dkey.DKey.get_ctor(dkey.DKeyMark_e.FREE) == PretendDKey)
+        assert(dkey.DKey.get_initiator(dkey.DKeyMark_e.FREE) == PretendDKey)
         # return the original class
         dkey.DKey.register_key(dkey.SingleDKey, dkey.DKeyMark_e.FREE)
 

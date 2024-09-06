@@ -115,6 +115,17 @@ class TestDKeyBasicConstruction:
         assert(key._has_text)
         assert(isinstance(key.keys()[0], dkey.PathSingleDKey))
 
+
+    def test_multi_key_of_path_subkey(self):
+        """ typed keys within multikeys are allowed,
+          it will just be all coerced to a string eventually
+        """
+        key = dkey.DKey("{test!p}", mark=dkey.DKey.mark.MULTI, fallback="{test!p}")
+        assert(isinstance(key, dkey.MultiDKey))
+        assert(not isinstance(key, dkey.PathMultiDKey))
+        assert(not key._has_text)
+        assert(isinstance(key.keys()[0], dkey.PathSingleDKey))
+
     def test_multi_keys_with_multiple_subkeys(self):
         """ typed keys within multikeys are allowed,
           it will just be all coerced to a string eventually
