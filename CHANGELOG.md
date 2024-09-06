@@ -4,6 +4,38 @@ All notable changes to this project will be documented in this file.
 
 (Generated using [git-cliff](https://git-cliff.org/)
 
+## [0.13.0] - 2024-09-06
+
+### Features
+
+- Printer subchildren init
+- Option to hardlink
+- Log/print target control
+- 'soft' kw for touch action
+- State propagation to cleanup task
+- Branch 'linux-main'
+
+### Bug Fixes
+
+- _printer_ retrieval
+- Guard path touching
+- Dkey checking to account for numpy extension in dootle
+- Dkey handling of paths
+- Typo
+- Explicit multikey mark conflicts
+
+### Dependencies
+
+- Jgdv
+- Version 0.12.0 -> 0.13.0
+
+### Refactoring
+
+- Requirements.txt
+- Dkey meta to abstract
+- Test organisation
+- Shell interact
+
 ## [0.12.0] - 2024-08-25
 
 ### Bug Fixes
