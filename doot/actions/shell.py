@@ -133,11 +133,15 @@ class DootShellAction(Action_p):
                 printer.error("-- Stdout: ")
                 printer.error("%s", err.stdout.decode())
                 printer.error("")
+                printer.error("-- Stdout End")
+                printer.error("")
 
             printer.info("")
             if bool(err.stderr):
                 printer.error("-- Stderr: ")
                 printer.error("%s", err.stderr.decode())
+                printer.error("")
+                printer.error("-- Stderr End")
                 printer.error("")
 
         return False
