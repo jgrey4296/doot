@@ -140,12 +140,15 @@ class RelativeCheck(PathManip_m, DootBaseAction):
             return result
 
 class LogAction(DootBaseAction):
+    """ A Basic log/print action  """
 
     @DKeyed.types("level", check=str, fallback="INFO")
     @DKeyed.formats("msg")
-    def __call__(self, spec, state, level, msg):
-        level        = logmod.getLevelName(level)
-        printer.log(level, msg)
+    @DKeyed.formats("target", fallback="task")
+    def __call__(self, spec, state, level, msg, target):
+        logger = doot.subprinter(target)
+        level  = logmod.getLevelName(level)
+        logger.log(level, msg)
 
 @ControlFlow()
 class StalenessCheck(DootBaseAction):

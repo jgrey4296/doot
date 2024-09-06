@@ -71,13 +71,12 @@ class PathManip_m:
             'pstem'   : fpath.parent.stem,
             }
 
-    def _build_roots(self, spec, state, roots:None|list) -> list[pl.Path]:
+    def _build_roots(self, spec, state, roots:None|list[str|DKey]) -> list[pl.Path]:
         """
         convert roots from keys to paths
         """
-        roots = roots or []
+        roots   = roots or []
         results = []
-
         for root in roots:
             root_key = DKey(root, fallback=root, mark=DKey.mark.PATH)
             results.append(root_key.expand(spec, state))

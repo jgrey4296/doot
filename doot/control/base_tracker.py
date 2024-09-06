@@ -212,7 +212,7 @@ class _TrackerStore:
         """ find a matching relendency/requirement according to a set of keys in the spec, or create a matching instance
           if theres no constraints, will just instantiate.
           """
-        logging.debug("Instantiating Relation: %s - %s -> %s", control, rel.relation.name, rel.target)
+        logging.info("Instantiating Relation: %s - %s -> %s", control, rel.relation.name, rel.target)
         assert(control in self.specs)
         control_spec              = self.specs[control]
         successful_matches        = []

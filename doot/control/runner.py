@@ -140,7 +140,6 @@ class DootRunner(BaseRunner, TaskRunner_i):
             self._execute_action_group(job.spec.on_fail, job, group="on_fail")
             raise err
         finally:
-            job.state.clear()
             self.reporter.add_trace(job.spec, flags=Report_f.JOB | Report_f.SUCCEED)
             task_header_l.info("< Job %s: %s", self.step, job.shortname, extra={"colour":"magenta"})
 
@@ -157,7 +156,6 @@ class DootRunner(BaseRunner, TaskRunner_i):
             self._execute_action_group(task.spec.on_fail, task, group="on_fail")
             raise err
         finally:
-            task.state.clear()
             task_header_l.debug("< Task: %s", task.shortname, extra={"colour":"cyan"})
 
     def _execute_action_group(self, actions:list, task:Task_i, allow_queue=False, group=None) -> None|tuple[int, ActRE]:
@@ -272,3 +270,4 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 return False
             case _, _:
                 return True
+

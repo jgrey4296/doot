@@ -91,7 +91,7 @@ class DKeyed:
 
     @staticmethod
     def formats(*args, **kwargs):
-        keys     = [DKey(x, mark=DKey.mark.STR, **kwargs) for x in args]
+        keys     = [DKey(x, implicit=True, mark=DKey.mark.STR, **kwargs) for x in args]
         return DKeyExpansionDecorator(keys)
 
     @staticmethod
@@ -108,6 +108,7 @@ class DKeyed:
     @staticmethod
     def types(*args, **kwargs):
         """ mark an action as using raw type keys """
+        kwargs['max_exp'] = kwargs.get('max_exp', 1)
         keys = [DKey(x, implicit=True, mark=DKey.mark.FREE, **kwargs) for x in args]
         return DKeyExpansionDecorator(keys)
 
@@ -207,7 +208,7 @@ class DKeyExpansionDecorator(Decorator_p):
         def method_action_expansions(self, spec, state, *call_args, **kwargs):
             try:
                 expansions = [x(spec, state) for x in getattr(fn, data_key)]
-            except KeyError as err:
+            except (AttributeError, KeyError) as err:
                 printer.warning("Action State method Expansion Failure: %s", err)
                 return False
             else:

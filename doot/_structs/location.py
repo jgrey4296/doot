@@ -68,7 +68,7 @@ class Location(BaseModel, Location_p, Buildable_p, metaclass=ProtocolModelMeta, 
     _expansion_keys     : set[str]      = set()
 
     _toml_str_prefix    : ClassVar[str] = doot.constants.patterns.FILE_DEP_PREFIX
-    _artifact_key           : ClassVar[str] = DKey("!!Artifact!!")
+    _artifact_key       : ClassVar[str] = "!!Artifact!!"
 
     @classmethod
     def build(cls, data:dict|str, *, key:None|str|DKey=None, target:pl.Path=None):

@@ -23,6 +23,11 @@ NOTTY      = DKey("notty")
 ENV        = DKey("shenv_")
 
 class DootShellBake:
+    """
+      Create a pre-baked shell command for reuse as in a ShellBakedRun,
+      for chaining commands without returning to doot
+      args are explicit
+    """
 
     @DKeyed.args
     @DKeyed.redirects("in_")
@@ -58,6 +63,9 @@ class DootShellBake:
         return False
 
 class DootShellBakedRun:
+    """
+      Run a series of baked commands
+    """
 
     @DKeyed.redirects("in_")
     @DKeyed.redirects("update_")
@@ -81,7 +89,7 @@ class DootShellBakedRun:
 
 class DootShellAction(Action_p):
     """
-    For actions in subshells.
+    For actions in subshells/processes.
     all other arguments are passed directly to the program, using `sh`
 
     can use a pre-baked sh passed into what "shenv_" points to
@@ -98,7 +106,8 @@ class DootShellAction(Action_p):
         env        = env or sh
         try:
             # Build the command by getting it from env, :
-            cmd                     = getattr(env, DKey(args[0], fallback=args[0]).expand(spec, state))
+            cmd_name                = DKey(args[0], fallback=args[0]).expand(spec, state)
+            cmd                     = getattr(env, cmd_name)
             keys                    = [DKey(x, mark=DKey.mark.MULTI, fallback=x) for x in args[1:]]
             expanded                = [str(x.expand(spec, state)) for x in keys]
             result                  = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=not notty, _cwd=cwd )
@@ -107,7 +116,7 @@ class DootShellAction(Action_p):
                 printer.warning(result.stderr.decode())
                 return False
 
-            printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, args[0], args[1:])
+            printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, cmd_name, args[1:])
             if not _update:
                 printer.info("%s", result, extra={"colour":"reset"})
                 return True
@@ -121,11 +130,15 @@ class DootShellAction(Action_p):
         except sh.ErrorReturnCode as err:
             printer.error("Shell Command '%s' exited with code: %s", err.full_cmd, err.exit_code)
             if bool(err.stdout):
+                printer.error("-- Stdout: ")
                 printer.error("%s", err.stdout.decode())
+                printer.error("")
 
             printer.info("")
             if bool(err.stderr):
+                printer.error("-- Stderr: ")
                 printer.error("%s", err.stderr.decode())
+                printer.error("")
 
         return False
 
@@ -138,24 +151,32 @@ class DootInteractiveAction(Action_p):
     prompt     = ">>> "
     cont       = "... "
 
-    def __call__(self, spec, state:dict) -> dict|bool|None:
+    @DKeyed.formats("prompt", "cont")
+    @DKeyed.args
+    def __call__(self, spec, state:dict, prompt, cont, args) -> dict|bool|None:
         try:
-            self.prompt = spec.kwargs.on_fail(DootInteractiveAction.prompt, str).prompt()
-            self.cont   = spec.kwargs.on_fail(DootInteractiveAction.cont, str).cont()
-
-            cmd      = getattr(sh, spec.args[0])
+            cmd      = getattr(env, DKey(args[0], fallback=args[0]).expand(spec, state))
             args     = spec.args[1:]
-            keys     = [DKey(x) for x in args]
-            expanded = [x.expand(spec, state, locs=doot.locs) for x in keys]
-            result   = cmd(*expanded, _return_cmd=True, _bg=spec.kwargs.on_fail(False, bool).background(), _out=self.interact, _out_bufsize=0, _tty_in=True, _unify_ttys=True)
+            keys     = [DKey(x, mark=DKey.mark.MULTI, fallback=x) for x in args[1:]]
+            expanded = [str(x.expand(spec, state)) for x in keys]
+            result   = cmd(*expanded, _return_cmd=True, _bg=False, _out=self.interact, _out_bufsize=0, _tty_in=True, _unify_ttys=True)
             assert(result.exit_code == 0)
             printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, spec.args[0], spec.args[1:])
             printer.info("%s", result, extra={"colour":"reset"})
             return True
+
+        except sh.ForkException as err:
+            printer.error("Shell Command failed: %s", err)
         except sh.CommandNotFound as err:
-            printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], spec.args)
-        except sh.ErrorReturnCode:
-            printer.error("Shell Command '%s' exited with code: %s for args: %s", spec[0], result.exit_code, spec.args)
+            printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], args)
+        except sh.ErrorReturnCode as err:
+            printer.error("Shell Command '%s' exited with code: %s", err.full_cmd, err.exit_code)
+            if bool(err.stdout):
+                printer.error("%s", err.stdout.decode())
+
+            printer.info("")
+            if bool(err.stderr):
+                printer.error("%s", err.stderr.decode())
 
         return False
 

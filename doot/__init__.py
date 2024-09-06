@@ -62,7 +62,7 @@ aliases              : TG.TomlGuard       = TG.TomlGuard()
 locs                 : DootLocData        = None # DootLocations(pl.Path()) # registered locations
 args                 : TG.TomlGuard       = TG.TomlGuard() # parsed arg access
 report               : Reporter_p         = None
-log_config           : JGDVLogConfig      = JGDVLogConfig()
+log_config           : JGDVLogConfig      = JGDVLogConfig(constants.on_fail(None).printer.PRINTER_CHILDREN())
 
 _configs_loaded_from : list[pl.Path]      = []
 
