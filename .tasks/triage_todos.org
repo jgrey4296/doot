@@ -297,3 +297,8 @@ get the keys mentioned in a task spec, for propagation to cleanup?
    :context:
         <2024-09-07 Sat>             self.build_param(name="actions",                   default=False,           desc="Help Stub Actions",                 prefix="-"),
    :END:
+** TRIAGE add env-var for custom doot.config template
+   [[/media/john/data/github/python/doot/doot/__main__.py::87][Location]]
+   :context:
+        <2024-09-07 Sat>             template = template_path.joinpath(doot.constants.paths.TOML_TEMPLATE)
+   :END:
