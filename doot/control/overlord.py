@@ -262,6 +262,9 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
                 sh.say("-v", "Moira", "-r", "50", message)
 
     def _record_defaulted_config_values(self):
+        if not doot.config.on_fail(False).settings.general.write_defaulted_values():
+            return
+
         defaulted_toml = tomlguard.TomlGuard.report_defaulted()
         expanded_path = doot.locs[defaulted_file]
         if not expanded_path.parent.exists():

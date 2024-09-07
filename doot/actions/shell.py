@@ -15,6 +15,7 @@ from doot.structs import DKey, DKeyed
 ##-- logging
 logging = logmod.getLogger(__name__)
 printer = doot.subprinter()
+fail_l  = doot.subprinter("fail")
 ##-- end logging
 
 BACKGROUND = DKey("background")
@@ -50,15 +51,15 @@ class DootShellBake:
 
             return { _update : baked }
         except sh.CommandNotFound as err:
-            printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], args)
+            fail_l.error("Shell Commmand '%s' Not Action: %s", err.args[0], args)
         except sh.ErrorReturnCode as err:
-            printer.error("Shell Command '%s' exited with code: %s", err.full_cmd, err.exit_code)
+            fail_l.error("Shell Command '%s' exited with code: %s", err.full_cmd, err.exit_code)
             if bool(err.stdout):
-                printer.error("%s", err.stdout.decode())
+                fail_l.error("%s", err.stdout.decode())
 
-            printer.info("")
+            fail_l.info("")
             if bool(err.stderr):
-                printer.error("%s", err.stderr.decode())
+                fail_l.error("%s", err.stderr.decode())
 
         return False
 
@@ -75,15 +76,15 @@ class DootShellBakedRun:
             result = cmd()
             return { _update : result }
         except sh.CommandNotFound as err:
-            printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], args)
+            fail_l.error("Shell Commmand '%s' Not Action: %s", err.args[0], args)
         except sh.ErrorReturnCode as err:
-            printer.error("Shell Command '%s' exited with code: %s", err.full_cmd, err.exit_code)
+            fail_l.error("Shell Command '%s' exited with code: %s", err.full_cmd, err.exit_code)
             if bool(err.stdout):
-                printer.error("%s", err.stdout.decode())
+                fail_l.error("%s", err.stdout.decode())
 
-            printer.info("")
+            fail_l.info("")
             if bool(err.stderr):
-                printer.error("%s", err.stderr.decode())
+                fail_l.error("%s", err.stderr.decode())
 
         return False
 
@@ -124,25 +125,25 @@ class DootShellAction(Action_p):
             return { _update : result.stdout.decode() }
 
         except sh.ForkException as err:
-            printer.error("Shell Command failed: %s", err)
+            fail_l.error("Shell Command failed: %s", err)
         except sh.CommandNotFound as err:
-            printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], args)
+            fail_l.error("Shell Commmand '%s' Not Action: %s", err.args[0], args)
         except sh.ErrorReturnCode as err:
-            printer.error("Shell Command '%s' exited with code: %s", err.full_cmd, err.exit_code)
+            fail_l.error("Shell Command '%s' exited with code: %s", err.full_cmd, err.exit_code)
             if bool(err.stdout):
-                printer.error("-- Stdout: ")
-                printer.error("%s", err.stdout.decode())
-                printer.error("")
-                printer.error("-- Stdout End")
-                printer.error("")
+                fail_l.error("-- Stdout: ")
+                fail_l.error("%s", err.stdout.decode())
+                fail_l.error("")
+                fail_l.error("-- Stdout End")
+                fail_l.error("")
 
-            printer.info("")
+            fail_l.info("")
             if bool(err.stderr):
-                printer.error("-- Stderr: ")
-                printer.error("%s", err.stderr.decode())
-                printer.error("")
-                printer.error("-- Stderr End")
-                printer.error("")
+                fail_l.error("-- Stderr: ")
+                fail_l.error("%s", err.stderr.decode())
+                fail_l.error("")
+                fail_l.error("-- Stderr End")
+                fail_l.error("")
 
         return False
 
@@ -170,22 +171,22 @@ class DootInteractiveAction(Action_p):
             return True
 
         except sh.ForkException as err:
-            printer.error("Shell Command failed: %s", err)
+            fail_l.error("Shell Command failed: %s", err)
         except sh.CommandNotFound as err:
-            printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], args)
+            fail_l.error("Shell Commmand '%s' Not Action: %s", err.args[0], args)
         except sh.ErrorReturnCode as err:
-            printer.error("Shell Command '%s' exited with code: %s", err.full_cmd, err.exit_code)
+            fail_l.error("Shell Command '%s' exited with code: %s", err.full_cmd, err.exit_code)
             if bool(err.stdout):
-                printer.error("%s", err.stdout.decode())
+                fail_l.error("%s", err.stdout.decode())
 
-            printer.info("")
+            fail_l.info("")
             if bool(err.stderr):
-                printer.error("%s", err.stderr.decode())
+                fail_l.error("%s", err.stderr.decode())
 
         return False
 
     def interact(self, char, stdin):
-        # TODO possibly add a custom interupt handler
+        # TODO possibly add a custom interupt handler/logger
         self.aggregated += str(char)
         if self.aggregated.endswith("\n"):
             printer.info(self.aggregated.strip())
