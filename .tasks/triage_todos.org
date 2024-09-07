@@ -302,3 +302,8 @@ get the keys mentioned in a task spec, for propagation to cleanup?
    :context:
         <2024-09-07 Sat>             template = template_path.joinpath(doot.constants.paths.TOML_TEMPLATE)
    :END:
+** TRIAGE add environment-finder
+   [[/media/john/data/github/python/doot/.tasks/docs.toml::12][Location]]
+   :context:
+        <2024-09-07 Sat> setup       = [
+   :END:

@@ -9,7 +9,7 @@
 :data        : data
 :docs        : docs
 :tasks       : .tasks
-:temp        : .temp
+:tempD       : .temp
 :wiki        : wiki_
 :git         : .git
 :hooks       : .git/hooks
