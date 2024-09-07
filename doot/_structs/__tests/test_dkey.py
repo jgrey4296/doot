@@ -41,6 +41,16 @@ VALID_MULTI_KEYS                                     = PATH_KEYS + MUTI_KEYS
 
 TEST_LOCS               : Final[DootLocations]       = DootLocations(pl.Path.cwd()).update({"blah": "doot"})
 
+class TestDKeyTypeParams:
+
+    def test_basic_mark(self):
+        assert(dkey.PathSingleDKey._mark is dkey.DKey.mark.PATH)
+
+
+    def test_str_mark(self):
+        assert(dkey.StrDKey._mark is dkey.DKey.mark.STR)
+
+
 class TestDKeyBasicConstruction:
 
     def test_nonkey(self):
@@ -114,7 +124,6 @@ class TestDKeyBasicConstruction:
         assert(not isinstance(key, dkey.PathMultiDKey))
         assert(key._has_text)
         assert(isinstance(key.keys()[0], dkey.PathSingleDKey))
-
 
     def test_multi_key_of_path_subkey(self):
         """ typed keys within multikeys are allowed,
@@ -337,13 +346,11 @@ class TestDKeyFormatting:
         assert(result == name)
         assert(bool(key.keys()))
 
-
     def test_anon_format_multistring(self):
         """ multi keys are explicit by default """
         key           = dkey.DKey("head {test}/{blah} tail {bloo} end")
         result        = "head {}/{} tail {} end"
         assert(key._anon == result)
-
 
     @pytest.mark.parametrize("name", PATH_KEYS)
     def test_fstr_multi_explicit(self, name):
@@ -915,19 +922,25 @@ class TestDKeyPathKeys:
         assert(exp == target)
 
     def test_cwd_build(self):
-        obj = dkey.DKey(".", fallback=".", implicit=True, mark=dkey.DKey.mark.PATH)
+        obj = dkey.DKey("cwd", implicit=True, mark=dkey.DKey.mark.PATH)
         assert(isinstance(obj, dkey.DKey))
         assert(isinstance(obj, dkey.PathSingleDKey))
         assert(obj.expand() == pl.Path.cwd())
 
     def test_cwd_build_with_param(self):
-        obj = dkey.DKey(".!p", fallback=".", implicit=True)
+        obj = dkey.DKey("cwd!p", implicit=True)
         assert(isinstance(obj, dkey.DKey))
         assert(isinstance(obj, dkey.PathSingleDKey))
         assert(obj.expand() == pl.Path.cwd())
 
+    def test_explicit_cwd_with_param(self):
+        obj = dkey.DKey("{cwd!p}", implicit=False, mark=dkey.DKey.mark.MULTI)
+        assert(isinstance(obj, dkey.DKey))
+        # assert(isinstance(obj, dkey.PathSingleDKey))
+        assert(obj.expand() == pl.Path.cwd())
+
     def test_cwd_without_fallback(self):
-        obj = dkey.DKey(".", mark=dkey.DKey.mark.PATH)
+        obj = dkey.DKey("cwd", mark=dkey.DKey.mark.PATH)
         assert(isinstance(obj, dkey.DKey))
         assert(isinstance(obj, dkey.PathSingleDKey))
         assert(obj.expand() == pl.Path.cwd())

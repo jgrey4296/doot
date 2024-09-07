@@ -233,6 +233,7 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, str):
 
     def __init_subclass__(cls, *, mark:None|MARKTYPE=None, tparam:None|str=None, multi=False):
         super().__init_subclass__()
+        cls._mark = mark
         DKey.register_key(cls, mark, tparam=tparam, multi=multi)
         DKey.register_parser(DKeyFormatter)
 
@@ -385,7 +386,6 @@ class NonDKey(DKeyBase, mark=DKeyMark_e.NULL):
     """
       Just a string, not a key. But this lets you call no-ops for key specific methods
     """
-    _mark = DKey.mark.NULL
 
     def __init__(self, data, **kwargs):
         """
@@ -424,7 +424,6 @@ class StrDKey(SingleDKey, mark=DKeyMark_e.STR, tparam="s"):
         self._typecheck = str
 
 class TaskNameDKey(SingleDKey, mark=DKeyMark_e.TASK, tparam="t"):
-    _mark = DKey.mark.TASK
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -439,7 +438,6 @@ class RedirectionDKey(SingleDKey, mark=DKeyMark_e.REDIRECT, tparam="R"):
       re_mark :
     """
 
-    _mark = DKey.mark.REDIRECT
 
     def __init__(self, data, multi=False, re_mark=None, **kwargs):
         super().__init__(data, **kwargs)
@@ -469,7 +467,6 @@ class ConflictDKey(SingleDKey):
 
 class ArgsDKey(SingleDKey, mark=DKeyMark_e.ARGS):
     """ A Key representing the action spec's args """
-    _mark = DKey.mark.ARGS
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -488,7 +485,6 @@ class ArgsDKey(SingleDKey, mark=DKeyMark_e.ARGS):
 class KwargsDKey(SingleDKey, mark=DKeyMark_e.KWARGS):
     """ A Key representing all of an action spec's kwargs """
 
-    _mark = DKey.mark.KWARGS
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -508,7 +504,6 @@ class ImportDKey(SingleDKey, mark=DKeyMark_e.CODE, tparam="c"):
     """
       Subclass for dkey's which expand to CodeReferences
     """
-    _mark = DKey.mark.CODE
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -519,7 +514,6 @@ class PathSingleDKey(SingleDKey, mark=DKeyMark_e.PATH):
     """ for paths that are just a single key of a larger string
     eg: `temp`
     """
-    _mark = DKey.mark.PATH
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -536,6 +530,8 @@ class PathSingleDKey(SingleDKey, mark=DKeyMark_e.PATH):
           Takes a variable number of sources (dicts, tomlguards, specs, dootlocations..)
         """
         logging.debug("Single Path Expand")
+        if self == "cwd":
+            return pl.Path.cwd()
         match super().expand(*sources, **kwargs):
             case None | pl.Path() as x:
                 return x
@@ -561,11 +557,9 @@ class PathMultiDKey(MultiDKey, mark=DKeyMark_e.PATH, tparam="p", multi=True):
     A MultiKey that always expands as a path,
     eg: `{temp}/{name}.log`
     """
-    _mark = DKey.mark.PATH
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # self._has_text = True # ensures keys expand fully
         self._expansion_type  = pl.Path
         self._typecheck = pl.Path
         self._relative  = kwargs.get('relative', False)
@@ -574,9 +568,6 @@ class PathMultiDKey(MultiDKey, mark=DKeyMark_e.PATH, tparam="p", multi=True):
         return [doot.locs]
 
     def keys(self) -> list[Key_p]:
-        # first = self._subkeys[0]
-        # subkeys = [DKey(first.key, mark=DKey.mark.PATH, fmt=first.format, conv=first.conv, implicit=True)]
-        # subkeys += [DKey(key.key, fmt=key.format, conv=key.conv, implicit=True) for key in self._subkeys[1:]]
         subkeys = [DKey(key.key, fmt=key.format, conv=key.conv, implicit=True) for key in self._subkeys]
         return subkeys
 
@@ -607,7 +598,6 @@ class PathMultiDKey(MultiDKey, mark=DKeyMark_e.PATH, tparam="p", multi=True):
 
 class PostBoxDKey(SingleDKey, mark=DKeyMark_e.POSTBOX, tparam="b"):
     """ A DKey which expands from postbox tasknames  """
-    _mark = DKey.mark.POSTBOX
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
