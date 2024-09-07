@@ -94,16 +94,19 @@ def setup(targets:list[pl.Path]|False|None=None, prefix:str|None=TOOL_PREFIX) ->
     if bool(config):
         logging.warning("doot.setup called even though doot is already set up")
 
-    if bool(targets) and not any([x.exists() for x in targets]):
-        raise doot.errors.DootMissingConfigError("No Doot data found")
-
     existing_targets       = [x for x in targets if x.exists()]
+
+    if not bool(existing_targets):
+        raise doot.errors.DootMissingConfigError("No Doot data found")
 
     try:
         config = TG.load(*existing_targets)
     except OSError as err:
         logging.error("Failed to Load Config Files: %s", existing_targets)
         raise doot.errors.DootError() from err
+
+    if existing_targets == [pl.Path("pyproject.toml")] and "doot" not in config:
+        raise doot.errors.DootMissingConfigError("Pyproject has no doot config")
 
     config = config.remove_prefix(prefix)
     _load_constants()

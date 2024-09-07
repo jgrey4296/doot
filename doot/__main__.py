@@ -79,14 +79,14 @@ def main():
         result = 0
     except doot.errors.DootMissingConfigError as err:
         result = 0
+        base_target = pl.Path(doot.constants.on_fail(["doot.toml"]).paths.DEFAULT_LOAD_TARGETS()[0])
         # Handle missing files
-        if pl.Path(doot.constants.on_fail(["doesntexist"]).paths.DEFAULT_LOAD_TARGETS()[0]).exists():
-            pass
+        if base_target.exists():
+            fail_l.error("Base Config Target exists but no config found? %s", base_target)
         elif input("No toml config data found, create stub doot.toml? _/n ") != "n":
             template = template_path.joinpath(doot.constants.paths.TOML_TEMPLATE)
-            target = pl.Path(doot.constants.on_fail(["doot.toml"]).paths.DEFAULT_LOAD_TARGETS()[0])
-            target.write_text(template.read_text())
-            shutdown_l.info("Doot Config File Stubbed: %s", target)
+            base_target.write_text(template.read_text())
+            shutdown_l.info("Doot Config File Stubbed: %s", base_target)
     except doot.errors.DootTaskError as err:
         fail_prefix = doot.constants.printer.fail_prefix
         fail_l.error("%s %s : %s", fail_prefix, err.general_msg, err.task_name)
