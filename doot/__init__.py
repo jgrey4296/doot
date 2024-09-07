@@ -96,7 +96,7 @@ def setup(targets:list[pl.Path]|False|None=None, prefix:str|None=TOOL_PREFIX) ->
 
     existing_targets       = [x for x in targets if x.exists()]
 
-    if not bool(existing_targets):
+    if bool(targets) and not bool(existing_targets):
         raise doot.errors.DootMissingConfigError("No Doot data found")
 
     try:
