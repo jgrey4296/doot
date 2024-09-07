@@ -598,10 +598,14 @@ class _TrackerNetwork:
         Connect a task node to another. left -> right
         If given left, None, connect left -> ROOT
         if given left, False, just add the node
+
+        (This preserves graph.pred[x] as the nodes x is dependent on)
         """
         assert("type" not in kwargs)
         self.network_is_valid = False
         match left:
+            case x if x == self._root_node:
+                pass
             case TaskName() if left not in self.specs:
                 raise doot.errors.DootTaskTrackingError("Can't connect a non-existent task", left)
             case TaskArtifact() if left not in self.artifacts:
@@ -641,7 +645,7 @@ class _TrackerNetwork:
             case TaskArtifact(), TaskArtifact() if not right.is_concrete:
                 self.network.add_edge(left, right, type=EdgeType_e.ARTIFACT_DOWN, **kwargs)
 
-    def validate_network(self) -> bool:
+    def validate_network(self, *, strict:bool=True) -> bool:
         """ Finalise and ensure consistence of the task network.
         run tests to check the dependency graph is acceptable
         """
@@ -652,13 +656,21 @@ class _TrackerNetwork:
         for node, data in self.network.nodes.items():
             match node:
                 case TaskName() | TaskArtifact() if not data[EXPANDED]:
-                    raise doot.errors.DootTaskTrackingError("Network isn't fully expanded", node)
+                    breakpoint()
+                    pass
+                    if strict:
+                        raise doot.errors.DootTaskTrackingError("Network isn't fully expanded", node)
+                    logging.warning("Network isn't fully expanded: %s", node)
                 case TaskName() if TaskMeta_f.CONCRETE not in node:
-                    raise doot.errors.DootTaskTrackingError("Abstract ConcreteId in network", node)
+                    if strict:
+                        raise doot.errors.DootTaskTrackingError("Abstract ConcreteId in network", node)
+                    logging.warning("Abstract ConcreteId in network: %s", node)
                 case TaskArtifact() if LocationMeta_f.glob in node:
                     bad_nodes = [x for x in self.network.pred[node] if x in self.specs]
-                    if bool(bad_nodes):
+                    if strict and bool(bad_nodes):
                         raise doot.errors.DootTaskTrackingError("Glob Artifact ConcreteId is a successor to a task", node, bad_nodes)
+                    elif bool(bad_nodes):
+                        logging.warning("Glob Artifact ConcreteId is a successor to a task: %s (%s)", node, bad_nodes)
 
     def incomplete_dependencies(self, focus:ConcreteId) -> list[ConcreteId]:
         """ Get all predecessors of a node that don't evaluate as complete """
@@ -677,7 +689,7 @@ class _TrackerNetwork:
 
         return incomplete
 
-    def build_network(self, *, sources:None|list[ConcreteId]=None) -> None:
+    def build_network(self, *, sources:None|True|list[ConcreteId]=None) -> None:
         """
         for each task queued (ie: connected to the root node)
         expand its dependencies and add into the network, until no mode nodes to expand.
@@ -689,6 +701,8 @@ class _TrackerNetwork:
         match sources:
             case None:
                 queue = list(self.network.pred[self._root_node].keys())
+            case True:
+                queue = list(self.network.nodes.keys())
             case [*xs]:
                 queue = list(sources)
         processed = { self._root_node }
@@ -699,12 +713,12 @@ class _TrackerNetwork:
                 case x if x in processed or self.network.nodes[x].get(EXPANDED, False):
                     logging.debug("- Processed already")
                     processed.add(x)
-                case TaskName() as x:
+                case TaskName() as x if x in self.network.nodes:
                     additions = self._expand_task_node(x)
                     logging.debug("- Task Expansion produced: %s", additions)
                     queue    += additions
                     processed.add(x)
-                case TaskArtifact() as x:
+                case TaskArtifact() as x if x in self.network.nodes:
                     additions = self._expand_artifact(x)
                     logging.debug("- Artifact Expansion produced: %s", additions)
                     queue += additions
