@@ -189,3 +189,11 @@ class WaitAction:
     @DKeyed.types("count")
     def __call__(self, spec, state, count):
         sleep(count)
+
+
+@ControlFlow()
+class TriggerActionGroup(DootBaseAction):
+    """ Trigger a non-standard action group """
+
+    def __call__(self, spec, state):
+        raise NotImplementedError()
