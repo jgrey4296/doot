@@ -192,7 +192,7 @@ class StubCmd(BaseCommand):
         matched = [x for x in plugins.action if x.name == doot.args.cmd.args.name or x.value == doot.args.cmd.args.name]
         if bool(matched):
             loaded = matched[0].load()
-            cd_l.info("- Action %s : %s", matched[0].name, matched[0].value)
+            cmd_l.info("- Action %s : %s", matched[0].name, matched[0].value)
             match getattr(loaded, "_toml_help", []):
                 case [] if bool(getattr(loaded, "__doc__")):
                     cmd_l.info(loaded.__doc__)
