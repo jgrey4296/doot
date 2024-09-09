@@ -1,20 +1,15 @@
 .. -*- mode: ReST -*-
-
 =============
 Doot Concepts
 =============
 
-Tasks
------
+.. contents:: Contents
 
-Actions
--------
+.. toctree::
+   :titlesonly:
+   :hidden:
 
-Jobs
-----
-
-Keys
-----
-
-Locations
----------
+    tasks
+    actions
+    enums
+    commands
