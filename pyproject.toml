@@ -19,26 +19,30 @@ classifiers     = [
 ]
 
 dependencies   = [
-    "tomlguard",
+    "tomlguard >= 0.4.0",
     "networkx > 3.0",
     "sh >= 2.0.6",
     "stackprinter >= 0.2.10",
-    "sty",
-    "boltons",
+    "sty >= 1.0.0",
+    "boltons >= 23.0.0",
     "more_itertools",
     "decorator-validation >= 3.0.0",
     "decorator >= 5.0.0",
-    "pydantic",
+    "pydantic >= 2.7.0",
     "jgdv >= 0.3.0",
 ]
 
 [project.optional-dependencies]
 test = [
-  "pytest < 5.0.0",
-  "pytest-mock",
+  "pytest >= 8.3.0",
+  "pytest-mock >= 3.14",
 ]
 dev = [
-    "pipreqs", "sphinx"
+    "Sphinx >=7.4.0",
+    "sphinx-rtd-theme",
+    # "pipreqs >= 0.4.0",
+    # "sphinx-tomlconf@git+https://github.com/jgrey4296/sphinx-tomlconf",
+
 ]
 
 ##-- urls

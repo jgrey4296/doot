@@ -4,12 +4,14 @@
 ;; Others are :{name} : {path} pairs
 ;; paths are relative
 
+:related     : .related
 :doot        : doot.toml
 :pyproject   : pyproject.toml
 :data        : data
 :docs        : docs
 :tasks       : .tasks
 :tempD       : .temp
+:coverage    : .temp/coverage
 :wiki        : wiki_
 :git         : .git
 :hooks       : .git/hooks
@@ -19,7 +21,5 @@
 :code        : doot
 :api         : doot/_abstract
 :structs     : doot/_structs
-:templates   : doot/__templates
+:stubs       : doot/__templates
 :data        : doot/__data
-:related     : .related
-:coverage    : .temp/coverage
