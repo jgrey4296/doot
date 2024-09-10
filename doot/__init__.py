@@ -67,6 +67,9 @@ log_config           : JGDVLogConfig      = JGDVLogConfig(constants.on_fail(None
 _configs_loaded_from : list[pl.Path]      = []
 
 def subprinter(name=None) -> logmod.Logger:
+    """ Get a sub-printer at position `name`.
+    Names are registered using JGDV.logging.LogConfig
+    """
     return log_config.subprinter(name)
 
 def setup(targets:list[pl.Path]|False|None=None, prefix:str|None=TOOL_PREFIX) -> tuple[TG.TomlGuard, DootLocData]:

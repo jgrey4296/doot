@@ -307,3 +307,8 @@ get the keys mentioned in a task spec, for propagation to cleanup?
    :context:
         <2024-09-07 Sat> setup       = [
    :END:
+** TRIAGE enable list key expansion for shell call
+   [[/media/john/data/github/python/doot/doot/actions/shell.py::114][Location]]
+   :context:
+        <2024-09-09 Mon>             result                  = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=not notty, _cwd=cwd )
+   :END:

@@ -1,9 +1,10 @@
 .. ..  index.rst -*- mode: ReST -*-
+
+.. _index:
+
 ================================
 Doot: The Documentation
 ================================
-
-.. _index:
 
 Doot is a TOML based Task Runner similar to `doit`_.
 
@@ -50,45 +51,33 @@ Repo and Issues
 
 The repo for doot can be found `here <https://github.com/jgrey4296/doot>`_.
 
-If you find a bug, bug me, unsurprisingly, `here <https://github.com/jgrey4296/doot/issues>`_.
+If you find a bug, bug me, unsurprisingly, on the `issue tracker <https://github.com/jgrey4296/doot/issues>`_.
 
 
-
-.. _test:
-
-==========
-test
-==========
-
-Nullam eu ante vel est convallis dignissim.  Fusce suscipit, wisi nec facilisis facilisis, est dui fermentum leo, quis tempor ligula erat quis odio.  Nunc porta vulputate tellus.  Nunc rutrum turpis sed pede.  Sed bibendum.  Aliquam posuere.  Nunc aliquet, augue nec adipiscing interdum, lacus tellus malesuada massa, quis varius mi purus non odio.  Pellentesque condimentum, magna ut suscipit hendrerit, ipsum augue ornare nulla, non luctus diam neque sit amet urna.  Curabitur vulputate vestibulum lorem.  Fusce sagittis, libero non molestie mollis, magna orci ultrices dolor, at vulputate neque nulla lacinia eros.  Sed id ligula quis est convallis tempor.  Curabitur lacinia pulvinar nibh.  Nam a sapien.
-
-
-
-test2
-^^^^^
-
-
-Nullam eu ante vel est convallis dignissim.  Fusce suscipit, wisi nec facilisis facilisis, est dui fermentum leo, quis tempor ligula erat quis odio.  Nunc porta vulputate tellus.  Nunc rutrum turpis sed pede.  Sed bibendum.  Aliquam posuere.  Nunc aliquet, augue nec adipiscing interdum, lacus tellus malesuada massa, quis varius mi purus non odio.  Pellentesque condimentum, magna ut suscipit hendrerit, ipsum augue ornare nulla, non luctus diam neque sit amet urna.  Curabitur vulputate vestibulum lorem.  Fusce sagittis, libero non molestie mollis, magna orci ultrices dolor, at vulputate neque nulla lacinia eros.  Sed id ligula quis est convallis tempor.  Curabitur lacinia pulvinar nibh.  Nam a sapien.
 
 .. _indices:
 
-Indices and tables
+Indices and Tables
 ------------------
+
 
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :hidden:
 
    getting_started
-   commands
-   extension
-   FAQ <faq>
-   Toml Reference <toml_ref>
+   cli
 
+   examples/overview
+   architecture/overview
+   reference/reference
+   misc/overview
+   FAQ <faq>
+   api
 
 
 .. .. Links

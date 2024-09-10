@@ -4,7 +4,6 @@ Toml Reference
 ==========
 .. _tomlref:
 
-
 .. contents:: Contents
 
 

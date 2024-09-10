@@ -2,7 +2,7 @@
 [[locations]]
 doc_src = "docs"
 doc_out = "{temp}/docs"
-autodoc = "{temp}/autodoc"
+autodoc = "{doc_src}/_api"
 
 [[tasks.docs]]
 name    = "server"
@@ -19,6 +19,7 @@ doc         = ["build sphinx project documentation"]
 ctor        = "task"
 doc_builder = "html"
 env_name    = "doot-dev"
+depends_on  = ["docs::_.api.gen"]
 setup       = [
     { do="dootle.python.mamba:MambaEnv", env_="env_name", update_="env"},
     { do="installed?", args=["sphinx-build"], env_="env"},
@@ -31,10 +32,25 @@ actions = [
 cleanup = []
 
 [[tasks.docs]]
-name = "_.api.gen"
-doc  = [ "https://www.sphinx-doc.org/en/master/man/sphinx-apidoc.html"]
+name    = "_.api.gen"
+doc     = [ "https://www.sphinx-doc.org/en/master/man/sphinx-apidoc.html"]
+depth   = 6
 actions = [
-    { do="shell", args=["sphinx-apidoc", "-M", "--templatedir", "{doc_sirc!p}/_tempalates", "-o", "{autodoc!p}", "{src!p}" ]}
+    { do="shell", args=[
+    "sphinx-apidoc",
+    "--maxdepth", "{depth}", "--module-first",
+    "--private",
+    "--ext-viewcode",
+    "--templatedir", "{doc_src!p}/_templates",
+    "-o", "{autodoc!p}", "{src!p}"
+    ]}
+]
+
+[[tasks.docs]]
+name = "_.autogen"
+doc = ["https://www.sphinx-doc.org/en/master/man/sphinx-autogen.html"]
+actions = [
+    { do="shell", args=["sphinx-autogen", "-o", "{autodoc!p}", "{doc_src!p}/api.rst"] },
 ]
 
 
