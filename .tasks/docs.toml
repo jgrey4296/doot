@@ -1,0 +1,73 @@
+
+[[locations]]
+doc_src = "docs"
+doc_out = "{temp}/docs"
+autodoc = "{doc_src}/_api"
+
+[[tasks.docs]]
+name    = "server"
+doc     = ["run a simple server in the built docs directory"]
+address = "127.0.0.1"
+port    = "8000"
+actions = [
+    {do="shell", args=["python", "-m", "http.server", "--directory", "{doc_out!p}", "--bind", "{address}", "{port}"], background=true}
+]
+
+[[tasks.docs]]
+name        = "build"
+doc         = ["build sphinx project documentation"]
+ctor        = "task"
+doc_builder = "html"
+env_name    = "doot-dev"
+depends_on  = ["docs::_.api.gen"]
+setup       = [
+    { do="dootle.python.mamba:MambaEnv", env_="env_name", update_="env"},
+    { do="installed?", args=["sphinx-build"], env_="env"},
+    { do="exists?", args=["{doc_src!p}/conf.py"] },
+]
+actions = [
+    # --conf-dir {!p} : directory for conf.py
+    { do="shell", args=["sphinx-build", "-a", "--nitpicky", "--warning-file", "{logs!p}/sphinx.log", "--builder", "{doc_builder}", "{doc_src!p}", "{doc_out!p}"] },
+]
+cleanup = []
+
+[[tasks.docs]]
+name    = "_.api.gen"
+doc     = [ "https://www.sphinx-doc.org/en/master/man/sphinx-apidoc.html"]
+depth   = 6
+actions = [
+    { do="shell", args=[
+    "sphinx-apidoc",
+    "--maxdepth", "{depth}", "--module-first",
+    "--private",
+    "--ext-viewcode",
+    "--templatedir", "{doc_src!p}/_templates",
+    "-o", "{autodoc!p}", "{src!p}"
+    ]}
+]
+
+[[tasks.docs]]
+name = "_.autogen"
+doc = ["https://www.sphinx-doc.org/en/master/man/sphinx-autogen.html"]
+actions = [
+    { do="shell", args=["sphinx-autogen", "-o", "{autodoc!p}", "{doc_src!p}/api.rst"] },
+]
+
+
+[[tasks.docs]]
+name        = "test"
+doc         = ["run sphinx doctest"]
+ctor        = "task"
+doc_builder = "doctest"
+env_name    = "distributor"
+setup       = [
+    { do="dootle.python.mamba:MambaEnv", env_="env_name", update_="env"},
+    { do="installed?", args=["sphinx-build"], env_="env"},
+    { do="exists?", args=["{doc_src!p}/conf.py"] },
+]
+actions = [
+    # --conf-dir {!p} : directory for conf.py
+    { do="shell", args=["sphinx-build", "--warning-file", "{logs!p}/sphinx.log", "--builder", "{doc_builder}", "{doc_src!p}", "{doc_out!p}"] },
+
+
+]

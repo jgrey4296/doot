@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Alternative doot cli runner, to use the doot loader
+The doot cli runner
 """
 # Imports:
 from __future__ import annotations
@@ -52,6 +52,9 @@ fail_l          = doot.subprinter("fail")
 template_path      = files("doot.__templates")
 
 def main():
+    """ The Main Doot CLI Program.
+    Loads data and plugins before starting the requested command.
+    """
     result  = 1
     overlord = None
     try:

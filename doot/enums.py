@@ -1,26 +1,19 @@
 #!/usr/bin/env python3
 """
-
+These are the core enums and flags used to easily convey information around doot.
 """
 
 # Imports:
 from __future__ import annotations
 
 # ##-- stdlib imports
-import datetime
-# import abc
 import enum
-import functools as ftz
-import itertools as itz
 import logging as logmod
-import pathlib as pl
-import types
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Mapping, Match,
                     MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
                     TypeGuard, TypeVar, cast, final, overload,
                     runtime_checkable)
-from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 

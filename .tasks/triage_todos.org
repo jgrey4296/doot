@@ -276,7 +276,7 @@ to (optionally) create a separate log file
    :context:
         <2024-08-21 Wed>         """ Execute a group of actions, possibly queue any task specs they produced,
    :END:
-** TRIAGE task_spec.get_keys
+** OKAY task_spec.get_keys
    [[/media/john/data/github/python/doot/doot/_structs/task_spec.py::341][Location]]
    :context:
         <2024-09-04 Wed>         for cli in self.extra.on_fail([]).cli():
@@ -306,4 +306,9 @@ get the keys mentioned in a task spec, for propagation to cleanup?
    [[/media/john/data/github/python/doot/.tasks/docs.toml::12][Location]]
    :context:
         <2024-09-07 Sat> setup       = [
+   :END:
+** TRIAGE enable list key expansion for shell call
+   [[/media/john/data/github/python/doot/doot/actions/shell.py::114][Location]]
+   :context:
+        <2024-09-09 Mon>             result                  = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=not notty, _cwd=cwd )
    :END:
