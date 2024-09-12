@@ -44,6 +44,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.extlinks',
     'sphinx_rtd_theme'
+    'myst_parser',
     ]
 
 # -- Options for HTML output -------------------------------------------------
