@@ -43,7 +43,7 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
     'sphinx.ext.extlinks',
-    'sphinx_rtd_theme'
+    'sphinx_rtd_theme',
     'myst_parser',
     ]
 
