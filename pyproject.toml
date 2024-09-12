@@ -29,7 +29,7 @@ dependencies   = [
     "decorator-validation >= 3.0.0",
     "decorator >= 5.0.0",
     "pydantic >= 2.7.0",
-    "jgdv >= 0.3.0",
+    "jgdv >= 0.3.2",
 ]
 
 [project.optional-dependencies]
