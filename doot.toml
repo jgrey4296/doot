@@ -5,7 +5,7 @@ loaders                  = { commands="default", task="default", parser="default
 location_check           = { make_missing = true }
 
 [settings.tasks]
-sources = [".tasks", "~/.config/.templates/doot/py_upload", "~/.config/.templates/doot/repo_chores"] # Files or directories where task specs can be loaded from, expanded according to [[locations]] keys
+sources = [".tasks", "~/.config/.templates/doot/repo_chores"] # Files or directories where task specs can be loaded from, expanded according to [[locations]] keys
 code    = []                                       # Directories where task specific code can be imported from, expanded according to [[locations]] keys
 sleep   = { tasks=0.2, subtask=1, batch=1 }
 
@@ -25,7 +25,12 @@ file    = { level="DEBUG",   filter=["tomlguard"],      target="rotate", format=
 printer = { level="NOTSET",  colour=true,                target=["stdout", "rotate"], format="{message}", filename_fmt="doot_printed.log" }
 
 [logging.subprinters]
-default = {level="INFO"}
+default       = {level="WARNING"}
+shutdown      = {level="WARNING",    format="Shutdown: {message}", target="stdout"}
+cmd           = {level="INFO"}
+task          = {level="INFO" }
+header        = {level="INFO" }
+task_header   = {level="INFO"}
 
 [logging.extra]
 

@@ -94,6 +94,8 @@ html_theme_options = {
 
 ##-- end rtd options
 
-# Imports --------------------------------------------------
+# -- Extension Options -------------------------------------------------
+
+# -- Imports --------------------------------------------------
 import doot
 doot._test_setup()
