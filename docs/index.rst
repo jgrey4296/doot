@@ -46,6 +46,8 @@ Tutorial
 --------
 
 
+.. _repo:
+
 Repo and Issues
 ---------------
 

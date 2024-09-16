@@ -48,7 +48,7 @@ docs = [
 ##-- urls
 [project.urls]
 homepage      = "https://github.com/jgrey4296/doot"
-documentation = "https://github.com/jgrey4296/doot/wiki"
+documentation = "https://doot.readthedocs.io/en/latest/"
 repository    = "https://github.com/jgrey4296/doot"
 changelog     = "https://github.com//doot/blob/master/CHANGELOG.md"
 
