@@ -66,7 +66,8 @@ class JobExpandAction(JobInjector):
       'inject' provides an injection dict, with $arg$ being the entry from the source list
     """
 
-    @DKeyed.types("from", "inject", "template")
+    @DKeyed.types("from")
+    @DKeyed.types("inject", "template")
     @DKeyed.formats("prefix")
     @DKeyed.redirects("update_")
     @DKeyed.types("__expansion_count", fallback=0)
@@ -93,10 +94,12 @@ class JobExpandAction(JobInjector):
                 build_queue += range(_from)
             case str() | pl.Path() | Location():
                 build_queue.append(_from)
+            case []:
+                pass
             case list():
                 build_queue += _from
             case None:
-                build_queue += [1]
+                pass
             case _:
                 printer.warning("Tried to expand a non-list of args")
                 return ActRE.FAIL
