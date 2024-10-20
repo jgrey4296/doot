@@ -922,28 +922,36 @@ class TestDKeyPathKeys:
         assert(exp == target)
 
     def test_cwd_build(self):
-        obj = dkey.DKey("cwd", implicit=True, mark=dkey.DKey.mark.PATH)
+        obj = dkey.DKey("__cwd", implicit=True, mark=dkey.DKey.mark.PATH, default=".")
         assert(isinstance(obj, dkey.DKey))
         assert(isinstance(obj, dkey.PathSingleDKey))
         assert(obj.expand() == pl.Path.cwd())
 
     def test_cwd_build_with_param(self):
-        obj = dkey.DKey("cwd!p", implicit=True)
+        obj = dkey.DKey("__cwd!p", implicit=True)
         assert(isinstance(obj, dkey.DKey))
         assert(isinstance(obj, dkey.PathSingleDKey))
         assert(obj.expand() == pl.Path.cwd())
 
     def test_explicit_cwd_with_param(self):
-        obj = dkey.DKey("{cwd!p}", implicit=False, mark=dkey.DKey.mark.MULTI)
+        obj = dkey.DKey("{__cwd!p}", implicit=False, mark=dkey.DKey.mark.MULTI)
         assert(isinstance(obj, dkey.DKey))
         # assert(isinstance(obj, dkey.PathSingleDKey))
         assert(obj.expand() == pl.Path.cwd())
 
     def test_cwd_without_fallback(self):
-        obj = dkey.DKey("cwd", mark=dkey.DKey.mark.PATH)
+        obj = dkey.DKey("__cwd", mark=dkey.DKey.mark.PATH)
         assert(isinstance(obj, dkey.DKey))
         assert(isinstance(obj, dkey.PathSingleDKey))
         assert(obj.expand() == pl.Path.cwd())
+
+
+    def test_cwd_in_different_location(self):
+        with doot.locs(pl.Path("~")) as locs:
+            obj = dkey.DKey("__cwd", mark=dkey.DKey.mark.PATH)
+            assert(isinstance(obj, dkey.DKey))
+            assert(isinstance(obj, dkey.PathSingleDKey))
+            assert(obj.expand() == pl.Path("~").expanduser())
 
     def test_multi_layer_path_key(self, wrap_locs):
         wrap_locs.update({"data_drive": "/media/john/data", "pdf_source": "{data_drive}/library/pdfs"})

@@ -530,7 +530,7 @@ class PathSingleDKey(SingleDKey, mark=DKeyMark_e.PATH):
           Takes a variable number of sources (dicts, tomlguards, specs, dootlocations..)
         """
         logging.debug("Single Path Expand")
-        if self == "cwd":
+        if self == "__cwd":
             return pl.Path.cwd()
         match super().expand(*sources, **kwargs):
             case None | pl.Path() as x:

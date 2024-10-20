@@ -102,7 +102,8 @@ class DKeyed:
     @staticmethod
     def paths(*args, **kwargs):
         """ mark an action as using expanded path keys """
-        keys = [DKey(x, implicit=True, mark=DKey.mark.PATH, **kwargs) for x in args]
+        kwargs['implicit'] = kwargs.get('implicit', True)
+        keys = [DKey(x, mark=DKey.mark.PATH, **kwargs) for x in args]
         return DKeyExpansionDecorator(keys)
 
     @staticmethod

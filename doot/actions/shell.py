@@ -117,6 +117,7 @@ class DootShellAction(Action_p):
                 printer.warning(result.stderr.decode())
                 return False
 
+            printer.debug("Shell Cwd: %s", cwd)
             printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, cmd_name, args[1:])
             if not _update:
                 printer.info("%s", result, extra={"colour":"reset"})
