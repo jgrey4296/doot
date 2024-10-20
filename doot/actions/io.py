@@ -188,7 +188,8 @@ class MoveAction(PathManip_m):
     """
 
     @DKeyed.paths("from", "to")
-    def __call__(self, spec, state, _from, to) -> dict|bool|None:
+    @DKeyed.types("force", check=bool, default=False)
+    def __call__(self, spec, state, _from, to, force) -> dict|bool|None:
         source     = _from
         dest_loc   = to
 
@@ -196,7 +197,7 @@ class MoveAction(PathManip_m):
             raise doot.errors.DootLocationError("Tried to write a protected location", dest_loc)
         if not source.exists():
             raise doot.errors.DootActionError("Tried to move a file that doesn't exist", source)
-        if dest_loc.exists():
+        if dest_loc.exists() and not force:
             raise doot.errors.DootActionError("Tried to move a file that already exists at the destination", dest_loc)
         if source.is_dir():
             raise doot.errors.DootActionError("Tried to move multiple files to a non-directory", source)
