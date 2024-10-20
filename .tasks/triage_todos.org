@@ -312,3 +312,8 @@ get the keys mentioned in a task spec, for propagation to cleanup?
    :context:
         <2024-09-09 Mon>             result                  = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=not notty, _cwd=cwd )
    :END:
+** TRIAGE rename 'target' in logaction to 'printer'
+   [[/media/john/data/github/python/doot/doot/actions/control_flow.py::147][Location]]
+   :context:
+        <2024-10-06 Sun>     @DKeyed.formats("target", fallback="task")
+   :END:

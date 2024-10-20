@@ -40,7 +40,7 @@ class TestJobExpansion:
         result = obj(spec, state)
         assert(isinstance(result, dict))
         assert(isinstance(result[spec.kwargs['update_']], list))
-        assert(len(result['specs']) == 1)
+        assert(len(result['specs']) == 0)
 
     @pytest.mark.parametrize("count", [1,11,2,5,20])
     def test_count_expansion(self, spec, state, count):
@@ -65,8 +65,9 @@ class TestJobExpansion:
 
     def test_action_template(self, spec, state):
         state['template'] = "test::task"
-        obj = JobExpandAction()
-        result = obj(spec, state)
+        state['from']     = [1]
+        obj               = JobExpandAction()
+        result            = obj(spec, state)
         assert(isinstance(result, dict))
         assert(isinstance(result[spec.kwargs['update_']], list))
         assert(result['specs'][0].sources == ["test::task"])
@@ -74,6 +75,7 @@ class TestJobExpansion:
 
     def test_taskname_template(self, spec, state):
         state['template'] = [{"do":"basic"}, {"do":"basic"}, {"do":"basic"}]
+        state['from'] = [1]
         obj = JobExpandAction()
         result = obj(spec, state)
         assert(isinstance(result, dict))
