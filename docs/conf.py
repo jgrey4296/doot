@@ -45,38 +45,22 @@ extensions = [
     'sphinx.ext.extlinks',
     'sphinx_rtd_theme',
     'myst_parser',
+    "autoapi.extension",
+    "sphinx.ext.coverage",
+    "sphinx.ext.imgconverter",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.viewcode",
     ]
+
 
 # -- Options for HTML output -------------------------------------------------
-html_theme       = "sphinx_rtd_theme"
-
-##-- alabaster options
-# https://alabaster.readthedocs.io/en/latest/index.html
-extlinks         = {}
-html_sidebars    = {
-    "**": [
-        "about.html",
-        "searchfield.html",
-        "navigation.html",
-        "relations.html",
-    ]
-}
-
-html_theme_options = {
-    "description": "Doot, a simple TOML based task runner",
-    "github_user": "jgrey4296",
-    "github_repo": "doot",
-    "fixed_sidebar": True,
-    "github_banner": False,
-    "show_related" : True,
-}
-
-##-- end alabaster
-
-##-- rtd options
 # https://sphinx-rtd-theme.readthedocs.io/en/stable/configuring.html
+html_theme         = "sphinx_rtd_theme"
+html_theme_options = {}
+html_sidebars      = {}
 
-html_theme_options = {
+
+html_theme_options.update({
     'logo_only'                   : False,
     'display_version'             : True,
     'prev_next_buttons_location'  : 'bottom',
@@ -90,12 +74,30 @@ html_theme_options = {
     'includehidden'               : True,
     'titles_only'                 : False
 
-}
+})
 
 ##-- end rtd options
 
 # -- Extension Options -------------------------------------------------
+# https://sphinx-autoapi.readthedocs.io/en/latest/reference/config.html
+autoapi_generate_api_docs = True
+autoapi_add_toctree_entry = True
+autoapi_type              = "python"
+autoapi_template_dir      = "_templates"
+autoapi_root              = "autoapi"
+autoapi_dirs              = ['../doot']
+autoapi_file_patterns     = ["*.py", "*.pyi"]
+autoapi_ignore            = ['*/__tests', '*/test_*.py', '/obsolete/*']
+autoapi_options           = [
+    'imported-members',
+    'members',
+    # 'undoc-members',
+    'private-members',
+    'special_members',
+    'show-inheritance',
+    # 'show-inheritance-diagram',
+    # 'show-module-summary',
+]
+
 
 # -- Imports --------------------------------------------------
-import doot
-doot._test_setup()
