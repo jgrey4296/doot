@@ -1,7 +1,7 @@
 .. -*- mode: ReST -*-
-==========
+==============
 Toml Reference
-==========
+==============
 .. _tomlref:
 
 .. contents:: Contents

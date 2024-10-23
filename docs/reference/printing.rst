@@ -1,7 +1,7 @@
 .. -*- mode: ReST -*-
-==========
+==============================
 Printing and Logging Reference
-==========
+==============================
 
 .. contents:: Contents
 

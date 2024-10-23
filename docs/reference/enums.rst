@@ -1,7 +1,7 @@
 .. -*- mode: ReST -*-
-==========
+===============
 Enums Reference
-==========
+===============
 
 .. contents:: Contents
 

@@ -1,5 +1,7 @@
 .. -*- mode: ReST -*-
 
+.. _getting_started:
+
 ================
 Getting Started
 ================

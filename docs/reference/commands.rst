@@ -1,9 +1,9 @@
 .. -*- mode: ReST -*-
 .. _commandRef:
 
-==========
+==================
 Commands Reference
-==========
+==================
 
 .. contents:: Contents
 
