@@ -4,18 +4,6 @@ doot-version = "0.13"
 [[locations]]
 doc_src = "docs"
 doc_out = "{temp}/docs"
-autoapi = "{doc_src}/_api"
-autogen = "{doc_src}/_public_api"
-
-[[tasks.docs]]
-name    = "server"
-doc     = ["run a simple server in the built docs directory"]
-address = "127.0.0.1"
-port    = "8000"
-actions = [
-    {do="log", msg="%% python -m http.server --directory {doc_out!p} --bind {address} {port} &"},
-    # {do="shell", args=["python", "-m", "http.server", "--directory", "{doc_out!p}", "--bind", "{address}", "{port}"], background=true}
-]
 
 [[tasks.docs]]
 name        = "build"

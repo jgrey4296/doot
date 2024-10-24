@@ -76,7 +76,6 @@ html_theme_options.update({
 
 })
 
-##-- end rtd options
 
 # -- Extension Options -------------------------------------------------
 # https://sphinx-autoapi.readthedocs.io/en/latest/reference/config.html
