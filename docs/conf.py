@@ -27,12 +27,63 @@ html_js_files  = []
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['**/flycheck_*.py', "**/__tests/*"]
 
+suppress_warnings = ["docutils"]
+
 # -- Project information -----------------------------------------------------
 
-project   = 'doot'
-copyright = '2024, jgrey'
-author    = 'jgrey'
-release   = '0.13.0'
+release        = '0.13.0'
+project        = 'doot {}'.format(release)
+copyright      = '2024, jgrey'
+author         = 'jgrey'
+primary_domain = "py"
+
+# -- Jina configuration ---------------------------------------------------
+
+from docutils import nodes
+from docutils.transforms import Transform, TransformError
+from docutils.parsers.rst import directives
+from docutils.statemachine import StringList
+from sphinx.locale import __
+from sphinx.util.docutils import SphinxDirective
+
+class JGDirective(SphinxDirective):
+
+    has_content               = True
+    required_arguments        = 0
+    optional_arguments        = 1
+    option_spec               = { "caption": str }
+
+    def run(self) -> list[nodes.Node]:
+        self.content = StringList("""
+    .. code-block:: python
+
+        print('will be inside a jgdir with an addition')
+        """.split("\n"))
+        if not bool(self.content):
+            raise self.error("No Content")
+
+        # caption = nodes.Element(self.options.get('caption'))
+        # self.state.nested_parse([self.options.get('caption')], 0, caption)
+
+        content_node = nodes.container(rawsource="\n".join(self.content))
+        self.state.nested_parse(self.content, self.content_offset, content_node)
+        return [content_node]
+
+
+
+class JGTransform(Transform):
+
+    def apply(self):
+        pass
+
+def setup(app):
+    app.events.connect("builder-inited", add_jinja_ext, 1)
+    app.add_directive('jgdir', JGDirective)
+    # app.add_transform
+
+
+def add_jinja_ext(app):
+    app.builder.templates.environment.add_extension('jinja2.ext.debug')
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -52,12 +103,19 @@ extensions = [
     "sphinx.ext.viewcode",
     ]
 
+maximum_signature_line_length = 50
+toc_object_entries            = True
+master_doc                    = "index"
+show_warning_types            = True
+
 
 # -- Options for HTML output -------------------------------------------------
 # https://sphinx-rtd-theme.readthedocs.io/en/stable/configuring.html
-html_theme         = "sphinx_rtd_theme"
-html_theme_options = {}
-html_sidebars      = {}
+html_theme          = "sphinx_rtd_theme"
+html_theme_options  = {}
+html_sidebars       = {}
+html_domain_indices = True
+html_use_index      = True
 
 
 html_theme_options.update({

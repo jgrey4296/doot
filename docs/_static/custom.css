@@ -4,3 +4,38 @@ nav.contents {
     border: none;
 
 }
+
+hr {
+    border-color: #2f4f4f;
+}
+
+/* For highlighting debug messages: */
+
+aside.system-message {
+  background-color:  pink;
+  text-align: center;
+
+}
+
+aside > .system-message-title {
+  font-weight: bold;
+  padding-top: 10px;
+
+}
+
+/* For Adding captions */
+
+div.jgcontainer {
+    background-color: grey;
+    padding: 10px;
+    border-color: black;
+    border-width: 2px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+
+}
+
+div.jgcontainer > pre {
+    background-color: white;
+    padding: 10px;
+}

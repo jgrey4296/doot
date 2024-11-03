@@ -7,7 +7,7 @@ Tasks and Jobs
 ==============
 
 .. contents:: Contents
-
+   :local:
 
 Aliquam erat volutpat.  Nunc eleifend leo vitae magna.  In id erat non orci
 commodo lobortis.  Proin neque massa, cursus ut, gravida ut, lobortis eget,

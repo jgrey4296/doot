@@ -6,6 +6,7 @@ Commands Reference
 ==================
 
 .. contents:: Contents
+   :local:
 
 .. _runcmd:
 
