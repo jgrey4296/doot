@@ -1,6 +1,51 @@
 #!/usr/bin/env python3
 # Configuration file for the Sphinx documentation builder.
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
+# Imports:
+# import os
+# import sys
+# import pathlib as pl
+import datetime
+import os
+import sys
+import pathlib as pl
+
+from docutils import nodes
+from docutils.parsers.rst import directives
+from docutils.statemachine import StringList
+from docutils.transforms import Transform, TransformError
+from sphinx.locale import __
+from sphinx.util.docutils import SphinxDirective
+
+# -- Project information -----------------------------------------------------
+
+release        = "0.13.0"
+project        = 'Doot'
+author         = 'John Grey'
+copyright      = '{}, {}'.format(datetime.datetime.now().strftime("%Y"), author)
+primary_domain = "py"
+extensions = [
+    'sphinx.ext.doctest',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.extlinks',
+    'sphinx_rtd_theme',
+    'myst_parser',
+    "autoapi.extension",
+    "sphinx.ext.coverage",
+    "sphinx.ext.imgconverter",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.viewcode",
+    ]
+
+def setup(app):
+    app.events.connect("builder-inited", add_jinja_ext, 1)
+    app.add_directive('jgdir', JGDirective)
+    # app.add_transform
+
+def add_jinja_ext(app):
+    app.builder.templates.environment.add_extension('jinja2.ext.debug')
 
 # -- Path setup --------------------------------------------------------------
 
@@ -8,43 +53,27 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use pl.Path.resolve to make it absolute, like shown here.
 #
-import os
-import sys
-import pathlib as pl
 sys.path.insert(0, pl.Path('../').resolve())
 
 # (Relative to this file):
-templates_path   = ['_templates']
+templates_path   = ['_static/templates']
 html_static_path = ['_static']
 
 # Relative to static dir, or fully qualified urls
-html_css_files = ["custom.css"]
-html_js_files  = []
-# html_style = "custom.css"
+html_css_files = ["css/custom.css"]
+html_js_files  = ["js/base.js"]
+
+toc_object_entries            = True
+master_doc                    = "index"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['**/flycheck_*.py', "**/__tests/*"]
 
-suppress_warnings = ["docutils"]
+# suppress_warnings = ["autoapi", "docutils"]
 
-# -- Project information -----------------------------------------------------
-
-release        = '0.13.0'
-project        = 'doot {}'.format(release)
-copyright      = '2024, jgrey'
-author         = 'jgrey'
-primary_domain = "py"
-
-# -- Jina configuration ---------------------------------------------------
-
-from docutils import nodes
-from docutils.transforms import Transform, TransformError
-from docutils.parsers.rst import directives
-from docutils.statemachine import StringList
-from sphinx.locale import __
-from sphinx.util.docutils import SphinxDirective
+# -- Sphinx and Jina configuration ------------------------------------------
 
 class JGDirective(SphinxDirective):
 
@@ -69,45 +98,19 @@ class JGDirective(SphinxDirective):
         self.state.nested_parse(self.content, self.content_offset, content_node)
         return [content_node]
 
-
-
 class JGTransform(Transform):
 
     def apply(self):
         pass
 
-def setup(app):
-    app.events.connect("builder-inited", add_jinja_ext, 1)
-    app.add_directive('jgdir', JGDirective)
-    # app.add_transform
-
-
-def add_jinja_ext(app):
-    app.builder.templates.environment.add_extension('jinja2.ext.debug')
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
-
-extensions = [
-    'sphinx.ext.doctest',
-    'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.extlinks',
-    'sphinx_rtd_theme',
-    'myst_parser',
-    "autoapi.extension",
-    "sphinx.ext.coverage",
-    "sphinx.ext.imgconverter",
-    "sphinx.ext.intersphinx",
-    "sphinx.ext.viewcode",
-    ]
 
 maximum_signature_line_length = 50
 toc_object_entries            = True
 master_doc                    = "index"
 show_warning_types            = True
-
 
 # -- Options for HTML output -------------------------------------------------
 # https://sphinx-rtd-theme.readthedocs.io/en/stable/configuring.html
@@ -116,7 +119,6 @@ html_theme_options  = {}
 html_sidebars       = {}
 html_domain_indices = True
 html_use_index      = True
-
 
 html_theme_options.update({
     'logo_only'                   : False,
@@ -133,7 +135,6 @@ html_theme_options.update({
     'titles_only'                 : False
 
 })
-
 
 # -- Extension Options -------------------------------------------------
 # https://sphinx-autoapi.readthedocs.io/en/latest/reference/config.html
@@ -156,5 +157,3 @@ autoapi_options           = [
     # 'show-module-summary',
 ]
 
-
-# -- Imports --------------------------------------------------
