@@ -53,7 +53,7 @@ printer = doot.subprinter()
 class JobInjector(Action_p):
     """
       Inject data into task specs.
-      "inject" = {copy=X, expand=Y, replace=Z}
+      inject={copy=[Xs], expand={Yks : Yvs}, replace=[Zs]}
       'copy'   : redirects, and copies without further expansion : [a_,x] -> {a:2, x:{q}}
       'expand' : redirects, expands, then copies         : [a_,x] -> {a:2, x:5}
       'replace' sets keys to whatever replace value is passed in (for job.expand)

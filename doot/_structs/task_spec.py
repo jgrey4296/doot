@@ -48,6 +48,7 @@ from doot._structs.action_spec import ActionSpec
 from doot._structs.artifact import TaskArtifact
 from doot._structs.relation_spec import RelationSpec
 from doot._structs.task_name import TaskName
+from doot.structs import DKey
 from doot.enums import (LocationMeta_f, RelationMeta_e, Report_f, TaskMeta_f,
                         QueueMeta_e)
 

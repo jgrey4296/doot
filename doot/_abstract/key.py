@@ -5,8 +5,10 @@
 See EOF for license/metadata/notes as applicable
 """
 
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 import datetime
 import enum
 import functools as ftz
@@ -24,8 +26,13 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     runtime_checkable)
 from uuid import UUID, uuid1
 
-from doot.enums import DKeyMark_e
+# ##-- end stdlib imports
+
+# ##-- 1st party imports
 from doot._abstract.protocols import Key_p
+from doot.enums import DKeyMark_e
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -86,7 +93,7 @@ class DKey(metaclass=DKeyMeta):
         """
           fmt : Format parameters. used from multi key subkey construction
           conv : Conversion parameters. used from multi key subkey construction.
-          explicit : For marking a key as using explicit subkeys with extra text around it
+          implicit: For marking a key as an implicit key, with no extra text around it
           mark     : Enum for explicitly setting the key type
         """
         assert(cls is DKey)

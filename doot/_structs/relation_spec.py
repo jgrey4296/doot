@@ -40,6 +40,7 @@ import doot
 import doot.errors
 from doot._abstract.protocols import Buildable_p, ProtocolModelMeta
 from doot._structs.artifact import TaskArtifact
+from doot._structs.dkey import DKey
 from doot._structs.task_name import TaskName
 from doot.enums import RelationMeta_e
 
