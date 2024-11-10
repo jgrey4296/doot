@@ -407,7 +407,7 @@ class TestTrackerNetworkBuild:
 
     def test_build_dep_match_with_injection(self):
         obj   = BaseTracker()
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "inject":{"inj_key":"test_key"}}], "test_key": "bloo"})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "inject":{"copy":{"inj_key":"test_key"}}}], "test_key": "bloo"})
         spec2 = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, spec2)
         instance = obj._instantiate_spec(spec.name)
@@ -423,7 +423,7 @@ class TestTrackerNetworkBuild:
 
     def test_build_dep_match_with_injection_fail(self):
         obj   = BaseTracker()
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "inject":{"inj_key":"bad_key"}}], "test_key": "bloo"})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "inject":{"copy":{"inj_key":"bad_key"}}}], "test_key": "bloo"})
         spec2 = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, spec2)
         instance = obj._instantiate_spec(spec.name)
@@ -440,8 +440,8 @@ class TestTrackerNetworkBuild:
           test_key=bloo should be carried from basic::task to basic::dep to basic::chained
         """
         obj   = BaseTracker()
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "inject":{"test_key":"test_key"}}], "test_key": "bloo"})
-        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "depends_on": [{"task":"basic::chained", "inject":{"test_key":"test_key"}}], "test_key": "blah"})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "inject":{"copy":{"test_key":"test_key"}}}], "test_key": "bloo"})
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "depends_on": [{"task":"basic::chained", "inject":{"copy":{"test_key":"test_key"}}}], "test_key": "blah"})
         spec3 = doot.structs.TaskSpec.build({"name":"basic::chained", "test_key": "aweg"})
         obj.register_spec(spec, spec2, spec3)
         instance = obj._instantiate_spec(spec.name)
@@ -469,8 +469,8 @@ class TestTrackerNetworkBuild:
           """
         obj   = BaseTracker()
         # Abstract specs
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "required_for":[{"task":"basic::req", "inject":{"test_key":"test_key"}}], "test_key": "bloo"})
-        spec2 = doot.structs.TaskSpec.build({"name":"basic::req", "required_for": [{"task":"basic::chained", "inject":{"test_key":"test_key"}}]})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "required_for":[{"task":"basic::req", "inject":{"copy":{"test_key":"test_key"}}}], "test_key": "bloo"})
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::req", "required_for": [{"task":"basic::chained", "inject":{"copy":{ "test_key":"test_key"}}}]})
         spec3 = doot.structs.TaskSpec.build({"name":"basic::chained"})
         obj.register_spec(spec, spec2, spec3)
         instance = obj._instantiate_spec(spec.name)
@@ -822,11 +822,11 @@ class TestTrackerInternals:
         obj   = BaseTracker()
         spec  = doot.structs.TaskSpec.build({
             "name":"basic::task",
-            "depends_on":[{"task":"basic::dep", "inject":{"test_key":"test_key"}}],
+            "depends_on":[{"task":"basic::dep", "inject":{"copy": {"test_key":"test_key"}}}],
             "required_for": ["basic::chained"],
             "test_key": "bloo"
                                             })
-        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "depends_on": [{"task":"basic::chained", "inject":{"test_key":"test_key"}}], "test_key": "blah"})
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "depends_on": [{"task":"basic::chained", "inject":{"copy":{"test_key":"test_key"}}}], "test_key": "blah"})
         spec3 = doot.structs.TaskSpec.build({"name":"basic::chained"})
         obj.register_spec(spec, spec2, spec3)
         instance = obj._instantiate_spec(spec.name)

@@ -40,7 +40,6 @@ import doot
 import doot.errors
 from doot._abstract.protocols import Buildable_p, ProtocolModelMeta
 from doot._structs.artifact import TaskArtifact
-from doot._structs.dkey import DKey
 from doot._structs.task_name import TaskName
 from doot.enums import RelationMeta_e
 
@@ -50,7 +49,7 @@ from doot.enums import RelationMeta_e
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class RelationSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
+class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metaclass=ProtocolModelMeta):
     """ ? is {self.relation} to {self.target}
 
      Encodes a relation between an implicit subject, (who owns this relationspec)
@@ -72,8 +71,8 @@ class RelationSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
     # What the Relation end point is:
     target        : TaskName|TaskArtifact
     relation      : RelationMeta_e                            = RelationMeta_e.dependsOn
-    constraints   : None|dict[str, str]             = None # constraints on spec field matches
-    inject        : None|dict                                 = None
+    constraints   : None|dict[str, str]                       = None # constraints on spec field matches
+    inject        : None|str|dict                             = None
     _meta         : dict()                                    = {} # Misc metadata
 
     @staticmethod
@@ -90,7 +89,7 @@ class RelationSpec(BaseModel, Buildable_p, metaclass=ProtocolModelMeta):
                 return RelationSpec(target=TaskArtifact.build(data), relation=relation)
             case {"task": taskname}:
                 constraints = data.get("constraints", None)
-                inject  = data.get("inject" , None)
+                inject      = data.get("inject", None)
                 return RelationSpec(target=taskname, constraints=constraints, inject=inject, relation=relation)
             case str() | pl.Path():
                 return RelationSpec(target=data, relation=relation)

@@ -52,7 +52,7 @@ from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e, LocationMeta_f, Re
 from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
-
+from doot.utils.injection import Injector_m
 # ##-- end 1st party imports
 
 ##-- logging
@@ -80,7 +80,7 @@ AnySpec                        : TypeAlias                   = TaskSpec
 ActionElem                     : TypeAlias                   = ActionSpec|RelationSpec
 ActionGroup                    : TypeAlias                   = list[ActionElem]
 
-class _TrackerStore:
+class _TrackerStore(Injector_m):
     """ Stores and manipulates specs, tasks, and artifacts """
 
     def __init__(self):
@@ -120,7 +120,7 @@ class _TrackerStore:
             return None
 
         existing_abstract = self.specs[name]
-        match [x for x in self.concrete[name] if self.specs[x].match_with_constraints(existing_abstract)]:
+        match [x for x in self.concrete[name] if self.match_with_constraints(self.specs[x], existing_abstract)]:
             case []:
                 logging.debug("Not reusing instantiation because existing specs dont match with constraints: %s", name)
                 return None
@@ -226,13 +226,13 @@ class _TrackerStore:
             case [*xs]:
                 # concrete instances exist, match on them
                 potentials : list[TaskSpec] = [self.specs[x] for x in xs if x != control]
-                successful_matches += [x.name for x in potentials if x.match_with_constraints(control_spec, relation=rel)]
+                successful_matches += [x.name for x in potentials if self.match_with_constraints(x, control_spec, relation=rel)]
 
         match successful_matches:
             case []: # No matches, instantiate
-                extra    : None|dict     = control_spec.build_injection(rel)
+                extra    : None|dict     = self.build_injection(rel, control_spec, constraint=control_spec)
                 instance : TaskName      = self._instantiate_spec(rel.target, extra=extra)
-                if not self.specs[instance].match_with_constraints(control_spec, relation=rel):
+                if not self.match_with_constraints(self.specs[instance], control_spec, relation=rel):
                     raise doot.errors.DootTaskTrackingError("Could not instantiate a spec that passes constraints", rel, control)
                 return instance
             case [x]: # One match, connect it

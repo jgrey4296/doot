@@ -280,57 +280,12 @@ class _SpecUtils_m:
 
           if not given a relation, then just check self and control dont conflict.
           """
-        match relation:
-            case RelationSpec(constraints=None, inject=None):
-                return True
-            case RelationSpec(constraints=constraints, inject=inject):
-                assert(relation.target <= self.name or any(relation.target <= x for x in self.get_source_names()))
-            case None:
-                assert(control.name <= self.name)
-                constraints = {x:x for x in control.extra.keys()}
-                inject      = {}
-
-        inject              = inject or {}
-        constraints         = constraints or {}
-        extra               = self.extra
-        control_extra       = control.extra
-        if bool(inject) and not bool(inject.values() & control_extra.keys()):
-            return False
-
-        for k,v in constraints.items():
-            if k not in extra or v not in control_extra:
-                return False
-            if extra[k] != control_extra[v]:
-                return False
-
-        for k,v in inject.items():
-            if extra.get(k, None) != control_extra.get(v, None):
-                return False
-        else:
-            return True
-
+        raise DeprecationWarning("use doot.utils.injection.Injector_m")
     def build_injection(self, context:RelationSpec) -> None|dict:
         """ Builds a dict of the data a matching spec will need, according
           to a relations inject.
         """
-        if not bool(context.inject):
-            return None
-
-        inject_keys = set(context.inject.values())
-        extra       = self.extra
-        extra_keys  = set(extra.keys())
-        match extra.on_fail(None).cli():
-            case None:
-                pass
-            case [*xs]:
-                extra_keys.update(x.name for x in xs)
-
-        if bool((missing:=inject_keys - extra_keys)):
-            raise doot.errors.DootTaskTrackingError("Can not inject keys not found in the control spec", missing, self.name)
-
-        injection = {k:extra[v] for k,v in context.inject.items()}
-
-        return injection
+        raise DeprecationWarning("Use doot.utils.injection.Injector_m")
 
     def apply_cli_args(self, *, override=None) -> TaskSpec:
         logging.debug("Applying CLI Args to: %s", self.name)
