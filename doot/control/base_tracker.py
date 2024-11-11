@@ -341,12 +341,21 @@ class _TrackerStore(Injector_m):
                 self.register_spec(spec.gen_cleanup_task())
 
             self._register_artifacts(spec.name)
-            # Register Requirements:
+
+            if spec.name.is_instantiated:
+                # If the spec is instantiated,
+                # it has not indirect relations
+                continue
+
+            # Register Indirect dependencies:
+            # So if spec blocks target,
+            # record that target needs spec
             for rel in spec.action_group_elements():
                 match rel:
-                    case RelationSpec(target=target, relation=RelationMeta_e.req) if not spec.name.is_instantiated():
-                        logging.debug("Registering Requirement: %s : %s", target, rel.invert(spec.name))
-                        self._requirements[target].append(rel.invert(spec.name))
+                    case RelationSpec(target=target, relation=RelationMeta_e.blocks):
+                        logging.debug("Registering Indirect Relation: %s", rel)
+                        rel.object = spec.name
+                        self._indirect_deps[target].append(rel)
                     case _: # Ignore action specs
                         pass
 

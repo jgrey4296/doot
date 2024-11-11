@@ -69,30 +69,29 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
     """
 
     # What the Relation end point is:
+    mark_e        : ClassVar[enum] = RelationMeta_e
+
     target        : TaskName|TaskArtifact
-    relation      : RelationMeta_e                            = RelationMeta_e.dependsOn
-    constraints   : None|dict[str, str]                       = None # constraints on spec field matches
-    inject        : None|str|dict                             = None
-    _meta         : dict()                                    = {} # Misc metadata
+    relation      : RelationMeta_e                                 = RelationMeta_e.needs
+    # constraints on spec field equality
+    object        : None|TaskName|TaskArtifact                     = None
+    constraints   : bool|list|dict[str, str]                       = False
+    inject        : None|str|dict                                  = None
+    _meta         : dict()                                         = {} # Misc metadata
 
     @staticmethod
-    def build(data:RelationSpec|TomlGuard|dict|TaskName|str, *, relation:None|RelationMeta_e=None) -> RelationSpec:
-        relation = relation or RelationMeta_e.default
+    def build(data:RelationSpec|TomlGuard|dict|TaskName|str, *, relation:RelationMeta_e=RelationMeta_e.needs) -> RelationSpec:
         match data:
             case RelationSpec():
                 return data
-            case TaskName() | TaskArtifact():
+            case TaskName() | TaskArtifact() | str() | pl.Path():
                 return RelationSpec(target=data, relation=relation)
-            case {"loc": str()|pl.Path()}:
-                return RelationSpec(target=TaskArtifact.build(data), relation=relation)
-            case {"file": str()|pl.Path() as x}:
+            case dict() if any(x in data for x in ["loc","file","dir"]) and "task" not in data:
                 return RelationSpec(target=TaskArtifact.build(data), relation=relation)
             case {"task": taskname}:
-                constraints = data.get("constraints", None)
-                inject      = data.get("inject", None)
+                constraints = data.get("constraints", None) or data.get("constraints_", False)
+                inject      = data.get("inject", None)      or data.get("inject_", None)
                 return RelationSpec(target=taskname, constraints=constraints, inject=inject, relation=relation)
-            case str() | pl.Path():
-                return RelationSpec(target=data, relation=relation)
             case _:
                 raise ValueError("Bad data used for relation spec", data)
 
@@ -135,48 +134,24 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
             case TaskArtifact(), LocationMeta_f():
                 return query in self.target
 
-    def to_edge(self, other:TaskName|TaskArtifact, *, instance:None|TaskName=None) -> tuple[TaskName|TaskArtifact, TaskName|TaskArtifact]:
+    def to_ordered_pair(self, obj:TaskName|TaskArtifact, *, target:None|TaskName=None) -> tuple[TaskName|TaskArtifact, TaskName|TaskArtifact]:
         """ a helper to make an edge for the tracker.
-          uses the current target, unless an instance is provided
+          uses the current (abstract) target, unless an instance is provided
           """
-        logging.info("Relation to edge: (rel:%s) (target:%s) (other:%s) (instance:%s)", self.relation, self.target, other, instance)
+        logging.info("Relation to edge: (object:%s) (rel:%s) (target:%s) (target instance:%s)", obj, self.relation, self.target, target)
         match self.relation:
-            case RelationMeta_e.dep:
-                return (instance or self.target, other)
-            case RelationMeta_e.req:
-                return (other, instance or self.target)
+            case RelationMeta_e.needs:
+                # target is a predecessor
+                return (target or self.target, obj)
+            case RelationMeta_e.blocks:
+                # target is a succcessor
+                return (obj, target or self.target)
+
+    def to_edge(self, other:TaskName|TaskArtifact, *, instance:None|TaskName=None):
+        raise DeprecationWarning("Use to_ordered_pair")
 
     def match_simple_edge(self, edges:list[TaskName], *, exclude:None|list=None) -> bool:
-        """ Given a list of existing edges,
-          return true if any of them are an instantiated version of
-          this relations target.
-
-          Return False if this relation has constraints.
-          """
-        if bool(self.constraints) or bool(self.inject):
-            return False
-
-        exclude = exclude or []
-        for x in edges:
-            if x in exclude:
-                continue
-            if self.target < x:
-                return True
-
-        return False
-
-    def invert(self, source=None) -> RelationSpec:
-        """ Instead of X depends on Y,
-          get Y required for X
-        """
-        match self.relation:
-            case RelationMeta_e.dep:
-                relation = RelationMeta_e.req
-            case _:
-                relation = RelationMeta_e.dep
-
-        assert(relation is not self.relation)
-        return RelationSpec(target=source or self.target, constraints=self.constraints, relation=relation)
+        raise DeprecationWarning("Use Injector_m.match_edge")
 
     def instantiate(self, target:TaskName|TaskArtifact):
         """
@@ -204,5 +179,5 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                                     constraints=self.constraints)
 
     def forward_dir_p(self) -> bool:
-        " is this relation's direction predecessor -> successor? "
-        return self.relation is RelationMeta_e.req
+        " is this relation's direction obj -> target? "
+        return self.relation is RelationMeta_e.blocks

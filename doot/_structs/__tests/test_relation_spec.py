@@ -131,25 +131,15 @@ class TestRelationSpec:
 
 
     def test_build_as_dependency(self):
-        obj = RelationSpec.build({"task": "agroup::atask"}, relation=RelationMeta_e.dependsOn)
+        obj = RelationSpec.build({"task": "agroup::atask"}, relation=RelationMeta_e.needs)
         assert(isinstance(obj, RelationSpec))
         assert(isinstance(obj.target, TaskName))
-        assert(obj.relation is RelationMeta_e.dep)
+        assert(obj.relation is RelationMeta_e.needs)
 
 
     def test_build_as_requirement(self):
-        obj = RelationSpec.build({"task": "agroup::atask"}, relation=RelationMeta_e.requirementFor)
+        obj = RelationSpec.build({"task": "agroup::atask"}, relation=RelationMeta_e.blocks)
         assert(isinstance(obj, RelationSpec))
         assert(isinstance(obj.target, TaskName))
         assert(obj.target == "agroup::atask")
-        assert(obj.relation is RelationMeta_e.req)
-
-
-    def test_invert(self):
-        obj = RelationSpec.build({"task": "agroup::atask"})
-        assert(obj.relation == RelationMeta_e.dependencyOf)
-        inverted = obj.invert()
-        assert(obj is not inverted)
-        assert(obj.relation == RelationMeta_e.dependencyOf)
-        assert(inverted.target == obj.target)
-        assert(inverted.relation is not obj.relation)
+        assert(obj.relation is RelationMeta_e.blocks)

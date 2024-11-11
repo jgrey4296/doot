@@ -58,7 +58,8 @@ from doot.enums import (LocationMeta_f, RelationMeta_e, Report_f, TaskMeta_f,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-def _dicts_to_relspecs(deps:list[dict], *, relation=RelationMeta_e.dependencyOf) -> list[ActionSpec|RelationSpec]:
+def _dicts_to_specs(deps:list[dict], *, relation=RelationMeta_e.default) -> list[ActionSpec|RelationSpec]:
+    """ Convert toml provided dicts of specs into ActionSpec and RelationSpec object"""
     results = []
     for x in deps:
         match x:
@@ -72,9 +73,9 @@ def _dicts_to_relspecs(deps:list[dict], *, relation=RelationMeta_e.dependencyOf)
     return results
 
 
-def _prepare_action_group(deps:list[str], handler:ValidatorFunctionWrapHandler, info:ValidationInfo) -> list[RelationSpec|ActionSpec]:
+def _prepare_action_group(group:list[str], handler:ValidatorFunctionWrapHandler, info:ValidationInfo) -> list[RelationSpec|ActionSpec]:
     """
-      Prepares action groups / dependencies,
+      Validates and Builds action/relation groups,
       converting toml specified strings, list, and dicts to Artifacts (ie:files), Task Names, ActionSpecs
 
       As a wrap handler, it has the context of what field is being processed,
@@ -82,11 +83,14 @@ def _prepare_action_group(deps:list[str], handler:ValidatorFunctionWrapHandler, 
 
       # TODO handle callables?
     """
-    if deps is None:
+    if group is None:
         return []
 
-    relation_type = RelationMeta_e.requirementFor if info.field_name in TaskSpec._dependant_groups else RelationMeta_e.dependencyOf
-    results = _dicts_to_relspecs(deps, relation=relation_type)
+    relation_type = RelationMeta_e.needs
+    if info.field_name in TaskSpec._blocking_groups:
+        relation_type = RelationMeta_e.blocks
+
+    results = _dicts_to_specs(group, relation=relation_type)
     return handler(results)
 
 ActionGroup = Annotated[list[ActionSpec|RelationSpec], WrapValidator(_prepare_action_group)]
@@ -95,7 +99,7 @@ class _JobUtils_m:
     """Additional utilities mixin for job based task specs"""
 
     def get_source_names(self) -> list[TaskName]:
-        """ Get from the spec's sourcs just its source tasks """
+        """ Get from the spec's sources just its source tasks """
         return [x for x in self.sources if isinstance(x, TaskName)]
 
     def gen_job_head(self) -> list[TaskSpec]:
@@ -121,7 +125,7 @@ class _JobUtils_m:
             return []
 
         tasks             = []
-        head_section      = _dicts_to_relspecs(self.extra.on_fail([], list).head_actions(), relation=RelationMeta_e.dependsOn)
+        head_section      = _dicts_to_specs(self.extra.on_fail([], list).head_actions(), relation=RelationMeta_e.needs)
         head_dependencies = [x for x in head_section if isinstance(x, RelationSpec)]
         head_actions      = [x for x in head_section if not isinstance(x, RelationSpec)]
 

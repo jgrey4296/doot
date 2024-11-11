@@ -157,30 +157,17 @@ class EdgeType_e(EnumBuilder_m, enum.Enum):
 class RelationMeta_e(enum.Enum):
     """
       What types+synonyms of task relation there can be,
-      in the form ? {rel} Y,
+      in the form Obj {rel} Y,
 
       eg: cake dependsOn baking.
       or: baking requirementFor cake.
+      or: eatingCake conflictsWith givingCake
     """
-    # Core:
-    dependencyOf     = enum.auto()
-    requirementFor   = enum.auto()
+    needs            = enum.auto()
+    blocks           = enum.auto()
+    # excludes         = enum.auto()
 
-    # dependency Aliases
-    dependsOn        = dependencyOf
-    productOf        = dependencyOf
-    pre              = dependencyOf
-    dep              = dependencyOf
-    after            = dependencyOf
-    # Dependant aliases
-    resultsIn        = requirementFor
-    post             = requirementFor
-    req              = requirementFor
-    before           = requirementFor
-
-    default          = dependencyOf
-    # to deprecate:
-    dependantOf      = requirementFor
+    default          = needs
 
 class ExecutionPolicy_e(EnumBuilder_m, enum.Enum):
     """ How the task execution will be ordered
