@@ -212,39 +212,42 @@ class _TrackerStore(Injector_m):
         """ find a matching relendency/requirement according to a set of keys in the spec, or create a matching instance
           if theres no constraints, will just instantiate.
           """
-        logging.info("Instantiating Relation: %s - %s -> %s", control, rel.relation.name, rel.target)
+        logging.warning("Instantiating Relation: %s - %s -> %s", control, rel.relation.name, rel.target)
         assert(control in self.specs)
+        assert(rel.target in self.specs)
         control_spec              = self.specs[control]
+        target_spec               = self.specs[rel.target]
         successful_matches        = []
         match self.concrete.get(rel.target, None):
             case [] | None if rel.target not in self.specs:
                 raise doot.errors.DootTaskTrackingError("Unknown target declared in Constrained Relation", control, rel.target)
             case [] | None:
                 pass
-            case [*xs] if not bool(rel.constraints) and not bool(rel.inject):
-                successful_matches = [x for x in xs if x != control]
             case [*xs]:
                 # concrete instances exist, match on them
-                potentials : list[TaskSpec] = [self.specs[x] for x in xs if x != control]
+                potentials : list[TaskSpec] = [self.specs[x] for x in xs]
                 successful_matches += [x.name for x in potentials if self.match_with_constraints(x, control_spec, relation=rel)]
 
         match successful_matches:
             case []: # No matches, instantiate
-                extra    : None|dict     = self.build_injection(rel, control_spec, constraint=control_spec)
-                instance : TaskName      = self._instantiate_spec(rel.target, extra=extra)
+                extra    : None|dict      = self.build_injection(rel, control_spec, constraint=target_spec)
+                instance : TaskName       = self._instantiate_spec(rel.target, extra=extra)
                 if not self.match_with_constraints(self.specs[instance], control_spec, relation=rel):
-                    raise doot.errors.DootTaskTrackingError("Could not instantiate a spec that passes constraints", rel, control)
+                    raise doot.errors.DootTaskTrackingError("Failed to build task matching constraints")
+                logging.warning("Using New Instance: %s", instance)
                 return instance
             case [x]: # One match, connect it
                 assert(x in self.specs)
                 assert(x.is_instantiated())
                 instance : TaskName = x
+                logging.warning("Reusing Instance: %s", instance)
                 return instance
             case [*xs, x]: # TODO check this.
                 # Use most recent instance?
                 assert(x in self.specs)
                 assert(x.is_instantiated())
                 instance : TaskName = x
+                logging.warning("Reusing latest Instance: %s", instance)
                 return instance
 
     def _instantiate_transformer(self, name:AbstractId, artifact:TaskArtifact) -> None|ConcreteId:
@@ -396,7 +399,7 @@ class _TrackerStore(Injector_m):
 
         return True
 
-class _TrackerNetwork:
+class _TrackerNetwork(Injector_m):
     """ the network of concrete tasks and their dependencies """
 
     def __init__(self):
@@ -507,17 +510,20 @@ class _TrackerNetwork:
                 continue
             relevant_edges = spec_succ if rel.forward_dir_p() else spec_pred
             match rel:
+                case RelationSpec(target=TaskName() as target, relation=RelationSpec.mark_e.blocks, object=TaskArtifact() as obj) if target <= name:
+                    logging.warning("TODO: indirect dependencies")
+                    pass
                 case RelationSpec(target=TaskArtifact() as target):
                     assert(target in self.artifacts)
-                    self.connect(*rel.to_edge(name))
+                    self.connect(*rel.to_ordered_pair(name))
                     to_expand.add(target)
-                case RelationSpec(target=TaskName()) if rel.match_simple_edge(relevant_edges.keys(), exclude=[name]):
+                case RelationSpec(target=TaskName()) if self.match_edge(rel, relevant_edges.keys(), exclude=[name]):
                     # already linked, ignore.
                     continue
                 case RelationSpec(target=TaskName()):
                     # Get specs and instances with matching target
                     instance = self._instantiate_relation(rel, control=name)
-                    self.connect(*rel.to_edge(name, instance=instance))
+                    self.connect(*rel.to_ordered_pair(name, target=instance))
                     to_expand.add(instance)
         else:
             assert(name in self.network.nodes)

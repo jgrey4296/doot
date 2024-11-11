@@ -112,12 +112,26 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
     @field_validator("constraints", mode="before")
     def _validate_constraints(cls, val):
          match val:
+             case bool():
+                 return val
              case list():
                  return {x:x for x in val}
-             case None | dict():
+             case dict():
                  return val
              case _:
                  raise TypeError("Unknown constraints type", val)
+
+    @field_validator("inject", mode="before")
+    def _validate_inject(cls, val):
+        match val:
+            case None:
+                return None
+            case str():
+                return val
+            case TomlGuard() | dict() if all(k in ["now","delay", "insert"] for k in val.keys()):
+                return val
+            case _:
+                raise TypeError("Unknown injection type", val)
 
     def __str__(self):
         return f"<? {self.relation.name} {self.target}>"

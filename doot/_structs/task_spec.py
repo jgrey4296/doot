@@ -320,32 +320,31 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
       sources = [root, ... grandparent, parent]. 'None' indicates halt on climbing source chain
 
     """
-    name                         : TaskName
-    doc                          : list[str]                              = []
-    sources                      : list[TaskName|pl.Path|None]            = []
+    name                              : TaskName
+    doc                               : list[str]                                                                        = []
+    sources                           : list[TaskName|pl.Path|None]                                                      = []
 
     # Action Groups:
-    actions                      : ActionGroup                            = []
-    required_for                 : ActionGroup                            = []
-    depends_on                   : ActionGroup                            = []
-    setup                        : ActionGroup                            = []
-    cleanup                      : ActionGroup                            = []
-    on_fail                      : ActionGroup                            = []
+    actions                           : ActionGroup                                                                      = []
+    required_for                      : ActionGroup                                                                      = []
+    depends_on                        : ActionGroup                                                                      = []
+    setup                             : ActionGroup                                                                      = []
+    cleanup                           : ActionGroup                                                                      = []
+    on_fail                           : ActionGroup                                                                      = []
 
     # Any additional information:
-    version                      : str                                    = doot.__version__ # TODO: make dict?
-    priority                     : int                                    = 10
-    ctor                         : CodeReference                          = Field(default=None, validate_default=True)
-    queue_behaviour              : QueueMeta_e                            = QueueMeta_e.default
-    flags                        : TaskMeta_f                             = TaskMeta_f.default
-    inject                       : list[str]                              = []
-    _transform                   : None|Literal[False]|tuple[RelationSpec, RelationSpec]                            = None
+    version                           : str                                                                              = doot.__version__ # TODO: make dict?
+    priority                          : int                                                                              = 10
+    ctor                              : CodeReference                                                                    = Field(default=None, validate_default=True)
+    queue_behaviour                   : QueueMeta_e                                                                      = QueueMeta_e.default
+    flags                             : TaskMeta_f                                                                       = TaskMeta_f.default
+    _transform                        : None|Literal[False]|tuple[RelationSpec, RelationSpec]                            = None
     # task specific extras to use in state
-    _default_ctor         : ClassVar[str]       = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
-    _allowed_print_locs   : ClassVar[list[str]] = doot.constants.printer.PRINT_LOCATIONS
-    _action_group_wipe    : ClassVar[dict]      = {"required_for": [], "setup": [], "actions": [], "depends_on": []}
+    _default_ctor                     : ClassVar[str]                                                                    = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
+    _allowed_print_locs               : ClassVar[list[str]]                                                              = doot.constants.printer.PRINT_LOCATIONS
+    _action_group_wipe                : ClassVar[dict]                                                                   = {"required_for": [], "setup": [], "actions": [], "depends_on": []}
     # Action Groups that are depended on, rather than are dependencies of, this task:
-    _dependant_groups    : ClassVar[list[str]]  = ["required_for", "on_fail"]
+    _blocking_groups                  : ClassVar[list[str]]                                                              = ["required_for", "on_fail"]
 
     @staticmethod
     def build(data:TomlGuard|dict|TaskName|str) -> Self:
