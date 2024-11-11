@@ -84,22 +84,20 @@ class Location(BaseModel, Location_p, Buildable_p, metaclass=ProtocolModelMeta, 
             case str() | pl.Path():
                 assert(target is None)
                 return cls(key=key or cls._artifact_key, path=pl.Path(data))
-            case {"loc": target_s}:
-                key    = key or data.get("key")
-                target = target or pl.Path(target_s.removeprefix(cls._toml_str_prefix))
-                meta   = LocationMeta_f.build({x:y for x,y in data.items() if x != "loc"})
-                if target_s.startswith(cls._toml_str_prefix):
-                    meta |= LocationMeta_f.file
-                return cls(key=key, path=target, meta=meta)
-            case {"file": target_s}:
-                key    = key or data.get("key", key)
-                target = target or pl.Path(target_s.removeprefix(cls._toml_str_prefix))
-                meta   = LocationMeta_f.build({x:y for x,y in data.items() if x != "loc"})
-                meta |= LocationMeta_f.file
-                return cls(key=key, path=target, meta=meta)
             case dict() if target is not None:
                 key = key or data.get("key", key)
                 meta   = LocationMeta_f.build({x:y for x,y in data.items()})
+                return cls(key=key, path=target, meta=meta)
+            case {"file":target_s}:
+                key      = key or data.get("key")
+                target   = pl.Path(target_s.removeprefix(cls._toml_str_prefix))
+                meta     = LocationMeta_f.build({x:y for x,y in data.items() if x != "file"})
+                meta     |= LocationMeta_f.file
+                return cls(key=key, path=target, meta=meta)
+            case {"loc":target_s} | {"dir":target_s}:
+                key      = key or data.get("key")
+                target   = pl.Path(target_s.removeprefix(cls._toml_str_prefix))
+                meta     = LocationMeta_f.build({x:y for x,y in data.items() if x not in ["loc", "dir"]})
                 return cls(key=key, path=target, meta=meta)
             case _:
                 raise ValueError("Bad data for Location", data, key, target)

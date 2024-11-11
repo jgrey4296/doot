@@ -114,7 +114,7 @@ class TestTrackerStore:
         retrieved = obj.specs[name]
         assert(retrieved == spec)
 
-    def test_make_task(self, mocker):
+    def test_make_task(self):
         obj = BaseTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::task"})
         name = spec.name
@@ -289,6 +289,7 @@ class TestTrackerNetworkBuild:
         spec2 = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, spec2)
         assert(len(obj.network) == 1)
+        assert(len(obj.specs) == 4)
         assert(not bool(obj.network.adj[obj._root_node]))
         instance = obj._instantiate_spec(spec.name)
         obj.connect(instance)
@@ -610,7 +611,7 @@ class TestTrackerNetworkBuild:
 
 class TestTrackerQueue:
 
-    def test_tracker_bool(self, mocker):
+    def test_tracker_bool(self):
         obj   = BaseTracker()
         spec  = doot.structs.TaskSpec.build({"name":"basic::task"})
         obj.register_spec(spec)
@@ -620,7 +621,7 @@ class TestTrackerQueue:
         assert(bool(obj._queue))
         assert(bool(obj))
 
-    def test_queue_task(self, mocker):
+    def test_queue_task(self):
         obj   = BaseTracker()
         spec  = doot.structs.TaskSpec.build({"name":"basic::task"})
         obj.register_spec(spec)
@@ -629,7 +630,7 @@ class TestTrackerQueue:
         assert(instance in obj.active_set)
         assert(bool(obj._queue))
 
-    def test_queue_task_idempotnent(self, mocker):
+    def test_queue_task_idempotnent(self):
         obj   = BaseTracker()
         spec  = doot.structs.TaskSpec.build({"name":"basic::task"})
         obj.register_spec(spec)
@@ -659,7 +660,7 @@ class TestTrackerQueue:
         assert(bool(obj))
         assert(artifact is result)
 
-    def test_deque_task(self, mocker):
+    def test_deque_task(self):
         obj   = BaseTracker()
         spec  = doot.structs.TaskSpec.build({"name":"basic::task"})
         spec2 = doot.structs.TaskSpec.build({"name":"basic::other"})
@@ -672,7 +673,7 @@ class TestTrackerQueue:
         assert(val == instance)
         assert(instance in obj.active_set)
 
-    def test_deque_artifact(self, mocker):
+    def test_deque_artifact(self):
         obj      = BaseTracker()
         artifact = doot.structs.TaskArtifact.build(pl.Path("test.txt"))
         # stub artifact in tracker:
@@ -684,7 +685,7 @@ class TestTrackerQueue:
         assert(not bool(obj))
         assert(val is artifact)
 
-    def test_peek_task(self, mocker):
+    def test_peek_task(self):
         obj   = BaseTracker()
         spec  = doot.structs.TaskSpec.build({"name":"basic::task"})
         spec2 = doot.structs.TaskSpec.build({"name":"basic::other"})
@@ -697,7 +698,7 @@ class TestTrackerQueue:
         assert(val == instance)
         assert(instance in obj.active_set)
 
-    def test_clear_queue(self, mocker):
+    def test_clear_queue(self):
         obj   = BaseTracker()
         spec  = doot.structs.TaskSpec.build({"name":"basic::task"})
         obj.register_spec(spec)

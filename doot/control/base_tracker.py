@@ -100,8 +100,8 @@ class _TrackerStore(Injector_m):
         # Artifact sets
         self._abstract_artifacts  : set[TaskArtifact]                             = set()
         self._concrete_artifacts  : set[TaskArtifact]                             = set()
-        # requirements.
-        self._requirements        : dict[ConcreteId, list[RelationSpec]]          = defaultdict(lambda: [])
+        # indirect requirements from other tasks:
+        self._indirect_deps        : dict[ConcreteId, list[RelationSpec]]          = defaultdict(lambda: [])
 
     def _maybe_reuse_instantiation(self, name:TaskName, *, add_cli:bool=False, extra:bool=False) -> None|ConcreteId:
         """ if an existing concrete spec exists, use it if it has no conflicts """
@@ -119,8 +119,8 @@ class _TrackerStore(Injector_m):
             logging.debug("Not reusing instantiation because there is no instantiation to reuse: %s", name)
             return None
 
-        existing_abstract = self.specs[name]
-        match [x for x in self.concrete[name] if self.match_with_constraints(self.specs[x], existing_abstract)]:
+        abstract = self.specs[name]
+        match [x for x in self.concrete[name] if abstract != (concrete:=self.specs[x]) and self.match_with_constraints(concrete, abstract)]:
             case []:
                 logging.debug("Not reusing instantiation because existing specs dont match with constraints: %s", name)
                 return None
@@ -494,7 +494,7 @@ class _TrackerNetwork(Injector_m):
         assert(not self.network.nodes[name].get(EXPANDED, False))
         spec                                                  = self.specs[name]
         spec_pred, spec_succ                                  = self.network.pred[name], self.network.succ[name]
-        indirect_deps : list[tuple[ConcreteId, RelationSpec]] = self._requirements[spec.sources[-1]]
+        indirect_deps : list[RelationSpec]                    = self._indirect_deps[spec.sources[-1]]
         to_expand                                             = set()
 
         track_l.debug("--> Expanding Task: %s : Pre(%s), Post(%s), IndirecPre:(%s)",
@@ -671,8 +671,6 @@ class _TrackerNetwork(Injector_m):
         for node, data in self.network.nodes.items():
             match node:
                 case TaskName() | TaskArtifact() if not data[EXPANDED]:
-                    breakpoint()
-                    pass
                     if strict:
                         raise doot.errors.DootTaskTrackingError("Network isn't fully expanded", node)
                     logging.warning("Network isn't fully expanded: %s", node)
