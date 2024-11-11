@@ -111,7 +111,13 @@ class DootShellAction(Action_p):
             cmd                     = getattr(env, cmd_name)
             keys                    = [DKey(x, mark=DKey.mark.MULTI, fallback=x) for x in args[1:]]
             expanded                = [str(x.expand(spec, state)) for x in keys]
-            result                  = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=not notty, _cwd=cwd )
+            result                  = cmd(*expanded, _return_cmd=True, _bg=background, _tty_out=not notty, _cwd=cwd, _iter=True)
+            for line in result:
+                printer.info("(Cmd): %s", line.strip())
+
+            for errline in result.stderr.decode().split("\n"):
+                printer.warning("(CmdErr): %s", errline)
+
             if result.exit_code not in exitcodes:
                 printer.warning("Shell Command Failed: %s", result.exit_code)
                 printer.warning(result.stderr.decode())
@@ -120,7 +126,7 @@ class DootShellAction(Action_p):
             printer.debug("Shell Cwd: %s", cwd)
             printer.debug("(%s) Shell Cmd: %s, Args: %s, Result:", result.exit_code, cmd_name, args[1:])
             if not _update:
-                printer.info("%s", result, extra={"colour":"reset"})
+                # printer.info("%s", result, extra={"colour":"reset"})
                 return True
 
             return { _update : result.stdout.decode() }
@@ -131,12 +137,6 @@ class DootShellAction(Action_p):
             fail_l.error("Shell Commmand '%s' Not Action: %s", err.args[0], args)
         except sh.ErrorReturnCode as err:
             fail_l.error("Shell Command '%s' exited with code: %s", err.full_cmd, err.exit_code)
-            if bool(err.stdout):
-                fail_l.error("-- Stdout: ")
-                fail_l.error("%s", err.stdout.decode())
-                fail_l.error("")
-                fail_l.error("-- Stdout End")
-                fail_l.error("")
 
             fail_l.info("")
             if bool(err.stderr):
