@@ -229,8 +229,6 @@ class DootLocations(PathManip_m):
 
         for k,v in extra.items():
             match Location.build(v, key=k):
-                case Location() as l if l.check(LocationMeta_f.normOnLoad):
-                    raw[l.key] = Location.build(v, key=k, target=self.normalize(l.path))
                 case Location() as l:
                     raw[l.key] = l
                 case _:

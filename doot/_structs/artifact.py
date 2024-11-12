@@ -81,10 +81,6 @@ class TaskArtifact(Location, arbitrary_types_allowed=True):
         return self.exists()
 
     @ftz.cached_property
-    def is_concrete(self):
-        return not self.check(LocationMeta_f.abstract)
-
-    @ftz.cached_property
     def parent(self):
         return self.path.parent
 
@@ -93,7 +89,7 @@ class TaskArtifact(Location, arbitrary_types_allowed=True):
         raise NotImplementedError('TODO')
 
 
-    def match_with(self, other:pl.Path|TaskArtifact) -> None|TaskArtifact:
+    def match_with(self, other:pl.Path|Location) -> None|TaskArtifact:
         """ An abstract location, given a concrete other location,
           will apply parts of it onto itself, where it has wildcards
 
@@ -105,13 +101,11 @@ class TaskArtifact(Location, arbitrary_types_allowed=True):
           a/**/?.blah + a/b/c/d.txt -> a/b/c/d.blah
 
         """
-        if LocationMeta_f.abstract not in self:
-            return None
-
-        a_path, a_stem, a_suff = self.abstracts
-
-        if not a_stem:
-            return None
+        match other:
+            case Location() | pl.Path() if self.is_concrete() and other == self:
+                return self
+            case _:
+                pass
 
         match other:
             case Location():
@@ -127,8 +121,11 @@ class TaskArtifact(Location, arbitrary_types_allowed=True):
 
         result = []
         rest_of = False
+        abstracts = self.abstracts
 
-        if a_path:
+
+        if abstracts.path:
+            # loop over parts of the paths, and get the most specific
             for i, (x,y) in enumerate(zip(self.path.parent.parts, match_on)):
                 if x in [GLOB, SOLO]:
                     result.append(y)
@@ -141,12 +138,16 @@ class TaskArtifact(Location, arbitrary_types_allowed=True):
         else:
             result += self.path.parents
 
-        result.append(stem)
+        base_path  = pl.Path().joinpath(*result)
+        filename = None
+        match abstracts:
+            case Location.Abstractions(stem=True, suffix=False):
+                filename = f"{stem}{self.path.suffix}"
+            case Location.Abstractions(stem=False, suffix=True):
+                filename = f"{self.path.stem}{suffix}"
+            case Location.Abstractions(stem=True, suffix=True):
+                filename = f"{stem}{suffix}"
+            case _:
+                filename = self.path.name
 
-        base = pl.Path().joinpath(*result)
-        if a_suff:
-            return TaskArtifact(path=base.with_suffix(suffix),
-                                    key=self.key)
-
-        return TaskArtifact(path=base.with_suffix(self.path.suffix),
-                                key=self.key)
+        return TaskArtifact(path=base_path / filename, key=self.key)
