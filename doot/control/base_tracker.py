@@ -327,7 +327,10 @@ class _TrackerStore(Injector_m):
         """ Register task specs, abstract or concrete.
         An initial concrete instance will be created for any abstract spec.
         """
-        for spec in specs:
+        queue = []
+        queue += specs
+        while bool(queue):
+            spec = queue.pop(0)
             if spec.name in self.specs:
                 continue
             if TaskMeta_f.DISABLED in spec.flags:
@@ -339,28 +342,30 @@ class _TrackerStore(Injector_m):
 
             # Register the head and cleanup specs:
             if TaskMeta_f.JOB in spec.flags:
-                self.register_spec(*spec.gen_job_head())
+                queue += spec.gen_job_head()
             else:
-                self.register_spec(spec.gen_cleanup_task())
+                queue.append(spec.gen_cleanup_task())
 
             self._register_artifacts(spec.name)
+            self._register_blocking_relations(spec)
 
-            if spec.name.is_instantiated:
-                # If the spec is instantiated,
-                # it has not indirect relations
-                continue
+    def _register_blocking_relations(self, spec:TaskSpec):
+        if spec.name.is_instantiated:
+            # If the spec is instantiated,
+            # it has no indirect relations
+            return
 
-            # Register Indirect dependencies:
-            # So if spec blocks target,
-            # record that target needs spec
-            for rel in spec.action_group_elements():
-                match rel:
-                    case RelationSpec(target=target, relation=RelationMeta_e.blocks):
-                        logging.debug("Registering Indirect Relation: %s", rel)
-                        rel.object = spec.name
-                        self._indirect_deps[target].append(rel)
-                    case _: # Ignore action specs
-                        pass
+        # Register Indirect dependencies:
+        # So if spec blocks target,
+        # record that target needs spec
+        for rel in spec.action_group_elements():
+            match rel:
+                case RelationSpec(target=target, relation=RelationMeta_e.blocks):
+                    logging.debug("Registering Indirect Relation: %s", rel)
+                    rel.object = spec.name
+                    self._indirect_deps[target].append(rel)
+                case _: # Ignore action specs
+                    pass
 
     def get_status(self, task:ConcreteId) -> TaskStatus_e:
         """ Get the status of a task or artifact """
@@ -494,25 +499,19 @@ class _TrackerNetwork(Injector_m):
         assert(not self.network.nodes[name].get(EXPANDED, False))
         spec                                                  = self.specs[name]
         spec_pred, spec_succ                                  = self.network.pred[name], self.network.succ[name]
-        indirect_deps : list[RelationSpec]                    = self._indirect_deps[spec.sources[-1]]
         to_expand                                             = set()
 
-        track_l.debug("--> Expanding Task: %s : Pre(%s), Post(%s), IndirecPre:(%s)",
-                      name, len(spec.depends_on), len(spec.required_for), len(indirect_deps))
-        logging.debug("--> Expanding Task: %s : Pre(%s), Post(%s), IndirecPre:(%s)",
-                      name, len(spec.depends_on), len(spec.required_for), len(indirect_deps))
+        track_l.debug("--> Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
+        logging.debug("--> Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
 
         to_expand.update(self._expand_generated_tasks(spec))
 
         # Connect Relations
-        for rel in itz.chain(spec.action_group_elements(), indirect_deps):
+        for rel in itz.chain(spec.action_group_elements()):
             if not isinstance(rel, RelationSpec):
                 continue
             relevant_edges = spec_succ if rel.forward_dir_p() else spec_pred
             match rel:
-                case RelationSpec(target=TaskName() as target, relation=RelationSpec.mark_e.blocks, object=TaskArtifact() as obj) if target <= name:
-                    logging.warning("TODO: indirect dependencies")
-                    pass
                 case RelationSpec(target=TaskArtifact() as target):
                     assert(target in self.artifacts)
                     self.connect(*rel.to_ordered_pair(name))
@@ -530,9 +529,32 @@ class _TrackerNetwork(Injector_m):
             self.network.nodes[name][EXPANDED] = True
 
         track_l.debug("<-- Task Expansion Complete: %s", name)
+        to_expand.update(self._expand_indirect_relations(spec))
+
         return to_expand
 
-    def _expand_generated_tasks(self, spec:TaskSpec) -> list[TaskName]:
+    def _expand_indirect_relations(self, spec) -> list[TaskName]:
+        """ for a spec S, find the tasks T that have registered a relation
+        of T < S.
+        (S would not know about these blockers).
+
+        For these T, link instantiated nodes that match constraints and link them to S,
+        or if no nodes exist, create and link them.
+        """
+        to_expand = set()
+        spec_pred = self.network.pred[spec.name]
+        # Get (abstract) blocking relations from self._indirect_deps
+        blockers  = self._indirect_deps[spec.name.root(top=True)]
+
+        # Try to link instantiated nodes if they match constraints
+
+        # else instantiate and link new nodes
+
+
+        return to_expand
+
+
+    def _expand_generated_tasks(self, spec:TaskSpe) -> list[TaskName]:
         """
           instantiate and connect a job's head task
           TODO these could be shifted into the task/job class
