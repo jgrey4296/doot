@@ -50,10 +50,11 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metaclass=ProtocolModelMeta):
-    """ ? is {self.relation} to {self.target}
+    """ {object} is {relation} to {target}
 
-     Encodes a relation between an implicit subject, (who owns this relationspec)
-      and the object of the relation (who is contained within the relationspec)
+    Object is optional, to allow multiple different objects to have the same relationship to the target.
+     Encodes a relation between a object , (who owns this relationspec)
+      and the subject of the relation (who is contained within the relation)
 
       eg: baking dependsOn      mixing. relation=dependsOn, target=mixing.
           baking produces       cake.   r=produces, t=cake.
@@ -61,7 +62,8 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
 
       May carry additional information:
       - constraints : a list of keys that much match between the task specs of the two tasks
-      - inject  : a mapping of { obj.key : sub.key } that will be injected into the object
+      - inject      : a mapping of { obj.key : sub.key } that will be injected into the object
+      - object      : the owning base object of the relationship
 
       NOTE: inject *do not* do expansion, they will just copy the value, allowing expansion to occur later.
       So: injection={'a': '{taskkey}/b'} won't work, but {'a':'{taskkey}/b', 'taskkey':'taskkey'} will.
@@ -161,30 +163,33 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 # target is a succcessor
                 return (obj, target or self.target)
 
-    def instantiate(self, target:TaskName|TaskArtifact):
+    def instantiate(self, *, object:None|TaskName|TaskArtifact=None, target:None|TaskName|TaskArtifact=None):
         """
-          Duplicate this relation, but with a suitable concrete task or artifact
+          Duplicate this relation, but with a suitable concrete task or artifact as the object or subject
         """
         match self.target, target:
+            case _, None:
+                pass
             case TaskName(), TaskArtifact():
                 raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target", self.target, target)
             case TaskArtifact(), TaskName():
                 raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target", self.target, target)
-            case TaskName(), TaskName() if TaskMeta_f.CONCRETE in self.target or TaskMeta_f.CONCRETE not in target:
+            case TaskName(), TaskName() if not target.is_instantiated():
                 raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target status", self.target, target)
-            case TaskName(), TaskName() if LocationMeta_f.abstract not in self.target or LocationMeta_f.abstract in target:
-                raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target status", self.target, target)
+            case TaskArtifact(), TaskArtifact() if (match:=self.target.match_with(target)) is not None:
+                target = match
             case _, _:
                 pass
 
-        match self.target.match_with(target):
-            case None:
-                logging.debug("Couldn't match %s onto %s", target, self.target)
-                return self
-            case result:
-                return RelationSpec(target=result,
-                                    relation=self.relation,
-                                    constraints=self.constraints)
+        if target is None:
+            target = self.target
+        if object is None:
+            object = self.object
+
+        return RelationSpec(target=target,
+                            object=object or self.object,
+                            relation=self.relation,
+                            constraints=self.constraints)
 
     def forward_dir_p(self) -> bool:
         " is this relation's direction obj -> target? "
