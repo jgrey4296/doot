@@ -5,8 +5,10 @@
 See EOF for license/metadata/notes as applicable
 """
 
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
@@ -20,12 +22,14 @@ import types
 import weakref
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
+# ##-- end stdlib imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -51,7 +55,7 @@ class EnumBuilder_m:
 class FlagsBuilder_m:
 
     @classmethod
-    def build(cls, vals:str|list|dict) -> Self:
+    def build(cls, vals:str|list|dict, strict=True) -> Self:
         """ Assemble a flag from names.
           a str is just the flag,
           a list treats each name as a true falg
@@ -73,7 +77,10 @@ class FlagsBuilder_m:
                         base |= cls[x]
                     case cls():
                         base |= x
-            except KeyError:
-                logging.warning("Can't create a flag of (%s):%s. Available: %s", cls, x, list(cls.__members__.keys()))
+            except KeyError as err:
+                if strict:
+                    raise err
+                else:
+                    logging.warning("Can't create a flag of (%s):%s. Available: %s", cls, x, list(cls.__members__.keys()))
 
         return base
