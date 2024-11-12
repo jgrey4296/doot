@@ -88,6 +88,15 @@ class TestTrackerStore:
         assert(bool(obj.artifacts))
         assert(len(obj.artifacts) == 2)
 
+
+    def test_register_spec_with_subtasks(self):
+        obj  = BaseTracker()
+        spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["basic::sub.1", "basic::sub.2"], "required_for": ["basic::super.1"]})
+        assert(not bool(obj.specs))
+        obj.register_spec(spec)
+        assert(bool(obj.specs))
+        assert(len(obj.specs) == 2)
+
     def test_register_spec_ignores_disabled(self):
         obj = BaseTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::task", "disabled":True})

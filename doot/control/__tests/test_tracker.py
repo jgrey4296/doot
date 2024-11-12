@@ -251,17 +251,20 @@ class TestTrackerWalk:
         tail = []
 
         head += [
-            doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep.1", "basic::dep.2"]}),
-            doot.structs.TaskSpec.build({"name":"basic::beta", "depends_on":["basic::dep.3"]}),
-            doot.structs.TaskSpec.build({"name":"basic::solo", "depends_on":[]}),
+            {"name":"basic::alpha", "depends_on":["basic::dep.1", "basic::dep.2"]},
+            {"name":"basic::beta", "depends_on":["basic::dep.3"]},
+            {"name":"basic::solo", "depends_on":[]},
         ]
         tail += [
-            doot.structs.TaskSpec.build({"name":"basic::dep.1"}),
-            doot.structs.TaskSpec.build({"name":"basic::dep.2"}),
-            doot.structs.TaskSpec.build({"name":"basic::dep.3"}),
-            doot.structs.TaskSpec.build({"name":"basic::dep.4", "required_for":["basic::dep.2"]}),
+            {"name":"basic::dep.1"},
+            # {"name":"basic::dep.2"},
+            {"name":"basic::dep.2", "depends_on" : ["basic::dep.4"]},
+            {"name":"basic::dep.3"},
+            # {"name":"basic::dep.4", "required_for":["basic::dep.2"]},
+            {"name":"basic::dep.4", "required_for":[]},
         ]
-        return (head, tail)
+        return ([doot.structs.TaskSpec.build(x) for x in head],
+                [doot.structs.TaskSpec.build(y) for y in tail])
 
 
     def test_basic(self):

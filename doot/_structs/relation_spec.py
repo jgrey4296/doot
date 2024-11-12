@@ -161,12 +161,6 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 # target is a succcessor
                 return (obj, target or self.target)
 
-    def to_edge(self, other:TaskName|TaskArtifact, *, instance:None|TaskName=None):
-        raise DeprecationWarning("Use to_ordered_pair")
-
-    def match_simple_edge(self, edges:list[TaskName], *, exclude:None|list=None) -> bool:
-        raise DeprecationWarning("Use Injector_m.match_edge")
-
     def instantiate(self, target:TaskName|TaskArtifact):
         """
           Duplicate this relation, but with a suitable concrete task or artifact
