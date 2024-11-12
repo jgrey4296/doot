@@ -216,7 +216,6 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
             case _:
                 task.state.clear()
 
-
     def next_for(self, target:None|str|TaskName=None) -> None|Task_i|TaskArtifact:
         """ ask for the next task that can be performed
 
@@ -244,7 +243,6 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
                     track_l.debug("Tracker Head: %s (Task). State: %s, Priority: %s", focus, self.get_status(focus), self.tasks[focus].priority)
                 case TaskArtifact():
                     track_l.debug("Tracker Head: %s (Artifact). State: %s, Priority: %s", focus, self.get_status(focus), self._artifact_status[focus])
-
 
             match status:
                 case TaskStatus_e.DEAD:
@@ -274,7 +272,7 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
                     fail_l.warning("Task Halted, Propagating from: %s to: %s", focus, list(self.network.succ[focus]))
                     for succ in self.network.succ[focus]:
                         if self.network.edges[focus, succ].get("cleanup", False):
-                            pass
+                            continue
                         self.set_status(succ, TaskStatus_e.HALTED)
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
                 case TaskStatus_e.SKIPPED:
