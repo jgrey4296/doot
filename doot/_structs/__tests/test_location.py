@@ -15,6 +15,7 @@ import pytest
 import doot
 doot._test_setup()
 
+from doot.structs import DKey
 from doot._structs.location import Location
 from doot.enums import LocationMeta_f
 
@@ -22,7 +23,7 @@ logging = logmod.root
 
 class TestLocation:
 
-    def test_initial(self):
+    def test_sanity(self):
         obj = Location.build("test/path", key="test")
         assert(obj is not None)
 
@@ -41,6 +42,7 @@ class TestLocation:
 
     def test_key(self):
         obj = Location.build({"key":"test", "loc":"test/blah"})
+        assert(isinstance(obj.key, DKey))
         assert(obj.key == "test")
 
     def test_target(self):
@@ -55,19 +57,19 @@ class TestLocation:
         obj = Location.build({"key":"test", "loc":"test/blah", "protected":False})
         assert(LocationMeta_f.protected not in obj)
 
-    def test_meta_abstract_solo(self):
+    def test_meta_in_path(self):
         obj = Location.build({"key":"test", "loc":"test/?.txt"})
         assert(LocationMeta_f.abstract in obj)
         assert(LocationMeta_f.glob not in obj)
         assert(obj.abstracts == (False, True, False))
 
-    def test_meta_glob(self):
+    def test_meta_in_path_glob(self):
         obj = Location.build({"key":"test", "loc":"test/*/blah.txt"})
         assert(LocationMeta_f.abstract in obj)
         assert(LocationMeta_f.glob in obj)
         assert(obj.abstracts == (True, False, False))
 
-    def test_meta_expansion(self):
+    def test_meta_in_path_expansion(self):
         obj = Location.build({"key":"test", "loc":"test/{fname}.txt"})
         assert(LocationMeta_f.abstract in obj)
         assert(LocationMeta_f.glob not in obj)
@@ -75,3 +77,14 @@ class TestLocation:
         assert(bool(obj.keys()))
         assert("fname" in obj.keys())
         assert(obj.abstracts == (False, True, False))
+
+
+    def test_normOnLoad(self):
+        obj = Location.build({"key":"test", "loc":"test/blah.txt", "normOnLoad": True})
+        assert(obj.path.is_absolute())
+        assert(obj.path.is_relative_to(pl.Path.cwd()))
+
+    def test_userpath_normOnLoad(self):
+        obj = Location.build({"key":"test", "loc":"~/test/blah.txt", "normOnLoad": True})
+        assert(obj.path.is_absolute())
+        assert(obj.path.is_relative_to(pl.Path.home()))

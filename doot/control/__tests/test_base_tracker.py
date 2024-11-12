@@ -571,9 +571,11 @@ class TestTrackerNetworkBuild:
         assert(req_artifact in obj.network.pred[dep_artifact])
         assert(req_artifact in obj.network.succ[prod])
 
+
+class TestTrackerTransformerBuild:
     def test_build_transformer_from_artifact(self):
         obj                             = BaseTracker()
-        transformer                     = doot.structs.TaskSpec.build({"name":"basic::task", "flags":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
+        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "flags":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
         concrete_product                = doot.structs.TaskArtifact.build(pl.Path("example.blah"))
         concrete_source                 = doot.structs.TaskArtifact.build(pl.Path("example.txt"))
         obj.artifacts[concrete_product] = []

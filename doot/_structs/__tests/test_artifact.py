@@ -67,29 +67,29 @@ class TestDefiniteArtifact:
 
     def test_definite(self):
         basic = TaskArtifact.build(pl.Path("a/b/c"))
-        assert(basic.is_concrete)
-        assert(basic.abstracts == (False, False, False))
+        assert(basic.is_concrete())
+        assert(not bool(basic.abstracts))
 
 class TestIndefiniteArtifact:
 
     def test_indefinite_stem(self):
         basic = TaskArtifact.build(pl.Path("a/b/*.py"))
-        assert(not basic.is_concrete)
+        assert(not basic.is_concrete())
         assert(basic.abstracts == (False, True, False))
 
     def test_indefinite_suffix(self):
         basic = TaskArtifact.build(pl.Path("a/b/c.*"))
-        assert(not basic.is_concrete)
+        assert(not basic.is_concrete())
         assert(basic.abstracts == (False, False, True))
 
     def test_indefinite_path(self):
         basic = TaskArtifact.build(pl.Path("a/*/c.py"))
-        assert(not basic.is_concrete)
+        assert(not basic.is_concrete())
         assert(basic.abstracts == (True, False, False))
 
     def test_recursive_indefinite(self):
         basic = TaskArtifact.build(pl.Path("a/**/c.py"))
-        assert(not basic.is_concrete)
+        assert(not basic.is_concrete())
         assert(basic.abstracts == (True, False, False))
 
     def test_indef_suffix_contains(self):
@@ -158,13 +158,20 @@ class TestArtifactMatching:
         obj = TaskArtifact.build({"key":"test", "loc":"test/blah.txt"})
         target = pl.Path("test/blah.txt")
         result = obj.match_with(target)
-        assert(result is None)
+        assert(result is not None)
+        assert(result is obj)
+        assert(result == "test/blah.txt")
+        assert(result == pl.Path("test/blah.txt"))
 
     def test_match_no_stem_wildcard(self):
         obj = TaskArtifact.build({"key":"test", "loc":"*/blah.txt"})
         target = pl.Path("test/blah.txt")
-        result = obj.match_with(target)
-        assert(result is None)
+        match obj.match_with(target):
+            case None:
+                assert(False)
+            case TaskArtifact() as res:
+                assert(res == "test/blah.txt")
+
 
     def test_matching_stem(self):
         obj = TaskArtifact.build({"key":"test", "loc":"test/?.txt"})
