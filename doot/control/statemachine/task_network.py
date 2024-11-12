@@ -45,7 +45,8 @@ from doot.enums import (EdgeType_e, LocationMeta_f, QueueMeta_e,
 from doot.structs import (ActionSpec, CodeReference, TaskArtifact, TaskName,
                           TaskSpec)
 from doot.task.base_task import DootTask
-
+from doot.utils.injection import Injector_m
+from doot.utils.matching import TaskMatcher_m
 # ##-- end 1st party imports
 
 ##-- logging
@@ -70,9 +71,8 @@ AnySpec                        : TypeAlias                   = TaskSpec
 ActionElem                     : TypeAlias                   = ActionSpec|RelationSpec
 ActionGroup                    : TypeAlias                   = list[ActionElem]
 
-
-class TaskNetwork:
-    """ The network of concrete tasks and their dependencies """
+class TaskNetwork(TaskMatcher_m):
+    """ The _graph of concrete tasks and their dependencies """
 
     def __init__(self, registry:TaskRegistry):
         self._registry                                                     = registry

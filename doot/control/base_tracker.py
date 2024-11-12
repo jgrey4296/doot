@@ -53,6 +53,7 @@ from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
 from doot.utils.injection import Injector_m
+from doot.utils.matching import TaskMatcher_m
 # ##-- end 1st party imports
 
 ##-- logging
@@ -80,7 +81,7 @@ AnySpec                        : TypeAlias                   = TaskSpec
 ActionElem                     : TypeAlias                   = ActionSpec|RelationSpec
 ActionGroup                    : TypeAlias                   = list[ActionElem]
 
-class _TrackerStore(Injector_m):
+class _TrackerStore(Injector_m, TaskMatcher_m):
     """ Stores and manipulates specs, tasks, and artifacts """
 
     def __init__(self):
@@ -404,7 +405,7 @@ class _TrackerStore(Injector_m):
 
         return True
 
-class _TrackerNetwork(Injector_m):
+class _TrackerNetwork(Injector_m, TaskMatcher_m):
     """ the network of concrete tasks and their dependencies """
 
     def __init__(self):
