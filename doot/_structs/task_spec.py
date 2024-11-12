@@ -185,6 +185,7 @@ class _TransformerUtils_m:
             case (TaskArtifact() as pre, TaskArtifact() as post):
                 pass
 
+        assert(pre.is_concrete() or post.is_concrete())
         instance = self.instantiate_onto(None)
         match self.transformer_of():
             case None:
@@ -193,10 +194,10 @@ class _TransformerUtils_m:
                 # exact transform
                 # replace x with pre in depends_on
                 instance.depends_on.remove(x)
-                instance.depends_on.append(x.instantiate(pre))
+                instance.depends_on.append(x.instantiate(target=pre))
                 # replace y with post in required_for
                 instance.required_for.remove(y)
-                instance.required_for.append(y.instantiate(post))
+                instance.required_for.append(y.instantiate(target=post))
             case _:
                 return None
 
@@ -226,9 +227,11 @@ class _TransformerUtils_m:
         for x in self.depends_on:
             match x:
                 case RelationSpec(target=TaskArtifact() as target) if LocationMeta_f.glob in target:
+                    # Globs can be in a transformer, but don't make the transformer
                     pass
-                case RelationSpec(target=TaskArtifact() as target) if LocationMeta_f.abstract in target:
+                case RelationSpec(target=TaskArtifact() as target) if not target.is_concrete():
                     if pre is not None:
+                        # If theres more than one applicable, its not a tranformer
                         self._transform = False
                         return None
                     pre = x
@@ -236,10 +239,10 @@ class _TransformerUtils_m:
                     pass
 
         for y in self.required_for:
-            match x:
+            match y:
                 case RelationSpec(target=TaskArtifact() as target) if LocationMeta_f.glob in target:
                     pass
-                case RelationSpec(target=TaskArtifact() as target) if LocationMeta_f.abstract in target:
+                case RelationSpec(target=TaskArtifact() as target) if not target.is_concrete():
                     if post is not None:
                         self._transform = False
                         return None
@@ -277,19 +280,6 @@ class _SpecUtils_m:
         """ Create actual task instance """
         task_ctor = self.ctor.try_import(ensure=ensure)
         return task_ctor(self)
-
-    def match_with_constraints(self, control:TaskSpec, *, relation:None|RelationSpec=None) -> bool:
-        """ Test {self} against a {control}.
-          relation provides the constraining keys that {self} must have in common with {control}.
-
-          if not given a relation, then just check self and control dont conflict.
-          """
-        raise DeprecationWarning("use doot.utils.injection.Injector_m")
-    def build_injection(self, context:RelationSpec) -> None|dict:
-        """ Builds a dict of the data a matching spec will need, according
-          to a relations inject.
-        """
-        raise DeprecationWarning("Use doot.utils.injection.Injector_m")
 
     def apply_cli_args(self, *, override=None) -> TaskSpec:
         logging.debug("Applying CLI Args to: %s", self.name)

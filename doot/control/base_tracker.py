@@ -555,7 +555,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
         return to_expand
 
 
-    def _expand_generated_tasks(self, spec:TaskSpe) -> list[TaskName]:
+    def _expand_generated_tasks(self, spec:TaskSpec) -> list[TaskName]:
         """
           instantiate and connect a job's head task
           TODO these could be shifted into the task/job class
@@ -579,7 +579,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
 
 
     def _expand_artifact(self, artifact:TaskArtifact) -> set[ConcreteId]:
-        """ expand artifacts, instantaiting related tasks/transformers,
+        """ expand artifacts, instantiating related tasks/transformers,
           and connecting the task to its abstract/concrete related artifacts
           """
         assert(artifact in self.artifacts)
@@ -597,7 +597,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
 
         to_expand.update(self._match_artifact_to_transformers(artifact))
 
-        match artifact.is_concrete:
+        match artifact.is_concrete():
             case True:
                 logging.debug("-- Connecting concrete artifact to parent abstracts")
                 for abstract in [x for x in self._abstract_artifacts if artifact in x and LocationMeta_f.glob in x]:
@@ -623,11 +623,11 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
         succ  = self.network.succ[name]
         return tomlguard.TomlGuard({
             "pred" : {"tasks": [x for x in preds if isinstance(x, TaskName)],
-                      "artifacts": {"abstract": [x for x in preds if isinstance(x, TaskArtifact) and not x.is_concrete],
-                                    "concrete": [x for x in preds if isinstance(x, TaskArtifact) and x.is_concrete]}},
+                      "artifacts": {"abstract": [x for x in preds if isinstance(x, TaskArtifact) and not x.is_concrete()],
+                                    "concrete": [x for x in preds if isinstance(x, TaskArtifact) and x.is_concrete()]}},
             "succ" : {"tasks": [x for x in succ  if isinstance(x, TaskName) and x is not self._root_node],
-                      "artifacts": {"abstract": [x for x in succ if isinstance(x, TaskArtifact) and not x.is_concrete],
-                                    "concrete": [x for x in succ if isinstance(x, TaskArtifact) and x.is_concrete]}},
+                      "artifacts": {"abstract": [x for x in succ if isinstance(x, TaskArtifact) and not x.is_concrete()],
+                                    "concrete": [x for x in succ if isinstance(x, TaskArtifact) and x.is_concrete()]}},
             "root" : self._root_node in succ,
             })
 
@@ -676,11 +676,11 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
                 self.network.add_edge(left, right, type=EdgeType_e.TASK_CROSS, **kwargs)
             case TaskArtifact(), TaskName():
                 self.network.add_edge(left, right, type=EdgeType_e.ARTIFACT_CROSS, **kwargs)
-            case TaskArtifact(), TaskArtifact() if left.is_concrete and right.is_concrete:
+            case TaskArtifact(), TaskArtifact() if left.is_concrete() and right.is_concrete():
                 raise doot.errors.DootTaskTrackingError("Tried to connect two concrete artifacts", left, right)
-            case TaskArtifact(), TaskArtifact() if right.is_concrete:
+            case TaskArtifact(), TaskArtifact() if right.is_concrete():
                 self.network.add_edge(left, right, type=EdgeType_e.ARTIFACT_UP, **kwargs)
-            case TaskArtifact(), TaskArtifact() if not right.is_concrete:
+            case TaskArtifact(), TaskArtifact() if not right.is_concrete():
                 self.network.add_edge(left, right, type=EdgeType_e.ARTIFACT_DOWN, **kwargs)
 
     def validate_network(self, *, strict:bool=True) -> bool:
