@@ -69,7 +69,7 @@ class TestCompTracker:
         spec = doot.structs.TaskSpec.build({"name":"basic::Task"})
         obj.register_spec(spec)
         t_name = obj.queue_entry(spec.name)
-        assert(obj.get_status(t_name) is TaskStatus_e.default)
+        assert(obj.get_status(t_name) is TaskStatus_e.INIT)
         obj.build_network()
         match obj.next_for():
             case Task_i():
@@ -84,7 +84,7 @@ class TestCompTracker:
         dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
         t_name = obj.queue_entry(spec.name, from_user=True)
-        assert(obj.get_status(t_name) is TaskStatus_e.default)
+        assert(obj.get_status(t_name) is TaskStatus_e.INIT)
         obj.build_network()
         match obj.next_for():
             case Task_i() as result:
@@ -100,7 +100,7 @@ class TestCompTracker:
         dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
         t_name = obj.queue_entry(spec.name, from_user=True)
-        assert(obj.get_status(t_name) is TaskStatus_e.default)
+        assert(obj.get_status(t_name) is TaskStatus_e.INIT)
         obj.build_network()
         dep_inst = obj.next_for()
         assert(dep.name < dep_inst.name)
@@ -120,7 +120,7 @@ class TestCompTracker:
         obj.register_spec(spec, dep)
         t_name   = obj.queue_entry(spec.name)
         dep_inst = obj.queue_entry(dep.name)
-        assert(obj.get_status(t_name) is TaskStatus_e.default)
+        assert(obj.get_status(t_name) is TaskStatus_e.INIT)
         obj.build_network()
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.SUCCESS)
@@ -139,7 +139,7 @@ class TestCompTracker:
         obj.register_spec(spec, dep)
         t_name   = obj.queue_entry(spec.name, from_user=True)
         dep_inst = obj.queue_entry(dep.name)
-        assert(obj.get_status(t_name) is TaskStatus_e.default)
+        assert(obj.get_status(t_name) is TaskStatus_e.INIT)
         obj.build_network()
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.HALTED)
@@ -158,7 +158,7 @@ class TestCompTracker:
         obj.register_spec(spec, dep)
         t_name   = obj.queue_entry(spec.name, from_user=True)
         dep_inst = obj.queue_entry(dep.name)
-        assert(obj.get_status(t_name) is TaskStatus_e.default)
+        assert(obj.get_status(t_name) is TaskStatus_e.INIT)
         obj.build_network()
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.FAILED)

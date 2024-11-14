@@ -47,9 +47,9 @@ from doot._abstract.task import Task_i
 from doot._structs.action_spec import ActionSpec
 from doot._structs.artifact import TaskArtifact
 from doot._structs.relation_spec import RelationSpec
-from doot._structs.task_name import TaskName
+from doot._structs.task_name import TaskName, TaskMeta_f
 from doot.structs import DKey
-from doot.enums import (LocationMeta_f, RelationMeta_e, TaskMeta_f, QueueMeta_e)
+from doot.enums import (LocationMeta_f, RelationMeta_e, QueueMeta_e)
 
 # ##-- end 1st party imports
 

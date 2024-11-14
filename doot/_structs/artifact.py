@@ -43,6 +43,8 @@ import doot
 import doot.errors
 from doot._structs.location import Location, GLOB, SOLO, REC_GLOB
 from doot._structs.dkey import DKey
+from doot.enums import ArtifactStatus_e
+
 
 class TaskArtifact(Location, arbitrary_types_allowed=True):
     """
@@ -52,7 +54,6 @@ class TaskArtifact(Location, arbitrary_types_allowed=True):
       depends_on=['file:>/a/file.txt', 'file:>*.txt', 'file:>?.txt']
       and can be a requirement for concrete or *solo* abstract artifacts:
       required_for=['file:>a/file.txt', 'file:>?.txt']
-
 
     """
 
@@ -87,7 +88,6 @@ class TaskArtifact(Location, arbitrary_types_allowed=True):
         """ whether the artifact itself is stale """
         raise NotImplementedError('TODO')
 
-
     def match_with(self, other:pl.Path|Location) -> None|TaskArtifact:
         """ An abstract location, given a concrete other location,
           will apply parts of it onto itself, where it has wildcards
@@ -121,7 +121,6 @@ class TaskArtifact(Location, arbitrary_types_allowed=True):
         result = []
         rest_of = False
         abstracts = self.abstracts
-
 
         if abstracts.path:
             # loop over parts of the paths, and get the most specific

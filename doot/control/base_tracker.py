@@ -48,7 +48,7 @@ import doot
 import doot.errors
 from doot._abstract import Job_i, Task_i, TaskRunner_i, TaskTracker_i
 from doot._structs.relation_spec import RelationSpec
-from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e, LocationMeta_f, RelationMeta_e, EdgeType_e
+from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e, LocationMeta_f, RelationMeta_e, EdgeType_e, ArtifactStatus_e
 from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
@@ -97,7 +97,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
         self.tasks                : dict[ConcreteId, Task_i]                      = {}
         # Artifact -> list[TaskName] of related tasks
         self.artifacts            : dict[TaskArtifact, list[AbstractId]]          = defaultdict(set)
-        self._artifact_status     : dict[TaskArtifact, TaskStatus_e]              = defaultdict(lambda: TaskStatus_e.ARTIFACT)
+        self._artifact_status     : dict[TaskArtifact, ArtifactStatus_e]              = defaultdict(lambda: ArtifactStatus_e.DECLARED)
         # Artifact sets
         self._abstract_artifacts  : set[TaskArtifact]                             = set()
         self._concrete_artifacts  : set[TaskArtifact]                             = set()
@@ -368,7 +368,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
                 case _: # Ignore action specs
                     pass
 
-    def get_status(self, task:ConcreteId) -> TaskStatus_e:
+    def get_status(self, task:ConcreteId) -> TaskStatus_e|ArtifactStatus_e:
         """ Get the status of a task or artifact """
         match task:
             case TaskArtifact():
@@ -382,7 +382,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
             case _:
                 return TaskStatus_e.NAMED
 
-    def set_status(self, task:ConcreteId|Task_i, status:TaskStatus_e) -> bool:
+    def set_status(self, task:ConcreteId|Task_i, status:TaskStatus_e|ArtifactStatus_e) -> bool:
         """ update the state of a task in the dependency graph
           Returns True on status update,
           False on no task or artifact to update.
@@ -712,7 +712,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
         """ Get all predecessors of a node that don't evaluate as complete """
         assert(focus in self.network.nodes)
         incomplete = []
-        for x in [x for x in self.network.pred[focus] if self.get_status(x) not in TaskStatus_e.success_set]:
+        for x in [x for x in self.network.pred[focus] if (status:=self.get_status(x)) not in TaskStatus_e.success_set and status != ArtifactStatus_e.EXISTS]:
             match x:
                 case TaskName() if 'cleanup' in self.network.edges[x, focus]:
                     pass
@@ -829,7 +829,7 @@ class _TrackerQueue_boltons:
 
         return focus
 
-    def queue_entry(self, name:str|AnyId|ConcreteSpec|Task_i, *, from_user:bool=False, status:TaskStatus_e=None) -> None|ConcreteId:
+    def queue_entry(self, name:str|AnyId|ConcreteSpec|Task_i, *, from_user:bool=False, status:TaskStatus_e|ArtifactStatus_e=None) -> None|ConcreteId:
         """
           Queue a task by name|spec|Task_i.
           registers and instantiates the relevant spec, inserts it into the network
@@ -908,7 +908,7 @@ class _TrackerQueue_boltons:
         self._queue.add(final_name, priority=target_priority)
         # Apply the override status if necessary:
         match status:
-            case TaskStatus_e():
+            case TaskStatus_e() | ArtifactStatus_e():
                 self.set_status(final_name, status)
             case None:
                 status = self.get_status(final_name)

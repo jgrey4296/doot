@@ -83,12 +83,6 @@ class TaskTrackMachine(StateMachine):
     halt     = _.HALTED.from_(_.READY, _.RUNNING, _.WAIT, _.INIT, _.DECLARED, _.DEFINED)
     succeed  = _.RUNNING.to(_.SUCCESS)
 
-    # This ia a task, so artifact states are invalid
-    invalid  = (
-        _.NAMED.to(_.ARTIFACT, _.STALE, _.EXISTS)
-        | _.DISABLED.from_(_.ARTIFACT, _.STALE, _.EXISTS)
-        )
-
     complete = (
         _.TEARDOWN.from_(_.SUCCESS, _.FAILED, _.HALTED, _.SKIPPED, _.DISABLED)
         | _.TEARDOWN.to(_.DEAD)

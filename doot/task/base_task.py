@@ -111,7 +111,7 @@ class DootTask(_TaskProperties_m, Task_i):
     action_ctor                                   = DootBaseAction
     _default_flags                                = TaskMeta_f.TASK
     _help                                         = ["The Simplest Task"]
-    COMPLETE_STATES  : Final[set[TaskStatus_e]]   = {TaskStatus_e.SUCCESS, TaskStatus_e.EXISTS}
+    COMPLETE_STATES  : Final[set[TaskStatus_e]]   = {TaskStatus_e.SUCCESS}
     INITIAL_STATE    : Final[TaskStatus_e]        = TaskStatus_e.INIT
 
     def __init__(self, spec, *, job=None, action_ctor=None, **kwargs):

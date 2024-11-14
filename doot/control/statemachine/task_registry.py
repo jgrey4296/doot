@@ -40,7 +40,7 @@ import doot
 import doot.errors
 from doot._abstract import (Job_i, Task_i, TaskRunner_i, TaskTracker_i)
 from doot._structs.relation_spec import RelationSpec
-from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e, LocationMeta_f, RelationMeta_e, EdgeType_e
+from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e, LocationMeta_f, RelationMeta_e, EdgeType_e, ArtifactStatus_e
 from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
@@ -78,7 +78,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
         # Invariant for tasks: every key in tasks has a matching key in specs.
         self.tasks                : dict[Concrete[TaskName], Task_i]                                   = {}
         self.artifacts            : dict[TaskArtifact, set[Abstract[TaskName]]]                        = defaultdict(set)
-        self._artifact_status     : dict[TaskArtifact, TaskStatus_e]                                   = defaultdict(lambda: TaskStatus_e.ARTIFACT)
+        self._artifact_status     : dict[TaskArtifact, ArtifactStatus_e]                                   = defaultdict(lambda: ArtifactStatus_e.DECLARED)
         # Artifact sets
         self._abstract_artifacts  : set[Abstract[TaskArtifact]]                                        = set()
         self._concrete_artifacts  : set[Concrete[TaskArtifact]]                                        = set()
@@ -112,7 +112,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
             self._register_transformer(spec)
             self._register_blocking_relations(spec)
 
-    def get_status(self, task:Concrete[TaskName|TaskArtifact]) -> TaskStatus_e:
+    def get_status(self, task:Concrete[TaskName|TaskArtifact]) -> TaskStatus_e|ArtifactStatus_e:
         """ Get the status of a task or artifact """
         match task:
             case TaskArtifact():
@@ -126,7 +126,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
             case _:
                 return TaskStatus_e.NAMED
 
-    def set_status(self, task:Concrete[TaskName|TaskArtifact]|Task_i, status:TaskStatus_e) -> bool:
+    def set_status(self, task:Concrete[TaskName|TaskArtifact]|Task_i, status:TaskStatus_e|ArtifactStatus_e) -> bool:
         """ update the state of a task in the dependency graph
           Returns True on status update,
           False on no task or artifact to update.
@@ -137,7 +137,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
             #     return False
             case Task_i(), TaskStatus_e() if task.name in self.tasks:
                 self.tasks[task.name].status = status
-            case TaskArtifact(), TaskStatus_e():
+            case TaskArtifact(), ArtifactStatus_e():
                 self._artifact_status[task] = status
             case TaskName(), TaskStatus_e() if task in self.tasks:
                 self.tasks[task].status = status

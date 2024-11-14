@@ -40,7 +40,7 @@ import doot
 import doot.errors
 from doot._abstract import Job_i, Task_i, TaskRunner_i, TaskTracker_i
 from doot._structs.relation_spec import RelationSpec
-from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e, LocationMeta_f, RelationMeta_e, EdgeType_e
+from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e, LocationMeta_f, RelationMeta_e, EdgeType_e, ArtifactStatus_e
 from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
@@ -155,7 +155,7 @@ class ComponentTracker(TaskTracker_i):
                     self._queue.active_set.remove(focus)
                     self._registry.set_status(focus, TaskStatus_e.DEAD)
                     self.propagate_state_and_cleanup(focus)
-                case TaskStatus_e.SUCCESS | TaskStatus_e.EXISTS:
+                case TaskStatus_e.SUCCESS | ArtifactStatus_e.EXISTS:
                     track_l.debug("Task Succeeded: %s", focus)
                     self._queue.execution_trace.append(focus)
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
@@ -198,19 +198,19 @@ class ComponentTracker(TaskTracker_i):
                 case TaskStatus_e.INIT:
                     track_l.debug("Task Object Initialising: %s", focus)
                     self.queue_entry(focus, status=TaskStatus_e.WAIT)
-                case TaskStatus_e.STALE:
+                case ArtifactStatus_e.STALE:
                     track_l.info("Artifact is Stale: %s", focus)
                     for pred in self._network.pred[focus]:
                         self.queue_entry(pred)
-                case TaskStatus_e.ARTIFACT if bool(focus):
-                    self.queue_entry(focus, status=TaskStatus_e.EXISTS)
-                case TaskStatus_e.ARTIFACT: # Add dependencies of an artifact to the stack
+                case ArtifactStatus_e.DECLARED if bool(focus):
+                    self.queue_entry(focus, status=ArtifactStatus_e.EXISTS)
+                case ArtifactStatus_e.DECLARED: # Add dependencies of an artifact to the stack
                     match self._network.incomplete_dependencies(focus):
                         case []:
                             assert(not bool(focus))
                             path = focus.expand()
                             fail_l.warning("An Artifact has no incomplete dependencies, yet doesn't exist: %s (expanded: %s)", focus, path)
-                            self.queue_entry(focus, status=TaskStatus_e.HALTED)
+                            self.queue_entry(focus)
                             # Returns the artifact, the runner can try to create it, then override the halt
                             result = focus
                         case [*xs]:

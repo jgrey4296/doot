@@ -42,7 +42,7 @@ from jgdv.structs.name.structured_name import (StructuredName, TailEntry, aware_
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.enums import TaskMeta_f
+from doot.mixins.enums import FlagsBuilder_m
 
 # ##-- end 1st party imports
 
@@ -52,6 +52,33 @@ logging = logmod.getLogger(__name__)
 
 CLEANUP_MARKER : Final[str] = "$cleanup$"
 
+class TaskMeta_f(FlagsBuilder_m, enum.Flag):
+    """
+      Flags describing properties of a task,
+      stored in the Task_i instance itself.
+    """
+
+    TASK         = enum.auto()
+    JOB          = enum.auto()
+    TRANSFORMER  = enum.auto()
+
+    INTERNAL     = enum.auto()
+    JOB_HEAD     = enum.auto()
+    CONCRETE     = enum.auto()
+    DISABLED     = enum.auto()
+
+    EPHEMERAL    = enum.auto()
+    IDEMPOTENT   = enum.auto()
+    REQ_TEARDOWN = enum.auto()
+    REQ_SETUP    = enum.auto()
+    IS_TEARDOWN  = enum.auto()
+    IS_SETUP     = enum.auto()
+    THREAD_SAFE  = enum.auto()
+    STATEFUL     = enum.auto()
+    STATELESS    = enum.auto()
+    VERSIONED    = enum.auto()
+
+    default      = TASK
 class _TaskNameOps_m:
     """ Operations Mixin for manipulating TaskNames """
 

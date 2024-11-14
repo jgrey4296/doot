@@ -148,7 +148,7 @@ class TestRegistry:
         instance = obj._instantiate_spec(name)
         result   = obj._make_task(instance)
         status   = obj.get_status(result)
-        assert(status is TaskStatus_e.default)
+        assert(status is TaskStatus_e.INIT)
 
     def test_task_status_missing_task(self):
         obj = TaskRegistry()
@@ -162,7 +162,7 @@ class TestRegistry:
         obj.register_spec(spec)
         instance = obj._instantiate_spec(name)
         result = obj._make_task(instance)
-        assert(obj.get_status(result) is TaskStatus_e.default)
+        assert(obj.get_status(result) is TaskStatus_e.INIT)
         assert(obj.set_status(result, TaskStatus_e.SUCCESS) is True)
         assert(obj.get_status(result) is TaskStatus_e.SUCCESS)
 

@@ -50,10 +50,6 @@ class TaskStatus_e(enum.Enum):
     DECLARED        = enum.auto() # Abstract Spec Exists
 
     DEFINED         = enum.auto() # Spec has been instantiated into the dependency network
-    ARTIFACT        = enum.auto() # Default artifact status.
-
-    STALE           = enum.auto() # Artifact exists, but is too old.
-    EXISTS          = enum.auto() # The path the artifact expands to exists.
 
     # Task Object Exists
     DISABLED        = enum.auto() # Artificial state for if a spec or task has been disabled.
@@ -68,30 +64,29 @@ class TaskStatus_e(enum.Enum):
     TEARDOWN        = enum.auto() # Task is ready to be killed
     DEAD            = enum.auto() # Task is done.
 
-    # Base Task uses the default to set its state on __init__
-
-    default         = INIT
+    default         = NAMED
 
     @classmethod
     @property
     def pre_set(cls):
-        return {cls.NAMED, cls.DECLARED, cls.DEFINED, cls.ARTIFACT}
+        return {cls.NAMED, cls.DECLARED, cls.DEFINED}
 
     @classmethod
     @property
     def success_set(cls):
-        return {cls.SUCCESS, cls.EXISTS, cls.TEARDOWN, cls.DEAD}
+        return {cls.SUCCESS, cls.TEARDOWN, cls.DEAD}
 
     @classmethod
     @property
     def fail_set(cls):
         return {cls.SKIPPED, cls.HALTED, cls.FAILED}
 
-    @classmethod
-    @property
-    def artifact_set(cls):
-        return {cls.ARTIFACT, cls.EXISTS, cls.HALTED, cls.FAILED}
 
+class ArtifactStatus_e(enum.Enum):
+    """ States an artifact can be in """
+    DECLARED = enum.auto() # doesn't exist or not checked
+    STALE    = enum.auto() # Exists, but is old
+    EXISTS   = enum.auto() # Exists
 
 class ActionResponse_e(EnumBuilder_m, enum.Enum):
     """
@@ -106,6 +101,7 @@ class ActionResponse_e(EnumBuilder_m, enum.Enum):
 
     # Aliases
     SUCCESS  = SUCCEED
+
 @runtime_checkable
 class Action_p(Protocol):
     """

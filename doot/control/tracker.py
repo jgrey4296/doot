@@ -36,7 +36,7 @@ import doot
 import doot.errors
 from doot._abstract import (Job_i, Task_i, TaskRunner_i, TaskTracker_i)
 from doot.control.base_tracker import BaseTracker
-from doot.enums import EdgeType_e, ExecutionPolicy_e, TaskStatus_e, TaskMeta_f
+from doot.enums import EdgeType_e, ExecutionPolicy_e, TaskStatus_e, TaskMeta_f, ArtifactStatus_e
 from doot.structs import TaskArtifact, TaskName, TaskSpec
 from doot.task.base_task import DootTask
 
@@ -254,7 +254,7 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
                     self.active_set.remove(focus)
                     self.set_status(focus, TaskStatus_e.DEAD)
                     self.propagate_state_and_cleanup(focus)
-                case TaskStatus_e.SUCCESS | TaskStatus_e.EXISTS:
+                case TaskStatus_e.SUCCESS | ArtifactStatus_e.EXISTS:
                     track_l.debug("Task Succeeded: %s", focus)
                     self.execution_trace.append(focus)
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
@@ -298,19 +298,19 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
                     track_l.debug("Task Object Initialising: %s", focus)
                     self.queue_entry(focus, status=TaskStatus_e.WAIT)
 
-                case TaskStatus_e.STALE:
+                case ArtifactStatus_e.STALE:
                     track_l.info("Artifact is Stale: %s", focus)
                     for pred in self.network.pred[focus]:
                         self.queue_entry(pred)
-                case TaskStatus_e.ARTIFACT if bool(focus):
+                case ArtifactStatus_e.DECLARED if bool(focus):
                     self.queue_entry(focus, status=TaskStatus_e.EXISTS)
-                case TaskStatus_e.ARTIFACT: # Add dependencies of an artifact to the stack
+                case ArtifactStatus_e.DECLARED: # Add dependencies of an artifact to the stack
                     match self.incomplete_dependencies(focus):
                         case []:
                             assert(not bool(focus))
                             path = focus.expand()
                             fail_l.warning("An Artifact has no incomplete dependencies, yet doesn't exist: %s (expanded: %s)", focus, path)
-                            self.queue_entry(focus, status=TaskStatus_e.HALTED)
+                            self.queue_entry(focus)
                             # Returns the artifact, the runner can try to create it, then override the halt
                             result = focus
                         case [*xs]:

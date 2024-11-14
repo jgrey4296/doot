@@ -157,7 +157,7 @@ class TestTrackerStore:
         obj.network.add_node(instance)
         result   = obj._make_task(instance)
         status   = obj.get_status(result)
-        assert(status is TaskStatus_e.default)
+        assert(status is TaskStatus_e.INIT)
 
     def test_task_status_missing_task(self):
         obj = BaseTracker()
@@ -173,7 +173,7 @@ class TestTrackerStore:
         # Mock entry in network:
         obj.network.add_node(instance)
         result = obj._make_task(instance)
-        assert(obj.get_status(result) is TaskStatus_e.default)
+        assert(obj.get_status(result) is TaskStatus_e.INIT)
         assert(obj.set_status(result, TaskStatus_e.SUCCESS) is True)
         assert(obj.get_status(result) is TaskStatus_e.SUCCESS)
 
