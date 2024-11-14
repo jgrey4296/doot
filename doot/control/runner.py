@@ -34,7 +34,7 @@ import networkx as nx
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import (Action_p, FailPolicy_p, Job_i, Reporter_p, Task_i,
+from doot._abstract import (Action_p, Job_i, Reporter_p, Task_i,
                             TaskRunner_i, TaskTracker_i)
 from doot._structs.relation_spec import RelationSpec
 from doot.control.base_runner import BaseRunner
@@ -270,4 +270,3 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 return False
             case _, _:
                 return True
-

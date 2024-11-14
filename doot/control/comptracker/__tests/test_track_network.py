@@ -35,8 +35,8 @@ doot._test_setup()
 import doot.errors
 import doot.structs
 from doot._abstract import Task_i
-from doot.control.comptracker.task_registry import TaskRegistry
-from doot.control.comptracker.task_network import TaskNetwork
+from doot.control.comptracker.track_registry import TrackRegistry
+from doot.control.comptracker.track_network import TrackNetwork
 from doot.enums import TaskStatus_e
 from doot.utils import mock_gen
 from doot.enums import TaskMeta_f
@@ -47,13 +47,13 @@ logging = logmod.root
 
 @pytest.fixture(scope="function")
 def network():
-    registry = TaskRegistry()
-    return TaskNetwork(registry)
+    registry = TrackRegistry()
+    return TrackNetwork(registry)
 
 class TestTrackerNetwork:
 
     def test_sanity(self, network):
-        assert(isinstance(network, TaskNetwork))
+        assert(isinstance(network, TrackNetwork))
 
     def test_network_connect_to_root(self, network):
         obj = network

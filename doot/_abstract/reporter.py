@@ -26,12 +26,32 @@ from weakref import ref
 
 ##-- end imports
 
-##-- logging
-logging = logmod.getLogger(__name__)
-##-- end logging
+class Report_f(enum.Flag):
+    """ Flags to mark what a reporter reports
+      For categorizing the most common parts of Reporting.
+    """
+    INIT     = enum.auto()
+    SUCCEED  = enum.auto()
+    FAIL     = enum.auto()
+    EXECUTE  = enum.auto()
+    SKIP     = enum.auto()
 
-from tomlguard import TomlGuard
-from doot.enums import Report_f
+    STALE    = enum.auto()
+    CLEANUP  = enum.auto()
+
+    STATUS   = enum.auto()
+
+    PLUGIN   = enum.auto()
+    TASK     = enum.auto()
+    JOB      = enum.auto()
+    ACTION   = enum.auto()
+    CONFIG   = enum.auto()
+    ARTIFACT = enum.auto()
+
+    OTHER    = enum.auto()
+    #
+
+    default  = enum.auto()
 
 class Reporter_p(abc.ABC):
     """
@@ -49,7 +69,6 @@ class Reporter_p(abc.ABC):
     @abc.abstractmethod
     def add_trace(self, msg, *args, flags=None):
         pass
-
 
 class ReportLine_p(abc.ABC):
     """

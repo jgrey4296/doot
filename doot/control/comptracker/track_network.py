@@ -37,7 +37,7 @@ import tomlguard
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import FailPolicy_p, Job_i, Task_i, TaskRunner_i, TaskTracker_i
+from doot._abstract import Job_i, Task_i, TaskRunner_i, TaskTracker_i
 from doot._structs.relation_spec import RelationSpec
 from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e, LocationMeta_f, RelationMeta_e, EdgeType_e
 from doot.structs import (ActionSpec, TaskArtifact,
@@ -70,10 +70,10 @@ Concrete                                                       = NewType("Concre
 ActionElem                      : TypeAlias                   = ActionSpec|RelationSpec
 ActionGroup                     : TypeAlias                   = list[ActionElem]
 
-class TaskNetwork(TaskMatcher_m):
+class TrackNetwork(TaskMatcher_m):
     """ The _graph of concrete tasks and their dependencies """
 
-    def __init__(self, registry:TaskRegistry):
+    def __init__(self, registry:TrackRegistry):
         self._registry                                                       = registry
         self._root_node        : TaskName                                    = TaskName.build(ROOT)
         self._declare_priority : int                                         = DECLARE_PRIORITY

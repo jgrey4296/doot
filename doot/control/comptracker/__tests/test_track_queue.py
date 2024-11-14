@@ -2,6 +2,7 @@
 """
 
 """
+# Imports:
 from __future__ import annotations
 
 # ##-- stdlib imports
@@ -23,21 +24,22 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
+import networkx as nx
 import pytest
 from tomlguard import TomlGuard
-import networkx as nx
 
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
+
 doot._test_setup()
 import doot.errors
 import doot.structs
 from doot._abstract import Task_i
-from doot.control.comptracker.task_registry import TaskRegistry
-from doot.control.comptracker.task_network import TaskNetwork
-from doot.control.comptracker.task_queue import TaskQueue
+from doot.control.comptracker.track_network import TrackNetwork
+from doot.control.comptracker.track_queue import TrackQueue
+from doot.control.comptracker.track_registry import TrackRegistry
 from doot.enums import TaskStatus_e
 from doot.utils import mock_gen
 
@@ -47,14 +49,14 @@ logging = logmod.root
 
 @pytest.fixture(scope="function")
 def queue():
-    registry = TaskRegistry()
-    network  = TaskNetwork(registry)
-    return TaskQueue(registry, network)
+    registry = TrackRegistry()
+    network  = TrackNetwork(registry)
+    return TrackQueue(registry, network)
 
 class TestTrackerQueue:
 
     def test_sanity(self, queue):
-        assert(isinstance(queue, TaskQueue))
+        assert(isinstance(queue, TrackQueue))
 
     def test_tracker_bool(self, queue):
         obj = queue

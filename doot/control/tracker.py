@@ -34,8 +34,7 @@ from jgdv.structs.code_ref import CodeReference
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import (FailPolicy_p, Job_i, Task_i, TaskRunner_i,
-                            TaskTracker_i)
+from doot._abstract import (Job_i, Task_i, TaskRunner_i, TaskTracker_i)
 from doot.control.base_tracker import BaseTracker
 from doot.enums import EdgeType_e, ExecutionPolicy_e, TaskStatus_e, TaskMeta_f
 from doot.structs import TaskArtifact, TaskName, TaskSpec

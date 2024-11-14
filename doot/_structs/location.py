@@ -39,9 +39,9 @@ from pydantic import BaseModel, field_validator, model_validator
 import doot
 from doot._abstract.protocols import Buildable_p, Location_p, ProtocolModelMeta
 from doot._structs.dkey import DKey
-from doot.enums import LocationMeta_f
 from doot.utils.dkey_formatter import DKeyFormatter
 from doot.mixins.path_manip import PathManip_m
+from doot.enums import LocationMeta_f
 
 # ##-- end 1st party imports
 
@@ -56,6 +56,7 @@ ARTIFACT_K    : Final[str]       = "__Artifact__"
 GLOB          : Final[str]       = "*"
 REC_GLOB      : Final[str]       = "**"
 SOLO          : Final[str]       = "?"
+
 
 class Location(BaseModel, Location_p, Buildable_p, PathManip_m, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
     """ A Location to be used by tasks in Doot.
@@ -115,8 +116,10 @@ class Location(BaseModel, Location_p, Buildable_p, PathManip_m, metaclass=Protoc
         match val:
             case None:
                 return DKey(ARTIFACT_K)
-            case _:
+            case str():
                 return DKey(val, implicit=True)
+            case DKey():
+                return val
 
     @field_validator("path", mode="before")
     def _validate_path(cls, val):

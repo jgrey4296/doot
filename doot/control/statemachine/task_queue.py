@@ -34,8 +34,7 @@ import boltons.queueutils
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import (FailPolicy_p, Job_i, Task_i, TaskRunner_i,
-                            TaskTracker_i)
+from doot._abstract import (Job_i, Task_i, TaskRunner_i, TaskTracker_i)
 from doot._structs.relation_spec import RelationSpec
 from doot.enums import (EdgeType_e, LocationMeta_f, QueueMeta_e,
                         RelationMeta_e, TaskMeta_f, TaskStatus_e)

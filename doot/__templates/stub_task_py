@@ -34,7 +34,7 @@ import more_itertools as mitz
 
 import doot
 import doot.errors
-from doot.mixins.task.human_numbers import Human_M
+from doot.mixins.task.human_numbers import Human_m
 from doot.task.base_task import DootTask
 from doot.structs import ActionSpec
 
@@ -43,7 +43,7 @@ logging = logmod.getLogger(__name__)
 printer = doot.subprinter()
 ##-- end logging
 
-class SimpleTaskExample(Human_M, DootTask):
+class SimpleTaskExample(Human_m, DootTask):
     """
       A Simple example task that uses a mixin, and adds its own default actions
     """

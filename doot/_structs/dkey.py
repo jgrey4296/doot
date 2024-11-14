@@ -41,8 +41,7 @@ from jgdv.structs.code_ref import CodeReference
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract.key import DKey, MARKTYPE, REDIRECT_SUFFIX, CONV_SEP
-from doot.enums import DKeyMark_e
+from doot._abstract.key import DKey, REDIRECT_SUFFIX, CONV_SEP, DKeyMark_e
 from doot._abstract.protocols import Key_p, SpecStruct_p, Buildable_p
 from doot._structs.task_name import TaskName
 from doot.utils.decorators import DecorationUtils, DootDecorator
@@ -184,7 +183,7 @@ class DKeyExpansion_m:
     def _expansion_hook(self, value) -> Any:
         return value
 
-    def _update_expansion_params(self, mark:MARKTYPE) -> Self:
+    def _update_expansion_params(self, mark:DKeyMark_e) -> Self:
         """ pre-register expansion parameters """
         match self._mark:
             case None:
@@ -231,7 +230,7 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, str):
 
     __hash__                                          = str.__hash__
 
-    def __init_subclass__(cls, *, mark:None|MARKTYPE=None, tparam:None|str=None, multi=False):
+    def __init_subclass__(cls, *, mark:None|DKeyMark_e=None, tparam:None|str=None, multi=False):
         super().__init_subclass__()
         cls._mark = mark
         DKey.register_key(cls, mark, tparam=tparam, multi=multi)
@@ -248,7 +247,7 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, str):
         obj.__init__(*args, **kwargs)
         return obj
 
-    def __init__(self, data, fmt:None|str=None, mark:MARKTYPE=None, check:CHECKTYPE=None, ctor:None|type|callable=None, help:None|str=None, fallback=None, max_exp=None, **kwargs):
+    def __init__(self, data, fmt:None|str=None, mark:DKeyMark_e=None, check:CHECKTYPE=None, ctor:None|type|callable=None, help:None|str=None, fallback=None, max_exp=None, **kwargs):
         super().__init__(data)
         self._expansion_type       = ctor or identity
         self._typecheck            = check or Any
@@ -349,7 +348,7 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
       Multi keys allow contain 1+ explicit subkeys
     """
 
-    def __init__(self, data:str|pl.Path, *, mark:MARKTYPE=None, **kwargs):
+    def __init__(self, data:str|pl.Path, *, mark:DKeyMark_e=None, **kwargs):
         super().__init__(data, mark=mark, **kwargs)
         has_text, s_keys = DKeyFormatter.Parse(data)
         self._has_text   = has_text

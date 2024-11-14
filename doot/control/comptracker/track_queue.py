@@ -34,8 +34,7 @@ import boltons.queueutils
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import (FailPolicy_p, Job_i, Task_i, TaskRunner_i,
-                            TaskTracker_i)
+from doot._abstract import (Job_i, Task_i, TaskRunner_i, TaskTracker_i)
 from doot._structs.relation_spec import RelationSpec
 from doot.enums import (EdgeType_e, LocationMeta_f, QueueMeta_e,
                         RelationMeta_e, TaskMeta_f, TaskStatus_e)
@@ -62,10 +61,10 @@ Concrete                                                       = NewType("Concre
 ActionElem                     : TypeAlias                   = ActionSpec|RelationSpec
 ActionGroup                    : TypeAlias                   = list[ActionElem]
 
-class TaskQueue:
+class TrackQueue:
     """ The queue of active tasks. """
 
-    def __init__(self, registry:TaskRegistry, network:TaskNetwork):
+    def __init__(self, registry:TrackRegistry, network:TrackNetwork):
         self._registry                                                           = registry
         self._network                                                            = network
         self.active_set             : list[Concrete[TaskName]|TaskArtifact]      = set()

@@ -38,7 +38,7 @@ import tomlguard
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import (FailPolicy_p, Job_i, Task_i, TaskRunner_i,
+from doot._abstract import (Job_i, Task_i, TaskRunner_i,
                             TaskTracker_i)
 from doot._structs.relation_spec import RelationSpec
 from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e, LocationMeta_f, RelationMeta_e, EdgeType_e
@@ -69,7 +69,7 @@ Concrete                                                       = NewType("Concre
 ActionElem                     : TypeAlias                     = ActionSpec|RelationSpec
 ActionGroup                    : TypeAlias                     = list[ActionElem]
 
-class TaskRegistry(Injector_m, TaskMatcher_m):
+class TrackRegistry(Injector_m, TaskMatcher_m):
     """ Stores and manipulates specs, tasks, and artifacts """
 
     def __init__(self):

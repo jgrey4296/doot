@@ -41,7 +41,6 @@ import importlib
 from tomlguard import TomlGuard
 import doot
 import doot.errors
-from doot.enums import TaskMeta_f, Report_f, LocationMeta_f
 from doot._structs.location import Location, GLOB, SOLO, REC_GLOB
 from doot._structs.dkey import DKey
 

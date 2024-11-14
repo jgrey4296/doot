@@ -32,9 +32,8 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 import doot
-from doot.enums import LocationMeta_f, LoopControl_e
-from doot.structs import DKey
-
+from doot._abstract.key import DKey
+from doot.enums import LocationMeta_f
 # ##-- end 1st party imports
 
 ##-- logging
@@ -44,6 +43,31 @@ logging = logmod.getLogger(__name__)
 MARKER : Final[str] = doot.constants.paths.MARKER_FILE_NAME
 walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
 walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).settings.walking.halts()
+
+class LoopControl_e(enum.Enum):
+    """
+      Describes how to continue an accumulating loop.
+      (like walking a a tree)
+
+    yesAnd     : is a result, and try others.
+    yes        : is a result, don't try others, Finish.
+    noBut      : not a result, try others.
+    no         : not a result, don't try others, Finish.
+    """
+    yesAnd  = enum.auto()
+    yes     = enum.auto()
+    noBut   = enum.auto()
+    no      = enum.auto()
+
+    @classmethod
+    @property
+    def loop_yes_set(cls):
+        return  {cls.yesAnd, cls.yes, True}
+
+    @classmethod
+    @property
+    def loop_no_set(cls):
+        return  {cls.no, cls.noBut, False, None}
 
 class PathManip_m:
     """

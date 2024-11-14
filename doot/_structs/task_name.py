@@ -42,7 +42,7 @@ from jgdv.structs.name.structured_name import (StructuredName, TailEntry, aware_
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.enums import Report_f, TaskMeta_f
+from doot.enums import TaskMeta_f
 
 # ##-- end 1st party imports
 

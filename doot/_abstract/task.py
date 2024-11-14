@@ -19,6 +19,7 @@ This can allow interleaving, or grouping.
 """
 from __future__ import annotations
 
+import enum
 import logging as logmod
 import abc
 import types
@@ -28,22 +29,91 @@ from tomlguard import TomlGuard
 
 import doot
 import doot.errors
-from doot.enums import TaskMeta_f, TaskStatus_e, ActionResponse_e
 from doot._abstract.protocols import StubStruct_p, SpecStruct_p, ParamStruct_p
+from doot.mixins.enums import EnumBuilder_m, FlagsBuilder_m
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+class TaskStatus_e(enum.Enum):
+    """
+      Enumeration of the different states a task/artifact can be in.
+      The state is stored in the task object itself.
+
+      Before a task object hsa been created, the tracker
+      provides the status according to what specs exist for the task name.
+
+    """
+    # Pre-Task Object Creation statuses:
+    NAMED           = enum.auto() # A Name, missing a spec
+    DECLARED        = enum.auto() # Abstract Spec Exists
+
+    DEFINED         = enum.auto() # Spec has been instantiated into the dependency network
+    ARTIFACT        = enum.auto() # Default artifact status.
+
+    STALE           = enum.auto() # Artifact exists, but is too old.
+    EXISTS          = enum.auto() # The path the artifact expands to exists.
+
+    # Task Object Exists
+    DISABLED        = enum.auto() # Artificial state for if a spec or task has been disabled.
+    INIT            = enum.auto() # Task Object has been created.
+    WAIT            = enum.auto() # Task is awaiting dependency check and pass
+    READY           = enum.auto() # Dependencies are done, ready to execute/expand.
+    RUNNING         = enum.auto() # Has been given to the runner, waiting for a status update.
+    SKIPPED         = enum.auto() # Runner has signaled the task was skipped.
+    HALTED          = enum.auto() # Task has reached minimum priority, timing out.
+    FAILED          = enum.auto() # Runner has signaled Failure.
+    SUCCESS         = enum.auto() # Runner has signaled success.
+    TEARDOWN        = enum.auto() # Task is ready to be killed
+    DEAD            = enum.auto() # Task is done.
+
+    # Base Task uses the default to set its state on __init__
+
+    default         = INIT
+
+    @classmethod
+    @property
+    def pre_set(cls):
+        return {cls.NAMED, cls.DECLARED, cls.DEFINED, cls.ARTIFACT}
+
+    @classmethod
+    @property
+    def success_set(cls):
+        return {cls.SUCCESS, cls.EXISTS, cls.TEARDOWN, cls.DEAD}
+
+    @classmethod
+    @property
+    def fail_set(cls):
+        return {cls.SKIPPED, cls.HALTED, cls.FAILED}
+
+    @classmethod
+    @property
+    def artifact_set(cls):
+        return {cls.ARTIFACT, cls.EXISTS, cls.HALTED, cls.FAILED}
+
+
+class ActionResponse_e(EnumBuilder_m, enum.Enum):
+    """
+      Description of how a Action went.
+    """
+
+    SUCCEED    = enum.auto()
+    FAIL       = enum.auto()
+    SKIP       = enum.auto()
+    SKIP_GROUP = enum.auto()
+    SKIP_TASK  = enum.auto()
+
+    # Aliases
+    SUCCESS  = SUCCEED
 @runtime_checkable
 class Action_p(Protocol):
     """
     holds individual action information and state, and executes it
     """
-    _toml_kwargs : ClassVar[list[str]] = []
 
-    def __call__(self, spec:"ActionSpec", task_state:dict) -> dict|bool|ActionResponse_e|None:
-        raise NotImplementedError()
+    def __call__(self, spec:"ActionSpec", task_state:dict) -> None|dict|bool|ActionResponse_e:
+        pass
 
 class Task_i:
     """ Core Interface for Tasks """

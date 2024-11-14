@@ -37,7 +37,7 @@ import tomlguard
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import FailPolicy_p, Job_i, Task_i, TaskRunner_i, TaskTracker_i
+from doot._abstract import Job_i, Task_i, TaskRunner_i, TaskTracker_i
 from doot._structs.relation_spec import RelationSpec
 from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e, LocationMeta_f, RelationMeta_e, EdgeType_e
 from doot.structs import (ActionSpec, TaskArtifact,

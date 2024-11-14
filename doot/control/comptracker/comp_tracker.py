@@ -38,16 +38,16 @@ from uuid import UUID, uuid1
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import FailPolicy_p, Job_i, Task_i, TaskRunner_i, TaskTracker_i
+from doot._abstract import Job_i, Task_i, TaskRunner_i, TaskTracker_i
 from doot._structs.relation_spec import RelationSpec
 from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e, LocationMeta_f, RelationMeta_e, EdgeType_e
 from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
 
-from doot.control.comptracker.task_registry import TaskRegistry
-from doot.control.comptracker.task_network import TaskNetwork
-from doot.control.comptracker.task_queue import TaskQueue
+from doot.control.comptracker.track_registry import TrackRegistry
+from doot.control.comptracker.track_network import TrackNetwork
+from doot.control.comptracker.track_queue import TrackQueue
 # ##-- end 1st party imports
 
 ##-- logging
@@ -76,9 +76,9 @@ class ComponentTracker(TaskTracker_i):
     """
 
     def __init__(self):
-        self._registry = TaskRegistry()
-        self._network  = TaskNetwork(self._registry)
-        self._queue    = TaskQueue(self._registry, self._network)
+        self._registry = TrackRegistry()
+        self._network  = TrackNetwork(self._registry)
+        self._queue    = TrackQueue(self._registry, self._network)
 
     def register_spec(self, *specs:TaskSpec)-> None:
         self._registry.register_spec(*specs)
