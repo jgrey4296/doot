@@ -100,8 +100,6 @@ class StateTracker(TaskTracker_i):
     def build_network(self) -> None:
         self._network.build_network()
 
-
-
     def propagate_state_and_cleanup(self, name:TaskName):
         """ Propagate a task's state on to its cleanup task"""
         logging.info("Queueing Cleanup Task and Propagating State to Cleanup: %s", name)

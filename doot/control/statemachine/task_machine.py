@@ -27,75 +27,71 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-from statemachine import StateMachine, State
+# ##-- 3rd party imports
+from statemachine import State, StateMachine
+from statemachine.states import States
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+from doot.enums import TaskStatus_e
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-##-- end logging
-
-import doot
+##-- end loggingw
 
 class TaskTrackModel:
 
-    def check_for_spec(self, machine):
-        return True
-
-    def
+    def check_for_spec(self):
+        return False
 
 class TaskTrackMachine(StateMachine):
     """
       A Statemachine controlling the tracking of task states
     """
-    # States
-    # TODO possibly use States.from_enum(TaskStatus_e, initial=TaskStatus_e.NAMED, final=TaskStatus_e.DEAD)
-    Named       = State(initial=True)
-    Dead        = State(final=True)
+    # State
+    _ = States.from_enum(TaskStatus_e, initial=TaskStatus_e.NAMED, final=TaskStatus_e.DEAD, use_enum_instance=True)
 
-    Declared    = State()
-
-    Defined     = State()
-
-    Initialised = State()
-    Wait        = State()
-    Ready       = State()
-    Running     = State()
-
-    Disabled    = State()
-    Skipped     = State()
-    Halted      = State()
-    Failed      = State()
-    Success     = State()
-    Teardown    = State()
 
     # Events
     setup = (
-        Named.to(Dead, cond="check_for_spec")
-        | Named.to(Declared)
-        | Declared.to(Defined)
-        | Defined.to(Initialised)
+        _.NAMED.to(_.DEAD, cond='check_for_spec')
+        | _.NAMED.to(_.DECLARED)
+        | _.DECLARED.to(_.DEFINED)
+        | _.DEFINED.to(_.INIT)
+        # | _.INIT.to.itself(internal=True)
         )
 
     run = (
-        Initialised.to(Wait)
-        | Wait.to.itself(cond=None)
-        | Wait.to(Ready)
-        | Ready.to(Running)
-        | Running.to.itself(cond=None)
-        | Running.to(Skipped, cond=None)
-        | Running.to(Halted,  cond=None)
-        | Running.to(Failed,  cond=None)
-        | Running.to(Success)
+        _.INIT.to(_.WAIT)
+        # | _.WAIT.to.itself(cond=None, internal=True)
+        | _.WAIT.to(_.READY)
+        | _.READY.to(_.RUNNING)
+        # | _.RUNNING.to.itself(cond=None, internal=True)
+        | _.RUNNING.to(_.SKIPPED, cond=None)
+        | _.RUNNING.to(_.HALTED,  cond=None)
+        | _.RUNNING.to(_.FAILED,  cond=None)
+        | _.RUNNING.to(_.SUCCESS)
         )
 
-    disable  = Disabled.from_(Ready, Wait, Initialised, Declared, Defined, Named)
-    skip     = Skipped.from_(Ready, Running, Wait, Initialised, Declared, Defined)
-    fail     =  Failed.from_(Ready, Running, Wait, Initialised, Declared, Defined)
-    halt     =  Halted.from_(Ready, Running, Wait, Initialised, Declared, Defined)
-    succeed  = Running.to(Success)
+    disable  = _.DISABLED.from_(_.READY, _.WAIT, _.INIT, _.DECLARED, _.DEFINED, _.NAMED)
+    skip     = _.SKIPPED.from_(_.READY, _.RUNNING, _.WAIT, _.INIT, _.DECLARED, _.DEFINED)
+    fail     = _.FAILED.from_(_.READY, _.RUNNING, _.WAIT, _.INIT, _.DECLARED, _.DEFINED)
+    halt     = _.HALTED.from_(_.READY, _.RUNNING, _.WAIT, _.INIT, _.DECLARED, _.DEFINED)
+    succeed  = _.RUNNING.to(_.SUCCESS)
+
+    # This ia a task, so artifact states are invalid
+    invalid  = (
+        _.NAMED.to(_.ARTIFACT, _.STALE, _.EXISTS)
+        | _.DISABLED.from_(_.ARTIFACT, _.STALE, _.EXISTS)
+        )
 
     complete = (
-        Teardown.from_(Success, Failed, Halted, Skipped, Disabled)
-        | Teardown.to(Dead)
+        _.TEARDOWN.from_(_.SUCCESS, _.FAILED, _.HALTED, _.SKIPPED, _.DISABLED)
+        | _.TEARDOWN.to(_.DEAD)
         )
 
     # Composite Events
@@ -107,7 +103,7 @@ class TaskExecutionMachine(StateMachine):
     """
       Manaages the state progression of a running task
     """
-    # States
+    # State
     Ready    = State(initial=True)
     Finished = State(final=True)
     Test     = State()
@@ -126,7 +122,7 @@ class TaskExecutionMachine(StateMachine):
         | Setup.to(Body)
         | Body.to(Report)
         | Report.to(Cleanup, cond="is_not_job")
-        | Cleanup.to(Finshed)
+        | Cleanup.to(Finished)
         | Report.to(Sleep)
         | Sleep.to(Finished)
         )
@@ -140,7 +136,7 @@ class JobMachine(StateMachine):
     """
       A Modifed statemachine of jobs
     """
-    # States
+    # State
     todo   = State(initial=True)
     finish = State(final=True)
 
@@ -150,7 +146,7 @@ class ArtifactMachine(StateMachine):
     """
       A statemachine of artifact
     """
-    # States
+    # State
     Declared  = State(initial=True)
     Dead      = State(final=True)
     # Disabled  = State()
