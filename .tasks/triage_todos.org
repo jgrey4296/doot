@@ -322,3 +322,8 @@ get the keys mentioned in a task spec, for propagation to cleanup?
    :context:
         <2024-11-09 Sat>     def build_injection(self, spec, state, inject, replacement=None, post:dict|None=None) -> None|TomlGuard:
    :END:
+** TRIAGE add flag to list cmd for showing source files
+   [[/media/john/data/github/python/doot/::7][Location]]
+   :context:
+        <2024-11-17 Sun>   drwxr-xr-- 17 john john 4.0K Nov 14 11:28 doot
+   :END:

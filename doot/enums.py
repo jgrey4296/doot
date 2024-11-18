@@ -40,7 +40,6 @@ class RelationMeta_e(enum.Enum):
 
     default          = needs
 
-##-- flags
 
 class LocationMeta_f(FlagsBuilder_m, enum.Flag):
     """ Available metadata attachable to a location """
@@ -61,5 +60,3 @@ class LocationMeta_f(FlagsBuilder_m, enum.Flag):
     indefinite   = abstract
 
     default      = directory
-
-##-- end flags

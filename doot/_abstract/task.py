@@ -86,6 +86,7 @@ class ArtifactStatus_e(enum.Enum):
     """ States an artifact can be in """
     DECLARED = enum.auto() # doesn't exist or not checked
     STALE    = enum.auto() # Exists, but is old
+    TOCLEAN  = enum.auto() # May exist, needs to be deleted
     EXISTS   = enum.auto() # Exists
 
 class ActionResponse_e(EnumBuilder_m, enum.Enum):
