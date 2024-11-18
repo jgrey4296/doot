@@ -49,9 +49,7 @@ from doot.enums import LocationMeta_f
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-FILE_KEYS     : Final[list[str]] = ["file"]
-LOC_KEYS      : Final[list[str]] = ["loc", "dir"]
-NON_META_KEYS : Final[list[str]] = ["key"] + FILE_KEYS + LOC_KEYS
+NON_META_KEYS : Final[list[str]] = ["key", "path"]
 ARTIFACT_K    : Final[str]       = "__Artifact__"
 GLOB          : Final[str]       = "*"
 REC_GLOB      : Final[str]       = "**"
@@ -124,8 +122,8 @@ class Location(BaseModel, Location_p, Buildable_p, PathManip_m, metaclass=Protoc
     @field_validator("path", mode="before")
     def _validate_path(cls, val):
         match val:
-            case dict() if bool((retrieved:=[y for x in FILE_KEYS + LOC_KEYS if (y:=val.get(x, None))])):
-                return pl.Path(retrieved[0])
+            case {"path":str()|pl.Path() as val}:
+                return pl.Path(val)
             case pl.Path():
                 return val
             case str():

@@ -28,49 +28,49 @@ class TestLocation:
         assert(obj is not None)
 
     def test_build(self):
-        obj = Location.build({"key":"test", "loc":"test/blah"})
+        obj = Location.build({"key":"test", "path":"test/blah"})
         assert(obj.path == pl.Path("test/blah"))
 
     def test_basic(self):
-        obj = Location.build({"key":"test", "loc":"test/blah"})
+        obj = Location.build({"key":"test", "path":"test/blah"})
         assert(obj is not None)
 
     def test_copy(self):
-        obj = Location.build({"key":"test", "loc":"test/blah"})
+        obj = Location.build({"key":"test", "path":"test/blah"})
         obj2 = obj.model_copy()
         assert(obj is not obj2)
 
     def test_key(self):
-        obj = Location.build({"key":"test", "loc":"test/blah"})
+        obj = Location.build({"key":"test", "path":"test/blah"})
         assert(isinstance(obj.key, DKey))
         assert(obj.key == "test")
 
     def test_target(self):
-        obj = Location.build({"key":"test", "loc":"test/blah"})
+        obj = Location.build({"key":"test", "path":"test/blah"})
         assert(obj.path == pl.Path("test/blah"))
 
     def test_metadata(self):
-        obj = Location.build({"key":"test", "loc":"test/blah", "protected":True})
+        obj = Location.build({"key":"test", "path":"test/blah", "protected":True})
         assert(LocationMeta_f.protected in obj)
 
     def test_metadata_opposite(self):
-        obj = Location.build({"key":"test", "loc":"test/blah", "protected":False})
+        obj = Location.build({"key":"test", "path":"test/blah", "protected":False})
         assert(LocationMeta_f.protected not in obj)
 
     def test_meta_in_path(self):
-        obj = Location.build({"key":"test", "loc":"test/?.txt"})
+        obj = Location.build({"key":"test", "path":"test/?.txt"})
         assert(LocationMeta_f.abstract in obj)
         assert(LocationMeta_f.glob not in obj)
         assert(obj.abstracts == (False, True, False))
 
     def test_meta_in_path_glob(self):
-        obj = Location.build({"key":"test", "loc":"test/*/blah.txt"})
+        obj = Location.build({"key":"test", "path":"test/*/blah.txt"})
         assert(LocationMeta_f.abstract in obj)
         assert(LocationMeta_f.glob in obj)
         assert(obj.abstracts == (True, False, False))
 
     def test_meta_in_path_expansion(self):
-        obj = Location.build({"key":"test", "loc":"test/{fname}.txt"})
+        obj = Location.build({"key":"test", "path":"test/{fname}.txt"})
         assert(LocationMeta_f.abstract in obj)
         assert(LocationMeta_f.glob not in obj)
         assert(LocationMeta_f.expandable in obj)
@@ -80,11 +80,11 @@ class TestLocation:
 
 
     def test_normOnLoad(self):
-        obj = Location.build({"key":"test", "loc":"test/blah.txt", "normOnLoad": True})
+        obj = Location.build({"key":"test", "path":"test/blah.txt", "normOnLoad": True})
         assert(obj.path.is_absolute())
         assert(obj.path.is_relative_to(pl.Path.cwd()))
 
     def test_userpath_normOnLoad(self):
-        obj = Location.build({"key":"test", "loc":"~/test/blah.txt", "normOnLoad": True})
+        obj = Location.build({"key":"test", "path":"~/test/blah.txt", "normOnLoad": True})
         assert(obj.path.is_absolute())
         assert(obj.path.is_relative_to(pl.Path.home()))

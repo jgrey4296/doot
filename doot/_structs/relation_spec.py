@@ -88,7 +88,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 return data
             case TaskName() | TaskArtifact() | str() | pl.Path():
                 return RelationSpec(target=data, relation=relation)
-            case dict() if any(x in data for x in ["loc","file","dir"]) and "task" not in data:
+            case dict() if "path" in data and "task" not in data:
                 return RelationSpec(target=TaskArtifact.build(data), relation=relation)
             case {"task": taskname}:
                 constraints = data.get("constraints", None) or data.get("constraints_", False)

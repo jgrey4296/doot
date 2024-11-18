@@ -100,12 +100,12 @@ class TestRelationSpec:
         assert(LocationMeta_f.abstract in obj.target)
 
     def test_dict_loc_dep(self):
-        obj = RelationSpec.build({"loc": "a/file.txt"})
+        obj = RelationSpec.build({"path": "a/file.txt", "file":True})
         assert(isinstance(obj, RelationSpec))
         assert(isinstance(obj.target, Location))
 
     def test_abstract_loc_dep_(self):
-        obj = RelationSpec.build({"loc": "a/*.txt"})
+        obj = RelationSpec.build({"path": "a/*.txt"})
         assert(isinstance(obj, RelationSpec))
         assert(isinstance(obj.target, Location))
         assert(LocationMeta_f.abstract in obj.target)
