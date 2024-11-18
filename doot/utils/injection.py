@@ -70,7 +70,7 @@ class Injector_m:
         match base:
             case None | RelationSpec(inject=None):
                 return None
-            case dict():
+            case dict() | TomlGuard():
                 base_data = base
             case RelationSpec(inject=str() as base_s):
                 base_k = DKey(base_s, implicit=True, check=dict|TomlGuard)
