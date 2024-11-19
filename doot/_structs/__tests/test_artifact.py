@@ -155,7 +155,7 @@ class TestIndefiniteArtifact:
 class TestArtifactMatching:
 
     def test_match_non_abstract(self):
-        obj = TaskArtifact.build({"key":"test", "loc":"test/blah.txt"})
+        obj = TaskArtifact.build({"key":"test", "path":"test/blah.txt", "file":True})
         target = pl.Path("test/blah.txt")
         result = obj.match_with(target)
         assert(result is not None)
@@ -164,7 +164,7 @@ class TestArtifactMatching:
         assert(result == pl.Path("test/blah.txt"))
 
     def test_match_no_stem_wildcard(self):
-        obj = TaskArtifact.build({"key":"test", "loc":"*/blah.txt"})
+        obj = TaskArtifact.build({"key":"test", "path":"*/blah.txt"})
         target = pl.Path("test/blah.txt")
         match obj.match_with(target):
             case None:
@@ -174,37 +174,37 @@ class TestArtifactMatching:
 
 
     def test_matching_stem(self):
-        obj = TaskArtifact.build({"key":"test", "loc":"test/?.txt"})
+        obj = TaskArtifact.build({"key":"test", "path":"test/?.txt"})
         target = pl.Path("test/blah.txt")
         result = obj.match_with(target)
         assert(result.path == pl.Path("test/blah.txt"))
 
     def test_matching_path(self):
-        obj = TaskArtifact.build({"key":"test", "loc":"*/?.blah"})
+        obj = TaskArtifact.build({"key":"test", "path":"*/?.blah"})
         target = pl.Path("test/blah.txt")
         result = obj.match_with(target)
         assert(result.path == pl.Path("test/blah.blah"))
 
     def test_matching_path_fail(self):
-        obj = TaskArtifact.build({"key":"test", "loc":"other/?.blah"})
+        obj = TaskArtifact.build({"key":"test", "path":"other/?.blah"})
         target = pl.Path("test/blah.txt")
         result = obj.match_with(target)
         assert(result.path == pl.Path("other/blah.blah"))
 
     def test_glob_matching(self):
-        obj = TaskArtifact.build({"key":"test", "loc":"*/?.blah"})
+        obj = TaskArtifact.build({"key":"test", "path":"*/?.blah"})
         target = pl.Path("test/blah.txt")
         result = obj.match_with(target)
         assert(result.path == pl.Path("test/blah.blah"))
 
     def test_rec_glob_matching(self):
-        obj = TaskArtifact.build({"key":"test", "loc":"**/?.blah"})
+        obj = TaskArtifact.build({"key":"test", "path":"**/?.blah"})
         target = pl.Path("test/aweg/blah.txt")
         result = obj.match_with(target)
         assert(result.path == pl.Path("test/aweg/blah.blah"))
 
     def test_suffix_matching(self):
-        obj = TaskArtifact.build({"key":"test", "loc":"other/?.?"})
+        obj = TaskArtifact.build({"key":"test", "path":"other/?.?"})
         target = pl.Path("test/aweg/blah.txt")
         result = obj.match_with(target)
         assert(result.path == pl.Path("other/blah.txt"))

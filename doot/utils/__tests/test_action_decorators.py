@@ -228,7 +228,7 @@ class TestDecorators:
 
 
     def test_io_writer_pas(self, wrap_locs):
-        doot.locs.update({"blah" : dict(loc="blah", protected=False) })
+        doot.locs.update({"blah" : dict(path="blah", protected=False) })
 
         @decs.IOWriter()
         @DKeyed.paths("to")
