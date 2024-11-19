@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-See EOF for license/metadata/notes as applicable
 """
 
 # Imports:
@@ -55,7 +54,6 @@ class TaskTrackMachine(StateMachine):
     # State
     _ = States.from_enum(TaskStatus_e, initial=TaskStatus_e.NAMED, final=TaskStatus_e.DEAD, use_enum_instance=True)
 
-
     # Events
     setup = (
         _.NAMED.to(_.DEAD, cond='check_for_spec')
@@ -93,6 +91,27 @@ class TaskTrackMachine(StateMachine):
 
     # Listeners
 
+class ArtifactMachine(StateMachine):
+    """
+      A statemachine of artifact
+    """
+    # State
+    Declared    = State(initial=True)
+    Stale       = State()
+    ToClean     = State()
+    Removed     = State()
+    Exists      = State(final=True)
+
+    progress = (
+        Declared.to(Stale, cond=None)
+        | Declared.to(ToClean, cond=None)
+        | Declared.to(Exists)
+        | Stale.to(Removed)
+        | ToClean.to(Removed)
+        | Removed.to(Declared)
+    )
+
+
 class TaskExecutionMachine(StateMachine):
     """
       Manaages the state progression of a running task
@@ -100,7 +119,7 @@ class TaskExecutionMachine(StateMachine):
     # State
     Ready    = State(initial=True)
     Finished = State(final=True)
-    Test     = State()
+    Check    = State()
     Setup    = State()
     Body     = State()
     Action   = State()
@@ -111,8 +130,8 @@ class TaskExecutionMachine(StateMachine):
     Sleep    = State()
 
     # Events
-    run = (Ready.to(Test)
-        | Test.to(Setup)
+    run = (Ready.to(Check)
+        | Check.to(Setup)
         | Setup.to(Body)
         | Body.to(Report)
         | Report.to(Cleanup, cond="is_not_job")
@@ -121,31 +140,7 @@ class TaskExecutionMachine(StateMachine):
         | Sleep.to(Finished)
         )
     action = (Body.to(Action, Relation) | Action.to(Body) | Relation.to(Body))
-    fail   = (Failed.from_(Test, Setup, Body, Action, Relation, Report) | Failed.to(Cleanup))
+    fail   = (Failed.from_(Check, Setup, Body, Action, Relation, Report) | Failed.to(Cleanup))
 
     # Composite Events
     progress = (action | run | fail)
-
-class JobMachine(StateMachine):
-    """
-      A Modifed statemachine of jobs
-    """
-    # State
-    todo   = State(initial=True)
-    finish = State(final=True)
-
-    go     = todo.to(finish)
-
-class ArtifactMachine(StateMachine):
-    """
-      A statemachine of artifact
-    """
-    # State
-    Declared  = State(initial=True)
-    Dead      = State(final=True)
-    # Disabled  = State()
-    # Stale     = State()
-    # Exists    = State()
-    # Teardown  = State()
-
-    go = Declared.to(Dead)

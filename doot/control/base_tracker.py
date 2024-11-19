@@ -393,7 +393,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
                 return False
             case Task_i(), TaskStatus_e() if task.name in self.tasks:
                 self.tasks[task.name].status = status
-            case TaskArtifact(), TaskStatus_e():
+            case TaskArtifact(), ArtifactStatus_e():
                 self._artifact_status[task] = status
             case TaskName(), TaskStatus_e() if task in self.tasks:
                 self.tasks[task].status = status

@@ -156,7 +156,7 @@ class TrackerPlanGen_m:
                     self.set_status(spec, TaskStatus_e.SUCCESS)
                 case TaskArtifact() as art:
                     plan.append((1, art, str(art)))
-                    self.set_status(art, TaskStatus_e.EXISTS)
+                    self.set_status(art, ArtifactStatus.EXISTS)
                 case x:
                     raise doot.errors.DootTaskTrackingError("Unrecognised reponse while building plan", x)
 
@@ -303,7 +303,7 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
                     for pred in self.network.pred[focus]:
                         self.queue_entry(pred)
                 case ArtifactStatus_e.DECLARED if bool(focus):
-                    self.queue_entry(focus, status=TaskStatus_e.EXISTS)
+                    self.queue_entry(focus, status=ArtifactStatus_e.EXISTS)
                 case ArtifactStatus_e.DECLARED: # Add dependencies of an artifact to the stack
                     match self.incomplete_dependencies(focus):
                         case []:

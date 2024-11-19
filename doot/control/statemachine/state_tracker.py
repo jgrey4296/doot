@@ -83,11 +83,21 @@ class StateTracker(TaskTracker_i):
     def register_spec(self, *specs:TaskSpec)-> None:
         self._registry.register_spec(*specs)
 
-    def queue_entry(self, name:str|Concrete[TaskName|TaskSpec]|TaskArtifact|Task_i, *, from_user:bool=False, status:None|TaskStatus_e=None) -> None|Concrete[TaskName|TaskArtifact]:
-        # Register
-        # Instantiate
-        # Make Task
-        # Insert into Network
+    def queue_entry(self, name:str|Concrete[TaskName]|TaskSpec|TaskArtifact|Task_i, *, from_user:bool=False, status:None|TaskStatus_e=None) -> None|Concrete[TaskName|TaskArtifact]:
+        # Register or retrieve
+        match name:
+            case Task_i():
+                pass
+            case TaskSpec():
+                pass
+            case TaskArtifact():
+                pass
+            case TaskName() | str():
+                pass
+
+        # Instantiate if necessary
+        # Make Task if necessary
+        # Insert into Network if necessary
         # Queue
         return self._queue.queue_entry(name, from_user=from_user, status=status)
 
@@ -203,7 +213,7 @@ class StateTracker(TaskTracker_i):
                     for pred in self._network.pred[focus]:
                         self.queue_entry(pred)
                 case ArtifactStatus_e.DECLARED if bool(focus):
-                    self.queue_entry(focus, status=TaskStatus_e.EXISTS)
+                    self.queue_entry(focus, status=ArtifactStatus_e.EXISTS)
                 case ArtifactStatus_e.DECLARED: # Add dependencies of an artifact to the stack
                     match self._network.incomplete_dependencies(focus):
                         case []:
