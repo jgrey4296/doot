@@ -128,6 +128,7 @@ class _JobUtils_m:
         head_dependencies = [x for x in head_section if isinstance(x, RelationSpec)]
         head_actions      = [x for x in head_section if not isinstance(x, RelationSpec)]
 
+
         # build $head$
         head : TaskSpec = TaskSpec.build({
             "name"            : job_head,
@@ -135,7 +136,7 @@ class _JobUtils_m:
             "extra"           : self.extra,
             "queue_behaviour" : QueueMeta_e.reactive,
             "depends_on"      : [self.name] + head_dependencies,
-            "required_for"    : [job_head.cleanup_name()],
+            "required_for"    : [job_head.cleanup_name()] + self.required_for[:],
             "cleanup"         : self.cleanup[:],
             "flags"           : (self.flags | TaskMeta_f.JOB_HEAD) & ~TaskMeta_f.JOB,
             "actions"         : head_actions,
