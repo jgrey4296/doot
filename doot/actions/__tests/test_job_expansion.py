@@ -54,7 +54,7 @@ class TestJobExpansion:
     def test_list_expansion(self, spec, state):
         args = ["a", "b", "c"]
         spec.kwargs._table()['from'] = args
-        state['inject'] = {"replace": ['target']}
+        state['inject'] = {"insert": ['target']}
         obj = JobExpandAction()
         result = obj(spec, state)
         assert(isinstance(result, dict))
@@ -85,7 +85,7 @@ class TestJobExpansion:
 
     def test_basic_expander(self, spec, state):
         state.update(dict(_task_name=TaskName.build("agroup::basic"),
-                          inject={"replace":["aKey"]},
+                          inject={"insert":["aKey"]},
                           base="base::task"))
 
         state['from'] = ["first", "second", "third"]
@@ -99,7 +99,7 @@ class TestJobExpansion:
 
     def test_expander_with_dict_injection(self, spec, state):
         state.update(dict(_task_name=TaskName.build("agroup::basic"),
-                          inject={"replace": ["aKey"], "copy":{"other":"blah"}},
+                          inject={"insert": ["aKey"], "delay":{"other":"blah"}},
                           base="base::task"))
 
         state['from']          = ["first", "second", "third"]

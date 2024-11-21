@@ -52,15 +52,15 @@ Data                               = dict | TomlGuard
 CLI_K         : Final[str]         = "cli"
 MUST_INJECT_K : Final[str]         = "must_inject"
 SPECIAL_KEYS  : Final[list[str]]   = [CLI_K, MUST_INJECT_K]
-INJECT_GROUPS : Final[list[str]]   = ["copy", "delay", "expand", "now", "replace", "insert"]
+INJECT_GROUPS : Final[list[str]]   = ["delay", "now", "insert"]
 
 class Injector_m:
     """ Generalized mixin for building injections.
     Injections are of the form {copy:dict|list, expand:dict|list, replace:list}
 
-    Copy/delay     : l_1 key expansions to the new state for expansion later
-    Expand/now     : fully expand using current state
-    Replace/insert : place literal value insertion into state
+    delay     : l_1 key expansions to the new state for expansion later
+    now       : fully expand using current state
+    insert    : place literal value insertion into state
 
     Only the values of the return dict can be expanded
     (ie: { DKey('aval') : 5 }, aval is not expanded )
