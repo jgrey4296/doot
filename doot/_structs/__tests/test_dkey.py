@@ -8,7 +8,7 @@ import logging as logmod
 import pathlib as pl
 from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
                     Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
-                    TypeVar, cast)
+                    TypeVar, cast, Self)
 import warnings
 
 import pytest
@@ -910,7 +910,7 @@ class TestDKeyPathKeys:
         assert(exp == target)
 
     @pytest.mark.parametrize("name", ["a", "b"])
-    def test_path_marked_fallback(self, name):
+    def test_path_marked_fallback_lookup(self, name):
         """
           name -> missing -> fallback
         """
@@ -920,6 +920,30 @@ class TestDKeyPathKeys:
         exp    = key.expand(state)
         assert(isinstance(key, dkey.PathSingleDKey))
         assert(exp == target)
+
+    @pytest.mark.parametrize("name", ["a", "b"])
+    def test_path_marked_self_fallback(self, name):
+        """
+          name -> missing -> fallback
+        """
+        target = doot.locs[name]
+        key    = dkey.DKey(name, mark=dkey.DKey.mark.PATH, fallback=Self, implicit=True)
+        state  = {}
+        exp    = key.expand(state)
+        assert(isinstance(key, dkey.PathSingleDKey))
+        assert(exp == target)
+
+    @pytest.mark.parametrize("name", ["a", "b"])
+    def test_path_with_none_fallback(self, name):
+        """
+          name -> missing -> fallback
+        """
+        target = doot.locs["blah"]
+        key    = dkey.DKey(name, mark=dkey.DKey.mark.PATH, fallback=None, implicit=True)
+        state  = {}
+        exp    = key.expand(state)
+        assert(isinstance(key, dkey.PathSingleDKey))
+        assert(exp == None)
 
     def test_cwd_build(self):
         obj = dkey.DKey("__cwd", implicit=True, mark=dkey.DKey.mark.PATH, default=".")

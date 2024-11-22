@@ -70,6 +70,7 @@ EXPANSION_HINT  : Final[str]                = "_doot_expansion_hint"
 HELP_HINT       : Final[str]                = "_doot_help_hint"
 FORMAT_SEP      : Final[str]                = ":"
 CHECKTYPE       : TypeAlias                 = None|type|types.GenericAlias|types.UnionType
+CWD_MARKER      : Final[str]                = "__cwd"
 
 def identity(x):
     return x
@@ -254,6 +255,8 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, str):
         self._mark                 = mark or DKeyMark_e.FREE
         self._fallback             = fallback
         self._max_expansions       = max_exp
+        if self._fallback is Self:
+            self._fallback = str(self)
 
         self._update_expansion_params(mark)
         self.set_fmt_params(fmt)
@@ -517,9 +520,8 @@ class PathSingleDKey(SingleDKey, mark=DKeyMark_e.PATH):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._expansion_type  = pl.Path
-        self._typecheck = pl.Path
-        self._fallback = self._fallback or str(self)
-        self._relative = kwargs.get('relative', False)
+        self._typecheck       = pl.Path
+        self._relative        = kwargs.get('relative', False)
 
     def extra_sources(self):
         return [doot.locs]
@@ -529,10 +531,12 @@ class PathSingleDKey(SingleDKey, mark=DKeyMark_e.PATH):
           Takes a variable number of sources (dicts, tomlguards, specs, dootlocations..)
         """
         logging.debug("Single Path Expand")
-        if self == "__cwd":
+        if self == CWD_MARKER:
             return pl.Path.cwd()
         match super().expand(*sources, **kwargs):
-            case None | pl.Path() as x:
+            case None:
+                return self._fallback
+            case pl.Path() as x:
                 return x
             case _:
                 raise TypeError("Path Key shouldn't be able to produce a non-path")
@@ -560,8 +564,8 @@ class PathMultiDKey(MultiDKey, mark=DKeyMark_e.PATH, tparam="p", multi=True):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._expansion_type  = pl.Path
-        self._typecheck = pl.Path
-        self._relative  = kwargs.get('relative', False)
+        self._typecheck       = pl.Path
+        self._relative        = kwargs.get('relative', False)
 
     def extra_sources(self):
         return [doot.locs]
@@ -574,14 +578,16 @@ class PathMultiDKey(MultiDKey, mark=DKeyMark_e.PATH, tparam="p", multi=True):
         """ Expand subkeys, format the multi key
           Takes a variable number of sources (dicts, tomlguards, specs, dootlocations..)
         """
-        match self._expansion_type(super().expand(*sources, fallback=fallback, **kwargs)):
-            case None | pl.Path() as x:
+        match super().expand(*sources, fallback=fallback, **kwargs):
+            case None:
+                return self._fallback
+            case pl.Path() as x:
                 return x
             case _:
                 raise TypeError("Path Key shouldn't be able to produce a non-path")
 
     def _expansion_hook(self, value) -> None|pl.Path:
-        logging.debug("Normalizing Multi path KEy: %s", value)
+        logging.debug("Normalizing Multi path key: %s", value)
         match value:
             case None:
                 return None
