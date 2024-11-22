@@ -116,7 +116,7 @@ class DootTaskLoader(TaskLoader_p):
         logging.debug("Task Loader Setup with %s extra tasks", len(self.extra))
         return self
 
-    def load(self) -> TomlGuard[tuple[dict, type[Task_i|Job_i]]]:
+    def load(self) -> TomlGuard[TaskSpec]:
         with TimeCtx(logger=logging, entry_msg="---- Loading Tasks",  exit_msg="---- Task Loading Time"):
             raw_specs : list[dict] = []
             logging.debug("Loading Tasks from Config")

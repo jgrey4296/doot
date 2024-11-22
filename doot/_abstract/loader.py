@@ -35,61 +35,27 @@ from abc import abstractmethod
 from tomlguard import TomlGuard
 from importlib.metadata import EntryPoint
 
+from doot._abstract.protocols import SpecStruct_p
 from doot._abstract.cmd import Command_i
 from doot._abstract.task import Job_i
 
+_T = TypeVar("_T")
 
 @runtime_checkable
-class PluginLoader_p(Protocol):
-    """ Base for the first things loaded: plugins."""
-    loaded : ClassVar[TomlGuard] = None
+class Loader_p(Protocol, Generic[_T]):
 
-    @staticmethod
     def get_loaded(group:str, name:str) -> None|str:
-        if PluginLoader_p.loaded is None:
-            return None
-        if group not in PluginLoader_p.loaded:
-            return None
-        matches = [x.value for x in PluginLoader_p.loaded[group] if x.name == name]
-        if bool(matches):
-            return matches[0]
+        pass
 
-        return None
+    def setup(self, data:TomlGuard) -> Self:
+        pass
 
-    @abstractmethod
-    def setup(self, extra_config:TomlGuard) -> Self:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def load(self) -> TomlGuard[EntryPoint]:
-        raise NotImplementedError()
-
-@runtime_checkable
-class CommandLoader_p(Protocol):
-    """ Base for the second thing loaded: commands """
-
-    @abstractmethod
-    def setup(self, plugins:TomlGuard) -> Self:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def load(self) -> TomlGuard[Command_i]:
-        raise NotImplementedError()
-
-@runtime_checkable
-class TaskLoader_p(Protocol):
-    """ Base for the final thing loaded: user tasks """
-    _task_collection : list
-    _build_failures  : list
-    _task_class      : type
-
-    @abstractmethod
-    def setup(self, plugins:TomlGuard) -> Self:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def load(self) -> TomlGuard:
-        raise NotImplementedError()
+    def load(self) -> TomlGuard[_T]:
 
 
+
+
+PluginLoader_p  = Loader_p[EntryPoint]
+CommandLoader_p = Loader_p[Command_i]
+TaskLoader_p    = Loader_p[SpecStruct_p]
 Loaders_p : TypeAlias = CommandLoader_p | PluginLoader_p | TaskLoader_p
