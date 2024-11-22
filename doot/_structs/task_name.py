@@ -36,13 +36,13 @@ import more_itertools as mitz
 from pydantic import field_validator, model_validator
 from tomlguard import TomlGuard
 from jgdv.structs.name.structured_name import (StructuredName, TailEntry, aware_splitter)
+from jgdv.enums.util import FlagsBuilder_m
 
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.mixins.enums import FlagsBuilder_m
 
 # ##-- end 1st party imports
 

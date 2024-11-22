@@ -30,11 +30,12 @@ from weakref import ref
 
 # ##-- end stdlib imports
 
+from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
+
 # ##-- 1st party imports
 from doot._abstract.protocols import ArtifactStruct_p, SpecStruct_p
 from doot._abstract.reporter import Reporter_p
 from doot._abstract.task import Task_i
-from doot.mixins.enums import EnumBuilder_m, FlagsBuilder_m
 # ##-- end 1st party imports
 
 ##-- logging

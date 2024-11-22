@@ -28,9 +28,10 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
+from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
+
 # ##-- 1st party imports
 from doot._abstract.protocols import Key_p
-from doot.mixins.enums import EnumBuilder_m, FlagsBuilder_m
 # ##-- end 1st party imports
 
 ##-- logging

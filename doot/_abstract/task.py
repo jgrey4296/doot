@@ -26,11 +26,11 @@ import types
 from typing import Generator, NewType, Protocol, Any, runtime_checkable
 
 from tomlguard import TomlGuard
+from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
 
 import doot
 import doot.errors
 from doot._abstract.protocols import StubStruct_p, SpecStruct_p, ParamStruct_p
-from doot.mixins.enums import EnumBuilder_m, FlagsBuilder_m
 
 ##-- logging
 logging = logmod.getLogger(__name__)
