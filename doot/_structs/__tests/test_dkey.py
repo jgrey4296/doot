@@ -726,7 +726,7 @@ class TestDKeyExpansionFallback:
 class TestDKeyRedirection:
 
     def test_sanity(self):
-        pass
+        assert(True is not False)
 
     def test_redirection_multi(self):
         """
@@ -794,7 +794,7 @@ class TestDKeyRedirection:
         assert(dir_exp == "y")
 
     @pytest.mark.parametrize("name", ["a", "b", "blah_bloo"])
-    def test_redirect_fallbacks_to_actual(self, name):
+    def test_redirect_fallbacks_to_actual_by_default(self, name):
         """ name_ -> name -> y"""
         name_     = f"{name}_"
         key       = dkey.DKey(name_, implicit=True)
@@ -805,6 +805,15 @@ class TestDKeyRedirection:
         assert(redir == name)
         assert(key == name_)
         assert(exp == "y")
+
+    @pytest.mark.parametrize("name", ["a", "b", "blah_bloo"])
+    def test_redirect_fallback_to_explicit_None(self, name):
+        """ name_ -> name -> y"""
+        name_     = f"{name}_"
+        key       = dkey.DKey(name_, fallback=None, implicit=True)
+        state     = {name :"y"}
+        redir     = key.expand(state)
+        assert(redir is None)
 
     @pytest.mark.parametrize("name", ["a_", "b_"])
     def test_redirect_full_expansion(self, name):

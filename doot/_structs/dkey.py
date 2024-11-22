@@ -256,7 +256,7 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, str):
         self._fallback             = fallback
         self._max_expansions       = max_exp
         if self._fallback is Self:
-            self._fallback = str(self)
+            self._fallback = self
 
         self._update_expansion_params(mark)
         self.set_fmt_params(fmt)
@@ -442,13 +442,14 @@ class RedirectionDKey(SingleDKey, mark=DKeyMark_e.REDIRECT, tparam="R"):
 
 
     def __init__(self, data, multi=False, re_mark=None, **kwargs):
+        kwargs['fallback'] = kwargs.get('fallback', Self)
         super().__init__(data, **kwargs)
-        self.multi_redir = multi
-        self.re_mark     = re_mark
+        self.multi_redir      = multi
+        self.re_mark          = re_mark
         self._expansion_type  = DKey
-        self._typecheck = DKey | list[DKey]
+        self._typecheck       = DKey | list[DKey]
 
-    def expand(self, *sources, max=None, full:bool=False, **kwargs) -> None|Any:
+    def expand(self, *sources, max=None, full:bool=False, **kwargs) -> None|DKey:
         match super().redirect(*sources, multi=self.multi_redir, re_mark=self.re_mark, **kwargs):
             case list() as xs if self.multi_redir and full:
                 return [x.expand(*sources) for x in xs]
@@ -456,8 +457,14 @@ class RedirectionDKey(SingleDKey, mark=DKeyMark_e.REDIRECT, tparam="R"):
                 return xs
             case [x, *xs] if full:
                 return x.expand(*sources)
+            case [x, *xs] if self._fallback == self and x < self:
+                return x
+            case [x, *xs] if self._fallback is None:
+                return None
             case [x, *xs]:
                 return x
+            case []:
+                return self._fallback
 
 
 class ConflictDKey(SingleDKey):
