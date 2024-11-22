@@ -37,6 +37,7 @@ import doot
 import doot.errors
 from doot._abstract import (ArgParser_i, Command_i, CommandLoader_p, Job_i,
                             Overlord_p, Task_i, TaskLoader_p)
+from doot._abstract.loader import Loader_p
 from doot.errors import DootInvalidConfig, DootParseError
 from doot.loaders.cmd_loader import DootCommandLoader
 from doot.loaders.plugin_loader import DootPluginLoader
@@ -56,20 +57,21 @@ help_l     = doot.subprinter("help")
 shutdown_l = doot.subprinter("shutdown")
 ##-- end logging
 
-env = os.environ
-plugin_loader_key  : Final[str]   = doot.constants.entrypoints.DEFAULT_PLUGIN_LOADER_KEY
-command_loader_key : Final[str]   = doot.constants.entrypoints.DEFAULT_COMMAND_LOADER_KEY
-task_loader_key    : Final[str]   = doot.constants.entrypoints.DEFAULT_TASK_LOADER_KEY
-announce_exit      : Final[bool]  = doot.constants.misc.ANNOUNCE_EXIT
-announce_voice     : Final[str]   = doot.constants.misc.ANNOUNCE_VOICE
+env                                    = os.environ
+plugin_loader_key  : Final[str]        = doot.constants.entrypoints.DEFAULT_PLUGIN_LOADER_KEY
+command_loader_key : Final[str]        = doot.constants.entrypoints.DEFAULT_COMMAND_LOADER_KEY
+task_loader_key    : Final[str]        = doot.constants.entrypoints.DEFAULT_TASK_LOADER_KEY
+announce_exit      : Final[bool]       = doot.constants.misc.ANNOUNCE_EXIT
+announce_voice     : Final[str]        = doot.constants.misc.ANNOUNCE_VOICE
 
-HEADER_MSG         : Final[str]   = doot.constants.printer.doot_header
+HEADER_MSG         : Final[str]        = doot.constants.printer.doot_header
 
-preferred_cmd_loader              = doot.config.on_fail("default").settings.general.loaders.command()
-preferred_task_loader             = doot.config.on_fail("default").settings.general.loaders.task()
-preferred_parser                  = doot.config.on_fail("default").settings.general.loaders.parser()
+preferred_cmd_loader                   = doot.config.on_fail("default").settings.general.loaders.command()
+preferred_task_loader                  = doot.config.on_fail("default").settings.general.loaders.task()
+preferred_parser                       = doot.config.on_fail("default").settings.general.loaders.parser()
 
-defaulted_file                    = doot.config.on_fail(pl.Path("{logs}/.doot_defaults.toml"), pl.Path).settings.general.defaulted_file(pl.Path)
+defaulted_file                         = doot.config.on_fail(pl.Path("{logs}/.doot_defaults.toml"), pl.Path).settings.general.defaulted_file(pl.Path)
+DEFAULT_FILENAMES : Final[tuple[*str]] = ("doot.toml", "pyproject.toml")
 
 @doot.check_protocol
 class DootOverlord(ParamSpecMaker_m, Overlord_p):
@@ -87,7 +89,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         print("Doot Version: %s", doot.__version__)
         print("lib @", os.path.dirname(os.path.abspath(__file__)))
 
-    def __init__(self, *, loaders:dict[str, Loader_i]=None, config_filenames:tuple=('doot.toml', 'pyproject.toml'), extra_config:dict|TomlGuard=None, args:list=None, log_config:None|DootLogConfig=None):
+    def __init__(self, *, loaders:dict[str, Loader_i]=None, config_filenames:tuple=DEFAULT_FILENAMES, extra_config:dict|TomlGuard=None, args:list=None, log_config:None|DootLogConfig=None):
         logging.info("---- Initialising Overlord")
         self.args                                = args or sys.argv[:]
         self.BIN_NAME                            = self.args[0].split('/')[-1]
@@ -172,35 +174,38 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
     def _load_commands(self, extra_config):
         """ Select Commands from the discovered plugins """
         self.cmd_loader = plugin_selector(self.loaders.get(command_loader_key, None) or self.plugins.on_fail([], list).command_loader(),
-                                        target=preferred_cmd_loader,
-                                        fallback=DootCommandLoader)()
+                                          target=preferred_cmd_loader,
+                                          fallback=DootCommandLoader)()
 
-        if self.cmd_loader is None:
-            raise TypeError("Command Loader is not initialised")
-        if not isinstance(self.cmd_loader, CommandLoader_p):
-            raise TypeError("Attempted to use a non-CommandLoader_p as a CommandLoader: ", self.cmd_loader)
+        match self.cmd_loader:
+            case None:
+                raise TypeError("Command Loader is not initialised")
+            case Loader_p():
+                try:
+                    self.cmd_loader.setup(self.plugins, extra_config)
+                    self.cmds = self.cmd_loader.load()
+                except doot.errors.DootPluginError as err:
+                    shutdown_l.warning("Commands Not Loaded due to Error: %s", err)
+                    self.cmds = tomlguard.TomlGuard()
+            case _:
+                raise TypeError("Unrecognized loader type", self.cmd_loader)
 
-        try:
-            self.cmd_loader.setup(self.plugins, extra_config)
-            self.cmds = self.cmd_loader.load()
-        except doot.errors.DootPluginError as err:
-            shutdown_l.warning("Commands Not Loaded due to Error: %s", err)
-            self.cmds = tomlguard.TomlGuard()
 
     def _load_tasks(self, extra_config):
         """ Load task entry points """
-
         self.task_loader = plugin_selector(self.loaders.get(task_loader_key, None) or self.plugins.on_fail([], list).task_loader(),
-                                            target=preferred_task_loader,
-                                            fallback=DootTaskLoader)()
+                                           target=preferred_task_loader,
+                                           fallback=DootTaskLoader)()
 
-        if self.task_loader is None:
-            raise TypeError("Task Loader is not initialised")
-        if not isinstance(self.task_loader, TaskLoader_p):
-            raise TypeError("Attempted to use a non-Commandloader_i as a CommandLoader: ", self.cmd_loader)
+        match self.task_loader:
+            case None:
+                raise TypeError("Task Loader is not initialised")
+            case Loader_p():
+                self.task_loader.setup(self.plugins, extra_config)
+                self.tasks = self.task_loader.load()
+            case _:
+                raise TypeError("Unrecognized loader type", self.task_loader)
 
-        self.task_loader.setup(self.plugins, extra_config)
-        self.tasks = self.task_loader.load()
 
     def _parse_args(self, args=None):
         """ use the found task and command arguments to make sense of sys.argv """

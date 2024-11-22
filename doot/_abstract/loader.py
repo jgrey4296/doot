@@ -51,11 +51,11 @@ class Loader_p(Protocol, Generic[_T]):
         pass
 
     def load(self) -> TomlGuard[_T]:
+        pass
 
 
 
-
-PluginLoader_p  = Loader_p[EntryPoint]
-CommandLoader_p = Loader_p[Command_i]
-TaskLoader_p    = Loader_p[SpecStruct_p]
+PluginLoader_p        = Loader_p[EntryPoint]
+CommandLoader_p       = Loader_p[Command_i]
+TaskLoader_p          = Loader_p[SpecStruct_p]
 Loaders_p : TypeAlias = CommandLoader_p | PluginLoader_p | TaskLoader_p
