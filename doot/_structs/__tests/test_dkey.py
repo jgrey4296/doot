@@ -8,7 +8,7 @@ import logging as logmod
 import pathlib as pl
 from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
                     Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
-                    TypeVar, cast)
+                    TypeVar, cast, Self)
 import warnings
 
 import pytest
@@ -726,7 +726,7 @@ class TestDKeyExpansionFallback:
 class TestDKeyRedirection:
 
     def test_sanity(self):
-        pass
+        assert(True is not False)
 
     def test_redirection_multi(self):
         """
@@ -794,7 +794,7 @@ class TestDKeyRedirection:
         assert(dir_exp == "y")
 
     @pytest.mark.parametrize("name", ["a", "b", "blah_bloo"])
-    def test_redirect_fallbacks_to_actual(self, name):
+    def test_redirect_fallbacks_to_actual_by_default(self, name):
         """ name_ -> name -> y"""
         name_     = f"{name}_"
         key       = dkey.DKey(name_, implicit=True)
@@ -805,6 +805,15 @@ class TestDKeyRedirection:
         assert(redir == name)
         assert(key == name_)
         assert(exp == "y")
+
+    @pytest.mark.parametrize("name", ["a", "b", "blah_bloo"])
+    def test_redirect_fallback_to_explicit_None(self, name):
+        """ name_ -> name -> y"""
+        name_     = f"{name}_"
+        key       = dkey.DKey(name_, fallback=None, implicit=True)
+        state     = {name :"y"}
+        redir     = key.expand(state)
+        assert(redir is None)
 
     @pytest.mark.parametrize("name", ["a_", "b_"])
     def test_redirect_full_expansion(self, name):
@@ -910,7 +919,7 @@ class TestDKeyPathKeys:
         assert(exp == target)
 
     @pytest.mark.parametrize("name", ["a", "b"])
-    def test_path_marked_fallback(self, name):
+    def test_path_marked_fallback_lookup(self, name):
         """
           name -> missing -> fallback
         """
@@ -920,6 +929,30 @@ class TestDKeyPathKeys:
         exp    = key.expand(state)
         assert(isinstance(key, dkey.PathSingleDKey))
         assert(exp == target)
+
+    @pytest.mark.parametrize("name", ["a", "b"])
+    def test_path_marked_self_fallback(self, name):
+        """
+          name -> missing -> fallback
+        """
+        target = doot.locs[name]
+        key    = dkey.DKey(name, mark=dkey.DKey.mark.PATH, fallback=Self, implicit=True)
+        state  = {}
+        exp    = key.expand(state)
+        assert(isinstance(key, dkey.PathSingleDKey))
+        assert(exp == target)
+
+    @pytest.mark.parametrize("name", ["a", "b"])
+    def test_path_with_none_fallback(self, name):
+        """
+          name -> missing -> fallback
+        """
+        target = doot.locs["blah"]
+        key    = dkey.DKey(name, mark=dkey.DKey.mark.PATH, fallback=None, implicit=True)
+        state  = {}
+        exp    = key.expand(state)
+        assert(isinstance(key, dkey.PathSingleDKey))
+        assert(exp == None)
 
     def test_cwd_build(self):
         obj = dkey.DKey("__cwd", implicit=True, mark=dkey.DKey.mark.PATH, default=".")

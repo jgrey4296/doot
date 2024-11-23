@@ -67,19 +67,19 @@ class TestRelationSpec:
 
 
     def test_injections(self):
-        inject = { "a" : "b", "c": "d" }
+        inject = {"now": { "a" : "b", "c": "d" }}
         obj = RelationSpec.build({"task":"group::a.test", "inject": inject})
         assert(isinstance(obj, RelationSpec))
-        assert(obj.inject == {"a": "b", "c": "d"})
+        assert(obj.inject == {"now": {"a": "b", "c": "d"}})
 
 
     def test_injections_independent(self):
-        inject = { "a" : "b", "c": "d" }
+        inject = {"now": { "a" : "b", "c": "d" }}
         obj = RelationSpec.build({"task":"group::a.test", "inject": inject})
         assert(isinstance(obj, RelationSpec))
-        assert(obj.inject == {"a": "b", "c": "d"})
+        assert(obj.inject == {"now": { "a" : "b", "c": "d" }})
         inject['e'] = 5
-        assert(obj.inject == {"a": "b", "c": "d"})
+        assert(obj.inject == {"now": { "a" : "b", "c": "d" }})
 
     def test_location_dep(self):
         obj = RelationSpec.build(pl.Path("a/file.txt"))
@@ -100,12 +100,12 @@ class TestRelationSpec:
         assert(LocationMeta_f.abstract in obj.target)
 
     def test_dict_loc_dep(self):
-        obj = RelationSpec.build({"loc": "a/file.txt"})
+        obj = RelationSpec.build({"path": "a/file.txt", "file":True})
         assert(isinstance(obj, RelationSpec))
         assert(isinstance(obj.target, Location))
 
     def test_abstract_loc_dep_(self):
-        obj = RelationSpec.build({"loc": "a/*.txt"})
+        obj = RelationSpec.build({"path": "a/*.txt"})
         assert(isinstance(obj, RelationSpec))
         assert(isinstance(obj.target, Location))
         assert(LocationMeta_f.abstract in obj.target)
@@ -131,25 +131,15 @@ class TestRelationSpec:
 
 
     def test_build_as_dependency(self):
-        obj = RelationSpec.build({"task": "agroup::atask"}, relation=RelationMeta_e.dependsOn)
+        obj = RelationSpec.build({"task": "agroup::atask"}, relation=RelationMeta_e.needs)
         assert(isinstance(obj, RelationSpec))
         assert(isinstance(obj.target, TaskName))
-        assert(obj.relation is RelationMeta_e.dep)
+        assert(obj.relation is RelationMeta_e.needs)
 
 
     def test_build_as_requirement(self):
-        obj = RelationSpec.build({"task": "agroup::atask"}, relation=RelationMeta_e.requirementFor)
+        obj = RelationSpec.build({"task": "agroup::atask"}, relation=RelationMeta_e.blocks)
         assert(isinstance(obj, RelationSpec))
         assert(isinstance(obj.target, TaskName))
         assert(obj.target == "agroup::atask")
-        assert(obj.relation is RelationMeta_e.req)
-
-
-    def test_invert(self):
-        obj = RelationSpec.build({"task": "agroup::atask"})
-        assert(obj.relation == RelationMeta_e.dependencyOf)
-        inverted = obj.invert()
-        assert(obj is not inverted)
-        assert(obj.relation == RelationMeta_e.dependencyOf)
-        assert(inverted.target == obj.target)
-        assert(inverted.relation is not obj.relation)
+        assert(obj.relation is RelationMeta_e.blocks)

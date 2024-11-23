@@ -54,6 +54,19 @@ class DootPluginLoader(PluginLoader_p):
     """
     Load doot plugins from the system, to choose from with doot.toml or cli args
     """
+    loaded : ClassVar[TomlGuard] = None
+
+    @staticmethod
+    def get_loaded(group:str, name:str) -> None|str:
+        if DootPluginLoader.loaded is None:
+            return None
+        if group not in DootPluginLoader.loaded:
+            return None
+        matches = [x.value for x in DootPluginLoader.loaded[group] if x.name == name]
+        if bool(matches):
+            return matches[0]
+
+        return None
 
     def setup(self, extra_config=None) -> Self:
         self.plugins = defaultdict(list)
@@ -94,8 +107,8 @@ class DootPluginLoader(PluginLoader_p):
             raise doot.errors.DootPluginError("Failed to load plugin defaults: %s", err) from err
 
         logging.debug("Found %s plugins", len(self.plugins))
-        PluginLoader_p.loaded = tomlguard.TomlGuard(self.plugins)
-        return PluginLoader_p.loaded
+        DootPluginLoader.loaded = tomlguard.TomlGuard(self.plugins)
+        return DootPluginLoader.loaded
 
     def _load_system_plugins(self):
         if skip_plugin_search:

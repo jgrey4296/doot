@@ -40,7 +40,6 @@ from jgdv.structs.code_ref import CodeReference
 import doot
 import doot.errors
 from doot._abstract.protocols import SpecStruct_p, ProtocolModelMeta, Buildable_p
-from doot.enums import Report_f, TaskMeta_f
 
 # ##-- end 1st party imports
 

@@ -135,3 +135,7 @@ class DootEarlyExit(Exception):
 class DootKeyError(DootError):
     """ A failure occurred while accessing task state using a key. """
     pass
+
+class DootStateError(DootError):
+    """ For failures to access, expand, or constraint state keys """
+    pass

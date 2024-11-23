@@ -46,13 +46,14 @@ from jgdv.structs.code_ref import CodeReference
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import FailPolicy_p, Job_i, Task_i, TaskRunner_i, TaskTracker_i
+from doot._abstract import Job_i, Task_i, TaskRunner_i, TaskTracker_i
 from doot._structs.relation_spec import RelationSpec
-from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e, LocationMeta_f, RelationMeta_e, EdgeType_e
+from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e, LocationMeta_f, RelationMeta_e, EdgeType_e, ArtifactStatus_e
 from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
-
+from doot.utils.injection import Injector_m
+from doot.utils.matching import TaskMatcher_m
 # ##-- end 1st party imports
 
 ##-- logging
@@ -80,7 +81,7 @@ AnySpec                        : TypeAlias                   = TaskSpec
 ActionElem                     : TypeAlias                   = ActionSpec|RelationSpec
 ActionGroup                    : TypeAlias                   = list[ActionElem]
 
-class _TrackerStore:
+class _TrackerStore(Injector_m, TaskMatcher_m):
     """ Stores and manipulates specs, tasks, and artifacts """
 
     def __init__(self):
@@ -96,12 +97,12 @@ class _TrackerStore:
         self.tasks                : dict[ConcreteId, Task_i]                      = {}
         # Artifact -> list[TaskName] of related tasks
         self.artifacts            : dict[TaskArtifact, list[AbstractId]]          = defaultdict(set)
-        self._artifact_status     : dict[TaskArtifact, TaskStatus_e]              = defaultdict(lambda: TaskStatus_e.ARTIFACT)
+        self._artifact_status     : dict[TaskArtifact, ArtifactStatus_e]              = defaultdict(lambda: ArtifactStatus_e.DECLARED)
         # Artifact sets
         self._abstract_artifacts  : set[TaskArtifact]                             = set()
         self._concrete_artifacts  : set[TaskArtifact]                             = set()
-        # requirements.
-        self._requirements        : dict[ConcreteId, list[RelationSpec]]          = defaultdict(lambda: [])
+        # indirect requirements from other tasks:
+        self._indirect_deps        : dict[ConcreteId, list[RelationSpec]]          = defaultdict(lambda: [])
 
     def _maybe_reuse_instantiation(self, name:TaskName, *, add_cli:bool=False, extra:bool=False) -> None|ConcreteId:
         """ if an existing concrete spec exists, use it if it has no conflicts """
@@ -119,8 +120,8 @@ class _TrackerStore:
             logging.debug("Not reusing instantiation because there is no instantiation to reuse: %s", name)
             return None
 
-        existing_abstract = self.specs[name]
-        match [x for x in self.concrete[name] if self.specs[x].match_with_constraints(existing_abstract)]:
+        abstract = self.specs[name]
+        match [x for x in self.concrete[name] if abstract != (concrete:=self.specs[x]) and self.match_with_constraints(concrete, abstract)]:
             case []:
                 logging.debug("Not reusing instantiation because existing specs dont match with constraints: %s", name)
                 return None
@@ -212,39 +213,42 @@ class _TrackerStore:
         """ find a matching relendency/requirement according to a set of keys in the spec, or create a matching instance
           if theres no constraints, will just instantiate.
           """
-        logging.info("Instantiating Relation: %s - %s -> %s", control, rel.relation.name, rel.target)
+        logging.warning("Instantiating Relation: %s - %s -> %s", control, rel.relation.name, rel.target)
         assert(control in self.specs)
+        assert(rel.target in self.specs)
         control_spec              = self.specs[control]
+        target_spec               = self.specs[rel.target]
         successful_matches        = []
         match self.concrete.get(rel.target, None):
             case [] | None if rel.target not in self.specs:
                 raise doot.errors.DootTaskTrackingError("Unknown target declared in Constrained Relation", control, rel.target)
             case [] | None:
                 pass
-            case [*xs] if not bool(rel.constraints) and not bool(rel.inject):
-                successful_matches = [x for x in xs if x != control]
             case [*xs]:
                 # concrete instances exist, match on them
-                potentials : list[TaskSpec] = [self.specs[x] for x in xs if x != control]
-                successful_matches += [x.name for x in potentials if x.match_with_constraints(control_spec, relation=rel)]
+                potentials : list[TaskSpec] = [self.specs[x] for x in xs]
+                successful_matches += [x.name for x in potentials if self.match_with_constraints(x, control_spec, relation=rel)]
 
         match successful_matches:
             case []: # No matches, instantiate
-                extra    : None|dict     = control_spec.build_injection(rel)
-                instance : TaskName      = self._instantiate_spec(rel.target, extra=extra)
-                if not self.specs[instance].match_with_constraints(control_spec, relation=rel):
-                    raise doot.errors.DootTaskTrackingError("Could not instantiate a spec that passes constraints", rel, control)
+                extra    : None|dict      = self.build_injection(rel, control_spec, constraint=target_spec)
+                instance : TaskName       = self._instantiate_spec(rel.target, extra=extra)
+                if not self.match_with_constraints(self.specs[instance], control_spec, relation=rel):
+                    raise doot.errors.DootTaskTrackingError("Failed to build task matching constraints")
+                logging.warning("Using New Instance: %s", instance)
                 return instance
             case [x]: # One match, connect it
                 assert(x in self.specs)
                 assert(x.is_instantiated())
                 instance : TaskName = x
+                logging.warning("Reusing Instance: %s", instance)
                 return instance
             case [*xs, x]: # TODO check this.
                 # Use most recent instance?
                 assert(x in self.specs)
                 assert(x.is_instantiated())
                 instance : TaskName = x
+                logging.warning("Reusing latest Instance: %s", instance)
                 return instance
 
     def _instantiate_transformer(self, name:AbstractId, artifact:TaskArtifact) -> None|ConcreteId:
@@ -324,7 +328,10 @@ class _TrackerStore:
         """ Register task specs, abstract or concrete.
         An initial concrete instance will be created for any abstract spec.
         """
-        for spec in specs:
+        queue = []
+        queue += specs
+        while bool(queue):
+            spec = queue.pop(0)
             if spec.name in self.specs:
                 continue
             if TaskMeta_f.DISABLED in spec.flags:
@@ -336,21 +343,32 @@ class _TrackerStore:
 
             # Register the head and cleanup specs:
             if TaskMeta_f.JOB in spec.flags:
-                self.register_spec(*spec.gen_job_head())
+                queue += spec.gen_job_head()
             else:
-                self.register_spec(spec.gen_cleanup_task())
+                queue.append(spec.gen_cleanup_task())
 
             self._register_artifacts(spec.name)
-            # Register Requirements:
-            for rel in spec.action_group_elements():
-                match rel:
-                    case RelationSpec(target=target, relation=RelationMeta_e.req) if not spec.name.is_instantiated():
-                        logging.debug("Registering Requirement: %s : %s", target, rel.invert(spec.name))
-                        self._requirements[target].append(rel.invert(spec.name))
-                    case _: # Ignore action specs
-                        pass
+            self._register_blocking_relations(spec)
 
-    def get_status(self, task:ConcreteId) -> TaskStatus_e:
+    def _register_blocking_relations(self, spec:TaskSpec):
+        if spec.name.is_instantiated:
+            # If the spec is instantiated,
+            # it has no indirect relations
+            return
+
+        # Register Indirect dependencies:
+        # So if spec blocks target,
+        # record that target needs spec
+        for rel in spec.action_group_elements():
+            match rel:
+                case RelationSpec(target=target, relation=RelationMeta_e.blocks):
+                    logging.debug("Registering Indirect Relation: %s", rel)
+                    rel.object = spec.name
+                    self._indirect_deps[target].append(rel)
+                case _: # Ignore action specs
+                    pass
+
+    def get_status(self, task:ConcreteId) -> TaskStatus_e|ArtifactStatus_e:
         """ Get the status of a task or artifact """
         match task:
             case TaskArtifact():
@@ -364,7 +382,7 @@ class _TrackerStore:
             case _:
                 return TaskStatus_e.NAMED
 
-    def set_status(self, task:ConcreteId|Task_i, status:TaskStatus_e) -> bool:
+    def set_status(self, task:ConcreteId|Task_i, status:TaskStatus_e|ArtifactStatus_e) -> bool:
         """ update the state of a task in the dependency graph
           Returns True on status update,
           False on no task or artifact to update.
@@ -375,7 +393,7 @@ class _TrackerStore:
                 return False
             case Task_i(), TaskStatus_e() if task.name in self.tasks:
                 self.tasks[task.name].status = status
-            case TaskArtifact(), TaskStatus_e():
+            case TaskArtifact(), ArtifactStatus_e():
                 self._artifact_status[task] = status
             case TaskName(), TaskStatus_e() if task in self.tasks:
                 self.tasks[task].status = status
@@ -387,7 +405,7 @@ class _TrackerStore:
 
         return True
 
-class _TrackerNetwork:
+class _TrackerNetwork(Injector_m, TaskMatcher_m):
     """ the network of concrete tasks and their dependencies """
 
     def __init__(self):
@@ -482,40 +500,60 @@ class _TrackerNetwork:
         assert(not self.network.nodes[name].get(EXPANDED, False))
         spec                                                  = self.specs[name]
         spec_pred, spec_succ                                  = self.network.pred[name], self.network.succ[name]
-        indirect_deps : list[tuple[ConcreteId, RelationSpec]] = self._requirements[spec.sources[-1]]
         to_expand                                             = set()
 
-        track_l.debug("--> Expanding Task: %s : Pre(%s), Post(%s), IndirecPre:(%s)",
-                      name, len(spec.depends_on), len(spec.required_for), len(indirect_deps))
-        logging.debug("--> Expanding Task: %s : Pre(%s), Post(%s), IndirecPre:(%s)",
-                      name, len(spec.depends_on), len(spec.required_for), len(indirect_deps))
+        track_l.debug("--> Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
+        logging.debug("--> Expanding Task: %s : Pre(%s), Post(%s)", name, len(spec.depends_on), len(spec.required_for))
 
         to_expand.update(self._expand_generated_tasks(spec))
 
         # Connect Relations
-        for rel in itz.chain(spec.action_group_elements(), indirect_deps):
+        for rel in itz.chain(spec.action_group_elements()):
             if not isinstance(rel, RelationSpec):
                 continue
             relevant_edges = spec_succ if rel.forward_dir_p() else spec_pred
             match rel:
                 case RelationSpec(target=TaskArtifact() as target):
                     assert(target in self.artifacts)
-                    self.connect(*rel.to_edge(name))
+                    self.connect(*rel.to_ordered_pair(name))
                     to_expand.add(target)
-                case RelationSpec(target=TaskName()) if rel.match_simple_edge(relevant_edges.keys(), exclude=[name]):
+                case RelationSpec(target=TaskName()) if self.match_edge(rel, relevant_edges.keys(), exclude=[name]):
                     # already linked, ignore.
                     continue
                 case RelationSpec(target=TaskName()):
                     # Get specs and instances with matching target
                     instance = self._instantiate_relation(rel, control=name)
-                    self.connect(*rel.to_edge(name, instance=instance))
+                    self.connect(*rel.to_ordered_pair(name, target=instance))
                     to_expand.add(instance)
         else:
             assert(name in self.network.nodes)
             self.network.nodes[name][EXPANDED] = True
 
         track_l.debug("<-- Task Expansion Complete: %s", name)
+        to_expand.update(self._expand_indirect_relations(spec))
+
         return to_expand
+
+    def _expand_indirect_relations(self, spec) -> list[TaskName]:
+        """ for a spec S, find the tasks T that have registered a relation
+        of T < S.
+        (S would not know about these blockers).
+
+        For these T, link instantiated nodes that match constraints and link them to S,
+        or if no nodes exist, create and link them.
+        """
+        to_expand = set()
+        spec_pred = self.network.pred[spec.name]
+        # Get (abstract) blocking relations from self._indirect_deps
+        blockers  = self._indirect_deps[spec.name.root(top=True)]
+
+        # Try to link instantiated nodes if they match constraints
+
+        # else instantiate and link new nodes
+
+
+        return to_expand
+
 
     def _expand_generated_tasks(self, spec:TaskSpec) -> list[TaskName]:
         """
@@ -541,7 +579,7 @@ class _TrackerNetwork:
 
 
     def _expand_artifact(self, artifact:TaskArtifact) -> set[ConcreteId]:
-        """ expand artifacts, instantaiting related tasks/transformers,
+        """ expand artifacts, instantiating related tasks/transformers,
           and connecting the task to its abstract/concrete related artifacts
           """
         assert(artifact in self.artifacts)
@@ -559,7 +597,7 @@ class _TrackerNetwork:
 
         to_expand.update(self._match_artifact_to_transformers(artifact))
 
-        match artifact.is_concrete:
+        match artifact.is_concrete():
             case True:
                 logging.debug("-- Connecting concrete artifact to parent abstracts")
                 for abstract in [x for x in self._abstract_artifacts if artifact in x and LocationMeta_f.glob in x]:
@@ -585,11 +623,11 @@ class _TrackerNetwork:
         succ  = self.network.succ[name]
         return tomlguard.TomlGuard({
             "pred" : {"tasks": [x for x in preds if isinstance(x, TaskName)],
-                      "artifacts": {"abstract": [x for x in preds if isinstance(x, TaskArtifact) and not x.is_concrete],
-                                    "concrete": [x for x in preds if isinstance(x, TaskArtifact) and x.is_concrete]}},
+                      "artifacts": {"abstract": [x for x in preds if isinstance(x, TaskArtifact) and not x.is_concrete()],
+                                    "concrete": [x for x in preds if isinstance(x, TaskArtifact) and x.is_concrete()]}},
             "succ" : {"tasks": [x for x in succ  if isinstance(x, TaskName) and x is not self._root_node],
-                      "artifacts": {"abstract": [x for x in succ if isinstance(x, TaskArtifact) and not x.is_concrete],
-                                    "concrete": [x for x in succ if isinstance(x, TaskArtifact) and x.is_concrete]}},
+                      "artifacts": {"abstract": [x for x in succ if isinstance(x, TaskArtifact) and not x.is_concrete()],
+                                    "concrete": [x for x in succ if isinstance(x, TaskArtifact) and x.is_concrete()]}},
             "root" : self._root_node in succ,
             })
 
@@ -638,11 +676,11 @@ class _TrackerNetwork:
                 self.network.add_edge(left, right, type=EdgeType_e.TASK_CROSS, **kwargs)
             case TaskArtifact(), TaskName():
                 self.network.add_edge(left, right, type=EdgeType_e.ARTIFACT_CROSS, **kwargs)
-            case TaskArtifact(), TaskArtifact() if left.is_concrete and right.is_concrete:
+            case TaskArtifact(), TaskArtifact() if left.is_concrete() and right.is_concrete():
                 raise doot.errors.DootTaskTrackingError("Tried to connect two concrete artifacts", left, right)
-            case TaskArtifact(), TaskArtifact() if right.is_concrete:
+            case TaskArtifact(), TaskArtifact() if right.is_concrete():
                 self.network.add_edge(left, right, type=EdgeType_e.ARTIFACT_UP, **kwargs)
-            case TaskArtifact(), TaskArtifact() if not right.is_concrete:
+            case TaskArtifact(), TaskArtifact() if not right.is_concrete():
                 self.network.add_edge(left, right, type=EdgeType_e.ARTIFACT_DOWN, **kwargs)
 
     def validate_network(self, *, strict:bool=True) -> bool:
@@ -656,8 +694,6 @@ class _TrackerNetwork:
         for node, data in self.network.nodes.items():
             match node:
                 case TaskName() | TaskArtifact() if not data[EXPANDED]:
-                    breakpoint()
-                    pass
                     if strict:
                         raise doot.errors.DootTaskTrackingError("Network isn't fully expanded", node)
                     logging.warning("Network isn't fully expanded: %s", node)
@@ -676,7 +712,7 @@ class _TrackerNetwork:
         """ Get all predecessors of a node that don't evaluate as complete """
         assert(focus in self.network.nodes)
         incomplete = []
-        for x in [x for x in self.network.pred[focus] if self.get_status(x) not in TaskStatus_e.success_set]:
+        for x in [x for x in self.network.pred[focus] if (status:=self.get_status(x)) not in TaskStatus_e.success_set and status != ArtifactStatus_e.EXISTS]:
             match x:
                 case TaskName() if 'cleanup' in self.network.edges[x, focus]:
                     pass
@@ -793,7 +829,7 @@ class _TrackerQueue_boltons:
 
         return focus
 
-    def queue_entry(self, name:str|AnyId|ConcreteSpec|Task_i, *, from_user:bool=False, status:TaskStatus_e=None) -> None|ConcreteId:
+    def queue_entry(self, name:str|AnyId|ConcreteSpec|Task_i, *, from_user:bool=False, status:TaskStatus_e|ArtifactStatus_e=None) -> None|ConcreteId:
         """
           Queue a task by name|spec|Task_i.
           registers and instantiates the relevant spec, inserts it into the network
@@ -872,7 +908,7 @@ class _TrackerQueue_boltons:
         self._queue.add(final_name, priority=target_priority)
         # Apply the override status if necessary:
         match status:
-            case TaskStatus_e():
+            case TaskStatus_e() | ArtifactStatus_e():
                 self.set_status(final_name, status)
             case None:
                 status = self.get_status(final_name)

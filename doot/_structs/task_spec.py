@@ -47,9 +47,9 @@ from doot._abstract.task import Task_i
 from doot._structs.action_spec import ActionSpec
 from doot._structs.artifact import TaskArtifact
 from doot._structs.relation_spec import RelationSpec
-from doot._structs.task_name import TaskName
-from doot.enums import (LocationMeta_f, RelationMeta_e, Report_f, TaskMeta_f,
-                        QueueMeta_e)
+from doot._structs.task_name import TaskName, TaskMeta_f
+from doot.structs import DKey
+from doot.enums import (LocationMeta_f, RelationMeta_e, QueueMeta_e)
 
 # ##-- end 1st party imports
 
@@ -57,7 +57,8 @@ from doot.enums import (LocationMeta_f, RelationMeta_e, Report_f, TaskMeta_f,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-def _dicts_to_relspecs(deps:list[dict], *, relation=RelationMeta_e.dependencyOf) -> list[ActionSpec|RelationSpec]:
+def _dicts_to_specs(deps:list[dict], *, relation=RelationMeta_e.default) -> list[ActionSpec|RelationSpec]:
+    """ Convert toml provided dicts of specs into ActionSpec and RelationSpec object"""
     results = []
     for x in deps:
         match x:
@@ -71,9 +72,9 @@ def _dicts_to_relspecs(deps:list[dict], *, relation=RelationMeta_e.dependencyOf)
     return results
 
 
-def _prepare_action_group(deps:list[str], handler:ValidatorFunctionWrapHandler, info:ValidationInfo) -> list[RelationSpec|ActionSpec]:
+def _prepare_action_group(group:list[str], handler:ValidatorFunctionWrapHandler, info:ValidationInfo) -> list[RelationSpec|ActionSpec]:
     """
-      Prepares action groups / dependencies,
+      Validates and Builds action/relation groups,
       converting toml specified strings, list, and dicts to Artifacts (ie:files), Task Names, ActionSpecs
 
       As a wrap handler, it has the context of what field is being processed,
@@ -81,11 +82,14 @@ def _prepare_action_group(deps:list[str], handler:ValidatorFunctionWrapHandler, 
 
       # TODO handle callables?
     """
-    if deps is None:
+    if group is None:
         return []
 
-    relation_type = RelationMeta_e.requirementFor if info.field_name in TaskSpec._dependant_groups else RelationMeta_e.dependencyOf
-    results = _dicts_to_relspecs(deps, relation=relation_type)
+    relation_type = RelationMeta_e.needs
+    if info.field_name in TaskSpec._blocking_groups:
+        relation_type = RelationMeta_e.blocks
+
+    results = _dicts_to_specs(group, relation=relation_type)
     return handler(results)
 
 ActionGroup = Annotated[list[ActionSpec|RelationSpec], WrapValidator(_prepare_action_group)]
@@ -94,7 +98,7 @@ class _JobUtils_m:
     """Additional utilities mixin for job based task specs"""
 
     def get_source_names(self) -> list[TaskName]:
-        """ Get from the spec's sourcs just its source tasks """
+        """ Get from the spec's sources just its source tasks """
         return [x for x in self.sources if isinstance(x, TaskName)]
 
     def gen_job_head(self) -> list[TaskSpec]:
@@ -120,9 +124,10 @@ class _JobUtils_m:
             return []
 
         tasks             = []
-        head_section      = _dicts_to_relspecs(self.extra.on_fail([], list).head_actions(), relation=RelationMeta_e.dependsOn)
+        head_section      = _dicts_to_specs(self.extra.on_fail([], list).head_actions(), relation=RelationMeta_e.needs)
         head_dependencies = [x for x in head_section if isinstance(x, RelationSpec)]
         head_actions      = [x for x in head_section if not isinstance(x, RelationSpec)]
+
 
         # build $head$
         head : TaskSpec = TaskSpec.build({
@@ -131,7 +136,7 @@ class _JobUtils_m:
             "extra"           : self.extra,
             "queue_behaviour" : QueueMeta_e.reactive,
             "depends_on"      : [self.name] + head_dependencies,
-            "required_for"    : [job_head.cleanup_name()],
+            "required_for"    : [job_head.cleanup_name()] + self.required_for[:],
             "cleanup"         : self.cleanup[:],
             "flags"           : (self.flags | TaskMeta_f.JOB_HEAD) & ~TaskMeta_f.JOB,
             "actions"         : head_actions,
@@ -180,6 +185,7 @@ class _TransformerUtils_m:
             case (TaskArtifact() as pre, TaskArtifact() as post):
                 pass
 
+        assert(pre.is_concrete() or post.is_concrete())
         instance = self.instantiate_onto(None)
         match self.transformer_of():
             case None:
@@ -188,10 +194,10 @@ class _TransformerUtils_m:
                 # exact transform
                 # replace x with pre in depends_on
                 instance.depends_on.remove(x)
-                instance.depends_on.append(x.instantiate(pre))
+                instance.depends_on.append(x.instantiate(target=pre))
                 # replace y with post in required_for
                 instance.required_for.remove(y)
-                instance.required_for.append(y.instantiate(post))
+                instance.required_for.append(y.instantiate(target=post))
             case _:
                 return None
 
@@ -221,9 +227,11 @@ class _TransformerUtils_m:
         for x in self.depends_on:
             match x:
                 case RelationSpec(target=TaskArtifact() as target) if LocationMeta_f.glob in target:
+                    # Globs can be in a transformer, but don't make the transformer
                     pass
-                case RelationSpec(target=TaskArtifact() as target) if LocationMeta_f.abstract in target:
+                case RelationSpec(target=TaskArtifact() as target) if not target.is_concrete():
                     if pre is not None:
+                        # If theres more than one applicable, its not a tranformer
                         self._transform = False
                         return None
                     pre = x
@@ -231,10 +239,10 @@ class _TransformerUtils_m:
                     pass
 
         for y in self.required_for:
-            match x:
+            match y:
                 case RelationSpec(target=TaskArtifact() as target) if LocationMeta_f.glob in target:
                     pass
-                case RelationSpec(target=TaskArtifact() as target) if LocationMeta_f.abstract in target:
+                case RelationSpec(target=TaskArtifact() as target) if not target.is_concrete():
                     if post is not None:
                         self._transform = False
                         return None
@@ -273,64 +281,6 @@ class _SpecUtils_m:
         task_ctor = self.ctor.try_import(ensure=ensure)
         return task_ctor(self)
 
-    def match_with_constraints(self, control:TaskSpec, *, relation:None|RelationSpec=None) -> bool:
-        """ Test {self} against a {control}.
-          relation provides the constraining keys that {self} must have in common with {control}.
-
-          if not given a relation, then just check self and control dont conflict.
-          """
-        match relation:
-            case RelationSpec(constraints=None, inject=None):
-                return True
-            case RelationSpec(constraints=constraints, inject=inject):
-                assert(relation.target <= self.name or any(relation.target <= x for x in self.get_source_names()))
-            case None:
-                assert(control.name <= self.name)
-                constraints = {x:x for x in control.extra.keys()}
-                inject      = {}
-
-        inject              = inject or {}
-        constraints         = constraints or {}
-        extra               = self.extra
-        control_extra       = control.extra
-        if bool(inject) and not bool(inject.values() & control_extra.keys()):
-            return False
-
-        for k,v in constraints.items():
-            if k not in extra or v not in control_extra:
-                return False
-            if extra[k] != control_extra[v]:
-                return False
-
-        for k,v in inject.items():
-            if extra.get(k, None) != control_extra.get(v, None):
-                return False
-        else:
-            return True
-
-    def build_injection(self, context:RelationSpec) -> None|dict:
-        """ Builds a dict of the data a matching spec will need, according
-          to a relations inject.
-        """
-        if not bool(context.inject):
-            return None
-
-        inject_keys = set(context.inject.values())
-        extra       = self.extra
-        extra_keys  = set(extra.keys())
-        match extra.on_fail(None).cli():
-            case None:
-                pass
-            case [*xs]:
-                extra_keys.update(x.name for x in xs)
-
-        if bool((missing:=inject_keys - extra_keys)):
-            raise doot.errors.DootTaskTrackingError("Can not inject keys not found in the control spec", missing, self.name)
-
-        injection = {k:extra[v] for k,v in context.inject.items()}
-
-        return injection
-
     def apply_cli_args(self, *, override=None) -> TaskSpec:
         logging.debug("Applying CLI Args to: %s", self.name)
         spec_extra : dict = dict(self.extra.items() or [])
@@ -360,32 +310,31 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
       sources = [root, ... grandparent, parent]. 'None' indicates halt on climbing source chain
 
     """
-    name                         : TaskName
-    doc                          : list[str]                              = []
-    sources                      : list[TaskName|pl.Path|None]            = []
+    name                              : TaskName
+    doc                               : list[str]                                                                        = []
+    sources                           : list[TaskName|pl.Path|None]                                                      = []
 
     # Action Groups:
-    actions                      : ActionGroup                            = []
-    required_for                 : ActionGroup                            = []
-    depends_on                   : ActionGroup                            = []
-    setup                        : ActionGroup                            = []
-    cleanup                      : ActionGroup                            = []
-    on_fail                      : ActionGroup                            = []
+    actions                           : ActionGroup                                                                      = []
+    required_for                      : ActionGroup                                                                      = []
+    depends_on                        : ActionGroup                                                                      = []
+    setup                             : ActionGroup                                                                      = []
+    cleanup                           : ActionGroup                                                                      = []
+    on_fail                           : ActionGroup                                                                      = []
 
     # Any additional information:
-    version                      : str                                    = doot.__version__ # TODO: make dict?
-    priority                     : int                                    = 10
-    ctor                         : CodeReference                          = Field(default=None, validate_default=True)
-    queue_behaviour              : QueueMeta_e                            = QueueMeta_e.default
-    flags                        : TaskMeta_f                             = TaskMeta_f.default
-    inject                       : list[str]                              = []
-    _transform                   : None|Literal[False]|tuple[RelationSpec, RelationSpec]                            = None
+    version                           : str                                                                              = doot.__version__ # TODO: make dict?
+    priority                          : int                                                                              = 10
+    ctor                              : CodeReference                                                                    = Field(default=None, validate_default=True)
+    queue_behaviour                   : QueueMeta_e                                                                      = QueueMeta_e.default
+    flags                             : TaskMeta_f                                                                       = TaskMeta_f.default
+    _transform                        : None|Literal[False]|tuple[RelationSpec, RelationSpec]                            = None
     # task specific extras to use in state
-    _default_ctor         : ClassVar[str]       = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
-    _allowed_print_locs   : ClassVar[list[str]] = doot.constants.printer.PRINT_LOCATIONS
-    _action_group_wipe    : ClassVar[dict]      = {"required_for": [], "setup": [], "actions": [], "depends_on": []}
+    _default_ctor                     : ClassVar[str]                                                                    = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
+    _allowed_print_locs               : ClassVar[list[str]]                                                              = doot.constants.printer.PRINT_LOCATIONS
+    _action_group_wipe                : ClassVar[dict]                                                                   = {"required_for": [], "setup": [], "actions": [], "depends_on": []}
     # Action Groups that are depended on, rather than are dependencies of, this task:
-    _dependant_groups    : ClassVar[list[str]]  = ["required_for", "on_fail"]
+    _blocking_groups                  : ClassVar[list[str]]                                                              = ["required_for", "on_fail"]
 
     @staticmethod
     def build(data:TomlGuard|dict|TaskName|str) -> Self:

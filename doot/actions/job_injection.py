@@ -42,6 +42,7 @@ import doot.errors
 from doot._abstract import Action_p
 from doot.mixins.path_manip import PathManip_m
 from doot.structs import DKey, TaskName, TaskSpec, DKeyed
+from doot.utils.injection import Injector_m
 
 # ##-- end 1st party imports
 
@@ -50,10 +51,10 @@ logging = logmod.getLogger(__name__)
 printer = doot.subprinter()
 ##-- end logging
 
-class JobInjector(Action_p):
+class JobInjector(Action_p, Injector_m):
     """
       Inject data into task specs.
-      "inject" = {copy=X, expand=Y, replace=Z}
+      inject={copy=[Xs], expand={Yks : Yvs}, replace=[Zs]}
       'copy'   : redirects, and copies without further expansion : [a_,x] -> {a:2, x:{q}}
       'expand' : redirects, expands, then copies         : [a_,x] -> {a:2, x:5}
       'replace' sets keys to whatever replace value is passed in (for job.expand)
@@ -74,52 +75,7 @@ class JobInjector(Action_p):
                 onto.model_extra.update(dict(**x.extra, **injection))
 
     def build_injection(self, spec, state, inject, replacement=None, post:dict|None=None) -> None|TomlGuard:
-        match inject:
-            case dict():
-                copy    = inject.get("copy", [])
-                expand  = inject.get("expand", {})
-                replace = inject.get("replace", [])
-            case TomlGuard():
-                copy    = inject.on_fail([], non_root=True).copy()
-                expand  = inject.on_fail({}, non_root=True).expand()
-                replace = inject.on_fail([], non_root=True).replace()
-            case None:
-                return
-            case _:
-                raise doot.errors.DootActionError("Wrong format to state inject, should be {copy=dict|list, expand=dict|list, replace=list}")
-
-        if isinstance(replace, dict):
-            raise doot.errors.DootActionError("wrong format for replacement injection, should be a list of keys")
-
-        injection_dict = {}
-
-        match copy:
-            case dict():
-                for k,v in copy.items():
-                    as_key = DKey(v, implicit=True)
-                    injection_dict[k] = as_key.expand(spec, state, max=1)
-            case list():
-                for k in copy:
-                    as_key = DKey(k, implicit=True)
-                    injection_dict[f'{as_key:d}'] = as_key.expand(spec, state, max=1)
-
-        match expand:
-            case dict():
-                for k,v in expand.items():
-                    as_key = DKey(v, implicit=True)
-                    injection_dict[k] = as_key.expand(spec, state)
-            case list():
-                for k in expand:
-                    as_key = DKey(k, implicit=True)
-                    injection_dict[f'{as_key:d}'] = as_key.expand(spec, state)
-
-        if replacement is not None:
-            injection_dict.update({k:replacement for k in replace})
-
-        if post is not None:
-            injection_dict.update({k:v for k,v in post.items() if v is not None})
-
-        return injection_dict
+        return super().build_injection(inject, spec, state, insertion=replacement)
 
 class JobPrependActions(Action_p):
 

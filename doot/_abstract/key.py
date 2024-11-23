@@ -5,8 +5,10 @@
 See EOF for license/metadata/notes as applicable
 """
 
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 import datetime
 import enum
 import functools as ftz
@@ -24,8 +26,13 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     runtime_checkable)
 from uuid import UUID, uuid1
 
-from doot.enums import DKeyMark_e
+# ##-- end stdlib imports
+
+from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
+
+# ##-- 1st party imports
 from doot._abstract.protocols import Key_p
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -33,8 +40,25 @@ logging = logmod.getLogger(__name__)
 
 CONV_SEP        : Final[str]                = "!"
 REDIRECT_SUFFIX : Final[str]                = "_"
-MARKTYPE        : TypeAlias                 = None|DKeyMark_e
 
+class DKeyMark_e(EnumBuilder_m, enum.Enum):
+    """
+      Enums for how to use/build a dkey
+
+    """
+    FREE     = enum.auto() # -> Any
+    PATH     = enum.auto() # -> pl.Path
+    REDIRECT = enum.auto() # -> DKey
+    STR      = enum.auto() # -> str
+    CODE     = enum.auto() # -> coderef
+    TASK     = enum.auto() # -> taskname
+    ARGS     = enum.auto() # -> list
+    KWARGS   = enum.auto() # -> dict
+    POSTBOX  = enum.auto() # -> list
+    NULL     = enum.auto() # -> None
+    MULTI    = enum.auto()
+
+    default  = FREE
 class DKeyMeta(type(str)):
     """
       The Metaclass for keys, which ensures that subclasses of DKeyBase
@@ -77,20 +101,20 @@ class DKey(metaclass=DKeyMeta):
       to allow control over __init__.
       """
     mark                                   = DKeyMark_e
-    _single_registry : dict[MARKTYPE,type] = {}
-    _multi_registry  : dict[MARKTYPE,type] = {}
-    _conv_registry   : dict[str, MARKTYPE] = {}
+    _single_registry : dict[DKeyMark_e,type] = {}
+    _multi_registry  : dict[DKeyMark_e,type] = {}
+    _conv_registry   : dict[str, DKeyMark_e] = {}
     _parser          : None|type           = None
 
-    def __new__(cls, data:str|DKey|pl.Path|dict, *, fmt=None, conv=None, implicit=False, mark:None|MARKTYPE=None, **kwargs) -> DKey:
+    def __new__(cls, data:str|DKey|pl.Path|dict, *, fmt=None, conv=None, implicit=False, mark:None|DKeyMark_e=None, **kwargs) -> DKey:
         """
           fmt : Format parameters. used from multi key subkey construction
           conv : Conversion parameters. used from multi key subkey construction.
-          explicit : For marking a key as using explicit subkeys with extra text around it
+          implicit: For marking a key as an implicit key, with no extra text around it
           mark     : Enum for explicitly setting the key type
         """
         assert(cls is DKey)
-        assert(isinstance(mark, MARKTYPE)), mark
+        assert(isinstance(mark, None|DKeyMark_e)), mark
         # Early escape check
         match data:
             case DKey() if mark is None or mark == data._mark:
@@ -139,7 +163,7 @@ class DKey(metaclass=DKeyMeta):
         return result
 
     @classmethod
-    def _parse_single_key_params_to_mark(cls, data, conv, fallback=None) -> tuple(str, None|MARKTYPE):
+    def _parse_single_key_params_to_mark(cls, data, conv, fallback=None) -> tuple(str, None|DKeyMark_e):
         """ Handle single, implicit key's and their parameters.
           Explicitly passed in conv take precedence
 
@@ -170,7 +194,7 @@ class DKey(metaclass=DKeyMeta):
 
 
     @staticmethod
-    def register_key(ctor:type, mark:MARKTYPE, tparam:None|str=None, multi=False):
+    def register_key(ctor:type, mark:DKeyMark_e, tparam:None|str=None, multi=False):
         match mark:
             case None:
                 pass

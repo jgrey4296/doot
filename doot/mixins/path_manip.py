@@ -4,9 +4,10 @@
 See EOF for license/metadata/notes as applicable
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
@@ -20,30 +21,53 @@ import types
 import weakref
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
-# import more_itertools as mitz
-# from boltons import
-##-- end lib imports
+# ##-- 1st party imports
+import doot
+from doot._abstract.key import DKey
+from doot.enums import LocationMeta_f
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-import doot
-from doot.structs import DKey
-from doot.enums import LoopControl_e, LocationMeta_f
-
 MARKER : Final[str] = doot.constants.paths.MARKER_FILE_NAME
 walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
 walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).settings.walking.halts()
+
+class LoopControl_e(enum.Enum):
+    """
+      Describes how to continue an accumulating loop.
+      (like walking a a tree)
+
+    yesAnd     : is a result, and try others.
+    yes        : is a result, don't try others, Finish.
+    noBut      : not a result, try others.
+    no         : not a result, don't try others, Finish.
+    """
+    yesAnd  = enum.auto()
+    yes     = enum.auto()
+    noBut   = enum.auto()
+    no      = enum.auto()
+
+    @classmethod
+    @property
+    def loop_yes_set(cls):
+        return  {cls.yesAnd, cls.yes, True}
+
+    @classmethod
+    @property
+    def loop_no_set(cls):
+        return  {cls.no, cls.noBut, False, None}
 
 class PathManip_m:
     """
@@ -134,8 +158,9 @@ class PathManip_m:
           expands user, and resolves the location to be absolute
         """
         result = path
-        if symlinks:
-            logging.warning("TODO normalize path with symlinks")
+        if symlinks and path.is_symlink():
+            raise NotImplementedError("symlink normalization", path)
+
         match result.parts:
             case ["~", *xs]:
                 result = result.expanduser().resolve()

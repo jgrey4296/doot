@@ -30,12 +30,12 @@ from weakref import ref
 
 # ##-- end stdlib imports
 
+from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
+
 # ##-- 1st party imports
-from doot._abstract.policy import FailPolicy_p
 from doot._abstract.protocols import ArtifactStruct_p, SpecStruct_p
 from doot._abstract.reporter import Reporter_p
 from doot._abstract.task import Task_i
-from doot.enums import ExecutionPolicy_e, TaskStatus_e
 # ##-- end 1st party imports
 
 ##-- logging
@@ -51,6 +51,50 @@ ConcreteSpec                   : TypeAlias                   = "TaskSpec"
 AnySpec                        : TypeAlias                   = "TaskSpec"
 Depth                          : TypeAlias                   = int
 PlanEntry                      : TypeAlias                   = tuple[Depth, ConcreteId, str]
+
+class EdgeType_e(EnumBuilder_m, enum.Enum):
+    """ Enum describing the possible edges of the task tracker's task network """
+
+    TASK              = enum.auto() # task to task
+    ARTIFACT_UP       = enum.auto() # abstract to concrete artifact
+    ARTIFACT_DOWN     = enum.auto() # concrete to abstract artifact
+    TASK_CROSS        = enum.auto() # Task to artifact
+    ARTIFACT_CROSS    = enum.auto() # artifact to task
+
+    default           = TASK
+
+    @classmethod
+    @property
+    def artifact_edge_set(cls):
+        return  {cls.ARTIFACT_UP, cls.ARTIFACT_DOWN, cls.TASK_CROSS}
+
+class QueueMeta_e(EnumBuilder_m, enum.Enum):
+    """ available ways a task can be activated for running
+      onRegister/auto     : activates automatically when added to the task network
+      reactive            : activates if an adjacent node completes
+
+      default             : activates only if uses queues the task, or its a dependencyOf
+
+    """
+
+    default      = enum.auto()
+    onRegister   = enum.auto()
+    reactive     = enum.auto()
+    reactiveFail = enum.auto()
+    auto         = onRegister
+
+class ExecutionPolicy_e(EnumBuilder_m, enum.Enum):
+    """ How the task execution will be ordered
+      PRIORITY : Priority Queue with retry, job expansion, dynamic walk of network.
+      DEPTH    : No (priority,retry,jobs). basic DFS of the pre-run dependency network
+      BREADTH  : No (priority,retry,jobs). basic BFS of the pre-run dependency-network
+
+    """
+    PRIORITY = enum.auto() # By Task Priority
+    DEPTH    = enum.auto() # Depth First Search
+    BREADTH  = enum.auto() # Breadth First Search
+
+    default = PRIORITY
 
 class TaskTracker_i:
     """
@@ -101,7 +145,7 @@ class TaskRunner_i:
         pass
 
     @abstractmethod
-    def __init__(self, *, tracker:TaskTracker_i, reporter:Reporter_p, policy:FailPolicy_p|None=None):
+    def __init__(self, *, tracker:TaskTracker_i, reporter:Reporter_p):
         pass
 
     @abstractmethod

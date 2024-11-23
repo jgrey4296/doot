@@ -34,10 +34,9 @@ from jgdv.structs.code_ref import CodeReference
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import (FailPolicy_p, Job_i, Task_i, TaskRunner_i,
-                            TaskTracker_i)
+from doot._abstract import (Job_i, Task_i, TaskRunner_i, TaskTracker_i)
 from doot.control.base_tracker import BaseTracker
-from doot.enums import EdgeType_e, ExecutionPolicy_e, TaskStatus_e, TaskMeta_f
+from doot.enums import EdgeType_e, ExecutionPolicy_e, TaskStatus_e, TaskMeta_f, ArtifactStatus_e
 from doot.structs import TaskArtifact, TaskName, TaskSpec
 from doot.task.base_task import DootTask
 
@@ -157,7 +156,7 @@ class TrackerPlanGen_m:
                     self.set_status(spec, TaskStatus_e.SUCCESS)
                 case TaskArtifact() as art:
                     plan.append((1, art, str(art)))
-                    self.set_status(art, TaskStatus_e.EXISTS)
+                    self.set_status(art, ArtifactStatus.EXISTS)
                 case x:
                     raise doot.errors.DootTaskTrackingError("Unrecognised reponse while building plan", x)
 
@@ -216,7 +215,6 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
             case _:
                 task.state.clear()
 
-
     def next_for(self, target:None|str|TaskName=None) -> None|Task_i|TaskArtifact:
         """ ask for the next task that can be performed
 
@@ -245,7 +243,6 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
                 case TaskArtifact():
                     track_l.debug("Tracker Head: %s (Artifact). State: %s, Priority: %s", focus, self.get_status(focus), self._artifact_status[focus])
 
-
             match status:
                 case TaskStatus_e.DEAD:
                     track_l.debug("Task is Dead: %s", focus)
@@ -257,7 +254,13 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
                     self.active_set.remove(focus)
                     self.set_status(focus, TaskStatus_e.DEAD)
                     self.propagate_state_and_cleanup(focus)
-                case TaskStatus_e.SUCCESS | TaskStatus_e.EXISTS:
+                case ArtifactStatus_e.EXISTS:
+                    # Task Exists, queue its dependents and *don't* add the artifact back in
+                    self.execution_trace.append(focus)
+                    heads = [x for x in self.network.succ[focus] if self.network.edges[focus, x].get("job_head", False)]
+                    if bool(heads):
+                        self.queue_entry(heads[0])
+                case TaskStatus_e.SUCCESS:
                     track_l.debug("Task Succeeded: %s", focus)
                     self.execution_trace.append(focus)
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
@@ -274,7 +277,7 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
                     fail_l.warning("Task Halted, Propagating from: %s to: %s", focus, list(self.network.succ[focus]))
                     for succ in self.network.succ[focus]:
                         if self.network.edges[focus, succ].get("cleanup", False):
-                            pass
+                            continue
                         self.set_status(succ, TaskStatus_e.HALTED)
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
                 case TaskStatus_e.SKIPPED:
@@ -301,19 +304,19 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
                     track_l.debug("Task Object Initialising: %s", focus)
                     self.queue_entry(focus, status=TaskStatus_e.WAIT)
 
-                case TaskStatus_e.STALE:
+                case ArtifactStatus_e.STALE:
                     track_l.info("Artifact is Stale: %s", focus)
                     for pred in self.network.pred[focus]:
                         self.queue_entry(pred)
-                case TaskStatus_e.ARTIFACT if bool(focus):
-                    self.queue_entry(focus, status=TaskStatus_e.EXISTS)
-                case TaskStatus_e.ARTIFACT: # Add dependencies of an artifact to the stack
+                case ArtifactStatus_e.DECLARED if bool(focus):
+                    self.queue_entry(focus, status=ArtifactStatus_e.EXISTS)
+                case ArtifactStatus_e.DECLARED: # Add dependencies of an artifact to the stack
                     match self.incomplete_dependencies(focus):
                         case []:
                             assert(not bool(focus))
                             path = focus.expand()
                             fail_l.warning("An Artifact has no incomplete dependencies, yet doesn't exist: %s (expanded: %s)", focus, path)
-                            self.queue_entry(focus, status=TaskStatus_e.HALTED)
+                            self.queue_entry(focus)
                             # Returns the artifact, the runner can try to create it, then override the halt
                             result = focus
                         case [*xs]:

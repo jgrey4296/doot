@@ -317,3 +317,13 @@ get the keys mentioned in a task spec, for propagation to cleanup?
    :context:
         <2024-10-06 Sun>     @DKeyed.formats("target", fallback="task")
    :END:
+** TRIAGE merge task_spec.build_injection and jobinjector.build_injection
+   [[/media/john/data/github/python/doot/doot/actions/job_injection.py::76][Location]]
+   :context:
+        <2024-11-09 Sat>     def build_injection(self, spec, state, inject, replacement=None, post:dict|None=None) -> None|TomlGuard:
+   :END:
+** TRIAGE add flag to list cmd for showing source files
+   [[/media/john/data/github/python/doot/::7][Location]]
+   :context:
+        <2024-11-17 Sun>   drwxr-xr-- 17 john john 4.0K Nov 14 11:28 doot
+   :END:

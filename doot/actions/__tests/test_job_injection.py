@@ -38,7 +38,7 @@ class TestJobInjection:
         """ the injection copies the value over directly """
         state.update({"a": 2})
         inj       = ji.JobInjector()
-        injection = inj.build_injection(spec, state, dict(copy=["a"]))
+        injection = inj.build_injection(spec, state, dict(delay=["a"]))
         assert("a" in injection)
         assert(injection['a'] == 2)
 
@@ -46,7 +46,7 @@ class TestJobInjection:
         """ the injection doesn't expand a multikey """
         state.update({"a": "{x} : {y}", "x": 5, "y": 10})
         inj = ji.JobInjector()
-        injection = inj.build_injection(spec, state, dict(copy=["a"]))
+        injection = inj.build_injection(spec, state, dict(delay=["a"]))
         assert("a" in injection)
         assert("x" not in injection)
         assert("y" not in injection)
@@ -57,7 +57,7 @@ class TestJobInjection:
         spec.kwargs._table().update({"a_": "b"})
         state.update({"b": 5})
         inj = ji.JobInjector()
-        injection = inj.build_injection(spec, state, dict(expand=["a"]))
+        injection = inj.build_injection(spec, state, dict(now=["a"]))
         assert("a" in injection)
         assert(injection['a'] == 5)
 
@@ -67,7 +67,7 @@ class TestJobInjection:
           """
         state.update({"a_": "b", "b": 5})
         inj = ji.JobInjector()
-        injection = inj.build_injection(spec, state, dict(copy=["a"]))
+        injection = inj.build_injection(spec, state, dict(delay=["a"]))
         assert("a" in injection)
         assert("a_" not in injection)
         assert(injection['a'] == 5)
@@ -76,7 +76,7 @@ class TestJobInjection:
         """ copied values can be remapped to new key names """
         state.update({"a": 2})
         inj = ji.JobInjector()
-        injection = inj.build_injection(spec, state, dict(copy={"test":"a"}))
+        injection = inj.build_injection(spec, state, dict(delay={"test":"a"}))
         assert("test" in injection)
         assert("a" not in injection)
         assert(injection['test'] == 2)
@@ -85,7 +85,7 @@ class TestJobInjection:
         """ expanded injections can be remapped to new key names """
         state.update({"a": 2})
         inj = ji.JobInjector()
-        injection = inj.build_injection(spec, state, dict(expand={"test":"a"}))
+        injection = inj.build_injection(spec, state, dict(now={"test":"a"}))
         assert("test" in injection)
         assert("a" not in injection)
         assert(injection['test'] == 2)
@@ -94,7 +94,7 @@ class TestJobInjection:
         """ keys can be inserted with the defined replacement value """
         state.update({"a": 2})
         inj = ji.JobInjector()
-        injection = inj.build_injection(spec, state, dict(replace=["a"]), replacement=10)
+        injection = inj.build_injection(spec, state, dict(insert=["a"]), replacement=10)
         assert("a" in injection)
         assert(injection['a'] == 10)
 

@@ -34,7 +34,7 @@ import networkx as nx
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import (Action_p, FailPolicy_p, Job_i, Reporter_p, Task_i,
+from doot._abstract import (Action_p, Job_i, Reporter_p, Task_i,
                             TaskRunner_i, TaskTracker_i)
 from doot._structs.relation_spec import RelationSpec
 from doot.control.base_runner import BaseRunner
@@ -237,20 +237,20 @@ class DootRunner(BaseRunner, TaskRunner_i):
         actexec_l.debug("Action Result: %s", result)
 
         match result:
+            case None | True:
+                result = ActRE.SUCCESS
+            case False | ActRE.FAIL:
+                self.reporter.add_trace(action, flags=Report_f.FAIL | Report_f.ACTION)
+                raise doot.errors.DootTaskFailed("Task %s: Action Failed: %s", task.shortname, action.do, task=task.spec)
             case ActRE.SKIP:
                 # result will be returned, and expand_job/execute_task will handle it
                 pass
-            case None | True:
-                result = ActRE.SUCCESS
             case dict(): # update the task's state
                 state_l.info("Updating Task State: %s keys", len(result))
                 task.state.update({str(k):v for k,v in result.items()})
                 result = ActRE.SUCCESS
             case list() if all(isinstance(x, (TaskName, TaskSpec)) for x in result):
                 pass
-            case False | ActRE.FAIL:
-                self.reporter.add_trace(action, flags=Report_f.FAIL | Report_f.ACTION)
-                raise doot.errors.DootTaskFailed("Task %s: Action Failed: %s", task.shortname, action.do, task=task.spec)
             case _:
                 self.reporter.add_trace(action, flags=Report_f.FAIL | Report_f.ACTION)
                 raise doot.errors.DootTaskError("Task %s: Action %s Failed: Returned an unplanned for value: %s", task.shortname, action.do, result, task=task.spec)
@@ -270,4 +270,3 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 return False
             case _, _:
                 return True
-

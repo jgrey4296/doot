@@ -12,7 +12,6 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 import warnings
 
 import pytest
-logging = logmod.root
 
 import tomlguard
 import doot
@@ -22,6 +21,8 @@ doot._test_setup()
 from doot import structs
 from doot.task.base_job import DootJob
 from doot.enums import TaskMeta_f
+
+logging = logmod.root
 
 DEFAULT_CTOR = doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS]
 
@@ -130,30 +131,6 @@ class TestTaskSpecValidation:
         obj = structs.TaskSpec.build({"name":"simple::test", "blah": {}})
         assert("blah" in obj.model_fields_set)
 
-    def test_match_with_constraints_pass(self):
-        spec1 = structs.TaskSpec.build({"name":"simple::test"})
-        spec2 = structs.TaskSpec.build({"name":"simple::test"})
-        assert(spec1.match_with_constraints(spec2))
-
-    def test_match_with_constraints_instanced(self):
-        spec1 = structs.TaskSpec.build({"name":"simple::test"}).instantiate_onto(None)
-        spec2 = structs.TaskSpec.build({"name":"simple::test"})
-        assert(spec1.match_with_constraints(spec2))
-
-    def test_match_with_constraints_with_value(self):
-        spec1 = structs.TaskSpec.build({"name":"simple::test", "blah":5}).instantiate_onto(None)
-        spec2 = structs.TaskSpec.build({"name":"simple::test", "blah":5})
-        assert(spec1.match_with_constraints(spec2))
-
-    def test_match_with_constraints_with_value_fail(self):
-        spec1 = structs.TaskSpec.build({"name":"simple::test", "blah":10}).instantiate_onto(None)
-        spec2 = structs.TaskSpec.build({"name":"simple::test", "blah":5})
-        assert(not spec1.match_with_constraints(spec2))
-
-    def test_match_with_contraints_missing_value_from_control(self):
-        spec1 = structs.TaskSpec.build({"name":"simple::test", "blah":5}).instantiate_onto(None)
-        spec2 = structs.TaskSpec.build({"name":"simple::test", "blah":5, "bloo": 10})
-        assert(not spec1.match_with_constraints(spec2))
 
 class TestTaskSpecInstantiation:
 

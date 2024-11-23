@@ -77,7 +77,7 @@ class TestTrackerNext:
         spec = doot.structs.TaskSpec.build({"name":"basic::Task"})
         obj.register_spec(spec)
         t_name = obj.queue_entry(spec.name)
-        assert(obj.get_status(t_name) is TaskStatus_e.default)
+        assert(obj.get_status(t_name) is TaskStatus_e.INIT)
         obj.build_network()
         match obj.next_for():
             case Task_i():
@@ -93,7 +93,7 @@ class TestTrackerNext:
         dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
         t_name = obj.queue_entry(spec.name, from_user=True)
-        assert(obj.get_status(t_name) is TaskStatus_e.default)
+        assert(obj.get_status(t_name) is TaskStatus_e.INIT)
         obj.build_network()
         match obj.next_for():
             case Task_i() as result:
@@ -110,7 +110,7 @@ class TestTrackerNext:
         dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
         t_name = obj.queue_entry(spec.name, from_user=True)
-        assert(obj.get_status(t_name) is TaskStatus_e.default)
+        assert(obj.get_status(t_name) is TaskStatus_e.INIT)
         obj.build_network()
         dep_inst = obj.next_for()
         assert(dep.name < dep_inst.name)
@@ -131,7 +131,7 @@ class TestTrackerNext:
         obj.register_spec(spec, dep)
         t_name   = obj.queue_entry(spec.name)
         dep_inst = obj.queue_entry(dep.name)
-        assert(obj.get_status(t_name) is TaskStatus_e.default)
+        assert(obj.get_status(t_name) is TaskStatus_e.INIT)
         obj.build_network()
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.SUCCESS)
@@ -151,7 +151,7 @@ class TestTrackerNext:
         obj.register_spec(spec, dep)
         t_name   = obj.queue_entry(spec.name, from_user=True)
         dep_inst = obj.queue_entry(dep.name)
-        assert(obj.get_status(t_name) is TaskStatus_e.default)
+        assert(obj.get_status(t_name) is TaskStatus_e.INIT)
         obj.build_network()
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.HALTED)
@@ -171,7 +171,7 @@ class TestTrackerNext:
         obj.register_spec(spec, dep)
         t_name   = obj.queue_entry(spec.name, from_user=True)
         dep_inst = obj.queue_entry(dep.name)
-        assert(obj.get_status(t_name) is TaskStatus_e.default)
+        assert(obj.get_status(t_name) is TaskStatus_e.INIT)
         obj.build_network()
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.FAILED)
@@ -242,6 +242,7 @@ class TestTrackerNext:
         assert(any(x < result.name for x in [sub_spec1.name, sub_spec2.name]))
 
 
+
 class TestTrackerWalk:
 
     @pytest.fixture(scope="function")
@@ -250,17 +251,20 @@ class TestTrackerWalk:
         tail = []
 
         head += [
-            doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep.1", "basic::dep.2"]}),
-            doot.structs.TaskSpec.build({"name":"basic::beta", "depends_on":["basic::dep.3"]}),
-            doot.structs.TaskSpec.build({"name":"basic::solo", "depends_on":[]}),
+            {"name":"basic::alpha", "depends_on":["basic::dep.1", "basic::dep.2"]},
+            {"name":"basic::beta", "depends_on":["basic::dep.3"]},
+            {"name":"basic::solo", "depends_on":[]},
         ]
         tail += [
-            doot.structs.TaskSpec.build({"name":"basic::dep.1"}),
-            doot.structs.TaskSpec.build({"name":"basic::dep.2"}),
-            doot.structs.TaskSpec.build({"name":"basic::dep.3"}),
-            doot.structs.TaskSpec.build({"name":"basic::dep.4", "required_for":["basic::dep.2"]}),
+            {"name":"basic::dep.1"},
+            # {"name":"basic::dep.2"},
+            {"name":"basic::dep.2", "depends_on" : ["basic::dep.4"]},
+            {"name":"basic::dep.3"},
+            # {"name":"basic::dep.4", "required_for":["basic::dep.2"]},
+            {"name":"basic::dep.4", "required_for":[]},
         ]
-        return (head, tail)
+        return ([doot.structs.TaskSpec.build(x) for x in head],
+                [doot.structs.TaskSpec.build(y) for y in tail])
 
 
     def test_basic(self):
@@ -292,8 +296,8 @@ class TestTrackerWalk:
         obj.register_spec(*head, *tail)
         t1_name = obj.queue_entry(head[0].name, from_user=True)
         t2_name = obj.queue_entry(head[1].name, from_user=True)
-        assert(obj.get_status(t1_name) is TaskStatus_e.default)
-        assert(obj.get_status(t2_name) is TaskStatus_e.default)
+        assert(obj.get_status(t1_name) is TaskStatus_e.INIT)
+        assert(obj.get_status(t2_name) is TaskStatus_e.INIT)
         obj.build_network()
         result = obj.generate_plan()
         assert(len(result) == len(expectation))
@@ -322,8 +326,8 @@ class TestTrackerWalk:
         obj.register_spec(*head, *tail)
         t1_name = obj.queue_entry(head[0].name, from_user=True)
         t2_name = obj.queue_entry(head[1].name, from_user=True)
-        assert(obj.get_status(t1_name) is TaskStatus_e.default)
-        assert(obj.get_status(t2_name) is TaskStatus_e.default)
+        assert(obj.get_status(t1_name) is TaskStatus_e.INIT)
+        assert(obj.get_status(t2_name) is TaskStatus_e.INIT)
         obj.build_network()
         result = obj.generate_plan(policy=ExecutionPolicy_e.BREADTH)
         assert(len(result) == len(expectation))
@@ -351,8 +355,8 @@ class TestTrackerWalk:
         obj.register_spec(*head, *tail)
         t1_name = obj.queue_entry(head[0].name, from_user=True)
         t2_name = obj.queue_entry(head[1].name, from_user=True)
-        assert(obj.get_status(t1_name) is TaskStatus_e.default)
-        assert(obj.get_status(t2_name) is TaskStatus_e.default)
+        assert(obj.get_status(t1_name) is TaskStatus_e.INIT)
+        assert(obj.get_status(t2_name) is TaskStatus_e.INIT)
         obj.build_network()
         result = obj.generate_plan(policy=ExecutionPolicy_e.PRIORITY)
         assert(len(result) == len(expectation))
@@ -383,8 +387,8 @@ class TestTrackerWalk:
         obj.register_spec(*head, *tail)
         t1_name = obj.queue_entry(head[0].name, from_user=True)
         t2_name = obj.queue_entry(head[1].name, from_user=True)
-        assert(obj.get_status(t1_name) is TaskStatus_e.default)
-        assert(obj.get_status(t2_name) is TaskStatus_e.default)
+        assert(obj.get_status(t1_name) is TaskStatus_e.INIT)
+        assert(obj.get_status(t2_name) is TaskStatus_e.INIT)
         obj.build_network()
 
         original_tasks = set(obj.active_set)

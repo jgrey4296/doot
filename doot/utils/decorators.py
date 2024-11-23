@@ -41,7 +41,6 @@ import more_itertools as mitz
 import doot
 import doot.errors
 from doot._abstract.protocols import SpecStruct_p, Key_p, Decorator_p
-from doot.enums import LocationMeta_f
 
 # ##-- end 1st party imports
 

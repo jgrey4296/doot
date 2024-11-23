@@ -36,13 +36,13 @@ import more_itertools as mitz
 from pydantic import field_validator, model_validator
 from tomlguard import TomlGuard
 from jgdv.structs.name.structured_name import (StructuredName, TailEntry, aware_splitter)
+from jgdv.enums.util import FlagsBuilder_m
 
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot.enums import Report_f, TaskMeta_f
 
 # ##-- end 1st party imports
 
@@ -52,6 +52,33 @@ logging = logmod.getLogger(__name__)
 
 CLEANUP_MARKER : Final[str] = "$cleanup$"
 
+class TaskMeta_f(FlagsBuilder_m, enum.Flag):
+    """
+      Flags describing properties of a task,
+      stored in the Task_i instance itself.
+    """
+
+    TASK         = enum.auto()
+    JOB          = enum.auto()
+    TRANSFORMER  = enum.auto()
+
+    INTERNAL     = enum.auto()
+    JOB_HEAD     = enum.auto()
+    CONCRETE     = enum.auto()
+    DISABLED     = enum.auto()
+
+    EPHEMERAL    = enum.auto()
+    IDEMPOTENT   = enum.auto()
+    REQ_TEARDOWN = enum.auto()
+    REQ_SETUP    = enum.auto()
+    IS_TEARDOWN  = enum.auto()
+    IS_SETUP     = enum.auto()
+    THREAD_SAFE  = enum.auto()
+    STATEFUL     = enum.auto()
+    STATELESS    = enum.auto()
+    VERSIONED    = enum.auto()
+
+    default      = TASK
 class _TaskNameOps_m:
     """ Operations Mixin for manipulating TaskNames """
 
