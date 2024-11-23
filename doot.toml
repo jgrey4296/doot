@@ -36,6 +36,6 @@ task_header   = {level="INFO"}
 
 [[locations]]
 tasks        = ".tasks"
-temp         = {loc=".temp", cleanable=true}
-src          = {loc="doot", protected=true}
+temp         = {path=".temp", cleanable=true}
+src          = {path="doot", protected=true}
 logs         = "{temp}/logs"
