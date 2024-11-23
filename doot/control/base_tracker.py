@@ -214,8 +214,11 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
           if theres no constraints, will just instantiate.
           """
         logging.warning("Instantiating Relation: %s - %s -> %s", control, rel.relation.name, rel.target)
-        assert(control in self.specs)
-        assert(rel.target in self.specs)
+        if control not in self.specs:
+            raise doot.errors.DootTaskTrackingError("Relation Control is missing from registered specs", control, rel)
+        if rel.target not in self.specs:
+            raise doot.errors.DootTaskTrackingError("Relation Target is missing from registered specs", control, rel)
+
         control_spec              = self.specs[control]
         target_spec               = self.specs[rel.target]
         successful_matches        = []
