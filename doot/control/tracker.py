@@ -254,7 +254,13 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
                     self.active_set.remove(focus)
                     self.set_status(focus, TaskStatus_e.DEAD)
                     self.propagate_state_and_cleanup(focus)
-                case TaskStatus_e.SUCCESS | ArtifactStatus_e.EXISTS:
+                case ArtifactStatus_e.EXISTS:
+                    # Task Exists, queue its dependents and *don't* add the artifact back in
+                    self.execution_trace.append(focus)
+                    heads = [x for x in self.network.succ[focus] if self.network.edges[focus, x].get("job_head", False)]
+                    if bool(heads):
+                        self.queue_entry(heads[0])
+                case TaskStatus_e.SUCCESS:
                     track_l.debug("Task Succeeded: %s", focus)
                     self.execution_trace.append(focus)
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
