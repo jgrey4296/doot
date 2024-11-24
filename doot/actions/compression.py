@@ -41,7 +41,6 @@ from doot.errors import DootTaskError, DootTaskFailed
 from doot.enums import ActionResponse_e
 from doot._abstract import Action_p
 from doot.structs import DKey, DKeyed
-from doot.actions.postbox import _DootPostBox
 from doot.mixins.zipper import Zipper_m
 
 ##-- logging

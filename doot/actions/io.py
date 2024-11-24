@@ -33,7 +33,6 @@ from doot.errors import DootTaskError, DootTaskFailed
 from doot.enums import ActionResponse_e
 from doot.mixins.path_manip import PathManip_m
 from doot.structs import DKey, DKeyed
-from doot.actions.postbox import _DootPostBox
 from doot.utils.action_decorators import IOWriter
 
 printer = doot.subprinter()
@@ -261,7 +260,6 @@ class BackupAction(PathManip_m):
 
         printer.info("Backing up : %s", source_loc)
         printer.debug("Destination: %s", dest_loc)
-        _DootPostBox.put(_name, dest_loc)
         shutil.copy2(source_loc,dest_loc)
 
 class EnsureDirectory(PathManip_m):

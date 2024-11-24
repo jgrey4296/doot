@@ -83,10 +83,8 @@ touch    =       "doot.actions.io:TouchFileAction"
 "zip.get"       =  "doot.actions.compression:ZipGetAction"
 "zip.list"      =  "doot.actions.compression:ZipListAction"
 
-[[doot.aliases.action]] # postbox and state
+[[doot.aliases.action]] # state
 # Map {alias} -> CodeRef String
-"post.put"                    =  "doot.actions.postbox:PutPostAction"
-"post.get"                    =  "doot.actions.postbox:GetPostAction"
 "state.add"                   =  "doot.actions.state:AddStateAction"
 "state.add.fn"                =  "doot.actions.state:AddStateFn"
 "path.elements"               =  "doot.actions.state:PathParts"
