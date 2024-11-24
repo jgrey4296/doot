@@ -29,12 +29,11 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 import tomlguard as TG
 from jgdv.logging import JGDVLogConfig
-
+from jgdv import check_protocol
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot.errors
-from doot.utils.check_protocol import check_protocol
 
 # ##-- end 1st party imports
 
