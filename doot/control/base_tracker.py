@@ -237,7 +237,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
                 extra    : None|dict      = self.build_injection(rel, control_spec, constraint=target_spec)
                 instance : TaskName       = self._instantiate_spec(rel.target, extra=extra)
                 if not self.match_with_constraints(self.specs[instance], control_spec, relation=rel):
-                    raise doot.errors.DootTaskTrackingError("Failed to build task matching constraints")
+                    raise doot.errors.DootTaskTrackingError("Failed to build task matching constraints", str(control_spec.name), str(instance), rel)
                 logging.warning("Using New Instance: %s", instance)
                 return instance
             case [x]: # One match, connect it
