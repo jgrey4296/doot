@@ -541,6 +541,7 @@ class TestNameRoots:
         assert(sub == sub_from_str)
         assert(sub_from_str.root() == simple)
 
+
 class TestTaskNameStructInteraction:
 
     def test_add_to_dict(self):

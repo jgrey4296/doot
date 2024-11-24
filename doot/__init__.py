@@ -30,6 +30,7 @@ from uuid import UUID, uuid1
 import tomlguard as TG
 from jgdv.logging import JGDVLogConfig
 from jgdv import check_protocol
+from jgdv.structs.location import JGDVLocations as DootLocations
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -153,10 +154,6 @@ def _load_locations():
     """ Load and update the DootLocations db """
     global locs
     logging.info("---- Loading Locations")
-    # ##-- 1st party imports
-    from doot.control.locations import DootLocations
-
-    # ##-- end 1st party imports
     locs   = DootLocations(pl.Path.cwd())
     # Load Initial locations
     for loc in config.on_fail([]).locations():

@@ -39,10 +39,12 @@ logging = logmod.getLogger(__name__)
 from pydantic import BaseModel, field_validator, model_validator
 import importlib
 from tomlguard import TomlGuard
+from jgdv.structs.location import Location
+from jgdv.structs.location.location import GLOB, SOLO, REC_GLOB
+from jgdv.structs.dkey import DKey
+
 import doot
 import doot.errors
-from doot._structs.location import Location, GLOB, SOLO, REC_GLOB
-from doot._structs.dkey import DKey
 from doot.enums import ArtifactStatus_e
 
 

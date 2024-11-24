@@ -338,4 +338,5 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
 
         else:
             logging.info("---- Determined Next Task To Be: %s", result)
+            # TODO apply task.state.key injections from connected tasks?
             return result

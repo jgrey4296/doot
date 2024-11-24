@@ -27,14 +27,12 @@ from uuid import UUID, uuid1
 
 ##-- end builtin imports
 
-from doot._abstract.key import DKey
+from jgdv.structs.dkey import DKey, DKeyed
+from jgdv.structs.location import Location
 from doot._structs.action_spec import ActionSpec
 from doot._structs.artifact import TaskArtifact
-from doot._structs.location import Location
 from doot._structs.param_spec import ParamSpec
 from doot._structs.stub import TaskStub, TaskStubPart
 from doot._structs.task_name import TaskName
 from doot._structs.task_spec import TaskSpec
 from doot._structs.trace import TraceRecord
-
-from doot.utils.dkey_decorator import DKeyed

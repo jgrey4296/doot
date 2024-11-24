@@ -17,12 +17,12 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
 # ##-- end stdlib imports
 
 from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
+from jgdv.structs.dkey import DKeyMark_e
 
 # ##-- 1st party imports
 from doot._abstract.control import ExecutionPolicy_e, QueueMeta_e, EdgeType_e
 from doot._abstract.task import TaskStatus_e, ActionResponse_e, ArtifactStatus_e
 from doot._abstract.reporter import Report_f
-from doot._abstract.key import DKeyMark_e
 from doot._structs.task_name import TaskMeta_f
 # ##-- end 1st party imports
 
