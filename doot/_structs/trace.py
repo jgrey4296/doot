@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 """
 
-See EOF for license/metadata/notes as applicable
+
 """
 
+# Imports:
 ##-- builtin imports
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
 import functools as ftz
+import importlib
 import itertools as itz
 import logging as logmod
 import pathlib as pl
@@ -20,28 +23,32 @@ import types
 import weakref
 # from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
-import more_itertools as mitz
-##-- end lib imports
+# ##-- 3rd party imports
+from pydantic import BaseModel, Field, field_validator, model_validator
+from tomlguard import TomlGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot.errors
+from doot.enums import Report_f, TaskMeta_f
+
+# ##-- end 1st party imports
+
+##-- end builtin imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-from pydantic import BaseModel, Field, model_validator, field_validator
-import importlib
-from tomlguard import TomlGuard
-import doot.errors
-from doot.enums import TaskMeta_f, Report_f
-
 
 class TraceRecord(BaseModel):
     message : str
@@ -60,7 +67,6 @@ class TraceRecord(BaseModel):
                 return val
             case _:
                 raise ValueError("Bad flags for TraceRecord", val)
-
 
     def __str__(self):
         match self.message:

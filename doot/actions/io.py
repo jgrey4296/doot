@@ -30,6 +30,7 @@ import shutil
 import tomlguard as TG
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
+from doot.control.locations import DootLocationError
 from doot.enums import ActionResponse_e
 from doot.mixins.path_manip import PathManip_m
 from doot.structs import DKey, DKeyed

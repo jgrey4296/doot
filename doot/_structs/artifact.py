@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 
-See EOF for license/metadata/notes as applicable
+
 """
 
 ##-- builtin imports
@@ -28,9 +28,6 @@ from uuid import UUID, uuid1
 
 ##-- end builtin imports
 
-##-- lib imports
-import more_itertools as mitz
-##-- end lib imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)

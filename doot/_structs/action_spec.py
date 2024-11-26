@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 
-See EOF for license/metadata/notes as applicable
+
 """
 
 # Imports:
@@ -30,7 +30,6 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-import more_itertools as mitz
 from pydantic import BaseModel, Field, field_validator, model_validator
 from tomlguard import TomlGuard
 from jgdv.structs.code_ref import CodeReference

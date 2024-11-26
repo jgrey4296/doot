@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 """
 
-See EOF for license/metadata/notes as applicable
+
 """
 
 # Imports:
@@ -31,12 +31,12 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import decorator
-import more_itertools as mitz
 from pydantic import BaseModel, Field, field_validator, model_validator
 from tomlguard import TomlGuard
 from jgdv.structs.code_ref import CodeReference
-from jgdv.structs.dkey import DKeyFormatter, DKey, DKeyMark_e
-from jgdv.structs.dkey.key import REDIRECT_SUFFIX, CONV_SEP
+from jgdv.structs.dkey import DKeyFormatter, DKey, DKeyMark_e, SingleDKey, MultiDKey, NonDKey, DKeyExpansionDecorator
+from jgdv.structs.dkey import DKeyed as DKeyed_Base
+from jgdv.structs.dkey.dkey import REDIRECT_SUFFIX, CONV_SEP
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -44,7 +44,6 @@ import doot
 import doot.errors
 from doot._abstract.protocols import Key_p, SpecStruct_p, Buildable_p
 from doot._structs.task_name import TaskName
-from doot.utils.decorators import DecorationUtils, DootDecorator
 
 # ##-- end 1st party imports
 
@@ -62,13 +61,6 @@ KEY_PATTERN                                 = doot.constants.patterns.KEY_PATTER
 MAX_KEY_EXPANSIONS                          = doot.constants.patterns.MAX_KEY_EXPANSIONS
 STATE_TASK_NAME_K                           = doot.constants.patterns.STATE_TASK_NAME_K
 
-PATTERN         : Final[re.Pattern]         = re.compile(KEY_PATTERN)
-FAIL_PATTERN    : Final[re.Pattern]         = re.compile("[^a-zA-Z_{}/0-9-]")
-FMT_PATTERN     : Final[re.Pattern]         = re.compile("[wdi]+")
-EXPANSION_HINT  : Final[str]                = "_doot_expansion_hint"
-HELP_HINT       : Final[str]                = "_doot_help_hint"
-FORMAT_SEP      : Final[str]                = ":"
-CHECKTYPE       : TypeAlias                 = None|type|types.GenericAlias|types.UnionType
 CWD_MARKER      : Final[str]                = "__cwd"
 
 

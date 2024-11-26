@@ -2,7 +2,7 @@
 """
 
 
-See EOF for license/metadata/notes as applicable
+
 """
 
 # Imports:

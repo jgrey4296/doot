@@ -12,26 +12,17 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 import warnings
 
 import pytest
+from jgdv.decorators.util import DecorationUtils as DU
 import doot
 doot._test_setup()
 from doot.structs import DKey, DKeyed
 from doot.utils.testing_fixtures import wrap_locs
 from doot.utils import action_decorators as decs
-from doot.utils.decorators import DecorationUtils as DU
 
 logging = logmod.root
 
-DD = decs.DootDecorator
 
 class TestDecorators:
-
-    @pytest.fixture(scope="function")
-    def setup(self):
-        pass
-
-    @pytest.fixture(scope="function")
-    def cleanup(self):
-        pass
 
     def test_initial(self):
         """ check a simple annotation and wrap """

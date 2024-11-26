@@ -17,14 +17,14 @@ logging = logmod.root
 
 from tomlguard import TomlGuard
 from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.dkey import DKeyFormatter
+from jgdv.structs.location import JGDVLocations as DootLocations
 
 import doot
 doot._test_setup()
 from doot.utils.testing_fixtures import wrap_locs
-from doot.control.locations import DootLocations
 from doot._structs.action_spec import ActionSpec
 from doot._structs import dkey as dkey
-from doot.utils.dkey_formatter import DKeyFormatter
 from doot._abstract.protocols import Key_p
 from doot.structs import TaskName
 

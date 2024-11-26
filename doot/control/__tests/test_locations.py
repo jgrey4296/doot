@@ -16,8 +16,7 @@ import pytest
 import tomlguard
 import doot
 doot._test_setup()
-from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
-from doot.control.locations import DootLocations
+from doot.control.locations import DootLocations, DootDirAbsent, DootLocationExpansionError, DootLocationError
 from doot.structs import DKey
 from doot._structs.dkey import NonDKey
 

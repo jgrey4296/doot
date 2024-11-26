@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
 
-See EOF for license/metadata/notes as applicable
+
 """
 
+# Imports:
 ##-- builtin imports
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
@@ -15,52 +17,44 @@ import itertools as itz
 import logging as logmod
 import pathlib as pl
 import re
+import shutil
 import time
 import types
 import weakref
+from time import sleep
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
-import more_itertools as mitz
-##-- end lib imports
-
-from time import sleep
+# ##-- 3rd party imports
 import sh
-import shutil
 import tomlguard as TG
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
 import doot
-from doot.errors import DootTaskError, DootTaskFailed
-from doot.enums import ActionResponse_e
 from doot._abstract import Action_p
-from doot.structs import DKey, DKeyed
+from doot.enums import ActionResponse_e
+from doot.errors import DootTaskError, DootTaskFailed
 from doot.mixins.zipper import Zipper_m
+from doot.structs import DKey, DKeyed
+
+# ##-- end 1st party imports
+
+##-- end builtin imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 printer = doot.subprinter()
 ##-- end logging
-
-##-- expansion keys
-TO_KEY             : Final[DKey] = DKey("to")
-FROM_KEY           : Final[DKey] = DKey("from")
-UPDATE             : Final[DKey] = DKey("update_")
-PROMPT             : Final[DKey] = DKey("prompt")
-PATTERN            : Final[DKey] = DKey("pattern")
-SEP                : Final[DKey] = DKey("sep")
-TYPE_KEY           : Final[DKey] = DKey("type")
-AS_BYTES           : Final[DKey] = DKey("as_bytes")
-FILE_TARGET        : Final[DKey] = DKey("file")
-RECURSIVE          : Final[DKey] = DKey("recursive")
-LAX                : Final[DKey] = DKey("lax")
-##-- end expansion keys
 
 COMP_TAR_CMD  = sh.tar.bake("-cf", "-")
 COMP_GZIP_CMD = sh.gzip.bake("--best")

@@ -34,7 +34,6 @@ import doot
 import doot.errors
 from doot._abstract import Job_i, Task_i
 from doot.enums import TaskMeta_f
-from doot.errors import DootDirAbsent
 from doot.structs import TaskName, TaskSpec
 from doot.task.base_task import DootTask
 

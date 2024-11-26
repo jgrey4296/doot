@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 """
 
-See EOF for license/metadata/notes as applicable
+
 """
 
 # Imports:

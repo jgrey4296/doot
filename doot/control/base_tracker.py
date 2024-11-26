@@ -7,7 +7,7 @@ Task:           T[n]
   Expansion: ∀x ∈ C[n].depends_on => A[x] -> C[x]
   Head: C[1].depends_on[A[n].$head$] => A[n] -> C[n], A[n].head -> C[n].head, connect
 
-See EOF for license/metadata/notes as applicable
+
 """
 # Imports:
 from __future__ import annotations
@@ -37,7 +37,6 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import boltons.queueutils
-import more_itertools as mitz
 import networkx as nx
 import tomlguard
 from jgdv.structs.code_ref import CodeReference

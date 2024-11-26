@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
 
-See EOF for license/metadata/notes as applicable
+
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
@@ -18,28 +19,32 @@ import re
 import time
 import types
 import weakref
+from collections import defaultdict
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
-import more_itertools as mitz
-##-- end lib imports
+# ##-- 3rd party imports
+from jgdv.debugging import SignalHandler
 
-from collections import defaultdict
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
 import doot
-import doot.structs as structs
-import doot.errors
-from doot.enums import TaskStatus_e, Report_f, TaskMeta_f
 import doot._abstract as abstract
+import doot.errors
+import doot.structs as structs
 from doot.control.runner import DootRunner
-from doot.utils.signal_handler import SignalHandler
+from doot.enums import Report_f, TaskMeta_f, TaskStatus_e
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)

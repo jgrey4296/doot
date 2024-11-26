@@ -27,15 +27,16 @@ import pytest
 
 # ##-- end 3rd party imports
 
-logging = logmod.root
 
+from jgdv.structs.location import Location, LocationMeta_f
 import doot
 doot._test_setup()
 import doot.errors
 from doot._structs.relation_spec import RelationSpec
-from doot._structs.location import Location
 from doot.structs import TaskName
-from doot.enums import LocationMeta_f, RelationMeta_e
+from doot.enums import RelationMeta_e
+
+logging = logmod.root
 
 class TestRelationSpec:
 

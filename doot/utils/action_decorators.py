@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
+Action Decorators for metadata.
 
-See EOF for license/metadata/notes as applicable
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
@@ -20,26 +21,29 @@ import types
 import weakref
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
-# import more_itertools as mitz
-# from boltons import
-##-- end lib imports
+# ##-- 3rd party imports
+from jgdv.decorators.base import JGDVDecorator, MetaDecorator
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-import doot
-import doot.errors
-from doot.utils.decorators import DootDecorator, MetaDecorator
 
 RUN_DRY_SWITCH                               = doot.constants.decorations.RUN_DRY_SWITCH
 RUN_DRY                                      = doot.constants.decorations.RUN_DRY
@@ -73,13 +77,13 @@ class DryRunSwitch(MetaDecorator):
     def _target_fn(self, fn):
         return self._target_method(fn)
 
-class RunsDry(DootDecorator):
+class RunsDry(MetaDecorator):
     """ mark an action that makes no changes to the system, on an honour system """
 
     def __init__(self):
         self._annotations = {RUN_DRY}
 
-class GeneratesTasks(DootDecorator):
+class GeneratesTasks(MetaDecorator):
     """ Mark an action callable/class as a task generator """
 
     def __init__(self):
@@ -95,7 +99,7 @@ class GeneratesTasks(DootDecorator):
             raise doot.errors.DootActionError("Action did not return task specs")
         return result
 
-class IOWriter(DootDecorator):
+class IOWriter(MetaDecorator):
     """ mark an action callable/class as an io action,
       checks the path it'll write to isn't write protected
     """
@@ -112,25 +116,25 @@ class IOWriter(DootDecorator):
 
         return fn(spec, state, *args, **kwargs)
 
-class ControlFlow(DootDecorator):
+class ControlFlow(MetaDecorator):
     """ mark an action callable/class as a control flow action
       implies it runs dry
       """
     pass
 
-class External(DootDecorator):
+class External(MetaDecorator):
     """ mark an action callable/class as calling an external program.
       implies rundryswitch
       """
     pass
 
-class StateManipulator(DootDecorator):
+class StateManipulator(MetaDecorator):
     """ mark an action callable/class as a state modifier
       checks the DootKey `returns` are in the return dict
     """
     pass
 
-class Announcer(DootDecorator):
+class Announcer(MetaDecorator):
     """ mark an action callable/class as reporting in a particular way
       implies run_dry, and skips on cli arg `silent`
       """
