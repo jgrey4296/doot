@@ -83,9 +83,9 @@ class PathSingleDKey(SingleDKey, mark=DKeyMark_e.PATH):
         self._relative        = kwargs.get('relative', False)
 
     def extra_sources(self):
-        return [doot.locs]
+        return [doot.locs._global_]
 
-    def expand(self, *sources, **kwargs) -> None|Pl.Path:
+    def expand(self, *sources, **kwargs) -> None|pl.Path:
         """ Expand subkeys, format the multi key
           Takes a variable number of sources (dicts, tomlguards, specs, dootlocations..)
         """
@@ -110,7 +110,7 @@ class PathSingleDKey(SingleDKey, mark=DKeyMark_e.PATH):
                 return x
             case pl.Path() as x:
                 logging.debug("Normalizing Single Path Key: %s", value)
-                return doot.locs.normalize(x)
+                return doot.locs._global_.normalize(x)
             case x:
                 raise TypeError("Path Expansion did not produce a path", x)
 
@@ -127,7 +127,7 @@ class PathMultiDKey(MultiDKey, mark=DKeyMark_e.PATH, tparam="p", multi=True):
         self._relative        = kwargs.get('relative', False)
 
     def extra_sources(self):
-        return [doot.locs]
+        return [doot.locs._global_]
 
     def keys(self) -> list[Key_p]:
         subkeys = [DKey(key.key, fmt=key.format, conv=key.conv, implicit=True) for key in self._subkeys]
@@ -156,7 +156,7 @@ class PathMultiDKey(MultiDKey, mark=DKeyMark_e.PATH, tparam="p", multi=True):
                 return x
             case pl.Path() as x:
                 logging.debug("Normalizing Single Path Key: %s", value)
-                return doot.locs.normalize(x)
+                return doot.locs._global_.normalize(x)
             case x:
                 raise TypeError("Path Expansion did not produce a path", x)
 
@@ -175,3 +175,14 @@ class PostBoxDKey(SingleDKey, mark=DKeyMark_e.POSTBOX, tparam="b"):
         result = None
         # return result
         raise NotImplementedError()
+
+
+class DKeyed(DKeyed_Base):
+    """ Extends jgdv.structs.dkey.DKeyed to handle additional decoration types
+    specific for doot
+    """
+
+    @staticmethod
+    def taskname(fn):
+        keys = [DKey(STATE_TASK_NAME_K, implicit=True, mark=DKey.mark.TASK)]
+        return DKeyed._build_decorator(keys)(fn)

@@ -19,12 +19,13 @@ from tomlguard import TomlGuard
 from jgdv.structs.code_ref import CodeReference
 from jgdv.structs.dkey import DKeyFormatter
 from jgdv.structs.location import JGDVLocations as DootLocations
+from jgdv.structs.dkey import implementations as imps
 
 import doot
 doot._test_setup()
 from doot.utils.testing_fixtures import wrap_locs
 from doot._structs.action_spec import ActionSpec
-from doot._structs import dkey as dkey
+from doot._structs import dkey
 from doot._abstract.protocols import Key_p
 from doot.structs import TaskName
 
@@ -132,6 +133,7 @@ class TestDKeyExpansion:
 
     def test_expansion_to_str_for_expansion_with_path(self, wrap_locs):
         wrap_locs.update({"raise": "blah"})
+        assert("raise" in wrap_locs)
         state = {"middle": "Before. {raise!p}. After."}
         target        = "Before. {}. After.".format(wrap_locs['blah'])
         key           = dkey.DKey("middle", implicit=True)
@@ -254,7 +256,7 @@ class TestDKeyPathKeys:
         state = {name :"x!p", "x": "y"}
         exp   = key.expand(state)
         final = exp.expand(state)
-        assert(isinstance(key, dkey.RedirectionDKey))
+        assert(isinstance(key, imps.RedirectionDKey))
         assert(isinstance(exp, dkey.PathSingleDKey))
         assert(isinstance(final, pl.Path))
         assert(final == doot.locs["y"])

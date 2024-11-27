@@ -25,6 +25,9 @@ from doot.task.base_task import DootTask
 
 class TestTaskName:
 
+    def test_sanity(self):
+        assert(True is not False)
+
     def test_creation(self):
         simple = TaskName.build("basic::tail")
         assert(simple.head == [ "basic"])

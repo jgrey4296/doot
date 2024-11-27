@@ -77,13 +77,13 @@ class TestLocations:
     def test_empty_repr(self):
         simple = DootLocations(pl.Path.cwd())
         repr_str = repr(simple)
-        assert(repr_str == f"<DootLocations : {str(pl.Path.cwd())} : ()>")
+        assert(repr_str == f"<JGDVLocations : {str(pl.Path.cwd())} : ()>")
 
     def test_non_empty_repr(self):
         simple = DootLocations(pl.Path.cwd())
         simple.update({"a": "blah", "b": "aweg", "awegewag": "wejgio"})
         repr_str = repr(simple)
-        assert(repr_str == f"<DootLocations : {str(pl.Path.cwd())} : (a, b, awegewag)>")
+        assert(repr_str == f"<JGDVLocations : {str(pl.Path.cwd())} : (a, b, awegewag)>")
 
     def test_context_manager(self):
         simple = DootLocations(pl.Path.cwd())

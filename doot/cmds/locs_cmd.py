@@ -58,7 +58,7 @@ class LocsCmd(BaseCommand):
         """List task generators"""
         logging.debug("Starting to List Locations")
 
-        if not bool(doot.locs):
+        if not bool(doot.locs._global_):
             printer.info("No Locations Defined")
             return
 
@@ -72,11 +72,11 @@ class LocsCmd(BaseCommand):
 
     def _print_all(self):
         printer.info("Defined Locations:", extra={"colour":"cyan"})
-        max_key = len(max(doot.locs, key=len))
+        max_key = len(max(doot.locs._global_, key=len))
         fmt_str = f"{INDENT}%-{max_key}s :: %-25s"
         locs = defaultdict(list)
 
-        for name in doot.locs:
-            printer.info(fmt_str, name, doot.locs[f"{{{name}}}"])
+        for name in doot.locs._global_:
+            printer.info(fmt_str, name, doot.locs._global_[f"{{{name}}}"])
 
         printer.info("")

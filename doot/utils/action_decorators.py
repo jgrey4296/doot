@@ -31,7 +31,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv.decorators.base import JGDVDecorator, MetaDecorator
+from jgdv.decorators.base import MetaDecorator
 
 # ##-- end 3rd party imports
 
@@ -111,7 +111,7 @@ class IOWriter(MetaDecorator):
 
     def _wrapper(self, fn, spec, state, *args, _obj=None, **kwargs):
         for x in [y for y in getattr(fn, '_doot_keys', []) if y in self._targets]:
-            if doot.locs._is_write_protected(x.expand(spec, state)):
+            if doot.locs._global_._is_write_protected(x.expand(spec, state)):
                 raise doot.errors.DootTaskError("A Target to an IOWriter action is marked as protected")
 
         return fn(spec, state, *args, **kwargs)

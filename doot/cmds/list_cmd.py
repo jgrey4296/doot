@@ -205,5 +205,5 @@ class ListCmd(BaseCommand):
     def _print_locations(self):
         cmd_l.info("Defined Locations: ")
 
-        for x in sorted(doot.locs):
-            printer.info("-- %-25s : %s", x, doot.locs.get(x))
+        for x in sorted(doot.locs._global_):
+            printer.info("-- %-25s : %s", x, doot.locs._global_.get(x))
