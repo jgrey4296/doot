@@ -34,6 +34,7 @@ logging = logmod.getLogger(__name__)
 import pytest
 import os
 import doot
+from jgdv.structs.location import JGDVLocations
 
 @pytest.fixture
 def wrap_tmp(tmp_path):
@@ -52,5 +53,5 @@ def wrap_tmp(tmp_path):
 @pytest.fixture
 def wrap_locs():
     logging.debug("Activating temp locs")
-    with doot.locs._global_() as temp:
+    with JGDVLocations(pl.Path.cwd()) as temp:
         yield temp

@@ -33,6 +33,7 @@ from uuid import UUID, uuid1
 import tomlguard
 from jgdv.structs.code_ref import CodeReference
 from jgdv.util.time_ctx import TimeCtx
+from jgdv.structs.location.errors import LocationError
 
 # ##-- end 3rd party imports
 
@@ -225,7 +226,7 @@ class DootTaskLoader(TaskLoader_p):
                             logging.warning("Overloading Task: %s : %s", str(task_spec.name), str(task_spec.ctor))
                     case _: # Else complain
                         raise doot.errors.DootTaskLoadError("Task Spec missing, at least, needs at least a name and ctor: %s: %s", spec, spec['sources'][0] )
-            except doot.errors.DootLocationError as err:
+            except LocationError as err:
                 logging.warning("Task Spec '%s' Load Failure: Missing Location: '%s'. Source File: %s", task_name, str(err), spec['sources'][0])
             except ModuleNotFoundError as err:
                 failures.append(err)

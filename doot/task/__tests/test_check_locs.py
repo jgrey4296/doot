@@ -39,14 +39,13 @@ import doot._abstract
 from doot.control.locations import DootLocations
 from doot.structs import TaskSpec
 from doot.task.check_locs import CheckLocsTask
-
+from doot.utils.testing_fixtures import wrap_locs
 # ##-- end 1st party imports
 
 logging = logmod.root
 
 class TestCheckLocsTask:
 
-    def test_initial(self):
-        doot._test_setup()
+    def test_initial(self, wrap_locs):
         obj = CheckLocsTask()
         assert(isinstance(obj, doot._abstract.Task_i))

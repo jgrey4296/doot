@@ -18,6 +18,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
 
 from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
 from jgdv.structs.dkey import DKeyMark_e
+from jgdv.structs.location import LocationMeta_f
 
 # ##-- 1st party imports
 from doot._abstract.control import ExecutionPolicy_e, QueueMeta_e, EdgeType_e
@@ -40,24 +41,3 @@ class RelationMeta_e(enum.Enum):
     # excludes         = enum.auto()
 
     default          = needs
-
-
-class LocationMeta_f(FlagsBuilder_m, enum.Flag):
-    """ Available metadata attachable to a location """
-
-    abstract     = enum.auto()
-    artifact     = enum.auto()
-    directory    = enum.auto()
-    cleanable    = enum.auto()
-    normOnLoad   = enum.auto()
-    protected    = enum.auto()
-    glob         = enum.auto()
-    expandable   = enum.auto()
-    remote       = enum.auto()
-
-    # Aliases
-    file         = artifact
-    location     = directory
-    indefinite   = abstract
-
-    default      = directory

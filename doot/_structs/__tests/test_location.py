@@ -12,7 +12,7 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 import warnings
 
 import pytest
-from jgdv.structs.location import Location
+from jgdv.structs.location import Location, LocationMeta_f
 import doot
 doot._test_setup()
 
@@ -51,6 +51,7 @@ class TestLocation:
 
     def test_metadata(self):
         obj = Location.build({"key":"test", "path":"test/blah", "protected":True})
+        assert(obj.check(LocationMeta_f.protected))
         assert(LocationMeta_f.protected in obj)
 
     def test_metadata_opposite(self):

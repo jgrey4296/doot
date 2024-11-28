@@ -37,6 +37,7 @@ from pydantic import (BaseModel, BeforeValidator, Field, ValidationError,
 from tomlguard import TomlGuard
 from typing_extensions import Annotated
 from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.dkey import DKey
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -48,7 +49,6 @@ from doot._structs.action_spec import ActionSpec
 from doot._structs.artifact import TaskArtifact
 from doot._structs.relation_spec import RelationSpec
 from doot._structs.task_name import TaskName, TaskMeta_f
-from doot.structs import DKey
 from doot.enums import (LocationMeta_f, RelationMeta_e, QueueMeta_e)
 
 # ##-- end 1st party imports
@@ -403,7 +403,6 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
     def _validate_ctor(cls, val):
         match val:
             case None:
-
                 default_alias = TaskSpec._default_ctor
                 coderef_str   = doot.aliases.task[default_alias]
                 return CodeReference.build(coderef_str)
