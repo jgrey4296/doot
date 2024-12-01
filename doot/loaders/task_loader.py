@@ -47,9 +47,7 @@ from doot.structs import TaskName, TaskSpec
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-# If CLI:
-# logging = logmod.root
-# logging.setLevel(logmod.NOTSET)
+printer = doot.subprinter()
 ##-- end logging
 
 DEFAULT_TASK_GROUP        = doot.constants.names.DEFAULT_TASK_GROUP
@@ -263,4 +261,6 @@ class DootTaskLoader(TaskLoader_p):
             try:
                 doot.locs._global_.update(group, strict=False)
             except KeyError as err:
-                doot.printer.warning("Locations Already Defined: %s : %s", err.args[1], source)
+                printer.warning("Locations Already Defined: %s : %s", err.args[1], source)
+            except TypeError as err:
+                printer.warning("Location failed to validate: %s : %s", err.args[1], source)
