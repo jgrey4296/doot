@@ -37,8 +37,7 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 import jsonlines
 import sh
-import tomlguard as TG
-
+from jgdv.structs.chainguard import ChainGuard
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -57,7 +56,7 @@ printer = doot.subprinter()
 
 class ReadJson(Action_p):
     """
-        Read a .json file and add it to the task state as a tomlguard
+        Read a .json file and add it to the task state as a ChainGuard
     """
 
     @DKeyed.paths("from")
@@ -68,7 +67,7 @@ class ReadJson(Action_p):
 
         with open(_from) as fp:
             data     = json.load(fp)
-        return { _update : TG.TomlGuard(data) }
+        return { _update : ChainGuard(data) }
 
 class ParseJson(Action_p):
     """ parse a string as json """

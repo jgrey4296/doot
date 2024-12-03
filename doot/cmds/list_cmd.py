@@ -31,7 +31,7 @@ from weakref import ref
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from tomlguard import TomlGuard
+from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 3rd party imports
 
@@ -76,7 +76,7 @@ class ListCmd(BaseCommand):
             self.build_param(name="pattern",                  type=str,           default="", positional=True,    desc="List tasks with a basic string pattern in the name"),
             ]
 
-    def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
+    def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
         """List task generators"""
         logging.debug("Starting to List Jobs/Tasks")
         if (doot.args.on_fail("").cmd.args.pattern() == ""     # type: ignore

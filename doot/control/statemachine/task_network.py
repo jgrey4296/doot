@@ -31,7 +31,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import networkx as nx
-import tomlguard
+from jgdv.structs.chainguard import ChainGuard
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -302,14 +302,14 @@ class TaskNetwork(TaskMatcher_m):
         self.nodes[artifact][EXPANDED] = True
         return to_expand
 
-    def concrete_edges(self, name:Concrete[TaskName|TaskArtifact]) -> tomlguard.TomlGuard:
+    def concrete_edges(self, name:Concrete[TaskName|TaskArtifact]) -> ChainGuard:
         """ get the concrete edges of a task.
           ie: the ones in the task _graph, not the abstract ones in the spec.
         """
         assert(name in self)
         preds = self.pred[name]
         succ  = self.succ[name]
-        return tomlguard.TomlGuard({
+        return ChainGuard({
             "pred" : {"tasks": [x for x in preds if isinstance(x, TaskName)],
                       "_registry.artifacts": {"abstract": [x for x in preds if isinstance(x, TaskArtifact) and not x.is_concrete()],
                                     "concrete": [x for x in preds if isinstance(x, TaskArtifact) and x.is_concrete()]}},

@@ -30,10 +30,10 @@ logging = logmod.getLogger(__name__)
 
 import os
 import re
-import tomlguard
 
-from jgdv.structs.location import DirAbsent, LocationExpansionError, LocationError
-from jgdv.structs.location import Location, JGDVLocations, LocationMeta_f
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.strang.errors import DirAbsent, LocationExpansionError, LocationError
+from jgdv.structs.strang.location import Location, JGDVLocations, LocationMeta_f
 from jgdv.structs.dkey import MultiDKey, NonDKey, SingleDKey, DKey, DKeyFormatter
 from jgdv.mixins.path_manip import PathManip_m
 

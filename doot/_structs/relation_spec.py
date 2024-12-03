@@ -31,8 +31,8 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 from pydantic import (BaseModel, Field, field_validator,
                       model_validator)
-from tomlguard import TomlGuard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -82,7 +82,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
     _meta         : dict()                                         = {} # Misc metadata
 
     @staticmethod
-    def build(data:RelationSpec|TomlGuard|dict|TaskName|str, *, relation:RelationMeta_e=RelationMeta_e.needs) -> RelationSpec:
+    def build(data:RelationSpec|ChainGuard|dict|TaskName|str, *, relation:RelationMeta_e=RelationMeta_e.needs) -> RelationSpec:
         match data:
             case RelationSpec():
                 return data
@@ -130,7 +130,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 return None
             case str():
                 return val
-            case TomlGuard() | dict() if all(k in ["now","delay", "insert"] for k in val.keys()):
+            case ChainGuard() | dict() if all(k in ["now","delay", "insert"] for k in val.keys()):
                 return val
             case _:
                 raise TypeError("Unknown injection type", val)

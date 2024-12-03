@@ -31,8 +31,8 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from tomlguard import TomlGuard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.strang import CodeReference
+from jgdv.structs.chainguard import ChainGuard
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -73,7 +73,7 @@ class JobInjector(Action_p, Injector_m):
             case TaskSpec():
                 onto.model_extra.update(dict(**x.extra, **injection))
 
-    def build_injection(self, spec, state, inject, replacement=None, post:dict|None=None) -> None|TomlGuard:
+    def build_injection(self, spec, state, inject, replacement=None, post:dict|None=None) -> None|ChainGuard:
         return super().build_injection(inject, spec, state, insertion=replacement)
 
 class JobPrependActions(Action_p):

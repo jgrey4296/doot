@@ -33,8 +33,8 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv.structs.code_ref import CodeReference
-
+from jgdv.structs.strang import CodeReference
+from jgdv.structs.chainguard import ChainGuard
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -46,8 +46,8 @@ import doot.errors
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-def plugin_selector(plugins:TomlGuard, *, target="default", fallback=None) -> type:
-    """ Selects and loads plugins from a tomlguard, based on a target,
+def plugin_selector(plugins:ChainGuard, *, target="default", fallback=None) -> type:
+    """ Selects and loads plugins from a chainguard , based on a target,
     with an available fallback constructor """
     logging.debug("Selecting plugin for target: %s", target)
 

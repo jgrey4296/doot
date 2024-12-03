@@ -25,7 +25,7 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 import pytest
 from tomlguard import TomlGuard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports

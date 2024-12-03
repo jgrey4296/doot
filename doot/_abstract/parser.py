@@ -31,7 +31,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from abc import abstractmethod
-from tomlguard import TomlGuard
+from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.regex import RegexEqual
 
 from doot._abstract.protocols import ParamStruct_p
@@ -39,10 +39,10 @@ from doot._abstract.protocols import ParamStruct_p
 class ArgParser_i:
     """
     A Single standard process point for turning the list of passed in args,
-    into a dict, into a tomlguard,
+    into a dict, into a ChainGuard,
     along the way it determines the cmds and tasks that have been chosne
     """
 
     @abstractmethod
-    def parse(self, args:list[str], doot_arg_specs:list[ParamStruct_p], cmds:TomlGuard, tasks:TomlGuard) -> TomlGuard:
+    def parse(self, args:list[str], doot_arg_specs:list[ParamStruct_p], cmds:ChainGuard, tasks:ChainGuard) -> ChainGuard:
         pass

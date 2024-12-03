@@ -28,8 +28,7 @@ from weakref import ref
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-import tomlguard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports

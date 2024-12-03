@@ -31,7 +31,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 from jgdv.structs.dkey import DKey
-from jgdv.structs.location import LocationMeta_f
+from jgdv.structs.strang.location import LocationMeta_f
 from jgdv.mixins.path_manip import PathManip_m, LoopControl_e, Walker_m
 
 # ##-- 1st party imports

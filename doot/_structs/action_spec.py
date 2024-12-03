@@ -31,8 +31,8 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from pydantic import BaseModel, Field, field_validator, model_validator
-from tomlguard import TomlGuard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -60,13 +60,13 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
     """
     do         : None|CodeReference                   = None
     args       : list[Any]                            = []
-    kwargs     : TomlGuard                            = Field(default_factory=TomlGuard)
+    kwargs     : ChainGuard                            = Field(default_factory=ChainGuard)
     inState    : set[str]                             = set()
     outState   : set[str]                             = set()
     fun        : None|Callable                        = None
 
     @staticmethod
-    def build(data:dict|list|TomlGuard|ActionSpec, *, fun=None) -> ActionSpec:
+    def build(data:dict|list|ChainGuard|ActionSpec, *, fun=None) -> ActionSpec:
         match data:
             case ActionSpec():
                 return data
@@ -77,8 +77,8 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
                     )
                 return action_spec
 
-            case dict() | TomlGuard():
-                kwargs      = TomlGuard({x:y for x,y in data.items() if x not in ActionSpec.model_fields})
+            case dict() | ChainGuard():
+                kwargs      = ChainGuard({x:y for x,y in data.items() if x not in ActionSpec.model_fields})
                 fun         = data.get('fun', fun)
                 action_spec = ActionSpec(
                     do=data.get('do', None),

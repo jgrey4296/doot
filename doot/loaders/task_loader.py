@@ -30,10 +30,10 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-import tomlguard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.strang import CodeReference
 from jgdv.util.time_ctx import TimeCtx
-from jgdv.structs.location.errors import LocationError
+from jgdv.structs.strang.errors import LocationError
 
 # ##-- end 3rd party imports
 
@@ -60,7 +60,7 @@ allow_overloads           = doot.config.on_fail(False, bool).allow_overloads()
 
 def apply_group_and_source(group, source, x):
     match x:
-        case tomlguard.TomlGuard():
+        case ChainGuard():
             x = dict(x.items())
             x['group']  = x.get('group', group)
             if 'sources' not in x:
@@ -81,7 +81,7 @@ class DootTaskLoader(TaskLoader_p):
     tasks         : dict[str, tuple(dict, Job_i)] = {}
     cmd_names     : set[str]                         = set()
     task_builders : dict[str,Any]                    = dict()
-    extra : TomlGuard
+    extra : ChainGuard
 
     def setup(self, plugins, extra=None) -> Self:
         logging.debug("---- Registering Task Builders")
@@ -89,7 +89,7 @@ class DootTaskLoader(TaskLoader_p):
         self.tasks         = {}
         self.plugins       = plugins
         self.task_builders = {}
-        for plugin in tomlguard.TomlGuard(plugins).on_fail([]).task():
+        for plugin in ChainGuard(plugins).on_fail([]).task():
             if plugin.name in self.task_builders:
                 logging.warning("Conflicting Task Builder Type Name: %s: %s / %s",
                                 plugin.name,
@@ -110,18 +110,18 @@ class DootTaskLoader(TaskLoader_p):
                 self.extra = {}
             case list():
                 self.extra = {"_": extra}
-            case dict() | tomlguard.TomlGuard():
-                self.extra = tomlguard.TomlGuard(extra).on_fail({}).tasks()
+            case dict() | ChainGuard():
+                self.extra = ChainGuard(extra).on_fail({}).tasks()
         logging.debug("Task Loader Setup with %s extra tasks", len(self.extra))
         return self
 
-    def load(self) -> TomlGuard[TaskSpec]:
+    def load(self) -> ChainGuard[TaskSpec]:
         with TimeCtx(logger=logging, entry_msg="---- Loading Tasks",  exit_msg="---- Task Loading Time"):
             raw_specs : list[dict] = []
             logging.debug("Loading Tasks from Config")
             for source in doot._configs_loaded_from:
                 try:
-                    source_data : TomlGuard = tomlguard.load(source)
+                    source_data : ChainGuard = ChainGuard.load(source)
                     task_specs = source_data.on_fail({}).tasks()
                     raw_specs += self._load_raw_specs(task_specs, source)
                 except OSError as err:
@@ -143,7 +143,7 @@ class DootTaskLoader(TaskLoader_p):
 
         logging.debug("Task List Size: %s", len(self.tasks))
         logging.debug("Task List Names: %s", list(self.tasks.keys()))
-        return tomlguard.TomlGuard(self.tasks)
+        return ChainGuard(self.tasks)
 
     def _load_raw_specs(self, data:dict, source:pl.Path|Literal['(extra)']) -> list[dict]:
         """ extract raw task descriptions from a toplevel tasks dict, with not format checking
@@ -174,7 +174,7 @@ class DootTaskLoader(TaskLoader_p):
 
         for task_file in targets:
             try:
-                data = tomlguard.load(task_file)
+                data = ChainGuard.load(task_file)
             except OSError as err:
                 logging.error("Failed to Load Task File: %s : %s", task_file, err.filename)
                 continue
@@ -255,7 +255,7 @@ class DootTaskLoader(TaskLoader_p):
 
             return task_descriptions
 
-    def _load_location_updates(self, data:list[TomlGuard], source):
+    def _load_location_updates(self, data:list[ChainGuard], source):
         logging.debug("Loading Location Updates: %s", source)
         for group in data:
             try:

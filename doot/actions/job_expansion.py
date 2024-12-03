@@ -29,8 +29,8 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from tomlguard import TomlGuard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -132,7 +132,7 @@ class JobExpandAction(JobInjector):
         """
         match base:
             case list():
-                assert(all(isinstance(x, (dict, TomlGuard)) for x in base))
+                assert(all(isinstance(x, (dict, ChainGuard)) for x in base))
                 actions  = base
                 sources  = [None]
             case TaskName():

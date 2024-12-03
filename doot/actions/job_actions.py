@@ -29,8 +29,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from tomlguard import TomlGuard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.strang import CodeReference
 
 # ##-- end 3rd party imports
 

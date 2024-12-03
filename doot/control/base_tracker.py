@@ -38,8 +38,8 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 import boltons.queueutils
 import networkx as nx
-import tomlguard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -165,7 +165,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
         chain.reverse()
         return chain
 
-    def _instantiate_spec(self, name:AbstractId, *, add_cli:bool=False, extra:None|dict|tomlguard.TomlGuard=None) -> ConcreteId:
+    def _instantiate_spec(self, name:AbstractId, *, add_cli:bool=False, extra:None|dict|ChainGuard=None) -> ConcreteId:
         """ Convert an Asbtract Spec into a Concrete Spec,
           Reuses a existing concrete spec if possible.
           """
@@ -616,14 +616,14 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
         self.network.nodes[artifact][EXPANDED] = True
         return to_expand
 
-    def concrete_edges(self, name:ConcreteId) -> tomlguard.TomlGuard:
+    def concrete_edges(self, name:ConcreteId) -> ChainGuard:
         """ get the concrete edges of a task.
           ie: the ones in the task network, not the abstract ones in the spec.
         """
         assert(name in self.network)
         preds = self.network.pred[name]
         succ  = self.network.succ[name]
-        return tomlguard.TomlGuard({
+        return ChainGuard({
             "pred" : {"tasks": [x for x in preds if isinstance(x, TaskName)],
                       "artifacts": {"abstract": [x for x in preds if isinstance(x, TaskArtifact) and not x.is_concrete()],
                                     "concrete": [x for x in preds if isinstance(x, TaskArtifact) and x.is_concrete()]}},

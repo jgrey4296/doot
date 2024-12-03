@@ -28,8 +28,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import sh
-import tomlguard
-
+from jgdv.structs.chainguard import ChainGuard
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -89,16 +88,16 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         print("Doot Version: %s", doot.__version__)
         print("lib @", os.path.dirname(os.path.abspath(__file__)))
 
-    def __init__(self, *, loaders:dict[str, Loader_i]=None, config_filenames:tuple=DEFAULT_FILENAMES, extra_config:dict|TomlGuard=None, args:list=None, log_config:None|DootLogConfig=None):
+    def __init__(self, *, loaders:dict[str, Loader_i]=None, config_filenames:tuple=DEFAULT_FILENAMES, extra_config:dict|ChainGuard=None, args:list=None, log_config:None|DootLogConfig=None):
         logging.info("---- Initialising Overlord")
         self.args                                = args or sys.argv[:]
         self.BIN_NAME                            = self.args[0].split('/')[-1]
         self.loaders                             = loaders or dict()
         self.log_config                          = log_config
 
-        self.plugins      : None|TomlGuard       = None
-        self.cmds         : None|TomlGuard       = None
-        self.tasks        : None|TomlGuard       = None
+        self.plugins      : None|ChainGuard       = None
+        self.cmds         : None|ChainGuard       = None
+        self.tasks        : None|ChainGuard       = None
         self.current_cmd  : Command_i            = None
 
         self._errored     : None|DootError       = None
@@ -160,16 +159,16 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
 
         return "\n".join(help_lines)
 
-    def _load_plugins(self, extra_config:dict|TomlGuard=None):
+    def _load_plugins(self, extra_config:dict|ChainGuard=None):
         """ Use a plugin loader to find all applicable `importlib.EntryPoint`s  """
         try:
             self.plugin_loader    = self.loaders.get(plugin_loader_key, DootPluginLoader())
             self.plugin_loader.setup(extra_config)
-            self.plugins : TomlGuard = self.plugin_loader.load()
+            self.plugins : ChainGuard = self.plugin_loader.load()
             doot._update_aliases(self.plugins)
         except doot.errors.DootPluginError as err:
             shutdown_l.warning("Plugins Not Loaded Due to Error: %s", err)
-            self.plugins = tomlguard.TomlGuard()
+            self.plugins = ChainGuard()
 
     def _load_commands(self, extra_config):
         """ Select Commands from the discovered plugins """
@@ -186,7 +185,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
                     self.cmds = self.cmd_loader.load()
                 except doot.errors.DootPluginError as err:
                     shutdown_l.warning("Commands Not Loaded due to Error: %s", err)
-                    self.cmds = tomlguard.TomlGuard()
+                    self.cmds = ChainGuard()
             case _:
                 raise TypeError("Unrecognized loader type", self.cmd_loader)
 
@@ -270,7 +269,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         if not doot.config.on_fail(False).settings.general.write_defaulted_values():
             return
 
-        defaulted_toml = tomlguard.TomlGuard.report_defaulted()
+        defaulted_toml = ChainGuard.report_defaulted()
         expanded_path = doot.locs._global_[defaulted_file]
         if not expanded_path.parent.exists():
             shutdown_l.warning("Coulnd't log defaulted config values to: %s", expanded_path)

@@ -27,7 +27,7 @@ from weakref import ref
 ##-- end imports
 
 from collections import defaultdict
-from tomlguard import TomlGuard
+from jgdv.structs.chainguard import ChainGuard
 import doot
 import doot.errors
 from doot.cmds.base_cmd import BaseCommand
@@ -54,7 +54,7 @@ class LocsCmd(BaseCommand):
             self.build_param(name="pattern",                  type=str,           default="", positional=True,    desc="List tasks with a basic string pattern in the name"),
             ]
 
-    def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
+    def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
         """List task generators"""
         logging.debug("Starting to List Locations")
 

@@ -35,7 +35,7 @@ from weakref import ref
 import matplotlib.pyplot as plt
 import networkx as nx
 import sh
-from tomlguard import TomlGuard
+from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 3rd party imports
 
@@ -84,7 +84,7 @@ class GraphCmd(BaseCommand):
             self.build_param(name="dot-file", prefix="--",    type=str,           default=None,                   desc="a file name to write the dot to. uses key expansion"),
             ]
 
-    def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
+    def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
         """List task generators"""
         logging.debug("Starting to Graph Jobs/Tasks Network")
         tracker = plugin_selector(plugins.on_fail([], list).tracker(), target=tracker_target)()

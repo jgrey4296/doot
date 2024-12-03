@@ -34,8 +34,8 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 from pydantic import (BaseModel, Field, InstanceOf, field_validator,
                       model_validator)
-from tomlguard import TomlGuard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -120,7 +120,7 @@ class TaskStub(BaseModel, StubStruct_p, Buildable_p, metaclass=ProtocolModelMeta
                 pass
             case dict():
                 part = TaskStubPart(**other)
-            case TomlGuard():
+            case ChainGuard():
                 pass
             case TaskStubPart() if other.key not in self.parts:
                 self.parts[other.key] = other
@@ -236,7 +236,7 @@ class TaskStubPart(BaseModel, arbitrary_types_allowed=True):
             case list():
                 parts = ", ".join([f'"{x}"' for x in self.default])
                 val_str = f"[{parts}]"
-            case dict() | TomlGuard() if not bool(self.default):
+            case dict() | ChainGuard() if not bool(self.default):
                 val_str = "{}"
             case _:
                 logging.debug("Unknown stub part reduction: %s : %s : %s", self.key, self.type_, self.default)

@@ -27,7 +27,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import networkx as nx
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.strang import CodeReference
 
 # ##-- end 3rd party imports
 

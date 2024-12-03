@@ -34,9 +34,9 @@ from uuid import UUID, uuid1
 from pydantic import (BaseModel, BeforeValidator, Field, ValidationError,
                       ValidationInfo, ValidatorFunctionWrapHandler,
                       WrapValidator, field_validator, model_validator)
-from tomlguard import TomlGuard
+from jgdv.structs.chainguard import ChainGuard
 from typing_extensions import Annotated
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.strang import CodeReference
 from jgdv.structs.dkey import DKey
 # ##-- end 3rd party imports
 
@@ -301,7 +301,7 @@ class _SpecUtils_m:
 
 class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True, extra="allow"):
     """ The information needed to describe a generic task.
-    Optional things are shoved into 'extra', so things can use .on_fail on the tomlguard
+    Optional things are shoved into 'extra', so things can use .on_fail on the chainguard
 
     the cli parser can understand cli=[{}] specs
     actions                      : list[ [args] | {do='', args=[], **kwargs} ]
@@ -337,11 +337,11 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
     _blocking_groups                  : ClassVar[list[str]]                                                              = ["required_for", "on_fail"]
 
     @staticmethod
-    def build(data:TomlGuard|dict|TaskName|str) -> Self:
+    def build(data:ChainGuard|dict|TaskName|str) -> Self:
         match data:
-            case TomlGuard() | dict() if "source" in data:
+            case ChainGuard() | dict() if "source" in data:
                 raise ValueError("source is deprecated, use 'sources'", data)
-            case TomlGuard() | dict():
+            case ChainGuard() | dict():
                 return TaskSpec.model_validate(data)
             case TaskName():
                 return TaskSpec(name=data)
@@ -462,8 +462,8 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
         return self.model_extra
 
     @property
-    def extra(self) -> TomlGuard:
-        return TomlGuard(self.model_extra)
+    def extra(self) -> ChainGuard:
+        return ChainGuard(self.model_extra)
 
     @property
     def action_groups(self):

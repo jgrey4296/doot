@@ -31,7 +31,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-import tomlguard
+from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 3rd party imports
 
@@ -222,7 +222,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
                 # Can use an existing concrete spec
                 return x
 
-    def _instantiate_spec(self, name:Abstract[TaskName], *, add_cli:bool=False, extra:None|dict|tomlguard.TomlGuard=None) -> Concrete[TaskName]:
+    def _instantiate_spec(self, name:Abstract[TaskName], *, add_cli:bool=False, extra:None|dict|ChainGuard=None) -> Concrete[TaskName]:
         """ Convert an Asbtract Spec into a Concrete Spec,
           Reuses a existing concrete spec if possible.
           """

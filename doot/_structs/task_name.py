@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
 # Imports:
@@ -33,8 +32,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from pydantic import field_validator, model_validator
-from tomlguard import TomlGuard
-from jgdv.structs.name.structured_name import (StructuredName, TailEntry, aware_splitter)
+from jgdv.structs.strang import Strang
 from jgdv.enums.util import FlagsBuilder_m
 
 # ##-- end 3rd party imports
@@ -50,6 +48,8 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 CLEANUP_MARKER : Final[str] = "$cleanup$"
+
+aware_splitter = str
 
 class TaskMeta_f(FlagsBuilder_m, enum.Flag):
     """
@@ -78,6 +78,7 @@ class TaskMeta_f(FlagsBuilder_m, enum.Flag):
     VERSIONED    = enum.auto()
 
     default      = TASK
+
 class _TaskNameOps_m:
     """ Operations Mixin for manipulating TaskNames """
 
@@ -221,8 +222,7 @@ class _TaskNameOps_m:
                         args=args
                         )
 
-
-    def last(self) -> None|TailEntry:
+    def last(self):
         """
         Get the last value of the task/tail
         """
@@ -230,7 +230,7 @@ class _TaskNameOps_m:
             return self.tail[-1]
         return None
 
-class TaskName(StructuredName, _TaskNameOps_m):
+class TaskName(Strang, _TaskNameOps_m):
     """
       A Task Name.
       Infers metadata(TaskMeta_f) from the string data it is made of.
@@ -255,98 +255,6 @@ class TaskName(StructuredName, _TaskNameOps_m):
     _head_marker        : ClassVar[str]           = doot.constants.patterns.SUBTASKED_HEAD
     _job_marker         : ClassVar[str]           = "+" # TODO move to constants.toml
     _root_marker        : ClassVar[str]           = ""  # TODO move to constants.toml
-
-    @classmethod
-    def build(cls, name:str|dict|TaskName, *, args=None):
-        """ build a name from the various ways it can be specificed.
-          handles a single string of the group and taskname,
-          or a dict that specifies taskname and maybe the groupname
-
-        """
-        match name:
-            case TaskName():
-                return name
-            case str() if cls._separator not in name:
-                raise ValueError("TaskName has no group", name)
-            case str():
-                group, task = name.split(doot.constants.patterns.TASK_SEP)
-            case {"name": TaskName() as name}:
-                return name
-            case {"name": str() as name} if cls._separator not in name:
-                raise ValueError("TaskName has no group", name)
-            case {"name": str() as name}:
-                group , task = name.split(doot.constants.patterns.TASK_SEP)
-            case { "group": str() as group, "name": str() as task}:
-                pass
-            case _:
-                raise ValueError("Unrecognized name format: %s", name)
-
-        return TaskName(head=[group], tail=[task], args=args or {})
-
-    @field_validator("head", mode="before")
-    def _process_head(cls, head):
-        """ ensure the head is in its component parts """
-        match head:
-            case list():
-                head = [x.replace('"',"").replace("'","") for x in head]
-                head = ftz.reduce(lambda x, y: x + y, map(aware_splitter, head))
-            case _:
-                raise ValueError("Bad Task Head Value", head)
-
-        match head:
-            case ["tasks", *xs]:
-                return xs
-            case _:
-                 return head
-
-    @field_validator("tail", mode="before")
-    def _process_tail(cls, tail):
-        """ ensure the tail is in its component parts """
-        match tail:
-            case list():
-                tail = ftz.reduce(lambda x, y: x + y, map(aware_splitter, tail))
-            case str():
-                tail = tail.split(cls._subseparator)
-            case None | []:
-                tail = ["default"]
-            case _:
-                raise ValueError("Bad Task Tail Value", tail)
-
-        root_set = {TaskName._root_marker}
-        filtered = [x for x,y in zip(tail, itz.chain(tail[1:], [None])) if {x,y} != root_set ]
-        return filtered
-
-    @model_validator(mode="after")
-    def check_metdata(self) -> Self:
-        if self.head[-1] == TaskName._job_marker:
-            self.meta |= TaskMeta_f.JOB
-        if self.tail[0] == TaskName._internal_marker:
-            self.meta |= TaskMeta_f.INTERNAL
-        if isinstance(self.last(), UUID):
-            self.meta |= TaskMeta_f.CONCRETE
-        if TaskName._head_marker in self.tail:
-            self.meta |= TaskMeta_f.JOB_HEAD
-            self.meta &= ~TaskMeta_f.JOB
-
-        self.args['uuids'] = [x for x in self.tail if isinstance(x, UUID)]
-
-        if self.is_instantiated() and not bool(self.args['uuids']):
-            raise ValueError("Instanced Name lacks a stored uuid", self)
-        if self.is_instantiated() and TaskName._gen_marker not in self.tail:
-            raise ValueError("Specialized Name lacks the specialized keyword in its tail", self)
-        if TaskMeta_f.INTERNAL in self.meta and not self.tail[0] == TaskName._internal_marker:
-            raise ValueError("Internal Name lacks a prefix underscore", self)
-
-        return self
-
-    @model_validator(mode="after")
-    def _process_roots(self) -> Self:
-        # filter out double root markers
-        indices = [i for i,x in enumerate(self.tail[:-1]) if x == TaskName._root_marker]
-        if bool(indices):
-            min_i, max_i = min(indices), max(indices)
-            self._roots = (min_i, max_i)
-        return self
 
     def __str__(self) -> str:
         return "{}{}{}".format(self.group, self._separator, self.task)

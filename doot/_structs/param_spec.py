@@ -35,7 +35,7 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 from pydantic import (BaseModel, Field, InstanceOf,
                       field_validator, model_validator)
-from tomlguard import TomlGuard
+from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 3rd party imports
 
@@ -75,7 +75,7 @@ class ParamSpec(BaseModel, ParamStruct_p, Buildable_p, metaclass=ProtocolModelMe
     _pad               : ClassVar[int]             = 15
 
     @classmethod
-    def build(cls:BaseModel, data:TomlGuard|dict) -> ParamSpec:
+    def build(cls:BaseModel, data:ChainGuard|dict) -> ParamSpec:
         param =  cls.model_validate(data)
         return param
 

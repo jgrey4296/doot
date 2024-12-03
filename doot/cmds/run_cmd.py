@@ -26,10 +26,10 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from tomlguard import TomlGuard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.strang import CodeReference
 from jgdv.util.time_ctx import TimeCtx
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -72,7 +72,7 @@ class RunCmd(BaseCommand):
             self.build_param(name="target", type=list[str], default=[], positional=True),
             ]
 
-    def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
+    def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
         logging.info("---- Starting Run Cmd")
         # Note the final parens to construct:
         available_reporters    = plugins.on_fail([], list).report_line()

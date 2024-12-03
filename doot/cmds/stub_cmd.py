@@ -32,7 +32,7 @@ from weakref import ref
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.strang import CodeReference
 
 # ##-- end 3rd party imports
 
@@ -91,7 +91,7 @@ class StubCmd(BaseCommand):
         except ImportError as err:
             raise doot.errors.DootTaskLoadError(ctor_name)
 
-    def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
+    def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
         match dict(doot.args.cmd.args):
             case {"Config": True}:
                 self._stub_doot_toml()

@@ -24,7 +24,6 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from tomlguard import TomlGuard
 
 # ##-- end 3rd party imports
 

@@ -33,11 +33,9 @@ from uuid import UUID, uuid1
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from pydantic import BaseModel, field_validator, model_validator
 import importlib
-from tomlguard import TomlGuard
-from jgdv.structs.location import Location
-from jgdv.structs.location.location import GLOB, SOLO, REC_GLOB
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.strang.location import Location
 from jgdv.structs.dkey import DKey
 
 import doot
@@ -45,7 +43,7 @@ import doot.errors
 from doot.enums import ArtifactStatus_e
 
 
-class TaskArtifact(Location, arbitrary_types_allowed=True):
+class TaskArtifact(Location):
     """
       An concrete or abstract artifact a task can produce or consume.
 
@@ -124,9 +122,9 @@ class TaskArtifact(Location, arbitrary_types_allowed=True):
         if abstracts.path:
             # loop over parts of the paths, and get the most specific
             for i, (x,y) in enumerate(zip(self.path.parent.parts, match_on)):
-                if x in [GLOB, SOLO]:
+                if x in ["*", "?"]:
                     result.append(y)
-                elif x == REC_GLOB:
+                elif x == "**":
                     result += match_on[i:]
                 elif x == y:
                     result.append(x)

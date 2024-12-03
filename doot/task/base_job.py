@@ -25,8 +25,8 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from tomlguard import TomlGuard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -60,7 +60,7 @@ class DootJob(Job_i, DootTask):
         assert(spec is not None), "Spec is empty"
         super(DootJob, self).__init__(spec)
 
-    def default_task(self, name:str|TaskName|None, extra:None|dict|TomlGuard) -> TaskSpec:
+    def default_task(self, name:str|TaskName|None, extra:None|dict|ChainGuard) -> TaskSpec:
         task_name = None
         match name:
             case None:
@@ -73,7 +73,7 @@ class DootJob(Job_i, DootTask):
                 raise doot.errors.DootTaskError("Bad value used to make a subtask in %s : %s", self.shortname, name)
 
         assert(task_name is not None)
-        return TaskSpec(name=task_name, extra=TomlGuard(extra))
+        return TaskSpec(name=task_name, extra=ChainGuard(extra))
 
     def is_stale(self, task:Task_i):
         return False

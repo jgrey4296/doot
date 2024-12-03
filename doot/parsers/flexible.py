@@ -28,8 +28,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from tomlguard import TomlGuard
-
+from jgdv.structs.chainguard import ChainGuard
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -56,7 +55,7 @@ empty_cmd           : Final[str]  = doot.config.on_fail(EMPTY_CLI_CMD, str).sett
 
 class DootFlexibleParser(ArgParser_i):
     """
-    convert argv to tomlguard by:
+    convert argv to ChainGuard by:
     parsing each arg as toml,
 
     # doot {args} {cmd} {cmd_args}
@@ -91,7 +90,7 @@ class DootFlexibleParser(ArgParser_i):
     def _build_defaults_dict(self, param_specs:list) -> dict:
         return { x.name : x.default for x in param_specs }
 
-    def parse(self, args:list, *, doot_specs:list[ParamSpec], cmds:TomlGuard, tasks:TomlGuard) -> None|TomlGuard:
+    def parse(self, args:list, *, doot_specs:list[ParamSpec], cmds:ChainGuard, tasks:ChainGuard) -> None|ChainGuard:
         """
           Parses the list of arguments against available registered parameter specs, cmds, and tasks.
         """
@@ -141,7 +140,7 @@ class DootFlexibleParser(ArgParser_i):
             "tasks"  : { name : args for name,args in self.tasks_args  },
             "extras" : self.extras
             }
-        return TomlGuard(data)
+        return ChainGuard(data)
 
     def process_head(self, args) -> list[str]:
         """ consume arguments for doot actual """

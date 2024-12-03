@@ -32,8 +32,8 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 import decorator
 from pydantic import BaseModel, Field, field_validator, model_validator
-from tomlguard import TomlGuard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.strang import CodeReference
 from jgdv.structs.dkey import DKeyFormatter, DKey, DKeyMark_e, SingleDKey, MultiDKey, NonDKey, DKeyExpansionDecorator
 from jgdv.structs.dkey import DKeyed as DKeyed_Base
 from jgdv.structs.dkey.dkey import REDIRECT_SUFFIX, CONV_SEP
@@ -87,7 +87,7 @@ class PathSingleDKey(SingleDKey, mark=DKeyMark_e.PATH):
 
     def expand(self, *sources, **kwargs) -> None|pl.Path:
         """ Expand subkeys, format the multi key
-          Takes a variable number of sources (dicts, tomlguards, specs, dootlocations..)
+          Takes a variable number of sources (dicts, chainguards, specs, dootlocations..)
         """
         logging.debug("Single Path Expand")
         if self == CWD_MARKER:
@@ -135,7 +135,7 @@ class PathMultiDKey(MultiDKey, mark=DKeyMark_e.PATH, tparam="p", multi=True):
 
     def expand(self, *sources, fallback=None, **kwargs) -> None|pl.Path:
         """ Expand subkeys, format the multi key
-          Takes a variable number of sources (dicts, tomlguards, specs, dootlocations..)
+          Takes a variable number of sources (dicts, chainguards, specs, dootlocations..)
         """
         match super().expand(*sources, fallback=fallback, **kwargs):
             case None:

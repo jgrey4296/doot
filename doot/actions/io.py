@@ -27,7 +27,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from time import sleep
 import sh
 import shutil
-import tomlguard as TG
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
 from doot.control.locations import DootLocationError

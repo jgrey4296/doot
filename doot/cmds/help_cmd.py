@@ -31,7 +31,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.strang import CodeReference
 
 # ##-- end 3rd party imports
 
@@ -159,7 +159,7 @@ class HelpCmd(BaseCommand):
         if cli_has_params and cli_has_non_default and ctor is not None:
             self._print_current_param_assignments(ctor.param_specs, doot.args.tasks[task_name])
 
-    def _print_current_param_assignments(self, specs:list[ParamSpec], args:TomlGuard):
+    def _print_current_param_assignments(self, specs:list[ParamSpec], args:ChainGuard):
         cmd_l.info("")
         cmd_l.info("%s Current Param Assignments:", GROUP_INDENT)
 

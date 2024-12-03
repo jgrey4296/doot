@@ -33,7 +33,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-import tomlguard
+from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 3rd party imports
 
@@ -85,7 +85,7 @@ def mock_task_spec(name="agroup::mockSpec", pre=None, post=None, action_count=1,
         extra['sleep'] = 0.1
     spec_m = MagicMock(structs.TaskSpec(name=name),
                        actions=mock_action_specs(num=action_count),
-                       extra=tomlguard.TomlGuard(extra),
+                       extra=ChainGuard(extra),
                        priority=10,
                        queue_behaviour=QueueMeta_e.default,
                        depends_on=pre or [],
@@ -101,7 +101,7 @@ def mock_action_specs(num=1) -> list:
     for x in range(num):
         action_spec_m = MagicMock(spec=structs.ActionSpec(),
                                   args=[],
-                                  kwargs=tomlguard.TomlGuard())
+                                  kwargs=ChainGuard())
         type(action_spec_m).__call__ = MagicMock(return_value=None)
         results.append(action_spec_m)
 

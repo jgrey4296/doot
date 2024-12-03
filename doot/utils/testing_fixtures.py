@@ -34,7 +34,7 @@ logging = logmod.getLogger(__name__)
 import pytest
 import os
 import doot
-from jgdv.structs.location import JGDVLocations
+from jgdv.structs.strang.locations import JGDVLocations
 
 @pytest.fixture
 def wrap_tmp(tmp_path):
