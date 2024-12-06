@@ -33,7 +33,8 @@ import re
 
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang.errors import DirAbsent, LocationExpansionError, LocationError
-from jgdv.structs.strang.location import Location, JGDVLocations, LocationMeta_f
+from jgdv.structs.strang.location import Location
+from jgdv.structs.strang.locations import JGDVLocations
 from jgdv.structs.dkey import MultiDKey, NonDKey, SingleDKey, DKey, DKeyFormatter
 from jgdv.mixins.path_manip import PathManip_m
 

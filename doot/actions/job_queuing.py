@@ -97,18 +97,18 @@ class JobQueueAction(Action_p):
             if x == "$head$":
                 result.append(base.head_task())
             else:
-                result.append(TaskName.build(x))
+                result.append(TaskName(x))
 
         return result
 
     def _build_args(self, base, args) -> list:
         result = []
-        root   = base.root()
-        head   = base.job_head()
+        root   = base.pop()
+        head   = base.with_head()
         for i,x in enumerate(args):
             sub = TaskSpec.build(dict(
-                name=root.subtask(i),
-                sources=[TaskName.build(x)],
+                name=root.push(i),
+                sources=[TaskName(x)],
                 required_for=[head],
                 depends_on=[],
                 ))
@@ -118,8 +118,8 @@ class JobQueueAction(Action_p):
 
     def _build_from_list(self, base:TaskName, froms:list[DKey], spec, state) -> list:
         result  = []
-        root    = base.root()
-        head    = base.job_head()
+        root    = base.pop()
+        head    = base.with_head()
         assert(all(isinstance(x, DKey) for x in froms))
 
         for key in froms:
@@ -137,7 +137,7 @@ class JobQueueAction(Action_p):
 
     def _build_from(self, base, _from:list) -> list:
         result = []
-        head = base.job_head()
+        head = base.with_head()()
         match _from:
             case None:
                 pass
@@ -154,8 +154,8 @@ class JobQueueHead(Action_p):
     @DKeyed.taskname
     def __call__(self, spec, state, base, inject, _basename):
         raise DeprecationWarning("This Is No Longer needed")
-        root            = _basename.root()
-        head_name       = _basename.job_head()
+        root            = _basename.pop()
+        head_name       = _basename.with_head()
         head            = []
 
         match base:
@@ -163,8 +163,8 @@ class JobQueueHead(Action_p):
                 head += [TaskSpec.build(dict(name=head_name,
                                                  actions=[],
                                                  queue_behaviour="auto")),
-                         TaskSpec.build(dict(name=root.job_head().subtask("1"),
-                                                 sources=[TaskName.build(base)],
+                         TaskSpec.build(dict(name=root.with_head().push("1"),
+                                                 sources=[TaskName(base)],
                                                  depends_on=[head_name],
                                                  extra=inject or {},
                                                  queue_behaviour="auto"))

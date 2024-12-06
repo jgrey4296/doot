@@ -15,7 +15,7 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 logging = logmod.root
 
 import pytest
-import tomlguard
+from jgdv.structs.chainguard import ChainGuard
 import doot
 doot._test_setup()
 
@@ -25,14 +25,14 @@ class TestBasicDoot:
         mocker.patch.object(doot,  "config", None)
         assert(doot.config is None)
         doot._test_setup()
-        assert(isinstance(doot.config, tomlguard.TomlGuard))
+        assert(isinstance(doot.config, ChainGuard))
 
 
     def test_initial2(self, mocker):
         mocker.patch.object(doot,  "config", None)
         assert(doot.config is None)
         doot._test_setup()
-        assert(isinstance(doot.config, tomlguard.TomlGuard))
+        assert(isinstance(doot.config, ChainGuard))
 
     def test_overlord(self, mocker):
         mocker.patch

@@ -13,7 +13,6 @@ import warnings
 
 import pytest
 
-import tomlguard
 import doot
 import doot.errors
 
@@ -51,24 +50,24 @@ class TestTaskSpec:
     def test_build(self):
         obj = structs.TaskSpec.build({"name":"default::default"})
         assert(isinstance(obj, structs.TaskSpec))
-        assert(obj.name.group == "default")
-        assert(obj.name.task == "default")
+        assert(obj.name[0: ]== "default")
+        assert(obj.name[1:] == "default")
         assert(str(obj.ctor) == DEFAULT_CTOR)
         assert(obj.version == doot.__version__)
 
     def test_version(self):
         obj = structs.TaskSpec.build({"version" : "0.5", "name":"default::default"})
         assert(isinstance(obj, structs.TaskSpec))
-        assert(obj.name.group == "default")
-        assert(obj.name.task == "default")
+        assert(obj.name[0:] == "default")
+        assert(obj.name[1:] == "default")
         assert(str(obj.ctor) == DEFAULT_CTOR)
         assert(obj.version == "0.5")
 
     def test_basic_name(self):
         obj = structs.TaskSpec.build({"name": "agroup::atask"})
         assert(isinstance(obj, structs.TaskSpec))
-        assert(obj.name.group == "agroup")
-        assert(obj.name.task == "atask")
+        assert(obj.name[0:] == "agroup")
+        assert(obj.name[1:] == "atask")
 
     def test_groupless_name(self):
         with pytest.raises(ValueError):
@@ -84,8 +83,8 @@ class TestTaskSpec:
     def test_separate_group_and_task(self):
         obj = structs.TaskSpec.build({"name": "atask", "group": "agroup"})
         assert(isinstance(obj, structs.TaskSpec))
-        assert(obj.name.group == "agroup")
-        assert(obj.name.task == "atask")
+        assert(obj.name[0:] == "agroup")
+        assert(obj.name[1:] == "atask")
 
     def test_disabled_spec(self):
         obj = structs.TaskSpec.build({"name": "agroup::atask", "disabled":True})
@@ -134,6 +133,7 @@ class TestTaskSpecValidation:
 
 class TestTaskSpecInstantiation:
 
+
     def test_instantiation(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0})
         override_task = structs.TaskSpec.build({"name": "agroup::atask", "b": 2, "sources": "agroup::base"})
@@ -166,7 +166,7 @@ class TestTaskSpecInstantiation:
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0})
         override_task = structs.TaskSpec.build({"name": "agroup::atask", "b": 2, "sources": "agroup::not.base"})
 
-        assert(not base_task.name < structs.TaskName.build(override_task.sources[-1]))
+        assert(not base_task.name < structs.TaskName(override_task.sources[-1]))
         with pytest.raises(doot.errors.DootTaskTrackingError):
             base_task.specialize_from(override_task)
 
@@ -288,7 +288,7 @@ class TestTaskGeneration:
     def test_instantiated_cleanup_gen(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "cleanup": [{"do":"log", "msg":"blah"}]})
         instance      = base_task.specialize_from(base_task)
-        assert(TaskMeta_f.CONCRETE in instance.name)
+        assert(structs.TaskName.mark_e.gen in instance.name)
         cleanup_task  = base_task.gen_cleanup_task()
         assert(isinstance(cleanup_task, structs.TaskSpec))
         assert(bool(cleanup_task.actions))
@@ -296,7 +296,7 @@ class TestTaskGeneration:
 
 
     def test_job_head_gen_empty_cleanup(self):
-        base_task     = structs.TaskSpec.build({"name": "agroup.+::base", "a": 0, "cleanup": []})
+        base_task     = structs.TaskSpec.build({"name": "agroup::+.base", "a": 0, "cleanup": []})
         match base_task.gen_job_head():
             case [structs.TaskSpec() as head]:
                assert(structs.TaskName._head_marker in head.name)

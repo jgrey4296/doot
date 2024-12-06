@@ -51,7 +51,7 @@ class TestJobExpansion:
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": TaskName.build("agroup::basic")}
+        return {"_task_name": TaskName("agroup::basic")}
 
     def test_sanity(self, spec, state):
         obj = JobExpandAction()
@@ -106,7 +106,7 @@ class TestJobExpansion:
 
 
     def test_basic_expander(self, spec, state):
-        state.update(dict(_task_name=TaskName.build("agroup::basic"),
+        state.update(dict(_task_name=TaskName("agroup::basic"),
                           inject={"insert":["aKey"]},
                           base="base::task"))
 
@@ -120,7 +120,7 @@ class TestJobExpansion:
         assert(len(result['specs']) == 3)
 
     def test_expander_with_dict_injection(self, spec, state):
-        state.update(dict(_task_name=TaskName.build("agroup::basic"),
+        state.update(dict(_task_name=TaskName("agroup::basic"),
                           inject={"insert": ["aKey"], "delay":{"other":"blah"}},
                           base="base::task"))
 
@@ -143,7 +143,7 @@ class TestJobMatcher:
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": TaskName.build("agroup::basic")}
+        return {"_task_name": TaskName("agroup::basic")}
 
     def test_sanity(self):
         pass
@@ -156,7 +156,7 @@ class TestJobGenerate:
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": TaskName.build("agroup::basic")}
+        return {"_task_name": TaskName("agroup::basic")}
 
     def test_sanity(self):
         pass

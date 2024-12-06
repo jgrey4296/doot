@@ -80,8 +80,8 @@ class JobExpandAction(JobInjector):
 
         result          = []
         build_queue     = []
-        root            = _basename.root()
-        base_head       = root.job_head()
+        root            = _basename.pop()
+        base_head       = root.with_head()
         actions, sources = self._prep_base(template)
         match sources:
             case [] | [None]:
@@ -106,7 +106,7 @@ class JobExpandAction(JobInjector):
         for arg in build_queue:
             _count += 1
             # TODO change job subtask naming scheme
-            base_dict = dict(name=base_subtask.subtask(prefix, _count),
+            base_dict = dict(name=base_subtask.push(prefix, _count),
                              sources=sources,
                              actions = actions or [],
                              required_for=[base_head],
@@ -140,7 +140,7 @@ class JobExpandAction(JobInjector):
                 sources = [base]
             case str():
                 actions = []
-                sources = [TaskName.build(base)]
+                sources = [TaskName(base)]
             case None:
                 actions = []
                 sources = [None]
@@ -175,6 +175,6 @@ class JobMatchAction(DootBaseAction):
         for x in _onto_val:
             match fn(x):
                 case str() as key if key in mapping:
-                    x.ctor = TaskName.build(mapping[key])
+                    x.ctor = TaskName(mapping[key])
                 case _:
                     pass

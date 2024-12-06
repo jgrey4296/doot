@@ -55,7 +55,7 @@ logging = logmod.getLogger(__name__)
 
 TaskFlagNames : Final[str]               = [x.name for x in TaskMeta_f]
 
-DEFAULT_CTOR  : Final[CodeReference] = CodeReference.build(doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS])
+DEFAULT_CTOR  : Final[CodeReference] = CodeReference(doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS])
 
 class TaskStub(BaseModel, StubStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
     """ Stub Task Spec for description in toml
@@ -85,7 +85,7 @@ class TaskStub(BaseModel, StubStruct_p, Buildable_p, metaclass=ProtocolModelMeta
 
     @model_validator(mode="after")
     def initial_values(self):
-        self['name'].default     = TaskName.build(doot.constants.names.DEFAULT_STUB_TASK_NAME)
+        self['name'].default     = TaskName(doot.constants.names.DEFAULT_STUB_TASK_NAME)
         self['version'].default  = "0.1"
         # Auto populate the stub with what fields are defined in a TaskSpec:
         for dcfield, data in TaskSpec.model_fields.items():
@@ -175,7 +175,7 @@ class TaskStubPart(BaseModel, arbitrary_types_allowed=True):
         """
         # shortcut on being the name:
         if isinstance(self.default, TaskName) and self.key == "name":
-            return f"[[tasks.{self.default.group}]]\n{'name':<20} = \"{self.default.task}\""
+            return f"[[tasks.{self.default[0:]}]]\n{'name':<20} = \"{self.default[1:]}\""
 
         key_str     = self._key_str()
         type_str    = self._type_str()

@@ -49,7 +49,7 @@ SEP                 : Final[str]  = doot.constants.patterns.TASK_PARSE_SEP
 DEFAULT_CLI_CMD     : Final[str]  = doot.constants.misc.DEFAULT_CLI_CMD
 EMPTY_CLI_CMD       : Final[str]  = doot.constants.misc.EMPTY_CLI_CMD
 
-default_task        : Final[str]  = doot.config.on_fail((None,)).settings.tasks.default_task(wrapper=TaskName.build)
+default_task        : Final[str]  = doot.config.on_fail((None,)).settings.tasks.default_task(wrapper=TaskName)
 default_cmd         : Final[str]  = doot.config.on_fail(DEFAULT_CLI_CMD, str).settings.general.default_cmd()
 empty_cmd           : Final[str]  = doot.config.on_fail(EMPTY_CLI_CMD, str).settings.general.empty_cmd()
 

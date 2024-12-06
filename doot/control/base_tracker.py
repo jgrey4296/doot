@@ -105,7 +105,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
 
     def _maybe_reuse_instantiation(self, name:TaskName, *, add_cli:bool=False, extra:bool=False) -> None|ConcreteId:
         """ if an existing concrete spec exists, use it if it has no conflicts """
-        if name.is_instantiated():
+        if name.is_uniq:
             logging.debug("Not reusing instantiation because name is concrete: %s", name)
             return None
         if name not in self.specs:
@@ -199,7 +199,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
             # apply additional settings onto the instance
             instance_spec = instance_spec.specialize_from(extra)
 
-        assert(instance_spec.name.is_instantiated())
+        assert(instance_spec.name.is_uniq)
         # Map abstract -> concrete
         self.concrete[name].append(instance_spec.name)
         # register the actual concrete spec
@@ -241,14 +241,14 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
                 return instance
             case [x]: # One match, connect it
                 assert(x in self.specs)
-                assert(x.is_instantiated())
+                assert(x.is_uniq)
                 instance : TaskName = x
                 logging.warning("Reusing Instance: %s", instance)
                 return instance
             case [*xs, x]: # TODO check this.
                 # Use most recent instance?
                 assert(x in self.specs)
-                assert(x.is_instantiated())
+                assert(x.is_uniq)
                 instance : TaskName = x
                 logging.warning("Reusing latest Instance: %s", instance)
                 return instance
@@ -273,7 +273,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
           """
         if not isinstance(name, TaskName):
             raise doot.errors.DootTaskTrackingError("Tried to add a not-task", name)
-        if not name.is_instantiated():
+        if not name.is_uniq:
             raise doot.errors.DootTaskTrackingError("Tried to add a task using a non-concrete spec", name)
         if name not in self.network.nodes:
             raise doot.errors.DootTaskTrackingError("Tried to add a non-network task ", name)
@@ -309,7 +309,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
                 self._transformer_specs[pre.target].append(spec.name)
                 self._transformer_specs[post.target].append(spec.name)
 
-        if spec.name.is_instantiated():
+        if spec.name.is_uniq:
             return
 
         for rel in spec.action_group_elements():
@@ -353,7 +353,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
             self._register_blocking_relations(spec)
 
     def _register_blocking_relations(self, spec:TaskSpec):
-        if spec.name.is_instantiated:
+        if spec.name.is_uniq:
             # If the spec is instantiated,
             # it has no indirect relations
             return
@@ -412,7 +412,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
 
     def __init__(self):
         super().__init__()
-        self._root_node        : TaskName                              = TaskName.build(ROOT)
+        self._root_node        : TaskName                              = TaskName(ROOT)
         self._declare_priority : int                                       = DECLARE_PRIORITY
         self._min_priority     : int                                       = MIN_PRIORITY
         self.network           : nx.DiGraph[ConcreteId] = nx.DiGraph()
@@ -547,7 +547,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
         to_expand = set()
         spec_pred = self.network.pred[spec.name]
         # Get (abstract) blocking relations from self._indirect_deps
-        blockers  = self._indirect_deps[spec.name.root(top=True)]
+        blockers  = self._indirect_deps[spec.name.pop(top=True)]
 
         # Try to link instantiated nodes if they match constraints
 
@@ -565,17 +565,17 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
 
         if TaskMeta_f.JOB in spec.name:
             logging.debug("Expanding Job Head for: %s", spec.name)
-            heads         = [jhead for x in spec.get_source_names() if (jhead:=x.job_head()) in self.specs]
+            heads         = [jhead for x in spec.get_source_names() if (jhead:=x.with_head()) in self.specs]
             head_name     = heads[-1]
             head_instance = self._instantiate_spec(head_name, extra=spec.model_extra)
             self.connect(spec.name, head_instance, job_head=True)
             return [head_instance]
 
-        if spec.name.is_instantiated() and (root:=spec.name.root()) == root.cleanup_name():
+        if spec.name.is_uniq and (root:=spec.name.pop()) == root.canon():
             return []
 
         # Instantiate and connect the cleanup task
-        cleanup = self._instantiate_spec(spec.name.cleanup_name())
+        cleanup = self._instantiate_spec(spec.name.canon())
         self.connect(spec.name, cleanup, cleanup=True)
         return [cleanup]
 
@@ -846,7 +846,7 @@ class _TrackerQueue_boltons:
         # Prep the task: register and instantiate
         match name:
             case str():
-                return self.queue_entry(TaskName.build(name), from_user=from_user)
+                return self.queue_entry(TaskName(name), from_user=from_user)
             case TaskSpec() as spec:
                 self.register_spec(spec)
                 return self.queue_entry(spec.name, from_user=from_user, status=status)
@@ -871,7 +871,7 @@ class _TrackerQueue_boltons:
                 prepped_name = instance
                 self.connect(instance, None if from_user else False)
             case TaskName() if name in self.specs:
-                assert(not TaskName.build(name).is_instantiated()), name
+                assert(not TaskName(name).is_uniq), name
                 instance : TaskName = self._instantiate_spec(name, add_cli=from_user)
                 self.connect(instance, None if from_user else False)
                 prepped_name = instance
@@ -887,17 +887,17 @@ class _TrackerQueue_boltons:
         target_priority : int                        = self._declare_priority
         match prepped_name:
             case TaskName() if TaskMeta_f.JOB_HEAD in prepped_name:
-                assert(prepped_name.is_instantiated())
+                assert(prepped_name.is_uniq)
                 assert(prepped_name in self.specs)
                 final_name      = self._make_task(prepped_name)
                 target_priority = self.tasks[final_name].priority
             case TaskName() if TaskMeta_f.JOB in prepped_name:
-                assert(prepped_name.is_instantiated())
+                assert(prepped_name.is_uniq)
                 assert(prepped_name in self.specs)
                 final_name      = self._make_task(prepped_name)
                 target_priority = self.tasks[final_name].priority
             case TaskName():
-                assert(prepped_name.is_instantiated())
+                assert(prepped_name.is_uniq)
                 assert(prepped_name in self.specs)
                 final_name      = self._make_task(prepped_name)
                 target_priority = self.tasks[final_name].priority

@@ -24,7 +24,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import pytest
-from tomlguard import TomlGuard
+from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 
@@ -61,7 +61,7 @@ class TestArgParserHead:
         ctor_mock                 = mocker.Mock()
         ctor_mock.param_specs     = []
         task_mock.ctor.try_import = mocker.Mock(return_value=ctor_mock)
-        task_mock.extra           = TomlGuard({"cli": [ParamSpec(name="all")]})
+        task_mock.extra           = ChainGuard({"cli": [ParamSpec(name="all")]})
 
         return task_mock
 
@@ -197,7 +197,7 @@ class TestArgParserCmd:
         ctor_mock                 = mocker.Mock()
         ctor_mock.param_specs     = []
         task_mock.ctor.try_import = mocker.Mock(return_value=ctor_mock)
-        task_mock.extra           = TomlGuard({"cli": [ParamSpec(name="all")]})
+        task_mock.extra           = ChainGuard({"cli": [ParamSpec(name="all")]})
 
         return task_mock
 
@@ -325,7 +325,7 @@ class TestArgParserTask:
         ctor_mock                 = mocker.Mock()
         ctor_mock.param_specs     = []
         task_mock.ctor.try_import = mocker.Mock(return_value=ctor_mock)
-        task_mock.extra           = TomlGuard({"cli": [ParamSpec(name="all")]})
+        task_mock.extra           = ChainGuard({"cli": [ParamSpec(name="all")]})
 
         return task_mock
 

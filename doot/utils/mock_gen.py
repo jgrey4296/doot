@@ -66,7 +66,7 @@ def mock_task(name, spec=None, actions:int=1, **kwargs):
                        state={},
                        **kwargs)
     task_m.spec = spec or mock_task_spec(name=name, action_count=actions)
-    _add_prop(task_m, "name", structs.TaskName.build(name))
+    _add_prop(task_m, "name", structs.TaskName(name))
     _add_prop(task_m, "actions", task_m.spec.actions)
     return task_m
 
@@ -93,7 +93,7 @@ def mock_task_spec(name="agroup::mockSpec", pre=None, post=None, action_count=1,
                        setup=[],
                        cleanup=[],
                        )
-    spec_m.name = structs.TaskName.build(name)
+    spec_m.name = structs.TaskName(name)
     return spec_m
 
 def mock_action_specs(num=1) -> list:

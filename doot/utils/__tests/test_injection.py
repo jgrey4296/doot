@@ -13,7 +13,6 @@ import warnings
 
 import pytest
 
-import tomlguard
 import doot
 import doot.errors
 

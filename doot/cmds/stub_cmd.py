@@ -133,7 +133,7 @@ class StubCmd(BaseCommand):
         # Create stub toml, with some basic information
         stub                          = TaskStub(ctor=task_iden)
         try:
-            stub['name'].default          = TaskName.build(name)
+            stub['name'].default          = TaskName(name)
         except ValueError:
             raise doot.errors.DootError("Provide a valid TaskName")
 
@@ -167,11 +167,11 @@ class StubCmd(BaseCommand):
         while str(stub['name'].default) in tasks:
             stub['name'].default.tail.append("$conflicted$")
 
-        if original_name != stub['name'].default.task:
+        if original_name != stub['name'].default[1:]:
             logging.warning("Group %s: Name %s already defined, trying to modify name to: %s",
-                            stub['name'].default.group,
+                            stub['name'].default[0:],
                             original_name,
-                            stub['name'].default.task)
+                            stub['name'].default[1:])
 
         # Output to printer/stdout, or file
         if doot.args.cmd.args.file_target == "":

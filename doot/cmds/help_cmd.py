@@ -120,7 +120,7 @@ class HelpCmd(BaseCommand):
         cmd_l.info(f"{count:4}: Task: {task_name}")
         cmd_l.info(LINE_SEP)
         cmd_l.info("ver     : %s", spec.version)
-        cmd_l.info("Group   : %s", spec.name.group)
+        cmd_l.info("Group   : %s", spec.name[0:])
         sources = "; ".join([str(x) for x in spec.sources])
         cmd_l.info("Sources : %s", sources)
 

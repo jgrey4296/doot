@@ -100,9 +100,9 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
             case CodeReference():
                 return val
             case str() if val in ALIASES:
-                return CodeReference.build(ALIASES[val])
+                return CodeReference(ALIASES[val])
             case str():
-                return CodeReference.build(val)
+                return CodeReference(val)
             case _:
                 raise TypeError("Unrecognized action spec do type", val)
 

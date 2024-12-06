@@ -36,7 +36,6 @@ from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
 from jgdv.structs.dkey import DKeyFormatter, DKey, DKeyMark_e, SingleDKey, MultiDKey, NonDKey, DKeyExpansionDecorator
 from jgdv.structs.dkey import DKeyed as DKeyed_Base
-from jgdv.structs.dkey.dkey import REDIRECT_SUFFIX, CONV_SEP
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -68,7 +67,7 @@ class TaskNameDKey(SingleDKey, mark=DKeyMark_e.TASK, tparam="t"):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._expansion_type  = TaskName.build
+        self._expansion_type  = TaskName
         self._typecheck = TaskName
 
 class PathSingleDKey(SingleDKey, mark=DKeyMark_e.PATH):
@@ -83,7 +82,7 @@ class PathSingleDKey(SingleDKey, mark=DKeyMark_e.PATH):
         self._relative        = kwargs.get('relative', False)
 
     def extra_sources(self):
-        return [doot.locs._global_]
+        return [doot.locs.Current]
 
     def expand(self, *sources, **kwargs) -> None|pl.Path:
         """ Expand subkeys, format the multi key
@@ -110,7 +109,7 @@ class PathSingleDKey(SingleDKey, mark=DKeyMark_e.PATH):
                 return x
             case pl.Path() as x:
                 logging.debug("Normalizing Single Path Key: %s", value)
-                return doot.locs._global_.normalize(x)
+                return doot.locs.Current.normalize(x)
             case x:
                 raise TypeError("Path Expansion did not produce a path", x)
 
@@ -127,7 +126,7 @@ class PathMultiDKey(MultiDKey, mark=DKeyMark_e.PATH, tparam="p", multi=True):
         self._relative        = kwargs.get('relative', False)
 
     def extra_sources(self):
-        return [doot.locs._global_]
+        return [doot.locs.Current]
 
     def keys(self) -> list[Key_p]:
         subkeys = [DKey(key.key, fmt=key.format, conv=key.conv, implicit=True) for key in self._subkeys]
@@ -156,7 +155,7 @@ class PathMultiDKey(MultiDKey, mark=DKeyMark_e.PATH, tparam="p", multi=True):
                 return x
             case pl.Path() as x:
                 logging.debug("Normalizing Single Path Key: %s", value)
-                return doot.locs._global_.normalize(x)
+                return doot.locs.Current.normalize(x)
             case x:
                 raise TypeError("Path Expansion did not produce a path", x)
 

@@ -16,8 +16,8 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 
 import pytest
 import importlib.metadata
-import tomlguard
 import doot
+from jgdv.structs.chainguard import ChainGuard
 from doot.enums import TaskMeta_f
 doot._test_setup()
 
@@ -25,7 +25,7 @@ from doot.structs import TaskSpec
 from doot._abstract.task import Task_i
 from doot.utils.mock_gen import mock_entry_point, mock_task_ctor
 
-doot.config = tomlguard.TomlGuard({})
+doot.config = ChainGuard({})
 from doot.loaders import task_loader
 logging = logmod.root
 
@@ -40,7 +40,7 @@ class TestTaskLoader:
         specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_job:DootJob"})
         basic = task_loader.DootTaskLoader()
         basic.setup({})
-        result = basic._load_raw_specs(tomlguard.TomlGuard(specs).tasks, "test_file")
+        result = basic._load_raw_specs(ChainGuard(specs).tasks, "test_file")
 
         assert(isinstance(result, list))
         assert(len(result) == 1)
@@ -56,7 +56,7 @@ class TestTaskLoader:
         basic.setup({}, specs)
         result = basic.load()
 
-        assert(isinstance(result, tomlguard.TomlGuard))
+        assert(isinstance(result, ChainGuard))
         assert(len(result) == 1)
         assert("basic::test" in result)
         assert(isinstance(result['basic::test'], TaskSpec))
@@ -72,7 +72,7 @@ class TestTaskLoader:
         basic.setup({}, specs)
         result = basic.load()
 
-        assert(isinstance(result, tomlguard.TomlGuard))
+        assert(isinstance(result, ChainGuard))
         assert(len(result) == 2)
         assert("basic::test" in result)
         assert("basic::other" in result)
@@ -153,9 +153,9 @@ class TestTaskLoader:
         mock_ctor                   = mock_task_ctor()
         mock_ep                     = mock_entry_point(name="basic", value=mock_ctor)
 
-        plugins                     = tomlguard.TomlGuard({"task": [mock_ep]})
+        plugins                     = ChainGuard({"task": [mock_ep]})
         basic                       = task_loader.DootTaskLoader()
-        basic.setup(plugins, tomlguard.TomlGuard(specs))
+        basic.setup(plugins, ChainGuard(specs))
 
         result    = basic.load()
 
@@ -174,9 +174,9 @@ class TestTaskLoader:
         mock_ep      = importlib.metadata.EntryPoint()
         mock_ep.name = "basic"
 
-        plugins      = tomlguard.TomlGuard({"job": [mock_ep]})
+        plugins      = ChainGuard({"job": [mock_ep]})
         basic        = task_loader.DootTaskLoader()
-        basic.setup(plugins, tomlguard.TomlGuard(specs))
+        basic.setup(plugins, ChainGuard(specs))
 
         result = basic.load()
         assert(TaskMeta_f.DISABLED in  result["basic::simple"].flags)
@@ -191,9 +191,9 @@ class TestTaskLoader:
 
         mock_ep      = mock_entry_point()
 
-        plugins      = tomlguard.TomlGuard({"job": [mock_ep]})
+        plugins      = ChainGuard({"job": [mock_ep]})
         basic        = task_loader.DootTaskLoader()
-        basic.setup(plugins, tomlguard.TomlGuard(specs))
+        basic.setup(plugins, ChainGuard(specs))
 
         with pytest.raises(doot.errors.DootTaskLoadError):
             basic.load()

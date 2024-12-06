@@ -57,10 +57,10 @@ ALIAS_PREFIX         : Final[str]         = "doot.aliases"
 TOOL_PREFIX          : Final[str]         = "tool.doot"
 
 config               : ChainGuard         = ChainGuard() # doot config
-constants            : ChainGuard       = ChainGuard.load(constants_file).remove_prefix(CONSTANT_PREFIX)
-aliases              : ChainGuard       = ChainGuard()
-locs                 : DootLocations    = None # DootLocations(pl.Path()) # registered locations
-args                 : ChainGuard       = ChainGuard() # parsed arg access
+constants            : ChainGuard         = ChainGuard.load(constants_file).remove_prefix(CONSTANT_PREFIX)
+aliases              : ChainGuard         = ChainGuard()
+locs                 : DootLocations      = None # DootLocations(pl.Path()) # registered locations
+args                 : ChainGuard         = ChainGuard() # parsed arg access
 log_config           : JGDVLogConfig      = JGDVLogConfig(constants.on_fail(None).printer.PRINTER_CHILDREN())
 
 _configs_loaded_from : list[pl.Path]      = []

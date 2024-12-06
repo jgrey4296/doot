@@ -45,7 +45,7 @@ def wrap_tmp(tmp_path):
     orig     = pl.Path().cwd()
     new_base = tmp_path / "test_root"
     new_base.mkdir()
-    with doot.locs._global_(new_base):
+    with doot.locs.Current(new_base):
         yield new_base
     logging.debug("Returning to original dir")
 

@@ -14,7 +14,6 @@ import warnings
 import pytest
 logging = logmod.root
 
-import tomlguard
 import doot
 doot._test_setup()
 from doot._structs.action_spec import ActionSpec

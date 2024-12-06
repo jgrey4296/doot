@@ -24,8 +24,8 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import pytest
-from tomlguard import TomlGuard
 import networkx as nx
+from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 3rd party imports
 
@@ -69,8 +69,8 @@ class TestTrackerNetwork:
 
     def test_connect_task(self, network):
         obj = network
-        name1 = doot.structs.TaskName.build("basic::task").instantiate()
-        name2 = doot.structs.TaskName.build("basic::other").instantiate()
+        name1 = doot.structs.TaskName("basic::task").to_uniq()
+        name2 = doot.structs.TaskName("basic::other").to_uniq()
         # Mock the specs:
         obj._registry.specs[name1] = True
         obj._registry.specs[name2] = True
@@ -85,8 +85,8 @@ class TestTrackerNetwork:
 
     def test_connect_idempotent(self, network):
         obj = network
-        name1 = doot.structs.TaskName.build("basic::task").instantiate()
-        name2 = doot.structs.TaskName.build("basic::other").instantiate()
+        name1 = doot.structs.TaskName("basic::task").to_uniq()
+        name2 = doot.structs.TaskName("basic::other").to_uniq()
         # Mock the tasks:
         obj._registry.specs[name1] = True
         obj._registry.specs[name2] = True
@@ -99,8 +99,8 @@ class TestTrackerNetwork:
 
     def test_connect_tasks_must_be_instanced(self, network):
         obj = network
-        name1 = doot.structs.TaskName.build("basic::task")
-        name2 = doot.structs.TaskName.build("basic::other")
+        name1 = doot.structs.TaskName("basic::task")
+        name2 = doot.structs.TaskName("basic::other")
         # Mock the specs:
         obj._registry.specs[name1] = True
         obj._registry.specs[name2] = True
@@ -110,8 +110,8 @@ class TestTrackerNetwork:
 
     def test_connect_artifact(self, network):
         obj      = network
-        name1    = doot.structs.TaskName.build("basic::task").instantiate()
-        artifact = doot.structs.TaskArtifact.build("a/simple/artifact.txt")
+        name1    = doot.structs.TaskName("basic::task").to_uniq()
+        artifact = doot.structs.TaskArtifact("file::a/simple/artifact.txt")
         # Mock the task/artifact:
         obj._registry.specs[name1] = True
         obj._registry.artifacts[artifact] = []
@@ -126,8 +126,8 @@ class TestTrackerNetwork:
 
     def test_connect_fail_no_artifact(self, network):
         obj      = network
-        name1    = doot.structs.TaskName.build("basic::task").instantiate()
-        artifact = doot.structs.TaskArtifact.build("a/simple/artifact.txt")
+        name1    = doot.structs.TaskName("basic::task").to_uniq()
+        artifact = doot.structs.TaskArtifact("file::a/simple/artifact.txt")
         # Mock the task/artifact:
         obj._registry.specs[name1] = True
         with pytest.raises(doot.errors.DootTaskTrackingError):
@@ -135,15 +135,15 @@ class TestTrackerNetwork:
 
     def test_connect_fail_no_tasks(self, network):
         obj = network
-        name1 = doot.structs.TaskName.build("basic::task").instantiate()
-        name2 = doot.structs.TaskName.build("basic::other").instantiate()
+        name1 = doot.structs.TaskName("basic::task").to_uniq()
+        name2 = doot.structs.TaskName("basic::other").to_uniq()
         with pytest.raises(doot.errors.DootTaskTrackingError):
             obj.connect(name1, name2)
 
     def test_network_retrieval(self, network):
         obj = network
-        name1 = doot.structs.TaskName.build("basic::task").instantiate()
-        name2 = doot.structs.TaskName.build("basic::other").instantiate()
+        name1 = doot.structs.TaskName("basic::task").to_uniq()
+        name2 = doot.structs.TaskName("basic::other").to_uniq()
         # Mock the tasks:
         obj._registry.specs[name1] = True
         obj._registry.specs[name2] = True
@@ -166,7 +166,7 @@ class TestTrackerNetwork:
         obj.connect(instance)
         obj.build_network()
         result = obj.concrete_edges(instance)
-        assert(isinstance(result, TomlGuard))
+        assert(isinstance(result, ChainGuard))
         assert(bool(result.pred.tasks))
         assert(spec2.name < result.pred.tasks[0])
         assert(bool(result.succ.tasks))
@@ -434,8 +434,8 @@ class TestTrackerNetworkBuildArtifacts:
     def test_build_dep_chain_with_artifact(self, network):
         """check basic::task triggers basic::dep via the intermediary of the artifact test.blah"""
         obj = network
-        spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["file:>test.blah"]})
-        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "required_for":["file:>test.blah"]})
+        spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["file::test.blah"]})
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "required_for":["file::test.blah"]})
         obj._registry.register_spec(spec, spec2)
         instance = obj._registry._instantiate_spec(spec.name)
         assert(not bool(obj.adj[obj._root_node]))
@@ -449,7 +449,7 @@ class TestTrackerNetworkBuildArtifacts:
 
     def test_build_with_concrete_artifact(self, network):
         obj = network
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["file:>basic.txt"]})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["file::basic.txt"]})
         obj._registry.register_spec(spec)
         instance = obj._registry._instantiate_spec(spec.name)
         assert(len(obj) == 1)
@@ -461,7 +461,7 @@ class TestTrackerNetworkBuildArtifacts:
 
     def test_build_with_concrete_artifact(self, network):
         obj = network
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "required_for":["file:>basic.txt"]})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "required_for":["file::basic.txt"]})
         obj._registry.register_spec(spec)
         instance = obj._registry._instantiate_spec(spec.name)
         assert(len(obj) == 1)
@@ -473,7 +473,7 @@ class TestTrackerNetworkBuildArtifacts:
 
     def test_build_with_abstract_artifact(self, network):
         obj = network
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["file:>*.txt"]})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["file::*.txt"]})
         obj._registry.register_spec(spec)
         instance = obj._registry._instantiate_spec(spec.name)
         assert(len(obj) == 1)
@@ -484,8 +484,8 @@ class TestTrackerNetworkBuildArtifacts:
 
     def test_build_artifact_chain(self, network):
         obj = network
-        consumer     = doot.structs.TaskSpec.build({"name":"basic::consumer", "depends_on":["file:>*.txt"]})
-        producer     = doot.structs.TaskSpec.build({"name":"basic::producer", "required_for":["file:>blah.txt"]})
+        consumer     = doot.structs.TaskSpec.build({"name":"basic::consumer", "depends_on":["file::*.txt"]})
+        producer     = doot.structs.TaskSpec.build({"name":"basic::producer", "required_for":["file::blah.txt"]})
         dep_artifact = consumer.depends_on[0].target
         req_artifact = producer.required_for[0].target
         obj._registry.register_spec(consumer, producer)
@@ -512,9 +512,9 @@ class TestTrackerNetworkBuildTransformers:
     def test_build_transformer_from_product_artifact(self, network):
         """ connects a loose source to a transformer, to a product"""
         obj = network
-        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "flags":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
-        concrete_product                = doot.structs.TaskArtifact.build(pl.Path("example.blah"))
-        concrete_source                 = doot.structs.TaskArtifact.build(pl.Path("example.txt"))
+        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "flags":"TRANSFORMER", "depends_on": ["file::?.txt"], "required_for": ["file::?.blah"]})
+        concrete_product                = doot.structs.TaskArtifact(pl.Path("example.blah"))
+        concrete_source                 = doot.structs.TaskArtifact(pl.Path("example.txt"))
         obj._registry.register_spec(transformer)
         assert(transformer.name in obj._registry.specs)
         obj._registry._register_artifact(concrete_product)
@@ -529,9 +529,9 @@ class TestTrackerNetworkBuildTransformers:
     def test_build_transformer_from_source_artifact(self, network):
         """ connects a loose source to a transformer, to a product"""
         obj = network
-        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "flags":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
-        concrete_product                = doot.structs.TaskArtifact.build(pl.Path("example.blah"))
-        concrete_source                 = doot.structs.TaskArtifact.build(pl.Path("example.txt"))
+        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "flags":"TRANSFORMER", "depends_on": ["file::?.txt"], "required_for": ["file::?.blah"]})
+        concrete_product                = doot.structs.TaskArtifact(pl.Path("example.blah"))
+        concrete_source                 = doot.structs.TaskArtifact(pl.Path("example.txt"))
         obj._registry.register_spec(transformer)
         assert(transformer.name in obj._registry.specs)
         obj._registry._register_artifact(concrete_source)
@@ -544,11 +544,11 @@ class TestTrackerNetworkBuildTransformers:
 
     def test_build_multi_transformers(self, network):
         obj = network
-        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "flags":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
-        concrete_product                = doot.structs.TaskArtifact.build(pl.Path("example.blah"))
-        concrete_source                 = doot.structs.TaskArtifact.build(pl.Path("example.txt"))
-        concrete_product2                = doot.structs.TaskArtifact.build(pl.Path("aweg.blah"))
-        concrete_source2                 = doot.structs.TaskArtifact.build(pl.Path("aweg.txt"))
+        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "flags":"TRANSFORMER", "depends_on": ["file::?.txt"], "required_for": ["file::?.blah"]})
+        concrete_product                = doot.structs.TaskArtifact(pl.Path("example.blah"))
+        concrete_source                 = doot.structs.TaskArtifact(pl.Path("example.txt"))
+        concrete_product2                = doot.structs.TaskArtifact(pl.Path("aweg.blah"))
+        concrete_source2                 = doot.structs.TaskArtifact(pl.Path("aweg.txt"))
         obj._registry.register_spec(transformer)
         assert(transformer.name in obj._registry.specs)
         obj._registry._register_artifact(concrete_product)

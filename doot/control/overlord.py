@@ -270,7 +270,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
             return
 
         defaulted_toml = ChainGuard.report_defaulted()
-        expanded_path = doot.locs._global_[defaulted_file]
+        expanded_path = doot.locs.Current[defaulted_file]
         if not expanded_path.parent.exists():
             shutdown_l.warning("Coulnd't log defaulted config values to: %s", expanded_path)
             return

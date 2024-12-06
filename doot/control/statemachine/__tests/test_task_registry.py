@@ -24,7 +24,6 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import pytest
-from tomlguard import TomlGuard
 
 # ##-- end 3rd party imports
 
@@ -152,7 +151,7 @@ class TestRegistry:
 
     def test_task_status_missing_task(self):
         obj = TaskRegistry()
-        name = doot.structs.TaskName.build("basic::task")
+        name = doot.structs.TaskName("basic::task")
         assert(obj.get_status(name) == TaskStatus_e.NAMED)
 
     def test_set_status(self):
@@ -168,7 +167,7 @@ class TestRegistry:
 
     def test_set_status_missing_task(self):
         obj = TaskRegistry()
-        name = doot.structs.TaskName.build("basic::task")
+        name = doot.structs.TaskName("basic::task")
         assert(obj.set_status(name, TaskStatus_e.SUCCESS) is False)
 
 

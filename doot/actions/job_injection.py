@@ -146,9 +146,9 @@ class JobSubNamer(Action_p):
             case list():
                 for i,x in enumerate(_onto):
                     val = x.extra[_key]
-                    x.name = _basename.subtask(i, self._gen_subname(val))
+                    x.name = _basename.push(i, self._gen_subname(val))
             case TaskSpec():
-                onto.name = _basename.subtask(self._gen_subname(val))
+                onto.name = _basename.push(self._gen_subname(val))
 
     def _gen_subname(self, val):
         match val:

@@ -136,10 +136,10 @@ class ListCmd(BaseCommand):
             if TaskMeta_f.DISABLED in spec.flags:
                 continue
 
-            groups[spec.name.group].append((spec.name.task,
-                                            spec.ctor.__module__,
-                                            spec.ctor.__name__,
-                                            spec.sources))
+            groups[spec.name[0:]].append((spec.name[1:],
+                                          spec.ctor.__module__,
+                                          spec.ctor.__name__,
+                                          spec.sources))
 
         cmd_l.info("Tasks for Matching Groups: %s", pattern, extra={"colour":"cyan"})
         for group, tasks in groups.items():
@@ -160,9 +160,9 @@ class ListCmd(BaseCommand):
             if bool(hide_names) and hide_re.search(str(spec.name)):
                 continue
 
-            groups[spec.name.group].append((spec.name.task,
-                                            (spec.doc[0] if bool(spec.doc) else "")[:60],
-                                            (spec.sources[0] if bool(spec.sources) else "None")
+            groups[spec.name[0:]].append((spec.name[1:],
+                                          (spec.doc[0] if bool(spec.doc) else "")[:60],
+                                          (spec.sources[0] if bool(spec.sources) else "None")
                                            ))
 
 
@@ -185,7 +185,7 @@ class ListCmd(BaseCommand):
             if TaskMeta_f.DISABLED in spec.flags:
                 continue
 
-            sources[spec.sources[0]].append((spec.name.task,
+            sources[spec.sources[0]].append((spec.name[1:],
                                              spec.ctor.__module__,
                                              spec.ctor.__name__,
                                             ))
@@ -198,12 +198,12 @@ class ListCmd(BaseCommand):
     def _print_just_groups(self, tasks):
         cmd_l.info("Defined Task Groups:", extra={"colour":"cyan"})
 
-        group_set = set(spec.name.group for spec in tasks.values())
+        group_set = set(spec.name[0:] for spec in tasks.values())
         for group in group_set:
             printer.info("- %s", group)
 
     def _print_locations(self):
         cmd_l.info("Defined Locations: ")
 
-        for x in sorted(doot.locs._global_):
-            printer.info("-- %-25s : %s", x, doot.locs._global_.get(x))
+        for x in sorted(doot.locs.Current):
+            printer.info("-- %-25s : %s", x, doot.locs.Current.get(x))

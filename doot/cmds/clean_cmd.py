@@ -62,7 +62,7 @@ class CleanCmd(BaseCommand):
         self._loc_clean()
 
     def _loc_clean(self):
-        cleanable = [doo.locs[x] for x in doot.locs if doot.locs._global_.metacheck(x, doot.locs._global_.locmeta.cleanable)]
+        cleanable = [doo.locs[x] for x in doot.locs if doot.locs.Current.metacheck(x, doot.locs.Current.locmeta.cleanable)]
         for x in cleanable:
             if not x.exists():
                 pass

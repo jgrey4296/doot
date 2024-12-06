@@ -64,9 +64,9 @@ class DootJob(Job_i, DootTask):
         task_name = None
         match name:
             case None:
-                task_name = self.name.subtask(SUBTASKED_HEAD)
+                task_name = self.name.push(SUBTASKED_HEAD)
             case str():
-                task_name = self.name.subtask(name)
+                task_name = self.name.push(name)
             case TaskName():
                 task_name = name
             case _:

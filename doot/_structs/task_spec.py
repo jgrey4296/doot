@@ -120,7 +120,7 @@ class _JobUtils_m:
             return []
         if (TaskMeta_f.CONCRETE | TaskMeta_f.JOB_HEAD) & self.flags:
             return []
-        if (job_head:=self.name.job_head()) is self.name:
+        if (job_head:=self.name.with_head()) is self.name:
             return []
 
         tasks             = []
@@ -136,7 +136,7 @@ class _JobUtils_m:
             "extra"           : self.extra,
             "queue_behaviour" : QueueMeta_e.reactive,
             "depends_on"      : [self.name] + head_dependencies,
-            "required_for"    : [job_head.cleanup_name()] + self.required_for[:],
+            "required_for"    : [job_head.canon()] + self.required_for[:],
             "cleanup"         : self.cleanup[:],
             "flags"           : (self.flags | TaskMeta_f.JOB_HEAD) & ~TaskMeta_f.JOB,
             "actions"         : head_actions,
@@ -155,7 +155,7 @@ class _JobUtils_m:
         actions   = [x for x in self.cleanup if isinstance(x, ActionSpec)]
 
         cleanup : TaskSpec = TaskSpec.build({
-            "name"            : self.name.cleanup_name(),
+            "name"            : self.name.canon(),
             "sources"         : self.sources[:] + [self.name, None],
             "actions"         : actions,
             "extra"           : self.extra,
@@ -189,15 +189,15 @@ class _TransformerUtils_m:
         instance = self.instantiate_onto(None)
         match self.transformer_of():
             case None:
-                raise doot.errors.DootTaskTrackingError("Tried to transformer instantiate a non-transformer", self.name)
+                raise doot.errors.DootTaskTrackingError("Tried to transformer to_uniq a non-transformer", self.name)
             case (x, y) if pre in x.target or post in y.target:
                 # exact transform
                 # replace x with pre in depends_on
                 instance.depends_on.remove(x)
-                instance.depends_on.append(x.instantiate(target=pre))
+                instance.depends_on.append(x.to_uniq(suffix=pre))
                 # replace y with post in required_for
                 instance.required_for.remove(y)
-                instance.required_for.append(y.instantiate(target=post))
+                instance.required_for.append(y.to_uniq(suffix=post))
             case _:
                 return None
 
@@ -274,12 +274,15 @@ class _SpecUtils_m:
             case TaskSpec():
                 return data.specialize_from(self)
             case _:
-                raise TypeError("Can't instantiate onto something not a task spec", data)
+                raise TypeError("Can't to_uniq onto something not a task spec", data)
 
     def make(self, ensure:type=Any) -> Task_i:
         """ Create actual task instance """
-        task_ctor = self.ctor.try_import(ensure=ensure)
-        return task_ctor(self)
+        match self.ctor(check=ensure):
+            case ImportError() as err:
+                raise err
+            case task_ctor:
+                return task_ctor(self)
 
     def apply_cli_args(self, *, override=None) -> TaskSpec:
         logging.debug("Applying CLI Args to: %s", self.name)
@@ -292,7 +295,7 @@ class _SpecUtils_m:
             if cli.name not in spec_extra:
                 spec_extra[cli.name] = cli.default
 
-        source = str(override or self.name.root(top=True))
+        source = str(override or self.name.pop(top=True))
         for key,val in doot.args.on_fail({}).tasks[source]().items():
             spec_extra[key] = val
 
@@ -346,7 +349,7 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
             case TaskName():
                 return TaskSpec(name=data)
             case str():
-                return TaskSpec(name=TaskName.build(data))
+                return TaskSpec(name=TaskName(data))
 
     @model_validator(mode="before")
     def _convert_toml_keys(cls, data:dict) -> dict:
@@ -359,25 +362,21 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
 
     @model_validator(mode="after")
     def _validate_metadata(self):
-        self.flags |= self.name.meta
         if self.extra.on_fail(False).disabled():
             self.flags |= TaskMeta_f.DISABLED
-        try:
-            match self.ctor.try_import():
-                case x if issubclass(x, Task_i):
-                    self.flags |= x._default_flags
-                    self.name.meta |= x._default_flags
-                case x:
-                    pass
-        except ImportError as err:
-            logging.warning("Ctor Import Failed for: %s : %s", self.name, self.ctor)
-            self.flags |= TaskMeta_f.DISABLED
-            self.ctor = None
+        match self.ctor():
+            case ImportError() as err:
+                logging.warning("Ctor Import Failed for: %s : %s", self.name, self.ctor)
+                self.flags |= TaskMeta_f.DISABLED
+                self.ctor = None
+            case None:
+                pass
+            case x if issubclass(x, Task_i):
+                self.flags |= x._default_flags
 
         if TaskMeta_f.TRANSFORMER not in self.flags:
             self._transform = False
 
-        self.name.meta |= self.flags
         return self
 
     @field_validator("name", mode="before")
@@ -386,7 +385,7 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
             case TaskName():
                 return val
             case str():
-                name = TaskName.build(val)
+                name = TaskName(val)
                 return name
             case _:
                 raise TypeError("A TaskSpec Name should be a str or TaskName", val)
@@ -405,15 +404,15 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
             case None:
                 default_alias = TaskSpec._default_ctor
                 coderef_str   = doot.aliases.task[default_alias]
-                return CodeReference.build(coderef_str)
+                return CodeReference(coderef_str)
             case EntryPoint():
-                return CodeReference.build(val)
+                return CodeReference(val)
             case CodeReference():
                 return val
             case type()|str():
-                return CodeReference.build(val)
+                return CodeReference(val)
             case _:
-                return CodeReference.build(val)
+                return CodeReference(val)
 
     @field_validator("queue_behaviour", mode="before")
     def _validate_queue_behaviour(cls, val):
@@ -447,7 +446,7 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
                     result.append(x)
                 case str():
                     try:
-                        name = TaskName.build(x)
+                        name = TaskName(x)
                         result.append(name)
                     except (ValueError, ValidationError):
                         result.append(pl.Path(x))
@@ -493,9 +492,9 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
                 specialized.update(data)
                 return TaskSpec.build(specialized)
             case TaskSpec() if self is data:
-                # specializing on self, just instantiate a name
+                # specializing on self, just to_uniq a name
                 specialized           = dict(self)
-                specialized['name']   = self.name.instantiate()
+                specialized['name']   = self.name.to_uniq()
                 # Otherwise theres interference:
                 specialized['sources'] = self.sources[:] + [self.name]
                 return TaskSpec.build(specialized)
@@ -506,7 +505,7 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
                 specialized.update({k:v for k,v in dict(data).items() if k in data.model_fields_set})
 
         # Then special updates
-        specialized['name']         = data.name.instantiate()
+        specialized['name']         = data.name.to_uniq()
         specialized['sources']      = self.sources[:] + [self.name, data.name]
 
         specialized['actions']      = self.actions      + data.actions

@@ -15,10 +15,9 @@ import pytest
 
 logging = logmod.root
 
-from tomlguard import TomlGuard
 from jgdv.structs.strang import CodeReference
 from jgdv.structs.dkey import DKeyFormatter
-from jgdv.structs.location import JGDVLocations as DootLocations
+from jgdv.structs.strang.locations import JGDVLocations as DootLocations
 from jgdv.structs.dkey import implementations as imps
 
 import doot
@@ -40,7 +39,7 @@ EXP_IND_KEYS                : Final[list[str]]           = [f"{{{x}}}" for x in 
 VALID_KEYS                                           = IMP_KEY_BASES + EXP_KEY_BASES + EXP_P_KEY_BASES + IMP_IND_KEYS + EXP_IND_KEYS
 VALID_MULTI_KEYS                                     = PATH_KEYS + MUTI_KEYS
 
-TEST_LOCS               : Final[DootLocations]       = DootLocations(pl.Path.cwd()).update({"blah": "doot"})
+TEST_LOCS               : Final[DootLocations]       = DootLocations(pl.Path.cwd()).update({"blah": "file::a/b/c.py"})
 
 class TestDKeyTypeParams:
 
@@ -132,7 +131,7 @@ class TestDKeyWithParameters:
 class TestDKeyExpansion:
 
     def test_expansion_to_str_for_expansion_with_path(self, wrap_locs):
-        wrap_locs.update({"raise": "blah"})
+        wrap_locs.update({"raise": "file::a/b/blah.py"})
         assert("raise" in wrap_locs)
         state = {"middle": "Before. {raise!p}. After."}
         target        = "Before. {}. After.".format(wrap_locs['blah'])
@@ -142,7 +141,7 @@ class TestDKeyExpansion:
         assert(result == target)
 
     def test_expansion_to_str_for_expansion_with_path_expansion(self, wrap_locs):
-        wrap_locs.update({"raise": "{major}/blah", "major": "head"})
+        wrap_locs.update({"raise": "dir::{major}/blah", "major": "dir::head"})
         state = {"middle": "Before. {subpath!p}. After.", "subpath":"{raise!p}/{aweo}", "aweo":"aweg"}
         target        = "Before. {}. After.".format(doot.locs["head/blah/aweg"])
         key           = dkey.DKey("middle", implicit=True)
@@ -275,7 +274,7 @@ class TestDKeyPathKeys:
     @pytest.mark.parametrize("name", ["a", "b"])
     def test_multikey_with_subpath(self, name, wrap_locs):
         """ {name!p}/{name} -> {x}/{x} -> Path(y/y) """
-        wrap_locs.update({"changelog": "sub/changelog.md"})
+        wrap_locs.update({"changelog": "file::sub/changelog.md"})
         state       = {name :"{changelog}"}
         target      = "--test=%s/x {missing}" % wrap_locs.changelog
         path_marked = "--test={%s!p}/x {missing}" % name
@@ -354,7 +353,7 @@ class TestDKeyPathKeys:
             assert(obj.expand() == pl.Path("~").expanduser())
 
     def test_multi_layer_path_key(self, wrap_locs):
-        wrap_locs.update({"data_drive": "/media/john/data", "pdf_source": "{data_drive}/library/pdfs"})
+        wrap_locs.update({"data_drive": "dir::/media/john/data", "pdf_source": "dir::{data_drive}/library/pdfs"})
         state = {}
         obj = dkey.DKey("pdf_source!p", implicit=True)
         assert(isinstance(obj, dkey.DKey))

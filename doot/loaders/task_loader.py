@@ -55,7 +55,7 @@ IMPORT_SEP                = doot.constants.patterns.IMPORT_SEP
 TASK_STRING : Final[str]  = "task_"
 prefix_len  : Final[int]  = len(TASK_STRING)
 
-task_sources              = doot.config.on_fail([doot.locs._global_[".tasks"]], list).settings.tasks.sources(wrapper=lambda x: [doot.locs[y] for y in x])
+task_sources              = doot.config.on_fail([doot.locs.Current[".tasks"]], list).settings.tasks.sources(wrapper=lambda x: [doot.locs[y] for y in x])
 allow_overloads           = doot.config.on_fail(False, bool).allow_overloads()
 
 def apply_group_and_source(group, source, x):
@@ -259,7 +259,7 @@ class DootTaskLoader(TaskLoader_p):
         logging.debug("Loading Location Updates: %s", source)
         for group in data:
             try:
-                doot.locs._global_.update(group, strict=False)
+                doot.locs.Current.update(group, strict=False)
             except KeyError as err:
                 printer.warning("Locations Already Defined: %s : %s", err.args[1], source)
             except TypeError as err:

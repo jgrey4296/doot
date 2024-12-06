@@ -26,7 +26,6 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 import networkx as nx
 import pytest
-from tomlguard import TomlGuard
 
 # ##-- end 3rd party imports
 
@@ -92,13 +91,13 @@ class TestTrackerQueue:
     def test_queue_task_fail_when_not_registered(self, queue):
         obj = queue
         spec  = doot.structs.TaskSpec.build({"name":"basic::task"})
-        name1 = doot.structs.TaskName.build("basic::task")
+        name1 = doot.structs.TaskName("basic::task")
         with pytest.raises(doot.errors.DootTaskTrackingError):
             obj.queue_entry(name1)
 
     def test_queue_artifiact(self, queue):
         obj = queue
-        artifact = doot.structs.TaskArtifact.build(pl.Path("test.txt"))
+        artifact = doot.structs.TaskArtifact(pl.Path("test.txt"))
         # Stub artifact entry in tracker:
         obj._registry._register_artifact(artifact)
         obj._network._add_node(artifact)
@@ -122,7 +121,7 @@ class TestTrackerQueue:
 
     def test_deque_artifact(self, queue):
         obj = queue
-        artifact = doot.structs.TaskArtifact.build(pl.Path("test.txt"))
+        artifact = doot.structs.TaskArtifact(pl.Path("test.txt"))
         # stub artifact in tracker:
         obj._registry._register_artifact(artifact)
         obj._network._add_node(artifact)

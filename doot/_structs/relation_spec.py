@@ -89,7 +89,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
             case TaskName() | TaskArtifact() | str() | pl.Path():
                 return RelationSpec(target=data, relation=relation)
             case dict() if "path" in data and "task" not in data:
-                return RelationSpec(target=TaskArtifact.build(data), relation=relation)
+                return RelationSpec(target=TaskArtifact(data), relation=relation)
             case {"task": taskname}:
                 constraints = data.get("constraints", None) or data.get("constraints_", False)
                 inject      = data.get("inject", None)      or data.get("inject_", None)
@@ -103,11 +103,11 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
             case TaskName() | TaskArtifact():
                 return val
             case pl.Path():
-                return TaskArtifact.build(val)
-            case str() if val.startswith(TaskArtifact._toml_str_prefix):
-                return TaskArtifact.build(val)
+                return TaskArtifact(val)
+            # case str() if val.startswith(TaskArtifact._toml_str_prefix):
+            #     return TaskArtifact(val)
             case str() if TaskName._separator in val:
-                return TaskName.build(val)
+                return TaskName(val)
             case _:
                 raise ValueError("Unparsable target str")
 
@@ -174,7 +174,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target", self.target, target)
             case TaskArtifact(), TaskName():
                 raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target", self.target, target)
-            case TaskName(), TaskName() if not target.is_instantiated():
+            case TaskName(), TaskName() if not target.is_uniq:
                 raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target status", self.target, target)
             case TaskArtifact(), TaskArtifact() if (match:=self.target.match_with(target)) is not None:
                 target = match

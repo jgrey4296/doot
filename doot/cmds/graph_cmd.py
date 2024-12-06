@@ -168,11 +168,11 @@ class GraphCmd(BaseCommand):
           By default, tasks are in the form group::name
           dot doesn't like nodes of that form, so wrap them in quotes.
         """
-        mod_dict = {} # {x: f'"{x.root()}"' for x in graph.nodes}
+        mod_dict = {} # {x: f'"{x.pop()}"' for x in graph.nodes}
         for key in graph.nodes.keys():
             match key:
                 case TaskName():
-                    mod_dict[key] = f'"{key.root()}"'
+                    mod_dict[key] = f'"{key.pop()}"'
                 case TaskArtifact():
                     mod_dict[key] = f'"{key}"'
 

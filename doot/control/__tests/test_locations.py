@@ -13,7 +13,6 @@ import warnings
 
 import pytest
 
-import tomlguard
 import doot
 doot._test_setup()
 from doot.control.locations import DootLocations, DootDirAbsent, DootLocationExpansionError, DootLocationError

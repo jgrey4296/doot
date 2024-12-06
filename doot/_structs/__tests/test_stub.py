@@ -14,7 +14,7 @@ import warnings
 import pytest
 logging = logmod.root
 
-import tomlguard
+from jgdv.structs.chainguard import ChainGuard
 import doot
 doot._test_setup()
 from doot._structs import stub
@@ -57,14 +57,14 @@ class TestTaskStub:
         """ check a stub has the default components of a TaskSpec  """
         obj = stub.TaskStub.build()
         as_str = obj.to_toml()
-        loaded = tomlguard.read(as_str)
+        loaded = ChainGuard.read(as_str)
 
     @pytest.mark.xfail
     def test_toml_reparse_to_spec(self):
         """ check a stub has the default components of a TaskSpec  """
         obj    = stub.TaskStub.build()
         as_str = obj.to_toml()
-        loaded = tomlguard.read(as_str)
+        loaded = ChainGuard.read(as_str)
         # FIXME: currently splits the name so its not basic::stub, but 'stub', so fails building
         spec   = stub.TaskSpec.build(loaded.tasks.basic[0])
 
@@ -79,7 +79,7 @@ class TestTaskStubPart:
         assert(obj.comment == "a simple stub part")
 
     def test_name_reduce(self):
-        obj = stub.TaskStubPart(key="name", default=TaskName.build("blah::bloo"))
+        obj = stub.TaskStubPart(key="name", default=TaskName("blah::bloo"))
         res_s = str(obj).split("\n")
         assert(res_s[0] == "[[tasks.blah]]")
         assert(res_s[1] == f"{'name':<20} = \"bloo\"")
@@ -87,8 +87,8 @@ class TestTaskStubPart:
     def test_num_reduce(self):
         obj = stub.TaskStubPart(key="amount", default=10, type="int")
         result_str     = str(obj)
-        result_tomlguard  = tomlguard.read(result_str)
-        assert(result_tomlguard.amount == 10)
+        result_chainguard  = ChainGuard.read(result_str)
+        assert(result_chainguard.amount == 10)
 
     def test_str_reduce_with_comment(self):
         obj = stub.TaskStubPart(key="blah", default="a test", comment="a simple comment")
@@ -98,18 +98,18 @@ class TestTaskStubPart:
     def test_stub_part_list_reduce(self):
         obj = stub.TaskStubPart(key="test", type="list", default=[1,2,3], comment="a simple stub part")
         result_str     = str(obj)
-        result_tomlguard  = tomlguard.read(result_str)
+        result_chainguard  = ChainGuard.read(result_str)
 
-        assert(result_tomlguard.test == [1,2,3])
+        assert(result_chainguard.test == [1,2,3])
 
     def test_stub_part_str_reduce(self):
         obj = stub.TaskStubPart(key="test", type="str", default="test", comment="a simple stub part")
         result_str     = str(obj)
-        result_tomlguard  = tomlguard.read(result_str)
-        assert(result_tomlguard.test == "test")
+        result_chainguard  = ChainGuard.read(result_str)
+        assert(result_chainguard.test == "test")
 
     def test_stub_part_bool_reduce(self):
         obj = stub.TaskStubPart(key="test", type="bool", default=False, comment="a simple stub part")
         result_str     = str(obj)
-        result_tomlguard  = tomlguard.read(result_str)
-        assert(result_tomlguard.test == False)
+        result_chainguard  = ChainGuard.read(result_str)
+        assert(result_chainguard.test == False)

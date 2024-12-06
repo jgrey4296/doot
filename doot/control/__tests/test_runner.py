@@ -24,8 +24,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import pytest
-import tomlguard
-
+from jgdv.structs.chainguard import ChainGuard
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -56,7 +55,7 @@ class TestRunner:
     def setup(self, mocker):
         min_sleep   = 0.0
         config_dict = {"settings": {"tasks": {"sleep": {"task" : min_sleep, "subtask" : min_sleep, "batch": min_sleep}}}}
-        doot.config = tomlguard.TomlGuard(config_dict)
+        doot.config = ChainGuard(config_dict)
 
     @pytest.fixture(scope="function")
     def cleanup(self):

@@ -75,7 +75,7 @@ class TaskNetwork(TaskMatcher_m):
 
     def __init__(self, registry:TaskRegistry):
         self._registry                                                       = registry
-        self._root_node        : TaskName                                    = TaskName.build(ROOT)
+        self._root_node        : TaskName                                    = TaskName(ROOT)
         self._declare_priority : int                                         = DECLARE_PRIORITY
         self._min_priority     : int                                         = MIN_PRIORITY
         self._graph            : nx.DiGraph[Concrete[TaskName]|TaskArtifact] = nx.DiGraph()
@@ -187,7 +187,7 @@ class TaskNetwork(TaskMatcher_m):
         *without* expanding those new nodes.
         returns a list of the new nodes tasknames
         """
-        assert(name.is_instantiated())
+        assert(name.is_uniq)
         assert(not self.nodes[name].get(EXPANDED, False))
         spec                                                  = self._registry.specs[name]
         spec_pred, spec_succ                                  = self.pred[name], self.succ[name]
@@ -236,7 +236,7 @@ class TaskNetwork(TaskMatcher_m):
         to_expand = set()
         spec_pred = self.pred[spec.name]
         # Get (abstract) blocking relations from self._blockers
-        blockers  = self._registry._blockers[spec.name.root(top=True)]
+        blockers  = self._registry._blockers[spec.name.pop(top=True)]
 
         # Try to link instantiated nodes if they match constraints
 
@@ -252,17 +252,17 @@ class TaskNetwork(TaskMatcher_m):
 
         if TaskMeta_f.JOB in spec.name:
             logging.debug("Expanding Job Head for: %s", spec.name)
-            heads         = [jhead for x in spec.get_source_names() if (jhead:=x.job_head()) in self._registry.specs]
+            heads         = [jhead for x in spec.get_source_names() if (jhead:=x.with_head()) in self._registry.specs]
             head_name     = heads[-1]
             head_instance = self._registry._instantiate_spec(head_name, extra=spec.model_extra)
             self.connect(spec.name, head_instance, job_head=True)
             return [head_instance]
 
-        if spec.name.is_instantiated() and (root:=spec.name.root()) == root.cleanup_name():
+        if spec.name.is_uniq and (root:=spec.name.pop()) == root.canon():
             return []
 
         # Instantiate and connect the cleanup task
-        cleanup = self._registry._instantiate_spec(spec.name.cleanup_name())
+        cleanup = self._registry._instantiate_spec(spec.name.canon())
         self.connect(spec.name, cleanup, cleanup=True)
         return [cleanup]
 

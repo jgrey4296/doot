@@ -32,7 +32,6 @@ from uuid import UUID
 
 # ##-- 3rd party imports
 import pytest
-from tomlguard import TomlGuard
 
 # ##-- end 3rd party imports
 
@@ -302,7 +301,7 @@ class TestTrackerWalk:
         result = obj.generate_plan()
         assert(len(result) == len(expectation))
         for x,y in zip(result, expectation):
-            expected_name = doot.structs.TaskName.build(y)
+            expected_name = doot.structs.TaskName(y)
             assert(expected_name < x[1])
 
 
@@ -332,7 +331,7 @@ class TestTrackerWalk:
         result = obj.generate_plan(policy=ExecutionPolicy_e.BREADTH)
         assert(len(result) == len(expectation))
         for x,y in zip(result, expectation):
-            expected_name = doot.structs.TaskName.build(y)
+            expected_name = doot.structs.TaskName(y)
             assert(expected_name < x[1])
 
     def test_simple_plan_priority(self, specs):
@@ -361,7 +360,7 @@ class TestTrackerWalk:
         result = obj.generate_plan(policy=ExecutionPolicy_e.PRIORITY)
         assert(len(result) == len(expectation))
         for x,y in zip(result, expectation):
-            expected_name = doot.structs.TaskName.build(y)
+            expected_name = doot.structs.TaskName(y)
             assert(expected_name < x[1])
 
 
@@ -399,7 +398,7 @@ class TestTrackerWalk:
             result = obj.generate_plan(policy=ExecutionPolicy_e.PRIORITY)
             assert(len(result) == len(expectation))
             for x,y in zip(result, expectation):
-                expected_name = doot.structs.TaskName.build(y)
+                expected_name = doot.structs.TaskName(y)
                 assert(expected_name < x[1])
 
             assert(obj.active_set == original_tasks)

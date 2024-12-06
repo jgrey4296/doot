@@ -29,8 +29,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import pytest
-import tomlguard
-
+from jgdv.structs.chainguard import ChainGuard
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -67,7 +66,7 @@ class TestListCmd:
         assert("help" in names)
 
     def test_call_bad_cli_args(self, monkeypatch, mocker):
-        doot.args = tomlguard.TomlGuard({"tasks": [], "cmd": {"args": {"pattern": "", "all": False, "by_source": False}}})
+        doot.args = ChainGuard({"tasks": [], "cmd": {"args": {"pattern": "", "all": False, "by_source": False}}})
         obj = ListCmd()
 
         with pytest.raises(doot.errors.DootError):

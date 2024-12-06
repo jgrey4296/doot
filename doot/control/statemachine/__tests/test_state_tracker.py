@@ -25,7 +25,6 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import pytest
-from tomlguard import TomlGuard
 import networkx as nx
 
 # ##-- end 3rd party imports

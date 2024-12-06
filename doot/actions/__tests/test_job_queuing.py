@@ -29,7 +29,7 @@ class TestJobQueue:
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": TaskName.build("agroup::basic")}
+        return {"_task_name": TaskName("agroup::basic")}
 
     def test_initial(self, spec, state):
         obj = JobQueueAction()
@@ -69,7 +69,7 @@ class TestJobChainer:
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": TaskName.build("agroup::basic")}
+        return {"_task_name": TaskName("agroup::basic")}
 
 
     def test_initial(self, spec, state):

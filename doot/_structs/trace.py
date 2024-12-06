@@ -49,6 +49,9 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 class TraceRecord(BaseModel):
+    """
+    Container for tracking what happened in doot, where, and why
+    """
     message : str
     flags   : Report_f
     args    : list[Any]                = []

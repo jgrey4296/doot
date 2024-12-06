@@ -17,11 +17,11 @@ from unittest import mock
 
 from importlib.metadata import EntryPoint
 import pytest
-import tomlguard
 import doot
+from jgdv.structs.chainguard import ChainGuard
 doot._test_setup()
 
-doot.config = tomlguard.TomlGuard({})
+doot.config = ChainGuard({})
 from doot.loaders import cmd_loader
 logging = logmod.root
 
@@ -33,7 +33,7 @@ class TestCmdLoader(unittest.TestCase):
 
     def test_load_basic(self):
         basic = cmd_loader.DootCommandLoader()
-        basic.setup(tomlguard.TomlGuard({
+        basic.setup(ChainGuard({
             "command" : [
                 EntryPoint(name="list", group="doot.command", value="doot.cmds.list_cmd:ListCmd")
 
@@ -43,7 +43,7 @@ class TestCmdLoader(unittest.TestCase):
 
     def test_load_multi(self):
         basic = cmd_loader.DootCommandLoader()
-        basic.setup(tomlguard.TomlGuard({
+        basic.setup(ChainGuard({
             "command" : [
                 EntryPoint(name="list", group="doot.command", value="doot.cmds.list_cmd:ListCmd"),
                 EntryPoint(name="run", group="doot.command", value="doot.cmds.run_cmd:RunCmd"),
@@ -55,7 +55,7 @@ class TestCmdLoader(unittest.TestCase):
 
     def test_load_fail(self):
         basic = cmd_loader.DootCommandLoader()
-        basic.setup(tomlguard.TomlGuard({
+        basic.setup(ChainGuard({
             "command" : [
                 EntryPoint(name="bad", group="doot.command", value="doot.cmds.bad:badcmd"),
 
