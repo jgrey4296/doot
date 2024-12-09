@@ -36,7 +36,7 @@ import doot
 import doot.errors
 from doot._abstract import (Job_i, Task_i, TaskRunner_i, TaskTracker_i)
 from doot.control.base_tracker import BaseTracker
-from doot.enums import EdgeType_e, ExecutionPolicy_e, TaskStatus_e, TaskMeta_f, ArtifactStatus_e
+from doot.enums import EdgeType_e, ExecutionPolicy_e, TaskStatus_e, TaskMeta_e, ArtifactStatus_e
 from doot.structs import TaskArtifact, TaskName, TaskSpec
 from doot.task.base_task import DootTask
 

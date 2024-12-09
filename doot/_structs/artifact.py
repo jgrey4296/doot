@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
 ##-- builtin imports
@@ -28,11 +27,6 @@ from uuid import UUID, uuid1
 
 ##-- end builtin imports
 
-
-##-- logging
-logging = logmod.getLogger(__name__)
-##-- end logging
-
 import importlib
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang.location import Location
@@ -40,11 +34,16 @@ from jgdv.structs.dkey import DKey
 
 import doot
 import doot.errors
-from doot.enums import ArtifactStatus_e
+from doot._abstract.task import ArtifactStatus_e
+
+##-- logging
+logging = logmod.getLogger(__name__)
+##-- end logging
 
 
 class TaskArtifact(Location):
     """
+    A Location, but specialized to represent artifacts/files
       An concrete or abstract artifact a task can produce or consume.
 
       Tasks can depend on both concrete and abstract:
@@ -56,24 +55,6 @@ class TaskArtifact(Location):
 
     priority : int = 10
 
-    def __repr__(self):
-        return f"<TaskArtifact: {self.path} : {self.meta}>"
-
-    def __str__(self):
-        return str(self.path)
-
-    def __hash__(self):
-        return hash(str(self))
-
-    def __eq__(self, other:str|pl.Path|TaskArtifact|Any):
-        match other:
-            case str() | pl.Path():
-                return pl.Path(other) == self.path
-            case TaskArtifact():
-                return self.path == other.path
-            case _:
-                return False
-
     def __bool__(self):
         return self.exists()
 
@@ -81,68 +62,99 @@ class TaskArtifact(Location):
     def parent(self):
         return self.path.parent
 
-    def is_stale(self) -> bool:
-        """ whether the artifact itself is stale """
-        raise NotImplementedError('TODO')
-
-    def match_with(self, other:pl.Path|Location) -> None|TaskArtifact:
-        """ An abstract location, given a concrete other location,
-          will apply parts of it onto itself, where it has wildcards
-
-          To match, the stem *must* be a wildcard, at least.
-
-          This is for instantiating task transformers.
-
-          eg: a/*/?.blah + a/blah/file.txt -> a/blah/file.blah
-          a/**/?.blah + a/b/c/d.txt -> a/b/c/d.blah
-
+    def is_stale(self, *, delta=None) -> bool:
+        """ whether the artifact itself is stale
+        delta defaults to 1 day
         """
+        match delta:
+            case None:
+                return self < datetime.timedelta(days=1)
+            case datetime.timedelta():
+                return self < delta
+            case _:
+                raise NotImplementedError()
+
+    def reify(self, other:pl.Path|Location) -> None|TaskArtifact:
+        """
+        Apply a more concrete path onto this location
+        """
+        if self.is_concrete():
+            raise NotImplementedError("Can't reify an already concrete location", self, other)
+
         match other:
-            case Location() | pl.Path() if self.is_concrete() and other == self:
-                return self
+            case pl.Path() | str():
+                other = Location(other)
             case _:
                 pass
 
-        match other:
-            case Location():
-                match_on = other.path.parent.parts
-                stem     = other.path.stem
-                suff     = other.path.suffix
-            case pl.Path():
-                match_on = other.parent.parts
-                stem     = other.stem
-                suffix   = other.suffix
-            case _:
-                raise ValueError("Location can't match against a non-Location or path", other)
-
-        result = []
-        rest_of = False
-        abstracts = self.abstracts
-
-        if abstracts.path:
-            # loop over parts of the paths, and get the most specific
-            for i, (x,y) in enumerate(zip(self.path.parent.parts, match_on)):
-                if x in ["*", "?"]:
-                    result.append(y)
-                elif x == "**":
-                    result += match_on[i:]
-                elif x == y:
+        result   = []
+        add_rest = False
+        # Compare path
+        for x,y in itz.zip_longest(self.body_parent, other.body_parent):
+            if add_rest:
+                result.append(y or x)
+                continue
+            match x, y:
+                case _, None:
                     result.append(x)
-                else:
+                case None, _:
+                    result.append(y)
+                case _, _ if x == y:
+                    result.append(x)
+                case self.bmark_e.rec_glob, _:
+                    add_rest = True
+                    result.append(y)
+                case self.bmark_e(), str():
+                    result.append(y)
+                case str(), self.bmark_e():
+                    result.append(x)
+                case str(), str():
                     return None
-        else:
-            result += self.path.parents
 
-        base_path  = pl.Path().joinpath(*result)
-        filename = None
-        match abstracts:
-            case Location.Abstractions(stem=True, suffix=False):
-                filename = f"{stem}{self.path.suffix}"
-            case Location.Abstractions(stem=False, suffix=True):
-                filename = f"{self.path.stem}{suffix}"
-            case Location.Abstractions(stem=True, suffix=True):
-                filename = f"{stem}{suffix}"
-            case _:
-                filename = self.path.name
+        logging.debug("%s and %s match on path", self, other)
+        # Compare the stem/ext
+        stem, ext = "", ""
+        match self.stem, other.stem:
+            case None, None:
+                pass
+            case None, y:
+                stem = y
+            case x, None:
+                stem = x
+            case x, y if x == y:
+                stem = x
+            case (xa, ya), (xb, yb) if xa == xb and ya == yb:
+                stem = ya
+            case (xa, ya), str() as xb:
+                stem = xb
+            case _, _:
+                return None
 
-        return TaskArtifact(path=base_path / filename, key=self.key)
+        logging.debug("%s and %s match on stem", self, other)
+        match self.ext(), other.ext():
+            case None, None:
+                pass
+            case (xa, ya), (xb, yb) if xa == xb and ya == yb:
+                ext = ya
+            case (x, y), str() as yb:
+                ext = yb
+            case (_, x), None:
+                ext = x
+            case None, (_, y):
+                ext = y
+            case x, None:
+                ext = x
+            case None, y:
+                ext = y
+            case x, y if x == y:
+                ext = x
+            case _, _:
+                return None
+
+        logging.debug("%s and %s match", self, other)
+        result.append(f"{stem}{ext}")
+
+        return self.__class__("/".join(result))
+
+    def match_with(self, other:pl.Path|Location) -> None|TaskArtifact:
+        raise DeprecationWarning("use reify")

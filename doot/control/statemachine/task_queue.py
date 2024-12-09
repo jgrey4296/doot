@@ -36,8 +36,8 @@ import doot
 import doot.errors
 from doot._abstract import (Job_i, Task_i, TaskRunner_i, TaskTracker_i)
 from doot._structs.relation_spec import RelationSpec
-from doot.enums import (EdgeType_e, LocationMeta_f, QueueMeta_e,
-                        RelationMeta_e, TaskMeta_f, TaskStatus_e)
+from doot.enums import (EdgeType_e, LocationMeta_e, QueueMeta_e,
+                        RelationMeta_e, TaskMeta_e, TaskStatus_e)
 from doot.structs import (ActionSpec, TaskArtifact, TaskName, TaskSpec)
 from doot.task.base_task import DootTask
 
@@ -50,7 +50,7 @@ track_l          = doot.subprinter("track")
 logging.disabled = False
 ##-- end logging
 
-ROOT                           : Final[str]                  = "root::_" # Root node of dependency graph
+ROOT                           : Final[str]                  = "root::_.$gen$" # Root node of dependency graph
 EXPANDED                       : Final[str]                  = "expanded"  # Node attribute name
 REACTIVE_ADD                   : Final[str]                  = "reactive-add"
 
@@ -178,12 +178,12 @@ class TaskQueue:
         final_name      : None|TaskName|TaskArtifact = None
         target_priority : int                        = self._network._declare_priority
         match prepped_name:
-            case TaskName() if TaskMeta_f.JOB_HEAD in prepped_name:
+            case TaskName() if TaskMeta_e.JOB_HEAD in prepped_name:
                 assert(prepped_name.is_uniq)
                 assert(prepped_name in self._registry.specs)
                 final_name      = self._registry._make_task(prepped_name)
                 target_priority = self._registry.tasks[final_name].priority
-            case TaskName() if TaskMeta_f.JOB in prepped_name:
+            case TaskName() if TaskMeta_e.JOB in prepped_name:
                 assert(prepped_name.is_uniq)
                 assert(prepped_name in self._registry.specs)
                 final_name      = self._registry._make_task(prepped_name)

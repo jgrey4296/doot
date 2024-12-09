@@ -212,7 +212,7 @@ class DootTaskLoader(TaskLoader_p):
                         raise doot.errors.DootTaskLoadError("Task Name Overloaded: %s : %s", task_name, group)
                     case {"name": task_name, "ctor": str() as task_alias} if task_alias in self.task_builders: # build named plugin type
                         logging.debug("Building Task from short name: %s : %s", task_name, task_alias)
-                        task_iden                   : CodeReference       = CodeReference.from_alias(task_alias, "task", self.plugins)
+                        task_iden                   : CodeReference       = CodeReference.from_value(self.task_builders[task_alias])
                         spec['ctor'] = task_iden
                         task_spec = TaskSpec.build(spec)
                         if str(task_spec.name) in task_descriptions:

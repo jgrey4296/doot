@@ -40,7 +40,7 @@ import doot
 import doot.errors
 from doot._abstract import (Job_i, Task_i, TaskRunner_i, TaskTracker_i)
 from doot._structs.relation_spec import RelationSpec
-from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e, LocationMeta_f, RelationMeta_e, EdgeType_e, ArtifactStatus_e
+from doot.enums import TaskMeta_e, QueueMeta_e, TaskStatus_e, LocationMeta_e, RelationMeta_e, EdgeType_e, ArtifactStatus_e
 from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
@@ -56,7 +56,7 @@ track_l          = doot.subprinter("track")
 logging.disabled = False
 ##-- end logging
 
-ROOT                           : Final[str]                    = "root::_" # Root node of dependency graph
+ROOT                           : Final[str]                    = "root::_.$gen$" # Root node of dependency graph
 EXPANDED                       : Final[str]                    = "expanded"  # Node attribute name
 REACTIVE_ADD                   : Final[str]                    = "reactive-add"
 INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                   = 10
@@ -95,7 +95,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
             spec = queue.pop(0)
             if spec.name in self.specs:
                 continue
-            if TaskMeta_f.DISABLED in spec.flags:
+            if TaskMeta_e.DISABLED in spec.flags:
                 logging.debug("Ignoring Registration of disabled task: %s", spec.name.readable)
                 continue
 
@@ -103,7 +103,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
             logging.debug("Registered Spec: %s", spec.name)
 
             # Register the head and cleanup specs:
-            if TaskMeta_f.JOB in spec.flags:
+            if TaskMeta_e.JOB in spec.flags:
                 queue += spec.gen_job_head()
             else:
                 queue.append(spec.gen_cleanup_task())
@@ -315,8 +315,8 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
             case None:
                 return None
             case TaskSpec() as instance:
-                assert(TaskMeta_f.CONCRETE | TaskMeta_f.TRANSFORMER in instance.flags)
-                assert(TaskMeta_f.CONCRETE | TaskMeta_f.TRANSFORMER in instance.name)
+                assert(TaskMeta_e.CONCRETE | TaskMeta_e.TRANSFORMER in instance.flags)
+                assert(TaskMeta_e.CONCRETE | TaskMeta_e.TRANSFORMER in instance.name)
                 self.concrete[name].append(instance.name)
                 self.register_spec(instance)
                 return instance.name
@@ -369,7 +369,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
                 raise doot.errors.DootTaskTrackingError("Building a source chain grew to large", name)
             count -= 1
             match current: # Determine the base
-                case TaskSpec(name=name) if TaskMeta_f.JOB_HEAD in name:
+                case TaskSpec(name=name) if TaskMeta_e.JOB_HEAD in name:
                     # job heads are generated, so don't have a source chain
                     chain.append(current)
                     current = None

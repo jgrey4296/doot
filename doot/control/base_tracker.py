@@ -7,7 +7,6 @@ Task:           T[n]
   Expansion: ∀x ∈ C[n].depends_on => A[x] -> C[x]
   Head: C[1].depends_on[A[n].$head$] => A[n] -> C[n], A[n].head -> C[n].head, connect
 
-
 """
 # Imports:
 from __future__ import annotations
@@ -47,7 +46,7 @@ import doot
 import doot.errors
 from doot._abstract import Job_i, Task_i, TaskRunner_i, TaskTracker_i
 from doot._structs.relation_spec import RelationSpec
-from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e, LocationMeta_f, RelationMeta_e, EdgeType_e, ArtifactStatus_e
+from doot.enums import TaskMeta_e, QueueMeta_e, TaskStatus_e, LocationMeta_e, RelationMeta_e, EdgeType_e, ArtifactStatus_e
 from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
@@ -59,7 +58,7 @@ from doot.utils.matching import TaskMatcher_m
 logging    = logmod.getLogger(__name__)
 printer    = doot.subprinter()
 track_l    = doot.subprinter("track")
-logging.disabled = True
+logging.disabled = False
 ##-- end logging
 
 ROOT                           : Final[str]                  = "root::_" # Root node of dependency graph
@@ -145,7 +144,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
                 raise doot.errors.DootTaskTrackingError("Building a source chain grew to large", name)
             count -= 1
             match current: # Determine the base
-                case TaskSpec(name=name) if TaskMeta_f.JOB_HEAD in name:
+                case TaskSpec(name=name) if TaskName.bmark_e.head in name:
                     # job heads are generated, so don't have a source chain
                     chain.append(current)
                     current = None
@@ -216,7 +215,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
         if control not in self.specs:
             raise doot.errors.DootTaskTrackingError("Relation Control is missing from registered specs", control, rel)
         if rel.target not in self.specs:
-            raise doot.errors.DootTaskTrackingError("Relation Target is missing from registered specs", control, rel)
+            raise doot.errors.DootTaskTrackingError("Relation Target is missing from registered specs", rel.target, control, rel)
 
         control_spec              = self.specs[control]
         target_spec               = self.specs[rel.target]
@@ -259,8 +258,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
             case None:
                 return None
             case TaskSpec() as instance:
-                assert(TaskMeta_f.CONCRETE | TaskMeta_f.TRANSFORMER in instance.flags)
-                assert(TaskMeta_f.CONCRETE | TaskMeta_f.TRANSFORMER in instance.name)
+                assert(instance.name.is_uniq and TaskMeta_e.TRANSFORMER in instance.meta)
                 self.concrete[name].append(instance.name)
                 self.register_spec(instance)
                 return instance.name
@@ -319,7 +317,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
                     # Link artifact to its source task
                     self.artifacts[art].add(spec.name)
                     # Add it to the relevant abstract/concrete set
-                    if LocationMeta_f.abstract in art:
+                    if LocationMeta_e.abstract in art:
                         self._abstract_artifacts.add(art)
                     else:
                         self._concrete_artifacts.add(art)
@@ -328,7 +326,6 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
 
     def register_spec(self, *specs:AnySpec) -> None:
         """ Register task specs, abstract or concrete.
-        An initial concrete instance will be created for any abstract spec.
         """
         queue = []
         queue += specs
@@ -336,7 +333,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
             spec = queue.pop(0)
             if spec.name in self.specs:
                 continue
-            if TaskMeta_f.DISABLED in spec.flags:
+            if TaskMeta_e.DISABLED in spec.meta:
                 logging.debug("Ignoring Registration of disabled task: %s", spec.name.readable)
                 continue
 
@@ -344,10 +341,10 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
             logging.debug("Registered Spec: %s", spec.name)
 
             # Register the head and cleanup specs:
-            if TaskMeta_f.JOB in spec.flags:
+            if TaskMeta_e.JOB in spec.meta:
                 queue += spec.gen_job_head()
             else:
-                queue.append(spec.gen_cleanup_task())
+                queue += spec.gen_cleanup_task()
 
             self._register_artifacts(spec.name)
             self._register_blocking_relations(spec)
@@ -473,8 +470,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
                 self.network.add_node(name)
                 self.network.nodes[name][EXPANDED]     = True
                 self.network.nodes[name][REACTIVE_ADD] = False
-                self._root_node.meta                  |= TaskMeta_f.CONCRETE
-            case TaskName() if TaskMeta_f.CONCRETE not in name:
+            case TaskName() if not name.is_uniq:
                 raise doot.errors.DootTaskTrackingError("Nodes should only be instantiated spec names", name)
             case _ if name in self.network.nodes:
                 return
@@ -498,7 +494,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
         *without* expanding those new nodes.
         returns a list of the new nodes tasknames
         """
-        assert(TaskMeta_f.CONCRETE in name)
+        assert(name.is_uniq)
         assert(not self.network.nodes[name].get(EXPANDED, False))
         spec                                                  = self.specs[name]
         spec_pred, spec_succ                                  = self.network.pred[name], self.network.succ[name]
@@ -509,6 +505,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
 
         to_expand.update(self._expand_generated_tasks(spec))
 
+        logging.debug("Connecting Relations")
         # Connect Relations
         for rel in itz.chain(spec.action_group_elements()):
             if not isinstance(rel, RelationSpec):
@@ -550,20 +547,18 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
         blockers  = self._indirect_deps[spec.name.pop(top=True)]
 
         # Try to link instantiated nodes if they match constraints
-
         # else instantiate and link new nodes
 
-
         return to_expand
-
 
     def _expand_generated_tasks(self, spec:TaskSpec) -> list[TaskName]:
         """
           instantiate and connect a job's head task
           TODO these could be shifted into the task/job class
         """
+        logging.debug("Expanding generated tasks")
 
-        if TaskMeta_f.JOB in spec.name:
+        if TaskMeta_e.JOB in spec.meta:
             logging.debug("Expanding Job Head for: %s", spec.name)
             heads         = [jhead for x in spec.get_source_names() if (jhead:=x.with_head()) in self.specs]
             head_name     = heads[-1]
@@ -571,14 +566,14 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
             self.connect(spec.name, head_instance, job_head=True)
             return [head_instance]
 
-        if spec.name.is_uniq and (root:=spec.name.pop()) == root.canon():
-            return []
+        if not spec.name.is_cleanup():
+            logging.debug("Expanding Cleanup for: %s", spec.name)
+            # Instantiate and connect the cleanup task
+            cleanup = self._instantiate_spec(spec.name.de_uniq().with_cleanup())
+            self.connect(spec.name, cleanup, cleanup=True)
+            return [cleanup]
 
-        # Instantiate and connect the cleanup task
-        cleanup = self._instantiate_spec(spec.name.canon())
-        self.connect(spec.name, cleanup, cleanup=True)
-        return [cleanup]
-
+        return []
 
     def _expand_artifact(self, artifact:TaskArtifact) -> set[ConcreteId]:
         """ expand artifacts, instantiating related tasks/transformers,
@@ -602,7 +597,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
         match artifact.is_concrete():
             case True:
                 logging.debug("-- Connecting concrete artifact to parent abstracts")
-                for abstract in [x for x in self._abstract_artifacts if artifact in x and LocationMeta_f.glob in x]:
+                for abstract in [x for x in self._abstract_artifacts if artifact in x and LocationMeta_e.abstract in x]:
                     self.connect(artifact, abstract)
                     to_expand.add(abstract)
             case False:
@@ -672,6 +667,8 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
         logging.debug("Connecting: %s -> %s", left, right)
         # Add the edge, with metadata
         match left, right:
+            case x, y if x == y:
+                raise doot.errors.DootTaskTrackingError("Tried to connect to itself",left,right)
             case TaskName(), TaskName():
                 self.network.add_edge(left, right, type=EdgeType_e.TASK, **kwargs)
             case TaskName(), TaskArtifact():
@@ -699,11 +696,11 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
                     if strict:
                         raise doot.errors.DootTaskTrackingError("Network isn't fully expanded", node)
                     logging.warning("Network isn't fully expanded: %s", node)
-                case TaskName() if TaskMeta_f.CONCRETE not in node:
+                case TaskName() if not node.is_uniq and node != ROOT:
                     if strict:
                         raise doot.errors.DootTaskTrackingError("Abstract ConcreteId in network", node)
                     logging.warning("Abstract ConcreteId in network: %s", node)
-                case TaskArtifact() if LocationMeta_f.glob in node:
+                case TaskArtifact() if LocationMeta_e.abstract in node:
                     bad_nodes = [x for x in self.network.pred[node] if x in self.specs]
                     if strict and bool(bad_nodes):
                         raise doot.errors.DootTaskTrackingError("Glob Artifact ConcreteId is a successor to a task", node, bad_nodes)
@@ -745,7 +742,9 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
                 queue = list(sources)
         processed = { self._root_node }
         logging.info("Initial Network Queue: %s", queue)
-        while bool(queue): # expand tasks
+        count = 0
+        while bool(queue) and count < 20: # expand tasks
+            count += 1
             logging.debug("- Processing: %s", queue[-1])
             match (current:=queue.pop()):
                 case x if x in processed or self.network.nodes[x].get(EXPANDED, False):
@@ -845,8 +844,6 @@ class _TrackerQueue_boltons:
         prepped_name : None|TaskName|TaskArtifact = None
         # Prep the task: register and instantiate
         match name:
-            case str():
-                return self.queue_entry(TaskName(name), from_user=from_user)
             case TaskSpec() as spec:
                 self.register_spec(spec)
                 return self.queue_entry(spec.name, from_user=from_user, status=status)
@@ -875,6 +872,10 @@ class _TrackerQueue_boltons:
                 instance : TaskName = self._instantiate_spec(name, add_cli=from_user)
                 self.connect(instance, None if from_user else False)
                 prepped_name = instance
+            case TaskName():
+                raise doot.errors.DootTaskTrackingError("Unrecognized queue argument provided, it may not be registered", name)
+            case str():
+                return self.queue_entry(TaskName(name), from_user=from_user)
             case _:
                 raise doot.errors.DootTaskTrackingError("Unrecognized queue argument provided, it may not be registered", name)
 
@@ -886,12 +887,12 @@ class _TrackerQueue_boltons:
         final_name      : None|TaskName|TaskArtifact = None
         target_priority : int                        = self._declare_priority
         match prepped_name:
-            case TaskName() if TaskMeta_f.JOB_HEAD in prepped_name:
+            case TaskName() if TaskName.bmark_e.head in prepped_name:
                 assert(prepped_name.is_uniq)
                 assert(prepped_name in self.specs)
                 final_name      = self._make_task(prepped_name)
                 target_priority = self.tasks[final_name].priority
-            case TaskName() if TaskMeta_f.JOB in prepped_name:
+            case TaskName() if TaskName.bmark_e.extend in prepped_name:
                 assert(prepped_name.is_uniq)
                 assert(prepped_name in self.specs)
                 final_name      = self._make_task(prepped_name)

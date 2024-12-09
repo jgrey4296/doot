@@ -39,7 +39,7 @@ import doot
 import doot.errors
 from doot._abstract import Job_i, Task_i, TaskRunner_i, TaskTracker_i
 from doot._structs.relation_spec import RelationSpec
-from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e, LocationMeta_f, RelationMeta_e, EdgeType_e
+from doot.enums import TaskMeta_e, QueueMeta_e, TaskStatus_e, LocationMeta_e, RelationMeta_e, EdgeType_e
 from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
@@ -54,7 +54,7 @@ track_l          = doot.subprinter("track")
 logging.disabled = False
 ##-- end logging
 
-ROOT                            : Final[str]                  = "root::_" # Root node of dependency graph
+ROOT                            : Final[str]                  = "root::_.$gen$" # Root node of dependency graph
 EXPANDED                        : Final[str]                  = "expanded"  # Node attribute name
 REACTIVE_ADD                    : Final[str]                  = "reactive-add"
 CLEANUP                         : Final[str]                  = "cleanup"
@@ -116,8 +116,8 @@ class TaskNetwork(TaskMatcher_m):
                 self._graph.add_node(name)
                 self.nodes[name][EXPANDED]     = True
                 self.nodes[name][REACTIVE_ADD] = False
-                self._root_node.meta                  |= TaskMeta_f.CONCRETE
-            case TaskName() if TaskMeta_f.CONCRETE not in name:
+                self._root_node.meta                  |= TaskMeta_e.CONCRETE
+            case TaskName() if TaskMeta_e.CONCRETE not in name:
                 raise doot.errors.DootTaskTrackingError("Nodes should only be instantiated spec names", name)
             case _ if name in self.nodes:
                 return
@@ -250,7 +250,7 @@ class TaskNetwork(TaskMatcher_m):
           TODO these could be shifted into the task/job class
         """
 
-        if TaskMeta_f.JOB in spec.name:
+        if TaskMeta_e.JOB in spec.name:
             logging.debug("Expanding Job Head for: %s", spec.name)
             heads         = [jhead for x in spec.get_source_names() if (jhead:=x.with_head()) in self._registry.specs]
             head_name     = heads[-1]
@@ -288,7 +288,7 @@ class TaskNetwork(TaskMatcher_m):
         match artifact.is_concrete():
             case True:
                 logging.debug("-- Connecting concrete artifact to parent abstracts")
-                for abstract in [x for x in self._registry._abstract_artifacts if artifact in x and LocationMeta_f.glob in x]:
+                for abstract in [x for x in self._registry._abstract_artifacts if artifact in x and LocationMeta_e.glob in x]:
                     self.connect(artifact, abstract)
                     to_expand.add(abstract)
             case False:
@@ -386,12 +386,12 @@ class TaskNetwork(TaskMatcher_m):
                         raise doot.errors.DootTaskTrackingError("Network isn't fully expanded", node)
                     else:
                         logging.warning("Network isn't fully expanded: %s", node)
-                case TaskName() if TaskMeta_f.CONCRETE not in node:
+                case TaskName() if TaskMeta_e.CONCRETE not in node:
                     if strict:
                         raise doot.errors.DootTaskTrackingError("Abstract ConcreteId in _graph", node)
                     else:
                         logging.warning("Abstract ConcreteId in _graph: %s", node)
-                case TaskArtifact() if LocationMeta_f.glob in node:
+                case TaskArtifact() if LocationMeta_e.glob in node:
                     bad_nodes = [x for x in self.pred[node] if x in self._registry.specs]
                     if strict and bool(bad_nodes):
                         raise doot.errors.DootTaskTrackingError("Glob Artifact ConcreteId is a successor to a task", node, bad_nodes)

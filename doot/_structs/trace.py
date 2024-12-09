@@ -38,7 +38,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 # ##-- 1st party imports
 import doot.errors
-from doot.enums import Report_f, TaskMeta_f
+from doot.enums import Report_f
 
 # ##-- end 1st party imports
 

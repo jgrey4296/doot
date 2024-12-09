@@ -51,65 +51,43 @@ CLEANUP_MARKER : Final[str] = "$cleanup$"
 
 aware_splitter = str
 
-class TaskMeta_f(FlagsBuilder_m, enum.Flag):
-    """
-      Flags describing properties of a task,
-      stored in the Task_i instance itself.
-    """
-
-    TASK         = enum.auto()
-    JOB          = enum.auto()
-    TRANSFORMER  = enum.auto()
-
-    INTERNAL     = enum.auto()
-    JOB_HEAD     = enum.auto()
-    CONCRETE     = enum.auto()
-    DISABLED     = enum.auto()
-
-    EPHEMERAL    = enum.auto()
-    IDEMPOTENT   = enum.auto()
-    REQ_TEARDOWN = enum.auto()
-    REQ_SETUP    = enum.auto()
-    IS_TEARDOWN  = enum.auto()
-    IS_SETUP     = enum.auto()
-    THREAD_SAFE  = enum.auto()
-    STATEFUL     = enum.auto()
-    STATELESS    = enum.auto()
-    VERSIONED    = enum.auto()
-
-    default      = TASK
-
 class _TaskNameOps_m:
     """ Operations Mixin for manipulating TaskNames """
 
     @classmethod
-    def pre_process(cls, data):
+    def pre_process(cls, data, *, strict=False):
         """ Remove 'tasks' as a prefix, and strip quotes  """
-        return super().pre_process(data).removeprefix("tasks.").replace('"', "")
+        match data:
+            case str() if not strict and data.startswith("tasks."):
+                data = data.removeprefix("tasks.")
+            case _:
+                pass
+
+        return super().pre_process(data).replace('"', "")
 
     def match_version(self, other) -> bool:
         """ match version constraints of two task names against each other """
         raise NotImplementedError()
 
+    @classmethod
+    def from_parts(cls, group, body):
+        return cls(f"{group}{cls._separator}{body}")
+
+    def with_cleanup(self):
+        if self[1:-1] == CLEANUP_MARKER:
+            return self
+        return self.push(CLEANUP_MARKER)
+
+    def is_cleanup(self):
+        return CLEANUP_MARKER in self
+
+
 class TaskName(_TaskNameOps_m, Strang):
     """
       A Task Name.
-      Infers metadata(TaskMeta_f) from the string data it is made of.
-      a trailing '+' in the head makes it a job
-      a leading '_' in the tail makes it an internal name, eg: group::_.task
-      having a '$gen$' makes it a concrete name
-      having a '$head$' makes it a job head
-      Two separators in a row marks a recall point for root()
-
-      TODO: parameters
     """
 
-    meta                : TaskMeta_f               = TaskMeta_f.default
-    args                : dict                    = {}
-    version_constraint  : None|str                = None
-
     _separator          : ClassVar[str]           = doot.constants.patterns.TASK_SEP
-
 
     @ftz.cached_property
     def readable(self):

@@ -33,7 +33,7 @@ from jgdv.structs.strang import CodeReference
 import doot
 import doot.errors
 from doot._abstract import Job_i, Task_i
-from doot.enums import TaskMeta_f
+from doot.enums import TaskMeta_e
 from doot.structs import TaskName, TaskSpec
 from doot.task.base_task import DootTask
 
@@ -54,7 +54,7 @@ class DootJob(Job_i, DootTask):
 
     """
     _help = ["A Basic Task Constructor"]
-    _default_flags = TaskMeta_f.JOB
+    _default_flags = TaskMeta_e.JOB
 
     def __init__(self, spec:TaskSpec):
         assert(spec is not None), "Spec is empty"

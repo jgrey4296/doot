@@ -36,6 +36,7 @@ from pydantic import (BaseModel, Field, InstanceOf, field_validator,
                       model_validator)
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
+from jgdv.structs.strang.location import Location
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -45,7 +46,7 @@ from doot._abstract.protocols import (Buildable_p, ProtocolModelMeta,
                                       StubStruct_p)
 from doot._structs.task_name import TaskName
 from doot._structs.task_spec import TaskSpec
-from doot.enums import LocationMeta_f, QueueMeta_e, Report_f, TaskMeta_f
+from doot.enums import QueueMeta_e, Report_f, TaskMeta_e
 
 # ##-- end 1st party imports
 
@@ -53,9 +54,9 @@ from doot.enums import LocationMeta_f, QueueMeta_e, Report_f, TaskMeta_f
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-TaskFlagNames : Final[str]               = [x.name for x in TaskMeta_f]
+TaskFlagNames : Final[str]               = [x.name for x in TaskMeta_e]
 
-DEFAULT_CTOR  : Final[CodeReference] = CodeReference(doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS])
+DEFAULT_CTOR  : Final[CodeReference] = CodeReference("cls::" + doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS])
 
 class TaskStub(BaseModel, StubStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
     """ Stub Task Spec for description in toml
@@ -212,8 +213,8 @@ class TaskStubPart(BaseModel, arbitrary_types_allowed=True):
         match self.default:
             case "" if isinstance(self.type_, enum.EnumMeta):
                 val_str = f'[ "{self.type_.default.name}" ]'
-            case enum.Flag(): # TaskMeta_f() | LocationMeta_f():
-                parts = [x.name for x in TaskMeta_f if x in self.default]
+            case enum.Flag(): # TaskMeta_e()
+                parts = [x.name for x in TaskMeta_e if x in self.default]
                 joined = ", ".join(map(lambda x: f"\"{x}\"", parts))
                 val_str = f"[ {joined} ]"
             case QueueMeta_e():
@@ -233,15 +234,13 @@ class TaskStubPart(BaseModel, arbitrary_types_allowed=True):
 
                 def_str = ", ".join(str(x) for x in self.default)
                 val_str = f"[{def_str}]"
-            case list():
+            case set() | list():
                 parts = ", ".join([f'"{x}"' for x in self.default])
                 val_str = f"[{parts}]"
             case dict() | ChainGuard() if not bool(self.default):
                 val_str = "{}"
             case _:
                 logging.debug("Unknown stub part reduction: %s : %s : %s", self.key, self.type_, self.default)
-                breakpoint()
-                pass
                 val_str = '"unknown"'
 
         return val_str

@@ -39,7 +39,7 @@ from jgdv.structs.chainguard import ChainGuard
 import doot
 import doot.errors
 from doot.cmds.base_cmd import BaseCommand
-from doot.enums import TaskMeta_f
+from doot.enums import TaskMeta_e
 from doot.structs import ParamSpec
 
 # ##-- end 1st party imports
@@ -113,9 +113,9 @@ class ListCmd(BaseCommand):
         cmd_l.info("Tasks for Pattern: %s", pattern)
         for key in matches:
             spec = tasks[key]
-            if TaskMeta_f.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
+            if TaskMeta_e.INTERNAL in spec.meta and not doot.args.cmd.args.internal:
                 continue
-            if TaskMeta_f.DISABLED in spec.flags:
+            if TaskMeta_e.DISABLED in spec.meta:
                 continue
 
             cmd_l.info(fmt_str,
@@ -131,9 +131,9 @@ class ListCmd(BaseCommand):
         for name, spec in tasks.items():
             if pattern not in name:
                 continue
-            if TaskMeta_f.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
+            if TaskMeta_e.INTERNAL in spec.meta and not doot.args.cmd.args.internal:
                 continue
-            if TaskMeta_f.DISABLED in spec.flags:
+            if TaskMeta_e.DISABLED in spec.meta:
                 continue
 
             groups[spec.name[0:]].append((spec.name[1:],
@@ -153,9 +153,9 @@ class ListCmd(BaseCommand):
         fmt_str = f"{INDENT}%-{max_key}s :: %-60s :: <Source: %s>"
         groups  = defaultdict(list)
         for spec in tasks.values():
-            if TaskMeta_f.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
+            if TaskMeta_e.INTERNAL in spec.meta and not doot.args.cmd.args.internal:
                 continue
-            if TaskMeta_f.DISABLED in spec.flags:
+            if TaskMeta_e.DISABLED in spec.meta:
                 continue
             if bool(hide_names) and hide_re.search(str(spec.name)):
                 continue
@@ -180,9 +180,9 @@ class ListCmd(BaseCommand):
         fmt_str = f"{INDENT}%-{max_key}s :: %s.%-25s"
         sources = defaultdict(list)
         for key, spec in tasks.items():
-            if TaskMeta_f.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
+            if TaskMeta_e.INTERNAL in spec.meta and not doot.args.cmd.args.internal:
                 continue
-            if TaskMeta_f.DISABLED in spec.flags:
+            if TaskMeta_e.DISABLED in spec.meta:
                 continue
 
             sources[spec.sources[0]].append((spec.name[1:],

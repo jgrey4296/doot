@@ -36,11 +36,12 @@ import doot
 import doot.errors
 from doot._abstract import Action_p, Job_i, PluginLoader_p, Task_i
 from doot.actions.base_action import DootBaseAction
-from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e
+from doot.enums import TaskMeta_e, QueueMeta_e, TaskStatus_e
 from doot.errors import DootTaskError, DootTaskLoadError
 from doot.mixins.param_spec import ParamSpecMaker_m
-from doot.structs import (ActionSpec, TaskArtifact,
-                          TaskName)
+from doot._structs.action_spec import ActionSpec
+from doot._structs.artifact import TaskArtifact
+from doot._structs.task_name import TaskName
 from doot._structs.relation_spec import RelationSpec
 
 # ##-- end 1st party imports
@@ -108,7 +109,7 @@ class DootTask(_TaskProperties_m, Task_i):
       Actions are imported upon task creation.
     """
     action_ctor                                   = DootBaseAction
-    _default_flags                                = TaskMeta_f.TASK
+    _default_flags                                = TaskMeta_e.TASK
     _help                                         = ["The Simplest Task"]
     COMPLETE_STATES  : Final[set[TaskStatus_e]]   = {TaskStatus_e.SUCCESS}
     INITIAL_STATE    : Final[TaskStatus_e]        = TaskStatus_e.INIT
@@ -117,7 +118,7 @@ class DootTask(_TaskProperties_m, Task_i):
         self.spec        : SpecStruct_p        = spec
         self.priority    : int                 = self.spec.priority
         self.status      : TaskStatus_e        = DootTask.INITIAL_STATE
-        self.flags       : TaskMeta_f           = TaskMeta_f.TASK
+        self.flags       : TaskMeta_e           = TaskMeta_e.TASK
         self.state       : dict                = dict(spec.extra)
         self.action_ctor : callable            = action_ctor
         self._records    : list[Any]           = []
@@ -175,7 +176,7 @@ class DootTask(_TaskProperties_m, Task_i):
         stub['priority'].default        = 10
         stub['queue_behaviour'].default = "default"
         stub['queue_behaviour'].comment = " | ".join({x.name for x in QueueMeta_e})
-        stub['flags'].comment = " | ".join({x.name for x in TaskMeta_f})
+        stub['flags'].comment = " | ".join({x.name for x in TaskMeta_e})
         return stub
 
     def stub_instance(self, stub) -> TaskStub:
@@ -201,7 +202,7 @@ class DootTask(_TaskProperties_m, Task_i):
                     pass
                 case ActionSpec() if action_spec.do is not None:
                     try:
-                        action_ctor = action_spec.do.try_import()
+                        action_ctor = action_spec.do()
                         action_spec.set_function(action_ctor)
                     except ImportError as err:
                         failed.append(err)

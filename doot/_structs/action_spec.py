@@ -46,7 +46,7 @@ from doot._abstract.protocols import SpecStruct_p, ProtocolModelMeta, Buildable_
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-ALIASES = doot.aliases.action
+ALIASES = doot.aliases.on_fail([]).action()
 
 class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
     """

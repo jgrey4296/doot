@@ -266,5 +266,5 @@ class StubCmd(BaseCommand):
     def _list_flags(self):
         logging.info("---- Listing Task Flags")
         cmd_l.info("Task Flags: ")
-        for x in sorted(doot.enums.TaskMeta_f, key=lambda x: x.name):
+        for x in sorted(doot.enums.TaskMeta_e, key=lambda x: x.name):
             cmd_l.info("-- %s", x.name)

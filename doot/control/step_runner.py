@@ -42,7 +42,7 @@ import doot._abstract as abstract
 import doot.errors
 import doot.structs as structs
 from doot.control.runner import DootRunner
-from doot.enums import Report_f, TaskMeta_f, TaskStatus_e
+from doot.enums import Report_f, TaskMeta_e, TaskStatus_e
 
 # ##-- end 1st party imports
 

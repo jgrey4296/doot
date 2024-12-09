@@ -37,6 +37,7 @@ from pydantic import (BaseModel, BeforeValidator, Field, ValidationError,
 from jgdv.structs.chainguard import ChainGuard
 from typing_extensions import Annotated
 from jgdv.structs.strang import CodeReference
+from jgdv.structs.strang.location import Location
 from jgdv.structs.dkey import DKey
 # ##-- end 3rd party imports
 
@@ -45,11 +46,12 @@ import doot
 import doot.errors
 from doot._abstract.protocols import SpecStruct_p, ProtocolModelMeta, Buildable_p
 from doot._abstract.task import Task_i
-from doot._structs.action_spec import ActionSpec
-from doot._structs.artifact import TaskArtifact
-from doot._structs.relation_spec import RelationSpec
-from doot._structs.task_name import TaskName, TaskMeta_f
-from doot.enums import (LocationMeta_f, RelationMeta_e, QueueMeta_e)
+from doot._abstract.control import QueueMeta_e
+from .action_spec import ActionSpec
+from .artifact import TaskArtifact
+from .relation_spec import RelationSpec
+from .task_name import TaskName
+from .relation_spec import RelationMeta_e
 
 # ##-- end 1st party imports
 
@@ -94,6 +96,34 @@ def _prepare_action_group(group:list[str], handler:ValidatorFunctionWrapHandler,
 
 ActionGroup = Annotated[list[ActionSpec|RelationSpec], WrapValidator(_prepare_action_group)]
 
+class TaskMeta_e(enum.StrEnum):
+    """
+      Flags describing properties of a task,
+      stored in the Task_i instance itself.
+    """
+
+    TASK         = enum.auto()
+    JOB          = enum.auto()
+    TRANSFORMER  = enum.auto()
+
+    INTERNAL     = enum.auto()
+    JOB_HEAD     = enum.auto()
+    CONCRETE     = enum.auto()
+    DISABLED     = enum.auto()
+
+    EPHEMERAL    = enum.auto()
+    IDEMPOTENT   = enum.auto()
+    REQ_TEARDOWN = enum.auto()
+    REQ_SETUP    = enum.auto()
+    IS_TEARDOWN  = enum.auto()
+    IS_SETUP     = enum.auto()
+    THREAD_SAFE  = enum.auto()
+    STATEFUL     = enum.auto()
+    STATELESS    = enum.auto()
+    VERSIONED    = enum.auto()
+
+    default      = TASK
+
 class _JobUtils_m:
     """Additional utilities mixin for job based task specs"""
 
@@ -116,16 +146,16 @@ class _JobUtils_m:
           job.head()
           await job.cleanup()
         """
-        if TaskMeta_f.JOB not in self.flags:
+        if TaskMeta_e.JOB not in self.meta:
             return []
-        if (TaskMeta_f.CONCRETE | TaskMeta_f.JOB_HEAD) & self.flags:
+        if self.name.is_uniq and TaskMeta_e.JOB_HEAD in self.meta:
             return []
         if (job_head:=self.name.with_head()) is self.name:
             return []
 
         tasks             = []
         head_section      = _dicts_to_specs(self.extra.on_fail([], list).head_actions(), relation=RelationMeta_e.needs)
-        head_dependencies = [x for x in head_section if isinstance(x, RelationSpec)]
+        head_dependencies = [x for x in head_section if isinstance(x, RelationSpec) and x.target != job_head]
         head_actions      = [x for x in head_section if not isinstance(x, RelationSpec)]
 
 
@@ -133,38 +163,40 @@ class _JobUtils_m:
         head : TaskSpec = TaskSpec.build({
             "name"            : job_head,
             "sources"         : self.sources[:] + [self.name, None],
-            "extra"           : self.extra,
             "queue_behaviour" : QueueMeta_e.reactive,
             "depends_on"      : [self.name] + head_dependencies,
             "required_for"    : [job_head.canon()] + self.required_for[:],
             "cleanup"         : self.cleanup[:],
-            "flags"           : (self.flags | TaskMeta_f.JOB_HEAD) & ~TaskMeta_f.JOB,
+            "meta"           : (self.meta | {TaskMeta_e.JOB_HEAD}) - {TaskMeta_e.JOB},
             "actions"         : head_actions,
+            **self.extra,
             })
-        assert(TaskMeta_f.JOB not in head.name)
-        assert(TaskMeta_f.JOB not in head.flags)
+        assert(TaskMeta_e.JOB not in head.meta)
         tasks.append(head)
-        # tasks.append(self.gen_cleanup_task())
         return tasks
 
-    def gen_cleanup_task(self) -> TaskSpec:
+    def gen_cleanup_task(self) -> list[TaskSpec]:
         """ Generate a cleanup task, shifting the 'cleanup' actions and dependencies
           to 'depends_on' and 'actions'
         """
-        base_deps = [self.name] + [x for x in self.cleanup if isinstance(x, RelationSpec)]
-        actions   = [x for x in self.cleanup if isinstance(x, ActionSpec)]
+        if self.name.is_cleanup():
+            return []
+
+        cleanup_name       = self.name.de_uniq().with_cleanup()
+        base_deps          = [self.name] + [x for x in self.cleanup if isinstance(x, RelationSpec) and x.target != cleanup_name]
+        actions            = [x for x in self.cleanup if isinstance(x, ActionSpec)]
 
         cleanup : TaskSpec = TaskSpec.build({
-            "name"            : self.name.canon(),
+            "name"            : cleanup_name,
             "sources"         : self.sources[:] + [self.name, None],
             "actions"         : actions,
-            "extra"           : self.extra,
             "queue_behaviour" : QueueMeta_e.reactive,
             "depends_on"      : base_deps,
-            "flags"           : (self.flags | TaskMeta_f.TASK) & ~TaskMeta_f.JOB,
+            "meta"           : (self.meta | {TaskMeta_e.TASK}) - {TaskMeta_e.JOB},
+            **self.extra
             })
         assert(not bool(cleanup.cleanup))
-        return cleanup
+        return [cleanup]
 
 class _TransformerUtils_m:
     """Utilities for artifact transformers"""
@@ -194,10 +226,10 @@ class _TransformerUtils_m:
                 # exact transform
                 # replace x with pre in depends_on
                 instance.depends_on.remove(x)
-                instance.depends_on.append(x.to_uniq(suffix=pre))
+                instance.depends_on.append(x.instantiate(target=pre))
                 # replace y with post in required_for
                 instance.required_for.remove(y)
-                instance.required_for.append(y.to_uniq(suffix=post))
+                instance.required_for.append(y.instantiate(target=post))
             case _:
                 return None
 
@@ -221,14 +253,11 @@ class _TransformerUtils_m:
             case None:
                 pass
 
-        assert(TaskMeta_f.TRANSFORMER in self.flags)
+        assert(TaskMeta_e.TRANSFORMER in self.meta)
 
         pre, post = None, None
         for x in self.depends_on:
             match x:
-                case RelationSpec(target=TaskArtifact() as target) if LocationMeta_f.glob in target:
-                    # Globs can be in a transformer, but don't make the transformer
-                    pass
                 case RelationSpec(target=TaskArtifact() as target) if not target.is_concrete():
                     if pre is not None:
                         # If theres more than one applicable, its not a tranformer
@@ -240,7 +269,7 @@ class _TransformerUtils_m:
 
         for y in self.required_for:
             match y:
-                case RelationSpec(target=TaskArtifact() as target) if LocationMeta_f.glob in target:
+                case RelationSpec(target=TaskArtifact() as target) if Location.bmark_e.glob in target:
                     pass
                 case RelationSpec(target=TaskArtifact() as target) if not target.is_concrete():
                     if post is not None:
@@ -330,7 +359,7 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
     priority                          : int                                                                              = 10
     ctor                              : CodeReference                                                                    = Field(default=None, validate_default=True)
     queue_behaviour                   : QueueMeta_e                                                                      = QueueMeta_e.default
-    flags                             : TaskMeta_f                                                                       = TaskMeta_f.default
+    meta                              : set[TaskMeta_e]                                                                  = set()
     _transform                        : None|Literal[False]|tuple[RelationSpec, RelationSpec]                            = None
     # task specific extras to use in state
     _default_ctor                     : ClassVar[str]                                                                    = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
@@ -356,26 +385,31 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
         """ converts a-key into a_key, and joins group+name """
         cleaned = {k.replace("-","_") : v  for k,v in data.items()}
         if "group" in cleaned and TaskName._separator not in cleaned["name"]:
-            cleaned['name'] = TaskName._separator.join([cleaned['group'], cleaned['name']])
+            cleaned['name'] = TaskName.from_parts(cleaned['group'], cleaned['name'])
             del cleaned['group']
         return cleaned
 
     @model_validator(mode="after")
     def _validate_metadata(self):
         if self.extra.on_fail(False).disabled():
-            self.flags |= TaskMeta_f.DISABLED
+            self.meta.add(TaskMeta_e.DISABLED)
         match self.ctor():
             case ImportError() as err:
                 logging.warning("Ctor Import Failed for: %s : %s", self.name, self.ctor)
-                self.flags |= TaskMeta_f.DISABLED
+                self.meta.add(TaskMeta_e.DISABLED)
                 self.ctor = None
             case None:
                 pass
             case x if issubclass(x, Task_i):
-                self.flags |= x._default_flags
+                self.meta.add(x._default_flags)
 
-        if TaskMeta_f.TRANSFORMER not in self.flags:
+        if TaskMeta_e.TRANSFORMER not in self.meta:
             self._transform = False
+
+        if TaskName.bmark_e.extend in self.name and TaskMeta_e.JOB_HEAD not in self.meta:
+            self.meta.add(TaskMeta_e.JOB)
+            if self.ctor ==  self._default_ctor:
+                self.ctor = CodeReference(doot.aliases.task["job"])
 
         return self
 
@@ -390,13 +424,17 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
             case _:
                 raise TypeError("A TaskSpec Name should be a str or TaskName", val)
 
-    @field_validator("flags", mode="before")
-    def _validate_flags(cls, val):
+    @field_validator("meta", mode="before")
+    def _validate_meta(cls, val):
         match val:
-            case TaskMeta_f():
-                return val
-            case str()|list():
-                return TaskMeta_f.build(val)
+            case TaskMeta_e():
+                return set([val])
+            case str():
+                vals = [val]
+            case set() | list():
+                vals = val
+
+        return set([x if isinstance(x, TaskMeta_e) else TaskMeta_e[x] for x in vals])
 
     @field_validator("ctor", mode="before")
     def _validate_ctor(cls, val):
@@ -516,7 +554,10 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
         specialized["setup"]        = self.setup        + data.setup
 
         # Internal is only for initial specs, to control listing
-        specialized['flags']        = (self.flags | data.flags) & (~TaskMeta_f.INTERNAL)
+        specialized['meta']        = set()
+        specialized['meta'].update(self.meta)
+        specialized['meta'].update(data.meta)
+        specialized['meta'].difference_update({TaskMeta_e.INTERNAL})
 
         logging.debug("Specialized Task: %s on top of: %s", data.name.readable, self.name)
         return TaskSpec.build(specialized)
