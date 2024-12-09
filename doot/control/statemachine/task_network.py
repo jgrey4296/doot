@@ -116,7 +116,6 @@ class TaskNetwork(TaskMatcher_m):
                 self._graph.add_node(name)
                 self.nodes[name][EXPANDED]     = True
                 self.nodes[name][REACTIVE_ADD] = False
-                self._root_node.meta                  |= TaskMeta_e.CONCRETE
             case TaskName() if TaskMeta_e.CONCRETE not in name:
                 raise doot.errors.DootTaskTrackingError("Nodes should only be instantiated spec names", name)
             case _ if name in self.nodes:

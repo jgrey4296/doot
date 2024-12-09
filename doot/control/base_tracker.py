@@ -61,7 +61,7 @@ track_l    = doot.subprinter("track")
 logging.disabled = False
 ##-- end logging
 
-ROOT                           : Final[str]                  = "root::_" # Root node of dependency graph
+ROOT                           : Final[str]                  = "root::_.$gen$" # Root node of dependency graph
 EXPANDED                       : Final[str]                  = "expanded"  # Node attribute name
 REACTIVE_ADD                   : Final[str]                  = "reactive-add"
 ARTIFACT_EDGES                 : Final[set[EdgeType_e]]      = EdgeType_e.artifact_edge_set

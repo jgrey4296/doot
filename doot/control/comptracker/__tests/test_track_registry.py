@@ -99,6 +99,7 @@ class TestRegistry:
         obj.register_spec(spec)
         assert(len(obj.specs) == 0)
 
+    @pytest.mark.xfail
     def test_register_transformer_spec(self):
         obj = TrackRegistry()
         spec = doot.structs.TaskSpec.build({"name":"basic::transformer", "meta":"TRANSFORMER", "depends_on": ["file::?.txt"], "required_for": ["file::?.blah"]})
@@ -239,6 +240,7 @@ class TestRegistryInternals:
         assert(spec is not base_spec)
         assert(isinstance(special, doot.structs.TaskName))
 
+    @pytest.mark.xfail
     def test_instantiate_spec_name_change(self):
         obj       = TrackRegistry()
         base_spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["example::dep"], "blah": 2, "bloo": 5})

@@ -95,7 +95,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
             spec = queue.pop(0)
             if spec.name in self.specs:
                 continue
-            if TaskMeta_e.DISABLED in spec.flags:
+            if TaskMeta_e.DISABLED in spec.meta:
                 logging.debug("Ignoring Registration of disabled task: %s", spec.name.readable)
                 continue
 
@@ -103,7 +103,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
             logging.debug("Registered Spec: %s", spec.name)
 
             # Register the head and cleanup specs:
-            if TaskMeta_e.JOB in spec.flags:
+            if TaskMeta_e.JOB in spec.meta:
                 queue += spec.gen_job_head()
             else:
                 queue.append(spec.gen_cleanup_task())
@@ -133,8 +133,6 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
         """
         logging.debug("Updating State: %s -> %s", task, status)
         match task, status:
-            # case TaskName(), _ if task == self._root_node:
-            #     return False
             case Task_i(), TaskStatus_e() if task.name in self.tasks:
                 self.tasks[task.name].status = status
             case TaskArtifact(), ArtifactStatus_e():
@@ -315,8 +313,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
             case None:
                 return None
             case TaskSpec() as instance:
-                assert(TaskMeta_e.CONCRETE | TaskMeta_e.TRANSFORMER in instance.flags)
-                assert(TaskMeta_e.CONCRETE | TaskMeta_e.TRANSFORMER in instance.name)
+                assert(instance.name.is_uniq and TaskMeta_e.TRANSFORMER in instance.name)
                 self.concrete[name].append(instance.name)
                 self.register_spec(instance)
                 return instance.name
