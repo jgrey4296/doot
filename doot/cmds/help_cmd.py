@@ -32,13 +32,12 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from jgdv.structs.strang import CodeReference
-
+from jgdv.cli.param_spec import ParamSpec
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 from doot.cmds.base_cmd import BaseCommand
-from doot.structs import ParamSpec, TaskSpec
 
 # ##-- end 1st party imports
 

@@ -28,10 +28,10 @@ from weakref import ref
 
 from collections import defaultdict
 from jgdv.structs.chainguard import ChainGuard
+from jgdv.cli.param_spec import ParamSpec
 import doot
 import doot.errors
 from doot.cmds.base_cmd import BaseCommand
-from doot.structs import ParamSpec
 
 ##-- logging
 logging = logmod.getLogger(__name__)

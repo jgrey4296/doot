@@ -31,10 +31,7 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-# ##-- 1st party imports
-from doot._structs.param_spec import ParamSpec
-
-# ##-- end 1st party imports
+from jgdv.cli.param_spec import ParamSpec
 
 ##-- logging
 logging = logmod.getLogger(__name__)

@@ -47,6 +47,8 @@ class TestActionSpec:
         obj({})
         fun_mock.assert_called_once()
 
-    @pytest.mark.xfail
     def test_set_function(self):
-        raise NotImplementedError()
+        obj = ActionSpec.build({"do":"basic"})
+        assert(obj.fun is None)
+        obj.set_function(lambda *args: 2)
+        assert(obj.fun is not None)

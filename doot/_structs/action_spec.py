@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
 # Imports:
@@ -137,6 +136,10 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
 
         return self.fun(self, task_state)
 
+    @property
+    def params(self):
+        return self.kwargs
+
     def set_function(self, fun:Action_p|Callable):
         """
           Sets the function of the action spec.
@@ -171,7 +174,3 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
 
     def verify_out(self, state:dict):
         self.verify(state, fields=self.outState)
-
-    @property
-    def params(self):
-        return self.kwargs

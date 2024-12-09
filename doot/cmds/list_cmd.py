@@ -32,7 +32,7 @@ from weakref import ref
 
 # ##-- 3rd party imports
 from jgdv.structs.chainguard import ChainGuard
-
+from jgdv.cli.param_spec import ParamSpec
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -40,7 +40,6 @@ import doot
 import doot.errors
 from doot.cmds.base_cmd import BaseCommand
 from doot.enums import TaskMeta_e
-from doot.structs import ParamSpec
 
 # ##-- end 1st party imports
 

@@ -36,6 +36,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import sh
 from jgdv.structs.chainguard import ChainGuard
+from jgdv.cli.param_spec import ParamSpec
 
 # ##-- end 3rd party imports
 
@@ -43,7 +44,7 @@ from jgdv.structs.chainguard import ChainGuard
 import doot
 import doot.errors
 from doot.cmds.base_cmd import BaseCommand
-from doot.structs import ParamSpec, DKey, TaskName, TaskArtifact
+from doot.structs import DKey, TaskName, TaskArtifact
 from doot.utils.plugin_selector import plugin_selector
 
 # ##-- end 1st party imports

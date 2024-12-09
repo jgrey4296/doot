@@ -29,13 +29,14 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from jgdv.structs.chainguard import ChainGuard
+from jgdv.cli.param_spec import ParamSpec
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 import doot.errors
 from doot._abstract import ArgParser_i
-from doot.structs import ParamSpec, TaskSpec, TaskName
+from doot.structs import TaskSpec, TaskName
 
 # ##-- end 1st party imports
 
