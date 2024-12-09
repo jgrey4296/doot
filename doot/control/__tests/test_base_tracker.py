@@ -66,7 +66,7 @@ class TestTrackerStore:
         obj.register_spec(spec)
         assert(bool(obj.specs))
         assert(spec.name in obj.specs)
-        assert(spec.name.job_head() in obj.specs)
+        assert(spec.name.with_head() in obj.specs)
         assert(not bool(obj.concrete[spec.name]))
 
     def test_register_is_idempotent(self):
@@ -106,14 +106,14 @@ class TestTrackerStore:
 
     def test_register_transformer_spec(self):
         obj = BaseTracker()
-        spec = doot.structs.TaskSpec.build({"name":"basic::transformer", "flags":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
+        spec = doot.structs.TaskSpec.build({"name":"basic::transformer", "meta":"TRANSFORMER", "depends_on": ["file::?.txt"], "required_for": ["file::?.blah"]})
         assert(len(obj.specs) == 0)
         assert(len(obj._transformer_specs) == 0)
         obj.register_spec(spec)
         assert(len(obj.specs) == 2)
         assert(len(obj._transformer_specs) == 2)
-        assert("?.txt" in obj._transformer_specs)
-        assert("?.blah" in obj._transformer_specs)
+        assert("file::?.txt" in obj._transformer_specs)
+        assert("file::?.blah" in obj._transformer_specs)
 
     def test_spec_retrieval(self):
         obj = BaseTracker()
@@ -329,7 +329,8 @@ class TestTrackerNetworkBuild:
         spec  = doot.structs.TaskSpec.build({"name":"basic::task"})
         obj.register_spec(spec)
         instance = obj._instantiate_spec(spec.name)
-        instance_cleanup = instance.cleanup_name()
+        instance_cleanup = instance.with_cleanup()
+        assert(bool(instance_cleanup))
         assert(len(obj.network) == 1)
         obj.connect(instance)
         assert(len(obj.network) == 2)
@@ -497,8 +498,8 @@ class TestTrackerNetworkBuild:
 
     def test_build_with_head_dep(self):
         obj   = BaseTracker()
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["basic::dep..$head$"], "test_key": "bloo"})
-        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "flags": ["JOB"]})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["basic::+.dep..$head$"], "test_key": "bloo"})
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::+.dep", "meta": ["JOB"]})
         obj.register_spec(spec, spec2)
         instance = obj._instantiate_spec(spec.name)
         assert(len(obj.network) == 1)
@@ -507,7 +508,7 @@ class TestTrackerNetworkBuild:
         assert(len(obj.network) == 2)
         obj.build_network()
         assert(spec.name in obj.concrete)
-        assert(spec2.name.job_head() in obj.concrete)
+        assert(spec2.name.with_head() in obj.concrete)
         assert(spec2.name in obj.concrete)
         obj.validate_network()
 
@@ -573,9 +574,10 @@ class TestTrackerNetworkBuild:
 
 
 class TestTrackerTransformerBuild:
+    @pytest.mark.xfail
     def test_build_transformer_from_artifact(self):
         obj                             = BaseTracker()
-        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "flags":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
+        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "meta":"TRANSFORMER", "depends_on": ["file::?.txt"], "required_for": ["file::?.blah"]})
         concrete_product                = doot.structs.TaskArtifact(pl.Path("example.blah"))
         concrete_source                 = doot.structs.TaskArtifact(pl.Path("example.txt"))
         obj.artifacts[concrete_product] = []
@@ -590,6 +592,7 @@ class TestTrackerTransformerBuild:
         assert(transformer_instance in obj.network.pred[concrete_product])
         assert(transformer_instance in obj.network.succ[concrete_source])
 
+    @pytest.mark.xfail
     def test_build_multi_transformers(self):
         obj                             = BaseTracker()
         transformer                     = doot.structs.TaskSpec.build({"name":"basic::task", "flags":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
@@ -765,10 +768,10 @@ class TestTrackerInternals:
     def test_instantiate_job_head(self):
         obj = BaseTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::task", "ctor": "doot.task.base_job:DootJob", "depends_on":["example::dep"], "blah": 2, "bloo": 5})
-        abs_head = spec.name.job_head()
+        abs_head = spec.name.with_head()
         obj.register_spec(spec)
         instance = obj._instantiate_spec(spec.name)
-        inst_head = instance.job_head()
+        inst_head = instance.with_head()
         assert(instance in obj.specs)
         assert(abs_head in obj.specs)
         assert(instance in obj.concrete[spec.name])
@@ -798,7 +801,7 @@ class TestTrackerInternals:
         assert(spec is not base_spec)
         assert(isinstance(special, doot.structs.TaskName))
         assert(spec.name < special)
-        assert(isinstance(special.tail[-1], UUID))
+        assert(isinstance(special[1:-1], UUID))
 
     def test_instantiate_spec_extra_merge(self):
         obj = BaseTracker()

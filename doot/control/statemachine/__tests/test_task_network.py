@@ -38,7 +38,7 @@ from doot.control.statemachine.task_registry import TaskRegistry
 from doot.control.statemachine.task_network import TaskNetwork
 from doot.enums import TaskStatus_e
 from doot.utils import mock_gen
-from doot.enums import TaskMeta_f
+from doot.enums import TaskMeta_e
 
 # ##-- end 1st party imports
 
@@ -415,7 +415,7 @@ class TestTrackerNetworkBuildJobs:
         obj = network
         spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["basic::job..$head$"], "test_key": "bloo"})
         spec2 = doot.structs.TaskSpec.build({"name":"basic::job", "flags": ["JOB"]})
-        assert(TaskMeta_f.JOB in spec2.name)
+        assert(TaskMeta_e.JOB in spec2.name)
         obj._registry.register_spec(spec, spec2)
         instance = obj._registry._instantiate_spec(spec.name)
         assert(len(obj) == 1)

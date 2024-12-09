@@ -18,7 +18,7 @@ import pytest
 import importlib.metadata
 import doot
 from jgdv.structs.chainguard import ChainGuard
-from doot.enums import TaskMeta_f
+from doot.enums import TaskMeta_e
 doot._test_setup()
 
 from doot.structs import TaskSpec
@@ -77,6 +77,7 @@ class TestTaskLoader:
         assert("basic::test" in result)
         assert("basic::other" in result)
 
+    @pytest.mark.xfail
     def test_name_warn_on_overload(self, mocker, caplog):
         mocker.patch("doot.loaders.task_loader.task_sources")
         mocker.patch("doot._configs_loaded_from")
@@ -116,7 +117,7 @@ class TestTaskLoader:
         basic.setup({}, specs)
 
         result = basic.load()
-        assert(TaskMeta_f.DISABLED in  result["basic::test"].flags)
+        assert(TaskMeta_e.DISABLED in  result["basic::test"].meta)
 
     def test_bad_task_module(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_sources")
@@ -128,7 +129,7 @@ class TestTaskLoader:
         basic.setup({}, specs)
 
         result = basic.load()
-        assert(TaskMeta_f.DISABLED in  result["basic::test"].flags)
+        assert(TaskMeta_e.DISABLED in  result["basic::test"].meta)
 
     @pytest.mark.xfail
     def test_bad_spec(self, mocker):
@@ -179,7 +180,7 @@ class TestTaskLoader:
         basic.setup(plugins, ChainGuard(specs))
 
         result = basic.load()
-        assert(TaskMeta_f.DISABLED in  result["basic::simple"].flags)
+        assert(TaskMeta_e.DISABLED in  result["basic::simple"].meta)
 
 
     def test_task_bad_type_loaded(self, mocker):

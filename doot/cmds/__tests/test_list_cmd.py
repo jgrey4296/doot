@@ -119,12 +119,8 @@ class TestListCmd:
         doot.args.cmd.args.all     = True
 
         obj = ListCmd()
-        mock_class1 = mocker.MagicMock(type)
-        mock_class1.__module__ = "builtins"
-        mock_class1.__name__   = "type"
-        mock_class2 = mocker.MagicMock(type)
-        mock_class2.__module__ = "builtins"
-        mock_class2.__name__   = "other.type"
+        mock_class1 = "doot.task:DootTask"
+        mock_class2 = "doot.task:DootJob_bad"
         plugin_mock = {"reporter": [mocker.stub("Reporter Stub")]}
         job_mock = {
             "simple" : TaskSpec.build({"group": "blah", "name": "simple", "ctor": mock_class1}),
@@ -154,7 +150,7 @@ class TestListCmd:
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
         assert("tasks for pattern: simple" in message_set)
-        assert( any(x.startswith("blah::simple :: doot.task.base_task:doottask") for x in message_set) )
+        assert( any(x.startswith("blah::simple :: cls::doot.task.base_task:doottask") for x in message_set) )
 
     def test_call_partial_target_not_empty(self, caplog, mocker):
         caplog.set_level(logmod.DEBUG, logger="_printer_")
@@ -173,5 +169,5 @@ class TestListCmd:
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
         assert("tasks for pattern: simp" in message_set)
-        assert( any(x.startswith("blah::simple     :: doot.task.base_task:doottask") for x in message_set) )
-        assert( any(x.startswith("bloo::diffsimple :: doot.task.base_task:doottask") for x in message_set) )
+        assert( any(x.startswith("blah::simple     :: cls::doot.task.base_task:doottask") for x in message_set) )
+        assert( any(x.startswith("bloo::diffsimple :: cls::doot.task.base_task:doottask") for x in message_set) )

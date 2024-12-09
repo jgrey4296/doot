@@ -39,7 +39,7 @@ from doot.control.comptracker.track_registry import TrackRegistry
 from doot.control.comptracker.track_network import TrackNetwork
 from doot.enums import TaskStatus_e
 from doot.utils import mock_gen
-from doot.enums import TaskMeta_f
+from doot.enums import TaskMeta_e
 
 # ##-- end 1st party imports
 
@@ -199,7 +199,7 @@ class TestTrackerNetworkBuild:
         obj.build_network()
         assert(len(obj) == 3)
         assert(instance in obj)
-        cleanup_instance = obj._registry.concrete[instance.cleanup_name()][0]
+        cleanup_instance = obj._registry.concrete[instance.with_cleanup()][0]
         assert(cleanup_instance in obj.succ[instance])
 
 
@@ -239,7 +239,7 @@ class TestTrackerNetworkBuild:
         spec  = doot.structs.TaskSpec.build({"name":"basic::task"})
         obj._registry.register_spec(spec)
         instance = obj._registry._instantiate_spec(spec.name)
-        instance_cleanup = instance.cleanup_name()
+        instance_cleanup = instance.with_cleanup()
         assert(len(obj) == 1)
         obj.connect(instance)
         assert(len(obj) == 2)
@@ -396,7 +396,7 @@ class TestTrackerNetworkBuildJobs:
         """ a job should build a ..$head$ as well,
         and the head should build a ..$cleanup$ """
         obj = network
-        spec = doot.structs.TaskSpec.build({"name":"basic::job", "flags": ["JOB"]})
+        spec = doot.structs.TaskSpec.build({"name":"basic::job", "meta": ["JOB"]})
         obj._registry.register_spec(spec)
         assert(len(obj) == 1) # Root node
         assert(len(obj._registry.specs) == 3)
@@ -408,15 +408,15 @@ class TestTrackerNetworkBuildJobs:
         assert(len(obj) == 4)
         assert(instance in obj)
         head_instance = obj._registry.concrete[instance.job_head()][0]
-        cleanup_instance = obj._registry.concrete[head_instance.cleanup_name()][0]
+        cleanup_instance = obj._registry.concrete[head_instance.with_cleanup()][0]
         assert(head_instance in  obj.succ[instance])
         assert(cleanup_instance in obj.succ[head_instance])
 
     def test_build_with_head_dep(self, network):
         obj = network
         spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["basic::job..$head$"], "test_key": "bloo"})
-        spec2 = doot.structs.TaskSpec.build({"name":"basic::job", "flags": ["JOB"]})
-        assert(TaskMeta_f.JOB in spec2.name)
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::job", "meta": ["JOB"]})
+        assert(TaskMeta_e.JOB in spec2.name)
         obj._registry.register_spec(spec, spec2)
         instance = obj._registry._instantiate_spec(spec.name)
         assert(len(obj) == 1)
@@ -512,7 +512,7 @@ class TestTrackerNetworkBuildTransformers:
     def test_build_transformer_from_product_artifact(self, network):
         """ connects a loose source to a transformer, to a product"""
         obj = network
-        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "flags":"TRANSFORMER", "depends_on": ["file::?.txt"], "required_for": ["file::?.blah"]})
+        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "meta":"TRANSFORMER", "depends_on": ["file::?.txt"], "required_for": ["file::?.blah"]})
         concrete_product                = doot.structs.TaskArtifact(pl.Path("example.blah"))
         concrete_source                 = doot.structs.TaskArtifact(pl.Path("example.txt"))
         obj._registry.register_spec(transformer)
@@ -529,7 +529,7 @@ class TestTrackerNetworkBuildTransformers:
     def test_build_transformer_from_source_artifact(self, network):
         """ connects a loose source to a transformer, to a product"""
         obj = network
-        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "flags":"TRANSFORMER", "depends_on": ["file::?.txt"], "required_for": ["file::?.blah"]})
+        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "meta":"TRANSFORMER", "depends_on": ["file::?.txt"], "required_for": ["file::?.blah"]})
         concrete_product                = doot.structs.TaskArtifact(pl.Path("example.blah"))
         concrete_source                 = doot.structs.TaskArtifact(pl.Path("example.txt"))
         obj._registry.register_spec(transformer)
@@ -544,7 +544,7 @@ class TestTrackerNetworkBuildTransformers:
 
     def test_build_multi_transformers(self, network):
         obj = network
-        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "flags":"TRANSFORMER", "depends_on": ["file::?.txt"], "required_for": ["file::?.blah"]})
+        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "meta":"TRANSFORMER", "depends_on": ["file::?.txt"], "required_for": ["file::?.blah"]})
         concrete_product                = doot.structs.TaskArtifact(pl.Path("example.blah"))
         concrete_source                 = doot.structs.TaskArtifact(pl.Path("example.txt"))
         concrete_product2                = doot.structs.TaskArtifact(pl.Path("aweg.blah"))

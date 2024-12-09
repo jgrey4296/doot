@@ -40,22 +40,22 @@ class TestTaskName:
         simple = TaskName("basic::+.tail")
         assert(simple.group == [ "basic" ])
         assert(simple.body() == ["+", "tail"])
-        assert(TaskName.mark_e.extend in simple)
+        assert(TaskName.bmark_e.extend in simple)
 
     def test_build_internal_job(self):
         simple = TaskName("basic::+._.tail")
         assert(simple.group == [ "basic"] )
         assert(simple.body() == ["+", "_", "tail"])
-        assert(TaskName.mark_e.extend in simple)
-        assert(TaskName.mark_e.hide in simple)
+        assert(TaskName.bmark_e.extend in simple)
+        assert(TaskName.bmark_e.hide in simple)
 
     def test_internal(self):
         simple = TaskName("agroup::_.internal.task")
-        assert(TaskName.mark_e.hide in simple)
+        assert(TaskName.bmark_e.hide in simple)
 
     def test_no_internal(self):
         simple = TaskName("agroup::_internal.task")
-        assert(TaskName.mark_e.hide != simple[1:0])
+        assert(TaskName.bmark_e.hide != simple[1:0])
 
     def test_name_strip_leading_tasks_from_group(self):
         simple = TaskName("tasks.basic::tail")
@@ -106,7 +106,7 @@ class TestTaskNameComparison:
         instance  = name.to_uniq()
         with_head = instance.with_head()
         assert(isinstance(with_head, TaskName))
-        assert(with_head[1:-1] == TaskName.mark_e.head)
+        assert(with_head[1:-1] == TaskName.bmark_e.head)
         assert(name < instance < with_head)
 
     def test_job_head_to_instance(self):

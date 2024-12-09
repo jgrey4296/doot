@@ -17,7 +17,7 @@ logging = logmod.root
 
 import doot
 doot._test_setup()
-from doot.enums import TaskMeta_f
+from doot.enums import TaskMeta_e
 from doot.structs import TaskSpec, TaskStub
 from doot.task.base_job import DootJob
 import doot._abstract
@@ -25,9 +25,9 @@ import doot._abstract
 class TestBaseJob:
 
     def test_initial(self):
-        job = DootJob(TaskSpec.build({"name": "basic::example", "flags": ["JOB"]}))
+        job = DootJob(TaskSpec.build({"name": "basic::example", "meta": ["JOB"]}))
         assert(isinstance(job, doot._abstract.Task_i))
-        assert(TaskMeta_f.JOB in job.spec.flags)
+        assert(TaskMeta_e.JOB in job.spec.meta)
 
     def test_paramspecs(self):
         job = DootJob(TaskSpec.build({"name": "basic::example"}))
@@ -41,7 +41,7 @@ class TestBaseJob:
         job2 = DootJob(TaskSpec.build({"name" :"other.group::blah"}))
         ##-- end setup
         assert(str(job1.name) == "basic::example")
-        assert(str(job2.name) == "\"other.group\"::blah")
+        assert(str(job2.name) == "other.group::blah")
         assert(job1 != job2)
         assert(job1 == job1)
 

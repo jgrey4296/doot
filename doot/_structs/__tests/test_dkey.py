@@ -134,7 +134,7 @@ class TestDKeyExpansion:
         wrap_locs.update({"raise": "file::a/b/blah.py"})
         assert("raise" in wrap_locs)
         state = {"middle": "Before. {raise!p}. After."}
-        target        = "Before. {}. After.".format(wrap_locs['blah'])
+        target        = "Before. {}. After.".format(wrap_locs['{raise}'])
         key           = dkey.DKey("middle", implicit=True)
         result        = key.expand(state)
         assert(key    == "middle")

@@ -144,9 +144,9 @@ class TestCompTracker:
         obj.set_status(dep_inst, TaskStatus_e.HALTED)
         cleanup = obj.next_for()
         assert(isinstance(cleanup, Task_i))
-        assert("$cleanup$" in cleanup.name)
+        assert(cleanup.name.is_cleanup())
         for x in obj._registry.tasks.values():
-            if "$cleanup$" in x.name:
+            if x.name.is_cleanup():
                 continue
             assert(x.status in [TaskStatus_e.HALTED, TaskStatus_e.DEAD])
 
@@ -162,16 +162,16 @@ class TestCompTracker:
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.FAILED)
         cleanup = obj.next_for()
-        assert("$cleanup$" in cleanup.name)
+        assert(cleanup.name.is_cleanup())
         for x in obj._registry.tasks.values():
-            if "$cleanup$" in x.name:
+            if x.name.is_cleanup():
                 continue
             assert(x.status in [TaskStatus_e.DEAD])
 
     @pytest.mark.xfail
     def test_next_job_head(self):
         obj       = ComponentTracker()
-        job_spec  = doot.structs.TaskSpec.build({"name":"basic::job", "flags": ["JOB"], "cleanup":["basic::task"]})
+        job_spec  = doot.structs.TaskSpec.build({"name":"basic::job", "meta": ["JOB"], "cleanup":["basic::task"]})
         task_spec = doot.structs.TaskSpec.build({"name":"basic::task", "test_key": "bloo"})
         obj.register_spec(job_spec)
         obj.register_spec(task_spec)
@@ -199,7 +199,7 @@ class TestCompTracker:
 
     def test_next_job_head_with_subtasks(self):
         obj       = ComponentTracker()
-        job_spec  = doot.structs.TaskSpec.build({"name":"basic::job", "flags": ["JOB"]})
+        job_spec  = doot.structs.TaskSpec.build({"name":"basic::job", "meta": ["JOB"]})
         sub_spec1 = doot.structs.TaskSpec.build({"name":"basic::task.1", "test_key": "bloo", "required_for": ["basic::job.$head$"]})
         sub_spec2 = doot.structs.TaskSpec.build({"name":"basic::task.2", "test_key": "blah", "required_for": ["basic::job.$head$"]})
         obj.register_spec(job_spec)
