@@ -407,7 +407,7 @@ class TestTrackerNetworkBuildJobs:
         """ a job should build a ..$head$ as well,
         and the head should build a ..$cleanup$ """
         obj = network
-        spec = doot.structs.TaskSpec.build({"name":"basic::job", "meta": ["JOB"]})
+        spec = doot.structs.TaskSpec.build({"name":"basic::+.job", "meta": ["JOB"]})
         obj._registry.register_spec(spec)
         assert(len(obj) == 1) # Root node
         assert(len(obj._registry.specs) == 3)
@@ -426,8 +426,8 @@ class TestTrackerNetworkBuildJobs:
     @pytest.mark.xfail
     def test_build_with_head_dep(self, network):
         obj = network
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["basic::job..$head$"], "test_key": "bloo"})
-        spec2 = doot.structs.TaskSpec.build({"name":"basic::job", "meta": ["JOB"]})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["basic::+.job..$head$"], "test_key": "bloo"})
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::+.job", "meta": ["JOB"]})
         assert(TaskMeta_e.JOB in spec2.name)
         obj._registry.register_spec(spec, spec2)
         instance = obj._registry._instantiate_spec(spec.name)

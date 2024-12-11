@@ -106,7 +106,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
             if TaskMeta_e.JOB in spec.meta:
                 queue += spec.gen_job_head()
             else:
-                queue.append(spec.gen_cleanup_task())
+                queue += spec.gen_cleanup_task()
 
             self._register_spec_artifacts(spec)
             self._register_transformer(spec)

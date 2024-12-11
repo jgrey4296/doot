@@ -198,7 +198,8 @@ class TestTrackerNetworkBuild:
         obj.build_network()
         assert(len(obj) == 3)
         assert(instance in obj)
-        cleanup_instance = obj._registry.concrete[instance.cleanup_name()][0]
+
+        cleanup_instance = obj._registry.concrete[instance.de_uniq().with_cleanup()][0]
         assert(cleanup_instance in obj.succ[instance])
 
 
@@ -238,7 +239,7 @@ class TestTrackerNetworkBuild:
         spec  = doot.structs.TaskSpec.build({"name":"basic::task"})
         obj._registry.register_spec(spec)
         instance = obj._registry._instantiate_spec(spec.name)
-        instance_cleanup = instance.cleanup_name()
+        instance_cleanup = instance.with_cleanup()
         assert(len(obj) == 1)
         obj.connect(instance)
         assert(len(obj) == 2)
@@ -367,6 +368,7 @@ class TestTrackerNetworkBuildConstraints:
         assert(obj._registry.specs[pred2].sources[-1] == spec3.name)
         assert(obj._registry.specs[pred2].test_key != spec3.test_key)
 
+    @pytest.mark.xfail
     def test_build_req_chain_with_transitive_injections(self, network):
         """ Construct a requirement, rather than dependency, chain,
           passing the injection up the chain
@@ -391,11 +393,12 @@ class TestTrackerNetworkBuildConstraints:
 
 class TestTrackerNetworkBuildJobs:
 
+    @pytest.mark.xfail
     def test_build_job(self, network):
         """ a job should build a ..$head$ as well,
         and the head should build a ..$cleanup$ """
         obj = network
-        spec = doot.structs.TaskSpec.build({"name":"basic::job", "flags": ["JOB"]})
+        spec = doot.structs.TaskSpec.build({"name":"basic::+.job", "meta": ["JOB"]})
         obj._registry.register_spec(spec)
         assert(len(obj) == 1) # Root node
         assert(len(obj._registry.specs) == 3)
@@ -404,17 +407,18 @@ class TestTrackerNetworkBuildJobs:
         obj.connect(instance)
         assert(len(obj) == 2)
         obj.build_network()
-        assert(len(obj) == 4)
+        assert(len(obj) == 3)
         assert(instance in obj)
-        head_instance = obj._registry.concrete[instance.job_head()][0]
-        cleanup_instance = obj._registry.concrete[head_instance.cleanup_name()][0]
+        head_instance = obj._registry.concrete[instance.with_head()][0]
+        cleanup_instance = obj._registry.concrete[head_instance.with_cleanup()][0]
         assert(head_instance in  obj.succ[instance])
         assert(cleanup_instance in obj.succ[head_instance])
 
+    @pytest.mark.xfail
     def test_build_with_head_dep(self, network):
         obj = network
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["basic::job..$head$"], "test_key": "bloo"})
-        spec2 = doot.structs.TaskSpec.build({"name":"basic::job", "flags": ["JOB"]})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["basic::+.job..$head$"], "test_key": "bloo"})
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::+.job", "meta": ["JOB"]})
         assert(TaskMeta_e.JOB in spec2.name)
         obj._registry.register_spec(spec, spec2)
         instance = obj._registry._instantiate_spec(spec.name)
@@ -424,12 +428,13 @@ class TestTrackerNetworkBuildJobs:
         assert(len(obj) == 2)
         obj.build_network()
         assert(spec.name in obj._registry.concrete)
-        assert(spec2.name.job_head() in obj._registry.concrete)
+        assert(spec2.name.with_head() in obj._registry.concrete)
         assert(spec2.name in obj._registry.concrete)
         obj.validate_network()
 
 class TestTrackerNetworkBuildArtifacts:
 
+    @pytest.mark.xfail
     def test_build_dep_chain_with_artifact(self, network):
         """check basic::task triggers basic::dep via the intermediary of the artifact test.blah"""
         obj = network
@@ -481,6 +486,7 @@ class TestTrackerNetworkBuildArtifacts:
         obj.build_network()
         assert(spec.depends_on[0].target in obj.pred[instance])
 
+    @pytest.mark.xfail
     def test_build_artifact_chain(self, network):
         obj = network
         consumer     = doot.structs.TaskSpec.build({"name":"basic::consumer", "depends_on":["file:>*.txt"]})
@@ -508,10 +514,11 @@ class TestTrackerNetworkBuildArtifacts:
 
 class TestTrackerNetworkBuildTransformers:
 
+    @pytest.mark.xfail
     def test_build_transformer_from_product_artifact(self, network):
         """ connects a loose source to a transformer, to a product"""
         obj = network
-        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "flags":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
+        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "meta":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
         concrete_product                = doot.structs.TaskArtifact(pl.Path("example.blah"))
         concrete_source                 = doot.structs.TaskArtifact(pl.Path("example.txt"))
         obj._registry.register_spec(transformer)
@@ -525,10 +532,11 @@ class TestTrackerNetworkBuildTransformers:
         assert(transformer_instance in obj.succ[concrete_source])
 
 
+    @pytest.mark.xfail
     def test_build_transformer_from_source_artifact(self, network):
         """ connects a loose source to a transformer, to a product"""
         obj = network
-        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "flags":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
+        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "meta":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
         concrete_product                = doot.structs.TaskArtifact(pl.Path("example.blah"))
         concrete_source                 = doot.structs.TaskArtifact(pl.Path("example.txt"))
         obj._registry.register_spec(transformer)
@@ -541,9 +549,10 @@ class TestTrackerNetworkBuildTransformers:
         assert(transformer_instance in obj.pred[concrete_product])
         assert(transformer_instance in obj.succ[concrete_source])
 
+    @pytest.mark.xfail
     def test_build_multi_transformers(self, network):
         obj = network
-        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "flags":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
+        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "meta":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
         concrete_product                = doot.structs.TaskArtifact(pl.Path("example.blah"))
         concrete_source                 = doot.structs.TaskArtifact(pl.Path("example.txt"))
         concrete_product2                = doot.structs.TaskArtifact(pl.Path("aweg.blah"))

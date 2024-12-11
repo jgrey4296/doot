@@ -74,7 +74,7 @@ class _TaskNameOps_m:
         return cls(f"{group}{cls._separator}{body}")
 
     def with_cleanup(self):
-        if self[1:-1] == CLEANUP_MARKER:
+        if self.is_cleanup():
             return self
         return self.push(CLEANUP_MARKER)
 

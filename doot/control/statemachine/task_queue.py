@@ -114,7 +114,7 @@ class TaskQueue:
         match self._queue.pop():
             case TaskName() as focus if self._registry.tasks[focus].priority < self._network._min_priority:
                 track_l.warning("Task halted due to reaching minimum priority while tracking: %s", focus)
-                self.set_status(focus, TaskStatus_e.HALTED)
+                self._registry.set_status(focus, TaskStatus_e.HALTED)
             case TaskName() as focus:
                 self._registry.tasks[focus].priority -= 1
                 track_l.debug("Task %s: Priority Decrement to: %s", focus, self._registry.tasks[focus].priority)
@@ -137,8 +137,6 @@ class TaskQueue:
         prepped_name : None|TaskName|TaskArtifact = None
         # Prep the task: register and instantiate
         match name:
-            case str():
-                return self.queue_entry(TaskName(name), from_user=from_user)
             case TaskSpec() as spec:
                 self._registry.register_spec(spec)
                 return self.queue_entry(spec.name, from_user=from_user, status=status)
@@ -167,6 +165,10 @@ class TaskQueue:
                 instance : TaskName = self._registry._instantiate_spec(name, add_cli=from_user)
                 self._network.connect(instance, None if from_user else False)
                 prepped_name = instance
+            case TaskName():
+                raise doot.errors.DootTaskTrackingError("Unrecognized queue argument provided, it may not be registered", name)
+            case str():
+                return self.queue_entry(TaskName(name), from_user=from_user)
             case _:
                 raise doot.errors.DootTaskTrackingError("Unrecognized queue argument provided, it may not be registered", name)
 

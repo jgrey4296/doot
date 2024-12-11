@@ -63,7 +63,7 @@ class TestRegistry:
         obj.register_spec(spec)
         assert(bool(obj.specs))
         assert(spec.name in obj.specs)
-        assert(spec.name.job_head() in obj.specs)
+        assert(spec.name.with_head() in obj.specs)
         assert(not bool(obj.concrete[spec.name]))
 
     def test_register_is_idempotent(self):
@@ -79,7 +79,7 @@ class TestRegistry:
 
     def test_register_spec_with_artifacts(self):
         obj  = TaskRegistry()
-        spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["file:>test.txt"], "required_for": ["file:>other.txt"]})
+        spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["file::test.txt"], "required_for": ["file::other.txt"]})
         assert(not bool(obj.artifacts))
         obj.register_spec(spec)
         assert(bool(obj.artifacts))
@@ -102,14 +102,14 @@ class TestRegistry:
 
     def test_register_transformer_spec(self):
         obj = TaskRegistry()
-        spec = doot.structs.TaskSpec.build({"name":"basic::transformer", "flags":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
+        spec = doot.structs.TaskSpec.build({"name":"basic::transformer", "meta":"TRANSFORMER", "depends_on": ["file::?.txt"], "required_for": ["file::?.blah"]})
         assert(len(obj.specs) == 0)
         assert(len(obj._transformer_specs) == 0)
         obj.register_spec(spec)
         assert(len(obj.specs) == 2)
         assert(len(obj._transformer_specs) == 2)
-        assert("?.txt" in obj._transformer_specs)
-        assert("?.blah" in obj._transformer_specs)
+        assert("file::?.txt" in obj._transformer_specs)
+        assert("file::?.blah" in obj._transformer_specs)
 
     def test_spec_retrieval(self):
         obj = TaskRegistry()
@@ -218,10 +218,10 @@ class TestRegistryInternals:
     def test_instantiate_job_head(self):
         obj = TaskRegistry()
         spec = doot.structs.TaskSpec.build({"name":"basic::task", "ctor": "doot.task.base_job:DootJob", "depends_on":["example::dep"], "blah": 2, "bloo": 5})
-        abs_head = spec.name.job_head()
+        abs_head = spec.name.with_head()
         obj.register_spec(spec)
         instance = obj._instantiate_spec(spec.name)
-        inst_head = instance.job_head()
+        inst_head = instance.with_head()
         assert(instance in obj.specs)
         assert(abs_head in obj.specs)
         assert(instance in obj.concrete[spec.name])
@@ -251,7 +251,7 @@ class TestRegistryInternals:
         assert(spec is not base_spec)
         assert(isinstance(special, doot.structs.TaskName))
         assert(spec.name < special)
-        assert(isinstance(special.tail[-1], UUID))
+        assert(isinstance(special[1:-1], UUID))
 
     def test_instantiate_spec_extra_merge(self):
         obj = TaskRegistry()

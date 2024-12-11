@@ -116,7 +116,7 @@ class TaskNetwork(TaskMatcher_m):
                 self._graph.add_node(name)
                 self.nodes[name][EXPANDED]     = True
                 self.nodes[name][REACTIVE_ADD] = False
-            case TaskName() if TaskMeta_e.CONCRETE not in name:
+            case TaskName() if not name.is_uniq:
                 raise doot.errors.DootTaskTrackingError("Nodes should only be instantiated spec names", name)
             case _ if name in self.nodes:
                 return
@@ -249,7 +249,7 @@ class TaskNetwork(TaskMatcher_m):
           TODO these could be shifted into the task/job class
         """
 
-        if TaskMeta_e.JOB in spec.name:
+        if TaskName.bmark_e.extend in spec.name:
             logging.debug("Expanding Job Head for: %s", spec.name)
             heads         = [jhead for x in spec.get_source_names() if (jhead:=x.with_head()) in self._registry.specs]
             head_name     = heads[-1]
@@ -257,11 +257,13 @@ class TaskNetwork(TaskMatcher_m):
             self.connect(spec.name, head_instance, job_head=True)
             return [head_instance]
 
-        if spec.name.is_uniq and (root:=spec.name.pop()) == root.canon():
+        if spec.name.is_cleanup():
+            # nothing to do
             return []
 
         # Instantiate and connect the cleanup task
-        cleanup = self._registry._instantiate_spec(spec.name.canon())
+        cleanup_name = spec.name.pop(top=True).with_cleanup()
+        cleanup = self._registry._instantiate_spec(cleanup_name)
         self.connect(spec.name, cleanup, cleanup=True)
         return [cleanup]
 
@@ -380,22 +382,22 @@ class TaskNetwork(TaskMatcher_m):
 
         for node, data in self.nodes.items():
             match node:
+                case TaskName() if node == self._root_node:
+                    pass
                 case TaskName() | TaskArtifact() if not data[EXPANDED]:
+                    logging.warning("Network isn't fully expanded: %s", node)
                     if strict:
                         raise doot.errors.DootTaskTrackingError("Network isn't fully expanded", node)
-                    else:
-                        logging.warning("Network isn't fully expanded: %s", node)
-                case TaskName() if TaskMeta_e.CONCRETE not in node:
+                case TaskName() if not node.is_uniq:
+                    logging.warning("Abstract ConcreteId in _graph: %s", node)
                     if strict:
                         raise doot.errors.DootTaskTrackingError("Abstract ConcreteId in _graph", node)
-                    else:
-                        logging.warning("Abstract ConcreteId in _graph: %s", node)
                 case TaskArtifact() if LocationMeta_e.glob in node:
                     bad_nodes = [x for x in self.pred[node] if x in self._registry.specs]
+                    if bool(bad_nodes):
+                        logging.warning("Glob Artifact ConcreteId is a successor to a task: %s (%s)", node, bad_nodes)
                     if strict and bool(bad_nodes):
                         raise doot.errors.DootTaskTrackingError("Glob Artifact ConcreteId is a successor to a task", node, bad_nodes)
-                    elif bool(bad_nodes):
-                        logging.warning("Glob Artifact ConcreteId is a successor to a task: %s (%s)", node, bad_nodes)
 
     def incomplete_dependencies(self, focus:Concrete[TaskName]|TaskArtifact) -> list[Concrete[TaskName]|TaskArtifact]:
         """ Get all predecessors of a node that don't evaluate as complete """
