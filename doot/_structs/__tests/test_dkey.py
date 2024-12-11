@@ -46,7 +46,6 @@ class TestDKeyTypeParams:
     def test_path_mark(self):
         assert(dkey.PathSingleDKey._mark is dkey.DKey.mark.PATH)
 
-
 class TestDKeyBasicConstruction:
 
     def test_implicit_single_path_key(self):
@@ -170,10 +169,6 @@ class TestDKeyMultikeyExpansion:
         assert(mk._anon == "--blah={}/{}")
         result = mk.expand({"test": "aweg"})
         assert(result == target)
-
-    @pytest.mark.skip
-    def test_expansion_with_redirects(self):
-        pass
 
     @pytest.mark.parametrize("name", ["a", "b"])
     def test_string_expansion_with_path_subkey(self, name):
@@ -343,7 +338,6 @@ class TestDKeyPathKeys:
         assert(isinstance(obj, dkey.DKey))
         assert(isinstance(obj, dkey.PathSingleDKey))
         assert(obj.expand() == pl.Path.cwd())
-
 
     def test_cwd_in_different_location(self):
         with doot.locs(pl.Path("~")) as locs:

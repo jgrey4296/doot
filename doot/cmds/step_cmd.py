@@ -87,7 +87,7 @@ class StepCmd(BaseCommand):
             else:
                 tracker.queue_task(target)
 
-        for target in doot.args.tasks.keys():
+        for target in doot.args.sub.keys():
             if target not in tracker:
                 printer.warn(- "%s specified as run target, but it doesn't exist")
             else:

@@ -72,10 +72,10 @@ class HelpCmd(BaseCommand):
         task_targets = []
         cmd_targets  = []
         match dict(doot.args.cmd.args):
-            case {"target": ""|None} if not bool(doot.args.tasks):
+            case {"target": ""|None} if not bool(doot.args.sub):
                 pass
             case {"target": ""|None}:
-                task_targets +=  [tasks[x] for x in doot.args.tasks.keys()]
+                task_targets +=  [tasks[x] for x in doot.args.sub.keys()]
                 cmd_targets  +=  [x for x in plugins.command if x.name == doot.args.cmd.args.target]
             case {"target": target}:
                 # Print help of just the specified target(s)
@@ -152,11 +152,11 @@ class HelpCmd(BaseCommand):
             for action in spec.actions:
                 cmd_l.info("%s %-20s : Args=%-20s Kwargs=%s", ITEM_INDENT, action.do, action.args, dict(action.kwargs) )
 
-        cli_has_params      = task_name in doot.args.tasks
-        cli_has_non_default = bool(doot.args.tasks[task_name][NON_DEFAULT_KEY])
+        cli_has_params      = task_name in doot.args.sub
+        cli_has_non_default = bool(doot.args.sub[task_name][NON_DEFAULT_KEY])
 
         if cli_has_params and cli_has_non_default and ctor is not None:
-            self._print_current_param_assignments(ctor.param_specs, doot.args.tasks[task_name])
+            self._print_current_param_assignments(ctor.param_specs, doot.args.sub[task_name])
 
     def _print_current_param_assignments(self, specs:list[ParamSpec], args:ChainGuard):
         cmd_l.info("")

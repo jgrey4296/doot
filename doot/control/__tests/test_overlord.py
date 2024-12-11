@@ -37,6 +37,7 @@ class TestOverlord:
         mocker.patch("sys.argv", ["doot"])
         mocker.patch("doot.loaders.task_loader.DootTaskLoader")
         overlord = DootOverlord()
+        overlord._load_plugins()
         assert(bool(overlord.plugins))
         assert(all(x in overlord.plugins for x in doot.aliases.keys()))
 
@@ -44,6 +45,8 @@ class TestOverlord:
         mocker.patch("sys.argv", ["doot"])
         mocker.patch("doot.loaders.task_loader.DootTaskLoader")
         overlord = DootOverlord()
+        overlord._load_plugins()
+        overlord._load_commands()
         assert(bool(overlord.cmds))
         assert(len(overlord.cmds) >= len(doot.aliases.command))
 
@@ -54,6 +57,9 @@ class TestOverlord:
         overlord = DootOverlord(
             extra_config={"tasks" : {"basic" : [{"name": "simple", "ctor": BASIC_JOB_NAME}]}}
         )
+        overlord._load_plugins()
+        overlord._load_commands()
+        overlord._load_tasks(overlord._extra_config)
         assert(bool(overlord.tasks))
 
     @pytest.mark.xfail
@@ -65,7 +71,7 @@ class TestOverlord:
             "tasks" : {"basic": [
                 {"name": "simple", "ctor": BASIC_JOB_NAME},
                 {"name": "another", "ctor": BASIC_JOB_NAME}
-        ]}})
+            ]}})
         assert(bool(overlord.tasks))
         assert(len(overlord.tasks) == 2), len(overlord.tasks)
 

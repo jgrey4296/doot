@@ -66,7 +66,7 @@ class TestListCmd:
         assert("help" in names)
 
     def test_call_bad_cli_args(self, monkeypatch, mocker):
-        doot.args = ChainGuard({"tasks": [], "cmd": {"args": {"pattern": "", "all": False, "by_source": False}}})
+        doot.args = ChainGuard({"sub": {}, "cmd": {"args": {"pattern": "", "all": False, "by_source": False}}})
         obj = ListCmd()
 
         with pytest.raises(doot.errors.DootError):

@@ -325,7 +325,9 @@ class _SpecUtils_m:
                 spec_extra[cli.name] = cli.default
 
         source = str(override or self.name.pop(top=True))
-        for key,val in doot.args.on_fail({}).tasks[source]().items():
+
+        tasks = doot.args.on_fail({})
+        for key,val in doot.args.on_fail({}).sub[source]().items():
             spec_extra[key] = val
 
         cli_spec = self.specialize_from(spec_extra)

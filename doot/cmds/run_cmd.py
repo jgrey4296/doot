@@ -93,7 +93,7 @@ class RunCmd(BaseCommand):
                 tracker.queue_entry(target, from_user=True)
 
         tracker.queue_entry(CheckLocsTask(), from_user=True)
-        for target in doot.args.on_fail({}).tasks().keys():
+        for target in doot.args.on_fail({}).sub().keys():
             try:
                 tracker.queue_entry(target, from_user=True)
             except doot.errors.DootTaskTrackingError as err:

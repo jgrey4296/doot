@@ -33,7 +33,7 @@ step  = "doot.control.step_runner:DootStepRunner"
 
 [[doot.aliases.parser]]
 # Map {alias} -> CodeRef String
-basic =   "doot.parsers.flexible:DootFlexibleParser"
+basic    =   "jgdv.cli.arg_parser:CLIParser"
 
 [[doot.aliases.action]] # basic actions
 # Map {alias} -> CodeRef String

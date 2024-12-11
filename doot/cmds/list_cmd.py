@@ -78,17 +78,17 @@ class ListCmd(BaseCommand):
     def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
         """List task generators"""
         logging.debug("Starting to List Jobs/Tasks")
-        if (doot.args.on_fail("").cmd.args.pattern() == ""     # type: ignore
-            and not bool(doot.args.tasks)        # type: ignore
-            and not doot.args.cmd.args.by_source # type: ignore
-            and not doot.args.cmd.args.all):     # type: ignore
+        if (doot.args.on_fail("").cmd.args.pattern() == ""
+            and not bool(doot.args.sub)
+            and not doot.args.cmd.args.by_source
+            and not doot.args.cmd.args.all):
             raise doot.errors.DootCommandError("ListCmd Needs a Matcher, or all")
 
         if not bool(tasks):
             help_l.info("No Tasks Defined", extra={"colour": "red"})
             return
 
-        match dict(doot.args.cmd.args): # type: ignore
+        match dict(doot.args.cmd.args):
             case {"locations": True}:
                 self._print_locations()
             case {"by-source": True}:
