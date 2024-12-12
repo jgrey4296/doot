@@ -188,7 +188,7 @@ class DootTaskLoader(TaskLoader_p):
         else:
             return raw_specs
 
-    def _build_task_specs(self, group_specs:list[dict], command_names) -> list[TaskSpec]:
+    def _build_task_specs(self, group_specs:list[dict], command_names:set[str]) -> dict[str, TaskSpec]:
         """
         convert raw dicts into TaskSpec objects,
           checking nothing tries to shadow a command name or other task name
@@ -225,27 +225,27 @@ class DootTaskLoader(TaskLoader_p):
                     case _: # Else complain
                         raise doot.errors.DootTaskLoadError("Task Spec missing, at least, needs at least a name and ctor: %s: %s", spec, spec['sources'][0] )
             except LocationError as err:
-                logging.warning("Task Spec '%s' Load Failure: Missing Location: '%s'. Source File: %s", task_name, str(err), spec['sources'][0])
+                logging.warning("Task Spec '%s' Load Failure: Missing Location: '%s'. Source File: %s", spec['name'], str(err), spec['sources'][0])
             except ModuleNotFoundError as err:
                 failures.append(err)
                 logging.debug(err)
-                logging.error("Task Spec '%s' Load Failure: Bad Module Name: '%s'. Source File: %s", task_name, task_alias, spec['sources'][0])
+                logging.error("Task Spec '%s' Load Failure: Bad Module Name: '%s'. Source File: %s", spec['name'], task_alias, spec['sources'][0])
             except AttributeError as err:
                 failures.append(err)
                 logging.debug(err)
-                logging.error("Task Spec '%s' Load Failure: Bad Class Name: '%s'. Source File: %s", task_name, task_alias, spec['sources'][0], err.args)
+                logging.error("Task Spec '%s' Load Failure: Bad Class Name: '%s'. Source File: %s", spec['name'], task_alias, spec['sources'][0], err.args)
             except ValueError as err:
                 failures.append(err)
                 logging.debug(err)
-                logging.error("Task Spec '%s' Load Failure: '%s'. Source File: %s. Message:\n %s", task_name, task_alias, spec['sources'][0], str(err))
+                logging.error("Task Spec '%s' Load Failure: '%s'. Source File: %s. Message:\n %s", spec['name'], task_alias, spec['sources'][0], str(err))
             except TypeError as err:
                 failures.append(err)
                 logging.debug(err)
-                logging.error("Task Spec '%s' Load Failure: Bad Type constructor: '%s'. Source File: %s", task_name, spec['ctor'], spec['sources'][0])
+                logging.error("Task Spec '%s' Load Failure: Bad Type constructor: '%s'. Source File: %s", spec['name'], spec['ctor'], spec['sources'][0])
             except ImportError as err:
                 failures.append(err)
                 logging.debug(err)
-                logging.error("Task Spec '%s' Load Failure: ctor import check failed. Source File: %s", task_name, spec['sources'][0])
+                logging.error("Task Spec '%s' Load Failure: ctor import check failed. Source File: %s", spec['name'], spec['sources'][0])
             else:
                 assert(task_spec is not None)
                 task_descriptions[str(task_spec.name)] = task_spec

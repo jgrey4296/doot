@@ -19,6 +19,7 @@ import doot
 doot._test_setup()
 from doot._structs import stub
 from doot._structs.task_name import TaskName
+from doot.loaders.task_loader import DootTaskLoader
 
 class TestTaskStub:
 
@@ -59,14 +60,18 @@ class TestTaskStub:
         as_str = obj.to_toml()
         loaded = ChainGuard.read(as_str)
 
-    @pytest.mark.xfail
     def test_toml_reparse_to_spec(self):
         """ check a stub has the default components of a TaskSpec  """
+        loader = DootTaskLoader()
         obj    = stub.TaskStub.build()
         as_str = obj.to_toml()
         loaded = ChainGuard.read(as_str)
-        # FIXME: currently splits the name so its not basic::stub, but 'stub', so fails building
-        spec   = stub.TaskSpec.build(loaded.tasks.basic[0])
+        raw = loader._load_raw_specs(loaded.tasks, None)
+        match loader._build_task_specs(raw, []):
+            case {"basic::stub":stub.TaskSpec()}:
+                assert(True)
+            case x:
+                assert(False), x
 
 class TestTaskStubPart:
 

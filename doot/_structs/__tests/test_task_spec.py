@@ -14,6 +14,7 @@ import warnings
 import pytest
 
 from jgdv.structs.strang import CodeReference
+from jgdv.structs.chainguard import ChainGuard
 import doot
 import doot.errors
 
@@ -244,13 +245,30 @@ class TestTaskSpecInstantiation:
         instance.sources.append("blah")
         assert("blah" not in base_task.sources)
 
-    @pytest.mark.skip
-    def test_cli_arg_application(self):
-        """
-          TODO move the logic for cli arg application from tracker
-          into task spec
-        """
-        pass
+    def test_cli_arg_application(self, mocker):
+        data = {"sub":{"agroup::base": {"blah":"bloo"}}}
+        mocker.patch("doot.args", ChainGuard(data))
+        base     = structs.TaskSpec.build({"name":"agroup::base",
+                                           "cli" : [{"name":"blah", "default":"aweg", "type":"str"}],
+                                           })
+        instance = base.specialize_from({})
+        assert(not hasattr(instance, "blah"))
+        with_cli = instance.apply_cli_args()
+        assert(hasattr(with_cli, "blah"))
+        assert(with_cli.blah == "bloo")
+
+
+    def test_cli_arg_fallback_to_default(self, mocker):
+        data = {"sub":{"agroup::base": {}}}
+        mocker.patch("doot.args", ChainGuard(data))
+        base     = structs.TaskSpec.build({"name":"agroup::base",
+                                           "cli" : [{"name":"blah", "default":"aweg", "type":"str"}],
+                                           })
+        instance = base.specialize_from({})
+        assert(not hasattr(instance, "blah"))
+        with_cli = instance.apply_cli_args()
+        assert(hasattr(with_cli, "blah"))
+        assert(with_cli.blah == "aweg")
 
 
 class TestTaskGeneration:

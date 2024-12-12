@@ -77,7 +77,6 @@ class TestTaskLoader:
         assert("basic::test" in result)
         assert("basic::other" in result)
 
-    @pytest.mark.xfail
     def test_name_warn_on_overload(self, mocker, caplog):
         mocker.patch("doot.loaders.task_loader.task_sources")
         mocker.patch("doot._configs_loaded_from")
@@ -91,7 +90,7 @@ class TestTaskLoader:
 
         basic.load()
 
-        assert("Overloading Task: basic::test : doot.task.base_job:DootJob" in caplog.messages)
+        assert(any("Overloading Task: basic::test" in x for x in caplog.messages))
 
     def test_cmd_name_conflict_doesnt_error(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_sources")
@@ -131,25 +130,23 @@ class TestTaskLoader:
         result = basic.load()
         assert(TaskMeta_e.DISABLED in  result["basic::test"].meta)
 
-    @pytest.mark.xfail
     def test_bad_spec(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_sources")
         mocker.patch("doot._configs_loaded_from")
 
         specs = {"tasks": { "basic" : []}}
-        specs['tasks']['basic'].append({"name"  : "test"})
+        specs['tasks']['basic'].append({"name"  : "test", "ctor": "doesntexist"})
         basic = task_loader.DootTaskLoader()
         basic.setup({}, specs)
 
         with pytest.raises(doot.errors.DootTaskLoadError):
             result = basic.load()
 
-    @pytest.mark.xfail
     def test_task_type(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_sources")
         mocker.patch("doot._configs_loaded_from")
         specs = {"tasks": {"basic": []}}
-        specs['tasks']['basic'].append({"name": "simple", "ctor": "basic"})
+        specs['tasks']['basic'].append({"name": "simple"})
 
         mock_ctor                   = mock_task_ctor()
         mock_ep                     = mock_entry_point(name="basic", value=mock_ctor)

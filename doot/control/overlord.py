@@ -29,7 +29,8 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 import sh
 from jgdv.structs.chainguard import ChainGuard
-from jgdv.cli.arg_parser import ArgParser_p, ParseMachine
+from jgdv.cli import ArgParser_p, ParseMachine
+from jgdv.cli.param_spec import LiteralParam
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -89,19 +90,20 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         print("lib @", os.path.dirname(os.path.abspath(__file__)))
 
     def __init__(self, *, loaders:dict[str, Loader_i]=None, config_filenames:tuple=DEFAULT_FILENAMES, extra_config:dict|ChainGuard=None, args:list=None, log_config:None|DootLogConfig=None):
-        self.args                                = args or sys.argv[:]
-        self.BIN_NAME                            = self.args[0].split('/')[-1]
-        self.loaders                             = loaders or dict()
-        self.log_config                          = log_config
+        self.args                                 = args or sys.argv[:]
+        self.BIN_NAME                             = self.args[0].split('/')[-1]
+        self.prog_name                            = "doot"
+        self.loaders                              = loaders or dict()
+        self.log_config                           = log_config
 
         self.plugins      : None|ChainGuard       = None
         self.cmds         : None|ChainGuard       = None
         self.tasks        : None|ChainGuard       = None
-        self.current_cmd  : Command_i            = None
+        self.current_cmd  : Command_i             = None
 
-        self._errored     : None|DootError       = None
-        self._current_cmd : None|str             = None
-        self._extra_config = extra_config
+        self._errored     : None|DootError        = None
+        self._current_cmd : None|str              = None
+        self._extra_config                        = extra_config
 
 
     def setup(self):
@@ -141,10 +143,11 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
     @property
     def param_specs(self) -> list[ParamSpec]:
         return [
-           self.build_param(name="version" , prefix="--"),
-           self.build_param(name="help"    , prefix="--"),
-           self.build_param(name="verbose" , prefix="--"),
-           self.build_param(name="debug",    prefix="--")
+            LiteralParam(name=self.prog_name),
+            self.build_param(name="version" , prefix="--"),
+            self.build_param(name="help"    , prefix="--"),
+            self.build_param(name="verbose" , prefix="--"),
+            self.build_param(name="debug",    prefix="--")
         ]
 
     @property
@@ -220,20 +223,23 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         match ctor:
             case None:
                 self.parser = ParseMachine()
-                doot.args = self.parser(
+                cli_args = self.parser(
                     args or self.args,
                     head_specs=self.param_specs,
                     cmds=self.cmds,
                     subcmds=self.tasks
                     )
+                doot.args = ChainGuard(cli_args)
+
             case type() if isinstance((p:=ctor()), ArgParser_p):
                 self.parser = ParseMachine(parser=p)
-                doot.args = self.parser(
+                cli_args = self.parser(
                     args or self.args,
                     head_specs=self.param_specs,
                     cmds=self.cmds,
                     subcmds=self.tasks
                     )
+                doot.args = ChainGuard(cli_args)
             case _:
                 raise TypeError("Improper argparser specified: ", self.arg_parser)
 
