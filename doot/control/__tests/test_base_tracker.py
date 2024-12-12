@@ -88,7 +88,6 @@ class TestTrackerStore:
         assert(bool(obj.artifacts))
         assert(len(obj.artifacts) == 2)
 
-
     def test_register_spec_with_subtasks(self):
         obj  = BaseTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["basic::sub.1", "basic::sub.2"], "required_for": ["basic::super.1"]})
@@ -103,17 +102,6 @@ class TestTrackerStore:
         assert(len(obj.specs) == 0)
         obj.register_spec(spec)
         assert(len(obj.specs) == 0)
-
-    def test_register_transformer_spec(self):
-        obj = BaseTracker()
-        spec = doot.structs.TaskSpec.build({"name":"basic::transformer", "meta":"TRANSFORMER", "depends_on": ["file::?.txt"], "required_for": ["file::?.blah"]})
-        assert(len(obj.specs) == 0)
-        assert(len(obj._transformer_specs) == 0)
-        obj.register_spec(spec)
-        assert(len(obj.specs) == 2)
-        assert(len(obj._transformer_specs) == 2)
-        assert("file::?.txt" in obj._transformer_specs)
-        assert("file::?.blah" in obj._transformer_specs)
 
     def test_spec_retrieval(self):
         obj = BaseTracker()
@@ -323,7 +311,6 @@ class TestTrackerNetworkBuild:
         assert(obj.concrete[spec2.name][0] in obj.network.succ[instance])
         assert(instance in obj.network.pred[obj.concrete[spec2.name][0]])
 
-
     def test_build_cleanup_task_empty(self):
         obj   = BaseTracker()
         spec  = doot.structs.TaskSpec.build({"name":"basic::task"})
@@ -336,7 +323,6 @@ class TestTrackerNetworkBuild:
         assert(len(obj.network) == 2)
         obj.build_network()
         assert(len(obj.network) == 3)
-
 
     def test_build_dep_chain(self):
         """Check basic::task triggers basic::dep, which triggers basic::chained"""
@@ -571,57 +557,6 @@ class TestTrackerNetworkBuild:
         # Check the concrete connects to the abstract:
         assert(req_artifact in obj.network.pred[dep_artifact])
         assert(req_artifact in obj.network.succ[prod])
-
-
-class TestTrackerTransformerBuild:
-    @pytest.mark.xfail
-    def test_build_transformer_from_artifact(self):
-        obj                             = BaseTracker()
-        transformer                     = doot.structs.TaskSpec.build({"name":"basic::transformer", "meta":"TRANSFORMER", "depends_on": ["file::?.txt"], "required_for": ["file::?.blah"]})
-        concrete_product                = doot.structs.TaskArtifact(pl.Path("example.blah"))
-        concrete_source                 = doot.structs.TaskArtifact(pl.Path("example.txt"))
-        obj.artifacts[concrete_product] = []
-        obj.artifacts[concrete_source]  = []
-        obj.register_spec(transformer)
-        assert(transformer.name in obj.specs)
-        obj.connect(concrete_product, None)
-        obj.connect(concrete_source, False)
-        obj.build_network()
-        assert(bool(obj.concrete[transformer.name]))
-        transformer_instance = obj.concrete[transformer.name][0]
-        assert(transformer_instance in obj.network.pred[concrete_product])
-        assert(transformer_instance in obj.network.succ[concrete_source])
-
-    @pytest.mark.xfail
-    def test_build_multi_transformers(self):
-        obj                             = BaseTracker()
-        transformer                     = doot.structs.TaskSpec.build({"name":"basic::task", "flags":"TRANSFORMER", "depends_on": ["file:>?.txt"], "required_for": ["file:>?.blah"]})
-        concrete_product                = doot.structs.TaskArtifact(pl.Path("example.blah"))
-        concrete_source                 = doot.structs.TaskArtifact(pl.Path("example.txt"))
-        concrete_product2                = doot.structs.TaskArtifact(pl.Path("aweg.blah"))
-        concrete_source2                 = doot.structs.TaskArtifact(pl.Path("aweg.txt"))
-        obj.artifacts[concrete_product] = []
-        obj.artifacts[concrete_source]  = []
-        obj.artifacts[concrete_product2] = []
-        obj.artifacts[concrete_source2]  = []
-        obj.register_spec(transformer)
-        assert(transformer.name in obj.specs)
-        obj.connect(concrete_product, None)
-        obj.connect(concrete_source, False)
-        obj.connect(concrete_product2, None)
-        obj.connect(concrete_source2, False)
-        obj.build_network()
-        assert(len(obj.concrete[transformer.name]) == 2)
-        instances = obj.concrete[transformer.name]
-        if concrete_source in obj.network.pred[instances[0]]:
-            assert(concrete_product in obj.network.succ[instances[0]])
-            assert(concrete_source2 in obj.network.pred[instances[1]])
-            assert(concrete_product2 in obj.network.succ[instances[1]])
-        else:
-            assert(concrete_source in obj.network.pred[instances[1]])
-            assert(concrete_product in obj.network.succ[instances[1]])
-            assert(concrete_source2 in obj.network.pred[instances[0]])
-            assert(concrete_product2 in obj.network.succ[instances[0]])
 
 class TestTrackerQueue:
 

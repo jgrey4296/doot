@@ -89,8 +89,6 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
         # Mapping (Abstract Spec) -> Concrete Specs. Every id, abstract and concerete, has a spec in specs.
         # TODO: Check first entry is always uncustomised
         self.concrete             : dict[AbstractId, list[ConcreteId]]            = defaultdict(lambda: [])
-        # Mapping Artifact -> list[Spec] of solo transformer specs. Every abstractId has a spec in specs.
-        self._transformer_specs   : dict[TaskArtifact, list[AbstractId]]          = defaultdict(lambda: [])
         # All (Concrete Specs) Task objects. Invariant: every key in tasks has a matching key in specs.
         self.tasks                : dict[ConcreteId, Task_i]                      = {}
         # Artifact -> list[TaskName] of related tasks
@@ -252,17 +250,6 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
                 logging.warning("Reusing latest Instance: %s", instance)
                 return instance
 
-    def _instantiate_transformer(self, name:AbstractId, artifact:TaskArtifact) -> None|ConcreteId:
-        spec = self.specs[name]
-        match spec.instantiate_transformer(artifact):
-            case None:
-                return None
-            case TaskSpec() as instance:
-                assert(instance.name.is_uniq and TaskMeta_e.TRANSFORMER in instance.meta)
-                self.concrete[name].append(instance.name)
-                self.register_spec(instance)
-                return instance.name
-
     def _make_task(self, name:ConcreteId, *, task_obj:Task_i=None) -> ConcreteId:
         """ Build a Concrete Spec's Task object
           if a task_obj is provided, store that instead
@@ -298,14 +285,6 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
             raise doot.errors.DootTaskTrackingError("tried to register artifacts of a non-registered spec", name)
 
         spec = self.specs[name]
-
-        match spec.transformer_of():
-            case None:
-                pass
-            case (pre, post):
-                logging.debug("Registering Transformer: %s : %s -> %s", spec.name.readable, pre, post)
-                self._transformer_specs[pre.target].append(spec.name)
-                self._transformer_specs[post.target].append(spec.name)
 
         if spec.name.is_uniq:
             return
@@ -417,51 +396,6 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
 
         self._add_node(self._root_node)
 
-    def _match_artifact_to_transformers(self, artifact:TaskArtifact) -> set[TaskName]:
-        """
-          Match and instantiate artifact transformers when applicable
-          filters out transformers which are already connected to the artifact.
-        """
-        logging.debug("-- Instantiating Artifact Relevant Transformers")
-        assert(artifact in self.network.nodes)
-        to_expand              = set()
-        available_transformers = set()
-        local_nodes            = set()
-        local_nodes.update(self.network.pred[artifact].keys())
-        local_nodes.update(self.network.succ[artifact].keys())
-
-        # ignore unrelated artifacts
-
-        def abstraction_test(x):
-            return artifact in x and x in self._transformer_specs
-
-        for abstract in [x for x in self._abstract_artifacts if abstraction_test(x)]:
-            # And get transformers of related artifacts
-            available_transformers.update(self._transformer_specs[abstract])
-
-        filtered = (available_transformers - local_nodes)
-        logging.debug("Transformers: %s available, %s local nodes, %s when filtered", len(available_transformers), len(local_nodes), len(filtered))
-        for transformer in filtered:
-            if bool(local_nodes.intersection(self.concrete[transformer])):
-                continue
-            match self._instantiate_transformer(transformer, artifact):
-                case None:
-                    pass
-                case TaskName() as instance:
-                    logging.debug("-- Matching Transformer found: %s", transformer)
-                    spec = self.specs[instance]
-                    # A transformer *always* has at least 1 dependency and requirement,
-                    # which is *always* the updated artifact relations
-                    if spec.depends_on[-1].target == artifact:
-                        self.connect(artifact, instance)
-                    elif spec.required_for[-1].target == artifact:
-                        self.connect(instance, artifact)
-                    else:
-                        raise doot.errors.DootTaskTrackingError("instantiated a transformer that doesn't match the artifact which triggered it", artifact, spec)
-
-                    to_expand.add(instance)
-
-        return to_expand
 
     def _add_node(self, name:ConcreteId) -> None:
         """idempotent"""
@@ -576,7 +510,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
         return []
 
     def _expand_artifact(self, artifact:TaskArtifact) -> set[ConcreteId]:
-        """ expand artifacts, instantiating related tasks/transformers,
+        """ expand artifacts, instantiating related tasks,
           and connecting the task to its abstract/concrete related artifacts
           """
         assert(artifact in self.artifacts)
@@ -591,8 +525,6 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
             # Don't connect it to the network, it'll be expanded later
             self.connect(instance, False)
             to_expand.add(instance)
-
-        to_expand.update(self._match_artifact_to_transformers(artifact))
 
         match artifact.is_concrete():
             case True:
