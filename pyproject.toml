@@ -5,7 +5,7 @@ name            = "doot"
 version         = "0.13.0"
 description     = "An opinionated, TOML based task runner"
 readme          = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license         = {file = "LICENSE"}
 keywords        = ["toml","taskrunner"]
 authors         = [
