@@ -142,32 +142,7 @@ class TrackerPlanGen_m:
           Afterwards, restores the original state of the queue, and artifacts,
           then re-queues original tasks
           """
-        plan                                         = []
-        original_tasks    : set[Node]                = set(self.active_set)
-        original_statuses : dict[Node, TaskStatus_e] = {x: self.get_status(x) for x in itz.chain(self.specs.keys(), self.artifacts.keys())}
-
-        while bool(self):
-            match self.next_for():
-                case None:
-                    continue
-                case Task_i() as spec:
-                    logging.info("Plan Next: %s", str(spec.name))
-                    plan.append((0, spec.name, str(spec.name)))
-                    self.set_status(spec, TaskStatus_e.SUCCESS)
-                case TaskArtifact() as art:
-                    plan.append((1, art, str(art)))
-                    self.set_status(art, ArtifactStatus.EXISTS)
-                case x:
-                    raise doot.errors.DootTaskTrackingError("Unrecognised reponse while building plan", x)
-
-        self.clear_queue()
-        self.tasks = {}
-        for x in self.artifacts.keys():
-            self.set_status(x, TaskStatus_e.ARTIFACT)
-        for x in original_tasks:
-            self.queue_entry(x)
-
-        return plan
+        raise NotImplementedError()
 
     def generate_plan(self, *, policy:None|ExecutionPolicy_e=None) -> list[PlanEntry]:
         """ Generate an ordered list of tasks that would be executed.
