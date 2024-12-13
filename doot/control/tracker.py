@@ -52,9 +52,10 @@ task_l     = doot.subprinter("task")
 artifact_l = doot.subprinter("artifact")
 ##-- end logging
 
-Node      : TypeAlias      = TaskName|TaskArtifact
-Depth     : TypeAlias      = int
-PlanEntry : TypeAlias      = tuple[Depth, Node, str]
+type Node      = TaskName|TaskArtifact
+type Depth     = int
+type PlanEntry = tuple[Depth, Node, str]
+
 MAX_LOOP  : Final[int]     = 100
 
 class TrackerPersistence_m:

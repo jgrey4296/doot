@@ -62,12 +62,11 @@ DECLARE_PRIORITY                : Final[int]                  = 10
 MIN_PRIORITY                    : Final[int]                  = -10
 INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                  = 10
 
-T                                                              = TypeVar("T")
-Abstract                                                       = NewType("Abstract", T)
-Concrete                                                       = NewType("Concrete", T)
+type Abstract[T] = T
+type Concrete[T] = T
 
-ActionElem                      : TypeAlias                   = ActionSpec|RelationSpec
-ActionGroup                     : TypeAlias                   = list[ActionElem]
+type ActionElem  = ActionSpec|RelationSpec
+type ActionGroup = list[ActionElem]
 
 class TrackNetwork(TaskMatcher_m):
     """ The _graph of concrete tasks and their dependencies """

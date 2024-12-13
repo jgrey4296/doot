@@ -54,12 +54,10 @@ ROOT                           : Final[str]                  = "root::_.$gen$" #
 EXPANDED                       : Final[str]                  = "expanded"  # Node attribute name
 REACTIVE_ADD                   : Final[str]                  = "reactive-add"
 
-T                                                              = TypeVar("T")
-Abstract                                                       = NewType("Abstract", T)
-Concrete                                                       = NewType("Concrete", T)
-
-ActionElem                     : TypeAlias                   = ActionSpec|RelationSpec
-ActionGroup                    : TypeAlias                   = list[ActionElem]
+type Abstract[T] = T
+type Concrete[T] = T
+type ActionElem  = ActionSpec|RelationSpec
+type ActionGroup = list[ActionElem]
 
 class TaskQueue:
     """ The queue of active tasks. """

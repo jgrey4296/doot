@@ -30,6 +30,7 @@ from weakref import ref
 
 # ##-- end stdlib imports
 
+from jgdv import *
 from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
 
 # ##-- 1st party imports
@@ -43,14 +44,14 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # ## Types
-AbstractId                     : TypeAlias                   = "TaskName|TaskArtifact"
-ConcreteId                     : TypeAlias                   = "TaskName|TaskArtifact"
-AnyId                          : TypeAlis                    = "TaskName|TaskArtifact"
-AbstractSpec                   : TypeAlias                   = "TaskSpec"
-ConcreteSpec                   : TypeAlias                   = "TaskSpec"
-AnySpec                        : TypeAlias                   = "TaskSpec"
-Depth                          : TypeAlias                   = int
-PlanEntry                      : TypeAlias                   = tuple[Depth, ConcreteId, str]
+type Ident       = Any
+type Actual      = Any
+type TaskSpec    = Any
+type TaskStatus_e = enum.Enum
+type Abstract[T] = T
+type Concrete[T] = T
+type Depth       = int
+type PlanEntry   = tuple[Depth, Concrete[Ident], str]
 
 class EdgeType_e(EnumBuilder_m, enum.Enum):
     """ Enum describing the possible edges of the task tracker's task network """
@@ -104,23 +105,23 @@ class TaskTracker_i:
     """
 
     @abstractmethod
-    def register_spec(self, *specs:AnySpec)-> None:
+    def register_spec(self, *specs:TaskSpec)-> None:
         pass
 
     @abstractmethod
-    def queue_entry(self, name:str|AnyId|ConcreteSpec|Task_i, *, from_user:bool=False, status:None|TaskStatus_e=None) -> None|Node:
+    def queue_entry(self, name:str|Ident|Concrete[TaskSpec]|Task_i, *, from_user:bool=False, status:Maybe[TaskStatus_e]=None) -> Maybe[Concrete[Ident]]:
         pass
 
     @abstractmethod
-    def get_status(self, task:ConcreteId) -> TaskStatus_e:
+    def get_status(self, task:Concrete[Ident]) -> TaskStatus_e:
         pass
 
     @abstractmethod
-    def set_status(self, task:ConcreteId|Task_i, state:TaskStatus_e) -> bool:
+    def set_status(self, task:Concrete[Ident]|Task_i, state:TaskStatus_e) -> bool:
         pass
 
     @abstractmethod
-    def next_for(self, target:None|str|ConcreteId=None) -> None|Task_i|"TaskArtifact":
+    def next_for(self, target:Maybe[str|Concrete[Ident]]=None) -> Maybe[Actual]:
         pass
 
     @abstractmethod
@@ -128,7 +129,7 @@ class TaskTracker_i:
         pass
 
     @abstractmethod
-    def generate_plan(self, *, policy:None|ExecutionPolicy_e=None) -> list[PlanEntry]:
+    def generate_plan(self, *, policy:Maybe[ExecutionPolicy_e]=None) -> list[PlanEntry]:
         pass
 
 class TaskRunner_i:
