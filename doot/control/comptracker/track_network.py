@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 # Imports:
 from __future__ import annotations
@@ -135,52 +134,6 @@ class TrackNetwork(TaskMatcher_m):
                 self.nodes[name][REACTIVE_ADD] = False
                 self.is_valid = False
 
-    def _match_artifact_to_transformers(self, artifact:TaskArtifact) -> set[Concrete[TaskName]]:
-        """
-          Match and instantiate artifact transformers when applicable
-          filters out transformers which are already connected to the artifact.
-        """
-        logging.debug("-- Instantiating Artifact Relevant Transformers")
-        assert(artifact in self.nodes)
-        to_expand              = set()
-        available_transformers = set()
-        local_nodes            = set()
-        local_nodes.update(self.pred[artifact].keys())
-        local_nodes.update(self.succ[artifact].keys())
-
-        # ignore unrelated artifacts
-
-        def abstraction_test(x:TaskArtifact) -> bool:
-            return artifact in x and x in self._registry._transformer_specs
-
-        for abstract in [x for x in self._registry._abstract_artifacts if abstraction_test(x)]:
-            # And get transformers of related _registry.artifacts
-            available_transformers.update(self._registry._transformer_specs[abstract])
-
-        filtered = (available_transformers - local_nodes)
-        logging.debug("Transformers: %s available, %s local nodes, %s when filtered", len(available_transformers), len(local_nodes), len(filtered))
-        for transformer in filtered:
-            if bool(local_nodes.intersection(self._registry.concrete[transformer])):
-                continue
-            match self._registry._instantiate_transformer(transformer, artifact):
-                case None:
-                    pass
-                case TaskName() as instance:
-                    logging.debug("-- Matching Transformer found: %s", transformer)
-                    spec = self._registry.specs[instance]
-                    # A transformer *always* has at least 1 dependency and requirement,
-                    # which is *always* the updated artifact relations
-                    if spec.depends_on[-1].target == artifact:
-                        self.connect(artifact, instance)
-                    elif spec.required_for[-1].target == artifact:
-                        self.connect(instance, artifact)
-                    else:
-                        raise doot.errors.DootTaskTrackingError("instantiated a transformer that doesn't match the artifact which triggered it", artifact, spec)
-
-                    to_expand.add(instance)
-
-        return to_expand
-
     def _expand_task_node(self, name:Concrete[TaskName]) -> set[Concrete[TaskName]|TaskArtifact]:
         """ expand a task node, instantiating and connecting to its dependencies and dependents,
         *without* expanding those new nodes.
@@ -266,7 +219,7 @@ class TrackNetwork(TaskMatcher_m):
         return [cleanup]
 
     def _expand_artifact(self, artifact:TaskArtifact) -> set[Concrete[TaskName]|TaskArtifact]:
-        """ expand _registry.artifacts, instantiating related tasks/transformers,
+        """ expand _registry.artifacts, instantiating related tasks,
           and connecting the task to its abstract/concrete related _registry.artifacts
           """
         assert(artifact in self._registry.artifacts)
@@ -281,8 +234,6 @@ class TrackNetwork(TaskMatcher_m):
             # Don't connect it to the _graph, it'll be expanded later
             self.connect(instance, False)
             to_expand.add(instance)
-
-        to_expand.update(self._match_artifact_to_transformers(artifact))
 
         match artifact.is_concrete():
             case True:

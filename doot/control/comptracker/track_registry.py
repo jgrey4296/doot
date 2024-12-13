@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
 # Imports:
@@ -75,7 +74,6 @@ class TrackRegistry(Injector_m, TaskMatcher_m):
     def __init__(self):
         self.specs                : dict[TaskName, TaskSpec]  = {}
         self.concrete             : dict[Abstract[TaskName], list[Concrete[TaskName]]]                 = defaultdict(lambda: [])
-        self._transformer_specs   : dict[TaskArtifact, list[Abstract[TaskName]]]                       = defaultdict(lambda: [])
         # Invariant for tasks: every key in tasks has a matching key in specs.
         self.tasks                : dict[Concrete[TaskName], Task_i]                                   = {}
         self.artifacts            : dict[TaskArtifact, set[Abstract[TaskName]]]                        = defaultdict(set)
@@ -110,7 +108,6 @@ class TrackRegistry(Injector_m, TaskMatcher_m):
                 queue += spec.gen_cleanup_task()
 
             self._register_spec_artifacts(spec)
-            self._register_transformer(spec)
             self._register_blocking_relations(spec)
 
     def get_status(self, task:Concrete[TaskName|TaskArtifact]) -> TaskStatus_e|ArtifactStatus_e:
@@ -149,17 +146,6 @@ class TrackRegistry(Injector_m, TaskMatcher_m):
                 raise doot.errors.DootTaskTrackingError("Bad task update status args", task, status)
 
         return True
-
-    def _register_transformer(self, spec:TaskSpec):
-        """ register a transformers pre and post targets """
-        match spec.transformer_of():
-            case None:
-                pass
-            case (pre, post):
-                logging.debug("Registering Transformer: %s -> (%s) -> %s", pre, spec.name.readable, post)
-                self._transformer_specs[pre.target].append(spec.name)
-                self._transformer_specs[post.target].append(spec.name)
-
 
     def _register_artifact(self, art:TaskArtifact, *tasks:TaskName):
         logging.debug("Registering Artifact: %s, %s", art, tasks)
@@ -309,18 +295,6 @@ class TrackRegistry(Injector_m, TaskMatcher_m):
                 instance : TaskName = x
                 logging.warning("Reusing latest Instance: %s", instance)
                 return instance
-
-    def _instantiate_transformer(self, name:Abstract[TaskNAme], artifact:TaskArtifact) -> None|Concrete[TaskName]:
-        spec = self.specs[name]
-        match spec.instantiate_transformer(artifact):
-            case None:
-                return None
-            case TaskSpec() as instance:
-                assert(TaskMeta_e.TRANSFORMER in instance.meta)
-                assert(instance.name.is_uniq())
-                self.concrete[name].append(instance.name)
-                self.register_spec(instance)
-                return instance.name
 
     def _make_task(self, name:Concrete[TaskName], *, task_obj:Task_i=None) -> ConcreteId:
         """ Build a Concrete Spec's Task object
