@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 
-See EOF for license/metadata/notes as applicable
+
 """
 
 # Imports:
@@ -32,11 +32,11 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-import more_itertools as mitz
 from pydantic import (BaseModel, Field, InstanceOf, field_validator,
                       model_validator)
-from tomlguard import TomlGuard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.strang import CodeReference
+from jgdv.structs.strang.location import Location
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -46,7 +46,7 @@ from doot._abstract.protocols import (Buildable_p, ProtocolModelMeta,
                                       StubStruct_p)
 from doot._structs.task_name import TaskName
 from doot._structs.task_spec import TaskSpec
-from doot.enums import LocationMeta_f, QueueMeta_e, Report_f, TaskMeta_f
+from doot.enums import QueueMeta_e, Report_f, TaskMeta_e
 
 # ##-- end 1st party imports
 
@@ -54,9 +54,9 @@ from doot.enums import LocationMeta_f, QueueMeta_e, Report_f, TaskMeta_f
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-TaskFlagNames : Final[str]               = [x.name for x in TaskMeta_f]
+TaskFlagNames : Final[str]               = [x.name for x in TaskMeta_e]
 
-DEFAULT_CTOR  : Final[CodeReference] = CodeReference.build(doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS])
+DEFAULT_CTOR  : Final[CodeReference] = CodeReference("cls::" + doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS])
 
 class TaskStub(BaseModel, StubStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
     """ Stub Task Spec for description in toml
@@ -86,7 +86,7 @@ class TaskStub(BaseModel, StubStruct_p, Buildable_p, metaclass=ProtocolModelMeta
 
     @model_validator(mode="after")
     def initial_values(self):
-        self['name'].default     = TaskName.build(doot.constants.names.DEFAULT_STUB_TASK_NAME)
+        self['name'].default     = TaskName(doot.constants.names.DEFAULT_STUB_TASK_NAME)
         self['version'].default  = "0.1"
         # Auto populate the stub with what fields are defined in a TaskSpec:
         for dcfield, data in TaskSpec.model_fields.items():
@@ -121,7 +121,7 @@ class TaskStub(BaseModel, StubStruct_p, Buildable_p, metaclass=ProtocolModelMeta
                 pass
             case dict():
                 part = TaskStubPart(**other)
-            case TomlGuard():
+            case ChainGuard():
                 pass
             case TaskStubPart() if other.key not in self.parts:
                 self.parts[other.key] = other
@@ -176,7 +176,7 @@ class TaskStubPart(BaseModel, arbitrary_types_allowed=True):
         """
         # shortcut on being the name:
         if isinstance(self.default, TaskName) and self.key == "name":
-            return f"[[tasks.{self.default.group}]]\n{'name':<20} = \"{self.default.task}\""
+            return f"[[tasks.{self.default[0:]}]]\n{'name':<20} = \"{self.default[1:]}\""
 
         key_str     = self._key_str()
         type_str    = self._type_str()
@@ -213,8 +213,8 @@ class TaskStubPart(BaseModel, arbitrary_types_allowed=True):
         match self.default:
             case "" if isinstance(self.type_, enum.EnumMeta):
                 val_str = f'[ "{self.type_.default.name}" ]'
-            case enum.Flag(): # TaskMeta_f() | LocationMeta_f():
-                parts = [x.name for x in TaskMeta_f if x in self.default]
+            case enum.Flag(): # TaskMeta_e()
+                parts = [x.name for x in TaskMeta_e if x in self.default]
                 joined = ", ".join(map(lambda x: f"\"{x}\"", parts))
                 val_str = f"[ {joined} ]"
             case QueueMeta_e():
@@ -234,15 +234,13 @@ class TaskStubPart(BaseModel, arbitrary_types_allowed=True):
 
                 def_str = ", ".join(str(x) for x in self.default)
                 val_str = f"[{def_str}]"
-            case list():
+            case set() | list():
                 parts = ", ".join([f'"{x}"' for x in self.default])
                 val_str = f"[{parts}]"
-            case dict() | TomlGuard() if not bool(self.default):
+            case dict() | ChainGuard() if not bool(self.default):
                 val_str = "{}"
             case _:
                 logging.debug("Unknown stub part reduction: %s : %s : %s", self.key, self.type_, self.default)
-                breakpoint()
-                pass
                 val_str = '"unknown"'
 
         return val_str

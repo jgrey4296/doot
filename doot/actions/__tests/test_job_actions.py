@@ -31,7 +31,7 @@ class TestJobActions:
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": TaskName.build("agroup::basic")}
+        return {"_task_name": TaskName("agroup::basic")}
 
     @pytest.fixture(scope="function")
     def cleanup(self):

@@ -25,7 +25,7 @@ import abc
 import types
 from typing import Generator, NewType, Protocol, Any, runtime_checkable
 
-from tomlguard import TomlGuard
+from jgdv.structs.chainguard import ChainGuard
 from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
 
 import doot

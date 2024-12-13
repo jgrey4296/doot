@@ -10,9 +10,7 @@
     ".git",
     ".pytest_cache"
   ],
-  "extraPaths": [
-    "/Volumes/documents/github/python/tomlguard/"
-  ],
+  "extraPaths": [],
   "ignore": [],
   "include": [
     "doot"

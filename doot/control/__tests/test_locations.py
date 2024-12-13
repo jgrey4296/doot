@@ -13,11 +13,9 @@ import warnings
 
 import pytest
 
-import tomlguard
 import doot
 doot._test_setup()
-from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
-from doot.control.locations import DootLocations
+from doot.control.locations import DootLocations, DootDirAbsent, DootLocationExpansionError, DootLocationError
 from doot.structs import DKey
 from doot._structs.dkey import NonDKey
 
@@ -78,13 +76,13 @@ class TestLocations:
     def test_empty_repr(self):
         simple = DootLocations(pl.Path.cwd())
         repr_str = repr(simple)
-        assert(repr_str == f"<DootLocations : {str(pl.Path.cwd())} : ()>")
+        assert(repr_str == f"<JGDVLocations (1) : {str(pl.Path.cwd())} : ()>")
 
     def test_non_empty_repr(self):
         simple = DootLocations(pl.Path.cwd())
         simple.update({"a": "blah", "b": "aweg", "awegewag": "wejgio"})
         repr_str = repr(simple)
-        assert(repr_str == f"<DootLocations : {str(pl.Path.cwd())} : (a, b, awegewag)>")
+        assert(repr_str == f"<JGDVLocations (1) : {str(pl.Path.cwd())} : (a, b, awegewag)>")
 
     def test_context_manager(self):
         simple = DootLocations(pl.Path.cwd())

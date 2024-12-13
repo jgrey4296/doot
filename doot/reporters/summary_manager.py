@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
 
-See EOF for license/metadata/notes as applicable
+
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
@@ -19,27 +20,35 @@ import time
 import types
 import weakref
 # from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from dataclasses import InitVar, dataclass, field
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
-import more_itertools as mitz
-##-- end lib imports
+# ##-- 1st party imports
+from doot._abstract import Reporter_p
+from doot.enums import Report_f
+from doot.reporters.base_reporter import BaseReporter
+from doot.structs import TraceRecord
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from doot._abstract import Reporter_p
-from doot.structs import TraceRecord
-from doot.enums import Report_f
-from doot.reporters.base_reporter import BaseReporter
+@dataclass
+class ReportElement:
+    name  : str
+    succ  : int = 0
+    fail  : int = 0
+    skip  : int = 0
+    total : int = 0
 
 class DootReportManagerSummary(BaseReporter):
     """
@@ -51,16 +60,30 @@ class DootReportManagerSummary(BaseReporter):
         super().__init__(reporters)
 
     def __str__(self):
-        result = {
-            "tasks"     : {"success": 0, "fail": 0, "skip": 0, "total": 0},
-            "jobs"      : {"success": 0, "fail": 0, "skip": 0, "total": 0},
-            "actions"   : {"success": 0, "fail": 0, "total": 0},
-            "artifacts" : 0
+        report = self.generate_report
+        output = [
+            "    - Totals : Jobs: {}, Tasks: {}, Actions: {}".format(result['jobs'].total, result['tasks'].total, result['actions'].total),
+            "    - Success/Failures/Skips:",
+            "    -- Jobs      : {}/{}/{}".format(result['jobs'].succ,result['jobs'].fail, result['jobs'].skip),
+            "    -- Tasks     : {}/{}/{}".format(result['tasks'].succ, result['tasks'].fail, result['tasks'].skip),
+            "    -- Actions   : {}/{}".format(result['actions'].succ, result['actions'].fail),
+            "    -- Artifacts : {}".format(result['artifacts'].total),
+        ]
+        return "\n".join(self.generate_report())
+
+    def generate_report(self) -> dict[str,ReportElement]:
+        report = {
+            "tasks"     : ReportElement("tasks"),
+            "jobs"      : ReportElement("jobs"),
+            "actions"   : ReportElement("actions"),
+            "artifacts" : ReportElement("artifacts"),
+            "total"     : ReportElement("total"),
             }
 
         for trace in self._full_trace:
+            report['total'].total += 1
             if Report_f.ARTIFACT in trace.flags:
-                result['artifacts'] += 1
+                report['artifacts'].total += 1
                 continue
 
             category = None
@@ -74,24 +97,10 @@ class DootReportManagerSummary(BaseReporter):
                 category = "tasks"
 
             if Report_f.FAIL in trace.flags:
-                ended = "fail"
-            elif Report_f.SUCCEED in trace.flags:
-                ended = "success"
-            elif Report_f.SKIP in trace.flags:
-                ended = "skip"
+                report[category].fail += 1
+            if Report_f.SUCCEED in trace.flags:
+                report[category].succ += 1
+            if Report_f.SKIP in trace.flags:
+                report[category].skip += 1
 
-            if category is None or ended is None:
-                continue
-
-            result[category][ended] += 1
-            result[category]["total"] += 1
-
-        output = [
-            "    - Totals : Jobs: {}, Tasks: {}, Actions: {}".format(result['jobs']['total'], result['tasks']['total'], result['actions']['total']),
-            "    - Success/Failures/Skips:",
-            "    -- Jobs      : {}/{}/{}".format(result['jobs']['success'],result['jobs']['fail'], result['jobs']['skip']),
-            "    -- Tasks     : {}/{}/{}".format(result['tasks']['success'], result['tasks']['fail'], result['tasks']['skip']),
-            "    -- Actions   : {}/{}".format(result['actions']['success'], result['actions']['fail']),
-            "    -- Artifacts : {}".format(result['artifacts']),
-        ]
-        return "\n".join(output)
+        return report

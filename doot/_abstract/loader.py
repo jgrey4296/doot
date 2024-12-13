@@ -32,7 +32,7 @@ logging = logmod.getLogger(__name__)
 
 from typing import Self
 from abc import abstractmethod
-from tomlguard import TomlGuard
+from jgdv.structs.chainguard import ChainGuard
 from importlib.metadata import EntryPoint
 
 from doot._abstract.protocols import SpecStruct_p
@@ -47,10 +47,10 @@ class Loader_p(Protocol, Generic[_T]):
     def get_loaded(group:str, name:str) -> None|str:
         pass
 
-    def setup(self, data:TomlGuard) -> Self:
+    def setup(self, data:ChainGuard) -> Self:
         pass
 
-    def load(self) -> TomlGuard[_T]:
+    def load(self) -> ChainGuard[_T]:
         pass
 
 

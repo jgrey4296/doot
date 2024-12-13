@@ -35,7 +35,8 @@ from weakref import ref
 import matplotlib.pyplot as plt
 import networkx as nx
 import sh
-from tomlguard import TomlGuard
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.cli.param_spec import ParamSpec
 
 # ##-- end 3rd party imports
 
@@ -43,7 +44,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot.cmds.base_cmd import BaseCommand
-from doot.structs import ParamSpec, DKey, TaskName, TaskArtifact
+from doot.structs import DKey, TaskName, TaskArtifact
 from doot.utils.plugin_selector import plugin_selector
 
 # ##-- end 1st party imports
@@ -84,7 +85,7 @@ class GraphCmd(BaseCommand):
             self.build_param(name="dot-file", prefix="--",    type=str,           default=None,                   desc="a file name to write the dot to. uses key expansion"),
             ]
 
-    def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
+    def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
         """List task generators"""
         logging.debug("Starting to Graph Jobs/Tasks Network")
         tracker = plugin_selector(plugins.on_fail([], list).tracker(), target=tracker_target)()
@@ -168,11 +169,11 @@ class GraphCmd(BaseCommand):
           By default, tasks are in the form group::name
           dot doesn't like nodes of that form, so wrap them in quotes.
         """
-        mod_dict = {} # {x: f'"{x.root()}"' for x in graph.nodes}
+        mod_dict = {} # {x: f'"{x.pop()}"' for x in graph.nodes}
         for key in graph.nodes.keys():
             match key:
                 case TaskName():
-                    mod_dict[key] = f'"{key.root()}"'
+                    mod_dict[key] = f'"{key.pop()}"'
                 case TaskArtifact():
                     mod_dict[key] = f'"{key}"'
 

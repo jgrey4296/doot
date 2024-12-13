@@ -32,7 +32,7 @@ from weakref import ref
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.strang import CodeReference
 
 # ##-- end 3rd party imports
 
@@ -46,7 +46,6 @@ from doot.cmds.base_cmd import BaseCommand
 from doot.structs import DKeyed, TaskName, TaskStub
 from doot.task.base_job import DootJob
 from doot.task.base_task import DootTask
-from doot.utils.decorators import DecorationUtils
 
 # ##-- end 1st party imports
 
@@ -92,7 +91,7 @@ class StubCmd(BaseCommand):
         except ImportError as err:
             raise doot.errors.DootTaskLoadError(ctor_name)
 
-    def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
+    def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
         match dict(doot.args.cmd.args):
             case {"Config": True}:
                 self._stub_doot_toml()
@@ -134,7 +133,7 @@ class StubCmd(BaseCommand):
         # Create stub toml, with some basic information
         stub                          = TaskStub(ctor=task_iden)
         try:
-            stub['name'].default          = TaskName.build(name)
+            stub['name'].default          = TaskName(name)
         except ValueError:
             raise doot.errors.DootError("Provide a valid TaskName")
 
@@ -168,11 +167,11 @@ class StubCmd(BaseCommand):
         while str(stub['name'].default) in tasks:
             stub['name'].default.tail.append("$conflicted$")
 
-        if original_name != stub['name'].default.task:
+        if original_name != stub['name'].default[1:]:
             logging.warning("Group %s: Name %s already defined, trying to modify name to: %s",
-                            stub['name'].default.group,
+                            stub['name'].default[0:],
                             original_name,
-                            stub['name'].default.task)
+                            stub['name'].default[1:])
 
         # Output to printer/stdout, or file
         if doot.args.cmd.args.file_target == "":
@@ -267,5 +266,5 @@ class StubCmd(BaseCommand):
     def _list_flags(self):
         logging.info("---- Listing Task Flags")
         cmd_l.info("Task Flags: ")
-        for x in sorted(doot.enums.TaskMeta_f, key=lambda x: x.name):
+        for x in sorted(doot.enums.TaskMeta_e, key=lambda x: x.name):
             cmd_l.info("-- %s", x.name)

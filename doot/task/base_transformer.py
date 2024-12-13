@@ -25,16 +25,14 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from tomlguard import TomlGuard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 import doot.errors
 from doot._abstract import Job_i, Task_i
-from doot.enums import TaskMeta_f
-from doot.errors import DootDirAbsent
+from doot.enums import TaskMeta_e
 from doot.structs import TaskName, TaskSpec
 from doot.task.base_task import DootTask
 
@@ -51,7 +49,7 @@ class DootTransformer(DootTask):
       and will auto-add to the task graph to transform that artifact
     """
     _help = ["A Basic Task Constructor"]
-    _default_flags = TaskMeta_f.TRANSFORMER
+    _default_flags = TaskMeta_e.TRANSFORMER
 
     def __init__(self, spec:TaskSpec):
         assert(spec is not None), "Spec is empty"

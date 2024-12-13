@@ -2,12 +2,12 @@
 """
 Some utility functions to more easily setup mocks
 
-See EOF for license/metadata/notes as applicable
-"""
 
-##-- builtin imports
+"""
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
@@ -19,30 +19,35 @@ import re
 import time
 import types
 import weakref
+from importlib.metadata import EntryPoint
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
+from unittest.mock import MagicMock, PropertyMock, create_autospec
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
-import more_itertools as mitz
-##-- end lib imports
+# ##-- 3rd party imports
+from jgdv.structs.chainguard import ChainGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+from doot import structs
+from doot._abstract import (Command_i, Job_i, Task_i, TaskRunner_i,
+                            TaskTracker_i)
+from doot.enums import QueueMeta_e
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-from unittest.mock import PropertyMock, MagicMock, create_autospec
-from importlib.metadata import EntryPoint
-import tomlguard
-from doot import structs
-from doot.enums import QueueMeta_e
-from doot._abstract import Task_i, Job_i, Command_i, TaskTracker_i, TaskRunner_i
 
 def _add_prop(m, name, val):
     setattr(type(m), name, PropertyMock(return_value=val))
@@ -61,7 +66,7 @@ def mock_task(name, spec=None, actions:int=1, **kwargs):
                        state={},
                        **kwargs)
     task_m.spec = spec or mock_task_spec(name=name, action_count=actions)
-    _add_prop(task_m, "name", structs.TaskName.build(name))
+    _add_prop(task_m, "name", structs.TaskName(name))
     _add_prop(task_m, "actions", task_m.spec.actions)
     return task_m
 
@@ -80,7 +85,7 @@ def mock_task_spec(name="agroup::mockSpec", pre=None, post=None, action_count=1,
         extra['sleep'] = 0.1
     spec_m = MagicMock(structs.TaskSpec(name=name),
                        actions=mock_action_specs(num=action_count),
-                       extra=tomlguard.TomlGuard(extra),
+                       extra=ChainGuard(extra),
                        priority=10,
                        queue_behaviour=QueueMeta_e.default,
                        depends_on=pre or [],
@@ -88,7 +93,7 @@ def mock_task_spec(name="agroup::mockSpec", pre=None, post=None, action_count=1,
                        setup=[],
                        cleanup=[],
                        )
-    spec_m.name = structs.TaskName.build(name)
+    spec_m.name = structs.TaskName(name)
     return spec_m
 
 def mock_action_specs(num=1) -> list:
@@ -96,12 +101,11 @@ def mock_action_specs(num=1) -> list:
     for x in range(num):
         action_spec_m = MagicMock(spec=structs.ActionSpec(),
                                   args=[],
-                                  kwargs=tomlguard.TomlGuard())
+                                  kwargs=ChainGuard())
         type(action_spec_m).__call__ = MagicMock(return_value=None)
         results.append(action_spec_m)
 
     return results
-
 
 def mock_entry_point(name="basic", value=None):
     m = MagicMock(spec=EntryPoint)
@@ -111,7 +115,9 @@ def mock_entry_point(name="basic", value=None):
     return m
 
 def mock_task_ctor(name="APretendClass", module="pretend", params=None):
+
     class MockedSubClass(Task_i):
+
         def __new__(cls, *args, **kwargs):
             m = mock.Mock(spec=cls)
             _add_prop(mock_ctor, "name", name)

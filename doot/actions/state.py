@@ -25,7 +25,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import sh
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports

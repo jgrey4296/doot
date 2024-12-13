@@ -31,7 +31,7 @@ logging = logmod.getLogger(__name__)
 
 from collections import defaultdict
 from importlib.metadata import entry_points, EntryPoint
-import tomlguard
+from jgdv.structs.chainguard import ChainGuard
 import doot
 from doot._abstract import PluginLoader_p
 
@@ -54,7 +54,7 @@ class DootPluginLoader(PluginLoader_p):
     """
     Load doot plugins from the system, to choose from with doot.toml or cli args
     """
-    loaded : ClassVar[TomlGuard] = None
+    loaded : ClassVar[ChainGuard] = None
 
     @staticmethod
     def get_loaded(group:str, name:str) -> None|str:
@@ -72,18 +72,18 @@ class DootPluginLoader(PluginLoader_p):
         self.plugins = defaultdict(list)
         match extra_config:
             case None:
-                self.extra_config = tomlguard.TomlGuard({})
+                self.extra_config = ChainGuard({})
             case dict():
-                self.extra_config = tomlguard.TomlGuard(extra_config)
-            case tomlguard.TomlGuard():
+                self.extra_config = ChainGuard(extra_config)
+            case ChainGuard():
                 self.extra_config = extra_config
 
         return self
 
-    def load(self) -> TomlGuard[EntryPoint]:
+    def load(self) -> ChainGuard[EntryPoint]:
         """
         use entry_points(group="doot")
-        add to the config tomlguard
+        add to the config ChainGuard
         """
         logging.debug("---- Loading Plugins: %s", doot.constants.entrypoints.PLUGIN_TOML_PREFIX)
         try:
@@ -107,7 +107,7 @@ class DootPluginLoader(PluginLoader_p):
             raise doot.errors.DootPluginError("Failed to load plugin defaults: %s", err) from err
 
         logging.debug("Found %s plugins", len(self.plugins))
-        DootPluginLoader.loaded = tomlguard.TomlGuard(self.plugins)
+        DootPluginLoader.loaded = ChainGuard(self.plugins)
         return DootPluginLoader.loaded
 
     def _load_system_plugins(self):
@@ -132,7 +132,7 @@ class DootPluginLoader(PluginLoader_p):
                 logging.warning("Unknown plugin type found in config: %s", cmd_group)
                 continue
 
-            if not isinstance(vals, (tomlguard.TomlGuard, dict)):
+            if not isinstance(vals, (ChainGuard, dict)):
                 logging.warning("Toml specified plugins need to be a dict of (cmdName : class): %s ", cmd_group)
                 continue
 

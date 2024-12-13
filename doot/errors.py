@@ -96,18 +96,6 @@ class DootInvalidConfig(DootError):
     general_msg = "Invalid Doot Config:"
     pass
 
-class DootLocationError(DootError):
-    """ A Task tried to access a location that didn't existing """
-    general_msg = "Location Error:"
-
-class DootLocationExpansionError(DootLocationError):
-    """ When trying to resolve a location, something went wrong. """
-    general_msg = "Expansion of Location hit max value:"
-
-class DootDirAbsent(DootError):
-    """ In the course of startup verification, a directory was not found """
-    general_msg = "Missing Directory:"
-
 class DootPluginError(DootError):
     """ In the course of starting up, doot tried to load a plugin that was bad. """
     general_msg = "Doot Plugin Error:"

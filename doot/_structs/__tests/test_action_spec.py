@@ -14,10 +14,10 @@ import warnings
 import pytest
 logging = logmod.root
 
-import tomlguard
 import doot
 doot._test_setup()
 from doot._structs.action_spec import ActionSpec
+from jgdv.structs.strang import CodeReference
 
 class TestActionSpec:
 
@@ -28,12 +28,12 @@ class TestActionSpec:
     def test_build_from_dict(self):
         obj = ActionSpec.build({"do":"basic"})
         assert(isinstance(obj, ActionSpec))
-        assert(str(obj.do) == doot.aliases.action['basic'])
+        assert(str(obj.do) == CodeReference(doot.aliases.action['basic']))
 
     def test_build_from_list(self):
         obj = ActionSpec.build({"do":"basic"})
         assert(isinstance(obj, ActionSpec))
-        assert(str(obj.do) == doot.aliases.action['basic'])
+        assert(str(obj.do) == CodeReference(doot.aliases.action['basic']))
 
     def test_build_nop(self):
         obj = ActionSpec.build([])
@@ -47,6 +47,8 @@ class TestActionSpec:
         obj({})
         fun_mock.assert_called_once()
 
-    @pytest.mark.xfail
     def test_set_function(self):
-        raise NotImplementedError()
+        obj = ActionSpec.build({"do":"basic"})
+        assert(obj.fun is None)
+        obj.set_function(lambda *args: 2)
+        assert(obj.fun is not None)

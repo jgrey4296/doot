@@ -28,9 +28,9 @@ Actions are defined in toml as a list of:
 2) a dict of { ctor = <str>, args = <list> }, or
 3) a dict of { fun  = <str>, args = <list> }
 
-which are converted to a TomlGuard for use.
+which are converted to a ChainGuard for use.
 
-that TomlGuard is passed either to the ctor, or made a partial function with functools.partial
+that ChainGuard is passed either to the ctor, or made a partial function with functools.partial
 when called, they are given a dict of the current task state,
 which can be modified, and when returned is used to update the task state.
 

@@ -16,10 +16,10 @@ from unittest import mock
 ##-- end imports
 
 import pytest
-import tomlguard
 import doot
+from jgdv.structs.chainguard import ChainGuard
 doot._test_setup()
-doot.config = tomlguard.TomlGuard({})
+doot.config = ChainGuard({})
 from doot.loaders import plugin_loader
 logging = logmod.root
 

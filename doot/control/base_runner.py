@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 
-See EOF for license/metadata/notes as applicable
+
 """
 
 # Imports:
@@ -32,8 +32,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-import more_itertools as mitz
-
+from jgdv.debugging import SignalHandler
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -44,7 +43,6 @@ from doot._abstract import (Action_p, Job_i, Reporter_p, Task_i,
 from doot.enums import ActionResponse_e as ActRE
 from doot.enums import Report_f, TaskStatus_e
 from doot.structs import ActionSpec, TaskArtifact, TaskSpec
-from doot.utils.signal_handler import SignalHandler
 
 # ##-- end 1st party imports
 

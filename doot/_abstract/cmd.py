@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 ##-- end imports
 
 from abc import abstractmethod
-from tomlguard import TomlGuard
+from jgdv.structs.chainguard import ChainGuard
 
 from doot._abstract.protocols import CLIParamProvider_p
 
@@ -41,7 +41,7 @@ class Command_i(CLIParamProvider_p):
         pass
 
     @abstractmethod
-    def __call__(self, jobs:TomlGuard, plugins:TomlGuard):
+    def __call__(self, jobs:ChainGuard, plugins:ChainGuard):
         pass
 
     def shutdown(self, tasks, plugins, errored=None):

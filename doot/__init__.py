@@ -27,14 +27,14 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-import tomlguard as TG
+from jgdv.structs.chainguard import ChainGuard
 from jgdv.logging import JGDVLogConfig
-
+from jgdv import check_protocol
+from jgdv.structs.strang.locations import JGDVLocations as DootLocations
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot.errors
-from doot.utils.check_protocol import check_protocol
 
 # ##-- end 1st party imports
 
@@ -56,12 +56,11 @@ CONSTANT_PREFIX      : Final[str]         = "doot.constants"
 ALIAS_PREFIX         : Final[str]         = "doot.aliases"
 TOOL_PREFIX          : Final[str]         = "tool.doot"
 
-config               : TG.TomlGuard       = TG.TomlGuard() # doot config
-constants            : TG.TomlGuard       = TG.TomlGuard.load(constants_file).remove_prefix(CONSTANT_PREFIX)
-aliases              : TG.TomlGuard       = TG.TomlGuard()
-locs                 : DootLocData        = None # DootLocations(pl.Path()) # registered locations
-args                 : TG.TomlGuard       = TG.TomlGuard() # parsed arg access
-report               : Reporter_p         = None
+config               : ChainGuard         = ChainGuard() # doot config
+constants            : ChainGuard         = ChainGuard.load(constants_file).remove_prefix(CONSTANT_PREFIX)
+aliases              : ChainGuard         = ChainGuard()
+locs                 : DootLocations      = None # DootLocations(pl.Path()) # registered locations
+args                 : ChainGuard         = ChainGuard() # parsed arg access
 log_config           : JGDVLogConfig      = JGDVLogConfig(constants.on_fail(None).printer.PRINTER_CHILDREN())
 
 _configs_loaded_from : list[pl.Path]      = []
@@ -72,7 +71,7 @@ def subprinter(name=None) -> logmod.Logger:
     """
     return log_config.subprinter(name)
 
-def setup(targets:list[pl.Path]|False|None=None, prefix:str|None=TOOL_PREFIX) -> tuple[TG.TomlGuard, DootLocData]:
+def setup(targets:list[pl.Path]|False|None=None, prefix:str|None=TOOL_PREFIX) -> tuple[ChainGuard, DootLocations]:
     """
       The core requirement to call before any other doot code is run.
       loads the config files, so everything else can retrieve values when imported.
@@ -103,7 +102,7 @@ def setup(targets:list[pl.Path]|False|None=None, prefix:str|None=TOOL_PREFIX) ->
         raise doot.errors.DootMissingConfigError("No Doot data found")
 
     try:
-        config = TG.load(*existing_targets)
+        config = ChainGuard.load(*existing_targets)
     except OSError as err:
         logging.error("Failed to Load Config Files: %s", existing_targets)
         raise doot.errors.DootError() from err
@@ -129,7 +128,7 @@ def _load_constants():
             pass
         case pl.Path() as const_file if const_file.exists():
             logging.info("---- Loading Constants")
-            constants = TG.TomlGuard.load(const_file).remove_prefix(CONSTANT_PREFIX)
+            constants = ChainGuard.load(const_file).remove_prefix(CONSTANT_PREFIX)
 
 def _load_aliases():
     """ Load plugin aliases """
@@ -137,7 +136,7 @@ def _load_aliases():
     logging.info("---- Loading Aliases")
     match config.on_fail(aliases_file).settings.general.aliases_file(wrapper=pl.Path):
         case pl.Path() as update_file if update_file.exists():
-            data = TG.TomlGuard.load(update_file).remove_prefix(ALIAS_PREFIX)
+            data = ChainGuard.load(update_file).remove_prefix(ALIAS_PREFIX)
 
     # Flatten the lists
     flat = {}
@@ -148,16 +147,12 @@ def _load_aliases():
     for key,val in config.on_fail({}).plugins().items():
         flat[key].update(dict(val))
 
-    aliases = TG.TomlGuard(flat)
+    aliases = ChainGuard(flat)
 
 def _load_locations():
     """ Load and update the DootLocations db """
     global locs
     logging.info("---- Loading Locations")
-    # ##-- 1st party imports
-    from doot.control.locations import DootLocations
-
-    # ##-- end 1st party imports
     locs   = DootLocations(pl.Path.cwd())
     # Load Initial locations
     for loc in config.on_fail([]).locations():
@@ -173,7 +168,7 @@ def _update_import_path():
             logging.debug("Adding task code directory to Import Path: %s", source)
             sys.path.append(str(source))
 
-def _update_aliases(data:dict|TG.TomlGuard):
+def _update_aliases(data:dict|ChainGuard):
     global aliases
     if not bool(data):
         return
@@ -185,7 +180,7 @@ def _update_aliases(data:dict|TG.TomlGuard):
         update = {x.name:x.value for x in eps}
         base[key].update(update)
 
-    aliases = TG.TomlGuard(base)
+    aliases = ChainGuard(base)
 
 def _test_setup():
     """
@@ -193,7 +188,7 @@ def _test_setup():
       Used for initialising Doot when testing.
     """
     global config, _configs_loaded_from, locs
-    config               = TG.TomlGuard()
+    config               = ChainGuard()
     _configs_loaded_from = []
     locs                 = None
     setup(False)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 
-See EOF for license/metadata/notes as applicable
+
 """
 
 # Imports:
@@ -31,7 +31,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-import tomlguard
+from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 3rd party imports
 
@@ -40,12 +40,12 @@ import doot
 import doot.errors
 from doot._abstract import (Job_i, Task_i, TaskRunner_i, TaskTracker_i)
 from doot._structs.relation_spec import RelationSpec
-from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e, LocationMeta_f, RelationMeta_e, EdgeType_e, ArtifactStatus_e
+from doot.enums import TaskMeta_e, QueueMeta_e, TaskStatus_e, LocationMeta_e, RelationMeta_e, EdgeType_e, ArtifactStatus_e
 from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
-from doot.utils.injection import Injector_m
-from doot.utils.matching import TaskMatcher_m
+from doot.mixins.injection import Injector_m
+from doot.mixins.matching import TaskMatcher_m
 
 # ##-- end 1st party imports
 
@@ -56,7 +56,7 @@ track_l          = doot.subprinter("track")
 logging.disabled = False
 ##-- end logging
 
-ROOT                           : Final[str]                    = "root::_" # Root node of dependency graph
+ROOT                           : Final[str]                    = "root::_.$gen$" # Root node of dependency graph
 EXPANDED                       : Final[str]                    = "expanded"  # Node attribute name
 REACTIVE_ADD                   : Final[str]                    = "reactive-add"
 INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                   = 10
@@ -95,7 +95,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
             spec = queue.pop(0)
             if spec.name in self.specs:
                 continue
-            if TaskMeta_f.DISABLED in spec.flags:
+            if TaskMeta_e.DISABLED in spec.meta:
                 logging.debug("Ignoring Registration of disabled task: %s", spec.name.readable)
                 continue
 
@@ -103,10 +103,10 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
             logging.debug("Registered Spec: %s", spec.name)
 
             # Register the head and cleanup specs:
-            if TaskMeta_f.JOB in spec.flags:
+            if TaskMeta_e.JOB in spec.meta:
                 queue += spec.gen_job_head()
             else:
-                queue.append(spec.gen_cleanup_task())
+                queue += spec.gen_cleanup_task()
 
             self._register_spec_artifacts(spec)
             self._register_transformer(spec)
@@ -133,8 +133,6 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
         """
         logging.debug("Updating State: %s -> %s", task, status)
         match task, status:
-            # case TaskName(), _ if task == self._root_node:
-            #     return False
             case Task_i(), TaskStatus_e() if task.name in self.tasks:
                 self.tasks[task.name].status = status
             case TaskArtifact(), ArtifactStatus_e():
@@ -179,7 +177,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
                     pass
 
     def _register_blocking_relations(self, spec:TaskSpec):
-        if spec.name.is_instantiated():
+        if spec.name.is_uniq():
             # If the spec is instantiated,
             # it has no indirect relations
             return
@@ -189,7 +187,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
         # record that target needs spec
         for rel in spec.action_group_elements():
             match rel:
-                case RelationSpec(target=target, relation=RelationMeta_e.blocks) if spec.name.is_instantiated():
+                case RelationSpec(target=target, relation=RelationMeta_e.blocks) if spec.name.is_uniq():
                     logging.debug("Registering Requirement: %s : %s", target, rel.invert(spec.name))
                     rel.object = spec.name
                     self._blockers[target].append(rel)
@@ -205,7 +203,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
             logging.debug("Not reusing instantiation because extra or cli args were requested: %s", name)
             return None
 
-        if name.is_instantiated():
+        if name.is_uniq():
             return name
 
         if not bool(self.concrete[name]):
@@ -222,7 +220,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
                 # Can use an existing concrete spec
                 return x
 
-    def _instantiate_spec(self, name:Abstract[TaskName], *, add_cli:bool=False, extra:None|dict|tomlguard.TomlGuard=None) -> Concrete[TaskName]:
+    def _instantiate_spec(self, name:Abstract[TaskName], *, add_cli:bool=False, extra:None|dict|ChainGuard=None) -> Concrete[TaskName]:
         """ Convert an Asbtract Spec into a Concrete Spec,
           Reuses a existing concrete spec if possible.
           """
@@ -256,7 +254,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
             # apply additional settings onto the instance
             instance_spec = instance_spec.specialize_from(extra)
 
-        assert(instance_spec.name.is_instantiated())
+        assert(instance_spec.name.is_uniq())
         # Map abstract -> concrete
         self.concrete[name].append(instance_spec.name)
         # register the actual concrete spec
@@ -297,14 +295,14 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
                 return instance
             case [x]: # One match, connect it
                 assert(x in self.specs)
-                assert(x.is_instantiated())
+                assert(x.is_uniq())
                 instance : TaskName = x
                 logging.warning("Reusing Instance: %s", instance)
                 return instance
             case [*xs, x]: # TODO check this.
                 # Use most recent instance?
                 assert(x in self.specs)
-                assert(x.is_instantiated())
+                assert(x.is_uniq())
                 instance : TaskName = x
                 logging.warning("Reusing latest Instance: %s", instance)
                 return instance
@@ -315,8 +313,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
             case None:
                 return None
             case TaskSpec() as instance:
-                assert(TaskMeta_f.CONCRETE | TaskMeta_f.TRANSFORMER in instance.flags)
-                assert(TaskMeta_f.CONCRETE | TaskMeta_f.TRANSFORMER in instance.name)
+                assert(instance.name.is_uniq() and TaskMeta_e.TRANSFORMER in instance.name)
                 self.concrete[name].append(instance.name)
                 self.register_spec(instance)
                 return instance.name
@@ -329,7 +326,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
           """
         if not isinstance(name, TaskName):
             raise doot.errors.DootTaskTrackingError("Tried to add a not-task", name)
-        if not name.is_instantiated():
+        if not name.is_uniq():
             raise doot.errors.DootTaskTrackingError("Tried to add a task using a non-concrete spec", name)
         if name in self.tasks:
             return name
@@ -357,7 +354,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
         """
         match name:
             case TaskName():
-                assert(not name.is_instantiated())
+                assert(not name.is_uniq())
             case TaskArtifact():
                 assert(not name.is_concrete())
         spec                          = self.specs[name]
@@ -369,7 +366,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
                 raise doot.errors.DootTaskTrackingError("Building a source chain grew to large", name)
             count -= 1
             match current: # Determine the base
-                case TaskSpec(name=name) if TaskMeta_f.JOB_HEAD in name:
+                case TaskSpec(name=name) if TaskMeta_e.JOB_HEAD in name:
                     # job heads are generated, so don't have a source chain
                     chain.append(current)
                     current = None

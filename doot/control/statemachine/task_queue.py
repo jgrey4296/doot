@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 
-See EOF for license/metadata/notes as applicable
+
 """
 
 # Imports:
@@ -36,8 +36,8 @@ import doot
 import doot.errors
 from doot._abstract import (Job_i, Task_i, TaskRunner_i, TaskTracker_i)
 from doot._structs.relation_spec import RelationSpec
-from doot.enums import (EdgeType_e, LocationMeta_f, QueueMeta_e,
-                        RelationMeta_e, TaskMeta_f, TaskStatus_e)
+from doot.enums import (EdgeType_e, LocationMeta_e, QueueMeta_e,
+                        RelationMeta_e, TaskMeta_e, TaskStatus_e)
 from doot.structs import (ActionSpec, TaskArtifact, TaskName, TaskSpec)
 from doot.task.base_task import DootTask
 
@@ -50,7 +50,7 @@ track_l          = doot.subprinter("track")
 logging.disabled = False
 ##-- end logging
 
-ROOT                           : Final[str]                  = "root::_" # Root node of dependency graph
+ROOT                           : Final[str]                  = "root::_.$gen$" # Root node of dependency graph
 EXPANDED                       : Final[str]                  = "expanded"  # Node attribute name
 REACTIVE_ADD                   : Final[str]                  = "reactive-add"
 
@@ -114,7 +114,7 @@ class TaskQueue:
         match self._queue.pop():
             case TaskName() as focus if self._registry.tasks[focus].priority < self._network._min_priority:
                 track_l.warning("Task halted due to reaching minimum priority while tracking: %s", focus)
-                self.set_status(focus, TaskStatus_e.HALTED)
+                self._registry.set_status(focus, TaskStatus_e.HALTED)
             case TaskName() as focus:
                 self._registry.tasks[focus].priority -= 1
                 track_l.debug("Task %s: Priority Decrement to: %s", focus, self._registry.tasks[focus].priority)
@@ -137,8 +137,6 @@ class TaskQueue:
         prepped_name : None|TaskName|TaskArtifact = None
         # Prep the task: register and instantiate
         match name:
-            case str():
-                return self.queue_entry(TaskName.build(name), from_user=from_user)
             case TaskSpec() as spec:
                 self._registry.register_spec(spec)
                 return self.queue_entry(spec.name, from_user=from_user, status=status)
@@ -163,10 +161,14 @@ class TaskQueue:
                 prepped_name = instance
                 self._network.connect(instance, None if from_user else False)
             case TaskName() if name in self._registry.specs:
-                assert(not TaskName.build(name).is_instantiated()), name
+                assert(not TaskName(name).is_uniq()), name
                 instance : TaskName = self._registry._instantiate_spec(name, add_cli=from_user)
                 self._network.connect(instance, None if from_user else False)
                 prepped_name = instance
+            case TaskName():
+                raise doot.errors.DootTaskTrackingError("Unrecognized queue argument provided, it may not be registered", name)
+            case str():
+                return self.queue_entry(TaskName(name), from_user=from_user)
             case _:
                 raise doot.errors.DootTaskTrackingError("Unrecognized queue argument provided, it may not be registered", name)
 
@@ -178,18 +180,18 @@ class TaskQueue:
         final_name      : None|TaskName|TaskArtifact = None
         target_priority : int                        = self._network._declare_priority
         match prepped_name:
-            case TaskName() if TaskMeta_f.JOB_HEAD in prepped_name:
-                assert(prepped_name.is_instantiated())
+            case TaskName() if TaskMeta_e.JOB_HEAD in prepped_name:
+                assert(prepped_name.is_uniq())
                 assert(prepped_name in self._registry.specs)
                 final_name      = self._registry._make_task(prepped_name)
                 target_priority = self._registry.tasks[final_name].priority
-            case TaskName() if TaskMeta_f.JOB in prepped_name:
-                assert(prepped_name.is_instantiated())
+            case TaskName() if TaskMeta_e.JOB in prepped_name:
+                assert(prepped_name.is_uniq())
                 assert(prepped_name in self._registry.specs)
                 final_name      = self._registry._make_task(prepped_name)
                 target_priority = self._registry.tasks[final_name].priority
             case TaskName():
-                assert(prepped_name.is_instantiated())
+                assert(prepped_name.is_uniq())
                 assert(prepped_name in self._registry.specs)
                 final_name      = self._registry._make_task(prepped_name)
                 target_priority = self._registry.tasks[final_name].priority

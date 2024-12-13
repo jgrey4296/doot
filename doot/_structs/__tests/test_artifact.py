@@ -22,189 +22,115 @@ from doot._structs.artifact import TaskArtifact
 class TestTaskArtifact:
 
     def test_initial(self):
-        basic = TaskArtifact.build(pl.Path("a/b/c"))
+        basic = TaskArtifact(pl.Path("a/b/c"))
         assert(basic is not None)
 
-
     def test_priority(self):
-        basic = TaskArtifact.build(pl.Path("a/b/c"))
+        basic = TaskArtifact(pl.Path("a/b/c"))
         assert(basic is not None)
         assert(basic.priority == 10)
 
-
     def test_priority_decrement(self):
-        basic = TaskArtifact.build(pl.Path("a/b/c"))
+        basic = TaskArtifact(pl.Path("a/b/c"))
         assert(basic is not None)
         assert(basic.priority == 10)
         basic.priority -= 1
         assert(basic.priority == 9)
 
     def test_self_eq(self):
-        basic = TaskArtifact.build(pl.Path("a/b/c"))
+        basic = TaskArtifact(pl.Path("a/b/c"))
         assert(basic is basic)
         assert(basic == basic)
 
     def test_eq(self):
-        basic = TaskArtifact.build(pl.Path("a/b/c"))
-        basic2 = TaskArtifact.build(pl.Path("a/b/c"))
+        basic = TaskArtifact(pl.Path("a/b/c"))
+        basic2 = TaskArtifact(pl.Path("a/b/c"))
         assert(basic is not None)
         assert(basic2 is not None)
         assert(basic is not basic2)
         assert(basic == basic2)
 
     def test_neq(self):
-        basic  = TaskArtifact.build(pl.Path("a/b/c"))
-        basic2 = TaskArtifact.build(pl.Path("a/b/d"))
+        basic  = TaskArtifact(pl.Path("a/b/c"))
+        basic2 = TaskArtifact(pl.Path("a/b/d"))
         assert(basic is not basic2)
         assert(basic != basic2)
 
-    def test_definite_to_indefinite_contains(self):
-        definite = TaskArtifact.build(pl.Path("a/b/c.py"))
-        indef    = TaskArtifact.build(pl.Path("a/b/*.py"))
-        assert(definite in indef)
+class TestArtifactReification:
 
-class TestDefiniteArtifact:
-
-    def test_definite(self):
-        basic = TaskArtifact.build(pl.Path("a/b/c"))
-        assert(basic.is_concrete())
-        assert(not bool(basic.abstracts))
-
-class TestIndefiniteArtifact:
-
-    def test_indefinite_stem(self):
-        basic = TaskArtifact.build(pl.Path("a/b/*.py"))
-        assert(not basic.is_concrete())
-        assert(basic.abstracts == (False, True, False))
-
-    def test_indefinite_suffix(self):
-        basic = TaskArtifact.build(pl.Path("a/b/c.*"))
-        assert(not basic.is_concrete())
-        assert(basic.abstracts == (False, False, True))
-
-    def test_indefinite_path(self):
-        basic = TaskArtifact.build(pl.Path("a/*/c.py"))
-        assert(not basic.is_concrete())
-        assert(basic.abstracts == (True, False, False))
-
-    def test_recursive_indefinite(self):
-        basic = TaskArtifact.build(pl.Path("a/**/c.py"))
-        assert(not basic.is_concrete())
-        assert(basic.abstracts == (True, False, False))
-
-    def test_indef_suffix_contains(self):
-
-        definite = TaskArtifact.build(pl.Path("a/b/c.py"))
-        indef    = TaskArtifact.build(pl.Path("a/b/c.*"))
-        assert(definite in indef)
-
-    def test_indef_suffix_contain_fail(self):
-
-        definite = TaskArtifact.build(pl.Path("a/b/d.py"))
-        indef    = TaskArtifact.build(pl.Path("a/b/c.*"))
-        assert(definite not in indef)
-
-    def test_indef_path_contains(self):
-
-        definite = TaskArtifact.build(pl.Path("a/b/c.py"))
-        indef    = TaskArtifact.build(pl.Path("a/*/c.py"))
-        assert(definite in indef)
-
-    def test_indef_path_contain_fail(self):
-
-        definite = TaskArtifact.build(pl.Path("b/b/c.py"))
-        indef    = TaskArtifact.build(pl.Path("a/*/c.py"))
-        assert(definite not in indef)
-
-    def test_indefinite_to_definite_contains_fail(self):
-
-        definite = TaskArtifact.build(pl.Path("a/b/c.py"))
-        indef    = TaskArtifact.build(pl.Path("a/b/*.py"))
-        assert(indef not in definite)
-
-    def test_indef_recursive_contains(self):
-
-        definite = TaskArtifact.build(pl.Path("a/b/c.py"))
-        indef    = TaskArtifact.build(pl.Path("a/**/c.py"))
-        assert(definite in indef)
-
-    def test_indef_recursive_contain_fail(self):
-
-        definite = TaskArtifact.build(pl.Path("b/b/c.py"))
-        indef    = TaskArtifact.build(pl.Path("a/**/c.py"))
-        assert(definite not in indef)
-
-    def test_indef_multi_recursive_contains(self):
-
-        definite = TaskArtifact.build(pl.Path("a/b/d/e/f/c.py"))
-        indef    = TaskArtifact.build(pl.Path("a/**/c.py"))
-        assert(definite in indef)
-
-    def test_indef_root_recursive_contains(self):
-
-        definite = TaskArtifact.build(pl.Path("a/b/d/e/f/c.py"))
-        indef    = TaskArtifact.build(pl.Path("**/c.py"))
-        assert(definite in indef)
-
-    def test_indef_multi_component_contains(self):
-
-        definite = TaskArtifact.build(pl.Path("a/b/d/e/f/c.py"))
-        indef    = TaskArtifact.build(pl.Path("**/*.*"))
-        assert(definite in indef)
-
-class TestArtifactMatching:
-
-    def test_match_non_abstract(self):
-        obj = TaskArtifact.build({"key":"test", "path":"test/blah.txt", "file":True})
+    def test_reify_concrete(self):
+        obj = TaskArtifact("test/blah.txt")
         target = pl.Path("test/blah.txt")
-        result = obj.match_with(target)
-        assert(result is not None)
-        assert(result is obj)
-        assert(result == "test/blah.txt")
-        assert(result == pl.Path("test/blah.txt"))
+        with pytest.raises(NotImplementedError):
+            obj.reify(target)
 
-    def test_match_no_stem_wildcard(self):
-        obj = TaskArtifact.build({"key":"test", "path":"*/blah.txt"})
-        target = pl.Path("test/blah.txt")
-        match obj.match_with(target):
+    def test_reify_path(self):
+        obj    = TaskArtifact("test/*/blah.txt")
+        target = pl.Path("test/other/blah.txt")
+        match obj.reify(target):
             case None:
                 assert(False)
             case TaskArtifact() as res:
-                assert(res == "test/blah.txt")
+                assert(res == "test/other/blah.txt")
 
+    def test_reify_only_concrete_parts(self):
+        obj    = TaskArtifact("test/*/blah.txt")
+        target = pl.Path("*/other/blah.txt")
+        match obj.reify(target):
+            case None:
+                assert(False)
+            case TaskArtifact() as res:
+                assert(res == "test/other/blah.txt")
 
-    def test_matching_stem(self):
-        obj = TaskArtifact.build({"key":"test", "path":"test/?.txt"})
+    def test_reify_stem(self):
+        obj                = TaskArtifact("test/?.txt")
+        target             = pl.Path("test/blah.txt")
+        result             = obj.reify(target)
+        assert(result      == "test/blah.txt")
+
+    def test_reify_only_stem(self):
+        obj                = TaskArtifact("test/?.txt")
+        target             = pl.Path("blah.txt")
+        result             = obj.reify(target)
+        assert(result      == "test/blah.txt")
+
+    def test_reify_path_and_stem(self):
+        obj           = TaskArtifact("*/?.txt")
+        target        = pl.Path("test/blah.txt")
+        result        = obj.reify(target)
+        assert(result == "test/blah.txt")
+
+    def test_reify_path_and_stem_fail(self):
+        obj           = TaskArtifact("*/?.blah")
+        target        = pl.Path("test/blah.txt")
+        result        = obj.reify(target)
+        assert(result is None)
+
+    def test_reify_path_fail(self):
+        obj    = TaskArtifact("other/?.txt")
         target = pl.Path("test/blah.txt")
-        result = obj.match_with(target)
-        assert(result.path == pl.Path("test/blah.txt"))
+        assert(obj.reify(target) is None)
 
-    def test_matching_path(self):
-        obj = TaskArtifact.build({"key":"test", "path":"*/?.blah"})
-        target = pl.Path("test/blah.txt")
-        result = obj.match_with(target)
-        assert(result.path == pl.Path("test/blah.blah"))
+    def test_reify_glob_path(self):
+        obj           = TaskArtifact("*/blah.txt")
+        target        = pl.Path("test/blah.txt")
+        result        = obj.reify(target)
+        assert(result == "test/blah.txt")
 
-    def test_matching_path_fail(self):
-        obj = TaskArtifact.build({"key":"test", "path":"other/?.blah"})
-        target = pl.Path("test/blah.txt")
-        result = obj.match_with(target)
-        assert(result.path == pl.Path("other/blah.blah"))
+    def test_reify_rec_glob(self):
+        obj           = TaskArtifact("test/**/blah.txt")
+        target        = pl.Path("test/a/b/c/aweg")
+        result        = obj.reify(target)
+        assert(result == "test/a/b/c/aweg/blah.txt")
 
-    def test_glob_matching(self):
-        obj = TaskArtifact.build({"key":"test", "path":"*/?.blah"})
-        target = pl.Path("test/blah.txt")
-        result = obj.match_with(target)
-        assert(result.path == pl.Path("test/blah.blah"))
+    def test_reify_suffix(self):
+        obj           = TaskArtifact("other/blah.?")
+        target        = pl.Path("blah.txt")
+        result        = obj.reify(target)
+        assert(result == "other/blah.txt")
 
-    def test_rec_glob_matching(self):
-        obj = TaskArtifact.build({"key":"test", "path":"**/?.blah"})
-        target = pl.Path("test/aweg/blah.txt")
-        result = obj.match_with(target)
-        assert(result.path == pl.Path("test/aweg/blah.blah"))
-
-    def test_suffix_matching(self):
-        obj = TaskArtifact.build({"key":"test", "path":"other/?.?"})
-        target = pl.Path("test/aweg/blah.txt")
-        result = obj.match_with(target)
-        assert(result.path == pl.Path("other/blah.txt"))
+    def test_reify_ext_with_path(self):
+        obj           = TaskArtifact("other/blah.?")
+        target        = pl.Path("other/blah.txt")
+        result        = obj.reify(target)
+        assert(result == "other/blah.txt")

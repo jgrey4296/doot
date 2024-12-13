@@ -13,15 +13,14 @@ import warnings
 
 import pytest
 
-import tomlguard
 import doot
 import doot.errors
 
 doot._test_setup()
 from doot import structs
 from doot.task.base_job import DootJob
-from doot.enums import TaskMeta_f
-from doot.utils.injection import Injector_m
+from doot.enums import TaskMeta_e
+from doot.mixins.injection import Injector_m
 from doot._structs.relation_spec import RelationSpec
 
 logging = logmod.root

@@ -28,14 +28,15 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import sh
-import tomlguard
-
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.cli import ArgParser_p, ParseMachine
+from jgdv.cli.param_spec import LiteralParam
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import (ArgParser_i, Command_i, CommandLoader_p, Job_i,
+from doot._abstract import (Command_i, CommandLoader_p, Job_i,
                             Overlord_p, Task_i, TaskLoader_p)
 from doot._abstract.loader import Loader_p
 from doot.errors import DootInvalidConfig, DootParseError
@@ -43,7 +44,6 @@ from doot.loaders.cmd_loader import DootCommandLoader
 from doot.loaders.plugin_loader import DootPluginLoader
 from doot.loaders.task_loader import DootTaskLoader
 from doot.mixins.param_spec import ParamSpecMaker_m
-from doot.parsers.flexible import DootFlexibleParser
 from doot.utils.plugin_selector import plugin_selector
 
 # ##-- end 1st party imports
@@ -89,24 +89,28 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         print("Doot Version: %s", doot.__version__)
         print("lib @", os.path.dirname(os.path.abspath(__file__)))
 
-    def __init__(self, *, loaders:dict[str, Loader_i]=None, config_filenames:tuple=DEFAULT_FILENAMES, extra_config:dict|TomlGuard=None, args:list=None, log_config:None|DootLogConfig=None):
+    def __init__(self, *, loaders:dict[str, Loader_i]=None, config_filenames:tuple=DEFAULT_FILENAMES, extra_config:dict|ChainGuard=None, args:list=None, log_config:None|DootLogConfig=None):
+        self.args                                 = args or sys.argv[:]
+        self.BIN_NAME                             = self.args[0].split('/')[-1]
+        self.prog_name                            = "doot"
+        self.loaders                              = loaders or dict()
+        self.log_config                           = log_config
+
+        self.plugins      : None|ChainGuard       = None
+        self.cmds         : None|ChainGuard       = None
+        self.tasks        : None|ChainGuard       = None
+        self.current_cmd  : Command_i             = None
+
+        self._errored     : None|DootError        = None
+        self._current_cmd : None|str              = None
+        self._extra_config                        = extra_config
+
+
+    def setup(self):
         logging.info("---- Initialising Overlord")
-        self.args                                = args or sys.argv[:]
-        self.BIN_NAME                            = self.args[0].split('/')[-1]
-        self.loaders                             = loaders or dict()
-        self.log_config                          = log_config
-
-        self.plugins      : None|TomlGuard       = None
-        self.cmds         : None|TomlGuard       = None
-        self.tasks        : None|TomlGuard       = None
-        self.current_cmd  : Command_i            = None
-
-        self._errored     : None|DootError       = None
-        self._current_cmd : None|str             = None
-
-        self._load_plugins(extra_config)
-        self._load_commands(extra_config)
-        self._load_tasks(extra_config)
+        self._load_plugins(self._extra_config)
+        self._load_commands(self._extra_config)
+        self._load_tasks(self._extra_config)
         self._parse_args()
         logging.info("---- Core Overlord Initialisation complete")
 
@@ -135,13 +139,15 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
             logging.info("---- Overlord Cmd Call Complete")
             return 0
 
+
     @property
     def param_specs(self) -> list[ParamSpec]:
         return [
-           self.build_param(name="version" , prefix="--"),
-           self.build_param(name="help"    , prefix="--"),
-           self.build_param(name="verbose" , prefix="--"),
-           self.build_param(name="debug",    prefix="--")
+            LiteralParam(name=self.prog_name),
+            self.build_param(name="version" , prefix="--"),
+            self.build_param(name="help"    , prefix="--"),
+            self.build_param(name="verbose" , prefix="--"),
+            self.build_param(name="debug",    prefix="--")
         ]
 
     @property
@@ -160,18 +166,18 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
 
         return "\n".join(help_lines)
 
-    def _load_plugins(self, extra_config:dict|TomlGuard=None):
+    def _load_plugins(self, extra_config:dict|ChainGuard=None):
         """ Use a plugin loader to find all applicable `importlib.EntryPoint`s  """
         try:
             self.plugin_loader    = self.loaders.get(plugin_loader_key, DootPluginLoader())
             self.plugin_loader.setup(extra_config)
-            self.plugins : TomlGuard = self.plugin_loader.load()
+            self.plugins : ChainGuard = self.plugin_loader.load()
             doot._update_aliases(self.plugins)
         except doot.errors.DootPluginError as err:
             shutdown_l.warning("Plugins Not Loaded Due to Error: %s", err)
-            self.plugins = tomlguard.TomlGuard()
+            self.plugins = ChainGuard()
 
-    def _load_commands(self, extra_config):
+    def _load_commands(self, extra_config=None):
         """ Select Commands from the discovered plugins """
         self.cmd_loader = plugin_selector(self.loaders.get(command_loader_key, None) or self.plugins.on_fail([], list).command_loader(),
                                           target=preferred_cmd_loader,
@@ -186,12 +192,12 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
                     self.cmds = self.cmd_loader.load()
                 except doot.errors.DootPluginError as err:
                     shutdown_l.warning("Commands Not Loaded due to Error: %s", err)
-                    self.cmds = tomlguard.TomlGuard()
+                    self.cmds = ChainGuard()
             case _:
                 raise TypeError("Unrecognized loader type", self.cmd_loader)
 
 
-    def _load_tasks(self, extra_config):
+    def _load_tasks(self, extra_config=None):
         """ Load task entry points """
         self.task_loader = plugin_selector(self.loaders.get(task_loader_key, None) or self.plugins.on_fail([], list).task_loader(),
                                            target=preferred_task_loader,
@@ -209,14 +215,34 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
 
     def _parse_args(self, args=None):
         """ use the found task and command arguments to make sense of sys.argv """
-        self.parser = plugin_selector(self.loaders.get("parser", None) or self.plugins.on_fail([], list).parser(),
-                                     target=preferred_parser,
-                                     fallback=DootFlexibleParser)()
+        ctor = plugin_selector(self.loaders.get("parser", None) or self.plugins.on_fail([], list).parser(),
+            target=preferred_parser,
+            fallback=None
+            )
 
-        if not isinstance(self.parser, ArgParser_i):
-            raise TypeError("Improper argparser specified: ", self.arg_parser)
+        match ctor:
+            case None:
+                self.parser = ParseMachine()
+                cli_args = self.parser(
+                    args or self.args,
+                    head_specs=self.param_specs,
+                    cmds=self.cmds,
+                    subcmds=self.tasks
+                    )
+                doot.args = ChainGuard(cli_args)
 
-        doot.args = self.parser.parse(args or self.args, doot_specs=self.param_specs, cmds=self.cmds, tasks=self.tasks)
+            case type() if isinstance((p:=ctor()), ArgParser_p):
+                self.parser = ParseMachine(parser=p)
+                cli_args = self.parser(
+                    args or self.args,
+                    head_specs=self.param_specs,
+                    cmds=self.cmds,
+                    subcmds=self.tasks
+                    )
+                doot.args = ChainGuard(cli_args)
+            case _:
+                raise TypeError("Improper argparser specified: ", self.arg_parser)
+
 
     def _cli_arg_response(self) -> bool:
         """ Overlord specific cli arg responses. modify verbosity,
@@ -270,8 +296,8 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         if not doot.config.on_fail(False).settings.general.write_defaulted_values():
             return
 
-        defaulted_toml = tomlguard.TomlGuard.report_defaulted()
-        expanded_path = doot.locs[defaulted_file]
+        defaulted_toml = ChainGuard.report_defaulted()
+        expanded_path = doot.locs.Current[defaulted_file]
         if not expanded_path.parent.exists():
             shutdown_l.warning("Coulnd't log defaulted config values to: %s", expanded_path)
             return

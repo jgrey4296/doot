@@ -34,7 +34,6 @@ from weakref import ref
 # ##-- 3rd party imports
 import sh
 import stackprinter
-import tomlguard as TG
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports

@@ -2,7 +2,7 @@
 """
 
 
-See EOF for license/metadata/notes as applicable
+
 """
 
 # Imports:
@@ -29,7 +29,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from tomlguard import TomlGuard
+from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 3rd party imports
 
@@ -106,7 +106,7 @@ class TaskMatcher_m:
                 constraint_d = {x:x for x in control.extra.keys()}
             case [*xs]:
                 constraint_d = { x:x for x in xs }
-            case dict() | TomlGuard():
+            case dict() | ChainGuard():
                 pass
 
         match inject_d:
@@ -115,9 +115,9 @@ class TaskMatcher_m:
             case [*xs]:
                 inject_d = { x:x for x in xs }
             case str() as key_s:
-                key      = DKey(key_s, check=dict|TomlGuard, implicit=True)
+                key      = DKey(key_s, check=dict|ChainGuard, implicit=True)
                 inject_d = key(control)
-            case dict() | TomlGuard():
+            case dict() | ChainGuard():
                 pass
 
         assert(isinstance(constraint_d, dict))

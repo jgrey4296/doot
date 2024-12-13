@@ -5,7 +5,7 @@ name            = "doot"
 version         = "0.13.0"
 description     = "An opinionated, TOML based task runner"
 readme          = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license         = {file = "LICENSE"}
 keywords        = ["toml","taskrunner"]
 authors         = [
@@ -19,7 +19,6 @@ classifiers     = [
 ]
 
 dependencies   = [
-    "tomlguard >= 0.4.0",
     "networkx > 3.0",
     "sh >= 2.0.6",
     "stackprinter >= 0.2.10",
@@ -29,7 +28,7 @@ dependencies   = [
     "decorator-validation >= 3.0.0",
     "decorator >= 5.0.0",
     "pydantic >= 2.7.0",
-    "jgdv >= 0.3.2",
+    "jgdv >= 0.4.0",
 ]
 
 [project.optional-dependencies]

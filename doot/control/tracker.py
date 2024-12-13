@@ -27,7 +27,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import networkx as nx
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.strang import CodeReference
 
 # ##-- end 3rd party imports
 
@@ -36,7 +36,7 @@ import doot
 import doot.errors
 from doot._abstract import (Job_i, Task_i, TaskRunner_i, TaskTracker_i)
 from doot.control.base_tracker import BaseTracker
-from doot.enums import EdgeType_e, ExecutionPolicy_e, TaskStatus_e, TaskMeta_f, ArtifactStatus_e
+from doot.enums import EdgeType_e, ExecutionPolicy_e, TaskStatus_e, TaskMeta_e, ArtifactStatus_e
 from doot.structs import TaskArtifact, TaskName, TaskSpec
 from doot.task.base_task import DootTask
 
@@ -142,32 +142,7 @@ class TrackerPlanGen_m:
           Afterwards, restores the original state of the queue, and artifacts,
           then re-queues original tasks
           """
-        plan                                         = []
-        original_tasks    : set[Node]                = set(self.active_set)
-        original_statuses : dict[Node, TaskStatus_e] = {x: self.get_status(x) for x in itz.chain(self.specs.keys(), self.artifacts.keys())}
-
-        while bool(self):
-            match self.next_for():
-                case None:
-                    continue
-                case Task_i() as spec:
-                    logging.info("Plan Next: %s", str(spec.name))
-                    plan.append((0, spec.name, str(spec.name)))
-                    self.set_status(spec, TaskStatus_e.SUCCESS)
-                case TaskArtifact() as art:
-                    plan.append((1, art, str(art)))
-                    self.set_status(art, ArtifactStatus.EXISTS)
-                case x:
-                    raise doot.errors.DootTaskTrackingError("Unrecognised reponse while building plan", x)
-
-        self.clear_queue()
-        self.tasks = {}
-        for x in self.artifacts.keys():
-            self.set_status(x, TaskStatus_e.ARTIFACT)
-        for x in original_tasks:
-            self.queue_entry(x)
-
-        return plan
+        raise NotImplementedError()
 
     def generate_plan(self, *, policy:None|ExecutionPolicy_e=None) -> list[PlanEntry]:
         """ Generate an ordered list of tasks that would be executed.
@@ -338,4 +313,5 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
 
         else:
             logging.info("---- Determined Next Task To Be: %s", result)
+            # TODO apply task.state.key injections from connected tasks?
             return result

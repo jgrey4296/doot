@@ -27,13 +27,12 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from time import sleep
 import sh
 import shutil
-import tomlguard as TG
 import doot
 from doot.errors import DootTaskError, DootTaskFailed
+from doot.control.locations import DootLocationError
 from doot.enums import ActionResponse_e
 from doot.mixins.path_manip import PathManip_m
 from doot.structs import DKey, DKeyed
-from doot.actions.postbox import _DootPostBox
 from doot.utils.action_decorators import IOWriter
 
 printer = doot.subprinter()
@@ -57,7 +56,7 @@ class AppendAction(PathManip_m):
         exp_args     = [k.expand(spec, state, fallback=None) for k in args_keys]
 
         if self._is_write_protected(loc):
-            raise doot.errors.DootLocationError("Tried to write a protected location", loc)
+            raise DootLocationError("Tried to write a protected location", loc)
 
         with open(loc, 'a') as f:
             for arg in exp_args:
@@ -82,7 +81,7 @@ class WriteAction(PathManip_m):
         loc  = to
 
         if self._is_write_protected(loc):
-            raise doot.errors.DootLocationError("Tried to write a protected location", loc)
+            raise DootLocationError("Tried to write a protected location", loc)
 
         match data:
             case None:
@@ -147,7 +146,7 @@ class CopyAction(PathManip_m):
         dest_loc   = to
 
         if self._is_write_protected(dest_loc):
-            raise doot.errors.DootLocationError("Tried to write a protected location", to)
+            raise DootLocationError("Tried to write a protected location", to)
 
         match _from:
             case str() | pl.Path():
@@ -194,7 +193,7 @@ class MoveAction(PathManip_m):
         dest_loc   = to
 
         if self._is_write_protected(dest_loc):
-            raise doot.errors.DootLocationError("Tried to write a protected location", dest_loc)
+            raise DootLocationError("Tried to write a protected location", dest_loc)
         if not source.exists():
             raise doot.errors.DootActionError("Tried to move a file that doesn't exist", source)
         if dest_loc.exists() and not force:
@@ -215,7 +214,7 @@ class DeleteAction(PathManip_m):
         for arg in spec.args:
             loc = DKey(arg, mark=DKey.mark.PATH).expand(spec, state)
             if self._is_write_protected(loc):
-                raise doot.errors.DootLocationError("Tried to write a protected location", loc)
+                raise DootLocationError("Tried to write a protected location", loc)
 
             if not loc.exists():
                 printer.info("Not Deleting Due to non-existence: %s", loc)
@@ -242,7 +241,7 @@ class BackupAction(PathManip_m):
         dest_loc   = to
 
         if self._is_write_protected(dest_loc):
-            raise doot.errors.DootLocationError("Tried to write a protected location", dest_loc)
+            raise DootLocationError("Tried to write a protected location", dest_loc)
 
         # ExFat FS has lower resolution timestamps
         # So guard by having a tolerance:
@@ -261,7 +260,6 @@ class BackupAction(PathManip_m):
 
         printer.info("Backing up : %s", source_loc)
         printer.debug("Destination: %s", dest_loc)
-        _DootPostBox.put(_name, dest_loc)
         shutil.copy2(source_loc,dest_loc)
 
 class EnsureDirectory(PathManip_m):

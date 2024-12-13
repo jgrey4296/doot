@@ -24,7 +24,6 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from tomlguard import TomlGuard
 
 # ##-- end 3rd party imports
 
@@ -32,7 +31,7 @@ from tomlguard import TomlGuard
 import doot
 import doot.errors
 from doot._abstract import Job_i
-from doot.enums import LocationMeta_f
+from doot.enums import LocationMeta_e
 from doot.structs import TaskSpec, ActionSpec, DKeyed
 from doot.task.base_task import DootTask
 
@@ -54,7 +53,8 @@ class CheckLocsTask(DootTask):
     task_name = "_locations::check"
 
     def __init__(self, spec=None):
-        locations = [doot.locs[f"{{{x}}}"] for x in doot.locs if not doot.locs.metacheck(x, LocationMeta_f.file | LocationMeta_f.remote)]
+        global_loc = doot.locs.Current
+        locations = [global_loc[f"{{{x}}}"] for x in global_loc if not global_loc.metacheck(x, LocationMeta_e.file | LocationMeta_e.remote)]
         actions   = [ActionSpec.build({"args": locations, "fun":self.checklocs })]
         spec      = TaskSpec.build({
             "name"         : CheckLocsTask.task_name,

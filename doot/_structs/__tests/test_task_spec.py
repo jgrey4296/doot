@@ -13,18 +13,19 @@ import warnings
 
 import pytest
 
-import tomlguard
+from jgdv.structs.strang import CodeReference
+from jgdv.structs.chainguard import ChainGuard
 import doot
 import doot.errors
 
 doot._test_setup()
-from doot import structs
 from doot.task.base_job import DootJob
-from doot.enums import TaskMeta_f
+from doot.enums import TaskMeta_e
+from doot import structs
 
 logging = logmod.root
 
-DEFAULT_CTOR = doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS]
+DEFAULT_CTOR = CodeReference(doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS])
 
 class TestTaskSpec:
 
@@ -51,24 +52,24 @@ class TestTaskSpec:
     def test_build(self):
         obj = structs.TaskSpec.build({"name":"default::default"})
         assert(isinstance(obj, structs.TaskSpec))
-        assert(obj.name.group == "default")
-        assert(obj.name.task == "default")
+        assert(obj.name[0: ]== "default")
+        assert(obj.name[1:] == "default")
         assert(str(obj.ctor) == DEFAULT_CTOR)
         assert(obj.version == doot.__version__)
 
     def test_version(self):
         obj = structs.TaskSpec.build({"version" : "0.5", "name":"default::default"})
         assert(isinstance(obj, structs.TaskSpec))
-        assert(obj.name.group == "default")
-        assert(obj.name.task == "default")
+        assert(obj.name[0:] == "default")
+        assert(obj.name[1:] == "default")
         assert(str(obj.ctor) == DEFAULT_CTOR)
         assert(obj.version == "0.5")
 
     def test_basic_name(self):
         obj = structs.TaskSpec.build({"name": "agroup::atask"})
         assert(isinstance(obj, structs.TaskSpec))
-        assert(obj.name.group == "agroup")
-        assert(obj.name.task == "atask")
+        assert(obj.name[0:] == "agroup")
+        assert(obj.name[1:] == "atask")
 
     def test_groupless_name(self):
         with pytest.raises(ValueError):
@@ -84,13 +85,13 @@ class TestTaskSpec:
     def test_separate_group_and_task(self):
         obj = structs.TaskSpec.build({"name": "atask", "group": "agroup"})
         assert(isinstance(obj, structs.TaskSpec))
-        assert(obj.name.group == "agroup")
-        assert(obj.name.task == "atask")
+        assert(obj.name[0:] == "agroup")
+        assert(obj.name[1:] == "atask")
 
     def test_disabled_spec(self):
         obj = structs.TaskSpec.build({"name": "agroup::atask", "disabled":True})
         assert(isinstance(obj, structs.TaskSpec))
-        assert(TaskMeta_f.DISABLED in obj.flags)
+        assert(TaskMeta_e.DISABLED in obj.meta)
 
     def test_sources_empty(self):
         obj = structs.TaskSpec.build({"name": "agroup::atask"})
@@ -118,14 +119,14 @@ class TestTaskSpec:
 
 class TestTaskSpecValidation:
 
-    def test_flag_build(self):
+    def test_meta_build(self):
         obj = structs.TaskSpec.build({"name":"simple::test"})
-        assert(obj.flags == TaskMeta_f.default)
-        assert(obj.flags == TaskMeta_f.TASK)
+        assert(obj.meta == {TaskMeta_e.default})
+        assert(obj.meta  == {TaskMeta_e.TASK})
 
-    def test_flag_build_multi(self):
-        obj = structs.TaskSpec.build({"name":"simple::test", "flags": ["TASK", "JOB"]})
-        assert(obj.flags == TaskMeta_f.default | TaskMeta_f.JOB)
+    def test_meta_build_multi(self):
+        obj = structs.TaskSpec.build({"name":"simple::test", "meta": ["TASK", "JOB"]})
+        assert(obj.meta == {TaskMeta_e.default, TaskMeta_e.JOB})
 
     def test_toml_key_modification(self):
         obj = structs.TaskSpec.build({"name":"simple::test", "blah": {}})
@@ -133,6 +134,7 @@ class TestTaskSpecValidation:
 
 
 class TestTaskSpecInstantiation:
+
 
     def test_instantiation(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0})
@@ -145,7 +147,6 @@ class TestTaskSpecInstantiation:
         assert(override_task.name < instance.name)
         assert("a" in instance.extra)
         assert("b" in instance.extra)
-        assert(instance.flags == instance.name.meta)
         assert(instance.sources == ["agroup::base", "agroup::atask"])
 
     def test_instantiation_extends_sources(self):
@@ -159,14 +160,13 @@ class TestTaskSpecInstantiation:
         override_task = structs.TaskSpec.build({"name": "agroup::atask", "a": 100, "b": 2, "sources": "agroup::base"})
         instance = override_task.instantiate_onto(base_task)
         assert(instance.extra['a'] == 100)
-        assert(instance.flags == instance.name.meta)
         assert(instance.sources == ["agroup::base", "agroup::atask"])
 
     def test_specialize_from_fail_unrelated(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0})
         override_task = structs.TaskSpec.build({"name": "agroup::atask", "b": 2, "sources": "agroup::not.base"})
 
-        assert(not base_task.name < structs.TaskName.build(override_task.sources[-1]))
+        assert(not base_task.name < structs.TaskName(override_task.sources[-1]))
         with pytest.raises(doot.errors.DootTaskTrackingError):
             base_task.specialize_from(override_task)
 
@@ -178,7 +178,6 @@ class TestTaskSpecInstantiation:
         assert(instance is not base_task)
         assert(instance is not override_task)
         assert(bool(instance.actions))
-        assert(instance.flags == instance.name.meta)
 
     def test_specialize_keeps_override_actions(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0})
@@ -188,7 +187,6 @@ class TestTaskSpecInstantiation:
         assert(instance is not base_task)
         assert(instance is not override_task)
         assert(bool(instance.actions))
-        assert(instance.flags == instance.name.meta)
 
     def test_specialize_source_as_taskname(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0})
@@ -199,7 +197,6 @@ class TestTaskSpecInstantiation:
         assert(instance is not override_task)
         assert(not isinstance(instance.ctor, structs.TaskName))
         assert(instance.ctor == base_task.ctor)
-        assert(instance.flags == instance.name.meta)
 
     def test_dependency_merge(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "depends_on": ["basic::dep"]})
@@ -209,7 +206,6 @@ class TestTaskSpecInstantiation:
         assert(instance is not base_task)
         assert(instance is not override_task)
         assert(len(instance.depends_on) == 2)
-        assert(instance.flags == instance.name.meta)
 
     def test_specialize_conflict(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0})
@@ -227,7 +223,6 @@ class TestTaskSpecInstantiation:
         assert(instance.a == 2)
         assert(instance.b == 3)
         assert(instance.c == "blah")
-        assert(instance.flags == instance.name.meta)
 
     def test_sources_independece(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "c": "blah"})
@@ -250,13 +245,30 @@ class TestTaskSpecInstantiation:
         instance.sources.append("blah")
         assert("blah" not in base_task.sources)
 
-    @pytest.mark.skip
-    def test_cli_arg_application(self):
-        """
-          TODO move the logic for cli arg application from tracker
-          into task spec
-        """
-        pass
+    def test_cli_arg_application(self, mocker):
+        data = {"sub":{"agroup::base": {"blah":"bloo"}}}
+        mocker.patch("doot.args", ChainGuard(data))
+        base     = structs.TaskSpec.build({"name":"agroup::base",
+                                           "cli" : [{"name":"blah", "default":"aweg", "type":"str"}],
+                                           })
+        instance = base.specialize_from({})
+        assert(not hasattr(instance, "blah"))
+        with_cli = instance.apply_cli_args()
+        assert(hasattr(with_cli, "blah"))
+        assert(with_cli.blah == "bloo")
+
+
+    def test_cli_arg_fallback_to_default(self, mocker):
+        data = {"sub":{"agroup::base": {}}}
+        mocker.patch("doot.args", ChainGuard(data))
+        base     = structs.TaskSpec.build({"name":"agroup::base",
+                                           "cli" : [{"name":"blah", "default":"aweg", "type":"str"}],
+                                           })
+        instance = base.specialize_from({})
+        assert(not hasattr(instance, "blah"))
+        with_cli = instance.apply_cli_args()
+        assert(hasattr(with_cli, "blah"))
+        assert(with_cli.blah == "aweg")
 
 
 class TestTaskGeneration:
@@ -271,35 +283,44 @@ class TestTaskGeneration:
 
     def test_empty_cleanup_gen(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0})
-        cleanup_task  = base_task.gen_cleanup_task()
-        assert(isinstance(cleanup_task, structs.TaskSpec))
-        assert(not bool(cleanup_task.actions))
-        assert(base_task.name in cleanup_task.depends_on[0])
+        match base_task.gen_cleanup_task():
+            case [cleanup_task]:
+                assert(isinstance(cleanup_task, structs.TaskSpec))
+                assert(not bool(cleanup_task.actions))
+                assert(base_task.name in cleanup_task.depends_on[0])
+            case _:
+                assert(False)
 
 
     def test_cleanup_gen(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "cleanup": [{"do":"log", "msg":"blah"}]})
-        cleanup_task  = base_task.gen_cleanup_task()
-        assert(isinstance(cleanup_task, structs.TaskSpec))
-        assert(bool(cleanup_task.actions))
-        assert(base_task.name in cleanup_task.depends_on[0])
+        match base_task.gen_cleanup_task():
+            case [cleanup_task]:
+                assert(isinstance(cleanup_task, structs.TaskSpec))
+                assert(bool(cleanup_task.actions))
+                assert(base_task.name in cleanup_task.depends_on[0])
+            case _:
+                assert(False)
 
 
     def test_instantiated_cleanup_gen(self):
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0, "cleanup": [{"do":"log", "msg":"blah"}]})
         instance      = base_task.specialize_from(base_task)
-        assert(TaskMeta_f.CONCRETE in instance.name)
-        cleanup_task  = base_task.gen_cleanup_task()
-        assert(isinstance(cleanup_task, structs.TaskSpec))
-        assert(bool(cleanup_task.actions))
-        assert(base_task.name in cleanup_task.depends_on[0])
+        assert(structs.TaskName.bmark_e.gen in instance.name)
+        match base_task.gen_cleanup_task():
+            case [cleanup_task]:
+                assert(isinstance(cleanup_task, structs.TaskSpec))
+                assert(bool(cleanup_task.actions))
+                assert(base_task.name in cleanup_task.depends_on[0])
+            case _:
+                assert(False)
 
 
     def test_job_head_gen_empty_cleanup(self):
-        base_task     = structs.TaskSpec.build({"name": "agroup.+::base", "a": 0, "cleanup": []})
+        base_task     = structs.TaskSpec.build({"name": "agroup::+.base", "a": 0, "cleanup": []})
         match base_task.gen_job_head():
             case [structs.TaskSpec() as head]:
-               assert(structs.TaskName._head_marker in head.name)
+               assert(structs.TaskName.bmark_e.head in head.name)
                assert(not bool(head.actions))
                assert(base_task.name in head.depends_on[0])
             case xs:
@@ -307,10 +328,10 @@ class TestTaskGeneration:
 
 
     def test_job_head_gen(self):
-        base_task     = structs.TaskSpec.build({"name": "agroup.+::base", "a": 0, "cleanup": [{"do":"log", "msg":"blah"}], "head_actions":[{"do":"log","msg":"bloo"}]})
+        base_task     = structs.TaskSpec.build({"name": "agroup::+.base", "a": 0, "cleanup": [{"do":"log", "msg":"blah"}], "head_actions":[{"do":"log","msg":"bloo"}]})
         match base_task.gen_job_head():
             case [structs.TaskSpec() as head]:
-               assert(structs.TaskName._head_marker in head.name)
+               assert(structs.TaskName.bmark_e.head in head.name)
                assert(bool(head.actions))
                assert(base_task.name in head.depends_on[0])
             case _:

@@ -28,7 +28,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import networkx as nx
-
+from jgdv.debugging import SignalHandler
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -41,7 +41,6 @@ from doot.control.base_runner import BaseRunner
 from doot.enums import ActionResponse_e as ActRE
 from doot.enums import Report_f
 from doot.structs import ActionSpec, TaskArtifact, TaskName, TaskSpec
-from doot.utils.signal_handler import SignalHandler
 
 # ##-- end 1st party imports
 

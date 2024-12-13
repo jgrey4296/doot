@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 
-See EOF for license/metadata/notes as applicable
+
 """
 
 # Imports:
@@ -31,8 +31,9 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 from pydantic import (BaseModel, Field, field_validator,
                       model_validator)
-from tomlguard import TomlGuard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.strang import CodeReference, Strang
+from jgdv.structs.strang.location import Location
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -41,13 +42,27 @@ import doot.errors
 from doot._abstract.protocols import Buildable_p, ProtocolModelMeta
 from doot._structs.artifact import TaskArtifact
 from doot._structs.task_name import TaskName
-from doot.enums import RelationMeta_e
 
 # ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
+
+class RelationMeta_e(enum.Enum):
+    """
+      What types+synonyms of task relation there can be,
+      in the form Obj {rel} Y,
+
+      eg: cake dependsOn baking.
+      or: baking requirementFor cake.
+      or: eatingCake conflictsWith givingCake
+    """
+    needs            = enum.auto()
+    blocks           = enum.auto()
+    # excludes         = enum.auto()
+
+    default          = needs
 
 class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metaclass=ProtocolModelMeta):
     """ {object} is {relation} to {target}
@@ -82,14 +97,23 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
     _meta         : dict()                                         = {} # Misc metadata
 
     @staticmethod
-    def build(data:RelationSpec|TomlGuard|dict|TaskName|str, *, relation:RelationMeta_e=RelationMeta_e.needs) -> RelationSpec:
+    def build(data:RelationSpec|ChainGuard|dict|TaskName|str, *, relation:None|RelationSpec.mark_e=None) -> RelationSpec:
+        relation = relation or RelationSpec.mark_e.needs
         match data:
             case RelationSpec():
                 return data
-            case TaskName() | TaskArtifact() | str() | pl.Path():
+            case pl.Path():
+                return RelationSpec(target=TaskArtifact(data), relation=relation)
+            case TaskName() | TaskArtifact():
                 return RelationSpec(target=data, relation=relation)
-            case dict() if "path" in data and "task" not in data:
-                return RelationSpec(target=TaskArtifact.build(data), relation=relation)
+            case str():
+                try:
+                    data = TaskArtifact(data)
+                except (ValueError, KeyError):
+                    data = TaskName(data)
+                return RelationSpec(target=data, relation=relation)
+            case {"path":path} if "task" not in data:
+                return RelationSpec(target=TaskArtifact(path), relation=relation)
             case {"task": taskname}:
                 constraints = data.get("constraints", None) or data.get("constraints_", False)
                 inject      = data.get("inject", None)      or data.get("inject_", None)
@@ -103,11 +127,11 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
             case TaskName() | TaskArtifact():
                 return val
             case pl.Path():
-                return TaskArtifact.build(val)
-            case str() if val.startswith(TaskArtifact._toml_str_prefix):
-                return TaskArtifact.build(val)
+                return TaskArtifact(val)
+            # case str() if val.startswith(TaskArtifact._toml_str_prefix):
+            #     return TaskArtifact(val)
             case str() if TaskName._separator in val:
-                return TaskName.build(val)
+                return TaskName(val)
             case _:
                 raise ValueError("Unparsable target str")
 
@@ -130,7 +154,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 return None
             case str():
                 return val
-            case TomlGuard() | dict() if all(k in ["now","delay", "insert"] for k in val.keys()):
+            case ChainGuard() | dict() if all(k in ["now","delay", "insert"] for k in val.keys()):
                 return val
             case _:
                 raise TypeError("Unknown injection type", val)
@@ -141,13 +165,13 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
     def __repr__(self):
         return f"<RelationSpec: ? {self.relation.name} {self.target}>"
 
-    def __contains__(self, query:TaskMeta_f|LocationMeta_f|TaskName) -> bool:
+    def __contains__(self, query:TaskMeta_e|Location.gmark_e|TaskName) -> bool:
         match self.target, query:
             case TaskName(), TaskName():
                 return query in self.target
-            case TaskName(), TaskMeta_f():
+            case TaskName(), TaskMeta_e():
                 return query in self.target
-            case TaskArtifact(), LocationMeta_f():
+            case TaskArtifact(), Location.gmark_e():
                 return query in self.target
 
     def to_ordered_pair(self, obj:TaskName|TaskArtifact, *, target:None|TaskName=None) -> tuple[TaskName|TaskArtifact, TaskName|TaskArtifact]:
@@ -174,9 +198,9 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target", self.target, target)
             case TaskArtifact(), TaskName():
                 raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target", self.target, target)
-            case TaskName(), TaskName() if not target.is_instantiated():
+            case TaskName(), TaskName() if not target.is_uniq():
                 raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target status", self.target, target)
-            case TaskArtifact(), TaskArtifact() if (match:=self.target.match_with(target)) is not None:
+            case TaskArtifact(), TaskArtifact() if (match:=self.target.reify(target)) is not None:
                 target = match
             case _, _:
                 pass

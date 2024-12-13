@@ -23,18 +23,6 @@ from doot._abstract import Reporter_p
 
 logging = logmod.root
 
-##-- pytest reminder
-# caplog
-# mocker.patch | patch.object | patch.multiple | patch.dict | stopall | stop | spy | stub
-# pytest.mark.filterwarnings
-# pytest.parameterize
-# pytest.skip | skipif | xfail
-# with pytest.deprecated_call
-# with pytest.raises
-# with pytest.warns(warntype)
-
-##-- end pytest reminder
-
 class TestSummaryReporter:
 
     def test_initial(self):
@@ -57,10 +45,27 @@ class TestSummaryReporter:
         assert(len(manager._full_trace) == 3)
         assert(all(isinstance(x, TraceRecord) for x in manager._full_trace))
 
-    @pytest.mark.skip("TODO")
-    def test_str(self):
+    def test_empty_generate_report(self):
+        manager = DootReportManagerSummary()
+        report = manager.generate_report()
+        assert(isinstance(report, dict))
+        assert(len(report) == 5)
+        assert("tasks"     in report)
+        assert("jobs"      in report)
+        assert("actions"   in report)
+        assert("artifacts" in report)
+        assert("total"     in report)
+
+    def test_generate_report(self):
         manager = DootReportManagerSummary()
         manager.add_trace("test", flags=Report_f.SUCCEED | Report_f.TASK)
+        manager.add_trace("test", flags=Report_f.SUCCEED | Report_f.TASK)
         manager.add_trace("test", flags=Report_f.FAIL    | Report_f.JOB)
-        manager.add_trace("test", flags=Report_f.SUCCEED | Report_f.ACTION)
-        assert(isinstance(manager) == "    - Jobs: 0/1\n    - Tasks  : 1/0\n    - Actions: 1/0")
+        manager.add_trace("test", flags=Report_f.SKIP | Report_f.ACTION)
+        report = manager.generate_report()
+        assert(isinstance(report, dict))
+        assert(len(report) == 5)
+        assert(report['jobs'].fail == 1)
+        assert(report['actions'].skip== 1)
+        assert(report['tasks'].succ == 2)
+        assert(report['total'].total == 4)

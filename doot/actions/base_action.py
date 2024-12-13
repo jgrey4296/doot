@@ -24,9 +24,9 @@ from uuid import UUID, uuid1
 # ##-- 1st party imports
 import doot
 from doot._abstract import Action_p
-from doot.enums import ActionResponse_e
+from doot._abstract.task import ActionResponse_e
 from doot.errors import DootTaskError, DootTaskFailed
-from doot.structs import ActionSpec
+from doot._structs.action_spec import ActionSpec
 
 # ##-- end 1st party imports
 

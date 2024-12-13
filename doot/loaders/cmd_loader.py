@@ -32,7 +32,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-import tomlguard
+from jgdv.structs.chainguard import ChainGuard
 import time
 import doot
 from doot._abstract import CommandLoader_p, Command_i
@@ -55,13 +55,13 @@ class DootCommandLoader(CommandLoader_p):
             case list():
                 self.extra = extra
             case dict():
-                self.extra = tomlguard.TomlGuard(extra).on_fail([]).tasks()
-            case tomlguard.TomlGuard():
-                self.extra = tomlguard.on_fail([]).tasks()
+                self.extra = ChainGuard(extra).on_fail([]).tasks()
+            case ChainGuard():
+                self.extra = extra.on_fail([]).tasks()
 
         return self
 
-    def load(self) -> TomlGuard[Command_i]:
+    def load(self) -> ChainGuard[Command_i]:
         logging.debug("---- Loading Commands")
         for cmd_point in self.cmd_plugins:
             try:
@@ -76,4 +76,4 @@ class DootCommandLoader(CommandLoader_p):
             except Exception as err:
                 raise doot.errors.DootPluginError("Attempted to load a non-command: %s : %s", cmd_point, err) from err
 
-        return tomlguard.TomlGuard(self.cmds)
+        return ChainGuard(self.cmds)

@@ -12,27 +12,15 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 import warnings
 import functools as ftz
 
+from jgdv.structs.chainguard import ChainGuard
 import pytest
 logging = logmod.root
 
-import tomlguard
 import doot
 doot._test_setup()
 from doot.structs import TaskSpec, TaskStub
 from doot.task.base_task import DootTask
 import doot._abstract
-
-##-- reminder
-# caplog
-# mocker.patch | patch.object | patch.multiple | patch.dict | stopall | stop | spy | stub
-# pytest.mark.filterwarnings
-# pytest.parameterize
-# pytest.skip | skipif | xfail
-# with pytest.deprecated_call
-# with pytest.raises
-# with pytest.warns(warntype)
-
-##-- end reminder
 
 basic_action = lambda x: ftz.partial(lambda val, state: logging.info("Got: %s : %s", val, state), x)
 
@@ -42,17 +30,14 @@ class TestBaseTask:
         task = DootTask(TaskSpec(name="basic::example"), job=None)
         assert(isinstance(task, doot._abstract.Task_i))
 
-
     def test_lambda_action(self):
         task         = DootTask(TaskSpec.build({"name":"basic::example", "action_ctor":basic_action}), job=None)
         assert(isinstance(task, doot._abstract.Task_i))
-
 
     def test_expand_lambda_action(self):
         task                = DootTask(TaskSpec.build({"name":"basic::example", "action_ctor":basic_action, "actions": [{"do": "doot.actions.base_action:DootBaseAction", "args":["blah"]}]}), job=None)
         actions             = list(task.actions)
         assert(len(actions) == 1)
-
 
     def test_run_lambda_action(self, caplog):
         caplog.set_level("DEBUG", logger="_printer_")
@@ -62,7 +47,6 @@ class TestBaseTask:
         assert(result == {"count": 1})
         assert("Base Action Called: 0" in caplog.messages)
         assert("blah" in caplog.messages)
-
 
     def test_expand_action_str(self, caplog):
         caplog.set_level("DEBUG", logger="_printer_")
@@ -92,7 +76,7 @@ class TestBaseTask:
         task             = DootTask(TaskSpec.build({"name" : "basic::example", "flags" : ["TASK", "IDEMPOTENT"]}), job=None)
         stub             = task.stub_instance(stub_obj)
         as_str           = stub.to_toml()
-        loaded           = tomlguard.read(as_str)
+        loaded           = ChainGuard.read(as_str)
         as_dict          = dict(loaded)
         as_dict['group'] = "basic"
         new_spec         = TaskSpec.build(as_dict)

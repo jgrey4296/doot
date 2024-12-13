@@ -26,10 +26,10 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from tomlguard import TomlGuard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.strang import CodeReference
 from jgdv.util.time_ctx import TimeCtx
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -52,7 +52,7 @@ tracker_target           = doot.config.on_fail("default", str).settings.commands
 runner_target            = doot.config.on_fail("default", str).settings.commands.run.runner()
 reporter_target          = doot.config.on_fail("default", str).settings.commands.run.reporter()
 report_line_targets      = doot.config.on_fail([]).settings.commands.run.report_line(wrapper=list)
-interrupt_handler        = doot.config.on_fail("doot.utils.signal_handler:SignalHandler", bool|str).settings.commands.run.interrupt()
+interrupt_handler        = doot.config.on_fail("jgdv.debugging:SignalHandler", bool|str).settings.commands.run.interrupt()
 
 @doot.check_protocol
 class RunCmd(BaseCommand):
@@ -72,7 +72,7 @@ class RunCmd(BaseCommand):
             self.build_param(name="target", type=list[str], default=[], positional=True),
             ]
 
-    def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
+    def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
         logging.info("---- Starting Run Cmd")
         # Note the final parens to construct:
         available_reporters    = plugins.on_fail([], list).report_line()
@@ -93,7 +93,7 @@ class RunCmd(BaseCommand):
                 tracker.queue_entry(target, from_user=True)
 
         tracker.queue_entry(CheckLocsTask(), from_user=True)
-        for target in doot.args.on_fail({}).tasks().keys():
+        for target in doot.args.on_fail({}).sub().keys():
             try:
                 tracker.queue_entry(target, from_user=True)
             except doot.errors.DootTaskTrackingError as err:

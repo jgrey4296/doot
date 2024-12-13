@@ -39,7 +39,7 @@ class DootShellBake:
         try:
             cmd                     = getattr(env, DKey(args[0]).expand(spec, state))
             keys                    = [DKey(x) for x in args[1:]]
-            expanded                = [x.expand(spec, state, locs=doot.locs) for x in keys]
+            expanded                = [x.expand(spec, state, locs=doot.locs.Current) for x in keys]
 
             match _in.expand(spec, state, fallback=None, check=sh.Command|bool|None):
                 case False | None:

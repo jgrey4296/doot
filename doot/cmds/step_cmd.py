@@ -35,7 +35,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from collections import defaultdict
-from tomlguard import TomlGuard
+from jgdv.structs.chainguard import ChainGuard
 import doot
 from doot.cmds.base_cmd import BaseCommand
 from doot.utils.plugin_selector import plugin_selector
@@ -63,7 +63,7 @@ class StepCmd(BaseCommand):
             self.build_param(name="target", type=list[str], default=[], positional=True),
             ]
 
-    def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
+    def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
         # Note the final parens to construct:
         available_reporters    = plugins.on_fail([], list).report_line()
         report_lines           = [plugin_selector(available_reporters, target=x)() for x in report_line_targets]
@@ -87,7 +87,7 @@ class StepCmd(BaseCommand):
             else:
                 tracker.queue_task(target)
 
-        for target in doot.args.tasks.keys():
+        for target in doot.args.sub.keys():
             if target not in tracker:
                 printer.warn(- "%s specified as run target, but it doesn't exist")
             else:

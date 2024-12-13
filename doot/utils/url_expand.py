@@ -33,7 +33,6 @@ logging = logmod.getLogger(__name__)
 from time import sleep
 import requests
 
-
 def expander(current):
     # header = {'user-agent': args.agent}
     try:

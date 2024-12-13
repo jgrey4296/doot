@@ -2,24 +2,46 @@
 """
 
 """
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
+import datetime
+import enum
+import functools as ftz
+import itertools as itz
 import logging as logmod
 import pathlib as pl
-from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
-                    Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
-                    TypeVar, cast)
 import warnings
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
+from uuid import UUID, uuid1
 
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
 import pytest
+
+# ##-- end 3rd party imports
 
 logging = logmod.root
 
+# ##-- 1st party imports
 import doot
+
+# ##-- end 1st party imports
+
 doot._test_setup()
-from doot.actions.job_expansion import JobExpandAction, JobMatchAction
+# ##-- 1st party imports
 import doot.errors
-from doot.structs import DKey, ActionSpec, TaskName, TaskSpec
+from doot.actions.job_expansion import JobExpandAction, JobMatchAction
+from doot.structs import ActionSpec, DKey, TaskName, TaskSpec
+
+# ##-- end 1st party imports
+
 
 class TestJobExpansion:
 
@@ -29,7 +51,7 @@ class TestJobExpansion:
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": TaskName.build("agroup::basic")}
+        return {"_task_name": TaskName("agroup::basic")}
 
     def test_sanity(self, spec, state):
         obj = JobExpandAction()
@@ -84,7 +106,7 @@ class TestJobExpansion:
 
 
     def test_basic_expander(self, spec, state):
-        state.update(dict(_task_name=TaskName.build("agroup::basic"),
+        state.update(dict(_task_name=TaskName("agroup::basic"),
                           inject={"insert":["aKey"]},
                           base="base::task"))
 
@@ -98,7 +120,7 @@ class TestJobExpansion:
         assert(len(result['specs']) == 3)
 
     def test_expander_with_dict_injection(self, spec, state):
-        state.update(dict(_task_name=TaskName.build("agroup::basic"),
+        state.update(dict(_task_name=TaskName("agroup::basic"),
                           inject={"insert": ["aKey"], "delay":{"other":"blah"}},
                           base="base::task"))
 
@@ -121,7 +143,7 @@ class TestJobMatcher:
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": TaskName.build("agroup::basic")}
+        return {"_task_name": TaskName("agroup::basic")}
 
     def test_sanity(self):
         pass
@@ -134,7 +156,7 @@ class TestJobGenerate:
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": TaskName.build("agroup::basic")}
+        return {"_task_name": TaskName("agroup::basic")}
 
     def test_sanity(self):
         pass

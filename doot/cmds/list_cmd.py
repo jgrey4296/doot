@@ -31,16 +31,15 @@ from weakref import ref
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from tomlguard import TomlGuard
-
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.cli.param_spec import ParamSpec
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 import doot.errors
 from doot.cmds.base_cmd import BaseCommand
-from doot.enums import TaskMeta_f
-from doot.structs import ParamSpec
+from doot.enums import TaskMeta_e
 
 # ##-- end 1st party imports
 
@@ -76,20 +75,20 @@ class ListCmd(BaseCommand):
             self.build_param(name="pattern",                  type=str,           default="", positional=True,    desc="List tasks with a basic string pattern in the name"),
             ]
 
-    def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
+    def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
         """List task generators"""
         logging.debug("Starting to List Jobs/Tasks")
-        if (doot.args.on_fail("").cmd.args.pattern() == ""     # type: ignore
-            and not bool(doot.args.tasks)        # type: ignore
-            and not doot.args.cmd.args.by_source # type: ignore
-            and not doot.args.cmd.args.all):     # type: ignore
+        if (doot.args.on_fail("").cmd.args.pattern() == ""
+            and not bool(doot.args.sub)
+            and not doot.args.cmd.args.by_source
+            and not doot.args.cmd.args.all):
             raise doot.errors.DootCommandError("ListCmd Needs a Matcher, or all")
 
         if not bool(tasks):
             help_l.info("No Tasks Defined", extra={"colour": "red"})
             return
 
-        match dict(doot.args.cmd.args): # type: ignore
+        match dict(doot.args.cmd.args):
             case {"locations": True}:
                 self._print_locations()
             case {"by-source": True}:
@@ -113,9 +112,9 @@ class ListCmd(BaseCommand):
         cmd_l.info("Tasks for Pattern: %s", pattern)
         for key in matches:
             spec = tasks[key]
-            if TaskMeta_f.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
+            if TaskMeta_e.INTERNAL in spec.meta and not doot.args.cmd.args.internal:
                 continue
-            if TaskMeta_f.DISABLED in spec.flags:
+            if TaskMeta_e.DISABLED in spec.meta:
                 continue
 
             cmd_l.info(fmt_str,
@@ -131,15 +130,15 @@ class ListCmd(BaseCommand):
         for name, spec in tasks.items():
             if pattern not in name:
                 continue
-            if TaskMeta_f.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
+            if TaskMeta_e.INTERNAL in spec.meta and not doot.args.cmd.args.internal:
                 continue
-            if TaskMeta_f.DISABLED in spec.flags:
+            if TaskMeta_e.DISABLED in spec.meta:
                 continue
 
-            groups[spec.name.group].append((spec.name.task,
-                                            spec.ctor.__module__,
-                                            spec.ctor.__name__,
-                                            spec.sources))
+            groups[spec.name[0:]].append((spec.name[1:],
+                                          spec.ctor.__module__,
+                                          spec.ctor.__name__,
+                                          spec.sources))
 
         cmd_l.info("Tasks for Matching Groups: %s", pattern, extra={"colour":"cyan"})
         for group, tasks in groups.items():
@@ -153,16 +152,16 @@ class ListCmd(BaseCommand):
         fmt_str = f"{INDENT}%-{max_key}s :: %-60s :: <Source: %s>"
         groups  = defaultdict(list)
         for spec in tasks.values():
-            if TaskMeta_f.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
+            if TaskMeta_e.INTERNAL in spec.meta and not doot.args.cmd.args.internal:
                 continue
-            if TaskMeta_f.DISABLED in spec.flags:
+            if TaskMeta_e.DISABLED in spec.meta:
                 continue
             if bool(hide_names) and hide_re.search(str(spec.name)):
                 continue
 
-            groups[spec.name.group].append((spec.name.task,
-                                            (spec.doc[0] if bool(spec.doc) else "")[:60],
-                                            (spec.sources[0] if bool(spec.sources) else "None")
+            groups[spec.name[0:]].append((spec.name[1:],
+                                          (spec.doc[0] if bool(spec.doc) else "")[:60],
+                                          (spec.sources[0] if bool(spec.sources) else "None")
                                            ))
 
 
@@ -180,12 +179,12 @@ class ListCmd(BaseCommand):
         fmt_str = f"{INDENT}%-{max_key}s :: %s.%-25s"
         sources = defaultdict(list)
         for key, spec in tasks.items():
-            if TaskMeta_f.INTERNAL in spec.flags and not doot.args.cmd.args.internal:
+            if TaskMeta_e.INTERNAL in spec.meta and not doot.args.cmd.args.internal:
                 continue
-            if TaskMeta_f.DISABLED in spec.flags:
+            if TaskMeta_e.DISABLED in spec.meta:
                 continue
 
-            sources[spec.sources[0]].append((spec.name.task,
+            sources[spec.sources[0]].append((spec.name[1:],
                                              spec.ctor.__module__,
                                              spec.ctor.__name__,
                                             ))
@@ -198,12 +197,12 @@ class ListCmd(BaseCommand):
     def _print_just_groups(self, tasks):
         cmd_l.info("Defined Task Groups:", extra={"colour":"cyan"})
 
-        group_set = set(spec.name.group for spec in tasks.values())
+        group_set = set(spec.name[0:] for spec in tasks.values())
         for group in group_set:
             printer.info("- %s", group)
 
     def _print_locations(self):
         cmd_l.info("Defined Locations: ")
 
-        for x in sorted(doot.locs):
-            printer.info("-- %-25s : %s", x, doot.locs.get(x))
+        for x in sorted(doot.locs.Current):
+            printer.info("-- %-25s : %s", x, doot.locs.Current.get(x))

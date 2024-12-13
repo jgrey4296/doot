@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-See EOF for license/metadata/notes as applicable
 """
 
 # Imports:
@@ -30,10 +29,9 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-import more_itertools as mitz
 from pydantic import BaseModel, Field, field_validator, model_validator
-from tomlguard import TomlGuard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -47,7 +45,7 @@ from doot._abstract.protocols import SpecStruct_p, ProtocolModelMeta, Buildable_
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-ALIASES = doot.aliases.action
+ALIASES = doot.aliases.on_fail([]).action()
 
 class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
     """
@@ -61,13 +59,13 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
     """
     do         : None|CodeReference                   = None
     args       : list[Any]                            = []
-    kwargs     : TomlGuard                            = Field(default_factory=TomlGuard)
+    kwargs     : ChainGuard                            = Field(default_factory=ChainGuard)
     inState    : set[str]                             = set()
     outState   : set[str]                             = set()
     fun        : None|Callable                        = None
 
     @staticmethod
-    def build(data:dict|list|TomlGuard|ActionSpec, *, fun=None) -> ActionSpec:
+    def build(data:dict|list|ChainGuard|ActionSpec, *, fun=None) -> ActionSpec:
         match data:
             case ActionSpec():
                 return data
@@ -78,8 +76,8 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
                     )
                 return action_spec
 
-            case dict() | TomlGuard():
-                kwargs      = TomlGuard({x:y for x,y in data.items() if x not in ActionSpec.model_fields})
+            case dict() | ChainGuard():
+                kwargs      = ChainGuard({x:y for x,y in data.items() if x not in ActionSpec.model_fields})
                 fun         = data.get('fun', fun)
                 action_spec = ActionSpec(
                     do=data.get('do', None),
@@ -98,12 +96,12 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
         match val:
             case None:
                 return None
-            case str() if val in ALIASES:
-                return CodeReference.build(ALIASES[val])
-            case str():
-                return CodeReference.build(val)
             case CodeReference():
                 return val
+            case str() if val in ALIASES:
+                return CodeReference(ALIASES[val])
+            case str():
+                return CodeReference(val)
             case _:
                 raise TypeError("Unrecognized action spec do type", val)
 
@@ -137,6 +135,10 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
             raise doot.errors.DootActionError("Action Spec has not been finalised with a function", self)
 
         return self.fun(self, task_state)
+
+    @property
+    def params(self):
+        return self.kwargs
 
     def set_function(self, fun:Action_p|Callable):
         """
@@ -172,7 +174,3 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
 
     def verify_out(self, state:dict):
         self.verify(state, fields=self.outState)
-
-    @property
-    def params(self):
-        return self.kwargs

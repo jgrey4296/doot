@@ -30,7 +30,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from time import sleep
 import sh
 import shutil
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.strang import CodeReference
 
 import doot
 from doot.errors import DootTaskError, DootTaskFailed

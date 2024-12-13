@@ -32,7 +32,7 @@ class TestJobInjection:
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": TaskName.build("agroup::basic")}
+        return {"_task_name": TaskName("agroup::basic")}
 
     def test_copy(self, spec, state):
         """ the injection copies the value over directly """
@@ -106,7 +106,7 @@ class TestPathInjection:
 
     @pytest.fixture(scope="function")
     def state(self):
-        return {"_task_name": TaskName.build("agroup::basic")}
+        return {"_task_name": TaskName("agroup::basic")}
 
     @pytest.mark.xfail
     def test_initial(self, spec ,state):

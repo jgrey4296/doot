@@ -60,7 +60,7 @@ Keys can have a number of forms:
 {x_} : Indirect Expansion form
 x    : Name form, no expansion
 
-See EOF for license/metadata/notes as applicable
+
 
 
 """

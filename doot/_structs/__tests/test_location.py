@@ -12,79 +12,49 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 import warnings
 
 import pytest
+from jgdv.structs.strang.location import Location
 import doot
 doot._test_setup()
 
 from doot.structs import DKey
-from doot._structs.location import Location
-from doot.enums import LocationMeta_f
 
 logging = logmod.root
 
 class TestLocation:
 
     def test_sanity(self):
-        obj = Location.build("test/path", key="test")
+        obj = Location("dir::test/path")
         assert(obj is not None)
 
     def test_build(self):
-        obj = Location.build({"key":"test", "path":"test/blah"})
+        obj = Location("dir::test/blah")
         assert(obj.path == pl.Path("test/blah"))
 
     def test_basic(self):
-        obj = Location.build({"key":"test", "path":"test/blah"})
+        obj = Location("dir::test/blah")
         assert(obj is not None)
 
-    def test_copy(self):
-        obj = Location.build({"key":"test", "path":"test/blah"})
-        obj2 = obj.model_copy()
-        assert(obj is not obj2)
-
-    def test_key(self):
-        obj = Location.build({"key":"test", "path":"test/blah"})
-        assert(isinstance(obj.key, DKey))
-        assert(obj.key == "test")
-
     def test_target(self):
-        obj = Location.build({"key":"test", "path":"test/blah"})
+        obj = Location("dir::test/blah")
         assert(obj.path == pl.Path("test/blah"))
 
     def test_metadata(self):
-        obj = Location.build({"key":"test", "path":"test/blah", "protected":True})
-        assert(LocationMeta_f.protected in obj)
+        obj = Location("dir/protect::test/blah")
+        assert(Location.gmark_e.protect in obj)
 
     def test_metadata_opposite(self):
-        obj = Location.build({"key":"test", "path":"test/blah", "protected":False})
-        assert(LocationMeta_f.protected not in obj)
+        obj = Location("dir::test/blah")
+        assert(Location.gmark_e.protect not in obj)
 
     def test_meta_in_path(self):
-        obj = Location.build({"key":"test", "path":"test/?.txt"})
-        assert(LocationMeta_f.abstract in obj)
-        assert(LocationMeta_f.glob not in obj)
-        assert(obj.abstracts == (False, True, False))
+        obj = Location("file::test/?.txt")
+        assert(Location.bmark_e.select in obj.stem[0])
 
     def test_meta_in_path_glob(self):
-        obj = Location.build({"key":"test", "path":"test/*/blah.txt"})
-        assert(LocationMeta_f.abstract in obj)
-        assert(LocationMeta_f.glob in obj)
-        assert(obj.abstracts == (True, False, False))
+        obj = Location("file::test/*/blah.txt")
+        assert(Location.gmark_e.abstract in obj)
 
     def test_meta_in_path_expansion(self):
-        obj = Location.build({"key":"test", "path":"test/{fname}.txt"})
-        assert(LocationMeta_f.abstract in obj)
-        assert(LocationMeta_f.glob not in obj)
-        assert(LocationMeta_f.expandable in obj)
-        assert(bool(obj.keys()))
-        assert("fname" in obj.keys())
-        assert(obj.abstracts == (False, True, False))
-
-
-    def test_normOnLoad(self):
-        obj = Location.build({"key":"test", "path":"test/blah.txt", "normOnLoad": True})
-        assert(obj.path.is_absolute())
-        assert(obj.path.is_relative_to(pl.Path.cwd()))
-
-    def test_userpath_normOnLoad(self):
-        obj = Location.build({"key":"test", "path":"~/test/blah.txt", "normOnLoad": True})
-        assert(obj.path.is_absolute())
-        assert(obj.path.is_relative_to(pl.Path.home()))
+        obj = Location("file::test/{fname}.txt")
+        assert(Location.gmark_e.abstract in obj)
+        assert(Location.gmark_e.expand in obj)

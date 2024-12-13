@@ -25,16 +25,15 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from tomlguard import TomlGuard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 import doot.errors
 from doot._abstract import Job_i, Task_i
-from doot.enums import TaskMeta_f
-from doot.errors import DootDirAbsent
+from doot.enums import TaskMeta_e
 from doot.structs import TaskName, TaskSpec
 from doot.task.base_task import DootTask
 
@@ -55,26 +54,26 @@ class DootJob(Job_i, DootTask):
 
     """
     _help = ["A Basic Task Constructor"]
-    _default_flags = TaskMeta_f.JOB
+    _default_flags = TaskMeta_e.JOB
 
     def __init__(self, spec:TaskSpec):
         assert(spec is not None), "Spec is empty"
         super(DootJob, self).__init__(spec)
 
-    def default_task(self, name:str|TaskName|None, extra:None|dict|TomlGuard) -> TaskSpec:
+    def default_task(self, name:str|TaskName|None, extra:None|dict|ChainGuard) -> TaskSpec:
         task_name = None
         match name:
             case None:
-                task_name = self.name.subtask(SUBTASKED_HEAD)
+                task_name = self.name.push(SUBTASKED_HEAD)
             case str():
-                task_name = self.name.subtask(name)
+                task_name = self.name.push(name)
             case TaskName():
                 task_name = name
             case _:
                 raise doot.errors.DootTaskError("Bad value used to make a subtask in %s : %s", self.shortname, name)
 
         assert(task_name is not None)
-        return TaskSpec(name=task_name, extra=TomlGuard(extra))
+        return TaskSpec(name=task_name, extra=ChainGuard(extra))
 
     def is_stale(self, task:Task_i):
         return False

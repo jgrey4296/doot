@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 
-See EOF for license/metadata/notes as applicable
+
 """
 # Imports:
 from __future__ import annotations
@@ -31,7 +31,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import networkx as nx
-import tomlguard
+from jgdv.structs.chainguard import ChainGuard
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -39,12 +39,12 @@ import doot
 import doot.errors
 from doot._abstract import Job_i, Task_i, TaskRunner_i, TaskTracker_i
 from doot._structs.relation_spec import RelationSpec
-from doot.enums import TaskMeta_f, QueueMeta_e, TaskStatus_e, LocationMeta_f, RelationMeta_e, EdgeType_e
+from doot.enums import TaskMeta_e, QueueMeta_e, TaskStatus_e, LocationMeta_e, RelationMeta_e, EdgeType_e
 from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
-from doot.utils.injection import Injector_m
-from doot.utils.matching import TaskMatcher_m
+from doot.mixins.injection import Injector_m
+from doot.mixins.matching import TaskMatcher_m
 # ##-- end 1st party imports
 
 ##-- logging
@@ -54,7 +54,7 @@ track_l          = doot.subprinter("track")
 logging.disabled = False
 ##-- end logging
 
-ROOT                            : Final[str]                  = "root::_" # Root node of dependency graph
+ROOT                            : Final[str]                  = "root::_.$gen$" # Root node of dependency graph
 EXPANDED                        : Final[str]                  = "expanded"  # Node attribute name
 REACTIVE_ADD                    : Final[str]                  = "reactive-add"
 CLEANUP                         : Final[str]                  = "cleanup"
@@ -75,7 +75,7 @@ class TrackNetwork(TaskMatcher_m):
 
     def __init__(self, registry:TrackRegistry):
         self._registry                                                       = registry
-        self._root_node        : TaskName                                    = TaskName.build(ROOT)
+        self._root_node        : TaskName                                    = TaskName(ROOT)
         self._declare_priority : int                                         = DECLARE_PRIORITY
         self._min_priority     : int                                         = MIN_PRIORITY
         self._graph            : nx.DiGraph[Concrete[TaskName]|TaskArtifact] = nx.DiGraph()
@@ -116,8 +116,7 @@ class TrackNetwork(TaskMatcher_m):
                 self._graph.add_node(name)
                 self.nodes[name][EXPANDED]     = True
                 self.nodes[name][REACTIVE_ADD] = False
-                self._root_node.meta                  |= TaskMeta_f.CONCRETE
-            case TaskName() if TaskMeta_f.CONCRETE not in name:
+            case TaskName() if TaskName.bmark_e.gen not in name:
                 raise doot.errors.DootTaskTrackingError("Nodes should only be instantiated spec names", name)
             case _ if name in self.nodes:
                 return
@@ -187,7 +186,7 @@ class TrackNetwork(TaskMatcher_m):
         *without* expanding those new nodes.
         returns a list of the new nodes tasknames
         """
-        assert(name.is_instantiated())
+        assert(name.is_uniq())
         assert(not self.nodes[name].get(EXPANDED, False))
         spec                                                  = self._registry.specs[name]
         spec_pred, spec_succ                                  = self.pred[name], self.succ[name]
@@ -236,7 +235,7 @@ class TrackNetwork(TaskMatcher_m):
         to_expand = set()
         spec_pred = self.pred[spec.name]
         # Get (abstract) blocking relations from self._blockers
-        blockers  = self._registry._blockers[spec.name.root(top=True)]
+        blockers  = self._registry._blockers[spec.name.pop(top=True)]
 
         # Try to link instantiated nodes if they match constraints
 
@@ -250,19 +249,19 @@ class TrackNetwork(TaskMatcher_m):
           TODO these could be shifted into the task/job class
         """
 
-        if TaskMeta_f.JOB in spec.name:
+        if TaskMeta_e.JOB in spec.name:
             logging.debug("Expanding Job Head for: %s", spec.name)
-            heads         = [jhead for x in spec.get_source_names() if (jhead:=x.job_head()) in self._registry.specs]
+            heads         = [jhead for x in spec.get_source_names() if (jhead:=x.with_head()) in self._registry.specs]
             head_name     = heads[-1]
             head_instance = self._registry._instantiate_spec(head_name, extra=spec.model_extra)
             self.connect(spec.name, head_instance, job_head=True)
             return [head_instance]
 
-        if spec.name.is_instantiated() and (root:=spec.name.root()) == root.cleanup_name():
+        if spec.name.is_uniq() and (root:=spec.name.pop()) == root.canon():
             return []
 
         # Instantiate and connect the cleanup task
-        cleanup = self._registry._instantiate_spec(spec.name.cleanup_name())
+        cleanup = self._registry._instantiate_spec(spec.name.canon())
         self.connect(spec.name, cleanup, cleanup=True)
         return [cleanup]
 
@@ -288,7 +287,7 @@ class TrackNetwork(TaskMatcher_m):
         match artifact.is_concrete():
             case True:
                 logging.debug("-- Connecting concrete artifact to parent abstracts")
-                for abstract in [x for x in self._registry._abstract_artifacts if artifact in x and LocationMeta_f.glob in x]:
+                for abstract in [x for x in self._registry._abstract_artifacts if artifact in x and LocationMeta_e.glob in x]:
                     self.connect(artifact, abstract)
                     to_expand.add(abstract)
             case False:
@@ -302,14 +301,14 @@ class TrackNetwork(TaskMatcher_m):
         self.nodes[artifact][EXPANDED] = True
         return to_expand
 
-    def concrete_edges(self, name:Concrete[TaskName|TaskArtifact]) -> tomlguard.TomlGuard:
+    def concrete_edges(self, name:Concrete[TaskName|TaskArtifact]) -> ChainGuard:
         """ get the concrete edges of a task.
           ie: the ones in the task _graph, not the abstract ones in the spec.
         """
         assert(name in self)
         preds = self.pred[name]
         succ  = self.succ[name]
-        return tomlguard.TomlGuard({
+        return ChainGuard({
             "pred" : {"tasks": [x for x in preds if isinstance(x, TaskName)],
                       "_registry.artifacts": {"abstract": [x for x in preds if isinstance(x, TaskArtifact) and not x.is_concrete()],
                                     "concrete": [x for x in preds if isinstance(x, TaskArtifact) and x.is_concrete()]}},
@@ -386,12 +385,12 @@ class TrackNetwork(TaskMatcher_m):
                         raise doot.errors.DootTaskTrackingError("Network isn't fully expanded", node)
                     else:
                         logging.warning("Network isn't fully expanded: %s", node)
-                case TaskName() if TaskMeta_f.CONCRETE not in node:
+                case TaskName() if not node.is_uniq():
                     if strict:
                         raise doot.errors.DootTaskTrackingError("Abstract ConcreteId in _graph", node)
                     else:
                         logging.warning("Abstract ConcreteId in _graph: %s", node)
-                case TaskArtifact() if LocationMeta_f.glob in node:
+                case TaskArtifact() if LocationMeta_e.glob in node:
                     bad_nodes = [x for x in self.pred[node] if x in self._registry.specs]
                     if strict and bool(bad_nodes):
                         raise doot.errors.DootTaskTrackingError("Glob Artifact ConcreteId is a successor to a task", node, bad_nodes)

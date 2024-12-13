@@ -3,7 +3,7 @@
   Injection adds to a task spec.
   allowing initial state, extra actions, etc.
 
-See EOF for license/metadata/notes as applicable
+
 """
 
 # Imports:
@@ -31,9 +31,8 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-import more_itertools as mitz
-from tomlguard import TomlGuard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.strang import CodeReference
+from jgdv.structs.chainguard import ChainGuard
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -42,7 +41,7 @@ import doot.errors
 from doot._abstract import Action_p
 from doot.mixins.path_manip import PathManip_m
 from doot.structs import DKey, TaskName, TaskSpec, DKeyed
-from doot.utils.injection import Injector_m
+from doot.mixins.injection import Injector_m
 
 # ##-- end 1st party imports
 
@@ -74,7 +73,7 @@ class JobInjector(Action_p, Injector_m):
             case TaskSpec():
                 onto.model_extra.update(dict(**x.extra, **injection))
 
-    def build_injection(self, spec, state, inject, replacement=None, post:dict|None=None) -> None|TomlGuard:
+    def build_injection(self, spec, state, inject, replacement=None, post:dict|None=None) -> None|ChainGuard:
         return super().build_injection(inject, spec, state, insertion=replacement)
 
 class JobPrependActions(Action_p):
@@ -147,9 +146,9 @@ class JobSubNamer(Action_p):
             case list():
                 for i,x in enumerate(_onto):
                     val = x.extra[_key]
-                    x.name = _basename.subtask(i, self._gen_subname(val))
+                    x.name = _basename.push(i, self._gen_subname(val))
             case TaskSpec():
-                onto.name = _basename.subtask(self._gen_subname(val))
+                onto.name = _basename.push(self._gen_subname(val))
 
     def _gen_subname(self, val):
         match val:

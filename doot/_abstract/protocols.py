@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 
-See EOF for license/metadata/notes as applicable
+
 """
 
 # Imports:
@@ -40,7 +40,7 @@ from jgdv._abstract.protocols import (ActionGrouper_p, ArtifactStruct_p,
                                       Persistent_p, Decorator_p
                                       )
 from pydantic import BaseModel
-from tomlguard import TomlGuard
+from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 3rd party imports
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 """
 
-See EOF for license/metadata/notes as applicable
+
 """
 
 # Imports:
@@ -29,7 +29,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from tomlguard import TomlGuard
+from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 3rd party imports
 
@@ -47,7 +47,7 @@ logging = logmod.getLogger(__name__)
 T                                  = TypeVar("T")
 Maybe                              = None | T
 Result                             = T | Exception
-Data                               = dict | TomlGuard
+Data                               = dict | ChainGuard
 
 CLI_K         : Final[str]         = "cli"
 MUST_INJECT_K : Final[str]         = "must_inject"
@@ -70,10 +70,10 @@ class Injector_m:
         match base:
             case None | RelationSpec(inject=None):
                 return None
-            case dict() | TomlGuard():
+            case dict() | ChainGuard():
                 base_data = base
             case RelationSpec(inject=str() as base_s):
-                base_k = DKey(base_s, implicit=True, check=dict|TomlGuard)
+                base_k = DKey(base_s, implicit=True, check=dict|ChainGuard)
                 base_data = base_k(*sources)
             case RelationSpec(inject=dict() as base_data):
                 pass
@@ -83,7 +83,7 @@ class Injector_m:
         match constraint:
             case None:
                 constraint_data = {}
-            case dict() | TomlGuard():
+            case dict() | ChainGuard():
                 constraint_data = constraint
             case TaskSpec():
                 constraint_data = constraint.extra
@@ -124,7 +124,7 @@ class Injector_m:
         match base:
             case None:
                 return None
-            case dict() | TomlGuard():
+            case dict() | ChainGuard():
                 copy    = self._prep_keys(base.get("delay", None) or base.get("copy", []))
                 expand  = self._prep_keys(base.get("now", None) or base.get("expand", []))
                 replace = [DKey(x, implicit=True) for x in base.get("insert", None) or base.get("replace", [])]
@@ -142,7 +142,7 @@ class Injector_m:
             case _:
                 raise doot.errors.DootStateError("unknown keys type", keys)
 
-    def _validate_key_constraints(self, inject_keys:set[str], spec:dict|TomlGuard) -> None:
+    def _validate_key_constraints(self, inject_keys:set[str], spec:dict|ChainGuard) -> None:
         """ check the keys to be injected match keys in the default spec """
         inject_keys   = {str(x) for x in inject_keys}
         spec_keys     = {str(x) for x in spec.keys()}

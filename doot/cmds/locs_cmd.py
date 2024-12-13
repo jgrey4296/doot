@@ -27,11 +27,11 @@ from weakref import ref
 ##-- end imports
 
 from collections import defaultdict
-from tomlguard import TomlGuard
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.cli.param_spec import ParamSpec
 import doot
 import doot.errors
 from doot.cmds.base_cmd import BaseCommand
-from doot.structs import ParamSpec
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -54,11 +54,11 @@ class LocsCmd(BaseCommand):
             self.build_param(name="pattern",                  type=str,           default="", positional=True,    desc="List tasks with a basic string pattern in the name"),
             ]
 
-    def __call__(self, tasks:TomlGuard, plugins:TomlGuard):
+    def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
         """List task generators"""
         logging.debug("Starting to List Locations")
 
-        if not bool(doot.locs):
+        if not bool(doot.locs.Current):
             printer.info("No Locations Defined")
             return
 
@@ -72,11 +72,11 @@ class LocsCmd(BaseCommand):
 
     def _print_all(self):
         printer.info("Defined Locations:", extra={"colour":"cyan"})
-        max_key = len(max(doot.locs, key=len))
+        max_key = len(max(doot.locs.Current, key=len))
         fmt_str = f"{INDENT}%-{max_key}s :: %-25s"
         locs = defaultdict(list)
 
-        for name in doot.locs:
-            printer.info(fmt_str, name, doot.locs[f"{{{name}}}"])
+        for name in doot.locs.Current:
+            printer.info(fmt_str, name, doot.locs.Current[f"{{{name}}}"])
 
         printer.info("")

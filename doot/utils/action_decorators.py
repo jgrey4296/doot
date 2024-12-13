@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
+Action Decorators for metadata.
 
-See EOF for license/metadata/notes as applicable
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
@@ -20,26 +21,29 @@ import types
 import weakref
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
-# import more_itertools as mitz
-# from boltons import
-##-- end lib imports
+# ##-- 3rd party imports
+from jgdv.decorators.base import MetaDecorator
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+import doot.errors
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-import doot
-import doot.errors
-from doot.utils.decorators import DootDecorator, MetaDecorator
 
 RUN_DRY_SWITCH                               = doot.constants.decorations.RUN_DRY_SWITCH
 RUN_DRY                                      = doot.constants.decorations.RUN_DRY
@@ -56,82 +60,92 @@ class DryRunSwitch(MetaDecorator):
     """ Mark an action callable/class as to be skipped in dry runs """
 
     def __init__(self, *, override:bool=False):
-        super().__init__(mark="_dry_run_able")
-        self._override = override
+        super().__init__("dry_run", mark="_dry_run_mark")
+        self._override = override or dry_run_active
 
-    def _target_method(self, fn):
-        override_active = self._override
+    def _wrap_method(self, fn):
+        override_active = self._override or dry_run_active
 
-        @ftz.wraps(fn)
         def wrapper(*args, **kwargs):
-            if dry_run_active or override_active:
+            if override_active:
                 return None
             return fn(*args, **kwargs)
 
         return wrapper
 
-    def _target_fn(self, fn):
-        return self._target_method(fn)
+    def _wrap_fn(self, fn):
+        return self._wrap_method(fn)
 
-class RunsDry(DootDecorator):
+class RunsDry(MetaDecorator):
     """ mark an action that makes no changes to the system, on an honour system """
 
     def __init__(self):
-        self._annotations = {RUN_DRY}
+        super().__init__(RUN_DRY, mark="_runs_dry")
 
-class GeneratesTasks(DootDecorator):
+class GeneratesTasks(MetaDecorator):
     """ Mark an action callable/class as a task generator """
 
     def __init__(self):
-        self._annotations = {GEN_TASKS}
+        super().__init__(GEN_TASKS, mark="_gen_data_mark")
 
-    def _wrapper(self, fn, *args, _obj=None, **kwargs):
-        result = fn(*args, **kwargs)
-        if isinstance(result, Generator):
-            raise NotImplementedError("Actions can't return generators yet to generate tasks")
-        if not isinstance(result, list):
-            raise doot.errors.DootActionError("Action did not return a list of generated tasks")
-        if any(not isinstance(x, SpecStruct_p) for x in result):
-            raise doot.errors.DootActionError("Action did not return task specs")
-        return result
+    def _wrap_fn(self, fn):
 
-class IOWriter(DootDecorator):
+        def _gen_task_wrapper(*args, **kwargs):
+            match fn(*args, **kwargs):
+                case [*xs] if any(not isinstance(x, SpecStruct_p) for x in xs):
+                    raise doot.errors.DootActionError("Action did not return task specs")
+                case list() as res:
+                    return res
+                case _:
+                    raise doot.errors.DootActionError("Action did not return a list of generated tasks")
+
+        return _gen_task_wrapper
+
+class IOWriter(MetaDecorator):
     """ mark an action callable/class as an io action,
       checks the path it'll write to isn't write protected
     """
 
-    def __init__(self, *targets):
-        super().__init__()
-        self._annotations = {IO_ACT}
+    def __init__(self):
+        super().__init__(IO_ACT, mark="_io_mark")
         self._targets = [x for x in targets or ["to"]]
 
-    def _wrapper(self, fn, spec, state, *args, _obj=None, **kwargs):
-        for x in [y for y in getattr(fn, '_doot_keys', []) if y in self._targets]:
-            if doot.locs._is_write_protected(x.expand(spec, state)):
-                raise doot.errors.DootTaskError("A Target to an IOWriter action is marked as protected")
+    def _wrap_fn(self, fn):
 
-        return fn(spec, state, *args, **kwargs)
+        def _io_writer_wrapper(*args, **kargs):
+            result = fn(*args, **kwargs)
+            raise NotImplementedError()
 
-class ControlFlow(DootDecorator):
+        return _io_writer_wrapper
+
+class ControlFlow(MetaDecorator):
     """ mark an action callable/class as a control flow action
       implies it runs dry
       """
-    pass
 
-class External(DootDecorator):
+    def __init__(self):
+        super().__init__(CONTROL_FLOW, mark="_control_flow_mark")
+
+class External(MetaDecorator):
     """ mark an action callable/class as calling an external program.
       implies rundryswitch
       """
-    pass
 
-class StateManipulator(DootDecorator):
+    def __init__(self):
+        super().__init__(EXTERNAL, mark="_external_mark")
+
+class StateManipulator(MetaDecorator):
     """ mark an action callable/class as a state modifier
       checks the DootKey `returns` are in the return dict
     """
-    pass
 
-class Announcer(DootDecorator):
+    def __init__(self):
+        super().__init__(STATE_MOD, mark="_state_mod_mark")
+
+class Announcer(MetaDecorator):
     """ mark an action callable/class as reporting in a particular way
       implies run_dry, and skips on cli arg `silent`
       """
-    pass
+
+    def __init__(self):
+        super().__init__(ANNOUNCER, mark="_announcer_mark")

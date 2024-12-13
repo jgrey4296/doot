@@ -24,7 +24,7 @@ command        = { tasks="doot.cmds.list_cmd:ListCmd", pl="doot.cmds.plugins_cmd
 [logging]
 # Standard loggers. See LoggerSpec.
 stream  = { level="WARNING", filter=[],                 target="stdout", format="{levelname:<8} : {message}"  }
-file    = { level="DEBUG",   filter=["tomlguard"],      target="rotate", format="{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})", filename_fmt="doot.log" }
+file    = { level="DEBUG",   filter=["chainguard"],      target="rotate", format="{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})", filename_fmt="doot.log" }
 printer = { level="NOTSET", colour=true,                target=["stdout", "rotate"], format="{message}", filename_fmt="doot_printed.log" }
 
 [logging.subprinters]

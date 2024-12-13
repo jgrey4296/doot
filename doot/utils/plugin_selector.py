@@ -2,16 +2,17 @@
 """
 A function to select an appropriate plugin by passed in name or names
 
-See EOF for license/metadata/notes as applicable
-"""
 
-##-- builtin imports
+"""
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
 import functools as ftz
+import importlib
 import itertools as itz
 import logging as logmod
 import pathlib as pl
@@ -19,31 +20,34 @@ import re
 import time
 import types
 import weakref
+from importlib.metadata import EntryPoint
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-##-- lib imports
-import more_itertools as mitz
-##-- end lib imports
+# ##-- 3rd party imports
+from jgdv.structs.strang import CodeReference
+from jgdv.structs.chainguard import ChainGuard
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot.errors
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-import importlib
-from importlib.metadata import EntryPoint
-from jgdv.structs.code_ref import CodeReference
-import doot.errors
-
-def plugin_selector(plugins:TomlGuard, *, target="default", fallback=None) -> type:
-    """ Selects and loads plugins from a tomlguard, based on a target,
+def plugin_selector(plugins:ChainGuard, *, target="default", fallback=None) -> type:
+    """ Selects and loads plugins from a chainguard , based on a target,
     with an available fallback constructor """
     logging.debug("Selecting plugin for target: %s", target)
 
