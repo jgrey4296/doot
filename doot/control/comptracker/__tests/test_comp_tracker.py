@@ -43,6 +43,9 @@ from doot.utils import mock_gen
 
 logging = logmod.root
 
+TaskSpec = doot.structs.TaskSpec
+TaskName = doot.structs.TaskName
+
 class TestCompTracker:
 
     def test_sanity(self):
@@ -131,7 +134,6 @@ class TestCompTracker:
                 assert(False)
         assert(obj.get_status(t_name) is TaskStatus_e.RUNNING)
 
-    @pytest.mark.xfail
     def test_next_halt(self):
         obj  = ComponentTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
@@ -143,15 +145,17 @@ class TestCompTracker:
         obj.build_network()
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.HALTED)
-        cleanup = obj.next_for()
-        assert(isinstance(cleanup, Task_i))
-        assert(cleanup.name.is_cleanup())
+        match obj.next_for():
+            case Task_i() as task:
+                assert(task.name.is_cleanup())
+            case x:
+                assert(False), x
+
         for x in obj._registry.tasks.values():
             if x.name.is_cleanup():
                 continue
             assert(x.status in [TaskStatus_e.HALTED, TaskStatus_e.DEAD])
 
-    @pytest.mark.xfail
     def test_next_fail(self):
         obj  = ComponentTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
@@ -163,14 +167,17 @@ class TestCompTracker:
         obj.build_network()
         # Force the dependency to success without getting it from next_for:
         obj.set_status(dep_inst, TaskStatus_e.FAILED)
-        cleanup = obj.next_for()
-        assert(cleanup.name.is_cleanup())
+        match obj.next_for():
+            case Task_i() as task:
+                assert(task.name.is_cleanup())
+            case x:
+                assert(False), x
+
         for x in obj._registry.tasks.values():
             if x.name.is_cleanup():
                 continue
             assert(x.status in [TaskStatus_e.DEAD])
 
-    @pytest.mark.xfail
     def test_next_job_head(self):
         obj       = ComponentTracker()
         job_spec  = doot.structs.TaskSpec.build({"name":"basic::job", "meta": ["JOB"], "cleanup":["basic::task"]})
@@ -179,25 +186,34 @@ class TestCompTracker:
         obj.register_spec(task_spec)
         obj.queue_entry(job_spec, from_user=True)
         assert(job_spec.name in obj._registry.concrete)
-        # assert(job_spec.name.job_head() in obj._registry.concrete)
-        conc_job_body = obj._registry.concrete[job_spec.name][-1]
-        # conc_job_head = obj._registry.concrete[job_spec.name.job_head()][0]
         obj.build_network()
         assert(bool(obj._queue.active_set))
         assert(obj._network.is_valid)
         # head is in network
-        # assert(conc_job_head in obj.network.nodes)
-        assert(obj.next_for().name == conc_job_body)
-        obj.set_status(conc_job_body, TaskStatus_e.SUCCESS)
-        assert(obj._network.is_valid)
-        result = obj.next_for()
-        assert(obj._network.is_valid)
-        assert(job_spec.name.job_head() < result.name)
-        obj.set_status(result.name, TaskStatus_e.SUCCESS)
-        result = obj.next_for()
-        assert(result is not None)
-        # A new job head hasn't been built
-        assert(len(obj._registry.concrete[job_spec.name.job_head()]) == 1)
+        match obj.next_for():
+            case Task_i() as task:
+                assert(job_spec.name < task.name)
+                obj.set_status(task.name, TaskStatus_e.SUCCESS)
+                assert(obj._network.is_valid)
+            case x:
+                assert(False), x
+
+        match obj.next_for():
+            case Task_i() as task:
+                assert(job_spec.name.with_head() < task.name)
+                assert(task.name.is_head())
+                obj.set_status(task.name, TaskStatus_e.SUCCESS)
+                assert(obj._network.is_valid)
+                # A new job head hasn't been built
+                assert(len(obj._registry.concrete[job_spec.name.with_head()]) == 1)
+            case x:
+                assert(False), x
+
+        match obj.next_for():
+            case Task_i():
+                pass
+            case x:
+                assert(False), x
 
     def test_next_job_head_with_subtasks(self):
         obj       = ComponentTracker()

@@ -170,7 +170,6 @@ class TestRegistry:
         name = doot.structs.TaskName("basic::task")
         assert(obj.set_status(name, TaskStatus_e.SUCCESS) is False)
 
-
 class TestRegistryInternals:
 
     def test_basic(self):

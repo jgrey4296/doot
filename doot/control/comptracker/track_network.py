@@ -38,7 +38,7 @@ import doot
 import doot.errors
 from doot._abstract import Job_i, Task_i, TaskRunner_i, TaskTracker_i
 from doot._structs.relation_spec import RelationSpec
-from doot.enums import TaskMeta_e, QueueMeta_e, TaskStatus_e, LocationMeta_e, RelationMeta_e, EdgeType_e
+from doot.enums import TaskStatus_e, EdgeType_e
 from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
@@ -202,21 +202,21 @@ class TrackNetwork(TaskMatcher_m):
           TODO these could be shifted into the task/job class
         """
 
-        if TaskMeta_e.JOB in spec.name:
-            logging.debug("Expanding Job Head for: %s", spec.name)
-            heads         = [jhead for x in spec.get_source_names() if (jhead:=x.with_head()) in self._registry.specs]
-            head_name     = heads[-1]
+        if TaskSpec.mark_e.JOB in spec.meta:
+            logging.debug("Generating Job Head for: %s", spec.name)
+            head_name     = spec.name.de_uniq().with_head()
             head_instance = self._registry._instantiate_spec(head_name, extra=spec.model_extra)
             self.connect(spec.name, head_instance, job_head=True)
             return [head_instance]
 
-        if spec.name.is_uniq() and (root:=spec.name.pop()) == root.canon():
-            return []
+        if not spec.name.is_cleanup():
+            # Instantiate and connect the cleanup task
+            cleanup_name = spec.name.de_uniq().with_cleanup()
+            cleanup = self._registry._instantiate_spec(cleanup_name)
+            self.connect(spec.name, cleanup, cleanup=True)
+            return [cleanup]
 
-        # Instantiate and connect the cleanup task
-        cleanup = self._registry._instantiate_spec(spec.name.canon())
-        self.connect(spec.name, cleanup, cleanup=True)
-        return [cleanup]
+        return []
 
     def _expand_artifact(self, artifact:TaskArtifact) -> set[Concrete[TaskName]|TaskArtifact]:
         """ expand _registry.artifacts, instantiating related tasks,
@@ -238,7 +238,7 @@ class TrackNetwork(TaskMatcher_m):
         match artifact.is_concrete():
             case True:
                 logging.debug("-- Connecting concrete artifact to parent abstracts")
-                for abstract in [x for x in self._registry._abstract_artifacts if artifact in x and LocationMeta_e.glob in x]:
+                for abstract in [x for x in self._registry._abstract_artifacts if artifact in x and TaskArtifact.bmark_e.glob in x]:
                     self.connect(artifact, abstract)
                     to_expand.add(abstract)
             case False:
@@ -331,6 +331,8 @@ class TrackNetwork(TaskMatcher_m):
 
         for node, data in self.nodes.items():
             match node:
+                case TaskName() as x if x == self._root_node:
+                    pass
                 case TaskName() | TaskArtifact() if not data[EXPANDED]:
                     if strict:
                         raise doot.errors.DootTaskTrackingError("Network isn't fully expanded", node)
@@ -341,7 +343,7 @@ class TrackNetwork(TaskMatcher_m):
                         raise doot.errors.DootTaskTrackingError("Abstract ConcreteId in _graph", node)
                     else:
                         logging.warning("Abstract ConcreteId in _graph: %s", node)
-                case TaskArtifact() if LocationMeta_e.glob in node:
+                case TaskArtifact() if TaskArtifact.bmark_e.glob in node:
                     bad_nodes = [x for x in self.pred[node] if x in self._registry.specs]
                     if strict and bool(bad_nodes):
                         raise doot.errors.DootTaskTrackingError("Glob Artifact ConcreteId is a successor to a task", node, bad_nodes)

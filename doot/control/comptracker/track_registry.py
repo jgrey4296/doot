@@ -40,7 +40,7 @@ import doot.errors
 from doot._abstract import (Job_i, Task_i, TaskRunner_i,
                             TaskTracker_i)
 from doot._structs.relation_spec import RelationSpec
-from doot.enums import TaskMeta_e, QueueMeta_e, TaskStatus_e, LocationMeta_e, RelationMeta_e, EdgeType_e, ArtifactStatus_e
+from doot.enums import TaskMeta_e, TaskStatus_e, ArtifactStatus_e
 from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
@@ -56,17 +56,17 @@ track_l          = doot.subprinter("track")
 logging.disabled = False
 ##-- end logging
 
-ROOT                           : Final[str]                    = "root::_.$gen$" # Root node of dependency graph
-EXPANDED                       : Final[str]                    = "expanded"  # Node attribute name
-REACTIVE_ADD                   : Final[str]                    = "reactive-add"
-INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                   = 10
+ROOT                            : Final[str]                    = "root::_.$gen$" # Root node of dependency graph
+EXPANDED                        : Final[str]                    = "expanded"  # Node attribute name
+REACTIVE_ADD                    : Final[str]                    = "reactive-add"
+INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                    = 10
 
-T                                                              = TypeVar("T")
-Abstract                                                       = NewType("Abstract", T)
-Concrete                                                       = NewType("Concrete", T)
+T                                                               = TypeVar("T")
+type Abstract[T]                                                = T
+type Concrete[T]                                                = T
 
-ActionElem                     : TypeAlias                     = ActionSpec|RelationSpec
-ActionGroup                    : TypeAlias                     = list[ActionElem]
+ActionElem                     : TypeAlias                      = ActionSpec|RelationSpec
+ActionGroup                    : TypeAlias                      = list[ActionElem]
 
 class TrackRegistry(Injector_m, TaskMatcher_m):
     """ Stores and manipulates specs, tasks, and artifacts """
@@ -176,7 +176,7 @@ class TrackRegistry(Injector_m, TaskMatcher_m):
         # record that target needs spec
         for rel in spec.action_group_elements():
             match rel:
-                case RelationSpec(target=target, relation=RelationMeta_e.blocks) if spec.name.is_uniq():
+                case RelationSpec(target=target, relation=RelationSpec.mark_e.blocks) if spec.name.is_uniq():
                     logging.debug("Registering Requirement: %s : %s", target, rel.invert(spec.name))
                     rel.object = spec.name
                     self._blockers[target].append(rel)
