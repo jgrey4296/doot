@@ -177,7 +177,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
                     pass
 
     def _register_blocking_relations(self, spec:TaskSpec):
-        if spec.name.is_uniq:
+        if spec.name.is_uniq():
             # If the spec is instantiated,
             # it has no indirect relations
             return
@@ -187,7 +187,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
         # record that target needs spec
         for rel in spec.action_group_elements():
             match rel:
-                case RelationSpec(target=target, relation=RelationMeta_e.blocks) if spec.name.is_uniq:
+                case RelationSpec(target=target, relation=RelationMeta_e.blocks) if spec.name.is_uniq():
                     logging.debug("Registering Requirement: %s : %s", target, rel.invert(spec.name))
                     rel.object = spec.name
                     self._blockers[target].append(rel)
@@ -203,7 +203,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
             logging.debug("Not reusing instantiation because extra or cli args were requested: %s", name)
             return None
 
-        if name.is_uniq:
+        if name.is_uniq():
             return name
 
         if not bool(self.concrete[name]):
@@ -254,7 +254,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
             # apply additional settings onto the instance
             instance_spec = instance_spec.specialize_from(extra)
 
-        assert(instance_spec.name.is_uniq)
+        assert(instance_spec.name.is_uniq())
         # Map abstract -> concrete
         self.concrete[name].append(instance_spec.name)
         # register the actual concrete spec
@@ -295,14 +295,14 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
                 return instance
             case [x]: # One match, connect it
                 assert(x in self.specs)
-                assert(x.is_uniq)
+                assert(x.is_uniq())
                 instance : TaskName = x
                 logging.warning("Reusing Instance: %s", instance)
                 return instance
             case [*xs, x]: # TODO check this.
                 # Use most recent instance?
                 assert(x in self.specs)
-                assert(x.is_uniq)
+                assert(x.is_uniq())
                 instance : TaskName = x
                 logging.warning("Reusing latest Instance: %s", instance)
                 return instance
@@ -313,7 +313,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
             case None:
                 return None
             case TaskSpec() as instance:
-                assert(instance.name.is_uniq and TaskMeta_e.TRANSFORMER in instance.name)
+                assert(instance.name.is_uniq() and TaskMeta_e.TRANSFORMER in instance.name)
                 self.concrete[name].append(instance.name)
                 self.register_spec(instance)
                 return instance.name
@@ -326,7 +326,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
           """
         if not isinstance(name, TaskName):
             raise doot.errors.DootTaskTrackingError("Tried to add a not-task", name)
-        if not name.is_uniq:
+        if not name.is_uniq():
             raise doot.errors.DootTaskTrackingError("Tried to add a task using a non-concrete spec", name)
         if name in self.tasks:
             return name
@@ -354,7 +354,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
         """
         match name:
             case TaskName():
-                assert(not name.is_uniq)
+                assert(not name.is_uniq())
             case TaskArtifact():
                 assert(not name.is_concrete())
         spec                          = self.specs[name]

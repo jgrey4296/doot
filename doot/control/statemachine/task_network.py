@@ -116,7 +116,7 @@ class TaskNetwork(TaskMatcher_m):
                 self._graph.add_node(name)
                 self.nodes[name][EXPANDED]     = True
                 self.nodes[name][REACTIVE_ADD] = False
-            case TaskName() if not name.is_uniq:
+            case TaskName() if not name.is_uniq():
                 raise doot.errors.DootTaskTrackingError("Nodes should only be instantiated spec names", name)
             case _ if name in self.nodes:
                 return
@@ -186,7 +186,7 @@ class TaskNetwork(TaskMatcher_m):
         *without* expanding those new nodes.
         returns a list of the new nodes tasknames
         """
-        assert(name.is_uniq)
+        assert(name.is_uniq())
         assert(not self.nodes[name].get(EXPANDED, False))
         spec                                                  = self._registry.specs[name]
         spec_pred, spec_succ                                  = self.pred[name], self.succ[name]
@@ -388,7 +388,7 @@ class TaskNetwork(TaskMatcher_m):
                     logging.warning("Network isn't fully expanded: %s", node)
                     if strict:
                         raise doot.errors.DootTaskTrackingError("Network isn't fully expanded", node)
-                case TaskName() if not node.is_uniq:
+                case TaskName() if not node.is_uniq():
                     logging.warning("Abstract ConcreteId in _graph: %s", node)
                     if strict:
                         raise doot.errors.DootTaskTrackingError("Abstract ConcreteId in _graph", node)

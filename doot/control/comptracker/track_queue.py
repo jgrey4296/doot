@@ -160,7 +160,7 @@ class TrackQueue:
                 prepped_name = instance
                 self._network.connect(instance, None if from_user else False)
             case TaskName() if name in self._registry.specs:
-                assert(not TaskName(name).is_uniq), name
+                assert(not TaskName(name).is_uniq()), name
                 instance : TaskName = self._registry._instantiate_spec(name, add_cli=from_user)
                 self._network.connect(instance, None if from_user else False)
                 prepped_name = instance
@@ -180,17 +180,17 @@ class TrackQueue:
         target_priority : int                        = self._network._declare_priority
         match prepped_name:
             case TaskName() if TaskMeta_e.JOB_HEAD in prepped_name:
-                assert(prepped_name.is_uniq)
+                assert(prepped_name.is_uniq())
                 assert(prepped_name in self._registry.specs)
                 final_name      = self._registry._make_task(prepped_name)
                 target_priority = self._registry.tasks[final_name].priority
             case TaskName() if TaskMeta_e.JOB in prepped_name:
-                assert(prepped_name.is_uniq)
+                assert(prepped_name.is_uniq())
                 assert(prepped_name in self._registry.specs)
                 final_name      = self._registry._make_task(prepped_name)
                 target_priority = self._registry.tasks[final_name].priority
             case TaskName():
-                assert(prepped_name.is_uniq)
+                assert(prepped_name.is_uniq())
                 assert(prepped_name in self._registry.specs)
                 final_name      = self._registry._make_task(prepped_name)
                 target_priority = self._registry.tasks[final_name].priority

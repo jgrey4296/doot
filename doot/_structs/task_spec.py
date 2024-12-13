@@ -148,11 +148,12 @@ class _JobUtils_m:
         """
         if TaskMeta_e.JOB not in self.meta:
             return []
-        if self.name.is_uniq and TaskMeta_e.JOB_HEAD in self.meta:
+        if self.name.is_uniq() and TaskMeta_e.JOB_HEAD in self.meta:
             return []
-        if (job_head:=self.name.with_head()) is self.name:
+        if self.name.is_head() or self.name.is_cleanup():
             return []
 
+        job_head          = self.name.de_uniq().with_head()
         tasks             = []
         head_section      = _dicts_to_specs(self.extra.on_fail([], list).head_actions(), relation=RelationMeta_e.needs)
         head_dependencies = [x for x in head_section if isinstance(x, RelationSpec) and x.target != job_head]

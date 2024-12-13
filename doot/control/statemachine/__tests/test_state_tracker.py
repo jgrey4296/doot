@@ -186,7 +186,7 @@ class TestStateTracker:
         obj.set_status(conc_job_body, TaskStatus_e.SUCCESS)
         assert(obj._network.is_valid)
         result = obj.next_for()
-        assert(result.name.is_uniq)
+        assert(result.name.is_uniq())
         obj.set_status(result.name, TaskStatus_e.SUCCESS)
         result = obj.next_for()
         assert(result is not None)

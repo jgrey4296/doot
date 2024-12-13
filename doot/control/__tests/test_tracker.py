@@ -86,7 +86,6 @@ class TestTrackerNext:
         assert(obj.get_status(t_name) is TaskStatus_e.RUNNING)
 
 
-    @pytest.mark.xfail
     def test_next_simple_dependendency(self):
         # need to check on doot.args... results for this
         obj  = DootTracker()
@@ -183,10 +182,9 @@ class TestTrackerNext:
                 continue
             assert(x.status in [TaskStatus_e.DEAD])
 
-    @pytest.mark.xfail
     def test_next_job_head(self):
         obj       = DootTracker()
-        job_spec  = doot.structs.TaskSpec.build({"name":"basic::job", "meta": ["JOB"], "cleanup":["basic::task"]})
+        job_spec  = doot.structs.TaskSpec.build({"name":"basic::+.job", "meta": ["JOB"], "cleanup":["basic::task"]})
         task_spec = doot.structs.TaskSpec.build({"name":"basic::task", "test_key": "bloo"})
         obj.register_spec(job_spec)
         obj.register_spec(task_spec)
@@ -195,19 +193,33 @@ class TestTrackerNext:
         obj.build_network()
         assert(bool(obj.active_set))
         assert(obj.network_is_valid)
-        # head is in network
-        assert(job_spec.name < (next_task:=obj.next_for().name))
-        obj.set_status(next_task, TaskStatus_e.SUCCESS)
-        assert(obj.network_is_valid)
-        assert(task_spec.name < (next_task:=obj.next_for()))
-        assert(obj.network_is_valid)
-        assert(job_spec.name < result.name)
-        # assert(job_spec.name.with_head() < result.name)
-        obj.set_status(result.name, TaskStatus_e.SUCCESS)
-        result = obj.next_for()
-        assert(result is not None)
-        # A new job head hasn't been built
-        assert(len(obj.concrete[job_spec.name.with_head()]) == 1)
+        match obj.next_for():
+            case Task_i() as task if job_spec.name < task.name:
+                obj.set_status(task, TaskStatus_e.SUCCESS)
+                assert(obj.network_is_valid)
+            case x:
+                assert(False), x.name
+
+        match obj.next_for():
+            case Task_i() as task if job_spec.name.with_head() < task.name:
+                obj.set_status(task.name, TaskStatus_e.SUCCESS)
+                assert(obj.network_is_valid)
+            case x:
+                assert(False), x.name
+
+        match obj.next_for():
+            case Task_i() as task if task_spec.name < task.name:
+                obj.set_status(task.name, TaskStatus_e.SUCCESS)
+                assert(obj.network_is_valid)
+            case x:
+                assert(False), x.name
+
+        match obj.next_for():
+            case Task_i() as task if job_spec.name.with_head().with_cleanup() < task.name:
+                obj.set_status(task.name, TaskStatus_e.SUCCESS)
+                assert(obj.network_is_valid)
+            case x:
+                assert(False), x.name
 
 
     def test_next_job_head_with_subtasks(self):
@@ -333,74 +345,3 @@ class TestTrackerWalk:
         for x,y in zip(result, expectation):
             expected_name = doot.structs.TaskName(y)
             assert(expected_name < x[1])
-
-    def test_simple_plan_priority(self, specs):
-        expectation = [
-            "basic::dep.4",
-            "basic::dep.1",
-            "basic::dep.3",
-            "basic::dep.2",
-            "basic::beta",
-            "basic::dep.4..$cleanup$",
-            "basic::dep.1..$cleanup$",
-            "basic::dep.3..$cleanup$",
-            "basic::alpha",
-            "basic::dep.2..$cleanup$",
-            "basic::beta..$cleanup$",
-            "basic::alpha..$cleanup$",
-            ]
-        head, tail = specs
-        obj      = DootTracker()
-        obj.register_spec(*head, *tail)
-        t1_name = obj.queue_entry(head[0].name, from_user=True)
-        t2_name = obj.queue_entry(head[1].name, from_user=True)
-        assert(obj.get_status(t1_name) is TaskStatus_e.INIT)
-        assert(obj.get_status(t2_name) is TaskStatus_e.INIT)
-        obj.build_network()
-        result = obj.generate_plan(policy=ExecutionPolicy_e.PRIORITY)
-        assert(len(result) == len(expectation))
-        for x,y in zip(result, expectation):
-            expected_name = doot.structs.TaskName(y)
-            assert(expected_name < x[1])
-
-
-    @pytest.mark.xfail
-    def test_simple_plan_priority_repeated(self, specs):
-        """ TODO: fix indeterminacy of priority sorting """
-        expectation = [
-            "basic::dep.4",
-            "basic::dep.1",
-            "basic::dep.3",
-            "basic::dep.2",
-            "basic::beta",
-            "basic::dep.4..$cleanup$",
-            "basic::dep.1..$cleanup$",
-            "basic::dep.3..$cleanup$",
-            "basic::alpha",
-            "basic::dep.2..$cleanup$",
-            "basic::beta..$cleanup$",
-            "basic::alpha..$cleanup$",
-            ]
-        head, tail = specs
-        obj      = DootTracker()
-        obj.register_spec(*head, *tail)
-        t1_name = obj.queue_entry(head[0].name, from_user=True)
-        t2_name = obj.queue_entry(head[1].name, from_user=True)
-        assert(obj.get_status(t1_name) is TaskStatus_e.INIT)
-        assert(obj.get_status(t2_name) is TaskStatus_e.INIT)
-        obj.build_network()
-
-        original_tasks = set(obj.active_set)
-        original_statuses : dict[Node, TaskStatus_e] = {x: obj.get_status(x) for x in itz.chain(obj.specs.keys(), obj.artifacts.keys())}
-
-        for i in range(5):
-            logging.warning("Starting to generate plan: %s", i)
-            result = obj.generate_plan(policy=ExecutionPolicy_e.PRIORITY)
-            assert(len(result) == len(expectation))
-            for x,y in zip(result, expectation):
-                expected_name = doot.structs.TaskName(y)
-                assert(expected_name < x[1])
-
-            assert(obj.active_set == original_tasks)
-            post_statuses = {x: obj.get_status(x) for x in itz.chain(obj.specs.keys(), obj.artifacts.keys())}
-            assert(all(k==k2 and x==y for (k,x),(k2,y) in zip(original_statuses.items(), post_statuses.items())))

@@ -186,7 +186,7 @@ class TrackNetwork(TaskMatcher_m):
         *without* expanding those new nodes.
         returns a list of the new nodes tasknames
         """
-        assert(name.is_uniq)
+        assert(name.is_uniq())
         assert(not self.nodes[name].get(EXPANDED, False))
         spec                                                  = self._registry.specs[name]
         spec_pred, spec_succ                                  = self.pred[name], self.succ[name]
@@ -257,7 +257,7 @@ class TrackNetwork(TaskMatcher_m):
             self.connect(spec.name, head_instance, job_head=True)
             return [head_instance]
 
-        if spec.name.is_uniq and (root:=spec.name.pop()) == root.canon():
+        if spec.name.is_uniq() and (root:=spec.name.pop()) == root.canon():
             return []
 
         # Instantiate and connect the cleanup task
@@ -385,7 +385,7 @@ class TrackNetwork(TaskMatcher_m):
                         raise doot.errors.DootTaskTrackingError("Network isn't fully expanded", node)
                     else:
                         logging.warning("Network isn't fully expanded: %s", node)
-                case TaskName() if not node.is_uniq:
+                case TaskName() if not node.is_uniq():
                     if strict:
                         raise doot.errors.DootTaskTrackingError("Abstract ConcreteId in _graph", node)
                     else:
