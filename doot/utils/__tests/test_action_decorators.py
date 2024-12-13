@@ -21,7 +21,6 @@ from doot.utils import action_decorators as decs
 
 logging = logmod.root
 
-
 class TestDecorators:
 
     def test_initial(self):
@@ -106,19 +105,6 @@ class TestDecorators:
         assert(decs.RunsDry()._is_marked(SimpleSuper))
         assert(decs.RunsDry()._is_marked(SimpleChild))
 
-
-    @pytest.mark.xfail
-    def test_key_decoration_survives_annotation(self):
-
-        @decs.RunsDry()
-        @DKeyed.formats("blah")
-        def simple(spec, state, blah):
-            return blah
-
-        assert(decs.RunsDry()._is_marked(simple))
-        assert(simple(None, {"blah":"bloo"}) == "bloo")
-
-
     def test_wrapper_survives_key_decoration(self):
 
         @decs.DryRunSwitch(override=True)
@@ -130,7 +116,6 @@ class TestDecorators:
         dec = decs.DryRunSwitch()
         assert(dec._is_marked(simple))
         assert(simple(None, {"blah": "bloo"}) is None)
-
 
     def test_wrapper_survives_method_key_decoration(self):
 
@@ -144,7 +129,6 @@ class TestDecorators:
 
         assert(decs.DryRunSwitch()._is_marked(SimpleAction))
         assert(SimpleAction()({}, {"blah": "bloo"}) is None)
-
 
     def test_setting_dryswitch_on_method(self):
 
@@ -187,7 +171,6 @@ class TestDecorators:
         assert(decs.GeneratesTasks()._is_marked(simple))
         assert(isinstance(simple({},{}), list))
 
-
     def test_gens_tasks_raises_error(self):
 
         @decs.GeneratesTasks()
@@ -197,7 +180,6 @@ class TestDecorators:
         assert(decs.GeneratesTasks()._is_marked(simple))
         with pytest.raises(doot.errors.DootActionError):
             simple({},{})
-
 
     @pytest.mark.xfail
     def test_io_writer_check(self, wrap_locs):
@@ -214,8 +196,6 @@ class TestDecorators:
         with pytest.raises(doot.errors.DootTaskError):
             simple(None, {"to": "{blah}"})
 
-
-
     @pytest.mark.xfail
     def test_io_writer_pass(self, wrap_locs):
         doot.locs.update({"blah" : dict(path="blah", protected=False) })
@@ -228,3 +208,16 @@ class TestDecorators:
 
         assert(DU.has_annotations(simple, decs.IO_ACT))
         assert(simple(None, {"to": "{blah}"}) == "blah")
+
+    @pytest.mark.xfail
+    def test_key_decoration_survives_annotation(self):
+        # currently the meta decorator is unwrapping too deep and removing the dkey decorator
+
+        @decs.RunsDry()
+        @DKeyed.formats("blah")
+        def simple(spec, state, blah):
+            return blah
+
+        assert(decs.RunsDry()._is_marked(simple))
+        assert(DKeyed.formats()._is_marked(simple))
+        assert(simple(None, {"blah":"bloo"}) == "bloo")

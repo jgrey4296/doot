@@ -41,7 +41,7 @@ import doot.errors
 from doot._abstract import Action_p
 from doot.mixins.path_manip import PathManip_m
 from doot.structs import DKey, TaskName, TaskSpec, DKeyed
-from doot.utils.injection import Injector_m
+from doot.mixins.injection import Injector_m
 
 # ##-- end 1st party imports
 
