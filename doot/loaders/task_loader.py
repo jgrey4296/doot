@@ -8,9 +8,6 @@ from __future__ import annotations
 # ##-- stdlib imports
 import datetime
 import enum
-# import abc
-# import datetime
-# import enum
 import functools as ftz
 import importlib
 import itertools as itz
@@ -21,7 +18,7 @@ import time
 import types
 from collections import ChainMap
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
+                    Generic, Iterable, Iterator, Mapping, Match, Self, Literal,
                     MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
                     TypeGuard, TypeVar, cast, final, overload,
                     runtime_checkable)
@@ -78,10 +75,10 @@ class DootTaskLoader(TaskLoader_p):
     """
     load toml defined tasks, and create doot.structs.TaskSpecs of them
     """
-    tasks         : dict[str, tuple(dict, Job_i)] = {}
+    tasks         : dict[str, tuple(dict, Job_i)]    = {}
     cmd_names     : set[str]                         = set()
     task_builders : dict[str,Any]                    = dict()
-    extra : ChainGuard
+    extra         : ChainGuard
 
     def setup(self, plugins, extra=None) -> Self:
         logging.debug("---- Registering Task Builders")

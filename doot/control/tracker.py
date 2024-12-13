@@ -27,6 +27,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import networkx as nx
+from jgdv import Maybe, Depth
 from jgdv.structs.strang import CodeReference
 
 # ##-- end 3rd party imports
@@ -53,7 +54,6 @@ artifact_l = doot.subprinter("artifact")
 ##-- end logging
 
 type Node      = TaskName|TaskArtifact
-type Depth     = int
 type PlanEntry = tuple[Depth, Node, str]
 
 MAX_LOOP  : Final[int]     = 100
@@ -145,7 +145,7 @@ class TrackerPlanGen_m:
           """
         raise NotImplementedError()
 
-    def generate_plan(self, *, policy:None|ExecutionPolicy_e=None) -> list[PlanEntry]:
+    def generate_plan(self, *, policy:Maybe[ExecutionPolicy_e]=None) -> list[PlanEntry]:
         """ Generate an ordered list of tasks that would be executed.
           Does not expand jobs.
           """
@@ -191,7 +191,7 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
             case _:
                 task.state.clear()
 
-    def next_for(self, target:None|str|TaskName=None) -> None|Task_i|TaskArtifact:
+    def next_for(self, target:Maybe[str|TaskName]=None) -> Maybe[Task_i|TaskArtifact]:
         """ ask for the next task that can be performed
 
           Returns a Task or Artifact that needs to be executed or created

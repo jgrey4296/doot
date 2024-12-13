@@ -1,27 +1,54 @@
-##-- imports
-from __future__ import annotations
-import inspect
-import sys
-from collections import deque
-from collections import defaultdict
-import textwrap
-from typing import TYPE_CHECKING
-##-- end imports
+"""
 
+"""
+# Imports:
+from __future__ import annotations
+
+# ##-- stdlib imports
+import datetime
+import enum
+import functools as ftz
+import inspect
+import itertools as itz
+import logging as logmod
+import pathlib as pl
+import sys
+import textwrap
 from abc import abstractmethod
+from collections import defaultdict, deque
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
+from uuid import UUID, uuid1
+
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
+from jgdv import Maybe, VerStr
 from jgdv.structs.chainguard import ChainGuard
 
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
 from doot._abstract.protocols import CLIParamProvider_p
+
+# ##-- end 1st party imports
+
+##-- end imports
+
+
 
 class Command_i(CLIParamProvider_p):
     """
     holds command information and performs it
     """
 
-    _name : None|str       = None # if not specified uses the class name
-    _help : None|list[str] = None
+    _name : Maybe[str]       = None # if not specified uses the class name
+    _help : Maybe[list[str]] = None
 
-    _version : str      = "0.1"
+    _version : VerStr = "0.1"
 
     @property
     @abstractmethod

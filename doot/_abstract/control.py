@@ -22,7 +22,7 @@ from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Literal, Mapping, Match,
-                    MutableMapping, NewType, Protocol, Sequence, Tuple,
+                    MutableMapping, NewType, Protocol, Sequence, Tuple, Self,
                     TypeAlias, TypeGuard, TypeVar, cast, final, overload,
                     runtime_checkable)
 from uuid import UUID, uuid1
@@ -30,13 +30,17 @@ from weakref import ref
 
 # ##-- end stdlib imports
 
-from jgdv import *
-from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
+# ##-- 3rd party imports
+from jgdv import Maybe, Ident, Depth
+from jgdv.mixins.enum_builders import EnumBuilder_m, FlagsBuilder_m
+
+# ##-- end 3rd party imports
 
 # ##-- 1st party imports
 from doot._abstract.protocols import ArtifactStruct_p, SpecStruct_p
 from doot._abstract.reporter import Reporter_p
 from doot._abstract.task import Task_i
+
 # ##-- end 1st party imports
 
 ##-- logging
@@ -44,13 +48,11 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # ## Types
-type Ident       = Any
 type Actual      = Any
 type TaskSpec    = Any
 type TaskStatus_e = enum.Enum
 type Abstract[T] = T
 type Concrete[T] = T
-type Depth       = int
 type PlanEntry   = tuple[Depth, Concrete[Ident], str]
 
 class EdgeType_e(EnumBuilder_m, enum.Enum):
@@ -66,7 +68,7 @@ class EdgeType_e(EnumBuilder_m, enum.Enum):
 
     @classmethod
     @property
-    def artifact_edge_set(cls):
+    def artifact_edge_set(cls) -> set[enum.Enum]:
         return  {cls.ARTIFACT_UP, cls.ARTIFACT_DOWN, cls.TASK_CROSS}
 
 class QueueMeta_e(EnumBuilder_m, enum.Enum):
@@ -138,7 +140,7 @@ class TaskRunner_i:
     """
 
     @abstractmethod
-    def __enter__(self) -> Any:
+    def __enter__(self) -> Self:
         pass
 
     @abstractmethod

@@ -6,6 +6,7 @@ import pathlib as pl
 from abc import abstractmethod
 from typing import NewType, Any
 
+from jgdv import Maybe
 from jgdv.structs.chainguard import ChainGuard
 from doot._abstract.loader import Loaders_p
 
@@ -20,14 +21,14 @@ class Overlord_p:
         raise NotImplementedError()
 
     @abstractmethod
-    def __init__(self, *, loaders:dict[str, Loaders_p]|None=None,
-               configs:tuple[pl.Path|str]=('doot.toml', 'pyproject.toml'),
-               extra_config:dict[str,Any]|ChainGuard|None=None,
-               args:list[str]|None=None):
+    def __init__(self, *, loaders:Maybe[dict[str, Loaders_p]]=None,
+                 configs:tuple[pl.Path|str]=('doot.toml', 'pyproject.toml'),
+                 extra_config:Maybe[dict[str,Any]|ChainGuard]=None,
+                 args:Maybe[list[str]]=None):
         raise NotImplementedError()
 
 
-    def __call__(self, cmd:str|None=None) -> int:
+    def __call__(self, cmd:Maybe[str]=None) -> int:
         """entry point for all commands
 
         :param all_args: list of string arguments from command line

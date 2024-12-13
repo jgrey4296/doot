@@ -27,9 +27,9 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
+from jgdv import check_protocol, Maybe, VerStr
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.logging import JGDVLogConfig
-from jgdv import check_protocol
 from jgdv.structs.strang.locations import JGDVLocations as DootLocations
 # ##-- end 3rd party imports
 
@@ -49,7 +49,7 @@ logging         = logmod.getLogger(__name__)
 ##-- end logging
 
 # Global, single points of truth:
-__version__          : Final[str]         = "0.13.0"
+__version__          : Final[VerStr]         = "0.13.0"
 
 # Can't be in doot.constants, because that isn't loaded yet
 CONSTANT_PREFIX      : Final[str]         = "doot.constants"
@@ -71,7 +71,7 @@ def subprinter(name=None) -> logmod.Logger:
     """
     return log_config.subprinter(name)
 
-def setup(targets:list[pl.Path]|False|None=None, prefix:str|None=TOOL_PREFIX) -> tuple[ChainGuard, DootLocations]:
+def setup(targets:Maybe[list[pl.Path]|False]=None, prefix:Maybe[str]=TOOL_PREFIX) -> tuple[ChainGuard, DootLocations]:
     """
       The core requirement to call before any other doot code is run.
       loads the config files, so everything else can retrieve values when imported.

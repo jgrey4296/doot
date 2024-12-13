@@ -3,37 +3,46 @@
 """
 
 """
-##-- imports
+# Imports:
 from __future__ import annotations
 
-# import abc
-# import datetime
-# import enum
+# ##-- stdlib imports
+import datetime
+import enum
 import functools as ftz
+import importlib
 import itertools as itz
 import logging as logmod
 import pathlib as pl
 import re
 import time
 import types
-import importlib
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
-##-- end imports
+from collections import defaultdict
+from importlib.metadata import EntryPoint, entry_points
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
+from uuid import UUID, uuid1
+
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
+from jgdv import Maybe
+from jgdv.structs.chainguard import ChainGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+from doot._abstract import PluginLoader_p
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-from collections import defaultdict
-from importlib.metadata import entry_points, EntryPoint
-from jgdv.structs.chainguard import ChainGuard
-import doot
-from doot._abstract import PluginLoader_p
 
 skip_default_plugins        = doot.config.on_fail(False).skip_default_plugins()
 skip_plugin_search          = doot.config.on_fail(False).skip_plugin_search()
@@ -42,12 +51,11 @@ plugin_types                = set(doot.constants.entrypoints.FRONTEND_PLUGIN_TYP
 cmd_loader_key  : Final     = doot.constants.entrypoints.DEFAULT_COMMAND_LOADER_KEY
 task_loader_key : Final     = doot.constants.entrypoints.DEFAULT_TASK_LOADER_KEY
 
-def build_entry_point (x, y, z):
+def build_entry_point (x:str, y:str, z:str) -> EntryPoint:
     """ Make an EntryPoint """
     if z not in plugin_types:
         raise doot.errors.DootPluginError("Plugin Type Not Found: %s : %s", z, (x, y))
     return EntryPoint(name=x, value=y, group="{}.{}".format(doot.constants.entrypoints.PLUGIN_TOML_PREFIX, z))
-
 
 @doot.check_protocol
 class DootPluginLoader(PluginLoader_p):
@@ -57,7 +65,7 @@ class DootPluginLoader(PluginLoader_p):
     loaded : ClassVar[ChainGuard] = None
 
     @staticmethod
-    def get_loaded(group:str, name:str) -> None|str:
+    def get_loaded(group:str, name:str) -> Maybe[str]:
         if DootPluginLoader.loaded is None:
             return None
         if group not in DootPluginLoader.loaded:

@@ -50,7 +50,7 @@ class BaseReporter(Reporter_p):
 
     def __init__(self, reporters:list[ReportLine_i]=None):
         self._full_trace     : list[TraceRecord]       = []
-        self._reporters      : list[ReportLine_i] = list(reporters or [self._default_formatter])
+        self._reporters      : list[ReportLine_i]      = list(reporters or [self._default_formatter])
 
     def _default_formatter(self, trace:TraceRecord) -> str:
         return str(trace)

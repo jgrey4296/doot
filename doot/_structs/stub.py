@@ -34,6 +34,7 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 from pydantic import (BaseModel, Field, InstanceOf, field_validator,
                       model_validator)
+from jgdv import Maybe
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
 from jgdv.structs.strang.location import Location
@@ -54,7 +55,7 @@ from doot.enums import QueueMeta_e, Report_f, TaskMeta_e
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-TaskFlagNames : Final[str]               = [x.name for x in TaskMeta_e]
+TaskFlagNames : Final[list[str]]               = [x.name for x in TaskMeta_e]
 
 DEFAULT_CTOR  : Final[CodeReference] = CodeReference("cls::" + doot.aliases.task[doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS])
 
@@ -77,7 +78,7 @@ class TaskStub(BaseModel, StubStruct_p, Buildable_p, metaclass=ProtocolModelMeta
     skip_parts : ClassVar[set[str]]          = set(["name", "extra", "ctor", "source", "version"])
 
     @classmethod
-    def build(cls, data:None|dict=None):
+    def build(cls, data:Maybe[dict]=None):
         match data:
             case None:
                 return TaskStub()
@@ -197,10 +198,6 @@ class TaskStubPart(BaseModel, arbitrary_types_allowed=True):
 
     def _type_str(self) -> str:
         match type(self.type_), self.type_:
-            case x, t if x == GenericAlias and bool(t.__args__) and hasattr(t.__args__[0], "__args__"):
-                args = self.type_.__args__[0].__args__
-                args_s = " | ".join(arg.__name__ for arg in args)
-                return f"<{self.type_.__name__}[{args_s}]>"
             case _, t if hasattr(t, "__name__"):
                 return f"<{self.type_.__name__}>"
             case _, _:

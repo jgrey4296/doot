@@ -31,6 +31,7 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 from pydantic import (BaseModel, Field, field_validator,
                       model_validator)
+from jgdv import Maybe
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference, Strang
 from jgdv.structs.strang.location import Location
@@ -48,6 +49,8 @@ from doot._structs.task_name import TaskName
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
+
+type RelationTarget = TaskName|TaskArtifact
 
 class RelationMeta_e(enum.Enum):
     """
@@ -89,15 +92,15 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
     mark_e        : ClassVar[enum] = RelationMeta_e
 
     target        : TaskName|TaskArtifact
-    relation      : RelationMeta_e                                 = RelationMeta_e.needs
+    relation      : RelationMeta_e                                   = RelationMeta_e.needs
     # constraints on spec field equality
-    object        : None|TaskName|TaskArtifact                     = None
-    constraints   : bool|list|dict[str, str]                       = False
-    inject        : None|str|dict                                  = None
-    _meta         : dict()                                         = {} # Misc metadata
+    object        : Maybe[TaskName|TaskArtifact]                     = None
+    constraints   : bool|list|dict[str, str]                         = False
+    inject        : Maybe[str|dict]                                  = None
+    _meta         : dict()                                           = {} # Misc metadata
 
     @staticmethod
-    def build(data:RelationSpec|ChainGuard|dict|TaskName|str, *, relation:None|RelationSpec.mark_e=None) -> RelationSpec:
+    def build(data:RelationSpec|ChainGuard|dict|TaskName|str, *, relation:Maybe[RelationSpec.mark_e]=None) -> RelationSpec:
         relation = relation or RelationSpec.mark_e.needs
         match data:
             case RelationSpec():
@@ -122,14 +125,12 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 raise ValueError("Bad data used for relation spec", data)
 
     @field_validator("target", mode="before")
-    def _validate_target(cls, val) -> TaskName|TaskArtifact:
+    def _validate_target(cls, val) -> RelationTarget:
         match val:
             case TaskName() | TaskArtifact():
                 return val
             case pl.Path():
                 return TaskArtifact(val)
-            # case str() if val.startswith(TaskArtifact._toml_str_prefix):
-            #     return TaskArtifact(val)
             case str() if TaskName._separator in val:
                 return TaskName(val)
             case _:
@@ -165,16 +166,16 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
     def __repr__(self):
         return f"<RelationSpec: ? {self.relation.name} {self.target}>"
 
-    def __contains__(self, query:TaskMeta_e|Location.gmark_e|TaskName) -> bool:
+    def __contains__(self, query:Location.gmark_e|TaskName) -> bool:
         match self.target, query:
             case TaskName(), TaskName():
                 return query in self.target
-            case TaskName(), TaskMeta_e():
-                return query in self.target
             case TaskArtifact(), Location.gmark_e():
                 return query in self.target
+            case _, _:
+                raise NotImplementedError(self.target, query)
 
-    def to_ordered_pair(self, obj:TaskName|TaskArtifact, *, target:None|TaskName=None) -> tuple[TaskName|TaskArtifact, TaskName|TaskArtifact]:
+    def to_ordered_pair(self, obj:RelationTarget, *, target:Maybe[TaskName]=None) -> tuple[RelationTarget, RelationTarget]:
         """ a helper to make an edge for the tracker.
           uses the current (abstract) target, unless an instance is provided
           """
@@ -187,7 +188,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 # target is a succcessor
                 return (obj, target or self.target)
 
-    def instantiate(self, *, object:None|TaskName|TaskArtifact=None, target:None|TaskName|TaskArtifact=None):
+    def instantiate(self, *, object:Maybe[RelationTarget]=None, target:Maybe[RelationTarget]=None):
         """
           Duplicate this relation, but with a suitable concrete task or artifact as the object or subject
         """

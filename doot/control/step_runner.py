@@ -32,6 +32,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
+from jgdv import Maybe
 from jgdv.debugging import SignalHandler
 
 # ##-- end 3rd party imports
@@ -78,9 +79,9 @@ class DootStepRunner(DootRunner):
 
     def __init__(self:Self, *, tracker:abstract.TaskTracker_i, reporter:abstract.Reporter_p):
         super().__init__(tracker=tracker, reporter=reporter)
-        self._conf_types = []
+        self._conf_types     = []
         self._override_level = "INFO"
-        self._has_quit = False
+        self._has_quit       = False
 
     def _expand_job(self, job:abstract.Job_i) -> None:
         if self._pause(job):

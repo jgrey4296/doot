@@ -23,7 +23,7 @@ from collections import defaultdict
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
+                    Generic, Iterable, Iterator, Mapping, Match, Self,
                     MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
                     TypeGuard, TypeVar, cast, final, overload,
                     runtime_checkable)
@@ -32,6 +32,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
+from jgdv import Maybe
 from jgdv.debugging import SignalHandler
 # ##-- end 3rd party imports
 
@@ -58,7 +59,7 @@ sleep_l    = doot.subprinter("sleep")
 artifact_l = doot.subprinter("artifact")
 ##-- end logging
 
-dry_run                                      = doot.args.on_fail(False).cmd.args.dry_run()
+dry_run              : Final[bool]           = doot.args.on_fail(False).cmd.args.dry_run()
 max_steps            : Final[str]            = doot.config.on_fail(100_000).settings.tasks.max_steps()
 fail_prefix          : Final[str]            = doot.constants.printer.fail_prefix
 loop_entry_msg       : Final[str]            = doot.constants.printer.loop_entry
@@ -73,11 +74,11 @@ class BaseRunner(TaskRunner_i):
         self.tracker                                          = tracker
         self.reporter                                         = reporter
         self.step                                             = 0
-        self._signal_failure : None|doot.errors.DootError     = None
+        self._signal_failure : Maybe[doot.errors.DootError]   = None
         self._enter_msg                                       = loop_entry_msg
         self._exit_msg                                        = loop_exit_msg
 
-    def __enter__(self) -> Any:
+    def __enter__(self) -> Self:
         setup_l.info("Building Task Network...")
         self.tracker.build_network()
         setup_l.info("Task Network Built. %s Nodes, %s Edges, %s Edges from Root.",
@@ -113,7 +114,7 @@ class BaseRunner(TaskRunner_i):
             case doot.errors.DootError():
                 raise self._signal_failure
 
-    def _handle_task_success(self, task:None|Task_i|TaskArtifact):
+    def _handle_task_success(self, task:Maybe[Task_i|TaskArtifact]):
         """ The basic success handler. just informs the tracker of the success """
         success_l.debug("(Task): %s", task)
         match task:

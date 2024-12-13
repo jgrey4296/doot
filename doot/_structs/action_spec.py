@@ -30,6 +30,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from pydantic import BaseModel, Field, field_validator, model_validator
+from jgdv import Maybe, Func
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
@@ -57,12 +58,12 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
       path:/usr/bin/python  -> Path(/usr/bin/python)
 
     """
-    do         : None|CodeReference                   = None
-    args       : list[Any]                            = []
-    kwargs     : ChainGuard                            = Field(default_factory=ChainGuard)
-    inState    : set[str]                             = set()
-    outState   : set[str]                             = set()
-    fun        : None|Callable                        = None
+    do         : Maybe[CodeReference]                   = None
+    args       : list[Any]                              = []
+    kwargs     : ChainGuard                             = Field(default_factory=ChainGuard)
+    inState    : set[str]                               = set()
+    outState   : set[str]                               = set()
+    fun        : Maybe[Func]                            = None
 
     @staticmethod
     def build(data:dict|list|ChainGuard|ActionSpec, *, fun=None) -> ActionSpec:
@@ -130,7 +131,7 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
 
         return f"<ActionSpec: {' '.join(result)} >"
 
-    def __call__(self, task_state:dict):
+    def __call__(self, task_state:dict) -> Any:
         if self.fun is None:
             raise doot.errors.DootActionError("Action Spec has not been finalised with a function", self)
 
@@ -140,7 +141,7 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
     def params(self):
         return self.kwargs
 
-    def set_function(self, fun:Action_p|Callable):
+    def set_function(self, fun:Action_p|Func):
         """
           Sets the function of the action spec.
           if given a class, the class is built,

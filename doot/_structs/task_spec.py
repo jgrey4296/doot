@@ -34,6 +34,7 @@ from uuid import UUID, uuid1
 from pydantic import (BaseModel, BeforeValidator, Field, ValidationError,
                       ValidationInfo, ValidatorFunctionWrapHandler,
                       WrapValidator, field_validator, model_validator)
+from jgdv import Maybe
 from jgdv.structs.chainguard import ChainGuard
 from typing_extensions import Annotated
 from jgdv.structs.strang import CodeReference
@@ -49,9 +50,8 @@ from doot._abstract.task import Task_i
 from doot._abstract.control import QueueMeta_e
 from .action_spec import ActionSpec
 from .artifact import TaskArtifact
-from .relation_spec import RelationSpec
+from .relation_spec import RelationSpec, RelationMeta_e
 from .task_name import TaskName
-from .relation_spec import RelationMeta_e
 
 # ##-- end 1st party imports
 
@@ -194,7 +194,7 @@ class _JobUtils_m:
             "queue_behaviour" : QueueMeta_e.reactive,
             "depends_on"      : base_deps,
             "meta"           : (self.meta | {TaskMeta_e.TASK}) - {TaskMeta_e.JOB},
-            **self.extra
+            **self.extra,
             })
         assert(not bool(cleanup.cleanup))
         return [cleanup]
@@ -202,7 +202,7 @@ class _JobUtils_m:
 class _TransformerUtils_m:
     """Utilities for artifact transformers"""
 
-    def instantiate_transformer(self, target:TaskArtifact|tuple[TaskArtifact, TaskArtifact]) -> None|TaskSpec:
+    def instantiate_transformer(self, target:TaskArtifact|tuple[TaskArtifact, TaskArtifact]) -> Maybe[TaskSpec]:
         """ Create an instantiated transformer spec.
           ie     : ?.txt -> spec -> ?.blah
           becomes: a.txt -> spec -> a.blah
@@ -236,7 +236,7 @@ class _TransformerUtils_m:
 
         return instance
 
-    def transformer_of(self) -> None|tuple[RelationSpec, RelationSpec]:
+    def transformer_of(self) -> Maybe[tuple[RelationSpec, RelationSpec]]:
         """ If this spec can transform an artifact,
           return those relations.
 
@@ -296,7 +296,7 @@ class _TransformerUtils_m:
 class _SpecUtils_m:
     """General utilities mixin for task specs"""
 
-    def instantiate_onto(self, data:None|TaskSpec) -> TaskSpec:
+    def instantiate_onto(self, data:Maybe[TaskSpec]) -> TaskSpec:
         """ apply self over the top of data """
         match data:
             case None:
@@ -347,7 +347,7 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
     """
     name                              : TaskName
     doc                               : list[str]                                                                        = []
-    sources                           : list[TaskName|pl.Path|None]                                                      = []
+    sources                           : list[Maybe[TaskName|pl.Path]]                                                    = []
 
     # Action Groups:
     actions                           : ActionGroup                                                                      = []
@@ -363,7 +363,7 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
     ctor                              : CodeReference                                                                    = Field(default=None, validate_default=True)
     queue_behaviour                   : QueueMeta_e                                                                      = QueueMeta_e.default
     meta                              : set[TaskMeta_e]                                                                  = set()
-    _transform                        : None|Literal[False]|tuple[RelationSpec, RelationSpec]                            = None
+    _transform                        : Maybe[Literal[False]|tuple[RelationSpec, RelationSpec]]                          = None
     # task specific extras to use in state
     _default_ctor                     : ClassVar[str]                                                                    = doot.constants.entrypoints.DEFAULT_TASK_CTOR_ALIAS
     _allowed_print_locs               : ClassVar[list[str]]                                                              = doot.constants.printer.PRINT_LOCATIONS

@@ -29,9 +29,8 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-import decorator
 from pydantic import BaseModel, Field, field_validator, model_validator
-from jgdv import *
+from jgdv import Maybe, Ident
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
 from jgdv.structs.dkey import DKeyFormatter, DKey, DKeyMark_e, SingleDKey, MultiDKey, NonDKey, DKeyExpansionDecorator
@@ -46,7 +45,6 @@ from doot._structs.task_name import TaskName
 
 # ##-- end 1st party imports
 
-
 ##-- logging
 logging = logmod.getLogger(__name__)
 printer = doot.subprinter()
@@ -56,7 +54,7 @@ KEY_PATTERN                                 = doot.constants.patterns.KEY_PATTER
 MAX_KEY_EXPANSIONS                          = doot.constants.patterns.MAX_KEY_EXPANSIONS
 STATE_TASK_NAME_K                           = doot.constants.patterns.STATE_TASK_NAME_K
 
-CWD_MARKER      : Final[str]                = "__cwd"
+CWD_MARKER      : Final[Ident]                = "__cwd"
 
 class TaskNameDKey(SingleDKey, mark=DKeyMark_e.TASK, tparam="t"):
 

@@ -2,27 +2,48 @@
 """
 
 """
+# Imports:
 ##-- imports
 from __future__ import annotations
 
+# ##-- stdlib imports
+import datetime
+import enum
 # import abc
 # import datetime
 # import enum
 import functools as ftz
+import importlib
 import itertools as itz
 import logging as logmod
 import pathlib as pl
 import re
 import time
 import types
-import importlib
 from importlib.metadata import entry_points
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
+from uuid import UUID, uuid1
+
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
+from jgdv import Maybe
+from jgdv.structs.chainguard import ChainGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+from doot._abstract import Command_i, CommandLoader_p
+
+# ##-- end 1st party imports
+
 # from uuid import UUID, uuid1
 # from weakref import ref
 
@@ -32,11 +53,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from jgdv.structs.chainguard import ChainGuard
-import time
-import doot
-from doot._abstract import CommandLoader_p, Command_i
-
 @doot.check_protocol
 class DootCommandLoader(CommandLoader_p):
     """
@@ -45,7 +61,7 @@ class DootCommandLoader(CommandLoader_p):
       instantiates it
     """
 
-    def setup(self, plugins, extra=None) -> Self:
+    def setup(self, plugins, extra:Maybe[list|dict|ChainGuard]=None) -> Self:
         self.cmd_plugins : list[EntryPoint] = plugins.get("command", [])
         self.cmds = {}
 

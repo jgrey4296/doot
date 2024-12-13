@@ -28,6 +28,7 @@ from weakref import ref
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
+from jgdv import Maybe, Lambda
 from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 
@@ -141,7 +142,7 @@ class DootTask(_TaskProperties_m, Task_i):
         """ Task A < Task B if A ∈ B.run_after or B ∈ A.runs_before  """
         return any(other.name in x.target for x in self.spec.depends_on)
 
-    def __eq__(self, other):
+    def __eq__(self, other:str|TaskName|Task_i):
         match other:
             case str() | TaskName():
                 return self.name == other
@@ -223,7 +224,7 @@ class DootTask(_TaskProperties_m, Task_i):
         """ Record some execution record information for display or debugging """
         self._records.append(arg)
 
-    def log(self, msg, level=logmod.DEBUG, prefix=None) -> None:
+    def log(self, msg:str|Lambda|list, level=logmod.DEBUG, prefix=None) -> None:
         """
         utility method to log a message, useful as tasks are running
         """

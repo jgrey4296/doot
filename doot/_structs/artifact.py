@@ -3,13 +3,15 @@
 
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 import abc
 import datetime
 import enum
 import functools as ftz
+import importlib
 import itertools as itz
 import logging as logmod
 import pathlib as pl
@@ -19,22 +21,29 @@ import types
 import weakref
 # from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-import importlib
+# ##-- 3rd party imports
+from jgdv import Maybe, TimeDelta
 from jgdv.structs.chainguard import ChainGuard
-from jgdv.structs.strang.location import Location
 from jgdv.structs.dkey import DKey
+from jgdv.structs.strang.location import Location
 
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
 import doot
 import doot.errors
 from doot._abstract.task import ArtifactStatus_e
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -62,7 +71,7 @@ class TaskArtifact(Location):
     def parent(self):
         return self.path.parent
 
-    def is_stale(self, *, delta=None) -> bool:
+    def is_stale(self, *, delta:Maybe[TimeDelta]=None) -> bool:
         """ whether the artifact itself is stale
         delta defaults to 1 day
         """
@@ -74,7 +83,7 @@ class TaskArtifact(Location):
             case _:
                 raise NotImplementedError()
 
-    def reify(self, other:pl.Path|Location) -> None|TaskArtifact:
+    def reify(self, other:pl.Path|Location) -> Maybe[TaskArtifact]:
         """
         Apply a more concrete path onto this location
         """
@@ -155,6 +164,3 @@ class TaskArtifact(Location):
         result.append(f"{stem}{ext}")
 
         return self.__class__("/".join(result))
-
-    def match_with(self, other:pl.Path|Location) -> None|TaskArtifact:
-        raise DeprecationWarning("use reify")
