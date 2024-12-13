@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
 # Imports:
@@ -41,7 +40,7 @@ import doot.errors
 from doot._abstract import (Job_i, Task_i, TaskRunner_i,
                             TaskTracker_i)
 from doot._structs.relation_spec import RelationSpec
-from doot.enums import TaskMeta_e, QueueMeta_e, TaskStatus_e, LocationMeta_e, RelationMeta_e, EdgeType_e, ArtifactStatus_e
+from doot.enums import TaskMeta_e, TaskStatus_e, ArtifactStatus_e
 from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
@@ -57,17 +56,17 @@ track_l          = doot.subprinter("track")
 logging.disabled = False
 ##-- end logging
 
-ROOT                           : Final[str]                    = "root::_.$gen$" # Root node of dependency graph
-EXPANDED                       : Final[str]                    = "expanded"  # Node attribute name
-REACTIVE_ADD                   : Final[str]                    = "reactive-add"
-INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                   = 10
+ROOT                            : Final[str]                    = "root::_.$gen$" # Root node of dependency graph
+EXPANDED                        : Final[str]                    = "expanded"  # Node attribute name
+REACTIVE_ADD                    : Final[str]                    = "reactive-add"
+INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                    = 10
 
-T                                                              = TypeVar("T")
-Abstract                                                       = NewType("Abstract", T)
-Concrete                                                       = NewType("Concrete", T)
+T                                                               = TypeVar("T")
+type Abstract[T]                                                = T
+type Concrete[T]                                                = T
 
-ActionElem                     : TypeAlias                     = ActionSpec|RelationSpec
-ActionGroup                    : TypeAlias                     = list[ActionElem]
+ActionElem                     : TypeAlias                      = ActionSpec|RelationSpec
+ActionGroup                    : TypeAlias                      = list[ActionElem]
 
 class TrackRegistry(Injector_m, TaskMatcher_m):
     """ Stores and manipulates specs, tasks, and artifacts """
@@ -75,7 +74,6 @@ class TrackRegistry(Injector_m, TaskMatcher_m):
     def __init__(self):
         self.specs                : dict[TaskName, TaskSpec]  = {}
         self.concrete             : dict[Abstract[TaskName], list[Concrete[TaskName]]]                 = defaultdict(lambda: [])
-        self._transformer_specs   : dict[TaskArtifact, list[Abstract[TaskName]]]                       = defaultdict(lambda: [])
         # Invariant for tasks: every key in tasks has a matching key in specs.
         self.tasks                : dict[Concrete[TaskName], Task_i]                                   = {}
         self.artifacts            : dict[TaskArtifact, set[Abstract[TaskName]]]                        = defaultdict(set)
@@ -110,7 +108,6 @@ class TrackRegistry(Injector_m, TaskMatcher_m):
                 queue += spec.gen_cleanup_task()
 
             self._register_spec_artifacts(spec)
-            self._register_transformer(spec)
             self._register_blocking_relations(spec)
 
     def get_status(self, task:Concrete[TaskName|TaskArtifact]) -> TaskStatus_e|ArtifactStatus_e:
@@ -150,17 +147,6 @@ class TrackRegistry(Injector_m, TaskMatcher_m):
 
         return True
 
-    def _register_transformer(self, spec:TaskSpec):
-        """ register a transformers pre and post targets """
-        match spec.transformer_of():
-            case None:
-                pass
-            case (pre, post):
-                logging.debug("Registering Transformer: %s -> (%s) -> %s", pre, spec.name.readable, post)
-                self._transformer_specs[pre.target].append(spec.name)
-                self._transformer_specs[post.target].append(spec.name)
-
-
     def _register_artifact(self, art:TaskArtifact, *tasks:TaskName):
         logging.debug("Registering Artifact: %s, %s", art, tasks)
         self.artifacts[art].update(tasks)
@@ -190,7 +176,7 @@ class TrackRegistry(Injector_m, TaskMatcher_m):
         # record that target needs spec
         for rel in spec.action_group_elements():
             match rel:
-                case RelationSpec(target=target, relation=RelationMeta_e.blocks) if spec.name.is_uniq():
+                case RelationSpec(target=target, relation=RelationSpec.mark_e.blocks) if spec.name.is_uniq():
                     logging.debug("Registering Requirement: %s : %s", target, rel.invert(spec.name))
                     rel.object = spec.name
                     self._blockers[target].append(rel)
@@ -309,18 +295,6 @@ class TrackRegistry(Injector_m, TaskMatcher_m):
                 instance : TaskName = x
                 logging.warning("Reusing latest Instance: %s", instance)
                 return instance
-
-    def _instantiate_transformer(self, name:Abstract[TaskNAme], artifact:TaskArtifact) -> None|Concrete[TaskName]:
-        spec = self.specs[name]
-        match spec.instantiate_transformer(artifact):
-            case None:
-                return None
-            case TaskSpec() as instance:
-                assert(TaskMeta_e.TRANSFORMER in instance.meta)
-                assert(instance.name.is_uniq())
-                self.concrete[name].append(instance.name)
-                self.register_spec(instance)
-                return instance.name
 
     def _make_task(self, name:Concrete[TaskName], *, task_obj:Task_i=None) -> ConcreteId:
         """ Build a Concrete Spec's Task object

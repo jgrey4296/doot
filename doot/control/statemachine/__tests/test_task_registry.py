@@ -100,17 +100,6 @@ class TestRegistry:
         obj.register_spec(spec)
         assert(len(obj.specs) == 0)
 
-    def test_register_transformer_spec(self):
-        obj = TaskRegistry()
-        spec = doot.structs.TaskSpec.build({"name":"basic::transformer", "meta":"TRANSFORMER", "depends_on": ["file::?.txt"], "required_for": ["file::?.blah"]})
-        assert(len(obj.specs) == 0)
-        assert(len(obj._transformer_specs) == 0)
-        obj.register_spec(spec)
-        assert(len(obj.specs) == 2)
-        assert(len(obj._transformer_specs) == 2)
-        assert("file::?.txt" in obj._transformer_specs)
-        assert("file::?.blah" in obj._transformer_specs)
-
     def test_spec_retrieval(self):
         obj = TaskRegistry()
         spec = doot.structs.TaskSpec.build({"name":"basic::task"})
@@ -169,7 +158,6 @@ class TestRegistry:
         obj = TaskRegistry()
         name = doot.structs.TaskName("basic::task")
         assert(obj.set_status(name, TaskStatus_e.SUCCESS) is False)
-
 
 class TestRegistryInternals:
 

@@ -166,7 +166,7 @@ class _JobUtils_m:
             "sources"         : self.sources[:] + [self.name, None],
             "queue_behaviour" : QueueMeta_e.reactive,
             "depends_on"      : [self.name] + head_dependencies,
-            "required_for"    : [job_head.canon()] + self.required_for[:],
+            "required_for"    : self.required_for[:],
             "cleanup"         : self.cleanup[:],
             "meta"           : (self.meta | {TaskMeta_e.JOB_HEAD}) - {TaskMeta_e.JOB},
             "actions"         : head_actions,
@@ -371,6 +371,7 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
     # Action Groups that are depended on, rather than are dependencies of, this task:
     _blocking_groups                  : ClassVar[list[str]]                                                              = ["required_for", "on_fail"]
 
+    mark_e                            : ClassVar[enum.Enum]                                                              = TaskMeta_e
     @staticmethod
     def build(data:ChainGuard|dict|TaskName|str) -> Self:
         match data:
