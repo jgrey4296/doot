@@ -25,6 +25,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
+from jgdv import Maybe
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
@@ -60,7 +61,7 @@ class DootJob(Job_i, DootTask):
         assert(spec is not None), "Spec is empty"
         super(DootJob, self).__init__(spec)
 
-    def default_task(self, name:str|TaskName|None, extra:None|dict|ChainGuard) -> TaskSpec:
+    def default_task(self, name:Maybe[str|TaskName], extra:Maybe[dict|ChainGuard]) -> TaskSpec:
         task_name = None
         match name:
             case None:
@@ -75,10 +76,10 @@ class DootJob(Job_i, DootTask):
         assert(task_name is not None)
         return TaskSpec(name=task_name, extra=ChainGuard(extra))
 
-    def is_stale(self, task:Task_i):
+    def is_stale(self, task:Task_i) -> bool:
         return False
 
-    def specialize_task(self, task):
+    def specialize_task(self, task:Task_i) -> Task_i:
         return task
 
     @classmethod

@@ -61,12 +61,10 @@ EXPANDED                        : Final[str]                    = "expanded"  # 
 REACTIVE_ADD                    : Final[str]                    = "reactive-add"
 INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                    = 10
 
-T                                                               = TypeVar("T")
-type Abstract[T]                                                = T
-type Concrete[T]                                                = T
-
-ActionElem                     : TypeAlias                      = ActionSpec|RelationSpec
-ActionGroup                    : TypeAlias                      = list[ActionElem]
+type Abstract[T] = T
+type Concrete[T] = T
+type ActionElem  = ActionSpec|RelationSpec
+type ActionGroup = list[ActionElem]
 
 class TrackRegistry(Injector_m, TaskMatcher_m):
     """ Stores and manipulates specs, tasks, and artifacts """

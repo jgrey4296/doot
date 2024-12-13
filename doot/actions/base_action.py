@@ -21,12 +21,17 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
+# ##-- 3rd party imports
+from jgdv import Maybe
+
+# ##-- end 3rd party imports
+
 # ##-- 1st party imports
 import doot
 from doot._abstract import Action_p
 from doot._abstract.task import ActionResponse_e
-from doot.errors import DootTaskError, DootTaskFailed
 from doot._structs.action_spec import ActionSpec
+from doot.errors import DootTaskError, DootTaskFailed
 
 # ##-- end 1st party imports
 
@@ -46,7 +51,7 @@ class DootBaseAction(Action_p):
     def __str__(self):
         return f"Base Action"
 
-    def __call__(self, spec:ActionSpec, state:dict) -> dict|bool|None:
+    def __call__(self, spec:ActionSpec, state:dict) -> Maybe[dict|bool]:
         printer.debug("Base Action Called: %s", state.get("count", 0))
         printer.info(" ".join(spec.args))
         return { "count" : state.get("count", 0) + 1 }

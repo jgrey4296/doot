@@ -31,6 +31,7 @@ from weakref import ref
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
+from jgdv import Maybe, Rx
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.cli.param_spec import ParamSpec
 # ##-- end 3rd party imports
@@ -52,7 +53,7 @@ cmd_l   = doot.subprinter("cmd")
 
 INDENT     : Final[str]       = " "*8
 hide_names : Final[list[str]] = doot.config.on_fail([]).settings.commands.list.hide()
-hide_re    : re.Pattern = re.compile("^({})".format("|".join(hide_names)))
+hide_re    : Final[Rx]        = re.compile("^({})".format("|".join(hide_names)))
 
 @doot.check_protocol
 class ListCmd(BaseCommand):

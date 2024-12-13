@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 """
 
-
 """
 
 # Imports:
@@ -30,8 +29,8 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-import decorator
 from pydantic import BaseModel, Field, field_validator, model_validator
+from jgdv import Maybe, Ident
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
 from jgdv.structs.dkey import DKeyFormatter, DKey, DKeyMark_e, SingleDKey, MultiDKey, NonDKey, DKeyExpansionDecorator
@@ -46,11 +45,6 @@ from doot._structs.task_name import TaskName
 
 # ##-- end 1st party imports
 
-##-- type checking
-if TYPE_CHECKING:
-    DootLocations:TypeAlias = Any
-##-- end type checking
-
 ##-- logging
 logging = logmod.getLogger(__name__)
 printer = doot.subprinter()
@@ -60,8 +54,7 @@ KEY_PATTERN                                 = doot.constants.patterns.KEY_PATTER
 MAX_KEY_EXPANSIONS                          = doot.constants.patterns.MAX_KEY_EXPANSIONS
 STATE_TASK_NAME_K                           = doot.constants.patterns.STATE_TASK_NAME_K
 
-CWD_MARKER      : Final[str]                = "__cwd"
-
+CWD_MARKER      : Final[Ident]                = "__cwd"
 
 class TaskNameDKey(SingleDKey, mark=DKeyMark_e.TASK, tparam="t"):
 
@@ -84,7 +77,7 @@ class PathSingleDKey(SingleDKey, mark=DKeyMark_e.PATH):
     def extra_sources(self):
         return [doot.locs.Current]
 
-    def expand(self, *sources, **kwargs) -> None|pl.Path:
+    def expand(self, *sources, **kwargs) -> Maybe[pl.Path]:
         """ Expand subkeys, format the multi key
           Takes a variable number of sources (dicts, chainguards, specs, dootlocations..)
         """
@@ -99,7 +92,7 @@ class PathSingleDKey(SingleDKey, mark=DKeyMark_e.PATH):
             case _:
                 raise TypeError("Path Key shouldn't be able to produce a non-path")
 
-    def _expansion_hook(self, value) -> None|pl.Path:
+    def _expansion_hook(self, value) -> Maybe[pl.Path]:
         match value:
             case None:
                 return None
@@ -132,7 +125,7 @@ class PathMultiDKey(MultiDKey, mark=DKeyMark_e.PATH, tparam="p", multi=True):
         subkeys = [DKey(key.key, fmt=key.format, conv=key.conv, implicit=True) for key in self._subkeys]
         return subkeys
 
-    def expand(self, *sources, fallback=None, **kwargs) -> None|pl.Path:
+    def expand(self, *sources, fallback=None, **kwargs) -> Maybe[pl.Path]:
         """ Expand subkeys, format the multi key
           Takes a variable number of sources (dicts, chainguards, specs, dootlocations..)
         """
@@ -144,7 +137,7 @@ class PathMultiDKey(MultiDKey, mark=DKeyMark_e.PATH, tparam="p", multi=True):
             case _:
                 raise TypeError("Path Key shouldn't be able to produce a non-path")
 
-    def _expansion_hook(self, value) -> None|pl.Path:
+    def _expansion_hook(self, value) -> Maybe[pl.Path]:
         logging.debug("Normalizing Multi path key: %s", value)
         match value:
             case None:
@@ -174,7 +167,6 @@ class PostBoxDKey(SingleDKey, mark=DKeyMark_e.POSTBOX, tparam="b"):
         result = None
         # return result
         raise NotImplementedError()
-
 
 class DKeyed(DKeyed_Base):
     """ Extends jgdv.structs.dkey.DKeyed to handle additional decoration types

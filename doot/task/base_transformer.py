@@ -25,6 +25,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
+from jgdv import Maybe
 from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 

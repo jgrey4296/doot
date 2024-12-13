@@ -67,22 +67,6 @@ touch    =       "doot.actions.io:TouchFileAction"
 "dir?"          = "doot.actions.io:EnsureDirectory"
 "wait"          = "doot.actions.control_flow:WaitAction"
 
-[[doot.aliases.action]] # compressions
-# Map {alias} -> CodeRef String
-"json.read"     =  "doot.actions.json:ReadJson"
-"json.write"    =  "doot.actions.json:WriteJson"
-"json.parse"    =  "doot.actions.json:ParseJson"
-"json.nl.read"  =  "doot.actions.json:ReadJsonLines"
-"json.nl.write" =  "doot.actions.json:WriteJsonLines"
-
-"tar!"          =  "doot.actions.compression:TarCompressAction"
-"untar!"        =  "doot.actions.compression:TarDecompressAction"
-"tar.list"      =  "doot.actions.compression:TarListAction"
-"zip.new"       =  "doot.actions.compression:ZipNewAction"
-"zip.add"       =  "doot.actions.compression:ZipAddAction"
-"zip.get"       =  "doot.actions.compression:ZipGetAction"
-"zip.list"      =  "doot.actions.compression:ZipListAction"
-
 [[doot.aliases.action]] # state
 # Map {alias} -> CodeRef String
 "state.add"                   =  "doot.actions.state:AddStateAction"
@@ -90,12 +74,9 @@ touch    =       "doot.actions.io:TouchFileAction"
 "path.elements"               =  "doot.actions.state:PathParts"
 "path.shadow"                 =  "doot.actions.state:ShadowPath"
 
-
 [[doot.aliases.action]] # misc
 # Map {alias} -> CodeRef String
-"say.time" = "doot.actions.speak:SpeakTimeAction"
 "log"      = "doot.actions.control_flow:LogAction"
-
 
 [[doot.aliases.action]] # job actions
 # Map {alias} -> CodeRef String

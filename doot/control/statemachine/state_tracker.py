@@ -7,7 +7,6 @@ Task:           T[n]
   Expansion: ∀x ∈ C[n].depends_on => A[x] -> C[x]
   Head: C[1].depends_on[A[n].$head$] => A[n] -> C[n], A[n].head -> C[n].head, connect
 
-
 """
 # Imports:
 from __future__ import annotations
@@ -60,9 +59,8 @@ task_l     = doot.subprinter("task")
 artifact_l = doot.subprinter("artifact")
 ##-- end logging
 
-T                                                              = TypeVar("T")
-Abstract                                                       = NewType("Abstract", T)
-Concrete                                                       = NewType("Concrete", T)
+type Abstract[T] = T
+type Concrete[T] = T
 
 MAX_LOOP  : Final[int]     = 100
 

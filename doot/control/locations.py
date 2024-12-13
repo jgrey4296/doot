@@ -41,10 +41,10 @@ from jgdv.mixins.path_manip import PathManip_m
 import doot
 from doot.structs import TaskArtifact
 
-KEY_PAT        = doot.constants.patterns.KEY_PATTERN
-MAX_EXPANSIONS = doot.constants.patterns.MAX_KEY_EXPANSIONS
+KEY_PAT                    = doot.constants.patterns.KEY_PATTERN
+MAX_EXPANSIONS             = doot.constants.patterns.MAX_KEY_EXPANSIONS
 
-DootLocations = JGDVLocations
-DootDirAbsent = DirAbsent
+DootLocations              = JGDVLocations
+DootDirAbsent              = DirAbsent
 DootLocationExpansionError = LocationExpansionError
-DootLocationError = LocationError
+DootLocationError          = LocationError

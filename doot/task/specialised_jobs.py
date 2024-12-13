@@ -26,13 +26,12 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 
 ##-- end imports
 
-##-- logging
-logging = logmod.getLogger(__name__)
-##-- end logging
-
 import doot
 from doot.task.base_job import DootJob
 
+##-- logging
+logging = logmod.getLogger(__name__)
+##-- end logging
 
 @doot.check_protocol
 class GroupJob(DootJob):

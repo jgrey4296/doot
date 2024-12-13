@@ -214,7 +214,7 @@ class StubCmd(BaseCommand):
 
             cmd_l.info("")
             cmd_l.info("- For Custom Python Actions, implement the following in the .tasks directory")
-            cmd_l.info("def custom_action(spec:ActionSpec, task_state:dict) -> None|bool|dict:...")
+            cmd_l.info("def custom_action(spec:ActionSpec, task_state:dict) -> Maybe[bool|dict]:...")
 
         cmd_l.info("")
         cmd_l.info("-- Toml Form: ")

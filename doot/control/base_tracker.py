@@ -37,6 +37,7 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 import boltons.queueutils
 import networkx as nx
+from jgdv import Maybe, Ident
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
@@ -69,15 +70,10 @@ DECLARE_PRIORITY               : Final[int]                  = 10
 MIN_PRIORITY                   : Final[int]                  = -10
 INITAL_SOURCE_CHAIN_COUNT      : Final[int]                  = 10
 
-AbstractId                     : TypeAlias                   = TaskName|TaskArtifact
-ConcreteId                     : TypeAlias                   = TaskName|TaskArtifact
-AnyId                          : TypeAlias                   = TaskName|TaskArtifact
-AbstractSpec                   : TypeAlias                   = TaskSpec
-ConcreteSpec                   : TypeAlias                   = TaskSpec
-AnySpec                        : TypeAlias                   = TaskSpec
-
-ActionElem                     : TypeAlias                   = ActionSpec|RelationSpec
-ActionGroup                    : TypeAlias                   = list[ActionElem]
+type Abstract[T] = T
+type Concrete[T] = T
+type ActionElem  = ActionSpec|RelationSpec
+type ActionGroup = list[ActionElem]
 
 class _TrackerStore(Injector_m, TaskMatcher_m):
     """ Stores and manipulates specs, tasks, and artifacts """
@@ -85,22 +81,22 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
     def __init__(self):
         super().__init__()
         # All [Abstract, Concrete] Specs:
-        self.specs                : dict[AnyId, AnySpec]                          = {}
+        self.specs                : dict[Ident, TaskSpec]                          = {}
         # Mapping (Abstract Spec) -> Concrete Specs. Every id, abstract and concerete, has a spec in specs.
         # TODO: Check first entry is always uncustomised
-        self.concrete             : dict[AbstractId, list[ConcreteId]]            = defaultdict(lambda: [])
+        self.concrete             : dict[Abstract[Ident], list[Concrete[Ident]]]            = defaultdict(lambda: [])
         # All (Concrete Specs) Task objects. Invariant: every key in tasks has a matching key in specs.
-        self.tasks                : dict[ConcreteId, Task_i]                      = {}
+        self.tasks                : dict[Concrete[Ident], Task_i]                      = {}
         # Artifact -> list[TaskName] of related tasks
-        self.artifacts            : dict[TaskArtifact, list[AbstractId]]          = defaultdict(set)
+        self.artifacts            : dict[TaskArtifact, list[Abstract[Ident]]]          = defaultdict(set)
         self._artifact_status     : dict[TaskArtifact, ArtifactStatus_e]              = defaultdict(lambda: ArtifactStatus_e.DECLARED)
         # Artifact sets
         self._abstract_artifacts  : set[TaskArtifact]                             = set()
         self._concrete_artifacts  : set[TaskArtifact]                             = set()
         # indirect requirements from other tasks:
-        self._indirect_deps        : dict[ConcreteId, list[RelationSpec]]          = defaultdict(lambda: [])
+        self._indirect_deps        : dict[Concrete[Ident], list[RelationSpec]]          = defaultdict(lambda: [])
 
-    def _maybe_reuse_instantiation(self, name:TaskName, *, add_cli:bool=False, extra:bool=False) -> None|ConcreteId:
+    def _maybe_reuse_instantiation(self, name:TaskName, *, add_cli:bool=False, extra:bool=False) -> Maybe[Concrete[Ident]]:
         """ if an existing concrete spec exists, use it if it has no conflicts """
         if name.is_uniq():
             logging.debug("Not reusing instantiation because name is concrete: %s", name)
@@ -126,17 +122,17 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
                 # Can use an existing concrete spec
                 return x
 
-    def _get_task_source_chain(self, name:AbstractId) -> list[AbstractSpec]:
+    def _get_task_source_chain(self, name:Abstract[Ident]) -> list[Abstract[TaskSpec]]:
         """ get the chain of sources for a task.
           this traces from an instance back towards the root,
           returning [root, ... grandparent, parent, instance].
 
           traces with the *last* value in spec.sources.
         """
-        spec                          = self.specs[name]
-        chain   : list[TaskSpec]      = []
-        current : None|TaskSpec       = spec
-        count   : int                 = INITAL_SOURCE_CHAIN_COUNT
+        spec                                 = self.specs[name]
+        source_chain   : list[TaskSpec]      = []
+        current        : None|TaskSpec       = spec
+        count          : int                 = INITAL_SOURCE_CHAIN_COUNT
         while current is not None:
             if 0 > count:
                 raise doot.errors.DootTaskTrackingError("Building a source chain grew to large", name)
@@ -144,25 +140,25 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
             match current: # Determine the base
                 case TaskSpec(name=name) if TaskName.bmark_e.head in name:
                     # job heads are generated, so don't have a source chain
-                    chain.append(current)
+                    source_chain.append(current)
                     current = None
                 case TaskSpec(sources=[pl.Path()]|[]):
-                    chain.append(current)
+                    source_chain.append(current)
                     current = None
                 case TaskSpec(sources=[*xs, TaskName() as src]):
-                    chain.append(current)
+                    source_chain.append(current)
                     current = self.specs.get(src, None)
                 case TaskSpec(sources=[*xs, None]):
                     # Stop the chain search
-                    chain.append(current)
+                    source_chain.append(current)
                     current = None
                 case _:
-                    raise doot.errors.DootTaskTrackingError("Unknown spec customization attempt", spec, current, chain)
+                    raise doot.errors.DootTaskTrackingError("Unknown spec customization attempt", spec, current, source_chain)
 
-        chain.reverse()
-        return chain
+        source_chain.reverse()
+        return source_chain
 
-    def _instantiate_spec(self, name:AbstractId, *, add_cli:bool=False, extra:None|dict|ChainGuard=None) -> ConcreteId:
+    def _instantiate_spec(self, name:Abstract[Ident], *, add_cli:bool=False, extra:Maybe[dict|ChainGuard]=None) -> Concrete[Ident]:
         """ Convert an Asbtract Spec into a Concrete Spec,
           Reuses a existing concrete spec if possible.
           """
@@ -205,7 +201,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
         assert(instance_spec.name in self.specs)
         return instance_spec.name
 
-    def _instantiate_relation(self, rel:RelationSpec, *, control:ConcreteId) -> ConcreteId:
+    def _instantiate_relation(self, rel:RelationSpec, *, control:Concrete[Ident]) -> Concrete[Ident]:
         """ find a matching relendency/requirement according to a set of keys in the spec, or create a matching instance
           if theres no constraints, will just instantiate.
           """
@@ -250,7 +246,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
                 logging.warning("Reusing latest Instance: %s", instance)
                 return instance
 
-    def _make_task(self, name:ConcreteId, *, task_obj:Task_i=None) -> ConcreteId:
+    def _make_task(self, name:Concrete[Ident], *, task_obj:Maybe[Task_i]=None) -> Concrete[Ident]:
         """ Build a Concrete Spec's Task object
           if a task_obj is provided, store that instead
 
@@ -279,7 +275,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
         self.tasks[name] = task
         return name
 
-    def _register_artifacts(self, name:ConcreteSpec) -> None:
+    def _register_artifacts(self, name:Concrete[TaskSpec]) -> None:
         """ Register the artifacts in a spec """
         if name not in self.specs:
             raise doot.errors.DootTaskTrackingError("tried to register artifacts of a non-registered spec", name)
@@ -303,7 +299,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
                 case _:
                     pass
 
-    def register_spec(self, *specs:AnySpec) -> None:
+    def register_spec(self, *specs:TaskSpec) -> None:
         """ Register task specs, abstract or concrete.
         """
         queue = []
@@ -330,7 +326,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
             self._register_artifacts(spec.name)
             self._register_blocking_relations(spec)
 
-    def _register_blocking_relations(self, spec:TaskSpec):
+    def _register_blocking_relations(self, spec:TaskSpec) -> None:
         if spec.name.is_uniq():
             # If the spec is instantiated,
             # it has no indirect relations
@@ -348,7 +344,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
                 case _: # Ignore action specs
                     pass
 
-    def get_status(self, task:ConcreteId) -> TaskStatus_e|ArtifactStatus_e:
+    def get_status(self, task:Concrete[Ident]) -> TaskStatus_e|ArtifactStatus_e:
         """ Get the status of a task or artifact """
         match task:
             case TaskArtifact():
@@ -362,7 +358,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
             case _:
                 return TaskStatus_e.NAMED
 
-    def set_status(self, task:ConcreteId|Task_i, status:TaskStatus_e|ArtifactStatus_e) -> bool:
+    def set_status(self, task:Concrete[Ident]|Task_i, status:TaskStatus_e|ArtifactStatus_e) -> bool:
         """ update the state of a task in the dependency graph
           Returns True on status update,
           False on no task or artifact to update.
@@ -390,16 +386,16 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
 
     def __init__(self):
         super().__init__()
-        self._root_node        : TaskName                              = TaskName(ROOT)
+        self._root_node        : TaskName                                  = TaskName(ROOT)
         self._declare_priority : int                                       = DECLARE_PRIORITY
         self._min_priority     : int                                       = MIN_PRIORITY
-        self.network           : nx.DiGraph[ConcreteId] = nx.DiGraph()
+        self.network           : nx.DiGraph[Concrete[Ident]]               = nx.DiGraph()
         self.network_is_valid  : bool                                      = False
 
         self._add_node(self._root_node)
 
 
-    def _add_node(self, name:ConcreteId) -> None:
+    def _add_node(self, name:Concrete[Ident]) -> None:
         """idempotent"""
         match name:
             case x if x is self._root_node:
@@ -419,13 +415,13 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
                 self.network_is_valid = False
             case TaskName():
                 # Add node with metadata
-                logging.debug("Inserting ConcreteId into network: %s", name)
+                logging.debug("Inserting Concrete[Ident] into network: %s", name)
                 self.network.add_node(name)
                 self.network.nodes[name][EXPANDED]     = False
                 self.network.nodes[name][REACTIVE_ADD] = False
                 self.network_is_valid = False
 
-    def _expand_task_node(self, name:ConcreteId) -> set[ConcreteId]:
+    def _expand_task_node(self, name:Concrete[Ident]) -> set[Concrete[Ident]]:
         """ expand a task node, instantiating and connecting to its dependencies and dependents,
         *without* expanding those new nodes.
         returns a list of the new nodes tasknames
@@ -469,7 +465,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
 
         return to_expand
 
-    def _expand_indirect_relations(self, spec) -> list[TaskName]:
+    def _expand_indirect_relations(self, spec:TaskSpec) -> list[TaskName]:
         """ for a spec S, find the tasks T that have registered a relation
         of T < S.
         (S would not know about these blockers).
@@ -510,7 +506,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
 
         return []
 
-    def _expand_artifact(self, artifact:TaskArtifact) -> set[ConcreteId]:
+    def _expand_artifact(self, artifact:TaskArtifact) -> set[Concrete[Ident]]:
         """ expand artifacts, instantiating related tasks,
           and connecting the task to its abstract/concrete related artifacts
           """
@@ -544,7 +540,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
         self.network.nodes[artifact][EXPANDED] = True
         return to_expand
 
-    def concrete_edges(self, name:ConcreteId) -> ChainGuard:
+    def concrete_edges(self, name:Concrete[Ident]) -> ChainGuard:
         """ get the concrete edges of a task.
           ie: the ones in the task network, not the abstract ones in the spec.
         """
@@ -561,7 +557,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
             "root" : self._root_node in succ,
             })
 
-    def connect(self, left:None|ConcreteId, right:None|False|ConcreteId=None, **kwargs) -> None:
+    def connect(self, left:Maybe[Concrete[Ident]], right:Maybe[False|Concrete[Ident]]=None, **kwargs) -> None:
         """
         Connect a task node to another. left -> right
         If given left, None, connect left -> ROOT
@@ -631,16 +627,16 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
                     logging.warning("Network isn't fully expanded: %s", node)
                 case TaskName() if not node.is_uniq() and node != ROOT:
                     if strict:
-                        raise doot.errors.DootTaskTrackingError("Abstract ConcreteId in network", node)
-                    logging.warning("Abstract ConcreteId in network: %s", node)
+                        raise doot.errors.DootTaskTrackingError("Abstract Concrete[Ident] in network", node)
+                    logging.warning("Abstract Concrete[Ident] in network: %s", node)
                 case TaskArtifact() if LocationMeta_e.abstract in node:
                     bad_nodes = [x for x in self.network.pred[node] if x in self.specs]
                     if strict and bool(bad_nodes):
-                        raise doot.errors.DootTaskTrackingError("Glob Artifact ConcreteId is a successor to a task", node, bad_nodes)
+                        raise doot.errors.DootTaskTrackingError("Glob Artifact Concrete[Ident] is a successor to a task", node, bad_nodes)
                     elif bool(bad_nodes):
-                        logging.warning("Glob Artifact ConcreteId is a successor to a task: %s (%s)", node, bad_nodes)
+                        logging.warning("Glob Artifact Concrete[Ident] is a successor to a task: %s (%s)", node, bad_nodes)
 
-    def incomplete_dependencies(self, focus:ConcreteId) -> list[ConcreteId]:
+    def incomplete_dependencies(self, focus:Concrete[Ident]) -> list[Concrete[Ident]]:
         """ Get all predecessors of a node that don't evaluate as complete """
         assert(focus in self.network.nodes)
         incomplete = []
@@ -655,7 +651,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
 
         return incomplete
 
-    def build_network(self, *, sources:None|True|list[ConcreteId]=None) -> None:
+    def build_network(self, *, sources:Maybe[True|list[Concrete[Ident]]]=None) -> None:
         """
         for each task queued (ie: connected to the root node)
         expand its dependencies and add into the network, until no mode nodes to expand.
@@ -673,9 +669,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
                 queue = list(sources)
         processed = { self._root_node }
         logging.info("Initial Network Queue: %s", queue)
-        count = 0
-        while bool(queue) and count < 20: # expand tasks
-            count += 1
+        while bool(queue): # expand tasks
             logging.debug("- Processing: %s", queue[-1])
             match (current:=queue.pop()):
                 case x if x in processed or self.network.nodes[x].get(EXPANDED, False):
@@ -705,8 +699,8 @@ class _TrackerQueue_boltons:
 
     def __init__(self):
         super().__init__()
-        self.active_set         : list[ConcreteId]                     = set()
-        self.execution_trace    : list[ConcreteId]                     = []
+        self.active_set         : list[Concrete[Ident]]                     = set()
+        self.execution_trace    : list[Concrete[Ident]]                     = []
         self._queue             : boltons.queueutils.HeapPriorityQueue      = boltons.queueutils.HeapPriorityQueue()
 
     def __bool__(self):
@@ -730,19 +724,19 @@ class _TrackerQueue_boltons:
             case _:
                 raise doot.errors.DootTaskTrackingError("Unknown _queue behaviour specified: %s", task.spec.queue_behaviour)
 
-    def _reactive_queue(self, focus:ConcreteId) -> None:
+    def _reactive_queue(self, focus:Concrete[Ident]) -> None:
         """ Queue any known task in the network that auto-reacts to a focus """
         for adj in self.network.adj[focus]:
             if self.network.nodes[adj].get(REACTIVE_ADD, False):
                 self.queue_entry(adj, silent=True)
 
-    def _reactive_fail_queue(self, focus:ConcreteId) -> None:
+    def _reactive_fail_queue(self, focus:Concrete[Ident]) -> None:
         """ TODO: make reactive failure tasks that can be triggered from
           a tasks 'on_fail' collection
           """
         raise NotImplementedError()
 
-    def deque_entry(self, *, peek:bool=False) -> ConcreteId:
+    def deque_entry(self, *, peek:bool=False) -> Concrete[Ident]:
         """ remove (or peek) the top task from the _queue .
           decrements the priority when popped.
         """
@@ -761,7 +755,7 @@ class _TrackerQueue_boltons:
 
         return focus
 
-    def queue_entry(self, name:str|AnyId|ConcreteSpec|Task_i, *, from_user:bool=False, status:TaskStatus_e|ArtifactStatus_e=None) -> None|ConcreteId:
+    def queue_entry(self, name:str|Ident|Concrete[TaskSpec]|Task_i, *, from_user:bool=False, status:TaskStatus_e|ArtifactStatus_e=None) -> None|Concrete[Ident]:
         """
           Queue a task by name|spec|Task_i.
           registers and instantiates the relevant spec, inserts it into the network

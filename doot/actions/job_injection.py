@@ -31,6 +31,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
+from jgdv import Maybe
 from jgdv.structs.strang import CodeReference
 from jgdv.structs.chainguard import ChainGuard
 # ##-- end 3rd party imports
@@ -73,7 +74,7 @@ class JobInjector(Action_p, Injector_m):
             case TaskSpec():
                 onto.model_extra.update(dict(**x.extra, **injection))
 
-    def build_injection(self, spec, state, inject, replacement=None, post:dict|None=None) -> None|ChainGuard:
+    def build_injection(self, spec, state, inject, replacement=None, post:dict|None=None) -> Maybe[ChainGuard]:
         return super().build_injection(inject, spec, state, insertion=replacement)
 
 class JobPrependActions(Action_p):

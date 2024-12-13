@@ -2,10 +2,10 @@
 """
 
 """
-##-- imports
+# Imports:
 from __future__ import annotations
 
-import types
+# ##-- stdlib imports
 import abc
 import datetime
 import enum
@@ -15,16 +15,25 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
+import types
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 from weakref import ref
 
-##-- end imports
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
+from jgdv import Maybe
+
+# ##-- end 3rd party imports
+
+type TraceRecord = Any
 
 class Report_f(enum.Flag):
     """ Flags to mark what a reporter reports
@@ -63,7 +72,7 @@ class Reporter_p(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def _default_formatter(self, trace:"TraceRecord") -> str:
+    def _default_formatter(self, trace:TraceRecord) -> str:
         pass
 
     @abc.abstractmethod
@@ -76,5 +85,5 @@ class ReportLine_p(abc.ABC):
     """
 
     @abc.abstractmethod
-    def __call__(self, trace:"TraceRecord") -> None|str:
+    def __call__(self, trace:TraceRecord) -> Maybe[str]:
         pass

@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 # ##-- stdlib imports
-# import abc
 import datetime
 import enum
 import functools as ftz
@@ -19,7 +18,6 @@ import re
 import time
 import types
 import weakref
-# from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Mapping, Match,
@@ -32,8 +30,9 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from pydantic import field_validator, model_validator
+from jgdv import Maybe
 from jgdv.structs.strang import Strang
-from jgdv.enums.util import FlagsBuilder_m
+from jgdv.mixins.enum_builders import FlagsBuilder_m
 
 # ##-- end 3rd party imports
 
@@ -49,13 +48,11 @@ logging = logmod.getLogger(__name__)
 
 CLEANUP_MARKER : Final[str] = "$cleanup$"
 
-aware_splitter = str
-
 class _TaskNameOps_m:
     """ Operations Mixin for manipulating TaskNames """
 
     @classmethod
-    def pre_process(cls, data, *, strict=False):
+    def pre_process(cls, data:str, *, strict=False) -> str:
         """ Remove 'tasks' as a prefix, and strip quotes  """
         match data:
             case str() if not strict and data.startswith("tasks."):
@@ -70,15 +67,15 @@ class _TaskNameOps_m:
         raise NotImplementedError()
 
     @classmethod
-    def from_parts(cls, group, body):
+    def from_parts(cls, group, body) -> Self:
         return cls(f"{group}{cls._separator}{body}")
 
-    def with_cleanup(self):
+    def with_cleanup(self) -> Self:
         if self.is_cleanup():
             return self
         return self.push(CLEANUP_MARKER)
 
-    def is_cleanup(self):
+    def is_cleanup(self) -> bool:
         return CLEANUP_MARKER in self
 
 
@@ -90,7 +87,7 @@ class TaskName(_TaskNameOps_m, Strang):
     _separator          : ClassVar[str]           = doot.constants.patterns.TASK_SEP
 
     @ftz.cached_property
-    def readable(self):
+    def readable(self) -> str:
         """ format this name to a readable form
         ie: elide uuids as just <UUID>
         """

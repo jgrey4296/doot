@@ -28,6 +28,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import networkx as nx
+from jgdv import Maybe
 from jgdv.debugging import SignalHandler
 # ##-- end 3rd party imports
 
@@ -157,7 +158,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
         finally:
             task_header_l.debug("< Task: %s", task.shortname, extra={"colour":"cyan"})
 
-    def _execute_action_group(self, actions:list, task:Task_i, allow_queue=False, group=None) -> None|tuple[int, ActRE]:
+    def _execute_action_group(self, actions:list, task:Task_i, allow_queue=False, group=None) -> Maybe[tuple[int, ActRE]]:
         """ Execute a group of actions, possibly queue any task specs they produced,
         and return a count of the actions run + the result
         """

@@ -32,6 +32,7 @@ from weakref import ref
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
+from jgdv import Maybe
 import matplotlib.pyplot as plt
 import networkx as nx
 import sh
@@ -56,12 +57,12 @@ cmd_l   = doot.subprinter("cmd")
 fail_l  = doot.subprinter("fail")
 ##-- end logging
 
-INDENT : Final[str]      = " "*8
-tracker_target           = doot.config.on_fail("default", str).settings.commands.run.tracker()
-ROOT_COLOR : Final[str] = "green"
-NODE_COLOR : Final[str] = "#8db6cd"
+INDENT         : Final[str]        = " "*8
+tracker_target : Final[str]        = doot.config.on_fail("default", str).settings.commands.run.tracker()
+ROOT_COLOR     : Final[str]        = "green"
+NODE_COLOR     : Final[str]        = "#8db6cd"
 
-DRAW_OPTIONS : Final[dict] = dict(
+DRAW_OPTIONS   : Final[dict]       = dict(
     with_labels=True,
     arrowstyle="->",
     node_color="green",
@@ -114,7 +115,7 @@ class GraphCmd(BaseCommand):
                 cmd_l.info(str(dot_obj))
                 cmd_l.info("# ---- End of Raw Dot")
 
-    def _build_graph(self, tracker, tasks) -> None|nx.DiGraph:
+    def _build_graph(self, tracker, tasks) -> Maybe[nx.DiGraph]:
         cmd_l.info("- Adding Tasks to temp tracker")
         for task in tasks.values():
             new_id = tracker.queue_entry(task)

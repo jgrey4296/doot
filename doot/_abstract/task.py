@@ -17,24 +17,47 @@ This can allow interleaving, or grouping.
   Action -> Action = Action -> Task -> Action
 
 """
+# Imports:
 from __future__ import annotations
 
-import enum
-import logging as logmod
+# ##-- stdlib imports
 import abc
+import datetime
+import enum
+import functools as ftz
+import itertools as itz
+import logging as logmod
+import pathlib as pl
 import types
-from typing import Generator, NewType, Protocol, Any, runtime_checkable
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match,
+                    MutableMapping, NewType, Protocol, Sequence, Tuple,
+                    TypeAlias, TypeGuard, TypeVar, cast, final, overload,
+                    runtime_checkable)
+from uuid import UUID, uuid1
 
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
+from jgdv import Maybe
+from jgdv.mixins.enum_builders import EnumBuilder_m, FlagsBuilder_m
 from jgdv.structs.chainguard import ChainGuard
-from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
 
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract.protocols import StubStruct_p, SpecStruct_p, ParamStruct_p
+from doot._abstract.protocols import ParamStruct_p, SpecStruct_p, StubStruct_p
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
+
+type ActionSpec = Any
+type TaskName   = str
 
 class TaskStatus_e(enum.Enum):
     """
@@ -81,7 +104,6 @@ class TaskStatus_e(enum.Enum):
     def fail_set(cls):
         return {cls.SKIPPED, cls.HALTED, cls.FAILED}
 
-
 class ArtifactStatus_e(enum.Enum):
     """ States an artifact can be in """
     DECLARED = enum.auto() # doesn't exist or not checked
@@ -89,7 +111,7 @@ class ArtifactStatus_e(enum.Enum):
     TOCLEAN  = enum.auto() # May exist, needs to be deleted
     EXISTS   = enum.auto() # Exists
 
-class ActionResponse_e(EnumBuilder_m, enum.Enum):
+class ActionResponse_e(enum.Enum):
     """
       Description of how a Action went.
     """
@@ -109,7 +131,7 @@ class Action_p(Protocol):
     holds individual action information and state, and executes it
     """
 
-    def __call__(self, spec:"ActionSpec", task_state:dict) -> None|dict|bool|ActionResponse_e:
+    def __call__(self, spec:ActionSpec, task_state:dict) -> Maybe[dict|bool|ActionResponse_e]:
         pass
 
 class Task_i:
@@ -129,7 +151,7 @@ class Task_i:
 
     @property
     @abc.abstractmethod
-    def name(self) -> "TaskName":
+    def name(self) -> TaskName:
         pass
 
     @abc.abstractmethod
@@ -137,7 +159,7 @@ class Task_i:
         pass
 
     @abc.abstractmethod
-    def __lt__(self, other:"TaskName"|Task_i) -> bool:
+    def __lt__(self, other:TaskName|Task_i) -> bool:
         """ Task A < Task B iff A ∈ B.run_after   """
         pass
 

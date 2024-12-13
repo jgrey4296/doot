@@ -16,7 +16,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
 
 # ##-- end stdlib imports
 
-from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
+from jgdv.mixins.enum_builders import EnumBuilder_m, FlagsBuilder_m
 from jgdv.structs.dkey import DKeyMark_e
 from jgdv.structs.strang.location import LocationMeta_e
 

@@ -22,7 +22,7 @@ from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Literal, Mapping, Match,
-                    MutableMapping, NewType, Protocol, Sequence, Tuple,
+                    MutableMapping, NewType, Protocol, Sequence, Tuple, Self,
                     TypeAlias, TypeGuard, TypeVar, cast, final, overload,
                     runtime_checkable)
 from uuid import UUID, uuid1
@@ -30,12 +30,17 @@ from weakref import ref
 
 # ##-- end stdlib imports
 
-from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
+# ##-- 3rd party imports
+from jgdv import Maybe, Ident, Depth
+from jgdv.mixins.enum_builders import EnumBuilder_m, FlagsBuilder_m
+
+# ##-- end 3rd party imports
 
 # ##-- 1st party imports
 from doot._abstract.protocols import ArtifactStruct_p, SpecStruct_p
 from doot._abstract.reporter import Reporter_p
 from doot._abstract.task import Task_i
+
 # ##-- end 1st party imports
 
 ##-- logging
@@ -43,14 +48,12 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # ## Types
-AbstractId                     : TypeAlias                   = "TaskName|TaskArtifact"
-ConcreteId                     : TypeAlias                   = "TaskName|TaskArtifact"
-AnyId                          : TypeAlis                    = "TaskName|TaskArtifact"
-AbstractSpec                   : TypeAlias                   = "TaskSpec"
-ConcreteSpec                   : TypeAlias                   = "TaskSpec"
-AnySpec                        : TypeAlias                   = "TaskSpec"
-Depth                          : TypeAlias                   = int
-PlanEntry                      : TypeAlias                   = tuple[Depth, ConcreteId, str]
+type Actual      = Any
+type TaskSpec    = Any
+type TaskStatus_e = enum.Enum
+type Abstract[T] = T
+type Concrete[T] = T
+type PlanEntry   = tuple[Depth, Concrete[Ident], str]
 
 class EdgeType_e(EnumBuilder_m, enum.Enum):
     """ Enum describing the possible edges of the task tracker's task network """
@@ -65,7 +68,7 @@ class EdgeType_e(EnumBuilder_m, enum.Enum):
 
     @classmethod
     @property
-    def artifact_edge_set(cls):
+    def artifact_edge_set(cls) -> set[enum.Enum]:
         return  {cls.ARTIFACT_UP, cls.ARTIFACT_DOWN, cls.TASK_CROSS}
 
 class QueueMeta_e(EnumBuilder_m, enum.Enum):
@@ -104,23 +107,23 @@ class TaskTracker_i:
     """
 
     @abstractmethod
-    def register_spec(self, *specs:AnySpec)-> None:
+    def register_spec(self, *specs:TaskSpec)-> None:
         pass
 
     @abstractmethod
-    def queue_entry(self, name:str|AnyId|ConcreteSpec|Task_i, *, from_user:bool=False, status:None|TaskStatus_e=None) -> None|Node:
+    def queue_entry(self, name:str|Ident|Concrete[TaskSpec]|Task_i, *, from_user:bool=False, status:Maybe[TaskStatus_e]=None) -> Maybe[Concrete[Ident]]:
         pass
 
     @abstractmethod
-    def get_status(self, task:ConcreteId) -> TaskStatus_e:
+    def get_status(self, task:Concrete[Ident]) -> TaskStatus_e:
         pass
 
     @abstractmethod
-    def set_status(self, task:ConcreteId|Task_i, state:TaskStatus_e) -> bool:
+    def set_status(self, task:Concrete[Ident]|Task_i, state:TaskStatus_e) -> bool:
         pass
 
     @abstractmethod
-    def next_for(self, target:None|str|ConcreteId=None) -> None|Task_i|"TaskArtifact":
+    def next_for(self, target:Maybe[str|Concrete[Ident]]=None) -> Maybe[Actual]:
         pass
 
     @abstractmethod
@@ -128,7 +131,7 @@ class TaskTracker_i:
         pass
 
     @abstractmethod
-    def generate_plan(self, *, policy:None|ExecutionPolicy_e=None) -> list[PlanEntry]:
+    def generate_plan(self, *, policy:Maybe[ExecutionPolicy_e]=None) -> list[PlanEntry]:
         pass
 
 class TaskRunner_i:
@@ -137,7 +140,7 @@ class TaskRunner_i:
     """
 
     @abstractmethod
-    def __enter__(self) -> Any:
+    def __enter__(self) -> Self:
         pass
 
     @abstractmethod
