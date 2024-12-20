@@ -184,7 +184,6 @@ class DootStepRunner(DootRunner):
         printer.info("::- Break")
         breakpoint()
         pass
-        # raise doot.errors.DootTaskInterrupt("User Interrupt")
 
     def _do_down(self, *args):
         printer.info("::- Down")

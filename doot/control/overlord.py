@@ -30,7 +30,7 @@ from uuid import UUID, uuid1
 import sh
 from jgdv import Maybe
 from jgdv.structs.chainguard import ChainGuard
-from jgdv.cli import ArgParser_p, ParseMachine
+from jgdv.cli import ArgParser_p, ParseMachine, ParseError
 from jgdv.cli.param_spec import LiteralParam, ParamSpec
 from jgdv.logging import JGDVLogConfig
 # ##-- end 3rd party imports
@@ -181,7 +181,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
             self.plugin_loader.setup(extra_config)
             self.plugins : ChainGuard = self.plugin_loader.load()
             doot._update_aliases(self.plugins)
-        except doot.errors.DootPluginError as err:
+        except doot.errors.PluginError as err:
             shutdown_l.warning("Plugins Not Loaded Due to Error: %s", err)
             self.plugins = ChainGuard()
 
@@ -198,7 +198,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
                 try:
                     self.cmd_loader.setup(self.plugins, extra_config)
                     self.cmds = self.cmd_loader.load()
-                except doot.errors.DootPluginError as err:
+                except doot.errors.PluginError as err:
                     shutdown_l.warning("Commands Not Loaded due to Error: %s", err)
                     self.cmds = ChainGuard()
             case _:
@@ -229,25 +229,21 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         match ctor:
             case None:
                 self.parser = ParseMachine()
-                cli_args = self.parser(
-                    args or self.args,
-                    head_specs=self.param_specs,
-                    cmds=list(self.cmds.values()),
-                    subcmds=list(self.tasks.values),
-                    )
-                doot.args = ChainGuard(cli_args)
-
             case type() if isinstance((p:=ctor()), ArgParser_p):
                 self.parser = ParseMachine(parser=p)
-                cli_args = self.parser(
-                    args or self.args,
-                    head_specs=self.param_specs,
-                    cmds=list(self.cmds.values()),
-                    subcmds=list(self.tasks.values()),
-                    )
-                doot.args = ChainGuard(cli_args)
             case _:
                 raise TypeError("Improper argparser specified: ", self.arg_parser)
+
+        try:
+            cli_args = self.parser(
+                args or self.args,
+                head_specs=self.param_specs,
+                cmds=list(self.cmds.values()),
+                subcmds=list(self.tasks.values),
+            )
+        except ParseError as err:
+
+        doot.args = ChainGuard(cli_args)
 
     def _cli_arg_response(self) -> bool:
         """ Overlord specific cli arg responses. modify verbosity,

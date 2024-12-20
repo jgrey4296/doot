@@ -83,7 +83,7 @@ class ListCmd(BaseCommand):
             and not bool(doot.args.sub)
             and not doot.args.cmd.args.by_source
             and not doot.args.cmd.args.all):
-            raise doot.errors.DootCommandError("ListCmd Needs a Matcher, or all")
+            raise doot.errors.CommandError("ListCmd Needs a Matcher, or all")
 
         if not bool(tasks):
             help_l.info("No Tasks Defined", extra={"colour": "red"})
@@ -103,7 +103,7 @@ class ListCmd(BaseCommand):
             case {"all": True}:
                 self._print_all_by_group(tasks)
             case _:
-                raise doot.errors.DootCommandError("Bad args passed in", doot.args.cmd.args)
+                raise doot.errors.CommandError("Bad args passed in", doot.args.cmd.args)
 
     def _print_matches(self, tasks):
         max_key = len(max(tasks.keys(), key=len))

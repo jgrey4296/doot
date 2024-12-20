@@ -139,7 +139,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
                 logging.debug("Not Setting Status of %s, its hasn't been started", task)
                 return False
             case _, _:
-                raise doot.errors.DootTaskTrackingError("Bad task update status args", task, status)
+                raise doot.errors.TrackingError("Bad task update status args", task, status)
 
         return True
 
@@ -220,7 +220,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
         # Instantiate the spec from its source chain
         match self._get_task_source_chain(name):
             case []:
-                raise doot.errors.DootTaskTrackingError("this shouldn't be possible", name)
+                raise doot.errors.TrackingError("this shouldn't be possible", name)
             case [x]:
                 # No chain, just instantiate the spec
                 instance_spec = x.instantiate_onto(None)
@@ -260,7 +260,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
         successful_matches        = []
         match self.concrete.get(rel.target, None):
             case [] | None if rel.target not in self.specs:
-                raise doot.errors.DootTaskTrackingError("Unknown target declared in Constrained Relation", control, rel.target)
+                raise doot.errors.TrackingError("Unknown target declared in Constrained Relation", control, rel.target)
             case [] | None:
                 pass
             case [*xs] if not bool(rel.constraints) and not bool(rel.inject):
@@ -275,7 +275,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
                 extra    : None|dict      = self.build_injection(rel, control_spec, constraint=target_spec)
                 instance : TaskName      = self._instantiate_spec(rel.target, extra=extra)
                 if not self.match_with_constraints(self.specs[instance], control_spec, relation=rel):
-                    raise doot.errors.DootTaskTrackingError("Failed to build task matching constraints")
+                    raise doot.errors.TrackingError("Failed to build task matching constraints")
                 logging.warning("Using New Instance: %s", instance)
                 return instance
             case [x]: # One match, connect it
@@ -299,9 +299,9 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
           return the name of the task
           """
         if not isinstance(name, TaskName):
-            raise doot.errors.DootTaskTrackingError("Tried to add a not-task", name)
+            raise doot.errors.TrackingError("Tried to add a not-task", name)
         if not name.is_uniq():
-            raise doot.errors.DootTaskTrackingError("Tried to add a task using a non-concrete spec", name)
+            raise doot.errors.TrackingError("Tried to add a task using a non-concrete spec", name)
         if name in self.tasks:
             return name
 
@@ -313,7 +313,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
             case Task_i():
                 task = task_obj
             case _:
-                raise doot.errors.DootTaskTrackingError("Supplied task object isn't a task_i", task_obj)
+                raise doot.errors.TrackingError("Supplied task object isn't a task_i", task_obj)
 
         # Store it
         self.tasks[name] = task
@@ -337,7 +337,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
         count   : int = INITIAL_SOURCE_CHAIN_COUNT
         while current is not None:
             if 0 > count:
-                raise doot.errors.DootTaskTrackingError("Building a source chain grew to large", name)
+                raise doot.errors.TrackingError("Building a source chain grew to large", name)
             count -= 1
             match current: # Determine the base
                 case TaskSpec(name=name) if TaskMeta_e.JOB_HEAD in name:
@@ -355,7 +355,7 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
                     chain.append(current)
                     current = None
                 case _:
-                    raise doot.errors.DootTaskTrackingError("Unknown spec customization attempt", spec, current, chain)
+                    raise doot.errors.TrackingError("Unknown spec customization attempt", spec, current, chain)
 
         chain.reverse()
         return chain

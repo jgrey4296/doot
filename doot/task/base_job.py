@@ -71,7 +71,7 @@ class DootJob(Job_i, DootTask):
             case TaskName():
                 task_name = name
             case _:
-                raise doot.errors.DootTaskError("Bad value used to make a subtask in %s : %s", self.shortname, name)
+                raise doot.errors.StructError("Bad value used to make a subtask in %s : %s", self.shortname, name)
 
         assert(task_name is not None)
         return TaskSpec(name=task_name, extra=ChainGuard(extra))

@@ -206,7 +206,7 @@ class DootTaskLoader(TaskLoader_p):
             try:
                 match spec:
                     case {"name": task_name, "group": group} if not allow_overloads and detect_overloads(task_name, group): # complain on overload
-                        raise doot.errors.DootTaskLoadError("Task Name Overloaded: %s : %s", task_name, group)
+                        raise doot.errors.StructLoadError("Task Name Overloaded: %s : %s", task_name, group)
                     case {"name": task_name, "ctor": str() as task_alias} if task_alias in self.task_builders: # build named plugin type
                         logging.debug("Building Task from short name: %s : %s", task_name, task_alias)
                         task_iden                   : CodeReference       = CodeReference.from_value(self.task_builders[task_alias])
@@ -220,7 +220,7 @@ class DootTaskLoader(TaskLoader_p):
                         if str(task_spec.name) in task_descriptions:
                             logging.warning("Overloading Task: %s : %s", str(task_spec.name), str(task_spec.ctor))
                     case _: # Else complain
-                        raise doot.errors.DootTaskLoadError("Task Spec missing, at least, needs at least a name and ctor: %s: %s", spec, spec['sources'][0] )
+                        raise doot.errors.StructLoadError("Task Spec missing, at least, needs at least a name and ctor: %s: %s", spec, spec['sources'][0] )
             except LocationError as err:
                 logging.warning("Task Spec '%s' Load Failure: Missing Location: '%s'. Source File: %s", spec['name'], str(err), spec['sources'][0])
             except ModuleNotFoundError as err:
@@ -248,7 +248,7 @@ class DootTaskLoader(TaskLoader_p):
                 task_descriptions[str(task_spec.name)] = task_spec
         else:
             if bool(failures):
-                raise doot.errors.DootTaskLoadError("Loading Task Specs Encountered Errors",  len(failures))
+                raise doot.errors.StructLoadError("Loading Task Specs Encountered Errors",  len(failures))
 
             return task_descriptions
 

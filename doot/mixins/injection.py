@@ -78,7 +78,7 @@ class Injector_m:
             case RelationSpec(inject=dict() as base_data):
                 pass
             case _:
-                raise doot.errors.DootStateError("Unknown injection base type", base)
+                raise doot.errors.StateError("Unknown injection base type", base)
 
         match constraint:
             case None:
@@ -88,7 +88,7 @@ class Injector_m:
             case TaskSpec():
                 constraint_data = constraint.extra
             case _:
-                raise doot.errors.DootStateError("Unknown constraint data type", constraint)
+                raise doot.errors.StateError("Unknown constraint data type", constraint)
 
         self._validate_injection_dict_format(base_data)
 
@@ -109,7 +109,7 @@ class Injector_m:
             case delay, now, insert:
                 pass
             case _:
-                raise doot.errors.DootStateError("wrong format for replacement injection, should be a list of keys")
+                raise doot.errors.StateError("wrong format for replacement injection, should be a list of keys")
 
         injection_dict = {}
         injection_dict.update({k:v(*sources, fallback=v, max=1) for k,v in delay.items()})
@@ -130,7 +130,7 @@ class Injector_m:
                 replace = [DKey(x, implicit=True) for x in base.get("insert", None) or base.get("replace", [])]
                 return copy, expand, replace
             case _:
-                raise doot.errors.DootStateError("Wrong injection spec type", base)
+                raise doot.errors.StateError("Wrong injection spec type", base)
 
     def _prep_keys(self, keys:dict[str,str]|list[str]) -> dict[str, DKey]:
         """ prepare keys for the expansions """
@@ -140,7 +140,7 @@ class Injector_m:
             case dict():
                 return {DKey(k, implicit=True):DKey(v, implicit=True) for k,v in keys.items()}
             case _:
-                raise doot.errors.DootStateError("unknown keys type", keys)
+                raise doot.errors.StateError("unknown keys type", keys)
 
     def _validate_key_constraints(self, inject_keys:set[str], spec:dict|ChainGuard) -> None:
         """ check the keys to be injected match keys in the default spec """
@@ -150,11 +150,11 @@ class Injector_m:
         required_keys = {str(x) for x in spec.get(MUST_INJECT_K, [])}
 
         if bool(spec_keys) and bool(missing:=required_keys - inject_keys):
-            raise doot.errors.DootStateError("Required Keys not injected", missing)
+            raise doot.errors.StateError("Required Keys not injected", missing)
 
         if bool(spec_keys) and bool(surplus:=inject_keys - (spec_keys | cli_keys | required_keys)):
-            raise doot.errors.DootStateError("Surplus keys can not be injected", surplus)
+            raise doot.errors.StateError("Surplus keys can not be injected", surplus)
 
     def _validate_injection_dict_format(self, base:dict):
         if bool(base.keys() - INJECT_GROUPS):
-            raise doot.errors.DootStateError("Wrong format injection, should be {delay=dict|list, now=dict|list, insert=list}", base)
+            raise doot.errors.StateError("Wrong format injection, should be {delay=dict|list, now=dict|list, insert=list}", base)

@@ -76,10 +76,10 @@ def main():
         result    = overlord()
 
     ##-- handle doot errors
-    except (doot.errors.DootEarlyExit, BdbQuit):
+    except (doot.errors.EarlyExit, BdbQuit):
         shutdown_l.warning("Early Exit Triggered")
         result = 0
-    except doot.errors.DootMissingConfigError as err:
+    except doot.errors.MissingConfigError as err:
         result = 0
         base_target = pl.Path(doot.constants.on_fail(["doot.toml"]).paths.DEFAULT_LOAD_TARGETS()[0])
         # Handle missing files
@@ -89,7 +89,7 @@ def main():
             template = template_path.joinpath(doot.constants.paths.TOML_TEMPLATE)
             base_target.write_text(template.read_text())
             shutdown_l.info("Doot Config File Stubbed: %s", base_target)
-    except doot.errors.DootTaskError as err:
+    except doot.errors.TaskError as err:
         fail_prefix = doot.constants.printer.fail_prefix
         fail_l.error("%s %s : %s", fail_prefix, err.general_msg, err.task_name)
         fail_l.error("%s Source: %s", fail_prefix, err.task_source)

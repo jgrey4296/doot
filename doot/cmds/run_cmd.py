@@ -96,7 +96,7 @@ class RunCmd(BaseCommand):
         for target in doot.args.on_fail({}).sub().keys():
             try:
                 tracker.queue_entry(target, from_user=True)
-            except doot.errors.DootTaskTrackingError as err:
+            except doot.errors.TrackingError as err:
                 cmd_l.warn("Failed to Queue Target: %s", target)
                 logging.debug(err)
 

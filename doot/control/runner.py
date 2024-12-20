@@ -105,7 +105,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
                     pass
                 case TaskArtifact():
                     self._notify_artifact(task)
-                    raise doot.errors.DootTaskFailed("Artifact resolutely does not exist", task=task)
+                    raise doot.errors.TaskFailed("Artifact resolutely does not exist", task=task)
                 case Job_i() if self._test_conditions(task):
                     self._expand_job(task)
                 case Task_i() if self._test_conditions(task):
@@ -179,7 +179,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
                     result = self._execute_action(executed_count, action, task)
                 case _:
                     self.reporter.add_trace(task.spec, flags=Report_f.FAIL | Report_f.TASK)
-                    raise doot.errors.DootTaskError("Task %s Failed: Produced a bad action: %s", task.shortname, repr(action), task=task.spec)
+                    raise doot.errors.TaskError("Task %s Failed: Produced a bad action: %s", task.shortname, repr(action), task=task.spec)
 
             match result:
                 case True:
@@ -241,7 +241,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 result = ActRE.SUCCESS
             case False | ActRE.FAIL:
                 self.reporter.add_trace(action, flags=Report_f.FAIL | Report_f.ACTION)
-                raise doot.errors.DootTaskFailed("Task %s: Action Failed: %s", task.shortname, action.do, task=task.spec)
+                raise doot.errors.TaskFailed("Task %s: Action Failed: %s", task.shortname, action.do, task=task.spec)
             case ActRE.SKIP:
                 # result will be returned, and expand_job/execute_task will handle it
                 pass
@@ -253,7 +253,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 pass
             case _:
                 self.reporter.add_trace(action, flags=Report_f.FAIL | Report_f.ACTION)
-                raise doot.errors.DootTaskError("Task %s: Action %s Failed: Returned an unplanned for value: %s", task.shortname, action.do, result, task=task.spec)
+                raise doot.errors.TaskError("Task %s: Action %s Failed: Returned an unplanned for value: %s", task.shortname, action.do, result, task=task.spec)
 
         action.verify_out(task.state)
         self.reporter.add_trace(action, flags=Report_f.ACTION | Report_f.SUCCEED)

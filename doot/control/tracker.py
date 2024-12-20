@@ -158,7 +158,7 @@ class TrackerPlanGen_m:
             case ExecutionPolicy_e.PRIORITY:
                 return self._priority_plan()
             case _:
-                raise doot.errors.DootTaskTrackingError("Unknown plan generation form", policy)
+                raise doot.errors.TrackingError("Unknown plan generation form", policy)
 
 @doot.check_protocol
 class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTracker_i):
@@ -202,7 +202,7 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
         logging.info("---- Getting Next Task")
         logging.debug("Tracker Active Set Size: %s", len(self.active_set))
         if not self.network_is_valid:
-            raise doot.errors.DootTaskTrackingError("Network is in an invalid state")
+            raise doot.errors.TrackingError("Network is in an invalid state")
 
         if target and target not in self.active_set:
             self.queue_entry(target, silent=True)
@@ -310,7 +310,7 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
                     track_l.warning("A Name only was queued, it has no backing in the tracker: %s", focus)
 
                 case x: # Error otherwise
-                    raise doot.errors.DootTaskTrackingError("Unknown task state: ", x)
+                    raise doot.errors.TrackingError("Unknown task state: ", x)
 
         else:
             logging.info("---- Determined Next Task To Be: %s", result)

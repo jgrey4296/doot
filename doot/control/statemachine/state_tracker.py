@@ -133,7 +133,7 @@ class StateTracker(TaskTracker_i):
         logging.info("---- Getting Next Task")
         logging.debug("Tracker Active Set Size: %s", len(self._queue.active_set))
         if not self._network.is_valid:
-            raise doot.errors.DootTaskTrackingError("Network is in an invalid state")
+            raise doot.errors.TrackingError("Network is in an invalid state")
 
         if target and target not in self._queue.active_set:
             self.queue_entry(target, silent=True)
@@ -236,7 +236,7 @@ class StateTracker(TaskTracker_i):
                     track_l.warning("A Name only was queued, it has no backing in the tracker: %s", focus)
 
                 case x: # Error otherwise
-                    raise doot.errors.DootTaskTrackingError("Unknown task state: ", x)
+                    raise doot.errors.TrackingError("Unknown task state: ", x)
 
         else:
             logging.info("---- Determined Next Task To Be: %s", result)

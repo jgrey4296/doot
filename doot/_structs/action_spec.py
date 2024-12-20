@@ -90,7 +90,7 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
                     )
                 return action_spec
             case _:
-                raise doot.errors.DootActionError("Unrecognized specification data", data)
+                raise doot.errors.StructLoadError("Unrecognized specification data", data)
 
     @field_validator("do", mode="before")
     def _validate_do(cls, val):
@@ -133,7 +133,7 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
 
     def __call__(self, task_state:dict) -> Any:
         if self.fun is None:
-            raise doot.errors.DootActionError("Action Spec has not been finalised with a function", self)
+            raise doot.errors.ActionError("Action Spec has not been finalised with a function", self)
 
         return self.fun(self, task_state)
 
@@ -161,7 +161,7 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
             self.fun = fun
 
         if not callable(self.fun):
-            raise doot.errors.DootActionError("Action Spec Given a non-callable fun: %s", fun)
+            raise doot.errors.ActionError("Action Spec Given a non-callable fun: %s", fun)
 
     def verify(self, state:dict, *, fields=None):
         pos = "Output"
@@ -171,7 +171,7 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
         if all(x in state for x in fields):
             return
 
-        raise doot.errors.DootActionStateError("%s Fields Missing: %s", pos, [x for x in fields if x not in state])
+        raise doot.errors.StateError("%s Fields Missing: %s", pos, [x for x in fields if x not in state])
 
     def verify_out(self, state:dict):
         self.verify(state, fields=self.outState)
