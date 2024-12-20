@@ -14,7 +14,7 @@ exclude = [
 ]
 line-length    = 100
 indent-width   = 4
-target-version = "py311"
+target-version = "py312"
 
 cache-dir = ".temp/ruff_cache"
 
@@ -30,7 +30,7 @@ select = [
 ]
 
 ignore = [
-       "F401", "E402", "E501", "F841", "N801", "ANN204", "ANN101", "UP035", "TRY003", "EM101", "PLW0120",
+       "F401", "E402", "E501", "F841", "N801", "ANN204", "UP035", "TRY003", "EM101", "PLW0120",
        "C419",
 ]
 

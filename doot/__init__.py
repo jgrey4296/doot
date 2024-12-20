@@ -31,6 +31,7 @@ from jgdv import check_protocol, Maybe, VerStr
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.logging import JGDVLogConfig
 from jgdv.structs.strang.locations import JGDVLocations as DootLocations
+from jgdv.structs.strang.errors import LocationError
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -156,7 +157,10 @@ def _load_locations():
     locs   = DootLocations(pl.Path.cwd())
     # Load Initial locations
     for loc in config.on_fail([]).locations():
-        locs.update(loc, strict=False)
+        try:
+            locs.update(loc, strict=False)
+        except (LocationError, ValueError) as err:
+            logging.warning("Location Loading Failed: %s (%s)", loc, err)
 
 def _update_import_path():
     """ Add locations to the python path for task local code importing  """

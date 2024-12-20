@@ -39,8 +39,8 @@ task_header   = {level="INFO"}
 
 [[locations]]
 src     = "src"
-codegen = {loc="{src}/_codegen", cleanable=true}
-temp    = {loc=".temp",          cleanable=true}
+codegen = {loc="{src}/_codegen", clean=true}
+temp    = {loc=".temp",          clean=true}
 logs    = "{temp}/logs"
 build   = "{temp}/build"
 docs    = "docs"
