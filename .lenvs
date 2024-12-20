@@ -1,0 +1,5 @@
+# Librarian-envs spec file
+mamba doot-dev312
+lsp
+py-lsp
+# flycheck

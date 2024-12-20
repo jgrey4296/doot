@@ -71,7 +71,7 @@ def main():
                                  config_filenames=[doot.constants.paths.DEFAULT_LOAD_TARGETS],
                                  log_config=doot.log_config,
                                  args=sys.argv[:])
-
+        overlord.setup()
         # --- Do whatever thats been triggered
         result    = overlord()
 

@@ -232,8 +232,8 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
                 cli_args = self.parser(
                     args or self.args,
                     head_specs=self.param_specs,
-                    cmds=self.cmds,
-                    subcmds=self.tasks,
+                    cmds=list(self.cmds.values()),
+                    subcmds=list(self.tasks.values),
                     )
                 doot.args = ChainGuard(cli_args)
 
@@ -242,8 +242,8 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
                 cli_args = self.parser(
                     args or self.args,
                     head_specs=self.param_specs,
-                    cmds=self.cmds,
-                    subcmds=self.tasks,
+                    cmds=list(self.cmds.values()),
+                    subcmds=list(self.tasks.values()),
                     )
                 doot.args = ChainGuard(cli_args)
             case _:

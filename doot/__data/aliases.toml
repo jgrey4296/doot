@@ -99,7 +99,7 @@ touch    =       "doot.actions.io:TouchFileAction"
 
 [[doot.aliases.task]] # task types
 # Map {alias} -> CodeRef String
-"job"   =      "doot.task.base_job:DootJob"
-"task"  =      "doot.task.base_task:DootTask"
+"job"   = "doot.task.base_job:DootJob"
+"task"  = "doot.task.base_task:DootTask"
 
 [[doot.aliases.mixin]]
