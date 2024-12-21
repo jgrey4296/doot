@@ -31,7 +31,7 @@ import doot
 from doot._abstract import Action_p
 from doot._abstract.task import ActionResponse_e
 from doot._structs.action_spec import ActionSpec
-from doot.errors import DootTaskError, DootTaskFailed
+from doot.errors import TaskError, TaskFailed
 
 # ##-- end 1st party imports
 

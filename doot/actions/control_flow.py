@@ -33,7 +33,7 @@ import shutil
 from jgdv.structs.strang import CodeReference
 
 import doot
-from doot.errors import DootTaskError, DootTaskFailed
+from doot.errors import TaskError, TaskFailed
 from doot.structs import DKey, DKeyed
 from doot.mixins.path_manip import PathManip_m
 from doot.actions.base_action import DootBaseAction

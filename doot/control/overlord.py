@@ -41,7 +41,7 @@ import doot.errors
 from doot._abstract import (Command_i, CommandLoader_p, Job_i,
                             Overlord_p, Task_i, TaskLoader_p)
 from doot._abstract.loader import Loader_p
-from doot.errors import DootInvalidConfig, DootParseError
+from doot.errors import InvalidConfigError, ParseError
 from doot.loaders.cmd_loader import DootCommandLoader
 from doot.loaders.plugin_loader import DootPluginLoader
 from doot.loaders.task_loader import DootTaskLoader
@@ -279,7 +279,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
 
         self.current_cmd = self.cmds.get(target, None)
         if self.current_cmd is None:
-            self._errored = DootParseError("Specified Command Couldn't be Found: %s", target)
+            self._errored = ParseError("Specified Command Couldn't be Found: %s", target)
             raise self._errored
 
         return self.current_cmd

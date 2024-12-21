@@ -16,7 +16,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from doot._errors.base import BackendError, DootError, FrontendError, UserError
+from doot._errors.base import DootError, BackendError, FrontendError, UserError
 from doot._errors.command import CommandError
 from doot._errors.config import ConfigError, InvalidConfigError, MissingConfigError
 from doot._errors.control import (ActionCallError, ActionStateError,
@@ -24,7 +24,7 @@ from doot._errors.control import (ActionCallError, ActionStateError,
                                   TrackingError)
 from doot._errors.parse import ParseError
 from doot._errors.plugin import AliasSearchError, PluginError, PluginLoadError
-from doot._errors.state import (InectionError, KeyAccessError,
+from doot._errors.state import (InjectionError, KeyAccessError,
                                 KeyExpansionError, StateError)
 from doot._errors.struct import StructError, StructLoadError
 from doot._errors.task import TaskError, TaskFailed, TaskTrackingError

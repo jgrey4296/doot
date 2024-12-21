@@ -133,13 +133,12 @@ def _load_constants() -> None:
             logging.info("---- Loading Constants")
             constants = ChainGuard.load(const_file).remove_prefix(CONSTANT_PREFIX)
 
-def _load_aliases(*, data:Maybe[dict|ChainGuard], force:bool=False) -> None:
+def _load_aliases(*, data:Maybe[dict|ChainGuard]=None, force:bool=False) -> None:
     """ Load plugin aliases.
     if given the kwarg `data`, will *append* to the aliases
     Modifies the global `doot.aliases`
     """
     global aliases
-    assert(bool(config))
 
     if not bool(aliases):
         match config.on_fail(aliases_file).settings.general.aliases_file(wrapper=pl.Path):
@@ -148,14 +147,14 @@ def _load_aliases(*, data:Maybe[dict|ChainGuard], force:bool=False) -> None:
                 pass
             case pl.Path() as source if source.exists():
                 logging.info("---- Loading Aliases: %s", source)
-                base_data = ChainGuard.load(update_file).remove_prefix(ALIAS_PREFIX)
+                base_data = ChainGuard.load(source).remove_prefix(ALIAS_PREFIX)
             case source:
                 logging.warning("---- Alias File Not Found: %s", source)
                 base_data = {}
 
         # Flatten the lists
         flat = {}
-        for key,val in data:
+        for key,val in base_data:
             flat[key] = {k:v for x in val for k,v in x.items()}
 
         # Then override with config specified plugin items:

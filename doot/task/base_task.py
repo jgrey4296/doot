@@ -38,7 +38,7 @@ import doot.errors
 from doot._abstract import Action_p, Job_i, PluginLoader_p, Task_i
 from doot.actions.base_action import DootBaseAction
 from doot.enums import TaskMeta_e, QueueMeta_e, TaskStatus_e
-from doot.errors import DootTaskError, DootTaskLoadError
+from doot.errors import TaskError, StructLoadError
 from doot.mixins.param_spec import ParamSpecMaker_m
 from doot._structs.action_spec import ActionSpec
 from doot._structs.artifact import TaskArtifact
@@ -210,7 +210,7 @@ class DootTask(_TaskProperties_m, Task_i):
                 case ActionSpec():
                     action_spec.set_function(self.action_ctor)
                 case _:
-                    failed.append(doot.errors.DootTaskError("Unknown element in action group: ", action_spec, self.shortname))
+                    failed.append(doot.errors.TaskError("Unknown element in action group: ", action_spec, self.shortname))
 
         match failed:
             case []:

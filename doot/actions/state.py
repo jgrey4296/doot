@@ -33,7 +33,7 @@ import doot
 from doot._abstract import Action_p
 from doot.actions.job_injection import (JobInjectPathParts,
                                         JobInjectShadowAction)
-from doot.errors import DootTaskError, DootTaskFailed
+from doot.errors import TaskError, TaskFailed
 from doot.mixins.path_manip import PathManip_m
 from doot.structs import DKey, DKeyed
 
