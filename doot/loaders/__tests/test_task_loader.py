@@ -139,7 +139,7 @@ class TestTaskLoader:
         basic = task_loader.DootTaskLoader()
         basic.setup({}, specs)
 
-        with pytest.raises(doot.errors.DootTaskLoadError):
+        with pytest.raises(doot.errors.StructLoadError):
             result = basic.load()
 
     def test_task_type(self, mocker):
@@ -193,5 +193,5 @@ class TestTaskLoader:
         basic        = task_loader.DootTaskLoader()
         basic.setup(plugins, ChainGuard(specs))
 
-        with pytest.raises(doot.errors.DootTaskLoadError):
+        with pytest.raises(doot.errors.StructLoadError):
             basic.load()

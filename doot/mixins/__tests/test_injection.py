@@ -39,7 +39,7 @@ class TestInjectorBuilding:
         assert(isinstance(result, dict))
 
     def test_base_format_fail(self, setup):
-        with pytest.raises(doot.errors.DootStateError):
+        with pytest.raises(doot.errors.StateError):
             self.inj.build_injection({"blah":[]})
 
     def test_basic_injection(self, setup):
@@ -68,7 +68,7 @@ class TestInjectorBuilding:
         assert(result["a"] == 25)
 
     def test_injection_with_constraint_fail(self, setup):
-        with pytest.raises(doot.errors.DootStateError):
+        with pytest.raises(doot.errors.StateError):
             self.inj.build_injection({"now": ["a"]}, {"a": "{b}", "b":"c"}, constraint={"d": 2})
 
     def test_injection_with_constraint_pass(self, setup):

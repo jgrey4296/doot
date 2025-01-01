@@ -61,7 +61,7 @@ class TestTrackerNext:
 
     def test_next_for_fails_with_unbuilt_network(self):
         obj = DootTracker()
-        with pytest.raises(doot.errors.DootTaskTrackingError):
+        with pytest.raises(doot.errors.TrackingError):
             obj.next_for()
 
 

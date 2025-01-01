@@ -178,7 +178,7 @@ class TestDecorators:
             return "blah"
 
         assert(decs.GeneratesTasks()._is_marked(simple))
-        with pytest.raises(doot.errors.DootActionError):
+        with pytest.raises(doot.errors.ActionCallError):
             simple({},{})
 
     @pytest.mark.xfail
@@ -193,7 +193,7 @@ class TestDecorators:
 
         assert(decs.IOWriter()._is_marked(simple))
         assert(DU.has_annotations(simple, decs.IO_ACT))
-        with pytest.raises(doot.errors.DootTaskError):
+        with pytest.raises(doot.errors.TaskError):
             simple(None, {"to": "{blah}"})
 
     @pytest.mark.xfail
