@@ -32,6 +32,7 @@ from jgdv.structs.chainguard import ChainGuard
 from jgdv.logging import JGDVLogConfig
 from jgdv.structs.strang.locations import JGDVLocations as DootLocations
 from jgdv import JGDVError
+from packaging.specifiers import SpecifierSet
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -64,6 +65,7 @@ locs                 : DootLocations      = None # DootLocations(pl.Path()) # re
 args                 : ChainGuard         = ChainGuard() # parsed arg access
 log_config           : JGDVLogConfig      = JGDVLogConfig(constants.on_fail(None).printer.PRINTER_CHILDREN())
 
+_global_task_state    : ChainGuard         = dict()
 _configs_loaded_from : list[pl.Path]      = []
 
 def subprinter(name=None) -> logmod.Logger:
@@ -112,6 +114,10 @@ def setup(targets:Maybe[list[pl.Path]|False]=None, prefix:Maybe[str]=TOOL_PREFIX
         raise doot.errors.MissingConfigError("Pyproject has no doot config")
 
     config = config.remove_prefix(prefix)
+
+    if bool(targets):
+        verify_config_version(config.on_fail(None).startup.doot_version(), source=targets)
+
     log_config.setup(config)
     _load_constants()
     _load_aliases()
@@ -121,17 +127,39 @@ def setup(targets:Maybe[list[pl.Path]|False]=None, prefix:Maybe[str]=TOOL_PREFIX
 
     return config, locs
 
+def verify_config_version(ver:Maybe[str], source:str|pl.Path):
+    "Ensure the config file is compatible with doot"
+    doot_ver = SpecifierSet(f"~={__version__}")
+    match ver:
+        case str() as x if x in doot_ver:
+            return
+        case str():
+            raise doot.errors.VersionMismatchError("Config File is incompatible with this version of doot", source)
+        case _:
+            raise doot.errors.VersionMismatchError("No Doot Version Found in config file", source)
+
+def update_global_task_state(data:dict|ChainGuard, *, source=None) -> None:
+    global _global_task_state
+    assert(source is not None)
+    for x,y in data:
+        if x not in _global_task_state:
+            _global_task_state[x] = y
+        elif _global_task_state[x] != y:
+            raise doot.errors.GlobalStateMismatch(x, y, source)
+
 def _load_constants() -> None:
     """ Load the override constants if the loaded base config specifies one
     Modifies the global `doot.constants`
     """
     global constants
-    match config.on_fail(None).settings.general.constants_file(wrapper=pl.Path):
+    match config.on_fail(None).startup.constants_file(wrapper=pl.Path):
         case None:
             pass
         case pl.Path() as const_file if const_file.exists():
             logging.info("---- Loading Constants")
-            constants = ChainGuard.load(const_file).remove_prefix(CONSTANT_PREFIX)
+            base_data = ChainGuard.load(const_file)
+            verify_config_version(base_data.on_fail(None).doot_version(), source=const_file)
+            constants = base_data.remove_prefix(CONSTANT_PREFIX)
 
 def _load_aliases(*, data:Maybe[dict|ChainGuard]=None, force:bool=False) -> None:
     """ Load plugin aliases.
@@ -141,24 +169,26 @@ def _load_aliases(*, data:Maybe[dict|ChainGuard]=None, force:bool=False) -> None
     global aliases
 
     if not bool(aliases):
-        match config.on_fail(aliases_file).settings.general.aliases_file(wrapper=pl.Path):
+        match config.on_fail(aliases_file).startup.aliases_file(wrapper=pl.Path):
             case _ if bool(aliases) and not force:
                 base_data = {}
                 pass
             case pl.Path() as source if source.exists():
                 logging.info("---- Loading Aliases: %s", source)
-                base_data = ChainGuard.load(source).remove_prefix(ALIAS_PREFIX)
-            case source:
+                base_data = ChainGuard.load(source)
+                verify_config_version(base_data.on_fail(None).doot_version(), source=source)
+                base_data = base_data.remove_prefix(ALIAS_PREFIX)
+            case   source:
                 logging.warning("---- Alias File Not Found: %s", source)
                 base_data = {}
 
         # Flatten the lists
         flat = {}
-        for key,val in base_data:
+        for key,val in base_data.items():
             flat[key] = {k:v for x in val for k,v in x.items()}
 
         # Then override with config specified plugin items:
-        for key,val in config.on_fail({}).plugins().items():
+        for key,val in config.on_fail({}).startup.plugins().items():
             flat[key].update(dict(val))
 
         aliases = ChainGuard(flat)
@@ -195,13 +225,12 @@ def _update_import_path():
     Modifies the global `sys.path`
     """
     logging.info("---- Updating Import Path")
-    task_sources = config.on_fail([locs[".tasks"]], list).settings.tasks.sources(wrapper=lambda x: [locs[y] for y in x])
-    task_code    = config.on_fail([locs[".tasks"]], list).settings.tasks.code(wrapper=lambda x: [locs[y] for y in x])
+    task_sources = config.on_fail([locs[".tasks"]], list).startup.sources.tasks(wrapper=lambda x: [locs[y] for y in x])
+    task_code    = config.on_fail([locs[".tasks"]], list).startup.sources.code(wrapper=lambda x: [locs[y] for y in x])
     for source in set(task_sources + task_code):
         if source.exists() and source.is_dir():
             logging.debug("Adding task code directory to Import Path: %s", source)
             sys.path.append(str(source))
-
 
 def _null_setup():
     """

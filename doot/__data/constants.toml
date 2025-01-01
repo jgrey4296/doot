@@ -1,4 +1,5 @@
 # Doot Constants
+doot_version = "0.13"
 
 [doot.constants.entrypoints]
 # plugin names and loaders

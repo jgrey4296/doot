@@ -60,12 +60,12 @@ artifact_l = doot.subprinter("artifact")
 ##-- end logging
 
 dry_run              : Final[bool]           = doot.args.on_fail(False).cmd.args.dry_run()
-max_steps            : Final[str]            = doot.config.on_fail(100_000).settings.tasks.max_steps()
+max_steps            : Final[str]            = doot.config.on_fail(100_000).startup.max_steps()
 fail_prefix          : Final[str]            = doot.constants.printer.fail_prefix
 loop_entry_msg       : Final[str]            = doot.constants.printer.loop_entry
 loop_exit_msg        : Final[str]            = doot.constants.printer.loop_exit
 
-default_SLEEP_LENGTH : Fina[int|float]       = doot.config.on_fail(0.2, int|float).settings.tasks.sleep.task()
+default_SLEEP_LENGTH : Fina[int|float]       = doot.config.on_fail(0.2, int|float).startup.sleep.task()
 
 class BaseRunner(TaskRunner_i):
     """ An incomplete implementation for runners to extend """

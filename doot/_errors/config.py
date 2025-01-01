@@ -38,3 +38,7 @@ class MissingConfigError(ConfigError):
     """ An expecting core config value was not found """
     general_msg = "Doot Config Error:"
     pass
+
+class VersionMismatchError(ConfigError):
+    general_msg = "Doot Version Mismatch:"
+    pass

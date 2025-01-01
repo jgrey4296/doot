@@ -157,11 +157,10 @@ class DootTaskLoader(TaskLoader_p):
         logging.info("Loaded Tasks from: %s", source)
         return raw_specs
 
-    def _load_specs_from_path(self, path) -> list[dict]:
+    def _load_specs_from_path(self, path:pl.Path) -> list[dict]:
         """ load a config file defined task_sources of tasks """
         raw_specs = []
-
-        targets = []
+        targets   = []
         if path.is_dir():
             targets += [x for x in path.iterdir() if x.suffix == ".toml"]
         elif path.is_file():
@@ -176,6 +175,10 @@ class DootTaskLoader(TaskLoader_p):
                 logging.error("Failed to Load Task File: %s : %s", task_file, err.filename)
                 continue
             else:
+                doot.verify_config_version(data.on_fail(None).doot_version(), source=task_file)
+                for update in data.on_fail([]).state():
+                    doot.update_global_task_state(update, task_file)
+
                 for group, val in data.on_fail({}).tasks().items():
                     # sets 'group' for each task if it hasn't been set already
                     raw_specs += map(ftz.partial(apply_group_and_source, group, task_file), val)
@@ -199,7 +202,7 @@ class DootTaskLoader(TaskLoader_p):
 
             return group_name == task_descriptions[task_name][0]['group']
 
-        failures                                = []
+        failures = []
         for spec in group_specs:
             task_alias = "task"
             task_spec = None

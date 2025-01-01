@@ -43,7 +43,7 @@ printer   = doot.subprinter()
 check_loc = doot.subprinter("check_loc")
 ##-- end logging
 
-make_missing = doot.config.on_fail(False).settings.general.location_check.make_missing()
+make_missing = doot.config.on_fail(False).startup.location_check.make_missing()
 
 @doot.check_protocol
 class CheckLocsTask(DootTask):

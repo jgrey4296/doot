@@ -67,16 +67,14 @@ env                                    = os.environ
 plugin_loader_key  : Final[str]        = doot.constants.entrypoints.DEFAULT_PLUGIN_LOADER_KEY
 command_loader_key : Final[str]        = doot.constants.entrypoints.DEFAULT_COMMAND_LOADER_KEY
 task_loader_key    : Final[str]        = doot.constants.entrypoints.DEFAULT_TASK_LOADER_KEY
-announce_exit      : Final[bool]       = doot.constants.misc.ANNOUNCE_EXIT
 announce_voice     : Final[str]        = doot.constants.misc.ANNOUNCE_VOICE
 
 HEADER_MSG         : Final[str]        = doot.constants.printer.doot_header
 
-preferred_cmd_loader                   = doot.config.on_fail("default").settings.general.loaders.command()
-preferred_task_loader                  = doot.config.on_fail("default").settings.general.loaders.task()
-preferred_parser                       = doot.config.on_fail("default").settings.general.loaders.parser()
+preferred_cmd_loader                   = doot.config.on_fail("default").startup.loaders.command()
+preferred_task_loader                  = doot.config.on_fail("default").startup.loaders.task()
+preferred_parser                       = doot.config.on_fail("default").startup.loaders.parser()
 
-defaulted_file                         = doot.config.on_fail(pl.Path("{logs}/.doot_defaults.toml"), pl.Path).settings.general.defaulted_file(pl.Path)
 DEFAULT_FILENAMES : Final[tuple[*str]] = ("doot.toml", "pyproject.toml")
 
 @doot.check_protocol
@@ -288,6 +286,9 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         return self.current_cmd
 
     def _announce_exit(self, message:str):
+        if not doot.config.on_fail(False).shutdown.notify.say_on_exit():
+            return
+
         match sys.platform:
             case _ if "PRE_COMMIT" in env:
                 return
@@ -297,14 +298,16 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
                 sh.say("-v", "Moira", "-r", "50", message)
 
     def _record_defaulted_config_values(self):
-        if not doot.config.on_fail(False).settings.general.write_defaulted_values():
+        if not doot.config.on_fail(False).shutdown.write_defaulted_values():
             return
 
-        defaulted_toml = ChainGuard.report_defaulted()
+        defaulted_file = doot.config.on_fail("{logs}/.doot_defaults.toml", pl.Path).shutdown.defaulted_values.path()
         expanded_path = doot.locs.Current[defaulted_file]
         if not expanded_path.parent.exists():
             shutdown_l.warning("Coulnd't log defaulted config values to: %s", expanded_path)
             return
+
+        defaulted_toml = ChainGuard.report_defaulted()
         with pl.Path(expanded_path).open('w') as f:
             f.write("# default values used:\n")
             f.write("\n".join(defaulted_toml) + "\n\n")
@@ -315,15 +318,14 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         if self.current_cmd is not None and hasattr(self.current_cmd, "shutdown"):
             self.current_cmd.shutdown(self._errored, self.tasks, self.plugins)
 
-        say_on_exit = doot.config.on_fail(False).settings.general.notify.say_on_exit()
+        self._record_defaulted_config_values()
+
         match self._errored:
-            case doot.errors.DootError() if say_on_exit:
-                self._record_defaulted_config_values()
-                self._announce_exit("Doot encountered an error")
-            case None if say_on_exit:
-                shutdown_l.info("Doot Shutting Down Normally")
-                self._record_defaulted_config_values()
-                self._announce_exit("Doot Finished")
+            case doot.errors.DootError():
+                msg = doot.config.on_fail("Doot encountered an error").shutdown.notify.fail_msg()
+                shutdown_l.exception(msg)
+                self._announce_exit(msg)
             case None:
-                shutdown_l.info("Doot Shutting Down Normally")
-                self._record_defaulted_config_values()
+                msg = doot.config.on_fail("Doot Finished").shutdown.notify.success_msg()
+                shutdown_l.info(msg)
+                self._announce_exit(msg)

@@ -44,9 +44,9 @@ from doot._abstract import PluginLoader_p
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-skip_default_plugins        = doot.config.on_fail(False).skip_default_plugins()
-skip_plugin_search          = doot.config.on_fail(False).skip_plugin_search()
-env_plugins                 = doot.config.on_fail({}).plugins(wrapper=dict)
+skip_default_plugins        = doot.config.on_fail(False).startup.skip_default_plugins()
+skip_plugin_search          = doot.config.on_fail(False).startup.skip_plugin_search()
+env_plugins                 = doot.config.on_fail({}).startup.plugins(wrapper=dict)
 plugin_types                = set(doot.constants.entrypoints.FRONTEND_PLUGIN_TYPES + doot.constants.entrypoints.BACKEND_PLUGIN_TYPES)
 cmd_loader_key  : Final     = doot.constants.entrypoints.DEFAULT_COMMAND_LOADER_KEY
 task_loader_key : Final     = doot.constants.entrypoints.DEFAULT_TASK_LOADER_KEY
@@ -172,7 +172,7 @@ class DootPluginLoader(PluginLoader_p):
         self.plugins[cmd_loader_key].append(build_entry_point(cmd_loader_key, "doot.loaders.cmd_loader:DootCommandLoader", cmd_loader_key))
         self.plugins[task_loader_key].append(build_entry_point(task_loader_key, "doot.loaders.task_loader:DootTaskLoader", task_loader_key))
 
-        for group, vals in doot.aliases:
+        for group, vals in doot.aliases.items():
             logging.debug("Loading aliases: %s (%s)", group, len(vals))
             defined = {x.name for x in self.plugins[group]}
             defaults = {x : build_entry_point(x, y, group) for x,y in vals.items() if x not in defined}

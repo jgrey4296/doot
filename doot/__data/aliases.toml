@@ -1,4 +1,5 @@
 # Doot Plugin Alias Mapping
+doot_version = "0.13"
 
 [[doot.aliases.command]]
 # Map {alias} -> CodeRef String

@@ -38,7 +38,7 @@ from doot.utils.action_decorators import IOWriter
 printer = doot.subprinter()
 
 
-# TODO using doot.config.settings.general.protect to disallow write/delete/backup/copy
+# TODO using doot.config.startup.protect to disallow write/delete/backup/copy
 
 class AppendAction(PathManip_m):
     """

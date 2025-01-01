@@ -37,3 +37,6 @@ class InjectionError(StateError):
 
 class LocationError(StateError):
     pass
+
+class GlobalStateMismatch(StateError):
+    pass
