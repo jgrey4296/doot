@@ -40,6 +40,7 @@ from typing_extensions import Annotated
 from jgdv.structs.strang import CodeReference
 from jgdv.structs.strang.location import Location
 from jgdv.structs.dkey import DKey
+from jgdv.cli import ParamSpec
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -295,6 +296,15 @@ class _TransformerUtils_m:
 
 class _SpecUtils_m:
     """General utilities mixin for task specs"""
+
+    @property
+    def param_specs(self) -> list:
+        result = []
+        for x in self.extra.on_fail([]).cli():
+            assert(isinstance(x, (dict, ChainGuard))), x
+            result.append(ParamSpec.build(x))
+        else:
+            return result
 
     def instantiate_onto(self, data:Maybe[TaskSpec]) -> TaskSpec:
         """ apply self over the top of data """

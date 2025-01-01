@@ -180,7 +180,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
             self.plugin_loader    = self.loaders.get(plugin_loader_key, DootPluginLoader())
             self.plugin_loader.setup(extra_config)
             self.plugins : ChainGuard = self.plugin_loader.load()
-            doot._update_aliases(self.plugins)
+            doot._load_aliases(data=self.plugins)
         except doot.errors.PluginError as err:
             shutdown_l.warning("Plugins Not Loaded Due to Error: %s", err)
             self.plugins = ChainGuard()
@@ -236,12 +236,15 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
 
         try:
             cli_args = self.parser(
-                args or self.args,
+                args or self.args[1:],
                 head_specs=self.param_specs,
                 cmds=list(self.cmds.values()),
-                subcmds=list(self.tasks.values),
+                # Associate tasks with the run cmd
+                subcmds=[("run",x) for x in self.tasks.values()],
             )
         except ParseError as err:
+            printer.warning("Failed to Parse provided cli args")
+            raise err
 
         doot.args = ChainGuard(cli_args)
 

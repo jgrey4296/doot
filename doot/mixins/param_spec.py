@@ -43,4 +43,4 @@ class ParamSpecMaker_m:
     @staticmethod
     def build_param(**kwargs:Any) -> ParamSpec:
         """ Utility method for easily making paramspecs """
-        return ParamSpec(**kwargs)
+        return ParamSpec.build(kwargs)
