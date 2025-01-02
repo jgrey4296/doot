@@ -24,8 +24,9 @@ from doot._errors.control import (ActionCallError, ActionStateError,
                                   TrackingError)
 from doot._errors.parse import ParseError
 from doot._errors.plugin import AliasSearchError, PluginError, PluginLoadError
-from doot._errors.state import (InjectionError, KeyAccessError,
-                                KeyExpansionError, StateError, GlobalStateMismatch)
+from doot._errors.state import (StateError, InjectionError, KeyAccessError,
+                                KeyExpansionError, GlobalStateMismatch,
+                                LocationError)
 from doot._errors.struct import StructError, StructLoadError
 from doot._errors.task import TaskError, TaskFailed, TaskTrackingError
 
