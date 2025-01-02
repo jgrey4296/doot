@@ -114,7 +114,7 @@ class ListCmd(BaseCommand):
         cmd_l.info("Tasks for Pattern: %s", pattern)
         for key in matches:
             spec = tasks[key]
-            if TaskMeta_e.INTERNAL in spec.meta and not doot.args.cmd.args.internal:
+            if Strang.bmark_e.hide in spec.name and not doot.args.cmd.args.internal:
                 continue
             if TaskMeta_e.DISABLED in spec.meta:
                 continue
@@ -132,7 +132,7 @@ class ListCmd(BaseCommand):
         for name, spec in tasks.items():
             if pattern not in name:
                 continue
-            if TaskMeta_e.INTERNAL in spec.meta and not doot.args.cmd.args.internal:
+            if Strang.bmark_e.hide in spec.name and not doot.args.cmd.args.internal:
                 continue
             if TaskMeta_e.DISABLED in spec.meta:
                 continue
@@ -157,8 +157,6 @@ class ListCmd(BaseCommand):
             if Strang.bmark_e.hide in spec.name and not doot.args.cmd.args.internal:
                 continue
             if TaskMeta_e.DISABLED in spec.meta:
-                breakpoint()
-                pass
                 continue
             if bool(hide_names) and hide_re.search(str(spec.name)):
                 continue
