@@ -61,7 +61,6 @@ def main():
         if not bool(doot.config):
             doot.setup()
 
-        logging.info("Doot Calling Args: %s", sys.argv)
         # ##-- 1st party imports
         from doot.control.overlord import DootOverlord
         from doot.loaders.plugin_loader import DootPluginLoader
@@ -75,11 +74,10 @@ def main():
         # --- Do whatever thats been triggered
         result    = overlord()
 
-    ##-- handle doot errors
-    except (doot.errors.DootEarlyExit, BdbQuit):
+    except (doot.errors.EarlyExit, doot.errors.Interrupt, BdbQuit):
         shutdown_l.warning("Early Exit Triggered")
         result = 0
-    except doot.errors.DootMissingConfigError as err:
+    except doot.errors.MissingConfigError as err:
         result = 0
         base_target = pl.Path(doot.constants.on_fail(["doot.toml"]).paths.DEFAULT_LOAD_TARGETS()[0])
         # Handle missing files
@@ -89,28 +87,34 @@ def main():
             template = template_path.joinpath(doot.constants.paths.TOML_TEMPLATE)
             base_target.write_text(template.read_text())
             shutdown_l.info("Doot Config File Stubbed: %s", base_target)
-    except doot.errors.DootTaskError as err:
+    except doot.errors.TaskError as err:
         fail_prefix = doot.constants.printer.fail_prefix
         fail_l.error("%s %s : %s", fail_prefix, err.general_msg, err.task_name)
         fail_l.error("%s Source: %s", fail_prefix, err.task_source)
         fail_l.error("%s %s", fail_prefix, str(err))
+    except doot.errors.BackendError as err:
+        fail_prefix = doot.constants.printer.fail_prefix
+        fail_l.error("%s %s : %s", fail_prefix, err.general_msg)
+        fail_l.error("%s %s", fail_prefix, str(err))
+        # fail_l.error("---- %s", err.__cause__)
+    except doot.errors.FrontendError as err:
+        fail_prefix = doot.constants.printer.fail_prefix
+        fail_l.error("%s %s : %s", fail_prefix, err.general_msg)
+        fail_l.error("%s %s", fail_prefix, str(err))
+        # fail_l.error("---- %s", err.__cause__)
     except doot.errors.DootError as err:
         fail_prefix = doot.constants.printer.fail_prefix
         fail_l.error("%s", err.general_msg)
         fail_l.error("%s", err)
-        fail_l.error("---- %s", err.__cause__)
-    ##-- end handle doot errors
-    ##-- handle todo errors
+        # fail_l.error("---- %s", err.__cause__)
     except NotImplementedError as err:
         logging.error(stackprinter.format())
         fail_l.error("Not Implemented: %s", err)
-    ##-- end handle todo errors
-    ##-- handle general errors
     except Exception as err:
-        logging.error(stackprinter.format())
+        pl.Path("doot.lasterror").write_text(stackprinter.format())
+        logging.info(stackprinter.format())
         fail_l.error("Python Error: %s", err)
-    ##-- end handle general errors
-    finally: # --- final shutdown
+    finally:
         if overlord:
             overlord.shutdown()
 

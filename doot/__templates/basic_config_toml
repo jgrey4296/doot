@@ -1,25 +1,34 @@
 # -*- mode:conf-toml; -*-
-[settings.general]
-loaders                  = { commands="default", task="default", parser="default"}
-location_check           = { make_missing = true }
+[startup]
+doot_version         = "0.13"
+loaders              = { commands="default", task="default", parser="default" }
+location_check       = { make_missing=true }
+sources              = { tasks=[".tasks"], code=[] }
+sleep                = { task=0.2, subtask=1, batch=1 }
+max_steps            = 100_000
+skip_default_plugins = false
+skip_plugin_search   = false
+# default_task       = ""
+# constants_file     = ""
+# aliases_file       = ""
 
-[settings.tasks]
-# Files or directories where task specs can be loaded from, expanded according to [[locations]] keys
-sources   = [".tasks"]
-# Directories where task specific code can be imported from, expanded according to [[locations]] keys
-code      = []
-sleep     = { task=0.2, subtask=1, batch=1 }
-max_steps = 100_000
-# default_task = ""
-
-[settings.commands]
-# Settings for commands, like telling the 'run' command what backends to use
-run  = { tracker = "default", runner = "default", reporter= "default", report-line = []}
-list = { hide=[] }
-
-[plugins]
+[startup.plugins]
 # Allows for defining aliases
 command        = { tasks="doot.cmds.list_cmd:ListCmd", pl="doot.cmds.plugins_cmd:PluginsCmd" }
+
+[shutdown]
+notify           = { speak=false } # success_msg="", fail_msg=""
+defaulted_values = { write=false, path=".defaulted_values.toml" }
+
+[settings.commands]
+[settings.commands.run]
+tracker     = "default"
+runner      = "default"
+reporter    = "default"
+report-line = []
+
+[settings.commands.list]
+hide = []
 
 [logging]
 # Standard loggers. See LoggerSpec.
@@ -29,7 +38,7 @@ printer = { level="NOTSET", colour=true,            target=["stdout", "rotate"],
 
 [logging.subprinters]
 default       = {level="WARNING"}
-shutdown      = {level="WARNING",    format="Shutdown: {message}", target="stdout"}
+shutdown      = {level="WARNING", format="Shutdown: {message}", target="stdout"}
 cmd           = {level="INFO"}
 task          = {level="INFO" }
 header        = {level="INFO" }
@@ -39,8 +48,8 @@ task_header   = {level="INFO"}
 
 [[locations]]
 src     = "src"
-codegen = {loc="{src}/_codegen", clean=true}
-temp    = {loc=".temp",          clean=true}
+codegen = "clean::{src}/_codegen"
+temp    = "clean::.temp"
 logs    = "{temp}/logs"
 build   = "{temp}/build"
 docs    = "docs"

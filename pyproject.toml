@@ -29,6 +29,7 @@ dependencies   = [
     "decorator >= 5.0.0",
     "pydantic >= 2.7.0",
     "jgdv >= 0.4.0",
+    "packaging"
 ]
 
 [project.optional-dependencies]

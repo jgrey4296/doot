@@ -1,8 +1,15 @@
 # -*- mode:conf-toml; -*-
-[reminder]
-action = [{do= "basic", args=[], inState=[], outState=[] }]
+doot_version = "0.13"
 
-[[directories]]
+# reminders:
+# action = [{do= "basic", args=[], inState=[], outState=[] }]
+# cli    = [{}]
+
+[[state]]
+# global state updates
+
+
+[[locations]]
 src     = "src"
 codegen = "_codegen"
 temp    = ".temp"

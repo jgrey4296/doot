@@ -107,7 +107,7 @@ class TestTrackerNetwork:
         obj._registry.specs[name1] = True
         obj._registry.specs[name2] = True
 
-        with pytest.raises(doot.errors.DootTaskTrackingError):
+        with pytest.raises(doot.errors.TrackingError):
             obj.connect(name1, name2)
 
     def test_connect_artifact(self, network):
@@ -132,14 +132,14 @@ class TestTrackerNetwork:
         artifact = doot.structs.TaskArtifact("file::a/simple/artifact.txt")
         # Mock the task/artifact:
         obj._registry.specs[name1] = True
-        with pytest.raises(doot.errors.DootTaskTrackingError):
+        with pytest.raises(doot.errors.TrackingError):
             obj.connect(name1, artifact)
 
     def test_connect_fail_no_tasks(self, network):
         obj = network
         name1 = doot.structs.TaskName("basic::task").to_uniq()
         name2 = doot.structs.TaskName("basic::other").to_uniq()
-        with pytest.raises(doot.errors.DootTaskTrackingError):
+        with pytest.raises(doot.errors.TrackingError):
             obj.connect(name1, name2)
 
     def test_network_retrieval(self, network):
@@ -339,7 +339,7 @@ class TestTrackerNetworkBuildConstraints:
         assert(not bool(obj.adj[obj._root_node]))
         obj.connect(instance)
         assert(len(obj) == 2)
-        with pytest.raises(doot.errors.DootTaskTrackingError):
+        with pytest.raises(doot.errors.TrackingError):
             obj.build_network()
 
     def test_build_dep_match_with_injection(self, network):
@@ -371,7 +371,7 @@ class TestTrackerNetworkBuildConstraints:
         assert(not bool(obj.adj[obj._root_node]))
         obj.connect(instance)
         assert(len(obj) == 2)
-        with pytest.raises(doot.errors.DootTaskTrackingError):
+        with pytest.raises(doot.errors.TrackingError):
             obj.build_network()
 
     def test_build_dep_chain_transitive_injection(self, network):

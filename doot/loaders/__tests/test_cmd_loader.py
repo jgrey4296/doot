@@ -60,5 +60,5 @@ class TestCmdLoader(unittest.TestCase):
                 EntryPoint(name="bad", group="doot.command", value="doot.cmds.bad:badcmd"),
 
         ]}))
-        with pytest.raises(doot.errors.DootPluginError):
+        with pytest.raises(doot.errors.PluginLoadError):
             basic.load()

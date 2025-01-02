@@ -54,7 +54,7 @@ printer = doot.subprinter()
 ##-- end logging
 
 dry_run                     = doot.args.on_fail(False).cmd.args.dry_run()
-SLEEP_LENGTH                = doot.config.on_fail(0.2, int|float).settings.tasks.sleep.task()
+SLEEP_LENGTH                = doot.config.on_fail(0.2, int|float).startup.sleep.task()
 MAX_LOG_ACTIVE : Final[int] = 100
 
 @doot.check_protocol
@@ -184,7 +184,6 @@ class DootStepRunner(DootRunner):
         printer.info("::- Break")
         breakpoint()
         pass
-        # raise doot.errors.DootTaskInterrupt("User Interrupt")
 
     def _do_down(self, *args):
         printer.info("::- Down")

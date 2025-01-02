@@ -167,7 +167,7 @@ class TestTaskSpecInstantiation:
         override_task = structs.TaskSpec.build({"name": "agroup::atask", "b": 2, "sources": "agroup::not.base"})
 
         assert(not base_task.name < structs.TaskName(override_task.sources[-1]))
-        with pytest.raises(doot.errors.DootTaskTrackingError):
+        with pytest.raises(doot.errors.TrackingError):
             base_task.specialize_from(override_task)
 
     def test_specialize_keeps_base_actions(self):
@@ -211,7 +211,7 @@ class TestTaskSpecInstantiation:
         base_task     = structs.TaskSpec.build({"name": "agroup::base", "a": 0})
         override_task = structs.TaskSpec.build({"name": "agroup::atask", "b": 1, "sources" : "agroup::not.base"})
 
-        with pytest.raises(doot.errors.DootTaskTrackingError):
+        with pytest.raises(doot.errors.TrackingError):
             base_task.specialize_from(override_task)
 
     def test_simple_data_extension(self):

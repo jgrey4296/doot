@@ -157,11 +157,10 @@ class DootTaskLoader(TaskLoader_p):
         logging.info("Loaded Tasks from: %s", source)
         return raw_specs
 
-    def _load_specs_from_path(self, path) -> list[dict]:
+    def _load_specs_from_path(self, path:pl.Path) -> list[dict]:
         """ load a config file defined task_sources of tasks """
         raw_specs = []
-
-        targets = []
+        targets   = []
         if path.is_dir():
             targets += [x for x in path.iterdir() if x.suffix == ".toml"]
         elif path.is_file():
@@ -176,6 +175,10 @@ class DootTaskLoader(TaskLoader_p):
                 logging.error("Failed to Load Task File: %s : %s", task_file, err.filename)
                 continue
             else:
+                doot.verify_config_version(data.on_fail(None).doot_version(), source=task_file)
+                for update in data.on_fail([]).state():
+                    doot.update_global_task_state(update, task_file)
+
                 for group, val in data.on_fail({}).tasks().items():
                     # sets 'group' for each task if it hasn't been set already
                     raw_specs += map(ftz.partial(apply_group_and_source, group, task_file), val)
@@ -199,14 +202,14 @@ class DootTaskLoader(TaskLoader_p):
 
             return group_name == task_descriptions[task_name][0]['group']
 
-        failures                                = []
+        failures = []
         for spec in group_specs:
             task_alias = "task"
             task_spec = None
             try:
                 match spec:
                     case {"name": task_name, "group": group} if not allow_overloads and detect_overloads(task_name, group): # complain on overload
-                        raise doot.errors.DootTaskLoadError("Task Name Overloaded: %s : %s", task_name, group)
+                        raise doot.errors.StructLoadError("Task Name Overloaded: %s : %s", task_name, group)
                     case {"name": task_name, "ctor": str() as task_alias} if task_alias in self.task_builders: # build named plugin type
                         logging.debug("Building Task from short name: %s : %s", task_name, task_alias)
                         task_iden                   : CodeReference       = CodeReference.from_value(self.task_builders[task_alias])
@@ -220,7 +223,7 @@ class DootTaskLoader(TaskLoader_p):
                         if str(task_spec.name) in task_descriptions:
                             logging.warning("Overloading Task: %s : %s", str(task_spec.name), str(task_spec.ctor))
                     case _: # Else complain
-                        raise doot.errors.DootTaskLoadError("Task Spec missing, at least, needs at least a name and ctor: %s: %s", spec, spec['sources'][0] )
+                        raise doot.errors.StructLoadError("Task Spec missing, at least, needs at least a name and ctor: %s: %s", spec, spec['sources'][0] )
             except LocationError as err:
                 logging.warning("Task Spec '%s' Load Failure: Missing Location: '%s'. Source File: %s", spec['name'], str(err), spec['sources'][0])
             except ModuleNotFoundError as err:
@@ -248,7 +251,7 @@ class DootTaskLoader(TaskLoader_p):
                 task_descriptions[str(task_spec.name)] = task_spec
         else:
             if bool(failures):
-                raise doot.errors.DootTaskLoadError("Loading Task Specs Encountered Errors",  len(failures))
+                raise doot.errors.StructLoadError("Loading Task Specs Encountered Errors",  len(failures))
 
             return task_descriptions
 

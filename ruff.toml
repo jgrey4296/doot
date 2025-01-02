@@ -1,4 +1,4 @@
-## ruff.toml -*- mode: Conf[TOML] -*-
+## ruff.toml -*- mode: conf-toml -*-
 # https://docs.astral.sh/ruff/configuration/
 
 # Extend the project settings, if theres a ruff section
@@ -15,7 +15,6 @@ exclude = [
 line-length    = 100
 indent-width   = 4
 target-version = "py312"
-
 cache-dir = ".temp/ruff_cache"
 
 [lint]
@@ -45,7 +44,7 @@ unfixable = []
 
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx        = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
-logger-objects            = ["logging", "printer"]
+logger-objects            = ["logging", "printer", "logmod"]
 
 # [lint.per-file-ignore]
 # "__init__.py" = ["E402"]

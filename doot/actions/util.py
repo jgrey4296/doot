@@ -70,9 +70,9 @@ def typecheck(spec, state):
             value_type = type(value)
             fullname   = value_type.__qualname__
             if target_type != fullname:
-                raise doot.errors.DootActionStateError("Type Error: state.%s : %s != %s", key, fullname, target_type)
+                raise doot.errors.KeyExpansionError("Type Error: state.%s : %s != %s", key, fullname, target_type)
 
             printer.debug("Type Matches: state.%s : %s", key, target_type)
 
         except (AttributeError, KeyError):
-            raise doot.errors.DootActionStateError("State key missing: %s", key)
+            raise doot.errors.KeyAccessError("State key missing: %s", key)

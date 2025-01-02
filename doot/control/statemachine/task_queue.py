@@ -88,7 +88,7 @@ class TaskQueue:
                 # Waits for explicit _queue
                 pass
             case _:
-                raise doot.errors.DootTaskTrackingError("Unknown _queue behaviour specified: %s", task.spec.queue_behaviour)
+                raise doot.errors.TrackingError("Unknown _queue behaviour specified: %s", task.spec.queue_behaviour)
 
     def _reactive_queue(self, focus:Concrete[TaskName]) -> None:
         """ Queue any known task in the _network that auto-reacts to a focus """
@@ -164,11 +164,11 @@ class TaskQueue:
                 self._network.connect(instance, None if from_user else False)
                 prepped_name = instance
             case TaskName():
-                raise doot.errors.DootTaskTrackingError("Unrecognized queue argument provided, it may not be registered", name)
+                raise doot.errors.TrackingError("Unrecognized queue argument provided, it may not be registered", name)
             case str():
                 return self.queue_entry(TaskName(name), from_user=from_user)
             case _:
-                raise doot.errors.DootTaskTrackingError("Unrecognized queue argument provided, it may not be registered", name)
+                raise doot.errors.TrackingError("Unrecognized queue argument provided, it may not be registered", name)
 
         ## --
         if prepped_name is None:

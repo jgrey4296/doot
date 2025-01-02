@@ -196,11 +196,11 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
             case _, None:
                 pass
             case TaskName(), TaskArtifact():
-                raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target", self.target, target)
+                raise doot.errors.TrackingError("tried to instantiate a relation with the wrong target", self.target, target)
             case TaskArtifact(), TaskName():
-                raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target", self.target, target)
+                raise doot.errors.TrackingError("tried to instantiate a relation with the wrong target", self.target, target)
             case TaskName(), TaskName() if not target.is_uniq():
-                raise doot.errors.DootTaskTrackingError("tried to instantiate a relation with the wrong target status", self.target, target)
+                raise doot.errors.TrackingError("tried to instantiate a relation with the wrong target status", self.target, target)
             case TaskArtifact(), TaskArtifact() if (match:=self.target.reify(target)) is not None:
                 target = match
             case _, _:

@@ -145,7 +145,7 @@ class JobExpandAction(JobInjector):
                 actions = []
                 sources = [None]
             case _:
-                raise doot.errors.DootActionError("Unrecognized base type", base)
+                raise doot.errors.ActionError("Unrecognized base type", base)
 
         return actions, sources
 

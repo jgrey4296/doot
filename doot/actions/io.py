@@ -28,8 +28,8 @@ from time import sleep
 import sh
 import shutil
 import doot
-from doot.errors import DootTaskError, DootTaskFailed
-from doot.control.locations import DootLocationError
+from doot.errors import TaskError, TaskFailed
+from doot.errors import LocationError
 from doot.enums import ActionResponse_e
 from doot.mixins.path_manip import PathManip_m
 from doot.structs import DKey, DKeyed
@@ -38,7 +38,7 @@ from doot.utils.action_decorators import IOWriter
 printer = doot.subprinter()
 
 
-# TODO using doot.config.settings.general.protect to disallow write/delete/backup/copy
+# TODO using doot.config.startup.protect to disallow write/delete/backup/copy
 
 class AppendAction(PathManip_m):
     """
@@ -56,7 +56,7 @@ class AppendAction(PathManip_m):
         exp_args     = [k.expand(spec, state, fallback=None) for k in args_keys]
 
         if self._is_write_protected(loc):
-            raise DootLocationError("Tried to write a protected location", loc)
+            raise LocationError("Tried to write a protected location", loc)
 
         with open(loc, 'a') as f:
             for arg in exp_args:
@@ -81,7 +81,7 @@ class WriteAction(PathManip_m):
         loc  = to
 
         if self._is_write_protected(loc):
-            raise DootLocationError("Tried to write a protected location", loc)
+            raise LocationError("Tried to write a protected location", loc)
 
         match data:
             case None:
@@ -146,7 +146,7 @@ class CopyAction(PathManip_m):
         dest_loc   = to
 
         if self._is_write_protected(dest_loc):
-            raise DootLocationError("Tried to write a protected location", to)
+            raise LocationError("Tried to write a protected location", to)
 
         match _from:
             case str() | pl.Path():
@@ -154,16 +154,16 @@ class CopyAction(PathManip_m):
             case list():
                 expanded = list(map(lambda x: DKey(x, fallback=x, mark=DKey.mark.PATH).expand(spec, state), _from))
             case _:
-                raise doot.errors.DootActionError("Unrecognized type for copy sources", _from)
+                raise doot.errors.ActionError("Unrecognized type for copy sources", _from)
 
         if len(expanded) > 1 and not dest_loc.is_dir():
-                raise doot.errors.DootActionError("Tried to copy multiple files to a non-directory")
+                raise doot.errors.ActionError("Tried to copy multiple files to a non-directory")
 
         for arg in expanded:
             match arg:
                 case pl.Path() if "*" in arg.name:
                     if not dest_loc.is_dir():
-                        raise doot.errors.DootActionError("Tried to copy multiple files to a non-directory")
+                        raise doot.errors.ActionError("Tried to copy multiple files to a non-directory")
                     for arg_sub in arg.parent.glob(arg.name):
                         self._validate_source(arg_sub)
                         shutil.copy2(arg_sub, dest_loc)
@@ -174,11 +174,11 @@ class CopyAction(PathManip_m):
     def _validate_source(self, source:pl.Path):
         match source:
             case pl.Path() if not source.exists():
-                raise doot.errors.DootActionError("Tried to copy a file that doesn't exist", source)
+                raise doot.errors.ActionError("Tried to copy a file that doesn't exist", source)
             case pl.Path():
                 return
             case _:
-                raise doot.errors.DootActionError("CopyAction expected a path", source)
+                raise doot.errors.ActionError("CopyAction expected a path", source)
 
 class MoveAction(PathManip_m):
     """
@@ -193,13 +193,13 @@ class MoveAction(PathManip_m):
         dest_loc   = to
 
         if self._is_write_protected(dest_loc):
-            raise DootLocationError("Tried to write a protected location", dest_loc)
+            raise LocationError("Tried to write a protected location", dest_loc)
         if not source.exists():
-            raise doot.errors.DootActionError("Tried to move a file that doesn't exist", source)
+            raise doot.errors.ActionError("Tried to move a file that doesn't exist", source)
         if dest_loc.exists() and not force:
-            raise doot.errors.DootActionError("Tried to move a file that already exists at the destination", dest_loc)
+            raise doot.errors.ActionError("Tried to move a file that already exists at the destination", dest_loc)
         if source.is_dir():
-            raise doot.errors.DootActionError("Tried to move multiple files to a non-directory", source)
+            raise doot.errors.ActionError("Tried to move multiple files to a non-directory", source)
 
         source.rename(dest_loc)
 
@@ -214,7 +214,7 @@ class DeleteAction(PathManip_m):
         for arg in spec.args:
             loc = DKey(arg, mark=DKey.mark.PATH).expand(spec, state)
             if self._is_write_protected(loc):
-                raise DootLocationError("Tried to write a protected location", loc)
+                raise LocationError("Tried to write a protected location", loc)
 
             if not loc.exists():
                 printer.info("Not Deleting Due to non-existence: %s", loc)
@@ -241,7 +241,7 @@ class BackupAction(PathManip_m):
         dest_loc   = to
 
         if self._is_write_protected(dest_loc):
-            raise DootLocationError("Tried to write a protected location", dest_loc)
+            raise LocationError("Tried to write a protected location", dest_loc)
 
         # ExFat FS has lower resolution timestamps
         # So guard by having a tolerance:
@@ -351,7 +351,7 @@ class LinkAction(PathManip_m):
             printer.warning("SKIP: A Symlink already exists: %s -> %s", x_path, x_path.resolve())
             return
         if not y_path.exists():
-            raise doot.errors.DootActionError("Link target does not exist", y_path)
+            raise doot.errors.ActionError("Link target does not exist", y_path)
         if force and x_path.is_symlink():
             printer.warning("Forcing New Symlink")
             x_path.unlink()

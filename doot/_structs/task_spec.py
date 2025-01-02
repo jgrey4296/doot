@@ -40,6 +40,7 @@ from typing_extensions import Annotated
 from jgdv.structs.strang import CodeReference
 from jgdv.structs.strang.location import Location
 from jgdv.structs.dkey import DKey
+from jgdv.cli import ParamSpec
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -222,7 +223,7 @@ class _TransformerUtils_m:
         instance = self.instantiate_onto(None)
         match self.transformer_of():
             case None:
-                raise doot.errors.DootTaskTrackingError("Tried to transformer to_uniq a non-transformer", self.name)
+                raise doot.errors.TrackingError("Tried to transformer to_uniq a non-transformer", self.name)
             case (x, y) if pre in x.target or post in y.target:
                 # exact transform
                 # replace x with pre in depends_on
@@ -295,6 +296,15 @@ class _TransformerUtils_m:
 
 class _SpecUtils_m:
     """General utilities mixin for task specs"""
+
+    @property
+    def param_specs(self) -> list:
+        result = []
+        for x in self.extra.on_fail([]).cli():
+            assert(isinstance(x, (dict, ChainGuard))), x
+            result.append(ParamSpec.build(x))
+        else:
+            return result
 
     def instantiate_onto(self, data:Maybe[TaskSpec]) -> TaskSpec:
         """ apply self over the top of data """
@@ -541,7 +551,7 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
                 specialized['sources'] = self.sources[:] + [self.name]
                 return TaskSpec.build(specialized)
             case TaskSpec(sources=[*xs, TaskName() as x] ) if not x <= self.name:
-                raise doot.errors.DootTaskTrackingError("Tried to specialize a task that isn't based on this task", str(data.name), str(self.name), str(data.sources))
+                raise doot.errors.TrackingError("Tried to specialize a task that isn't based on this task", str(data.name), str(self.name), str(data.sources))
             case TaskSpec():
                 specialized = dict(self)
                 specialized.update({k:v for k,v in dict(data).items() if k in data.model_fields_set})

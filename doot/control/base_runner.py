@@ -60,12 +60,12 @@ artifact_l = doot.subprinter("artifact")
 ##-- end logging
 
 dry_run              : Final[bool]           = doot.args.on_fail(False).cmd.args.dry_run()
-max_steps            : Final[str]            = doot.config.on_fail(100_000).settings.tasks.max_steps()
+max_steps            : Final[str]            = doot.config.on_fail(100_000).startup.max_steps()
 fail_prefix          : Final[str]            = doot.constants.printer.fail_prefix
 loop_entry_msg       : Final[str]            = doot.constants.printer.loop_entry
 loop_exit_msg        : Final[str]            = doot.constants.printer.loop_exit
 
-default_SLEEP_LENGTH : Fina[int|float]       = doot.config.on_fail(0.2, int|float).settings.tasks.sleep.task()
+default_SLEEP_LENGTH : Fina[int|float]       = doot.config.on_fail(0.2, int|float).startup.sleep.task()
 
 class BaseRunner(TaskRunner_i):
     """ An incomplete implementation for runners to extend """
@@ -126,7 +126,7 @@ class BaseRunner(TaskRunner_i):
 
     def _handle_failure(self, task:Task_i, failure:Error) -> None:
         """ The basic failure handler.
-          Triggers a breakpoint on DootTaskInterrupt,
+          Triggers a breakpoint on Interrupt,
           otherwise informs the tracker of the failure.
 
           Halts any failed or errored tasks, which propagates to any successors
@@ -135,22 +135,22 @@ class BaseRunner(TaskRunner_i):
           the tracker handle's clearing itself and shutting down
         """
         match failure:
-            case doot.errors.DootTaskInterrupt():
+            case doot.errors.Interrupt():
                 breakpoint()
                 pass
-            case doot.errors.DootTaskFailed() as err:
+            case doot.errors.TaskFailed() as err:
                 self._signal_failure = err
                 fail_l.warning("%s %s", fail_prefix, err)
                 self.tracker.set_status(err.task, TaskStatus_e.HALTED)
-            case doot.errors.DootTaskError() as err:
+            case doot.errors.TaskError() as err:
                 self._signal_failure = err
                 fail_l.warning("%s %s", fail_prefix, err)
                 self.tracker.set_status(err.task, TaskStatus_e.FAILED)
-            case doot.errors.DootError() as err:
+            case doot.errors.TrackingError() as err:
                 self._signal_failure = err
                 fail_l.warning("%s %s", fail_prefix, err)
                 self.tracker.set_status(task, TaskStatus_e.FAILED)
-            case doot.errors.DootTaskTrackingError() as err:
+            case doot.errors.DootError() as err:
                 self._signal_failure = err
                 fail_l.warning("%s %s", fail_prefix, err)
                 self.tracker.set_status(task, TaskStatus_e.FAILED)

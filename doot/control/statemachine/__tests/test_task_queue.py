@@ -90,7 +90,7 @@ class TestTrackerQueue:
         obj = queue
         spec  = doot.structs.TaskSpec.build({"name":"basic::task"})
         name1 = doot.structs.TaskName("basic::task")
-        with pytest.raises(doot.errors.DootTaskTrackingError):
+        with pytest.raises(doot.errors.TrackingError):
             obj.queue_entry(name1)
 
     def test_queue_artifiact(self, queue):

@@ -4,43 +4,45 @@
 
 
 """
-
-# Imports:
+# Import:
 from __future__ import annotations
 
 # ##-- stdlib imports
-# import abc
-import datetime
-import enum
-import functools as ftz
-import itertools as itz
 import logging as logmod
-import pathlib as pl
-import re
-import time
-import types
-import weakref
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Mapping, Match,
                     MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
                     TypeGuard, TypeVar, cast, final, overload,
                     runtime_checkable)
-from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
-
-from jgdv.cli.param_spec import ParamSpec
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+# Global Vars:
 
-class ParamSpecMaker_m:
+# Body:
+class DootError(Exception):
+    """
+      The base class for all Doot Errors
+      will try to % format the first argument with remaining args in str()
+    """
+    general_msg = "Non-Specific Doot Error:"
 
-    @staticmethod
-    def build_param(**kwargs:Any) -> ParamSpec:
-        """ Utility method for easily making paramspecs """
-        return ParamSpec.build(kwargs)
+    def __str__(self):
+        try:
+            return self.args[0] % self.args[1:]
+        except TypeError:
+            return str(self.args)
+
+
+class BackendError(DootError):
+    pass
+
+class FrontendError(DootError):
+    pass
+
+class UserError(DootError):
+    pass

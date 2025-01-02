@@ -89,7 +89,7 @@ class StubCmd(BaseCommand):
             code_ref = CodeReference.build(ctor_name)
             return code_ref.try_import()
         except ImportError as err:
-            raise doot.errors.DootTaskLoadError(ctor_name)
+            raise doot.errors.StructLoadError(ctor_name)
 
     def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
         match dict(doot.args.cmd.args):
@@ -128,7 +128,7 @@ class StubCmd(BaseCommand):
         task_iden                   : CodeReference       = CodeReference.from_alias(doot.args.on_fail("task").cmd.args.ctor(), "task", plugins)
 
         if (name:=doot.args.on_fail((None,)).cmd.args.name()) is None:
-            raise doot.errors.DootCommandError("No Name Provided for Stub")
+            raise doot.errors.CommandError("No Name Provided for Stub")
 
         # Create stub toml, with some basic information
         stub                          = TaskStub(ctor=task_iden)

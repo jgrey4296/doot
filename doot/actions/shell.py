@@ -7,7 +7,7 @@ import pathlib as pl
 import sys
 import sh
 import doot
-from doot.errors import DootTaskError
+from doot.errors import TaskError
 from doot._abstract import Action_p
 from doot.actions.base_action import DootBaseAction
 from doot.structs import DKey, DKeyed
@@ -47,7 +47,7 @@ class DootShellBake:
                 case sh.Command() as x:
                     baked = cmd.bake(*expanded, _in=x(), _return_cmd=True, _tty_out=False)
                 case _:
-                    raise DootTaskError("Bad pre-command for shell baking", _in)
+                    raise TaskError("Bad pre-command for shell baking", _in)
 
             return { _update : baked }
         except sh.CommandNotFound as err:

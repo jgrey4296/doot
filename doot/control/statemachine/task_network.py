@@ -116,7 +116,7 @@ class TaskNetwork(TaskMatcher_m):
                 self.nodes[name][EXPANDED]     = True
                 self.nodes[name][REACTIVE_ADD] = False
             case TaskName() if not name.is_uniq():
-                raise doot.errors.DootTaskTrackingError("Nodes should only be instantiated spec names", name)
+                raise doot.errors.TrackingError("Nodes should only be instantiated spec names", name)
             case _ if name in self.nodes:
                 return
             case TaskArtifact():
@@ -286,9 +286,9 @@ class TaskNetwork(TaskMatcher_m):
             case x if x == self._root_node:
                 pass
             case TaskName() if left not in self._registry.specs:
-                raise doot.errors.DootTaskTrackingError("Can't connect a non-existent task", left)
+                raise doot.errors.TrackingError("Can't connect a non-existent task", left)
             case TaskArtifact() if left not in self._registry.artifacts:
-                raise doot.errors.DootTaskTrackingError("Can't connect a non-existent artifact", left)
+                raise doot.errors.TrackingError("Can't connect a non-existent artifact", left)
             case _ if left not in self.nodes:
                 self._add_node(left)
 
@@ -298,9 +298,9 @@ class TaskNetwork(TaskMatcher_m):
             case None:
                 right = self._root_node
             case TaskName() if right not in self._registry.specs:
-                raise doot.errors.DootTaskTrackingError("Can't connect a non-existent task", right)
+                raise doot.errors.TrackingError("Can't connect a non-existent task", right)
             case TaskArtifact() if right not in self._registry.artifacts:
-                raise doot.errors.DootTaskTrackingError("Can't connect a non-existent artifact", right)
+                raise doot.errors.TrackingError("Can't connect a non-existent artifact", right)
             case _ if right not in self.nodes:
                 self._add_node(right)
 
@@ -318,7 +318,7 @@ class TaskNetwork(TaskMatcher_m):
             case TaskArtifact(), TaskName():
                 self._graph.add_edge(left, right, type=EdgeType_e.ARTIFACT_CROSS, **kwargs)
             case TaskArtifact(), TaskArtifact() if left.is_concrete() and right.is_concrete():
-                raise doot.errors.DootTaskTrackingError("Tried to connect two concrete _registry.artifacts", left, right)
+                raise doot.errors.TrackingError("Tried to connect two concrete _registry.artifacts", left, right)
             case TaskArtifact(), TaskArtifact() if right.is_concrete():
                 self._graph.add_edge(left, right, type=EdgeType_e.ARTIFACT_UP, **kwargs)
             case TaskArtifact(), TaskArtifact() if not right.is_concrete():
@@ -330,7 +330,7 @@ class TaskNetwork(TaskMatcher_m):
         """
         logging.debug("Validating Task Network")
         if not nx.is_directed_acyclic_graph(self._graph):
-            raise doot.errors.DootTaskTrackingError("Network isn't a DAG")
+            raise doot.errors.TrackingError("Network isn't a DAG")
 
         for node, data in self.nodes.items():
             match node:
@@ -339,17 +339,17 @@ class TaskNetwork(TaskMatcher_m):
                 case TaskName() | TaskArtifact() if not data[EXPANDED]:
                     logging.warning("Network isn't fully expanded: %s", node)
                     if strict:
-                        raise doot.errors.DootTaskTrackingError("Network isn't fully expanded", node)
+                        raise doot.errors.TrackingError("Network isn't fully expanded", node)
                 case TaskName() if not node.is_uniq():
                     logging.warning("Abstract ConcreteId in _graph: %s", node)
                     if strict:
-                        raise doot.errors.DootTaskTrackingError("Abstract ConcreteId in _graph", node)
+                        raise doot.errors.TrackingError("Abstract ConcreteId in _graph", node)
                 case TaskArtifact() if TaskArtifact.bmark_e.glob in node:
                     bad_nodes = [x for x in self.pred[node] if x in self._registry.specs]
                     if bool(bad_nodes):
                         logging.warning("Glob Artifact ConcreteId is a successor to a task: %s (%s)", node, bad_nodes)
                     if strict and bool(bad_nodes):
-                        raise doot.errors.DootTaskTrackingError("Glob Artifact ConcreteId is a successor to a task", node, bad_nodes)
+                        raise doot.errors.TrackingError("Glob Artifact ConcreteId is a successor to a task", node, bad_nodes)
 
     def incomplete_dependencies(self, focus:Concrete[TaskName]|TaskArtifact) -> list[Concrete[TaskName]|TaskArtifact]:
         """ Get all predecessors of a node that don't evaluate as complete """
@@ -403,7 +403,7 @@ class TaskNetwork(TaskMatcher_m):
                     queue += additions
                     processed.add(x)
                 case _:
-                    raise doot.errors.DootTaskTrackingError("Unknown value in _graph")
+                    raise doot.errors.TrackingError("Unknown value in _graph")
 
         else:
             logging.debug("- Final Network Nodes: %s", self.nodes)

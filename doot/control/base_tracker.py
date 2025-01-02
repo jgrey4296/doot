@@ -135,7 +135,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
         count          : int                 = INITAL_SOURCE_CHAIN_COUNT
         while current is not None:
             if 0 > count:
-                raise doot.errors.DootTaskTrackingError("Building a source chain grew to large", name)
+                raise doot.errors.TrackingError("Building a source chain grew to large", name)
             count -= 1
             match current: # Determine the base
                 case TaskSpec(name=name) if TaskName.bmark_e.head in name:
@@ -153,7 +153,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
                     source_chain.append(current)
                     current = None
                 case _:
-                    raise doot.errors.DootTaskTrackingError("Unknown spec customization attempt", spec, current, source_chain)
+                    raise doot.errors.TrackingError("Unknown spec customization attempt", spec, current, source_chain)
 
         source_chain.reverse()
         return source_chain
@@ -173,7 +173,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
         # Instantiate the spec from its source chain
         match self._get_task_source_chain(name):
             case []:
-                raise doot.errors.DootTaskTrackingError("this shouldn't be possible", name)
+                raise doot.errors.TrackingError("this shouldn't be possible", name)
             case [x]:
                 # No chain, just instantiate the spec
                 instance_spec = x.instantiate_onto(None)
@@ -207,16 +207,16 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
           """
         logging.warning("Instantiating Relation: %s - %s -> %s", control, rel.relation.name, rel.target)
         if control not in self.specs:
-            raise doot.errors.DootTaskTrackingError("Relation Control is missing from registered specs", control, rel)
+            raise doot.errors.TrackingError("Relation Control is missing from registered specs", control, rel)
         if rel.target not in self.specs:
-            raise doot.errors.DootTaskTrackingError("Relation Target is missing from registered specs", rel.target, control, rel)
+            raise doot.errors.TrackingError("Relation Target is missing from registered specs", rel.target, control, rel)
 
         control_spec              = self.specs[control]
         target_spec               = self.specs[rel.target]
         successful_matches        = []
         match self.concrete.get(rel.target, None):
             case [] | None if rel.target not in self.specs:
-                raise doot.errors.DootTaskTrackingError("Unknown target declared in Constrained Relation", control, rel.target)
+                raise doot.errors.TrackingError("Unknown target declared in Constrained Relation", control, rel.target)
             case [] | None:
                 pass
             case [*xs]:
@@ -229,7 +229,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
                 extra    : None|dict      = self.build_injection(rel, control_spec, constraint=target_spec)
                 instance : TaskName       = self._instantiate_spec(rel.target, extra=extra)
                 if not self.match_with_constraints(self.specs[instance], control_spec, relation=rel):
-                    raise doot.errors.DootTaskTrackingError("Failed to build task matching constraints", str(control_spec.name), str(instance), rel)
+                    raise doot.errors.TrackingError("Failed to build task matching constraints", str(control_spec.name), str(instance), rel)
                 logging.warning("Using New Instance: %s", instance)
                 return instance
             case [x]: # One match, connect it
@@ -253,11 +253,11 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
           return the name of the task
           """
         if not isinstance(name, TaskName):
-            raise doot.errors.DootTaskTrackingError("Tried to add a not-task", name)
+            raise doot.errors.TrackingError("Tried to add a not-task", name)
         if not name.is_uniq():
-            raise doot.errors.DootTaskTrackingError("Tried to add a task using a non-concrete spec", name)
+            raise doot.errors.TrackingError("Tried to add a task using a non-concrete spec", name)
         if name not in self.network.nodes:
-            raise doot.errors.DootTaskTrackingError("Tried to add a non-network task ", name)
+            raise doot.errors.TrackingError("Tried to add a non-network task ", name)
         if name in self.tasks:
             return name
 
@@ -269,7 +269,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
             case Task_i():
                 task = task_obj
             case _:
-                raise doot.errors.DootTaskTrackingError("Supplied task object isn't a task_i", task_obj)
+                raise doot.errors.TrackingError("Supplied task object isn't a task_i", task_obj)
 
         # Store it
         self.tasks[name] = task
@@ -278,7 +278,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
     def _register_artifacts(self, name:Concrete[TaskSpec]) -> None:
         """ Register the artifacts in a spec """
         if name not in self.specs:
-            raise doot.errors.DootTaskTrackingError("tried to register artifacts of a non-registered spec", name)
+            raise doot.errors.TrackingError("tried to register artifacts of a non-registered spec", name)
 
         spec = self.specs[name]
 
@@ -377,7 +377,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
                 logging.debug("Not Setting Status of %s, its hasn't been started", task)
                 return False
             case _, _:
-                raise doot.errors.DootTaskTrackingError("Bad task update status args", task, status)
+                raise doot.errors.TrackingError("Bad task update status args", task, status)
 
         return True
 
@@ -403,7 +403,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
                 self.network.nodes[name][EXPANDED]     = True
                 self.network.nodes[name][REACTIVE_ADD] = False
             case TaskName() if not name.is_uniq():
-                raise doot.errors.DootTaskTrackingError("Nodes should only be instantiated spec names", name)
+                raise doot.errors.TrackingError("Nodes should only be instantiated spec names", name)
             case _ if name in self.network.nodes:
                 return
             case TaskArtifact():
@@ -571,9 +571,9 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
             case x if x == self._root_node:
                 pass
             case TaskName() if left not in self.specs:
-                raise doot.errors.DootTaskTrackingError("Can't connect a non-existent task", left)
+                raise doot.errors.TrackingError("Can't connect a non-existent task", left)
             case TaskArtifact() if left not in self.artifacts:
-                raise doot.errors.DootTaskTrackingError("Can't connect a non-existent artifact", left)
+                raise doot.errors.TrackingError("Can't connect a non-existent artifact", left)
             case _ if left not in self.network.nodes:
                 self._add_node(left)
 
@@ -583,9 +583,9 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
             case None:
                 right = self._root_node
             case TaskName() if right not in self.specs:
-                raise doot.errors.DootTaskTrackingError("Can't connect a non-existent task", right)
+                raise doot.errors.TrackingError("Can't connect a non-existent task", right)
             case TaskArtifact() if right not in self.artifacts:
-                raise doot.errors.DootTaskTrackingError("Can't connect a non-existent artifact", right)
+                raise doot.errors.TrackingError("Can't connect a non-existent artifact", right)
             case _ if right not in self.network.nodes:
                 self._add_node(right)
 
@@ -597,7 +597,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
         # Add the edge, with metadata
         match left, right:
             case x, y if x == y:
-                raise doot.errors.DootTaskTrackingError("Tried to connect to itself",left,right)
+                raise doot.errors.TrackingError("Tried to connect to itself",left,right)
             case TaskName(), TaskName():
                 self.network.add_edge(left, right, type=EdgeType_e.TASK, **kwargs)
             case TaskName(), TaskArtifact():
@@ -605,7 +605,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
             case TaskArtifact(), TaskName():
                 self.network.add_edge(left, right, type=EdgeType_e.ARTIFACT_CROSS, **kwargs)
             case TaskArtifact(), TaskArtifact() if left.is_concrete() and right.is_concrete():
-                raise doot.errors.DootTaskTrackingError("Tried to connect two concrete artifacts", left, right)
+                raise doot.errors.TrackingError("Tried to connect two concrete artifacts", left, right)
             case TaskArtifact(), TaskArtifact() if right.is_concrete():
                 self.network.add_edge(left, right, type=EdgeType_e.ARTIFACT_UP, **kwargs)
             case TaskArtifact(), TaskArtifact() if not right.is_concrete():
@@ -617,22 +617,22 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
         """
         logging.debug("Validating Task Network")
         if not nx.is_directed_acyclic_graph(self.network):
-            raise doot.errors.DootTaskTrackingError("Network isn't a DAG")
+            raise doot.errors.TrackingError("Network isn't a DAG")
 
         for node, data in self.network.nodes.items():
             match node:
                 case TaskName() | TaskArtifact() if not data[EXPANDED]:
                     if strict:
-                        raise doot.errors.DootTaskTrackingError("Network isn't fully expanded", node)
+                        raise doot.errors.TrackingError("Network isn't fully expanded", node)
                     logging.warning("Network isn't fully expanded: %s", node)
                 case TaskName() if not node.is_uniq() and node != ROOT:
                     if strict:
-                        raise doot.errors.DootTaskTrackingError("Abstract Concrete[Ident] in network", node)
+                        raise doot.errors.TrackingError("Abstract Concrete[Ident] in network", node)
                     logging.warning("Abstract Concrete[Ident] in network: %s", node)
                 case TaskArtifact() if LocationMeta_e.abstract in node:
                     bad_nodes = [x for x in self.network.pred[node] if x in self.specs]
                     if strict and bool(bad_nodes):
-                        raise doot.errors.DootTaskTrackingError("Glob Artifact Concrete[Ident] is a successor to a task", node, bad_nodes)
+                        raise doot.errors.TrackingError("Glob Artifact Concrete[Ident] is a successor to a task", node, bad_nodes)
                     elif bool(bad_nodes):
                         logging.warning("Glob Artifact Concrete[Ident] is a successor to a task: %s (%s)", node, bad_nodes)
 
@@ -686,7 +686,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
                     queue += additions
                     processed.add(x)
                 case _:
-                    raise doot.errors.DootTaskTrackingError("Unknown value in network")
+                    raise doot.errors.TrackingError("Unknown value in network")
 
         else:
             logging.debug("- Final Network Nodes: %s", self.network.nodes)
@@ -722,7 +722,7 @@ class _TrackerQueue_boltons:
                 # Waits for explicit _queue
                 pass
             case _:
-                raise doot.errors.DootTaskTrackingError("Unknown _queue behaviour specified: %s", task.spec.queue_behaviour)
+                raise doot.errors.TrackingError("Unknown _queue behaviour specified: %s", task.spec.queue_behaviour)
 
     def _reactive_queue(self, focus:Concrete[Ident]) -> None:
         """ Queue any known task in the network that auto-reacts to a focus """
@@ -798,11 +798,11 @@ class _TrackerQueue_boltons:
                 self.connect(instance, None if from_user else False)
                 prepped_name = instance
             case TaskName():
-                raise doot.errors.DootTaskTrackingError("Unrecognized queue argument provided, it may not be registered", name)
+                raise doot.errors.TrackingError("Unrecognized queue argument provided, it may not be registered", name)
             case str():
                 return self.queue_entry(TaskName(name), from_user=from_user)
             case _:
-                raise doot.errors.DootTaskTrackingError("Unrecognized queue argument provided, it may not be registered", name)
+                raise doot.errors.TrackingError("Unrecognized queue argument provided, it may not be registered", name)
 
         ## --
         if prepped_name is None:

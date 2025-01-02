@@ -34,6 +34,7 @@ from weakref import ref
 from jgdv import Maybe, Rx
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.cli.param_spec import ParamSpec
+from jgdv.structs.strang import Strang
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -83,7 +84,7 @@ class ListCmd(BaseCommand):
             and not bool(doot.args.sub)
             and not doot.args.cmd.args.by_source
             and not doot.args.cmd.args.all):
-            raise doot.errors.DootCommandError("ListCmd Needs a Matcher, or all")
+            raise doot.errors.CommandError("ListCmd Needs a Matcher, or all")
 
         if not bool(tasks):
             help_l.info("No Tasks Defined", extra={"colour": "red"})
@@ -103,7 +104,7 @@ class ListCmd(BaseCommand):
             case {"all": True}:
                 self._print_all_by_group(tasks)
             case _:
-                raise doot.errors.DootCommandError("Bad args passed in", doot.args.cmd.args)
+                raise doot.errors.CommandError("Bad args passed in", doot.args.cmd.args)
 
     def _print_matches(self, tasks):
         max_key = len(max(tasks.keys(), key=len))
@@ -153,9 +154,11 @@ class ListCmd(BaseCommand):
         fmt_str = f"{INDENT}%-{max_key}s :: %-60s :: <Source: %s>"
         groups  = defaultdict(list)
         for spec in tasks.values():
-            if TaskMeta_e.INTERNAL in spec.meta and not doot.args.cmd.args.internal:
+            if Strang.bmark_e.hide in spec.name and not doot.args.cmd.args.internal:
                 continue
             if TaskMeta_e.DISABLED in spec.meta:
+                breakpoint()
+                pass
                 continue
             if bool(hide_names) and hide_re.search(str(spec.name)):
                 continue

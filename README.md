@@ -27,15 +27,15 @@ If you don't want a separate file, everything can be added to `pyproject.toml` b
 eg:
 ``` toml
 # -*- mode:conf-toml; -*-
-[settings.general]
-notify                   = { say-on-exit = false }
+[startup]
 loaders                  = { commands="default", task="default", parser="default"}
 location_check           = { make_missing = true }
+sources                  = {tasks=[".tasks"], code=[]}
+sleep                    = { task=0.2, subtask=1, batch=1 }
 
-[settings.tasks]
-sources = [".tasks"] # Files or directories where task specs can be loaded from, expanded according to [[locations]] keys
-code    = []         # Directories where task specific code can be imported from, expanded according to [[locations]] keys
-sleep   = { task=0.2, subtask=1, batch=1 }
+[shutdown]
+notify                   = { speak=false }
+defaulted_values         = { write=false, path=".defaulted_values.toml" }
 
 [logging]
 stream  = { level="WARNING",  allow=["doot"], format="{levelname:<8} : {message}", colour=true }

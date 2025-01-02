@@ -58,7 +58,7 @@ class TestCompTracker:
 
     def test_next_for_fails_with_unbuilt_network(self):
         obj = ComponentTracker()
-        with pytest.raises(doot.errors.DootTaskTrackingError):
+        with pytest.raises(doot.errors.TrackingError):
             obj.next_for()
 
     def test_next_for_empty(self):

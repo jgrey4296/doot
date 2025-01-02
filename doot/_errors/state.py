@@ -1,46 +1,42 @@
 #!/usr/bin/env python3
 """
-
-
-
+These are the doot specific errors that can occur
 """
-
 # Imports:
 from __future__ import annotations
 
 # ##-- stdlib imports
-# import abc
-import datetime
-import enum
-import functools as ftz
-import itertools as itz
 import logging as logmod
-import pathlib as pl
-import re
-import time
-import types
-import weakref
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Mapping, Match,
                     MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
                     TypeGuard, TypeVar, cast, final, overload,
                     runtime_checkable)
-from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
-
-from jgdv.cli.param_spec import ParamSpec
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from .base import DootError, BackendError
 
-class ParamSpecMaker_m:
+class StateError(BackendError):
+    pass
 
-    @staticmethod
-    def build_param(**kwargs:Any) -> ParamSpec:
-        """ Utility method for easily making paramspecs """
-        return ParamSpec.build(kwargs)
+class KeyAccessError(StateError):
+    """ A failure occurred while accessing task state using a key. """
+    pass
+
+class KeyExpansionError(StateError):
+    """ For failures to access, expand, or constraint state keys """
+    pass
+
+class InjectionError(StateError):
+    pass
+
+class LocationError(StateError):
+    pass
+
+class GlobalStateMismatch(StateError):
+    pass

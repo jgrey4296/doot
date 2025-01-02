@@ -222,7 +222,7 @@ class TestTrackerNetwork:
         obj.specs[name1] = True
         obj.specs[name2] = True
 
-        with pytest.raises(doot.errors.DootTaskTrackingError):
+        with pytest.raises(doot.errors.TrackingError):
             obj.connect(name1, name2)
 
     def test_connect_artifact(self):
@@ -247,14 +247,14 @@ class TestTrackerNetwork:
         artifact = doot.structs.TaskArtifact("a/simple/artifact.txt")
         # Mock the task/artifact:
         obj.specs[name1] = True
-        with pytest.raises(doot.errors.DootTaskTrackingError):
+        with pytest.raises(doot.errors.TrackingError):
             obj.connect(name1, artifact)
 
     def test_connect_fail_no_tasks(self):
         obj = BaseTracker()
         name1 = doot.structs.TaskName("basic::task").to_uniq()
         name2 = doot.structs.TaskName("basic::other").to_uniq()
-        with pytest.raises(doot.errors.DootTaskTrackingError):
+        with pytest.raises(doot.errors.TrackingError):
             obj.connect(name1, name2)
 
     def test_network_retrieval(self):
@@ -399,7 +399,7 @@ class TestTrackerNetworkBuild:
         assert(not bool(obj.network.adj[obj._root_node]))
         obj.connect(instance)
         assert(len(obj.network) == 2)
-        with pytest.raises(doot.errors.DootTaskTrackingError):
+        with pytest.raises(doot.errors.TrackingError):
             obj.build_network()
 
     def test_build_dep_match_with_injection(self):
@@ -428,7 +428,7 @@ class TestTrackerNetworkBuild:
         assert(not bool(obj.network.adj[obj._root_node]))
         obj.connect(instance)
         assert(len(obj.network) == 2)
-        with pytest.raises(doot.errors.DootTaskTrackingError):
+        with pytest.raises(doot.errors.TrackingError):
             obj.build_network()
 
     def test_build_dep_chain_transitive_injection(self):
@@ -595,7 +595,7 @@ class TestTrackerQueue:
         obj   = BaseTracker()
         spec  = doot.structs.TaskSpec.build({"name":"basic::task"})
         name1 = doot.structs.TaskName("basic::task")
-        with pytest.raises(doot.errors.DootTaskTrackingError):
+        with pytest.raises(doot.errors.TrackingError):
             obj.queue_entry(name1)
 
     def test_queue_artifiact(self):

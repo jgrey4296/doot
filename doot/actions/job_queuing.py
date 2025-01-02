@@ -81,7 +81,7 @@ class JobQueueAction(Action_p):
                     sub.depends_on += _after
                     subtasks.append(sub)
                 case x:
-                    raise doot.errors.DootActionError("Tried to queue a not TaskSpec", x)
+                    raise doot.errors.ActionError("Tried to queue a not TaskSpec", x)
 
         return subtasks
 

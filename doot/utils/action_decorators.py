@@ -93,11 +93,11 @@ class GeneratesTasks(MetaDecorator):
         def _gen_task_wrapper(*args, **kwargs):
             match fn(*args, **kwargs):
                 case [*xs] if any(not isinstance(x, SpecStruct_p) for x in xs):
-                    raise doot.errors.DootActionError("Action did not return task specs")
+                    raise doot.errors.ActionCallError("Action did not return task specs")
                 case list() as res:
                     return res
                 case _:
-                    raise doot.errors.DootActionError("Action did not return a list of generated tasks")
+                    raise doot.errors.ActionCallError("Action did not return a list of generated tasks")
 
         return _gen_task_wrapper
 
