@@ -35,6 +35,7 @@ from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
 from jgdv.structs.dkey import DKeyFormatter, DKey, DKeyMark_e, SingleDKey, MultiDKey, NonDKey, DKeyExpansionDecorator
 from jgdv.structs.dkey import DKeyed as DKeyed_Base
+from jgdv.structs.dkey import DKeyExpansionDecorator
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -55,6 +56,41 @@ MAX_KEY_EXPANSIONS                          = doot.constants.patterns.MAX_KEY_EX
 STATE_TASK_NAME_K                           = doot.constants.patterns.STATE_TASK_NAME_K
 
 CWD_MARKER      : Final[Ident]                = "__cwd"
+
+class DootDKeyExpander(DKeyExpansionDecorator):
+    """ a doot specific expander that also injects the global task state"""
+
+    def _wrap_method(self, fn:Method) -> Method:
+        data_key = self._data_key
+
+        def method_action_expansions(_self, spec, state, *call_args, **kwargs):
+            try:
+                expansions = [x(spec, state, doot._global_task_state) for x in getattr(fn, data_key)]
+            except KeyError as err:
+                logging.warning("Action State Expansion Failure: %s", err)
+                return False
+            else:
+                all_args = (*call_args, *expansions)
+                return fn(_self, spec, state, *all_args, **kwargs)
+
+        # -
+        return method_action_expansions
+
+    def _wrap_fn(self, fn:Func) -> Func:
+        data_key = self._data_key
+
+        def fn_action_expansions(spec, state, *call_args, **kwargs):
+            try:
+                expansions = [x(spec, state, doot._global_task_state) for x in getattr(fn, data_key)]
+            except KeyError as err:
+                logging.warning("Action State Expansion Failure: %s", err)
+                return False
+            else:
+                all_args = (*call_args, *expansions)
+                return fn(spec, state, *all_args, **kwargs)
+
+        # -
+        return fn_action_expansions
 
 class TaskNameDKey(SingleDKey, mark=DKeyMark_e.TASK, tparam="t"):
 
@@ -172,8 +208,9 @@ class DKeyed(DKeyed_Base):
     """ Extends jgdv.structs.dkey.DKeyed to handle additional decoration types
     specific for doot
     """
+    _decoration_builder : ClassVar[type] = DootDKeyExpander
 
-    @staticmethod
-    def taskname(fn):
+    @classmethod
+    def taskname(cls, fn):
         keys = [DKey(STATE_TASK_NAME_K, implicit=True, mark=DKey.mark.TASK)]
-        return DKeyed._build_decorator(keys)(fn)
+        return cls._build_decorator(keys)(fn)
