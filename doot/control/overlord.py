@@ -75,6 +75,7 @@ preferred_cmd_loader                   = doot.config.on_fail("default").startup.
 preferred_task_loader                  = doot.config.on_fail("default").startup.loaders.task()
 preferred_parser                       = doot.config.on_fail("default").startup.loaders.parser()
 
+
 DEFAULT_FILENAMES : Final[tuple[*str]] = ("doot.toml", "pyproject.toml")
 
 @doot.check_protocol

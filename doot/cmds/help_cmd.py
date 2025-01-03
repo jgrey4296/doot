@@ -51,7 +51,7 @@ help_l  = doot.subprinter("help")
 
 LINE_SEP        : Final[str] = "------------------------------"
 GROUP_INDENT    : Final[str] = "----"
-ITEM_INDENT     : Final[str] = "-"
+ITEM_INDENT     : Final[str] = "----"
 
 class HelpCmd(BaseCommand):
     _name      = "help"
@@ -70,11 +70,8 @@ class HelpCmd(BaseCommand):
         task_targets = []
         cmd_targets  = []
         match dict(doot.args.cmd.args):
-            case {"target": ""|None} if not bool(doot.args.sub):
-                pass
-            case {"target": ""|None}:
-                task_targets +=  [tasks[x] for x in doot.args.sub.keys()]
-                cmd_targets  +=  [x for x in plugins.command if x.name == doot.args.cmd.args.target]
+            case {"target": ""|None} if bool(doot.args.sub):
+                task_targets += [tasks[x] for x in doot.args.sub.keys()]
             case {"target": target}:
                 # Print help of just the specified target(s)
                 task_targets +=  [y for x,y in tasks.items() if x in target]
@@ -109,7 +106,7 @@ class HelpCmd(BaseCommand):
             case None:
                 ctor = None
             case CodeReference():
-                ctor = spec.ctor.try_import()
+                ctor = spec.ctor()
             case _:
                 ctor = spec.ctor
 
@@ -142,14 +139,20 @@ class HelpCmd(BaseCommand):
         if bool(spec.extra):
             cmd_l.info("")
             cmd_l.info("%s Toml Parameters:", GROUP_INDENT)
-            for kwarg,val in spec.extra:
+            for kwarg,val in spec.extra.items():
                 cmd_l.info("%s %-20s : %s", ITEM_INDENT, kwarg, val)
 
         if bool(spec.actions):
             cmd_l.info("")
             cmd_l.info("-- Task Actions: ")
+            sub_indent = (1 + len(ITEM_INDENT)) * " "
             for action in spec.actions:
-                cmd_l.info("%s %-20s : Args=%-20s Kwargs=%s", ITEM_INDENT, action.do, action.args, dict(action.kwargs) )
+                cmd_l.info("%s %-30s:",    ITEM_INDENT, action.do)
+                cmd_l.info("%sArgs=%-20s", sub_indent, action.args)
+                cmd_l.info("%sKwargs=%s",  sub_indent, dict(action.kwargs))
+
+
+
 
         cli_has_params      = task_name in doot.args.sub
         cli_has_non_default = NON_DEFAULT_KEY in doot.args.sub[task_name] and bool(doot.args.sub[task_name][NON_DEFAULT_KEY])

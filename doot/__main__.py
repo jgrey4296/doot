@@ -89,31 +89,23 @@ def main():
             shutdown_l.info("Doot Config File Stubbed: %s", base_target)
     except doot.errors.TaskError as err:
         fail_prefix = doot.constants.printer.fail_prefix
-        fail_l.error("%s %s : %s", fail_prefix, err.general_msg, err.task_name)
+        fail_l.error("%s %s : %s", fail_prefix, err.general_msg, err.task_name, exc_info=err)
         fail_l.error("%s Source: %s", fail_prefix, err.task_source)
-        fail_l.error("%s %s", fail_prefix, str(err))
     except doot.errors.BackendError as err:
         fail_prefix = doot.constants.printer.fail_prefix
-        fail_l.error("%s %s : %s", fail_prefix, err.general_msg)
-        fail_l.error("%s %s", fail_prefix, str(err))
-        # fail_l.error("---- %s", err.__cause__)
+        fail_l.error("%s %s", fail_prefix, err.general_msg, exc_info=err)
     except doot.errors.FrontendError as err:
         fail_prefix = doot.constants.printer.fail_prefix
-        fail_l.error("%s %s : %s", fail_prefix, err.general_msg)
-        fail_l.error("%s %s", fail_prefix, str(err))
+        fail_l.error("%s %s", fail_prefix, err.general_msg, exc_info=err)
         # fail_l.error("---- %s", err.__cause__)
     except doot.errors.DootError as err:
         fail_prefix = doot.constants.printer.fail_prefix
-        fail_l.error("%s", err.general_msg)
-        fail_l.error("%s", err)
-        # fail_l.error("---- %s", err.__cause__)
+        fail_l.error("%s %s", fail_prefix,  err.general_msg, exc_info=err)
     except NotImplementedError as err:
-        logging.error(stackprinter.format())
-        fail_l.error("Not Implemented: %s", err)
+        fail_l.error("Not Implemented: %s", err, exc_info=err)
     except Exception as err:
         pl.Path("doot.lasterror").write_text(stackprinter.format())
-        logging.info(stackprinter.format())
-        fail_l.error("Python Error", exc_info=err)
+        fail_l.error("Python Error:", exc_info=err)
     finally:
         if overlord:
             overlord.shutdown()
