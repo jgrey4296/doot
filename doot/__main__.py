@@ -113,7 +113,7 @@ def main():
     except Exception as err:
         pl.Path("doot.lasterror").write_text(stackprinter.format())
         logging.info(stackprinter.format())
-        fail_l.error("Python Error: %s", err)
+        fail_l.error("Python Error", exc_info=err)
     finally:
         if overlord:
             overlord.shutdown()
