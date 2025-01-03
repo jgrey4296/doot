@@ -33,6 +33,7 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 from jgdv.structs.strang import CodeReference
 from jgdv.cli.param_spec import ParamSpec
+from jgdv.cli.arg_parser import NON_DEFAULT_KEY
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -48,8 +49,6 @@ cmd_l   = doot.subprinter("cmd")
 help_l  = doot.subprinter("help")
 ##-- end logging
 
-NON_DEFAULT_KEY : Final[str] = doot.constants.misc.NON_DEFAULT_KEY
-
 LINE_SEP        : Final[str] = "------------------------------"
 GROUP_INDENT    : Final[str] = "----"
 ITEM_INDENT     : Final[str] = "-"
@@ -63,7 +62,6 @@ class HelpCmd(BaseCommand):
     @property
     def param_specs(self) -> list:
         return super().param_specs + [
-            # self.build_param(name="target", type=str, default=""),
             self.build_param(name="target", type=str, positional=True, default="", desc="The target to get help about. A command or task.")
             ]
 
@@ -89,8 +87,8 @@ class HelpCmd(BaseCommand):
         if len(cmd_targets) == 1:
             cmd_class = cmd_targets[0].load()()
             cmd_l.info(cmd_class.help)
-            if bool(doot.args.cmd.args[NON_DEFAULT_KEY]):
-                self._print_current_param_assignments(cmd_class.param_specs, doot.args.cmd.args)
+            if bool(doot.args.cmd.get(NON_DEFAULT_KEY, None)):
+                self._print_current_param_assignments(cmd_class.param_specs, doot.args.cmd)
         elif bool(task_targets):
             for i, spec in enumerate(task_targets):
                 self.print_task_spec(i, spec)
@@ -105,6 +103,7 @@ class HelpCmd(BaseCommand):
         cmd_l.info("Call a command by doing 'doot [cmd] [args]'. Eg: doot list --help")
 
     def print_task_spec(self, count, spec:TaskSpec):
+        """ Print the help for a task spec """
         task_name = str(spec.name)
         match spec.ctor:
             case None:
@@ -153,18 +152,20 @@ class HelpCmd(BaseCommand):
                 cmd_l.info("%s %-20s : Args=%-20s Kwargs=%s", ITEM_INDENT, action.do, action.args, dict(action.kwargs) )
 
         cli_has_params      = task_name in doot.args.sub
-        cli_has_non_default = bool(doot.args.sub[task_name][NON_DEFAULT_KEY])
+        cli_has_non_default = NON_DEFAULT_KEY in doot.args.sub[task_name] and bool(doot.args.sub[task_name][NON_DEFAULT_KEY])
 
         if cli_has_params and cli_has_non_default and ctor is not None:
             self._print_current_param_assignments(ctor.param_specs, doot.args.sub[task_name])
 
-    def _print_current_param_assignments(self, specs:list[ParamSpec], args:ChainGuard):
+    def _print_current_param_assignments(self, specs:list[ParamSpec], args:dict|ChainGuard):
         cmd_l.info("")
         cmd_l.info("%s Current Param Assignments:", GROUP_INDENT)
 
-        assignments = sorted([x for x in specs if not x.invisible], key=ParamSpec.key_func)
+        assignments = sorted([x for x in specs], key=ParamSpec.key_func)
         max_param_len = 5 + ftz.reduce(max, map(len, map(lambda x: x.name, specs)), 0)
         fmt_str = f"%s %-{max_param_len}s : %s "
         for key in args[NON_DEFAULT_KEY]:
-            value = args[key]
+            if key == "help":
+                continue
+            value = args.args.args[key]
             cmd_l.info(fmt_str, ITEM_INDENT, key, value)

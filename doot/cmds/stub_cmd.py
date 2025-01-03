@@ -81,7 +81,7 @@ class StubCmd(BaseCommand):
 
             self.build_param(name="name",        type=str,     default=None,            desc="The Name of the new task",                          positional=True),
             self.build_param(name="ctor",        type=str,     default="task",          desc="The short type name of the task generator",         positional=True),
-            self.build_param(name="suppress-header",           default=True, invisible=True)
+            self.build_param(name="suppress-header",           default=True, implicit=True)
             ]
 
     def _import_task_class(self, ctor_name):

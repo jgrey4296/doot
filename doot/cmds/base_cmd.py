@@ -61,9 +61,7 @@ class BaseCommand(ParamSpecMaker_m, Command_i):
         if bool(params):
             key_func = params[0].key_func
             help_lines += ["", "Params:"]
-            help_lines += map(str, sorted(filter(lambda x: not x.invisible,
-                                            self.param_specs),
-                                    key=key_func))
+            help_lines += filter(bool, map(lambda x: x.help_str(), sorted(self.param_specs, key=key_func)))
 
         return "\n".join(help_lines)
 
@@ -80,6 +78,6 @@ class BaseCommand(ParamSpecMaker_m, Command_i):
         Provide parameter specs for parsing into doot.args.cmd
         """
         return [
-           self.build_param(name="help", default=False, prefix="--", invisible=True),
-           self.build_param(name="debug", default=False, prefix="--", invisible=True)
+           self.build_param(name="help", default=False, prefix="--", implicit=True),
+           self.build_param(name="debug", default=False, prefix="--", implicit=True)
            ]

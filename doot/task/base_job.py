@@ -112,8 +112,8 @@ class DootJob(Job_i, DootTask):
         help_lines += cls._help
 
         params = cls.param_specs
-        if bool([x for x in params if not x.invisible]):
+        if bool(params):
             help_lines += ["", "Params:"]
-            help_lines += [str(x) for x in cls.param_specs if not x.invisible]
+            help_lines += [y for x in cls.param_specs if (y:=str(x))]
 
         return "\n".join(help_lines)

@@ -68,10 +68,10 @@ class ListCmd(BaseCommand):
     def param_specs(self) -> list[ParamSpec]:
         return super().param_specs + [
             self.build_param(name="all",                                          default=True,                   desc="List all loaded tasks, by group"),
-            self.build_param(name="dependencies",                                 default=False,                  desc="List task dependencies",                 prefix="--"),
-            self.build_param(name="dag",       _short="D",                        default=False,                  desc="Output a DOT compatible graph of tasks", prefix="--"),
-            self.build_param(name="groups",                   type=bool,          default=False,                  desc="List just the groups tasks fall into",   prefix="--"),
-            self.build_param(name="by-source",                                    default=False,                  desc="List all loaded tasks, by source file",  prefix="--"),
+            self.build_param(name="dependencies",             type=bool,          default=False,                  desc="List task dependencies"),
+            self.build_param(name="dag",       _short="D",    type=bool,          default=False,                  desc="Output a DOT compatible graph of tasks"),
+            self.build_param(name="groups",                   type=bool,          default=False,                  desc="List just the groups tasks fall into"),
+            self.build_param(name="by-source",                type=bool,          default=False,                  desc="List all loaded tasks, by source file"),
             self.build_param(name="locations", _short="l",    type=bool,          default=False,                  desc="List all Loaded Locations"),
             self.build_param(name="internal",  _short="i",    type=bool,          default=False,                  desc="Include internal tasks (ie: prefixed with an underscore)"),
             self.build_param(name="pattern",                  type=str,           default="", positional=True,    desc="List tasks with a basic string pattern in the name"),
@@ -80,10 +80,11 @@ class ListCmd(BaseCommand):
     def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
         """List task generators"""
         logging.debug("Starting to List Jobs/Tasks")
-        if (doot.args.on_fail("").cmd.args.pattern() == ""
-            and not bool(doot.args.sub)
-            and not doot.args.cmd.args.by_source
-            and not doot.args.cmd.args.all):
+        if not any(x for x in [bool(doot.args.on_fail("").cmd.args.pattern()),
+                               bool(doot.args.sub),
+                               doot.args.cmd.args.by_source,
+                               doot.args.cmd.args.all,
+                               ]):
             raise doot.errors.CommandError("ListCmd Needs a Matcher, or all")
 
         if not bool(tasks):
