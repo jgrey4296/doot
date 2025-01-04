@@ -1,3 +1,6 @@
 [submodule "wiki_"]
 	path = wiki_
 	url = git@github.com:jgrey4296/doot.wiki.git
+[submodule "related_/doot-examples"]
+	path = related_/doot-examples
+	url = git@github.com:jgrey4296/doot-examples.git
