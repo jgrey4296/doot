@@ -31,7 +31,8 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 from jgdv.structs.dkey import DKey
-from jgdv.mixins.path_manip import PathManip_m, LoopControl_e, Walker_m
+from jgdv.mixins.path_manip import LoopControl_e, Walker_m
+from jgdv.mixins.path_manip import PathManip_m as PathManip_Base
 
 # ##-- 1st party imports
 import doot
@@ -44,3 +45,9 @@ logging = logmod.getLogger(__name__)
 MARKER : Final[str] = doot.constants.paths.MARKER_FILE_NAME
 walk_ignores : Final[list] = doot.config.on_fail(['.git', '.DS_Store', "__pycache__"], list).settings.walking.ignores()
 walk_halts   : Final[str]  = doot.config.on_fail([".doot_ignore"], list).settings.walking.halts()
+
+class PathManip_m(PathManip_Base):
+
+    def _is_write_protected(self, loc) -> bool:
+        logmod.warning("TODO: is_write_protected")
+        return False
