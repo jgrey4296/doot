@@ -52,7 +52,7 @@ IMPORT_SEP                = doot.constants.patterns.IMPORT_SEP
 TASK_STRING : Final[str]  = "task_"
 prefix_len  : Final[int]  = len(TASK_STRING)
 
-task_sources              = doot.config.on_fail([doot.locs.Current[".tasks"]], list).settings.tasks.sources(wrapper=lambda x: [doot.locs[y] for y in x])
+task_sources              = doot.config.on_fail([doot.locs.Current[".tasks"]], list).startup.sources.tasks.sources(wrapper=lambda x: [doot.locs[y] for y in x])
 allow_overloads           = doot.config.on_fail(False, bool).allow_overloads()
 
 def apply_group_and_source(group, source, x):
@@ -171,11 +171,13 @@ class DootTaskLoader(TaskLoader_p):
         for task_file in targets:
             try:
                 data = ChainGuard.load(task_file)
+                doot.verify_config_version(data.on_fail(None).doot_version(), source=task_file)
+            except doot.errors.VersionMismatchError as err:
+                logging.error("Version Mismatch in %s", task_file)
             except OSError as err:
                 logging.error("Failed to Load Task File: %s : %s", task_file, err.filename)
                 continue
             else:
-                doot.verify_config_version(data.on_fail(None).doot_version(), source=task_file)
                 for update in data.on_fail([]).state():
                     doot.update_global_task_state(update, task_file)
 
