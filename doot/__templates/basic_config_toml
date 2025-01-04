@@ -1,4 +1,4 @@
-# -*- mode:conf-toml; -*-
+# -*- mode:toml; -*-
 [startup]
 doot_version         = "0.13"
 loaders              = { commands="default", task="default", parser="default" }
