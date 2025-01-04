@@ -60,16 +60,16 @@ class DootReportManagerSummary(BaseReporter):
         super().__init__(reporters)
 
     def __str__(self):
-        report = self.generate_report
+        report = self.generate_report()
         output = [
-            "    - Totals : Jobs: {}, Tasks: {}, Actions: {}".format(result['jobs'].total, result['tasks'].total, result['actions'].total),
+            "    - Totals : Jobs: {}, Tasks: {}, Actions: {}".format(report['jobs'].total, report['tasks'].total, report['actions'].total),
             "    - Success/Failures/Skips:",
-            "    -- Jobs      : {}/{}/{}".format(result['jobs'].succ,result['jobs'].fail, result['jobs'].skip),
-            "    -- Tasks     : {}/{}/{}".format(result['tasks'].succ, result['tasks'].fail, result['tasks'].skip),
-            "    -- Actions   : {}/{}".format(result['actions'].succ, result['actions'].fail),
-            "    -- Artifacts : {}".format(result['artifacts'].total),
+            "    -- Jobs      : {}/{}/{}".format(report['jobs'].succ,report['jobs'].fail, report['jobs'].skip),
+            "    -- Tasks     : {}/{}/{}".format(report['tasks'].succ, report['tasks'].fail, report['tasks'].skip),
+            "    -- Actions   : {}/{}".format(report['actions'].succ, report['actions'].fail),
+            "    -- Artifacts : {}".format(report['artifacts'].total),
         ]
-        return "\n".join(self.generate_report())
+        return "\n".join(output)
 
     def generate_report(self) -> dict[str,ReportElement]:
         report = {

@@ -87,7 +87,7 @@ class StubCmd(BaseCommand):
     def _import_task_class(self, ctor_name):
         try:
             code_ref = CodeReference.build(ctor_name)
-            return code_ref.try_import()
+            return code_ref()
         except ImportError as err:
             raise doot.errors.StructLoadError(ctor_name)
 
@@ -141,7 +141,7 @@ class StubCmd(BaseCommand):
         # such as for dir_walker: roots [], exts [], recursive bool, subtask "", head_task ""
         # works *towards* the task_type, not away, so more specific elements are added over the top of more general elements
         try:
-            task_mro = task_iden.try_import().mro()
+            task_mro = task_iden().mro()
         except TypeError as err:
             logging.error(err.args[0].replace("\n", ""))
             task_mro = []

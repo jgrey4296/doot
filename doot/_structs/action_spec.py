@@ -133,7 +133,7 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
 
     def __call__(self, task_state:dict) -> Any:
         if self.fun is None:
-            raise doot.errors.ActionError("Action Spec has not been finalised with a function", self)
+            raise doot.errors.StructError("Action Spec has not been finalised with a function", self)
 
         return self.fun(self, task_state)
 
@@ -161,7 +161,7 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
             self.fun = fun
 
         if not callable(self.fun):
-            raise doot.errors.ActionError("Action Spec Given a non-callable fun: %s", fun)
+            raise doot.errors.StructError("Action Spec Given a non-callable fun: %s", fun)
 
     def verify(self, state:dict, *, fields=None):
         pos = "Output"

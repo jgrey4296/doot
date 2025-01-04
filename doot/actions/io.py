@@ -67,7 +67,6 @@ class AppendAction(PathManip_m):
                 f.write(sep)
                 f.write(arg)
 
-@IOWriter()
 class WriteAction(PathManip_m):
     """
       Writes data from the state to a file, accessed through the

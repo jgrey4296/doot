@@ -69,7 +69,7 @@ class AddStateFn(Action_p):
             key = DKey(val)
             val = key.expand(spec, state)
             ref = CodeReference.build(val)
-            result[kwarg] = ref.try_import()
+            result[kwarg] = ref()
 
         return result
 

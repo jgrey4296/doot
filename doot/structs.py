@@ -28,8 +28,8 @@ from uuid import UUID, uuid1
 ##-- end builtin imports
 
 from jgdv.cli.param_spec import ParamSpec
-from jgdv.structs.dkey import DKey, SingleDKey, MultiDKey, NonDKey
 from jgdv.structs.strang.location import Location
+from doot._structs.dkey import DKey, SingleDKey, MultiDKey, NonDKey
 from doot._structs.action_spec import ActionSpec
 from doot._structs.artifact import TaskArtifact
 from doot._structs.stub import TaskStub, TaskStubPart

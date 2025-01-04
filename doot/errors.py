@@ -28,7 +28,7 @@ from doot._errors.state import (StateError, InjectionError, KeyAccessError,
                                 KeyExpansionError, GlobalStateMismatch,
                                 LocationError)
 from doot._errors.struct import StructError, StructLoadError
-from doot._errors.task import TaskError, TaskFailed, TaskTrackingError
+from doot._errors.task import TaskError, TaskFailed, TaskTrackingError, ActionError
 
 # ##-- end 1st party imports
 

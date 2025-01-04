@@ -73,9 +73,12 @@ class JobWalkAction(Walker_m, DootBaseAction):
         roots   = [DKey(x, mark=DKey.mark.PATH).expand(spec, state) for x in roots]
         match fn:
             case CodeReference():
-                accept_fn = fn.try_import()
+                match fn():
+                    case ImportError() as err:
+                        raise err
+                    case x:
+                        accept_fn = x
             case None:
-
                 def accept_fn(x):
                     return True
 
@@ -102,7 +105,7 @@ class JobLimitAction(DootBaseAction):
             case None:
                 limited = random.sample(_from, count)
             case CodeReference():
-                fn      = method.try_import()
+                fn      = method()
                 limited = fn(spec, state, _from)
 
         return { _update : limited }

@@ -41,7 +41,6 @@ from doot.utils.action_decorators import ControlFlow
 
 printer = doot.subprinter()
 
-@ControlFlow()
 class PredicateCheck(DootBaseAction):
     """
       Get a predicate using the kwarg `pred`,
@@ -52,10 +51,9 @@ class PredicateCheck(DootBaseAction):
 
     @DKeyed.references("pred")
     def __call__(self, spec, state, _pred) -> dict|bool|None:
-        predicate = _pred.try_import()
+        predicate = _pred()
         return predicate(spec,state)
 
-@ControlFlow()
 class FileExistsCheck(DootBaseAction):
     """ Continue only if a file exists. invertable with `not`.
       converts to a failure instead of skip with fail=true
@@ -81,7 +79,6 @@ class FileExistsCheck(DootBaseAction):
 
         return None
 
-@ControlFlow()
 class SuffixCheck(DootBaseAction):
     """ Continue only if args ext is in supplied extensions
       invertable, failable
@@ -108,7 +105,6 @@ class SuffixCheck(DootBaseAction):
                 case True, False:
                     continue
 
-@ControlFlow()
 class RelativeCheck(PathManip_m, DootBaseAction):
     """ continue only if paths are relative to a base.
       invertable. Skips by default, can fail
@@ -150,7 +146,6 @@ class LogAction(DootBaseAction):
         level  = logmod.getLevelName(level)
         logger.log(level, msg)
 
-@ControlFlow()
 class StalenessCheck(DootBaseAction):
     """ Skip the rest of the task if old hasn't been modified since new was modifed """
 
@@ -159,7 +154,6 @@ class StalenessCheck(DootBaseAction):
         if new.exists() and (old.stat().st_mtime_ns <= new.stat().st_mtime_ns):
             return self.ActRE.SKIP
 
-@ControlFlow()
 class AssertInstalled(DootBaseAction):
     """
     Easily check a program can be found and used
@@ -182,7 +176,6 @@ class AssertInstalled(DootBaseAction):
         printer.exception("Required Programs were not found: %s", ", ".join(failures))
         return self.ActRE.FAIL
 
-@ControlFlow()
 class WaitAction:
     """ An action that waits for some amount of time """
 
@@ -191,7 +184,6 @@ class WaitAction:
         sleep(count)
 
 
-@ControlFlow()
 class TriggerActionGroup(DootBaseAction):
     """ Trigger a non-standard action group """
 

@@ -55,7 +55,7 @@ class JobGenerate(DootBaseAction):
     @DKeyed.references("fn")
     @DKeyed.redirects("update_")
     def __call__(self, spec, state, _fn_ref, _update):
-        fn = _fn_ref.try_import()
+        fn = _fn_ref()
         return { _update : list(fn(spec, state)) }
 
 class JobExpandAction(JobInjector):
@@ -165,7 +165,7 @@ class JobMatchAction(DootBaseAction):
     def __call__(self, spec, state, _onto, prepfn, mapping):
         match prepfn:
             case CodeReference():
-                fn = prepfn.try_import()
+                fn = prepfn()
             case None:
 
                 def fn(x):

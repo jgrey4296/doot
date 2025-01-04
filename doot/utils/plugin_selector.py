@@ -57,7 +57,7 @@ def plugin_selector(plugins:ChainGuard, *, target="default", fallback=None) -> t
         case x:
             try:
                 name = CodeReference.build(target)
-                return name.try_import()
+                return name()
             except ImportError as err:
                 pass
             except (AttributeError, KeyError) as err:

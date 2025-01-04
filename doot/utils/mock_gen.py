@@ -136,7 +136,7 @@ def mock_task_ctor(name="APretendClass", module="pretend", params=None):
 
 def mock_code_ref(returns=None):
     code_ref_m  = MagicMock(spec=structs.CodeReference())
-    code_ref_m.try_import = MagicMock(return_value=returns)
+    code_ref_m.__call__ = MagicMock(return_value=returns)
     return code_ref_m
 
 def mock_param_spec(name, val, type=Any):
