@@ -102,7 +102,7 @@ class RunCmd(BaseCommand):
 
 
         match interrupt_handler:
-            case _ if not doot.args.cmd.args.interrupt:
+            case _ if not doot.args.on_fail(False).cmd.args.interrupt():
                 interrupt = None
             case None:
                 interrupt = None
@@ -111,7 +111,7 @@ class RunCmd(BaseCommand):
                 interrupt = interrupt_handler
             case str():
                 logging.debug("Loading custom interrupt handler")
-                interrupt = CodeReference.build(interrupt_handler).try_import()
+                interrupt = CodeReference.build(interrupt_handler)()
 
         cmd_l.info("%s Tasks Queued: %s", len(tracker.active_set), " ".join(str(x) for x in tracker.active_set))
         with TimeCtx(logger=logging, entry_msg="--- Runner Entry", exit_msg="---- Runner Exit", level=20):

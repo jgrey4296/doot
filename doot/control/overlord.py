@@ -59,9 +59,9 @@ help_l     = doot.subprinter("help")
 shutdown_l = doot.subprinter("shutdown")
 ##-- end logging
 
-type DootError = doot.errors.DootError
-type DataSource = dict|ChainGuard
-type LoaderDict = dict[str, Loader_p]
+type DootError                         = doot.errors.DootError
+type DataSource                        = dict|ChainGuard
+type LoaderDict                        = dict[str, Loader_p]
 
 env                                    = os.environ
 plugin_loader_key  : Final[str]        = doot.constants.entrypoints.DEFAULT_PLUGIN_LOADER_KEY
@@ -74,7 +74,8 @@ HEADER_MSG         : Final[str]        = doot.constants.printer.doot_header
 preferred_cmd_loader                   = doot.config.on_fail("default").startup.loaders.command()
 preferred_task_loader                  = doot.config.on_fail("default").startup.loaders.task()
 preferred_parser                       = doot.config.on_fail("default").startup.loaders.parser()
-
+empty_call_cmd                         = doot.config.on_fail("list").startup.empty_cmd()
+implicit_task_cmd                      = doot.config.on_fail("run").startup.implicit_task_cmd()
 
 DEFAULT_FILENAMES : Final[tuple[*str]] = ("doot.toml", "pyproject.toml")
 
@@ -279,7 +280,14 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
 
         target = cmd or doot.args.cmd.name
 
-        self.current_cmd = self.cmds.get(target, None)
+        match self.cmds.get(target, None):
+            case None if bool(doot.args.sub):
+                self.current_cmd = self.cmds.get(implicit_task_cmd, None)
+            case None if target.startswith("_") and target.endswith("_"):
+                self.current_cmd = self.cmds.get(empty_cmd, None)
+            case x:
+                self.current_cmd = x
+
         if self.current_cmd is None:
             self._errored = ParseError("Specified Command Couldn't be Found: %s", target)
             raise self._errored
