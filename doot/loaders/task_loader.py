@@ -173,13 +173,16 @@ class DootTaskLoader(TaskLoader_p):
                 data = ChainGuard.load(task_file)
                 doot.verify_config_version(data.on_fail(None).doot_version(), source=task_file)
             except doot.errors.VersionMismatchError as err:
-                logging.error("Version Mismatch in %s", task_file)
+                if "startup" in data:
+                    continue
+                logging.error(err)
+                continue
             except OSError as err:
                 logging.error("Failed to Load Task File: %s : %s", task_file, err.filename)
                 continue
             else:
                 for update in data.on_fail([]).state():
-                    doot.update_global_task_state(update, task_file)
+                    doot.update_global_task_state(update, source=task_file)
 
                 for group, val in data.on_fail({}).tasks().items():
                     # sets 'group' for each task if it hasn't been set already

@@ -133,10 +133,10 @@ def verify_config_version(ver:Maybe[str], source:str|pl.Path):
     match ver:
         case str() as x if x in doot_ver:
             return
-        case str():
-            raise doot.errors.VersionMismatchError("Config File is incompatible with this version of doot", source)
+        case str() as x:
+            raise doot.errors.VersionMismatchError("Config File is incompatible with this version of doot (%s) : %s : %s", __version__, x, source)
         case _:
-            raise doot.errors.VersionMismatchError("No Doot Version Found in config file", source)
+            raise doot.errors.VersionMismatchError("No Doot Version Found in config file: %s", source)
 
 def update_global_task_state(data:dict|ChainGuard, *, source=None) -> None:
     global _global_task_state

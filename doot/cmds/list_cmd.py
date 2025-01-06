@@ -82,8 +82,8 @@ class ListCmd(BaseCommand):
         logging.debug("Starting to List Jobs/Tasks")
         if not any(x for x in [bool(doot.args.on_fail("").cmd.args.pattern()),
                                bool(doot.args.sub),
-                               doot.args.cmd.args.by_source,
-                               doot.args.cmd.args.all,
+                               doot.args.on_fail(False).cmd.args.by_source(),
+                               doot.args.on_fail(False).cmd.args.all(),
                                ]):
             raise doot.errors.CommandError("ListCmd Needs a Matcher, or all")
 

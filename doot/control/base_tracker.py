@@ -205,7 +205,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
         """ find a matching relendency/requirement according to a set of keys in the spec, or create a matching instance
           if theres no constraints, will just instantiate.
           """
-        logging.warning("Instantiating Relation: %s - %s -> %s", control, rel.relation.name, rel.target)
+        logging.info("Instantiating Relation: %s - %s -> %s", control, rel.relation.name, rel.target)
         if control not in self.specs:
             raise doot.errors.TrackingError("Relation Control is missing from registered specs", control, rel)
         if rel.target not in self.specs:
@@ -230,20 +230,20 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
                 instance : TaskName       = self._instantiate_spec(rel.target, extra=extra)
                 if not self.match_with_constraints(self.specs[instance], control_spec, relation=rel):
                     raise doot.errors.TrackingError("Failed to build task matching constraints", str(control_spec.name), str(instance), rel)
-                logging.warning("Using New Instance: %s", instance)
+                logging.info("Using New Instance: %s", instance)
                 return instance
             case [x]: # One match, connect it
                 assert(x in self.specs)
                 assert(x.is_uniq())
                 instance : TaskName = x
-                logging.warning("Reusing Instance: %s", instance)
+                logging.info("Reusing Instance: %s", instance)
                 return instance
             case [*xs, x]: # TODO check this.
                 # Use most recent instance?
                 assert(x in self.specs)
                 assert(x.is_uniq())
                 instance : TaskName = x
-                logging.warning("Reusing latest Instance: %s", instance)
+                logging.info("Reusing latest Instance: %s", instance)
                 return instance
 
     def _make_task(self, name:Concrete[Ident], *, task_obj:Maybe[Task_i]=None) -> Concrete[Ident]:
@@ -624,7 +624,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
                 case TaskName() | TaskArtifact() if not data[EXPANDED]:
                     if strict:
                         raise doot.errors.TrackingError("Network isn't fully expanded", node)
-                    logging.warning("Network isn't fully expanded: %s", node)
+                    logging.warning("Network Node isn't expanded: %s", node)
                 case TaskName() if not node.is_uniq() and node != ROOT:
                     if strict:
                         raise doot.errors.TrackingError("Abstract Concrete[Ident] in network", node)

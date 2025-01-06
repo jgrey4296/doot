@@ -1,15 +1,14 @@
-# -*- mode:conf-toml; -*-
+# -*- mode:toml; -*-
 doot_version = "0.13"
 
 # reminders:
-# action = [{do= "basic", args=[], inState=[], outState=[] }]
+# action = [{do= "basic", args=[]}]
 # cli    = [{}]
 
-[[state]]
-# global state updates
+[[state]] # global state updates
 
 
-[[locations]]
+[[locations]] # Location keys
 src     = "src"
 codegen = "_codegen"
 temp    = ".temp"

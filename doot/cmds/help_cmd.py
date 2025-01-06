@@ -72,6 +72,9 @@ class HelpCmd(BaseCommand):
         match dict(doot.args.cmd.args):
             case {"target": ""|None} if bool(doot.args.sub):
                 task_targets += [tasks[x] for x in doot.args.sub.keys()]
+            case {"target": ""|None} | {"help":True}:
+                help_l.info(self.help)
+                return
             case {"target": target}:
                 # Print help of just the specified target(s)
                 task_targets +=  [y for x,y in tasks.items() if x in target]
