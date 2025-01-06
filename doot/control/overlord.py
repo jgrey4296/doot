@@ -63,11 +63,13 @@ type DootError                         = doot.errors.DootError
 type DataSource                        = dict|ChainGuard
 type LoaderDict                        = dict[str, Loader_p]
 
+
 env                                    = os.environ
 plugin_loader_key  : Final[str]        = doot.constants.entrypoints.DEFAULT_PLUGIN_LOADER_KEY
 command_loader_key : Final[str]        = doot.constants.entrypoints.DEFAULT_COMMAND_LOADER_KEY
 task_loader_key    : Final[str]        = doot.constants.entrypoints.DEFAULT_TASK_LOADER_KEY
 announce_voice     : Final[str]        = doot.constants.misc.ANNOUNCE_VOICE
+version_template   : Final[str]        = doot.constants.printer.version_template
 
 HEADER_MSG         : Final[str]        = doot.constants.printer.doot_header
 
@@ -87,7 +89,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
 
     default cmds are provided by the cmd loader
     """
-    _help = ["An opinionated rewrite of Doit"]
+    _help = ["A Toml Specified Task Runner"]
 
     @staticmethod
     def print_version() -> None:
@@ -115,47 +117,17 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         self._current_cmd : Maybe[str]                = None
         self._extra_config                            = extra_config
 
-    def setup(self) -> None:
-        logging.info("---- Initialising Overlord")
-        self._load_plugins(self._extra_config)
-        self._load_commands(self._extra_config)
-        self._load_tasks(self._extra_config)
-        self._parse_args()
-        logging.info("---- Core Overlord Initialisation complete")
-
     def __call__(self, cmd:Maybe[str]=None) -> int:
-        """ The main run logic of the overlord """
-        if not doot.args.on_fail(False).cmd.args.suppress_header():
-            header_l.info(HEADER_MSG, extra={"colour": "green"})
-
-        if doot.args.on_fail(False).head.args.debug():
-            breakpoint()
-            pass
-
-        # perform head args
-        if self._cli_arg_response():
-            return
-
-        # Do the cmd
-        try:
-            logging.info("---- Overlord Calling: %s", cmd or doot.args.on_fail("Unknown").cmd.name())
-            cmd = self._get_cmd(cmd)
-            cmd(self.tasks, self.plugins)
-        except doot.errors.DootError as err:
-            self._errored = err
-            raise
-        else:
-            logging.info("---- Overlord Cmd Call Complete")
-            return 0
+        return self.run_doot(cmd)
 
     @property
     def param_specs(self) -> list[ParamSpec]:
         return [
             LiteralParam(name=self.prog_name),
-            self.build_param(name="version" , prefix="--"),
-            self.build_param(name="help"    , prefix="--"),
-            self.build_param(name="verbose" , prefix="--"),
-            self.build_param(name="debug",    prefix="--"),
+            self.build_param(name="version" , prefix="--", type=bool),
+            self.build_param(name="help"    , prefix="--", type=bool),
+            self.build_param(name="verbose" , prefix="--", type=bool),
+            self.build_param(name="debug",    prefix="--", type=bool),
         ]
 
     @property
@@ -173,6 +145,14 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         help_lines += sorted(x.helpline for x in self.cmds.values())
 
         return "\n".join(help_lines)
+
+    def setup(self) -> None:
+        logging.info("---- Initialising Overlord")
+        self._load_plugins(self._extra_config)
+        self._load_commands(self._extra_config)
+        self._load_tasks(self._extra_config)
+        self._parse_args()
+        logging.info("---- Core Overlord Initialisation complete")
 
     def _load_plugins(self, extra_config:Maybe[dict|ChainGuard]=None) -> None:
         """ Use a plugin loader to find all applicable `importlib.EntryPoint`s  """
@@ -248,28 +228,53 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
 
         doot.args = ChainGuard(cli_args)
 
-    def _cli_arg_response(self) -> bool:
+
+    def run_doot(self, cmd:Maybe[str]=None) -> int:
+        """ The main run logic of the overlord """
+        if not doot.args.on_fail(False).cmd.args.suppress_header():
+            header_l.info(HEADER_MSG, extra={"colour": "green"})
+
+        if doot.args.on_fail(False).head.args.debug():
+            printer.info("Pausing for debugging")
+            breakpoint()
+            pass
+
+        # perform head args
+        if self._handle_cli_args():
+            return
+
+        # Do the cmd
+        try:
+            logging.info("---- Overlord Calling: %s", cmd or doot.args.on_fail("Unknown").cmd.name())
+            cmd = self._get_cmd(cmd)
+            cmd(self.tasks, self.plugins)
+        except doot.errors.DootError as err:
+            self._errored = err
+            raise
+        else:
+            logging.info("---- Overlord Cmd Call Complete")
+            return 0
+
+    def _handle_cli_args(self) -> bool:
         """ Overlord specific cli arg responses. modify verbosity,
           print version, and help.
 
-          return False for not continuing on to do the command
+          return True to end doot early
         """
         if doot.args.on_fail(False).head.args.verbose() and self.log_config:
             logging.info("Switching to Verbose Output")
             self.log_config.set_level("NOTSET")
-            pass
 
         logging.info("CLI Args: %s", doot.args._table())
         logging.info("Plugins: %s", dict(self.plugins).keys())
         logging.info("Tasks: %s", self.tasks.keys())
 
         if doot.args.on_fail(False).head.args.version():
-            help_l.info("\n\n----- Doot Version: %s\n\n", doot.__version__)
+            help_l.info(version_template, doot.__version__)
             return True
 
         if doot.args.on_fail(False).head.args.help():
             help_l.info(self.help)
-
             return True
 
         return False
@@ -284,7 +289,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
             case None if bool(doot.args.sub):
                 self.current_cmd = self.cmds.get(implicit_task_cmd, None)
             case None if target.startswith("_") and target.endswith("_"):
-                self.current_cmd = self.cmds.get(empty_cmd, None)
+                self.current_cmd = self.cmds.get(empty_call_cmd, None)
             case x:
                 self.current_cmd = x
 
