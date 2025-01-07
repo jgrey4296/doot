@@ -60,7 +60,7 @@ class StepCmd(BaseCommand):
         return super().param_specs + [
             self.build_param(name="dry-run", default=False),
             self.build_param(name="type", type=str, default="task"),
-            self.build_param(name="target", type=list[str], default=[], positional=True),
+            self.build_param(prefix=1, name="target", type=list[str], default=[]),
             ]
 
     def __call__(self, tasks:ChainGuard, plugins:ChainGuard):

@@ -9,7 +9,6 @@ list      = "doot.cmds.list_cmd:ListCmd"
 clean     = "doot.cmds.clean_cmd:CleanCmd"
 stub      = "doot.cmds.stub_cmd:StubCmd"
 step      = "doot.cmds.step_cmd:StepCmd"
-plugins   = "doot.cmds.plugins_cmd:PluginsCmd"
 locs      = "doot.cmds.locs_cmd:LocsCmd"
 graph     = "doot.cmds.graph_cmd:GraphCmd"
 

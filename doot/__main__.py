@@ -60,7 +60,10 @@ def main():
         # --- Setup
         if not bool(doot.config):
             doot.setup()
+    except doot.errors.MissingConfigError:
+        doot._null_setup()
 
+    try:
         # ##-- 1st party imports
         from doot.control.overlord import DootOverlord
         from doot.loaders.plugin_loader import DootPluginLoader
@@ -82,11 +85,9 @@ def main():
         base_target = pl.Path(doot.constants.on_fail(["doot.toml"]).paths.DEFAULT_LOAD_TARGETS()[0])
         # Handle missing files
         if base_target.exists():
-            fail_l.error("Base Config Target exists but no config found? %s", base_target)
-        elif input("No toml config data found, create stub doot.toml? _/n ") != "n":
-            template = template_path.joinpath(doot.constants.paths.TOML_TEMPLATE)
-            base_target.write_text(template.read_text())
-            shutdown_l.info("Doot Config File Stubbed: %s", base_target)
+            fail_l.error("Base Config Target exists but it contains no valid config: %s", base_target)
+        else:
+            fail_l.warning("No toml config data found, create a doot.toml by calling `doot stub --config`")
     except doot.errors.TaskError as err:
         fail_prefix = doot.constants.printer.fail_prefix
         fail_l.error("%s %s : %s", err, exc_info=err)
@@ -96,8 +97,7 @@ def main():
         fail_l.error("%s %s", fail_prefix, err, exc_info=err)
     except doot.errors.FrontendError as err:
         fail_prefix = doot.constants.printer.fail_prefix
-        fail_l.error("%s %s", fail_prefix, err, exc_info=err)
-        # fail_l.error("---- %s", err.__cause__)
+        fail_l.error("%s %s : %s", fail_prefix, err, err.__cause__)
     except doot.errors.DootError as err:
         fail_prefix = doot.constants.printer.fail_prefix
         fail_l.error("%s %s", fail_prefix,  err, exc_info=err)

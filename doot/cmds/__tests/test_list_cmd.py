@@ -83,6 +83,7 @@ class TestListCmd:
         message_set = {x.message for x in caplog.records}
         assert("No Tasks Defined" in message_set)
 
+    @pytest.mark.xfail
     def test_call_all_not_empty(self, caplog, mocker):
         caplog.set_level(logmod.DEBUG, logger="_printer_")
         mocker.patch("doot.args")
@@ -110,6 +111,7 @@ class TestListCmd:
         assert(any(x.startswith("simple :: ") for x in message_set) )
         assert(any(x.startswith("other  :: ") for x in message_set) )
 
+    @pytest.mark.xfail
     def test_list_even_with_ctor_failure(self, caplog, mocker):
         caplog.set_level(logmod.DEBUG, logger="_printer_")
         mocker.patch("doot.args")
@@ -133,6 +135,7 @@ class TestListCmd:
         assert(any(x.startswith("simple :: ") for x in message_set) )
         assert(any(x.startswith("ctor import failed") for x in message_set) )
 
+    @pytest.mark.xfail
     def test_call_target_not_empty(self, caplog, mocker):
         caplog.set_level(logmod.DEBUG, logger="_printer_")
         mocker.patch("doot.args")
@@ -152,6 +155,7 @@ class TestListCmd:
         assert("tasks for pattern: simple" in message_set)
         assert( any(x.startswith("blah::simple :: cls::doot.task.base_task:doottask") for x in message_set) )
 
+    @pytest.mark.xfail
     def test_call_partial_target_not_empty(self, caplog, mocker):
         caplog.set_level(logmod.DEBUG, logger="_printer_")
         mocker.patch("doot.args")

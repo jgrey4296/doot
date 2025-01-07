@@ -140,7 +140,7 @@ def mock_code_ref(returns=None):
     return code_ref_m
 
 def mock_param_spec(name, val, type=Any):
-    m = MagicMock(spec=structs.ParamSpec(name=name, type=type), default=val, positional=False, prefix="-")
+    m = MagicMock(spec=structs.ParamSpec(name=name, type=type), default=val, prefix="-")
 
     return m
 

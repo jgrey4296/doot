@@ -30,7 +30,7 @@ from uuid import UUID, uuid1
 import sh
 from jgdv import Maybe
 from jgdv.structs.chainguard import ChainGuard
-from jgdv.cli import ArgParser_p, ParseMachine, ParseError
+import jgdv.cli
 from jgdv.cli.param_spec import LiteralParam, ParamSpec
 from jgdv.logging import JGDVLogConfig
 # ##-- end 3rd party imports
@@ -208,9 +208,9 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
 
         match ctor:
             case None:
-                self.parser = ParseMachine()
-            case type() if isinstance((p:=ctor()), ArgParser_p):
-                self.parser = ParseMachine(parser=p)
+                self.parser = jgdv.cli.ParseMachine()
+            case type() if isinstance((p:=ctor()), jgdv.cli.ArgParser_p):
+                self.parser = jgdv.cli.ParseMachine(parser=p)
             case _:
                 raise TypeError("Improper argparser specified: ", self.arg_parser)
 
@@ -222,9 +222,16 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
                 # Associate tasks with the run cmd
                 subcmds=[("run",x) for x in self.tasks.values()],
             )
-        except ParseError as err:
-            printer.warning("Failed to Parse provided cli args")
-            raise err
+        except jgdv.cli.errors.HeadParseError as err:
+            raise doot.errors.FrontendError("Doot Head Failed to Parse") from err
+        except jgdv.cli.errors.CmdParseError as err:
+            raise doot.errors.FrontendError("Unrecognized Command Called") from err
+        except jgdv.cli.errors.SubCmdParseError as err:
+            raise doot.errors.FrontendError("Unrecognized Task Called") from err
+        except jgdv.cli.errors.ArgParseError as err:
+            raise doot.errors.FrontendError("Parsing arguments for command/task failed") from err
+        except jgdv.cli.ParseError as err:
+            raise doot.errors.ParseError("Failed to Parse provided cli args") from err
 
         doot.args = ChainGuard(cli_args)
 
@@ -294,7 +301,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
                 self.current_cmd = x
 
         if self.current_cmd is None:
-            self._errored = ParseError("Specified Command Couldn't be Found: %s", target)
+            self._errored = jgdv.cli.ParseError("Specified Command Couldn't be Found: %s", target)
             raise self._errored
 
         return self.current_cmd

@@ -65,11 +65,11 @@ class RunCmd(BaseCommand):
     @property
     def param_specs(self) -> list:
         return super().param_specs + [
-            self.build_param(name="step", default=False),
+            self.build_param(name="step",      default=False),
             self.build_param(name="interrupt", default=False),
-            self.build_param(name="dry-run", default=False),
-            self.build_param(name="confirm", default=False),
-            self.build_param(name="target", type=list[str], default=[], positional=True),
+            self.build_param(name="dry-run",   default=False),
+            self.build_param(name="confirm",   default=False),
+            self.build_param(prefix=1, name="target", type=list[str], default=[]),
             ]
 
     def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
