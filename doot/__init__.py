@@ -58,7 +58,7 @@ CONSTANT_PREFIX      : Final[str]         = "doot.constants"
 ALIAS_PREFIX         : Final[str]         = "doot.aliases"
 TOOL_PREFIX          : Final[str]         = "tool.doot"
 
-config               : ChainGuard         = ChainGuard() # doot config
+config               : ChainGuard         = ChainGuard()
 constants            : ChainGuard         = ChainGuard.load(constants_file).remove_prefix(CONSTANT_PREFIX)
 aliases              : ChainGuard         = ChainGuard()
 locs                 : DootLocations      = None # DootLocations(pl.Path()) # registered locations

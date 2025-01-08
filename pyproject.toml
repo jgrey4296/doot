@@ -36,13 +36,12 @@ dependencies   = [
 test = [
   "pytest >= 8.3.0",
   "pytest-mock >= 3.14",
+  "hypothesis >= 6.123.0",
 ]
 docs = [
     "Sphinx >=7.4.0",
     "sphinx-rtd-theme",
     "myst_parser >= 4.0.0",
-    # "sphinx-tomlconf@git+https://github.com/jgrey4296/sphinx-tomlconf",
-
 ]
 
 ##-- urls
@@ -141,6 +140,8 @@ lines_after_imports    = -1
 lines_between_sections = 1
 lines_between_types    = 0
 
+
+
 import_heading_future      = "Imports:"
 import_heading_stdlib      = "##-- stdlib imports"
 import_heading_thirdparty  = "##-- 3rd party imports"
@@ -151,7 +152,7 @@ import_footer_future      = ""
 import_footer_stdlib      = "##-- end stdlib imports"
 import_footer_thirdparty  = "##-- end 3rd party imports"
 import_footer_firstparty  = "##-- end 1st party imports"
-import_footer_localfolder = ""
+import_footer_localfolder = "# End of Imports."
 
 add_imports            = [
 "from __future__ import annotations",
@@ -161,8 +162,12 @@ add_imports            = [
 "import itertools as itz",
 "import logging as logmod",
 "import pathlib as pl",
+"import typing",
+"import types",
 "from uuid import UUID, uuid1",
 "from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic, Iterable, Iterator, Mapping, Match, MutableMapping, Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar, cast, final, overload, runtime_checkable, Generator)",
+# "import jgdv"
+# "from jgdv import Maybe"
 ]
 
 ##-- end isort
