@@ -2,6 +2,7 @@
 """
 
 """
+# ruff: noqa: ANN201 ANN001
 # Imports:
 from __future__ import annotations
 
@@ -49,8 +50,8 @@ from doot.structs import TaskSpec
 
 logging = logmod.root
 
-class TestListCmd:
 
+class TestListCmd:
     def test_initial(self):
         obj = ListCmd()
         assert(isinstance(obj, Command_i))
@@ -65,8 +66,15 @@ class TestListCmd:
         assert("pattern" in names)
         assert("help" in names)
 
-    def test_call_bad_cli_args(self, monkeypatch, mocker):
-        doot.args = ChainGuard({"sub": {}, "cmd": {"args": {"pattern": "", "all": False, "by_source": False}}})
+    def test_call_bad_cli_args(self, mocker):
+        guard = ChainGuard.read(
+"""
+[cmd.args]
+all       = false
+by_source = false
+pattern   = ""
+""")
+        mocker.patch("doot.args", new=guard)
         obj = ListCmd()
 
         with pytest.raises(doot.errors.DootError):
@@ -74,24 +82,27 @@ class TestListCmd:
 
     def test_call_all_empty(self, caplog, mocker):
         caplog.set_level(logmod.DEBUG, logger="_printer_")
-        mocker.patch("doot.args")
-        doot.args.cmd.args.pattern = ""
-        doot.args.cmd.arg.all      = True
+        guard = ChainGuard.read(
+"""
+[cmd.args]
+all     = true
+pattern = ""
+""")
+        mocker.patch("doot.args", new=guard)
         obj    = ListCmd()
         obj({}, {"reporter": [mocker.stub("Reporter Stub")]})
-
         message_set = {x.message for x in caplog.records}
-        assert("No Tasks Defined" in message_set)
+        assert("!! No Tasks Defined" in message_set)
 
-    @pytest.mark.xfail
+
     def test_call_all_not_empty(self, caplog, mocker):
         caplog.set_level(logmod.DEBUG, logger="_printer_")
-        mocker.patch("doot.args")
-        del doot.args.cmd.args.keys
-        doot.args.cmd.args.__iter__.return_value = iter([("pattern", ""), ("all", True)])
-        doot.args.cmd.args.pattern = ""
-        doot.args.cmd.args.all     = True
-
+        mocker.patch("doot.args", new=ChainGuard.read(
+"""
+[cmd.args]
+all = true
+pattern = ""
+"""))
         obj = ListCmd()
         mock_class1 = mocker.MagicMock(type)
         mock_class1.__module__ = "builtins"
@@ -111,22 +122,21 @@ class TestListCmd:
         assert(any(x.startswith("simple :: ") for x in message_set) )
         assert(any(x.startswith("other  :: ") for x in message_set) )
 
-    @pytest.mark.xfail
     def test_list_even_with_ctor_failure(self, caplog, mocker):
         caplog.set_level(logmod.DEBUG, logger="_printer_")
-        mocker.patch("doot.args")
-        del doot.args.cmd.args.keys
-        doot.args.cmd.args.__iter__.return_value = iter([("pattern", ""), ("all", True)])
-        doot.args.cmd.args.pattern = ""
-        doot.args.cmd.args.all     = True
-
+        mocker.patch("doot.args", new=ChainGuard.read(
+"""
+[cmd.args]
+all = true
+pattern = ""
+"""))
         obj = ListCmd()
         mock_class1 = "doot.task:DootTask"
         mock_class2 = "doot.task:DootJob_bad"
         plugin_mock = {"reporter": [mocker.stub("Reporter Stub")]}
         job_mock = {
             "simple" : TaskSpec.build({"group": "blah", "name": "simple", "ctor": mock_class1}),
-            "other"  : TaskSpec.build({"group": "bloo", "name": "other", "ctor": mock_class2})
+            "other"  : TaskSpec.build({"group": "bloo", "name": "other", "ctor": mock_class2}),
             }
         obj(job_mock, plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
@@ -135,14 +145,15 @@ class TestListCmd:
         assert(any(x.startswith("simple :: ") for x in message_set) )
         assert(any(x.startswith("ctor import failed") for x in message_set) )
 
-    @pytest.mark.xfail
+
     def test_call_target_not_empty(self, caplog, mocker):
         caplog.set_level(logmod.DEBUG, logger="_printer_")
-        mocker.patch("doot.args")
-        del doot.args.cmd.args.keys
-        doot.args.cmd.args.__iter__.return_value = iter([("pattern", "simple"), ("all", False)])
-        doot.args.cmd.args.pattern = "simple"
-        doot.args.cmd.args.all     = False
+        mocker.patch("doot.args", new=ChainGuard.read(
+"""
+[cmd.args]
+all = false
+pattern = "simple"
+"""))
         obj = ListCmd()
         plugin_mock  = {"reporter": [mocker.stub("Reporter Stub")]}
         job_mock = {
@@ -155,23 +166,120 @@ class TestListCmd:
         assert("tasks for pattern: simple" in message_set)
         assert( any(x.startswith("blah::simple :: cls::doot.task.base_task:doottask") for x in message_set) )
 
-    @pytest.mark.xfail
     def test_call_partial_target_not_empty(self, caplog, mocker):
         caplog.set_level(logmod.DEBUG, logger="_printer_")
-        mocker.patch("doot.args")
-        del doot.args.cmd.args.keys
-        doot.args.cmd.args.__iter__.return_value = iter([("pattern", "simp"), ("all", False)])
-        doot.args.cmd.args.pattern = "simp"
-        doot.args.cmd.args.all     = False
+        mocker.patch("doot.args", new=ChainGuard.read(
+"""
+[cmd.args]
+all = false
+pattern = "simp"
+"""))
         obj = ListCmd()
         plugin_mock = {"reporter": [mocker.stub("Reporter Stub")]}
-        job_mock = { "blah::simple" : TaskSpec.build({"group": "blah", "name": "simple"}),
-                        "bloo::other": TaskSpec.build({"group": "bloo", "name": "other"}),
-                        "bloo::diffSimple": TaskSpec.build({"group": "bloo", "name": "diffSimple"}),
-                       }
+        job_mock = { "blah::simple"    : TaskSpec.build({"group": "blah", "name": "simple"}),
+                     "bloo::other"     : TaskSpec.build({"group": "bloo", "name": "other"}),
+                     "bloo::diffSimple": TaskSpec.build({"group": "bloo", "name": "diffSimple"}),
+                    }
         result = obj(job_mock, plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
         assert("tasks for pattern: simp" in message_set)
         assert( any(x.startswith("blah::simple     :: cls::doot.task.base_task:doottask") for x in message_set) )
         assert( any(x.startswith("bloo::diffsimple :: cls::doot.task.base_task:doottask") for x in message_set) )
+
+
+@pytest.mark.skip
+class TestListings:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+
+    def test_list_tasks_matches(self, caplog, mocker):
+        caplog.set_level(logmod.DEBUG, logger="_printer_")
+        mocker.patch("doot.args", new=ChainGuard.read(
+"""
+[cmd.args]
+"""))
+        obj = ListCmd()
+
+
+    def test_list_group_matches(self, caplog, mocker):
+        caplog.set_level(logmod.DEBUG, logger="_printer_")
+        mocker.patch("doot.args", new=ChainGuard.read(
+"""
+[cmd.args]
+"""))
+        obj = ListCmd()
+
+
+    def test_list_all_by_group(self, caplog, mocker):
+        caplog.set_level(logmod.DEBUG, logger="_printer_")
+        mocker.patch("doot.args", new=ChainGuard.read(
+"""
+[cmd.args]
+"""))
+        obj = ListCmd()
+
+
+    def test_list_by_source(self, caplog, mocker):
+        caplog.set_level(logmod.DEBUG, logger="_printer_")
+        mocker.patch("doot.args", new=ChainGuard.read(
+"""
+[cmd.args]
+"""))
+        obj = ListCmd()
+
+
+    def test_list_groups(self, caplog, mocker):
+        caplog.set_level(logmod.DEBUG, logger="_printer_")
+        mocker.patch("doot.args", new=ChainGuard.read(
+"""
+[cmd.args]
+"""))
+        obj = ListCmd()
+
+
+    def test_list_locations(self, caplog, mocker):
+        caplog.set_level(logmod.DEBUG, logger="_printer_")
+        mocker.patch("doot.args", new=ChainGuard.read(
+"""
+[cmd.args]
+"""))
+        obj = ListCmd()
+
+
+    def test_list_printers(self, caplog, mocker):
+        caplog.set_level(logmod.DEBUG, logger="_printer_")
+        mocker.patch("doot.args", new=ChainGuard.read(
+"""
+[cmd.args]
+"""))
+        obj = ListCmd()
+
+
+    def test_list_flags(self, caplog, mocker):
+        caplog.set_level(logmod.DEBUG, logger="_printer_")
+        mocker.patch("doot.args", new=ChainGuard.read(
+"""
+[cmd.args]
+"""))
+        obj = ListCmd()
+
+
+    def test_list_actions(self, caplog, mocker):
+        caplog.set_level(logmod.DEBUG, logger="_printer_")
+        mocker.patch("doot.args", new=ChainGuard.read(
+"""
+[cmd.args]
+"""))
+        obj = ListCmd()
+
+
+    def test_list_plugins(self, caplog, mocker):
+        caplog.set_level(logmod.DEBUG, logger="_printer_")
+        mocker.patch("doot.args", new=ChainGuard.read(
+"""
+[cmd.args]
+"""))
+        obj = ListCmd()
