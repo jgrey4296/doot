@@ -44,17 +44,17 @@ check_loc = doot.subprinter("check_loc")
 ##-- end logging
 
 make_missing = doot.config.on_fail(False).startup.location_check.make_missing()
+strict       = doot.config.on_fail(True).startup.location_check.strict()
 
 @doot.check_protocol
 class CheckLocsTask(DootTask):
-    """ A Task for checking a single location exists
-
+    """ A Task for registered directories exist.
+    Will build missing if doot.config.startup.location_check.make_missing is true
     """
     task_name = "_locations::check"
 
     def __init__(self, spec=None):
-        global_loc = doot.locs.Current
-        locations = [global_loc[f"{{{x}}}"] for x in global_loc if not global_loc.metacheck(x, LocationMeta_e.file, LocationMeta_e.remote)]
+        locations = [x for x in doot.locs]
         actions   = [ActionSpec.build({"args": locations, "fun":self.checklocs })]
         spec      = TaskSpec.build({
             "name"         : CheckLocsTask.task_name,
@@ -65,16 +65,27 @@ class CheckLocsTask(DootTask):
 
     @DKeyed.args
     def checklocs(self, spec, state, args):
+        errors = []
         for loc in args:
             try:
-                match loc.exists():
+                if doot.locs.metacheck(loc, LocationMeta_e.file, LocationMeta_e.remote):
+                    continue
+
+                path = doot.locs.Current.get(loc, None)
+                match path.exists():
                     case True:
-                        check_loc.debug("Base Location Exists : %s", loc)
+                        check_loc.debug("Base Location Exists : %s", path)
+                    case False if strict:
+                        errors.append(path)
                     case False if make_missing:
-                        check_loc.warning("Base Location Missing: %s", loc)
-                        check_loc.info("Making Directory: %s", loc)
-                        loc.mkdir(parents=True)
+                        check_loc.warning("Making Missing Location: %s", path)
+                        path.mkdir(parents=True)
                     case False:
-                        check_loc.warning("Base Location Missing: %s", loc)
+                        check_loc.warning("Base Location Missing: %s", path)
             except PermissionError:
-                check_loc.warning("Base Location Missing: %s", loc)
+                if strict:
+                    errors.append(path)
+                check_loc.warning("Base Location Permision Error: %s", loc)
+        else:
+            if strict and bool(errors):
+                raise doot.errors.ConfigError("Missing Location(s)", errors)

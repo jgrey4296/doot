@@ -1,7 +1,9 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 """
 
 """
+# ruff: noqa: ANN201 ARG001 ANN001 ARG002 ANN202 C408
+# Imports
 from __future__ import annotations
 
 import logging as logmod
@@ -21,7 +23,10 @@ from doot.utils import action_decorators as decs
 
 logging = logmod.root
 
-class TestDecorators:
+class TestActionDecorators:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
 
     def test_initial(self):
         """ check a simple annotation and wrap """

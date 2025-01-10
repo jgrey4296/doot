@@ -1,3 +1,5 @@
+## docs.toml -*- mode: toml -*-
+doot-version = "0.13"
 
 [[locations]]
 doc_src = "docs"

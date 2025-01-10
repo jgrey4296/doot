@@ -63,9 +63,11 @@ help_l  = doot.subprinter("help")
 cmd_l   = doot.subprinter("cmd")
 ##-- end logging
 
-INDENT     : Final[str]       = " "*8
-hide_names : Final[list[str]] = doot.config.on_fail([]).settings.commands.list.hide()
-hide_re    : Final[Rx]        = re.compile("^({})".format("|".join(hide_names)))
+GROUP_INDENT : Final[str]       = " "*4
+INDENT       : Final[str]       = " "*8
+FMT_STR      : Final[str]       = doot.config.on_fail("{indent}{val}").settings.command.list.fmt()
+hide_names   : Final[list[str]] = doot.config.on_fail([]).settings.commands.list.hide()
+hide_re      : Final[Rx]        = re.compile("^({})".format("|".join(hide_names)))
 
 
 @doot.check_protocol
@@ -80,13 +82,16 @@ class ListCmd(BaseCommand):
     def param_specs(self) -> list[ParamSpec]:
         return [
             *super().param_specs,
+            # List other things
             self.build_param(prefix="--", name="flags",                    type=bool, default=False, desc="List Task Meta"),
-            self.build_param(prefix="--", name="printers",                 type=bool, default=False, desc="List All Print Points"),
+            self.build_param(prefix="--", name="loggers",                  type=bool, default=False, desc="List All Print Points"),
             self.build_param(prefix="--", name="actions",                  type=bool, default=False, desc="List All Known Actions"),
             self.build_param(prefix="--", name="plugins",                  type=bool, default=False, desc="List All Known Plugins"),
             self.build_param(prefix="--", name="locs",      _short="l",    type=bool, default=False, desc="List all Loaded Locations"),
+            self.build_param(prefix="--", name="tasks",  default=True,  desc="List all loaded tasks, by group"),
 
-            self.build_param(name="all",  default=True,  desc="List all loaded tasks, by group"),
+            # Task Listing Parameters
+            self.build_param(name="group-by", type=str, desc="How to group listed tasks")
             self.build_param(name="dependencies",             type=bool, default=False, desc="List task dependencies"),
             self.build_param(name="dag",       _short="D",    type=bool, default=False, desc="Output a DOT compatible graph of tasks"),
             self.build_param(name="groups",                   type=bool, default=False, desc="List just the groups tasks fall into"),
@@ -100,33 +105,21 @@ class ListCmd(BaseCommand):
         """List task generators"""
         logging.debug("Starting to List Jobs/Tasks")
         result : list[Maybe[str]] = []
-        match dict(doot.args.cmd.args):
+        match doot.args.on_fail({}).cmd.args():
             case {"flags":True}:
                 result = self._list_flags()
-            case {"printers":True}:
-                result = self._list_printers()
+            case {"loggers":True}:
+                result = self._list_loggers()
             case {"actions":True}:
                 result = self._list_actions(plugins)
             case {"plugins":True}:
                 result = self._list_plugins(plugins)
             case {"locs": True}:
                 result = self._list_locations()
-
-        match dict(doot.args.cmd.args):
-            case _ if bool(result):
-                pass
-            case {"by-source": True}:
-                result = self._list_tasks_by_source(tasks)
-            case {"groups": True, "pattern": x} if bool(x):
-                result = self._list_tasks_group_matches(tasks)
-            case {"groups": True}:
-                result = self._list_task_groups(tasks)
-            case {"pattern": x} if bool(x):
-                result = self._list_tasks_matches(tasks)
-            case {"all": True}:
-                result = self._list_tasks_all_by_group(tasks)
+            case {"tasks": True}:
+                result = self._list_tasks(tasks)
             case _:
-                raise doot.errors.CommandError("Bad args passed in", doot.args.cmd.args)
+                raise doot.errors.CommandError("Bad args passed in", dict(doot.args))
 
         self._print_text(result)
 
@@ -140,66 +133,33 @@ class ListCmd(BaseCommand):
                 case None:
                     cmd_l.info("")
 
+    def _build_format_string(self) -> tuple[str, dict]:
+        """ Builds the format string from args"""
+        pieces   = [FMT_STR]
+        var_dict = {"indent": GROUP_INDENT, "val": "null"}
 
-    def _list_tasks_matches(self, tasks) -> list[ListVal]:
-        logging.info("---- Listing Matching Tasks")
+        # Add docstr
+
+        # add source
+
+        # add params
+
+        return "".join(pieces), var_dict
+
+    def _list_tasks(self, tasks) -> list[ListVal]:
+        logging.info("---- Listing tasks")
+
         result = []
-        max_key = len(max(tasks.keys(), key=len))
-        fmt_str = f"%-{max_key}s :: %-25s <%s>"
-        pattern = doot.args.cmd.args.pattern.lower()
-        matches = {x for x in tasks.keys() if pattern in x.lower()}
-        result.append(f"Tasks for Pattern: {pattern}")
-        for key in matches:
-            spec = tasks[key]
-            if Strang.bmark_e.hide in spec.name and not doot.args.cmd.args.internal:
-                continue
-            if TaskMeta_e.DISABLED in spec.meta:
-                continue
-
-            result.append(fmt_str % (spec.name,
-                                     spec.ctor,
-                                     [str(x) for x in spec.sources]))
-        else:
-            return result
-
-    def _list_tasks_group_matches(self, tasks) -> list[ListVal]:
-        logging.info("---- Listing matching Tasks by Matching Group")
-        result   = []
-        max_key  = len(max(tasks.keys(), key=len))
-        fmt_str  = f"    %-{max_key}s :: %-25s <%s>"
-        pattern  = doot.args.cmd.args.pattern.lower()
-        groups   = defaultdict(list)
-        for name, spec in tasks.items():
-            if pattern not in name:
-                continue
-            if Strang.bmark_e.hide in spec.name and not doot.args.cmd.args.internal:
-                continue
-            if TaskMeta_e.DISABLED in spec.meta:
-                continue
-
-            groups[spec.name[0:]].append(
-                (spec.name[1:], spec.ctor.__module__, spec.ctor.__name__, spec.sources),
-            )
-
-        result.append((f"Tasks for Matching Groups: {pattern}", {"colour":"cyan"}))
-        for group, items in groups.items():
-            result.append(f"*   {group}::")
-            for task in items:
-                result.append(fmt_str % task)
-        else:
-            return result
-
-    def _list_tasks_all_by_group(self, tasks) -> list[ListVal]:
-        logging.info("---- Listing all tasks by group")
-        result = []
-        result.append(("Defined Task Generators by Group:", {"colour":"cyan"}))
-        max_key = len(max(tasks.keys(), key=len, default="def"))
-        fmt_str = f"{INDENT}%-{max_key}s :: %-60s :: <Source: %s>"
-        groups  = defaultdict(list)
-
+        result.append(("Registered Tasks/Jobs:", {"colour":"cyan"}))
         if not bool(tasks):
             result.append(("!! No Tasks Defined", {"colour":"cyan"}))
+            return result
 
+        max_key            = len(max(tasks.keys(), key=len, default="def"))
+        fmt_str, base_vars = self._build_format_string()
+        data : list[dict]  = []
+
+        logging.info("-- Collecting Tasks")
         for spec in tasks.values():
             if Strang.bmark_e.hide in spec.name and not doot.args.cmd.args.internal:
                 continue
@@ -208,63 +168,56 @@ class ListCmd(BaseCommand):
             if bool(hide_names) and hide_re.search(str(spec.name)):
                 continue
 
-            groups[spec.name[0:]].append(
-                (
-                    spec.name[1:],
-                    (spec.doc[0] if bool(spec.doc) else "")[:60],
-                    (spec.sources[0] if bool(spec.sources) else "(No Source)"),
-                ),
+            data.append(
+                base_vars | {
+                    "indent" : " "*(1 + len(GROUP_INDENT) + len(spec.name[0:]) + 2),
+                    "internal" : Strang.bmark_e.hide in spec.name,
+                    "disabled" : TaskMeta_e.DISABLED in spec.meta,
+                    "group"  : spec.name[0:],
+                    "val"    : spec.name[1:],
+                    "full"   : spec.name,
+                    "docstr" : (spec.doc[0] if bool(spec.doc) else "")[:60],
+                    "source" : (spec.sources[0] if bool(spec.sources) else "(No Source)"),
+                },
             )
 
+        logging.info("-- Filtering")
+        match doot.args.on_fail(None).cmd.args.pattern.lower(wrapper=re.compile):
+            case None:
+                pass
+            case re.Pattern() as reg:
+                data = [x for x in data if reg.match(x['full'])]
 
-        for group, items in groups.items():
-            result.append((f"*   {group}::", {"colour":"magenta"}))
+        logging.info("-- Grouping")
+        grouped = self._group_and_sort_items(data)
+
+        logging.info("-- Formatting"
+        for group, items in grouped.items():
+            result.append((f"*{GROUP_INDENT}{group}::", {"colour":"magenta"}))
             for task in items:
-                result.append(fmt_str % task)
+                result.append(fmt_str.format_map(task))
 
-        result.append(None)
-        result.append(("Full Task Name: {group}::{task}", {"colour":"cyan"}))
+        else:
+            return result
+
+
+
+    def _group_and_sort_items(self, data:list[dict]) -> dict[str,list]:
+        result = defaultdict(list)
+
+        match doot.args.on_fail(None).cmd.args.group_by():
+            case None | "group":
+                pass
+            case "source":
+                pass
+            case x:
+                raise ValueError("Unknown group-by arg", x)
+
+
+        for val in data:
+            pass
 
         return result
-
-    def _list_tasks_by_source(self, tasks) -> list[ListVal]:
-        logging.info("---- Listing Tasks by source file")
-        result = []
-        result.append(("Defined Task Generators by Source File:", {"colour":"cyan"}))
-        max_key = len(max(tasks.keys(), key=len))
-        fmt_str = f"{INDENT}%-{max_key}s :: %s.%-25s"
-        sources = defaultdict(list)
-        for spec in tasks.values():
-            if TaskMeta_e.INTERNAL in spec.meta and not doot.args.cmd.args.internal:
-                continue
-            if TaskMeta_e.DISABLED in spec.meta:
-                continue
-
-            sources[spec.sources[0]].append(
-                (
-                    spec.name[1:],
-                    spec.ctor.__module__,
-                    spec.ctor.__name__,
-                ),
-            )
-
-        for source, items in sources.items():
-            result.append((f":: {source} ::", {"colour":"red"}))
-            for task in items:
-                result.append(fmt_str % task)
-        else:
-            return result
-
-    def _list_task_groups(self, tasks) -> list[ListVal]:
-        logging.info("---- Listing Task Groups")
-        result = []
-        result.append(("Defined Task Groups:", {"colour":"cyan"}))
-
-        group_set = set(spec.name[0:] for spec in tasks.values())
-        for group in group_set:
-            result.append(f"- {group}")
-        else:
-            return result
 
     def _list_locations(self) -> list[ListVal]:
         logging.info("---- Listing Defined Locations")
@@ -277,19 +230,26 @@ class ListCmd(BaseCommand):
         else:
             return result
 
-    def _list_printers(self) -> list[ListVal]:
-        logging.info("---- Listing Printers/Logging info")
+    def _list_loggers(self) -> list[ListVal]:
+        logging.info("---- Listing Logging/Printing info")
         acceptable_names    = doot.constants.printer.PRINTER_CHILDREN
         from jgdv.logging.logger_spec import TARGETS
 
         result = []
 
-        result.append("--- Logging Targets:")
-        result.append(", ".join(TARGETS))
+        result.append("--- Primary Loggers:")
+        result.append("- printer  ( target= ) : For user-facing output")
+        result.append("- stream   ( target= )")
+        result.append("- file     ( target= filename_fmt=%str ) ")
 
         result.append(None)
-        result.append("--- Subprinters: ")
-        result.append(", ".join(acceptable_names))
+        result.append("--- Sub-Printer Loggers: ")
+        result.append("(Additional control over user-facing output )")
+        result += [f"- {x}" for x in sorted(acceptable_names)]
+
+        result.append(None)
+        result.append("--- Logging Targets: (Where a logger outputs to)")
+        result += [ f"- {x}" for x in TARGETS ]
 
         result.append(None)
         result.append("--- Notes: ")

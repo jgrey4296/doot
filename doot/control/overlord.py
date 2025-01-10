@@ -10,12 +10,13 @@ import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
+import os
 import pathlib as pl
 import re
 import sys
 import time
 import types
-import os
+import typing
 from importlib.metadata import EntryPoint
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Mapping, Match,
@@ -27,19 +28,20 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
+import jgdv.cli
 import sh
 from jgdv import Maybe
-from jgdv.structs.chainguard import ChainGuard
-import jgdv.cli
 from jgdv.cli.param_spec import LiteralParam, ParamSpec
 from jgdv.logging import JGDVLogConfig
+from jgdv.structs.chainguard import ChainGuard
+
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import (Command_i, CommandLoader_p, Job_i,
-                            Overlord_p, Task_i, TaskLoader_p)
+from doot._abstract import (Command_i, CommandLoader_p, Job_i, Overlord_p,
+                            Task_i, TaskLoader_p)
 from doot._abstract.loader import Loader_p
 from doot.errors import InvalidConfigError, ParseError
 from doot.loaders.cmd_loader import DootCommandLoader
@@ -59,10 +61,12 @@ help_l     = doot.subprinter("help")
 shutdown_l = doot.subprinter("shutdown")
 ##-- end logging
 
+##-- type aliases
 type DootError                         = doot.errors.DootError
 type DataSource                        = dict|ChainGuard
 type LoaderDict                        = dict[str, Loader_p]
 
+##-- end type aliases
 
 env                                    = os.environ
 plugin_loader_key  : Final[str]        = doot.constants.entrypoints.DEFAULT_PLUGIN_LOADER_KEY
@@ -235,7 +239,6 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
 
         doot.args = ChainGuard(cli_args)
 
-
     def run_doot(self, cmd:Maybe[str]=None) -> int:
         """ The main run logic of the overlord """
         if not doot.args.on_fail(False).cmd.args.suppress_header():
@@ -290,7 +293,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         if self.current_cmd is not None:
             return self.current_cmd
 
-        target = cmd or doot.args.cmd.name
+        target = cmd or doot.args.on_fail(implicit_task_cmd).cmd.name()
 
         match self.cmds.get(target, None):
             case None if bool(doot.args.sub):
@@ -305,6 +308,27 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
             raise self._errored
 
         return self.current_cmd
+
+    def shutdown(self) -> None:
+        """ Doot has finished normally, so report on what was done """
+        logging.info("Shutting Down Overlord")
+        if self.current_cmd is not None and hasattr(self.current_cmd, "shutdown"):
+            self.current_cmd.shutdown(self._errored, self.tasks, self.plugins)
+
+        self._record_defaulted_config_values()
+
+        match self._errored:
+            case doot.errors.DootError():
+                shutdown_l.info("---- Errors ----")
+                msg = doot.config.on_fail("Doot encountered an error").shutdown.notify.fail_msg()
+                self._announce_exit(msg)
+                shutdown_l.exception(msg)
+            case None:
+                msg = doot.config.on_fail("").shutdown.notify.success_msg()
+                self._announce_exit(msg)
+                shutdown_l.info(msg)
+
+        shutdown_l.info("---- Dooted ----")
 
     def _announce_exit(self, message:str):
         if not doot.config.on_fail(False).shutdown.notify.say_on_exit():
@@ -332,21 +356,3 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         with pl.Path(expanded_path).open('w') as f:
             f.write("# default values used:\n")
             f.write("\n".join(defaulted_toml) + "\n\n")
-
-    def shutdown(self) -> None:
-        """ Doot has finished normally, so report on what was done """
-        logging.info("---- Overlord Shutting Down")
-        if self.current_cmd is not None and hasattr(self.current_cmd, "shutdown"):
-            self.current_cmd.shutdown(self._errored, self.tasks, self.plugins)
-
-        self._record_defaulted_config_values()
-
-        match self._errored:
-            case doot.errors.DootError():
-                msg = doot.config.on_fail("Doot encountered an error").shutdown.notify.fail_msg()
-                shutdown_l.exception(msg)
-                self._announce_exit(msg)
-            case None:
-                msg = doot.config.on_fail("Doot Finished").shutdown.notify.success_msg()
-                shutdown_l.info(msg)
-                self._announce_exit(msg)

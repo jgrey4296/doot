@@ -2,6 +2,7 @@
 """
 The doot cli runner
 """
+# ruff: noqa: PLR0912 BLE001
 # Imports:
 from __future__ import annotations
 
@@ -50,7 +51,7 @@ fail_l          = doot.subprinter("fail")
 
 template_path      = files("doot.__templates")
 
-def main():
+def main() -> None:
     """ The Main Doot CLI Program.
     Loads data and plugins before starting the requested command.
     """
@@ -88,6 +89,8 @@ def main():
             fail_l.error("Base Config Target exists but it contains no valid config: %s", base_target)
         else:
             fail_l.warning("No toml config data found, create a doot.toml by calling `doot stub --config`")
+    except doot.errors.ConfigError as err:
+        fail_l.warning(err)
     except doot.errors.TaskError as err:
         fail_prefix = doot.constants.printer.fail_prefix
         fail_l.error("%s %s : %s", err, exc_info=err)

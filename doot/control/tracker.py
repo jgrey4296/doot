@@ -245,12 +245,12 @@ class DootTracker(BaseTracker, TrackerPersistence_m, TrackerPlanGen_m, TaskTrack
                         self.queue_entry(heads[0])
                 case TaskStatus_e.FAILED:  # propagate failure
                     self.active_set.remove(focus)
-                    fail_l.warning("Task Failed, Propagating from: %s to: %s", focus, list(self.network.succ[focus]))
+                    fail_l.info("Task Failed, Propagating from: %s to: %s", focus, list(self.network.succ[focus]))
                     self.queue_entry(focus, status=TaskStatus_e.TEARDOWN)
                     for succ in self.network.succ[focus]:
                         self.set_status(succ, TaskStatus_e.FAILED)
                 case TaskStatus_e.HALTED:  # remove and propagate halted status
-                    fail_l.warning("Task Halted, Propagating from: %s to: %s", focus, list(self.network.succ[focus]))
+                    fail_l.info("Task Halted, Propagating from: %s to: %s", focus, list(self.network.succ[focus]))
                     for succ in self.network.succ[focus]:
                         if self.network.edges[focus, succ].get("cleanup", False):
                             continue

@@ -95,7 +95,7 @@ def setup(targets:Maybe[list[pl.Path]|False]=None, prefix:Maybe[str]=TOOL_PREFIX
         case _:
             targets : list[pl.Path] = [pl.Path(x) for x in constants.paths.DEFAULT_LOAD_TARGETS]
 
-    logging.debug("Loading Doot Config, version: %s targets: %s", __version__, targets)
+    logging.log(0, "Loading Doot Config, version: %s targets: %s", __version__, targets)
     if bool(config):
         logging.warning("doot.setup called even though doot is already set up")
 
