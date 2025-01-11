@@ -2,7 +2,7 @@
 """
 The doot cli runner
 """
-# ruff: noqa: PLR0912 BLE001
+# ruff: noqa: PLR0912, BLE001
 # Imports:
 from __future__ import annotations
 
