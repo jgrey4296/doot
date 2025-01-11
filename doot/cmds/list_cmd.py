@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+#
 """
 
 """
@@ -69,9 +70,119 @@ FMT_STR      : Final[str]       = doot.config.on_fail("{indent}{val}").settings.
 hide_names   : Final[list[str]] = doot.config.on_fail([]).settings.commands.list.hide()
 hide_re      : Final[Rx]        = re.compile("^({})".format("|".join(hide_names)))
 
+class _TaskLister_m:
+
+    def _list_tasks(self, tasks) -> list[ListVal]:
+        logging.info("---- Listing tasks")
+
+        result = []
+        result.append(("Registered Tasks/Jobs:", {"colour":"cyan"}))
+        if not bool(tasks):
+            result.append(("!! No Tasks Defined", {"colour":"cyan"}))
+            return result
+
+        max_key            = len(max(tasks.keys(), key=len, default="def"))
+        fmt_strs, base_vars = self._build_format_strings()
+        data : list[dict]  = []
+
+        logging.info("-- Collecting Tasks")
+        for spec in tasks.values():
+            data.append(
+                base_vars | {
+                    "indent" : " "*(1 + len(GROUP_INDENT) + len(spec.name[0:]) + 2),
+                    "internal" : Strang.bmark_e.hide in spec.name,
+                    "disabled" : TaskMeta_e.DISABLED in spec.meta,
+                    "group"  : spec.name[0:],
+                    "val"    : spec.name[1:],
+                    "full"   : spec.name,
+                    "docstr" : (spec.doc[0] if bool(spec.doc) else "")[:60],
+                    "source" : (spec.sources[0] if bool(spec.sources) else "(No Source)"),
+                },
+            )
+
+        data    = self._filter_tasks(data)
+        grouped = self._group_tasks(data)
+
+        logging.info("-- Formatting")
+        for group, items in grouped.items():
+            result.append((f"*{GROUP_INDENT}{group}::", {"colour":"magenta"}))
+            for task in items:
+                result.append(" ".join(x.format_map(task) for x in fmt_strs))
+
+        else:
+            return result
+
+    def _build_format_strings(self) -> tuple[list[str], dict]:
+        """ Builds the format string from args"""
+        pieces   = []
+        var_dict = {"indent": GROUP_INDENT, "val": "null"}
+
+        match doot.args.on_fail(None).cmd.args.group_by():
+            case "source":
+                pieces.append("- {full}")
+            case _:
+                pieces.append(FMT_STR)
+
+        # Add docstr
+        if doot.args.on_fail(False).cmd.args.docstr():
+            pieces.append(" :: {docstr}")
+
+        # add source
+        if doot.args.on_fail(False).cmd.args.source():
+            pieces.append(" :: {source}")
+
+        # add params
+        if doot.args.on_fail(False).cmd.args.params():
+            # TODO
+            pass
+
+        if doot.args.on_fail(False).cmd.args.dependencies():
+            # TODO
+            pass
+
+
+        return pieces, var_dict
+
+    def _filter_tasks(self, data) -> list[dict]:
+        logging.info("-- Filtering: %s", len(data))
+        show_internal    = doot.args.on_fail(False).cmd.args.internal()
+        no_hide_names    = bool(hide_names)
+        match doot.args.on_fail(None).cmd.args.pattern.lower():
+            case None | "":
+                pattern = None
+            case str() as x:
+                pattern = re.compile(x, flags=re.IGNORECASE)
+
+        def _filter_fn(item):
+            return all([not item['disabled'],
+                        show_internal or not item['internal'],
+                        pattern is None or pattern.match(item['full']),
+                        no_hide_names or hide_re.search(item['full']),
+                        ])
+
+        return list(filter(_filter_fn, data))
+
+    def _group_tasks(self, data:list[dict]) -> dict[str,list]:
+        logging.info("-- Grouping: %s", len(data))
+        result = defaultdict(list)
+
+        match doot.args.on_fail(None).cmd.args.group_by():
+            case None | "group":
+                def _group_fn(item) -> str:
+                    return item['group']
+            case "source":
+                def _group_fn(item) -> str:
+                    return item['source']
+            case x:
+                raise ValueError("Unknown group-by arg", x)
+
+        for item in data:
+            result[_group_fn(item)].append(item)
+
+        return result
 
 @doot.check_protocol
-class ListCmd(BaseCommand):
+class ListCmd(_TaskLister_m, BaseCommand):
     _name      = "list"
     _help  : ClassVar[list[str]]    = [
         "A simple command to list all loaded task heads.",
@@ -89,16 +200,17 @@ class ListCmd(BaseCommand):
             self.build_param(prefix="--", name="plugins",                  type=bool, default=False, desc="List All Known Plugins"),
             self.build_param(prefix="--", name="locs",      _short="l",    type=bool, default=False, desc="List all Loaded Locations"),
             self.build_param(prefix="--", name="tasks",  default=True,  desc="List all loaded tasks, by group"),
+            self.build_param(prefix="--", name="dag",       _short="D",    type=bool, default=False, desc="Output a DOT compatible graph of tasks"),
 
             # Task Listing Parameters
-            self.build_param(name="group-by", type=str, desc="How to group listed tasks")
-            self.build_param(name="dependencies",             type=bool, default=False, desc="List task dependencies"),
-            self.build_param(name="dag",       _short="D",    type=bool, default=False, desc="Output a DOT compatible graph of tasks"),
-            self.build_param(name="groups",                   type=bool, default=False, desc="List just the groups tasks fall into"),
-            self.build_param(name="by-source",                type=bool, default=False, desc="List all loaded tasks, by source file"),
-            self.build_param(name="internal",  _short="i",    type=bool, default=False, desc="Include internal tasks (ie: prefixed with an underscore)"),
+            self.build_param(name="group-by",                 type=str,  default="group", desc="How to group listed tasks"),
+            self.build_param(prefix="+", name="dependencies",             type=bool, default=False, desc="List task dependencies"),
 
-            self.build_param(prefix=1, name="pattern", type=str,  default="", desc="Filter the listing to only values passing this regex"),
+            self.build_param(prefix="+", name="internal",  _short="i",    type=bool, default=False, desc="Include internal tasks (ie: prefixed with an underscore)"),
+            self.build_param(prefix="+", name="docstr", type=bool, default=False),
+            self.build_param(prefix="+", name="params", type=bool, default=False),
+
+            self.build_param(prefix=1, name="pattern",        type=str,  default="", desc="Filter the listing to only values passing this regex"),
             ]
 
     def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
@@ -132,92 +244,6 @@ class ListCmd(BaseCommand):
                     cmd_l.info(s, extra=d)
                 case None:
                     cmd_l.info("")
-
-    def _build_format_string(self) -> tuple[str, dict]:
-        """ Builds the format string from args"""
-        pieces   = [FMT_STR]
-        var_dict = {"indent": GROUP_INDENT, "val": "null"}
-
-        # Add docstr
-
-        # add source
-
-        # add params
-
-        return "".join(pieces), var_dict
-
-    def _list_tasks(self, tasks) -> list[ListVal]:
-        logging.info("---- Listing tasks")
-
-        result = []
-        result.append(("Registered Tasks/Jobs:", {"colour":"cyan"}))
-        if not bool(tasks):
-            result.append(("!! No Tasks Defined", {"colour":"cyan"}))
-            return result
-
-        max_key            = len(max(tasks.keys(), key=len, default="def"))
-        fmt_str, base_vars = self._build_format_string()
-        data : list[dict]  = []
-
-        logging.info("-- Collecting Tasks")
-        for spec in tasks.values():
-            if Strang.bmark_e.hide in spec.name and not doot.args.cmd.args.internal:
-                continue
-            if TaskMeta_e.DISABLED in spec.meta:
-                continue
-            if bool(hide_names) and hide_re.search(str(spec.name)):
-                continue
-
-            data.append(
-                base_vars | {
-                    "indent" : " "*(1 + len(GROUP_INDENT) + len(spec.name[0:]) + 2),
-                    "internal" : Strang.bmark_e.hide in spec.name,
-                    "disabled" : TaskMeta_e.DISABLED in spec.meta,
-                    "group"  : spec.name[0:],
-                    "val"    : spec.name[1:],
-                    "full"   : spec.name,
-                    "docstr" : (spec.doc[0] if bool(spec.doc) else "")[:60],
-                    "source" : (spec.sources[0] if bool(spec.sources) else "(No Source)"),
-                },
-            )
-
-        logging.info("-- Filtering")
-        match doot.args.on_fail(None).cmd.args.pattern.lower(wrapper=re.compile):
-            case None:
-                pass
-            case re.Pattern() as reg:
-                data = [x for x in data if reg.match(x['full'])]
-
-        logging.info("-- Grouping")
-        grouped = self._group_and_sort_items(data)
-
-        logging.info("-- Formatting"
-        for group, items in grouped.items():
-            result.append((f"*{GROUP_INDENT}{group}::", {"colour":"magenta"}))
-            for task in items:
-                result.append(fmt_str.format_map(task))
-
-        else:
-            return result
-
-
-
-    def _group_and_sort_items(self, data:list[dict]) -> dict[str,list]:
-        result = defaultdict(list)
-
-        match doot.args.on_fail(None).cmd.args.group_by():
-            case None | "group":
-                pass
-            case "source":
-                pass
-            case x:
-                raise ValueError("Unknown group-by arg", x)
-
-
-        for val in data:
-            pass
-
-        return result
 
     def _list_locations(self) -> list[ListVal]:
         logging.info("---- Listing Defined Locations")

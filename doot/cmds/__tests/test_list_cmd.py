@@ -61,7 +61,6 @@ class TestListCmd:
         result = obj.param_specs
         assert(isinstance(result, list))
         names = [x.name for x in result]
-        assert("all" in names)
         assert("dependencies"in names)
         assert("pattern" in names)
         assert("help" in names)
@@ -70,7 +69,6 @@ class TestListCmd:
         guard = ChainGuard.read(
 """
 [cmd.args]
-all       = false
 by_source = false
 pattern   = ""
 """)
@@ -85,7 +83,7 @@ pattern   = ""
         guard = ChainGuard.read(
 """
 [cmd.args]
-all     = true
+tasks = true
 pattern = ""
 """)
         mocker.patch("doot.args", new=guard)
@@ -100,7 +98,7 @@ pattern = ""
         mocker.patch("doot.args", new=ChainGuard.read(
 """
 [cmd.args]
-all = true
+tasks = true
 pattern = ""
 """))
         obj = ListCmd()
@@ -118,16 +116,18 @@ pattern = ""
         obj(job_mock, plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
-        assert("defined task generators by group:" in message_set)
-        assert(any(x.startswith("simple :: ") for x in message_set) )
-        assert(any(x.startswith("other  :: ") for x in message_set) )
+        assert("registered tasks/jobs:" in message_set)
+        assert(any(x.startswith("*    blah::") for x in message_set) )
+        assert(any(x.startswith("*    bloo::") for x in message_set) )
+        assert(any(x.startswith("simple") for x in message_set) )
+        assert(any(x.startswith("other") for x in message_set) )
 
     def test_list_even_with_ctor_failure(self, caplog, mocker):
         caplog.set_level(logmod.DEBUG, logger="_printer_")
         mocker.patch("doot.args", new=ChainGuard.read(
 """
 [cmd.args]
-all = true
+tasks = true
 pattern = ""
 """))
         obj = ListCmd()
@@ -141,8 +141,8 @@ pattern = ""
         obj(job_mock, plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
-        assert("defined task generators by group:" in message_set)
-        assert(any(x.startswith("simple :: ") for x in message_set) )
+        assert("registered tasks/jobs:" in message_set)
+        assert(any(x.startswith("simple") for x in message_set) )
         assert(any(x.startswith("ctor import failed") for x in message_set) )
 
 
@@ -151,8 +151,8 @@ pattern = ""
         mocker.patch("doot.args", new=ChainGuard.read(
 """
 [cmd.args]
-all = false
-pattern = "simple"
+tasks = true
+pattern = ".+simple"
 """))
         obj = ListCmd()
         plugin_mock  = {"reporter": [mocker.stub("Reporter Stub")]}
@@ -163,16 +163,17 @@ pattern = "simple"
         result = obj(job_mock, plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
-        assert("tasks for pattern: simple" in message_set)
-        assert( any(x.startswith("blah::simple :: cls::doot.task.base_task:doottask") for x in message_set) )
+        assert("registered tasks/jobs:" in message_set)
+        assert( any(x.startswith("simple") for x in message_set) )
+        assert( not any(x.startswith("other") for x in message_set) )
 
     def test_call_partial_target_not_empty(self, caplog, mocker):
         caplog.set_level(logmod.DEBUG, logger="_printer_")
         mocker.patch("doot.args", new=ChainGuard.read(
 """
 [cmd.args]
-all = false
-pattern = "simp"
+tasks = true
+pattern = ".+simp"
 """))
         obj = ListCmd()
         plugin_mock = {"reporter": [mocker.stub("Reporter Stub")]}
@@ -183,9 +184,9 @@ pattern = "simp"
         result = obj(job_mock, plugin_mock)
         message_set : set[str] = {x.message.lower().strip() for x in caplog.records}
 
-        assert("tasks for pattern: simp" in message_set)
-        assert( any(x.startswith("blah::simple     :: cls::doot.task.base_task:doottask") for x in message_set) )
-        assert( any(x.startswith("bloo::diffsimple :: cls::doot.task.base_task:doottask") for x in message_set) )
+        assert("registered tasks/jobs:" in message_set)
+        assert( any(x.startswith("simple") for x in message_set) )
+        assert( any(x.startswith("diffsimple") for x in message_set) )
 
 
 @pytest.mark.skip
