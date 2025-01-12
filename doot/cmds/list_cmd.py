@@ -181,8 +181,103 @@ class _TaskLister_m:
 
         return result
 
+class _LocationLister_m:
+
+    def _list_locations(self) -> list[ListVal]:
+        logging.info("---- Listing Defined Locations")
+        result = []
+        result.append("Defined Locations: ")
+
+        for x in sorted(doot.locs.Current):
+            loc = doot.locs.Current.get(x)
+            result.append(f"-- {x:-25} : {loc} ")
+        else:
+            return result
+
+
+class _LoggerLister_m:
+
+    def _list_loggers(self) -> list[ListVal]:
+        logging.info("---- Listing Logging/Printing info")
+        acceptable_names    = doot.constants.printer.PRINTER_CHILDREN
+        from jgdv.logging.logger_spec import TARGETS
+
+        result = []
+
+        result.append("--- Primary Loggers:")
+        result.append("- printer  ( target= ) : For user-facing output")
+        result.append("- stream   ( target= )")
+        result.append("- file     ( target= filename_fmt=%str ) ")
+
+        result.append(None)
+        result.append("--- Sub-Printer Loggers: ")
+        result.append("(Additional control over user-facing output )")
+        result += [f"- {x}" for x in sorted(acceptable_names)]
+
+        result.append(None)
+        result.append("--- Logging Targets: (Where a logger outputs to)")
+        result += [ f"- {x}" for x in TARGETS ]
+
+        result.append(None)
+        result.append("--- Notes: ")
+        result.append("Format is the {} form of log formatting")
+        result.append("Available variables are found here:")
+        result.append("https://docs.python.org/3/library/logging.html#logrecord-attributes")
+        result.append(None)
+        return result
+
+
+class _FlagLister_m:
+
+    def _list_flags(self) -> list[ListVal]:
+        logging.info("---- Listing Task Flags")
+        result = []
+        result.append("Task Flags: ")
+        for x in sorted(doot.enums.TaskMeta_e, key=lambda x: x.name):
+            result.append(f"-- {x.name}")
+        else:
+            return result
+class _ActionLister_m:
+
+    def _list_actions(self, plugins) -> list[ListVal]:
+        logging.info("---- Listing Available Actions")
+        result = []
+        result.append("Available Actions:")
+        for action in sorted(plugins.action, key=lambda x: x.name):
+            result.append(f"-- {action.name:-20} : {action.value}")
+
+        result.append(None)
+        result.append("- For Custom Python Actions, implement the following in the .tasks directory")
+        result.append("def custom_action(spec:ActionSpec, task_state:dict) -> Maybe[bool|dict]:...")
+        return result
+
+class _PluginLister_m:
+    def _list_plugins(self, plugins) -> list[ListVal]:
+        logging.info("---- Listing Plugins")
+        result = []
+        result.append(("Defined Plugins by Group:", {"colour":"cyan"}))
+        max_key = len(max(plugins.keys(), key=len))
+        fmt_str = f"{INDENT}%-{max_key}s :: %-25s"
+        groups  = defaultdict(list)
+        pass
+        for group_str, specs in plugins.items():
+            groups[group_str] += [(spec.name, spec.value) for spec in specs]
+
+        for group, items in groups.items():
+            result.append((f"*   {group}::", {"colour":"magenta"}))
+            for plugin in items:
+                result.append(fmt_str % plugin)
+
+        result.append(None)
+        return result
 @doot.check_protocol
-class ListCmd(_TaskLister_m, BaseCommand):
+class ListCmd(_TaskLister_m,
+              _LocationLister_m,
+              _LoggerLister_m,
+              _FlagLister_m,
+              _ActionLister_m,
+              _PluginLister_m,
+              BaseCommand):
     _name      = "list"
     _help  : ClassVar[list[str]]    = [
         "A simple command to list all loaded task heads.",
@@ -244,83 +339,3 @@ class ListCmd(_TaskLister_m, BaseCommand):
                     cmd_l.info(s, extra=d)
                 case None:
                     cmd_l.info("")
-
-    def _list_locations(self) -> list[ListVal]:
-        logging.info("---- Listing Defined Locations")
-        result = []
-        result.append("Defined Locations: ")
-
-        for x in sorted(doot.locs.Current):
-            loc = doot.locs.Current.get(x)
-            result.append(f"-- {x:-25} : {loc} ")
-        else:
-            return result
-
-    def _list_loggers(self) -> list[ListVal]:
-        logging.info("---- Listing Logging/Printing info")
-        acceptable_names    = doot.constants.printer.PRINTER_CHILDREN
-        from jgdv.logging.logger_spec import TARGETS
-
-        result = []
-
-        result.append("--- Primary Loggers:")
-        result.append("- printer  ( target= ) : For user-facing output")
-        result.append("- stream   ( target= )")
-        result.append("- file     ( target= filename_fmt=%str ) ")
-
-        result.append(None)
-        result.append("--- Sub-Printer Loggers: ")
-        result.append("(Additional control over user-facing output )")
-        result += [f"- {x}" for x in sorted(acceptable_names)]
-
-        result.append(None)
-        result.append("--- Logging Targets: (Where a logger outputs to)")
-        result += [ f"- {x}" for x in TARGETS ]
-
-        result.append(None)
-        result.append("--- Notes: ")
-        result.append("Format is the {} form of log formatting")
-        result.append("Available variables are found here:")
-        result.append("https://docs.python.org/3/library/logging.html#logrecord-attributes")
-        result.append(None)
-        return result
-
-    def _list_flags(self) -> list[ListVal]:
-        logging.info("---- Listing Task Flags")
-        result = []
-        result.append("Task Flags: ")
-        for x in sorted(doot.enums.TaskMeta_e, key=lambda x: x.name):
-            result.append(f"-- {x.name}")
-        else:
-            return result
-
-    def _list_actions(self, plugins) -> list[ListVal]:
-        logging.info("---- Listing Available Actions")
-        result = []
-        result.append("Available Actions:")
-        for action in sorted(plugins.action, key=lambda x: x.name):
-            result.append(f"-- {action.name:-20} : {action.value}")
-
-        result.append(None)
-        result.append("- For Custom Python Actions, implement the following in the .tasks directory")
-        result.append("def custom_action(spec:ActionSpec, task_state:dict) -> Maybe[bool|dict]:...")
-        return result
-
-    def _list_plugins(self, plugins) -> list[ListVal]:
-        logging.info("---- Listing Plugins")
-        result = []
-        result.append(("Defined Plugins by Group:", {"colour":"cyan"}))
-        max_key = len(max(plugins.keys(), key=len))
-        fmt_str = f"{INDENT}%-{max_key}s :: %-25s"
-        groups  = defaultdict(list)
-        pass
-        for group_str, specs in plugins.items():
-            groups[group_str] += [(spec.name, spec.value) for spec in specs]
-
-        for group, items in groups.items():
-            result.append((f"*   {group}::", {"colour":"magenta"}))
-            for plugin in items:
-                result.append(fmt_str % plugin)
-
-        result.append(None)
-        return result
