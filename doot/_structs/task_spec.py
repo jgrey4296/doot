@@ -18,6 +18,7 @@ import pathlib as pl
 import re
 import time
 import types
+import typing
 import weakref
 from dataclasses import _MISSING_TYPE, InitVar, dataclass, field, fields
 from importlib.metadata import EntryPoint
@@ -31,30 +32,36 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
+import jgdv.structs.strang.errors as StrangErrs
+from jgdv import Maybe
+from jgdv.cli import ParamSpec
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.dkey import DKey
+from jgdv.structs.strang import CodeReference
+from jgdv.structs.strang.location import Location
 from pydantic import (BaseModel, BeforeValidator, Field, ValidationError,
                       ValidationInfo, ValidatorFunctionWrapHandler,
                       WrapValidator, field_validator, model_validator)
-from jgdv import Maybe
-from jgdv.structs.chainguard import ChainGuard
 from typing_extensions import Annotated
-from jgdv.structs.strang import CodeReference
-from jgdv.structs.strang.location import Location
-from jgdv.structs.dkey import DKey
-from jgdv.cli import ParamSpec
+
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract.protocols import SpecStruct_p, ProtocolModelMeta, Buildable_p
-from doot._abstract.task import Task_i
 from doot._abstract.control import QueueMeta_e
-from .action_spec import ActionSpec
-from .artifact import TaskArtifact
-from .relation_spec import RelationSpec, RelationMeta_e
-from .task_name import TaskName
+from doot._abstract.protocols import (Buildable_p, ProtocolModelMeta,
+                                      SpecStruct_p)
+from doot._abstract.task import Task_i
 
 # ##-- end 1st party imports
+
+from .action_spec import ActionSpec
+from .artifact import TaskArtifact
+from .relation_spec import RelationMeta_e, RelationSpec
+from .task_name import TaskName
+
+# # End of Imports.
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -399,7 +406,8 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
         """ converts a-key into a_key, and joins group+name """
         cleaned = {k.replace("-","_") : v  for k,v in data.items()}
         if "group" in cleaned and TaskName._separator not in cleaned["name"]:
-            cleaned['name'] = TaskName.from_parts(cleaned['group'], cleaned['name'])
+            # cleaned['name'] = TaskName.from_parts(cleaned['group'], cleaned['name'])
+            cleaned['name'] = TaskName._separator.join([cleaned['group'], cleaned['name']])
             del cleaned['group']
         return cleaned
 
@@ -433,8 +441,11 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
             case TaskName():
                 return val
             case str():
-                name = TaskName(val)
-                return name
+                try:
+                    name = TaskName(val)
+                    return name
+                except StrangErrs.StrangError as err:
+                    raise ValueError(err)
             case _:
                 raise TypeError("A TaskSpec Name should be a str or TaskName", val)
 
@@ -500,8 +511,10 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
                     try:
                         name = TaskName(x)
                         result.append(name)
-                    except (ValueError, ValidationError):
+                    except (StrangErrs.StrangError, ValueError, ValidationError):
                         result.append(pl.Path(x))
+                case x:
+                    raise TypeError("Bad Typed Source", x)
 
         return result
 

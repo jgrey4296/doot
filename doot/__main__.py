@@ -49,7 +49,8 @@ shutdown_l      = doot.subprinter("shutdown")
 fail_l          = doot.subprinter("fail")
 ##-- end logging
 
-template_path      = files("doot.__templates")
+template_path   = files("doot.__templates")
+fail_prefix     = "!!!"
 
 def main() -> None:
     """ The Main Doot CLI Program.
@@ -63,6 +64,8 @@ def main() -> None:
             doot.setup()
     except doot.errors.MissingConfigError:
         doot._null_setup()
+    finally:
+        fail_prefix = doot.constants.printer.fail_prefix
 
     try:
         # ##-- 1st party imports
@@ -86,29 +89,39 @@ def main() -> None:
         base_target = pl.Path(doot.constants.on_fail(["doot.toml"]).paths.DEFAULT_LOAD_TARGETS()[0])
         # Handle missing files
         if base_target.exists():
-            fail_l.error("Base Config Target exists but it contains no valid config: %s", base_target)
+            fail_l.exception("Base Config Target exists but it contains no valid config: %s", base_target)
         else:
             fail_l.warning("No toml config data found, create a doot.toml by calling `doot stub --config`")
     except doot.errors.ConfigError as err:
-        fail_l.warning(err)
+        fail_l.warning("Config Error: %s", err)
     except doot.errors.TaskError as err:
         fail_prefix = doot.constants.printer.fail_prefix
-        fail_l.error("%s %s : %s", err, exc_info=err)
-        fail_l.error("%s Source: %s", fail_prefix, err.task_source)
+        fail_l.exception("%s Task Error : %s : %s", err, exc_info=err)
+        fail_l.exception("%s Source: %s", fail_prefix, err.task_source)
+    except doot.errors.StructLoadError as err:
+        match err.args:
+            case [str() as msg, dict() as errs]:
+                fail_l.error("%s Struct Load Errors : %s", fail_prefix, msg)
+                fail_l.error("")
+                for x,y in errs.items():
+                    fail_l.error("---- File: %s", x)
+                    for val in y:
+                        fail_l.error("- %s", val)
+                    else:
+                        fail_l.error("")
+            case _:
+                fail_l.exception("%s Struct Load Error: %s", fail_prefix, err, exc_info=err)
     except doot.errors.BackendError as err:
-        fail_prefix = doot.constants.printer.fail_prefix
-        fail_l.error("%s %s", fail_prefix, err, exc_info=err)
+        fail_l.exception("%s Backend Error: %s", fail_prefix, err, exc_info=err)
     except doot.errors.FrontendError as err:
-        fail_prefix = doot.constants.printer.fail_prefix
-        fail_l.error("%s %s : %s", fail_prefix, err, err.__cause__)
+        fail_l.exception("%s Frontend Error : %s : %s", fail_prefix, err, err.__cause__)
     except doot.errors.DootError as err:
-        fail_prefix = doot.constants.printer.fail_prefix
-        fail_l.error("%s %s", fail_prefix,  err, exc_info=err)
+        fail_l.exception("%s Doot Error : %s", fail_prefix,  err, exc_info=err)
     except NotImplementedError as err:
-        fail_l.error("Not Implemented: %s", err, exc_info=err)
+        fail_l.exception("Not Implemented: %s", err, exc_info=err)
     except Exception as err:
         pl.Path("doot.lasterror").write_text(stackprinter.format())
-        fail_l.error("Python Error:", exc_info=err)
+        fail_l.exception("Python Error:", exc_info=err)
     finally:
         if overlord:
             overlord.shutdown()
