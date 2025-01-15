@@ -168,7 +168,6 @@ class TestStateTracker:
                 continue
             assert(x.status in [TaskStatus_e.DEAD])
 
-    @pytest.mark.xfail
     def test_next_job_head(self):
         obj       = StateTracker()
         job_spec  = doot.structs.TaskSpec.build({"name":"basic::+.job", "meta": ["JOB"], "cleanup":["basic::task"]})

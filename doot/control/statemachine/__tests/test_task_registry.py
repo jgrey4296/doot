@@ -79,7 +79,7 @@ class TestRegistry:
 
     def test_register_spec_with_artifacts(self):
         obj  = TaskRegistry()
-        spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["file::test.txt"], "required_for": ["file::other.txt"]})
+        spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["file::>test.txt"], "required_for": ["file::>other.txt"]})
         assert(not bool(obj.artifacts))
         obj.register_spec(spec)
         assert(bool(obj.artifacts))

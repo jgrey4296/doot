@@ -130,7 +130,7 @@ class TestDKeyWithParameters:
 class TestDKeyExpansion:
 
     def test_expansion_to_str_for_expansion_with_path(self, wrap_locs):
-        wrap_locs.update({"raise": "file::a/b/blah.py"})
+        wrap_locs.update({"raise": "file::>a/b/blah.py"})
         assert("raise" in wrap_locs)
         state = {"middle": "Before. {raise!p}. After."}
         target        = "Before. {}. After.".format(wrap_locs['{raise}'])
@@ -140,7 +140,7 @@ class TestDKeyExpansion:
         assert(result == target)
 
     def test_expansion_to_str_for_expansion_with_path_expansion(self, wrap_locs):
-        wrap_locs.update({"raise": "dir::{major}/blah", "major": "dir::head"})
+        wrap_locs.update({"raise": "dir::>{major}/blah", "major": "dir::>head"})
         state = {"middle": "Before. {subpath!p}. After.", "subpath":"{raise!p}/{aweo}", "aweo":"aweg"}
         target        = "Before. {}. After.".format(doot.locs["head/blah/aweg"])
         key           = dkey.DKey("middle", implicit=True)
@@ -269,7 +269,7 @@ class TestDKeyPathKeys:
     @pytest.mark.parametrize("name", ["a", "b"])
     def test_multikey_with_subpath(self, name, wrap_locs):
         """ {name!p}/{name} -> {x}/{x} -> Path(y/y) """
-        wrap_locs.update({"changelog": "file::sub/changelog.md"})
+        wrap_locs.update({"changelog": "file::>sub/changelog.md"})
         state       = {name :"{changelog}"}
         target      = "--test=%s/x {missing}" % wrap_locs.changelog
         path_marked = "--test={%s!p}/x {missing}" % name
@@ -347,7 +347,7 @@ class TestDKeyPathKeys:
             assert(obj.expand() == pl.Path("~").expanduser())
 
     def test_multi_layer_path_key(self, wrap_locs):
-        wrap_locs.update({"data_drive": "dir::/media/john/data", "pdf_source": "dir::{data_drive}/library/pdfs"})
+        wrap_locs.update({"data_drive": "dir::>/media/john/data", "pdf_source": "dir::>{data_drive}/library/pdfs"})
         state = {}
         obj = dkey.DKey("pdf_source!p", implicit=True)
         assert(isinstance(obj, dkey.DKey))

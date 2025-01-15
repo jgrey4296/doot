@@ -82,7 +82,7 @@ class TestTrackerStore:
 
     def test_register_spec_with_artifacts(self):
         obj  = BaseTracker()
-        spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["file:>test.txt"], "required_for": ["file:>other.txt"]})
+        spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["file::>test.txt"], "required_for": ["file::>other.txt"]})
         assert(not bool(obj.artifacts))
         obj.register_spec(spec)
         assert(bool(obj.artifacts))
@@ -345,8 +345,8 @@ class TestTrackerNetworkBuild:
     def test_build_dep_chain_with_artifact(self):
         """check basic::task triggers basic::dep via the intermediary of the artifact test.blah"""
         obj  = BaseTracker()
-        spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["file:>test.blah"]})
-        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "required_for":["file:>test.blah"]})
+        spec = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["file::>test.blah"]})
+        spec2 = doot.structs.TaskSpec.build({"name":"basic::dep", "required_for":["file::>test.blah"]})
         obj.register_spec(spec, spec2)
         instance = obj.queue_entry(spec.name)
         assert(not bool(obj.network.adj[obj._root_node]))
@@ -500,7 +500,7 @@ class TestTrackerNetworkBuild:
 
     def test_build_with_concrete_artifact(self):
         obj   = BaseTracker()
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["file:>basic.txt"]})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["file::>basic.txt"]})
         obj.register_spec(spec)
         instance = obj._instantiate_spec(spec.name)
         assert(len(obj.network) == 1)
@@ -512,7 +512,7 @@ class TestTrackerNetworkBuild:
 
     def test_build_with_concrete_artifact(self):
         obj   = BaseTracker()
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "required_for":["file:>basic.txt"]})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "required_for":["file::>basic.txt"]})
         obj.register_spec(spec)
         instance = obj._instantiate_spec(spec.name)
         assert(len(obj.network) == 1)
@@ -524,7 +524,7 @@ class TestTrackerNetworkBuild:
 
     def test_build_with_abstract_artifact(self):
         obj   = BaseTracker()
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["file:>*.txt"]})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":["file::>*.txt"]})
         obj.register_spec(spec)
         instance = obj._instantiate_spec(spec.name)
         assert(len(obj.network) == 1)
@@ -535,8 +535,8 @@ class TestTrackerNetworkBuild:
 
     def test_build_artifact_chain(self):
         obj          = BaseTracker()
-        consumer     = doot.structs.TaskSpec.build({"name":"basic::consumer", "depends_on":["file:>*.txt"]})
-        producer     = doot.structs.TaskSpec.build({"name":"basic::producer", "required_for":["file:>blah.txt"]})
+        consumer     = doot.structs.TaskSpec.build({"name":"basic::consumer", "depends_on":["file::>*.txt"]})
+        producer     = doot.structs.TaskSpec.build({"name":"basic::producer", "required_for":["file::>blah.txt"]})
         dep_artifact = consumer.depends_on[0].target
         req_artifact = producer.required_for[0].target
         obj.register_spec(consumer, producer)
