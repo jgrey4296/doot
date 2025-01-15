@@ -140,24 +140,26 @@ class BaseRunner(TaskRunner_i):
                 pass
             case doot.errors.TaskFailed() as err:
                 self._signal_failure = err
-                fail_l.warning("%s %s", fail_prefix, err)
+                fail_l.warning("%s Halting: %s", fail_prefix, err)
                 self.tracker.set_status(err.task, TaskStatus_e.HALTED)
             case doot.errors.TaskError() as err:
                 self._signal_failure = err
-                fail_l.warning("%s %s", fail_prefix, err)
                 self.tracker.set_status(err.task, TaskStatus_e.FAILED)
+                raise err
             case doot.errors.TrackingError() as err:
                 self._signal_failure = err
-                fail_l.warning("%s %s", fail_prefix, err)
                 self.tracker.set_status(task, TaskStatus_e.FAILED)
+                raise err
             case doot.errors.DootError() as err:
                 self._signal_failure = err
-                fail_l.warning("%s %s", fail_prefix, err)
                 self.tracker.set_status(task, TaskStatus_e.FAILED)
+                raise err
             case _:
                 self._signal_failure = doot.errors.DootError("Unknown Failure")
                 fail_l.exception("%s Unknown failure occurred: %s", fail_prefix, failure)
                 self.tracker.set_status(task, TaskStatus_e.FAILED)
+                raise err
+
 
     def _sleep(self, task):
         """
@@ -175,5 +177,6 @@ class BaseRunner(TaskRunner_i):
 
     def _notify_artifact(self, art:TaskArtifact) -> None:
         """ A No-op for when the tracker gives an artifact """
-        artifact_l.info("---- Artifact: %s : %s", art, art.expand())
+        artifact_l.info("---- Artifact: %s", art)
         self.reporter.add_trace(art, flags=Report_f.ARTIFACT)
+        raise doot.errors.StateError("Artifact resolutely does not exist", art)

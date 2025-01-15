@@ -31,6 +31,7 @@ class TestTaskName:
         assert(simple.group == [ "basic"])
         assert(simple.body() == ["tail"])
 
+
     def test_build(self):
         simple = TaskName("basic::tail")
         assert(simple.group == [ "basic"])

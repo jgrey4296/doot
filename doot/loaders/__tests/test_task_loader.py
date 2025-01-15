@@ -40,7 +40,7 @@ class TestTaskLoader:
         specs['tasks']['basic'].append({"name"  : "test", "class" : "doot.task.base_job:DootJob"})
         basic = task_loader.DootTaskLoader()
         basic.setup({})
-        result = basic._load_raw_specs(ChainGuard(specs).tasks, "test_file")
+        result = basic._get_raw_specs_from_data(ChainGuard(specs).tasks, "test_file")
 
         assert(isinstance(result, list))
         assert(len(result) == 1)
@@ -77,7 +77,7 @@ class TestTaskLoader:
         assert("basic::test" in result)
         assert("basic::other" in result)
 
-    def test_name_warn_on_overload(self, mocker, caplog):
+    def test_name_error_on_overload(self, mocker, caplog):
         mocker.patch("doot.loaders.task_loader.task_sources")
         mocker.patch("doot._configs_loaded_from")
 
@@ -86,11 +86,10 @@ class TestTaskLoader:
         specs['tasks']['basic'].append({"name"  : "test", "ctor": "doot.task.base_job:DootJob"})
         basic = task_loader.DootTaskLoader()
         basic.setup({}, specs)
+        assert(not bool(basic.tasks))
         task_loader.allow_overloads = False
-
-        basic.load()
-
-        assert(any("Overloading Task: basic::test" in x for x in caplog.messages))
+        with pytest.raises(doot.errors.StructLoadError):
+            basic.load()
 
     def test_cmd_name_conflict_doesnt_error(self, mocker):
         mocker.patch("doot.loaders.task_loader.task_sources")
@@ -102,6 +101,8 @@ class TestTaskLoader:
         basic.setup({}, specs)
         basic.cmd_names = set(["test"])
 
+        assert(not bool(basic.tasks))
+        assert(not bool(basic.failures))
         result = basic.load()
         assert(bool(result))
 

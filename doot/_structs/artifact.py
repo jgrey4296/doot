@@ -164,3 +164,7 @@ class TaskArtifact(Location):
         result.append(f"{stem}{ext}")
 
         return self.__class__("/".join(result))
+
+    def exists(self) -> bool:
+        as_path = pl.Path(self[1:])
+        return as_path.exists()

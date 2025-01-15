@@ -31,7 +31,7 @@ from uuid import UUID, uuid1
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
 from jgdv.util.time_ctx import TimeCtx
-from jgdv.structs.strang.errors import LocationError
+from jgdv.structs.strang.errors import LocationError, StrangError
 from pydantic import ValidationError
 # ##-- end 3rd party imports
 
@@ -98,6 +98,7 @@ class DootTaskLoader(TaskLoader_p):
         self.tasks         = {}
         self.plugins       = plugins
         self.task_builders = {}
+        self.failures      = defaultdict(list)
         for plugin in ChainGuard(plugins).on_fail([]).task():
             if plugin.name in self.task_builders:
                 logging.warning("Conflicting Task Builder Type Name: %s: %s / %s",
@@ -208,40 +209,36 @@ class DootTaskLoader(TaskLoader_p):
         convert raw dicts into TaskSpec objects,
           checking nothing tries to shadow a command name or other task name
         """
-        logging.info("---- Building Task Specs")
-        task_descriptions : dict[str, TaskSpec] = {}
+        logging.info("---- Building Task Specs (%s Current)", len(self.tasks))
+        source = source or "<Sourceless>"
 
-        def detect_overloads(task_name,  group_name):
-            if task_name not in task_descriptions:
-                return False
+        def _allow_registration(task_name) -> bool:
+            logging.info("Checking: %s", task_name)
+            if allow_overloads:
+                return True
+            return task_name not in self.tasks
 
-            return group_name == task_descriptions[task_name][0]['group']
 
         for spec in group_specs:
             task_alias = "task"
             task_spec  = None
             try:
                 match spec:
-                    case {"name": task_name, "group": group} if not allow_overloads and detect_overloads(task_name, group): # complain on overload
-                        raise doot.errors.StructLoadError("Task Name Overloaded: %s : %s", task_name, group)
                     case {"name": task_name, "ctor": str() as task_alias} if task_alias in self.task_builders: # build named plugin type
                         logging.debug("Building Task from short name: %s : %s", task_name, task_alias)
-                        task_iden                   : CodeReference       = CodeReference.from_value(self.task_builders[task_alias])
-                        spec['ctor'] = task_iden
+                        spec['ctor'] = CodeReference.from_value(self.task_builders[task_alias])
                         task_spec = TaskSpec.build(spec)
-                        if str(task_spec.name) in task_descriptions:
-                            logging.warning("Overloading Task: %s : %s", str(task_spec.name), task_alias)
                     case {"name": task_name}:
                         logging.debug("Building Task: %s", task_name)
                         task_spec = TaskSpec.build(spec)
-                        if str(task_spec.name) in task_descriptions:
-                            logging.warning("Overloading Task: %s : %s", str(task_spec.name), str(task_spec.ctor))
                     case _: # Else complain
-                        raise doot.errors.StructLoadError("Task Spec missing, at least, needs at least a name and ctor: %s: %s", spec, spec['sources'][0] )
+                        raise doot.errors.StructLoadError("Task Spec missing, at least, needs at least a name and ctor", spec, spec['sources'][0] )
             except ValidationError as err:
                 for suberr in err.errors():
                     locs = ", ".join(suberr['loc'])
                     self.failures[source].append(f"({locs}) : '{suberr['input']}' :- {suberr['msg']}")
+            except StrangError as err:
+                self.failures[source].append(err)
             except LocationError as err:
                 self.failures[source].append(err)
             except ModuleNotFoundError as err:
@@ -256,7 +253,14 @@ class DootTaskLoader(TaskLoader_p):
                 self.failures[source].append(err)
             else:
                 assert(task_spec is not None)
-                self.tasks[task_spec.name] = task_spec
+                if _allow_registration(task_spec.name): # complain on overload
+                    logging.info("Registering Task: %s", task_spec.name)
+                    self.tasks[task_spec.name] = task_spec
+                else:
+                    logging.warning("Current Tasks: %s", self.tasks)
+                    err = doot.errors.StructLoadError("Task Name Overloaded", task_name)
+                    self.failures[source].append(err)
+
 
     def _load_location_updates(self, data:list[ChainGuard], source):
         logging.debug("Loading Location Updates: %s", source)

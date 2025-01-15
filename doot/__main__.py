@@ -94,10 +94,12 @@ def main() -> None:
             fail_l.warning("No toml config data found, create a doot.toml by calling `doot stub --config`")
     except doot.errors.ConfigError as err:
         fail_l.warning("Config Error: %s", err)
-    except doot.errors.TaskError as err:
-        fail_prefix = doot.constants.printer.fail_prefix
-        fail_l.exception("%s Task Error : %s : %s", err, exc_info=err)
-        fail_l.exception("%s Source: %s", fail_prefix, err.task_source)
+    except (doot.errors.TaskFailed, doot.errors.TaskError) as err:
+        fail_l.exception("%s Task Error : %s : %s", fail_prefix, err, exc_info=err)
+        fail_l.error("%s Source: %s", fail_prefix, err.task_source)
+    except doot.errors.StateError as err:
+        fail_l.error("%s State Error: %s", fail_prefix, err)
+
     except doot.errors.StructLoadError as err:
         match err.args:
             case [str() as msg, dict() as errs]:
@@ -111,10 +113,13 @@ def main() -> None:
                         fail_l.error("")
             case _:
                 fail_l.exception("%s Struct Load Error: %s", fail_prefix, err, exc_info=err)
+    except doot.errors.TrackingError as err:
+        fail_l.error("%s Tracking Failure: %s", fail_prefix, err)
+
     except doot.errors.BackendError as err:
         fail_l.exception("%s Backend Error: %s", fail_prefix, err, exc_info=err)
     except doot.errors.FrontendError as err:
-        fail_l.exception("%s Frontend Error : %s : %s", fail_prefix, err, err.__cause__)
+        fail_l.error("%s %s", fail_prefix, err)
     except doot.errors.DootError as err:
         fail_l.exception("%s Doot Error : %s", fail_prefix,  err, exc_info=err)
     except NotImplementedError as err:

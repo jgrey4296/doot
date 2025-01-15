@@ -208,7 +208,6 @@ class ComponentTracker(TaskTracker_i):
                         case []:
                             assert(not bool(focus))
                             path = focus.expand()
-                            fail_l.warning("An Artifact has no incomplete dependencies, yet doesn't exist: %s (expanded: %s)", focus, path)
                             self.queue_entry(focus)
                             # Returns the artifact, the runner can try to create it, then override the halt
                             result = focus

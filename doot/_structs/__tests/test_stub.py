@@ -66,8 +66,9 @@ class TestTaskStub:
         obj    = stub.TaskStub.build()
         as_str = obj.to_toml()
         loaded = ChainGuard.read(as_str)
-        raw = loader._load_raw_specs(loaded.tasks, None)
-        match loader._build_task_specs(raw, []):
+        raw = loader._get_raw_specs_from_data(loaded.tasks, None)
+        loader._build_task_specs(raw, [])
+        match loader.tasks:
             case {"basic::stub":stub.TaskSpec()}:
                 assert(True)
             case x:

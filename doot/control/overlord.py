@@ -201,7 +201,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
                 self.task_loader.setup(self.plugins, extra_config)
                 self.tasks = self.task_loader.load()
             case _:
-                raise TypeError("Unrecognized loader type", self.task_loader)
+                raise TypeError("Unrecognised loader type", self.task_loader)
 
     def _parse_args(self, args:Maybe[list[str]]=None) -> None:
         """ use the found task and command arguments to make sense of sys.argv """
@@ -216,7 +216,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
             case type() if isinstance((p:=ctor()), jgdv.cli.ArgParser_p):
                 self.parser = jgdv.cli.ParseMachine(parser=p)
             case _:
-                raise TypeError("Improper argparser specified: ", self.arg_parser)
+                raise TypeError("Improper argparser specified", self.arg_parser)
 
         try:
             cli_args = self.parser(
@@ -227,15 +227,15 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
                 subcmds=[("run",x) for x in self.tasks.values()],
             )
         except jgdv.cli.errors.HeadParseError as err:
-            raise doot.errors.FrontendError("Doot Head Failed to Parse") from err
+            raise doot.errors.FrontendError("Doot Head Failed to Parse", err) from err
         except jgdv.cli.errors.CmdParseError as err:
-            raise doot.errors.FrontendError("Unrecognized Command Called") from err
+            raise doot.errors.FrontendError("Unrecognised Command Called", err) from err
         except jgdv.cli.errors.SubCmdParseError as err:
-            raise doot.errors.FrontendError("Unrecognized Task Called") from err
+            raise doot.errors.FrontendError("Unrecognised Task Called", err.args[1]) from err
         except jgdv.cli.errors.ArgParseError as err:
-            raise doot.errors.FrontendError("Parsing arguments for command/task failed") from err
+            raise doot.errors.FrontendError("Parsing arguments for command/task failed", err) from err
         except jgdv.cli.ParseError as err:
-            raise doot.errors.ParseError("Failed to Parse provided cli args") from err
+            raise doot.errors.ParseError("Failed to Parse provided cli args", err) from err
 
         doot.args = ChainGuard(cli_args)
 
@@ -260,7 +260,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
             cmd(self.tasks, self.plugins)
         except doot.errors.DootError as err:
             self._errored = err
-            raise
+            raise err
         else:
             logging.info("---- Overlord Cmd Call Complete")
             return 0
@@ -317,12 +317,13 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
 
         self._record_defaulted_config_values()
 
+        shutdown_l.info("")
         match self._errored:
-            case doot.errors.DootError():
-                shutdown_l.info("---- Errors ----")
-                msg = doot.config.on_fail("Doot encountered an error").shutdown.notify.fail_msg()
+            case doot.errors.DootError() as err:
+                msg = doot.config.on_fail("Errored").shutdown.notify.fail_msg()
+                shutdown_l.info("---- %s ----", msg)
+                shutdown_l.error(err)
                 self._announce_exit(msg)
-                shutdown_l.exception(msg)
             case None:
                 msg = doot.config.on_fail("").shutdown.notify.success_msg()
                 self._announce_exit(msg)

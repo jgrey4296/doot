@@ -109,18 +109,21 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 return RelationSpec(target=TaskArtifact(data), relation=relation)
             case TaskName() | TaskArtifact():
                 return RelationSpec(target=data, relation=relation)
-            case str():
-                try:
-                    data = TaskArtifact(data)
-                except (ValueError, KeyError):
-                    data = TaskName(data)
-                return RelationSpec(target=data, relation=relation)
+            case str() as x if TaskArtifact._separator in x:
+                target = TaskArtifact(x)
+                return RelationSpec(target=target, relation=relation)
+            case str() as x if Location._separator in x:
+                target = Location(x)
+                return RelationSpec(target=target, relation=relation)
+            case str() as x if TaskName._separator in x:
+                target = TaskName(x)
+                return RelationSpec(target=target, relation=relation)
             case {"path":path} if "task" not in data:
                 return RelationSpec(target=TaskArtifact(path), relation=relation)
             case {"task": taskname}:
                 constraints = data.get("constraints", None) or data.get("constraints_", False)
                 inject      = data.get("inject", None)      or data.get("inject_", None)
-                return RelationSpec(target=taskname, constraints=constraints, inject=inject, relation=relation)
+                return RelationSpec(target=TaskName(taskname), constraints=constraints, inject=inject, relation=relation)
             case _:
                 raise ValueError("Bad data used for relation spec", data)
 

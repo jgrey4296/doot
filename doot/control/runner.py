@@ -105,7 +105,6 @@ class DootRunner(BaseRunner, TaskRunner_i):
                     pass
                 case TaskArtifact():
                     self._notify_artifact(task)
-                    raise doot.errors.TaskFailed("Artifact resolutely does not exist", task=task)
                 case Job_i() if self._test_conditions(task):
                     self._expand_job(task)
                 case Task_i() if self._test_conditions(task):
