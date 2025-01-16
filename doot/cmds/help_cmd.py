@@ -73,20 +73,20 @@ class HelpCmd(BaseCommand):
             case {"target": ""|None} if bool(doot.args.sub):
                 task_targets += [tasks[x] for x in doot.args.sub.keys()]
             case {"target": ""|None} | {"help":True}:
-                help_l.info(self.help)
+                help_l.user(self.help)
                 return
             case {"target": target}:
                 # Print help of just the specified target(s)
                 task_targets +=  [y for x,y in tasks.items() if x in target]
                 cmd_targets  +=  [x for x in plugins.command if x.name == doot.args.cmd.args.target]
             case {"help": True}:
-                help_l.info(self.help)
+                help_l.user(self.help)
                 return
 
         logging.debug("Matched %s commands, %s tasks", len(cmd_targets), len(task_targets))
         if len(cmd_targets) == 1:
             cmd_class = cmd_targets[0].load()()
-            cmd_l.info(cmd_class.help)
+            cmd_l.user(cmd_class.help)
             if bool(doot.args.cmd.get(NON_DEFAULT_KEY, None)):
                 self._print_current_param_assignments(cmd_class.param_specs, doot.args.cmd)
         elif bool(task_targets):
@@ -94,13 +94,13 @@ class HelpCmd(BaseCommand):
                 self.print_task_spec(i, spec)
         else:
             # Print general help and list cmds
-            cmd_l.info("Doot Help Command: No Target Specified/Matched")
-            cmd_l.info("Available Command Targets: ")
+            cmd_l.user("Doot Help Command: No Target Specified/Matched")
+            cmd_l.user("Available Command Targets: ")
             for x in sorted(plugins.command, key=lambda x: x.name):
                 cmd_l.info("-- %s", x.name)
 
-        cmd_l.info("\n------------------------------")
-        cmd_l.info("Call a command by doing 'doot [cmd] [args]'. Eg: doot list --help")
+        cmd_l.user("\n------------------------------")
+        cmd_l.user("Call a command by doing 'doot [cmd] [args]'. Eg: doot list --help")
 
     def print_task_spec(self, count, spec:TaskSpec):
         """ Print the help for a task spec """
@@ -113,49 +113,46 @@ class HelpCmd(BaseCommand):
             case _:
                 ctor = spec.ctor
 
-        cmd_l.info("")
-        cmd_l.info(LINE_SEP)
-        cmd_l.info(f"{count:4}: Task: {task_name}")
-        cmd_l.info(LINE_SEP)
-        cmd_l.info("ver     : %s", spec.version)
-        cmd_l.info("Group   : %s", spec.name[0:])
+        cmd_l.user("")
+        cmd_l.user(LINE_SEP)
+        cmd_l.user(f"{count:4}: Task: {task_name}")
+        cmd_l.user(LINE_SEP)
+        cmd_l.user("ver     : %s", spec.version)
+        cmd_l.user("Group   : %s", spec.name[0:])
         sources = "; ".join([str(x) for x in spec.sources])
-        cmd_l.info("Sources : %s", sources)
+        cmd_l.user("Sources : %s", sources)
 
         match spec.doc:
             case None:
                 pass
             case str():
-                cmd_l.info("")
-                cmd_l.info(spec.doc)
-                cmd_l.info("")
+                cmd_l.user("")
+                cmd_l.user(spec.doc)
+                cmd_l.user("")
             case list() as xs:
-                cmd_l.info("")
-                cmd_l.info("\n".join(xs))
-                cmd_l.info("")
+                cmd_l.user("")
+                cmd_l.user("\n".join(xs))
+                cmd_l.user("")
 
         if ctor is not None:
-            cmd_l.info("%s Ctor Class:", GROUP_INDENT)
-            cmd_l.info(ctor.class_help())
-            cmd_l.info(GROUP_INDENT)
+            cmd_l.user("%s Ctor Class:", GROUP_INDENT)
+            cmd_l.user(ctor.class_help())
+            cmd_l.user(GROUP_INDENT)
 
         if bool(spec.extra):
-            cmd_l.info("")
-            cmd_l.info("%s Toml Parameters:", GROUP_INDENT)
+            cmd_l.user("")
+            cmd_l.user("%s Toml Parameters:", GROUP_INDENT)
             for kwarg,val in spec.extra.items():
-                cmd_l.info("%s %-20s : %s", ITEM_INDENT, kwarg, val)
+                cmd_l.user("%s %-20s : %s", ITEM_INDENT, kwarg, val)
 
         if bool(spec.actions):
-            cmd_l.info("")
-            cmd_l.info("-- Task Actions: ")
+            cmd_l.user("")
+            cmd_l.user("-- Task Actions: ")
             sub_indent = (1 + len(ITEM_INDENT)) * " "
             for action in spec.actions:
-                cmd_l.info("%s %-30s:",    ITEM_INDENT, action.do)
-                cmd_l.info("%sArgs=%-20s", sub_indent, action.args)
-                cmd_l.info("%sKwargs=%s",  sub_indent, dict(action.kwargs))
-
-
-
+                cmd_l.user("%s %-30s:",    ITEM_INDENT, action.do)
+                cmd_l.user("%sArgs=%-20s", sub_indent, action.args)
+                cmd_l.user("%sKwargs=%s",  sub_indent, dict(action.kwargs))
 
         cli_has_params      = task_name in doot.args.sub
         cli_has_non_default = NON_DEFAULT_KEY in doot.args.sub[task_name] and bool(doot.args.sub[task_name][NON_DEFAULT_KEY])
@@ -164,14 +161,20 @@ class HelpCmd(BaseCommand):
             self._print_current_param_assignments(ctor.param_specs, doot.args.sub[task_name])
 
     def _print_current_param_assignments(self, specs:list[ParamSpec], args:dict|ChainGuard):
-        cmd_l.info("")
-        cmd_l.info("%s Current Param Assignments:", GROUP_INDENT)
+        cmd_l.user("")
+        cmd_l.user("%s Current Param Assignments:", GROUP_INDENT)
 
-        assignments = sorted([x for x in specs], key=ParamSpec.key_func)
+        assignments   = sorted([x for x in specs], key=ParamSpec.key_func)
         max_param_len = 5 + ftz.reduce(max, map(len, map(lambda x: x.name, specs)), 0)
-        fmt_str = f"%s %-{max_param_len}s : %s "
+        fmt_str       = f"%s %-{max_param_len}s : %s "
+        relevant_args = args.args
+        if "args" in relevant_args:
+            relevant_args = relevant_args['args']
         for key in args[NON_DEFAULT_KEY]:
             if key == "help":
                 continue
-            value = args.args.args[key]
-            cmd_l.info(fmt_str, ITEM_INDENT, key, value)
+            match relevant_args[key]:
+                case None:
+                    pass
+                case x:
+                    cmd_l.user(fmt_str, ITEM_INDENT, key, x)

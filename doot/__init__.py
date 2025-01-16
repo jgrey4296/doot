@@ -72,7 +72,10 @@ def subprinter(name=None) -> logmod.Logger:
     """ Get a sub-printer at position `name`.
     Names are registered using JGDV.logging.LogConfig
     """
-    return log_config.subprinter(name)
+    try:
+        return log_config.subprinter(name)
+    except ValueError as err:
+        raise doot.errors.ConfigError("Invalid Subprinter", name) from err
 
 def setup(targets:Maybe[list[pl.Path]|False]=None, prefix:Maybe[str]=TOOL_PREFIX) -> tuple[ChainGuard, DootLocations]:
     """

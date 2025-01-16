@@ -334,8 +334,8 @@ class ListCmd(_TaskLister_m,
         for line in text:
             match line:
                 case str():
-                    cmd_l.info(line)
+                    cmd_l.user(line)
                 case (str() as s, dict() as d):
-                    cmd_l.info(s, extra=d)
+                    cmd_l.user(s, extra=d)
                 case None:
-                    cmd_l.info("")
+                    cmd_l.user("")

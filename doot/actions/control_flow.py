@@ -74,7 +74,6 @@ class FileExistsCheck(DootBaseAction):
                 case True:
                     continue
                 case False:
-                    printer.warning("Exists Check Failed: %s (inverted: %s)", path, _invert)
                     return fail
 
         return None
@@ -138,7 +137,7 @@ class RelativeCheck(PathManip_m, DootBaseAction):
 class LogAction(DootBaseAction):
     """ A Basic log/print action  """
 
-    @DKeyed.types("level", check=str, fallback="INFO")
+    @DKeyed.types("level", check=str, fallback="user")
     @DKeyed.formats("msg")
     @DKeyed.formats("target", fallback="task")
     def __call__(self, spec, state, level, msg, target):

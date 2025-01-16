@@ -46,20 +46,19 @@ from doot.structs import ActionSpec, TaskArtifact, TaskName, TaskSpec
 # ##-- end 1st party imports
 
 ##-- logging
-logging       = logmod.getLogger(__name__)
-printer       = doot.subprinter()
-fail_l        = doot.subprinter("fail")
-skip_l        = doot.subprinter("skip")
-task_header_l = doot.subprinter("task_header")
-actgrp_l      = doot.subprinter("action_group")
-queue_l       = doot.subprinter("queue")
-actexec_l     = doot.subprinter("action_exec")
-state_l       = doot.subprinter("task_state")
+logging           = logmod.getLogger(__name__)
+printer           = doot.subprinter()
+fail_l            = doot.subprinter("fail").prefix(doot.constants.printer.fail_prefix)
+skip_l            = doot.subprinter("skip")
+in_task_header_l  = doot.subprinter("task_header")
+out_task_header_l = in_task_header_l.prefix("< ")
+actgrp_l          = doot.subprinter("action_group").prefix(doot.constants.printer.action_group_prefix)
+queue_l           = doot.subprinter("queue")
+actexec_l         = doot.subprinter("action_exec")
+state_l           = doot.subprinter("task_state")
 ##-- end logging
 
 skip_msg                : Final[str] = doot.constants.printer.skip_by_condition_msg
-actgrp_prefix           : Final[str] = doot.constants.printer.action_group_prefix
-fail_prefix             : Final[str] = doot.constants.printer.fail_prefix
 max_steps               : Final[str] = doot.config.on_fail(100_000).settings.tasks.max_steps()
 
 @doot.check_protocol
@@ -105,15 +104,12 @@ class DootRunner(BaseRunner, TaskRunner_i):
                     pass
                 case TaskArtifact():
                     self._notify_artifact(task)
-                case Job_i() if self._test_conditions(task):
+                case Job_i():
                     self._expand_job(task)
-                case Task_i() if self._test_conditions(task):
-                    self._execute_task(task)
                 case Task_i():
-                    # test_conditions failed, so skip
-                    skip_l.info(skip_msg, self.step, task.shortname)
-                case _:
-                    pass
+                    self._execute_task(task)
+                case x:
+                    in_task_header_l.error("Unknown Value provided to runner: %s", x)
         except doot.errors.DootError as err:
             self._handle_failure(task, err)
         except Exception as err:
@@ -124,11 +120,16 @@ class DootRunner(BaseRunner, TaskRunner_i):
             self._sleep(task)
             self.step += 1
 
+
     def _expand_job(self, job:Job_i) -> None:
         """ turn a job into all of its tasks, including teardowns """
+        logmod.debug("-- Expanding Job %s: %s", self.step, job.shortname)
         try:
-            logmod.debug("-- Expanding Job %s: %s", self.step, job.shortname)
-            task_header_l.info("> Job %s: %s", self.step, job.shortname, extra={"colour":"magenta"})
+            self._announce_entry(job)
+            if not self._test_conditions(job):
+                skip_l.trace(skip_msg, self.step, job.shortname)
+                return
+
             self.reporter.add_trace(job.spec, flags=Report_f.JOB | Report_f.INIT)
 
             self._execute_action_group(job.spec.setup, job, group="setup")
@@ -139,22 +140,33 @@ class DootRunner(BaseRunner, TaskRunner_i):
             raise err
         finally:
             self.reporter.add_trace(job.spec, flags=Report_f.JOB | Report_f.SUCCEED)
-            task_header_l.info("< Job %s: %s", self.step, job.shortname, extra={"colour":"magenta"})
+            out_task_header_l.trace("Job %s: %s", self.step, job.shortname)
 
     def _execute_task(self, task:Task_i) -> None:
         """ execute a single task's actions """
+        logmod.debug("-- Expanding Task %s: %s", self.step, task.shortname)
+        skip_task = False
         try:
-            task_header_l.info("> Task %s :  %s", self.step, task.shortname, extra={"colour":"magenta"})
+            self._announce_entry(task)
+            skip_task = not self._test_conditions(task)
+            if skip_task:
+                skip_l.trace(skip_msg, self.step, task.shortname)
+                return
+
             self.reporter.add_trace(task.spec, flags=Report_f.TASK | Report_f.INIT)
 
             self._execute_action_group(task.spec.setup, task, group="setup")
             self._execute_action_group(task.spec.actions, task, group="action")
             self.reporter.add_trace(task.spec, flags=Report_f.TASK | Report_f.SUCCEED)
         except doot.errors.DootError as err:
+            skip_task = True
             self._execute_action_group(task.spec.on_fail, task, group="on_fail")
             raise err
         finally:
-            task_header_l.debug("< Task: %s", task.shortname, extra={"colour":"cyan"})
+            if skip_task:
+                out_task_header_l.trace("(%s) Skipped Task : %s", self.step, task.shortname, extra={"colour":"red"})
+            else:
+                out_task_header_l.trace("(%s) Task : %s", self.step, task.shortname, extra={"colour":"cyan"})
 
     def _execute_action_group(self, actions:list, task:Task_i, allow_queue=False, group=None) -> Maybe[tuple[int, ActRE]]:
         """ Execute a group of actions, possibly queue any task specs they produced,
@@ -163,7 +175,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
         if not bool(actions):
             return None
 
-        actgrp_l.debug("%s Action Group %s (%s) for : %s", actgrp_prefix, group, len(actions), task.shortname)
+        actgrp_l.trace("Action Group %s (%s) for : %s", group, len(actions), task.shortname)
         group_result              = ActRE.SUCCESS
         to_queue : list[TaskSpec] = []
         executed_count            = 0
@@ -190,7 +202,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 case list():
                     to_queue += result
                 case ActRE.SKIP:
-                    skip_l.warning("------ Remaining Task Actions skipped by Action Result")
+                    skip_l.user("------ Remaining Task Actions skipped by Action Result")
                     group_result = ActRE.SKIP
                     break
 
@@ -201,18 +213,18 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 case []:
                     pass
                 case [*xs] if not allow_queue:
-                    fail_l.warning("%s Tried to Queue additional tasks from a bad action group: %s", fail_prefix, task)
+                    fail_l.error("Tried to Queue additional tasks from a bad action group: %s", task)
                     group_result = ActRE.FAIL
                 case [*xs]:
                     new_nodes = []
                     for spec in xs:
                         match self.tracker.queue_entry(spec):
                             case None:
-                                queue_l.warning("Queuing a generated spec failed: %s", spec.name)
+                                queue_l.error("Queuing a generated spec failed: %s", spec.name)
                             case TaskName() as x:
                                 new_nodes.append(x)
                     self.tracker.build_network(sources=new_nodes)
-                    queue_l.info("Queued %s Subtasks for %s", len(xs), task.shortname)
+                    queue_l.trace("Queued %s Subtasks for %s", len(xs), task.shortname)
 
         return executed_count, group_result
 
@@ -226,13 +238,13 @@ class DootRunner(BaseRunner, TaskRunner_i):
         result                     = None
         task.state['_action_step'] = count
         self.reporter.add_trace(action, flags=Report_f.ACTION | Report_f.INIT)
-        actexec_l.info( "Action %s.%s: %s", self.step, count, action.do or action.fun, extra={"colour":"cyan"})
+        actexec_l.trace( "Action %s.%s: %s", self.step, count, action.do or action.fun)
 
-        actexec_l.debug("Action Executing for Task: %s", task.shortname)
-        actexec_l.debug("Action State: %s.%s: args=%s kwargs=%s. state(size)=%s", self.step, count, action.args, dict(action.kwargs), len(task.state.keys()))
+        actexec_l.detail("Action Executing for Task: %s", task.shortname)
+        actexec_l.detail("Action State: %s.%s: args=%s kwargs=%s. state(size)=%s", self.step, count, action.args, dict(action.kwargs), len(task.state.keys()))
         action.verify(task.state)
         result = action(task.state)
-        actexec_l.debug("Action Result: %s", result)
+        actexec_l.detail("Action Result: %s", result)
 
         match result:
             case None | True:
@@ -244,7 +256,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 # result will be returned, and expand_job/execute_task will handle it
                 pass
             case dict(): # update the task's state
-                state_l.info("Updating Task State: %s keys", len(result))
+                state_l.detail("Updating Task State: %s keys", len(result))
                 task.state.update({str(k):v for k,v in result.items()})
                 result = ActRE.SUCCESS
             case list() if all(isinstance(x, (TaskName, TaskSpec)) for x in result):
@@ -261,6 +273,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
         """ run a task's depends_on group, coercing to a bool
         returns False if the runner should skip the rest of the task
         """
+        in_task_header_l.prefix("> ").trace("Testing Preconditions")
         match self._execute_action_group(task.spec.depends_on, task, group="depends_on"):
             case None:
                 return True
@@ -268,3 +281,26 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 return False
             case _, _:
                 return True
+
+    def _announce_entry(self, task:Task_i) -> None:
+        match task:
+            case Task_i() if task.name.is_cleanup():
+                in_task_header_l.prefix(">> ").user("(%s) Cleanup : %s",
+                                                    self.step,
+                                                    task.shortname,
+                                                    extra={"colour":"blue"})
+            case Task_i() if task.name.is_head():
+                in_task_header_l.prefix(">> ").user("(%s) Head : %s",
+                                                    self.step,
+                                                    task.shortname,
+                                                    extra={"colour":"blue"})
+            case Job_i():
+                in_task_header_l.prefix("> ").user("(%s) Job : %s",
+                                                   self.step,
+                                                   task.shortname)
+            case Task_i():
+                in_task_header_l.prefix("> ").user("(%s) Task : %s",
+                                                   self.step,
+                                                   task.shortname)
+            case _:
+                in_task_header_l.user("Unknown Entry entered: %s", task)

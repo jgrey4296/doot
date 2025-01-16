@@ -166,7 +166,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
             self.plugins : ChainGuard = self.plugin_loader.load()
             doot._load_aliases(data=self.plugins)
         except doot.errors.PluginError as err:
-            shutdown_l.warning("Plugins Not Loaded Due to Error: %s", err)
+            shutdown_l.error("Plugins Not Loaded Due to Error: %s", err)
             self.plugins = ChainGuard()
 
     def _load_commands(self, extra_config:Maybe[dict|ChainGuard]=None) -> None:
@@ -183,7 +183,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
                     self.cmd_loader.setup(self.plugins, extra_config)
                     self.cmds = self.cmd_loader.load()
                 except doot.errors.PluginError as err:
-                    shutdown_l.warning("Commands Not Loaded due to Error: %s", err)
+                    shutdown_l.error("Commands Not Loaded due to Error: %s", err)
                     self.cmds = ChainGuard()
             case _:
                 raise TypeError("Unrecognized loader type", self.cmd_loader)
@@ -242,10 +242,10 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
     def run_doot(self, cmd:Maybe[str]=None) -> int:
         """ The main run logic of the overlord """
         if not doot.args.on_fail(False).cmd.args.suppress_header():
-            header_l.info(HEADER_MSG, extra={"colour": "green"})
+            header_l.user(HEADER_MSG, extra={"colour": "green"})
 
         if doot.args.on_fail(False).head.args.debug():
-            printer.info("Pausing for debugging")
+            printer.user("Pausing for debugging")
             breakpoint()
             pass
 
@@ -280,11 +280,11 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         logging.info("Tasks: %s", self.tasks.keys())
 
         if doot.args.on_fail(False).head.args.version():
-            help_l.info(version_template, doot.__version__)
+            help_l.user(version_template, doot.__version__)
             return True
 
         if doot.args.on_fail(False).head.args.help():
-            help_l.info(self.help)
+            help_l.user(self.help)
             return True
 
         return False
@@ -317,19 +317,19 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
 
         self._record_defaulted_config_values()
 
-        shutdown_l.info("")
+        shutdown_l.user("")
         match self._errored:
             case doot.errors.DootError() as err:
                 msg = doot.config.on_fail("Errored").shutdown.notify.fail_msg()
-                shutdown_l.info("---- %s ----", msg)
+                shutdown_l.user("---- %s ----", msg)
                 shutdown_l.error(err)
                 self._announce_exit(msg)
             case None:
                 msg = doot.config.on_fail("").shutdown.notify.success_msg()
                 self._announce_exit(msg)
-                shutdown_l.info(msg)
+                shutdown_l.user(msg)
 
-        shutdown_l.info("---- Dooted ----")
+        shutdown_l.user("---- Dooted ----")
 
     def _announce_exit(self, message:str):
         if not doot.config.on_fail(False).shutdown.notify.say_on_exit():
@@ -350,7 +350,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         defaulted_file = doot.config.on_fail("{logs}/.doot_defaults.toml", pl.Path).shutdown.defaulted_values.path()
         expanded_path = doot.locs.Current[defaulted_file]
         if not expanded_path.parent.exists():
-            shutdown_l.warning("Coulnd't log defaulted config values to: %s", expanded_path)
+            shutdown_l.error("Couldn't log defaulted config values to: %s", expanded_path)
             return
 
         defaulted_toml = ChainGuard.report_defaulted()
