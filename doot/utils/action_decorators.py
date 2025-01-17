@@ -31,7 +31,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv.decorators.base import MetaDecorator
+from jgdv.decorators import MetaDecorator
 
 # ##-- end 3rd party imports
 
@@ -66,21 +66,15 @@ class DryRunSwitch(MetaDecorator):
     def _wrap_method(self, fn):
         override_active = self._override or dry_run_active
 
-        def wrapper(*args, **kwargs):
+        def _can_disable(*args, **kwargs):
             if override_active:
                 return None
             return fn(*args, **kwargs)
 
-        return wrapper
+        return _can_disable
 
     def _wrap_fn(self, fn):
         return self._wrap_method(fn)
-
-class RunsDry(MetaDecorator):
-    """ mark an action that makes no changes to the system, on an honour system """
-
-    def __init__(self):
-        super().__init__(RUN_DRY, mark="_runs_dry")
 
 class GeneratesTasks(MetaDecorator):
     """ Mark an action callable/class as a task generator """

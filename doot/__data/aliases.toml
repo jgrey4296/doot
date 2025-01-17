@@ -79,22 +79,22 @@ touch    =       "doot.actions.io:TouchFileAction"
 
 [[doot.aliases.action]] # job actions
 # Map {alias} -> CodeRef String
-"job.queue"                    = "doot.actions.job_actions:JobQueueAction"
-"job.queue.head"               = "doot.actions.job_actions:JobQueueHead"
+"job.queue"                    = "doot.actions.job_queuing:JobQueueAction"
+"job.queue.head"               = "doot.actions.job_queuing:JobQueueHead"
 
-"job.expand"                   = "doot.actions.job_actions:JobExpandAction"
-"job.gen"                      = "doot.actions.job_actions:JobGenerate"
+"job.expand"                   = "doot.actions.job_expansion:JobExpandAction"
+"job.gen"                      = "doot.actions.job_expansion:JobGenerate"
+"job.match"                    = "doot.actions.job_expansion:JobMatchAction"
+
+"job.sub.name"                 = "doot.actions.job_injection:JobSubNamer"
+"job.actions.prepend"          = "doot.actions.job_injection:JobPrependActions"
+"job.actions.append"           = "doot.actions.job_injection:JobAppendActions"
+"job.injector"                 = "doot.actions.job_injection:JobInjector"
+"job.inject.path.elements"     = "doot.actions.job_injection:JobInjectPathParts"
+"job.inject.shadow"            = "doot.actions.job_injection:JobInjectShadowAction"
 
 "job.walk"                     = "doot.actions.job_actions:JobWalkAction"
 "job.limit"                    = "doot.actions.job_actions:JobLimitAction"
-
-"job.match"                    = "doot.actions.job_actions:JobMatchAction"
-"job.sub.name"                 = "doot.actions.job_actions:JobSubNamer"
-"job.actions.prepend"          = "doot.actions.job_actions:JobPrependActions"
-"job.actions.append"           = "doot.actions.job_actions:JobAppendActions"
-"job.injector"                 = "doot.actions.job_actions:JobInjector"
-"job.inject.path.elements"     = "doot.actions.job_actions:JobInjectPathParts"
-"job.inject.shadow"            = "doot.actions.job_actions:JobInjectShadowAction"
 
 [[doot.aliases.task]] # task types
 # Map {alias} -> CodeRef String
