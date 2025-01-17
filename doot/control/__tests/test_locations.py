@@ -69,9 +69,7 @@ class TestLocations:
         simple.update({"blah": "aweg"}, strict=False)
         assert("blah" in simple)
         assert(simple._data["blah"].path == target)
-        assert(simple.get('blah') == target)
-        result = simple['{blah}']
-        assert(result == target.resolve())
+        assert(simple['{blah}'] == simple.normalize(target))
 
     def test_empty_repr(self):
         simple = DootLocations(pl.Path.cwd())
@@ -89,10 +87,10 @@ class TestLocations:
         assert(not bool(simple._data))
         simple.update({"a": "blah"})
         assert(bool(simple._data))
-        assert(simple.a == pl.Path("blah").resolve())
+        assert(simple.a.path == pl.Path("blah"))
 
         with simple(pl.Path("~/Desktop")) as ctx:
-            assert(ctx.a == pl.Path("~/Desktop/blah").expanduser().resolve())
+            assert(ctx["{a}"] == pl.Path("~/Desktop/blah").expanduser().resolve())
 
     def test_clear(self):
         simple = DootLocations(pl.Path.cwd())
@@ -110,8 +108,8 @@ class TestLocationsBasicGet:
         """
         simple = DootLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
-        result = simple.get(None)
-        assert(result is None)
+        with pytest.raises(TypeError):
+            simple.get(None)
 
     def test_get_nonkey(self):
         """
@@ -121,8 +119,8 @@ class TestLocationsBasicGet:
         simple.update({"a": "blah"})
         key = DKey("simple", implicit=False)
         assert(isinstance(key, NonDKey))
-        result = simple.get(key)
-        assert(result == pl.Path("simple"))
+        result = simple[key]
+        assert(result == simple.normalize(pl.Path("simple")))
 
     def test_get_str(self):
         """
@@ -131,18 +129,8 @@ class TestLocationsBasicGet:
         simple = DootLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
         key = "simple"
-        result = simple.get(key)
-        assert(result == pl.Path("simple"))
-
-    def test_get_str_key_no_expansion(self):
-        """
-          loc.get('{simple}') -> pl.Path(.../{simple})
-        """
-        simple = DootLocations(pl.Path.cwd())
-        simple.update({"a": "blah", "simple":"bloo"})
-        key = "{simple}"
-        result = simple.get(key)
-        assert(result == pl.Path("{simple}"))
+        result = simple[key]
+        assert(result == simple.normalize(pl.Path("simple")))
 
     def test_get_key_direct_expansion(self):
         """
@@ -150,9 +138,9 @@ class TestLocationsBasicGet:
         """
         simple = DootLocations(pl.Path.cwd())
         simple.update({"a": "blah", "simple":"bloo"})
-        key = DKey("simple")
+        key = DKey("simple", implicit=True)
         result = simple.get(key)
-        assert(result == pl.Path("bloo"))
+        assert(result == simple.normalize(pl.Path("bloo")))
 
     def test_get_missing(self):
         """
@@ -161,8 +149,8 @@ class TestLocationsBasicGet:
         simple = DootLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
         key = DKey("simple", implicit=True)
-        result = simple.get(key)
-        assert(result == pl.Path("{simple}"))
+        result = simple[key]
+        assert(result == simple.normalize(pl.Path("{simple}")))
 
     def test_get_fallback(self):
         simple = DootLocations(pl.Path.cwd())
@@ -170,11 +158,11 @@ class TestLocationsBasicGet:
         result = simple.get("{b}", pl.Path("bloo"))
         assert(result == pl.Path("bloo"))
 
-    def test_get_raise_error_with_false_fallback(self):
+    def test_get_raise_error_with_no_fallbac(self):
         simple = DootLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
-        with pytest.raises(DootLocationError):
-            simple.get("badkey", False)
+        with pytest.raises(KeyError):
+            simple.get("{badkey}")
 
 class TestLocationsGetItem:
 
@@ -184,9 +172,7 @@ class TestLocationsGetItem:
         """
         simple = DootLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
-        result        = simple.__getitem__("a")
-        result_alt    = simple['a']
-        assert(result == result_alt)
+        result = simple['a']
         assert(isinstance(result, pl.Path))
         assert(result == doot.locs.normalize(pl.Path("a")))
 
@@ -196,7 +182,7 @@ class TestLocationsGetItem:
         """
         simple = DootLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
-        result = simple.__getitem__("{a}")
+        result = simple["{a}"]
         assert(result == doot.locs.normalize(pl.Path("blah")))
 
     def test_getitem_str_key_no_match_errors(self):
@@ -205,8 +191,7 @@ class TestLocationsGetItem:
         """
         simple = DootLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
-        with pytest.raises(DootLocationError):
-            simple.__getitem__("{b}")
+        assert(simple["{b}"] == simple.norm(pl.Path("{b}")))
 
     def test_getitem_path_passthrough(self):
         """
@@ -226,11 +211,10 @@ class TestLocationsGetItem:
         result = simple.__getitem__(pl.Path("{a}/b/c"))
         assert(result == doot.locs.normalize(pl.Path("blah/b/c")))
 
-    def test_getitem_fail_with_multikey(self):
+    def test_getitem_multikey(self):
         simple = DootLocations(pl.Path.cwd()).update({"a": "{other}/blah", "other": "bloo"})
-        key = DKey("{a}", ctor=pl.Path)
-        with pytest.raises(TypeError):
-            simple[key]
+        key = DKey("{a}/{other}", ctor=pl.Path)
+        assert(simple[key] == simple.norm(pl.Path("bloo/blah/bloo")))
 
     def test_getitem_expansion_item(self):
         simple = DootLocations(pl.Path.cwd())
@@ -265,29 +249,21 @@ class TestLlocationsGetAttr:
         simple = DootLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
         result = simple.a
-        assert(simple.a == pl.Path("blah").absolute())
-        assert(isinstance(simple.a, pl.Path))
+        assert(simple.a.path == pl.Path("blah"))
 
-    def test_attr_access_simple_expansion(self):
-        simple = DootLocations(pl.Path.cwd())
-        simple.update({"a": "{other}/blah", "other": "bloo"})
-        assert(simple.a == simple.normalize(pl.Path("{other}/blah")))
-        assert(isinstance(simple.a, pl.Path))
-
-    def test_attr_expansion_simple(self):
+    def test_attr_no_sub_expansion(self):
         """
           locs.a => pl.Path(.../{other})
         """
         simple = DootLocations(pl.Path.cwd())
         simple.update({"a": "{other}", "other": "bloo"})
 
-        assert(isinstance(simple.a, pl.Path))
-        assert(simple.a == pl.Path("{other}").absolute())
+        assert(simple.a.path == pl.Path("{other}"))
 
     def test_attr_access_non_existing_path(self):
         simple = DootLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
-        with pytest.raises(DootLocationError):
+        with pytest.raises(AttributeError):
             simple.b
 
 class TestLocationsFails:
@@ -297,25 +273,13 @@ class TestLocationsFails:
         assert(not bool(simple._data))
         simple.update({"other": "bloo"})
         assert(bool(simple._data))
-
-        with pytest.raises(DootLocationError):
-            simple['{aweg}']
-
-    def test_attr_access_doesnt_expand_subkeys(self):
-        simple = DootLocations(pl.Path.cwd())
-        assert(not bool(simple._data))
-        simple.update({"a": "{other}/blah", "other": "{aweg}/bloo/{awog}", "aweg": "first", "awog": "second"})
-        assert(bool(simple._data))
-        result = simple.a
-        assert(result != pl.Path("first/bloo/second/blah").resolve())
-        assert(result == pl.Path("{other}/blah").resolve())
-        assert(isinstance(simple.a, pl.Path))
+        assert(simple['{aweg}'] == simple.norm(pl.Path("{aweg}")))
 
     def test_item_access_expansion_recursion_fail(self):
         simple = DootLocations(pl.Path.cwd())
         assert(not bool(simple._data))
         simple.update({"a": "{other}/blah", "other": "/bloo/{a}"})
-        with pytest.raises(DootLocationExpansionError):
+        with pytest.raises(RecursionError):
             simple['{a}']
 
     def test_get_returns_path(self):
@@ -323,7 +287,6 @@ class TestLocationsFails:
         assert(not bool(simple._data))
         simple.update({"a": "blah"})
         assert(bool(simple._data))
-
         assert(isinstance(simple.get("b", pl.Path("bloo")), pl.Path))
 
 class TestLocationsUtils:

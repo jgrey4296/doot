@@ -32,7 +32,7 @@ import doot
 import doot.errors
 from doot._abstract import Job_i
 from doot.enums import LocationMeta_e
-from doot.structs import TaskSpec, ActionSpec, DKeyed
+from doot.structs import TaskSpec, ActionSpec, DKeyed, DKey
 from doot.task.base_task import DootTask
 
 # ##-- end 1st party imports
@@ -54,7 +54,7 @@ class CheckLocsTask(DootTask):
     task_name = "_locations::check"
 
     def __init__(self, spec=None):
-        locations = [x for x in doot.locs]
+        locations = [DKey(x, implicit=True) for x in doot.locs]
         actions   = [ActionSpec.build({"args": locations, "fun":self.checklocs })]
         spec      = TaskSpec.build({
             "name"         : CheckLocsTask.task_name,
@@ -71,21 +71,21 @@ class CheckLocsTask(DootTask):
                 if doot.locs.metacheck(loc, LocationMeta_e.file, LocationMeta_e.remote):
                     continue
 
-                path = doot.locs.Current.get(loc, None)
+                path = doot.locs.Current[loc]
                 match path.exists():
                     case True:
-                        check_loc.debug("Base Location Exists : %s", path)
+                        check_loc.trace("Base Location Exists : %s", path)
+                    case False if make_missing:
+                        check_loc.user("Making Missing Location: %s", path)
+                        path.mkdir(parents=True)
                     case False if strict:
                         errors.append(path)
-                    case False if make_missing:
-                        check_loc.warning("Making Missing Location: %s", path)
-                        path.mkdir(parents=True)
                     case False:
-                        check_loc.warning("Base Location Missing: %s", path)
+                        check_loc.trace("Base Location Missing: %s", path)
             except PermissionError:
                 if strict:
                     errors.append(path)
-                check_loc.warning("Base Location Permision Error: %s", loc)
+                check_loc.error("Base Location Permision Error: %s", loc)
         else:
             if strict and bool(errors):
                 raise doot.errors.ConfigError("Missing Location(s)", errors)

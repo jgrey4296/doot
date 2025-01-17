@@ -16,7 +16,7 @@ implicit_task_cmd    = "run"
 
 [startup.plugins]
 # Allows for defining aliases
-command        = { tasks="doot.cmds.list_cmd:ListCmd", pl="doot.cmds.plugins_cmd:PluginsCmd" }
+command        = { tasks="doot.cmds.list_cmd:ListCmd"}
 
 [shutdown]
 notify           = { speak=false } # success_msg="", fail_msg=""
@@ -31,20 +31,23 @@ report-line = []
 
 [settings.commands.list]
 hide = []
+aliases = { tasks=[] }
 
 [logging]
-# Standard loggers. See LoggerSpec.
-stream  = { level="WARNING", filter=[],             target="stdout", format="{levelname:<8} : {message}"  }
-file    = { level="DEBUG",   filter=["chainguard"], target="rotate", format="{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})", filename_fmt="doot.log" }
-printer = { level="NOTSET", colour=true,            target=["stdout", "rotate"], format="{message}", filename_fmt="doot_printed.log" }
+# Standard loggers. See jgdv.logging.LoggerSpec.
+# Additional Level aliases: detail=debug, trace=info, user=warning
+stream  = { level="user",   filter=[],             target="stdout", format="{levelname:<8} : {message}"  }
+file    = { level="detail", filter=["chainguard"], target="rotate", format="{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})", filename_fmt="doot.log" }
+printer = { level="NOTSET", colour=true,           target=["stdout", "rotate"], format="{message}", filename_fmt="doot_printed.log" }
 
 [logging.subprinters]
-default       = {level="WARNING"}
-shutdown      = {level="WARNING", format="Shutdown: {message}", target="stdout"}
-cmd           = {level="INFO"}
-task          = {level="INFO" }
-header        = {level="INFO" }
-task_header   = {level="INFO"}
+default       = {level="user"}
+header        = true
+cmd           = {level="user",  colour="cyan"}
+task_header   = {level="user",  colour="magenta"}
+task          = {level="error", colour="white"}
+action_exec   = {level="user",  colour="cyan"}
+shutdown      = {level="user"}
 
 [logging.extra]
 

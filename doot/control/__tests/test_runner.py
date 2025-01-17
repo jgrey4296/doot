@@ -40,17 +40,13 @@ from doot._abstract import (Action_p, Job_i, Reporter_p, ReportLine_p, Task_i,
 from doot.control.runner import DootRunner
 from doot.control.tracker import DootTracker
 from doot.enums import TaskStatus_e
-from doot.structs import ActionSpec, TaskSpec, DKey
+from doot.structs import ActionSpec, TaskSpec, DKey, TaskName
 
 # ##-- end 1st party imports
 
 logging = logmod.root
 
-
-
-@pytest.mark.parametrize("ctor", [DootRunner])
-class TestRunner:
-
+class _Mockers_m:
     @pytest.fixture(scope="function")
     def setup(self, mocker):
         min_sleep   = 0.0
@@ -60,7 +56,6 @@ class TestRunner:
     @pytest.fixture(scope="function")
     def cleanup(self):
         pass
-
 
     @pytest.fixture(scope="function")
     def runner(self, ctor, mocker, tracker_mock, reporter_mock):
@@ -73,6 +68,7 @@ class TestRunner:
         tracker.clear_queue = mocker.Mock(return_value=None)
         tracker._tasks = []
         tracker._popped_tasks = []
+
         def simple_pop():
             if bool(tracker._tasks):
                 tracker._popped_tasks.append(tracker._tasks.pop())
@@ -90,28 +86,30 @@ class TestRunner:
         reporter = mocker.MagicMock(spec=Reporter_p)
         return reporter
 
-
     @pytest.fixture(scope="function")
     def task_mock(self, mocker):
         return self.make_task_mock(mocker, "agroup::atask")
 
     def make_task_mock(self, mocker, name):
         task                    = mocker.MagicMock(spec=Task_i, state={})
-        task.name = name
+        task.name               = TaskName(name)
         task.spec               = TaskSpec.build({"name": name})
-        task.spec.sleep = 0.0
-        task.spec.actions = [
+        task.spec.sleep         = 0.0
+        task.spec.actions       = [
             ActionSpec.build({"do":None, "fun": lambda *xs: None})
             ]
         return task
 
     def make_job_mock(self, mocker, name):
         task                    = mocker.MagicMock(spec=Job_i, state={})
-        task.name = name
+        task.name               = TaskName(name)
         task.spec               = TaskSpec.build({"name": name})
-        task.spec.sleep = 0.1
+        task.spec.sleep         = 0.1
         return task
 
+
+@pytest.mark.parametrize("ctor", [DootRunner])
+class TestRunner(_Mockers_m):
 
     def test_initial(self, ctor, mocker, setup):
         ## setup

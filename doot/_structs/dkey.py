@@ -128,7 +128,7 @@ class PathSingleDKey(SingleDKey, mark=DKeyMark_e.PATH):
             case _:
                 raise TypeError("Path Key shouldn't be able to produce a non-path")
 
-    def _expansion_hook(self, value) -> Maybe[pl.Path]:
+    def _expansion_hook(self, value:Maybe[pl.Path]) -> Maybe[pl.Path]:
         match value:
             case None:
                 return None

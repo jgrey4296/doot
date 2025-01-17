@@ -129,6 +129,14 @@ class TestDKeyWithParameters:
 
 class TestDKeyExpansion:
 
+    def test_expansion_to_str_via_path(self, wrap_locs):
+        wrap_locs.update({"raise": "file::>a/b/blah.py"})
+        assert("raise" in wrap_locs)
+        key = dkey.DKey("{raise!p}")
+        assert(isinstance(key, dkey.PathSingleDKey))
+        assert(key.expand() == wrap_locs.norm(pl.Path("a/b/blah.py")))
+
+
     def test_expansion_to_str_for_expansion_with_path(self, wrap_locs):
         wrap_locs.update({"raise": "file::>a/b/blah.py"})
         assert("raise" in wrap_locs)
@@ -271,7 +279,7 @@ class TestDKeyPathKeys:
         """ {name!p}/{name} -> {x}/{x} -> Path(y/y) """
         wrap_locs.update({"changelog": "file::>sub/changelog.md"})
         state       = {name :"{changelog}"}
-        target      = "--test=%s/x {missing}" % wrap_locs.changelog
+        target      = "--test=%s/x {missing}" % wrap_locs.normalize(pl.Path(wrap_locs.changelog[1:]))
         path_marked = "--test={%s!p}/x {missing}" % name
         key         = dkey.DKey(path_marked, mark=dkey.DKey.mark.MULTI, implicit=False)
         exp         = key.expand(state)

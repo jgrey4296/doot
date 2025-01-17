@@ -115,7 +115,6 @@ def main() -> None:
                 fail_l.exception("%s Struct Load Error: %s", fail_prefix, err, exc_info=err)
     except doot.errors.TrackingError as err:
         fail_l.error("%s Tracking Failure: %s", fail_prefix, err)
-
     except doot.errors.BackendError as err:
         fail_l.exception("%s Backend Error: %s", fail_prefix, err, exc_info=err)
     except doot.errors.FrontendError as err:
