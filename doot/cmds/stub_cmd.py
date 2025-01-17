@@ -169,13 +169,13 @@ class StubCmd(BaseCommand):
 
         # Output to printer/stdout, or file
         if doot.args.cmd.args.out == "":
-            cmd_l.info(stub.to_toml())
+            cmd_l.user(stub.to_toml())
             return
 
         task_file = pl.Path(doot.args.cmd.args.out)
         if task_file.is_dir():
             task_file /= "stub_tasks.toml"
-        cmd_l.info("Stubbing task %s into file: %s", stub['name'], task_file)
+        cmd_l.user("Stubbing task %s into file: %s", stub['name'], task_file)
         with open(task_file, "a") as f:
             f.write("\n")
             f.write(stub.to_toml())
@@ -189,30 +189,30 @@ class StubCmd(BaseCommand):
                    or x.value == unaliased]
         if bool(matched):
             loaded = matched[0].load()
-            cmd_l.info("- %s (Action, %s)", matched[0].name, matched[0].value)
+            cmd_l.user("- %s (Action, %s)", matched[0].name, matched[0].value)
             match getattr(loaded, "_toml_help", []):
                 case [] if bool(getattr(loaded, "__doc__")):
-                    cmd_l.info(loaded.__doc__)
+                    cmd_l.user(loaded.__doc__)
                 case []:
                     pass
                 case [*xs]:
                     for x in xs:
-                        cmd_l.info(x)
+                        cmd_l.user(x)
 
             loaded = getattr(loaded, "__call__", loaded)
             match DKeyed.get_keys(loaded):
                 case []:
-                    cmd_l.info("-- No Declared Kwargs")
+                    cmd_l.user("-- No Declared Kwargs")
                 case [*xs]:
-                    cmd_l.info("-- Declared kwargs for action: %s", sorted([repr(x) for x in xs]))
+                    cmd_l.user("-- Declared kwargs for action: %s", sorted([repr(x) for x in xs]))
 
-        cmd_l.info("")
-        cmd_l.info("-- Toml Form of an action: ")
+        cmd_l.user("")
+        cmd_l.user("-- Toml Form of an action: ")
         # TODO customize this with declared annotations
         if bool(matched):
-            cmd_l.info("{ do=\"%s\", args=[], key=val } ", matched[0].name)
+            cmd_l.user("{ do=\"%s\", args=[], key=val } ", matched[0].name)
         else:
-            cmd_l.info("{ do=\"action name/import path\", args=[], inState=[], outState=[] } # plus any kwargs a specific action uses")
+            cmd_l.user("{ do=\"action name/import path\", args=[], inState=[], outState=[] } # plus any kwargs a specific action uses")
 
 
     def _stub_cli_param(self):
