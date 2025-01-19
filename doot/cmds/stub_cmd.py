@@ -2,6 +2,7 @@
 """
 
 """
+# ruff: noqa: B009
 # Imports:
 from __future__ import annotations
 
@@ -21,6 +22,7 @@ from collections import defaultdict
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from importlib.resources import files
+import typing
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Mapping, Match,
                     MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
@@ -49,6 +51,14 @@ from doot.task.base_task import DootTask
 
 # ##-- end 1st party imports
 
+# ##-- types
+# isort: off
+if typing.TYPE_CHECKING:
+   from jgdv import Maybe, ChainGuard, Lambda
+   type ListVal = str|Lambda|tuple[str,dict]
+# isort: on
+# ##-- end types
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 printer = doot.subprinter()
@@ -60,44 +70,17 @@ data_path = files(doot.constants.paths.TEMPLATE_PATH).joinpath(doot.constants.pa
 ##-- end data
 PRINT_LOCATIONS : Final[list[str]] = doot.constants.printer.PRINT_LOCATIONS
 
-class StubCmd(BaseCommand):
-    """ Called to interactively create a stub task definition
-      with a `target`, outputs to that file, else to stdout for piping
-    """
-    _name      = "stub"
-    _help      = ["Create a new stub task either to stdout, or path",
-                  "args allow stubbing a config file, cli parameter, or action",
-                  ]
+NL = None
+
+class _StubDoot_m:
 
     @property
     def param_specs(self) -> list:
-        return super().param_specs + [
-            self.build_param(prefix="--", name="config",  type=bool,    default=False,           desc="Stub a doot.toml"),
-            self.build_param(prefix="--", name="param",   type=bool,    default=False,           desc="Generate a stub cli arg dict"),
-            self.build_param(prefix="--", name="action",  type=bool,    default=False,           desc="Help Stub Actions"),
-            self.build_param(prefix="--", name="printer", type=bool,    default=False,           desc="Generate a stub printer config"),
-            self.build_param(prefix="--", name="strang",  type=bool,    default=False,           desc="Generate a stub strang/location expansion"),
-            self.build_param(name="out",  type=str,     default=""),
-            self.build_param(name="suppress-header",  default=True, implicit=True),
+        return [*super().param_specs,
+                self.build_param(prefix="--", name="config",  type=bool,    default=False,           desc="Stub a doot.toml"),
+                ]
 
-            self.build_param(prefix=1, name="name", type=str, default=None,    desc="The Name of the new task"),
-            self.build_param(prefix=2, name="ctor", type=str, default="task",  desc="a code ref, or alias of a task class"),
-            ]
-
-    def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
-        match dict(doot.args.cmd.args):
-            case {"config": True}:
-                self._stub_doot_toml()
-            case {"action": True}:
-                self._stub_actions(plugins)
-            case {"param": True}:
-                self._stub_cli_param()
-            case {"printer": True}:
-                self._stub_printer()
-            case _:
-                self._stub_task_toml(tasks, plugins)
-
-    def _stub_doot_toml(self):
+    def _stub_doot_toml(self) -> list[str]:
         logging.info("---- Stubbing Doot Toml")
         doot_toml = pl.Path("doot.toml")
         data_text = data_path.read_text()
@@ -106,16 +89,96 @@ class StubCmd(BaseCommand):
             cmd_l.warning("doot.toml it already exists, printed to stdout instead")
             return
 
-        with open(doot_toml, "a") as f:
+        with doot_toml.open("a") as f:
             f.write(data_text)
 
         cmd_l.info("doot.toml stub")
 
-    def _stub_task_toml(self, tasks, plugins):
+class _StubParam_m:
+
+    @property
+    def param_specs(self) -> list:
+        return [*super().param_specs,
+                self.build_param(prefix="--", name="param",   type=bool,    default=False,           desc="Generate a stub cli arg dict"),
+                ]
+
+    def _stub_cli_param(self) -> list[str]:
+        logging.info("---- Printing CLI Arg info")
+        result = [
+            "# - CLI Arg Form. Add to task spec: cli=[]",
+            '{',
+            'name="{}",'.format(doot.args.on_fail("default").cmd.args.name()),
+            'prefix="-", ',
+            'type="str", ',
+            'default="",',
+            'desc="", ',
+            "}",
+            ]
+        return result
+
+class _StubAction_m:
+
+    @property
+    def param_specs(self) -> list:
+        return [*super().param_specs,
+                self.build_param(prefix="--", name="action",  type=bool,    default=False,           desc="Help Stub Actions"),
+                ]
+
+    def _stub_action(self, plugins) -> list[str]:
+        logging.info("---- Stubbing Actions")
+        result = []
+        target_name = doot.args.cmd.args.name
+        unaliased = doot.aliases.on_fail(target_name).action[target_name]
+        matched = [x for x in plugins.action
+                   if x.name == target_name
+                   or x.value == unaliased]
+        if bool(matched):
+            loaded = matched[0].load()
+            result.append("- {} (Action, {})".format(matched[0].name, matched[0].value))
+            match getattr(loaded, "_toml_help", []):
+                case [] if bool(getattr(loaded, "__doc__")):
+                    result.append(loaded.__doc__)
+                case []:
+                    pass
+                case [*xs]:
+                    for x in xs:
+                        result.append(x)
+
+            loaded = getattr(loaded, "__call__", loaded)
+            match DKeyed.get_keys(loaded):
+                case []:
+                    result.append("-- No Declared Kwargs")
+                case [*xs]:
+                    result.append("-- Declared kwargs for action: %s", sorted([repr(x) for x in xs]))
+
+        result.append(NL)
+        result.append("-- Toml Form of an action: ")
+        # TODO customize this with declared annotations
+        if bool(matched):
+            result.append("{ do=\"%s\", args=[], key=val } " % matched[0].name)
+        else:
+            result.append("{ do=\"action name/import path\", args=[], inState=[], outState=[] } # plus any kwargs a specific action uses")
+
+        return result
+
+class _StubTask_m:
+
+    @property
+    def param_specs(self) -> list:
+        return [*super().param_specs,
+                self.build_param(prefix="--", name="task",  type=bool),
+                self.build_param(name="out",  type=str,     default=""),
+
+                self.build_param(prefix=1, name="name", type=str, default=None,    desc="The Name of the new task"),
+                self.build_param(prefix=2, name="ctor", type=str, default="task",  desc="a code ref, or alias of a task class"),
+                ]
+
+    def _stub_task_toml(self, tasks, plugins) -> list[str]:
         """
         This creates a toml stub using default values, as best it can
         """
         logging.info("---- Stubbing Task Toml")
+        result = []
         match  doot.aliases.task.get((ctor:=doot.args.on_fail("task").cmd.args.ctor()), None):
             case None:
                 raise doot.errors.CommandError("Task Ctor was not appliable", ctor)
@@ -138,7 +201,7 @@ class StubCmd(BaseCommand):
         try:
             task_mro = task_ctor().mro()
         except TypeError as err:
-            logging.error(err.args[0].replace("\n", ""))
+            logging.exception(err.args[0].replace("\n", ""))
             task_mro = []
             return
 
@@ -169,73 +232,74 @@ class StubCmd(BaseCommand):
 
         # Output to printer/stdout, or file
         if doot.args.cmd.args.out == "":
-            cmd_l.user(stub.to_toml())
-            return
+            result.append(stub.to_toml())
+            return result
 
         task_file = pl.Path(doot.args.cmd.args.out)
         if task_file.is_dir():
             task_file /= "stub_tasks.toml"
         cmd_l.user("Stubbing task %s into file: %s", stub['name'], task_file)
-        with open(task_file, "a") as f:
+        with task_file.open("a") as f:
             f.write("\n")
             f.write(stub.to_toml())
 
-    def _stub_actions(self, plugins):
-        logging.info("---- Stubbing Actions")
-        target_name = doot.args.cmd.args.name
-        unaliased = doot.aliases.on_fail(target_name).action[target_name]
-        matched = [x for x in plugins.action
-                   if x.name == target_name
-                   or x.value == unaliased]
-        if bool(matched):
-            loaded = matched[0].load()
-            cmd_l.user("- %s (Action, %s)", matched[0].name, matched[0].value)
-            match getattr(loaded, "_toml_help", []):
-                case [] if bool(getattr(loaded, "__doc__")):
-                    cmd_l.user(loaded.__doc__)
-                case []:
-                    pass
-                case [*xs]:
-                    for x in xs:
-                        cmd_l.user(x)
+class _StubPrinter_m:
 
-            loaded = getattr(loaded, "__call__", loaded)
-            match DKeyed.get_keys(loaded):
-                case []:
-                    cmd_l.user("-- No Declared Kwargs")
-                case [*xs]:
-                    cmd_l.user("-- Declared kwargs for action: %s", sorted([repr(x) for x in xs]))
+    @property
+    def param_specs(self) -> list:
+        return [*super().param_specs,
+                self.build_param(prefix="--", name="printer", type=bool,    default=False,           desc="Generate a stub printer config"),
+                ]
 
-        cmd_l.user("")
-        cmd_l.user("-- Toml Form of an action: ")
-        # TODO customize this with declared annotations
-        if bool(matched):
-            cmd_l.user("{ do=\"%s\", args=[], key=val } ", matched[0].name)
-        else:
-            cmd_l.user("{ do=\"action name/import path\", args=[], inState=[], outState=[] } # plus any kwargs a specific action uses")
-
-
-    def _stub_cli_param(self):
-        logging.info("---- Printing CLI Arg info")
-
-        cmd_l.info("# - CLI Arg Form. Add to task spec: cli=[]")
-        cmd_l.info("")
-        stub = []
-        stub.append('name="')
-        stub.append(doot.args.on_fail("default").cmd.args.name())
-        stub.append('", ')
-        stub.append('prefix="-", ')
-        stub.append('type="str", ')
-        stub.append('default="", ')
-        stub.append('desc="", ')
-
-        cmd_l.info("{ %s }", "".join(stub))
-
-    def _stub_printer(self):
+    def _stub_printer(self) -> list[str]:
         logging.info("---- Printing Printer Spec Info")
-        cmd_l.info("Printer Config Spec Form. Use in doot.toml [logging], [logging.subprinters], and [logging.extra]")
-        cmd_l.info("")
-        # cmd_l.info('file    = { level="DEBUG",   filter=["chainguard"],
-        # target="rotate", format="{levelname:<7} : {message:<20} :|:
-        # ({module}.{lineno}.{funcName})", filename_fmt="doot.log" }')
-        cmd_l.info("name = { level="", filter=[], target=[""], format="", colour=True, propagate=False, filename_fmt=""}")
+        result = [
+            ("- Printer Config Spec Form. Use in doot.toml [logging], [logging.subprinters], and [logging.extra]", {"colour":"blue"}),
+            NL,
+            'NAME = { level="", filter=[], target=[""], format="", colour=true, propagate=false, filename_fmt=""}',
+        ]
+        return result
+
+class StubCmd(_StubDoot_m, _StubParam_m, _StubAction_m, _StubTask_m, _StubPrinter_m, BaseCommand):
+    """ Called to interactively create a stub task definition
+      with a `target`, outputs to that file, else to stdout for piping
+    """
+    _name      = "stub"
+    _help      = ["Create a new stub task either to stdout, or path",
+                  "args allow stubbing a config file, cli parameter, or action",
+                  ]
+
+    @property
+    def param_specs(self) -> list:
+        return [
+            *super().param_specs,
+            self.build_param(prefix="--", name="strang",  type=bool,    default=False,           desc="Generate a stub strang/location expansion"),
+            self.build_param(name="suppress-header",  default=True, implicit=True),
+            ]
+
+    def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
+        match dict(doot.args.cmd.args):
+            case {"config": True}:
+                self._stub_doot_toml()
+            case {"action": True}:
+                result = self._stub_action(plugins)
+                self._print_text(result)
+            case {"param": True}:
+                result = self._stub_cli_param()
+                self._print_text(result)
+            case {"printer": True}:
+                result = self._stub_printer()
+                self._print_text(result)
+            case _:
+                result = self._stub_task_toml(tasks, plugins)
+                self._print_text(result)
+
+    def _print_text(self, text:list[ListVal]) -> None:
+        for line in text:
+            match line:
+                case str():
+                    cmd_l.user(line)
+                case (str() as s, dict() as d):
+                    cmd_l.user(s, extra=d)
+                case None:
+                    cmd_l.user("")

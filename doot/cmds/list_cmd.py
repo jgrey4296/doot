@@ -70,7 +70,40 @@ FMT_STR      : Final[str]       = doot.config.on_fail("{indent}{val}").settings.
 hide_names   : Final[list[str]] = doot.config.on_fail([]).settings.commands.list.hide()
 hide_re      : Final[Rx]        = re.compile("^({})".format("|".join(hide_names)))
 
+class _DagLister_m:
+
+    @property
+    def param_specs(self) -> list:
+        return [*super().param_specs,
+                self.build_param(prefix="--",
+                                 name="dag",
+                                 _short="D",
+                                 type=bool,
+                                 default=False,
+                                 desc="Output a DOT compatible graph of tasks"),
+                ]
+
 class _TaskLister_m:
+
+    @property
+    def param_specs(self) -> list:
+        return [*super().param_specs,
+                self.build_param(prefix="--",
+                                 name="tasks",
+                                 default=True,
+                                 desc="List all loaded tasks, by group"),
+                # Task Listing Parameters
+                self.build_param(name="group-by",
+                                 type=str,
+                                 default="group",
+                                 desc="How to group listed tasks"),
+                self.build_param(prefix="+", name="dependencies",
+                                 type=bool, default=False, desc="List task dependencies"),
+                self.build_param(prefix="+", name="internal",  _short="i",
+                                 type=bool, default=False, desc="Include internal tasks (ie: prefixed with an underscore)"),
+                self.build_param(prefix="+", name="docstr", type=bool, default=False),
+                self.build_param(prefix="+", name="params", type=bool, default=False),
+                ]
 
     def _list_tasks(self, tasks) -> list[ListVal]:
         logging.info("---- Listing tasks")
@@ -140,7 +173,6 @@ class _TaskLister_m:
             # TODO
             pass
 
-
         return pieces, var_dict
 
     def _filter_tasks(self, data) -> list[dict]:
@@ -168,9 +200,11 @@ class _TaskLister_m:
 
         match doot.args.on_fail(None).cmd.args.group_by():
             case None | "group":
+
                 def _group_fn(item) -> str:
                     return item['group']
             case "source":
+
                 def _group_fn(item) -> str:
                     return item['source']
             case x:
@@ -183,6 +217,17 @@ class _TaskLister_m:
 
 class _LocationLister_m:
 
+    @property
+    def param_specs(self) -> list:
+        return [*super().param_specs,
+                self.build_param(prefix="--",
+                                 name="locs",
+                                 _short="l",
+                                 type=bool,
+                                 default=False,
+                                 desc="List all Loaded Locations"),
+                ]
+
     def _list_locations(self) -> list[ListVal]:
         logging.info("---- Listing Defined Locations")
         result = []
@@ -194,8 +239,17 @@ class _LocationLister_m:
         else:
             return result
 
-
 class _LoggerLister_m:
+
+    @property
+    def param_specs(self) -> list:
+        return [*super().param_specs,
+                self.build_param(prefix="--",
+                                 name="loggers",
+                                 type=bool,
+                                 default=False,
+                                 desc="List All Print Points"),
+                ]
 
     def _list_loggers(self) -> list[ListVal]:
         logging.info("---- Listing Logging/Printing info")
@@ -226,8 +280,17 @@ class _LoggerLister_m:
         result.append(None)
         return result
 
-
 class _FlagLister_m:
+
+    @property
+    def param_specs(self) -> list:
+        return [*super().param_specs,
+                self.build_param(prefix="--",
+                                 name="flags",
+                                 type=bool,
+                                 default=False,
+                                 desc="List Task Meta"),
+                ]
 
     def _list_flags(self) -> list[ListVal]:
         logging.info("---- Listing Task Flags")
@@ -237,7 +300,18 @@ class _FlagLister_m:
             result.append(f"-- {x.name}")
         else:
             return result
+
 class _ActionLister_m:
+
+    @property
+    def param_specs(self) -> list:
+        return [*super().param_specs,
+                self.build_param(prefix="--",
+                                 name="actions",
+                                 type=bool,
+                                 default=False,
+                                 desc="List All Known Actions"),
+                ]
 
     def _list_actions(self, plugins) -> list[ListVal]:
         logging.info("---- Listing Available Actions")
@@ -252,6 +326,17 @@ class _ActionLister_m:
         return result
 
 class _PluginLister_m:
+
+    @property
+    def param_specs(self) -> list:
+        return [*super().param_specs,
+                self.build_param(prefix="--",
+                                 name="plugins",
+                                 type=bool,
+                                 default=False,
+                                 desc="List All Known Plugins"),
+                ]
+
     def _list_plugins(self, plugins) -> list[ListVal]:
         logging.info("---- Listing Plugins")
         result = []
@@ -270,6 +355,7 @@ class _PluginLister_m:
 
         result.append(None)
         return result
+
 @doot.check_protocol
 class ListCmd(_TaskLister_m,
               _LocationLister_m,
@@ -288,23 +374,6 @@ class ListCmd(_TaskLister_m,
     def param_specs(self) -> list[ParamSpec]:
         return [
             *super().param_specs,
-            # List other things
-            self.build_param(prefix="--", name="flags",                    type=bool, default=False, desc="List Task Meta"),
-            self.build_param(prefix="--", name="loggers",                  type=bool, default=False, desc="List All Print Points"),
-            self.build_param(prefix="--", name="actions",                  type=bool, default=False, desc="List All Known Actions"),
-            self.build_param(prefix="--", name="plugins",                  type=bool, default=False, desc="List All Known Plugins"),
-            self.build_param(prefix="--", name="locs",      _short="l",    type=bool, default=False, desc="List all Loaded Locations"),
-            self.build_param(prefix="--", name="tasks",  default=True,  desc="List all loaded tasks, by group"),
-            self.build_param(prefix="--", name="dag",       _short="D",    type=bool, default=False, desc="Output a DOT compatible graph of tasks"),
-
-            # Task Listing Parameters
-            self.build_param(name="group-by",                 type=str,  default="group", desc="How to group listed tasks"),
-            self.build_param(prefix="+", name="dependencies",             type=bool, default=False, desc="List task dependencies"),
-
-            self.build_param(prefix="+", name="internal",  _short="i",    type=bool, default=False, desc="Include internal tasks (ie: prefixed with an underscore)"),
-            self.build_param(prefix="+", name="docstr", type=bool, default=False),
-            self.build_param(prefix="+", name="params", type=bool, default=False),
-
             self.build_param(prefix=1, name="pattern",        type=str,  default="", desc="Filter the listing to only values passing this regex"),
             ]
 
