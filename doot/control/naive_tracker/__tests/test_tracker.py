@@ -46,10 +46,10 @@ doot._test_setup()
 import doot.errors
 import doot.structs
 from doot._abstract import Task_i
-from doot.control.base_tracker import BaseTracker
-from doot.control.tracker import DootTracker
 from doot.enums import TaskStatus_e, ExecutionPolicy_e
 
+from doot.control.naive_tracker._core import BaseTracker
+from doot.control.naive_tracker.tracker import DootTracker
 # ##-- end 1st party imports
 
 class TestTrackerNext:

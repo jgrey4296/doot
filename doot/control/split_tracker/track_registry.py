@@ -29,25 +29,31 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-# ##-- 3rd party imports
-from jgdv.structs.chainguard import ChainGuard
-
-# ##-- end 3rd party imports
-
 # ##-- 1st party imports
 import doot
 import doot.errors
-from doot._abstract import (Job_i, Task_i, TaskRunner_i,
-                            TaskTracker_i)
+from doot._abstract import (Job_i, Task_i, TaskRunner_i, TaskTracker_i)
 from doot._structs.relation_spec import RelationSpec
 from doot.enums import TaskMeta_e, TaskStatus_e, ArtifactStatus_e
-from doot.structs import (ActionSpec, TaskArtifact,
-                          TaskName, TaskSpec)
+from doot.structs import (ActionSpec, TaskArtifact, TaskName, TaskSpec)
 from doot.task.base_task import DootTask
 from doot.mixins.injection import Injector_m
 from doot.mixins.matching import TaskMatcher_m
 
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   from jgdv.structs.chainguard import ChainGuard
+   type Abstract[T] = T
+   type Concrete[T] = T
+   type ActionElem  = ActionSpec|RelationSpec
+   type ActionGroup = list[ActionElem]
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging          = logmod.getLogger(__name__)
@@ -60,11 +66,6 @@ ROOT                            : Final[str]                    = "root::_.$gen$
 EXPANDED                        : Final[str]                    = "expanded"  # Node attribute name
 REACTIVE_ADD                    : Final[str]                    = "reactive-add"
 INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                    = 10
-
-type Abstract[T] = T
-type Concrete[T] = T
-type ActionElem  = ActionSpec|RelationSpec
-type ActionGroup = list[ActionElem]
 
 class TrackRegistry(Injector_m, TaskMatcher_m):
     """ Stores and manipulates specs, tasks, and artifacts """
@@ -145,7 +146,7 @@ class TrackRegistry(Injector_m, TaskMatcher_m):
 
         return True
 
-    def _register_artifact(self, art:TaskArtifact, *tasks:TaskName):
+    def _register_artifact(self, art:TaskArtifact, *tasks:TaskName) -> None:
         logging.debug("Registering Artifact: %s, %s", art, tasks)
         self.artifacts[art].update(tasks)
         # Add it to the relevant abstract/concrete set
@@ -163,7 +164,7 @@ class TrackRegistry(Injector_m, TaskMatcher_m):
                 case _:
                     pass
 
-    def _register_blocking_relations(self, spec:TaskSpec):
+    def _register_blocking_relations(self, spec:TaskSpec) -> None:
         if spec.name.is_uniq():
             # If the spec is instantiated,
             # it has no indirect relations
@@ -294,7 +295,7 @@ class TrackRegistry(Injector_m, TaskMatcher_m):
                 logging.warning("Reusing latest Instance: %s", instance)
                 return instance
 
-    def _make_task(self, name:Concrete[TaskName], *, task_obj:Task_i=None) -> ConcreteId:
+    def _make_task(self, name:Concrete[TaskName], *, task_obj:Task_i=None) -> Concrete[TaskName]:
         """ Build a Concrete Spec's Task object
           if a task_obj is provided, store that instead
 

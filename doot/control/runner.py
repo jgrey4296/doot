@@ -132,11 +132,11 @@ class DootRunner(BaseRunner, TaskRunner_i):
 
             self.reporter.add_trace(job.spec, flags=Report_f.JOB | Report_f.INIT)
 
-            self._execute_action_group(job.spec.setup, job, group="setup")
-            self._execute_action_group(job.spec.actions, job, allow_queue=True, group="actions")
+            self._execute_action_group(job, group="setup")
+            self._execute_action_group(job, allow_queue=True, group="actions")
 
         except doot.errors.DootError as err:
-            self._execute_action_group(job.spec.on_fail, job, group="on_fail")
+            self._execute_action_group(job, group="on_fail")
             raise err
         finally:
             self.reporter.add_trace(job.spec, flags=Report_f.JOB | Report_f.SUCCEED)
@@ -155,12 +155,12 @@ class DootRunner(BaseRunner, TaskRunner_i):
 
             self.reporter.add_trace(task.spec, flags=Report_f.TASK | Report_f.INIT)
 
-            self._execute_action_group(task.spec.setup, task, group="setup")
-            self._execute_action_group(task.spec.actions, task, group="action")
+            self._execute_action_group(task, group="setup")
+            self._execute_action_group(task, group="actions")
             self.reporter.add_trace(task.spec, flags=Report_f.TASK | Report_f.SUCCEED)
         except doot.errors.DootError as err:
             skip_task = True
-            self._execute_action_group(task.spec.on_fail, task, group="on_fail")
+            self._execute_action_group(task, group="on_fail")
             raise err
         finally:
             if skip_task:
@@ -168,14 +168,16 @@ class DootRunner(BaseRunner, TaskRunner_i):
             else:
                 out_task_header_l.trace("(%s) Task : %s", self.step, task.shortname, extra={"colour":"cyan"})
 
-    def _execute_action_group(self, actions:list, task:Task_i, allow_queue=False, group=None) -> Maybe[tuple[int, ActRE]]:
+    def _execute_action_group(self, task:Task_i, allow_queue=False, group=None) -> Maybe[tuple[int, ActRE]]:
         """ Execute a group of actions, possibly queue any task specs they produced,
         and return a count of the actions run + the result
         """
+        actions = task.get_action_group(group)
+
         if not bool(actions):
             return None
 
-        actgrp_l.trace("Action Group %s (%s) for : %s", group, len(actions), task.shortname)
+        actgrp_l.trace("Action Group %s for : %s", group, task.shortname)
         group_result              = ActRE.SUCCESS
         to_queue : list[TaskSpec] = []
         executed_count            = 0
@@ -274,7 +276,7 @@ class DootRunner(BaseRunner, TaskRunner_i):
         returns False if the runner should skip the rest of the task
         """
         in_task_header_l.prefix("> ").trace("Testing Preconditions")
-        match self._execute_action_group(task.spec.depends_on, task, group="depends_on"):
+        match self._execute_action_group(task, group="depends_on"):
             case None:
                 return True
             case _, ActRE.SKIP | ActRE.FAIL:

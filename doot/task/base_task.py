@@ -69,13 +69,6 @@ class _TaskProperties_m(ParamSpecMaker_m):
            ]
 
     @property
-    def actions(self):
-        """lazy creation of action instances,
-          `prepare_actions` has already ensured all ctors can be found
-        """
-        yield from iter(self.spec.actions)
-
-    @property
     def shortname(self) -> str:
         return str(self.spec.name.readable)
 
@@ -100,8 +93,50 @@ class _TaskProperties_m(ParamSpecMaker_m):
     def is_stale(self):
         return False
 
+class _TaskStubbing_m:
+
+    @classmethod
+    def stub_class(cls, stub) -> TaskStub:
+        """ Create a basic toml stub for this task"""
+        if bool(list(filter(lambda x: x[0] == "task", TASK_ALISES))):
+            stub.ctor = "task"
+        else:
+            stub.ctor                   = cls
+
+        # Come first
+        stub['required_for'].priority   = -90
+        stub['depends_on'].priority     = -100
+
+        stub['priority'].default        = 10
+        stub['queue_behaviour'].default = "default"
+        stub['queue_behaviour'].comment = " | ".join({x.name for x in QueueMeta_e})
+        stub['flags'].comment = " | ".join({x.name for x in TaskMeta_e})
+        return stub
+
+    def stub_instance(self, stub) -> TaskStub:
+        """ extend the class toml stub with details from this instance """
+        stub['name'].default      = self.shortname
+        if bool(self.doc):
+            stub['doc'].default   = self.doc[:]
+        stub['flags'].default     = self.spec.flags
+
+        return stub
+
+class _TaskHelp_m:
+
+    @classmethod
+    def class_help(cls):
+        """ Task *class* help. """
+        help_lines = [f"Task   : {cls.__qualname__} v{cls._version}", ""]
+        mro = " -> ".join(x.__name__ for x in cls.mro())
+        help_lines.append(f"Task MRO: {mro}")
+        help_lines.append("")
+        help_lines += cls._help
+
+        return "\n".join(help_lines)
+
 @doot.check_protocol
-class DootTask(_TaskProperties_m, Task_i):
+class DootTask(_TaskProperties_m, _TaskStubbing_m, _TaskHelp_m, Task_i):
     """
       The simplest task, which can import action classes.
       eg:
@@ -130,7 +165,8 @@ class DootTask(_TaskProperties_m, Task_i):
         self.prepare_actions()
 
     def __repr__(self):
-        return f"<Task: {self.shortname}>"
+        cls = self.__class__.__qualname__
+        return f"<{cls}: {self.shortname}>"
 
     def __bool__(self):
         return self.status in DootTask.COMPLETE_STATES
@@ -150,44 +186,6 @@ class DootTask(_TaskProperties_m, Task_i):
                 return self.name == other.name
             case _:
                 return False
-
-    @classmethod
-    def class_help(cls):
-        """ Task *class* help. """
-        help_lines = [f"Task   : {cls.__qualname__} v{cls._version}", ""]
-        mro = " -> ".join(x.__name__ for x in cls.mro())
-        help_lines.append(f"Task MRO: {mro}")
-        help_lines.append("")
-        help_lines += cls._help
-
-        return "\n".join(help_lines)
-
-    @classmethod
-    def stub_class(cls, stub) -> TaskStub:
-        """ Create a basic toml stub for this task"""
-        if bool(list(filter(lambda x: x[0] == "task", TASK_ALISES))):
-            stub.ctor = "task"
-        else:
-            stub.ctor                   = cls
-
-        # Come first
-        stub['required_for'].priority   = -90
-        stub['depends_on'].priority     = -100
-
-        stub['priority'].default        = 10
-        stub['queue_behaviour'].default = "default"
-        stub['queue_behaviour'].comment = " | ".join({x.name for x in QueueMeta_e})
-        stub['flags'].comment = " | ".join({x.name for x in TaskMeta_e})
-        return stub
-
-    def stub_instance(self, stub) -> TaskStub:
-        """ extend the class toml stub with details from this instance """
-        stub['name'].default      = self.shortname
-        if bool(self.doc):
-            stub['doc'].default   = self.doc[:]
-        stub['flags'].default     = self.spec.flags
-
-        return stub
 
     def prepare_actions(self):
         """ if the task/action spec requires particular action ctors, load them.
@@ -242,3 +240,14 @@ class DootTask(_TaskProperties_m, Task_i):
 
         for line in lines:
             logging.log(level, prefix + str(line))
+
+    def get_action_group(self, group_name:str) -> list:
+        if not bool(group_name):
+            raise TaskError("Tried to retrieve an empty groupname")
+        if hasattr(self, group_name):
+            return getattr(self, group_name)
+        if group_name in self.spec.model_fields or self.spec.model_extra:
+            return getattr(self.spec, group_name)
+
+        logging.warning("Unknown Groupname: %s", group_name)
+        return []

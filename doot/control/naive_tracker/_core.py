@@ -37,7 +37,6 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 import boltons.queueutils
 import networkx as nx
-from jgdv import Maybe, Ident
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
@@ -55,6 +54,20 @@ from doot.mixins.injection import Injector_m
 from doot.mixins.matching import TaskMatcher_m
 # ##-- end 1st party imports
 
+import typing
+
+# ##-- types
+# isort: off
+if typing.TYPE_CHECKING:
+    from jgdv import Maybe, Ident
+    type Abstract[T] = T
+    type Concrete[T] = T
+    type ActionElem  = ActionSpec|RelationSpec
+    type ActionGroup = list[ActionElem]
+
+# isort: on
+# ##-- end types
+
 ##-- logging
 logging    = logmod.getLogger(__name__)
 printer    = doot.subprinter()
@@ -70,10 +83,6 @@ DECLARE_PRIORITY               : Final[int]                  = 10
 MIN_PRIORITY                   : Final[int]                  = -10
 INITAL_SOURCE_CHAIN_COUNT      : Final[int]                  = 10
 
-type Abstract[T] = T
-type Concrete[T] = T
-type ActionElem  = ActionSpec|RelationSpec
-type ActionGroup = list[ActionElem]
 
 class _TrackerStore(Injector_m, TaskMatcher_m):
     """ Stores and manipulates specs, tasks, and artifacts """

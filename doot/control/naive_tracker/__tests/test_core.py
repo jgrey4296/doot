@@ -23,8 +23,6 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-logging = logmod.root
-
 # ##-- 3rd party imports
 import pytest
 from jgdv.structs.chainguard import ChainGuard
@@ -38,12 +36,14 @@ doot._test_setup()
 import doot.errors
 import doot.structs
 from doot._abstract import Task_i
-from doot.control.base_tracker import BaseTracker
-from doot.control.tracker import DootTracker
 from doot.enums import TaskStatus_e
 from doot.utils import mock_gen
 
+from doot.control.naive_tracker._core import BaseTracker
+
 # ##-- end 1st party imports
+
+logging = logmod.root
 
 class TestTrackerStore:
 

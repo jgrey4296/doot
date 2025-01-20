@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
 # Imports:
@@ -35,13 +34,26 @@ import boltons.queueutils
 import doot
 import doot.errors
 from doot._abstract import (Job_i, Task_i, TaskRunner_i, TaskTracker_i)
-from doot._structs.relation_spec import RelationSpec
 from doot.enums import (EdgeType_e, LocationMeta_e, QueueMeta_e,
                         RelationMeta_e, TaskMeta_e, TaskStatus_e)
 from doot.structs import (ActionSpec, TaskArtifact, TaskName, TaskSpec)
 from doot.task.base_task import DootTask
 
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   from doot._structs.relation_spec import RelationSpec
+   from .track_registry import TrackRegistry
+   from .track_network import TrackNetwork
+   type Abstract[T]  = T
+   type Concrete[T]  = T
+   type ActionElem   = ActionSpec|RelationSpec
+   type ActionGroup  = list[ActionElem]
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging          = logmod.getLogger(__name__)
@@ -52,11 +64,6 @@ logging.disabled = False
 
 EXPANDED                       : Final[str]                  = "expanded"  # Node attribute name
 REACTIVE_ADD                   : Final[str]                  = "reactive-add"
-
-type Abstract[T]  = T
-type Concrete[T]  = T
-type ActionElem   = ActionSpec|RelationSpec
-type ActionGroup  = list[ActionElem]
 
 class TrackQueue:
     """ The queue of active tasks. """

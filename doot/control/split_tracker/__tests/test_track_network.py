@@ -35,11 +35,12 @@ doot._test_setup()
 import doot.errors
 import doot.structs
 from doot._abstract import Task_i
-from doot.control.comptracker.track_registry import TrackRegistry
-from doot.control.comptracker.track_network import TrackNetwork
 from doot.enums import TaskStatus_e
 from doot.utils import mock_gen
 from doot.enums import TaskMeta_e
+
+from doot.control.split_tracker.track_registry import TrackRegistry
+from doot.control.split_tracker.track_network import TrackNetwork
 
 # ##-- end 1st party imports
 

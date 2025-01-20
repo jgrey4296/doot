@@ -33,10 +33,10 @@ doot._test_setup()
 import doot.errors
 import doot.structs
 from doot._abstract import Task_i
-from doot.control.comptracker.track_registry import TrackRegistry
 from doot.enums import TaskStatus_e
 from doot.utils import mock_gen
 
+from doot.control.split_tracker.track_registry import TrackRegistry
 # ##-- end 1st party imports
 
 logging = logmod.root

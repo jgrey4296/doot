@@ -34,7 +34,6 @@ import doot.errors
 import doot.structs
 from doot._abstract import Task_i
 from doot.control.statemachine.task_registry import TaskRegistry
-from doot.control.tracker import DootTracker
 from doot.enums import TaskStatus_e
 from doot.utils import mock_gen
 

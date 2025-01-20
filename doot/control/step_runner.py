@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """
 
-
 """
-
+# ruff: noqa: PLR1711
 # Imports:
 from __future__ import annotations
 
 # ##-- stdlib imports
-# import abc
 import datetime
 import enum
 import functools as ftz
@@ -20,8 +18,6 @@ import time
 import types
 import weakref
 from collections import defaultdict
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Mapping, Match,
                     MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
@@ -32,7 +28,6 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv import Maybe
 from jgdv.debugging import SignalHandler
 
 # ##-- end 3rd party imports
@@ -41,11 +36,19 @@ from jgdv.debugging import SignalHandler
 import doot
 import doot._abstract as abstract
 import doot.errors
-import doot.structs as structs
+from doot import structs
 from doot.control.runner import DootRunner
 from doot.enums import Report_f, TaskMeta_e, TaskStatus_e
 
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+if TYPE_CHECKING:
+    from jgdv import Maybe
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -57,81 +60,7 @@ dry_run                     = doot.args.on_fail(False).cmd.args.dry_run()
 SLEEP_LENGTH                = doot.config.on_fail(0.2, int|float).startup.sleep.task()
 MAX_LOG_ACTIVE : Final[int] = 100
 
-@doot.check_protocol
-class DootStepRunner(DootRunner):
-    """ extends the default runner with step control """
-    _conf_prompt  = "::- Command? (? for help): "
-    _cmd_prefix   = "_do_"
-    _aliases      = { ""  : "continue",
-                     "c"  : "continue",
-                     "n"  : "skip",
-                     "b"  : "break",
-                     "l"  : "list",
-                     "d"  : "down",
-                     "u"  : "up",
-                     "q"  : "quit",
-                     "?"  : "help",
-                     "I"  : "print_info",
-                     "W"  : "print_warn",
-                     "D"  : "print_debug",
-                     "s"  : "print_state"
-                     }
-
-    def __init__(self:Self, *, tracker:abstract.TaskTracker_i, reporter:abstract.Reporter_p):
-        super().__init__(tracker=tracker, reporter=reporter)
-        self._conf_types     = []
-        self._override_level = "INFO"
-        self._has_quit       = False
-
-    def _expand_job(self, job:abstract.Job_i) -> None:
-        if self._pause(job):
-            super()._expand_job(job)
-        else:
-            printer.info("::- ...")
-
-    def _execute_task(self, task:abstract.Task_i) -> None:
-        if self._pause(task):
-            super()._execute_task(task)
-        else:
-            printer.info("::- ...")
-
-    def _execute_action(self, count, action, task) -> None:
-        if self._pause(action, task, step=f"{self.step}.{count}"):
-            return super()._execute_action(count, action, task)
-        else:
-            printer.info("::- ...")
-
-    def _pause(self, *args, step=None) -> bool:
-        if self._has_quit:
-            return False
-
-        if not bool(self._conf_types):
-            return True
-
-        target = args[0]
-        match target:
-            case _ if True in self._conf_types:
-                pass
-            case abstract.Job_i() if abstract.Job_i not in self._conf_types:
-                return True
-            case abstract.Task_i() if abstract.Task_i not in self._conf_types:
-                return True
-            case structs.ActionSpec() if structs.ActionSpec not in self._conf_types:
-                return True
-
-        printer.info("")
-        printer.info( "::- Step %s: %s", (step or self.step), str(target))
-        result = None
-        while not isinstance(result, bool):
-            response = input(self._conf_prompt)
-            if hasattr(self, f"{self._cmd_prefix}{response}"):
-                result = getattr(self, self._cmd_prefix + response)(*args)
-            elif response in self._aliases:
-                result = getattr(self, self._cmd_prefix + self._aliases[response])(*args)
-            else:
-                result = self._do_default(*args)
-
-        return result
+class _Instructions_m:
 
     def _do_default(self, *args):
         printer.info("::- Default")
@@ -242,6 +171,82 @@ class DootStepRunner(DootRunner):
                     printer.info("%20s : %s", "Task State", arg.state)
                 case abstract.Job_i():
                     printer.info("%20s : %s", "Job Args", arg.args)
+
+@doot.check_protocol
+class DootStepRunner(_Instructions_m, DootRunner):
+    """ extends the default runner with step control """
+    _conf_prompt  = "::- Command? (? for help): "
+    _cmd_prefix   = "_do_"
+    _aliases      = { ""  : "continue",
+                     "c"  : "continue",
+                     "n"  : "skip",
+                     "b"  : "break",
+                     "l"  : "list",
+                     "d"  : "down",
+                     "u"  : "up",
+                     "q"  : "quit",
+                     "?"  : "help",
+                     "I"  : "print_info",
+                     "W"  : "print_warn",
+                     "D"  : "print_debug",
+                     "s"  : "print_state",
+                     }
+
+    def __init__(self:Self, *, tracker:abstract.TaskTracker_i, reporter:abstract.Reporter_p):
+        super().__init__(tracker=tracker, reporter=reporter)
+        self._conf_types     = []
+        self._override_level = "INFO"
+        self._has_quit       = False
+
+    def _expand_job(self, job:abstract.Job_i) -> None:
+        if self._pause(job):
+            super()._expand_job(job)
+        else:
+            printer.info("::- ...")
+
+    def _execute_task(self, task:abstract.Task_i) -> None:
+        if self._pause(task):
+            super()._execute_task(task)
+        else:
+            printer.info("::- ...")
+
+    def _execute_action(self, count, action, task) -> None:
+        if self._pause(action, task, step=f"{self.step}.{count}"):
+            return super()._execute_action(count, action, task)
+        else:
+            printer.info("::- ...")
+
+    def _pause(self, *args, step=None) -> bool:
+        if self._has_quit:
+            return False
+
+        if not bool(self._conf_types):
+            return True
+
+        target = args[0]
+        match target:
+            case _ if True in self._conf_types:
+                pass
+            case abstract.Job_i() if abstract.Job_i not in self._conf_types:
+                return True
+            case abstract.Task_i() if abstract.Task_i not in self._conf_types:
+                return True
+            case structs.ActionSpec() if structs.ActionSpec not in self._conf_types:
+                return True
+
+        printer.info("")
+        printer.info( "::- Step %s: %s", (step or self.step), str(target))
+        result = None
+        while not isinstance(result, bool):
+            response = input(self._conf_prompt)
+            if hasattr(self, f"{self._cmd_prefix}{response}"):
+                result = getattr(self, self._cmd_prefix + response)(*args)
+            elif response in self._aliases:
+                result = getattr(self, self._cmd_prefix + self._aliases[response])(*args)
+            else:
+                result = self._do_default(*args)
+
+        return result
 
     def _set_print_level(self, level=None):
         if level:

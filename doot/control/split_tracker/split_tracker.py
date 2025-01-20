@@ -7,7 +7,6 @@ Task:           T[n]
   Expansion: ∀x ∈ C[n].depends_on => A[x] -> C[x]
   Head: C[1].depends_on[A[n].$head$] => A[n] -> C[n], A[n].head -> C[n].head, connect
 
-
 """
 # Imports:
 from __future__ import annotations
@@ -45,10 +44,20 @@ from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
 
-from doot.control.comptracker.track_registry import TrackRegistry
-from doot.control.comptracker.track_network import TrackNetwork
-from doot.control.comptracker.track_queue import TrackQueue
+from doot.control.split_tracker.track_registry import TrackRegistry
+from doot.control.split_tracker.track_network import TrackNetwork
+from doot.control.split_tracker.track_queue import TrackQueue
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   type Abstract[T] = T
+   type Concrete[T] = T
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging    = logmod.getLogger(__name__)
@@ -60,12 +69,9 @@ task_l     = doot.subprinter("task")
 artifact_l = doot.subprinter("artifact")
 ##-- end logging
 
-type Abstract[T] = T
-type Concrete[T] = T
-
 MAX_LOOP  : Final[int]     = 100
 
-class ComponentTracker(TaskTracker_i):
+class SplitTracker(TaskTracker_i):
     """ The public part of the standard tracker implementation
     Has three components:
     _registry : db for specs and tasks
@@ -99,7 +105,7 @@ class ComponentTracker(TaskTracker_i):
     def build_network(self) -> None:
         self._network.build_network()
 
-    def propagate_state_and_cleanup(self, name:TaskName):
+    def propagate_state_and_cleanup(self, name:TaskName) -> None:
         """ Propagate a task's state on to its cleanup task"""
         logging.info("Queueing Cleanup Task and Propagating State to Cleanup: %s", name)
         cleanups = [x for x in self._network.succ[name] if self._network.edges[name, x].get("cleanup", False)]

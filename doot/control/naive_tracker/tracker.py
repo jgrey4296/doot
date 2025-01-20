@@ -11,7 +11,6 @@ import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
-import pathlib as pl
 import re
 import time
 import types
@@ -27,7 +26,6 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import networkx as nx
-from jgdv import Maybe, Depth
 from jgdv.structs.strang import CodeReference
 
 # ##-- end 3rd party imports
@@ -36,12 +34,24 @@ from jgdv.structs.strang import CodeReference
 import doot
 import doot.errors
 from doot._abstract import (Job_i, Task_i, TaskRunner_i, TaskTracker_i)
-from doot.control.base_tracker import BaseTracker
 from doot.enums import EdgeType_e, ExecutionPolicy_e, TaskStatus_e, TaskMeta_e, ArtifactStatus_e
 from doot.structs import TaskArtifact, TaskName, TaskSpec
 from doot.task.base_task import DootTask
 
+from doot.control.naive_tracker._core import BaseTracker
+
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+if TYPE_CHECKING:
+    import pathlib as pl
+    from jgdv import Maybe, Depth
+    type Node      = TaskName|TaskArtifact
+    type PlanEntry = tuple[Depth, Node, str]
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging    = logmod.getLogger(__name__)
@@ -52,9 +62,6 @@ skip_l     = doot.subprinter("skip")
 task_l     = doot.subprinter("task")
 artifact_l = doot.subprinter("artifact")
 ##-- end logging
-
-type Node      = TaskName|TaskArtifact
-type PlanEntry = tuple[Depth, Node, str]
 
 MAX_LOOP  : Final[int]     = 100
 

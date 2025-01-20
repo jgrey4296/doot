@@ -36,13 +36,13 @@ class TestBaseTask:
 
     def test_expand_lambda_action(self):
         task                = DootTask(TaskSpec.build({"name":"basic::example", "action_ctor":basic_action, "actions": [{"do": "doot.actions.base_action:DootBaseAction", "args":["blah"]}]}), job=None)
-        actions             = list(task.actions)
+        actions             = list(task.get_action_group("actions"))
         assert(len(actions) == 1)
 
     def test_run_lambda_action(self, caplog):
         caplog.set_level("DEBUG", logger="_printer_")
         task         = DootTask(TaskSpec.build({"name":"basic::example", "action_ctor":basic_action, "actions": [{"do": "doot.actions.base_action:DootBaseAction", "args":["blah"]}]}), job=None)
-        actions      = list(task.actions)
+        actions      = list(task.get_action_group("actions"))
         result       = actions[0]({"example": "state"})
         assert(result == {"count": 1})
         assert("Base Action Called: 0" in caplog.messages)
@@ -51,7 +51,7 @@ class TestBaseTask:
     def test_expand_action_str(self, caplog):
         caplog.set_level("DEBUG", logger="_printer_")
         task         = DootTask(TaskSpec.build({"name":"basic::example", "action_ctor": "test_base_task:basic_action", "actions": [{"do": "doot.actions.base_action:DootBaseAction", "args":["blah"]}]}), job=None)
-        actions      = list(task.actions)
+        actions      = task.get_action_group("actions")
         result       = actions[0]({"example": "state"})
         assert(result == {"count" : 1})
         assert("Base Action Called: 0" in caplog.messages)

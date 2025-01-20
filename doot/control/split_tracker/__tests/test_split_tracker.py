@@ -35,9 +35,9 @@ doot._test_setup()
 import doot.errors
 import doot.structs
 from doot._abstract import Task_i
-from doot.control.comptracker.comp_tracker import ComponentTracker
 from doot.enums import TaskStatus_e
 from doot.utils import mock_gen
+from doot.control.split_tracker import SplitTracker
 
 # ##-- end 1st party imports
 
@@ -46,28 +46,28 @@ logging = logmod.root
 TaskSpec = doot.structs.TaskSpec
 TaskName = doot.structs.TaskName
 
-class TestCompTracker:
+class TestSplitTracker:
 
     def test_sanity(self):
         assert(True)
         assert(not False)
 
     def test_basic(self):
-        obj = ComponentTracker()
-        assert(isinstance(obj, ComponentTracker))
+        obj = SplitTracker()
+        assert(isinstance(obj, SplitTracker))
 
     def test_next_for_fails_with_unbuilt_network(self):
-        obj = ComponentTracker()
+        obj = SplitTracker()
         with pytest.raises(doot.errors.TrackingError):
             obj.next_for()
 
     def test_next_for_empty(self):
-        obj = ComponentTracker()
+        obj = SplitTracker()
         obj.build_network()
         assert(obj.next_for() is None)
 
     def test_next_for_no_connections(self):
-        obj  = ComponentTracker()
+        obj  = SplitTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::Task"})
         obj.register_spec(spec)
         t_name = obj.queue_entry(spec.name)
@@ -81,7 +81,7 @@ class TestCompTracker:
         assert(obj.get_status(t_name) is TaskStatus_e.RUNNING)
 
     def test_next_simple_dependendency(self):
-        obj  = ComponentTracker()
+        obj  = SplitTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
@@ -97,7 +97,7 @@ class TestCompTracker:
         assert(obj.get_status(t_name) is TaskStatus_e.WAIT)
 
     def test_next_dependency_success_produces_ready_state_(self):
-        obj  = ComponentTracker()
+        obj  = SplitTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
@@ -116,7 +116,7 @@ class TestCompTracker:
         assert(obj.get_status(t_name) is TaskStatus_e.RUNNING)
 
     def test_next_artificial_success(self):
-        obj  = ComponentTracker()
+        obj  = SplitTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
@@ -135,7 +135,7 @@ class TestCompTracker:
         assert(obj.get_status(t_name) is TaskStatus_e.RUNNING)
 
     def test_next_halt(self):
-        obj  = ComponentTracker()
+        obj  = SplitTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
@@ -157,7 +157,7 @@ class TestCompTracker:
             assert(x.status in [TaskStatus_e.HALTED, TaskStatus_e.DEAD])
 
     def test_next_fail(self):
-        obj  = ComponentTracker()
+        obj  = SplitTracker()
         spec = doot.structs.TaskSpec.build({"name":"basic::alpha", "depends_on":["basic::dep"]})
         dep  = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, dep)
@@ -179,7 +179,7 @@ class TestCompTracker:
             assert(x.status in [TaskStatus_e.DEAD])
 
     def test_next_job_head(self):
-        obj       = ComponentTracker()
+        obj       = SplitTracker()
         job_spec  = doot.structs.TaskSpec.build({"name":"basic::job", "meta": ["JOB"], "cleanup":["basic::task"]})
         task_spec = doot.structs.TaskSpec.build({"name":"basic::task", "test_key": "bloo"})
         obj.register_spec(job_spec)
@@ -216,7 +216,7 @@ class TestCompTracker:
                 assert(False), x
 
     def test_next_job_head_with_subtasks(self):
-        obj       = ComponentTracker()
+        obj       = SplitTracker()
         job_spec  = doot.structs.TaskSpec.build({"name":"basic::job", "meta": ["JOB"]})
         sub_spec1 = doot.structs.TaskSpec.build({"name":"basic::task.1", "test_key": "bloo", "required_for": ["basic::job.$head$"]})
         sub_spec2 = doot.structs.TaskSpec.build({"name":"basic::task.2", "test_key": "blah", "required_for": ["basic::job.$head$"]})
