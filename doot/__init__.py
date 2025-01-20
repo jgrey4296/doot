@@ -61,6 +61,7 @@ TOOL_PREFIX          : Final[str]         = "tool.doot"
 config               : ChainGuard         = ChainGuard()
 constants            : ChainGuard         = ChainGuard.load(constants_file).remove_prefix(CONSTANT_PREFIX)
 aliases              : ChainGuard         = ChainGuard()
+cmd_aliases          : ChainGuard         = ChainGuard()
 locs                 : DootLocations      = None # DootLocations(pl.Path()) # registered locations
 args                 : ChainGuard         = ChainGuard() # parsed arg access
 log_config           : JGDVLogConfig      = JGDVLogConfig(constants.on_fail(None).printer.PRINTER_CHILDREN())
@@ -109,9 +110,8 @@ def setup(targets:Maybe[list[pl.Path]|False]=None, prefix:Maybe[str]=TOOL_PREFIX
 
     try:
         config = ChainGuard.load(*existing_targets)
-    except OSError as err:
-        logging.exception("Failed to Load Config Files: %s", existing_targets)
-        raise doot.errors.InvalidConfigError() from err
+    except (IOError, OSError) as err:
+        raise doot.errors.InvalidConfigError(*err.args) from err
 
     if existing_targets == [pl.Path("pyproject.toml")] and "doot" not in config:
         raise doot.errors.MissingConfigError("Pyproject has no doot config")
@@ -126,8 +126,11 @@ def setup(targets:Maybe[list[pl.Path]|False]=None, prefix:Maybe[str]=TOOL_PREFIX
     _load_aliases()
     _load_locations()
     _update_import_path()
-    _configs_loaded_from   = existing_targets
+    _set_command_aliases()
+    for x in config.on_fail([])['global'].state():
+        update_global_task_state(x, source="doot.toml")
 
+    _configs_loaded_from   = existing_targets
     return config, locs
 
 def verify_config_version(ver:Maybe[str], source:str|pl.Path) -> None:
@@ -142,8 +145,16 @@ def verify_config_version(ver:Maybe[str], source:str|pl.Path) -> None:
             raise doot.errors.VersionMismatchError("No Doot Version Found in config file: %s", source)
 
 def update_global_task_state(data:dict|ChainGuard, *, source=None) -> None:
+    """ Update the shared global state.
+    expects a dict of the immediate date.
+    """
     assert(source is not None)
-    for x,y in data:
+    setup_l = subprinter("setup")
+    setup_l.trace("Updating Global State from: %s", source)
+    if not isinstance(data, (dict, ChainGuard)):
+        raise doot.errors.GlobalStateMismatch("Not a dict", data)
+
+    for x,y in data.items():
         if x not in _global_task_state:
             _global_task_state[x] = y
         elif _global_task_state[x] != y:
@@ -159,7 +170,7 @@ def _load_constants() -> None:
         case None:
             pass
         case pl.Path() as const_file if const_file.exists():
-            setup_l.user("---- Loading Constants")
+            setup_l.trace("Loading Constants")
             base_data = ChainGuard.load(const_file)
             verify_config_version(base_data.on_fail(None).doot_version(), source=const_file)
             constants = base_data.remove_prefix(CONSTANT_PREFIX)
@@ -177,12 +188,12 @@ def _load_aliases(*, data:Maybe[dict|ChainGuard]=None, force:bool=False) -> None
                 base_data = {}
                 pass
             case pl.Path() as source if source.exists():
-                setup_l.user("---- Loading Aliases: %s", source)
+                setup_l.trace("Loading Aliases: %s", source)
                 base_data = ChainGuard.load(source)
                 verify_config_version(base_data.on_fail(None).doot_version(), source=source)
                 base_data = base_data.remove_prefix(ALIAS_PREFIX)
             case   source:
-                setup_l.error("---- Alias File Not Found: %s", source)
+                setup_l.trace("Alias File Not Found: %s", source)
                 base_data = {}
 
         # Flatten the lists
@@ -200,7 +211,7 @@ def _load_aliases(*, data:Maybe[dict|ChainGuard]=None, force:bool=False) -> None
         case None:
             pass
         case _ if bool(data):
-            setup_l.user("---- Updating Aliases")
+            setup_l.trace("Updating Aliases")
             base = defaultdict(dict)
             base.update(dict(aliases._table()))
             for key,eps in data.items():
@@ -215,12 +226,13 @@ def _load_locations() -> None:
     """
     global locs
     setup_l = subprinter("setup")
-    setup_l.user("---- Loading Locations")
+    setup_l.trace("Loading Locations")
     locs   = DootLocations(pl.Path.cwd())
     # Load Initial locations
     for loc in config.on_fail([]).locations():
         try:
-            setup_l.user("+ %s", loc)
+            for name in loc.keys():
+                setup_l.trace("+ %s", name)
             locs.update(loc, strict=False)
         except (JGDVError, ValueError) as err:
             setup_l.error("Location Loading Failed: %s (%s)", loc, err)
@@ -230,13 +242,27 @@ def _update_import_path() -> None:
     Modifies the global `sys.path`
     """
     setup_l = subprinter("setup")
-    setup_l.user("---- Updating Import Path")
+    setup_l.trace("Updating Import Path")
     task_sources = config.on_fail([locs[".tasks"]], list).startup.sources.tasks(wrapper=lambda x: [locs[y] for y in x])
     task_code    = config.on_fail([locs[".tasks"]], list).startup.sources.code(wrapper=lambda x: [locs[y] for y in x])
     for source in set(task_sources + task_code):
         if source.exists() and source.is_dir():
-            setup_l.user("+ %s", source)
+            setup_l.trace("+ %s", source)
             sys.path.append(str(source))
+
+def _set_command_aliases() -> None:
+    """ Read settings.commands.* and register aliases """
+    global cmd_aliases
+    setup_l = subprinter("setup")
+    setup_l.trace("Setting Command Aliases")
+    registered = {}
+    for name,details in config.on_fail({}).settings.commands().items():
+        for alias, args in details.on_fail({}, non_root=True).aliases().items():
+            setup_l.trace("- %s -> %s", name, alias)
+            registered[alias] = [name, *args]
+    else:
+        cmd_aliases = ChainGuard(registered)
+        setup_l.trace("Finished Command Aliases")
 
 def _null_setup() -> None:
     """
