@@ -102,7 +102,7 @@ class DootJob(Job_i, DootTask):
         return stub
 
     @classmethod
-    def class_help(cls) -> str:
+    def class_help(cls) -> list[str]:
         """ Job *class* help. """
         help_lines = [f"Job : {cls.__qualname__} v{cls._version}    ({cls.__module__}:{cls.__qualname__})", ""]
 
@@ -116,4 +116,4 @@ class DootJob(Job_i, DootTask):
             help_lines += ["", "Params:"]
             help_lines += [y for x in cls.param_specs if (y:=str(x))]
 
-        return "\n".join(help_lines)
+        return help_lines

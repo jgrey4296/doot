@@ -26,10 +26,8 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang import CodeReference
 from jgdv.util.time_ctx import TimeCtx
-from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -40,6 +38,14 @@ from doot.task.check_locs import CheckLocsTask
 from doot.utils.plugin_selector import plugin_selector
 
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   from jgdv.structs.chainguard import ChainGuard
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -64,7 +70,8 @@ class RunCmd(BaseCommand):
 
     @property
     def param_specs(self) -> list:
-        return super().param_specs + [
+        return [
+            *super().param_specs,
             self.build_param(name="step",      default=False),
             self.build_param(name="interrupt", default=False),
             self.build_param(name="dry-run",   default=False),
@@ -73,7 +80,7 @@ class RunCmd(BaseCommand):
             ]
 
     def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
-        logging.info("---- Starting Run Cmd")
+        cmd_l.trace("---- Starting Run Cmd")
         # Note the final parens to construct:
         available_reporters    = plugins.on_fail([], list).report_line()
         report_lines           = [plugin_selector(available_reporters, target=x)() for x in report_line_targets]
@@ -81,16 +88,16 @@ class RunCmd(BaseCommand):
         tracker                = plugin_selector(plugins.on_fail([], list).tracker(), target=tracker_target)()
         runner                 = plugin_selector(plugins.on_fail([], list).runner(), target=runner_target)(tracker=tracker, reporter=reporter)
 
-        logging.info("Registering Task Specs: %s", len(tasks))
+        cmd_l.trace("Registering Task Specs: %s", len(tasks))
         for task in tasks.values():
             tracker.register_spec(task)
 
-        cmd_l.info("Queuing Initial Tasks")
+        cmd_l.trace("Queuing Initial Tasks")
         for target in doot.args.on_fail([], list).cmd.args.target():
-            if target not in tracker:
-                cmd_l.warn("%s specified as run target, but it doesn't exist", target)
-            else:
+            try:
                 tracker.queue_entry(target, from_user=True)
+            except doot.errors.TrackingError as err:
+                cmd_l.warn("%s specified as run target, but it doesn't exist", target)
 
         tracker.queue_entry(CheckLocsTask(), from_user=True)
         for target in doot.args.on_fail({}).sub().keys():
@@ -98,7 +105,7 @@ class RunCmd(BaseCommand):
                 tracker.queue_entry(target, from_user=True)
             except doot.errors.TrackingError as err:
                 cmd_l.warn("Failed to Queue Target: %s", target)
-                logging.debug(err)
+                cmd_l.debug(err)
 
 
         match interrupt_handler:
@@ -107,23 +114,28 @@ class RunCmd(BaseCommand):
             case None:
                 interrupt = None
             case True:
-                logging.debug("Setting default interrupt handler")
+                cmd_l.trace("Setting default interrupt handler")
                 interrupt = interrupt_handler
             case str():
-                logging.debug("Loading custom interrupt handler")
+                cmd_l.trace("Loading custom interrupt handler")
                 interrupt = CodeReference.build(interrupt_handler)()
 
-        cmd_l.info("%s Tasks Queued: %s", len(tracker.active_set), " ".join(str(x) for x in tracker.active_set))
+        cmd_l.trace("%s Tasks Queued: %s", len(tracker.active_set), " ".join(str(x) for x in tracker.active_set))
         with TimeCtx(logger=logging, entry_msg="--- Runner Entry", exit_msg="---- Runner Exit", level=20):
             with runner:
                 if doot.args.on_fail(False).cmd.args.confirm():
-                    plan = tracker.generate_plan()
-                    for i,(depth,node,desc) in enumerate(plan):
-                        cmd_l.info("Step %-4s: %s",i, node)
-                    match input("Confirm Execution Plan (Y/*): "):
-                        case "Y":
-                            pass
-                        case _:
-                            cmd_l.info("Cancelling")
-                            return
-                runner(handler=interrupt)
+                    self._print_plan(runner)
+                    return
+                else:
+                    runner(handler=interrupt)
+
+    def _print_plan(self, runner:TaskRunner_i):
+        tracker = runner.tracker
+        plan = tracker.generate_plan()
+        for i,(depth,node,desc) in enumerate(plan):
+            cmd_l.user("Step %-4s: %s",i, node)
+            match input("Confirm Execution Plan (Y/*): "):
+                case "Y":
+                    pass
+                case _:
+                    cmd_l.user("Cancelling")

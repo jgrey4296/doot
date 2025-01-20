@@ -30,12 +30,6 @@ from weakref import ref
 
 # ##-- end stdlib imports
 
-# ##-- 3rd party imports
-from jgdv import Maybe
-from jgdv.structs.chainguard import ChainGuard
-
-# ##-- end 3rd party imports
-
 # ##-- 1st party imports
 from doot._abstract.cmd import Command_i
 from doot._abstract.protocols import SpecStruct_p
@@ -43,6 +37,20 @@ from doot._abstract.task import Job_i
 
 # ##-- end 1st party imports
 
+import typing
+
+# ##-- types
+# isort: off
+type PluginLoader_p        = Loader_p[EntryPoint]
+type CommandLoader_p       = Loader_p[Command_i]
+type TaskLoader_p          = Loader_p[SpecStruct_p]
+type Loaders_p = CommandLoader_p | PluginLoader_p | TaskLoader_p
+if typing.TYPE_CHECKING:
+   from jgdv import Maybe
+   from jgdv.structs.chainguard import ChainGuard
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -60,7 +68,7 @@ class Loader_p[T](Protocol):
     def load(self) -> ChainGuard[T]:
         pass
 
+
 PluginLoader_p        = Loader_p[EntryPoint]
 CommandLoader_p       = Loader_p[Command_i]
 TaskLoader_p          = Loader_p[SpecStruct_p]
-type Loaders_p = CommandLoader_p | PluginLoader_p | TaskLoader_p

@@ -33,7 +33,13 @@ from jgdv import Maybe
 
 # ##-- end 3rd party imports
 
-type TraceRecord = Any
+# ##-- types
+# isort: off
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   type TraceRecord = Any
+# isort: on
+# ##-- end types
 
 class Report_f(enum.Flag):
     """ Flags to mark what a reporter reports

@@ -62,6 +62,9 @@ def main() -> None:
         # --- Setup
         if not bool(doot.config):
             doot.setup()
+    except doot.errors.InvalidConfigError as err:
+        logging.error(" : ".join(list(err.args)))
+        sys.exit(1)
     except doot.errors.MissingConfigError:
         doot._null_setup()
     finally:

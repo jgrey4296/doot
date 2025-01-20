@@ -46,11 +46,18 @@ from doot._structs.task_name import TaskName
 
 # ##-- end 1st party imports
 
+# ##-- types
+# isort: off
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   type RelationTarget = TaskName|TaskArtifact
+# isort: on
+# ##-- end types
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-type RelationTarget = TaskName|TaskArtifact
 
 class RelationMeta_e(enum.Enum):
     """
@@ -102,30 +109,33 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
     @staticmethod
     def build(data:RelationSpec|ChainGuard|dict|TaskName|str, *, relation:Maybe[RelationSpec.mark_e]=None) -> RelationSpec:
         relation = relation or RelationSpec.mark_e.needs
+        result = None
         match data:
             case RelationSpec():
-                return data
+                result = data
             case pl.Path():
-                return RelationSpec(target=TaskArtifact(data), relation=relation)
+                result = RelationSpec(target=TaskArtifact(data), relation=relation)
             case TaskName() | TaskArtifact():
-                return RelationSpec(target=data, relation=relation)
+                result = RelationSpec(target=data, relation=relation)
             case str() as x if TaskArtifact._separator in x:
                 target = TaskArtifact(x)
-                return RelationSpec(target=target, relation=relation)
+                result = RelationSpec(target=target, relation=relation)
             case str() as x if Location._separator in x:
-                target = Location(x)
+                result = Location(x)
                 return RelationSpec(target=target, relation=relation)
             case str() as x if TaskName._separator in x:
                 target = TaskName(x)
-                return RelationSpec(target=target, relation=relation)
+                result = RelationSpec(target=target, relation=relation)
             case {"path":path} if "task" not in data:
                 return RelationSpec(target=TaskArtifact(path), relation=relation)
             case {"task": taskname}:
                 constraints = data.get("constraints", None) or data.get("constraints_", False)
                 inject      = data.get("inject", None)      or data.get("inject_", None)
-                return RelationSpec(target=TaskName(taskname), constraints=constraints, inject=inject, relation=relation)
+                result = RelationSpec(target=TaskName(taskname), constraints=constraints, inject=inject, relation=relation)
             case _:
                 raise ValueError("Bad data used for relation spec", data)
+
+        return result
 
     @field_validator("target", mode="before")
     def _validate_target(cls, val) -> RelationTarget:
@@ -140,7 +150,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 raise ValueError("Unparsable target str")
 
     @field_validator("constraints", mode="before")
-    def _validate_constraints(cls, val):
+    def _validate_constraints(cls, val) -> bool|dict:
          match val:
              case bool():
                  return val
@@ -152,7 +162,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                  raise TypeError("Unknown constraints type", val)
 
     @field_validator("inject", mode="before")
-    def _validate_inject(cls, val):
+    def _validate_inject(cls, val) -> Maybe[str|dict]:
         match val:
             case None:
                 return None

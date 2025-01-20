@@ -125,7 +125,7 @@ class _TaskStubbing_m:
 class _TaskHelp_m:
 
     @classmethod
-    def class_help(cls):
+    def class_help(cls) -> list[str]:
         """ Task *class* help. """
         help_lines = [f"Task   : {cls.__qualname__} v{cls._version}", ""]
         mro = " -> ".join(x.__name__ for x in cls.mro())
@@ -133,7 +133,7 @@ class _TaskHelp_m:
         help_lines.append("")
         help_lines += cls._help
 
-        return "\n".join(help_lines)
+        return help_lines
 
 @doot.check_protocol
 class DootTask(_TaskProperties_m, _TaskStubbing_m, _TaskHelp_m, Task_i):

@@ -60,7 +60,7 @@ class BaseCommand(ParamSpecMaker_m, Command_i):
         return self._name or self.__class__.__name__.lower()
 
     @property
-    def help(self) -> str:
+    def help(self) -> list[str]:
         help_lines = ["", f"Command: {self.name} v{self._version}", ""]
         help_lines += self._help
 
@@ -70,7 +70,7 @@ class BaseCommand(ParamSpecMaker_m, Command_i):
             help_lines += ["", "Params:"]
             help_lines += filter(bool, map(lambda x: x.help_str(), sorted(self.param_specs, key=key_func)))
 
-        return "\n".join(help_lines)
+        return help_lines
 
     @property
     def helpline(self) -> str:

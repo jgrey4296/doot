@@ -58,7 +58,7 @@ class Command_i(CLIParamProvider_p):
 
     @property
     @abstractmethod
-    def help(self) -> str:
+    def help(self) -> list[str]:
         pass
 
     @property

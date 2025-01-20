@@ -235,7 +235,7 @@ class _LocationLister_m:
 
         for x in sorted(doot.locs.Current):
             loc = doot.locs.Current.get(x)
-            result.append(f"-- {x:-25} : {loc} ")
+            result.append(f"-- {x:<25} : {loc} ")
         else:
             return result
 
@@ -317,8 +317,9 @@ class _ActionLister_m:
         logging.info("---- Listing Available Actions")
         result = []
         result.append("Available Actions:")
+        largest = max(len(x.name) for x in plugins.action)
         for action in sorted(plugins.action, key=lambda x: x.name):
-            result.append(f"-- {action.name:-20} : {action.value}")
+            result.append(f"-- {action.name:<25} : {action.value}")
 
         result.append(None)
         result.append("- For Custom Python Actions, implement the following in the .tasks directory")

@@ -43,17 +43,23 @@ from doot._abstract.task import Task_i
 
 # ##-- end 1st party imports
 
+# ##-- types
+# isort: off
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   type Actual      = Any
+   type TaskSpec    = Any
+   type TaskStatus_e = enum.Enum
+   type Abstract[T] = T
+   type Concrete[T] = T
+   type PlanEntry   = tuple[Depth, Concrete[Ident], str]
+
+# isort: on
+# ##-- end types
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-# ## Types
-type Actual      = Any
-type TaskSpec    = Any
-type TaskStatus_e = enum.Enum
-type Abstract[T] = T
-type Concrete[T] = T
-type PlanEntry   = tuple[Depth, Concrete[Ident], str]
 
 class EdgeType_e(EnumBuilder_m, enum.Enum):
     """ Enum describing the possible edges of the task tracker's task network """

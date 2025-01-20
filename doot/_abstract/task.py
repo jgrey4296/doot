@@ -52,12 +52,18 @@ from doot._abstract.protocols import ParamStruct_p, SpecStruct_p, StubStruct_p
 
 # ##-- end 1st party imports
 
+# ##-- types
+# isort: off
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   type ActionSpec = Any
+   type TaskName   = str
+# isort: on
+# ##-- end types
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-type ActionSpec = Any
-type TaskName   = str
 
 class TaskStatus_e(enum.Enum):
     """

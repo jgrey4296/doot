@@ -46,6 +46,9 @@ unfixable = []
 dummy-variable-rgx        = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 logger-objects            = ["logging", "printer", "logmod"]
 
+[lint.pep8-naming]
+extend-ignore-names = ["cls", "mcls"]
+
 # [lint.per-file-ignore]
 # "__init__.py" = ["E402"]
 # "**/{test,docs,tools}/*" = ["E402"]
