@@ -32,7 +32,6 @@ import jgdv.cli
 import sh
 from jgdv import Maybe
 from jgdv.cli.param_spec import LiteralParam, ParamSpec
-from jgdv.logging import JGDVLogConfig
 from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 3rd party imports
@@ -52,21 +51,27 @@ from doot.utils.plugin_selector import plugin_selector
 
 # ##-- end 1st party imports
 
+# ##-- types
+# isort: off
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   from jgdv.logging import JGDVLogConfig
+   type DootError                         = doot.errors.DootError
+   type DataSource                        = dict|ChainGuard
+   type LoaderDict                        = dict[str, Loader_p]
+
+# isort: on
+# ##-- end types
+
 ##-- logging
 logging    = logmod.getLogger(__name__)
 printer    = doot.subprinter()
+overlord_l = doot.subprinter("overlord")
 header_l   = doot.subprinter("header")
 setup_l    = doot.subprinter("setup")
 help_l     = doot.subprinter("help")
 shutdown_l = doot.subprinter("shutdown")
 ##-- end logging
-
-##-- type aliases
-type DootError                         = doot.errors.DootError
-type DataSource                        = dict|ChainGuard
-type LoaderDict                        = dict[str, Loader_p]
-
-##-- end type aliases
 
 env                                    = os.environ
 plugin_loader_key  : Final[str]        = doot.constants.entrypoints.DEFAULT_PLUGIN_LOADER_KEY
@@ -151,12 +156,12 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
         return "\n".join(help_lines)
 
     def setup(self) -> None:
-        logging.info("---- Initialising Overlord")
+        overlord_l.trace("---- Initialising Overlord")
         self._load_plugins(self._extra_config)
         self._load_commands(self._extra_config)
         self._load_tasks(self._extra_config)
         self._parse_args()
-        logging.info("---- Core Overlord Initialisation complete")
+        overlord_l.trace("---- Core Overlord Initialisation complete")
 
     def _load_plugins(self, extra_config:Maybe[dict|ChainGuard]=None) -> None:
         """ Use a plugin loader to find all applicable `importlib.EntryPoint`s  """
@@ -219,10 +224,12 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
                 raise TypeError("Improper argparser specified", self.arg_parser)
 
         try:
+            cmds_and_aliases = list(self.cmds.values())
+            cmds_and_aliases += [(x, self.cmds[y[0]]) for x,y in doot.cmd_aliases.items()]
             cli_args = self.parser(
                 args or self.args[1:],
                 head_specs=self.param_specs,
-                cmds=list(self.cmds.values()),
+                cmds=cmds_and_aliases,
                 # Associate tasks with the run cmd
                 subcmds=[("run",x) for x in self.tasks.values()],
             )
@@ -245,7 +252,7 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
             header_l.user(HEADER_MSG, extra={"colour": "green"})
 
         if doot.args.on_fail(False).head.args.debug():
-            printer.user("Pausing for debugging")
+            overlord_l.user("Pausing for debugging")
             breakpoint()
             pass
 
@@ -255,14 +262,14 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
 
         # Do the cmd
         try:
-            logging.info("---- Overlord Calling: %s", cmd or doot.args.on_fail("Unknown").cmd.name())
+            overlord_l.trace("---- Overlord Calling: %s", cmd or doot.args.on_fail("Unknown").cmd.name())
             cmd = self._get_cmd(cmd)
             cmd(self.tasks, self.plugins)
         except doot.errors.DootError as err:
             self._errored = err
             raise err
         else:
-            logging.info("---- Overlord Cmd Call Complete")
+            overlord_l.trace("---- Overlord Cmd Call Complete")
             return 0
 
     def _handle_cli_args(self) -> bool:
@@ -272,12 +279,12 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
           return True to end doot early
         """
         if doot.args.on_fail(False).head.args.verbose() and self.log_config:
-            logging.info("Switching to Verbose Output")
+            overlord_l.user("Switching to Verbose Output")
             self.log_config.set_level("NOTSET")
 
-        logging.info("CLI Args: %s", doot.args._table())
-        logging.info("Plugins: %s", dict(self.plugins).keys())
-        logging.info("Tasks: %s", self.tasks.keys())
+        overlord_l.trace("CLI Args: %s", doot.args._table())
+        overlord_l.trace("Plugins: %s", dict(self.plugins).keys())
+        overlord_l.trace("Tasks: %s", self.tasks.keys())
 
         if doot.args.on_fail(False).head.args.version():
             help_l.user(version_template, doot.__version__)
@@ -294,24 +301,34 @@ class DootOverlord(ParamSpecMaker_m, Overlord_p):
             return self.current_cmd
 
         target = cmd or doot.args.on_fail(implicit_task_cmd).cmd.name()
+        match doot.cmd_aliases.on_fail(None)[target]():
+            case None:
+                pass
+            case [name, *_] as args:
+                overlord_l.trace("Using Alias: %s", target)
+                target = name
+                self._parse_args(args)
 
+        overlord_l.detail("Initial Retrieval attempt: %s", target)
         match self.cmds.get(target, None):
             case None if bool(doot.args.sub):
+                overlord_l.detail("Falling Back to implicit: %s", implicit_task_cmd)
                 self.current_cmd = self.cmds.get(implicit_task_cmd, None)
             case None if target.startswith("_") and target.endswith("_"):
+                overlord_l.detail("Falling back to empty: %s", empy_call_cmd)
                 self.current_cmd = self.cmds.get(empty_call_cmd, None)
             case x:
                 self.current_cmd = x
 
         if self.current_cmd is None:
-            self._errored = jgdv.cli.ParseError("Specified Command Couldn't be Found: %s", target)
+            self._errored = jgdv.cli.ParseError("Specified Command Couldn't be Found", target)
             raise self._errored
 
         return self.current_cmd
 
     def shutdown(self) -> None:
         """ Doot has finished normally, so report on what was done """
-        logging.info("Shutting Down Overlord")
+        overlord_l.trace("Shutting Down Overlord")
         if self.current_cmd is not None and hasattr(self.current_cmd, "shutdown"):
             self.current_cmd.shutdown(self._errored, self.tasks, self.plugins)
 
