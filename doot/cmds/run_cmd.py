@@ -123,19 +123,24 @@ class RunCmd(BaseCommand):
         cmd_l.trace("%s Tasks Queued: %s", len(tracker.active_set), " ".join(str(x) for x in tracker.active_set))
         with TimeCtx(logger=logging, entry_msg="--- Runner Entry", exit_msg="---- Runner Exit", level=20):
             with runner:
-                if doot.args.on_fail(False).cmd.args.confirm():
-                    self._print_plan(runner)
+                if not self._confirm_plan(runner):
                     return
-                else:
-                    runner(handler=interrupt)
 
-    def _print_plan(self, runner:TaskRunner_i):
+                runner(handler=interrupt)
+
+    def _confirm_plan(self, runner:TaskRunner_i) -> bool:
+        """ Confirm the plan """
+        if not doot.args.on_fail(False).cmd.args.confirm():
+            return True
+
         tracker = runner.tracker
         plan = tracker.generate_plan()
         for i,(depth,node,desc) in enumerate(plan):
             cmd_l.user("Step %-4s: %s",i, node)
+        else:
             match input("Confirm Execution Plan (Y/*): "):
                 case "Y":
-                    pass
+                    return True
                 case _:
                     cmd_l.user("Cancelling")
+                    return False
