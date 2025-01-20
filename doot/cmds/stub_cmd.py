@@ -85,14 +85,16 @@ class _StubDoot_m:
         doot_toml = pl.Path("doot.toml")
         data_text = data_path.read_text()
         if doot_toml.exists():
-            cmd_l.info(data_text)
-            cmd_l.warning("doot.toml it already exists, printed to stdout instead")
+            cmd_l.user(data_text)
+            cmd_l.user("")
+            cmd_l.user("- doot.toml it already exists, printed to stdout instead", extra={"colour":"red"})
             return
 
         with doot_toml.open("a") as f:
             f.write(data_text)
 
-        cmd_l.info("doot.toml stub")
+        cmd_l.user("doot.toml stub")
+        return []
 
 class _StubParam_m:
 
@@ -280,7 +282,8 @@ class StubCmd(_StubDoot_m, _StubParam_m, _StubAction_m, _StubTask_m, _StubPrinte
     def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
         match dict(doot.args.cmd.args):
             case {"config": True}:
-                self._stub_doot_toml()
+                result = self._stub_doot_toml()
+                self._print_text(result)
             case {"action": True}:
                 result = self._stub_action(plugins)
                 self._print_text(result)
@@ -293,13 +296,3 @@ class StubCmd(_StubDoot_m, _StubParam_m, _StubAction_m, _StubTask_m, _StubPrinte
             case _:
                 result = self._stub_task_toml(tasks, plugins)
                 self._print_text(result)
-
-    def _print_text(self, text:list[ListVal]) -> None:
-        for line in text:
-            match line:
-                case str():
-                    cmd_l.user(line)
-                case (str() as s, dict() as d):
-                    cmd_l.user(s, extra=d)
-                case None:
-                    cmd_l.user("")

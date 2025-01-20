@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
 # Imports:
@@ -19,8 +18,7 @@ import re
 import time
 import types
 import weakref
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
+import typing
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Mapping, Match,
                     MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
@@ -31,15 +29,24 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
+import doot
 from doot._abstract import Command_i
 from doot.mixins.param_spec import ParamSpecMaker_m
 
 # ##-- end 1st party imports
 
+# ##-- types
+# isort: off
+if typing.TYPE_CHECKING:
+   from jgdv import Maybe
+   type ListVal = str|Lambda|tuple[str,dict]
+# isort: on
+# ##-- end types
+
 ##-- logging
 logging = logmod.getLogger(__name__)
+cmd_l = doot.subprinter("cmd")
 ##-- end logging
-
 
 class BaseCommand(ParamSpecMaker_m, Command_i):
     """ Generic implementations of command methods """
@@ -81,3 +88,14 @@ class BaseCommand(ParamSpecMaker_m, Command_i):
            self.build_param(name="help", default=False, prefix="--", implicit=True),
            self.build_param(name="debug", default=False, prefix="--", implicit=True)
            ]
+
+    def _print_text(self, text:list[ListVal]) -> None:
+        """ Utility method to print text out at the user level """
+        for line in text:
+            match line:
+                case str():
+                    cmd_l.user(line)
+                case (str() as s, dict() as d):
+                    cmd_l.user(s, extra=d)
+                case None:
+                    cmd_l.user("")

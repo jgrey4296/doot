@@ -398,13 +398,3 @@ class ListCmd(_TaskLister_m,
                 raise doot.errors.CommandError("Bad args passed in", dict(doot.args))
 
         self._print_text(result)
-
-    def _print_text(self, text:list[ListVal]) -> None:
-        for line in text:
-            match line:
-                case str():
-                    cmd_l.user(line)
-                case (str() as s, dict() as d):
-                    cmd_l.user(s, extra=d)
-                case None:
-                    cmd_l.user("")
