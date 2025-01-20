@@ -3,7 +3,7 @@
 Doot : An Opinionated refactor of the Doit Task Runner.
 
 """
-
+# ruff: noqa: ANN001, PLW0603, FBT003
 # Imports:
 from __future__ import annotations
 
@@ -110,7 +110,7 @@ def setup(targets:Maybe[list[pl.Path]|False]=None, prefix:Maybe[str]=TOOL_PREFIX
     try:
         config = ChainGuard.load(*existing_targets)
     except OSError as err:
-        logging.error("Failed to Load Config Files: %s", existing_targets)
+        logging.exception("Failed to Load Config Files: %s", existing_targets)
         raise doot.errors.InvalidConfigError() from err
 
     if existing_targets == [pl.Path("pyproject.toml")] and "doot" not in config:
@@ -130,7 +130,7 @@ def setup(targets:Maybe[list[pl.Path]|False]=None, prefix:Maybe[str]=TOOL_PREFIX
 
     return config, locs
 
-def verify_config_version(ver:Maybe[str], source:str|pl.Path):
+def verify_config_version(ver:Maybe[str], source:str|pl.Path) -> None:
     "Ensure the config file is compatible with doot"
     doot_ver = SpecifierSet(f"~={__version__}")
     match ver:
@@ -142,7 +142,6 @@ def verify_config_version(ver:Maybe[str], source:str|pl.Path):
             raise doot.errors.VersionMismatchError("No Doot Version Found in config file: %s", source)
 
 def update_global_task_state(data:dict|ChainGuard, *, source=None) -> None:
-    global _global_task_state
     assert(source is not None)
     for x,y in data:
         if x not in _global_task_state:
@@ -155,11 +154,12 @@ def _load_constants() -> None:
     Modifies the global `doot.constants`
     """
     global constants
+    setup_l = subprinter("setup")
     match config.on_fail(None).startup.constants_file(wrapper=pl.Path):
         case None:
             pass
         case pl.Path() as const_file if const_file.exists():
-            logging.info("---- Loading Constants")
+            setup_l.user("---- Loading Constants")
             base_data = ChainGuard.load(const_file)
             verify_config_version(base_data.on_fail(None).doot_version(), source=const_file)
             constants = base_data.remove_prefix(CONSTANT_PREFIX)
@@ -170,19 +170,19 @@ def _load_aliases(*, data:Maybe[dict|ChainGuard]=None, force:bool=False) -> None
     Modifies the global `doot.aliases`
     """
     global aliases
-
+    setup_l = subprinter("setup")
     if not bool(aliases):
         match config.on_fail(aliases_file).startup.aliases_file(wrapper=pl.Path):
             case _ if bool(aliases) and not force:
                 base_data = {}
                 pass
             case pl.Path() as source if source.exists():
-                logging.info("---- Loading Aliases: %s", source)
+                setup_l.user("---- Loading Aliases: %s", source)
                 base_data = ChainGuard.load(source)
                 verify_config_version(base_data.on_fail(None).doot_version(), source=source)
                 base_data = base_data.remove_prefix(ALIAS_PREFIX)
             case   source:
-                logging.warning("---- Alias File Not Found: %s", source)
+                setup_l.error("---- Alias File Not Found: %s", source)
                 base_data = {}
 
         # Flatten the lists
@@ -200,7 +200,7 @@ def _load_aliases(*, data:Maybe[dict|ChainGuard]=None, force:bool=False) -> None
         case None:
             pass
         case _ if bool(data):
-            logging.info("---- Updating Aliases")
+            setup_l.user("---- Updating Aliases")
             base = defaultdict(dict)
             base.update(dict(aliases._table()))
             for key,eps in data.items():
@@ -209,33 +209,36 @@ def _load_aliases(*, data:Maybe[dict|ChainGuard]=None, force:bool=False) -> None
 
             aliases = ChainGuard(base)
 
-def _load_locations():
+def _load_locations() -> None:
     """ Load and update the DootLocations db
     Modifies the global `doot.locs`
     """
     global locs
-    logging.info("---- Loading Locations")
+    setup_l = subprinter("setup")
+    setup_l.user("---- Loading Locations")
     locs   = DootLocations(pl.Path.cwd())
     # Load Initial locations
     for loc in config.on_fail([]).locations():
         try:
+            setup_l.user("+ %s", loc)
             locs.update(loc, strict=False)
         except (JGDVError, ValueError) as err:
-            logging.warning("Location Loading Failed: %s (%s)", loc, err)
+            setup_l.error("Location Loading Failed: %s (%s)", loc, err)
 
-def _update_import_path():
+def _update_import_path() -> None:
     """ Add locations to the python path for task local code importing
     Modifies the global `sys.path`
     """
-    logging.info("---- Updating Import Path")
+    setup_l = subprinter("setup")
+    setup_l.user("---- Updating Import Path")
     task_sources = config.on_fail([locs[".tasks"]], list).startup.sources.tasks(wrapper=lambda x: [locs[y] for y in x])
     task_code    = config.on_fail([locs[".tasks"]], list).startup.sources.code(wrapper=lambda x: [locs[y] for y in x])
     for source in set(task_sources + task_code):
         if source.exists() and source.is_dir():
-            logging.debug("Adding task code directory to Import Path: %s", source)
+            setup_l.user("+ %s", source)
             sys.path.append(str(source))
 
-def _null_setup():
+def _null_setup() -> None:
     """
       Doesn't load anything but constants,
       Used for initialising Doot when testing.
@@ -246,6 +249,6 @@ def _null_setup():
     locs                 = None
     setup(False)
 
-def _test_setup():
+def _test_setup() -> None:
     """ Deprecated, use _null_setup """
     _null_setup()
