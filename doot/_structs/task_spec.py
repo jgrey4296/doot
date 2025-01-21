@@ -173,7 +173,7 @@ class _JobUtils_m:
             "name"            : job_head,
             "sources"         : self.sources[:] + [self.name, None],
             "queue_behaviour" : QueueMeta_e.reactive,
-            "depends_on"      : [self.name] + head_dependencies,
+            "depends_on"      : [self.name, *head_dependencies],
             "required_for"    : self.required_for[:],
             "cleanup"         : self.cleanup[:],
             "meta"           : (self.meta | {TaskMeta_e.JOB_HEAD}) - {TaskMeta_e.JOB},
@@ -308,7 +308,7 @@ class _SpecUtils_m:
     def param_specs(self) -> list:
         result = []
         for x in self.extra.on_fail([]).cli():
-            assert(isinstance(x, (dict, ChainGuard))), x
+            assert(isinstance(x, dict|ChainGuard)), x
             result.append(ParamSpec.build(x))
         else:
             return result
@@ -331,7 +331,7 @@ class _SpecUtils_m:
             case task_ctor:
                 return task_ctor(self)
 
-    def apply_cli_args(self, *, override=None) -> TaskSpec:
+    def apply_cli_args(self, *, override:Maybe[str]=None) -> TaskSpec:
         logging.debug("Applying CLI Args to: %s", self.name)
         spec_extra : dict = dict(self.extra.items() or [])
         if 'cli' in spec_extra:
@@ -412,7 +412,7 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
         return cleaned
 
     @model_validator(mode="after")
-    def _validate_metadata(self):
+    def _validate_metadata(self) -> Self:
         if self.extra.on_fail(False).disabled():
             self.meta.add(TaskMeta_e.DISABLED)
         match self.ctor():
@@ -436,7 +436,7 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
         return self
 
     @field_validator("name", mode="before")
-    def _validate_name(cls, val):
+    def _validate_name(cls, val) -> TaskName:
         match val:
             case TaskName():
                 return val
@@ -445,12 +445,12 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
                     name = TaskName(val)
                     return name
                 except StrangErrs.StrangError as err:
-                    raise ValueError(err)
+                    raise ValueError(*err.args) from err
             case _:
                 raise TypeError("A TaskSpec Name should be a str or TaskName", val)
 
     @field_validator("meta", mode="before")
-    def _validate_meta(cls, val):
+    def _validate_meta(cls, val) -> set:
         match val:
             case TaskMeta_e():
                 return set([val])
@@ -462,7 +462,7 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
         return set([x if isinstance(x, TaskMeta_e) else TaskMeta_e[x] for x in vals])
 
     @field_validator("ctor", mode="before")
-    def _validate_ctor(cls, val):
+    def _validate_ctor(cls, val) -> CodeReference:
         match val:
             case None:
                 default_alias = TaskSpec._default_ctor
@@ -478,7 +478,7 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
                 return CodeReference(val)
 
     @field_validator("queue_behaviour", mode="before")
-    def _validate_queue_behaviour(cls, val):
+    def _validate_queue_behaviour(cls, val) -> QueueMeta_e:
         match val:
             case QueueMeta_e():
                 return val
@@ -488,7 +488,7 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
                 raise ValueError("Queue Behaviour needs to be a str or a QueueMeta_e enum", val)
 
     @field_validator("sources", mode="before")
-    def _validate_sources(cls, val):
+    def _validate_sources(cls, val) -> list:
         """ builds the soures list, converting strings to task names,
 
           """
@@ -530,7 +530,7 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
         return ChainGuard(self.model_extra)
 
     @property
-    def action_groups(self):
+    def action_groups(self) -> list[list]:
         return [self.depends_on, self.setup, self.actions, self.cleanup, self.on_fail]
 
     def action_group_elements(self) -> Iterable[ActionSpec|RelationSpec]:

@@ -57,7 +57,7 @@ help_l  = doot.subprinter("help")
 
 LINE_SEP        : Final[str] = "------------------------------"
 GROUP_INDENT    : Final[str] = "----"
-ITEM_INDENT     : Final[str] = "----"
+ITEM_INDENT     : Final[str] = "-"
 
 class _HelpDoot_m:
 
@@ -80,8 +80,40 @@ class _HelpCmd_m:
         cmd_class    = cmd.load()
         cmd_instance = cmd_class()
         result += cmd_instance.help
-        result += self._print_current_param_assignments(cmd_instance.param_specs, doot.args.cmd)
+        result += self._cmd_param_assignments(cmd_instance)
         return result
+
+
+    def _cmd_param_assignments(self, cmd) -> list[str]:
+        result = []
+        result.append(None)
+        result.append("%s Parameters:" % GROUP_INDENT)
+
+        max_param_len = 5 + ftz.reduce(max, map(len, map(lambda x: x.name, cmd.param_specs)), 0)
+        fmt_str       = f"> %{max_param_len}s : (%-5s) : %s "
+        args = doot.args.cmd.args.args
+        last_prefix = None
+        for param in sorted([x for x in cmd.param_specs], key=ParamSpec.key_func):
+            if last_prefix and last_prefix != param.prefix:
+                result.append(None)
+            last_prefix = param.prefix
+            match param.type_:
+                case type() as x:
+                    type_ = x.__name__
+                case x:
+                    type_ = x
+            match args.get(param.name, None):
+                case _ if param.name == "help":
+                    pass
+                case None:
+                    result.append(fmt_str % (param.key_str, type_, f"default: {param.default}"))
+                case val if val == param.default:
+                    result.append(fmt_str % (param.key_str, type_, f"default: {val}"))
+                case val:
+                    result.append(fmt_str % (param.key_str, type_, val))
+        else:
+            result.append(None)
+            return result
 
 class _HelpTask_m:
 
@@ -93,19 +125,12 @@ class _HelpTask_m:
             LINE_SEP,
             f"{count:4}: Task: {task_name}",
             LINE_SEP,
-        ]
-        match spec.ctor:
-            case None:
-                ctor = None
-            case CodeReference():
-                ctor = spec.ctor()
-            case _:
-                ctor = spec.ctor
+            f"ver     : {spec.version}",
+            f"Group   : {spec.name[0:]}",
+            ]
 
-        result.append("ver     : {spec.version}")
-        result.append("Group   : {spec.name[0:]}")
         sources = "; ".join([str(x) for x in spec.sources])
-        result.append("Sources : {sources}")
+        result.append(f"Sources : {sources}")
 
         match spec.doc:
             case None:
@@ -117,32 +142,71 @@ class _HelpTask_m:
                 result += xs
                 result.append(None)
 
-        if ctor is not None:
-            result.append("{GROUP_INDENT} Ctor Class:")
-            result += ctor.class_help()
-            result.append(GROUP_INDENT)
+        match spec.ctor:
+            case None:
+                ctor = None
+            case CodeReference():
+                ctor = spec.ctor()
+            case _:
+                ctor = spec.ctor
 
-        if bool(spec.extra):
+        if ctor is not None:
+            result.append(f"{GROUP_INDENT} Ctor Class:")
+            result += ctor.class_help()
+            result.append(None)
+
+        extra_keys = set(spec.extra.keys()) - {"cli"}
+        if bool(extra_keys):
             result.append(None)
             result.append(f"{GROUP_INDENT} Toml Parameters:")
             for kwarg,val in spec.extra.items():
-                result.append("%s %-20s : %s" % ITEM_INDENT, kwarg, val)
+                if kwarg == "cli":
+                    continue
+                result.append("%s %-20s : %s" % (ITEM_INDENT, kwarg, val))
+            result.append(None)
 
         if bool(spec.actions):
-            result.append(None)
-            result.append("-- Task Actions: ")
+            result.append("%s Task Actions: " % GROUP_INDENT)
             sub_indent = (1 + len(ITEM_INDENT)) * " "
             for action in spec.actions:
-                result.append("%s %-30s:" % ITEM_INDENT, action.do)
-                result.append("%sArgs=%-20s" % sub_indent, action.args)
-                result.append("%sKwargs=%s" % sub_indent, dict(action.kwargs))
+                result.append("%s %-30s:" % (ITEM_INDENT, action.do))
+                result.append("%sArgs=%-20s" % (sub_indent, action.args))
+                result.append("%sKwargs=%s" % (sub_indent, dict(action.kwargs)))
 
-        cli_has_params      = task_name in doot.args.sub
-        cli_has_non_default = NON_DEFAULT_KEY in doot.args.sub[task_name] and bool(doot.args.sub[task_name][NON_DEFAULT_KEY])
 
-        if cli_has_params and cli_has_non_default and ctor is not None:
-            self._print_current_param_assignments(ctor.param_specs, doot.args.sub[task_name])
+        result += self._task_param_assignments(spec)
 
+        return result
+
+    def _task_param_assignments(self, spec:TaskSpec) -> list:
+        result = []
+        result.append(None)
+        result.append("%s Parameters:" % GROUP_INDENT)
+
+        max_param_len = 5 + ftz.reduce(max, map(len, map(lambda x: x.key_str, spec.param_specs)), 0)
+        fmt_str       = f"> %{max_param_len}s : (%5s) : %s "
+        args          = doot.args.sub[spec.name]
+        last_prefix   = None
+        for param in sorted([x for x in spec.param_specs], key=ParamSpec.key_func):
+            if last_prefix and last_prefix != param.prefix:
+                result.append(None)
+            match param.type_:
+                case type() as x:
+                    type_ = x.__name__
+                case x:
+                    type_ = x
+            match args.get(param.name, None):
+                case _ if param.name == "help":
+                    pass
+                case None:
+                    result.append(fmt_str % (param.key_str, type_, f"default: {param.default}"))
+                case val if val == param.default:
+                    result.append(fmt_str % (param.key_str, type_, f"default: {val}"))
+                case val:
+                    result.append(fmt_str % (param.key_str, type_, val))
+        else:
+            result.append(None)
+            return result
 
 
 class HelpCmd(_HelpDoot_m, _HelpCmd_m, _HelpTask_m, BaseCommand):
@@ -215,31 +279,3 @@ class HelpCmd(_HelpDoot_m, _HelpCmd_m, _HelpTask_m, BaseCommand):
 
     def _self_help(self) -> list:
         return self.help
-
-
-    def _print_current_param_assignments(self, specs:list[ParamSpec], args:dict|ChainGuard) -> list[str]:
-        if args[NON_DEFAULT_KEY] is None:
-            return []
-        result = []
-        result.append(None)
-        result.append("%s Current Param Assignments:" % GROUP_INDENT)
-
-        assignments   = sorted([x for x in specs], key=ParamSpec.key_func)
-        max_param_len = 5 + ftz.reduce(max, map(len, map(lambda x: x.name, specs)), 0)
-        fmt_str       = f"%s %-{max_param_len}s : %s "
-        relevant_args = args.args
-        if "args" in relevant_args:
-            relevant_args = relevant_args['args']
-
-
-        for key in args[NON_DEFAULT_KEY]:
-            if key == "help":
-                continue
-            match relevant_args[key]:
-                case None:
-                    pass
-                case x:
-                    result.append(fmt_str % (ITEM_INDENT, key, x))
-        else:
-            result.append(None)
-            return result

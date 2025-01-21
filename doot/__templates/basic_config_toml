@@ -34,20 +34,32 @@ hide = []
 aliases = { tasks=[] }
 
 [logging]
-# Standard loggers. See jgdv.logging.LoggerSpec.
-# Additional Level aliases: detail=debug, trace=info, user=warning
-stream  = { level="user",   filter=[],             target="stdout", format="{levelname:<8} : {message}"  }
-file    = { level="detail", filter=["chainguard"], target="rotate", format="{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})", filename_fmt="doot.log" }
-printer = { level="NOTSET", colour=true,           target=["stdout", "rotate"], format="{message}", filename_fmt="doot_printed.log" }
+[logging.stream]
+level = "user"
+filter = []
+target = "stdout"
+format="{levelname:<8} : {message}"
+
+[logging.file]
+level        = "trace"
+filter       = ["jgdv"]
+target       = "rotate"
+format       = "{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})"
+filename_fmt = "doot.log"
+
+[logging.printer]
+level        = "NOTSET"
+colour       = true
+target       = ["stdout", "rotate"]
+format       = "{message}"
+filename_fmt = "doot_printed.log"
 
 [logging.subprinters]
 default       = {level="user"}
-header        = true
 cmd           = {level="user",  colour="cyan"}
 task_header   = {level="user",  colour="magenta"}
-task          = {level="error", colour="white"}
+task          = {level="user",  colour="white"}
 action_exec   = {level="user",  colour="cyan"}
-shutdown      = {level="user"}
 
 [logging.extra]
 
