@@ -96,12 +96,12 @@ def main() -> None:
         else:
             fail_l.warning("No toml config data found, create a doot.toml by calling `doot stub --config`")
     except doot.errors.ConfigError as err:
-        fail_l.warning("Config Error: %s", err)
+        fail_l.warning("Config Error: %s", " ".join(err.args))
     except (doot.errors.TaskFailed, doot.errors.TaskError) as err:
-        fail_l.exception("%s Task Error : %s : %s", fail_prefix, err, exc_info=err)
-        fail_l.error("%s Source: %s", fail_prefix, err.task_source)
+        fail_l.error("%s Task Error : %s : %s", fail_prefix, err, exc_info=err)
+        fail_l.error("%s Task Source: %s", fail_prefix, err.task_source)
     except doot.errors.StateError as err:
-        fail_l.error("%s State Error: %s", fail_prefix, err)
+        fail_l.error("%s State Error: %s", fail_prefix, " ".join(err.args))
 
     except doot.errors.StructLoadError as err:
         match err.args:
@@ -117,15 +117,15 @@ def main() -> None:
             case _:
                 fail_l.exception("%s Struct Load Error: %s", fail_prefix, err, exc_info=err)
     except doot.errors.TrackingError as err:
-        fail_l.error("%s Tracking Failure: %s", fail_prefix, err)
+        fail_l.error("%s Tracking Failure: %s", fail_prefix, " ".join(err.args))
     except doot.errors.BackendError as err:
-        fail_l.exception("%s Backend Error: %s", fail_prefix, err, exc_info=err)
+        fail_l.exception("%s Backend Error: %s", fail_prefix, " ".join(err.args), exc_info=err)
     except doot.errors.FrontendError as err:
-        fail_l.error("%s %s", fail_prefix, err)
+        fail_l.error("%s %s", fail_prefix, " ".join(err.args))
     except doot.errors.DootError as err:
-        fail_l.exception("%s Doot Error : %s", fail_prefix,  err, exc_info=err)
+        fail_l.exception("%s %s", fail_prefix,  " ".join(err.args), exc_info=err)
     except NotImplementedError as err:
-        fail_l.exception("Not Implemented: %s", err, exc_info=err)
+        fail_l.exception("Not Implemented: %s", " ".join(err.args), exc_info=err)
     except Exception as err:
         pl.Path("doot.lasterror").write_text(stackprinter.format())
         fail_l.exception("Python Error:", exc_info=err)
