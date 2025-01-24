@@ -85,18 +85,19 @@ include    = ["doot*"]
 # Tools #######################################################################
 
 ##-- pytest
-# https://docs.pytest.org/en/8.2.x/reference/reference.html#ini-options-ref
+# https://docs.pytest.org/en/stable/reference/reference.html#ini-options-ref
 [tool.pytest.ini_options]
-cache_dir       = ".temp/pytest_cache"
-log_file        = ".temp/logs/pytest.log"
+addopts           = ["--ignore-glob=related_/*"]
+cache_dir         = ".temp/pytest_cache"
+log_file          = ".temp/logs/pytest.log"
 
-log_cli         = false
-log_level       = "DEBUG"
-log_cli_level   = "INFO"
+log_cli           = false
+log_level         = "DEBUG"
+log_cli_level     = "INFO"
 # log_format      = "%(levelname)s %(name)s : %(message)s"
-log_format      = "%(levelname)s %(module)s %(lineno)s : %(message)s"
-log_file_level  = "DEBUG"
-log_file_format = "%(asctime)s %(levelname)s %(name)s : %(message)s"
+log_format        = "%(levelname)s %(module)s %(lineno)s : %(message)s"
+log_file_level    = "DEBUG"
+log_file_format   = "%(asctime)s %(levelname)s %(name)s : %(message)s"
 
 ##-- end pytest
 
