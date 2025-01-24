@@ -301,14 +301,17 @@ class _TransformerUtils_m:
 class _SpecUtils_m:
     """General utilities mixin for task specs"""
 
-    @property
-    def param_specs(self) -> list:
-        result = []
-        for x in self.extra.on_fail([]).cli():
-            assert(isinstance(x, dict|ChainGuard)), x
-            result.append(ParamSpec.build(x))
-        else:
-            return result
+    @staticmethod
+    def build(data:ChainGuard|dict|TaskName|str) -> Self:
+        match data:
+            case ChainGuard() | dict() if "source" in data:
+                raise ValueError("source is deprecated, use 'sources'", data)
+            case ChainGuard() | dict():
+                return TaskSpec.model_validate(data)
+            case TaskName():
+                return TaskSpec(name=data)
+            case str():
+                return TaskSpec(name=TaskName(data))
 
     def instantiate_onto(self, data:Maybe[TaskSpec]) -> TaskSpec:
         """ apply self over the top of data """
@@ -321,15 +324,10 @@ class _SpecUtils_m:
                 raise TypeError("Can't to_uniq onto something not a task spec", data)
 
     def specialize_from(self, data:dict|TaskSpec) -> TaskSpec:
-        """
-          apply data over the top of self.
-          a *single* application, as a spec on it's own has no means to look up other specs,
-          which is the tracker's responsibility.
-
-          so source chain: [root..., self, data]
-        """
+        """ apply data on top of self"""
         match data:
             case {"_add_suffix": str() as suff}:
+                # When an injection adds a suffix, it occurs here
                 specialized = dict(self)
                 specialized.update(data)
                 specialized['name'] = self.name.push(suff)
@@ -349,8 +347,21 @@ class _SpecUtils_m:
             case TaskSpec(sources=[*xs, TaskName() as x] ) if not x <= self.name:
                 raise doot.errors.TrackingError("Tried to specialize a task that isn't based on this task", str(data.name), str(self.name), str(data.sources))
             case TaskSpec():
-                specialized = dict(self)
-                specialized.update({k:v for k,v in dict(data).items() if k in data.model_fields_set})
+                return self._specialize_merge(data)
+            case _:
+                raise TypeError("Unexpected type for specializing spec", data)
+
+    def _specialize_merge(self, data:dict|TaskSpec) -> TaskSpec:
+        """
+          apply data over the top of self.
+          a *single* application, as a spec on it's own has no means to look up other specs,
+          which is the tracker's responsibility.
+
+          so source chain: [root..., self, data]
+        """
+
+        specialized = dict(self)
+        specialized.update({k:v for k,v in dict(data).items() if k in data.model_fields_set})
 
         # Then special updates
         specialized['name']         = data.name.to_uniq()
@@ -371,6 +382,15 @@ class _SpecUtils_m:
 
         logging.debug("Specialized Task: %s on top of: %s", data.name.readable, self.name)
         return TaskSpec.build(specialized)
+
+    @property
+    def param_specs(self) -> list:
+        result = []
+        for x in self.extra.on_fail([]).cli():
+            assert(isinstance(x, dict|ChainGuard)), x
+            result.append(ParamSpec.build(x))
+        else:
+            return result
 
     def make(self, ensure:type=Any) -> Task_i:
         """ Create actual task instance """
@@ -438,18 +458,6 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
     _blocking_groups                  : ClassVar[list[str]]                                                              = ["required_for", "on_fail"]
 
     mark_e                            : ClassVar[enum.Enum]                                                              = TaskMeta_e
-
-    @staticmethod
-    def build(data:ChainGuard|dict|TaskName|str) -> Self:
-        match data:
-            case ChainGuard() | dict() if "source" in data:
-                raise ValueError("source is deprecated, use 'sources'", data)
-            case ChainGuard() | dict():
-                return TaskSpec.model_validate(data)
-            case TaskName():
-                return TaskSpec(name=data)
-            case str():
-                return TaskSpec(name=TaskName(data))
 
     @model_validator(mode="before")
     def _convert_toml_keys(cls, data:dict) -> dict:
