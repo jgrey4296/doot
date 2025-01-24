@@ -12,15 +12,10 @@ import pathlib as pl
 import re
 import time
 import types
-# import json
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable)
-# from uuid import UUID, uuid1
-# from weakref import ref
 
 ##-- end imports
 
@@ -36,7 +31,6 @@ from doot.structs import DKey, DKeyed
 from doot.utils.action_decorators import IOWriter
 
 printer = doot.subprinter()
-
 
 # TODO using doot.config.startup.protect to disallow write/delete/backup/copy
 
