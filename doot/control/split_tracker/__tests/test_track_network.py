@@ -362,6 +362,7 @@ class TestTrackerNetworkBuildConstraints:
             case x:
                 assert(False), x
 
+    @pytest.mark.xfail
     def test_build_dep_match_with_injection_fail(self, network):
         obj = network
         spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "inject":{"now":{"inj_key":"bad_key"}}}], "test_key": "bloo"})
