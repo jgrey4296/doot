@@ -42,7 +42,7 @@ from doot.enums import TaskStatus_e, EdgeType_e
 from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
-from doot.mixins.injection import Injector_m
+from doot.mixins.injector import Injector_m
 from doot.mixins.matching import TaskMatcher_m
 # ##-- end 1st party imports
 

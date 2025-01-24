@@ -44,10 +44,22 @@ from doot.enums import TaskMeta_e, QueueMeta_e, TaskStatus_e, LocationMeta_e, Re
 from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
-from doot.mixins.injection import Injector_m
+from doot.mixins.injector import Injector_m
 from doot.mixins.matching import TaskMatcher_m
 
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   type Abstract[T] = T
+   type Concrete[T] = T
+   type ActionElem  = ActionSpec|RelationSpec
+   type ActionGroup = list[ActionElem]
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging          = logmod.getLogger(__name__)
@@ -61,10 +73,6 @@ EXPANDED                       : Final[str]                    = "expanded"  # N
 REACTIVE_ADD                   : Final[str]                    = "reactive-add"
 INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                   = 10
 
-type Abstract[T] = T
-type Concrete[T] = T
-type ActionElem  = ActionSpec|RelationSpec
-type ActionGroup = list[ActionElem]
 
 class TaskRegistry(Injector_m, TaskMatcher_m):
     """ Stores and manipulates specs, tasks, and artifacts """

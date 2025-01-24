@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 # Imports:
 from __future__ import annotations
@@ -43,9 +42,23 @@ from doot.enums import TaskStatus_e, EdgeType_e
 from doot.structs import (ActionSpec, TaskArtifact,
                           TaskName, TaskSpec)
 from doot.task.base_task import DootTask
-from doot.mixins.injection import Injector_m
+from doot.mixins.injector import Injector_m
 from doot.mixins.matching import TaskMatcher_m
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   from .task_registry import TaskRegistry
+   type Abstract[T] = T
+   type Concrete[T] = T
+
+   type ActionElem  = ActionSpec|RelationSpec
+   type ActionGroup = list[ActionElem]
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging          = logmod.getLogger(__name__)
@@ -62,12 +75,6 @@ ARTIFACT_EDGES                  : Final[set[EdgeType_e]]      = EdgeType_e.artif
 DECLARE_PRIORITY                : Final[int]                  = 10
 MIN_PRIORITY                    : Final[int]                  = -10
 INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                  = 10
-
-type Abstract[T] = T
-type Concrete[T] = T
-
-type ActionElem  = ActionSpec|RelationSpec
-type ActionGroup = list[ActionElem]
 
 class TaskNetwork(TaskMatcher_m):
     """ The _graph of concrete tasks and their dependencies """
@@ -133,7 +140,6 @@ class TaskNetwork(TaskMatcher_m):
                 self.nodes[name][EXPANDED]     = False
                 self.nodes[name][REACTIVE_ADD] = False
                 self.is_valid = False
-
 
     def _expand_task_node(self, name:Concrete[TaskName]) -> set[Concrete[TaskName]|TaskArtifact]:
         """ expand a task node, instantiating and connecting to its dependencies and dependents,

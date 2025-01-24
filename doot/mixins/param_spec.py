@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
-
 """
 
 # Imports:
@@ -36,7 +34,6 @@ from jgdv.cli.param_spec import ParamSpec
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
 
 class ParamSpecMaker_m:
 
