@@ -70,6 +70,12 @@ class TaskMatcher_m:
         source_data, target_data = control.extra, target.extra
 
         # Check constraints match
+        match injections.get('suffix', None):
+            case None:
+                pass
+            case str() as suffix if suffix not in target.name:
+                logging.debug("Suffix %s not found in %s", suffix, target.name)
+                return False
 
         for targ_k,source_k in constraints.items():
             if source_k not in source_data:
@@ -81,11 +87,11 @@ class TaskMatcher_m:
         target_keys, source_keys = self._get_sum_injection_keys(injections)
         # Check injections. keys must be available, but not necessarily the same
         if bool(source_keys - source_data.keys()):
-            logging.debug("source key/data mismatch")
+            logging.debug("source key/data mismatch: %s", source_keys - source_data.keys())
             return False
         if bool(target_keys - target_data.keys()):
             # target don't match
-            logging.debug("target  key/data mismatch")
+            logging.debug("target key/data mismatch: %s", target_keys - target_data.keys())
             return False
 
         return True
@@ -133,7 +139,7 @@ class TaskMatcher_m:
                     source_keys.update(xs)
                     target_keys.update(xs)
                 case dict():
-                    source_keys.update(y.values())
+                    source_keys.update({y2 for y2 in y.values() if isinstance(y2, DKey)})
                     target_keys.update(y.keys())
 
         return target_keys, source_keys
