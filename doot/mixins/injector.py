@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 """
 
-
 """
 
 # Imports:
@@ -52,7 +51,8 @@ Data                               = dict | ChainGuard
 CLI_K         : Final[str]         = "cli"
 MUST_INJECT_K : Final[str]         = "must_inject"
 SPECIAL_KEYS  : Final[list[str]]   = [CLI_K, MUST_INJECT_K]
-INJECT_GROUPS : Final[list[str]]   = ["delay", "now", "insert"]
+INJECT_KEYS   : Final[list[str]]   = doot.constants.misc.INJECT_KEYS
+
 
 class Injector_m:
     """ Generalized mixin for building injections.
@@ -154,7 +154,3 @@ class Injector_m:
 
         if bool(spec_keys) and bool(surplus:=inject_keys - (spec_keys | cli_keys | required_keys)):
             raise doot.errors.StateError("Surplus keys can not be injected", surplus)
-
-    def _validate_injection_dict_format(self, base:dict):
-        if bool(base.keys() - INJECT_GROUPS):
-            raise doot.errors.StateError("Wrong format injection, should be {delay=dict|list, now=dict|list, insert=list}", base)

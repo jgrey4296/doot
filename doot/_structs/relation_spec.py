@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
 # Imports:
@@ -58,6 +57,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+INJECT_KEYS : Final[list[str]] = doot.constants.misc.INJECT_KEYS
 
 class RelationMeta_e(enum.Enum):
     """
@@ -90,9 +90,6 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
       - inject      : a mapping of { obj.key : sub.key } that will be injected into the object
       - object      : the owning base object of the relationship
 
-      NOTE: inject *do not* do expansion, they will just copy the value, allowing expansion to occur later.
-      So: injection={'a': '{taskkey}/b'} won't work, but {'a':'{taskkey}/b', 'taskkey':'taskkey'} will.
-      Or: injection={'a': '{otherkey}/b', 'otherkey':'taskkey'}
     """
 
     # What the Relation end point is:
@@ -168,7 +165,7 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
                 return None
             case str():
                 return val
-            case ChainGuard() | dict() if all(k in ["now","delay", "insert"] for k in val.keys()):
+            case ChainGuard() | dict() if all(k in INJECT_KEYS for k in val.keys()):
                 return val
             case _:
                 raise TypeError("Unknown injection type", val)

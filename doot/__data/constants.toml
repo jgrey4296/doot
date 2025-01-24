@@ -45,6 +45,7 @@ EMPTY_CLI_CMD           = "list"
 DEFAULT_CLI_CMD         = "run"
 ANNOUNCE_EXIT           = false
 ANNOUNCE_VOICE          = "Moira"
+INJECT_KEYS             = ["now", "delay", "insert", "suffix"]
 
 [doot.constants.printer]
 PRINTER_NAME            = "_printer_"
