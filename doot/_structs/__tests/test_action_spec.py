@@ -50,5 +50,5 @@ class TestActionSpec:
     def test_set_function(self):
         obj = ActionSpec.build({"do":"basic"})
         assert(obj.fun is None)
-        obj.set_function(lambda *args: 2)
+        obj.set_function(fun=lambda *args: 2)
         assert(obj.fun is not None)
