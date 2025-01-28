@@ -204,32 +204,34 @@ class DootTaskLoader(TaskLoader_p):
                 self._load_location_updates(data.on_fail([]).locations(), task_file)
 
 
-    def _build_task_specs(self, group_specs:list[dict], command_names:set[str], source:str|pl.Path=None):
+    def _build_task_specs(self, specs:list[dict], commands:set[str], source:str|pl.Path=None):
         """
-        convert raw dicts into TaskSpec objects,
-          checking nothing tries to shadow a command name or other task name
+        convert raw dicts into TaskSpec objects
+
         """
         logging.info("---- Building Task Specs (%s Current)", len(self.tasks))
         source = source or "<Sourceless>"
 
         def _allow_registration(task_name) -> bool:
+            """ precondition to check for overrides/name conflicts """
             logging.info("Checking: %s", task_name)
             if allow_overloads:
                 return True
             return task_name not in self.tasks
 
 
-        for spec in group_specs:
+        for spec in specs:
+            logging.info("Processing: %s", spec['name'])
             task_alias = "task"
             task_spec  = None
             try:
                 match spec:
-                    case {"name": task_name, "ctor": str() as task_alias} if task_alias in self.task_builders: # build named plugin type
-                        logging.debug("Building Task from short name: %s : %s", task_name, task_alias)
+                    case {"name": task_name, "ctor": CodeReference() as ctor}:
+                        task_spec = TaskSpec.build(spec)
+                    case {"name": task_name, "ctor": str() as task_alias} if task_alias in self.task_builders:
                         spec['ctor'] = CodeReference.from_value(self.task_builders[task_alias])
                         task_spec = TaskSpec.build(spec)
                     case {"name": task_name}:
-                        logging.debug("Building Task: %s", task_name)
                         task_spec = TaskSpec.build(spec)
                     case _: # Else complain
                         raise doot.errors.StructLoadError("Task Spec missing, at least, needs at least a name and ctor", spec, spec['sources'][0] )

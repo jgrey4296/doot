@@ -201,12 +201,11 @@ class DootTask(_TaskProperties_m, _TaskStubbing_m, _TaskHelp_m, Task_i):
                     pass
                 case ActionSpec() if action_spec.do is not None:
                     try:
-                        action_ctor = action_spec.do()
-                        action_spec.set_function(action_ctor)
-                    except ImportError as err:
+                        action_spec.set_function()
+                    except (doot.errors.StructError, ImportError) as err:
                         failed.append(err)
                 case ActionSpec():
-                    action_spec.set_function(self.action_ctor)
+                    action_spec.set_function(fun=self.action_ctor)
                 case _:
                     failed.append(doot.errors.TaskError("Unknown element in action group: ", action_spec, self.shortname))
 
