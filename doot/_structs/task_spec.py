@@ -51,7 +51,7 @@ import doot.errors
 from doot._abstract.control import QueueMeta_e
 from doot._abstract.protocols import (Buildable_p, ProtocolModelMeta,
                                       SpecStruct_p)
-from doot._abstract.task import Task_i
+from doot._abstract.task import Task_i, Job_i
 
 # ##-- end 1st party imports
 
@@ -65,6 +65,8 @@ from .task_name import TaskName
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
+
+DEFAULT_JOB : Final[str] = "job"
 
 def _dicts_to_specs(deps:list[dict], *, relation=RelationMeta_e.default) -> list[ActionSpec|RelationSpec]:
     """ Convert toml provided dicts of specs into ActionSpec and RelationSpec object"""
@@ -464,7 +466,6 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
         """ converts a-key into a_key, and joins group+name """
         cleaned = {k.replace("-","_") : v  for k,v in data.items()}
         if "group" in cleaned and TaskName._separator not in cleaned["name"]:
-            # cleaned['name'] = TaskName.from_parts(cleaned['group'], cleaned['name'])
             cleaned['name'] = TaskName._separator.join([cleaned['group'], cleaned['name']])
             del cleaned['group']
         return cleaned
@@ -473,11 +474,17 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
     def _validate_metadata(self) -> Self:
         if self.extra.on_fail(False).disabled():
             self.meta.add(TaskMeta_e.DISABLED)
+
+        if TaskName.bmark_e.extend in self.name and TaskMeta_e.JOB_HEAD not in self.meta:
+            self.meta.add(TaskMeta_e.JOB)
+
         match self.ctor():
             case ImportError() as err:
                 logging.warning("Ctor Import Failed for: %s : %s", self.name, self.ctor)
                 self.meta.add(TaskMeta_e.DISABLED)
                 self.ctor = None
+            case x if TaskMeta_e.JOB in self.meta and not isinstance(x, Job_i):
+                self.ctor = CodeReference(doot.aliases.task[DEFAULT_JOB])
             case None:
                 pass
             case x if issubclass(x, Task_i):
@@ -485,11 +492,6 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
 
         if TaskMeta_e.TRANSFORMER not in self.meta:
             self._transform = False
-
-        if TaskName.bmark_e.extend in self.name and TaskMeta_e.JOB_HEAD not in self.meta:
-            self.meta.add(TaskMeta_e.JOB)
-            if self.ctor ==  self._default_ctor:
-                self.ctor = CodeReference(doot.aliases.task["job"])
 
         return self
 
