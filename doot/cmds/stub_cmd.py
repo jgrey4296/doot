@@ -159,7 +159,7 @@ class _StubAction_m:
         if bool(matched):
             result.append("{ do=\"%s\", args=[], key=val } " % matched[0].name)
         else:
-            result.append("{ do=\"action name/import path\", args=[], inState=[], outState=[] } # plus any kwargs a specific action uses")
+            result.append("{ do=\"action name/import path\", args=[]} # plus any kwargs a specific action uses")
 
         return result
 

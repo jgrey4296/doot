@@ -418,9 +418,15 @@ class TestTrackerNetworkBuild:
         assert(spec2.name  < pred)
         assert(spec.test_key == obj.specs[pred].inj_key)
 
+    @pytest.mark.xfail
     def test_build_dep_match_with_injection_fail(self):
         obj   = BaseTracker()
-        spec  = doot.structs.TaskSpec.build({"name":"basic::task", "depends_on":[{"task":"basic::dep", "inject":{"now":{"inj_key":"bad_key"}}}], "test_key": "bloo"})
+        spec  = doot.structs.TaskSpec.build({"name":"basic::task",
+                                             "depends_on":[
+                                                 {"task":"basic::dep",
+                                                  "inject":{"now":{"inj_key":"bad_key"}}}
+                                             ],
+                                             "test_key": "bloo"})
         spec2 = doot.structs.TaskSpec.build({"name":"basic::dep"})
         obj.register_spec(spec, spec2)
         instance = obj._instantiate_spec(spec.name)

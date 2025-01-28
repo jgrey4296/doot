@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 """
 
-
 """
 
 # Imports:
@@ -30,6 +29,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 from jgdv.structs.chainguard import ChainGuard
+from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 # ##-- end 3rd party imports
 
@@ -52,7 +52,61 @@ Data                               = dict | ChainGuard
 CLI_K         : Final[str]         = "cli"
 MUST_INJECT_K : Final[str]         = "must_inject"
 SPECIAL_KEYS  : Final[list[str]]   = [CLI_K, MUST_INJECT_K]
-INJECT_GROUPS : Final[list[str]]   = ["delay", "now", "insert"]
+INJECT_KEYS   : Final[list[str]]   = doot.constants.misc.INJECT_KEYS
+
+class Injection_d(BaseModel):
+    """A Data representation of an injection."""
+    now     : dict
+    delay   : dict
+    insert  : dict
+
+    @staticmethod
+    def build(data:dict, constraint:dict) -> Maybe[Self]:
+        """  """
+        now             = data.get("now", [])
+        delay           = data.get("delay", [])
+        insert          = data.get("insert", [])
+
+        cli_dict        = {cli.name : cli.default for cli in constraint.get(CLI_K, [])}
+        constraint_dict = {k:v for k,v in constraint.items() if k not in SPECIAL_KEYS}
+        result          = Injection_d(now=[],
+                                      delay=[],
+                                      insert=[])
+        # result._validate_key_constraints(set(proposed.keys()), constraint_data)
+        return result
+
+    @staticmethod
+    def _prep_keys(keys:Maybe[dict[str,str]|list[str]], literal=False) -> dict[str, DKey]:
+        """ prepare keys for the expansions """
+        match keys:
+            case None:
+                return {}
+            case [*xs]:
+                return {(k:=DKey(x, implicit=True)):k for x in xs}
+            case dict() if literal:
+                return {DKey(k, implicit=True):v for k,v in keys.items()}
+            case dict():
+                return {DKey(k, implicit=True):DKey(v, implicit=True, fallback=v) for k,v in keys.items()}
+            case _:
+                raise doot.errors.StateError("unknown keys type", keys)
+
+    @field_validator("now")
+    def _validate_now(cls, val):
+        return cls._prep_keys(val)
+
+    @field_validator("delay")
+    def _validate_delay(cls, val):
+        return cls._prep_keys(val)
+
+    @field_validator("insert")
+    def _validate_insert(cls, val):
+        insert = [DKey(x, implicit=True) for x in base.get("insert", None)]
+        insert = {k:insertion for k in insert}
+        return val
+
+    def initial_expansion(self, *sources):
+        self.now   = {k:v(*sources, fallback=v) for k,v in self.now.items()}
+        self.delay = {k:v(*sources, fallback=v, max=1) for k,v in val.items()}
 
 class Injector_m:
     """ Generalized mixin for building injections.
@@ -64,9 +118,14 @@ class Injector_m:
 
     Only the values of the return dict can be expanded
     (ie: { DKey('aval') : 5 }, aval is not expanded )
+
+    Injections can also add a suffix to the task the inject into, for identification purposes
     """
 
-    def build_injection(self, base:Maybe[RelationSpec|dict], *sources, insertion=None, constraint:Maybe[TaskSpec|Data]=None) -> Maybe[dict]:
+    def build_injection(self, base:Maybe[RelationSpec|dict], *sources,
+                        insertion=None,
+                        constraint:Maybe[TaskSpec|Data]=None) -> Maybe[dict|Injection_d]:
+        # Extract the initial data used for the injection
         match base:
             case None | RelationSpec(inject=None):
                 return None
@@ -80,6 +139,7 @@ class Injector_m:
             case _:
                 raise doot.errors.StateError("Unknown injection base type", base)
 
+        # Get any constraints
         match constraint:
             case None:
                 constraint_data = {}
@@ -90,57 +150,28 @@ class Injector_m:
             case _:
                 raise doot.errors.StateError("Unknown constraint data type", constraint)
 
-        self._validate_injection_dict_format(base_data)
+        # Validate the format
 
-        proposed = self._build_fresh_state(base_data, *sources, insertion=insertion)
-        self._validate_key_constraints(set(proposed.keys()), constraint_data)
 
-        injection = {}
-        injection.update({cli.name : cli.default for cli in constraint_data.get(CLI_K, [])})
-        injection.update({k:v for k,v in constraint_data.items() if k not in SPECIAL_KEYS})
-        injection.update(proposed)
+        insert             = Injection_d._prep_keys(base_data.get("insert", None), literal=True)
+        now                = Injection_d._prep_keys(base_data.get("now", None))
+        delay              = Injection_d._prep_keys(base_data.get("delay", None))
+        insert_dict        = {k:insertion or v for k,v in insert.items()}
+        # Perform expansions
+        now_dict           = {k:v(*sources) for k,v in now.items()}
+        delay_dict         = {k:v(*sources, max=1)  for k,v in delay.items()}
+        cli_dict           = {cli.name : cli.default for cli in constraint_data.get(CLI_K, [])}
+        constraint_dict    = {k:v for k,v in constraint_data.items() if k not in SPECIAL_KEYS}
+        injection          = {} | constraint_dict | cli_dict | delay_dict | now_dict | insert_dict
+        self._validate_key_constraints(set(injection.keys()), constraint_dict)
+        match base_data.get("suffix", None):
+            case None:
+                pass
+            case str() as suff:
+                injection['_add_suffix'] = suff
+
         return injection
 
-    def _build_fresh_state(self, inject:Data, *sources, insertion=None) -> Maybe[dict]:
-        """ builds a fresh state without worrying about conforming to a spec"""
-        match self._split_injection_base(inject):
-            case None:
-                return None
-            case delay, now, insert:
-                pass
-            case _:
-                raise doot.errors.StateError("wrong format for replacement injection, should be a list of keys")
-
-        injection_dict = {}
-        injection_dict.update({k:v(*sources, fallback=v, max=1) for k,v in delay.items()})
-        injection_dict.update({k:v(*sources, fallback=v) for k,v in now.items()})
-        if insertion:
-            injection_dict.update({k:insertion for k in insert})
-
-        return injection_dict
-
-    def _split_injection_base(self, base:Maybe[Data]) -> Maybe[tuple[dict, dict, list]]:
-        """ get the copy,expand and replace data of the proposed injection """
-        match base:
-            case None:
-                return None
-            case dict() | ChainGuard():
-                copy    = self._prep_keys(base.get("delay", None) or base.get("copy", []))
-                expand  = self._prep_keys(base.get("now", None) or base.get("expand", []))
-                replace = [DKey(x, implicit=True) for x in base.get("insert", None) or base.get("replace", [])]
-                return copy, expand, replace
-            case _:
-                raise doot.errors.StateError("Wrong injection spec type", base)
-
-    def _prep_keys(self, keys:dict[str,str]|list[str]) -> dict[str, DKey]:
-        """ prepare keys for the expansions """
-        match keys:
-            case [*xs]:
-                return {(k:=DKey(x, implicit=True)):k for x in xs}
-            case dict():
-                return {DKey(k, implicit=True):DKey(v, implicit=True) for k,v in keys.items()}
-            case _:
-                raise doot.errors.StateError("unknown keys type", keys)
 
     def _validate_key_constraints(self, inject_keys:set[str], spec:dict|ChainGuard) -> None:
         """ check the keys to be injected match keys in the default spec """
@@ -154,7 +185,3 @@ class Injector_m:
 
         if bool(spec_keys) and bool(surplus:=inject_keys - (spec_keys | cli_keys | required_keys)):
             raise doot.errors.StateError("Surplus keys can not be injected", surplus)
-
-    def _validate_injection_dict_format(self, base:dict):
-        if bool(base.keys() - INJECT_GROUPS):
-            raise doot.errors.StateError("Wrong format injection, should be {delay=dict|list, now=dict|list, insert=list}", base)

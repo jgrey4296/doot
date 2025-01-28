@@ -54,8 +54,12 @@ class CheckLocsTask(DootTask):
     task_name = "_locations::check"
 
     def __init__(self, spec=None):
-        locations = [DKey(x, implicit=True) for x in doot.locs]
-        actions   = [ActionSpec.build({"args": locations, "fun":self.checklocs })]
+        match [DKey(x, implicit=True) for x in doot.locs]:
+            case []:
+                actions = []
+            case [*_]:
+                actions   = [ActionSpec.build({"args": locations, "fun":self.checklocs })]
+
         spec      = TaskSpec.build({
             "name"         : CheckLocsTask.task_name,
             "actions"      : actions,

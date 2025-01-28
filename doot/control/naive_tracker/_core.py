@@ -223,6 +223,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
         control_spec              = self.specs[control]
         target_spec               = self.specs[rel.target]
         successful_matches        = []
+        # Get and test existing concrete specs to see if they can be reused
         match self.concrete.get(rel.target, None):
             case [] | None if rel.target not in self.specs:
                 raise doot.errors.TrackingError("Unknown target declared in Constrained Relation", control, rel.target)
@@ -234,7 +235,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
                 successful_matches += [x.name for x in potentials if self.match_with_constraints(x, control_spec, relation=rel)]
 
         match successful_matches:
-            case []: # No matches, instantiate
+            case []: # No matches, instantiate new
                 extra    : None|dict      = self.build_injection(rel, control_spec, constraint=target_spec)
                 instance : TaskName       = self._instantiate_spec(rel.target, extra=extra)
                 if not self.match_with_constraints(self.specs[instance], control_spec, relation=rel):
@@ -274,7 +275,10 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
         match task_obj:
             case None:
                 spec = self.specs[name]
-                task : Task_i = spec.make()
+                try:
+                    task : Task_i = spec.make()
+                except (ImportError, doot.errors.DootError) as err:
+                    raise doot.errors.TrackingError("Failed To Make Task", name, *err.args) from err
             case Task_i():
                 task = task_obj
             case _:

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
 # Imports:
@@ -52,7 +51,7 @@ import doot.errors
 from doot._abstract.control import QueueMeta_e
 from doot._abstract.protocols import (Buildable_p, ProtocolModelMeta,
                                       SpecStruct_p)
-from doot._abstract.task import Task_i
+from doot._abstract.task import Task_i, Job_i
 
 # ##-- end 1st party imports
 
@@ -67,6 +66,8 @@ from .task_name import TaskName
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+DEFAULT_JOB : Final[str] = "job"
+
 def _dicts_to_specs(deps:list[dict], *, relation=RelationMeta_e.default) -> list[ActionSpec|RelationSpec]:
     """ Convert toml provided dicts of specs into ActionSpec and RelationSpec object"""
     results = []
@@ -80,7 +81,6 @@ def _dicts_to_specs(deps:list[dict], *, relation=RelationMeta_e.default) -> list
                 results.append(RelationSpec.build(x, relation=relation))
 
     return results
-
 
 def _prepare_action_group(group:list[str], handler:ValidatorFunctionWrapHandler, info:ValidationInfo) -> list[RelationSpec|ActionSpec]:
     """
@@ -166,7 +166,6 @@ class _JobUtils_m:
         head_section      = _dicts_to_specs(self.extra.on_fail([], list).head_actions(), relation=RelationMeta_e.needs)
         head_dependencies = [x for x in head_section if isinstance(x, RelationSpec) and x.target != job_head]
         head_actions      = [x for x in head_section if not isinstance(x, RelationSpec)]
-
 
         # build $head$
         head : TaskSpec = TaskSpec.build({
@@ -304,14 +303,17 @@ class _TransformerUtils_m:
 class _SpecUtils_m:
     """General utilities mixin for task specs"""
 
-    @property
-    def param_specs(self) -> list:
-        result = []
-        for x in self.extra.on_fail([]).cli():
-            assert(isinstance(x, dict|ChainGuard)), x
-            result.append(ParamSpec.build(x))
-        else:
-            return result
+    @staticmethod
+    def build(data:ChainGuard|dict|TaskName|str) -> Self:
+        match data:
+            case ChainGuard() | dict() if "source" in data:
+                raise ValueError("source is deprecated, use 'sources'", data)
+            case ChainGuard() | dict():
+                return TaskSpec.model_validate(data)
+            case TaskName():
+                return TaskSpec(name=data)
+            case str():
+                return TaskSpec(name=TaskName(data))
 
     def instantiate_onto(self, data:Maybe[TaskSpec]) -> TaskSpec:
         """ apply self over the top of data """
@@ -322,6 +324,75 @@ class _SpecUtils_m:
                 return data.specialize_from(self)
             case _:
                 raise TypeError("Can't to_uniq onto something not a task spec", data)
+
+    def specialize_from(self, data:dict|TaskSpec) -> TaskSpec:
+        """ apply data on top of self"""
+        match data:
+            case {"_add_suffix": str() as suff}:
+                # When an injection adds a suffix, it occurs here
+                specialized = dict(self)
+                specialized.update(data)
+                specialized['name'] = self.name.push(suff)
+                del specialized['_add_suffix']
+                return TaskSpec.build(specialized)
+            case dict():
+                specialized = dict(self)
+                specialized.update(data)
+                return TaskSpec.build(specialized)
+            case TaskSpec() if self is data:
+                # specializing on self, just to_uniq a name
+                specialized           = dict(self)
+                specialized['name']   = self.name.to_uniq()
+                # Otherwise theres interference:
+                specialized['sources'] = self.sources[:] + [self.name]
+                return TaskSpec.build(specialized)
+            case TaskSpec(sources=[*xs, TaskName() as x] ) if not x <= self.name:
+                raise doot.errors.TrackingError("Tried to specialize a task that isn't based on this task", str(data.name), str(self.name), str(data.sources))
+            case TaskSpec():
+                return self._specialize_merge(data)
+            case _:
+                raise TypeError("Unexpected type for specializing spec", data)
+
+    def _specialize_merge(self, data:dict|TaskSpec) -> TaskSpec:
+        """
+          apply data over the top of self.
+          a *single* application, as a spec on it's own has no means to look up other specs,
+          which is the tracker's responsibility.
+
+          so source chain: [root..., self, data]
+        """
+
+        specialized = dict(self)
+        specialized.update({k:v for k,v in dict(data).items() if k in data.model_fields_set})
+
+        # Then special updates
+        specialized['name']         = data.name.to_uniq()
+        specialized['sources']      = self.sources[:] + [self.name, data.name]
+
+        specialized['actions']      = self.actions      + data.actions
+        specialized["depends_on"]   = self.depends_on   + data.depends_on
+        specialized["required_for"] = self.required_for + data.required_for
+        specialized["cleanup"]      = self.cleanup      + data.cleanup
+        specialized["on_fail"]      = self.on_fail      + data.on_fail
+        specialized["setup"]        = self.setup        + data.setup
+
+        # Internal is only for initial specs, to control listing
+        specialized['meta']        = set()
+        specialized['meta'].update(self.meta)
+        specialized['meta'].update(data.meta)
+        specialized['meta'].difference_update({TaskMeta_e.INTERNAL})
+
+        logging.debug("Specialized Task: %s on top of: %s", data.name.readable, self.name)
+        return TaskSpec.build(specialized)
+
+    @property
+    def param_specs(self) -> list:
+        result = []
+        for x in self.extra.on_fail([]).cli():
+            assert(isinstance(x, dict|ChainGuard)), x
+            result.append(ParamSpec.build(x))
+        else:
+            return result
 
     def make(self, ensure:type=Any) -> Task_i:
         """ Create actual task instance """
@@ -389,24 +460,12 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
     _blocking_groups                  : ClassVar[list[str]]                                                              = ["required_for", "on_fail"]
 
     mark_e                            : ClassVar[enum.Enum]                                                              = TaskMeta_e
-    @staticmethod
-    def build(data:ChainGuard|dict|TaskName|str) -> Self:
-        match data:
-            case ChainGuard() | dict() if "source" in data:
-                raise ValueError("source is deprecated, use 'sources'", data)
-            case ChainGuard() | dict():
-                return TaskSpec.model_validate(data)
-            case TaskName():
-                return TaskSpec(name=data)
-            case str():
-                return TaskSpec(name=TaskName(data))
 
     @model_validator(mode="before")
     def _convert_toml_keys(cls, data:dict) -> dict:
         """ converts a-key into a_key, and joins group+name """
         cleaned = {k.replace("-","_") : v  for k,v in data.items()}
         if "group" in cleaned and TaskName._separator not in cleaned["name"]:
-            # cleaned['name'] = TaskName.from_parts(cleaned['group'], cleaned['name'])
             cleaned['name'] = TaskName._separator.join([cleaned['group'], cleaned['name']])
             del cleaned['group']
         return cleaned
@@ -415,11 +474,17 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
     def _validate_metadata(self) -> Self:
         if self.extra.on_fail(False).disabled():
             self.meta.add(TaskMeta_e.DISABLED)
+
+        if TaskName.bmark_e.extend in self.name and TaskMeta_e.JOB_HEAD not in self.meta:
+            self.meta.add(TaskMeta_e.JOB)
+
         match self.ctor():
             case ImportError() as err:
                 logging.warning("Ctor Import Failed for: %s : %s", self.name, self.ctor)
                 self.meta.add(TaskMeta_e.DISABLED)
                 self.ctor = None
+            case x if TaskMeta_e.JOB in self.meta and not isinstance(x, Job_i):
+                self.ctor = CodeReference(doot.aliases.task[DEFAULT_JOB])
             case None:
                 pass
             case x if issubclass(x, Task_i):
@@ -427,11 +492,6 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
 
         if TaskMeta_e.TRANSFORMER not in self.meta:
             self._transform = False
-
-        if TaskName.bmark_e.extend in self.name and TaskMeta_e.JOB_HEAD not in self.meta:
-            self.meta.add(TaskMeta_e.JOB)
-            if self.ctor ==  self._default_ctor:
-                self.ctor = CodeReference(doot.aliases.task["job"])
 
         return self
 
@@ -542,49 +602,3 @@ class TaskSpec(BaseModel, _JobUtils_m, _TransformerUtils_m, _SpecUtils_m, SpecSt
         for group in queue:
             for elem in group:
                 yield elem
-
-    def specialize_from(self, data:dict|TaskSpec) -> TaskSpec:
-        """
-          apply data over the top of self.
-          a *single* application, as a spec on it's own has no means to look up other specs,
-          which is the tracker's responsibility.
-
-          so source chain: [root..., self, data]
-        """
-        match data:
-            case dict():
-                specialized = dict(self)
-                specialized.update(data)
-                return TaskSpec.build(specialized)
-            case TaskSpec() if self is data:
-                # specializing on self, just to_uniq a name
-                specialized           = dict(self)
-                specialized['name']   = self.name.to_uniq()
-                # Otherwise theres interference:
-                specialized['sources'] = self.sources[:] + [self.name]
-                return TaskSpec.build(specialized)
-            case TaskSpec(sources=[*xs, TaskName() as x] ) if not x <= self.name:
-                raise doot.errors.TrackingError("Tried to specialize a task that isn't based on this task", str(data.name), str(self.name), str(data.sources))
-            case TaskSpec():
-                specialized = dict(self)
-                specialized.update({k:v for k,v in dict(data).items() if k in data.model_fields_set})
-
-        # Then special updates
-        specialized['name']         = data.name.to_uniq()
-        specialized['sources']      = self.sources[:] + [self.name, data.name]
-
-        specialized['actions']      = self.actions      + data.actions
-        specialized["depends_on"]   = self.depends_on   + data.depends_on
-        specialized["required_for"] = self.required_for + data.required_for
-        specialized["cleanup"]      = self.cleanup      + data.cleanup
-        specialized["on_fail"]      = self.on_fail      + data.on_fail
-        specialized["setup"]        = self.setup        + data.setup
-
-        # Internal is only for initial specs, to control listing
-        specialized['meta']        = set()
-        specialized['meta'].update(self.meta)
-        specialized['meta'].update(data.meta)
-        specialized['meta'].difference_update({TaskMeta_e.INTERNAL})
-
-        logging.debug("Specialized Task: %s on top of: %s", data.name.readable, self.name)
-        return TaskSpec.build(specialized)

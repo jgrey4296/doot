@@ -84,6 +84,9 @@ class _DagLister_m:
                 ]
 
 class _TaskLister_m:
+    """
+    TODO: colour jobs
+    """
 
     @property
     def param_specs(self) -> list:
