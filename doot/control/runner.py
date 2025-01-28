@@ -244,7 +244,6 @@ class DootRunner(BaseRunner, TaskRunner_i):
 
         actexec_l.detail("Action Executing for Task: %s", task.shortname)
         actexec_l.detail("Action State: %s.%s: args=%s kwargs=%s. state(size)=%s", self.step, count, action.args, dict(action.kwargs), len(task.state.keys()))
-        action.verify(task.state)
         result = action(task.state)
         actexec_l.detail("Action Result: %s", result)
 
@@ -267,7 +266,6 @@ class DootRunner(BaseRunner, TaskRunner_i):
                 self.reporter.add_trace(action, flags=Report_f.FAIL | Report_f.ACTION)
                 raise doot.errors.TaskError("Task %s: Action %s Failed: Returned an unplanned for value: %s", task.shortname, action.do, result, task=task.spec)
 
-        action.verify_out(task.state)
         self.reporter.add_trace(action, flags=Report_f.ACTION | Report_f.SUCCEED)
         return result
 

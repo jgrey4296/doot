@@ -61,8 +61,6 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
     do         : Maybe[CodeReference]                   = None
     args       : list[Any]                              = []
     kwargs     : ChainGuard                             = Field(default_factory=ChainGuard)
-    inState    : set[str]                               = set()
-    outState   : set[str]                               = set()
     fun        : Maybe[Func]                            = None
 
     @staticmethod
@@ -84,8 +82,6 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
                     do=data.get('do', None),
                     args=data.get('args',[]),
                     kwargs=kwargs,
-                    inState=set(data.get('inState', set())),
-                    outState=set(data.get('outState', set())),
                     fun=fun,
                     )
                 return action_spec
@@ -119,11 +115,6 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
             result.append(f"args={[str(x) for x in self.args]}")
         if self.kwargs:
             result.append(f"kwargs={self.kwargs}")
-        if self.inState:
-            result.append(f"inState={self.inState}")
-        if self.outState:
-            result.append(f"outState={self.outState}")
-
         if self.fun and hasattr(self.fun, '__qualname__'):
             result.append(f"calling={self.fun.__qualname__}")
         elif self.fun:
@@ -141,37 +132,28 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
     def params(self):
         return self.kwargs
 
-    def set_function(self, fun:Action_p|Func):
+    def set_function(self, *, fun:Maybe[Action_p|Func|type|ImportError]=None):
         """
           Sets the function of the action spec.
           if given a class, the class is built,
           if given a callable, that is used directly.
 
         """
-        # if the function/class has an inState/outState attribute, add those to the spec's fields
-        if hasattr(fun, 'inState') and isinstance(getattr(fun, 'inState'), list):
-            self.inState.update(getattr(fun, 'inState'))
+        if fun is None:
+            fun = self.do()
 
-        if hasattr(fun, 'outState') and isinstance(getattr(fun, 'outState'), list):
-            self.outState.update(getattr(fun, 'outState'))
-
-        if isinstance(fun, type):
-            self.fun = fun()
-        else:
-            self.fun = fun
-
-        if not callable(self.fun):
-            raise doot.errors.StructError("Action Spec Given a non-callable fun: %s", fun)
+        match fun:
+            case ImportError() as err:
+                raise err from err
+            case type() as x:
+                self.fun = x()
+            case x if callable(x):
+                self.fun = fun
+            case x:
+                raise doot.errors.StructError("Action Spec Given a non-callable fun: %s", fun)
 
     def verify(self, state:dict, *, fields=None):
-        pos = "Output"
-        if fields is None:
-            pos = "Input"
-            fields = self.inState
-        if all(x in state for x in fields):
-            return
-
-        raise doot.errors.StateError("%s Fields Missing: %s", pos, [x for x in fields if x not in state])
+        raise NotImplementedError()
 
     def verify_out(self, state:dict):
         self.verify(state, fields=self.outState)
