@@ -99,7 +99,12 @@ class RunCmd(BaseCommand):
             except doot.errors.TrackingError as err:
                 cmd_l.warn("%s specified as run target, but it doesn't exist", target)
 
-        tracker.queue_entry(CheckLocsTask(), from_user=True)
+        match CheckLocsTask():
+            case x if bool(x.spec.actions):
+                tracker.queue_entry(CheckLocsTask(), from_user=True)
+            case _:
+                pass
+
         for target in doot.args.on_fail({}).sub().keys():
             try:
                 tracker.queue_entry(target, from_user=True)
