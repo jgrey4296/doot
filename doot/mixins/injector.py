@@ -118,12 +118,13 @@ class Injector_m:
 
     Only the values of the return dict can be expanded
     (ie: { DKey('aval') : 5 }, aval is not expanded )
+
+    Injections can also add a suffix to the task the inject into, for identification purposes
     """
 
     def build_injection(self, base:Maybe[RelationSpec|dict], *sources,
                         insertion=None,
                         constraint:Maybe[TaskSpec|Data]=None) -> Maybe[dict|Injection_d]:
-
         # Extract the initial data used for the injection
         match base:
             case None | RelationSpec(inject=None):

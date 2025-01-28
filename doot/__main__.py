@@ -2,7 +2,7 @@
 """
 The doot cli runner
 """
-# ruff: noqa: PLR0912, BLE001
+# ruff: noqa: PLR0912, BLE001, PLR0915
 # Imports:
 from __future__ import annotations
 
@@ -35,6 +35,7 @@ from weakref import ref
 # ##-- 3rd party imports
 import sh
 import stackprinter
+import jgdv
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -64,7 +65,7 @@ def main() -> None:
         if not bool(doot.config):
             doot.setup()
     except doot.errors.InvalidConfigError as err:
-        logging.error(" : ".join(list(err.args)))
+        logging.exception(" : ".join([str(x) for x in list(err.args)]), exc_info=None)
         sys.exit(1)
     except doot.errors.MissingConfigError:
         doot._null_setup()
@@ -129,7 +130,7 @@ def main() -> None:
         fail_l.exception("Not Implemented: %s", " ".join(err.args), exc_info=err)
     except Exception as err:
         fail_l.exception("Python Error:", exc_info=err)
-        fail_l.exception(f"Python Error, writing to {LASTERR}. Be Patient...", exc_info=None)
+        fail_l.exception(f"Python Error, writing to {LASTERR}.", exc_info=None)
         pl.Path(LASTERR).write_text(stackprinter.format())
     finally:
         if overlord:

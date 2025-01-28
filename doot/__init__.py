@@ -111,7 +111,7 @@ def setup(targets:Maybe[list[pl.Path]|False]=None, prefix:Maybe[str]=TOOL_PREFIX
     try:
         config = ChainGuard.load(*existing_targets)
     except (IOError, OSError) as err:
-        raise doot.errors.InvalidConfigError(*err.args) from err
+        raise doot.errors.InvalidConfigError(existing_targets, *err.args) from err
 
     if existing_targets == [pl.Path("pyproject.toml")] and "doot" not in config:
         raise doot.errors.MissingConfigError("Pyproject has no doot config")
