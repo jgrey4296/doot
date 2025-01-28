@@ -190,6 +190,8 @@ class DootTask(_TaskProperties_m, _TaskStubbing_m, _TaskHelp_m, Task_i):
     def prepare_actions(self):
         """ if the task/action spec requires particular action ctors, load them.
           if the action spec doesn't have a ctor, use the task's action_ctor
+
+        collects any action errors together, then raises them as a task error
         """
         logging.debug("Preparing Actions: %s", self.shortname)
         failed = []
@@ -208,14 +210,12 @@ class DootTask(_TaskProperties_m, _TaskStubbing_m, _TaskHelp_m, Task_i):
                     action_spec.set_function(fun=self.action_ctor)
                 case _:
                     failed.append(doot.errors.TaskError("Unknown element in action group: ", action_spec, self.shortname))
-
-        match failed:
-            case []:
-                pass
-            case [x]:
-                raise x
-            case [*xs]:
-                raise ImportError("Multiple Action Spec import failures", xs)
+        else:
+            match failed:
+                case []:
+                    pass
+                case [*xs]:
+                    raise doot.errors.TaskError("Action Spec preparation failures", xs)
 
     def add_execution_record(self, arg):
         """ Record some execution record information for display or debugging """

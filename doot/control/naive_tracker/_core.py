@@ -275,7 +275,10 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
         match task_obj:
             case None:
                 spec = self.specs[name]
-                task : Task_i = spec.make()
+                try:
+                    task : Task_i = spec.make()
+                except (ImportError, doot.errors.DootError) as err:
+                    raise doot.errors.TrackingError("Failed To Make Task", name, *err.args) from err
             case Task_i():
                 task = task_obj
             case _:

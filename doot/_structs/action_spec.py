@@ -144,7 +144,7 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
 
         match fun:
             case ImportError() as err:
-                raise err from err
+                raise err from None
             case type() as x:
                 self.fun = x()
             case x if callable(x):

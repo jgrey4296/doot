@@ -51,6 +51,7 @@ fail_l          = doot.subprinter("fail")
 
 template_path   = files("doot.__templates")
 fail_prefix     = "!!!"
+LASTERR : Final[str] = "doot.lasterror"
 
 def main() -> None:
     """ The Main Doot CLI Program.
@@ -127,8 +128,9 @@ def main() -> None:
     except NotImplementedError as err:
         fail_l.exception("Not Implemented: %s", " ".join(err.args), exc_info=err)
     except Exception as err:
-        pl.Path("doot.lasterror").write_text(stackprinter.format())
         fail_l.exception("Python Error:", exc_info=err)
+        fail_l.exception(f"Python Error, writing to {LASTERR}. Be Patient...", exc_info=None)
+        pl.Path(LASTERR).write_text(stackprinter.format())
     finally:
         if overlord:
             overlord.shutdown()
