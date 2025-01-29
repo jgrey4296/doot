@@ -75,44 +75,102 @@ DECLARE_PRIORITY                : Final[int]                  = 10
 MIN_PRIORITY                    : Final[int]                  = -10
 INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                  = 10
 
-class TrackNetwork(TaskMatcher_m):
-    """ The _graph of concrete tasks and their dependencies """
+class _Expansion_m:
 
-    def __init__(self, registry:TrackRegistry):
-        self._registry                                                       = registry
-        self._root_node        : TaskName                                    = TaskName(ROOT)
-        self._declare_priority : int                                         = DECLARE_PRIORITY
-        self._min_priority     : int                                         = MIN_PRIORITY
-        self._graph            : nx.DiGraph[Concrete[TaskName]|TaskArtifact] = nx.DiGraph()
-        self.is_valid          : bool                                        = False
+    def build_network(self, *, sources:None|True|list[Concrete[TaskName]|TaskArtifact]=None) -> None:
+        """
+        for each task queued (ie: connected to the root node)
+        expand its dependencies and add into the _graph, until no mode nodes to expand.
+        then connect concrete _registry.artifacts to abstract _registry.artifacts.
 
-        self._add_node(self._root_node)
+        # TODO _graph could be built in total, or on demand
+        """
+        logging.debug("-> Building Task Network")
+        match sources:
+            case None:
+                queue = list(self.pred[self._root_node].keys())
+            case True:
+                queue = list(self.nodes.keys())
+            case [*xs]:
+                queue = list(sources)
+        processed = { self._root_node }
+        logging.info("Initial Network Queue: %s", queue)
+        while bool(queue): # expand tasks
+            logging.debug("- Processing: %s", queue[-1])
+            match (current:=queue.pop()):
+                case x if x in processed or self.nodes[x].get(EXPANDED, False):
+                    logging.debug("- Processed already")
+                    processed.add(x)
+                case TaskName() as x if x in self.nodes:
+                    additions = self._expand_task_node(x)
+                    logging.debug("- Task Expansion produced: %s", additions)
+                    queue    += additions
+                    processed.add(x)
+                case TaskArtifact() as x if x in self.nodes:
+                    additions = self._expand_artifact(x)
+                    logging.debug("- Artifact Expansion produced: %s", additions)
+                    queue += additions
+                    processed.add(x)
+                case _:
+                    raise doot.errors.TrackingError("Unknown value in _graph")
 
-    @property
-    def nodes(self):
-        return self._graph.nodes
+        else:
+            logging.debug("- Final Network Nodes: %s", self.nodes)
+            logging.debug("<- Final Network Edges: %s", self.edges)
+            self.is_valid = True
+            pass
 
-    @property
-    def edges(self):
-        return self._graph.edges
+    def connect(self, left:None|Concrete[TaskName]|TaskArtifact, right:None|False|Concrete[TaskName]|TaskArtifact=None, **kwargs) -> None:
+        """
+        Connect a task node to another. left -> right
+        If given left, None, connect left -> ROOT
+        if given left, False, just add the node
 
-    @property
-    def pred(self):
-        return self._graph.pred
+        (This preserves graph.pred[x] as the nodes x is dependent on)
+        """
+        assert("type" not in kwargs)
+        self.is_valid = False
+        match left:
+            case x if x == self._root_node:
+                pass
+            case TaskName() if left not in self._registry.specs:
+                raise doot.errors.TrackingError("Can't connect a non-existent task", left)
+            case TaskArtifact() if left not in self._registry.artifacts:
+                raise doot.errors.TrackingError("Can't connect a non-existent artifact", left)
+            case _ if left not in self.nodes:
+                self._add_node(left)
 
-    @property
-    def adj(self):
-        return self._graph.adj
+        match right:
+            case False:
+                return
+            case None:
+                right = self._root_node
+            case TaskName() if right not in self._registry.specs:
+                raise doot.errors.TrackingError("Can't connect a non-existent task", right)
+            case TaskArtifact() if right not in self._registry.artifacts:
+                raise doot.errors.TrackingError("Can't connect a non-existent artifact", right)
+            case _ if right not in self.nodes:
+                self._add_node(right)
 
-    @property
-    def succ(self):
-        return self._graph.succ
+        if right in self.succ[left]:
+            # nothing to do
+            return
 
-    def __len__(self):
-        return len(self._graph)
-
-    def __contains__(self, other:Concrete[TaskName]|TaskArtifact):
-        return other in self._graph
+        logging.debug("Connecting: %s -> %s", left, right)
+        # Add the edge, with metadata
+        match left, right:
+            case TaskName(), TaskName():
+                self._graph.add_edge(left, right, type=EdgeType_e.TASK, **kwargs)
+            case TaskName(), TaskArtifact():
+                self._graph.add_edge(left, right, type=EdgeType_e.TASK_CROSS, **kwargs)
+            case TaskArtifact(), TaskName():
+                self._graph.add_edge(left, right, type=EdgeType_e.ARTIFACT_CROSS, **kwargs)
+            case TaskArtifact(), TaskArtifact() if left.is_concrete() and right.is_concrete():
+                raise doot.errors.TrackingError("Tried to connect two concrete _registry.artifacts", left, right)
+            case TaskArtifact(), TaskArtifact() if right.is_concrete():
+                self._graph.add_edge(left, right, type=EdgeType_e.ARTIFACT_UP, **kwargs)
+            case TaskArtifact(), TaskArtifact() if not right.is_concrete():
+                self._graph.add_edge(left, right, type=EdgeType_e.ARTIFACT_DOWN, **kwargs)
 
     def _add_node(self, name:Concrete[TaskName]|TaskArtifact) -> None:
         """idempotent"""
@@ -258,74 +316,7 @@ class TrackNetwork(TaskMatcher_m):
         self.nodes[artifact][EXPANDED] = True
         return to_expand
 
-    def concrete_edges(self, name:Concrete[TaskName|TaskArtifact]) -> ChainGuard:
-        """ get the concrete edges of a task.
-          ie: the ones in the task _graph, not the abstract ones in the spec.
-        """
-        assert(name in self)
-        preds = self.pred[name]
-        succ  = self.succ[name]
-        return ChainGuard({
-            "pred" : {"tasks": [x for x in preds if isinstance(x, TaskName)],
-                      "_registry.artifacts": {"abstract": [x for x in preds if isinstance(x, TaskArtifact) and not x.is_concrete()],
-                                    "concrete": [x for x in preds if isinstance(x, TaskArtifact) and x.is_concrete()]}},
-            "succ" : {"tasks": [x for x in succ  if isinstance(x, TaskName) and x is not self._root_node],
-                      "_registry.artifacts": {"abstract": [x for x in succ if isinstance(x, TaskArtifact) and not x.is_concrete()],
-                                    "concrete": [x for x in succ if isinstance(x, TaskArtifact) and x.is_concrete()]}},
-            "root" : self._root_node in succ,
-            })
-
-    def connect(self, left:None|Concrete[TaskName]|TaskArtifact, right:None|False|Concrete[TaskName]|TaskArtifact=None, **kwargs) -> None:
-        """
-        Connect a task node to another. left -> right
-        If given left, None, connect left -> ROOT
-        if given left, False, just add the node
-
-        (This preserves graph.pred[x] as the nodes x is dependent on)
-        """
-        assert("type" not in kwargs)
-        self.is_valid = False
-        match left:
-            case x if x == self._root_node:
-                pass
-            case TaskName() if left not in self._registry.specs:
-                raise doot.errors.TrackingError("Can't connect a non-existent task", left)
-            case TaskArtifact() if left not in self._registry.artifacts:
-                raise doot.errors.TrackingError("Can't connect a non-existent artifact", left)
-            case _ if left not in self.nodes:
-                self._add_node(left)
-
-        match right:
-            case False:
-                return
-            case None:
-                right = self._root_node
-            case TaskName() if right not in self._registry.specs:
-                raise doot.errors.TrackingError("Can't connect a non-existent task", right)
-            case TaskArtifact() if right not in self._registry.artifacts:
-                raise doot.errors.TrackingError("Can't connect a non-existent artifact", right)
-            case _ if right not in self.nodes:
-                self._add_node(right)
-
-        if right in self.succ[left]:
-            # nothing to do
-            return
-
-        logging.debug("Connecting: %s -> %s", left, right)
-        # Add the edge, with metadata
-        match left, right:
-            case TaskName(), TaskName():
-                self._graph.add_edge(left, right, type=EdgeType_e.TASK, **kwargs)
-            case TaskName(), TaskArtifact():
-                self._graph.add_edge(left, right, type=EdgeType_e.TASK_CROSS, **kwargs)
-            case TaskArtifact(), TaskName():
-                self._graph.add_edge(left, right, type=EdgeType_e.ARTIFACT_CROSS, **kwargs)
-            case TaskArtifact(), TaskArtifact() if left.is_concrete() and right.is_concrete():
-                raise doot.errors.TrackingError("Tried to connect two concrete _registry.artifacts", left, right)
-            case TaskArtifact(), TaskArtifact() if right.is_concrete():
-                self._graph.add_edge(left, right, type=EdgeType_e.ARTIFACT_UP, **kwargs)
-            case TaskArtifact(), TaskArtifact() if not right.is_concrete():
-                self._graph.add_edge(left, right, type=EdgeType_e.ARTIFACT_DOWN, **kwargs)
+class _Validation_m:
 
     def validate_network(self, *, strict:bool=True) -> bool:
         """ Finalise and ensure consistence of the task _graph.
@@ -356,6 +347,23 @@ class TrackNetwork(TaskMatcher_m):
                     elif bool(bad_nodes):
                         logging.warning("Glob Artifact ConcreteId is a successor to a task: %s (%s)", node, bad_nodes)
 
+    def concrete_edges(self, name:Concrete[TaskName|TaskArtifact]) -> ChainGuard:
+        """ get the concrete edges of a task.
+          ie: the ones in the task _graph, not the abstract ones in the spec.
+        """
+        assert(name in self)
+        preds = self.pred[name]
+        succ  = self.succ[name]
+        return ChainGuard({
+            "pred" : {"tasks": [x for x in preds if isinstance(x, TaskName)],
+                      "_registry.artifacts": {"abstract": [x for x in preds if isinstance(x, TaskArtifact) and not x.is_concrete()],
+                                    "concrete": [x for x in preds if isinstance(x, TaskArtifact) and x.is_concrete()]}},
+            "succ" : {"tasks": [x for x in succ  if isinstance(x, TaskName) and x is not self._root_node],
+                      "_registry.artifacts": {"abstract": [x for x in succ if isinstance(x, TaskArtifact) and not x.is_concrete()],
+                                    "concrete": [x for x in succ if isinstance(x, TaskArtifact) and x.is_concrete()]}},
+            "root" : self._root_node in succ,
+            })
+
     def incomplete_dependencies(self, focus:Concrete[TaskName]|TaskArtifact) -> list[Concrete[TaskName]|TaskArtifact]:
         """ Get all predecessors of a node that don't evaluate as complete """
         assert(focus in self.nodes)
@@ -373,45 +381,41 @@ class TrackNetwork(TaskMatcher_m):
 
         return incomplete
 
-    def build_network(self, *, sources:None|True|list[Concrete[TaskName]|TaskArtifact]=None) -> None:
-        """
-        for each task queued (ie: connected to the root node)
-        expand its dependencies and add into the _graph, until no mode nodes to expand.
-        then connect concrete _registry.artifacts to abstract _registry.artifacts.
+class TrackNetwork(_Expansion_m, _Validation_m, TaskMatcher_m):
+    """ The _graph of concrete tasks and their dependencies """
 
-        # TODO _graph could be built in total, or on demand
-        """
-        logging.debug("-> Building Task Network")
-        match sources:
-            case None:
-                queue = list(self.pred[self._root_node].keys())
-            case True:
-                queue = list(self.nodes.keys())
-            case [*xs]:
-                queue = list(sources)
-        processed = { self._root_node }
-        logging.info("Initial Network Queue: %s", queue)
-        while bool(queue): # expand tasks
-            logging.debug("- Processing: %s", queue[-1])
-            match (current:=queue.pop()):
-                case x if x in processed or self.nodes[x].get(EXPANDED, False):
-                    logging.debug("- Processed already")
-                    processed.add(x)
-                case TaskName() as x if x in self.nodes:
-                    additions = self._expand_task_node(x)
-                    logging.debug("- Task Expansion produced: %s", additions)
-                    queue    += additions
-                    processed.add(x)
-                case TaskArtifact() as x if x in self.nodes:
-                    additions = self._expand_artifact(x)
-                    logging.debug("- Artifact Expansion produced: %s", additions)
-                    queue += additions
-                    processed.add(x)
-                case _:
-                    raise doot.errors.TrackingError("Unknown value in _graph")
+    def __init__(self, registry:TrackRegistry):
+        self._registry                                                       = registry
+        self._root_node        : TaskName                                    = TaskName(ROOT)
+        self._declare_priority : int                                         = DECLARE_PRIORITY
+        self._min_priority     : int                                         = MIN_PRIORITY
+        self._graph            : nx.DiGraph[Concrete[TaskName]|TaskArtifact] = nx.DiGraph()
+        self.is_valid          : bool                                        = False
 
-        else:
-            logging.debug("- Final Network Nodes: %s", self.nodes)
-            logging.debug("<- Final Network Edges: %s", self.edges)
-            self.is_valid = True
-            pass
+        self._add_node(self._root_node)
+
+    @property
+    def nodes(self):
+        return self._graph.nodes
+
+    @property
+    def edges(self):
+        return self._graph.edges
+
+    @property
+    def pred(self):
+        return self._graph.pred
+
+    @property
+    def adj(self):
+        return self._graph.adj
+
+    @property
+    def succ(self):
+        return self._graph.succ
+
+    def __len__(self):
+        return len(self._graph)
+
+    def __contains__(self, other:Concrete[TaskName]|TaskArtifact):
+        return other in self._graph

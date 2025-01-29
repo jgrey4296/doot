@@ -24,12 +24,6 @@ import types
 import weakref
 from collections import defaultdict
 from itertools import chain, cycle
-
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Self,
-                    MutableMapping, Protocol, Sequence, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload, NewType,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
@@ -39,15 +33,39 @@ import doot
 import doot.errors
 from doot._abstract import Job_i, Task_i, TaskRunner_i, TaskTracker_i
 from doot._structs.relation_spec import RelationSpec
-from doot.enums import TaskMeta_e, QueueMeta_e, TaskStatus_e, LocationMeta_e, RelationMeta_e, EdgeType_e, ArtifactStatus_e
-from doot.structs import (ActionSpec, TaskArtifact,
-                          TaskName, TaskSpec)
-from doot.task.base_task import DootTask
-
-from doot.control.statemachine.task_registry import TaskRegistry
 from doot.control.statemachine.task_network import TaskNetwork
 from doot.control.statemachine.task_queue import TaskQueue
+from doot.control.statemachine.task_registry import TaskRegistry
+from doot.enums import (ArtifactStatus_e, EdgeType_e, LocationMeta_e,
+                        QueueMeta_e, RelationMeta_e, TaskMeta_e, TaskStatus_e)
+from doot.structs import ActionSpec, TaskArtifact, TaskName, TaskSpec
+from doot.task.base_task import DootTask
+
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   from typing import Final
+   from typing import ClassVar, Any, LiteralString
+   from typing import Never, Self, Literal
+   from typing import TypeGuard
+   from collections.abc import Iterable, Iterator, Callable, Generator
+   from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+   type Abstract[T] = T
+   type Concrete[T] = T
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging    = logmod.getLogger(__name__)
@@ -58,9 +76,6 @@ skip_l     = doot.subprinter("skip")
 task_l     = doot.subprinter("task")
 artifact_l = doot.subprinter("artifact")
 ##-- end logging
-
-type Abstract[T] = T
-type Concrete[T] = T
 
 MAX_LOOP  : Final[int]     = 100
 
@@ -108,7 +123,7 @@ class StateTracker(TaskTracker_i):
     def build_network(self) -> None:
         self._network.build_network()
 
-    def propagate_state_and_cleanup(self, name:TaskName):
+    def propagate_state_and_cleanup(self, name:TaskName) -> None:
         """ Propagate a task's state on to its cleanup task"""
         logging.info("Queueing Cleanup Task and Propagating State to Cleanup: %s", name)
         cleanups = [x for x in self._network.succ[name] if self._network.edges[name, x].get("cleanup", False)]

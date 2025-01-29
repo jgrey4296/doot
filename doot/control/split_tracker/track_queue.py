@@ -65,18 +65,7 @@ logging.disabled = False
 EXPANDED                       : Final[str]                  = "expanded"  # Node attribute name
 REACTIVE_ADD                   : Final[str]                  = "reactive-add"
 
-class TrackQueue:
-    """ The queue of active tasks. """
-
-    def __init__(self, registry:TrackRegistry, network:TrackNetwork):
-        self._registry                                                           = registry
-        self._network                                                            = network
-        self.active_set             : list[Concrete[TaskName]|TaskArtifact]      = set()
-        self.execution_trace        : list[Concrete[TaskName|TaskArtifact]]      = []
-        self._queue                 : boltons.queueutils.HeapPriorityQueue       = boltons.queueutils.HeapPriorityQueue()
-
-    def __bool__(self):
-        return self._queue.peek(default=None) is not None
+class _Reactive_m:
 
     def _maybe_implicit_queue(self, task:Task_i) -> None:
         """ tasks can be activated for running by a number of different conditions.
@@ -107,6 +96,19 @@ class TrackQueue:
           a tasks 'on_fail' collection
           """
         raise NotImplementedError()
+
+class TrackQueue:
+    """ The queue of active tasks. """
+
+    def __init__(self, registry:TrackRegistry, network:TrackNetwork):
+        self._registry                                                           = registry
+        self._network                                                            = network
+        self.active_set             : list[Concrete[TaskName]|TaskArtifact]      = set()
+        self.execution_trace        : list[Concrete[TaskName|TaskArtifact]]      = []
+        self._queue                 : boltons.queueutils.HeapPriorityQueue       = boltons.queueutils.HeapPriorityQueue()
+
+    def __bool__(self):
+        return self._queue.peek(default=None) is not None
 
     def deque_entry(self, *, peek:bool=False) -> Concrete[TaskName]:
         """ remove (or peek) the top task from the _queue .

@@ -88,26 +88,78 @@ DECLARE_PRIORITY               : Final[int]                  = 10
 MIN_PRIORITY                   : Final[int]                  = -10
 INITAL_SOURCE_CHAIN_COUNT      : Final[int]                  = 10
 
-class _TrackerStore(TaskMatcher_m):
-    """ Stores and manipulates specs, tasks, and artifacts """
+class _Registration_m:
+    def register_spec(self, *specs:TaskSpec) -> None:
+        """ Register task specs, abstract or concrete.
+        """
+        queue = []
+        queue += specs
+        while bool(queue):
+            spec = queue.pop(0)
+            if spec.name in self.specs:
+                continue
+            if TaskMeta_e.DISABLED in spec.meta:
+                logging.debug("Ignoring Registration of disabled task: %s", spec.name.readable)
+                continue
 
-    def __init__(self):
-        super().__init__()
-        # All [Abstract, Concrete] Specs:
-        self.specs                : dict[Ident, TaskSpec]                          = {}
-        # Mapping (Abstract Spec) -> Concrete Specs. Every id, abstract and concerete, has a spec in specs.
-        # TODO: Check first entry is always uncustomised
-        self.concrete             : dict[Abstract[Ident], list[Concrete[Ident]]]            = defaultdict(lambda: [])
-        # All (Concrete Specs) Task objects. Invariant: every key in tasks has a matching key in specs.
-        self.tasks                : dict[Concrete[Ident], Task_i]                      = {}
-        # Artifact -> list[TaskName] of related tasks
-        self.artifacts            : dict[TaskArtifact, list[Abstract[Ident]]]          = defaultdict(set)
-        self._artifact_status     : dict[TaskArtifact, ArtifactStatus_e]              = defaultdict(lambda: ArtifactStatus_e.DECLARED)
-        # Artifact sets
-        self._abstract_artifacts  : set[TaskArtifact]                             = set()
-        self._concrete_artifacts  : set[TaskArtifact]                             = set()
-        # indirect requirements from other tasks:
-        self._indirect_deps        : dict[Concrete[Ident], list[RelationSpec]]          = defaultdict(lambda: [])
+            self.specs[spec.name] = spec
+            logging.debug("Registered Spec: %s", spec.name)
+
+            # Register the abstract head and cleanup tasks
+            if spec.name.is_uniq():
+                pass
+            elif TaskMeta_e.JOB in spec.meta:
+                queue += spec.gen_job_head()
+            else:
+                queue += spec.gen_cleanup_task()
+
+            self._register_artifacts(spec.name)
+            self._register_blocking_relations(spec)
+
+    def _register_artifacts(self, name:Concrete[TaskSpec]) -> None:
+        """ Register the artifacts in a spec """
+        if name not in self.specs:
+            raise doot.errors.TrackingError("tried to register artifacts of a non-registered spec", name)
+
+        spec = self.specs[name]
+
+        if spec.name.is_uniq():
+            return
+
+        for rel in spec.action_group_elements():
+            match rel:
+                case RelationSpec(target=TaskArtifact() as art):
+                    logging.debug("Registering Artifact Relation: %s, %s", art, spec.name)
+                    # Link artifact to its source task
+                    self.artifacts[art].add(spec.name)
+                    # Add it to the relevant abstract/concrete set
+                    if LocationMeta_e.abstract in art:
+                        self._abstract_artifacts.add(art)
+                    else:
+                        self._concrete_artifacts.add(art)
+                case _:
+                    pass
+
+    def _register_blocking_relations(self, spec:TaskSpec) -> None:
+        if spec.name.is_uniq():
+            # If the spec is instantiated,
+            # it has no indirect relations
+            return
+
+        # Register Indirect dependencies:
+        # So if spec blocks target,
+        # record that target needs spec
+        for rel in spec.action_group_elements():
+            match rel:
+                case RelationSpec(target=target, relation=RelationMeta_e.blocks):
+                    logging.debug("Registering Indirect Relation: %s %s", spec.name, rel)
+                    rel.object = spec.name
+                    self._indirect_deps[target].append(rel)
+                case _: # Ignore action specs
+                    pass
+
+
+class _Instantiation_m:
 
     def _maybe_reuse_instantiation(self, name:TaskName, *, add_cli:bool=False, extra:bool=False) -> Maybe[Concrete[Ident]]:
         """ if an existing concrete spec exists, use it if it has no conflicts """
@@ -297,74 +349,26 @@ class _TrackerStore(TaskMatcher_m):
         self.tasks[name] = task
         return name
 
-    def _register_artifacts(self, name:Concrete[TaskSpec]) -> None:
-        """ Register the artifacts in a spec """
-        if name not in self.specs:
-            raise doot.errors.TrackingError("tried to register artifacts of a non-registered spec", name)
+class _TrackerStore(_Registration_m, _Instantiation_m, TaskMatcher_m):
+    """ Stores and manipulates specs, tasks, and artifacts """
 
-        spec = self.specs[name]
-
-        if spec.name.is_uniq():
-            return
-
-        for rel in spec.action_group_elements():
-            match rel:
-                case RelationSpec(target=TaskArtifact() as art):
-                    logging.debug("Registering Artifact Relation: %s, %s", art, spec.name)
-                    # Link artifact to its source task
-                    self.artifacts[art].add(spec.name)
-                    # Add it to the relevant abstract/concrete set
-                    if LocationMeta_e.abstract in art:
-                        self._abstract_artifacts.add(art)
-                    else:
-                        self._concrete_artifacts.add(art)
-                case _:
-                    pass
-
-    def register_spec(self, *specs:TaskSpec) -> None:
-        """ Register task specs, abstract or concrete.
-        """
-        queue = []
-        queue += specs
-        while bool(queue):
-            spec = queue.pop(0)
-            if spec.name in self.specs:
-                continue
-            if TaskMeta_e.DISABLED in spec.meta:
-                logging.debug("Ignoring Registration of disabled task: %s", spec.name.readable)
-                continue
-
-            self.specs[spec.name] = spec
-            logging.debug("Registered Spec: %s", spec.name)
-
-            # Register the abstract head and cleanup tasks
-            if spec.name.is_uniq():
-                pass
-            elif TaskMeta_e.JOB in spec.meta:
-                queue += spec.gen_job_head()
-            else:
-                queue += spec.gen_cleanup_task()
-
-            self._register_artifacts(spec.name)
-            self._register_blocking_relations(spec)
-
-    def _register_blocking_relations(self, spec:TaskSpec) -> None:
-        if spec.name.is_uniq():
-            # If the spec is instantiated,
-            # it has no indirect relations
-            return
-
-        # Register Indirect dependencies:
-        # So if spec blocks target,
-        # record that target needs spec
-        for rel in spec.action_group_elements():
-            match rel:
-                case RelationSpec(target=target, relation=RelationMeta_e.blocks):
-                    logging.debug("Registering Indirect Relation: %s %s", spec.name, rel)
-                    rel.object = spec.name
-                    self._indirect_deps[target].append(rel)
-                case _: # Ignore action specs
-                    pass
+    def __init__(self):
+        super().__init__()
+        # All [Abstract, Concrete] Specs:
+        self.specs                : dict[Ident, TaskSpec]                          = {}
+        # Mapping (Abstract Spec) -> Concrete Specs. Every id, abstract and concerete, has a spec in specs.
+        # TODO: Check first entry is always uncustomised
+        self.concrete             : dict[Abstract[Ident], list[Concrete[Ident]]]            = defaultdict(lambda: [])
+        # All (Concrete Specs) Task objects. Invariant: every key in tasks has a matching key in specs.
+        self.tasks                : dict[Concrete[Ident], Task_i]                      = {}
+        # Artifact -> list[TaskName] of related tasks
+        self.artifacts            : dict[TaskArtifact, list[Abstract[Ident]]]          = defaultdict(set)
+        self._artifact_status     : dict[TaskArtifact, ArtifactStatus_e]              = defaultdict(lambda: ArtifactStatus_e.DECLARED)
+        # Artifact sets
+        self._abstract_artifacts  : set[TaskArtifact]                             = set()
+        self._concrete_artifacts  : set[TaskArtifact]                             = set()
+        # indirect requirements from other tasks:
+        self._indirect_deps        : dict[Concrete[Ident], list[RelationSpec]]          = defaultdict(lambda: [])
 
     def get_status(self, task:Concrete[Ident]) -> TaskStatus_e|ArtifactStatus_e:
         """ Get the status of a task or artifact """
@@ -403,45 +407,7 @@ class _TrackerStore(TaskMatcher_m):
 
         return True
 
-class _TrackerNetwork(TaskMatcher_m):
-    """ the network of concrete tasks and their dependencies """
-
-    def __init__(self):
-        super().__init__()
-        self._root_node        : TaskName                                  = TaskName(ROOT)
-        self._declare_priority : int                                       = DECLARE_PRIORITY
-        self._min_priority     : int                                       = MIN_PRIORITY
-        self.network           : nx.DiGraph[Concrete[Ident]]               = nx.DiGraph()
-        self.network_is_valid  : bool                                      = False
-
-        self._add_node(self._root_node)
-
-    def _add_node(self, name:Concrete[Ident]) -> None:
-        """idempotent"""
-        match name:
-            case x if x is self._root_node:
-                self.network.add_node(name)
-                self.network.nodes[name][EXPANDED]     = True
-                self.network.nodes[name][REACTIVE_ADD] = False
-            case TaskName() if not name.is_uniq():
-                raise doot.errors.TrackingError("Nodes should only be instantiated spec names", name)
-            case _ if name in self.network.nodes:
-                return
-            case TaskArtifact():
-                # Add node with metadata
-                logging.debug("Inserting Artifact into network: %s", name)
-                self.network.add_node(name)
-                self.network.nodes[name][EXPANDED]     = False
-                self.network.nodes[name][REACTIVE_ADD] = False
-                self.network_is_valid = False
-            case TaskName():
-                # Add node with metadata
-                logging.debug("Inserting Concrete[Ident] into network: %s", name)
-                self.network.add_node(name)
-                self.network.nodes[name][EXPANDED]     = False
-                self.network.nodes[name][REACTIVE_ADD] = False
-                self.network_is_valid = False
-
+class _Expansion_m:
     def _expand_task_node(self, name:Concrete[Ident]) -> set[Concrete[Ident]]:
         """ expand a task node, instantiating and connecting to its dependencies and dependents,
         *without* expanding those new nodes.
@@ -560,6 +526,45 @@ class _TrackerNetwork(TaskMatcher_m):
         logging.debug("<-- Artifact Expansion Complete: %s", artifact)
         self.network.nodes[artifact][EXPANDED] = True
         return to_expand
+
+class _TrackerNetwork(_Expansion_m, TaskMatcher_m):
+    """ the network of concrete tasks and their dependencies """
+
+    def __init__(self):
+        super().__init__()
+        self._root_node        : TaskName                                  = TaskName(ROOT)
+        self._declare_priority : int                                       = DECLARE_PRIORITY
+        self._min_priority     : int                                       = MIN_PRIORITY
+        self.network           : nx.DiGraph[Concrete[Ident]]               = nx.DiGraph()
+        self.network_is_valid  : bool                                      = False
+
+        self._add_node(self._root_node)
+
+    def _add_node(self, name:Concrete[Ident]) -> None:
+        """idempotent"""
+        match name:
+            case x if x is self._root_node:
+                self.network.add_node(name)
+                self.network.nodes[name][EXPANDED]     = True
+                self.network.nodes[name][REACTIVE_ADD] = False
+            case TaskName() if not name.is_uniq():
+                raise doot.errors.TrackingError("Nodes should only be instantiated spec names", name)
+            case _ if name in self.network.nodes:
+                return
+            case TaskArtifact():
+                # Add node with metadata
+                logging.debug("Inserting Artifact into network: %s", name)
+                self.network.add_node(name)
+                self.network.nodes[name][EXPANDED]     = False
+                self.network.nodes[name][REACTIVE_ADD] = False
+                self.network_is_valid = False
+            case TaskName():
+                # Add node with metadata
+                logging.debug("Inserting Concrete[Ident] into network: %s", name)
+                self.network.add_node(name)
+                self.network.nodes[name][EXPANDED]     = False
+                self.network.nodes[name][REACTIVE_ADD] = False
+                self.network_is_valid = False
 
     def concrete_edges(self, name:Concrete[Ident]) -> ChainGuard:
         """ get the concrete edges of a task.

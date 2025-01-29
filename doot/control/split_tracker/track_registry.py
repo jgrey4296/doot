@@ -66,21 +66,7 @@ EXPANDED                        : Final[str]                    = "expanded"  # 
 REACTIVE_ADD                    : Final[str]                    = "reactive-add"
 INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                    = 10
 
-class TrackRegistry(TaskMatcher_m):
-    """ Stores and manipulates specs, tasks, and artifacts """
-
-    def __init__(self):
-        self.specs                : dict[TaskName, TaskSpec]  = {}
-        self.concrete             : dict[Abstract[TaskName], list[Concrete[TaskName]]]                 = defaultdict(lambda: [])
-        # Invariant for tasks: every key in tasks has a matching key in specs.
-        self.tasks                : dict[Concrete[TaskName], Task_i]                                   = {}
-        self.artifacts            : dict[TaskArtifact, set[Abstract[TaskName]]]                        = defaultdict(set)
-        self._artifact_status     : dict[TaskArtifact, TaskStatus_e]                                   = defaultdict(lambda: ArtifactStatus_e.DECLARED)
-        # Artifact sets
-        self._abstract_artifacts  : set[Abstract[TaskArtifact]]                                        = set()
-        self._concrete_artifacts  : set[Concrete[TaskArtifact]]                                        = set()
-        # indirect blocking requirements:
-        self._blockers            : dict[Concrete[TaskName|TaskArtifact], list[RelationSpec]]          = defaultdict(lambda: [])
+class _Registration_m:
 
     def register_spec(self, *specs:TaskSpec) -> None:
         """ Register task specs, abstract or concrete.
@@ -107,43 +93,6 @@ class TrackRegistry(TaskMatcher_m):
 
             self._register_spec_artifacts(spec)
             self._register_blocking_relations(spec)
-
-    def get_status(self, task:Concrete[TaskName|TaskArtifact]) -> TaskStatus_e|ArtifactStatus_e:
-        """ Get the status of a task or artifact """
-        match task:
-            case TaskArtifact():
-                return self._artifact_status[task]
-            case TaskName() if task in self.tasks:
-               return self.tasks[task].status
-            # case TaskName() if task in self.network:
-            #     return TaskStatus_e.DEFINED
-            case TaskName() if task in self.specs:
-                return TaskStatus_e.DECLARED
-            case _:
-                return TaskStatus_e.NAMED
-
-    def set_status(self, task:Concrete[TaskName|TaskArtifact]|Task_i, status:TaskStatus_e|ArtifactStatus_e) -> bool:
-        """ update the state of a task in the dependency graph
-          Returns True on status update,
-          False on no task or artifact to update.
-        """
-        logging.debug("Updating State: %s -> %s", task, status)
-        match task, status:
-            # case TaskName(), _ if task == self._root_node:
-            #     return False
-            case Task_i(), TaskStatus_e() if task.name in self.tasks:
-                self.tasks[task.name].status = status
-            case TaskArtifact(), ArtifactStatus_e():
-                self._artifact_status[task] = status
-            case TaskName(), TaskStatus_e() if task in self.tasks:
-                self.tasks[task].status = status
-            case TaskName(), TaskStatus_e():
-                logging.debug("Not Setting Status of %s, its hasn't been started", task)
-                return False
-            case _, _:
-                raise doot.errors.TrackingError("Bad task update status args", task, status)
-
-        return True
 
     def _register_artifact(self, art:TaskArtifact, *tasks:TaskName) -> None:
         logging.debug("Registering Artifact: %s, %s", art, tasks)
@@ -181,6 +130,48 @@ class TrackRegistry(TaskMatcher_m):
                 case _: # Ignore action specs and non
                     pass
 
+class _Instantiation_m:
+
+    def _get_task_source_chain(self, name:Abstract[TaskName]) -> list[Abstract[TaskSpec]]:
+        """ get the chain of sources for a task.
+          this traces from an instance back towards the root,
+          returning [root, ... grandparent, parent, instance].
+
+          traces with the *last* value in spec.sources.
+        """
+        match name:
+            case TaskName():
+                assert(not name.is_uniq())
+            case TaskArtifact():
+                assert(not name.is_concrete())
+        spec                          = self.specs[name]
+        chain   : list[TaskSpec]  = []
+        current : None|TaskSpec   = spec
+        count   : int = INITIAL_SOURCE_CHAIN_COUNT
+        while current is not None:
+            if 0 > count:
+                raise doot.errors.TrackingError("Building a source chain grew to large", name)
+            count -= 1
+            match current: # Determine the base
+                case TaskSpec(name=name) if TaskMeta_e.JOB_HEAD in name:
+                    # job heads are generated, so don't have a source chain
+                    chain.append(current)
+                    current = None
+                case TaskSpec(sources=[pl.Path()]|[]):
+                    chain.append(current)
+                    current = None
+                case TaskSpec(sources=[*xs, TaskName() as src]):
+                    chain.append(current)
+                    current = self.specs.get(src, None)
+                case TaskSpec(sources=[*xs, None]):
+                    # Stop the chain search
+                    chain.append(current)
+                    current = None
+                case _:
+                    raise doot.errors.TrackingError("Unknown spec customization attempt", spec, current, chain)
+
+        chain.reverse()
+        return chain
     def _maybe_reuse_instantiation(self, name:TaskName, *, add_cli:bool=False, extra:bool=False) -> None|Concrete[TaskName]:
         """ if an existing concrete spec exists, use it if it has no conflicts """
         if name not in self.specs:
@@ -327,43 +318,55 @@ class TrackRegistry(TaskMatcher_m):
         self.tasks[name] = task
         return name
 
-    def _get_task_source_chain(self, name:Abstract[TaskName]) -> list[Abstract[TaskSpec]]:
-        """ get the chain of sources for a task.
-          this traces from an instance back towards the root,
-          returning [root, ... grandparent, parent, instance].
+class TrackRegistry(_Registration_m, _Instantiation_m, TaskMatcher_m):
+    """ Stores and manipulates specs, tasks, and artifacts """
 
-          traces with the *last* value in spec.sources.
-        """
-        match name:
-            case TaskName():
-                assert(not name.is_uniq())
+    def __init__(self):
+        self.specs                : dict[TaskName, TaskSpec]  = {}
+        self.concrete             : dict[Abstract[TaskName], list[Concrete[TaskName]]]                 = defaultdict(lambda: [])
+        # Invariant for tasks: every key in tasks has a matching key in specs.
+        self.tasks                : dict[Concrete[TaskName], Task_i]                                   = {}
+        self.artifacts            : dict[TaskArtifact, set[Abstract[TaskName]]]                        = defaultdict(set)
+        self._artifact_status     : dict[TaskArtifact, TaskStatus_e]                                   = defaultdict(lambda: ArtifactStatus_e.DECLARED)
+        # Artifact sets
+        self._abstract_artifacts  : set[Abstract[TaskArtifact]]                                        = set()
+        self._concrete_artifacts  : set[Concrete[TaskArtifact]]                                        = set()
+        # indirect blocking requirements:
+        self._blockers            : dict[Concrete[TaskName|TaskArtifact], list[RelationSpec]]          = defaultdict(lambda: [])
+
+    def get_status(self, task:Concrete[TaskName|TaskArtifact]) -> TaskStatus_e|ArtifactStatus_e:
+        """ Get the status of a task or artifact """
+        match task:
             case TaskArtifact():
-                assert(not name.is_concrete())
-        spec                          = self.specs[name]
-        chain   : list[TaskSpec]  = []
-        current : None|TaskSpec   = spec
-        count   : int = INITIAL_SOURCE_CHAIN_COUNT
-        while current is not None:
-            if 0 > count:
-                raise doot.errors.TrackingError("Building a source chain grew to large", name)
-            count -= 1
-            match current: # Determine the base
-                case TaskSpec(name=name) if TaskMeta_e.JOB_HEAD in name:
-                    # job heads are generated, so don't have a source chain
-                    chain.append(current)
-                    current = None
-                case TaskSpec(sources=[pl.Path()]|[]):
-                    chain.append(current)
-                    current = None
-                case TaskSpec(sources=[*xs, TaskName() as src]):
-                    chain.append(current)
-                    current = self.specs.get(src, None)
-                case TaskSpec(sources=[*xs, None]):
-                    # Stop the chain search
-                    chain.append(current)
-                    current = None
-                case _:
-                    raise doot.errors.TrackingError("Unknown spec customization attempt", spec, current, chain)
+                return self._artifact_status[task]
+            case TaskName() if task in self.tasks:
+               return self.tasks[task].status
+            # case TaskName() if task in self.network:
+            #     return TaskStatus_e.DEFINED
+            case TaskName() if task in self.specs:
+                return TaskStatus_e.DECLARED
+            case _:
+                return TaskStatus_e.NAMED
 
-        chain.reverse()
-        return chain
+    def set_status(self, task:Concrete[TaskName|TaskArtifact]|Task_i, status:TaskStatus_e|ArtifactStatus_e) -> bool:
+        """ update the state of a task in the dependency graph
+          Returns True on status update,
+          False on no task or artifact to update.
+        """
+        logging.debug("Updating State: %s -> %s", task, status)
+        match task, status:
+            # case TaskName(), _ if task == self._root_node:
+            #     return False
+            case Task_i(), TaskStatus_e() if task.name in self.tasks:
+                self.tasks[task.name].status = status
+            case TaskArtifact(), ArtifactStatus_e():
+                self._artifact_status[task] = status
+            case TaskName(), TaskStatus_e() if task in self.tasks:
+                self.tasks[task].status = status
+            case TaskName(), TaskStatus_e():
+                logging.debug("Not Setting Status of %s, its hasn't been started", task)
+                return False
+            case _, _:
+                raise doot.errors.TrackingError("Bad task update status args", task, status)
+
+        return True
