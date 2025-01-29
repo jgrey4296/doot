@@ -103,32 +103,32 @@ class RelationSpec(BaseModel, Buildable_p, arbitrary_types_allowed=True, metacla
     inject        : Maybe[str|dict]                                  = None
     _meta         : dict()                                           = {} # Misc metadata
 
-    @staticmethod
-    def build(data:RelationSpec|ChainGuard|dict|TaskName|str, *, relation:Maybe[RelationSpec.mark_e]=None) -> RelationSpec:
-        relation = relation or RelationSpec.mark_e.needs
+    @classmethod
+    def build(cls, data:RelationSpec|ChainGuard|dict|TaskName|str, *, relation:Maybe[RelationSpec.mark_e]=None) -> RelationSpec:
+        relation = relation or cls.mark_e.needs
         result = None
         match data:
             case RelationSpec():
                 result = data
             case pl.Path():
-                result = RelationSpec(target=TaskArtifact(data), relation=relation)
+                result = cls(target=TaskArtifact(data), relation=relation)
             case TaskName() | TaskArtifact():
-                result = RelationSpec(target=data, relation=relation)
+                result = cls(target=data, relation=relation)
             case str() as x if TaskArtifact._separator in x:
                 target = TaskArtifact(x)
-                result = RelationSpec(target=target, relation=relation)
+                result = cls(target=target, relation=relation)
             case str() as x if Location._separator in x:
                 result = Location(x)
-                return RelationSpec(target=target, relation=relation)
+                return cls(target=target, relation=relation)
             case str() as x if TaskName._separator in x:
                 target = TaskName(x)
-                result = RelationSpec(target=target, relation=relation)
+                result = cls(target=target, relation=relation)
             case {"path":path} if "task" not in data:
-                return RelationSpec(target=TaskArtifact(path), relation=relation)
+                return cls(target=TaskArtifact(path), relation=relation)
             case {"task": taskname}:
                 constraints = data.get("constraints", None) or data.get("constraints_", False)
                 inject      = data.get("inject", None)      or data.get("inject_", None)
-                result = RelationSpec(target=TaskName(taskname), constraints=constraints, inject=inject, relation=relation)
+                result = cls(target=TaskName(taskname), constraints=constraints, inject=inject, relation=relation)
             case _:
                 raise ValueError("Bad data used for relation spec", data)
 

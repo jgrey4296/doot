@@ -303,17 +303,17 @@ class _TransformerUtils_m:
 class _SpecUtils_m:
     """General utilities mixin for task specs"""
 
-    @staticmethod
-    def build(data:ChainGuard|dict|TaskName|str) -> Self:
+    @classmethod
+    def build(cls, data:ChainGuard|dict|TaskName|str) -> Self:
         match data:
             case ChainGuard() | dict() if "source" in data:
                 raise ValueError("source is deprecated, use 'sources'", data)
             case ChainGuard() | dict():
-                return TaskSpec.model_validate(data)
+                return cls.model_validate(data)
             case TaskName():
-                return TaskSpec(name=data)
+                return cls(name=data)
             case str():
-                return TaskSpec(name=TaskName(data))
+                return cls(name=TaskName(data))
 
     def instantiate_onto(self, data:Maybe[TaskSpec]) -> TaskSpec:
         """ apply self over the top of data """

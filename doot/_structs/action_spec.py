@@ -63,13 +63,13 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
     kwargs     : ChainGuard                             = Field(default_factory=ChainGuard)
     fun        : Maybe[Func]                            = None
 
-    @staticmethod
-    def build(data:dict|list|ChainGuard|ActionSpec, *, fun=None) -> ActionSpec:
+    @classmethod
+    def build(cls, data:dict|list|ChainGuard|ActionSpec, *, fun=None) -> ActionSpec:
         match data:
             case ActionSpec():
                 return data
             case list():
-                action_spec = ActionSpec(
+                action_spec = cls(
                     args=data,
                     fun=fun if callable(fun) else None
                     )
@@ -78,7 +78,7 @@ class ActionSpec(BaseModel, SpecStruct_p, Buildable_p, metaclass=ProtocolModelMe
             case dict() | ChainGuard():
                 kwargs      = ChainGuard({x:y for x,y in data.items() if x not in ActionSpec.model_fields})
                 fun         = data.get('fun', fun)
-                action_spec = ActionSpec(
+                action_spec = cls(
                     do=data.get('do', None),
                     args=data.get('args',[]),
                     kwargs=kwargs,
