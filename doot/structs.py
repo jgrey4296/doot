@@ -37,3 +37,4 @@ from doot._structs.task_name import TaskName
 from doot._structs.task_spec import TaskSpec
 from doot._structs.trace import TraceRecord
 from doot._structs.dkey import DKeyed
+from doot._structs.inject_spec import InjectSpec

@@ -41,10 +41,8 @@ import doot.errors
 from doot._abstract import (Job_i, Task_i, TaskRunner_i, TaskTracker_i)
 from doot._structs.relation_spec import RelationSpec
 from doot.enums import TaskMeta_e, QueueMeta_e, TaskStatus_e, LocationMeta_e, RelationMeta_e, EdgeType_e, ArtifactStatus_e
-from doot.structs import (ActionSpec, TaskArtifact,
-                          TaskName, TaskSpec)
+from doot.structs import (ActionSpec, TaskArtifact, TaskName, TaskSpec, InjectSpec)
 from doot.task.base_task import DootTask
-from doot.mixins.injector import Injector_m
 from doot.mixins.matching import TaskMatcher_m
 
 # ##-- end 1st party imports
@@ -74,7 +72,7 @@ REACTIVE_ADD                   : Final[str]                    = "reactive-add"
 INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                   = 10
 
 
-class TaskRegistry(Injector_m, TaskMatcher_m):
+class TaskRegistry(TaskMatcher_m):
     """ Stores and manipulates specs, tasks, and artifacts """
 
     def __init__(self):
@@ -266,6 +264,12 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
         control_spec              = self.specs[control]
         target_spec               = self.specs[rel.target]
         successful_matches        = []
+        match InjectSpec.build(rel, sources=[control_spec]):
+            case None:
+                extra = {}
+            case x:
+                extra = x.as_dict(constraint=target_spec)
+
         match self.concrete.get(rel.target, None):
             case [] | None if rel.target not in self.specs:
                 raise doot.errors.TrackingError("Unknown target declared in Constrained Relation", control, rel.target)
@@ -280,7 +284,6 @@ class TaskRegistry(Injector_m, TaskMatcher_m):
 
         match successful_matches:
             case []: # No matches, instantiate
-                extra    : None|dict      = self.build_injection(rel, control_spec, constraint=target_spec)
                 instance : TaskName      = self._instantiate_spec(rel.target, extra=extra)
                 if not self.match_with_constraints(self.specs[instance], control_spec, relation=rel):
                     raise doot.errors.TrackingError("Failed to build task matching constraints")

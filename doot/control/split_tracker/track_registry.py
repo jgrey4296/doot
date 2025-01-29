@@ -35,9 +35,8 @@ import doot.errors
 from doot._abstract import (Job_i, Task_i, TaskRunner_i, TaskTracker_i)
 from doot._structs.relation_spec import RelationSpec
 from doot.enums import TaskMeta_e, TaskStatus_e, ArtifactStatus_e
-from doot.structs import (ActionSpec, TaskArtifact, TaskName, TaskSpec)
+from doot.structs import (ActionSpec, TaskArtifact, TaskName, TaskSpec, InjectSpec)
 from doot.task.base_task import DootTask
-from doot.mixins.injector import Injector_m
 from doot.mixins.matching import TaskMatcher_m
 
 # ##-- end 1st party imports
@@ -67,7 +66,7 @@ EXPANDED                        : Final[str]                    = "expanded"  # 
 REACTIVE_ADD                    : Final[str]                    = "reactive-add"
 INITIAL_SOURCE_CHAIN_COUNT      : Final[int]                    = 10
 
-class TrackRegistry(Injector_m, TaskMatcher_m):
+class TrackRegistry(TaskMatcher_m):
     """ Stores and manipulates specs, tasks, and artifacts """
 
     def __init__(self):
@@ -254,6 +253,7 @@ class TrackRegistry(Injector_m, TaskMatcher_m):
     def _instantiate_relation(self, rel:RelationSpec, *, control:Concrete[TaskName]) -> Concrete[TaskName]:
         """ find a matching relendency/requirement according to a set of keys in the spec, or create a matching instance
           if theres no constraints, will just instantiate.
+
           """
         logging.warning("Instantiating Relation: %s - %s -> %s", control, rel.relation.name, rel.target)
         assert(control in self.specs)
@@ -261,6 +261,12 @@ class TrackRegistry(Injector_m, TaskMatcher_m):
         control_spec              = self.specs[control]
         target_spec               = self.specs[rel.target]
         successful_matches        = []
+        match InjectSpec.build(rel, sources=[control_spec]):
+            case None:
+                extra = {}
+            case x:
+                extra = x.as_dict(constraint=target_spec)
+
         match self.concrete.get(rel.target, None):
             case [] | None if rel.target not in self.specs:
                 raise doot.errors.TrackingError("Unknown target declared in Constrained Relation", control, rel.target)
@@ -274,8 +280,7 @@ class TrackRegistry(Injector_m, TaskMatcher_m):
                 successful_matches += [x.name for x in potentials if self.match_with_constraints(x, control_spec, relation=rel)]
 
         match successful_matches:
-            case []: # No matches, instantiate
-                extra    : None|dict      = self.build_injection(rel, control_spec, constraint=target_spec)
+            case []: # No matches, instantiate, with injected values
                 instance : TaskName      = self._instantiate_spec(rel.target, extra=extra)
                 if not self.match_with_constraints(self.specs[instance], control_spec, relation=rel):
                     raise doot.errors.TrackingError("Failed to build task matching constraints")

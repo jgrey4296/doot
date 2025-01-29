@@ -24,12 +24,6 @@ import types
 import weakref
 from collections import defaultdict
 from itertools import chain, cycle
-
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Self,
-                    MutableMapping, Protocol, Sequence, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
@@ -47,23 +41,34 @@ import doot.errors
 from doot._abstract import Job_i, Task_i, TaskRunner_i, TaskTracker_i
 from doot._structs.relation_spec import RelationSpec
 from doot.enums import TaskMeta_e, QueueMeta_e, TaskStatus_e, LocationMeta_e, RelationMeta_e, EdgeType_e, ArtifactStatus_e
-from doot.structs import (ActionSpec, TaskArtifact,
-                          TaskName, TaskSpec)
+from doot.structs import (ActionSpec, TaskArtifact, TaskName, TaskSpec, InjectSpec)
 from doot.task.base_task import DootTask
-from doot.mixins.injector import Injector_m
 from doot.mixins.matching import TaskMatcher_m
 # ##-- end 1st party imports
 
-import typing
-
 # ##-- types
 # isort: off
-if typing.TYPE_CHECKING:
-    from jgdv import Maybe, Ident
-    type Abstract[T] = T
-    type Concrete[T] = T
-    type ActionElem  = ActionSpec|RelationSpec
-    type ActionGroup = list[ActionElem]
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+   from jgdv import Maybe, Ident
+   from typing import Final
+   from typing import ClassVar, Any, LiteralString
+   from typing import Never, Self, Literal
+   from typing import TypeGuard
+   from collections.abc import Iterable, Iterator, Callable, Generator
+   from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+   type Abstract[T] = T
+   type Concrete[T] = T
+   type ActionElem  = ActionSpec|RelationSpec
+   type ActionGroup = list[ActionElem]
 
 # isort: on
 # ##-- end types
@@ -83,8 +88,7 @@ DECLARE_PRIORITY               : Final[int]                  = 10
 MIN_PRIORITY                   : Final[int]                  = -10
 INITAL_SOURCE_CHAIN_COUNT      : Final[int]                  = 10
 
-
-class _TrackerStore(Injector_m, TaskMatcher_m):
+class _TrackerStore(TaskMatcher_m):
     """ Stores and manipulates specs, tasks, and artifacts """
 
     def __init__(self):
@@ -223,6 +227,12 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
         control_spec              = self.specs[control]
         target_spec               = self.specs[rel.target]
         successful_matches        = []
+        match InjectSpec.build(rel, sources=[control_spec]):
+            case None:
+                extra = {}
+            case x:
+                extra     : dict       = x.as_dict(constraint=target_spec)
+
         # Get and test existing concrete specs to see if they can be reused
         match self.concrete.get(rel.target, None):
             case [] | None if rel.target not in self.specs:
@@ -236,8 +246,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
 
         match successful_matches:
             case []: # No matches, instantiate new
-                extra    : None|dict      = self.build_injection(rel, control_spec, constraint=target_spec)
-                instance : TaskName       = self._instantiate_spec(rel.target, extra=extra)
+                instance  : TaskName   = self._instantiate_spec(rel.target, extra=extra)
                 if not self.match_with_constraints(self.specs[instance], control_spec, relation=rel):
                     raise doot.errors.TrackingError("Failed to build task matching constraints", str(control_spec.name), str(instance), rel)
                 logging.info("Using New Instance: %s", instance)
@@ -394,7 +403,7 @@ class _TrackerStore(Injector_m, TaskMatcher_m):
 
         return True
 
-class _TrackerNetwork(Injector_m, TaskMatcher_m):
+class _TrackerNetwork(TaskMatcher_m):
     """ the network of concrete tasks and their dependencies """
 
     def __init__(self):
@@ -406,7 +415,6 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
         self.network_is_valid  : bool                                      = False
 
         self._add_node(self._root_node)
-
 
     def _add_node(self, name:Concrete[Ident]) -> None:
         """idempotent"""
@@ -533,7 +541,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
         for name in self.artifacts[artifact]:
             instance = self._instantiate_spec(name)
             # Don't connect it to the network, it'll be expanded later
-            self.connect(instance, False)
+            self.connect(instance, False) # noqa: FBT003
             to_expand.add(instance)
 
         match artifact.is_concrete():
@@ -570,7 +578,7 @@ class _TrackerNetwork(Injector_m, TaskMatcher_m):
             "root" : self._root_node in succ,
             })
 
-    def connect(self, left:Maybe[Concrete[Ident]], right:Maybe[False|Concrete[Ident]]=None, **kwargs) -> None:
+    def connect(self, left:Maybe[Concrete[Ident]], right:Maybe[False|Concrete[Ident]]=None, **kwargs:Any) -> None:
         """
         Connect a task node to another. left -> right
         If given left, None, connect left -> ROOT
