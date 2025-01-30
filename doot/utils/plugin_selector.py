@@ -2,13 +2,11 @@
 """
 A function to select an appropriate plugin by passed in name or names
 
-
 """
 # Imports:
 from __future__ import annotations
 
 # ##-- stdlib imports
-# import abc
 import datetime
 import enum
 import functools as ftz
@@ -21,20 +19,13 @@ import time
 import types
 import weakref
 from importlib.metadata import EntryPoint
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
 from jgdv.structs.strang import CodeReference
-from jgdv.structs.chainguard import ChainGuard
+
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
@@ -42,11 +33,34 @@ import doot.errors
 
 # ##-- end 1st party imports
 
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   from typing import Final
+   from typing import ClassVar, Any, LiteralString
+   from typing import Never, Self, Literal
+   from typing import TypeGuard
+   from collections.abc import Iterable, Iterator, Callable, Generator
+   from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+   from jgdv.structs.chainguard import ChainGuard
+
+# isort: on
+# ##-- end types
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-def plugin_selector(plugins:ChainGuard, *, target="default", fallback=None) -> type:
+def plugin_selector(plugins:ChainGuard, *, target:str="default", fallback:Maybe[type]=None) -> Maybe[type]:
     """ Selects and loads plugins from a chainguard , based on a target,
     with an available fallback constructor """
     logging.debug("Selecting plugin for target: %s", target)

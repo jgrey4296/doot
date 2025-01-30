@@ -26,7 +26,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 
 ##-- end imports
 
-
 import doot
 import shutil
 from doot.cmds.base_cmd import BaseCommand
@@ -47,27 +46,33 @@ class CleanCmd(BaseCommand):
     _name      = "clean"
     _help      = [
         "Called with a -t[arget]={task}, will delete locations listed in that task's toml spec'd `clean_targets`",
-        "Without a target, will delete locations listed in doot.toml's: `commands.clean.locs`",
+        "Without a target, will delete locations with the 'clean::' metadata",
+        "Locations marked 'protect::' will not be cleaned",
         "Directories will *not* be deleted unless -r[ecursive] is passed",
-        ]
+    ]
 
     @property
     def param_specs(self) -> list:
         return super().param_specs + [
             self.build_param(name="target", type=str, default=None),
             self.build_param(name="recursive", type=bool, default=False)
-            ]
+        ]
 
     def __call__(self, tasks:dict, plugins:dict):
-        self._loc_clean()
+        for x in self._collect_locations():
+            self._clean_single_loc(x)
 
-    def _loc_clean(self):
-        cleanable = [doo.locs[x] for x in doot.locs if doot.locs.Current.metacheck(x, doot.locs.Current.locmeta.cleanable)]
-        for x in cleanable:
-            if not x.exists():
-                pass
-            logging.info("Cleaning: %s", x)
-            if x.is_dir():
-                shutil.rmtree(x)
-            else:
-                x.unlink(missing_ok=True)
+
+    def _collect_locations(self) -> list[pl.Path]:
+        cleanable = [doot.locs[x] for x in doot.locs
+                     if doot.locs.metacheck(x, doot.locs.locmeta.cleanable)]
+        return cleanable
+
+    def _clean_single_loc(self, loc):
+        if not loc.exists():
+            pass
+        self._print_text([f"- Cleaning: {loc}"])
+        if loc.is_dir():
+            shutil.rmtree(x)
+        else:
+            loc.unlink(missing_ok=True)

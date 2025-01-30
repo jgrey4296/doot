@@ -2,14 +2,10 @@
 """
 
 """
-##-- imports
-
-##-- end imports
-
-##-- default imports
+# Imports:
 from __future__ import annotations
 
-import types
+# ##-- stdlib imports
 import abc
 import datetime
 import enum
@@ -19,6 +15,7 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
+import types
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
@@ -28,20 +25,30 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from uuid import UUID, uuid1
 from weakref import ref
 
-##-- end default imports
+# ##-- end stdlib imports
+
+# ##-- stdlib imports
+from collections import defaultdict
+
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
+from jgdv.structs.chainguard import ChainGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import doot
+from doot.cmds.base_cmd import BaseCommand
+from doot.task.check_locs import CheckLocsTask
+from doot.utils.plugin_selector import plugin_selector
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-##-- end logging
-
-from collections import defaultdict
-from jgdv.structs.chainguard import ChainGuard
-import doot
-from doot.cmds.base_cmd import BaseCommand
-from doot.utils.plugin_selector import plugin_selector
-from doot.task.check_locs import CheckLocsTask
-
 printer = doot.subprinter()
+##-- end logging
 
 runner_target            = doot.config.on_fail("step", str).settings.commands.step.runner()
 tracker_target           = doot.config.on_fail("default", str).settings.commands.step.tracker()

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Initialise a task tracker graph, convert it to a as-dot svg,
+Initialise a task tracker graph, convert it to a dot svg,
   then open an html page of it
 
 """
@@ -88,7 +88,7 @@ class GraphCmd(BaseCommand):
 
     def __call__(self, tasks:ChainGuard, plugins:ChainGuard):
         """List task generators"""
-        logging.debug("Starting to Graph Jobs/Tasks Network")
+        self._print_text("-- Starting to Graph Jobs/Tasks Network")
         tracker = plugin_selector(plugins.on_fail([], list).tracker(), target=tracker_target)()
         if not hasattr(tracker, "network"):
             fail_l.error("Can't get a dep_graph for the tracker")
@@ -102,15 +102,15 @@ class GraphCmd(BaseCommand):
 
         match doot.args.cmd.args:
             case {"draw": True}:
-                self.draw_pyplot(graph)
+                self._draw_pyplot(graph)
             case {"as-dot": True, "dot-file": loc_key} if bool(loc_key):
                 cmd_l.info("Expanding Location: %s", loc_key)
                 loc_key = DKey(loc_key, mark=DKey.mark.PATH)
                 loc = loc_key.expand()
                 cmd_l.info("Target Location Expanded: %s", loc)
-                self.write_dot_image(graph, loc)
+                self._write_dot_image(graph, loc)
             case {"as-dot": True}:
-                dot_obj = self.to_dot(graph)
+                dot_obj = self._to_dot(graph)
                 cmd_l.info("# ---- Raw Dot: ")
                 cmd_l.info(str(dot_obj))
                 cmd_l.info("# ---- End of Raw Dot")
@@ -134,8 +134,8 @@ class GraphCmd(BaseCommand):
 
         return tracker.network
 
-    def write_dot_image(self, graph, loc):
-        dot_obj = self.to_dot(graph)
+    def _write_dot_image(self, graph, loc):
+        dot_obj = self._to_dot(graph)
         match loc.suffix:
             case ".jpg":
                 dot_obj.write_jpg(loc)
@@ -150,7 +150,7 @@ class GraphCmd(BaseCommand):
                 return False
         cmd_l.info("-- Dot written to: %s", loc)
 
-    def draw_pyplot(self, graph):
+    def _draw_pyplot(self, graph):
         """ Actually display the graph """
         wrapped = self._relabel_node_names(graph)
         opts = {}
@@ -159,7 +159,7 @@ class GraphCmd(BaseCommand):
         nx.draw_networkx(wrapped, **opts)
         plt.show()
 
-    def to_dot(self, graph) -> pydot.Dot:
+    def _to_dot(self, graph) -> pydot.Dot:
         """ Convert a networkx graph to a Dot object"""
         cmd_l.info("Converting to a dot suitable format")
         wrapped = self._relabel_node_names(graph)

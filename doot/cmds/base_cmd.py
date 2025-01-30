@@ -91,6 +91,13 @@ class BaseCommand(ParamSpecMaker_m, Command_i):
 
     def _print_text(self, text:list[ListVal]) -> None:
         """ Utility method to print text out at the user level """
+        match text:
+            case str():
+                text = [text]
+            case [*_]:
+                pass
+            case x:
+                 raise doot.errors.CommandError("Unknown type tried to be printed")
         for line in text:
             match line:
                 case str():
