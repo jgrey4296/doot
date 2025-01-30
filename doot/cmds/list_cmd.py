@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
-#
 """
+The command which provides the user a listing of... things.
 
+Each mixin does the work of creating the list, and provides its own
+set of cli args.
+The actual ListCmd joins them all and calls the necessary method,
+passing the result to the generic command _print_text method
 """
 # ruff: noqa: ANN001
 # Imports:
@@ -320,7 +324,8 @@ class _ActionLister_m:
         logging.info("---- Listing Available Actions")
         result = []
         result.append("Available Actions:")
-        largest = max(len(x.name) for x in plugins.action)
+        name_lens = [len(x.name) for x in plugins.action]
+        largest = max([0, *name_lens])
         for action in sorted(plugins.action, key=lambda x: x.name):
             result.append(f"-- {action.name:<25} : {action.value}")
 
@@ -345,7 +350,7 @@ class _PluginLister_m:
         logging.info("---- Listing Plugins")
         result = []
         result.append(("Defined Plugins by Group:", {"colour":"cyan"}))
-        max_key = len(max(plugins.keys(), key=len))
+        max_key = max(["", *plugins.keys()], key=len)
         fmt_str = f"{INDENT}%-{max_key}s :: %-25s"
         groups  = defaultdict(list)
         pass
